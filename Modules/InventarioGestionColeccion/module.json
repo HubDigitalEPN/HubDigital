@@ -1,0 +1,11 @@
+{
+    "name": "InventarioGestionColeccion",
+    "alias": "inventariogestioncoleccion",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\InventarioGestionColeccion\\Providers\\InventarioGestionColeccionServiceProvider"
+    ],
+    "files": []
+}

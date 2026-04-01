@@ -1,0 +1,30 @@
+{
+    "name": "nwidart/gestionprestamosrecepciones",
+    "description": "",
+    "authors": [
+        {
+            "name": "Nicolas Widart",
+            "email": "n.widart@gmail.com"
+        }
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [],
+            "aliases": {
+
+            }
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\GestionPrestamosRecepciones\\": "app/",
+            "Modules\\GestionPrestamosRecepciones\\Database\\Factories\\": "database/factories/",
+            "Modules\\GestionPrestamosRecepciones\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\GestionPrestamosRecepciones\\Tests\\": "tests/"
+        }
+    }
+}
