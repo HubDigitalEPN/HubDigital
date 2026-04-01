@@ -3,7 +3,7 @@ Característica: Registro automático de ubicación de cajas
   Como Curador,
   quiero que se registre automáticamente cuando una caja entomológica es ingresada o retirada de una ranura del gabinete,
   para detectar movimientos no autorizados en tiempo real y evitar las pérdidas de material biológico.
-  
+
   Escenario: Ingreso de una caja entomológica en una ranura vacía
     Dado que se está monitoreando el gabinete "GAB-01"
     Y la ranura "A-1" se encuentra vacía

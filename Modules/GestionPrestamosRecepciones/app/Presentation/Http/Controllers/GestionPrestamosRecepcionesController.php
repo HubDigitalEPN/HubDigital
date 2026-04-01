@@ -12,7 +12,8 @@ class GestionPrestamosRecepcionesController extends Controller
      */
     public function index()
     {
-        return view('gestionprestamosrecepciones::index');
+        dd("ola mi amol");
+
     }
 
     /**

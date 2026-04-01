@@ -7,7 +7,10 @@
       "Read(//c/Users/djimm/.config/herd/bin//**)",
       "Read(//c/Users/djimm/AppData/Local/**)",
       "Bash(\"/c/Users/djimm/AppData/Local/Herd/php84.bat\" -r \"echo PHP_VERSION;\")",
-      "Bash(\"/c/Users/djimm/AppData/Local/Herd/php85.bat\" -r \"echo PHP_VERSION;\")"
+      "Bash(\"/c/Users/djimm/AppData/Local/Herd/php85.bat\" -r \"echo PHP_VERSION;\")",
+      "Bash(xargs cat:*)",
+      "Bash(xargs grep:*)",
+      "Bash(xargs ls:*)"
     ]
   }
 }
