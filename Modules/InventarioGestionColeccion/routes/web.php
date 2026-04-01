@@ -1,8 +1,8 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Modules\InventarioGestionColeccion\Http\Controllers\InventarioGestionColeccionController;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\InventarioGestionColeccionController;
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::resource('inventariogestioncoleccions', InventarioGestionColeccionController::class)->names('inventariogestioncoleccion');
+    Route::resource('inventariogestioncoleccion', InventarioGestionColeccionController::class)->names('inventariogestioncoleccion');
 });

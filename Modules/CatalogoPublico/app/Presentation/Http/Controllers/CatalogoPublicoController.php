@@ -1,18 +1,18 @@
 <?php
 
-namespace Modules\InventarioGestionColeccion\Http\Controllers;
+namespace Modules\CatalogoPublico\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 
-class InventarioGestionColeccionController extends Controller
+class CatalogoPublicoController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
-        return view('inventariogestioncoleccion::index');
+        return view('catalogopublico::index');
     }
 
     /**
@@ -20,7 +20,7 @@ class InventarioGestionColeccionController extends Controller
      */
     public function create()
     {
-        return view('inventariogestioncoleccion::create');
+        return view('catalogopublico::create');
     }
 
     /**
@@ -33,7 +33,7 @@ class InventarioGestionColeccionController extends Controller
      */
     public function show($id)
     {
-        return view('inventariogestioncoleccion::show');
+        return view('catalogopublico::show');
     }
 
     /**
@@ -41,7 +41,7 @@ class InventarioGestionColeccionController extends Controller
      */
     public function edit($id)
     {
-        return view('inventariogestioncoleccion::edit');
+        return view('catalogopublico::edit');
     }
 
     /**

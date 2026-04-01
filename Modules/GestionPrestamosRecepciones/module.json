@@ -5,7 +5,7 @@
     "keywords": [],
     "priority": 0,
     "providers": [
-        "Modules\\GestionPrestamosRecepciones\\Providers\\GestionPrestamosRecepcionesServiceProvider"
+        "Modules\\GestionPrestamosRecepciones\\Infrastructure\\Providers\\GestionPrestamosRecepcionesServiceProvider"
     ],
     "files": []
 }

@@ -1,6 +1,6 @@
 <?php
 
-namespace Modules\GestionPrestamosRecepciones\Providers;
+namespace Modules\CatalogoPublico\Infrastructure\Providers;
 
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 

@@ -1,21 +1,21 @@
 <?php
 
-namespace Modules\InventarioGestionColeccion\Providers;
+namespace Modules\CatalogoPublico\Infrastructure\Providers;
 
 use Nwidart\Modules\Support\ModuleServiceProvider;
 use Illuminate\Console\Scheduling\Schedule;
 
-class InventarioGestionColeccionServiceProvider extends ModuleServiceProvider
+class CatalogoPublicoServiceProvider extends ModuleServiceProvider
 {
     /**
      * The name of the module.
      */
-    protected string $name = 'InventarioGestionColeccion';
+    protected string $name = 'CatalogoPublico';
 
     /**
      * The lowercase version of the module name.
      */
-    protected string $nameLower = 'inventariogestioncoleccion';
+    protected string $nameLower = 'catalogopublico';
 
     /**
      * Command classes to register.

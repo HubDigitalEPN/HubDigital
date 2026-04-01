@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Modules\CatalogoPublico\Http\Controllers\CatalogoPublicoController;
+use Modules\CatalogoPublico\Presentation\Http\Controllers\CatalogoPublicoController;
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('catalogopublicos', CatalogoPublicoController::class)->names('catalogopublico');

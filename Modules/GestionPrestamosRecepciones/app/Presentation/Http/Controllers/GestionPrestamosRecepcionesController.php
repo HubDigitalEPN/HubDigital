@@ -1,18 +1,18 @@
 <?php
 
-namespace Modules\CatalogoPublico\Http\Controllers;
+namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 
-class CatalogoPublicoController extends Controller
+class GestionPrestamosRecepcionesController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
-        return view('catalogopublico::index');
+        return view('gestionprestamosrecepciones::index');
     }
 
     /**
@@ -20,7 +20,7 @@ class CatalogoPublicoController extends Controller
      */
     public function create()
     {
-        return view('catalogopublico::create');
+        return view('gestionprestamosrecepciones::create');
     }
 
     /**
@@ -33,7 +33,7 @@ class CatalogoPublicoController extends Controller
      */
     public function show($id)
     {
-        return view('catalogopublico::show');
+        return view('gestionprestamosrecepciones::show');
     }
 
     /**
@@ -41,7 +41,7 @@ class CatalogoPublicoController extends Controller
      */
     public function edit($id)
     {
-        return view('catalogopublico::edit');
+        return view('gestionprestamosrecepciones::edit');
     }
 
     /**

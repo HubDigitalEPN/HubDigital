@@ -1,13 +1,13 @@
 <?php
 
-namespace Modules\GestionPrestamosRecepciones\Providers;
+namespace Modules\CatalogoPublico\Infrastructure\Providers;
 
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Route;
 
 class RouteServiceProvider extends ServiceProvider
 {
-    protected string $name = 'GestionPrestamosRecepciones';
+    protected string $name = 'CatalogoPublico';
 
     /**
      * Called before routes are registered.
