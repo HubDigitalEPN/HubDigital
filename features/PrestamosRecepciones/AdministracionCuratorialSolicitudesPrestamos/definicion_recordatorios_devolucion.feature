@@ -1,22 +1,26 @@
 #language: es
-
 Característica: Definición de recordatorios de devolución
-    Como curador,
-    quiero definir cuándo y con qué frecuencia se notificará la devolución de los préstamos,
-    para asegurar su retorno oportuno.
+    Como curador responsable del proceso de préstamo
+    Quiero configurar los recordatorios de devolución
+    Para asegurar el retorno oportuno de los especímenes.
 
-    Escenario: Definir recordatorios de devolución para un préstamo
-        Dado que existe un préstamo activo
-        Cuando el curador define el momento y la frecuencia de los recordatorios de devolución
-        Entonces los recordatorios de vencimiento del prestamo queda configurado con los recordatorios definidos
+    Escenario: Definir configuración global de recordatorios
+        Dado que no existe una configuración global de recordatorios definida
+        Cuando el curador registra la configuración global de recordatorios
+        Entonces todos los préstamos quedan sujetos a la configuración definida
 
-    Escenario: Definir recordatorios para múltiples préstamos
-        Dado que existen múltiples préstamos activos
-        Cuando el curador define recordatorios de devolución para dichos préstamos
-        Entonces cada préstamo queda configurado con los recordatorios definidos
+    Escenario: Modificar configuración global de recordatorios
+        Dado que existe una configuración global de recordatorios previamente definida
+        Cuando el curador actualiza la configuración global de recordatorios
+        Entonces todos los préstamos quedan sujetos a la configuración actualizada
 
-    Escenario: Modificar configuración de recordatorios
-        Dado que existe un préstamo con recordatorios previamente definidos
-        Cuando el curador actualiza el momento o la frecuencia de los recordatorios
-        Entonces el préstamo refleja la nueva configuración de recordatorios
+    Escenario: Modificar recordatorios de un préstamo específico
+        Dado que existe un préstamo activo con recordatorios configurados
+        Cuando el curador actualiza la configuración de recordatorios del préstamo
+        Entonces el préstamo queda configurado con los recordatorios actualizados
 
+    Escenario: Generar recordatorios automáticamente al aprobar una solicitud
+        Dado que existe una solicitud en estado enviada
+        Y existe una configuración global de recordatorios definida
+        Cuando el curador registra la aprobación de la solicitud
+        Entonces se generan los recordatorios de devolución según la configuración global

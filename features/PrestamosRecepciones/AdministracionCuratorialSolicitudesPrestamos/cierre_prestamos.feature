@@ -1,26 +1,17 @@
 #language: es
 
-Característica: Cierre de préstamos
-    Como curador,
-    quiero confirmar el cumplimiento del préstamo y comunicar su cierre,
-    para dar por finalizado el proceso.
+Característica: Cierre de préstamo.
+    Como curador responsable de la coleccion
+    Quiero registrar el resultado de la devolución
+    Para cerrar formalmente el préstamo.
 
-    Escenario: Confirmar devolución conforme de un préstamo
-        Dado que existe un préstamo en estado pendiente de verificación de devolución
-        Cuando el curador confirma que el préstamo fue devuelto conforme a lo establecido
-        Entonces el préstamo cambia a estado finalizado
+    Esquema del escenario: Registrar el resultado de la devolución de un préstamo
+        Dado que existe un préstamo en estado pendiente de verificación
+        Cuando el curador registra la verificación de devolución con resultado <resultado>
+        Entonces el préstamo queda en estado <estado>
+        Y el espécimen queda en condición <condicion_especimen>
 
-    Escenario: Registrar incidente en la devolución de un préstamo
-        Dado que existe un préstamo en estado pendiente de verificación de devolución
-        Cuando el curador registra un incidente en la devolución del préstamo
-        Entonces el préstamo queda marcado como finalizado con incidente
-
-    Escenario: Asociar incidente al cierre del préstamo
-        Dado que existe un préstamo con un incidente registrado
-        Cuando el curador confirma el cierre del préstamo
-        Entonces el cierre del préstamo queda asociado al incidente registrado
-
-    Escenario: No permitir cierre sin devolución registrada
-        Dado que existe un préstamo activo sin registro de devolución
-        Cuando el curador intenta cerrar el préstamo
-        Entonces el préstamo permanece en curso
+        Ejemplos:
+            | resultado       | estado                  | condicion_especimen |
+            | sin novedades   | cerrado                 | apto                |
+            | con observación | cerrado con observación | no apto             |

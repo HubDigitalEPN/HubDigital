@@ -1,17 +1,37 @@
 #language: es
+Característica: Envío de solicitud de préstamo
+    Como investigador que desea solicitar un préstamo
+    Quiero enviar mi solicitud cuando esté lista
+    Para iniciar formalmente su proceso de evaluación.
 
-Característica: Envió de solicitud de prestamo
-    Como investigador que solicita un prestamo
-    quiero enviar una solicitud de prestamo
-    para iniciar formalmente su evaluación.
+    Escenario: Guardar una solicitud como borrador
+        Dado que el investigador ha ingresado información en una solicitud
+        Cuando el investigador registra la solicitud
+        Entonces la solicitud queda registrada en estado borrador
 
-    Escenario: Enviar una solicitud de préstamo correctamente
-        Dado que existe una solicitud en estado de borrador con su información requerida completa
+    Escenario: Editar una solicitud en estado borrador
+        Dado que existe una solicitud en estado borrador
+        Y el investigador tiene acceso a dicha solicitud
+        Cuando el investigador actualiza la información de la solicitud
+        Entonces la solicitud refleja la información actualizada
+        Y la solicitud permanece en estado borrador
+
+    Esquema del escenario: Enviar una solicitud con información completa
+        Dado que existe una solicitud en estado <estado_previo> con su información requerida completa
         Cuando el investigador envía la solicitud
-        Entonces la solicitud cambia a estado enviada
+        Entonces la solicitud queda en estado enviada
 
-    Escenario: No permitir enviar una solicitud con información incompleta
-        Dado que existe una solicitud en estado de borrador con información incompleta
-        Cuando el investigador intenta enviar la solicitud
-        Entonces la solicitud no es enviada y permanece en estado de borrador
+        Ejemplos:
+            | estado_previo |
+            | borrador      |
+            | observada     |
 
+    Esquema del escenario: No permitir enviar una solicitud con información incompleta
+        Dado que existe una solicitud en estado <estado_previo> con información incompleta
+        Cuando el investigador envía la solicitud
+        Entonces la solicitud permanece en estado <estado_previo>
+
+        Ejemplos:
+            | estado_previo |
+            | borrador      |
+            | observada     |

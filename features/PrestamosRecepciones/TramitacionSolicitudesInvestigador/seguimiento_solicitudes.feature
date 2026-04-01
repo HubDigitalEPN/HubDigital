@@ -1,16 +1,32 @@
 #language: es
+Característica: Seguimiento del proceso de préstamo
+    Como investigador con solicitudes y préstamos activos
+    Quiero estar informado sobre el avance de mi proceso de préstamo
+    Para actuar oportunamente frente a cualquier cambio.
 
-Característica: Seguimiento de solicitudes
-    Como investigador,
-    quiero consultar el estado y la línea de tiempo de mis solicitudes,
-    para dar seguimiento a sus eventos en el proceso.
+    Esquema del escenario: Conocer el estado de una solicitud
+        Dado que existe una solicitud del investigador en estado <estado>
+        Cuando el investigador solicita la información de la solicitud
+        Entonces la solicitud es retornada con estado <estado>
 
-    Escenario: Consultar el estado de una solicitud
-        Dado que existe una solicitud asociada al investigador
-        Cuando el investigador consulta la solicitud
-        Entonces se muestra el estado actual de la solicitud
+        Ejemplos:
+            | estado     |
+            | borrador   |
+            | enviada    |
+            | observada  |
+            | aprobada   |
+            | rechazada  |
 
-    Escenario: Consultar la línea de tiempo de una solicitud
-        Dado que existe una solicitud con eventos registrados
-        Cuando el investigador consulta la solicitud
-        Entonces se muestra la secuencia de eventos de la solicitud
+    Esquema del escenario: Conocer el estado de un préstamo
+        Dado que existe un préstamo del investigador en estado <estado>
+        Cuando el investigador solicita la información del préstamo
+        Entonces el préstamo es retornado con estado <estado>
+
+        Ejemplos:
+            | estado                    |
+            | activo                    |
+            | próximo a vencer          |
+            | vencido                   |
+            | pendiente de verificación |
+            | devuelto                  |
+            | cerrado                   |
