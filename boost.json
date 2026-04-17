@@ -1,0 +1,16 @@
+{
+    "agents": [
+        "claude_code"
+    ],
+    "guidelines": true,
+    "skills": [
+        "fortify-development",
+        "laravel-best-practices",
+        "fluxui-development",
+        "livewire-development",
+        "pest-testing",
+        "tailwindcss-development",
+        "laravel-owasp-security",
+        "php-pro"
+    ]
+}
