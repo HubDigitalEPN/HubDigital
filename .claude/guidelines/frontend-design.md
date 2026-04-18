@@ -128,12 +128,20 @@ Follow this decision tree **in order** before writing any template code:
 
 ### 4.1 Naming & Location
 
+**Default rule:** every view and component belongs inside its module. Only elements used across two or more modules (e.g. the navbar, app shell layouts, global error pages) belong in the root `resources/views/`.
+
 | Type | Naming | Location |
 |------|--------|----------|
-| Shared Blade component | `kebab-case.blade.php` | `resources/views/components/` |
+| **Shared** Blade component (cross-module) | `kebab-case.blade.php` | `resources/views/components/` |
+| **Shared** page layout (cross-module) | `kebab-case.blade.php` | `resources/views/layouts/` |
+| Module page / Livewire template | `kebab-case.blade.php` | `Modules/<Module>/resources/views/` |
 | Module Blade component | `kebab-case.blade.php` | `Modules/<Module>/resources/views/components/` |
 | Livewire class | `PascalCase.php` | `Modules/<Module>/app/Presentation/Http/Controllers/` |
-| Page layout | `kebab-case.blade.php` | `resources/views/layouts/` |
+
+**Never:**
+
+- ❌ Place a module-specific view or component under the root `resources/views/` — it must live in `Modules/<Module>/resources/views/`
+- ❌ Move a component to root `resources/views/components/` just because it is reused within the same module; it only moves there when a second, different module needs it
 
 ### 4.2 Blade Component Rules
 
@@ -253,7 +261,9 @@ Hub Digital is used in laboratories on tablets via QR code scanning. Design for 
 - [ ] Icons are Heroicons **outline** variant only via `<flux:icon>`
 - [ ] Cards and inputs use `rounded-lg` (8px border-radius)
 - [ ] Elevation: `shadow-sm` only on cards — not on inline elements
-- [ ] Checked `resources/views/components/` and Flux UI before creating a new component
+- [ ] Checked `Modules/<Module>/resources/views/components/`, then `resources/views/components/`, then Flux UI before creating a new component
+- [ ] Module-specific views/components are inside `Modules/<Module>/resources/views/` — not under root `resources/views/`
+- [ ] A component was only promoted to root `resources/views/components/` because a second, different module needs it
 - [ ] New Blade components declare `@props([])` at the top
 - [ ] `$attributes->merge()` used on the root element of new Blade components
 - [ ] `wire:navigate` on all internal `<a>` links
