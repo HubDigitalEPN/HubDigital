@@ -51,6 +51,26 @@ class ScaffoldBehatContextCommand extends Command
         // 3. Parsear steps del .feature
         $steps = $this->parseSteps(base_path($featurePath));
 
+        // 3b. Eliminar steps que ya están definidos en otros contexts del módulo
+        $existingPatterns = $this->collectExistingStepPatterns(
+            module: $module,
+            excludeContextPath: base_path($contextRelPath),
+        );
+        $skipped = 0;
+        $steps = array_filter($steps, function (array $step) use ($existingPatterns, &$skipped): bool {
+            foreach ($existingPatterns as $pattern) {
+                if (preg_match($pattern, $step['text'])) {
+                    $skipped++;
+                    return false;
+                }
+            }
+            return true;
+        });
+        $steps = array_values($steps);
+        if ($skipped > 0) {
+            $this->warn("  {$skipped} step(s) omitidos por ya estar definidos en otros contexts.");
+        }
+
         // 4. Crear directorio si no existe
         $contextDir = dirname(base_path($contextRelPath));
         if (! is_dir($contextDir)) {
@@ -67,13 +87,13 @@ class ScaffoldBehatContextCommand extends Command
         $this->registerInBehatConfig($module, $capability, $namespace, $contextClass);
 
         // 7. Formatear con Pint
-        exec('vendor/bin/pint '.escapeshellarg(base_path($contextRelPath)).' --quiet 2>&1');
+        $php = escapeshellarg(PHP_BINARY);
+        $pint = escapeshellarg(base_path('vendor/bin/pint'));
+        exec("{$php} {$pint} ".escapeshellarg(base_path($contextRelPath)).' --quiet 2>&1');
 
-        // 8. Correr la feature
         $this->newLine();
-        $this->line('  Corriendo feature...');
-        $this->newLine();
-        passthru("vendor/bin/behat --config=behat.php --suite={$module} {$featurePath} 2>&1");
+        $this->info('Listo. Para correr la feature:');
+        $this->line("  php vendor/bin/behat --config=behat.php --suite={$module} {$featurePath}");
 
         return self::SUCCESS;
     }
@@ -230,7 +250,9 @@ class ScaffoldBehatContextCommand extends Command
         ['type' => $type, 'text' => $text, 'table' => $hasTable] = $step;
 
         $args = [];
-        if (preg_match_all('/:([\w\x80-\xff]+)/u', $text, $m)) {
+        $hasParams = (bool) preg_match_all('/:([\w\x80-\xff]+)/u', $text, $m);
+
+        if ($hasParams) {
             foreach ($m[1] as $param) {
                 $args[] = "string \${$param}";
             }
@@ -242,8 +264,17 @@ class ScaffoldBehatContextCommand extends Command
         $name = $this->stepToMethodName($text);
         $argsList = $args ? '('.implode(', ', $args).')' : '()';
 
+        // Usar regex cuando hay parámetros para soportar valores con espacios (ej: "próximo a vencer")
+        if ($hasParams) {
+            $parts = preg_split('/:([\w\x80-\xff]+)/u', $text);
+            $pattern = implode('(.+)', array_map(fn ($p) => preg_quote($p, '/'), $parts));
+            $stepPattern = "'/^{$pattern}$/u'";
+        } else {
+            $stepPattern = "'{$text}'";
+        }
+
         return implode("\n", [
-            "    #[{$type}('{$text}')]",
+            "    #[{$type}({$stepPattern})]",
             "    public function {$name}{$argsList}: void",
             '    {',
             '        throw new PendingException;',
@@ -278,6 +309,46 @@ class ScaffoldBehatContextCommand extends Command
         }
 
         return $name ?: 'ejecutarStep';
+    }
+
+    // ── Deduplicación de steps ────────────────────────────────────────────────
+
+    /** @return string[] Patrones regex que matchean steps ya definidos en otros contexts */
+    private function collectExistingStepPatterns(string $module, string $excludeContextPath): array
+    {
+        $contextsDir = base_path("Modules/{$module}/tests/Behat/Contexts");
+        if (! is_dir($contextsDir)) {
+            return [];
+        }
+
+        $patterns = [];
+        $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($contextsDir));
+
+        foreach ($iterator as $file) {
+            if (! $file->isFile() || $file->getExtension() !== 'php') {
+                continue;
+            }
+            if (realpath($file->getPathname()) === realpath($excludeContextPath)) {
+                continue;
+            }
+
+            $content = file_get_contents($file->getPathname());
+
+            // Extraer patrones de atributos #[Given/When/Then('...')] y #[Given/When/Then('/regex/')]
+            preg_match_all('/#\[(?:Given|When|Then)\(\'(.*?)\'\)\]/su', $content, $matches);
+
+            foreach ($matches[1] as $pattern) {
+                if (str_starts_with($pattern, '/')) {
+                    // Ya es regex — usarla directamente
+                    $patterns[] = $pattern;
+                } else {
+                    // Literal — convertir a regex exacta
+                    $patterns[] = '/^'.preg_quote($pattern, '/').'$/u';
+                }
+            }
+        }
+
+        return $patterns;
     }
 
     // ── Registro en behat.php ─────────────────────────────────────────────────
