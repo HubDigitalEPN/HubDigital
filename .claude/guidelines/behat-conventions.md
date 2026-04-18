@@ -65,14 +65,15 @@ The master configuration lives in `behat.php` at the root. Each module has its o
 
 ## 3. Language and Gherkin keywords
 
-- **All** `.feature` files are in English.
-- The first line of each feature is `# language: en` (with a space after `#`).
-- Use standard English keywords: `Feature`, `Scenario`, `Scenario Outline`, `Given`, `When`, `Then`, `And`, `But`.
+- **All** `.feature` files are written in **Spanish**.
+- The first line of each feature is `# language: es` (with a space after `#`).
+- Use Spanish keywords: `Característica`, `Escenario`, `Esquema del escenario`, `Dado`, `Cuando`, `Entonces`, `Y`, `Pero`.
 - The **business language** (domain nouns and verbs) comes from the Hub Digital glossary — see `ubiquitous-language.md`.
 
 **Never:**
 
-- ❌ Mix keywords from different languages in the same file.
+- ❌ Mix English and Spanish keywords in the same file.
+- ❌ Use `Feature:` or `Scenario:` in a file with `# language: es`.
 
 ---
 
@@ -80,12 +81,12 @@ The master configuration lives in `behat.php` at the root. Each module has its o
 
 ### 4.1 Actor in the scenario title
 
-Each `Scenario` must name the actor performing the action:
+Each `Escenario` must name the actor performing the action:
 
 ```gherkin
-Scenario: The researcher submits a valid loan request
-Scenario: The curator approves a pending request
-Scenario: The system registers the location of a new box
+Escenario: El investigador envía una solicitud de préstamo válida
+Escenario: El curador aprueba una solicitud pendiente
+Escenario: El sistema registra la ubicación de una caja nueva
 ```
 
 Valid actors per module:
@@ -100,41 +101,41 @@ Valid actors per module:
 
 ### 4.2 Writing steps
 
-- `Given` → system state precondition (what exists in the DB before acting).
-- `When` → action performed by the actor (one single action per `When`).
-- `Then` → expected observable outcome (no conditional logic).
-- Do not use `And` or `But` as the first step of a block.
+- `Dado` → system state precondition (what exists in the DB before acting).
+- `Cuando` → action performed by the actor (one single action per `Cuando`).
+- `Entonces` → expected observable outcome (no conditional logic).
+- Do not use `Y` or `Pero` as the first step of a block.
 
 ```gherkin
 # ✅ Correct
-Given a loan request exists with status "pending"
-When the curator approves the request
-Then the request status is "approved"
-And the researcher receives an approval notification
+Dado que existe una solicitud de préstamo en estado "pendiente"
+Cuando el curador aprueba la solicitud
+Entonces la solicitud queda en estado "aprobada"
+Y el investigador recibe una notificación de aprobación
 
-# ❌ Incorrect — action and verification mixed in When
-When the curator approves the request and verifies the status
+# ❌ Incorrect — action and verification mixed in Cuando
+Cuando el curador aprueba la solicitud y verifica el estado
 ```
 
-### 4.3 One When per scenario
+### 4.3 One Cuando per scenario
 
-One `When` per `Scenario`. If two actions are needed, they are two separate scenarios.
+One `Cuando` per `Escenario`. If two actions are needed, they are two separate scenarios.
 
 ### 4.4 Data in tables, not in titles
 
 ```gherkin
 # ✅ Correct
-Scenario Outline: The researcher cannot submit a request with invalid data
-  When the researcher submits the request with:
-    | field            | value |
-    | institution      |       |
-  Then the system rejects the request with the message "<message>"
-  Examples:
-    | message                          |
-    | Institution cannot be empty      |
+Esquema del escenario: El investigador no puede enviar solicitud con datos inválidos
+  Cuando el investigador envía la solicitud con los datos:
+    | campo            | valor |
+    | institucion      |       |
+  Entonces el sistema rechaza la solicitud con el mensaje "<mensaje>"
+  Ejemplos:
+    | mensaje                          |
+    | La institución no puede estar vacía |
 
 # ❌ Incorrect — data in the scenario title
-Scenario: The researcher submits a request with empty institution and gets an error
+Escenario: El investigador envía solicitud con institución vacía y recibe error
 ```
 
 ---
@@ -254,7 +255,7 @@ Behat covers **Application layer behavior** (Use Cases). It is not the place for
 
 ## 9. Checklist before marking a scenario as implemented
 
-- [ ] The `.feature` file has `# language: en` on the first line.
+- [ ] The `.feature` file has `# language: es` on the first line.
 - [ ] The scenario actor exists in the valid actors table (section 4.1).
 - [ ] There is exactly one `When` per `Scenario`.
 - [ ] The corresponding Context is listed in `behat.php`.
