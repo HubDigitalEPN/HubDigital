@@ -1,70 +1,70 @@
 # clean-architecture.md
-# Convenciones de Clean Architecture — Hub Digital
+# Clean Architecture Conventions — Hub Digital
 
-> **Propósito de este archivo:** reglas no negociables que Claude Code debe respetar
-> en TODO momento al crear o modificar código de Hub Digital. No es un tutorial.
-> Para ejemplos completos, plantillas y explicaciones, activa el skill
-> `laravel-clean-architecture` y sus referencias en `references/`.
+> **Purpose of this file:** non-negotiable rules that Claude Code must follow
+> at ALL times when creating or modifying Hub Digital code. This is not a tutorial.
+> For full examples, templates, and explanations, activate the
+> `laravel-clean-architecture` skill and its references in `references/`.
 
 ---
 
-## 1. Los tres módulos y sus bounded contexts
+## 1. The three modules and their bounded contexts
 
-Hub Digital usa **nwidart/laravel-modules**. Cada módulo es un bounded context
-independiente con sus propias capas internas.
+Hub Digital uses **nwidart/laravel-modules**. Each module is an independent bounded context
+with its own internal layers.
 
-| Módulo (directorio) | Bounded Context | Namespace raíz |
+| Module (directory) | Bounded Context | Root namespace |
 |---------------------|-----------------|----------------|
-| `Modules/GestionPrestamosRecepciones/` | Gestión de préstamos y recepciones de especímenes | `Modules\GestionPrestamosRecepciones` |
-| `Modules/InventarioGestionColeccion/` | Inventario, ubicaciones y trazabilidad de la colección | `Modules\InventarioGestionColeccion` |
-| `Modules/CatalogoPublico/` | Catálogo público con chatbot de IA | `Modules\CatalogoPublico` |
+| `Modules/LoanReceptionManagement/` | Specimen loan and reception management | `Modules\LoanReceptionManagement` |
+| `Modules/InventoryCollectionManagement/` | Collection inventory, locations, and traceability | `Modules\InventoryCollectionManagement` |
+| `Modules/PublicCatalog/` | Public catalog with AI chatbot | `Modules\PublicCatalog` |
 
-**Nunca:**
-- ❌ Un módulo accede al `Domain/` de otro módulo directamente.
-- ❌ Se crea código de negocio fuera de `Modules/` (salvo `Shared/`).
-- ❌ Se añade un cuarto módulo sin definir primero su bounded context.
+**Never:**
+- ❌ A module accesses another module's `Domain/` directly.
+- ❌ Business code is created outside `Modules/` (except `Shared/`).
+- ❌ A fourth module is added without first defining its bounded context.
 
 ---
 
-## 2. Estructura interna de cada módulo
+## 2. Internal structure of each module
 
-Cada módulo replica esta estructura. Claude no puede inventar carpetas nuevas
-fuera de este esquema sin justificación explícita del equipo.
+Each module replicates this structure. Claude must not invent new folders
+outside this schema without explicit team approval.
 
 ```
-Modules/<Modulo>/
+Modules/<Module>/
 ├── src/
 │   ├── Domain/
 │   │   ├── Entities/
 │   │   ├── ValueObjects/
-│   │   ├── Services/          # Domain Services (sin estado, sin framework)
+│   │   ├── Services/          # Domain Services (stateless, no framework)
 │   │   ├── Events/            # Domain Events
-│   │   ├── Repositories/      # SOLO interfaces — nunca implementaciones
+│   │   ├── Repositories/      # Interfaces ONLY — never implementations
 │   │   └── Exceptions/
 │   │
 │   ├── Application/
 │   │   ├── UseCases/
-│   │   │   └── <NombreUseCase>/
-│   │   │       ├── <NombreUseCase>Handler.php
-│   │   │       ├── <NombreUseCase>Input.php
-│   │   │       └── <NombreUseCase>Output.php
-│   │   └── Ports/             # Interfaces para servicios externos
+│   │   │   └── <UseCaseName>/
+│   │   │       ├── <UseCaseName>Handler.php
+│   │   │       ├── <UseCaseName>Input.php
+│   │   │       └── <UseCaseName>Output.php
+│   │   └── Ports/             # Interfaces for external services
 │   │
 │   └── Infrastructure/
 │       ├── Persistence/
 │       │   └── Eloquent/
-│       │       ├── Models/    # Eloquent models — SOLO aquí
+│       │       ├── Models/    # Eloquent models — ONLY here
 │       │       └── Repositories/
 │       ├── Gateways/
 │       └── Notifications/
 │
 ├── Http/
-│   ├── Controllers/           # Livewire components y API controllers
-│   ├── Requests/              # Form Requests → producen Input DTOs
-│   └── Resources/             # Output de Use Cases → respuesta HTTP
+│   ├── Controllers/           # Livewire components and API controllers
+│   ├── Requests/              # Form Requests → produce Input DTOs
+│   └── Resources/             # Use Case Output → HTTP response
 │
 ├── Providers/
-│   └── <Modulo>ServiceProvider.php   # Registra bindings puerto → adaptador
+│   └── <Module>ServiceProvider.php   # Registers port → adapter bindings
 │
 ├── tests/
 │   ├── Unit/
@@ -76,188 +76,188 @@ Modules/<Modulo>/
 
 ---
 
-## 3. Reglas por capa — qué puede y qué no puede importar cada clase
+## 3. Layer rules — what each class can and cannot import
 
-### Domain — capa interior, sin framework
+### Domain — innermost layer, no framework
 
-| ✅ Permitido | ❌ Prohibido |
+| ✅ Allowed | ❌ Forbidden |
 |-------------|-------------|
-| PHP stdlib puro | Cualquier `Illuminate\*` |
-| `DateTimeImmutable` | `Carbon` o `CarbonImmutable` |
-| Otras clases del mismo `Domain/` | Eloquent models |
-| Clases de `Shared/Domain/` | Facades de Laravel |
-| | Clases de `Application/` o `Infrastructure/` |
+| Pure PHP stdlib | Any `Illuminate\*` |
+| `DateTimeImmutable` | `Carbon` or `CarbonImmutable` |
+| Other classes within the same `Domain/` | Eloquent models |
+| Classes from `Shared/Domain/` | Laravel Facades |
+| | Classes from `Application/` or `Infrastructure/` |
 
-**La prueba:** si eliminas Laravel del proyecto, las clases de `Domain/` deben
-seguir compilando sin error.
+**The test:** if Laravel is removed from the project, `Domain/` classes must
+still compile without error.
 
-### Application — orquestación pura
+### Application — pure orchestration
 
-| ✅ Permitido | ❌ Prohibido |
+| ✅ Allowed | ❌ Forbidden |
 |-------------|-------------|
-| Clases de `Domain/` | Eloquent models directamente |
-| Interfaces de `Ports/` | Facades (`DB::`, `Mail::`, `Cache::`) |
-| Input/Output DTOs propios | Clases de `Infrastructure/` |
-| Clases de `Shared/Application/` | Lógica de negocio (eso es Domain) |
+| Classes from `Domain/` | Eloquent models directly |
+| Interfaces from `Ports/` | Facades (`DB::`, `Mail::`, `Cache::`) |
+| Own Input/Output DTOs | Classes from `Infrastructure/` |
+| Classes from `Shared/Application/` | Business logic (that belongs in Domain) |
 
-Los Handlers no tienen `use Illuminate\*` salvo excepciones muy justificadas
-(ej. `DB::transaction()` como adaptador de transacción — preferir un Port).
+Handlers have no `use Illuminate\*` except in well-justified cases
+(e.g. `DB::transaction()` as a transaction adapter — prefer a Port).
 
-### Infrastructure — adaptadores del mundo exterior
+### Infrastructure — adapters to the outside world
 
-| ✅ Permitido | ❌ Prohibido |
+| ✅ Allowed | ❌ Forbidden |
 |-------------|-------------|
-| Todo lo de `Domain/` y `Application/` | Lógica de negocio |
-| `Illuminate\*`, Eloquent, Carbon | Retornar Eloquent models hacia arriba |
-| Clases de `Shared/Infrastructure/` | Acceder a `Domain/` de otro módulo |
+| Everything from `Domain/` and `Application/` | Business logic |
+| `Illuminate\*`, Eloquent, Carbon | Returning Eloquent models upward |
+| Classes from `Shared/Infrastructure/` | Accessing `Domain/` of another module |
 
-### Presentation (Http/, Console/) — entrega, no lógica
+### Presentation (Http/, Console/) — delivery, not logic
 
-| ✅ Permitido | ❌ Prohibido |
+| ✅ Allowed | ❌ Forbidden |
 |-------------|-------------|
-| Llamar un Handler con su Input DTO | Business rules en el controlador |
-| Form Request → `toInput()` | `DB::` o Eloquent en controllers |
-| Resource/Livewire → Output DTO | Retornar Eloquent models como respuesta |
-| | Llamar más de un Handler por acción |
+| Call a Handler with its Input DTO | Business rules in the controller |
+| Form Request → `toInput()` | `DB::` or Eloquent in controllers |
+| Resource/Livewire → Output DTO | Returning Eloquent models as responses |
+| | Calling more than one Handler per action |
 
 ---
 
-## 4. Reglas de nomenclatura
+## 4. Naming rules
 
 ### Use Cases
 
-Cada Use Case vive en su propia carpeta con tres archivos:
+Each Use Case lives in its own folder with three files:
 
 ```
-UseCases/EnvioSolicitudPrestamo/
-├── EnvioSolicitudPrestamoHandler.php   # orquesta
-├── EnvioSolicitudPrestamoInput.php     # readonly, datos de entrada
-└── EnvioSolicitudPrestamoOutput.php    # readonly, datos de salida
+UseCases/LoanRequestSubmission/
+├── LoanRequestSubmissionHandler.php   # orchestrates
+├── LoanRequestSubmissionInput.php     # readonly, input data
+└── LoanRequestSubmissionOutput.php    # readonly, output data
 ```
 
-- El nombre del Use Case usa **sustantivo + verbo de dominio** en español:
-  `EnvioSolicitudPrestamo`, `ResolucionSolicitudPrestamo`, `RegistroUbicacionCaja`.
-- `Handler` es siempre el sufijo de la clase que orquesta. No `Service`, no `Action`,
-  no `Manager`.
+- The Use Case name uses a **domain verb + noun** in English:
+  `LoanRequestSubmission`, `LoanRequestResolution`, `BoxLocationRegistration`.
+- `Handler` is always the suffix of the orchestrating class. Not `Service`, not `Action`,
+  not `Manager`.
 
-### Repositorios
+### Repositories
 
-- Interfaz en `Domain/Repositories/`: `SolicitudPrestamoRepository` (sin prefijo `I`).
-- Implementación en `Infrastructure/Persistence/Eloquent/Repositories/`:
-  `EloquentSolicitudPrestamoRepository`.
-- **Una interfaz por agregado raíz.** No `SolicitudPrestamoItemRepository`.
+- Interface in `Domain/Repositories/`: `LoanRequestRepository` (no `I` prefix).
+- Implementation in `Infrastructure/Persistence/Eloquent/Repositories/`:
+  `EloquentLoanRequestRepository`.
+- **One interface per aggregate root.** Not `LoanRequestItemRepository`.
 
 ### Eloquent Models
 
-- Nombre: `<Entidad>EloquentModel` — nunca igual que la entidad de dominio.
-- Ejemplo: entidad `SolicitudPrestamo` → model `SolicitudPrestamoEloquentModel`.
-- Viven **únicamente** en `Infrastructure/Persistence/Eloquent/Models/`.
+- Name: `<Entity>EloquentModel` — never the same as the domain entity.
+- Example: entity `LoanRequest` → model `LoanRequestEloquentModel`.
+- Live **only** in `Infrastructure/Persistence/Eloquent/Models/`.
 
 ### Value Objects
 
-- Clase `final readonly`, constructor privado, named static factory.
-- Nombre descriptivo del concepto, no del tipo: `CodigoEspecimen`, `InstitucionOrigen`,
-  no `StringWrapper` ni `EspecimenString`.
+- `final readonly` class, private constructor, named static factory.
+- Descriptive name of the concept, not the type: `SpecimenCode`, `OriginInstitution`,
+  not `StringWrapper` or `SpecimenString`.
 
 ### Ports
 
-- Sufijo `Port` para interfaces de servicios externos: `NotificacionPort`,
-  `AlmacenamientoArchivoPort`.
-- Sin prefijo `I`. Sin sufijo `Interface`.
+- `Port` suffix for external service interfaces: `NotificationPort`,
+  `FileStoragePort`.
+- No `I` prefix. No `Interface` suffix.
 
 ---
 
-## 5. Eventos de dominio — patrón obligatorio
+## 5. Domain events — mandatory pattern
 
-Los eventos **se registran** dentro de la entidad. Los **despacha** el Handler
-después de guardar. Nunca al revés.
+Events are **registered** inside the entity. The Handler **dispatches** them
+after saving. Never the other way around.
 
 ```
-Entidad::metodo()          → $this->eventos[] = new EventoDominio(...)
-Handler::handle()          → $repo->guardar($entidad)
-                           → foreach ($entidad->pullEvents() as $e) { $publisher->publish($e); }
+Entity::method()           → $this->events[] = new DomainEvent(...)
+Handler::handle()          → $repo->save($entity)
+                           → foreach ($entity->pullEvents() as $e) { $publisher->publish($e); }
 ```
 
-**Nunca** llamar `event()`, `Event::dispatch()` o cualquier Facade dentro de
-una entidad o Value Object de dominio.
+**Never** call `event()`, `Event::dispatch()`, or any Facade inside
+a domain entity or Value Object.
 
 ---
 
-## 6. ServiceProvider por módulo
+## 6. ServiceProvider per module
 
-Cada módulo tiene exactamente **un** ServiceProvider que registra todos sus
-bindings puerto → adaptador.
+Each module has exactly **one** ServiceProvider that registers all its
+port → adapter bindings.
 
 ```
-Modules/<Modulo>/Providers/<Modulo>ServiceProvider.php
+Modules/<Module>/Providers/<Module>ServiceProvider.php
 ```
 
-- Registrado en `bootstrap/providers.php` (Laravel 13).
-- Toda nueva interfaz de `Ports/` o `Repositories/` debe tener su binding aquí
-  antes de que el Handler pueda resolverse del contenedor.
-- No usar `app()->bind()` en ningún otro lugar del módulo.
+- Registered in `bootstrap/providers.php` (Laravel 13).
+- Every new `Ports/` or `Repositories/` interface must have its binding here
+  before the Handler can be resolved from the container.
+- Do not use `app()->bind()` anywhere else in the module.
 
 ---
 
-## 7. Livewire y Flux UI — capa Presentation
+## 7. Livewire and Flux UI — Presentation layer
 
-Los componentes Livewire son **Presentation**, no Application.
+Livewire components are **Presentation**, not Application.
 
-- Un componente Livewire inyecta el Handler en su constructor o método.
-- La lógica de negocio vive en el Handler, no en el componente.
-- El componente produce un Input DTO y consume un Output DTO.
-- Los componentes viven en `Http/Controllers/` o en `resources/views/livewire/`
-  del módulo, según la convención de nwidart activa en el proyecto.
+- A Livewire component injects the Handler in its constructor or method.
+- Business logic lives in the Handler, not in the component.
+- The component produces an Input DTO and consumes an Output DTO.
+- Components live in `Http/Controllers/` or in `resources/views/livewire/`
+  of the module, following the active nwidart convention in the project.
 
 ```php
-// ✅ Correcto
-final class EnviarSolicitudForm extends Component
+// ✅ Correct
+final class SubmitLoanRequestForm extends Component
 {
-    public function enviar(EnvioSolicitudPrestamoHandler $handler): void
+    public function submit(LoanRequestSubmissionHandler $handler): void
     {
-        $output = $handler->handle(new EnvioSolicitudPrestamoInput(...));
-        // actualizar estado del componente con $output
+        $output = $handler->handle(new LoanRequestSubmissionInput(...));
+        // update component state with $output
     }
 }
 
-// ❌ Incorrecto — lógica de negocio en Livewire
-final class EnviarSolicitudForm extends Component
+// ❌ Incorrect — business logic in Livewire
+final class SubmitLoanRequestForm extends Component
 {
-    public function enviar(): void
+    public function submit(): void
     {
-        if (SolicitudPrestamo::where('investigador_id', ...)->count() >= 3) { ... }
-        SolicitudPrestamo::create([...]);
+        if (LoanRequest::where('researcher_id', ...)->count() >= 3) { ... }
+        LoanRequest::create([...]);
     }
 }
 ```
 
 ---
 
-## 8. CatalogoPublico — reglas adicionales para el AI SDK
+## 8. PublicCatalog — additional rules for the AI SDK
 
-El módulo `CatalogoPublico` es el único que usa el Laravel AI SDK para el chatbot.
+The `PublicCatalog` module is the only one that uses the Laravel AI SDK for the chatbot.
 
-- La integración con el AI SDK vive **únicamente** en `Infrastructure/` de ese módulo.
-- El chatbot se expone como un componente Livewire que consume el stream vía
+- The AI SDK integration lives **only** in `Infrastructure/` of that module.
+- The chatbot is exposed as a Livewire component that consumes the stream via
   server-sent events.
-- El AI SDK no tiene presencia en `GestionPrestamosRecepciones` ni en
-  `InventarioGestionColeccion`.
-- Si el chatbot necesita consultar datos de la colección, lo hace a través de
-  un Port definido en `CatalogoPublico/Application/Ports/`, implementado por
-  un adaptador que llama al Repository de `InventarioGestionColeccion` — nunca
-  accediendo directamente a su `Domain/`.
+- The AI SDK has no presence in `LoanReceptionManagement` or in
+  `InventoryCollectionManagement`.
+- If the chatbot needs to query collection data, it does so through
+  a Port defined in `PublicCatalog/Application/Ports/`, implemented by
+  an adapter that calls the `InventoryCollectionManagement` Repository — never
+  accessing its `Domain/` directly.
 
 ---
 
-## 9. Checklist antes de marcar una clase como lista
+## 9. Checklist before marking a class as ready
 
-- [ ] Las clases de `Domain/` no tienen ningún `use Illuminate\*`
-- [ ] Las clases de `Domain/` no usan `Carbon` — solo `DateTimeImmutable`
-- [ ] Los Eloquent Models viven en `Infrastructure/Persistence/Eloquent/Models/`
-- [ ] La interfaz del Repository está en `Domain/Repositories/`, la implementación en `Infrastructure/`
-- [ ] El Handler retorna un Output DTO, no un Eloquent Model ni una entidad de dominio
-- [ ] El nuevo Port tiene su binding en el ServiceProvider del módulo
-- [ ] Los eventos de dominio se registran en la entidad y se despachan en el Handler
-- [ ] El controlador o componente Livewire tiene ≤ 10 líneas por acción
-- [ ] Ningún módulo importa clases del `Domain/` de otro módulo
-- [ ] El Use Case tiene los tres archivos: Handler, Input, Output
+- [ ] Classes in `Domain/` have no `use Illuminate\*`
+- [ ] Classes in `Domain/` do not use `Carbon` — only `DateTimeImmutable`
+- [ ] Eloquent Models live in `Infrastructure/Persistence/Eloquent/Models/`
+- [ ] The Repository interface is in `Domain/Repositories/`, the implementation in `Infrastructure/`
+- [ ] The Handler returns an Output DTO, not an Eloquent Model or domain entity
+- [ ] The new Port has its binding in the module's ServiceProvider
+- [ ] Domain events are registered in the entity and dispatched in the Handler
+- [ ] The controller or Livewire component has ≤ 10 lines per action
+- [ ] No module imports classes from another module's `Domain/`
+- [ ] The Use Case has all three files: Handler, Input, Output

@@ -1,56 +1,56 @@
 # module-structure.md
-# Estructura de Módulos — Hub Digital
+# Module Structure — Hub Digital
 
-> **Propósito:** reglas no negociables sobre cómo se organiza cada módulo nwidart
-> en Hub Digital. Claude Code debe respetar esta estructura al crear archivos nuevos.
-> No inventar carpetas fuera de este esquema.
+> **Purpose:** non-negotiable rules about how each nwidart module is organized
+> in Hub Digital. Claude Code must follow this structure when creating new files.
+> Do not invent folders outside this schema.
 
 ---
 
-## 1. Raíz PSR-4 y namespace
+## 1. PSR-4 root and namespace
 
-El `composer.json` de cada módulo mapea `app/` como raíz del namespace:
+Each module's `composer.json` maps `app/` as the namespace root:
 
 ```json
 "autoload": {
     "psr-4": {
-        "Modules\\<Modulo>\\": "app/"
+        "Modules\\<Module>\\": "app/"
     }
 }
 ```
 
-**Consecuencia directa:** toda clase del módulo vive dentro de `app/`.
-`Domain/`, `Application/` e `Infrastructure/` son subcarpetas de `app/`, no carpetas
-hermanas al mismo nivel.
+**Direct consequence:** every class in the module lives inside `app/`.
+`Domain/`, `Application/`, and `Infrastructure/` are subdirectories of `app/`, not
+sibling folders at the same level.
 
-| Namespace | Ruta física |
+| Namespace | Physical path |
 |-----------|-------------|
-| `Modules\GestionPrestamosRecepciones\Domain\...` | `Modules/GestionPrestamosRecepciones/app/Domain/...` |
-| `Modules\InventarioGestionColeccion\Application\...` | `Modules/InventarioGestionColeccion/app/Application/...` |
-| `Modules\CatalogoPublico\Infrastructure\...` | `Modules/CatalogoPublico/app/Infrastructure/...` |
-| `Modules\<Modulo>\Tests\...` | `Modules/<Modulo>/tests/...` |
+| `Modules\LoanReceptionManagement\Domain\...` | `Modules/LoanReceptionManagement/app/Domain/...` |
+| `Modules\InventoryCollectionManagement\Application\...` | `Modules/InventoryCollectionManagement/app/Application/...` |
+| `Modules\PublicCatalog\Infrastructure\...` | `Modules/PublicCatalog/app/Infrastructure/...` |
+| `Modules\<Module>\Tests\...` | `Modules/<Module>/tests/...` |
 
 ---
 
-## 2. Estructura completa de un módulo
+## 2. Full module structure
 
 ```
-Modules/<Modulo>/
-├── app/                                      # Raíz PSR-4 → Modules\<Modulo>\
+Modules/<Module>/
+├── app/                                      # PSR-4 root → Modules\<Module>\
 │   ├── Domain/
 │   │   ├── Entities/
 │   │   ├── ValueObjects/
 │   │   ├── Services/
 │   │   ├── Events/
-│   │   ├── Repositories/                     # Solo interfaces
+│   │   ├── Repositories/                     # Interfaces only
 │   │   └── Exceptions/
 │   │
 │   ├── Application/
 │   │   ├── UseCases/
-│   │   │   └── <NombreUseCase>/
-│   │   │       ├── <NombreUseCase>Handler.php
-│   │   │       ├── <NombreUseCase>Input.php
-│   │   │       └── <NombreUseCase>Output.php
+│   │   │   └── <UseCaseName>/
+│   │   │       ├── <UseCaseName>Handler.php
+│   │   │       ├── <UseCaseName>Input.php
+│   │   │       └── <UseCaseName>Output.php
 │   │   └── Ports/
 │   │
 │   ├── Infrastructure/
@@ -59,7 +59,7 @@ Modules/<Modulo>/
 │   │   │       ├── Models/
 │   │   │       └── Repositories/
 │   │   ├── Providers/
-│   │   │   ├── <Modulo>ServiceProvider.php   # Provider principal
+│   │   │   ├── <Module>ServiceProvider.php   # Main provider
 │   │   │   ├── EventServiceProvider.php
 │   │   │   └── RouteServiceProvider.php
 │   │   ├── Gateways/
@@ -72,7 +72,7 @@ Modules/<Modulo>/
 │           └── Resources/
 │
 ├── database/
-│   ├── migrations/                           # Migraciones del módulo
+│   ├── migrations/                           # Module migrations
 │   ├── factories/
 │   └── seeders/
 │
@@ -93,49 +93,49 @@ Modules/<Modulo>/
 
 ---
 
-## 3. ServiceProvider — el único lugar de bindings
+## 3. ServiceProvider — the only place for bindings
 
-El ServiceProvider principal de cada módulo es
-`app/Infrastructure/Providers/<Modulo>ServiceProvider.php`.
+The main ServiceProvider for each module is
+`app/Infrastructure/Providers/<Module>ServiceProvider.php`.
 
-Es el **único lugar** donde se registran los bindings puerto → adaptador.
+It is the **only place** where port → adapter bindings are registered.
 
-### Qué debe sobrescribir `register()`
+### What `register()` must override
 
 ```php
 <?php
-namespace Modules\GestionPrestamosRecepciones\Infrastructure\Providers;
+namespace Modules\LoanReceptionManagement\Infrastructure\Providers;
 
 use Nwidart\Modules\Traits\PathNamespace;
 use Nwidart\Modules\Laravel\ModuleServiceProvider;
 
-// Importar interfaces (Domain/Application) e implementaciones (Infrastructure)
-use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepository;
-use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentSolicitudPrestamoRepository;
-use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionPort;
-use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\MailNotificacionAdapter;
+// Import interfaces (Domain/Application) and implementations (Infrastructure)
+use Modules\LoanReceptionManagement\Domain\Repositories\LoanRequestRepository;
+use Modules\LoanReceptionManagement\Infrastructure\Persistence\Eloquent\Repositories\EloquentLoanRequestRepository;
+use Modules\LoanReceptionManagement\Application\Ports\NotificationPort;
+use Modules\LoanReceptionManagement\Infrastructure\Notifications\MailNotificationAdapter;
 
-class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
+class LoanReceptionManagementServiceProvider extends ModuleServiceProvider
 {
     use PathNamespace;
 
-    protected string $name = 'GestionPrestamosRecepciones';
-    protected string $nameLower = 'gestionprestamosrecepciones';
+    protected string $name = 'LoanReceptionManagement';
+    protected string $nameLower = 'loanreceptionmanagement';
     protected array $providers = [
         EventServiceProvider::class,
         RouteServiceProvider::class,
     ];
 
-    // Bindings declarados como array (sin lógica) → preferir sobre register()
+    // Bindings declared as array (no logic) → prefer over register()
     public array $bindings = [
-        SolicitudPrestamoRepository::class => EloquentSolicitudPrestamoRepository::class,
-        NotificacionPort::class            => MailNotificacionAdapter::class,
+        LoanRequestRepository::class => EloquentLoanRequestRepository::class,
+        NotificationPort::class      => MailNotificationAdapter::class,
     ];
 
     public function register(): void
     {
         parent::register();
-        // Solo aquí si el binding necesita lógica (ej. pasar config al constructor)
+        // Only here if the binding needs logic (e.g. passing config to the constructor)
     }
 
     public function boot(): void
@@ -146,27 +146,27 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
 }
 ```
 
-**Reglas:**
+**Rules:**
 
-- `$bindings` para bindings simples interfaz → clase concreta.
-- `register()` solo si el binding necesita pasar parámetros (ej. `$app->when(...)->needs(...)->give(...)`).
-- `boot()` siempre llama `parent::boot()` y carga migraciones con `loadMigrationsFrom`.
-- **Nunca** registrar bindings de este módulo en `AppServiceProvider` ni en `bootstrap/providers.php`.
+- `$bindings` for simple interface → concrete class bindings.
+- `register()` only if the binding needs to pass parameters (e.g. `$app->when(...)->needs(...)->give(...)`).
+- `boot()` always calls `parent::boot()` and loads migrations with `loadMigrationsFrom`.
+- **Never** register bindings from this module in `AppServiceProvider` or in `bootstrap/providers.php`.
 
 ---
 
-## 4. Migraciones — dónde van y cómo se cargan
+## 4. Migrations — where they go and how they are loaded
 
-Las migraciones de dominio van **dentro del módulo**, no en `database/migrations/` raíz.
+Domain migrations go **inside the module**, not in the root `database/migrations/`.
 
-| Tipo de migración | Ubicación |
-|-------------------|-----------|
-| Tablas del dominio del módulo | `Modules/<Modulo>/database/migrations/` |
-| Tablas de framework (users, cache, jobs) | `database/migrations/` raíz |
+| Migration type | Location |
+|----------------|-----------|
+| Module domain tables | `Modules/<Module>/database/migrations/` |
+| Framework tables (users, cache, jobs) | `database/migrations/` root |
 
-### Cómo se cargan
+### How they are loaded
 
-En el `boot()` del ServiceProvider principal:
+In the main ServiceProvider's `boot()`:
 
 ```php
 public function boot(): void
@@ -176,94 +176,93 @@ public function boot(): void
 }
 ```
 
-`module_path()` es el helper de nwidart que resuelve la ruta absoluta al módulo.
-No usar `__DIR__` ni rutas relativas.
+`module_path()` is the nwidart helper that resolves the absolute path to the module.
+Do not use `__DIR__` or relative paths.
 
 ---
 
-## 5. Descubrimiento automático — module.json
+## 5. Auto-discovery — module.json
 
-Cada módulo tiene un `module.json` que declara su ServiceProvider principal.
-nwidart lo lee automáticamente para cargar el módulo sin registro manual
-en `bootstrap/providers.php`.
+Each module has a `module.json` that declares its main ServiceProvider.
+nwidart reads it automatically to load the module without manual registration
+in `bootstrap/providers.php`.
 
 ```json
 {
-    "name": "GestionPrestamosRecepciones",
-    "alias": "gestionprestamosrecepciones",
+    "name": "LoanReceptionManagement",
+    "alias": "loanreceptionmanagement",
     "providers": [
-        "Modules\\GestionPrestamosRecepciones\\Infrastructure\\Providers\\GestionPrestamosRecepcionesServiceProvider"
+        "Modules\\LoanReceptionManagement\\Infrastructure\\Providers\\LoanReceptionManagementServiceProvider"
     ],
     "files": []
 }
 ```
 
-**Reglas:**
+**Rules:**
 
-- El provider declarado en `module.json` es **únicamente** el ServiceProvider principal.
-- `EventServiceProvider` y `RouteServiceProvider` se cargan desde el array `$providers`
-  del ServiceProvider principal, no desde `module.json`.
-- No agregar providers a `bootstrap/providers.php` — el auto-discovery de nwidart
-  ya los carga vía `LaravelModulesServiceProvider`.
+- The provider declared in `module.json` is **only** the main ServiceProvider.
+- `EventServiceProvider` and `RouteServiceProvider` are loaded from the `$providers`
+  array of the main ServiceProvider, not from `module.json`.
+- Do not add providers to `bootstrap/providers.php` — nwidart's auto-discovery
+  already loads them via `LaravelModulesServiceProvider`.
 
 ---
 
-## 6. Rutas — convención por módulo
+## 6. Routes — convention per module
 
-Las rutas web y api de cada módulo viven en `routes/web.php` y `routes/api.php`
-del módulo. El `RouteServiceProvider` ya las carga con los middlewares correctos.
+Web and API routes for each module live in `routes/web.php` and `routes/api.php`
+of the module. The `RouteServiceProvider` already loads them with the correct middlewares.
 
-**Convención de nombres de ruta:**
+**Route naming convention:**
 
 ```php
-// web.php — rutas Livewire
+// web.php — Livewire routes
 Route::middleware(['auth', 'verified'])
-    ->prefix('prestamos')
-    ->name('prestamos.')
+    ->prefix('loans')
+    ->name('loans.')
     ->group(function () {
-        // rutas del módulo
+        // module routes
     });
 
-// api.php — rutas API (si aplica)
+// api.php — API routes (if applicable)
 Route::middleware(['auth:sanctum'])
-    ->prefix('prestamos')
-    ->name('api.prestamos.')
+    ->prefix('loans')
+    ->name('api.loans.')
     ->group(function () {
-        // endpoints API del módulo
+        // API endpoints
     });
 ```
 
-**Nunca** definir rutas de un módulo en `routes/web.php` o `routes/api.php` raíz
-del proyecto.
+**Never** define a module's routes in the project root `routes/web.php` or `routes/api.php`.
 
 ---
 
-## 7. Tests — namespace y ubicación
+## 7. Tests — namespace and location
 
 ```json
 "autoload-dev": {
     "psr-4": {
-        "Modules\\<Modulo>\\Tests\\": "tests/"
+        "Modules\\<Module>\\Tests\\": "tests/"
     }
 }
 ```
 
-| Tipo | Ruta | Namespace |
+| Type | Path | Namespace |
 |------|------|-----------|
-| Unit | `tests/Unit/` | `Modules\<Modulo>\Tests\Unit\` |
-| Integration | `tests/Integration/` | `Modules\<Modulo>\Tests\Integration\` |
-| Behat Contexts | `tests/Behat/Contexts/` | `Modules\<Modulo>\Tests\Behat\Contexts\` |
-| Behat Features | `tests/Behat/Features/` | — (archivos `.feature`, sin namespace PHP) |
+| Unit | `tests/Unit/` | `Modules\<Module>\Tests\Unit\` |
+| Integration | `tests/Integration/` | `Modules\<Module>\Tests\Integration\` |
+| Behat Contexts | `tests/Behat/Contexts/` | `Modules\<Module>\Tests\Behat\Contexts\` |
+| Behat Features | `tests/Behat/Features/` | — (`.feature` files, no PHP namespace) |
 
 ---
 
-## 8. Checklist al crear un archivo nuevo en un módulo
+## 8. Checklist when creating a new file in a module
 
-- [ ] La ruta física es `Modules/<Modulo>/app/<Capa>/...`
-- [ ] El namespace declara `Modules\<Modulo>\<Capa>\...`
-- [ ] Si es una interfaz de Repository o Port → está en `Domain/` o `Application/`
-- [ ] Si es una implementación (Eloquent, Mail, Gateway) → está en `Infrastructure/`
-- [ ] Si es un binding nuevo → está declarado en `$bindings` del ServiceProvider
-- [ ] Si es una migración → está en `Modules/<Modulo>/database/migrations/`
-- [ ] Si es una ruta → está en `Modules/<Modulo>/routes/web.php` o `api.php`
-- [ ] Ninguna clase del módulo importa desde `Modules\<OtroModulo>\Domain\`
+- [ ] The physical path is `Modules/<Module>/app/<Layer>/...`
+- [ ] The namespace declares `Modules\<Module>\<Layer>\...`
+- [ ] If it is a Repository or Port interface → it is in `Domain/` or `Application/`
+- [ ] If it is an implementation (Eloquent, Mail, Gateway) → it is in `Infrastructure/`
+- [ ] If it is a new binding → it is declared in `$bindings` of the ServiceProvider
+- [ ] If it is a migration → it is in `Modules/<Module>/database/migrations/`
+- [ ] If it is a route → it is in `Modules/<Module>/routes/web.php` or `api.php`
+- [ ] No class in the module imports from `Modules\<OtherModule>\Domain\`
