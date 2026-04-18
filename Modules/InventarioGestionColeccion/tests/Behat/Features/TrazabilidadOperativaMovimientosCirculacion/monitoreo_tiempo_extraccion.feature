@@ -1,19 +1,22 @@
-# language: es
+#language: es
 Característica: Monitoreo y alerta de tiempo de extracción
-  Como Curador,
+  Como curador responsable de la colección,
   quiero que se emita una notificación si una caja o espécimen ha estado fuera de su posición asignada por más de 1 día hábil (o el límite establecido),
   para evitar el extravío del material biológico.
 
-  Escenario: Caja devuelta antes del límite establecido
-    Dado que el límite de tiempo de extracción para una caja es de "1 día hábil"
-    Y la caja entomológica "CAJA-500" fue retirada hace "4 horas"
-    Cuando devuelvo la caja "CAJA-500" a su ranura en el gabinete
-    Entonces se debe registrar la devolución
-
-  Escenario: Caja no devuelta superando el límite de 1 día hábil
-    Dado que el límite de tiempo de extracción para una caja es de "1 día hábil"
-    Y la caja entomológica "CAJA-500" fue retirada hace "1 día y 2 horas"
+  Esquema del escenario: Evaluación del tiempo de extracción de una caja
+    Dado que existe una caja entomológica fuera de su posición con condición <condicion>
     Cuando se verifican los tiempos de extracción
-    Entonces se debe generar una alerta de "Tiempo de Extracción Excedido"
-    Y se debe enviar una notificación inmediata al curador responsable de la custodia
-    Y el estado de la caja debe actualizarse a "Extracción Prolongada"
+    Entonces <resultado>
+
+    Ejemplos:
+      | condicion                          | resultado                                                                                                         |
+      | dentro del límite de tiempo        | se debe registrar sin alertas y el estado permanece "En Tránsito"                                                 |
+      | próxima a superar el límite        | se debe enviar una notificación preventiva al curador responsable                                                 |
+      | superando el límite de 1 día hábil | se debe generar una alerta de "Tiempo de Extracción Excedido" y el estado cambia a "Extracción Prolongada"        |
+
+  Escenario: Devolución de una caja que supera el límite de tiempo
+    Dado que existe una caja entomológica en estado "Extracción Prolongada"
+    Cuando el curador registra la devolución de la caja a su ranura en el gabinete
+    Entonces se debe registrar la devolución
+    Y el estado de la caja debe cambiar a "En Gabinete"

@@ -38,6 +38,13 @@ return (new Config)
             ->withSuite(
                 (new Suite('InventarioGestionColeccion'))
                     ->withPaths($base.'/Modules/InventarioGestionColeccion/tests/Behat/Features')
-                    ->withContexts('Modules\InventarioGestionColeccion\Tests\Behat\Contexts\InventarioGestionColeccionContext')
+                    ->withContexts(
+                        // GestionAutonomaSeguridadFisicaInventario
+                        'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\GestionAutonomaSeguridadFisicaInventario\AlertaIncongruenciaTaxonomicaContext',
+                        'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\GestionAutonomaSeguridadFisicaInventario\RegistroUbicacionCajasContext',
+                        // TrazabilidadOperativaMovimientosCirculacion
+                        'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\TrazabilidadOperativaMovimientosCirculacion\MonitoreoTiempoExtraccionContext',
+                        'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\TrazabilidadOperativaMovimientosCirculacion\ReubicacionDigitalGuiadaContext',
+                    )
             )
     );

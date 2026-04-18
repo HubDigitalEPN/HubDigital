@@ -1,19 +1,23 @@
-# language: es
+#language: es
 Característica: Alerta de incongruencia taxonómica por ubicación incorrecta
-  Como Curador,
+  Como curador responsable de la colección,
   quiero recibir una alerta inmediata si inserto una caja en una ranura que pertenece a otra familia taxonómica,
   para proteger el valor científico y el orden de la colección.
 
-  Escenario: Inserción de una caja en una ranura con la familia taxonómica correcta
-    Dado que el gabinete "GAB-01" está configurado para la familia "Carabidae"
-    Y tengo una caja entomológica "CAJA-200" con especímenes de la familia "Carabidae"
-    Cuando inserto la caja "CAJA-200" en una ranura vacía del gabinete "GAB-01"
-    Entonces se debe registrar el ingreso exitoso de la caja
+  Esquema del escenario: Inserción de una caja en un gabinete según coincidencia taxonómica
+    Dado que existe un gabinete configurado para una familia taxonómica
+    Y existe una caja entomológica con especímenes de familia <coincidencia>
+    Cuando inserto la caja en una ranura vacía del gabinete
+    Entonces <resultado>
 
-  Escenario: Inserción de una caja en una ranura con una familia taxonómica incorrecta
-    Dado que el gabinete "GAB-01" está configurado para la familia "Carabidae"
-    Y tengo una caja entomológica "CAJA-300" con especímenes de la familia "Nymphalidae"
-    Cuando inserto la caja "CAJA-300" en una ranura vacía del gabinete "GAB-01"
-    Entonces se debe generar una alerta de "Incongruencia Taxonómica"
-    Y la alerta debe notificar inmediatamente al curador responsable
-    Y el estado de la caja debe marcarse como "Ubicación Incorrecta"
+    Ejemplos:
+      | coincidencia | resultado                                                                                                     |
+      | correcta     | se debe registrar el ingreso exitoso de la caja                                                               |
+      | incorrecta   | se debe generar una alerta de "Incongruencia Taxonómica" y el estado de la caja se marca como "Ubicación Incorrecta" |
+
+  Escenario: Inserción de una caja sin familia taxonómica asignada
+    Dado que existe un gabinete configurado para una familia taxonómica
+    Y existe una caja entomológica sin familia taxonómica asignada
+    Cuando inserto la caja en una ranura vacía del gabinete
+    Entonces se debe generar una alerta de "Familia No Asignada"
+    Y el estado de la caja debe marcarse como "Pendiente de Clasificación"

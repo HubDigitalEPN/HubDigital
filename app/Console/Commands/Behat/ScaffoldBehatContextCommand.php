@@ -253,6 +253,10 @@ class ScaffoldBehatContextCommand extends Command
 
     private function stepToMethodName(string $text): string
     {
+        // Capturar nombres de parámetros antes de eliminarlos
+        preg_match_all('/:([\w\x80-\xff]+)/u', $text, $paramMatches);
+        $params = $paramMatches[1] ?? [];
+
         // Quitar referencias :param del texto antes de nombrar el método
         $clean = preg_replace('/:([\w\x80-\xff]+)/u', '', $text);
         // Quitar caracteres que no sean letras, dígitos ni espacios
@@ -260,10 +264,20 @@ class ScaffoldBehatContextCommand extends Command
         // Separar en palabras y hacer camelCase
         $words = array_filter(preg_split('/\s+/u', mb_strtolower(trim($clean))));
 
-        return lcfirst(implode('', array_map(
+        $name = lcfirst(implode('', array_map(
             fn ($w) => mb_strtoupper(mb_substr($w, 0, 1)).mb_substr($w, 1),
             $words
         )));
+
+        // Si el nombre quedó vacío (step es solo un parámetro), usar el nombre del parámetro
+        if ($name === '' && ! empty($params)) {
+            $name = lcfirst(implode('', array_map(
+                fn ($w) => mb_strtoupper(mb_substr($w, 0, 1)).mb_substr($w, 1),
+                array_filter(preg_split('/[_\s]+/u', mb_strtolower($params[0])))
+            )));
+        }
+
+        return $name ?: 'ejecutarStep';
     }
 
     // ── Registro en behat.php ─────────────────────────────────────────────────
@@ -308,6 +322,16 @@ class ScaffoldBehatContextCommand extends Command
             $suitePos = strpos($content, "Suite('{$module}')");
             $withContextsPos = strpos($content, '->withContexts(', $suitePos);
             $closingParen = strpos($content, "\n                    )", $withContextsPos);
+
+            if ($closingParen === false) {
+                // withContexts está en una sola línea → convertir a multi-línea
+                $argsStart = $withContextsPos + strlen('->withContexts(');
+                $argsEnd = strpos($content, ')', $argsStart);
+                $singleLineArg = trim(substr($content, $argsStart, $argsEnd - $argsStart));
+                $multiLine = "->withContexts(\n                        {$singleLineArg},\n                    )";
+                $content = substr($content, 0, $withContextsPos).$multiLine.substr($content, $argsEnd + 1);
+                $closingParen = strpos($content, "\n                    )", $withContextsPos);
+            }
 
             $beforeClosing = substr($content, 0, $closingParen);
             $insertAt = strrpos($beforeClosing, ',') + 1;
