@@ -8,17 +8,17 @@ use Behat\Config\Suite;
 
 $base = __DIR__;
 
-return (new Config())
+return (new Config)
     ->withProfile(
         (new Profile('default'))
             ->withSuite(
                 (new Suite('CatalogoPublico'))
-                    ->withPaths($base . '/Modules/CatalogoPublico/tests/Behat/Features')
+                    ->withPaths($base.'/Modules/CatalogoPublico/tests/Behat/Features')
                     ->withContexts('Modules\CatalogoPublico\Tests\Behat\Contexts\CatalogoPublicoContext')
             )
             ->withSuite(
                 (new Suite('GestionPrestamosRecepciones'))
-                    ->withPaths($base . '/Modules/GestionPrestamosRecepciones/tests/Behat/Features')
+                    ->withPaths($base.'/Modules/GestionPrestamosRecepciones/tests/Behat/Features')
                     ->withContexts(
                         // TramitacionSolicitudesInvestigador
                         'Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\TramitacionSolicitudesInvestigador\EnvioSolicitudPrestamoContext',
@@ -30,11 +30,14 @@ return (new Config())
                         'Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\AdministracionCuratorialSolicitudesPrestamos\SeguimientoPrestamosContext',
                         'Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\AdministracionCuratorialSolicitudesPrestamos\DefinicionRecordatoriosDevolucionContext',
                         'Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\AdministracionCuratorialSolicitudesPrestamos\CierrePrestamosContext',
+                        // RecepcionValidacionLotesEspecimenesYDatos
+                        'Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\RecepcionValidacionLotesEspecimenesYDatos\GestionCentralizadaEntidadesDepositantesContext',
+                        'Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\RecepcionValidacionLotesEspecimenesYDatos\RecepcionMuestrasBiologicasContext',
                     )
             )
             ->withSuite(
                 (new Suite('InventarioGestionColeccion'))
-                    ->withPaths($base . '/Modules/InventarioGestionColeccion/tests/Behat/Features')
+                    ->withPaths($base.'/Modules/InventarioGestionColeccion/tests/Behat/Features')
                     ->withContexts('Modules\InventarioGestionColeccion\Tests\Behat\Contexts\InventarioGestionColeccionContext')
             )
     );

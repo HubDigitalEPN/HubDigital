@@ -1134,6 +1134,62 @@ Entonces la solicitud queda en estado "aprobada"
 
 ---
 
+## 12. Scaffold automático con `behat:scaffold`
+
+Siempre que agregues una nueva feature, usa este comando en lugar de crear el context manualmente:
+
+```bash
+php artisan behat:scaffold {modulo} {capability} {feature}
+```
+
+Ejemplo real:
+```bash
+php artisan behat:scaffold GestionPrestamosRecepciones RecepcionValidacionLotesEspecimenesYDatos recepcion_muestras_biologicas
+```
+
+### Qué hace el comando
+
+1. Valida que `Features/<capability>/<feature>.feature` existe
+2. Parsea el `.feature` y extrae **todos los step patterns únicos**
+3. Genera `Contexts/<capability>/<FeatureName>Context.php` con stubs `throw new PendingException`
+4. Registra el context en `behat.php` automáticamente
+5. Formatea el archivo con Pint
+6. Corre la feature al final para confirmar que los steps son detectados
+
+### Naming del context
+
+El nombre del context se deriva del archivo `.feature`:
+
+| Feature file | Context class |
+|---|---|
+| `recepcion_muestras_biologicas.feature` | `RecepcionMuestrasBiologicasContext` |
+| `gestion_centralizada_entidades_depositantes.feature` | `GestionCentralizadaEntidadesDepositantesContext` |
+
+**Un context por feature. Nunca un context por capability completa.**
+
+### Manejo automático de `Esquema del escenario`
+
+El comando parsea el `.feature` directamente — **no usa `--append-snippets`**.
+Esto resuelve el problema de duplicados: los `<param>` del Esquema se convierten en `:param` (un solo método parametrizado):
+
+```gherkin
+# Feature con Esquema del escenario
+Cuando el curador registra un fallo por "<causa_fallo>" en la muestra
+```
+
+```php
+// Context generado — 1 método parametrizado ✅
+#[When('el curador registra un fallo por ":causa_fallo" en la muestra')]
+public function elCuradorRegistraUnFalloPorEnLaMuestra(string $causa_fallo): void
+{
+    throw new PendingException;
+}
+```
+
+Si hubieras usado `--append-snippets`, habrías obtenido N métodos duplicados (uno por cada ejemplo). El comando lo evita automáticamente.
+
+---
+
 ## Resumen
 
 - **BaseContext** → bootstrap de Laravel (`@BeforeSuite`) + `migrate:fresh` (`@BeforeScenario`). Sin steps.
