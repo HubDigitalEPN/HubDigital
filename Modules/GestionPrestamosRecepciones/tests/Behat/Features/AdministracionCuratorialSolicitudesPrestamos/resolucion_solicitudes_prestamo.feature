@@ -6,16 +6,18 @@ Característica: Resolución de solicitud de préstamo
 
     Escenario: Aprobar una solicitud de préstamo sin condiciones
         Dado que existe una solicitud en estado enviada
-        Cuando el curador registra la aprobación de la solicitud
+        Cuando el curador registra la aprobación de la solicitud con un tipo de préstamo
+        Y una duración establecida
         Entonces la solicitud queda en estado aprobada
-        Y se crea un préstamo en estado activo
+        Y se genera el acta de préstamo con los datos de la solicitud del catálogo.
 
     Escenario: Aprobar una solicitud de préstamo con condiciones
         Dado que existe una solicitud en estado enviada
-        Cuando el curador registra la aprobación de la solicitud con condiciones
+        Cuando el curador registra la aprobación de la solicitud con un tipo de préstamo, una duración establecida
+        Y condiciones específicas para uno o más especímenes
         Entonces la solicitud queda en estado aprobada
-        Y la solicitud queda asociada a las condiciones establecidas
-        Y se crea un préstamo en estado activo
+        Y cada ítem queda asociado a sus condiciones específicas cuando aplican
+        Y se genera el acta de préstamo
 
     Escenario: Observar una solicitud de préstamo
         Dado que existe una solicitud en estado enviada
@@ -30,4 +32,9 @@ Característica: Resolución de solicitud de préstamo
     Escenario: No permitir rechazar una solicitud sin comentario
         Dado que existe una solicitud en estado enviada
         Cuando el curador intenta registrar el rechazo de la solicitud sin comentario
+        Entonces la solicitud permanece en estado enviada
+
+    Escenario: No permitir aprobar una solicitud sin tipo de préstamo
+        Dado que existe una solicitud en estado enviada
+        Cuando el curador intenta registrar la aprobación sin un tipo de préstamo
         Entonces la solicitud permanece en estado enviada
