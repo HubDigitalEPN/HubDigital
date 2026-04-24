@@ -16,19 +16,30 @@ Característica: Seguimiento del proceso de préstamo
             | aprobada   |
             | rechazada  |
 
+    Esquema del escenario: Conocer el estado del acta de préstamo
+        Dado que existe un acta en estado <estado>
+        Cuando el curador solicita la información del acta
+        Entonces el acta es retornada con estado <estado>
+
+        Ejemplos:
+            | estado                  |
+            | pendiente de envío      |
+            | pendiente de firma      |
+            | pendiente de validación |
+
     Esquema del escenario: Conocer el estado de un préstamo
         Dado que existe un préstamo en estado <estado>
         Cuando el curador solicita la información del préstamo
         Entonces el préstamo es retornado con estado <estado>
 
         Ejemplos:
-            | estado                    |
-            | activo                    |
-            | próximo a vencer          |
-            | vencido                   |
-            | pendiente de verificación |
-            | cerrado                   |
-            | cerrado con observación   |
+            | estado                  |
+            | activo                  |
+            | prórroga solicitada     |
+            | vencido                 |
+            | en revisión             |
+            | cerrado                 |
+            | cerrado con observación |
 
     Esquema del escenario: Consultar la trazabilidad de una solicitud
         Dado que existe una solicitud con <condicion>

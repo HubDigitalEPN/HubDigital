@@ -23,10 +23,9 @@ Característica: Seguimiento del proceso de préstamo
         Entonces el préstamo es retornado con estado <estado>
 
         Ejemplos:
-            | estado                    |
-            | activo                    |
-            | próximo a vencer          |
-            | vencido                   |
-            | pendiente de verificación |
-            | devuelto                  |
-            | cerrado                   |
+            | estado              |
+            | activo              |
+            | prórroga solicitada |
+            | vencido             |
+            | en revisión         |
+            | cerrado             |

@@ -1,5 +1,4 @@
 #language: es
-
 Característica: Cierre de préstamo.
     Como curador responsable de la coleccion
     Quiero registrar el resultado de la devolución
