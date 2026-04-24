@@ -20,21 +20,22 @@ Modules/<Module>/tests/Behat/
 └── Contexts/
     ├── BaseContext.php               # Laravel bootstrap — ONLY that
     └── <CapabilityName>/
-        └── <CapabilityName>Context.php
+        └── <FeatureName>Context.php  # One Context per feature file
 ```
 
 **Structure rules:**
 
 - One `.feature` = one cohesive functionality, not an entire module.
-- Features are grouped in subfolders by **capability** (e.g. `ResearcherLoanRequestProcessing`), not by actor or module.
+- Features are grouped in subfolders by **capability** (e.g. `TramitacionSolicitudesInvestigador`).
 - Contexts are grouped in subfolders that **mirror** the Features folders.
+- **One Context per feature file** — never one Context for the whole capability.
 - `BaseContext.php` exists in all modules and contains **only** the Laravel bootstrap. It has no steps.
 
 **Never:**
 
-- ❌ A single Context for the entire module (legacy `InventoryCollectionManagementContext` pattern — do not replicate).
+- ❌ A single Context for the entire module or capability.
 - ❌ Features at the project root.
-- ❌ A Context that mixes steps from two different capabilities.
+- ❌ A Context that mixes steps from two different feature files.
 
 ---
 
@@ -46,7 +47,8 @@ The master configuration lives in `behat.php` at the root. Each module has its o
 
 - One suite per nwidart module. Not a global suite.
 - Each suite lists **all** its Contexts explicitly. Behat does not autodiscover.
-- When a new Context is added, it is registered in the corresponding suite in `behat.php` before implementing any step.
+- When a new Context is added, it is registered in the corresponding suite in `behat.php`
+  **before implementing any step**.
 
 ```php
 // Suite structure example (do not copy literally — read the current behat.php)
@@ -54,9 +56,9 @@ The master configuration lives in `behat.php` at the root. Each module has its o
     'paths'    => ['Modules/LoanReceptionManagement/tests/Behat/Features'],
     'contexts' => [
         BaseContext::class,
-        LoanRequestSubmissionContext::class,
-        RequestTrackingContext::class,
-        LoanRequestResolutionContext::class,
+        EnvioSolicitudPrestamoContext::class,
+        SeguimientoSolicitudesContext::class,
+        ResolucionSolicitudesPrestamoContext::class,
     ],
 ],
 ```
@@ -67,8 +69,10 @@ The master configuration lives in `behat.php` at the root. Each module has its o
 
 - **All** `.feature` files are written in **Spanish**.
 - The first line of each feature is `# language: es` (with a space after `#`).
-- Use Spanish keywords: `Característica`, `Escenario`, `Esquema del escenario`, `Dado`, `Cuando`, `Entonces`, `Y`, `Pero`.
-- The **business language** (domain nouns and verbs) comes from the Hub Digital glossary — see `ubiquitous-language.md`.
+- Use Spanish keywords: `Característica`, `Escenario`, `Esquema del escenario`,
+  `Dado`, `Cuando`, `Entonces`, `Y`, `Pero`.
+- The **business language** (domain nouns and verbs) comes from the Hub Digital
+  glossary — see `ubiquitous-language.md`.
 
 **Never:**
 
@@ -84,141 +88,283 @@ The master configuration lives in `behat.php` at the root. Each module has its o
 Each `Escenario` must name the actor performing the action:
 
 ```gherkin
-Escenario: El investigador envía una solicitud de préstamo válida
+Escenario: Guardar una solicitud como borrador
 Escenario: El curador aprueba una solicitud pendiente
-Escenario: El sistema registra la ubicación de una caja nueva
 ```
 
 Valid actors per module:
 
-| Module | Actors |
-|--------|---------|
-| LoanReceptionManagement | The researcher, The curator |
-| InventoryCollectionManagement | The curator, The system |
-| PublicCatalog | The visitor, The researcher |
+| Module                    | Actors                        |
+|---------------------------|-------------------------------|
+| LoanReceptionManagement   | el investigador, el curador   |
+| InventoryCollectionManagement | el curador, el sistema    |
+| PublicCatalog             | el visitante, el investigador |
 
-**Never** use "the user" as an actor — it is ambiguous and does not belong to the ubiquitous language.
+**Never** use "el usuario" — it is ambiguous and does not belong to the ubiquitous language.
 
 ### 4.2 Writing steps
 
-- `Dado` → system state precondition (what exists in the DB before acting).
-- `Cuando` → action performed by the actor (one single action per `Cuando`).
-- `Entonces` → expected observable outcome (no conditional logic).
+- `Dado` → system state precondition (what exists before the action).
+- `Cuando` → single action performed by the actor.
+- `Entonces` → expected observable outcome. No conditional logic.
 - Do not use `Y` or `Pero` as the first step of a block.
 
 ```gherkin
 # ✅ Correct
-Dado que existe una solicitud de préstamo en estado "pendiente"
-Cuando el curador aprueba la solicitud
-Entonces la solicitud queda en estado "aprobada"
-Y el investigador recibe una notificación de aprobación
+Dado que existe una solicitud en estado borrador
+Cuando el investigador envía la solicitud
+Entonces la solicitud queda en estado enviada
 
-# ❌ Incorrect — action and verification mixed in Cuando
-Cuando el curador aprueba la solicitud y verifica el estado
+# ❌ Incorrect — two actions in one Cuando
+Cuando el investigador envía la solicitud y verifica el estado
 ```
 
 ### 4.3 One Cuando per scenario
 
-One `Cuando` per `Escenario`. If two actions are needed, they are two separate scenarios.
+One `Cuando` per `Escenario`. If two actions are needed, use `Dado` for the first
+or split into two separate scenarios.
 
 ### 4.4 Data in tables, not in titles
 
 ```gherkin
 # ✅ Correct
-Esquema del escenario: El investigador no puede enviar solicitud con datos inválidos
-  Cuando el investigador envía la solicitud con los datos:
-    | campo            | valor |
-    | institucion      |       |
-  Entonces el sistema rechaza la solicitud con el mensaje "<mensaje>"
-  Ejemplos:
-    | mensaje                          |
-    | La institución no puede estar vacía |
+Esquema del escenario: No permitir enviar una solicitud con información incompleta
+    Dado que existe una solicitud en estado <estado_previo> con información incompleta
+    Cuando el investigador envía la solicitud
+    Entonces la solicitud permanece en estado <estado_previo>
 
-# ❌ Incorrect — data in the scenario title
-Escenario: El investigador envía solicitud con institución vacía y recibe error
+    Ejemplos:
+        | estado_previo |
+        | borrador      |
+        | observada     |
+
+# ❌ Incorrect — data embedded in the title
+Escenario: El investigador envía solicitud en borrador con institución vacía y recibe error
 ```
 
 ---
 
-## 5. Contexts — responsibilities and constraints
+## 5. What Behat covers — and what does not
 
-### 5.1 BaseContext — bootstrap only
+Behat in Hub Digital tests **observable behavior through Use Case Handlers**
+(Application layer). Because the Context calls the Handler with the real Laravel
+container and a real test database, Behat exercises Domain and Infrastructure
+**as an integrated whole** — not in isolation.
 
-`BaseContext.php` in each module does **one thing only**: boot Laravel.
+### Coverage map
+
+| Tool              | What it covers                                              | Isolation level        |
+|-------------------|-------------------------------------------------------------|------------------------|
+| **Behat**         | Use Case behavior (Application) exercising Domain + Infra   | Integrated (real DB)   |
+| **Pest / Unit**   | Domain rules in isolation: entities, value objects, domain services | Pure unit (no DB) |
+| **Pest / Integration** | Infrastructure adapters in isolation: Eloquent repositories, external adapters | One adapter + DB |
+
+### The golden rule
+
+> If you deleted the HTTP layer from the project, all Behat tests must still pass.
+> The Context calls the Handler. The Handler does not know Behat exists.
+
+### What Behat does NOT do
+
+- ❌ Replace unit tests for entities or value objects → use **Pest/Unit**.
+- ❌ Replace integration tests for Eloquent repositories in isolation → use **Pest/Integration**.
+- ❌ Test HTTP controllers, FormRequests, or API responses → use **Pest/Feature**.
+- ❌ Test UI or browser interactions → there are no HTTP calls in Contexts.
+- ❌ Test the PublicCatalog chatbot AI integration → dedicated Pest tests.
+
+---
+
+## 6. BDD development flow — per feature
+
+This is the mandatory order of work when implementing a feature.
+**Do not skip steps or reorder them.**
+
+```
+Per feature (e.g. Cap1 F1 — Envío de solicitud de préstamo):
+
+  Step 1 — Pest / Unit
+            Write unit tests for the domain rules the feature implies.
+            Entities, value objects, invariants — no Handler, no DB.
+            Example: SolicitudPrestamo starts in borrador state.
+                     SolicitudPrestamo with duration > 12 months without
+                     justification throws a domain exception.
+
+  Step 2 — Behat scaffold
+            Run: php artisan behat:scaffold <Module> <Capability> <feature_file>
+            The command parses the .feature and generates the Context with
+            PendingException stubs. Register the Context in behat.php.
+            Run with --dry-run to confirm all steps are detected.
+            At this point Behat is RED — no Handler exists yet.
+
+  Step 3 — Generate the minimum to turn Behat green
+            In this exact order (each piece unlocks the next):
+              1. Domain entity / value objects  (if not done in Step 1)
+              2. Domain repository interface    (Domain/Repositories/)
+              3. Handler + Input + Output       (Application/UseCases/<Feature>/)
+              4. Migration                      (database/migrations/)
+              5. Eloquent repository            (Infrastructure/Persistence/Eloquent/)
+              6. Binding in ServiceProvider     ($bindings array)
+            The Handler may contain minimal logic — just enough to satisfy
+            the scenarios. Do not implement full business rules yet.
+
+  Step 4 — Implement the Context steps
+            Given  → seed state using the domain Repository or a setup Handler.
+                     Never use Eloquent directly.
+            When   → call the Handler, wrap in try/catch, store in $this->lastResponse
+                     or $this->capturedException.
+            Then   → PHPUnit assertions on $this->lastResponse or $this->capturedException.
+
+  Step 5 — Behat green ✅
+            All scenarios of the feature pass.
+
+  Step 6 — Complete the Handler logic
+            Implement full business rules, domain events, invariant enforcement.
+            Behat must remain green after this step.
+
+  Step 7 — Pest / Integration
+            Test the Eloquent repository in isolation against a real DB.
+            Cover: save, find, nextIdentity, filtering.
+
+  Step 8 — UI / Frontend
+            Only once Steps 1–7 are green and stable.
+```
+
+---
+
+## 7. Contexts — responsibilities and constraints
+
+### 7.1 BaseContext — bootstrap only
+
+`BaseContext.php` does **one thing only**: boot Laravel and reset the DB.
 
 ```php
 // What BaseContext CAN have:
-// - @BeforeSuite with app bootstrap
-// - @BeforeScenario with DB migration/cleanup
-// - Shared properties: $app, $kernel
+// - @BeforeSuite  with app bootstrap (once per suite)
+// - @BeforeScenario with migrate:fresh (once per scenario)
+// - protected make() helper
+// - Shared properties: $app
 
 // What BaseContext MUST NEVER have:
-// - @Given / @When / @Then methods
-// - Business logic
-// - Calls to Use Cases or repositories
+// - @Given / @When / @Then step methods
+// - Business logic of any kind
+// - Direct calls to Use Cases or repositories
 ```
 
-### 5.2 Capability-specific Contexts — one capability, one responsibility
+### 7.2 Feature Contexts — one feature, one responsibility
 
-Each capability Context:
+Each feature Context:
 
-- Extends `BaseContext`.
-- Contains **only** the steps for its capability.
-- Accesses the application layer **by injecting the Use Case Handler**, never calling Facades or Eloquent directly.
+- Extends `BaseContext` of the same module.
+- Contains **only** the steps for its feature file.
+- Resolves Use Case Handlers via `$this->make(Handler::class)` in the constructor.
+- **Never** calls Eloquent models or Laravel Facades directly.
 
 ```php
-// ✅ Correct — the Context talks to the Application layer
-private LoanRequestSubmissionHandler $handler;
+// ✅ Correct — Context talks to the Application layer via Handler
+private RegistrarSolicitudHandler $registrarHandler;
+private EnviarSolicitudHandler    $enviarHandler;
 
 public function __construct()
 {
-    parent::__construct();
-    $this->handler = $this->app->make(LoanRequestSubmissionHandler::class);
+    $this->registrarHandler = $this->make(RegistrarSolicitudHandler::class);
+    $this->enviarHandler    = $this->make(EnviarSolicitudHandler::class);
 }
 
-/** @When the researcher submits the request with: */
-public function theResearcherSubmitsTheRequest(TableNode $table): void
+/** @When el investigador registra la solicitud */
+public function elInvestigadorRegistraLaSolicitud(): void
 {
-    $data = $table->getRowsHash();
-    $this->lastResponse = ($this->handler)(new LoanRequestSubmissionInput(
-        institution: $data['institution'] ?? '',
-        // ...
-    ));
+    try {
+        $this->ultimaRespuesta = ($this->registrarHandler)(
+            new RegistrarSolicitudInput(/* ... */)
+        );
+    } catch (\Throwable $e) {
+        $this->excepcionCapturada = $e;
+    }
 }
 
-// ❌ Incorrect — direct Eloquent access from the Context
-public function theResearcherSubmitsTheRequest(): void
+// ❌ Incorrect — Eloquent in the Context
+public function elInvestigadorRegistraLaSolicitud(): void
 {
-    LoanRequest::create([...]); // Never
+    SolicitudPrestamoModel::create([...]); // Never
 }
 
-// ❌ Incorrect — Facade from the Context
-public function theResearcherSubmitsTheRequest(): void
+// ❌ Incorrect — Facade in the Context
+public function elInvestigadorRegistraLaSolicitud(): void
 {
-    DB::table('requests')->insert([...]); // Never
+    DB::table('solicitudes_prestamo')->insert([...]); // Never
 }
 ```
 
-### 5.3 Shared state between steps
+### 7.3 Seeding state in Given steps
 
-State between `Given`, `When`, and `Then` within a scenario is stored in **Context properties** (`$this->lastResponse`, `$this->capturedException`, etc.). Never in static variables or the Laravel container.
+`Dado` steps must create domain state using the **domain Repository interface**
+or a setup Handler — never Eloquent directly. This keeps the test honest:
+if the repository is broken, the Given will fail visibly.
 
 ```php
-private ?LoanRequestSubmissionOutput $lastResponse = null;
-private ?\Throwable $capturedException = null;
+// ✅ Correct — seed via domain Repository
+/** @Given que existe una solicitud en estado borrador */
+public function queExisteUnaSolicitudEnEstadoBorrador(): void
+{
+    $repo     = $this->make(SolicitudPrestamoRepository::class);
+    $solicitud = SolicitudPrestamo::registrar(
+        id:            $repo->nextIdentity(),
+        investigadorId: 'inv-001',
+        // ... required fields
+    );
+    $repo->guardar($solicitud);
+    $this->solicitudExistente = $solicitud;
+}
+
+// ✅ Also correct — seed via a setup Handler (e.g. RegistrarSolicitudHandler)
+/** @Given que el investigador ha ingresado información en una solicitud */
+public function queElInvestigadorHaIngresadoInformacion(): void
+{
+    $this->ultimaRespuesta = ($this->registrarHandler)(
+        new RegistrarSolicitudInput(
+            investigadorId:       'inv-001',
+            tituloEstudio:        'Estudio de lepidópteros',
+            institucionAdscripcion: 'EPN',
+            lineaInvestigacion:   'Entomología',
+            propositoPrestamo:    'Investigación taxonómica',
+            duracionPropuestaMeses: 6,
+        )
+    );
+}
+
+// ❌ Incorrect — Eloquent in Given
+public function queExisteUnaSolicitudEnEstadoBorrador(): void
+{
+    SolicitudPrestamoModel::create(['estado' => 'borrador', ...]); // Never
+}
 ```
+
+### 7.4 Shared state between steps
+
+State between `Dado`, `Cuando`, and `Entonces` is stored in **instance properties**.
+Never in static variables or the Laravel container.
+
+```php
+private ?SomeOutput $ultimaRespuesta      = null;
+private ?\Throwable  $excepcionCapturada  = null;
+private ?SolicitudPrestamo $solicitudExistente = null;
+```
+
+Behat instantiates Contexts **once per scenario**, so instance properties reset
+automatically between scenarios. Static properties do not — never use them for
+scenario state.
 
 ---
 
-## 6. Database cleanup between scenarios
+## 8. Database cleanup between scenarios
 
-Each scenario starts from a clean DB. Cleanup runs in `BaseContext` with `@BeforeScenario`:
+Each scenario starts from a clean DB. Cleanup runs in `BaseContext`:
 
 ```php
 /** @BeforeScenario */
-public function cleanDatabase(): void
+public function resetDatabase(): void
 {
-    Artisan::call('migrate:fresh');
+    static::$app->make(ConsoleKernel::class)->call('migrate:fresh');
 }
 ```
 
@@ -226,40 +372,33 @@ public function cleanDatabase(): void
 
 - `migrate:fresh` in `@BeforeScenario`, not in `@BeforeSuite`.
 - Do not manually truncate tables — it lets pending migrations go undetected.
-- If the scenario needs base data (catalogs, roles), seed them in the scenario's own `Given`, not in a global suite seeder.
+- If a scenario needs base catalog data (roles, taxonomic types), seed it
+  in the scenario's own `Dado` step, not in a global suite seeder.
 
 ---
 
-## 7. File and class naming
+## 9. File and class naming
 
-| Artifact | Convention | Example |
-|-----------|-----------|---------|
-| Feature file | `snake_case.feature` | `loan_request_submission.feature` |
-| Capability folder (Features) | `PascalCase` | `ResearcherLoanRequestProcessing/` |
-| Capability folder (Contexts) | `PascalCase` (mirrors Features) | `ResearcherLoanRequestProcessing/` |
-| Context class | `<Capability>Context.php` | `LoanRequestSubmissionContext.php` |
-| Context namespace | `Modules\<Module>\Tests\Behat\Contexts\<Capability>` | `Modules\LoanReceptionManagement\Tests\Behat\Contexts\ResearcherLoanRequestProcessing` |
-
----
-
-## 8. What Behat does NOT do in this project
-
-Behat covers **Application layer behavior** (Use Cases). It is not the place for:
-
-- ❌ Unit tests for entities or Value Objects → that is Pest/Unit.
-- ❌ Repository or infrastructure tests → that is Pest/Integration.
-- ❌ UI or HTTP tests → there are no controllers in scenarios; the Context calls handlers directly.
-- ❌ Tests for the PublicCatalog chatbot → that AI SDK integration is covered by dedicated Pest tests.
+| Artifact              | Convention    | Example                                      |
+|-----------------------|---------------|----------------------------------------------|
+| Feature file          | `snake_case.feature` | `envio_solicitud_prestamo.feature`      |
+| Capability folder (Features) | `PascalCase` | `TramitacionSolicitudesInvestigador/`  |
+| Capability folder (Contexts) | `PascalCase` (mirrors Features) | `TramitacionSolicitudesInvestigador/` |
+| Context class         | `<FeatureName>Context.php` | `EnvioSolicitudPrestamoContext.php`  |
+| Context namespace     | `Modules\<Module>\Tests\Behat\Contexts\<Capability>` | `Modules\LoanReceptionManagement\Tests\Behat\Contexts\TramitacionSolicitudesInvestigador` |
 
 ---
 
-## 9. Checklist before marking a scenario as implemented
+## 10. Checklist before marking a scenario as implemented
 
 - [ ] The `.feature` file has `# language: es` on the first line.
-- [ ] The scenario actor exists in the valid actors table (section 4.1).
-- [ ] There is exactly one `When` per `Scenario`.
-- [ ] The corresponding Context is listed in `behat.php`.
-- [ ] The Context extends `BaseContext` and has no bootstrap logic of its own.
-- [ ] Steps access the Use Case Handler, not Eloquent or Facades.
-- [ ] State between steps is stored in Context properties.
-- [ ] The scenario passes with `php artisan behat --suite=<Module>`.
+- [ ] The actor in the scenario belongs to the valid actors table (section 4.1).
+- [ ] There is exactly one `Cuando` per `Escenario`.
+- [ ] The Context is registered in `behat.php` before any step was written.
+- [ ] The Context extends `BaseContext` of the same module.
+- [ ] `Dado` steps seed state via Repository or Handler — never Eloquent or Facades.
+- [ ] `Cuando` steps wrap the Handler call in try/catch.
+- [ ] `Entonces` steps assert on `$this->ultimaRespuesta` or `$this->excepcionCapturada`.
+- [ ] State between steps is in instance properties, not static variables.
+- [ ] Pest/Unit tests for the domain rules exist before the Behat Context was written (Step 1).
+- [ ] The scenario passes: `php artisan behat --suite=<Module>`.
