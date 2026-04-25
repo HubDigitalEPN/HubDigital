@@ -66,3 +66,16 @@ feat(taxonomia)!: cambia el ID incremental por UUID para interoperabilidad DwC
 
 BREAKING CHANGE: Las tablas de migración legacy ya no son compatibles con el esquema de IDs enteros.
 ```
+## 7. Nombramiento de Ramas
+
+Para mantener la coherencia con los commits, el nombrado de las ramas temporales debe seguir estrictamente el siguiente formato:
+
+```text
+<tipo>/<alcance>/<nombre-descriptivo>
+```
+
+- tipo: El tipo de trabajo que se está realizando (feature, fix, docs, refactor, etc.).
+
+- scope: El módulo o componente afectado (ver sección 4).
+
+- nombre-descriptivo: Una descripción corta, en minúsculas y separada por guiones (kebab-case).
