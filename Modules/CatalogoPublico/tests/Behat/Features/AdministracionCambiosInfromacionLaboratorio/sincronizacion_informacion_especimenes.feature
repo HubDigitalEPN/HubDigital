@@ -33,23 +33,6 @@ Característica: Sincronización de información divulgable de especímenes
             | EPN-0012     | true                | true                  | true                   | true              | true             | true                 | true                    | true              | true                    | true          | true         | true           | true                | true                   | true                    |
             | EPN-002      | true                | true                  | true                   | true              | true             | true                 | true                    | true              | true                    | true          | true         | true           | true                | true                   | true                    |
             | EPN-005      | true                | true                  | true                   | true              | true             | true                 | true                    | true              | true                    | true          | true         | true           | true                | true                   | true                    |
-        Y al consultar la información divulgada del espécimen "EPN-0012" solo debe estar disponible la información:
-            | dato             | valor             |
-            | occurrenceID     | EPN-0012          |
-            | scientificName   | Atta cephalotes   |
-            | individualCount  | 3                 |
-            | typeStatus       | Holotype          |
-            | typeNotes        | Espécimen tipo    |
-            | specimenNotes    | Obrera recolectada |
-            | samplingProtocol | Trampa Winkler    |
-            | recordedBy       | Ana Torres        |
-            | occurrenceStatus | present           |
-            | family           | Formicidae        |
-            | genus            | Atta              |
-            | country          | Ecuador           |
-            | localityName     | Reserva Yasuní    |
-            | decimalLatitude  | -0.6753           |
-            | decimalLongitude | -76.3981          |
 
     Escenario: Sincronizar nuevos especímenes especificando datos divulgables
         Dado que los siguientes especímenes no existen en la tabla de divulgación:
@@ -72,19 +55,6 @@ Característica: Sincronización de información divulgable de especímenes
             | EPN-0012     | true           | true            | true       | false     | false         | true             | true       | true             | true   | true  | true    | true         | false           | false            |
             | EPN-002      | true           | true            | true       | false     | false         | true             | true       | true             | true   | true  | true    | true         | false           | false            |
             | EPN-005      | true           | true            | true       | false     | false         | true             | true       | true             | true   | true  | true    | true         | false           | false            |
-        Y al consultar la información divulgada del espécimen "EPN-0012" solo debe estar disponible la información:
-            | dato             | valor            |
-            | occurrenceID     | EPN-0012         |
-            | scientificName   | Atta cephalotes  |
-            | individualCount  | 3                |
-            | typeStatus       | Holotype         |
-            | samplingProtocol | Trampa Winkler   |
-            | recordedBy       | Ana Torres       |
-            | occurrenceStatus | present          |
-            | family           | Formicidae       |
-            | genus            | Atta             |
-            | country          | Ecuador          |
-            | localityName     | Reserva Yasuní   |
 
     Escenario: Modificar los datos divulgables de especímenes ya sincronizados
         Dado que los siguientes especímenes existen en la tabla de divulgación:
