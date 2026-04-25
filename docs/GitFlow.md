@@ -7,7 +7,7 @@ Este estándar se aplicará a todos los repositorios de la **Plataforma Digital 
 Cada mensaje de commit debe seguir este formato:
 
 ```text
-<tipo>(<alcance>): <descripción corta en imperativo>
+<tipo>(<alcance>): "<descripción corta en imperativo>"
 
 [cuerpo del mensaje opcional]
 
