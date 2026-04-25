@@ -11,8 +11,8 @@ Característica: Registro de solicitud de depósito
     Esquema del escenario: Aplicación de límite anual por tipo de trámite
         Dado que el investigador tiene <solicitudes_previas> solicitudes de tipo "<tipo_tramite>" registradas este año
         Cuando el investigador intenta crear una nueva solicitud de tipo "<tipo_tramite>"
-        Entonces el sistema establece el estado de la solicitud en "<estado_solicitud>"
-        Y el sistema emite el mensaje "<mensaje_alerta>"
+        Entonces la solicitud queda en estado "<estado_solicitud>"
+        Y el investigador es notificado con el mensaje "<mensaje_alerta>"
 
         Ejemplos:
             | tipo_tramite | solicitudes_previas | estado_solicitud | mensaje_alerta                         |
@@ -23,37 +23,56 @@ Característica: Registro de solicitud de depósito
 
     Esquema del escenario: Validación de Permiso de Movilización por provincia de origen
         Dado que el investigador declara que las muestras provienen de la provincia de "<provincia>"
-        Y el investigador "<estado_adjunto>" el documento "Copia del Permiso de Movilización"
+        Y el documento "Copia del Permiso de Movilización" se encuentra "<estado_adjunto>"
         Cuando el investigador envía la documentación inicial
-        Entonces el sistema establece el estado documental en "<estado_documental>"
-
+        Entonces el estado documental de la solicitud es "<estado_documental>"
         Ejemplos:
             | provincia | estado_adjunto | estado_documental   |
-            | Pichincha | no adjunta     | Válido              |
-            | Pichincha | adjunta        | Válido              |
-            | Guayas    | adjunta        | Válido              |
-            | Guayas    | no adjunta     | Requiere Corrección |
+            | Pichincha | No Adjuntado   | Válido              |
+            | Pichincha | Adjuntado      | Válido              |
+            | Guayas    | Adjuntado      | Válido              |
+            | Guayas    | No Adjuntado   | Requiere Corrección |
 
-    Escenario: Extracción automática de datos de los documentos oficiales
-        Dado que el investigador adjunta los documentos oficiales requeridos
-        Cuando el sistema procesa los documentos subidos
-        Entonces se extraen y autocompletan automáticamente los siguientes campos en la solicitud:
-            | Campo en Solicitud       | Documento Origen                                |
+    @deposito
+    Escenario: Integración de datos a partir de documentación oficial para Depósitos
+        Dado que el investigador seleccionó el trámite de "Depósito"
+        Cuando el investigador carga los siguientes documentos:
+            | Documento Oficial                               |
+            | Formato Solicitud Depósito                      |
+            | Copia de la Autorización de Recolección (MAATE) |
+            | Copia del Permiso de Movilización               |
+        Entonces la solicitud incorpora automáticamente la siguiente información:
+            | Información requerida    | Extraída de                                     |
             | N.º Permiso Recolección  | Copia de la Autorización de Recolección (MAATE) |
             | N.º Permiso Movilización | Copia del Permiso de Movilización               |
             | Grupo Animal             | Copia del Permiso de Movilización               |
             | Provincia                | Copia del Permiso de Movilización               |
             | Localidad                | Copia del Permiso de Movilización               |
 
-    Escenario: Completitud manual de datos obligatorios no extraídos automáticamente
-        Dado que el sistema procesa los documentos subidos
-        Pero no logra extraer el campo obligatorio "N.º Lotes"
-        Cuando el investigador ingresa manualmente el valor en el campo "N.º Lotes"
-        Y envía la solicitud
-        Entonces el sistema registra la solicitud exitosamente
-        Y el sistema establece el estado de la solicitud en "Pendiente de Revisión por Curaduría"
+    @donacion
+    Escenario: Carga de documentación oficial para Donaciones
+        Dado que el investigador seleccionó el trámite de "Donación"
+        Cuando el investigador carga los siguientes documentos:
+            | Documento Oficial                               |
+            | Formato Solicitud Donación                      |
+            | Carta de Cesión de Derechos / Origen Lícito     |
+        Entonces la solicitud registra el origen de la donación
+        Y pasa a estar "Pendiente de Revisión por Curaduría"
 
-    Escenario: Validación automática de identidad del solicitante
-        Cuando el sistema compara el nombre en los documentos subidos con el perfil del usuario
-        Entonces el sistema genera una "Alerta de Discrepancia de Identidad" si los datos no coinciden
-        Y permite al investigador adjuntar una justificación o corregir el perfil
+    Escenario: Completitud de datos obligatorios faltantes en la documentación
+        Dado que la documentación oficial no contiene el "Grupo Animal"
+        Cuando el investigador provee esta información faltante
+        Entonces la solicitud se registra exitosamente
+        Y pasa a estar "Pendiente de Revisión por Curaduría"
+
+    Esquema del escenario: Validación de identidad mediante el Formato de Solicitud
+        Dado que el investigador ha cargado el "Formato Solicitud Depósito"
+        Y su perfil de usuario está registrado como "<nombre_perfil>"
+        Cuando se compara el perfil del investigador con el nombre "<nombre_en_documento>" del formulario        Entonces el resultado de la validación es "<resultado>"
+        Y se habilita la acción: "<accion_permitida>"
+
+        Ejemplos:
+            | nombre_perfil | nombre_en_documento | resultado                 | accion_permitida                                |
+            | Juan Pérez    | Juan Pérez          | Conforme                  | Continuar trámite                               |
+            | Juan Pérez    | Juan Peres          | Discrepancia (Tipográfica) | Corregir nombre en Perfil                       |
+            | Juan Pérez    | María Gómez         | Discrepancia (Tercero)     | Adjuntar Justificación / Carta de Delegación    |
