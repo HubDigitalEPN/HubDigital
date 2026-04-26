@@ -1,4 +1,6 @@
 # language: es
+# Feature: 4
+
 Característica: Recepción de muestras físicas mediante escaneo QR
     Como curador
     Quiero escanear el código QR de las solicitudes aprobadas
