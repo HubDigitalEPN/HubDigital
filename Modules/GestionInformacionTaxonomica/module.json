@@ -1,0 +1,11 @@
+{
+    "name": "GestionPrestamosRecepciones",
+    "alias": "gestionprestamosrecepciones",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\GestionPrestamosRecepciones\\Infrastructure\\Providers\\GestionPrestamosRecepcionesServiceProvider"
+    ],
+    "files": []
+}
