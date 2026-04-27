@@ -49,4 +49,28 @@ return (new Config)
                         'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\TrazabilidadOperativaMovimientosCirculacion\ReubicacionDigitalGuiadaContext',
                     )
             )
+            ->withSuite(
+                (new Suite('GestionInformacionTaxonomica'))
+                    ->withPaths($base.'/Modules/GestionInformacionTaxonomica/tests/Behat/Features')
+                    ->withContexts(
+                        // GestionRegistrosTaxonomicos
+                        'Modules\GestionInformacionTaxonomica\Tests\Behat\Contexts\GestionRegistrosTaxonomicos\RegistroTaxonContext',
+                        'Modules\GestionInformacionTaxonomica\Tests\Behat\Contexts\GestionRegistrosTaxonomicos\UnicidadNomenclaturaContext',
+                        'Modules\GestionInformacionTaxonomica\Tests\Behat\Contexts\GestionRegistrosTaxonomicos\BusquedaArbolTaxonomicoContext',
+                        'Modules\GestionInformacionTaxonomica\Tests\Behat\Contexts\GestionRegistrosTaxonomicos\GestionEntidadesDepositantesContext',
+                        'Modules\GestionInformacionTaxonomica\Tests\Behat\Contexts\GestionRegistrosTaxonomicos\GeneracionActaEntregaContext',
+                        // IdentificacionFisicaEspecimenes
+                        'Modules\GestionInformacionTaxonomica\Tests\Behat\Contexts\IdentificacionFisicaEspecimenes\AsignacionGuidEspecimenContext',
+                        'Modules\GestionInformacionTaxonomica\Tests\Behat\Contexts\IdentificacionFisicaEspecimenes\GeneracionCodigoQrContext',
+                        'Modules\GestionInformacionTaxonomica\Tests\Behat\Contexts\IdentificacionFisicaEspecimenes\LecturaQrMovilContext',
+                        // ValidacionYCalidadDatos
+                        'Modules\GestionInformacionTaxonomica\Tests\Behat\Contexts\ValidacionYCalidadDatos\ValidacionDarwinCoreContext',
+                        'Modules\GestionInformacionTaxonomica\Tests\Behat\Contexts\ValidacionYCalidadDatos\VerificacionDocumentosLegalesContext',
+                        'Modules\GestionInformacionTaxonomica\Tests\Behat\Contexts\ValidacionYCalidadDatos\MigracionEtlHistoricosContext',
+                        'Modules\GestionInformacionTaxonomica\Tests\Behat\Contexts\ValidacionYCalidadDatos\TrazabilidadErroresMigracionContext',
+                        // InteroperabilidadEstados
+                        'Modules\GestionInformacionTaxonomica\Tests\Behat\Contexts\InteroperabilidadEstados\SincronizacionEstadoPrestamoContext',
+                        'Modules\GestionInformacionTaxonomica\Tests\Behat\Contexts\InteroperabilidadEstados\SincronizacionEstadoDevolucionContext',
+                    )
+            )
     );
