@@ -4,71 +4,343 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Tests\Behat\Contexts\GestionAutonomaSeguridadFisicaInventario;
 
-use Behat\Behat\Tester\Exception\PendingException;
 use Behat\Step\Given;
 use Behat\Step\Then;
 use Behat\Step\When;
+use Modules\InventarioGestionColeccion\Application\UseCases\RegistrarIngresoCaja\RegistrarIngresoCajaHandler;
+use Modules\InventarioGestionColeccion\Application\UseCases\RegistrarIngresoCaja\RegistrarIngresoCajaInput;
+use Modules\InventarioGestionColeccion\Application\UseCases\RegistrarIngresoCaja\RegistrarIngresoCajaOutput;
+use Modules\InventarioGestionColeccion\Application\UseCases\RegistrarRetiroCaja\RegistrarRetiroCajaHandler;
+use Modules\InventarioGestionColeccion\Application\UseCases\RegistrarRetiroCaja\RegistrarRetiroCajaInput;
+use Modules\InventarioGestionColeccion\Application\UseCases\RegistrarRetiroCaja\RegistrarRetiroCajaOutput;
+use Modules\InventarioGestionColeccion\Domain\Entities\Caja;
+use Modules\InventarioGestionColeccion\Domain\Entities\Gabinete;
+use Modules\InventarioGestionColeccion\Domain\Entities\RanuraGabinete;
+use Modules\InventarioGestionColeccion\Domain\Entities\UbicacionCaja;
+use Modules\InventarioGestionColeccion\Domain\Repositories\AlertaUbicacionRepository;
+use Modules\InventarioGestionColeccion\Domain\Repositories\CajaRepository;
+use Modules\InventarioGestionColeccion\Domain\Repositories\EventoCicloIotRepository;
+use Modules\InventarioGestionColeccion\Domain\Repositories\GabineteRepository;
+use Modules\InventarioGestionColeccion\Domain\Repositories\NotificacionRepository;
+use Modules\InventarioGestionColeccion\Domain\Repositories\RanuraGabineteRepository;
+use Modules\InventarioGestionColeccion\Domain\Repositories\UbicacionCajaRepository;
+use Modules\InventarioGestionColeccion\Domain\ValueObjects\CajaId;
+use Modules\InventarioGestionColeccion\Domain\ValueObjects\EstadoAlerta;
+use Modules\InventarioGestionColeccion\Domain\ValueObjects\EstadoCaja;
+use Modules\InventarioGestionColeccion\Domain\ValueObjects\RanuraId;
+use Modules\InventarioGestionColeccion\Domain\ValueObjects\TipoAlerta;
 use Modules\InventarioGestionColeccion\Tests\Behat\Contexts\BaseContext;
+use PHPUnit\Framework\Assert;
 
 final class RegistroUbicacionCajasContext extends BaseContext
 {
+    // ── Handlers ─────────────────────────────────────────────────────────────
+
+    private RegistrarIngresoCajaHandler $ingresoHandler;
+
+    private RegistrarRetiroCajaHandler $retiroHandler;
+
+    // ── Repositories ─────────────────────────────────────────────────────────
+
+    private GabineteRepository $gabineteRepo;
+
+    private RanuraGabineteRepository $ranuraRepo;
+
+    private CajaRepository $cajaRepo;
+
+    private UbicacionCajaRepository $ubicacionRepo;
+
+    private EventoCicloIotRepository $eventoRepo;
+
+    private AlertaUbicacionRepository $alertaRepo;
+
+    private NotificacionRepository $notificacionRepo;
+
+    // ── Estado del escenario ─────────────────────────────────────────────────
+
+    private ?CajaId $cajaId = null;
+
+    private ?RanuraId $ranuraId = null;
+
+    private ?RegistrarIngresoCajaOutput $ultimoIngresoOutput = null;
+
+    private ?RegistrarRetiroCajaOutput $ultimoRetiroOutput = null;
+
+    private ?\Throwable $excepcionCapturada = null;
+
+    /** Acción ejecutada en el paso @When, para que @Then pueda verificar el evento correcto */
+    private ?string $accionEjecutada = null;
+
+    /** Controla si la hora actual está fuera del horario autorizado (para el escenario de movimiento no autorizado) */
+    private bool $fueraDeHorario = false;
+
+    // ── Constructor ──────────────────────────────────────────────────────────
+
+    public function __construct()
+    {
+        $this->ingresoHandler = $this->make(RegistrarIngresoCajaHandler::class);
+        $this->retiroHandler = $this->make(RegistrarRetiroCajaHandler::class);
+        $this->gabineteRepo = $this->make(GabineteRepository::class);
+        $this->ranuraRepo = $this->make(RanuraGabineteRepository::class);
+        $this->cajaRepo = $this->make(CajaRepository::class);
+        $this->ubicacionRepo = $this->make(UbicacionCajaRepository::class);
+        $this->eventoRepo = $this->make(EventoCicloIotRepository::class);
+        $this->alertaRepo = $this->make(AlertaUbicacionRepository::class);
+        $this->notificacionRepo = $this->make(NotificacionRepository::class);
+    }
+
+    // ==========================================
+    // ESQUEMA: Registro de movimiento de una caja en el gabinete
+    // ==========================================
+
     #[Given('que se está monitoreando el gabinete')]
     public function queSeEstáMonitoreandoElGabinete(): void
     {
-        throw new PendingException;
+        $gabinete = Gabinete::crear(
+            id: $this->gabineteRepo->nextIdentity(),
+            codigo: 'GAB-MON-001',
+            nombre: 'Gabinete Monitoreado',
+            totalRanuras: 5,
+        );
+        $this->gabineteRepo->guardar($gabinete);
+
+        $ranura = RanuraGabinete::crear(
+            id: $this->ranuraRepo->nextIdentity(),
+            gabineteId: $gabinete->id(),
+            numeroRanura: 1,
+            familiaTaxonomicaEsperadaId: 'Nymphalidae',
+        );
+        $this->ranuraRepo->guardar($ranura);
+        $this->ranuraId = $ranura->id();
+
+        $gabineteActivo = $this->gabineteRepo->buscarPorId($gabinete->id());
+        Assert::assertNotNull($gabineteActivo, 'El gabinete debe estar registrado y activo');
+        Assert::assertNotNull($this->ranuraId, 'Debe existir al menos una ranura para el gabinete');
     }
 
-    #[Given('/^existe una caja entomológica en condición de (.+)$/')]
+    #[Given('/^existe una caja entomológica en condición de (.+)$/u')]
     public function existeUnaCajaEntomológicaEnCondiciónDe(string $condicion_previa): void
     {
-        throw new PendingException;
+        $caja = Caja::crear(
+            id: $this->cajaRepo->nextIdentity(),
+            codigo: 'CAJA-MOV-001',
+            familiaTaxonomicaId: 'Nymphalidae',
+            capacidadMaxima: 10,
+        );
+
+        if (str_contains($condicion_previa, 'registrada en una ranura')) {
+            // Caja ya ingresada — debe estar en estado "en_gabinete" con ubicación activa
+            Assert::assertNotNull($this->ranuraId, 'Se requiere una ranura sembrada en el paso anterior');
+
+            $caja->ingresarEnRanura($this->ranuraId);
+            $this->cajaRepo->guardar($caja);
+
+            $ubicacion = UbicacionCaja::registrar(
+                id: $this->ubicacionRepo->nextIdentity(),
+                cajaId: $caja->id(),
+                ranuraId: $this->ranuraId,
+                ingresadaEn: now(),
+            );
+            $this->ubicacionRepo->guardar($ubicacion);
+
+            $cajaPersistida = $this->cajaRepo->buscarPorId($caja->id());
+            Assert::assertNotNull($cajaPersistida);
+            Assert::assertTrue(
+                $cajaPersistida->estadoActual()->equals(EstadoCaja::EnGabinete),
+                'La caja debe estar "en_gabinete" para el escenario de retiro'
+            );
+        } else {
+            // Ranura vacía disponible — caja en tránsito, sin ubicación activa
+            $this->cajaRepo->guardar($caja);
+
+            $cajaPersistida = $this->cajaRepo->buscarPorId($caja->id());
+            Assert::assertNotNull($cajaPersistida);
+            Assert::assertTrue(
+                $cajaPersistida->estadoActual()->equals(EstadoCaja::EnTransito),
+                'La caja debe estar "en_transito" para el escenario de ingreso'
+            );
+        }
+
+        $this->cajaId = $caja->id();
     }
 
     #[When(':accion la caja entomológica')]
     public function laCajaEntomológica(string $accion): void
     {
-        throw new PendingException;
+        Assert::assertNotNull($this->cajaId, 'Se requiere una caja sembrada en @Given');
+        $this->accionEjecutada = $accion;
+
+        try {
+            if ($accion === 'ingreso') {
+                Assert::assertNotNull($this->ranuraId, 'Se requiere una ranura disponible para el ingreso');
+                $this->ultimoIngresoOutput = $this->ingresoHandler->handle(
+                    new RegistrarIngresoCajaInput(
+                        cajaId: (string) $this->cajaId,
+                        ranuraId: (string) $this->ranuraId,
+                        fueraDeHorario: $this->fueraDeHorario,
+                        actorRol: 'esp32',
+                    )
+                );
+            } else {
+                $this->ultimoRetiroOutput = $this->retiroHandler->handle(
+                    new RegistrarRetiroCajaInput(
+                        cajaId: (string) $this->cajaId,
+                        fueraDeHorario: $this->fueraDeHorario,
+                        actorRol: 'esp32',
+                    )
+                );
+            }
+        } catch (\Throwable $e) {
+            $this->excepcionCapturada = $e;
+        }
     }
 
     #[Then('se debe registrar el evento de :accion')]
     public function seDebeRegistrarElEventoDe(string $accion): void
     {
-        throw new PendingException;
+        Assert::assertNull(
+            $this->excepcionCapturada,
+            'No se esperaba excepción: '.($this->excepcionCapturada?->getMessage() ?? '')
+        );
+
+        $tipoEvento = $accion === 'ingreso' ? 'caja_ingresada' : 'caja_retirada';
+        $evento = $this->eventoRepo->buscarUltimoPorAgregadoYTipo(
+            agregadoId: (string) $this->cajaId,
+            tipoEvento: $tipoEvento,
+        );
+
+        Assert::assertNotNull($evento, "Debe existir un evento de tipo '{$tipoEvento}' para la caja");
+        Assert::assertSame($tipoEvento, $evento->tipoEvento(), 'El tipo de evento debe coincidir con la acción');
+        Assert::assertSame('caja', $evento->tipoAgregado(), 'El agregado del evento debe ser "caja"');
     }
 
-    #[Then('/^el estado de la caja debe cambiar a (.+)$/')]
+    #[Then('/^el estado de la caja debe cambiar a (.+)$/u')]
     public function elEstadoDeLaCajaDebeCambiarA(string $estado_resultante): void
     {
-        throw new PendingException;
+        $caja = $this->cajaRepo->buscarPorId($this->cajaId);
+        Assert::assertNotNull($caja, 'La caja debe existir en el repositorio');
+
+        $estadoEsperado = match (trim($estado_resultante)) {
+            'En Gabinete' => EstadoCaja::EnGabinete,
+            'En Tránsito' => EstadoCaja::EnTransito,
+            default => throw new \InvalidArgumentException("Estado desconocido: {$estado_resultante}"),
+        };
+
+        Assert::assertTrue(
+            $caja->estadoActual()->equals($estadoEsperado),
+            "Se esperaba estado '{$estado_resultante}' pero la caja tiene '{$caja->estadoActual()->valor()}'"
+        );
     }
+
+    // ==========================================
+    // ESCENARIO: Movimiento no autorizado fuera del horario establecido
+    // ==========================================
 
     #[Given('que el horario autorizado de movimiento está configurado')]
     public function queElHorarioAutorizadoDeMovimientoEstáConfigurado(): void
     {
-        throw new PendingException;
+        // Sembrar gabinete y caja en gabinete para que pueda retirarse
+        $gabinete = Gabinete::crear(
+            id: $this->gabineteRepo->nextIdentity(),
+            codigo: 'GAB-HOR-001',
+            nombre: 'Gabinete con Horario',
+            totalRanuras: 5,
+        );
+        $this->gabineteRepo->guardar($gabinete);
+
+        $ranura = RanuraGabinete::crear(
+            id: $this->ranuraRepo->nextIdentity(),
+            gabineteId: $gabinete->id(),
+            numeroRanura: 1,
+            familiaTaxonomicaEsperadaId: 'Nymphalidae',
+        );
+        $this->ranuraRepo->guardar($ranura);
+        $this->ranuraId = $ranura->id();
+
+        $caja = Caja::crear(
+            id: $this->cajaRepo->nextIdentity(),
+            codigo: 'CAJA-HOR-001',
+            familiaTaxonomicaId: 'Nymphalidae',
+            capacidadMaxima: 10,
+        );
+        $caja->ingresarEnRanura($this->ranuraId);
+        $this->cajaRepo->guardar($caja);
+        $this->cajaId = $caja->id();
+
+        $ubicacion = UbicacionCaja::registrar(
+            id: $this->ubicacionRepo->nextIdentity(),
+            cajaId: $caja->id(),
+            ranuraId: $this->ranuraId,
+            ingresadaEn: now()->subHours(2),
+        );
+        $this->ubicacionRepo->guardar($ubicacion);
+
+        $cajaPersistida = $this->cajaRepo->buscarPorId($caja->id());
+        Assert::assertNotNull($cajaPersistida, 'La caja debe estar registrada en gabinete');
+        Assert::assertTrue(
+            $cajaPersistida->estadoActual()->equals(EstadoCaja::EnGabinete),
+            'La caja debe estar en gabinete para poder ser retirada'
+        );
     }
 
     #[Given('la hora actual está fuera del horario autorizado')]
     public function laHoraActualEstáFueraDelHorarioAutorizado(): void
     {
-        throw new PendingException;
+        $this->fueraDeHorario = true;
+        Assert::assertTrue($this->fueraDeHorario, 'El flag de fuera de horario debe estar activo');
     }
 
     #[When('retiro una caja entomológica de su ranura')]
     public function retiroUnaCajaEntomológicaDeSuRanura(): void
     {
-        throw new PendingException;
+        Assert::assertNotNull($this->cajaId, 'Se requiere una caja sembrada en @Given');
+        $this->accionEjecutada = 'retiro';
+
+        try {
+            $this->ultimoRetiroOutput = $this->retiroHandler->handle(
+                new RegistrarRetiroCajaInput(
+                    cajaId: (string) $this->cajaId,
+                    fueraDeHorario: $this->fueraDeHorario,
+                    actorRol: 'esp32',
+                )
+            );
+        } catch (\Throwable $e) {
+            $this->excepcionCapturada = $e;
+        }
     }
 
     #[Then('se debe generar una alerta de "Movimiento No Autorizado"')]
     public function seDebeGenerarUnaAlertaDeMovimientoNoAutorizado(): void
     {
-        throw new PendingException;
+        Assert::assertNull($this->excepcionCapturada, 'No se esperaba una excepción de dominio');
+        Assert::assertNotNull($this->ultimoRetiroOutput, 'El handler de retiro debe retornar una respuesta');
+
+        $alerta = $this->alertaRepo->buscarActivaPorCaja($this->cajaId);
+        Assert::assertNotNull($alerta, 'Debe existir una alerta activa de movimiento no autorizado');
+        Assert::assertTrue(
+            $alerta->tipo()->equals(TipoAlerta::MovimientoNoAutorizado),
+            'El tipo de alerta debe ser movimiento_no_autorizado'
+        );
+        Assert::assertTrue(
+            $alerta->estado()->equals(EstadoAlerta::Activa),
+            'La alerta debe estar en estado activo'
+        );
     }
 
     #[Then('el curador responsable debe recibir una notificación inmediata')]
     public function elCuradorResponsableDebeRecibirUnaNotificaciónInmediata(): void
     {
-        throw new PendingException;
+        Assert::assertNotNull($this->cajaId);
+
+        $notificacion = $this->notificacionRepo->buscarUltimaNotificacionPorCaja($this->cajaId);
+        Assert::assertNotNull(
+            $notificacion,
+            'Debe haberse enviado una notificación al curador responsable'
+        );
+        Assert::assertSame(
+            'movimiento_no_autorizado',
+            $notificacion->tipo(),
+            'La notificación debe ser de tipo movimiento_no_autorizado'
+        );
     }
 }
