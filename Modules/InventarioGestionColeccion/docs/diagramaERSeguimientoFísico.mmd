@@ -1,0 +1,115 @@
+erDiagram
+
+  gabinetes {
+    uuid id PK
+    varchar codigo UK
+    varchar nombre
+    smallint total_ranuras
+    boolean activo
+    timestamptz creado_en
+    timestamptz actualizado_en
+  }
+
+  ranuras_gabinete {
+    uuid id PK
+    uuid gabinete_id FK
+    smallint numero_ranura
+    varchar familia_taxonomica_esperada_id "nullable - ref. externa módulo taxonómico"
+    uuid caja_actual_id "nullable - desnorm. hacia cajas activa en esta ranura"
+    boolean activa
+    timestamptz creada_en
+    timestamptz actualizada_en
+  }
+
+  cajas {
+    uuid id PK
+    varchar codigo UK
+    varchar nombre "nullable"
+    varchar familia_taxonomica_id "ref. externa módulo taxonómico"
+    smallint capacidad_maxima "nullable"
+    varchar estado_actual "en_gabinete en_transito ubicacion_incorrecta pendiente_clasificacion extraccion_prolongada extraviada"
+    uuid ubicacion_actual_id "nullable - desnorm. hacia ranuras_gabinete activa"
+    timestamptz creada_en
+    timestamptz actualizada_en
+  }
+
+  ubicaciones_caja {
+    uuid id PK
+    uuid caja_id FK
+    uuid ranura_gabinete_id FK
+    timestamptz ingresada_en
+    timestamptz retirada_en "nullable - null si es ubicación activa"
+    uuid registrada_por "nullable"
+    timestamptz creada_en
+  }
+
+  especimenes_en_caja {
+    uuid id PK
+    varchar especimen_codigo_externo UK "ref. externa módulo taxonómico"
+    uuid caja_id FK "caja de origen - no cambia aunque esté en préstamo"
+    boolean en_prestamo
+    timestamptz asignado_en
+    timestamptz actualizado_en
+  }
+
+  traslados_especimen {
+    uuid id PK
+    varchar especimen_codigo_externo "ref. externa módulo taxonómico"
+    uuid caja_origen_id FK
+    uuid caja_destino_id FK
+    varchar estado "pendiente confirmado cancelado"
+    varchar motivo "reubicacion estudio otro"
+    uuid iniciado_por
+    timestamptz iniciado_en
+    timestamptz confirmado_en "nullable"
+    timestamptz creado_en
+    timestamptz actualizado_en
+  }
+
+  notificaciones {
+    uuid id PK
+    uuid caja_id FK
+    varchar tipo "movimiento_no_autorizado extraccion_proxima_al_limite"
+    jsonb datos_contexto "nullable"
+    timestamptz creada_en
+  }
+
+  alertas_ubicacion {
+    uuid id PK
+    uuid caja_id FK
+    varchar tipo "incongruencia_taxonomica movimiento_no_autorizado extraccion_prolongada familia_no_asignada"
+    varchar estado "activa resuelta ignorada"
+    jsonb datos_contexto
+    uuid resuelta_por "nullable"
+    timestamptz resuelta_en "nullable"
+    timestamptz creada_en
+  }
+
+  eventos_ciclo_iot {
+    bigserial id PK
+    varchar tipo_agregado "gabinete ranura caja ubicacion traslado alerta"
+    uuid agregado_id
+    varchar tipo_evento "caja_ingresada caja_retirada especimen_asignado especimen_trasladado especimen_prestamo_marcado especimen_prestamo_devuelto alerta_generada alerta_resuelta sincronizacion_esp32"
+    smallint version_evento
+    jsonb datos
+    uuid actor_id "nullable"
+    varchar actor_rol "sistema esp32 curador"
+    timestamptz ocurrido_en
+    timestamptz creada_en
+  }
+
+  gabinetes ||--o{ ranuras_gabinete : "tiene"
+  ranuras_gabinete ||--o{ ubicaciones_caja : "es ocupada en"
+  cajas ||--o{ ubicaciones_caja : "tiene historial de"
+  cajas }o--o| ranuras_gabinete : "ubicacion_actual apunta a"
+  cajas ||--o{ especimenes_en_caja : "contiene"
+  especimenes_en_caja ||--o{ traslados_especimen : "origina"
+  cajas ||--o{ traslados_especimen : "es origen en"
+  cajas ||--o{ traslados_especimen : "es destino en"
+  cajas ||--o{ notificaciones : "origina"
+  cajas ||--o{ alertas_ubicacion : "genera"
+  cajas ||--o{ eventos_ciclo_iot : "emite"
+  ranuras_gabinete ||--o{ eventos_ciclo_iot : "emite"
+  gabinetes ||--o{ eventos_ciclo_iot : "emite"
+  traslados_especimen ||--o{ eventos_ciclo_iot : "emite"
+  alertas_ubicacion ||--o{ eventos_ciclo_iot : "emite"
