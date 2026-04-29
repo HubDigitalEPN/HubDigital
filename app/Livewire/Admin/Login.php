@@ -17,15 +17,13 @@ class Login extends Component
     #[Validate('required')]
     public string $password = '';
 
-    public function __construct(
-        private readonly AdminAuthService $authService,
-    ) {}
-
     public function login(): void
     {
         $this->validate();
 
-        if ($this->authService->attempt($this->username, $this->password)) {
+        $authService = app(AdminAuthService::class);
+
+        if ($authService->attempt($this->username, $this->password)) {
             session()->regenerate();
             session(['admin_authenticated' => true]);
             $this->redirect(route('admin.dashboard'), navigate: true);
