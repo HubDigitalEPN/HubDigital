@@ -13,14 +13,14 @@ use Modules\InventarioGestionColeccion\Application\UseCases\ConsultarHistorialCu
 use Modules\InventarioGestionColeccion\Application\UseCases\IniciarReubicacionEspecimen\IniciarReubicacionEspecimenHandler;
 use Modules\InventarioGestionColeccion\Application\UseCases\IniciarReubicacionEspecimen\IniciarReubicacionEspecimenInput;
 use Modules\InventarioGestionColeccion\Application\UseCases\IniciarReubicacionEspecimen\IniciarReubicacionEspecimenOutput;
-use Modules\InventarioGestionColeccion\Domain\Entities\Caja;
-use Modules\InventarioGestionColeccion\Domain\Entities\EspecimenEnCaja;
-use Modules\InventarioGestionColeccion\Domain\Entities\TrasladoEspecimen;
-use Modules\InventarioGestionColeccion\Domain\Repositories\CajaRepository;
-use Modules\InventarioGestionColeccion\Domain\Repositories\EspecimenEnCajaRepository;
-use Modules\InventarioGestionColeccion\Domain\Repositories\TrasladoEspecimenRepository;
-use Modules\InventarioGestionColeccion\Domain\ValueObjects\CajaId;
-use Modules\InventarioGestionColeccion\Domain\ValueObjects\EstadoTraslado;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Caja;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\EspecimenEnCaja;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\TrasladoEspecimen;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\CajaRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenEnCajaRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\TrasladoEspecimenRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\CajaId;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoTraslado;
 use Modules\InventarioGestionColeccion\Tests\Behat\Contexts\BaseContext;
 use PHPUnit\Framework\Assert;
 

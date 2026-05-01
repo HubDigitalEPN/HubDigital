@@ -9,12 +9,12 @@ use Behat\Step\Then;
 use Behat\Step\When;
 use Modules\InventarioGestionColeccion\Application\UseCases\RegistrarEspecimen\RegistrarEspecimenHandler;
 use Modules\InventarioGestionColeccion\Application\UseCases\RegistrarEspecimen\RegistrarEspecimenInput;
-use Modules\InventarioGestionColeccion\Domain\Entities\EntidadDepositante;
-use Modules\InventarioGestionColeccion\Domain\Entities\Especimen;
-use Modules\InventarioGestionColeccion\Domain\Entities\Taxon;
-use Modules\InventarioGestionColeccion\Domain\Repositories\EntidadDepositanteRepositoryInterface;
-use Modules\InventarioGestionColeccion\Domain\Repositories\EspecimenRepositoryInterface;
-use Modules\InventarioGestionColeccion\Domain\Repositories\TaxonRepositoryInterface;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\EntidadDepositante;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especimen;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Taxon;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EntidadDepositanteRepositoryInterface;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\TaxonRepositoryInterface;
 use Modules\InventarioGestionColeccion\Tests\Behat\Contexts\BaseContext;
 use PHPUnit\Framework\Assert;
 
