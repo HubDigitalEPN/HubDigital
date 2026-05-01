@@ -9,11 +9,11 @@ use Behat\Step\Then;
 use Behat\Step\When;
 use Modules\InventarioGestionColeccion\Application\UseCases\GenerarCodigoQr\GenerarCodigoQrHandler;
 use Modules\InventarioGestionColeccion\Application\UseCases\GenerarCodigoQr\GenerarCodigoQrInput;
-use Modules\InventarioGestionColeccion\Domain\Entities\Especimen;
-use Modules\InventarioGestionColeccion\Domain\Entities\Taxon;
-use Modules\InventarioGestionColeccion\Domain\Repositories\CodigoQrRepositoryInterface;
-use Modules\InventarioGestionColeccion\Domain\Repositories\EspecimenRepositoryInterface;
-use Modules\InventarioGestionColeccion\Domain\Repositories\TaxonRepositoryInterface;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especimen;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Taxon;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\CodigoQrRepositoryInterface;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\TaxonRepositoryInterface;
 use Modules\InventarioGestionColeccion\Tests\Behat\Contexts\BaseContext;
 use PHPUnit\Framework\Assert;
 

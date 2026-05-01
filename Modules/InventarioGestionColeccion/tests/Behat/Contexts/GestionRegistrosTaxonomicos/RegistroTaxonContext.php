@@ -11,9 +11,9 @@ use Modules\InventarioGestionColeccion\Application\UseCases\ActualizarTaxon\Actu
 use Modules\InventarioGestionColeccion\Application\UseCases\ActualizarTaxon\ActualizarTaxonInput;
 use Modules\InventarioGestionColeccion\Application\UseCases\RegistrarTaxon\RegistrarTaxonHandler;
 use Modules\InventarioGestionColeccion\Application\UseCases\RegistrarTaxon\RegistrarTaxonInput;
-use Modules\InventarioGestionColeccion\Domain\Entities\Taxon;
-use Modules\InventarioGestionColeccion\Domain\Repositories\TaxonRepositoryInterface;
-use Modules\InventarioGestionColeccion\Domain\ValueObjects\EstadoTaxon;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Taxon;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\TaxonRepositoryInterface;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoTaxon;
 use Modules\InventarioGestionColeccion\Tests\Behat\Contexts\BaseContext;
 use PHPUnit\Framework\Assert;
 

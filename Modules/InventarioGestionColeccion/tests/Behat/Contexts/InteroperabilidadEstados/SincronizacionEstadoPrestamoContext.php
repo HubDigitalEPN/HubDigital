@@ -9,11 +9,11 @@ use Behat\Step\Then;
 use Behat\Step\When;
 use Modules\InventarioGestionColeccion\Application\UseCases\ProcesarEventoEspecimenPrestado\ProcesarEventoEspecimenPrestadoHandler;
 use Modules\InventarioGestionColeccion\Application\UseCases\ProcesarEventoEspecimenPrestado\ProcesarEventoEspecimenPrestadoInput;
-use Modules\InventarioGestionColeccion\Domain\Entities\Especimen;
-use Modules\InventarioGestionColeccion\Domain\Entities\Taxon;
-use Modules\InventarioGestionColeccion\Domain\Repositories\EspecimenRepositoryInterface;
-use Modules\InventarioGestionColeccion\Domain\Repositories\TaxonRepositoryInterface;
-use Modules\InventarioGestionColeccion\Domain\ValueObjects\EstadoEspecimen;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especimen;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Taxon;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\TaxonRepositoryInterface;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoEspecimen;
 use Modules\InventarioGestionColeccion\Tests\Behat\Contexts\BaseContext;
 use PHPUnit\Framework\Assert;
 

@@ -9,9 +9,9 @@ use Behat\Step\Then;
 use Behat\Step\When;
 use Modules\InventarioGestionColeccion\Application\UseCases\ObtenerReporteErroresEtl\ObtenerReporteErroresEtlHandler;
 use Modules\InventarioGestionColeccion\Application\UseCases\ObtenerReporteErroresEtl\ObtenerReporteErroresEtlInput;
-use Modules\InventarioGestionColeccion\Domain\Entities\RegistroEtl;
-use Modules\InventarioGestionColeccion\Domain\Repositories\RegistroEtlRepositoryInterface;
-use Modules\InventarioGestionColeccion\Domain\ValueObjects\EstadoRegistroEtl;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\RegistroEtl;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\RegistroEtlRepositoryInterface;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoRegistroEtl;
 use Modules\InventarioGestionColeccion\Tests\Behat\Contexts\BaseContext;
 use PHPUnit\Framework\Assert;
 
