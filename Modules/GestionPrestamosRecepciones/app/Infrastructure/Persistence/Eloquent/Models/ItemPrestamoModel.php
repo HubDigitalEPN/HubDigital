@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 final class ItemPrestamoModel extends Model
 {
-    protected $table = 'items_prestamo';
+    protected $table = 'prestamos.items_prestamo';
 
     protected $primaryKey = 'id';
 

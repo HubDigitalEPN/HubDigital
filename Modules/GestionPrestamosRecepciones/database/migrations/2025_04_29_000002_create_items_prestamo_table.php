@@ -10,7 +10,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('items_prestamo', function (Blueprint $table): void {
+        Schema::create('prestamos.items_prestamo', function (Blueprint $table): void {
             $table->uuid('id')->primary();
             $table->uuid('solicitud_prestamo_id');
             $table->string('especimen_codigo_externo');
@@ -21,13 +21,13 @@ return new class extends Migration
 
             $table->foreign('solicitud_prestamo_id')
                 ->references('id')
-                ->on('solicitudes_prestamo')
+                ->on('prestamos.solicitudes_prestamo')
                 ->cascadeOnDelete();
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('items_prestamo');
+        Schema::dropIfExists('prestamos.items_prestamo');
     }
 };
