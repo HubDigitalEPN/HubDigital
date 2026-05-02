@@ -114,21 +114,32 @@ Laravel's default `app/` layout is flat. For Clean Architecture, introduce a `sr
 ```
 project-root/
 ├── app/                              # Laravel-specific (Presentation + Infra wiring)
+
 │   ├── Console/
 │   │   └── Commands/                 # Artisan commands (Presentation)
+
 │   ├── Http/
 │   │   ├── Controllers/              # Thin controllers — delegate to use cases
+
 │   │   ├── Middleware/
 │   │   ├── Requests/                 # Form requests → DTOs
+
 │   │   └── Resources/                # API Resources (output DTOs)
+
 │   ├── Jobs/                         # Queue workers (Infra adapters)
+
 │   ├── Mail/                         # Mailables (Infra)
+
 │   ├── Notifications/
 │   ├── Policies/                     # Authorization
+
 │   └── Providers/                    # Bind ports → adapters
+
 │
 ├── src/                              # Framework-independent code
+
 │   ├── Shared/                       # Kernel / cross-cutting
+
 │   │   ├── Domain/
 │   │   │   ├── ValueObject.php
 │   │   │   ├── Entity.php
@@ -137,8 +148,10 @@ project-root/
 │   │   │   └── Exceptions/
 │   │   └── Application/
 │   │       └── Bus/                  # Command/Query bus interfaces
+
 │   │
 │   ├── Admissions/                   # Bounded Context #1
+
 │   │   ├── Domain/
 │   │   │   ├── Entities/
 │   │   │   │   └── Student.php
@@ -150,18 +163,21 @@ project-root/
 │   │   │   ├── Events/
 │   │   │   │   └── StudentAdmitted.php
 │   │   │   ├── Repositories/         # INTERFACES only
+
 │   │   │   │   └── StudentRepository.php
 │   │   │   └── Exceptions/
 │   │   │       └── QuotaExceededException.php
 │   │   │
 │   │   ├── Application/
 │   │   │   ├── UseCases/             # aka Actions
+
 │   │   │   │   ├── EvaluateAdmission/
 │   │   │   │   │   ├── EvaluateAdmissionHandler.php
 │   │   │   │   │   ├── EvaluateAdmissionInput.php
 │   │   │   │   │   └── EvaluateAdmissionOutput.php
 │   │   │   │   └── RegisterStudent/
 │   │   │   ├── Ports/                # Interfaces for external services
+
 │   │   │   │   ├── GradesGatewayPort.php
 │   │   │   │   └── NotificationPort.php
 │   │   │   └── DTOs/
@@ -179,9 +195,11 @@ project-root/
 │   │           └── MailNotificationAdapter.php
 │   │
 │   └── Billing/                      # Bounded Context #2 (same internal layout)
+
 │
 ├── bootstrap/
 │   ├── app.php                       # Laravel 11+ central config
+
 │   └── providers.php
 ├── config/
 ├── database/
@@ -194,8 +212,11 @@ project-root/
 │   └── console.php
 └── tests/
     ├── Unit/                         # Domain tests — no Laravel boot
+
     ├── Integration/                  # Repositories + DB
+
     └── Feature/                      # HTTP end-to-end
+
 ```
 
 ### Why bounded contexts?
@@ -853,9 +874,11 @@ $this->app->scoped(CurrentUserContextPort::class, SessionUserContext::class);
 ## 9. SOLID Applied to Laravel
 
 ### S — Single Responsibility
+
 Each class has one reason to change. One use case = one class. Don't pile `store/update/destroy/approve/reject` into a god controller. Use **one controller action per use case** or resource controllers only for pure CRUD.
 
 ### O — Open/Closed
+
 Add features by **creating new use cases**, not editing existing ones.
 
 ```php
@@ -864,9 +887,11 @@ final class EvaluateSpecialQuotaAdmissionHandler { /* ... */ }
 ```
 
 ### L — Liskov Substitution
+
 Any `StudentRepository` implementation must be interchangeable. A test can use `InMemoryStudentRepository`; production uses `EloquentStudentRepository`. Both honor the same contract.
 
 ### I — Interface Segregation
+
 Prefer focused interfaces over fat ones.
 
 ```php
@@ -883,6 +908,7 @@ interface StudentReader { public function findById(StudentId $id): ?Student; }
 ```
 
 ### D — Dependency Inversion
+
 **Always inject interfaces**, never concrete Eloquent models or facades into use cases.
 
 ```php
@@ -1013,11 +1039,17 @@ Two layers:
 ```
 tests/
 ├── Unit/                 # Pure PHP, milliseconds, NO Laravel boot
+
 │   ├── Domain/           # Entities, VOs, Domain Services
+
 │   └── Application/      # Handlers with in-memory doubles
+
 ├── Integration/          # Laravel booted, real DB (SQLite/Postgres)
+
 │   └── Infrastructure/   # Repositories, Gateways, Adapters
+
 └── Feature/              # Full HTTP stack
+
     └── Api/
 ```
 

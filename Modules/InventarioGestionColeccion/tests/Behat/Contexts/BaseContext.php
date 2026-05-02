@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 declare(strict_types=1);
 
@@ -22,5 +22,10 @@ abstract class BaseContext implements Context
         // dirname 5 sube: Contexts/ -> Behat/ -> tests/ -> InventarioGestionColeccion/ -> Modules/ -> [raiz]
         self::$app = require dirname(__DIR__, 5).'/bootstrap/app.php';
         self::$app->make(Kernel::class)->bootstrap();
+    }
+
+    protected function make(string $abstract): mixed
+    {
+        return self::$app->make($abstract);
     }
 }
