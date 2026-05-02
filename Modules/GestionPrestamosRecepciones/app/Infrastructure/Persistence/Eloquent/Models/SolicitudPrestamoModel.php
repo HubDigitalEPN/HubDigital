@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 final class SolicitudPrestamoModel extends Model
 {
-    protected $table = 'solicitudes_prestamo';
+    protected $table = 'prestamos.solicitudes_prestamo';
 
     protected $primaryKey = 'id';
 

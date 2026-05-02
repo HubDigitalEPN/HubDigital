@@ -10,7 +10,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('actas_prestamo', function (Blueprint $table): void {
+        Schema::create('prestamos.actas_prestamo', function (Blueprint $table): void {
             $table->uuid('id')->primary();
             $table->string('numero_prestamo', 10)->unique();
             $table->uuid('solicitud_prestamo_id')->unique();
@@ -27,12 +27,12 @@ return new class extends Migration
 
             $table->foreign('solicitud_prestamo_id')
                 ->references('id')
-                ->on('solicitudes_prestamo');
+                ->on('prestamos.solicitudes_prestamo');
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('actas_prestamo');
+        Schema::dropIfExists('prestamos.actas_prestamo');
     }
 };
