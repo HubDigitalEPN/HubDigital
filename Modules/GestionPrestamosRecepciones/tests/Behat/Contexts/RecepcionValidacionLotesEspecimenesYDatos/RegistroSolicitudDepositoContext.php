@@ -194,7 +194,7 @@ final class RegistroSolicitudDepositoContext extends BaseContext
         Assert::assertNotEmpty($tipoTramite, 'El tipo de trámite no puede estar vacío');
 
         try {
-            $this->ultimaRespuesta = $this->registrarHandler->handle(
+            $this->ultimaRespuesta = ($this->registrarHandler)(
                 new RegistrarSolicitudDepositoInput(
                     investigadorId: $this->investigadorId,
                     tipoTramite: $tipoTramite,
@@ -313,11 +313,9 @@ final class RegistroSolicitudDepositoContext extends BaseContext
         Assert::assertNotEmpty($this->situacionRegulatoria, 'Se requiere la situación regulatoria del paso Dado anterior');
 
         try {
-            $this->ultimaRespuesta = $this->determinarDocumentacionHandler->handle(
+            $this->ultimaRespuesta = ($this->determinarDocumentacionHandler)(
                 new DeterminarDocumentacionRequeridaInput(
                     solicitudId: (string) $this->solicitudEnCurso->id(),
-                    origenRecoleccion: $this->origenRecoleccion,
-                    situacionRegulatoria: $this->situacionRegulatoria,
                 )
             );
         } catch (\Throwable $e) {
@@ -329,10 +327,11 @@ final class RegistroSolicitudDepositoContext extends BaseContext
             'El handler lanzó una excepción inesperada: '.$this->excepcionCapturada?->getMessage()
         );
         Assert::assertNotNull($this->ultimaRespuesta, 'El handler no retornó ninguna respuesta');
-        Assert::assertStringContainsString(
+        $combinado = implode(' y ', $this->ultimaRespuesta->documentosRequeridos);
+        Assert::assertSame(
             $documentoRequerido,
-            $this->ultimaRespuesta->documentosRequeridos,
-            "Se esperaba que los documentos requeridos incluyeran '{$documentoRequerido}', se obtuvo: '{$this->ultimaRespuesta->documentosRequeridos}'"
+            $combinado,
+            "Se esperaba documentos requeridos '{$documentoRequerido}', se obtuvo: '{$combinado}'"
         );
     }
 
@@ -340,7 +339,7 @@ final class RegistroSolicitudDepositoContext extends BaseContext
     // ESCENARIO: Escalabilidad de la solicitud por falta total de documentación
     // =========================================================================
 
-    #[Given('que el investigador carece de los documentos del MAATE y de justificaciones formales')]
+    #[Given('que el investigador carece de los documentos del MAATE y de carta de justificación')]
     public function queElInvestigadorCareceDeLosDocumentosDelMAATEYDeJustificacionesFormales(): void
     {
         $solicitud = $this->sembrarSolicitudDepositoBase();
@@ -370,7 +369,7 @@ final class RegistroSolicitudDepositoContext extends BaseContext
         );
 
         try {
-            $this->ultimaRespuesta = $this->solicitarIntervencionHandler->handle(
+            $this->ultimaRespuesta = ($this->solicitarIntervencionHandler)(
                 new SolicitarIntervencionCuratoriaInput(
                     solicitudId: (string) $this->solicitudEnCurso->id(),
                     investigadorId: $this->investigadorId,
@@ -485,7 +484,7 @@ final class RegistroSolicitudDepositoContext extends BaseContext
         );
 
         try {
-            $this->ultimaRespuesta = $this->validarDocumentacionHandler->handle(
+            $this->ultimaRespuesta = ($this->validarDocumentacionHandler)(
                 new ValidarDocumentacionInicialInput(
                     solicitudId: (string) $this->solicitudEnCurso->id(),
                     provinciaOrigen: $this->provinciaDeclarada,
@@ -559,7 +558,7 @@ final class RegistroSolicitudDepositoContext extends BaseContext
         Assert::assertNotEmpty($documentos, 'La lista de documentos a cargar no puede estar vacía');
 
         try {
-            $this->ultimaRespuesta = $this->cargarDocumentacionHandler->handle(
+            $this->ultimaRespuesta = ($this->cargarDocumentacionHandler)(
                 new CargarDocumentacionOficialInput(
                     solicitudId: (string) $this->solicitudEnCurso->id(),
                     documentos: $documentos,
@@ -641,7 +640,7 @@ final class RegistroSolicitudDepositoContext extends BaseContext
         Assert::assertNotEmpty($documentos, 'La lista de documentos obligatorios a cargar no puede estar vacía');
 
         try {
-            $this->ultimaRespuesta = $this->cargarDocumentacionHandler->handle(
+            $this->ultimaRespuesta = ($this->cargarDocumentacionHandler)(
                 new CargarDocumentacionOficialInput(
                     solicitudId: (string) $this->solicitudEnCurso->id(),
                     documentos: $documentos,
@@ -737,7 +736,7 @@ final class RegistroSolicitudDepositoContext extends BaseContext
         );
 
         try {
-            $this->ultimaRespuesta = $this->completarDatosHandler->handle(
+            $this->ultimaRespuesta = ($this->completarDatosHandler)(
                 new CompletarDatosManualesInput(
                     solicitudId: (string) $this->solicitudEnCurso->id(),
                     campo: $this->campoDatoFaltante,
@@ -816,7 +815,7 @@ final class RegistroSolicitudDepositoContext extends BaseContext
         Assert::assertNotEmpty($nombreEnDocumento, 'El nombre en el documento no puede estar vacío');
 
         try {
-            $this->ultimaRespuesta = $this->validarIdentidadHandler->handle(
+            $this->ultimaRespuesta = ($this->validarIdentidadHandler)(
                 new ValidarIdentidadSolicitudInput(
                     solicitudId: (string) $this->solicitudEnCurso->id(),
                     nombrePerfil: $this->nombrePerfil,
