@@ -36,7 +36,7 @@ Característica: Registro de solicitud de depósito
 
     @deposito @excepcion
     Escenario: Escalabilidad de la solicitud por falta total de documentación
-        Dado que el investigador carece de los documentos del MAATE y de justificaciones formales
+        Dado que el investigador carece de los documentos del MAATE y de carta de justificación
         Cuando el investigador solicita la intervención directa de curaduría
         Entonces el proceso de carga documental se pausa
         Y la solicitud pasa al estado "Retenida para Asesoría Curatorial"
@@ -89,7 +89,8 @@ Característica: Registro de solicitud de depósito
     Esquema del escenario: Validación de identidad mediante el Formato de Solicitud
         Dado que el investigador ha cargado el "Formato Solicitud Depósito"
         Y su perfil de usuario está registrado como "<nombre_perfil>"
-        Cuando se compara el perfil del investigador con el nombre "<nombre_en_documento>" del formulario        Entonces el resultado de la validación es "<resultado>"
+        Cuando se compara el perfil del investigador con el nombre "<nombre_en_documento>" del formulario
+        Entonces el resultado de la validación es "<resultado>"
         Y se habilita la acción: "<accion_permitida>"
 
         Ejemplos:
