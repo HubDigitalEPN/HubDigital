@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\CatalogoPublico\Tests\Behat\Contexts;
 
 use Behat\Behat\Context\Context;
+use Behat\Hook\BeforeScenario;
 use Behat\Hook\BeforeSuite;
 use Illuminate\Contracts\Console\Kernel;
 
@@ -20,13 +21,20 @@ abstract class BaseContext implements Context
         }
 
         // dirname 5: Contexts/ -> Behat/ -> tests/ -> CatalogoPublico/ -> Modules/ -> [raiz]
-        self::$app = require dirname(__DIR__, 5) . '/bootstrap/app.php';
+        self::$app = require dirname(__DIR__, 5).'/bootstrap/app.php';
         self::$app->make(Kernel::class)->bootstrap();
+    }
+
+    #[BeforeScenario]
+    public function resetDatabase(): void
+    {
+        static::$app->make(Kernel::class)->call('migrate:fresh');
     }
 
     /**
      * @template T
-     * @param class-string<T> $abstract
+     *
+     * @param  class-string<T>  $abstract
      * @return T
      */
     protected function make(string $abstract): mixed

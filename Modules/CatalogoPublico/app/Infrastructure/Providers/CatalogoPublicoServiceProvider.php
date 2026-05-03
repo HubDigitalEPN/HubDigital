@@ -2,45 +2,37 @@
 
 namespace Modules\CatalogoPublico\Infrastructure\Providers;
 
+use Modules\CatalogoPublico\Application\Ports\EventPublisherPort;
+use Modules\CatalogoPublico\Application\Ports\TransactionManagerPort;
+use Modules\CatalogoPublico\Domain\Repositories\EspecimenDivulgableRepositoryInterface;
+use Modules\CatalogoPublico\Domain\Repositories\EspecimenRepositoryInterface;
+use Modules\CatalogoPublico\Infrastructure\Adapters\LaravelTransactionManager;
+use Modules\CatalogoPublico\Infrastructure\Adapters\NullEventPublisher;
+use Modules\CatalogoPublico\Infrastructure\Persistence\Eloquent\Repositories\EloquentEspecimenDivulgableRepository;
+use Modules\CatalogoPublico\Infrastructure\Persistence\Eloquent\Repositories\EloquentEspecimenRepository;
 use Nwidart\Modules\Support\ModuleServiceProvider;
-use Illuminate\Console\Scheduling\Schedule;
 
 class CatalogoPublicoServiceProvider extends ModuleServiceProvider
 {
-    /**
-     * The name of the module.
-     */
     protected string $name = 'CatalogoPublico';
 
-    /**
-     * The lowercase version of the module name.
-     */
     protected string $nameLower = 'catalogopublico';
 
-    /**
-     * Command classes to register.
-     *
-     * @var string[]
-     */
-    // protected array $commands = [];
-
-    /**
-     * Provider classes to register.
-     *
-     * @var string[]
-     */
     protected array $providers = [
         EventServiceProvider::class,
         RouteServiceProvider::class,
     ];
 
-    /**
-     * Define module schedules.
-     * 
-     * @param $schedule
-     */
-    // protected function configureSchedules(Schedule $schedule): void
-    // {
-    //     $schedule->command('inspire')->hourly();
-    // }
+    public array $bindings = [
+        EspecimenRepositoryInterface::class => EloquentEspecimenRepository::class,
+        EspecimenDivulgableRepositoryInterface::class => EloquentEspecimenDivulgableRepository::class,
+        TransactionManagerPort::class => LaravelTransactionManager::class,
+        EventPublisherPort::class => NullEventPublisher::class,
+    ];
+
+    public function boot(): void
+    {
+        parent::boot();
+        $this->loadMigrationsFrom(module_path($this->name, 'database/migrations'));
+    }
 }
