@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 declare(strict_types=1);
 
@@ -7,10 +7,10 @@ namespace Modules\InventarioGestionColeccion\Tests\Behat\Contexts\GestionRegistr
 use Behat\Step\Given;
 use Behat\Step\Then;
 use Behat\Step\When;
-use Modules\InventarioGestionColeccion\Application\UseCases\ActualizarTaxon\ActualizarTaxonHandler;
-use Modules\InventarioGestionColeccion\Application\UseCases\ActualizarTaxon\ActualizarTaxonInput;
-use Modules\InventarioGestionColeccion\Application\UseCases\RegistrarTaxon\RegistrarTaxonHandler;
-use Modules\InventarioGestionColeccion\Application\UseCases\RegistrarTaxon\RegistrarTaxonInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarTaxon\ActualizarTaxonHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarTaxon\ActualizarTaxonInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarTaxon\RegistrarTaxonHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarTaxon\RegistrarTaxonInput;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Taxon;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\TaxonRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoTaxon;

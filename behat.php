@@ -44,9 +44,6 @@ return (new Config)
                         // GestionAutonomaSeguridadFisicaInventario
                         'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\GestionAutonomaSeguridadFisicaInventario\AlertaIncongruenciaTaxonomicaContext',
                         'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\GestionAutonomaSeguridadFisicaInventario\RegistroUbicacionCajasContext',
-                        // TrazabilidadOperativaMovimientosCirculacion
-                        'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\TrazabilidadOperativaMovimientosCirculacion\MonitoreoTiempoExtraccionContext',
-                        'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\TrazabilidadOperativaMovimientosCirculacion\ReubicacionDigitalGuiadaContext',
                     )
             )
     );

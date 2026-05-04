@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 declare(strict_types=1);
 
@@ -7,8 +7,8 @@ namespace Modules\InventarioGestionColeccion\Tests\Behat\Contexts\Identificacion
 use Behat\Step\Given;
 use Behat\Step\Then;
 use Behat\Step\When;
-use Modules\InventarioGestionColeccion\Application\UseCases\RegistrarEspecimen\RegistrarEspecimenHandler;
-use Modules\InventarioGestionColeccion\Application\UseCases\RegistrarEspecimen\RegistrarEspecimenInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarEspecimen\RegistrarEspecimenHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarEspecimen\RegistrarEspecimenInput;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\EntidadDepositante;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especimen;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Taxon;

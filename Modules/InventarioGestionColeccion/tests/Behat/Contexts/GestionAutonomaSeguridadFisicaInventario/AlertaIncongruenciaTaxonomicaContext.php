@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 declare(strict_types=1);
 
@@ -7,9 +7,7 @@ namespace Modules\InventarioGestionColeccion\Tests\Behat\Contexts\GestionAutonom
 use Behat\Step\Given;
 use Behat\Step\Then;
 use Behat\Step\When;
-use Modules\InventarioGestionColeccion\Application\UseCases\InsertarCajaEnRanura\InsertarCajaEnRanuraHandler;
-use Modules\InventarioGestionColeccion\Application\UseCases\InsertarCajaEnRanura\InsertarCajaEnRanuraInput;
-use Modules\InventarioGestionColeccion\Application\UseCases\InsertarCajaEnRanura\InsertarCajaEnRanuraOutput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarIngresoCaja\RegistrarIngresoCajaHandler;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Caja;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Gabinete;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\RanuraGabinete;
@@ -30,7 +28,7 @@ final class AlertaIncongruenciaTaxonomicaContext extends BaseContext
 {
     // ── Handlers ─────────────────────────────────────────────────────────────
 
-    private InsertarCajaEnRanuraHandler $handler;
+    private RegistrarIngresoCajaHandler $handler;
 
     // ── Repositories ─────────────────────────────────────────────────────────
 
@@ -60,7 +58,7 @@ final class AlertaIncongruenciaTaxonomicaContext extends BaseContext
 
     public function __construct()
     {
-        $this->handler = $this->make(InsertarCajaEnRanuraHandler::class);
+        $this->handler = $this->make(RegistrarIngresoCajaHandler::class);
         $this->gabineteRepo = $this->make(GabineteRepository::class);
         $this->ranuraRepo = $this->make(RanuraGabineteRepository::class);
         $this->cajaRepo = $this->make(CajaRepository::class);

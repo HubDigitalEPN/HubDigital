@@ -8,7 +8,6 @@ final readonly class RegistrarRetiroCajaInput
 {
     public function __construct(
         public string $cajaId,
-        public bool $fueraDeHorario,
-        public string $actorRol,
+        public string $ranuraId,
     ) {}
 }

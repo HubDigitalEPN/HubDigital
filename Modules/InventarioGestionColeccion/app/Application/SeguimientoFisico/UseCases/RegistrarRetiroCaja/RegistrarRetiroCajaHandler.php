@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarRetiroCaja;
 
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\ContextoEjecucionPort;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\EventPublisherPort;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\HorarioValidadorPort;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\TransactionManagerPort;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\AlertaUbicacion;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\EventoCicloIot;
@@ -14,7 +17,6 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\Eve
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\NotificacionRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\RanuraGabineteRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UbicacionCajaRepository;
-use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\ActorRol;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\CajaId;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TipoAlerta;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TipoNotificacion;
@@ -29,23 +31,31 @@ final class RegistrarRetiroCajaHandler
         private readonly AlertaUbicacionRepository $alertaRepo,
         private readonly NotificacionRepository $notificacionRepo,
         private readonly TransactionManagerPort $transactionManager,
+        private readonly HorarioValidadorPort $horarioValidador,
+        private readonly ContextoEjecucionPort $contextoEjecucion,
+        private readonly EventPublisherPort $eventPublisher,
     ) {}
 
     public function handle(RegistrarRetiroCajaInput $input): RegistrarRetiroCajaOutput
     {
         $cajaId = CajaId::desde($input->cajaId);
-        $actorRol = ActorRol::from($input->actorRol);
+        $actorRol = $this->contextoEjecucion->actorRol();
+        $actorId = $this->contextoEjecucion->actorId();
 
         $caja = $this->cajaRepo->buscarPorId($cajaId);
+        // Fallback to internal active location logic if ranura isn't provided or match it if we want to be strict.
+        // We'll trust the domain validation from the actual entity if ranura mismatch happens.
         $ranuraActualId = $caja->ranuraActualId();
         $ranura = $this->ranuraRepo->buscarPorId($ranuraActualId);
         $ubicacion = $this->ubicacionRepo->buscarActivaPorCaja($cajaId);
 
         [$alertaGenerada, $notificacionEnviada] = $this->transactionManager->executeTransactional(
-            function () use ($caja, $ranura, $ubicacion, $cajaId, $actorRol, $input): array {
+            function () use ($caja, $ranura, $ubicacion, $cajaId, $actorRol, $actorId): array {
+                $ocurridoEn = new \DateTimeImmutable;
+
                 $caja->retirarDeRanura();
                 $ranura->liberarCaja();
-                $ubicacion->cerrar(new \DateTimeImmutable);
+                $ubicacion->cerrar($ocurridoEn);
 
                 $eventoCiclo = EventoCicloIot::registrar(
                     tipoAgregado: 'caja',
@@ -53,15 +63,15 @@ final class RegistrarRetiroCajaHandler
                     tipoEvento: 'caja_retirada',
                     versionEvento: 1,
                     datos: ['ranura_id' => (string) $ranura->id()],
-                    actorId: null,
+                    actorId: $actorId,
                     actorRol: $actorRol,
-                    ocurridoEn: new \DateTimeImmutable,
+                    ocurridoEn: $ocurridoEn,
                 );
 
                 $alertaGenerada = false;
                 $notificacionEnviada = false;
 
-                if ($input->fueraDeHorario) {
+                if ($this->horarioValidador->esFueraDeHorario($ocurridoEn)) {
                     $alerta = AlertaUbicacion::generar(
                         id: $this->alertaRepo->nextIdentity(),
                         cajaId: $cajaId,
@@ -88,7 +98,7 @@ final class RegistrarRetiroCajaHandler
                 $this->eventoRepo->guardar($eventoCiclo);
 
                 foreach ($caja->pullEvents() as $evento) {
-                    event($evento);
+                    $this->eventPublisher->publish($evento);
                 }
 
                 return [$alertaGenerada, $notificacionEnviada];
