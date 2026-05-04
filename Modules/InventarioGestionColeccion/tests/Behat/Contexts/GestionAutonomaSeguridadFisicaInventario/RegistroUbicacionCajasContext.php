@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 declare(strict_types=1);
 
@@ -7,12 +7,13 @@ namespace Modules\InventarioGestionColeccion\Tests\Behat\Contexts\GestionAutonom
 use Behat\Step\Given;
 use Behat\Step\Then;
 use Behat\Step\When;
-use Modules\InventarioGestionColeccion\Application\UseCases\RegistrarIngresoCaja\RegistrarIngresoCajaHandler;
-use Modules\InventarioGestionColeccion\Application\UseCases\RegistrarIngresoCaja\RegistrarIngresoCajaInput;
-use Modules\InventarioGestionColeccion\Application\UseCases\RegistrarIngresoCaja\RegistrarIngresoCajaOutput;
-use Modules\InventarioGestionColeccion\Application\UseCases\RegistrarRetiroCaja\RegistrarRetiroCajaHandler;
-use Modules\InventarioGestionColeccion\Application\UseCases\RegistrarRetiroCaja\RegistrarRetiroCajaInput;
-use Modules\InventarioGestionColeccion\Application\UseCases\RegistrarRetiroCaja\RegistrarRetiroCajaOutput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\HorarioValidadorPort;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarIngresoCaja\RegistrarIngresoCajaHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarIngresoCaja\RegistrarIngresoCajaInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarIngresoCaja\RegistrarIngresoCajaOutput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarRetiroCaja\RegistrarRetiroCajaHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarRetiroCaja\RegistrarRetiroCajaInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarRetiroCaja\RegistrarRetiroCajaOutput;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Caja;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Gabinete;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\RanuraGabinete;
@@ -25,6 +26,8 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\Not
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\RanuraGabineteRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UbicacionCajaRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\CajaId;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\CodigoCaja;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\CodigoGabinete;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoAlerta;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoCaja;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\RanuraId;
@@ -71,13 +74,17 @@ final class RegistroUbicacionCajasContext extends BaseContext
     /** Acción ejecutada en el paso @When, para que @Then pueda verificar el evento correcto */
     private ?string $accionEjecutada = null;
 
-    /** Controla si la hora actual está fuera del horario autorizado (para el escenario de movimiento no autorizado) */
-    private bool $fueraDeHorario = false;
+    /** Tracks whether the horary should be considered outside business hours. Replaces simple boolean logic. */
+    private $horarioMock;
 
     // ── Constructor ──────────────────────────────────────────────────────────
 
     public function __construct()
     {
+        $this->horarioMock = \Mockery::mock(HorarioValidadorPort::class);
+        $this->horarioMock->shouldReceive('esFueraDeHorario')->andReturn(false)->byDefault();
+        self::$app->instance(HorarioValidadorPort::class, $this->horarioMock);
+
         $this->ingresoHandler = $this->make(RegistrarIngresoCajaHandler::class);
         $this->retiroHandler = $this->make(RegistrarRetiroCajaHandler::class);
         $this->gabineteRepo = $this->make(GabineteRepository::class);
@@ -98,7 +105,7 @@ final class RegistroUbicacionCajasContext extends BaseContext
     {
         $gabinete = Gabinete::crear(
             id: $this->gabineteRepo->nextIdentity(),
-            codigo: 'GAB-MON-001',
+            codigo: CodigoGabinete::desde('GAB-MON-001'),
             nombre: 'Gabinete Monitoreado',
             totalRanuras: 5,
         );
@@ -123,7 +130,7 @@ final class RegistroUbicacionCajasContext extends BaseContext
     {
         $caja = Caja::crear(
             id: $this->cajaRepo->nextIdentity(),
-            codigo: 'CAJA-MOV-001',
+            codigo: CodigoCaja::desde('CAJA-MOV-001'),
             familiaTaxonomicaId: 'Nymphalidae',
             capacidadMaxima: 10,
         );
@@ -138,8 +145,8 @@ final class RegistroUbicacionCajasContext extends BaseContext
             $ubicacion = UbicacionCaja::registrar(
                 id: $this->ubicacionRepo->nextIdentity(),
                 cajaId: $caja->id(),
-                ranuraId: $this->ranuraId,
-                ingresadaEn: now(),
+                ranuraGabineteId: $this->ranuraId,
+                ingresadaEn: new \DateTimeImmutable,
             );
             $this->ubicacionRepo->guardar($ubicacion);
 
@@ -177,16 +184,13 @@ final class RegistroUbicacionCajasContext extends BaseContext
                     new RegistrarIngresoCajaInput(
                         cajaId: (string) $this->cajaId,
                         ranuraId: (string) $this->ranuraId,
-                        fueraDeHorario: $this->fueraDeHorario,
-                        actorRol: 'esp32',
                     )
                 );
             } else {
                 $this->ultimoRetiroOutput = $this->retiroHandler->handle(
                     new RegistrarRetiroCajaInput(
                         cajaId: (string) $this->cajaId,
-                        fueraDeHorario: $this->fueraDeHorario,
-                        actorRol: 'esp32',
+                        ranuraId: (string) $this->ranuraId,
                     )
                 );
             }
@@ -242,7 +246,7 @@ final class RegistroUbicacionCajasContext extends BaseContext
         // Sembrar gabinete y caja en gabinete para que pueda retirarse
         $gabinete = Gabinete::crear(
             id: $this->gabineteRepo->nextIdentity(),
-            codigo: 'GAB-HOR-001',
+            codigo: CodigoGabinete::desde('GAB-HOR-001'),
             nombre: 'Gabinete con Horario',
             totalRanuras: 5,
         );
@@ -259,7 +263,7 @@ final class RegistroUbicacionCajasContext extends BaseContext
 
         $caja = Caja::crear(
             id: $this->cajaRepo->nextIdentity(),
-            codigo: 'CAJA-HOR-001',
+            codigo: CodigoCaja::desde('CAJA-HOR-001'),
             familiaTaxonomicaId: 'Nymphalidae',
             capacidadMaxima: 10,
         );
@@ -270,8 +274,8 @@ final class RegistroUbicacionCajasContext extends BaseContext
         $ubicacion = UbicacionCaja::registrar(
             id: $this->ubicacionRepo->nextIdentity(),
             cajaId: $caja->id(),
-            ranuraId: $this->ranuraId,
-            ingresadaEn: now()->subHours(2),
+            ranuraGabineteId: $this->ranuraId,
+            ingresadaEn: (new \DateTimeImmutable)->modify('-2 hours'),
         );
         $this->ubicacionRepo->guardar($ubicacion);
 
@@ -286,8 +290,7 @@ final class RegistroUbicacionCajasContext extends BaseContext
     #[Given('la hora actual está fuera del horario autorizado')]
     public function laHoraActualEstáFueraDelHorarioAutorizado(): void
     {
-        $this->fueraDeHorario = true;
-        Assert::assertTrue($this->fueraDeHorario, 'El flag de fuera de horario debe estar activo');
+        $this->horarioMock->shouldReceive('esFueraDeHorario')->andReturn(true);
     }
 
     #[When('retiro una caja entomológica de su ranura')]
@@ -300,8 +303,7 @@ final class RegistroUbicacionCajasContext extends BaseContext
             $this->ultimoRetiroOutput = $this->retiroHandler->handle(
                 new RegistrarRetiroCajaInput(
                     cajaId: (string) $this->cajaId,
-                    fueraDeHorario: $this->fueraDeHorario,
-                    actorRol: 'esp32',
+                    ranuraId: (string) $this->ranuraId,
                 )
             );
         } catch (\Throwable $e) {

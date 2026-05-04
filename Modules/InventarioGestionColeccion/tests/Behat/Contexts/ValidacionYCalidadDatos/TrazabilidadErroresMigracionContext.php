@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 declare(strict_types=1);
 
@@ -7,8 +7,8 @@ namespace Modules\InventarioGestionColeccion\Tests\Behat\Contexts\ValidacionYCal
 use Behat\Step\Given;
 use Behat\Step\Then;
 use Behat\Step\When;
-use Modules\InventarioGestionColeccion\Application\UseCases\ObtenerReporteErroresEtl\ObtenerReporteErroresEtlHandler;
-use Modules\InventarioGestionColeccion\Application\UseCases\ObtenerReporteErroresEtl\ObtenerReporteErroresEtlInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ObtenerReporteErroresEtl\ObtenerReporteErroresEtlHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ObtenerReporteErroresEtl\ObtenerReporteErroresEtlInput;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\RegistroEtl;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\RegistroEtlRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoRegistroEtl;

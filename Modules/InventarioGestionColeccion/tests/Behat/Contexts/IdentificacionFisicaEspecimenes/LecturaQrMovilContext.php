@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 declare(strict_types=1);
 
@@ -7,10 +7,10 @@ namespace Modules\InventarioGestionColeccion\Tests\Behat\Contexts\Identificacion
 use Behat\Step\Given;
 use Behat\Step\Then;
 use Behat\Step\When;
-use Modules\InventarioGestionColeccion\Application\UseCases\GenerarCodigoQr\GenerarCodigoQrHandler;
-use Modules\InventarioGestionColeccion\Application\UseCases\GenerarCodigoQr\GenerarCodigoQrInput;
-use Modules\InventarioGestionColeccion\Application\UseCases\ResolverCodigoQr\ResolverCodigoQrHandler;
-use Modules\InventarioGestionColeccion\Application\UseCases\ResolverCodigoQr\ResolverCodigoQrInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\GenerarCodigoQr\GenerarCodigoQrHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\GenerarCodigoQr\GenerarCodigoQrInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ResolverCodigoQr\ResolverCodigoQrHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ResolverCodigoQr\ResolverCodigoQrInput;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especimen;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Taxon;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;

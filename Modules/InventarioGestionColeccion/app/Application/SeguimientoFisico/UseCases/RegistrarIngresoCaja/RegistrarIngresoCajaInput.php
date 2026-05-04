@@ -9,7 +9,5 @@ final readonly class RegistrarIngresoCajaInput
     public function __construct(
         public string $cajaId,
         public string $ranuraId,
-        public bool $fueraDeHorario,
-        public string $actorRol,
     ) {}
 }

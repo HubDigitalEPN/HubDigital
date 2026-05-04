@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 declare(strict_types=1);
 
@@ -7,12 +7,12 @@ namespace Modules\InventarioGestionColeccion\Tests\Behat\Contexts\TrazabilidadOp
 use Behat\Step\Given;
 use Behat\Step\Then;
 use Behat\Step\When;
-use Modules\InventarioGestionColeccion\Application\UseCases\RegistrarDevolucionCaja\RegistrarDevolucionCajaHandler;
-use Modules\InventarioGestionColeccion\Application\UseCases\RegistrarDevolucionCaja\RegistrarDevolucionCajaInput;
-use Modules\InventarioGestionColeccion\Application\UseCases\RegistrarDevolucionCaja\RegistrarDevolucionCajaOutput;
-use Modules\InventarioGestionColeccion\Application\UseCases\VerificarTiemposExtraccion\VerificarTiemposExtraccionHandler;
-use Modules\InventarioGestionColeccion\Application\UseCases\VerificarTiemposExtraccion\VerificarTiemposExtraccionInput;
-use Modules\InventarioGestionColeccion\Application\UseCases\VerificarTiemposExtraccion\VerificarTiemposExtraccionOutput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarDevolucionCaja\RegistrarDevolucionCajaHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarDevolucionCaja\RegistrarDevolucionCajaInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarDevolucionCaja\RegistrarDevolucionCajaOutput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\VerificarTiemposExtraccion\VerificarTiemposExtraccionHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\VerificarTiemposExtraccion\VerificarTiemposExtraccionInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\VerificarTiemposExtraccion\VerificarTiemposExtraccionOutput;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Caja;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Gabinete;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\RanuraGabinete;

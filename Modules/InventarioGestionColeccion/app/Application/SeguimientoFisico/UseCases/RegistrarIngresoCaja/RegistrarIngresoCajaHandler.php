@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarIngresoCaja;
 
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\ContextoEjecucionPort;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\EventPublisherPort;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\HorarioValidadorPort;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\TransactionManagerPort;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\AlertaUbicacion;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\EventoCicloIot;
@@ -15,7 +18,6 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\Eve
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\NotificacionRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\RanuraGabineteRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UbicacionCajaRepository;
-use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\ActorRol;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\CajaId;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\RanuraId;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TipoAlerta;
@@ -31,27 +33,33 @@ final class RegistrarIngresoCajaHandler
         private readonly AlertaUbicacionRepository $alertaRepo,
         private readonly NotificacionRepository $notificacionRepo,
         private readonly TransactionManagerPort $transactionManager,
+        private readonly HorarioValidadorPort $horarioValidador,
+        private readonly ContextoEjecucionPort $contextoEjecucion,
+        private readonly EventPublisherPort $eventPublisher,
     ) {}
 
     public function handle(RegistrarIngresoCajaInput $input): RegistrarIngresoCajaOutput
     {
         $cajaId = CajaId::desde($input->cajaId);
         $ranuraId = RanuraId::desde($input->ranuraId);
-        $actorRol = ActorRol::from($input->actorRol);
+        $actorRol = $this->contextoEjecucion->actorRol();
+        $actorId = $this->contextoEjecucion->actorId();
 
         $caja = $this->cajaRepo->buscarPorId($cajaId);
         $ranura = $this->ranuraRepo->buscarPorId($ranuraId);
 
         [$ubicacion, $alertaGenerada] = $this->transactionManager->executeTransactional(
-            function () use ($caja, $ranura, $cajaId, $ranuraId, $actorRol, $input): array {
+            function () use ($caja, $ranura, $cajaId, $ranuraId, $actorRol, $actorId): array {
                 $caja->ingresarEnRanura($ranuraId);
                 $ranura->asignarCaja($cajaId);
+
+                $ocurridoEn = new \DateTimeImmutable;
 
                 $ubicacion = UbicacionCaja::registrar(
                     id: $this->ubicacionRepo->nextIdentity(),
                     cajaId: $cajaId,
                     ranuraGabineteId: $ranuraId,
-                    ingresadaEn: new \DateTimeImmutable,
+                    ingresadaEn: $ocurridoEn,
                 );
 
                 $eventoCiclo = EventoCicloIot::registrar(
@@ -60,14 +68,14 @@ final class RegistrarIngresoCajaHandler
                     tipoEvento: 'caja_ingresada',
                     versionEvento: 1,
                     datos: ['ranura_id' => (string) $ranuraId],
-                    actorId: null,
+                    actorId: $actorId,
                     actorRol: $actorRol,
-                    ocurridoEn: new \DateTimeImmutable,
+                    ocurridoEn: $ocurridoEn,
                 );
 
                 $alertaGenerada = false;
 
-                if ($input->fueraDeHorario) {
+                if ($this->horarioValidador->esFueraDeHorario($ocurridoEn)) {
                     $alerta = AlertaUbicacion::generar(
                         id: $this->alertaRepo->nextIdentity(),
                         cajaId: $cajaId,
@@ -93,7 +101,7 @@ final class RegistrarIngresoCajaHandler
                 $this->eventoRepo->guardar($eventoCiclo);
 
                 foreach ($caja->pullEvents() as $evento) {
-                    event($evento);
+                    $this->eventPublisher->publish($evento);
                 }
 
                 return [$ubicacion, $alertaGenerada];

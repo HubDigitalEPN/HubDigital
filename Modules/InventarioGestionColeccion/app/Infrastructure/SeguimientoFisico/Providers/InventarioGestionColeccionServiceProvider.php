@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Providers;
 
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\ContextoEjecucionPort;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\EventPublisherPort;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\HorarioValidadorPort;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\TransactionManagerPort;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\AlertaUbicacionRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\CajaRepository;
@@ -15,6 +18,9 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\Sin
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UbicacionCajaRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\Providers\EventServiceProvider;
 use Modules\InventarioGestionColeccion\Infrastructure\Providers\RouteServiceProvider;
+use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\ConfigHorarioValidadorAdapter;
+use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\HttpSeguridadContextoAdapter;
+use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\LaravelEventPublisherAdapter;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\LaravelTransactionManagerAdapter;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentAlertaUbicacionRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentCajaRepository;
@@ -47,6 +53,9 @@ class InventarioGestionColeccionServiceProvider extends ModuleServiceProvider
         EventoCicloIotRepository::class => EloquentEventoCicloIotRepository::class,
         SincronizacionEsp32Repository::class => EloquentSincronizacionEsp32Repository::class,
         TransactionManagerPort::class => LaravelTransactionManagerAdapter::class,
+        EventPublisherPort::class => LaravelEventPublisherAdapter::class,
+        HorarioValidadorPort::class => ConfigHorarioValidadorAdapter::class,
+        ContextoEjecucionPort::class => HttpSeguridadContextoAdapter::class,
     ];
 
     public function boot(): void
