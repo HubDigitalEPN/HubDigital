@@ -54,7 +54,7 @@ final class AlertaIncongruenciaTaxonomicaContext extends BaseContext
 
     private ?\Throwable $excepcionCapturada = null;
 
-    private const FAMILIA_GABINETE = 'Nymphalidae';
+    private const FAMILIA_RANURA = 'Nymphalidae';
 
     // ── Constructor ──────────────────────────────────────────────────────────
 
@@ -71,8 +71,8 @@ final class AlertaIncongruenciaTaxonomicaContext extends BaseContext
     // ESQUEMA: Inserción según coincidencia taxonómica
     // ==========================================
 
-    #[Given('que existe un gabinete configurado para una familia taxonómica')]
-    public function queExisteUnGabineteConfiguradoParaUnaFamiliaTaxonómica(): void
+    #[Given('que existe una ranura con familia taxonómica asignada')]
+    public function queExisteUnaRanuraConFamiliaTaxonomicaAsignada(): void
     {
         $gabinete = $this->sembrarGabineteBase();
 
@@ -80,14 +80,14 @@ final class AlertaIncongruenciaTaxonomicaContext extends BaseContext
             id: $this->ranuraRepo->nextIdentity(),
             gabineteId: $gabinete->id(),
             numeroRanura: 1,
-            familiaTaxonomicaEsperadaId: self::FAMILIA_GABINETE,
+            familiaTaxonomicaEsperadaId: self::FAMILIA_RANURA,
         );
         $this->ranuraRepo->guardar($ranura);
         $this->ranuraId = $ranura->id();
 
         $ranuraPersistida = $this->ranuraRepo->buscarPorId($ranura->id());
         Assert::assertNotNull($ranuraPersistida, 'La ranura debe estar persistida antes de avanzar');
-        Assert::assertSame(self::FAMILIA_GABINETE, $ranuraPersistida->familiaTaxonomicaEsperadaId(), 'La ranura debe tener la familia canónica configurada');
+        Assert::assertSame(self::FAMILIA_RANURA, $ranuraPersistida->familiaTaxonomicaEsperadaId(), 'La ranura debe tener la familia taxonómica asignada directamente');
         Assert::assertNull($ranuraPersistida->cajaActualId(), 'La ranura debe estar vacía antes del ingreso');
     }
 
@@ -95,7 +95,7 @@ final class AlertaIncongruenciaTaxonomicaContext extends BaseContext
     public function existeUnaCajaEntomológicaConEspecímenesDeFamilia(string $coincidencia): void
     {
         $familiaCaja = match ($coincidencia) {
-            'correcta' => self::FAMILIA_GABINETE,
+            'correcta' => self::FAMILIA_RANURA,
             'incorrecta' => 'Papilionidae',
             default => $coincidencia,
         };
@@ -114,8 +114,8 @@ final class AlertaIncongruenciaTaxonomicaContext extends BaseContext
         Assert::assertSame($familiaCaja, $cajaPersistida->familiaTaxonomicaId(), 'La familia de la caja debe coincidir con la sembrada');
     }
 
-    #[When('inserto la caja en una ranura vacía del gabinete')]
-    public function insertoLaCajaEnUnaRanuraVacíaDelGabinete(): void
+    #[When('inserto la caja en dicha ranura')]
+    public function insertoLaCajaEnDichaRanura(): void
     {
         Assert::assertNotNull($this->cajaId, 'Se requiere una caja en estado previo (@Given)');
         Assert::assertNotNull($this->ranuraId, 'Se requiere una ranura en estado previo (@Given)');

@@ -90,11 +90,11 @@ final class RegistroUbicacionCajasContext extends BaseContext
     }
 
     // ==========================================
-    // ESQUEMA: Registro de movimiento de una caja en el gabinete
+    // ESQUEMA: Registro de movimiento de una caja en una ranura del gabinete
     // ==========================================
 
-    #[Given('que se está monitoreando el gabinete')]
-    public function queSeEstáMonitoreandoElGabinete(): void
+    #[Given('que se está monitoreando una ranura del gabinete')]
+    public function queSeEstáMonitoreandoUnaRanuraDelGabinete(): void
     {
         $gabinete = Gabinete::crear(
             id: $this->gabineteRepo->nextIdentity(),
@@ -164,8 +164,8 @@ final class RegistroUbicacionCajasContext extends BaseContext
         $this->cajaId = $caja->id();
     }
 
-    #[When(':accion la caja entomológica')]
-    public function laCajaEntomológica(string $accion): void
+    #[When(':accion la caja entomológica en la ranura')]
+    public function laCajaEntomológicaEnLaRanura(string $accion): void
     {
         Assert::assertNotNull($this->cajaId, 'Se requiere una caja sembrada en @Given');
         $this->accionEjecutada = $accion;
@@ -236,8 +236,8 @@ final class RegistroUbicacionCajasContext extends BaseContext
     // ESCENARIO: Movimiento no autorizado fuera del horario establecido
     // ==========================================
 
-    #[Given('que el horario autorizado de movimiento está configurado')]
-    public function queElHorarioAutorizadoDeMovimientoEstáConfigurado(): void
+    #[Given('que el horario autorizado de movimiento de ranuras está configurado')]
+    public function queElHorarioAutorizadoDeMovimientoDeRanurasEstáConfigurado(): void
     {
         // Sembrar gabinete y caja en gabinete para que pueda retirarse
         $gabinete = Gabinete::crear(
