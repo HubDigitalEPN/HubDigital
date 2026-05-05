@@ -89,6 +89,44 @@ final class SolicitudPrestamo
     }
 
     /**
+     * Crea una nueva solicitud en estado borrador con información mínima.
+     * Usada cuando el investigador guarda un borrador sin haber completado todos los campos.
+     */
+    public static function crearIncompleta(
+        SolicitudPrestamoId $id,
+        NumeroSolicitud $numeroSolicitud,
+        string $investigadorId,
+    ): self {
+        $ahora = new DateTimeImmutable;
+
+        $solicitud = new self(
+            id: $id,
+            numeroSolicitud: $numeroSolicitud,
+            investigadorId: $investigadorId,
+            estado: EstadoSolicitud::Borrador,
+            tituloEstudio: null,
+            institucionAdscripcion: null,
+            lineaInvestigacion: null,
+            propositoPrestamo: null,
+            duracionPropuestaMeses: null,
+            justificacionExtendida: null,
+            comentarioCurador: null,
+            items: [],
+            enviadaEn: null,
+            resueltaEn: null,
+            resueltaPor: null,
+        );
+
+        $solicitud->events[] = new SolicitudPrestamoRegistrada(
+            solicitudId: $id,
+            investigadorId: $investigadorId,
+            ocurridoEn: $ahora,
+        );
+
+        return $solicitud;
+    }
+
+    /**
      * Reconstitución desde persistencia — no registra eventos de dominio.
      *
      * @param  list<ItemPrestamo>  $items
