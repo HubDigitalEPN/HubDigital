@@ -8,6 +8,7 @@ use Modules\CatalogoPublico\Application\Ports\EventPublisherPort;
 use Modules\CatalogoPublico\Application\Ports\TransactionManagerPort;
 use Modules\CatalogoPublico\Domain\Repositories\EspecimenDivulgableRepositoryInterface;
 use Modules\CatalogoPublico\Domain\ValueObjects\ConfiguracionVisibilidad;
+use RuntimeException;
 
 final class ModificarConfiguracionDivulgacionHandler
 {
@@ -29,7 +30,7 @@ final class ModificarConfiguracionDivulgacionHandler
             $divulgable = $this->repoDivulgable->buscarPorOccurrenceID($occurrenceID);
 
             if ($divulgable === null) {
-                throw new \RuntimeException(
+                throw new RuntimeException(
                     "El espécimen '{$occurrenceID}' no existe en la tabla de divulgación"
                 );
             }

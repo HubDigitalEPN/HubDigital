@@ -6,6 +6,7 @@ namespace Modules\CatalogoPublico\Application\UseCases\ConsultarInformacionDivul
 
 use Modules\CatalogoPublico\Domain\Repositories\EspecimenDivulgableRepositoryInterface;
 use Modules\CatalogoPublico\Domain\Repositories\EspecimenRepositoryInterface;
+use RuntimeException;
 
 final class ConsultarInformacionDivulgadaHandler
 {
@@ -19,7 +20,7 @@ final class ConsultarInformacionDivulgadaHandler
         $divulgable = $this->repoDivulgable->buscarPorOccurrenceID($input->occurrenceID);
 
         if ($divulgable === null) {
-            throw new \RuntimeException(
+            throw new RuntimeException(
                 "El espécimen '{$input->occurrenceID}' no está sincronizado para divulgación"
             );
         }
@@ -27,7 +28,7 @@ final class ConsultarInformacionDivulgadaHandler
         $especimen = $this->repoEspecimen->buscarPorOccurrenceID($input->occurrenceID);
 
         if ($especimen === null) {
-            throw new \RuntimeException(
+            throw new RuntimeException(
                 "El espécimen '{$input->occurrenceID}' no existe en la base interna"
             );
         }
