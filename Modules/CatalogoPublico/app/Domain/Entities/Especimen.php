@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Modules\CatalogoPublico\Domain\Entities;
 
 use Modules\CatalogoPublico\Domain\ValueObjects\EspecimenId;
-
+use InvalidArgumentException;
 final class Especimen
 {
     private function __construct(
@@ -46,19 +46,19 @@ final class Especimen
         ?float $decimalLongitude,
     ): self {
         if ($occurrenceID === '') {
-            throw new \InvalidArgumentException('El occurrenceID no puede ser vacío');
+            throw new InvalidArgumentException('El occurrenceID no puede ser vacío');
         }
 
         if ($scientificName === '') {
-            throw new \InvalidArgumentException('El scientificName no puede ser vacío');
+            throw new InvalidArgumentException('El scientificName no puede ser vacío');
         }
 
         if ($occurrenceStatus === '') {
-            throw new \InvalidArgumentException('El occurrenceStatus no puede ser vacío');
+            throw new InvalidArgumentException('El occurrenceStatus no puede ser vacío');
         }
 
         if ($individualCount < 0) {
-            throw new \InvalidArgumentException('El individualCount no puede ser negativo');
+            throw new InvalidArgumentException('El individualCount no puede ser negativo');
         }
 
         return new self(

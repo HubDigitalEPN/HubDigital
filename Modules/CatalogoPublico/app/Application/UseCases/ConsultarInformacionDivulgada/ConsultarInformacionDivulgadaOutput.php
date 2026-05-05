@@ -8,7 +8,7 @@ final readonly class ConsultarInformacionDivulgadaOutput
 {
     /**
      * @param  array<string, scalar|null>  $datosVisibles
-     *                                                     Solo incluye claves cuyos flags de visibilidad están habilitados.
+     * Solo incluye claves cuyos flags de visibilidad están habilitados.
      */
     private function __construct(
         public array $datosVisibles,
