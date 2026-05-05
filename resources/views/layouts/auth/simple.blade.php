@@ -1,22 +1,34 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
         @include('partials.head')
     </head>
-    <body class="min-h-screen bg-white antialiased dark:bg-linear-to-b dark:from-neutral-950 dark:to-neutral-900">
-        <div class="bg-background flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
-            <div class="flex w-full max-w-sm flex-col gap-2">
-                <a href="{{ route('home') }}" class="flex flex-col items-center gap-2 font-medium" wire:navigate>
-                    <span class="flex h-9 w-9 mb-1 items-center justify-center rounded-md">
-                        <x-app-logo-icon class="size-9 fill-current text-black dark:text-white" />
+    <body class="min-h-screen bg-bg-main antialiased">
+        {{-- Subtle background radial touches --}}
+        <div class="hub-auth-bg pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true"></div>
+
+        <div class="relative flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
+            <div class="flex w-full max-w-md flex-col gap-6">
+
+                {{-- Brand --}}
+                <a href="{{ route('home') }}" class="flex items-center justify-center gap-3" wire:navigate>
+                    <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-navy shadow-sm">
+                        <x-app-logo-icon class="size-6 fill-current text-white" />
                     </span>
-                    <span class="sr-only">{{ config('app.name', 'Laravel') }}</span>
+                    <div class="flex flex-col">
+                        <span class="font-display text-lg font-bold leading-tight text-blue-navy">Hub Digital</span>
+                        <span class="text-xs leading-tight text-text-secondary">Laboratorio de Especímenes</span>
+                    </div>
                 </a>
-                <div class="flex flex-col gap-6">
+
+                {{-- Card --}}
+                <div class="rounded-lg border border-border bg-surface px-8 py-8 shadow-sm">
                     {{ $slot }}
                 </div>
+
             </div>
         </div>
+
         @fluxScripts
     </body>
 </html>
