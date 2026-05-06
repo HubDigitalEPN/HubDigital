@@ -20,4 +20,7 @@ interface CajaRepository
     public function buscarPorCodigo(CodigoCaja $codigo): ?Caja;
 
     public function buscarPorCodigoRfid(CodigoRfid $rfid): ?Caja;
+
+    /** @return Caja[] */
+    public function buscarTodas(): array;
 }
