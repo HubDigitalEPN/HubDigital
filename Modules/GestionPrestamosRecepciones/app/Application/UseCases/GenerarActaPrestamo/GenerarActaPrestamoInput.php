@@ -8,5 +8,6 @@ final readonly class GenerarActaPrestamoInput
 {
     public function __construct(
         public string $solicitudId,
+        public string $curadorId,
     ) {}
 }

@@ -35,7 +35,7 @@ final class GenerarActaPrestamoHandler
 
         $pdfRuta = 'actas/'.$input->solicitudId.'.pdf';
 
-        // Valida que la solicitud esté en estado Aprobada (lanza excepción si no)
+        $solicitud->aprobar(curadorId: $input->curadorId);
         $solicitud->emitirActa($pdfRuta);
 
         $ahora = new DateTimeImmutable;
@@ -55,8 +55,12 @@ final class GenerarActaPrestamoHandler
         // Transiciona a PendienteFirma para que el investigador pueda firmarla
         $acta->marcarEnviada();
 
-        $this->transactionManager->executeTransactional(function () use ($acta): void {
+        $this->transactionManager->executeTransactional(function () use ($solicitud, $acta): void {
+            $this->solicitudRepo->guardar($solicitud);
             $this->actaRepo->guardar($acta);
+            foreach ($solicitud->pullEvents() as $event) {
+                $this->publisher->publish($event);
+            }
             foreach ($acta->pullEvents() as $event) {
                 $this->publisher->publish($event);
             }
