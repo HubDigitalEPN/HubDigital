@@ -57,6 +57,14 @@ class EloquentCajaRepository implements CajaRepository
         return $model ? $this->toDomain($model) : null;
     }
 
+    /** @return Caja[] */
+    public function buscarTodas(): array
+    {
+        return CajaEloquentModel::all()
+            ->map(fn ($m) => $this->toDomain($m))
+            ->all();
+    }
+
     private function toDomain(CajaEloquentModel $model): Caja
     {
         return Caja::reconstituir(
