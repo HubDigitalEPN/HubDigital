@@ -124,6 +124,30 @@
 
         {{ $slot }}
 
+        {{-- Domain exception toast --}}
+        <div
+            x-data="{ show: false, message: '' }"
+            x-on:domain-error.window="message = $event.detail.message; show = true; setTimeout(() => show = false, 6000)"
+            x-show="show"
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 translate-y-4"
+            x-transition:enter-end="opacity-100 translate-y-0"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100 translate-y-0"
+            x-transition:leave-end="opacity-0 translate-y-4"
+            class="fixed bottom-5 right-5 z-50 flex items-start gap-3 rounded-lg border border-error/30 bg-surface px-4 py-3 shadow-lg max-w-sm"
+            style="display: none"
+        >
+            <flux:icon name="exclamation-triangle" class="mt-0.5 size-5 shrink-0 text-error" />
+            <div class="flex-1">
+                <p class="text-sm font-medium text-text-primary">Operación no permitida</p>
+                <p class="text-xs text-text-secondary mt-0.5" x-text="message"></p>
+            </div>
+            <button x-on:click="show = false" class="text-text-secondary hover:text-text-primary">
+                <flux:icon name="x-mark" class="size-4" />
+            </button>
+        </div>
+
         @fluxScripts
     </body>
 </html>

@@ -44,9 +44,6 @@ class Register extends Component
 
         Auth::login($user);
 
-        $token = $user->createToken('web')->plainTextToken;
-        session(['api_token' => $token]);
-
         $this->redirect(route('dashboard'), navigate: true);
     }
 

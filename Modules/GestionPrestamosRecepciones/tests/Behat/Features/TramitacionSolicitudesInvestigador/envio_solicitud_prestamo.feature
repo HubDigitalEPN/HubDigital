@@ -10,11 +10,11 @@ Característica: Tramitacion de solicitud de préstamo
         Entonces la solicitud queda registrada en estado borrador
 
     Escenario: Editar una solicitud en estado borrador
-        Dado que existe una solicitud en estado borrador
+        Dado que el investigador tiene una solicitud en estado borrador
         Y el investigador tiene acceso a dicha solicitud
         Cuando el investigador actualiza la información de la solicitud
         Entonces la solicitud refleja la información actualizada
-        Y la solicitud permanece en estado borrador
+        Y la solicitud sigue en estado borrador
 
     Esquema del escenario: Enviar una solicitud con información completa
         Dado que existe una solicitud en estado <estado_previo> con su información requerida completa
