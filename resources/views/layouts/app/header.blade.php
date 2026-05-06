@@ -1,73 +1,97 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
         @include('partials.head')
     </head>
-    <body class="min-h-screen bg-white dark:bg-zinc-800">
-        <flux:header container class="border-b border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
-            <flux:sidebar.toggle class="lg:hidden mr-2" icon="bars-2" inset="left" />
+    <body class="min-h-screen bg-bg-main">
 
-            <x-app-logo href="{{ route('dashboard') }}" wire:navigate />
+        <flux:header container class="border-b border-blue-navy/80 bg-blue-navy! shadow-sm">
+            <flux:sidebar.toggle class="mr-2 text-white/70 hover:text-white lg:hidden" icon="bars-2" inset="left" />
 
-            <flux:navbar class="-mb-px max-lg:hidden">
-                <flux:navbar.item icon="layout-grid" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
-                    {{ __('Dashboard') }}
+            {{-- Brand --}}
+            <a href="{{ route('dashboard') }}" wire:navigate class="flex items-center gap-2.5">
+                <span class="flex h-7 w-7 items-center justify-center rounded bg-white/15">
+                    <x-app-logo-icon class="size-4 fill-current text-white" />
+                </span>
+                <div class="hidden flex-col leading-tight sm:flex">
+                    <span class="font-display text-sm font-bold text-white">Hub Digital</span>
+                    <span class="text-[9px] font-medium uppercase tracking-widest text-white/50">Colección Entomológica · EPN</span>
+                </div>
+            </a>
+
+            {{-- Nav items --}}
+            <flux:navbar class="-mb-px max-lg:hidden ml-6">
+                <flux:navbar.item
+                    icon="home"
+                    :href="route('dashboard')"
+                    :current="request()->routeIs('dashboard')"
+                    wire:navigate
+                    class="text-white/80 hover:text-white data-[current]:text-white data-[current]:border-white"
+                >
+                    Dashboard
                 </flux:navbar.item>
+
+                @auth
+                    @if(auth()->user()->rol === 'PRESTAMISTA')
+                        <flux:navbar.item icon="document-text" :href="route('dashboard')" wire:navigate
+                            class="text-white/80 hover:text-white">
+                            Mis Solicitudes
+                        </flux:navbar.item>
+                    @elseif(auth()->user()->rol === 'CURADOR')
+                        <flux:navbar.item icon="inbox" :href="route('dashboard')" wire:navigate
+                            class="text-white/80 hover:text-white">
+                            Solicitudes
+                        </flux:navbar.item>
+                    @endif
+                @endauth
             </flux:navbar>
 
             <flux:spacer />
 
-            <flux:navbar class="me-1.5 space-x-0.5 rtl:space-x-reverse py-0!">
-                <flux:tooltip :content="__('Search')" position="bottom">
-                    <flux:navbar.item class="!h-10 [&>div>svg]:size-5" icon="magnifying-glass" href="#" :label="__('Search')" />
-                </flux:tooltip>
-                <flux:tooltip :content="__('Repository')" position="bottom">
-                    <flux:navbar.item
-                        class="h-10 max-lg:hidden [&>div>svg]:size-5"
-                        icon="folder-git-2"
-                        href="https://github.com/laravel/livewire-starter-kit"
-                        target="_blank"
-                        :label="__('Repository')"
-                    />
-                </flux:tooltip>
-                <flux:tooltip :content="__('Documentation')" position="bottom">
-                    <flux:navbar.item
-                        class="h-10 max-lg:hidden [&>div>svg]:size-5"
-                        icon="book-open-text"
-                        href="https://laravel.com/docs/starter-kits#livewire"
-                        target="_blank"
-                        :label="__('Documentation')"
-                    />
-                </flux:tooltip>
-            </flux:navbar>
-
-            <x-desktop-user-menu />
+            {{-- Right side: online indicator + user --}}
+            <div class="flex items-center gap-4">
+                <div class="hidden items-center gap-1.5 text-xs text-white/60 sm:flex">
+                    <span class="size-2 rounded-full bg-success"></span>
+                    En línea
+                </div>
+                <x-desktop-user-menu />
+            </div>
         </flux:header>
 
-        <!-- Mobile Menu -->
-        <flux:sidebar collapsible="mobile" sticky class="lg:hidden border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
-            <flux:sidebar.header>
-                <x-app-logo :sidebar="true" href="{{ route('dashboard') }}" wire:navigate />
-                <flux:sidebar.collapse class="in-data-flux-sidebar-on-desktop:not-in-data-flux-sidebar-collapsed-desktop:-mr-2" />
+        {{-- Mobile sidebar --}}
+        <flux:sidebar collapsible="mobile" sticky class="lg:hidden border-e border-border bg-surface">
+            <flux:sidebar.header class="border-b border-border">
+                <div class="flex items-center gap-2">
+                    <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-navy">
+                        <x-app-logo-icon class="size-4 fill-current text-white" />
+                    </span>
+                    <span class="font-display text-sm font-bold text-blue-navy">Hub Digital</span>
+                </div>
+                <flux:sidebar.collapse class="ml-auto in-data-flux-sidebar-on-desktop:not-in-data-flux-sidebar-collapsed-desktop:-mr-2" />
             </flux:sidebar.header>
 
-            <flux:sidebar.nav>
-                <flux:sidebar.group :heading="__('Platform')">
-                    <flux:sidebar.item icon="layout-grid" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
-                        {{ __('Dashboard')  }}
+            <flux:sidebar.nav class="mt-2">
+                <flux:sidebar.group heading="Principal">
+                    <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
+                        Dashboard
                     </flux:sidebar.item>
                 </flux:sidebar.group>
-            </flux:sidebar.nav>
 
-            <flux:spacer />
-
-            <flux:sidebar.nav>
-                <flux:sidebar.item icon="folder-git-2" href="https://github.com/laravel/livewire-starter-kit" target="_blank">
-                    {{ __('Repository') }}
-                </flux:sidebar.item>
-                <flux:sidebar.item icon="book-open-text" href="https://laravel.com/docs/starter-kits#livewire" target="_blank">
-                    {{ __('Documentation') }}
-                </flux:sidebar.item>
+                @auth
+                    @if(auth()->user()->rol === 'PRESTAMISTA')
+                        <flux:sidebar.group heading="Préstamos">
+                            <flux:sidebar.item icon="document-text" :href="route('dashboard')" wire:navigate>
+                                Mis Solicitudes
+                            </flux:sidebar.item>
+                        </flux:sidebar.group>
+                    @elseif(auth()->user()->rol === 'CURADOR')
+                        <flux:sidebar.group heading="Gestión">
+                            <flux:sidebar.item icon="inbox" :href="route('dashboard')" wire:navigate>
+                                Solicitudes
+                            </flux:sidebar.item>
+                        </flux:sidebar.group>
+                    @endif
+                @endauth
             </flux:sidebar.nav>
         </flux:sidebar>
 

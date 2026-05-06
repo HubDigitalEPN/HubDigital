@@ -1,8 +1,8 @@
 @import 'tailwindcss';
 @import '../../vendor/livewire/flux/dist/flux.css';
-@import url('https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@600;700&family=Inter:wght@400;500;600&display=swap');
 
 @source '../views';
+@source inline("border-science-blue bg-science-blue/5 bg-science-blue/15 text-science-blue border-border bg-surface hover:border-science-blue/40 text-text-secondary text-text-primary bg-bg-main");
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../vendor/livewire/flux-pro/stubs/**/*.blade.php';
 @source '../../vendor/livewire/flux/stubs/**/*.blade.php';
@@ -43,8 +43,8 @@
     --color-zinc-900: #171717;
     --color-zinc-950: #0a0a0a;
 
-    --color-accent: var(--color-neutral-800);
-    --color-accent-content: var(--color-neutral-800);
+    --color-accent: var(--color-science-blue);
+    --color-accent-content: var(--color-science-blue);
     --color-accent-foreground: var(--color-white);
 }
 
@@ -84,3 +84,21 @@ select:focus[data-flux-control] {
 /* \[:where(&)\]:size-4 {
     @apply size-4;
 } */
+
+/* Hub Digital — inputs y texto del body usan text-primary, no zinc gris */
+input[data-flux-control],
+textarea[data-flux-control],
+select[data-flux-control] {
+    color: var(--color-text-primary);
+}
+
+body {
+    color: var(--color-text-primary);
+}
+
+/* Hub Digital auth background — subtle radial gradients */
+.hub-auth-bg {
+    background-image:
+        radial-gradient(circle at 18% 55%, rgba(27, 54, 93, 0.05) 0%, transparent 50%),
+        radial-gradient(circle at 82% 20%, rgba(46, 125, 50, 0.04) 0%, transparent 45%);
+}

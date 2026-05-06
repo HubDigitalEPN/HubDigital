@@ -1,43 +1,79 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
         @include('partials.head')
     </head>
-    <body class="min-h-screen bg-white dark:bg-zinc-800">
-        <flux:sidebar sticky collapsible="mobile" class="border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
-            <flux:sidebar.header>
-                <x-app-logo :sidebar="true" href="{{ route('dashboard') }}" wire:navigate />
-                <flux:sidebar.collapse class="lg:hidden" />
+    <body class="min-h-screen bg-bg-main">
+        <flux:sidebar sticky collapsible="mobile" class="border-e border-border bg-surface">
+
+            {{-- Brand header --}}
+            <flux:sidebar.header class="border-b border-border px-4 py-3">
+                <a href="{{ route('dashboard') }}" wire:navigate class="flex items-center gap-2.5">
+                    <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-navy shadow-sm">
+                        <x-app-logo-icon class="size-5 fill-current text-white" />
+                    </span>
+                    <div class="flex flex-col leading-tight">
+                        <span class="font-display text-sm font-bold text-blue-navy">Hub Digital</span>
+                        <span class="text-[10px] font-medium uppercase tracking-wider text-text-secondary">Colección Entomológica</span>
+                    </div>
+                </a>
+                <flux:sidebar.collapse class="lg:hidden ml-auto text-text-secondary" />
             </flux:sidebar.header>
 
-            <flux:sidebar.nav>
-                <flux:sidebar.group :heading="__('Platform')" class="grid">
-                    <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
-                        {{ __('Dashboard') }}
+            {{-- Navigation --}}
+            <flux:sidebar.nav class="mt-2">
+                <flux:sidebar.group heading="Principal" class="grid">
+                    <flux:sidebar.item
+                        icon="home"
+                        :href="route('dashboard')"
+                        :current="request()->routeIs('dashboard')"
+                        wire:navigate
+                    >
+                        Dashboard
                     </flux:sidebar.item>
                 </flux:sidebar.group>
+
+                @auth
+                    @if(auth()->user()->rol === 'PRESTAMISTA')
+                        <flux:sidebar.group heading="Préstamos" class="grid">
+                            <flux:sidebar.item icon="document-text" :href="route('dashboard')" wire:navigate>
+                                Mis Solicitudes
+                            </flux:sidebar.item>
+                        </flux:sidebar.group>
+                    @elseif(auth()->user()->rol === 'DEPOSITANTE')
+                        <flux:sidebar.group heading="Depósitos" class="grid">
+                            <flux:sidebar.item icon="archive-box" :href="route('dashboard')" wire:navigate>
+                                Mis Depósitos
+                            </flux:sidebar.item>
+                        </flux:sidebar.group>
+                    @elseif(auth()->user()->rol === 'CURADOR')
+                        <flux:sidebar.group heading="Gestión" class="grid">
+                            <flux:sidebar.item icon="inbox" :href="route('dashboard')" wire:navigate>
+                                Solicitudes
+                            </flux:sidebar.item>
+                            <flux:sidebar.item icon="squares-2x2" :href="route('dashboard')" wire:navigate>
+                                Inventario
+                            </flux:sidebar.item>
+                        </flux:sidebar.group>
+                    @endif
+                @endauth
             </flux:sidebar.nav>
 
             <flux:spacer />
-
-            <flux:sidebar.nav>
-                <flux:sidebar.item icon="folder-git-2" href="https://github.com/laravel/livewire-starter-kit" target="_blank">
-                    {{ __('Repository') }}
-                </flux:sidebar.item>
-
-                <flux:sidebar.item icon="book-open-text" href="https://laravel.com/docs/starter-kits#livewire" target="_blank">
-                    {{ __('Documentation') }}
-                </flux:sidebar.item>
-            </flux:sidebar.nav>
 
             <x-desktop-user-menu class="hidden lg:block" :name="auth()->user()->name" />
         </flux:sidebar>
 
-        <!-- Mobile User Menu -->
-        <flux:header class="lg:hidden">
-            <flux:sidebar.toggle class="lg:hidden" icon="bars-2" inset="left" />
+        {{-- Mobile top bar --}}
+        <flux:header class="lg:hidden border-b border-blue-navy bg-blue-navy">
+            <flux:sidebar.toggle class="text-white/80 hover:text-white" icon="bars-2" inset="left" />
 
-            <flux:spacer />
+            <div class="flex items-center gap-2 mx-auto">
+                <span class="flex h-6 w-6 items-center justify-center rounded bg-white/20">
+                    <x-app-logo-icon class="size-4 fill-current text-white" />
+                </span>
+                <span class="font-display text-sm font-bold text-white">Hub Digital</span>
+            </div>
 
             <flux:dropdown position="top" align="end">
                 <flux:profile
@@ -53,10 +89,9 @@
                                     :name="auth()->user()->name"
                                     :initials="auth()->user()->initials()"
                                 />
-
                                 <div class="grid flex-1 text-start text-sm leading-tight">
                                     <flux:heading class="truncate">{{ auth()->user()->name }}</flux:heading>
-                                    <flux:text class="truncate">{{ auth()->user()->email }}</flux:text>
+                                    <flux:text class="truncate text-text-secondary">{{ auth()->user()->email }}</flux:text>
                                 </div>
                             </div>
                         </div>
@@ -66,7 +101,7 @@
 
                     <flux:menu.radio.group>
                         <flux:menu.item :href="route('profile.edit')" icon="cog" wire:navigate>
-                            {{ __('Settings') }}
+                            Configuración
                         </flux:menu.item>
                     </flux:menu.radio.group>
 
@@ -79,9 +114,8 @@
                             type="submit"
                             icon="arrow-right-start-on-rectangle"
                             class="w-full cursor-pointer"
-                            data-test="logout-button"
                         >
-                            {{ __('Log out') }}
+                            Cerrar sesión
                         </flux:menu.item>
                     </form>
                 </flux:menu>
