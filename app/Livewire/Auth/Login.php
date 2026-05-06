@@ -33,9 +33,6 @@ class Login extends Component
 
         Auth::login($user, $this->remember);
 
-        $token = $user->createToken('web')->plainTextToken;
-        session(['api_token' => $token]);
-
         $this->redirect(route('dashboard'), navigate: true);
     }
 
