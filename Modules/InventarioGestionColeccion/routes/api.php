@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\CajaController;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GabineteController;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\HorarioController;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\RanuraGabineteController;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\SeguimientoFisicoController;
 
@@ -17,6 +18,10 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function (): void {
 
     Route::get('cajas', [CajaController::class, 'index'])->name('api.v1.cajas.index');
     Route::post('cajas', [CajaController::class, 'store'])->name('api.v1.cajas.store');
+
+    // Horario settings (global configuration)
+    Route::get('horario', [HorarioController::class, 'show'])->name('api.v1.horario.show');
+    Route::put('horario', [HorarioController::class, 'update'])->name('api.v1.horario.update');
 
     // --- Seguimiento físico (eventos IoT) ---
     Route::prefix('seguimiento-fisico')->name('api.v1.seguimiento-fisico.')->group(function (): void {

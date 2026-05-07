@@ -19,12 +19,14 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Re
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarRetiroCaja\RegistrarRetiroCajaOutput;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Caja;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Gabinete;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Horario;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\RanuraGabinete;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\UbicacionCaja;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\AlertaUbicacionRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\CajaRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EventoCicloIotRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\GabineteRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\HorarioRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\NotificacionRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\RanuraGabineteRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UbicacionCajaRepository;
@@ -33,6 +35,7 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\Cod
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\CodigoGabinete;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoAlerta;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoCaja;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\HorarioId;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\RanuraId;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TipoAlerta;
 use Modules\InventarioGestionColeccion\Tests\Behat\Contexts\BaseContext;
@@ -44,6 +47,7 @@ use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMem
 use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryCajaRepository;
 use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryEventoCicloIotRepository;
 use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryGabineteRepository;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryHorarioRepository;
 use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryNotificacionRepository;
 use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryRanuraGabineteRepository;
 use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryUbicacionCajaRepository;
@@ -73,6 +77,8 @@ final class RegistroUbicacionCajasContext extends BaseContext
 
     private InMemoryNotificacionRepository $notificacionRepo;
 
+    private InMemoryHorarioRepository $horarioRepo;
+
     // ── Fakes ─────────────────────────────────────────────────────────────────
 
     private FakeHorarioValidadorAdapter $horarioFake;
@@ -97,9 +103,8 @@ final class RegistroUbicacionCajasContext extends BaseContext
 
     public function __construct()
     {
-        $this->horarioFake = new FakeHorarioValidadorAdapter;
-        $this->fakePublisher = new FakeEventPublisherAdapter;
-
+        // Inicializar repositorios en-memoria
+        $this->horarioRepo = new InMemoryHorarioRepository;
         $this->cajaRepo = new InMemoryCajaRepository;
         $this->ranuraRepo = new InMemoryRanuraGabineteRepository;
         $this->gabineteRepo = new InMemoryGabineteRepository;
@@ -108,7 +113,21 @@ final class RegistroUbicacionCajasContext extends BaseContext
         $this->alertaRepo = new InMemoryAlertaUbicacionRepository;
         $this->notificacionRepo = new InMemoryNotificacionRepository;
 
+        // Crear y guardar Horario por defecto (8-18)
+        $horarioDefault = Horario::crear(
+            id: HorarioId::generar(),
+            horaInicio: 8,
+            horaFin: 18,
+        );
+        $this->horarioRepo->guardar($horarioDefault);
+
+        // Inicializar adapters con sus dependencias
+        $this->horarioFake = new FakeHorarioValidadorAdapter($this->horarioRepo);
+        $this->fakePublisher = new FakeEventPublisherAdapter;
+
+        // Registrar en el contenedor de servicios
         self::$app->instance(HorarioValidadorPort::class, $this->horarioFake);
+        self::$app->instance(HorarioRepository::class, $this->horarioRepo);
         self::$app->instance(EventPublisherPort::class, $this->fakePublisher);
         self::$app->instance(TransactionManagerPort::class, new PassThroughTransactionManagerAdapter);
         self::$app->instance(ContextoEjecucionPort::class, new FakeContextoEjecucionAdapter);

@@ -12,13 +12,14 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\Ale
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\CajaRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EventoCicloIotRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\GabineteRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\HorarioRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\NotificacionRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\RanuraGabineteRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\SincronizacionEsp32Repository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UbicacionCajaRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\Providers\EventServiceProvider;
 use Modules\InventarioGestionColeccion\Infrastructure\Providers\RouteServiceProvider;
-use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\ConfigHorarioValidadorAdapter;
+use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\DatabaseHorarioValidadorAdapter;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\HttpSeguridadContextoAdapter;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\LaravelEventPublisherAdapter;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\LaravelTransactionManagerAdapter;
@@ -26,6 +27,7 @@ use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persiste
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentCajaRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentEventoCicloIotRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentGabineteRepository;
+use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentHorarioRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentNotificacionRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentRanuraGabineteRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentSincronizacionEsp32Repository;
@@ -47,6 +49,7 @@ class InventarioGestionColeccionServiceProvider extends ModuleServiceProvider
         CajaRepository::class => EloquentCajaRepository::class,
         GabineteRepository::class => EloquentGabineteRepository::class,
         RanuraGabineteRepository::class => EloquentRanuraGabineteRepository::class,
+        HorarioRepository::class => EloquentHorarioRepository::class,
         AlertaUbicacionRepository::class => EloquentAlertaUbicacionRepository::class,
         UbicacionCajaRepository::class => EloquentUbicacionCajaRepository::class,
         NotificacionRepository::class => EloquentNotificacionRepository::class,
@@ -54,7 +57,7 @@ class InventarioGestionColeccionServiceProvider extends ModuleServiceProvider
         SincronizacionEsp32Repository::class => EloquentSincronizacionEsp32Repository::class,
         TransactionManagerPort::class => LaravelTransactionManagerAdapter::class,
         EventPublisherPort::class => LaravelEventPublisherAdapter::class,
-        HorarioValidadorPort::class => ConfigHorarioValidadorAdapter::class,
+        HorarioValidadorPort::class => DatabaseHorarioValidadorAdapter::class,
         ContextoEjecucionPort::class => HttpSeguridadContextoAdapter::class,
     ];
 
