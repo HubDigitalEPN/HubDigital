@@ -26,6 +26,7 @@ final class ListarRanurasGabineteHandler
                 numeroRanura: $r->numeroRanura(),
                 familiaTaxonomicaEsperadaId: $r->familiaTaxonomicaEsperadaId(),
                 activa: $r->activa(),
+                cajaActualId: $r->cajaActualId() ? (string) $r->cajaActualId() : null,
             ),
             $ranuras,
         );

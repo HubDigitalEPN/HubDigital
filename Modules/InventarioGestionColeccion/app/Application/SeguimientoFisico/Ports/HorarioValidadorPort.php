@@ -6,5 +6,5 @@ namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports
 
 interface HorarioValidadorPort
 {
-    public function estaFueraDeHorario(\DateTimeImmutable $fecha): bool;
+    public function esFueraDeHorario(\DateTimeImmutable $fecha): bool;
 }
