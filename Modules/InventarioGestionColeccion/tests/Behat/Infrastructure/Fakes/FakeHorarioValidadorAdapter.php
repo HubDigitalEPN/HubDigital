@@ -5,18 +5,38 @@ declare(strict_types=1);
 namespace Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\Fakes;
 
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\HorarioValidadorPort;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Horario;
 
 final class FakeHorarioValidadorAdapter implements HorarioValidadorPort
 {
-    private bool $fueraDeHorario = false;
+    private InMemoryHorarioRepository $horarioRepository;
 
-    public function setFueraDeHorario(bool $valor): void
+    private ?bool $forceOutsideSchedule = null;
+
+    public function __construct(InMemoryHorarioRepository $horarioRepository)
     {
-        $this->fueraDeHorario = $valor;
+        $this->horarioRepository = $horarioRepository;
     }
 
     public function esFueraDeHorario(\DateTimeImmutable $fecha): bool
     {
-        return $this->fueraDeHorario;
+        // If explicitly forced, return the forced value
+        if ($this->forceOutsideSchedule !== null) {
+            return $this->forceOutsideSchedule;
+        }
+
+        // Otherwise, use the repository's horario
+        $horario = $this->horarioRepository->obtenerUnico();
+
+        return $horario->estaFueraDeHorario($fecha);
+    }
+
+    /**
+     * Backward compatibility method for existing Behat tests.
+     * Forces esFueraDeHorario() to return the specified value.
+     */
+    public function setFueraDeHorario(bool $valor): void
+    {
+        $this->forceOutsideSchedule = $valor;
     }
 }
