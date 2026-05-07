@@ -53,6 +53,34 @@
         --color-accent: var(--color-white);
         --color-accent-content: var(--color-white);
         --color-accent-foreground: var(--color-neutral-800);
+
+        /* ── Dark Mode Token Overrides ─────────────────────────────────────── */
+
+        /* Fondos — escala slate (tinte azul frío, armoniza con blue-navy) */
+        --color-bg-main:  #0f172a;   /* slate-900 — fondo base de página */
+        --color-surface:  #1e293b;   /* slate-800 — tarjetas y paneles */
+
+        /* Texto */
+        --color-text-primary:   #f1f5f9;  /* slate-100 */
+        --color-text-secondary: #94a3b8;  /* slate-400 */
+
+        /* Bordes */
+        --color-border: #334155;          /* slate-700 */
+
+        /* Blue-Navy — aclarado para ser legible sobre fondos oscuros */
+        --color-blue-navy: #93c5fd;       /* blue-300 */
+
+        /* Bio-Green — aclarado */
+        --color-bio-green: #86efac;       /* green-300 */
+
+        /* Science Blue — aclarado */
+        --color-science-blue: #7dd3fc;    /* sky-300 */
+
+        /* Semánticos — aclarados a nivel 300 para pasar WCAG AA como texto */
+        --color-success: #86efac;         /* green-300 */
+        --color-warning: #fcd34d;         /* amber-300 */
+        --color-error:   #fca5a5;         /* red-300 */
+        --color-info:    #7dd3fc;         /* sky-300 */
     }
 }
 
