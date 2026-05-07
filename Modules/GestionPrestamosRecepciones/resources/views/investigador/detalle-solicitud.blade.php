@@ -19,9 +19,9 @@
             {{-- Info principal --}}
             <div class="lg:col-span-2 space-y-6">
 
-                <div class="rounded-lg border border-border bg-surface shadow-sm p-6 space-y-4">
+                <div class="rounded-lg border border-border bg-surface shadow-sm p-5 space-y-4">
                     <div class="flex items-center justify-between">
-                        <flux:heading size="xl" level="1">{{ $solicitud->titulo_estudio }}</flux:heading>
+                        <flux:heading size="xl" level="1" class="font-display">{{ $solicitud->titulo_estudio }}</flux:heading>
                         <x-gestionprestamosrecepciones::solicitud-status-badge :estado="$solicitud->estado" />
                     </div>
                     <flux:separator />
@@ -54,7 +54,7 @@
                 @if($solicitud->items && $solicitud->items->count())
                     <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
                         <div class="p-4">
-                            <flux:heading size="lg" level="2">Especimenes Solicitados</flux:heading>
+                            <flux:heading size="lg" level="2" class="font-display">Especimenes Solicitados</flux:heading>
                         </div>
                         <flux:table>
                             <flux:table.columns>
@@ -75,9 +75,9 @@
 
                 {{-- Acta de préstamo --}}
                 @if($acta)
-                    <div class="rounded-lg border border-border bg-surface shadow-sm p-6 space-y-4">
+                    <div class="rounded-lg border border-border bg-surface shadow-sm p-5 space-y-4">
                         <div class="flex items-center justify-between">
-                            <flux:heading size="lg" level="2">Acta de Préstamo</flux:heading>
+                            <flux:heading size="lg" level="2" class="font-display">Acta de Préstamo</flux:heading>
                             <x-gestionprestamosrecepciones::acta-status-badge :estado="$acta->estado" />
                         </div>
                         <flux:separator />
@@ -118,8 +118,8 @@
             </div>
 
             {{-- Timeline lateral --}}
-            <div class="rounded-lg border border-border bg-surface shadow-sm p-6 space-y-2 h-fit">
-                <flux:heading size="lg" level="2">Historial</flux:heading>
+            <div class="rounded-lg border border-border bg-surface shadow-sm p-5 space-y-2 h-fit">
+                <flux:heading size="lg" level="2" class="font-display">Historial</flux:heading>
                 <flux:separator />
                 <div class="mt-3">
                     <x-gestionprestamosrecepciones::timeline-event

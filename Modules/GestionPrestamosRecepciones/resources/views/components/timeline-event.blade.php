@@ -1,8 +1,8 @@
-@props(['fecha', 'titulo', 'descripcion' => null, 'ultimo' => false])
+@props(['fecha', 'titulo', 'descripcion' => null, 'ultimo' => false, 'color' => '#1976D2'])
 
 <div class="flex gap-3">
     <div class="flex flex-col items-center">
-        <div class="size-2.5 rounded-full bg-science-blue mt-1 shrink-0"></div>
+        <div class="size-2.5 rounded-full mt-1 shrink-0" style="background-color: {{ $color }}"></div>
         @unless($ultimo)
             <div class="w-px flex-1 bg-border mt-1"></div>
         @endunless

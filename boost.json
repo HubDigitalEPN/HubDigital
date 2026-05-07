@@ -2,17 +2,7 @@
     "agents": [
         "claude_code"
     ],
-    "skills": [
-        "ai-sdk-development",
-        "fortify-development",
-        "laravel-best-practices",
-        "fluxui-development",
-        "livewire-development",
-        "pest-testing",
-        "tailwindcss-development",
-        "behat",
-        "laravel-clean-arch",
-        "laravel-owasp-security",
-        "php-pro"
-    ]
+    "mcp": true,
+    "nightwatch_mcp": false,
+    "sail": false
 }
