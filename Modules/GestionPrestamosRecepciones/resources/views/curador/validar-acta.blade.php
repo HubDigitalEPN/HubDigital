@@ -15,7 +15,7 @@
         <flux:callout variant="danger" icon="exclamation-triangle">Acta no encontrada.</flux:callout>
     @else
         <div class="flex items-center justify-between">
-            <flux:heading size="xl" level="1">Validar Acta Firmada</flux:heading>
+            <flux:heading size="xl" level="1" class="font-display">Validar Acta Firmada</flux:heading>
             <x-gestionprestamosrecepciones::acta-status-badge :estado="$acta->estado" />
         </div>
 

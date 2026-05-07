@@ -15,9 +15,9 @@
             {{-- Detalle --}}
             <div class="lg:col-span-2 space-y-6">
 
-                <div class="rounded-lg border border-border bg-surface shadow-sm p-6 space-y-4">
+                <div class="rounded-lg border border-border bg-surface shadow-sm p-5 space-y-4">
                     <div class="flex items-center justify-between">
-                        <flux:heading size="xl" level="1">{{ $solicitud->titulo_estudio }}</flux:heading>
+                        <flux:heading size="xl" level="1" class="font-display">{{ $solicitud->titulo_estudio }}</flux:heading>
                         <x-gestionprestamosrecepciones::solicitud-status-badge :estado="$solicitud->estado" />
                     </div>
                     <flux:separator />
@@ -54,7 +54,7 @@
                 @if($solicitud->items && $solicitud->items->count())
                     <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
                         <div class="p-4">
-                            <flux:heading size="lg" level="2">Especimenes Solicitados</flux:heading>
+                            <flux:heading size="lg" level="2" class="font-display">Especimenes Solicitados</flux:heading>
                         </div>
                         <flux:table>
                             <flux:table.columns>
@@ -76,8 +76,8 @@
             </div>
 
             {{-- Acciones del curador --}}
-            <div class="rounded-lg border border-border bg-surface shadow-sm p-6 space-y-4 h-fit">
-                <flux:heading size="lg" level="2">Resolución</flux:heading>
+            <div class="rounded-lg border border-border bg-surface shadow-sm p-5 space-y-4 h-fit">
+                <flux:heading size="lg" level="2" class="font-display">Resolución</flux:heading>
                 <flux:separator />
 
                 @if($solicitud->estado === 'enviada')
