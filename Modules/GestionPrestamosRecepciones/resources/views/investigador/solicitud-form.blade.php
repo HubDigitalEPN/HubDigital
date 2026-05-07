@@ -9,7 +9,7 @@
         </flux:breadcrumbs.item>
     </flux:breadcrumbs>
 
-    <flux:heading size="xl" level="1">
+    <flux:heading size="xl" level="1" class="font-display">
         {{ $this->solicitudId ? 'Editar Solicitud de Préstamo' : 'Nueva Solicitud de Préstamo' }}
     </flux:heading>
 
@@ -20,8 +20,8 @@
     <div class="grid gap-6 lg:grid-cols-3">
 
         {{-- Datos Generales --}}
-        <div class="lg:col-span-2 rounded-lg border border-border bg-surface shadow-sm p-6 space-y-4">
-            <flux:heading size="lg" level="2">Datos Generales</flux:heading>
+        <div class="lg:col-span-2 rounded-lg border border-border bg-surface shadow-sm p-5 space-y-4">
+            <flux:heading size="lg" level="2" class="font-display">Datos Generales</flux:heading>
             <flux:separator />
 
             <flux:field>
@@ -57,8 +57,8 @@
         </div>
 
         {{-- Resumen lateral --}}
-        <div class="rounded-lg border border-border bg-surface shadow-sm p-6 space-y-4 h-fit">
-            <flux:heading size="lg" level="2">Acciones</flux:heading>
+        <div class="rounded-lg border border-border bg-surface shadow-sm p-5 space-y-4 h-fit">
+            <flux:heading size="lg" level="2" class="font-display">Acciones</flux:heading>
             <flux:separator />
             <flux:text class="text-text-secondary text-sm">
                 Guarda el borrador en cualquier momento. Cuando la solicitud esté completa, envíala para revisión del curador.
@@ -69,7 +69,7 @@
                     <flux:icon wire:loading wire:target="guardarBorrador" name="arrow-path" class="animate-spin" />
                     Guardar Borrador
                 </flux:button>
-                <flux:button variant="filled" wire:click="enviarSolicitud"
+                <flux:button variant="primary" wire:click="enviarSolicitud"
                     wire:loading.attr="disabled" wire:target="enviarSolicitud">
                     <flux:icon wire:loading wire:target="enviarSolicitud" name="arrow-path" class="animate-spin" />
                     Enviar para Revisión
@@ -81,9 +81,9 @@
     </div>
 
     {{-- Especimenes solicitados --}}
-    <div class="rounded-lg border border-border bg-surface shadow-sm p-6 space-y-4">
+    <div class="rounded-lg border border-border bg-surface shadow-sm p-5 space-y-4">
         <div class="flex items-center justify-between">
-            <flux:heading size="lg" level="2">Especimenes Solicitados</flux:heading>
+            <flux:heading size="lg" level="2" class="font-display">Especimenes Solicitados</flux:heading>
             <flux:button size="sm" variant="ghost" icon="plus" wire:click="addItem">
                 Agregar espécimen
             </flux:button>

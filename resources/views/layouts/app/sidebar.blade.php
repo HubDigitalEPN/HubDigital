@@ -65,7 +65,7 @@
         </flux:sidebar>
 
         {{-- Mobile top bar --}}
-        <flux:header class="lg:hidden border-b border-blue-navy bg-blue-navy">
+        <flux:header class="lg:hidden border-b border-blue-navy bg-blue-navy dark:bg-slate-900 dark:border-slate-700">
             <flux:sidebar.toggle class="text-white/80 hover:text-white" icon="bars-2" inset="left" />
 
             <div class="flex items-center gap-2 mx-auto">
