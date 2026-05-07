@@ -5,7 +5,7 @@ use Modules\CatalogoPublico\Presentation\Http\Controllers\ConsultarInformacionDi
 use Modules\CatalogoPublico\Presentation\Http\Controllers\ModificarConfiguracionDivulgacionController;
 use Modules\CatalogoPublico\Presentation\Http\Controllers\SincronizarEspecimenesController;
 
-Route::middleware(['auth:sanctum'])->prefix('v1')->group(function (): void {
+Route::prefix('v1')->group(function (): void {
     Route::post(
         'especimenes-divulgables/sincronizaciones',
         SincronizarEspecimenesController::class

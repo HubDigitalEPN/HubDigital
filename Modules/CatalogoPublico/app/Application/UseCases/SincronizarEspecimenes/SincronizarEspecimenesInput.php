@@ -12,7 +12,6 @@ final readonly class SincronizarEspecimenesInput
      *                                                                                                         null = habilitar todos los campos por defecto.
      */
     public function __construct(
-        public string $curadorId,
         public array $especimenes,
     ) {}
 }
