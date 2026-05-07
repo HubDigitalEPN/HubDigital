@@ -49,8 +49,10 @@ abstract class BaseContext implements Context
 
         self::$lastMigratedScenario = $scenarioId;
 
-        // migrate:fresh only drops public-schema tables; the iot schema must be dropped manually
+        // migrate:fresh only drops public-schema tables; custom schemas must be dropped manually
         DB::statement('DROP SCHEMA IF EXISTS iot CASCADE');
+        DB::statement('DROP SCHEMA IF EXISTS prestamos CASCADE');
+        DB::statement('DROP SCHEMA IF EXISTS usuarios CASCADE');
 
         self::$app->make(Kernel::class)->call('migrate:fresh');
     }

@@ -12,5 +12,6 @@ final readonly class CrearRanuraGabineteOutput
         public int $numeroRanura,
         public ?string $familiaTaxonomicaEsperadaId,
         public bool $activa,
+        public ?string $cajaActualId = null,
     ) {}
 }

@@ -7,7 +7,10 @@ namespace Modules\InventarioGestionColeccion\Tests\Behat\Contexts\GestionAutonom
 use Behat\Step\Given;
 use Behat\Step\Then;
 use Behat\Step\When;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\ContextoEjecucionPort;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\EventPublisherPort;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\HorarioValidadorPort;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\TransactionManagerPort;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarIngresoCaja\RegistrarIngresoCajaHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarIngresoCaja\RegistrarIngresoCajaInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarIngresoCaja\RegistrarIngresoCajaOutput;
@@ -33,6 +36,17 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\Est
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\RanuraId;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TipoAlerta;
 use Modules\InventarioGestionColeccion\Tests\Behat\Contexts\BaseContext;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\Fakes\FakeContextoEjecucionAdapter;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\Fakes\FakeEventPublisherAdapter;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\Fakes\FakeHorarioValidadorAdapter;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\Fakes\PassThroughTransactionManagerAdapter;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryAlertaUbicacionRepository;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryCajaRepository;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryEventoCicloIotRepository;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryGabineteRepository;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryNotificacionRepository;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryRanuraGabineteRepository;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryUbicacionCajaRepository;
 use PHPUnit\Framework\Assert;
 
 final class RegistroUbicacionCajasContext extends BaseContext
@@ -43,21 +57,27 @@ final class RegistroUbicacionCajasContext extends BaseContext
 
     private RegistrarRetiroCajaHandler $retiroHandler;
 
-    // ── Repositories ─────────────────────────────────────────────────────────
+    // ── Repositorios In-Memory ────────────────────────────────────────────────
 
-    private GabineteRepository $gabineteRepo;
+    private InMemoryCajaRepository $cajaRepo;
 
-    private RanuraGabineteRepository $ranuraRepo;
+    private InMemoryRanuraGabineteRepository $ranuraRepo;
 
-    private CajaRepository $cajaRepo;
+    private InMemoryGabineteRepository $gabineteRepo;
 
-    private UbicacionCajaRepository $ubicacionRepo;
+    private InMemoryUbicacionCajaRepository $ubicacionRepo;
 
-    private EventoCicloIotRepository $eventoRepo;
+    private InMemoryEventoCicloIotRepository $eventoRepo;
 
-    private AlertaUbicacionRepository $alertaRepo;
+    private InMemoryAlertaUbicacionRepository $alertaRepo;
 
-    private NotificacionRepository $notificacionRepo;
+    private InMemoryNotificacionRepository $notificacionRepo;
+
+    // ── Fakes ─────────────────────────────────────────────────────────────────
+
+    private FakeHorarioValidadorAdapter $horarioFake;
+
+    private FakeEventPublisherAdapter $fakePublisher;
 
     // ── Estado del escenario ─────────────────────────────────────────────────
 
@@ -71,29 +91,37 @@ final class RegistroUbicacionCajasContext extends BaseContext
 
     private ?\Throwable $excepcionCapturada = null;
 
-    /** Acción ejecutada en el paso @When, para que @Then pueda verificar el evento correcto */
     private ?string $accionEjecutada = null;
-
-    /** Tracks whether the horary should be considered outside business hours. Replaces simple boolean logic. */
-    private $horarioMock;
 
     // ── Constructor ──────────────────────────────────────────────────────────
 
     public function __construct()
     {
-        $this->horarioMock = \Mockery::mock(HorarioValidadorPort::class);
-        $this->horarioMock->shouldReceive('esFueraDeHorario')->andReturn(false)->byDefault();
-        self::$app->instance(HorarioValidadorPort::class, $this->horarioMock);
+        $this->horarioFake = new FakeHorarioValidadorAdapter;
+        $this->fakePublisher = new FakeEventPublisherAdapter;
+
+        $this->cajaRepo = new InMemoryCajaRepository;
+        $this->ranuraRepo = new InMemoryRanuraGabineteRepository;
+        $this->gabineteRepo = new InMemoryGabineteRepository;
+        $this->ubicacionRepo = new InMemoryUbicacionCajaRepository;
+        $this->eventoRepo = new InMemoryEventoCicloIotRepository;
+        $this->alertaRepo = new InMemoryAlertaUbicacionRepository;
+        $this->notificacionRepo = new InMemoryNotificacionRepository;
+
+        self::$app->instance(HorarioValidadorPort::class, $this->horarioFake);
+        self::$app->instance(EventPublisherPort::class, $this->fakePublisher);
+        self::$app->instance(TransactionManagerPort::class, new PassThroughTransactionManagerAdapter);
+        self::$app->instance(ContextoEjecucionPort::class, new FakeContextoEjecucionAdapter);
+        self::$app->instance(CajaRepository::class, $this->cajaRepo);
+        self::$app->instance(RanuraGabineteRepository::class, $this->ranuraRepo);
+        self::$app->instance(GabineteRepository::class, $this->gabineteRepo);
+        self::$app->instance(UbicacionCajaRepository::class, $this->ubicacionRepo);
+        self::$app->instance(EventoCicloIotRepository::class, $this->eventoRepo);
+        self::$app->instance(AlertaUbicacionRepository::class, $this->alertaRepo);
+        self::$app->instance(NotificacionRepository::class, $this->notificacionRepo);
 
         $this->ingresoHandler = $this->make(RegistrarIngresoCajaHandler::class);
         $this->retiroHandler = $this->make(RegistrarRetiroCajaHandler::class);
-        $this->gabineteRepo = $this->make(GabineteRepository::class);
-        $this->ranuraRepo = $this->make(RanuraGabineteRepository::class);
-        $this->cajaRepo = $this->make(CajaRepository::class);
-        $this->ubicacionRepo = $this->make(UbicacionCajaRepository::class);
-        $this->eventoRepo = $this->make(EventoCicloIotRepository::class);
-        $this->alertaRepo = $this->make(AlertaUbicacionRepository::class);
-        $this->notificacionRepo = $this->make(NotificacionRepository::class);
     }
 
     // ==========================================
@@ -136,7 +164,6 @@ final class RegistroUbicacionCajasContext extends BaseContext
         );
 
         if (str_contains($condicion_previa, 'registrada en una ranura')) {
-            // Caja ya ingresada — debe estar en estado "en_gabinete" con ubicación activa
             Assert::assertNotNull($this->ranuraId, 'Se requiere una ranura sembrada en el paso anterior');
 
             $caja->ingresarEnRanura($this->ranuraId);
@@ -157,7 +184,6 @@ final class RegistroUbicacionCajasContext extends BaseContext
                 'La caja debe estar "en_gabinete" para el escenario de retiro'
             );
         } else {
-            // Ranura vacía disponible — caja en tránsito, sin ubicación activa
             $this->cajaRepo->guardar($caja);
 
             $cajaPersistida = $this->cajaRepo->buscarPorId($caja->id());
@@ -243,7 +269,6 @@ final class RegistroUbicacionCajasContext extends BaseContext
     #[Given('que el horario autorizado de movimiento de ranuras está configurado')]
     public function queElHorarioAutorizadoDeMovimientoDeRanurasEstáConfigurado(): void
     {
-        // Sembrar gabinete y caja en gabinete para que pueda retirarse
         $gabinete = Gabinete::crear(
             id: $this->gabineteRepo->nextIdentity(),
             codigo: CodigoGabinete::desde('GAB-HOR-001'),
@@ -290,7 +315,7 @@ final class RegistroUbicacionCajasContext extends BaseContext
     #[Given('la hora actual está fuera del horario autorizado')]
     public function laHoraActualEstáFueraDelHorarioAutorizado(): void
     {
-        $this->horarioMock->shouldReceive('esFueraDeHorario')->andReturn(true);
+        $this->horarioFake->setFueraDeHorario(true);
     }
 
     #[When('retiro una caja entomológica de su ranura')]

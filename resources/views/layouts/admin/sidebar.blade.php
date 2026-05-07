@@ -26,6 +26,41 @@
 
                 {{-- Los módulos añaden sus pestañas aquí con @push('admin-nav-items') --}}
                 @stack('admin-nav-items')
+
+                <flux:sidebar.group :heading="__('Inventario IoT')">
+                    <flux:sidebar.item
+                        icon="chart-bar"
+                        :href="route('admin.inventario.dashboard')"
+                        :current="request()->routeIs('admin.inventario.dashboard')"
+                        wire:navigate
+                    >
+                        {{ __('Monitoreo') }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item
+                        icon="archive-box"
+                        :href="route('admin.inventario.gabinetes')"
+                        :current="request()->routeIs('admin.inventario.gabinetes*')"
+                        wire:navigate
+                    >
+                        {{ __('Gabinetes') }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item
+                        icon="cube"
+                        :href="route('admin.inventario.cajas')"
+                        :current="request()->routeIs('admin.inventario.cajas')"
+                        wire:navigate
+                    >
+                        {{ __('Cajas') }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item
+                        icon="bell-alert"
+                        :href="route('admin.inventario.alertas')"
+                        :current="request()->routeIs('admin.inventario.alertas')"
+                        wire:navigate
+                    >
+                        {{ __('Alertas') }}
+                    </flux:sidebar.item>
+                </flux:sidebar.group>
             </flux:sidebar.nav>
 
             <flux:spacer />

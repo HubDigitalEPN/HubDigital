@@ -41,6 +41,26 @@ class EloquentAlertaUbicacionRepository implements AlertaUbicacionRepository
         return $model ? $this->toDomain($model) : null;
     }
 
+    public function buscarPorId(AlertaUbicacionId $id): ?AlertaUbicacion
+    {
+        $model = AlertaUbicacionEloquentModel::find((string) $id);
+
+        return $model ? $this->toDomain($model) : null;
+    }
+
+    public function buscarTodas(?EstadoAlerta $estado = null): array
+    {
+        $query = AlertaUbicacionEloquentModel::orderByDesc('created_at');
+
+        if ($estado !== null) {
+            $query->where('estado', $estado->valor());
+        }
+
+        return $query->get()
+            ->map(fn ($m) => $this->toDomain($m))
+            ->all();
+    }
+
     private function toDomain(AlertaUbicacionEloquentModel $model): AlertaUbicacion
     {
         return AlertaUbicacion::reconstituir(

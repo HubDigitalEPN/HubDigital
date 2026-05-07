@@ -8,7 +8,7 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\Horar
 
 class ConfigHorarioValidadorAdapter implements HorarioValidadorPort
 {
-    public function estaFueraDeHorario(\DateTimeImmutable $fecha): bool
+    public function esFueraDeHorario(\DateTimeImmutable $fecha): bool
     {
         $hora = (int) $fecha->format('H');
 
