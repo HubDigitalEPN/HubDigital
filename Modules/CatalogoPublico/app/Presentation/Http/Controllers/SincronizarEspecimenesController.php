@@ -17,7 +17,6 @@ final class SincronizarEspecimenesController
     public function __invoke(SincronizarEspecimenesRequest $request): JsonResponse
     {
         $output = $this->handler->handle(new SincronizarEspecimenesInput(
-            curadorId: $request->validated('curador_id'),
             especimenes: $request->validated('especimenes'),
         ));
 

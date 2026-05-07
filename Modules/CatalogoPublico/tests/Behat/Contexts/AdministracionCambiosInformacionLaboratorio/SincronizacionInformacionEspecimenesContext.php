@@ -42,8 +42,6 @@ final class SincronizacionInformacionEspecimenesContext extends BaseContext
 
     private ?\Throwable $excepcionCapturada = null;
 
-    private string $curadorId = 'cur-001';
-
     // ── Inicialización por escenario ─────────────────────────────────────────
 
     #[BeforeScenario]
@@ -148,7 +146,6 @@ final class SincronizacionInformacionEspecimenesContext extends BaseContext
         try {
             $this->ultimaRespuesta = $this->sincronizarHandler->handle(
                 new SincronizarEspecimenesInput(
-                    curadorId: $this->curadorId,
                     especimenes: $especimenesInput,
                 )
             );
@@ -236,7 +233,6 @@ final class SincronizacionInformacionEspecimenesContext extends BaseContext
         try {
             $this->ultimaRespuesta = $this->sincronizarHandler->handle(
                 new SincronizarEspecimenesInput(
-                    curadorId: $this->curadorId,
                     especimenes: $especimenesInput,
                 )
             );
@@ -356,7 +352,6 @@ final class SincronizacionInformacionEspecimenesContext extends BaseContext
         try {
             $this->ultimaRespuesta = $this->modificarConfiguracionHandler->handle(
                 new ModificarConfiguracionDivulgacionInput(
-                    curadorId: $this->curadorId,
                     especimenes: $especimenesInput,
                 )
             );

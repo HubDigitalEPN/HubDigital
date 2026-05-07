@@ -18,7 +18,6 @@ final class ModificarConfiguracionDivulgacionController
     {
         try {
             $output = $this->handler->handle(new ModificarConfiguracionDivulgacionInput(
-                curadorId: $request->validated('curador_id'),
                 especimenes: $request->validated('especimenes'),
             ));
         } catch (\RuntimeException $e) {

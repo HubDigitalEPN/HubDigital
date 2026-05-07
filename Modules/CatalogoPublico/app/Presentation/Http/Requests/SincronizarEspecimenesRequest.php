@@ -17,7 +17,6 @@ final class SincronizarEspecimenesRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'curador_id' => ['required', 'string'],
             'especimenes' => ['required', 'array', 'min:1'],
             'especimenes.*.occurrenceID' => ['required', 'string'],
             'especimenes.*.configuracion' => ['nullable', 'array'],
