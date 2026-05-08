@@ -12,7 +12,7 @@ use Modules\CatalogoPublico\Application\UseCases\SincronizarEspecimenes\Sincroni
 use Modules\CatalogoPublico\Infrastructure\Persistence\Eloquent\Models\EspecimenDivulgableEloquentModel;
 use Modules\CatalogoPublico\Infrastructure\Persistence\Eloquent\Models\EspecimenEloquentModel;
 
-#[Layout('layouts.admin', params: ['title' => 'Sincronizar Especímenes'])]
+#[Layout('layouts.app', params: ['title' => 'Sincronizar Especímenes'])]
 final class SincronizarEspecimenes extends Component
 {
     public int $paso = 1;
