@@ -50,13 +50,29 @@
 
 @layer theme {
     .dark {
+        /* Flux accent */
         --color-accent: var(--color-white);
         --color-accent-content: var(--color-white);
         --color-accent-foreground: var(--color-neutral-800);
+
+        /* Hub Digital — neutrals en modo oscuro */
+        --color-bg-main: #0f1117;
+        --color-surface: #1a1d27;
+        --color-text-primary: #f0f2f5;
+        --color-text-secondary: #9aa0ad;
+        --color-border: #2e3240;
+
+        /* Semánticos — ligeramente más brillantes para contrastar sobre fondo oscuro */
+        --color-success: #66bb6a;
+        --color-warning: #ffa726;
+        --color-error: #ef5350;
+        --color-info: #29b6f6;
     }
 }
 
 @layer base {
+    [x-cloak] { display: none !important; }
+
 
     *,
     ::after,
