@@ -6,5 +6,5 @@ namespace Modules\GestionPrestamosRecepciones\Application\Ports;
 
 interface TransactionManagerPort
 {
-    public function executeTransactional(callable $callback): mixed;
+    public function executeTransactional(callable $operation): void;
 }

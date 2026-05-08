@@ -4,20 +4,38 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\TramitacionSolicitudesInvestigador;
 
-use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\BaseContext;
-use Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarSolicitudPrestamo\RegistrarSolicitudPrestamoHandler;
-use Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarSolicitudPrestamo\RegistrarSolicitudPrestamoInput;
+use Behat\Step\Given;
+use Behat\Step\Then;
+use Behat\Step\When;
+use DateTimeImmutable;
+use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ActualizarSolicitudPrestamo\ActualizarSolicitudPrestamoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ActualizarSolicitudPrestamo\ActualizarSolicitudPrestamoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarSolicitudPrestamo\EnviarSolicitudPrestamoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarSolicitudPrestamo\EnviarSolicitudPrestamoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\GenerarActaPrestamo\GenerarActaPrestamoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\GenerarActaPrestamo\GenerarActaPrestamoInput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarSolicitudPrestamo\RegistrarSolicitudPrestamoHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarSolicitudPrestamo\RegistrarSolicitudPrestamoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\SubirActaFirmada\SubirActaFirmadaHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\SubirActaFirmada\SubirActaFirmadaInput;
-use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\Entities\ActaPrestamo;
+use Modules\GestionPrestamosRecepciones\Domain\Entities\ItemPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\SolicitudPrestamo;
+use Modules\GestionPrestamosRecepciones\Domain\Events\ActaDevueltaPorFirmaInvalida;
+use Modules\GestionPrestamosRecepciones\Domain\Repositories\ActaPrestamoRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitud;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ItemPrestamoId;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\NumeroPrestamo;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\NumeroSolicitud;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoPrestamo;
+use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\BaseContext;
+use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\FakeEventPublisherAdapter;
+use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\PassThroughTransactionManagerAdapter;
+use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Persistence\InMemoryActaPrestamoRepository;
+use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Persistence\InMemorySolicitudPrestamoRepository;
 use PHPUnit\Framework\Assert;
 
 /**
@@ -26,6 +44,14 @@ use PHPUnit\Framework\Assert;
  */
 final class EnvioSolicitudPrestamoContext extends BaseContext
 {
+    // ── Repositorios in-memory (acceso directo para @Given y @Then) ──────────
+
+    private InMemorySolicitudPrestamoRepository $solicitudRepo;
+
+    private InMemoryActaPrestamoRepository $actaRepo;
+
+    private FakeEventPublisherAdapter $fakePublisher;
+
     // ── Handlers ─────────────────────────────────────────────────────────────
 
     private RegistrarSolicitudPrestamoHandler $registrarHandler;
@@ -46,73 +72,83 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
 
     private ?\Throwable $excepcionCapturada = null;
 
-    // ID fijo del investigador actor en todos los escenarios de esta feature
     private string $investigadorId = 'inv-001';
 
-    // Datos canónicos de la solicitud para los escenarios de envío
     private array $datosSolicitudCompleta = [
-        'titulo_estudio'           => 'Revisión taxonómica del género Morpho en Ecuador',
-        'institucion_adscripcion'  => 'Universidad Central del Ecuador',
-        'linea_investigacion'      => 'Entomología sistemática',
-        'proposito_prestamo'       => 'Estudio comparativo de morfología alar',
+        'titulo_estudio' => 'Revisión taxonómica del género Morpho en Ecuador',
+        'institucion_adscripcion' => 'Universidad Central del Ecuador',
+        'linea_investigacion' => 'Entomología sistemática',
+        'proposito_prestamo' => 'Estudio comparativo de morfología alar',
         'duracion_propuesta_meses' => 3,
-        'items'                    => [
+        'items' => [
             ['especimen_codigo_externo' => 'ESP-001', 'cantidad_solicitada' => 2],
             ['especimen_codigo_externo' => 'ESP-002', 'cantidad_solicitada' => 1],
         ],
     ];
 
-    // ── Constructor ──────────────────────────────────────────────────────────
+    // ── Constructor — registra dependencias in-memory antes de resolver Handlers
 
     public function __construct()
     {
-        $this->registrarHandler   = $this->make(RegistrarSolicitudPrestamoHandler::class);
-        $this->actualizarHandler  = $this->make(ActualizarSolicitudPrestamoHandler::class);
-        $this->enviarHandler      = $this->make(EnviarSolicitudPrestamoHandler::class);
+        // 1. Crear instancias in-memory fresh para este escenario
+        $this->solicitudRepo = new InMemorySolicitudPrestamoRepository;
+        $this->actaRepo      = new InMemoryActaPrestamoRepository;
+        $this->fakePublisher = new FakeEventPublisherAdapter;
+
+        // 2. Interceptar el container para que los Handlers reciban estas instancias
+        static::$app->instance(SolicitudPrestamoRepositoryInterface::class, $this->solicitudRepo);
+        static::$app->instance(ActaPrestamoRepositoryInterface::class, $this->actaRepo);
+        static::$app->instance(TransactionManagerPort::class, new PassThroughTransactionManagerAdapter);
+        static::$app->instance(EventPublisherPort::class, $this->fakePublisher);
+
+        // 3. Resolver Handlers — ya usan las instancias in-memory
+        $this->registrarHandler = $this->make(RegistrarSolicitudPrestamoHandler::class);
+        $this->actualizarHandler = $this->make(ActualizarSolicitudPrestamoHandler::class);
+        $this->enviarHandler = $this->make(EnviarSolicitudPrestamoHandler::class);
         $this->generarActaHandler = $this->make(GenerarActaPrestamoHandler::class);
-        $this->subirActaHandler   = $this->make(SubirActaFirmadaHandler::class);
+        $this->subirActaHandler = $this->make(SubirActaFirmadaHandler::class);
     }
 
     // ── Helpers de fixture ───────────────────────────────────────────────────
 
-    /**
-     * Crea, persiste y asigna una SolicitudPrestamo completa con los datos canónicos.
-     * Las mutaciones de estado posteriores deben hacerse en el paso @Given que llame a este helper.
-     */
     private function sembrarSolicitudBase(): SolicitudPrestamo
     {
-        $repo = $this->make(SolicitudPrestamoRepositoryInterface::class);
-
-        $solicitud = SolicitudPrestamo::crear(
-            id:                     $repo->nextIdentity(),
-            investigadorId:         $this->investigadorId,
-            tituloEstudio:          $this->datosSolicitudCompleta['titulo_estudio'],
-            institucionAdscripcion: $this->datosSolicitudCompleta['institucion_adscripcion'],
-            lineaInvestigacion:     $this->datosSolicitudCompleta['linea_investigacion'],
-            propositoPrestamo:      $this->datosSolicitudCompleta['proposito_prestamo'],
-            duracionPropuestaMeses: $this->datosSolicitudCompleta['duracion_propuesta_meses'],
-            items:                  $this->datosSolicitudCompleta['items'],
+        $items = array_map(
+            fn (array $item) => ItemPrestamo::crear(
+                id: ItemPrestamoId::generate(),
+                especimenCodigoExterno: $item['especimen_codigo_externo'],
+                cantidadSolicitada: $item['cantidad_solicitada'],
+            ),
+            $this->datosSolicitudCompleta['items'],
         );
 
-        $repo->guardar($solicitud);
+        $solicitud = SolicitudPrestamo::crear(
+            id: $this->solicitudRepo->nextIdentity(),
+            numeroSolicitud: NumeroSolicitud::generate(),
+            investigadorId: $this->investigadorId,
+            tituloEstudio: $this->datosSolicitudCompleta['titulo_estudio'],
+            institucionAdscripcion: $this->datosSolicitudCompleta['institucion_adscripcion'],
+            lineaInvestigacion: $this->datosSolicitudCompleta['linea_investigacion'],
+            propositoPrestamo: $this->datosSolicitudCompleta['proposito_prestamo'],
+            duracionPropuestaMeses: $this->datosSolicitudCompleta['duracion_propuesta_meses'],
+            items: $items,
+        );
+
+        $this->solicitudRepo->guardar($solicitud);
         $this->solicitudExistente = $solicitud;
 
         return $solicitud;
     }
 
-    /**
-     * Crea, persiste y asigna una SolicitudPrestamo con información incompleta.
-     */
     private function sembrarSolicitudIncompleta(): SolicitudPrestamo
     {
-        $repo = $this->make(SolicitudPrestamoRepositoryInterface::class);
-
         $solicitud = SolicitudPrestamo::crearIncompleta(
-            id:             $repo->nextIdentity(),
+            id: $this->solicitudRepo->nextIdentity(),
+            numeroSolicitud: NumeroSolicitud::generate(),
             investigadorId: $this->investigadorId,
         );
 
-        $repo->guardar($solicitud);
+        $this->solicitudRepo->guardar($solicitud);
         $this->solicitudExistente = $solicitud;
 
         return $solicitud;
@@ -122,38 +158,33 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
     // ESCENARIO: Guardar una solicitud como borrador
     // =========================================================================
 
-    /**
-     * @Given que el investigador ha ingresado información en una solicitud
-     */
+    #[Given('que el investigador ha ingresado información en una solicitud')]
     public function queElInvestigadorHaIngresadoInformacionEnUnaSolicitud(): void
     {
-        // Verificar que los datos canónicos tienen todos los campos requeridos
-        Assert::assertNotEmpty($this->investigadorId, 'investigador_id no puede estar vacío');
-        Assert::assertNotEmpty($this->datosSolicitudCompleta['titulo_estudio'], 'titulo_estudio es requerido');
-        Assert::assertNotEmpty($this->datosSolicitudCompleta['institucion_adscripcion'], 'institucion_adscripcion es requerido');
-        Assert::assertNotEmpty($this->datosSolicitudCompleta['linea_investigacion'], 'linea_investigacion es requerido');
-        Assert::assertNotEmpty($this->datosSolicitudCompleta['proposito_prestamo'], 'proposito_prestamo es requerido');
-        Assert::assertGreaterThan(0, $this->datosSolicitudCompleta['duracion_propuesta_meses'], 'duracion_propuesta_meses debe ser mayor a 0');
-        Assert::assertNotEmpty($this->datosSolicitudCompleta['items'], 'La solicitud debe incluir al menos un ítem');
+        Assert::assertNotEmpty($this->investigadorId);
+        Assert::assertNotEmpty($this->datosSolicitudCompleta['titulo_estudio']);
+        Assert::assertNotEmpty($this->datosSolicitudCompleta['institucion_adscripcion']);
+        Assert::assertNotEmpty($this->datosSolicitudCompleta['linea_investigacion']);
+        Assert::assertNotEmpty($this->datosSolicitudCompleta['proposito_prestamo']);
+        Assert::assertGreaterThan(0, $this->datosSolicitudCompleta['duracion_propuesta_meses']);
+        Assert::assertNotEmpty($this->datosSolicitudCompleta['items']);
 
         $this->sembrarSolicitudBase();
     }
 
-    /**
-     * @When el investigador registra la solicitud
-     */
+    #[When('el investigador registra la solicitud')]
     public function elInvestigadorRegistraLaSolicitud(): void
     {
         try {
             $this->ultimaRespuesta = $this->registrarHandler->handle(
                 new RegistrarSolicitudPrestamoInput(
-                    investigadorId:         $this->investigadorId,
-                    tituloEstudio:          $this->datosSolicitudCompleta['titulo_estudio'],
+                    investigadorId: $this->investigadorId,
+                    tituloEstudio: $this->datosSolicitudCompleta['titulo_estudio'],
                     institucionAdscripcion: $this->datosSolicitudCompleta['institucion_adscripcion'],
-                    lineaInvestigacion:     $this->datosSolicitudCompleta['linea_investigacion'],
-                    propositoPrestamo:      $this->datosSolicitudCompleta['proposito_prestamo'],
+                    lineaInvestigacion: $this->datosSolicitudCompleta['linea_investigacion'],
+                    propositoPrestamo: $this->datosSolicitudCompleta['proposito_prestamo'],
                     duracionPropuestaMeses: $this->datosSolicitudCompleta['duracion_propuesta_meses'],
-                    items:                  $this->datosSolicitudCompleta['items'],
+                    items: $this->datosSolicitudCompleta['items'],
                 )
             );
         } catch (\Throwable $e) {
@@ -161,16 +192,14 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
         }
     }
 
-    /**
-     * @Then la solicitud queda registrada en estado borrador
-     */
+    #[Then('la solicitud queda registrada en estado borrador')]
     public function laSolicitudQuedaRegistradaEnEstadoBorrador(): void
     {
         Assert::assertNull(
             $this->excepcionCapturada,
-            'El handler lanzó una excepción inesperada: ' . $this->excepcionCapturada?->getMessage()
+            'El handler lanzó una excepción inesperada: '.$this->excepcionCapturada?->getMessage()
         );
-        Assert::assertNotNull($this->ultimaRespuesta, 'El handler no retornó ninguna respuesta');
+        Assert::assertNotNull($this->ultimaRespuesta);
         Assert::assertTrue(
             $this->ultimaRespuesta->estado->equals(EstadoSolicitud::Borrador),
             "Se esperaba estado 'borrador', se obtuvo: {$this->ultimaRespuesta->estado->value}"
@@ -181,79 +210,48 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
     // ESCENARIO: Editar una solicitud en estado borrador
     // =========================================================================
 
-    /**
-     * @Given que existe una solicitud en estado borrador
-     */
+    #[Given('que el investigador tiene una solicitud en estado borrador')]
     public function queExisteUnaSolicitudEnEstadoBorrador(): void
     {
-        $solicitud = $this->sembrarSolicitudBase();
+        $solicitud  = $this->sembrarSolicitudBase();
+        $persistida = $this->solicitudRepo->buscarPorId($solicitud->id());
 
-        // Verificar que quedó persistida y en estado borrador
-        $repo      = $this->make(SolicitudPrestamoRepositoryInterface::class);
-        $persistida = $repo->buscarPorId($solicitud->id());
-        Assert::assertNotNull($persistida, 'La solicitud no fue encontrada en el repositorio tras guardarla');
-        Assert::assertTrue(
-            $persistida->estado()->equals(EstadoSolicitud::Borrador),
-            "Se esperaba que la solicitud recién creada tuviera estado 'borrador', se obtuvo: {$persistida->estado()->value}"
-        );
+        Assert::assertNotNull($persistida);
+        Assert::assertTrue($persistida->estado()->equals(EstadoSolicitud::Borrador));
     }
 
-    /**
-     * @Given el investigador tiene acceso a dicha solicitud
-     */
+    #[Given('el investigador tiene acceso a dicha solicitud')]
     public function elInvestigadorTieneAccesoADichaSolicitud(): void
     {
-        Assert::assertNotNull(
-            $this->solicitudExistente,
-            'Se esperaba una solicitud existente del step Dado anterior'
-        );
-        Assert::assertSame(
-            $this->investigadorId,
-            (string) $this->solicitudExistente->investigadorId(),
-            'El investigador del test no es el propietario de la solicitud'
-        );
+        Assert::assertNotNull($this->solicitudExistente);
+        Assert::assertSame($this->investigadorId, $this->solicitudExistente->investigadorId());
     }
 
-    /**
-     * @When el investigador actualiza la información de la solicitud
-     */
+    #[When('el investigador actualiza la información de la solicitud')]
     public function elInvestigadorActualizaLaInformacionDeLaSolicitud(): void
     {
-        Assert::assertNotNull(
-            $this->solicitudExistente,
-            'Se esperaba una solicitud existente del step Dado anterior'
-        );
+        Assert::assertNotNull($this->solicitudExistente);
 
-        // Datos nuevos — distintos a los originales para que la actualización sea verificable
-        $tituloNuevo          = 'Morfología comparada de Lepidoptera neotropicales';
-        $institucionNueva     = 'Escuela Politécnica Nacional';
-        $lineaNueva           = 'Biología evolutiva';
-        $propositoNuevo       = 'Análisis filogenético de caracteres morfológicos';
-        $duracionNueva        = 6;
+        $tituloNuevo      = 'Morfología comparada de Lepidoptera neotropicales';
+        $institucionNueva = 'Escuela Politécnica Nacional';
+        $lineaNueva       = 'Biología evolutiva';
+        $propositoNuevo   = 'Análisis filogenético de caracteres morfológicos';
+        $duracionNueva    = 6;
 
-        // Verificar que los datos nuevos son distintos a los persistidos
-        Assert::assertNotSame(
-            $tituloNuevo,
-            $this->solicitudExistente->tituloEstudio(),
-            'El título nuevo debe ser distinto al original para que la actualización sea significativa'
-        );
-        Assert::assertNotSame(
-            $institucionNueva,
-            $this->solicitudExistente->institucionAdscripcion(),
-            'La institución nueva debe ser distinta a la original'
-        );
+        Assert::assertNotSame($tituloNuevo, $this->solicitudExistente->tituloEstudio());
+        Assert::assertNotSame($institucionNueva, $this->solicitudExistente->institucionAdscripcion());
 
         try {
             $this->ultimaRespuesta = $this->actualizarHandler->handle(
                 new ActualizarSolicitudPrestamoInput(
-                    solicitudId:            (string) $this->solicitudExistente->id(),
-                    investigadorId:         $this->investigadorId,
-                    tituloEstudio:          $tituloNuevo,
+                    solicitudId: (string) $this->solicitudExistente->id(),
+                    investigadorId: $this->investigadorId,
+                    tituloEstudio: $tituloNuevo,
                     institucionAdscripcion: $institucionNueva,
-                    lineaInvestigacion:     $lineaNueva,
-                    propositoPrestamo:      $propositoNuevo,
+                    lineaInvestigacion: $lineaNueva,
+                    propositoPrestamo: $propositoNuevo,
                     duracionPropuestaMeses: $duracionNueva,
-                    items:                  $this->datosSolicitudCompleta['items'],
+                    items: $this->datosSolicitudCompleta['items'],
                 )
             );
         } catch (\Throwable $e) {
@@ -261,18 +259,14 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
         }
     }
 
-    /**
-     * @Then la solicitud refleja la información actualizada
-     */
+    #[Then('la solicitud refleja la información actualizada')]
     public function laSolicitudReflejaLaInformacionActualizada(): void
     {
         Assert::assertNull(
             $this->excepcionCapturada,
-            'El handler lanzó una excepción inesperada: ' . $this->excepcionCapturada?->getMessage()
+            'El handler lanzó una excepción inesperada: '.$this->excepcionCapturada?->getMessage()
         );
-        Assert::assertNotNull($this->ultimaRespuesta, 'El handler no retornó ninguna respuesta');
-
-        // Verificar que los datos nuevos se reflejan en la respuesta
+        Assert::assertNotNull($this->ultimaRespuesta);
         Assert::assertSame('Morfología comparada de Lepidoptera neotropicales', $this->ultimaRespuesta->tituloEstudio);
         Assert::assertSame('Escuela Politécnica Nacional', $this->ultimaRespuesta->institucionAdscripcion);
         Assert::assertSame('Biología evolutiva', $this->ultimaRespuesta->lineaInvestigacion);
@@ -280,15 +274,13 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
         Assert::assertSame(6, $this->ultimaRespuesta->duracionPropuestaMeses);
     }
 
-    /**
-     * @Then la solicitud permanece en estado borrador
-     */
+    #[Then('la solicitud sigue en estado borrador')]
     public function laSolicitudPermanenceEnEstadoBorrador(): void
     {
-        Assert::assertNotNull($this->ultimaRespuesta, 'El handler no retornó ninguna respuesta');
+        Assert::assertNotNull($this->ultimaRespuesta);
         Assert::assertTrue(
             $this->ultimaRespuesta->estado->equals(EstadoSolicitud::Borrador),
-            "Se esperaba que el estado permaneciera en 'borrador' tras la edición, se obtuvo: {$this->ultimaRespuesta->estado->value}"
+            "Se esperaba estado 'borrador' tras edición, se obtuvo: {$this->ultimaRespuesta->estado->value}"
         );
     }
 
@@ -296,9 +288,7 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
     // ESQUEMA DE ESCENARIO: Enviar una solicitud con información completa
     // =========================================================================
 
-    /**
-     * @Given que existe una solicitud en estado :estado_previo con su información requerida completa
-     */
+    #[Given('que existe una solicitud en estado :estado_previo con su información requerida completa')]
     public function queExisteUnaSolicitudEnEstadoConInformacionCompleta(string $estado_previo): void
     {
         $solicitud = $this->sembrarSolicitudBase();
@@ -309,34 +299,27 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
                 curadorId:   'cur-001',
                 observacion: 'Requiere información adicional sobre el período de estudio',
             );
-            $repo = $this->make(SolicitudPrestamoRepositoryInterface::class);
-            $repo->guardar($solicitud);
+            $this->solicitudRepo->guardar($solicitud);
         }
 
-        // Verificar que la solicitud quedó en el estado esperado y con todos los campos requeridos
-        $persistida = $repo->buscarPorId($solicitud->id());
-        Assert::assertNotNull($persistida, 'La solicitud no fue encontrada en el repositorio');
+        $persistida = $this->solicitudRepo->buscarPorId($solicitud->id());
+        Assert::assertNotNull($persistida);
         Assert::assertTrue(
             $persistida->estado()->equals(EstadoSolicitud::from($estado_previo)),
             "Se esperaba estado '{$estado_previo}', se obtuvo: {$persistida->estado()->value}"
         );
-        Assert::assertNotNull($persistida->tituloEstudio(), 'titulo_estudio no puede ser nulo para el envío');
-        Assert::assertNotNull($persistida->institucionAdscripcion(), 'institucion_adscripcion no puede ser nulo para el envío');
-        Assert::assertNotNull($persistida->lineaInvestigacion(), 'linea_investigacion no puede ser nulo para el envío');
-        Assert::assertNotNull($persistida->propositoPrestamo(), 'proposito_prestamo no puede ser nulo para el envío');
-        Assert::assertGreaterThan(0, $persistida->duracionPropuestaMeses(), 'duracion_propuesta_meses debe ser mayor a 0');
-        Assert::assertNotEmpty($persistida->items(), 'La solicitud debe tener al menos un ítem para poder ser enviada');
+        Assert::assertNotNull($persistida->tituloEstudio());
+        Assert::assertNotNull($persistida->institucionAdscripcion());
+        Assert::assertNotNull($persistida->lineaInvestigacion());
+        Assert::assertNotNull($persistida->propositoPrestamo());
+        Assert::assertGreaterThan(0, $persistida->duracionPropuestaMeses());
+        Assert::assertNotEmpty($persistida->items());
     }
 
-    /**
-     * @When el investigador envía la solicitud
-     */
+    #[When('el investigador envía la solicitud')]
     public function elInvestigadorEnviaLaSolicitud(): void
     {
-        Assert::assertNotNull(
-            $this->solicitudExistente,
-            'Se esperaba una solicitud existente del step Dado anterior'
-        );
+        Assert::assertNotNull($this->solicitudExistente);
 
         try {
             $this->ultimaRespuesta = $this->enviarHandler->handle(
@@ -350,23 +333,21 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
         }
     }
 
-    /**
-     * @Then la solicitud queda en estado enviada
-     */
+    #[Then('la solicitud queda en estado enviada')]
     public function laSolicitudQuedaEnEstadoEnviada(): void
     {
         Assert::assertNull(
             $this->excepcionCapturada,
-            'El handler lanzó una excepción inesperada: ' . $this->excepcionCapturada?->getMessage()
+            'El handler lanzó una excepción inesperada: '.$this->excepcionCapturada?->getMessage()
         );
-        Assert::assertNotNull($this->ultimaRespuesta, 'El handler no retornó ninguna respuesta');
+        Assert::assertNotNull($this->ultimaRespuesta);
         Assert::assertTrue(
             $this->ultimaRespuesta->estado->equals(EstadoSolicitud::Enviada),
-            "Se esperaba transición al estado 'enviada', se obtuvo: {$this->ultimaRespuesta->estado->value}"
+            "Se esperaba estado 'enviada', se obtuvo: {$this->ultimaRespuesta->estado->value}"
         );
         Assert::assertNotNull(
             $this->ultimaRespuesta->enviadaEn,
-            "Se esperaba que 'enviada_en' quedara registrado tras el envío"
+            "Se esperaba que 'enviada_en' quedara registrado"
         );
     }
 
@@ -374,24 +355,36 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
     // ESQUEMA DE ESCENARIO: No permitir enviar una solicitud con información incompleta
     // =========================================================================
 
-    /**
-     * @Given que existe una solicitud en estado :estado_previo con información incompleta
-     */
+    #[Given('que existe una solicitud en estado :estado_previo con información incompleta')]
     public function queExisteUnaSolicitudEnEstadoConInformacionIncompleta(string $estado_previo): void
     {
-        $solicitud = $this->sembrarSolicitudIncompleta();
-
         if ($estado_previo === 'observada') {
-            $solicitud->observar(
-                curadorId:   'cur-001',
-                observacion: 'Requiere información adicional sobre el período de estudio',
+            // No es posible llegar a 'observada' por flujo normal con datos incompletos
+            // (enviar() valida estaCompleta()). Se reconstituye directamente.
+            $solicitud = SolicitudPrestamo::reconstituir(
+                id: $this->solicitudRepo->nextIdentity(),
+                numeroSolicitud: NumeroSolicitud::generate(),
+                investigadorId: $this->investigadorId,
+                estado: EstadoSolicitud::Observada,
+                tituloEstudio: null,
+                institucionAdscripcion: null,
+                lineaInvestigacion: null,
+                propositoPrestamo: null,
+                duracionPropuestaMeses: null,
+                justificacionExtendida: null,
+                comentarioCurador: 'Requiere información adicional sobre el período de estudio',
+                items: [],
+                enviadaEn: null,
+                resueltaEn: null,
+                resueltaPor: null,
             );
-            $repo = $this->make(SolicitudPrestamoRepositoryInterface::class);
-            $repo->guardar($solicitud);
+            $this->solicitudRepo->guardar($solicitud);
+            $this->solicitudExistente = $solicitud;
+        } else {
+            $solicitud = $this->sembrarSolicitudIncompleta();
         }
 
-        // Confirmar que el estado es el esperado antes de intentar el envío
-        $persistida = $repo->buscarPorId($solicitud->id());
+        $persistida = $this->solicitudRepo->buscarPorId($solicitud->id());
         Assert::assertNotNull($persistida);
         Assert::assertTrue(
             $persistida->estado()->equals(EstadoSolicitud::from($estado_previo)),
@@ -399,24 +392,19 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
         );
     }
 
-    /**
-     * @Then la solicitud permanece en estado :estado_previo
-     */
+    #[Then('la solicitud permanece en estado :estado_previo')]
     public function laSolicitudPermanenceEnEstado(string $estado_previo): void
     {
         Assert::assertNotNull(
             $this->excepcionCapturada,
-            'Se esperaba que el envío fallara (solicitud con información incompleta) pero el handler completó sin error'
+            'Se esperaba que el envío fallara (solicitud incompleta) pero el handler completó sin error'
         );
 
-        // Verificar en repositorio que el estado no cambió
-        $repo      = $this->make(SolicitudPrestamoRepositoryInterface::class);
-        $solicitud = $repo->buscarPorId($this->solicitudExistente->id());
-
+        $solicitud = $this->solicitudRepo->buscarPorId($this->solicitudExistente->id());
         Assert::assertNotNull($solicitud);
         Assert::assertTrue(
             $solicitud->estado()->equals(EstadoSolicitud::from($estado_previo)),
-            "Se esperaba que el estado permaneciera en '{$estado_previo}', se obtuvo: {$solicitud->estado()->value}"
+            "Se esperaba estado '{$estado_previo}', se obtuvo: {$solicitud->estado()->value}"
         );
     }
 
@@ -424,29 +412,19 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
     // ESCENARIO: Recibir el acta de préstamo para firma
     // =========================================================================
 
-    /**
-     * @Given que existe una solicitud del investigador en estado aprobada
-     */
+    #[Given('que existe una solicitud del investigador en estado aprobada')]
     public function queExisteUnaSolicitudEnEstadoAprobada(): void
     {
         $solicitud = $this->sembrarSolicitudBase();
-
         $solicitud->enviar();
         $solicitud->aprobar(curadorId: 'cur-001');
-
-        $repo = $this->make(SolicitudPrestamoRepositoryInterface::class);
-        $repo->guardar($solicitud);
+        $this->solicitudRepo->guardar($solicitud);
     }
 
-    /**
-     * @When el acta de préstamo es generada
-     */
+    #[When('el acta de préstamo es generada')]
     public function elActaDePrestamoEsGenerada(): void
     {
-        Assert::assertNotNull(
-            $this->solicitudExistente,
-            'Se esperaba una solicitud existente del step Dado anterior'
-        );
+        Assert::assertNotNull($this->solicitudExistente);
 
         try {
             $this->ultimaRespuesta = $this->generarActaHandler->handle(
@@ -459,24 +437,19 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
         }
     }
 
-    /**
-     * @Then el investigador recibe una notificación con el acta para su firma
-     */
+    #[Then('el investigador recibe una notificación con el acta para su firma')]
     public function elInvestigadorRecibeUnaNotificacionConElActaParaSuFirma(): void
     {
         Assert::assertNull(
             $this->excepcionCapturada,
-            'El handler lanzó una excepción inesperada: ' . $this->excepcionCapturada?->getMessage()
+            'El handler lanzó una excepción inesperada: '.$this->excepcionCapturada?->getMessage()
         );
-        Assert::assertNotNull($this->ultimaRespuesta, 'El handler no retornó ninguna respuesta');
+        Assert::assertNotNull($this->ultimaRespuesta);
         Assert::assertTrue(
             $this->ultimaRespuesta->notificacionEnviada,
             'Se esperaba que la notificación al investigador fuera enviada'
         );
-        Assert::assertNotEmpty(
-            $this->ultimaRespuesta->pdfRuta,
-            "Se esperaba 'pdf_ruta' con la ruta del acta generada"
-        );
+        Assert::assertNotEmpty($this->ultimaRespuesta->pdfRuta);
         Assert::assertNull(
             $this->ultimaRespuesta->pdfFirmadoRuta,
             "Se esperaba que 'pdf_firmado_ruta' fuera null — el acta aún no ha sido firmada"
@@ -487,37 +460,48 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
     // ESCENARIO: Firmar y enviar el acta de préstamo
     // =========================================================================
 
-    /**
-     * @Given que el investigador ha recibido el acta de préstamo
-     */
+    #[Given('que el investigador ha recibido el acta de préstamo')]
     public function queElInvestigadorHaRecibidoElActaDePrestamo(): void
     {
         $solicitud = $this->sembrarSolicitudBase();
-
         $solicitud->enviar();
         $solicitud->aprobar(curadorId: 'cur-001');
-        $solicitud->emitirActa(pdfRuta: 'actas/MEPN-INV-001-2026.pdf');
+        $this->solicitudRepo->guardar($solicitud);
 
-        $repo = $this->make(SolicitudPrestamoRepositoryInterface::class);
-        $repo->guardar($solicitud);
+        $pdfRuta  = 'actas/'.(string) $solicitud->id().'.pdf';
+        $solicitud->emitirActa($pdfRuta);
+
+        $ahora    = new DateTimeImmutable;
+        $meses    = $solicitud->duracionPropuestaMeses() ?? 3;
+        $fechaFin = $ahora->modify("+{$meses} months");
+
+        $acta = ActaPrestamo::emitir(
+            id: $this->actaRepo->nextIdentity(),
+            numeroPrestamo: NumeroPrestamo::generate(),
+            solicitudPrestamoId: $solicitud->id(),
+            tipoPrestamo: TipoPrestamo::Temporal,
+            fechaInicio: $ahora,
+            fechaFin: $fechaFin,
+            pdfRuta: $pdfRuta,
+        );
+
+        // Transiciona a PendienteFirma para que SubirActaFirmadaHandler pueda operar
+        $acta->marcarEnviada();
+
+        $this->actaRepo->guardar($acta);
     }
 
-    /**
-     * @When el investigador sube el acta firmada
-     */
+    #[When('el investigador sube el acta firmada')]
     public function elInvestigadorSubeElActaFirmada(): void
     {
-        Assert::assertNotNull(
-            $this->solicitudExistente,
-            'Se esperaba una solicitud existente del step Dado anterior'
-        );
+        Assert::assertNotNull($this->solicitudExistente);
 
         try {
             $this->ultimaRespuesta = $this->subirActaHandler->handle(
                 new SubirActaFirmadaInput(
-                    solicitudId:      (string) $this->solicitudExistente->id(),
-                    investigadorId:   $this->investigadorId,
-                    pdfFirmadoRuta:   'actas/firmadas/MEPN-INV-001-2026-firmada.pdf',
+                    solicitudId:    (string) $this->solicitudExistente->id(),
+                    investigadorId: $this->investigadorId,
+                    pdfFirmadoRuta: 'actas/firmadas/MEPN-INV-001-2026-firmada.pdf',
                 )
             );
         } catch (\Throwable $e) {
@@ -525,28 +509,102 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
         }
     }
 
-    /**
-     * @Then el acta queda pendiente de validación
-     */
+    #[Then('el acta queda en estado pendiente de validación')]
     public function elActaQuedaPendienteDeValidacion(): void
     {
         Assert::assertNull(
             $this->excepcionCapturada,
-            'El handler lanzó una excepción inesperada: ' . $this->excepcionCapturada?->getMessage()
+            'El handler lanzó una excepción inesperada: '.$this->excepcionCapturada?->getMessage()
         );
-        Assert::assertNotNull($this->ultimaRespuesta, 'El handler no retornó ninguna respuesta');
+        Assert::assertNotNull($this->ultimaRespuesta);
         Assert::assertSame(
             'pendiente_validacion',
             $this->ultimaRespuesta->estadoActa,
-            "Se esperaba que el acta quedara en 'pendiente_validacion' tras subir la firma"
+            "Se esperaba estado 'pendiente_validacion' del acta"
         );
-        Assert::assertNotEmpty(
-            $this->ultimaRespuesta->pdfFirmadoRuta,
-            "Se esperaba que 'pdf_firmado_ruta' quedara registrado en el acta"
+        Assert::assertNotEmpty($this->ultimaRespuesta->pdfFirmadoRuta);
+        Assert::assertNotNull($this->ultimaRespuesta->firmadaSubidaEn);
+    }
+
+    // =========================================================================
+    // ESCENARIO: Recibir notificación de devolución del acta por firma inválida
+    // =========================================================================
+
+    #[Given('que el investigador ha subido el acta firmada')]
+    public function queElInvestigadorHaSubidoElActaFirmada(): void
+    {
+        $solicitud = $this->sembrarSolicitudBase();
+        $solicitud->enviar();
+        $solicitud->aprobar(curadorId: 'cur-001');
+        $this->solicitudRepo->guardar($solicitud);
+
+        $pdfRuta  = 'actas/'.(string) $solicitud->id().'.pdf';
+        $solicitud->emitirActa($pdfRuta);
+
+        $ahora    = new DateTimeImmutable;
+        $meses    = $solicitud->duracionPropuestaMeses() ?? 3;
+        $fechaFin = $ahora->modify("+{$meses} months");
+
+        $acta = ActaPrestamo::emitir(
+            id: $this->actaRepo->nextIdentity(),
+            numeroPrestamo: NumeroPrestamo::generate(),
+            solicitudPrestamoId: $solicitud->id(),
+            tipoPrestamo: TipoPrestamo::Temporal,
+            fechaInicio: $ahora,
+            fechaFin: $fechaFin,
+            pdfRuta: $pdfRuta,
         );
+
+        $acta->marcarEnviada();
+        $acta->subirFirma('actas/firmadas/MEPN-INV-001-2026-firmada.pdf');
+        $this->actaRepo->guardar($acta);
+    }
+
+    #[When('el curador devuelve el acta por motivos de firma')]
+    public function elCuradorDevuelveElActaPorMotivosDeFirma(): void
+    {
+        Assert::assertNotNull($this->solicitudExistente);
+
+        try {
+            $acta = $this->actaRepo->buscarPorSolicitudId($this->solicitudExistente->id());
+            Assert::assertNotNull($acta, 'No se encontró el acta para la solicitud existente');
+
+            $acta->devolver(
+                investigadorId: $this->investigadorId,
+                motivo: 'La firma no es válida, debe usar firma electrónica certificada.',
+            );
+
+            foreach ($acta->pullEvents() as $event) {
+                $this->fakePublisher->publish($event);
+            }
+
+            $this->actaRepo->guardar($acta);
+        } catch (\Throwable $e) {
+            $this->excepcionCapturada = $e;
+        }
+    }
+
+    #[Then('el investigador recibe una notificación con el motivo de la devolución')]
+    public function elInvestigadorRecibeUnaNotificacionConElMotivoDeLaDevolucion(): void
+    {
+        Assert::assertNull(
+            $this->excepcionCapturada,
+            'El proceso de devolución lanzó una excepción inesperada: '.$this->excepcionCapturada?->getMessage()
+        );
+
+        $evento = null;
+
+        foreach ($this->fakePublisher->publishedEvents() as $e) {
+            if ($e instanceof ActaDevueltaPorFirmaInvalida) {
+                $evento = $e;
+                break;
+            }
+        }
+
         Assert::assertNotNull(
-            $this->ultimaRespuesta->firmadaSubidaEn,
-            "Se esperaba que 'firmada_subida_en' quedara registrado"
+            $evento,
+            'Se esperaba que el evento ActaDevueltaPorFirmaInvalida fuera publicado'
         );
+        Assert::assertNotEmpty($evento->motivo, 'El motivo de devolución no debe estar vacío');
     }
 }

@@ -60,4 +60,9 @@ abstract class BaseContext implements Context
 
         return self::$app->make($abstract);
     }
+
+    protected function make(string $abstract): mixed
+    {
+        return static::$app->make($abstract);
+    }
 }
