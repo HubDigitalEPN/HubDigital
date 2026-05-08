@@ -2,6 +2,7 @@
 @import '../../vendor/livewire/flux/dist/flux.css';
 
 @source '../views';
+@source '../../Modules/**/*.blade.php';
 @source inline("border-science-blue bg-science-blue/5 bg-science-blue/15 text-science-blue border-border bg-surface hover:border-science-blue/40 text-text-secondary text-text-primary bg-bg-main");
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../vendor/livewire/flux-pro/stubs/**/*.blade.php';
