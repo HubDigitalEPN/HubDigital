@@ -26,7 +26,7 @@ Una instancia PostgreSQL. Una base de datos. Siete esquemas nombrados.
 biodiversidad_db  (una sola base de datos)
 ├── taxonomia
 ├── prestamos
-├── divulgacio
+├── divulgacion
 ├── divulgacion_vectorial
 ├── iot
 ├── recepcion

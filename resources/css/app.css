@@ -2,6 +2,7 @@
 @import '../../vendor/livewire/flux/dist/flux.css';
 
 @source '../views';
+@source '../../Modules/**/*.blade.php';
 @source inline("border-science-blue bg-science-blue/5 bg-science-blue/15 text-science-blue border-border bg-surface hover:border-science-blue/40 text-text-secondary text-text-primary bg-bg-main");
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../vendor/livewire/flux-pro/stubs/**/*.blade.php';
@@ -55,18 +56,33 @@
         --color-accent-content: var(--color-white);
         --color-accent-foreground: var(--color-neutral-800);
 
-        /* Hub Digital — neutrals en modo oscuro */
-        --color-bg-main: #0f1117;
-        --color-surface: #1a1d27;
-        --color-text-primary: #f0f2f5;
-        --color-text-secondary: #9aa0ad;
-        --color-border: #2e3240;
+        /* ── Dark Mode Token Overrides ─────────────────────────────────────── */
 
-        /* Semánticos — ligeramente más brillantes para contrastar sobre fondo oscuro */
-        --color-success: #66bb6a;
-        --color-warning: #ffa726;
-        --color-error: #ef5350;
-        --color-info: #29b6f6;
+        /* Fondos — escala slate (tinte azul frío, armoniza con blue-navy) */
+        --color-bg-main:  #0f172a;   /* slate-900 — fondo base de página */
+        --color-surface:  #1e293b;   /* slate-800 — tarjetas y paneles */
+
+        /* Texto */
+        --color-text-primary:   #f1f5f9;  /* slate-100 */
+        --color-text-secondary: #94a3b8;  /* slate-400 */
+
+        /* Bordes */
+        --color-border: #334155;          /* slate-700 */
+
+        /* Blue-Navy — aclarado para ser legible sobre fondos oscuros */
+        --color-blue-navy: #93c5fd;       /* blue-300 */
+
+        /* Bio-Green — aclarado */
+        --color-bio-green: #86efac;       /* green-300 */
+
+        /* Science Blue — aclarado */
+        --color-science-blue: #7dd3fc;    /* sky-300 */
+
+        /* Semánticos — aclarados a nivel 300 para pasar WCAG AA como texto */
+        --color-success: #86efac;         /* green-300 */
+        --color-warning: #fcd34d;         /* amber-300 */
+        --color-error:   #fca5a5;         /* red-300 */
+        --color-info:    #7dd3fc;         /* sky-300 */
     }
 }
 

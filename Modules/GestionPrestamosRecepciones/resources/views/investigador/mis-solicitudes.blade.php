@@ -1,14 +1,14 @@
 <div class="space-y-6">
 
     <div class="flex items-center justify-between">
-        <flux:heading size="xl" level="1">Mis Solicitudes de Préstamo</flux:heading>
+        <flux:heading size="xl" level="1" class="font-display">Mis Solicitudes de Préstamo</flux:heading>
         <flux:button variant="primary" icon="plus" wire:navigate href="{{ route('prestamos.investigador.solicitud.crear') }}">
             Nueva Solicitud
         </flux:button>
     </div>
 
     @if($solicitudes->isEmpty())
-        <div class="flex flex-col items-center justify-center rounded-lg border border-border bg-surface py-16 text-center">
+        <div class="flex flex-col items-center justify-center rounded-lg border border-border bg-surface py-[60px] text-center">
             <flux:icon name="document-text" class="size-12 text-text-secondary mb-3" />
             <flux:heading size="lg" level="2">Aún no tienes solicitudes</flux:heading>
             <flux:text class="text-text-secondary mt-1">Crea tu primera solicitud de préstamo para comenzar.</flux:text>

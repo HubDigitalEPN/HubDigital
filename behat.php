@@ -24,7 +24,10 @@ return (new Config)
             ->withSuite(
                 (new Suite('CatalogoPublico'))
                     ->withPaths($base.'/Modules/CatalogoPublico/tests/Behat/Features')
-                    ->withContexts('Modules\CatalogoPublico\Tests\Behat\Contexts\CatalogoPublicoContext')
+                    ->withContexts(
+                        // AdministracionCambiosInformacionLaboratorio
+                        'Modules\CatalogoPublico\Tests\Behat\Contexts\AdministracionCambiosInformacionLaboratorio\SincronizacionInformacionEspecimenesContext',
+                    )
             )
             ->withSuite(
                 (new Suite('GestionPrestamosRecepciones'))
