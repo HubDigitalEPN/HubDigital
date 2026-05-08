@@ -1,16 +1,16 @@
 <flux:sidebar.group :heading="__('Divulgación')" class="grid">
     <flux:sidebar.item
         icon="table-cells"
-        :href="route('admin.divulgacion.index')"
-        :current="request()->routeIs('admin.divulgacion.index')"
+        :href="route('divulgacion.index')"
+        :current="request()->routeIs('divulgacion.index')"
         wire:navigate
     >
         {{ __('Tabla divulgada') }}
     </flux:sidebar.item>
     <flux:sidebar.item
         icon="cloud-arrow-up"
-        :href="route('admin.divulgacion.sincronizar')"
-        :current="request()->routeIs('admin.divulgacion.sincronizar')"
+        :href="route('divulgacion.sincronizar')"
+        :current="request()->routeIs('divulgacion.sincronizar')"
         wire:navigate
     >
         {{ __('Sincronización') }}

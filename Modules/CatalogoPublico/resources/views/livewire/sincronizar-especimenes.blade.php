@@ -1,13 +1,12 @@
-<flux:main>
-<div class="flex flex-col gap-6">
+<div class="flex h-full w-full flex-1 flex-col gap-6 p-6">
     {{-- Page header --}}
     <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
         <div>
-            <h1 class="font-display text-2xl font-bold text-text-primary">Sincronizar especímenes</h1>
+            <h1 class="font-display text-2xl font-bold text-blue-navy">Sincronizar especímenes</h1>
             <p class="text-sm text-text-secondary">Seleccione especímenes y configure su visibilidad en el catálogo público</p>
         </div>
         <flux:button
-            :href="route('admin.divulgacion.index')"
+            :href="route('divulgacion.index')"
             icon="arrow-left"
             variant="ghost"
             wire:navigate
@@ -93,7 +92,7 @@
                                         <flux:icon name="check-circle" class="size-8 text-success opacity-60" />
                                         <span class="text-sm">Todos los especímenes ya están sincronizados.</span>
                                         <flux:button
-                                            :href="route('admin.divulgacion.index')"
+                                            :href="route('divulgacion.index')"
                                             variant="primary"
                                             size="sm"
                                             wire:navigate
@@ -276,7 +275,7 @@
 
             <div class="flex gap-3">
                 <flux:button
-                    :href="route('admin.divulgacion.index')"
+                    :href="route('divulgacion.index')"
                     variant="primary"
                     icon="table-cells"
                     wire:navigate
@@ -294,4 +293,3 @@
         </div>
     @endif
 </div>
-</flux:main>

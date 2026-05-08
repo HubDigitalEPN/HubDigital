@@ -55,6 +55,24 @@
                                 Inventario
                             </flux:sidebar.item>
                         </flux:sidebar.group>
+                        <flux:sidebar.group heading="Divulgación" class="grid">
+                            <flux:sidebar.item
+                                icon="table-cells"
+                                :href="route('divulgacion.index')"
+                                :current="request()->routeIs('divulgacion.index')"
+                                wire:navigate
+                            >
+                                Tabla divulgada
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="cloud-arrow-up"
+                                :href="route('divulgacion.sincronizar')"
+                                :current="request()->routeIs('divulgacion.sincronizar')"
+                                wire:navigate
+                            >
+                                Sincronización
+                            </flux:sidebar.item>
+                        </flux:sidebar.group>
                     @endif
                 @endauth
             </flux:sidebar.nav>
