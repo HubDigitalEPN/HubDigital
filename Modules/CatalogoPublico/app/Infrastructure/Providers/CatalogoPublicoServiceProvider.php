@@ -2,7 +2,6 @@
 
 namespace Modules\CatalogoPublico\Infrastructure\Providers;
 
-use Illuminate\Support\Facades\View;
 use Modules\CatalogoPublico\Application\Ports\EventPublisherPort;
 use Modules\CatalogoPublico\Application\Ports\TransactionManagerPort;
 use Modules\CatalogoPublico\Domain\Repositories\EspecimenDivulgableRepositoryInterface;
@@ -35,11 +34,5 @@ class CatalogoPublicoServiceProvider extends ModuleServiceProvider
     {
         parent::boot();
         $this->loadMigrationsFrom(module_path($this->name, 'database/migrations'));
-
-        View::composer('layouts.admin*', function ($view) {
-            $view->getFactory()->startPush('admin-nav-items');
-            echo view('catalogopublico::partials.admin-nav')->render();
-            $view->getFactory()->stopPush();
-        });
     }
 }
