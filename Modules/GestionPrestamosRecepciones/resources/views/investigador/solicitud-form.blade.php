@@ -50,8 +50,112 @@
             </flux:field>
 
             <flux:field>
-                <flux:label>Duración Propuesta (meses)</flux:label>
-                <flux:input type="number" wire:model="duracionPropuestaMeses" min="1" max="12" class="w-32" />
+                <flux:label>Duración Propuesta</flux:label>
+
+                <div
+                    x-data="{ val: $wire.duracionPropuestaMeses }"
+                    x-init="$watch('val', v => { $wire.duracionPropuestaMeses = parseInt(v) })"
+                    class="space-y-3 pt-1"
+                >
+                    {{-- Valor actual --}}
+                    <div class="flex items-end justify-between">
+                        <div class="flex items-baseline gap-1.5">
+                            <span
+                                class="text-3xl font-bold tabular-nums transition-colors duration-200"
+                                :class="val > 12 ? 'text-warning' : 'text-science-blue'"
+                                x-text="val"
+                            ></span>
+                            <span class="text-sm text-text-secondary">
+                                <span x-text="val == 1 ? 'mes' : 'meses'"></span>
+                            </span>
+                        </div>
+                        <span
+                            class="text-xs font-medium px-2 py-0.5 rounded-full transition-all duration-200"
+                            :class="val <= 6 ? 'bg-bio-green/10 text-bio-green' : val <= 12 ? 'bg-science-blue/10 text-science-blue' : 'bg-warning/10 text-warning'"
+                            x-text="val <= 6 ? 'Corto plazo' : val <= 12 ? 'Estándar' : 'Extendido'"
+                        ></span>
+                    </div>
+
+                    {{-- Barra deslizante --}}
+                    <div class="relative">
+                        <input
+                            type="range"
+                            x-model="val"
+                            @change="$wire.duracionPropuestaMeses = parseInt(val)"
+                            min="1" max="24" step="1"
+                            class="w-full h-2 rounded-full appearance-none cursor-pointer bg-border focus:outline-none
+                                   [&::-webkit-slider-thumb]:appearance-none
+                                   [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5
+                                   [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow
+                                   [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:transition-colors
+                                   [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white"
+                            :class="val > 12
+                                ? '[&::-webkit-slider-thumb]:bg-warning'
+                                : '[&::-webkit-slider-thumb]:bg-science-blue'"
+                            :style="`background: linear-gradient(to right,
+                                ${val > 12 ? '#FF9800' : '#1976D2'} ${(val - 1) / 23 * 100}%,
+                                #E0E0E0 ${(val - 1) / 23 * 100}%)`"
+                        />
+                        {{-- Marca de 12 meses --}}
+                        <div
+                            class="absolute top-0 flex flex-col items-center pointer-events-none"
+                            style="left: calc({{ (12 - 1) / 23 * 100 }}% - 1px)"
+                        >
+                            <div class="w-0.5 h-2 bg-text-secondary/40 mt-0.5"></div>
+                        </div>
+                    </div>
+
+                    {{-- Etiquetas de referencia --}}
+                    <div class="flex justify-between text-[10px] text-text-secondary select-none">
+                        <span>1 mes</span>
+                        <span>6</span>
+                        <span class="font-semibold text-text-primary">12 ← máx. estándar</span>
+                        <span>18</span>
+                        <span>24</span>
+                    </div>
+
+                    {{-- Aviso cuando excede 12 meses --}}
+                    <div
+                        x-show="val > 12"
+                        x-transition:enter="transition ease-out duration-200"
+                        x-transition:enter-start="opacity-0 -translate-y-1"
+                        x-transition:enter-end="opacity-100 translate-y-0"
+                        x-transition:leave="transition ease-in duration-150"
+                        x-transition:leave-start="opacity-100 translate-y-0"
+                        x-transition:leave-end="opacity-0 -translate-y-1"
+                        class="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 p-3"
+                    >
+                        <flux:icon name="exclamation-triangle" class="mt-0.5 size-4 shrink-0 text-warning" />
+                        <p class="text-xs text-warning">
+                            Las solicitudes de más de 12 meses requieren una justificación adicional que será evaluada por el curador.
+                        </p>
+                    </div>
+
+                    {{-- Justificación extendida (aparece cuando > 12) --}}
+                    <div
+                        x-show="val > 12"
+                        x-transition:enter="transition ease-out duration-200"
+                        x-transition:enter-start="opacity-0 translate-y-1"
+                        x-transition:enter-end="opacity-100 translate-y-0"
+                        x-transition:leave="transition ease-in duration-150"
+                        x-transition:leave-start="opacity-100 translate-y-0"
+                        x-transition:leave-end="opacity-0 translate-y-1"
+                    >
+                        <flux:field class="mt-1">
+                            <flux:label>
+                                Justificación para duración extendida
+                                <span class="text-error">*</span>
+                            </flux:label>
+                            <flux:textarea
+                                wire:model="justificacionExtendida"
+                                rows="3"
+                                placeholder="Explica por qué la investigación requiere más de 12 meses de préstamo..."
+                            />
+                            <flux:error name="justificacionExtendida" />
+                        </flux:field>
+                    </div>
+                </div>
+
                 <flux:error name="duracionPropuestaMeses" />
             </flux:field>
         </div>
