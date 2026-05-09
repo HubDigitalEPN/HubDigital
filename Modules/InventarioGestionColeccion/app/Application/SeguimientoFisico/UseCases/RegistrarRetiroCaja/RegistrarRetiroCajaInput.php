@@ -8,6 +8,6 @@ final readonly class RegistrarRetiroCajaInput
 {
     public function __construct(
         public string $cajaId,
-        public string $ranuraId,
+        public ?string $ranuraId = null,
     ) {}
 }

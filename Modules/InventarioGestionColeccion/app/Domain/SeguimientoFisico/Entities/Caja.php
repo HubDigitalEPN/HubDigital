@@ -75,24 +75,33 @@ class Caja
 
     public function ingresarEnRanura(RanuraId $ranuraId): void
     {
-        if (!$this->estado->equals(EstadoCaja::EnTransito)) {
+        if (! $this->estado->equals(EstadoCaja::EnTransito)) {
             throw new CajaNoEnTransitoException($this->id, $this->estado);
         }
 
         $this->estado = EstadoCaja::EnGabinete;
         $this->ranuraActualId = $ranuraId;
-        $this->eventos[] = new CajaIngresadaEnRanura($this->id, $ranuraId, new \DateTimeImmutable());
+        $this->eventos[] = new CajaIngresadaEnRanura($this->id, $ranuraId, new \DateTimeImmutable);
     }
 
     public function retirarDeRanura(): void
     {
-        if (!$this->estado->equals(EstadoCaja::EnGabinete)) {
+        if (! $this->estado->equals(EstadoCaja::EnGabinete)) {
             throw new CajaNoEnGabineteException($this->id, $this->estado);
         }
 
         $this->estado = EstadoCaja::EnTransito;
         $this->ranuraActualId = null;
-        $this->eventos[] = new CajaRetiradaDeRanura($this->id, new \DateTimeImmutable());
+        $this->eventos[] = new CajaRetiradaDeRanura($this->id, new \DateTimeImmutable);
+    }
+
+    public function reconciliarEnRanura(RanuraId $ranuraId): void
+    {
+        // Sensor reset recovery: the ESP32 lost its in-memory state and rediscovered
+        // a caja that is already EnGabinete in the DB. Bypasses the EnTransito
+        // precondition — the hardware is the source of truth for physical location.
+        $this->ranuraActualId = $ranuraId;
+        $this->eventos[] = new CajaIngresadaEnRanura($this->id, $ranuraId, new \DateTimeImmutable);
     }
 
     public function asignarRfid(CodigoRfid $rfid): void
@@ -120,7 +129,7 @@ class Caja
 
     public function marcarUbicacionIncorrecta(): void
     {
-        if (!$this->estado->equals(EstadoCaja::EnGabinete)) {
+        if (! $this->estado->equals(EstadoCaja::EnGabinete)) {
             throw new CajaNoEnGabineteException($this->id, $this->estado);
         }
 
@@ -129,7 +138,7 @@ class Caja
 
     public function marcarPendienteClasificacion(): void
     {
-        if (!$this->estado->equals(EstadoCaja::EnGabinete)) {
+        if (! $this->estado->equals(EstadoCaja::EnGabinete)) {
             throw new CajaNoEnGabineteException($this->id, $this->estado);
         }
 
