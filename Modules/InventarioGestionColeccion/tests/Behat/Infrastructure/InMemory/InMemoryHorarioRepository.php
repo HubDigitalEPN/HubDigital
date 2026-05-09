@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\Fakes;
+namespace Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory;
 
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Horario;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\HorarioRepository;
@@ -15,7 +15,6 @@ final class InMemoryHorarioRepository implements HorarioRepository
     public function obtenerUnico(): Horario
     {
         if (! $this->horario) {
-            // Default horario for tests
             $this->horario = Horario::crear(
                 id: HorarioId::generar(),
                 horaInicio: 8,
