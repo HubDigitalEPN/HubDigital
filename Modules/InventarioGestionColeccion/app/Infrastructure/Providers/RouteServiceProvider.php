@@ -18,6 +18,7 @@ class RouteServiceProvider extends ServiceProvider
     {
         $this->mapApiRoutes();
         $this->mapWebRoutes();
+        $this->mapAdminRoutes();
     }
 
     protected function mapWebRoutes(): void
@@ -28,5 +29,14 @@ class RouteServiceProvider extends ServiceProvider
     protected function mapApiRoutes(): void
     {
         Route::middleware('api')->prefix('api')->name('api.')->group(module_path($this->name, '/routes/api.php'));
+    }
+
+    protected function mapAdminRoutes(): void
+    {
+        $path = module_path($this->name, '/routes/admin.php');
+
+        if (file_exists($path)) {
+            require $path;
+        }
     }
 }
