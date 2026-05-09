@@ -1,6 +1,6 @@
-<div class="p-6 space-y-6 max-w-2xl">
+<flux:main class="p-6 space-y-6">
     <div class="flex items-center justify-between">
-        <flux:heading size="xl" level="1">Configuración de Horario</flux:heading>
+        <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Configuración de Horario</flux:heading>
     </div>
 
     @if($successMessage)
@@ -16,7 +16,7 @@
     @endif
 
     <div class="rounded-lg border border-border bg-surface shadow-sm p-6 space-y-4">
-        <p class="text-sm text-text-secondary">
+        <p class="text-sm text-text-primary">
             Define el horario de operación del sistema. Las cajas que entren o salgan fuera de este horario generarán alertas.
         </p>
 
@@ -71,4 +71,4 @@
             </div>
         </div>
     </div>
-</div>
+</flux:main>

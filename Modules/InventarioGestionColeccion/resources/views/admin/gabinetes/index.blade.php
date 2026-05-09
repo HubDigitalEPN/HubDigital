@@ -1,6 +1,6 @@
-<div class="p-6 space-y-6">
+<flux:main class="p-6 space-y-6">
     <div class="flex items-center justify-between">
-        <flux:heading size="xl" level="1">Gabinetes</flux:heading>
+        <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Gabinetes</flux:heading>
         <flux:button icon="plus" variant="primary" wire:click="abrirModal">
             Nuevo Gabinete
         </flux:button>
@@ -20,26 +20,26 @@
 
     <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
         <table class="w-full text-sm">
-            <thead class="bg-bg-main border-b border-border">
+            <thead class="bg-blue-navy border-b border-border">
                 <tr>
-                    <th class="px-4 py-3 text-left font-medium text-text-secondary">Código</th>
-                    <th class="px-4 py-3 text-left font-medium text-text-secondary">Nombre</th>
-                    <th class="px-4 py-3 text-left font-medium text-text-secondary">Ranuras</th>
-                    <th class="px-4 py-3 text-left font-medium text-text-secondary">Estado</th>
-                    <th class="px-4 py-3 text-left font-medium text-text-secondary">Acciones</th>
+                    <th class="px-4 py-3 text-left font-medium text-white">Código</th>
+                    <th class="px-4 py-3 text-left font-medium text-white">Nombre</th>
+                    <th class="px-4 py-3 text-left font-medium text-white">Ranuras</th>
+                    <th class="px-4 py-3 text-left font-medium text-white">Estado</th>
+                    <th class="px-4 py-3 text-left font-medium text-white">Acciones</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-border">
                 @forelse($gabinetes as $gabinete)
                     <tr class="hover:bg-bg-main transition-colors">
-                        <td class="px-4 py-3 font-medium text-text-primary">{{ $gabinete['codigo'] }}</td>
-                        <td class="px-4 py-3 text-text-primary">{{ $gabinete['nombre'] }}</td>
-                        <td class="px-4 py-3 text-text-secondary">{{ $gabinete['totalRanuras'] }}</td>
+                        <td class="px-4 py-3 font-medium text-text-primary dark:text-text-primary">{{ $gabinete['codigo'] }}</td>
+                        <td class="px-4 py-3 text-text-primary dark:text-text-primary">{{ $gabinete['nombre'] }}</td>
+                        <td class="px-4 py-3 text-text-primary dark:text-text-primary">{{ $gabinete['totalRanuras'] }}</td>
                         <td class="px-4 py-3">
                             @if($gabinete['activo'])
-                                <flux:badge color="green">Activo</flux:badge>
+                                <span class="inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold bg-success text-white">Activo</span>
                             @else
-                                <flux:badge color="zinc">Inactivo</flux:badge>
+                                <span class="inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold bg-border text-text-primary">Inactivo</span>
                             @endif
                         </td>
                         <td class="px-4 py-3">
@@ -56,7 +56,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="5" class="px-4 py-8 text-center text-text-secondary">
+                        <td colspan="5" class="px-4 py-8 text-center text-text-primary dark:text-text-primary">
                             No hay gabinetes registrados.
                         </td>
                     </tr>
@@ -67,7 +67,7 @@
 
     <flux:modal wire:model="showModal" class="w-full max-w-md">
         <div class="space-y-4 p-1">
-            <flux:heading size="lg">Nuevo Gabinete</flux:heading>
+            <flux:heading size="lg" class="text-text-primary dark:text-text-primary">Nuevo Gabinete</flux:heading>
 
             @if($errorMessage)
                 <flux:callout variant="danger">{{ $errorMessage }}</flux:callout>
@@ -102,4 +102,4 @@
             </div>
         </div>
     </flux:modal>
-</div>
+</flux:main>

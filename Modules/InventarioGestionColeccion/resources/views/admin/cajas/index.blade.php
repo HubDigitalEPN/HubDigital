@@ -1,6 +1,6 @@
-<div class="p-6 space-y-6">
+<flux:main class="p-6 space-y-6">
     <div class="flex items-center justify-between">
-        <flux:heading size="xl" level="1">Cajas Entomológicas</flux:heading>
+        <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Cajas Entomológicas</flux:heading>
         <flux:button icon="plus" variant="primary" wire:click="$set('showCrearModal', true)">
             Nueva Caja
         </flux:button>
@@ -25,13 +25,13 @@
 
     <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
         <table class="w-full text-sm">
-            <thead class="bg-bg-main border-b border-border">
+            <thead class="bg-blue-navy border-b border-border">
                 <tr>
-                    <th class="px-4 py-3 text-left font-medium text-text-secondary">Código</th>
-                    <th class="px-4 py-3 text-left font-medium text-text-secondary">RFID</th>
-                    <th class="px-4 py-3 text-left font-medium text-text-secondary">Nombre</th>
-                    <th class="px-4 py-3 text-left font-medium text-text-secondary">Estado</th>
-                    <th class="px-4 py-3 text-left font-medium text-text-secondary">Acciones</th>
+                    <th class="px-4 py-3 text-left font-medium text-white">Código</th>
+                    <th class="px-4 py-3 text-left font-medium text-white">RFID</th>
+                    <th class="px-4 py-3 text-left font-medium text-white">Nombre</th>
+                    <th class="px-4 py-3 text-left font-medium text-white">Estado</th>
+                    <th class="px-4 py-3 text-left font-medium text-white">Acciones</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-border">
@@ -39,7 +39,7 @@
                     <tr class="hover:bg-bg-main transition-colors">
                         <td class="px-4 py-3 font-medium text-text-primary">{{ $caja['codigo'] }}</td>
                         <td class="px-4 py-3 font-mono text-xs text-text-secondary">{{ $caja['codigoRfid'] }}</td>
-                        <td class="px-4 py-3 text-text-secondary">{{ $caja['nombre'] ?? '—' }}</td>
+                        <td class="px-4 py-3 text-text-primary dark:text-text-primary">{{ $caja['nombre'] ?? '—' }}</td>
                         <td class="px-4 py-3">
                             <x-inventariogestioncoleccion::seguimiento-fisico.caja-estado-badge
                                 :estado="$caja['estado']"
@@ -60,7 +60,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="5" class="px-4 py-8 text-center text-text-secondary">
+                        <td colspan="5" class="px-4 py-8 text-center text-text-primary dark:text-text-primary">
                             @if($busqueda !== '')
                                 No se encontraron cajas para "{{ $busqueda }}".
                             @else
@@ -76,7 +76,7 @@
     {{-- Modal: Crear caja --}}
     <flux:modal wire:model="showCrearModal" class="w-full max-w-md">
         <div class="space-y-4 p-1">
-            <flux:heading size="lg">Nueva Caja Entomológica</flux:heading>
+            <flux:heading size="lg" class="text-text-primary dark:text-text-primary">Nueva Caja Entomológica</flux:heading>
 
             <flux:field>
                 <flux:label>Código</flux:label>
@@ -122,8 +122,8 @@
     {{-- Modal: Registrar ingreso manual --}}
     <flux:modal wire:model="showIngresoModal" class="w-full max-w-md">
         <div class="space-y-4 p-1">
-            <flux:heading size="lg">Registrar Ingreso Manual</flux:heading>
-            <p class="text-sm text-text-secondary">Selecciona el gabinete y la ranura de destino.</p>
+            <flux:heading size="lg" class="text-text-primary dark:text-text-primary">Registrar Ingreso Manual</flux:heading>
+            <p class="text-sm text-text-primary dark:text-text-primary">Selecciona el gabinete y la ranura de destino.</p>
 
             <flux:field>
                 <flux:label>Gabinete</flux:label>
@@ -165,4 +165,4 @@
             </div>
         </div>
     </flux:modal>
-</div>
+</flux:main>
