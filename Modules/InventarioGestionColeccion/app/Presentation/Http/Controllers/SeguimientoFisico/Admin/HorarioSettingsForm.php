@@ -12,7 +12,7 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Ac
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarHorario\ActualizarHorarioInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ObtenerHorario\ObtenerHorarioHandler;
 
-#[Layout('layouts.admin')]
+#[Layout('layouts.app', params: ['title' => 'Horario'])]
 final class HorarioSettingsForm extends Component
 {
     #[Rule('required|integer|min:0|max:23')]

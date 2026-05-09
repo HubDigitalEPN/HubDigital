@@ -1,4 +1,4 @@
-<flux:main class="p-6 space-y-6">
+<div class="space-y-6 p-6">
     <div class="flex items-center justify-between">
         <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Configuración de Horario</flux:heading>
     </div>
@@ -43,7 +43,7 @@
                         wire:model="horaFin"
                         class="flex-1"
                     >
-                        @for($i = 1; $i <= 24; $i++)
+                        @for($i = 1; $i <= 23; $i++)
                             <option value="{{ $i }}">{{ str_pad($i, 2, '0', STR_PAD_LEFT) }}:00</option>
                         @endfor
                     </flux:select>
@@ -71,4 +71,4 @@
             </div>
         </div>
     </div>
-</flux:main>
+</div>

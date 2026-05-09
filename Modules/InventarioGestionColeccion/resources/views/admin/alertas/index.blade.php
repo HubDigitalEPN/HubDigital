@@ -1,4 +1,4 @@
-<flux:main class="p-6 space-y-6">
+<div class="space-y-6 p-6">
     <flux:heading size="xl" level="1" class="text-blue-navy font-bold font-display">Alertas de Ubicación</flux:heading>
 
     @if($successMessage)
@@ -141,4 +141,4 @@
             </div>
         </div>
     </flux:modal>
-</flux:main>
+</div>

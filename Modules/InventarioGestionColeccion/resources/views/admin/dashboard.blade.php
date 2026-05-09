@@ -1,4 +1,4 @@
-<flux:main class="p-6 space-y-6">
+<div class="space-y-6 p-6">
     <div class="flex items-center justify-between">
         <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Monitoreo IoT</flux:heading>
         <div class="flex items-center gap-2 text-xs text-text-secondary">
@@ -46,7 +46,7 @@
                     size="sm"
                     variant="primary"
                     icon="cog-6-tooth"
-                    :href="route('admin.inventario.gabinetes.show', $gabinete['id'])"
+                    :href="route('inventario.gabinetes.show', $gabinete['id'])"
                     wire:navigate
                 >
                     Configurar
@@ -64,7 +64,7 @@
                 </div>
             @else
                 <p class="text-sm text-text-primary py-2">
-                    Sin ranuras. <a :href="route('admin.inventario.gabinetes.show', $gabinete['id'])" class="text-science-blue underline" wire:navigate>Configurar gabinete</a>
+                    Sin ranuras. <a :href="route('inventario.gabinetes.show', $gabinete['id'])" class="text-science-blue underline" wire:navigate>Configurar gabinete</a>
                 </p>
             @endif
         </div>
@@ -72,9 +72,9 @@
         <div class="rounded-lg border border-dashed border-border p-12 text-center">
             <flux:icon name="archive-box" class="mx-auto size-12 text-text-secondary mb-3" />
             <p class="text-text-primary">No hay gabinetes registrados.</p>
-            <flux:button class="mt-4" :href="route('admin.inventario.gabinetes')" wire:navigate>
+            <flux:button class="mt-4" :href="route('inventario.gabinetes')" wire:navigate>
                 Ir a Gabinetes
             </flux:button>
         </div>
     @endforelse
-</flux:main>
+</div>

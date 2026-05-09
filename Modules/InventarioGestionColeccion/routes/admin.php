@@ -2,22 +2,4 @@
 
 declare(strict_types=1);
 
-use Illuminate\Support\Facades\Route;
-use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Admin\AlertaIndex;
-use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Admin\CajaIndex;
-use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Admin\Dashboard;
-use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Admin\GabineteIndex;
-use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Admin\GabineteShow;
-use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Admin\HorarioSettingsForm;
-
-Route::middleware(['web', 'auth', 'verified', 'role:curador'])
-    ->prefix('admin/inventario')
-    ->name('admin.inventario.')
-    ->group(function () {
-        Route::get('/dashboard', Dashboard::class)->name('dashboard');
-        Route::get('/gabinetes', GabineteIndex::class)->name('gabinetes');
-        Route::get('/gabinetes/{id}', GabineteShow::class)->name('gabinetes.show');
-        Route::get('/cajas', CajaIndex::class)->name('cajas');
-        Route::get('/alertas', AlertaIndex::class)->name('alertas');
-        Route::get('/horario', HorarioSettingsForm::class)->name('horario');
-    });
+// Routes moved to web.php under /inventario prefix with route name prefix inventario.*

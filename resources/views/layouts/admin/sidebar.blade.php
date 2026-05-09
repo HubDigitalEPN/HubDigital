@@ -30,40 +30,40 @@
                 <flux:sidebar.group :heading="__('Inventario IoT')" heading-class="text-white/70">
                     <flux:sidebar.item
                         icon="chart-bar"
-                        :href="route('admin.inventario.dashboard')"
-                        :current="request()->routeIs('admin.inventario.dashboard')"
+                        :href="route('inventario.dashboard')"
+                        :current="request()->routeIs('inventario.dashboard')"
                         wire:navigate
                     >
                         {{ __('Monitoreo') }}
                     </flux:sidebar.item>
                     <flux:sidebar.item
                         icon="archive-box"
-                        :href="route('admin.inventario.gabinetes')"
-                        :current="request()->routeIs('admin.inventario.gabinetes*')"
+                        :href="route('inventario.gabinetes')"
+                        :current="request()->routeIs('inventario.gabinetes*')"
                         wire:navigate
                     >
                         {{ __('Gabinetes') }}
                     </flux:sidebar.item>
                     <flux:sidebar.item
                         icon="cube"
-                        :href="route('admin.inventario.cajas')"
-                        :current="request()->routeIs('admin.inventario.cajas')"
+                        :href="route('inventario.cajas')"
+                        :current="request()->routeIs('inventario.cajas')"
                         wire:navigate
                     >
                         {{ __('Cajas') }}
                     </flux:sidebar.item>
                     <flux:sidebar.item
                         icon="bell-alert"
-                        :href="route('admin.inventario.alertas')"
-                        :current="request()->routeIs('admin.inventario.alertas')"
+                        :href="route('inventario.alertas')"
+                        :current="request()->routeIs('inventario.alertas')"
                         wire:navigate
                     >
                         {{ __('Alertas') }}
                     </flux:sidebar.item>
                     <flux:sidebar.item
                         icon="clock"
-                        :href="route('admin.inventario.horario')"
-                        :current="request()->routeIs('admin.inventario.horario')"
+                        :href="route('inventario.horario')"
+                        :current="request()->routeIs('inventario.horario')"
                         wire:navigate
                     >
                         {{ __('Horario') }}

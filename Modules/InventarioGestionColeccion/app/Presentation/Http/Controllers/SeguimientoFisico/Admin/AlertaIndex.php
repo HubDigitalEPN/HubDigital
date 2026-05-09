@@ -16,7 +16,7 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Li
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ResolverAlerta\ResolverAlertaHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ResolverAlerta\ResolverAlertaInput;
 
-#[Layout('layouts.admin')]
+#[Layout('layouts.app', params: ['title' => 'Alertas'])]
 final class AlertaIndex extends Component
 {
     public array $alertas = [];
