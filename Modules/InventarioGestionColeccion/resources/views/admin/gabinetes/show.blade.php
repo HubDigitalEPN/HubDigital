@@ -1,10 +1,10 @@
-<flux:main class="p-6 space-y-6">
+<div class="space-y-6 p-6">
     <div class="flex items-center gap-3">
         <flux:button
             icon="arrow-left"
             variant="ghost"
             size="sm"
-            :href="route('admin.inventario.gabinetes')"
+            :href="route('inventario.gabinetes')"
             wire:navigate
         />
         <div>
@@ -121,7 +121,7 @@
                 @endforeach
             </div>
         @else
-            <p class="text-sm text-text-primary dark:text-text-primary py-4 text-center">
+            <p class="text-sm text-text-primary py-4 text-center">
                 No hay ranuras configuradas. Agrega la primera ranura.
             </p>
         @endif
@@ -131,16 +131,17 @@
         <table class="w-full text-sm">
             <thead class="bg-blue-navy border-b border-border">
                 <tr>
-                    <th class="px-4 py-3 text-left font-medium text-white">#</th>
+                    <th class="px-4 py-3 text-left font-medium text-white">Ranura</th>
                     <th class="px-4 py-3 text-left font-medium text-white">Familia Taxonómica Esperada</th>
                     <th class="px-4 py-3 text-left font-medium text-white">Caja Actual</th>
                     <th class="px-4 py-3 text-left font-medium text-white">Estado</th>
+                    <th class="px-4 py-3 text-left font-medium text-white">Acciones</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-border">
                 @forelse($ranuras as $ranura)
                     <tr class="hover:bg-bg-main transition-colors">
-                        <td class="px-4 py-3 font-medium text-text-primary">{{ $ranura['numeroRanura'] }}</td>
+                        <td class="px-4 py-3 font-medium text-text-primary">Ranura {{ $ranura['numeroRanura'] }}</td>
                         <td class="px-4 py-3 text-text-primary">
                             {{ $ranura['familiaTaxonomicaEsperadaId'] ?? '—' }}
                         </td>
@@ -158,19 +159,30 @@
                                 <span class="inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold bg-border text-text-primary">Inactiva</span>
                             @endif
                         </td>
+                        <td class="px-4 py-3">
+                            <flux:button
+                                size="sm"
+                                variant="ghost"
+                                icon="pencil"
+                                wire:click="abrirEditRanura('{{ $ranura['id'] }}')"
+                            >
+                                Editar
+                            </flux:button>
+                        </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="4" class="px-4 py-6 text-center text-text-primary">Sin ranuras.</td>
+                        <td colspan="5" class="px-4 py-6 text-center text-text-primary">Sin ranuras.</td>
                     </tr>
                 @endforelse
             </tbody>
         </table>
     </div>
 
+    {{-- Modal: Agregar ranura --}}
     <flux:modal wire:model="showAgregarRanura" class="w-full max-w-md">
         <div class="space-y-4 p-1">
-            <flux:heading size="lg" class="text-text-primary dark:text-text-primary">Agregar Ranura</flux:heading>
+            <flux:heading size="lg" class="text-text-primary">Agregar Ranura</flux:heading>
 
             @if($errorMessage)
                 <flux:callout variant="danger">{{ $errorMessage }}</flux:callout>
@@ -200,4 +212,39 @@
             </div>
         </div>
     </flux:modal>
-</flux:main>
+
+    {{-- Modal: Editar ranura --}}
+    <flux:modal wire:model="showEditRanura" class="w-full max-w-md">
+        <div class="space-y-4 p-1">
+            <flux:heading size="lg" class="text-text-primary">Editar Ranura</flux:heading>
+
+            @if($errorMessage)
+                <flux:callout variant="danger">{{ $errorMessage }}</flux:callout>
+            @endif
+
+            <flux:field>
+                <flux:label>Familia taxonómica esperada <flux:badge size="sm" color="zinc">Opcional</flux:badge></flux:label>
+                <flux:input wire:model="editFamiliaTaxonomica" placeholder="ej. Cerambycidae" />
+                <flux:error name="editFamiliaTaxonomica" />
+            </flux:field>
+
+            <flux:field>
+                <flux:label>Estado</flux:label>
+                <flux:select wire:model="editActiva">
+                    <option value="1">Activa</option>
+                    <option value="0">Inactiva</option>
+                </flux:select>
+            </flux:field>
+
+            <div class="flex justify-end gap-3 pt-2">
+                <flux:button variant="ghost" wire:click="$set('showEditRanura', false)">
+                    Cancelar
+                </flux:button>
+                <flux:button variant="primary" wire:click="actualizarRanura" wire:loading.attr="disabled">
+                    <span wire:loading.remove wire:target="actualizarRanura">Guardar</span>
+                    <span wire:loading wire:target="actualizarRanura">Guardando...</span>
+                </flux:button>
+            </div>
+        </div>
+    </flux:modal>
+</div>

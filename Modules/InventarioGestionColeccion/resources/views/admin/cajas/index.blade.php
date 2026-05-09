@@ -1,4 +1,4 @@
-<flux:main class="p-6 space-y-6">
+<div class="space-y-6 p-6">
     <div class="flex items-center justify-between">
         <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Cajas Entomológicas</flux:heading>
         <flux:button icon="plus" variant="primary" wire:click="$set('showCrearModal', true)">
@@ -39,28 +39,50 @@
                     <tr class="hover:bg-bg-main transition-colors">
                         <td class="px-4 py-3 font-medium text-text-primary">{{ $caja['codigo'] }}</td>
                         <td class="px-4 py-3 font-mono text-xs text-text-secondary">{{ $caja['codigoRfid'] }}</td>
-                        <td class="px-4 py-3 text-text-primary dark:text-text-primary">{{ $caja['nombre'] ?? '—' }}</td>
+                        <td class="px-4 py-3 text-text-primary">{{ $caja['nombre'] ?? '—' }}</td>
                         <td class="px-4 py-3">
                             <x-inventariogestioncoleccion::seguimiento-fisico.caja-estado-badge
                                 :estado="$caja['estado']"
                             />
                         </td>
                         <td class="px-4 py-3">
-                            @if($caja['estado'] === 'en_transito')
+                            <div class="flex items-center gap-2">
+                                @if($caja['estado'] === 'en_transito')
+                                    <flux:button
+                                        size="sm"
+                                        variant="ghost"
+                                        icon="arrow-down-tray"
+                                        wire:click="abrirIngresoModal('{{ $caja['id'] }}')"
+                                    >
+                                        Ingresar
+                                    </flux:button>
+                                @endif
                                 <flux:button
                                     size="sm"
                                     variant="ghost"
-                                    icon="arrow-down-tray"
-                                    wire:click="abrirIngresoModal('{{ $caja['id'] }}')"
+                                    icon="pencil"
+                                    wire:click="abrirEditCajaModal('{{ $caja['id'] }}')"
                                 >
-                                    Registrar Ingreso
+                                    Editar
                                 </flux:button>
-                            @endif
+                                @if($caja['estado'] === 'en_transito')
+                                    <flux:button
+                                        size="sm"
+                                        variant="ghost"
+                                        icon="trash"
+                                        wire:click="eliminarCaja('{{ $caja['id'] }}')"
+                                        wire:confirm="¿Eliminar la caja {{ $caja['codigo'] }}? Esta acción no se puede deshacer."
+                                        class="text-error hover:text-error"
+                                    >
+                                        Eliminar
+                                    </flux:button>
+                                @endif
+                            </div>
                         </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="5" class="px-4 py-8 text-center text-text-primary dark:text-text-primary">
+                        <td colspan="5" class="px-4 py-8 text-center text-text-primary">
                             @if($busqueda !== '')
                                 No se encontraron cajas para "{{ $busqueda }}".
                             @else
@@ -76,7 +98,7 @@
     {{-- Modal: Crear caja --}}
     <flux:modal wire:model="showCrearModal" class="w-full max-w-md">
         <div class="space-y-4 p-1">
-            <flux:heading size="lg" class="text-text-primary dark:text-text-primary">Nueva Caja Entomológica</flux:heading>
+            <flux:heading size="lg" class="text-text-primary">Nueva Caja Entomológica</flux:heading>
 
             <flux:field>
                 <flux:label>Código</flux:label>
@@ -119,11 +141,48 @@
         </div>
     </flux:modal>
 
+    {{-- Modal: Editar caja --}}
+    <flux:modal wire:model="showEditCajaModal" class="w-full max-w-md">
+        <div class="space-y-4 p-1">
+            <flux:heading size="lg" class="text-text-primary">Editar Caja</flux:heading>
+
+            @if($errorMessage)
+                <flux:callout variant="danger">{{ $errorMessage }}</flux:callout>
+            @endif
+
+            <flux:field>
+                <flux:label>Nombre <flux:badge size="sm" color="zinc">Opcional</flux:badge></flux:label>
+                <flux:input wire:model="editNombre" placeholder="Caja Lepidópteros A" />
+                <flux:error name="editNombre" />
+            </flux:field>
+
+            <flux:field>
+                <flux:label>Familia taxonómica <flux:badge size="sm" color="zinc">Opcional</flux:badge></flux:label>
+                <flux:input wire:model="editFamiliaTaxonomicaId" placeholder="Cerambycidae" />
+                <flux:error name="editFamiliaTaxonomicaId" />
+            </flux:field>
+
+            <flux:field>
+                <flux:label>Capacidad máxima <flux:badge size="sm" color="zinc">Opcional</flux:badge></flux:label>
+                <flux:input type="number" wire:model="editCapacidadMaxima" min="1" />
+                <flux:error name="editCapacidadMaxima" />
+            </flux:field>
+
+            <div class="flex justify-end gap-3 pt-2">
+                <flux:button variant="ghost" wire:click="$set('showEditCajaModal', false)">Cancelar</flux:button>
+                <flux:button variant="primary" wire:click="actualizarCaja" wire:loading.attr="disabled">
+                    <span wire:loading.remove wire:target="actualizarCaja">Guardar</span>
+                    <span wire:loading wire:target="actualizarCaja">Guardando...</span>
+                </flux:button>
+            </div>
+        </div>
+    </flux:modal>
+
     {{-- Modal: Registrar ingreso manual --}}
     <flux:modal wire:model="showIngresoModal" class="w-full max-w-md">
         <div class="space-y-4 p-1">
-            <flux:heading size="lg" class="text-text-primary dark:text-text-primary">Registrar Ingreso Manual</flux:heading>
-            <p class="text-sm text-text-primary dark:text-text-primary">Selecciona el gabinete y la ranura de destino.</p>
+            <flux:heading size="lg" class="text-text-primary">Registrar Ingreso Manual</flux:heading>
+            <p class="text-sm text-text-primary">Selecciona el gabinete y la ranura de destino.</p>
 
             <flux:field>
                 <flux:label>Gabinete</flux:label>
@@ -165,4 +224,4 @@
             </div>
         </div>
     </flux:modal>
-</flux:main>
+</div>

@@ -8,11 +8,15 @@ use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Rule;
 use Livewire\Component;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarGabinete\ActualizarGabineteHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarGabinete\ActualizarGabineteInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\CrearGabinete\CrearGabineteHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\CrearGabinete\CrearGabineteInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\DesactivarGabinete\DesactivarGabineteHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\DesactivarGabinete\DesactivarGabineteInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarGabinetes\ListarGabineteHandler;
 
-#[Layout('layouts.admin')]
+#[Layout('layouts.app', params: ['title' => 'Gabinetes'])]
 final class GabineteIndex extends Component
 {
     public array $gabinetes = [];
@@ -27,6 +31,16 @@ final class GabineteIndex extends Component
 
     #[Rule('required|integer|min:1|max:25')]
     public int $totalRanuras = 1;
+
+    public bool $showEditModal = false;
+
+    public string $editandoId = '';
+
+    #[Rule('required|string|max:255')]
+    public string $editNombre = '';
+
+    #[Rule('required|integer|min:1|max:25')]
+    public int $editTotalRanuras = 1;
 
     public ?string $successMessage = null;
 
@@ -49,7 +63,9 @@ final class GabineteIndex extends Component
         CrearGabineteHandler $crearHandler,
         ListarGabineteHandler $listarHandler,
     ): void {
-        $this->validate();
+        $this->validateOnly('codigo');
+        $this->validateOnly('nombre');
+        $this->validateOnly('totalRanuras');
 
         try {
             $crearHandler->handle(new CrearGabineteInput(
@@ -61,6 +77,59 @@ final class GabineteIndex extends Component
             $this->cargarGabinetes($listarHandler);
             $this->showModal = false;
             $this->successMessage = 'Gabinete creado correctamente.';
+        } catch (\Throwable $e) {
+            $this->errorMessage = $e->getMessage();
+        }
+    }
+
+    public function abrirEditModal(string $id): void
+    {
+        $gabinete = collect($this->gabinetes)->firstWhere('id', $id);
+
+        if ($gabinete === null) {
+            return;
+        }
+
+        $this->editandoId = $id;
+        $this->editNombre = $gabinete['nombre'];
+        $this->editTotalRanuras = $gabinete['totalRanuras'];
+        $this->errorMessage = null;
+        $this->showEditModal = true;
+    }
+
+    public function actualizarGabinete(
+        ActualizarGabineteHandler $actualizarHandler,
+        ListarGabineteHandler $listarHandler,
+    ): void {
+        $this->validateOnly('editNombre');
+        $this->validateOnly('editTotalRanuras');
+
+        try {
+            $actualizarHandler->handle(new ActualizarGabineteInput(
+                gabineteId: $this->editandoId,
+                nombre: $this->editNombre,
+                totalRanuras: $this->editTotalRanuras,
+            ));
+
+            $this->cargarGabinetes($listarHandler);
+            $this->showEditModal = false;
+            $this->successMessage = 'Gabinete actualizado correctamente.';
+            $this->errorMessage = null;
+        } catch (\Throwable $e) {
+            $this->errorMessage = $e->getMessage();
+        }
+    }
+
+    public function desactivarGabinete(
+        string $id,
+        DesactivarGabineteHandler $desactivarHandler,
+        ListarGabineteHandler $listarHandler,
+    ): void {
+        try {
+            $desactivarHandler->handle(new DesactivarGabineteInput(gabineteId: $id));
+            $this->cargarGabinetes($listarHandler);
+            $this->successMessage = 'Gabinete desactivado.';
+            $this->errorMessage = null;
         } catch (\Throwable $e) {
             $this->errorMessage = $e->getMessage();
         }
