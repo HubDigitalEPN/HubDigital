@@ -1,7 +1,7 @@
 <div class="flex flex-col gap-6">
     <flux:card class="flex flex-col gap-4">
-        <flux:heading size="lg">{{ __('Iniciar sesión') }}</flux:heading>
-        <flux:text class="text-text-secondary">{{ __('Acceso al panel de administración') }}</flux:text>
+        <flux:heading size="lg" class="text-text-primary dark:text-text-primary">{{ __('Iniciar sesión') }}</flux:heading>
+        <flux:text class="text-text-primary dark:text-text-primary">{{ __('Acceso al panel de administración') }}</flux:text>
 
         <flux:separator />
 

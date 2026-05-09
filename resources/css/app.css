@@ -2,7 +2,9 @@
 @import '../../vendor/livewire/flux/dist/flux.css';
 
 @source '../views';
-@source inline("border-science-blue bg-science-blue/5 bg-science-blue/15 text-science-blue border-border bg-surface hover:border-science-blue/40 text-text-secondary text-text-primary bg-bg-main");
+@source '../../Modules/**/resources/views/**/*.blade.php';
+@source '../../Modules/**/app/Presentation/**/*.php';
+@source inline("border-science-blue bg-science-blue/5 bg-science-blue/15 text-science-blue border-border bg-surface hover:border-science-blue/40 text-text-secondary text-text-primary bg-bg-main bg-success bg-warning bg-error bg-info bg-bio-green border-success border-warning border-error border-info border-bio-green text-white animate-pulse aspect-square");
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../vendor/livewire/flux-pro/stubs/**/*.blade.php';
 @source '../../vendor/livewire/flux/stubs/**/*.blade.php';
@@ -43,17 +45,13 @@
     --color-zinc-900: #171717;
     --color-zinc-950: #0a0a0a;
 
-    --color-accent: var(--color-science-blue);
-    --color-accent-content: var(--color-science-blue);
-    --color-accent-foreground: var(--color-white);
+    --color-accent: var(--color-bio-green);
+    --color-accent-content: var(--color-bio-green);
+    --color-accent-foreground: #ffffff;
 }
 
 @layer theme {
-    .dark {
-        --color-accent: var(--color-white);
-        --color-accent-content: var(--color-white);
-        --color-accent-foreground: var(--color-neutral-800);
-    }
+    /* Dark mode disabled — Hub Digital uses only light theme */
 }
 
 @layer base {
@@ -101,4 +99,44 @@ body {
     background-image:
         radial-gradient(circle at 18% 55%, rgba(27, 54, 93, 0.05) 0%, transparent 50%),
         radial-gradient(circle at 82% 20%, rgba(46, 125, 50, 0.04) 0%, transparent 45%);
+}
+
+/* Hub Digital Sidebar — Blue Navy Navigation */
+[data-flux-sidebar].bg-blue-navy {
+    background-color: var(--color-blue-navy);
+}
+
+[data-flux-sidebar].bg-blue-navy [data-flux-sidebar-item],
+[data-flux-sidebar].bg-blue-navy [data-flux-sidebar-group-heading] {
+    color: white;
+}
+
+[data-flux-sidebar].bg-blue-navy [data-flux-sidebar-item]:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-flux-sidebar].bg-blue-navy [data-flux-sidebar-item][aria-current="page"] {
+    background-color: var(--color-science-blue);
+    color: white;
+}
+
+/* Hub Digital Secondary Links — Science Blue */
+[data-flux-button].variant-ghost {
+    color: var(--color-science-blue);
+}
+
+[data-flux-button].variant-ghost:hover {
+    background-color: rgba(25, 118, 210, 0.1);
+}
+
+/* Hub Digital — Links */
+a {
+    @apply text-science-blue hover:text-science-blue/80 transition-colors;
+}
+
+/* Hub Digital — Form focus states (science-blue) */
+input:focus[data-flux-control],
+textarea:focus[data-flux-control],
+select:focus[data-flux-control] {
+    @apply outline-hidden ring-2 ring-science-blue ring-offset-2 ring-offset-white;
 }
