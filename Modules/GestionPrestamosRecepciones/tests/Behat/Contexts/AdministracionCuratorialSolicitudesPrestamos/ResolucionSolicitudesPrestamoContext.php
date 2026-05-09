@@ -132,7 +132,7 @@ final class ResolucionSolicitudesPrestamoContext extends BaseContext
     // Usado por todos los escenarios de esta feature
     // =========================================================================
 
-    #[Given('que existe una solicitud en estado enviada')]
+    #[Given('que existe una solicitud de préstamo enviada para resolución')]
     public function queExisteUnaSolicitudEnEstadoEnviada(): void
     {
         $solicitud = $this->sembrarSolicitudEnviada();
@@ -449,7 +449,7 @@ final class ResolucionSolicitudesPrestamoContext extends BaseContext
     // Usado por los escenarios de validación (sin comentario / sin tipo)
     // =========================================================================
 
-    #[Then('la solicitud permanece en estado enviada')]
+    #[Then('la solicitud se mantiene en estado enviada')]
     public function laSolicitudPermanenceEnEstadoEnviada(): void
     {
         Assert::assertNotNull(
