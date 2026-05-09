@@ -1,4 +1,4 @@
-<div class="space-y-6">
+<div class="p-6 space-y-6">
 
     <flux:breadcrumbs>
         <flux:breadcrumbs.item wire:navigate href="{{ route('prestamos.investigador.mis-solicitudes') }}">
@@ -20,9 +20,22 @@
             <div class="lg:col-span-2 space-y-6">
 
                 <div class="rounded-lg border border-border bg-surface shadow-sm p-5 space-y-4">
-                    <div class="flex items-center justify-between">
+                    <div class="flex items-start justify-between gap-4">
                         <flux:heading size="xl" level="1" class="font-display">{{ $solicitud->titulo_estudio }}</flux:heading>
-                        <x-gestionprestamosrecepciones::solicitud-status-badge :estado="$solicitud->estado" />
+                        <div class="flex items-center gap-2 shrink-0">
+                            <x-gestionprestamosrecepciones::solicitud-status-badge :estado="$solicitud->estado" />
+                            @if(in_array($solicitud->estado, ['borrador', 'observada']))
+                                <flux:button
+                                    size="sm"
+                                    variant="ghost"
+                                    icon="pencil"
+                                    wire:navigate
+                                    href="{{ route('prestamos.investigador.solicitud.editar', $solicitud->id) }}"
+                                >
+                                    Editar
+                                </flux:button>
+                            @endif
+                        </div>
                     </div>
                     <flux:separator />
 
@@ -58,14 +71,14 @@
                         </div>
                         <flux:table>
                             <flux:table.columns>
-                                <flux:table.column>Código de Espécimen</flux:table.column>
-                                <flux:table.column>Cantidad</flux:table.column>
+                                <flux:table.column class="!ps-4">Código de Espécimen</flux:table.column>
+                                <flux:table.column class="px-4">Cantidad</flux:table.column>
                             </flux:table.columns>
                             <flux:table.rows>
                                 @foreach($solicitud->items as $item)
                                     <flux:table.row>
-                                        <flux:table.cell class="font-mono text-sm">{{ $item->especimen_codigo_externo }}</flux:table.cell>
-                                        <flux:table.cell>{{ $item->cantidad_solicitada }}</flux:table.cell>
+                                        <flux:table.cell class="!ps-4 px-4 py-3 font-mono text-sm whitespace-nowrap">{{ $item->especimen_codigo_externo }}</flux:table.cell>
+                                        <flux:table.cell class="px-4 py-3">{{ $item->cantidad_solicitada }}</flux:table.cell>
                                     </flux:table.row>
                                 @endforeach
                             </flux:table.rows>

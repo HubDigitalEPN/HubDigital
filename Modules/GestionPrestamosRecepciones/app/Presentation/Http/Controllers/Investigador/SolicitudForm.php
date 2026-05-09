@@ -36,8 +36,10 @@ final class SolicitudForm extends Component
     #[Validate('required|string')]
     public string $propositoPrestamo = '';
 
-    #[Validate('required|integer|min:1|max:12')]
+    #[Validate('required|integer|min:1|max:24')]
     public int $duracionPropuestaMeses = 1;
+
+    public string $justificacionExtendida = '';
 
     /** @var list<array{especimen_codigo_externo: string, cantidad_solicitada: int}> */
     public array $items = [];
@@ -60,6 +62,7 @@ final class SolicitudForm extends Component
             $this->lineaInvestigacion = $solicitud->linea_investigacion ?? '';
             $this->propositoPrestamo = $solicitud->proposito_prestamo ?? '';
             $this->duracionPropuestaMeses = $solicitud->duracion_propuesta_meses ?? 1;
+            $this->justificacionExtendida = $solicitud->justificacion_extendida ?? '';
             $this->items = $solicitud->items
                 ->map(fn ($item) => [
                     'especimen_codigo_externo' => $item->especimen_codigo_externo,
@@ -86,40 +89,59 @@ final class SolicitudForm extends Component
         ActualizarSolicitudPrestamoHandler $actualizar,
     ): void {
         $this->validate([
-            'tituloEstudio' => 'required|string|max:255',
-            'institucionAdscripcion' => 'required|string|max:255',
-            'lineaInvestigacion' => 'required|string|max:255',
-            'propositoPrestamo' => 'required|string',
-            'duracionPropuestaMeses' => 'required|integer|min:1|max:12',
-            'items' => 'required|array|min:1',
+            'tituloEstudio'            => 'required|string|max:255',
+            'institucionAdscripcion'   => 'required|string|max:255',
+            'lineaInvestigacion'       => 'required|string|max:255',
+            'propositoPrestamo'        => 'required|string',
+            'duracionPropuestaMeses'   => 'required|integer|min:1|max:24',
+            'justificacionExtendida'   => $this->duracionPropuestaMeses > 12 ? 'required|string|min:20' : 'nullable|string',
+            'items'                    => 'required|array|min:1',
             'items.*.especimen_codigo_externo' => 'required|string',
-            'items.*.cantidad_solicitada' => 'required|integer|min:1',
+            'items.*.cantidad_solicitada'      => 'required|integer|min:1',
+        ], [
+            'tituloEstudio.required'          => 'El título del estudio es obligatorio.',
+            'tituloEstudio.max'               => 'El título no puede superar los 255 caracteres.',
+            'institucionAdscripcion.required' => 'La institución de adscripción es obligatoria.',
+            'lineaInvestigacion.required'     => 'La línea de investigación es obligatoria.',
+            'propositoPrestamo.required'      => 'El propósito del préstamo es obligatorio.',
+            'duracionPropuestaMeses.required' => 'La duración propuesta es obligatoria.',
+            'duracionPropuestaMeses.integer'  => 'La duración debe ser un número entero.',
+            'duracionPropuestaMeses.min'      => 'La duración mínima es 1 mes.',
+            'duracionPropuestaMeses.max'      => 'La duración máxima permitida es 24 meses.',
+            'justificacionExtendida.required' => 'Debes justificar por qué la investigación requiere más de 12 meses.',
+            'justificacionExtendida.min'      => 'La justificación debe tener al menos 20 caracteres.',
+            'items.required'                  => 'Debes agregar al menos un espécimen.',
+            'items.min'                       => 'Debes agregar al menos un espécimen.',
+            'items.*.especimen_codigo_externo.required' => 'El código del espécimen es obligatorio.',
+            'items.*.cantidad_solicitada.required'      => 'La cantidad es obligatoria.',
+            'items.*.cantidad_solicitada.min'           => 'La cantidad mínima es 1.',
         ]);
 
         $investigadorId = (string) auth()->id();
 
         if ($this->solicitudId === null) {
             $output = $registrar->handle(new RegistrarSolicitudPrestamoInput(
-                investigadorId: $investigadorId,
-                tituloEstudio: $this->tituloEstudio,
+                investigadorId:         $investigadorId,
+                tituloEstudio:          $this->tituloEstudio,
                 institucionAdscripcion: $this->institucionAdscripcion,
-                lineaInvestigacion: $this->lineaInvestigacion,
-                propositoPrestamo: $this->propositoPrestamo,
+                lineaInvestigacion:     $this->lineaInvestigacion,
+                propositoPrestamo:      $this->propositoPrestamo,
                 duracionPropuestaMeses: $this->duracionPropuestaMeses,
-                items: $this->items,
+                items:                  $this->items,
+                justificacionExtendida: $this->duracionPropuestaMeses > 12 ? $this->justificacionExtendida : null,
             ));
             $this->solicitudId = $output->solicitudId;
         } else {
             $actualizar->handle(new ActualizarSolicitudPrestamoInput(
-                solicitudId: $this->solicitudId,
-                investigadorId: $investigadorId,
-                tituloEstudio: $this->tituloEstudio,
+                solicitudId:            $this->solicitudId,
+                investigadorId:         $investigadorId,
+                tituloEstudio:          $this->tituloEstudio,
                 institucionAdscripcion: $this->institucionAdscripcion,
-                lineaInvestigacion: $this->lineaInvestigacion,
-                propositoPrestamo: $this->propositoPrestamo,
+                lineaInvestigacion:     $this->lineaInvestigacion,
+                propositoPrestamo:      $this->propositoPrestamo,
                 duracionPropuestaMeses: $this->duracionPropuestaMeses,
-                items: $this->items,
-                justificacionExtendida: null,
+                items:                  $this->items,
+                justificacionExtendida: $this->duracionPropuestaMeses > 12 ? $this->justificacionExtendida : null,
             ));
         }
 

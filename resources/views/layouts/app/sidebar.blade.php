@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+@php use App\Enums\RolUsuario; @endphp
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
         @include('partials.head')
@@ -32,27 +33,54 @@
                         Dashboard
                     </flux:sidebar.item>
                 </flux:sidebar.group>
-
                 @auth
-                    @if(auth()->user()->rol === 'PRESTAMISTA')
+                    @if(auth()->user()->rol === RolUsuario::PRESTAMISTA)
                         <flux:sidebar.group heading="Préstamos" class="grid">
                             <flux:sidebar.item icon="document-text" :href="route('dashboard')" wire:navigate>
                                 Mis Solicitudes
                             </flux:sidebar.item>
                         </flux:sidebar.group>
-                    @elseif(auth()->user()->rol === 'DEPOSITANTE')
+                    @elseif(auth()->user()->rol === RolUsuario::DEPOSITANTE)
                         <flux:sidebar.group heading="Depósitos" class="grid">
                             <flux:sidebar.item icon="archive-box" :href="route('dashboard')" wire:navigate>
                                 Mis Depósitos
                             </flux:sidebar.item>
                         </flux:sidebar.group>
-                    @elseif(auth()->user()->rol === 'CURADOR')
+                    @elseif(auth()->user()->rol === RolUsuario::CURADOR)
                         <flux:sidebar.group heading="Gestión" class="grid">
-                            <flux:sidebar.item icon="inbox" :href="route('dashboard')" wire:navigate>
-                                Solicitudes
+                            <flux:sidebar.item
+                                icon="inbox"
+                                :href="route('prestamos.curador.panel')"
+                                :current="request()->routeIs('prestamos.curador.*')"
+                                wire:navigate
+                            >
+                                Préstamos
                             </flux:sidebar.item>
-                            <flux:sidebar.item icon="squares-2x2" :href="route('dashboard')" wire:navigate>
+                            <flux:sidebar.item
+                                icon="squares-2x2"
+                                :href="route('dashboard')"
+                                :current="request()->routeIs('inventariogestioncoleccion.*')"
+                                wire:navigate
+                            >
                                 Inventario
+                            </flux:sidebar.item>
+                        </flux:sidebar.group>
+                        <flux:sidebar.group heading="Divulgación" class="grid">
+                            <flux:sidebar.item
+                                icon="table-cells"
+                                :href="route('divulgacion.index')"
+                                :current="request()->routeIs('divulgacion.index')"
+                                wire:navigate
+                            >
+                                Tabla divulgada
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="cloud-arrow-up"
+                                :href="route('divulgacion.sincronizar')"
+                                :current="request()->routeIs('divulgacion.sincronizar')"
+                                wire:navigate
+                            >
+                                Sincronización
                             </flux:sidebar.item>
                         </flux:sidebar.group>
                     @endif

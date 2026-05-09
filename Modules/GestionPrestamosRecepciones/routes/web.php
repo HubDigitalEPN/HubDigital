@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Route;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\BandejaActas;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\BandejaSolicitudes;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\PanelPrestamos;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\RevisarSolicitud;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\ValidarActa;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\DetalleSolicitud;
@@ -25,6 +26,7 @@ Route::middleware(['auth', 'verified'])
 
         // Curador — solo usuarios con rol CURADOR
         Route::middleware('role:curador')->group(function () {
+            Route::get('/curador/panel', PanelPrestamos::class)->name('curador.panel');
             Route::get('/curador/solicitudes', BandejaSolicitudes::class)->name('curador.solicitudes');
             Route::get('/curador/solicitud/{id}', RevisarSolicitud::class)->name('curador.solicitud.revisar');
             Route::get('/curador/actas', BandejaActas::class)->name('curador.actas');

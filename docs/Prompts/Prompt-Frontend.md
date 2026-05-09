@@ -26,6 +26,11 @@
 >
 > 2. **Adhesión Estricta a los Guidelines y Flux UI:**
      >    * Usa ÚNICAMENTE los tokens de diseño (clases de Tailwind) y los componentes prefabricados de Flux UI especificados. No uses CSS personalizado ni códigos hex arbitrarios.
+>    * **⚠️ Tablas Flux UI — padding obligatorio:** `flux:table` aplica internamente `first:ps-0` a la primera `<th>` y `<td>` de cada fila, eliminando el padding izquierdo. Para evitar que el texto quede pegado al borde debes:
+>      1. Agregar `class="!ps-4"` en el primer `<flux:table.column>` del encabezado.
+>      2. Agregar `class="!ps-4 px-4 py-3"` en el primer `<flux:table.cell>` de cada fila.
+>      3. Agregar `class="px-4 py-3"` en todos los demás `<flux:table.cell>` y `<flux:table.column>`.
+>      4. Envolver el componente `<flux:table>` en un `<div class="p-6 ...">` (o asegurarte de que el wrapper externo de la vista tenga `p-6`) para que exista separación entre la tabla y los bordes de la tarjeta.
 >
 > 3. **Integración Livewire - Backend:**
      >    * Diseña los Componentes Livewire (Full-page o anidados) que consumirán los endpoints o interactuarán con los Casos de Uso del backend.

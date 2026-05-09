@@ -44,6 +44,7 @@ final class RegistrarSolicitudPrestamoHandler
             propositoPrestamo:      $input->propositoPrestamo,
             duracionPropuestaMeses: $input->duracionPropuestaMeses,
             items:                  $items,
+            justificacionExtendida: $input->justificacionExtendida,
         );
 
         $this->transactionManager->executeTransactional(function () use ($solicitud): void {
