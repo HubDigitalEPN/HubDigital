@@ -23,4 +23,6 @@ interface CajaRepository
 
     /** @return Caja[] */
     public function buscarTodas(): array;
+
+    public function eliminar(CajaId $id): void;
 }

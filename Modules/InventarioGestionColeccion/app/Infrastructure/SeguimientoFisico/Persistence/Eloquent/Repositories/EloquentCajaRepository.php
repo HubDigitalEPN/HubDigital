@@ -65,6 +65,11 @@ class EloquentCajaRepository implements CajaRepository
             ->all();
     }
 
+    public function eliminar(CajaId $id): void
+    {
+        CajaEloquentModel::destroy((string) $id);
+    }
+
     private function toDomain(CajaEloquentModel $model): Caja
     {
         return Caja::reconstituir(
