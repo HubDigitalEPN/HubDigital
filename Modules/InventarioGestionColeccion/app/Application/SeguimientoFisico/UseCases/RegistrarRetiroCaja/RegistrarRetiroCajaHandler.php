@@ -18,6 +18,7 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\Not
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\RanuraGabineteRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UbicacionCajaRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\CajaId;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoCaja;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TipoAlerta;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TipoNotificacion;
 
@@ -43,11 +44,36 @@ final class RegistrarRetiroCajaHandler
         $actorId = $this->contextoEjecucion->actorId();
 
         $caja = $this->cajaRepo->buscarPorId($cajaId);
-        // Fallback to internal active location logic if ranura isn't provided or match it if we want to be strict.
-        // We'll trust the domain validation from the actual entity if ranura mismatch happens.
-        $ranuraActualId = $caja->ranuraActualId();
-        $ranura = $this->ranuraRepo->buscarPorId($ranuraActualId);
+        if ($caja === null) {
+            throw new \DomainException("Caja '{$input->cajaId}' no encontrada.");
+        }
+
+        // Idempotency: if the caja is already EnTransito, the retiro already happened (or ingreso never persisted).
+        if ($caja->estadoActual() === EstadoCaja::EnTransito) {
+            return RegistrarRetiroCajaOutput::fromPrimitives([
+                'cajaId' => (string) $cajaId,
+                'estadoCaja' => $caja->estadoActual()->valor(),
+                'alertaGenerada' => false,
+                'notificacionEnviada' => false,
+            ]);
+        }
+
+        // Use the active ubicacion as source of truth for which ranura the caja occupies.
         $ubicacion = $this->ubicacionRepo->buscarActivaPorCaja($cajaId);
+        if ($ubicacion === null) {
+            // No active ubicacion: ingreso was never persisted — nothing to retire.
+            return RegistrarRetiroCajaOutput::fromPrimitives([
+                'cajaId' => (string) $cajaId,
+                'estadoCaja' => $caja->estadoActual()->valor(),
+                'alertaGenerada' => false,
+                'notificacionEnviada' => false,
+            ]);
+        }
+
+        $ranura = $this->ranuraRepo->buscarPorId($ubicacion->ranuraGabineteId());
+        if ($ranura === null) {
+            throw new \DomainException("Ranura de la ubicación activa de la caja '{$input->cajaId}' no encontrada — integridad de datos comprometida.");
+        }
 
         [$alertaGenerada, $notificacionEnviada] = $this->transactionManager->executeTransactional(
             function () use ($caja, $ranura, $ubicacion, $cajaId, $actorRol, $actorId): array {
