@@ -16,7 +16,7 @@ GPIO 19 (MISO)  → MISO              → MISO
 GPIO 18 (SCK)   → SCK               → SCK
 GPIO 5  (CS_0)  → SDA
 GPIO 15 (CS_1)              →       SDA
-GPIO 0  (RST)   → RST               → RST  (compartido)
+GPIO 22 (RST)   → RST               → RST  (compartido — no usar GPIO 0, es strapping pin)
 3.3V            → VCC               → VCC
 GND             → GND               → GND
 ```
@@ -53,11 +53,11 @@ void setup() {
     Serial.begin(115200);
     Preferences p;
     p.begin("hub-digital", false);
-    p.putString("wifi_ssid",   "TuRed");
-    p.putString("wifi_pass",   "TuClave");
-    p.putString("api_url",     "https://tu-dominio.com");
-    p.putString("api_token",   "1|token-sanctum-del-esp32");
-    p.putString("gabinete_id", "uuid-del-gabinete-en-bd");
+    p.putString("wifi_ssid",   "CHAROF");
+    p.putString("wifi_pass",   "ALEJO29-11-03");
+    p.putString("api_url",     "https://semisweet-nonfavorable-milena.ngrok-free.dev");
+    p.putString("api_token",   "1|HXNqdS7MAgE4yPeewPrbUMsXUNGUDhr8THL17Ip5ff13bd6a");
+    p.putString("gabinete_id", "4fa2cd1a-a759-413c-802a-a0a77675cf99");
     p.end();
     Serial.println("OK");
 }
@@ -72,111 +72,184 @@ El `gabinete_id` y el `api_token` se obtienen al completar el setup del backend
 ## Firmware principal
 
 ```cpp
-// main.ino
-#include <SPI.h>
-#include <MFRC522.h>
-#include <WiFi.h>
-#include <HTTPClient.h>
-#include <ArduinoJson.h>
-#include <Preferences.h>
+    // main.ino
+    #include <SPI.h>
+    #include <MFRC522.h>
+    #include <WiFi.h>
+    #include <HTTPClient.h>
+    #include <ArduinoJson.h>
+    #include <Preferences.h>
 
-// ── Pines ────────────────────────────────────────────────
-constexpr uint8_t PIN_RST  = 0;
-constexpr uint8_t CS_PINS[] = {5, 15};   // un pin CS por lector
-constexpr uint8_t NUM_SLOTS = 2;
+    // ── Pines ────────────────────────────────────────────────
+    constexpr uint8_t PIN_RST    = 22;     // NO usar GPIO 0 — es strapping pin del ESP32
+    constexpr uint8_t CS_PINS[]  = {5};   // un pin CS por lector activo
+    constexpr uint8_t NUM_SLOTS  = 1;
 
-// ── Estado ───────────────────────────────────────────────
-MFRC522 readers[NUM_SLOTS] = {
-    MFRC522(CS_PINS[0], PIN_RST),
-    MFRC522(CS_PINS[1], PIN_RST),
-};
+    // ── Estado ───────────────────────────────────────────────
+    MFRC522 readers[NUM_SLOTS] = {
+        MFRC522(CS_PINS[0], PIN_RST),
+    };
 
-struct Slot { bool ocupado = false; char uid[9] = {}; };
-Slot slots[NUM_SLOTS];
+    struct Slot { bool ocupado = false; char uid[9] = {}; uint8_t misses = 0; };
+    Slot slots[NUM_SLOTS];
 
-char apiUrl[128], apiToken[128], gabineteId[37];
+    char apiUrl[128], apiToken[128], gabineteId[37];
 
-// ── Helpers ───────────────────────────────────────────────
-void formatUid(MFRC522& r, char* out) {
-    snprintf(out, 9, "%02X%02X%02X%02X",
-        r.uid.uidByte[0], r.uid.uidByte[1],
-        r.uid.uidByte[2], r.uid.uidByte[3]);
-}
+    // ── Helpers ───────────────────────────────────────────────
+    void formatUid(MFRC522& r, char* out) {
+        snprintf(out, 9, "%02X%02X%02X%02X",
+            r.uid.uidByte[0], r.uid.uidByte[1],
+            r.uid.uidByte[2], r.uid.uidByte[3]);
+    }
 
-bool postEvento(const char* tagUid, uint8_t slotIndex, const char* evento) {
-    HTTPClient http;
-    char url[200];
-    snprintf(url, sizeof(url), "%s/api/v1/seguimiento-fisico/eventos", apiUrl);
+    bool postEvento(const char* tagUid, uint8_t slotIndex, const char* evento) {
+        HTTPClient http;
+        char url[200];
+        snprintf(url, sizeof(url), "%s/api/v1/seguimiento-fisico/eventos", apiUrl);
 
-    http.begin(url);
-    http.addHeader("Content-Type",  "application/json");
-    http.addHeader("Accept",        "application/json");
-    http.addHeader("Authorization", (String("Bearer ") + apiToken).c_str());
-    http.setTimeout(8000);
+        http.begin(url);
+        http.addHeader("Content-Type",              "application/json");
+        http.addHeader("Accept",                    "application/json");
+        http.addHeader("Authorization",             (String("Bearer ") + apiToken).c_str());
+        http.addHeader("ngrok-skip-browser-warning", "1");
+        http.setTimeout(15000);
 
-    JsonDocument doc;
-    doc["tag_uid"]     = tagUid;
-    doc["gabinete_id"] = gabineteId;
-    doc["slot_index"]  = slotIndex;
-    doc["evento"]      = evento;
-    String body; serializeJson(doc, body);
+        JsonDocument doc;
+        doc["tag_uid"]     = tagUid;
+        doc["gabinete_id"] = gabineteId;
+        doc["slot_index"]  = slotIndex;
+        doc["evento"]      = evento;
+        String body; serializeJson(doc, body);
 
-    int code = http.POST(body);
-    http.end();
+        int code = http.POST(body);
+        http.end();
 
-    Serial.printf("[HTTP %d] %s slot=%d uid=%s\n", code, evento, slotIndex, tagUid);
-    return code == 200 || code == 422;  // 422 = dominio rechazó, no reintentar
-}
+        Serial.printf("[HTTP %d] %s slot=%d uid=%s\n", code, evento, slotIndex, tagUid);
+        return code == 200 || code == 422;  // 422 = dominio rechazó, no reintentar
+    }
 
-// ── Setup ─────────────────────────────────────────────────
-void setup() {
-    Serial.begin(115200);
+    // ── Setup ─────────────────────────────────────────────────
+    void setup() {
+        Serial.begin(115200);
 
-    Preferences p; p.begin("hub-digital", true);
-    char ssid[64], pass[64];
-    p.getString("wifi_ssid",   ssid,       sizeof(ssid));
-    p.getString("wifi_pass",   pass,       sizeof(pass));
-    p.getString("api_url",     apiUrl,     sizeof(apiUrl));
-    p.getString("api_token",   apiToken,   sizeof(apiToken));
-    p.getString("gabinete_id", gabineteId, sizeof(gabineteId));
-    p.end();
+        Preferences p; p.begin("hub-digital", true);
+        char ssid[64], pass[64];
+        p.getString("wifi_ssid",   ssid,       sizeof(ssid));
+        p.getString("wifi_pass",   pass,       sizeof(pass));
+        p.getString("api_url",     apiUrl,     sizeof(apiUrl));
+        p.getString("api_token",   apiToken,   sizeof(apiToken));
+        p.getString("gabinete_id", gabineteId, sizeof(gabineteId));
+        p.end();
 
-    WiFi.begin(ssid, pass);
-    Serial.print("WiFi...");
-    while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print("."); }
-    Serial.println(" OK");
+        WiFi.begin(ssid, pass);
+        Serial.print("WiFi...");
+        while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print("."); }
+        Serial.println(" OK");
 
-    SPI.begin(18, 19, 23);
-    for (auto& r : readers) { r.PCD_Init(); }
-
-    Serial.printf("Listo — %d slots — gabinete %s\n", NUM_SLOTS, gabineteId);
-}
-
-// ── Loop ──────────────────────────────────────────────────
-void loop() {
-    for (uint8_t i = 0; i < NUM_SLOTS; i++) {
-        MFRC522& r = readers[i];
-        char uid[9] = {};
-        bool presente = r.PICC_IsNewCardPresent() && r.PICC_ReadCardSerial();
-
-        if (presente) {
-            formatUid(r, uid);
-            r.PICC_HaltA();
-            r.PCD_StopCrypto1();
+        // CS pins HIGH antes de iniciar el bus — evita contención SPI en el arranque
+        for (uint8_t i = 0; i < NUM_SLOTS; i++) {
+            pinMode(CS_PINS[i], OUTPUT);
+            digitalWrite(CS_PINS[i], HIGH);
         }
 
-        if (presente != slots[i].ocupado) {
-            const char* ev = presente ? "ingreso" : "retiro";
+        SPI.begin(18, 19, 23);
+        for (uint8_t i = 0; i < NUM_SLOTS; i++) {
+            byte ver = 0x00;
+            for (uint8_t attempt = 1; attempt <= 3; attempt++) {
+                readers[i].PCD_Init();
+                delay(50);
+                ver = readers[i].PCD_ReadRegister(MFRC522::VersionReg);
+                if (ver == 0x91 || ver == 0x92) break;
+                Serial.printf("RC522[%d] intento %d/3 version=0x%02X\n", i, attempt, ver);
+                delay(100);
+            }
+            readers[i].PCD_SetAntennaGain(MFRC522::RxGain_max);
+            Serial.printf("RC522[%d] version=0x%02X %s\n", i, ver,
+                (ver == 0x91 || ver == 0x92) ? "OK" : "ERROR — revisar cableado");
+        }
+
+        Serial.printf("Listo — %d slots — gabinete %s\n", NUM_SLOTS, gabineteId);
+        Serial.printf("API: %s\n", apiUrl);
+    }
+
+    constexpr uint32_t SWEEP_INTERVAL_MS = 3000;   // barrido cada 3 s
+    constexpr uint32_t RETRY_BACKOFF_MS  = 15000;  // esperar 15 s antes de reintentar un POST fallido
+
+    // ── Loop ──────────────────────────────────────────────────
+    void loop() {
+        static uint32_t lastSweep          = 0;
+        static uint32_t retryAfter[NUM_SLOTS] = {};
+
+        if (millis() - lastSweep < SWEEP_INTERVAL_MS) return;
+        lastSweep = millis();
+
+        Serial.printf("--- barrido %lu ms ---\n", millis());
+
+        for (uint8_t i = 0; i < NUM_SLOTS; i++) {
+            MFRC522& r = readers[i];
+            char uid[9] = {};
+
+            // WUPA despierta tarjetas en IDLE y HALT — necesario para presencia continua.
+            // REQA (PICC_IsNewCardPresent) ignora tarjetas en HALT → falso retiro.
+            // El resultado de WUPA se ignora deliberadamente: en gabinetes metálicos puede
+            // retornar STATUS_TIMEOUT aunque la tarjeta esté presente (reflecciones RF).
+            // ReadCardSerial hace su propia secuencia anti-colisión y es más robusto.
+            byte bufferATQA[2];
+            byte bufferSize = sizeof(bufferATQA);
+            r.PICC_WakeupA(bufferATQA, &bufferSize);
+
+            bool presente = r.PICC_ReadCardSerial();
+
+            if (presente) {
+                formatUid(r, uid);
+                Serial.printf("[slot %d] UID detectado: %s\n", i, uid);
+                r.PICC_HaltA();
+                r.PCD_StopCrypto1();
+            }
+
+            // Debounce retiro: 5 sweeps consecutivos sin lectura antes de confirmar ausencia.
+            // 3 era insuficiente — interferencia metálica del gabinete causa falsos negativos.
+            if (!presente && slots[i].ocupado) {
+                slots[i].misses++;
+                Serial.printf("[slot %d] sin tag (%d/5)\n", i, slots[i].misses);
+                if (slots[i].misses < 5) continue;
+            } else {
+                slots[i].misses = 0;
+            }
+
+            if (presente == slots[i].ocupado) continue;
+
+            // Backoff: no reintentar un POST fallido hasta pasado RETRY_BACKOFF_MS.
+            if (millis() < retryAfter[i]) {
+                Serial.printf("[slot %d] en backoff, próximo intento en %lu s\n",
+                    i, (retryAfter[i] - millis()) / 1000);
+                continue;
+            }
+
+            const char* ev        = presente ? "ingreso" : "retiro";
             const char* uidEvento = presente ? uid : slots[i].uid;
-            if (postEvento(uidEvento, i, ev)) {
+
+            bool ok = postEvento(uidEvento, i, ev);
+
+            // El burst de TX WiFi durante el POST causa dips en 3.3V que pueden resetear
+            // los RC522. Reinicializar siempre después de una llamada HTTP, con voltaje ya
+            // estabilizado, y restaurar el gain que PCD_Init() borra.
+            for (uint8_t j = 0; j < NUM_SLOTS; j++) {
+                readers[j].PCD_Init();
+                readers[j].PCD_SetAntennaGain(MFRC522::RxGain_max);
+            }
+            delay(50);
+
+            if (ok) {
                 slots[i].ocupado = presente;
+                slots[i].misses  = 0;
                 strncpy(slots[i].uid, presente ? uid : "", 9);
+            } else {
+                retryAfter[i] = millis() + RETRY_BACKOFF_MS;
+                Serial.printf("[slot %d] POST fallido — reintento en %d s\n", i, RETRY_BACKOFF_MS / 1000);
             }
         }
-
-        delay(50);
     }
-}
 ```
 
 ---
