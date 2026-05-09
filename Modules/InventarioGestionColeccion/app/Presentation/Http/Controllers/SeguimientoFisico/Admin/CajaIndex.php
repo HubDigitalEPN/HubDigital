@@ -8,8 +8,12 @@ use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Rule;
 use Livewire\Component;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarCaja\ActualizarCajaHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarCaja\ActualizarCajaInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\CrearCaja\CrearCajaHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\CrearCaja\CrearCajaInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\EliminarCaja\EliminarCajaHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\EliminarCaja\EliminarCajaInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarCajas\ListarCajasHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarGabinetes\ListarGabineteHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarRanurasGabinete\ListarRanurasGabineteHandler;
@@ -17,7 +21,7 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Li
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarIngresoCaja\RegistrarIngresoCajaHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarIngresoCaja\RegistrarIngresoCajaInput;
 
-#[Layout('layouts.admin')]
+#[Layout('layouts.app', params: ['title' => 'Cajas'])]
 final class CajaIndex extends Component
 {
     public array $cajas = [];
@@ -52,6 +56,19 @@ final class CajaIndex extends Component
 
     #[Rule('nullable|integer|min:1')]
     public ?int $capacidadMaxima = null;
+
+    public bool $showEditCajaModal = false;
+
+    public string $editandoCajaId = '';
+
+    #[Rule('nullable|string|max:255')]
+    public ?string $editNombre = null;
+
+    #[Rule('nullable|string|max:255')]
+    public ?string $editFamiliaTaxonomicaId = null;
+
+    #[Rule('nullable|integer|min:1')]
+    public ?int $editCapacidadMaxima = null;
 
     public ?string $successMessage = null;
 
@@ -114,6 +131,64 @@ final class CajaIndex extends Component
             $this->reset('codigo', 'codigoRfid', 'nombre', 'familiaTaxonomicaId', 'capacidadMaxima');
             $this->resetValidation();
             $this->successMessage = 'Caja creada correctamente.';
+            $this->errorMessage = null;
+        } catch (\Throwable $e) {
+            $this->errorMessage = $e->getMessage();
+        }
+    }
+
+    public function abrirEditCajaModal(string $id): void
+    {
+        $caja = collect($this->cajas)->firstWhere('id', $id);
+
+        if ($caja === null) {
+            return;
+        }
+
+        $this->editandoCajaId = $id;
+        $this->editNombre = $caja['nombre'];
+        $this->editFamiliaTaxonomicaId = $caja['familiaTaxonomicaId'];
+        $this->editCapacidadMaxima = $caja['capacidadMaxima'];
+        $this->errorMessage = null;
+        $this->showEditCajaModal = true;
+    }
+
+    public function actualizarCaja(
+        ActualizarCajaHandler $actualizarHandler,
+        ListarCajasHandler $listarHandler,
+    ): void {
+        $this->validate([
+            'editNombre' => 'nullable|string|max:255',
+            'editFamiliaTaxonomicaId' => 'nullable|string|max:255',
+            'editCapacidadMaxima' => 'nullable|integer|min:1',
+        ]);
+
+        try {
+            $actualizarHandler->handle(new ActualizarCajaInput(
+                cajaId: $this->editandoCajaId,
+                nombre: $this->editNombre ?: null,
+                familiaTaxonomicaId: $this->editFamiliaTaxonomicaId ?: null,
+                capacidadMaxima: $this->editCapacidadMaxima,
+            ));
+
+            $this->cargarCajas($listarHandler);
+            $this->showEditCajaModal = false;
+            $this->successMessage = 'Caja actualizada correctamente.';
+            $this->errorMessage = null;
+        } catch (\Throwable $e) {
+            $this->errorMessage = $e->getMessage();
+        }
+    }
+
+    public function eliminarCaja(
+        string $id,
+        EliminarCajaHandler $eliminarHandler,
+        ListarCajasHandler $listarHandler,
+    ): void {
+        try {
+            $eliminarHandler->handle(new EliminarCajaInput(cajaId: $id));
+            $this->cargarCajas($listarHandler);
+            $this->successMessage = 'Caja eliminada correctamente.';
             $this->errorMessage = null;
         } catch (\Throwable $e) {
             $this->errorMessage = $e->getMessage();
