@@ -12,6 +12,7 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Ig
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\IgnorarAlerta\IgnorarAlertaInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarAlertas\ListarAlertasHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarAlertas\ListarAlertasInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarCajas\ListarCajasHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ResolverAlerta\ResolverAlertaHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ResolverAlerta\ResolverAlertaInput;
 
@@ -33,9 +34,12 @@ final class AlertaIndex extends Component
 
     public ?string $errorMessage = null;
 
-    public function mount(ListarAlertasHandler $handler): void
+    private array $cajasPorId = [];
+
+    public function mount(ListarAlertasHandler $alertasHandler, ListarCajasHandler $cajasHandler): void
     {
-        $this->cargarAlertas($handler);
+        $this->buildCajasPorId($cajasHandler);
+        $this->cargarAlertas($alertasHandler);
     }
 
     public function updatedFiltroEstado(string $value, ListarAlertasHandler $handler): void
@@ -88,6 +92,14 @@ final class AlertaIndex extends Component
         }
     }
 
+    private function buildCajasPorId(ListarCajasHandler $handler): void
+    {
+        $this->cajasPorId = [];
+        foreach ($handler->handle()->items as $c) {
+            $this->cajasPorId[$c->id] = ['codigo' => $c->codigo, 'estado' => $c->estado];
+        }
+    }
+
     private function cargarAlertas(ListarAlertasHandler $handler): void
     {
         $estado = $this->filtroEstado !== 'todas' ? $this->filtroEstado : null;
@@ -97,6 +109,8 @@ final class AlertaIndex extends Component
             fn ($a) => [
                 'id' => $a->id,
                 'cajaId' => $a->cajaId,
+                'cajaCodigo' => $this->cajasPorId[$a->cajaId]['codigo'] ?? '—',
+                'cajaEstado' => $this->cajasPorId[$a->cajaId]['estado'] ?? null,
                 'tipo' => $a->tipo,
                 'estado' => $a->estado,
                 'datosContexto' => $a->datosContexto,
