@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador;
 
 use App\Concerns\HandlesDomainExceptions;
+use App\Models\User;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
@@ -24,6 +25,8 @@ final class RevisarSolicitud extends Component
 
     public ?SolicitudPrestamoModel $solicitud = null;
 
+    public string $nombreInvestigador = '';
+
     public bool $showMotivoModal = false;
 
     #[Validate('required|string|min:10')]
@@ -33,6 +36,12 @@ final class RevisarSolicitud extends Component
     {
         $this->id = $id;
         $this->solicitud = SolicitudPrestamoModel::query()->with('items')->findOrFail($id);
+
+        $uuidRegex = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i';
+        $invId = $this->solicitud->investigador_id;
+        $this->nombreInvestigador = preg_match($uuidRegex, $invId)
+            ? (User::find($invId)?->name ?? $invId)
+            : $invId;
     }
 
     public function aprobar(GenerarActaPrestamoHandler $handler): void

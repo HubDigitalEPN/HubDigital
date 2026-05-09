@@ -17,6 +17,13 @@
         <flux:callout variant="success" icon="check-circle">{{ $successMessage }}</flux:callout>
     @endif
 
+    @if($comentarioCurador)
+        <flux:callout variant="warning" icon="exclamation-triangle">
+            <flux:heading size="sm">Observación del Curador</flux:heading>
+            <flux:text class="mt-1 text-sm">{{ $comentarioCurador }}</flux:text>
+        </flux:callout>
+    @endif
+
     <div class="grid gap-6 lg:grid-cols-3">
 
         {{-- Datos Generales --}}

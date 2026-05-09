@@ -29,7 +29,7 @@ final class RegistrarSolicitudPrestamoHandler
             fn (array $item) => ItemPrestamo::crear(
                 id:                     ItemPrestamoId::generate(),
                 especimenCodigoExterno: $item['especimen_codigo_externo'],
-                cantidadSolicitada:     $item['cantidad_solicitada'],
+                cantidadSolicitada:     (int) $item['cantidad_solicitada'],
             ),
             $input->items
         );

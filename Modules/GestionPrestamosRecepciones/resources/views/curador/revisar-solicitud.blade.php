@@ -29,7 +29,7 @@
                         </div>
                         <div>
                             <dt class="text-text-secondary">Investigador</dt>
-                            <dd class="text-text-primary">{{ $solicitud->investigador_id }}</dd>
+                            <dd class="text-text-primary">{{ $nombreInvestigador }}</dd>
                         </div>
                         <div>
                             <dt class="text-text-secondary">Institución</dt>
@@ -47,6 +47,12 @@
                             <dt class="text-text-secondary">Propósito del Préstamo</dt>
                             <dd class="text-text-primary mt-1">{{ $solicitud->proposito_prestamo }}</dd>
                         </div>
+                        @if($solicitud->justificacion_extendida)
+                            <div class="col-span-2">
+                                <dt class="text-text-secondary">Justificación para Duración Extendida</dt>
+                                <dd class="text-text-primary mt-1">{{ $solicitud->justificacion_extendida }}</dd>
+                            </div>
+                        @endif
                     </dl>
                 </div>
 
