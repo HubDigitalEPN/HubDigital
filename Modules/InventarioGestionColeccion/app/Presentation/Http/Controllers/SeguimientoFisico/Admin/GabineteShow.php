@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Admin;
 
+use App\Models\User;
 use Illuminate\View\View;
+use Laravel\Sanctum\PersonalAccessToken;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Rule;
 use Livewire\Component;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\CrearRanuraGabinete\CrearRanuraGabineteHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\CrearRanuraGabinete\CrearRanuraGabineteInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarCajas\ListarCajasHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarGabinetes\ListarGabineteHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarRanurasGabinete\ListarRanurasGabineteHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarRanurasGabinete\ListarRanurasGabineteInput;
@@ -35,19 +38,27 @@ final class GabineteShow extends Component
 
     public ?string $errorMessage = null;
 
+    public ?string $tokenGenerado = null;
+
+    public bool $tieneToken = false;
+
     public function mount(
         string $id,
         ListarGabineteHandler $listarGabinetes,
         ListarRanurasGabineteHandler $listarRanuras,
+        ListarCajasHandler $listarCajas,
     ): void {
         $this->gabineteId = $id;
         $this->cargarGabinete($listarGabinetes);
-        $this->cargarRanuras($listarRanuras);
+        $cajasPorId = $this->buildCajasPorId($listarCajas);
+        $this->cargarRanuras($listarRanuras, $cajasPorId);
+        $this->tieneToken = PersonalAccessToken::where('name', "esp32-{$id}")->exists();
     }
 
     public function agregarRanura(
         CrearRanuraGabineteHandler $crearHandler,
         ListarRanurasGabineteHandler $listarHandler,
+        ListarCajasHandler $cajasHandler,
     ): void {
         $this->validate();
 
@@ -58,7 +69,7 @@ final class GabineteShow extends Component
                 familiaTaxonomicaEsperadaId: $this->familiaTaxonomicaEsperadaId ?: null,
             ));
 
-            $this->cargarRanuras($listarHandler);
+            $this->cargarRanuras($listarHandler, $this->buildCajasPorId($cajasHandler));
             $this->showAgregarRanura = false;
             $this->reset('numeroRanura', 'familiaTaxonomicaEsperadaId');
             $this->resetValidation();
@@ -66,6 +77,18 @@ final class GabineteShow extends Component
         } catch (\Throwable $e) {
             $this->errorMessage = $e->getMessage();
         }
+    }
+
+    public function generarToken(): void
+    {
+        PersonalAccessToken::where('name', "esp32-{$this->gabineteId}")->delete();
+
+        $user = User::first();
+        $newToken = $user->createToken("esp32-{$this->gabineteId}", ['esp32']);
+
+        $this->tokenGenerado = $newToken->plainTextToken;
+        $this->tieneToken = true;
+        $this->successMessage = 'Token generado. Cópialo ahora — no se volverá a mostrar.';
     }
 
     private function cargarGabinete(ListarGabineteHandler $handler): void
@@ -84,7 +107,17 @@ final class GabineteShow extends Component
         }
     }
 
-    private function cargarRanuras(ListarRanurasGabineteHandler $handler): void
+    private function buildCajasPorId(ListarCajasHandler $handler): array
+    {
+        $map = [];
+        foreach ($handler->handle()->items as $c) {
+            $map[$c->id] = ['id' => $c->id, 'codigo' => $c->codigo, 'estado' => $c->estado];
+        }
+
+        return $map;
+    }
+
+    private function cargarRanuras(ListarRanurasGabineteHandler $handler, array $cajasPorId = []): void
     {
         $output = $handler->handle(new ListarRanurasGabineteInput($this->gabineteId));
         $this->ranuras = array_map(
@@ -94,6 +127,7 @@ final class GabineteShow extends Component
                 'numeroRanura' => $r->numeroRanura,
                 'familiaTaxonomicaEsperadaId' => $r->familiaTaxonomicaEsperadaId,
                 'activa' => $r->activa,
+                'cajaActual' => $r->cajaActualId ? ($cajasPorId[$r->cajaActualId] ?? null) : null,
             ],
             $output->items,
         );
