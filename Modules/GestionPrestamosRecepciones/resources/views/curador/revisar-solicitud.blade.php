@@ -91,10 +91,8 @@
                         Revisa la información y decide si apruebas la solicitud o la devuelves con observaciones.
                     </flux:text>
                     <div class="flex flex-col gap-2">
-                        <flux:button variant="primary" icon="check-circle" wire:click="aprobar"
-                            wire:loading.attr="disabled" wire:target="aprobar"
-                            wire:confirm="¿Confirmas la aprobación? Se generará el acta de préstamo.">
-                            <flux:icon wire:loading wire:target="aprobar" name="arrow-path" class="animate-spin" />
+                        <flux:button variant="primary" icon="check-circle"
+                            wire:click="$set('showAprobacionModal', true)">
                             Aprobar y Generar Acta
                         </flux:button>
                         <flux:button variant="ghost" icon="arrow-uturn-left"
@@ -112,6 +110,78 @@
 
         </div>
     @endif
+
+    {{-- Modal: formulario de aprobación --}}
+    <flux:modal wire:model="showAprobacionModal" class="max-w-2xl">
+        <div class="space-y-5 p-2">
+            <flux:heading size="lg">Aprobar Solicitud de Préstamo</flux:heading>
+            <flux:text class="text-text-secondary text-sm">
+                Configura las condiciones del préstamo antes de generar el acta.
+            </flux:text>
+            <flux:separator />
+
+            {{-- Tipo de préstamo --}}
+            <flux:field>
+                <flux:label>Tipo de Préstamo <span class="text-error">*</span></flux:label>
+                <flux:select wire:model="tipoPrestamo">
+                    <flux:select.option value="temporal">Temporal</flux:select.option>
+                    <flux:select.option value="permanente">Permanente</flux:select.option>
+                </flux:select>
+                <flux:error name="tipoPrestamo" />
+            </flux:field>
+
+            {{-- Duración --}}
+            <flux:field>
+                <flux:label>Duración del Préstamo</flux:label>
+                <div class="flex items-center gap-3 mt-1">
+                    <input type="checkbox" wire:model.live="usarDuracionPropuesta" id="usar-propuesta"
+                        class="rounded border-border text-science-blue focus:ring-science-blue" />
+                    <label for="usar-propuesta" class="text-sm text-text-primary">
+                        Usar duración propuesta por el investigador
+                        <span class="font-medium">({{ $solicitud?->duracion_propuesta_meses }} meses)</span>
+                    </label>
+                </div>
+                @if(!$usarDuracionPropuesta)
+                    <div class="mt-2">
+                        <flux:input type="number" wire:model="duracionPersonalizadaMeses"
+                            min="1" max="60" placeholder="Duración en meses" />
+                        <flux:error name="duracionPersonalizadaMeses" />
+                    </div>
+                @endif
+            </flux:field>
+
+            {{-- Condiciones generales --}}
+            <flux:field>
+                <flux:label>Condiciones Generales del Préstamo <span class="text-text-secondary text-xs">(opcional)</span></flux:label>
+                <flux:textarea wire:model="condicionesGenerales" rows="3"
+                    placeholder="Ej. Los especímenes deben ser manipulados con guantes y en ambiente controlado..." />
+            </flux:field>
+
+            {{-- Condiciones por espécimen --}}
+            @if($solicitud?->items && $solicitud->items->count())
+                <div class="space-y-3">
+                    <flux:label>Condiciones por Espécimen <span class="text-text-secondary text-xs">(opcional)</span></flux:label>
+                    @foreach($solicitud->items as $item)
+                        <flux:field>
+                            <flux:label class="font-mono text-xs text-text-secondary">{{ $item->especimen_codigo_externo }}</flux:label>
+                            <flux:input wire:model="condicionesPorItem.{{ $item->id }}"
+                                placeholder="Condición específica para este espécimen..." />
+                        </flux:field>
+                    @endforeach
+                </div>
+            @endif
+
+            <div class="flex justify-end gap-2 pt-2">
+                <flux:button variant="ghost" wire:click="$set('showAprobacionModal', false)">Cancelar</flux:button>
+                <flux:button variant="primary" icon="check-circle" wire:click="aprobar"
+                    wire:loading.attr="disabled" wire:target="aprobar"
+                    wire:confirm="¿Confirmas la aprobación? Se generará el acta de préstamo.">
+                    <flux:icon wire:loading wire:target="aprobar" name="arrow-path" class="animate-spin" />
+                    Confirmar Aprobación
+                </flux:button>
+            </div>
+        </div>
+    </flux:modal>
 
     {{-- Modal: motivo de observación --}}
     <flux:modal wire:model="showMotivoModal" class="max-w-md">

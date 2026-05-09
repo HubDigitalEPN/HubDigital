@@ -445,6 +445,48 @@ final class ResolucionSolicitudesPrestamoContext extends BaseContext
     }
 
     // =========================================================================
+    // ESCENARIO: Aprobar una solicitud con condiciones generales
+    // =========================================================================
+
+    #[When('el curador registra la aprobación con condiciones generales para el préstamo')]
+    public function elCuradorRegistraLaAprobacionConCondicionesGenerales(): void
+    {
+        Assert::assertNotNull($this->solicitudExistente);
+
+        try {
+            $this->ultimaRespuesta = $this->aprobarHandler->handle(
+                new AprobarSolicitudPrestamoInput(
+                    solicitudId: (string) $this->solicitudExistente->id(),
+                    curadorId: $this->curadorId,
+                    tipoPrestamo: 'temporal',
+                    duracionMeses: 3,
+                    condicionesGenerales: 'Manipulación con guantes y en ambiente controlado.',
+                )
+            );
+        } catch (\Throwable $e) {
+            $this->excepcionCapturada = $e;
+        }
+    }
+
+    #[Then('el acta registra las condiciones generales del préstamo')]
+    public function elActaRegistraLasCondicionesGenerales(): void
+    {
+        Assert::assertNull(
+            $this->excepcionCapturada,
+            'El handler lanzó una excepción inesperada: '.$this->excepcionCapturada?->getMessage()
+        );
+        Assert::assertNotNull($this->ultimaRespuesta);
+        Assert::assertNotEmpty(
+            $this->ultimaRespuesta->condicionesGenerales,
+            'Se esperaba que el acta tuviera condiciones generales registradas'
+        );
+
+        $acta = $this->actaRepo->buscarPorSolicitudId($this->solicitudExistente->id());
+        Assert::assertNotNull($acta, 'El acta no fue encontrada en el repositorio');
+        Assert::assertNotEmpty($acta->condicionesGenerales());
+    }
+
+    // =========================================================================
     // THEN COMPARTIDO: la solicitud permanece en estado enviada
     // Usado por los escenarios de validación (sin comentario / sin tipo)
     // =========================================================================

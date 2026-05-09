@@ -26,6 +26,7 @@ final class ActaPrestamoModel extends Model
         'fecha_inicio',
         'fecha_fin',
         'pdf_ruta',
+        'condiciones_generales',
         'pdf_firmado_ruta',
         'firmada_subida_en',
         'validada_en',

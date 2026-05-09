@@ -15,5 +15,6 @@ final readonly class AprobarSolicitudPrestamoInput
         public string $tipoPrestamo,
         public int $duracionMeses,
         public array $condicionesPorItem = [],
+        public ?string $condicionesGenerales = null,
     ) {}
 }
