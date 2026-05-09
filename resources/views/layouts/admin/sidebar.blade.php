@@ -1,19 +1,19 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
         @include('partials.head')
     </head>
     <body class="min-h-screen bg-bg-main">
-        <flux:sidebar sticky collapsible="mobile" class="border-e border-border bg-surface">
+        <flux:sidebar sticky collapsible="mobile" class="border-e border-blue-navy bg-blue-navy">
             <flux:sidebar.header>
-                <flux:heading class="font-semibold">
+                <flux:heading class="font-semibold text-white">
                     {{ __('Admin Panel') }}
                 </flux:heading>
                 <flux:sidebar.collapse class="lg:hidden" />
             </flux:sidebar.header>
 
             <flux:sidebar.nav>
-                <flux:sidebar.group :heading="__('Principal')" class="grid">
+                <flux:sidebar.group :heading="__('Principal')" class="grid" heading-class="text-white/70">
                     <flux:sidebar.item
                         icon="home"
                         :href="route('admin.dashboard')"
@@ -27,7 +27,7 @@
                 {{-- Los módulos añaden sus pestañas aquí con @push('admin-nav-items') --}}
                 @stack('admin-nav-items')
 
-                <flux:sidebar.group :heading="__('Inventario IoT')">
+                <flux:sidebar.group :heading="__('Inventario IoT')" heading-class="text-white/70">
                     <flux:sidebar.item
                         icon="chart-bar"
                         :href="route('admin.inventario.dashboard')"
@@ -59,6 +59,14 @@
                         wire:navigate
                     >
                         {{ __('Alertas') }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item
+                        icon="clock"
+                        :href="route('admin.inventario.horario')"
+                        :current="request()->routeIs('admin.inventario.horario')"
+                        wire:navigate
+                    >
+                        {{ __('Horario') }}
                     </flux:sidebar.item>
                 </flux:sidebar.group>
             </flux:sidebar.nav>
