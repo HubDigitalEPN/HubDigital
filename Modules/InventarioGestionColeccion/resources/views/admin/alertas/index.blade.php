@@ -1,5 +1,5 @@
-<div class="p-6 space-y-6">
-    <flux:heading size="xl" level="1">Alertas de Ubicación</flux:heading>
+<flux:main class="p-6 space-y-6">
+    <flux:heading size="xl" level="1" class="text-blue-navy font-bold font-display">Alertas de Ubicación</flux:heading>
 
     @if($successMessage)
         <flux:callout variant="success" dismissible>{{ $successMessage }}</flux:callout>
@@ -9,7 +9,7 @@
         <flux:callout variant="danger" dismissible>{{ $errorMessage }}</flux:callout>
     @endif
 
-    {{-- Filtro por estado --}}
+    {{-- Filtros --}}
     <div class="flex gap-2 flex-wrap">
         @foreach(['activa' => 'Activas', 'resuelta' => 'Resueltas', 'ignorada' => 'Ignoradas', 'todas' => 'Todas'] as $valor => $etiqueta)
             <flux:button
@@ -24,43 +24,56 @@
 
     <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
         <table class="w-full text-sm">
-            <thead class="bg-bg-main border-b border-border">
+            <thead class="bg-blue-navy border-b border-border">
                 <tr>
-                    <th class="px-4 py-3 text-left font-medium text-text-secondary">Tipo</th>
-                    <th class="px-4 py-3 text-left font-medium text-text-secondary">Caja ID</th>
-                    <th class="px-4 py-3 text-left font-medium text-text-secondary">Estado</th>
-                    <th class="px-4 py-3 text-left font-medium text-text-secondary">Contexto</th>
-                    <th class="px-4 py-3 text-left font-medium text-text-secondary">Acciones</th>
+                    <th class="px-4 py-3 text-left font-medium text-white">Tipo de Alerta</th>
+                    <th class="px-4 py-3 text-left font-medium text-white">Caja</th>
+                    <th class="px-4 py-3 text-left font-medium text-white">Estado Actual</th>
+                    <th class="px-4 py-3 text-left font-medium text-white">Estado Alerta</th>
+                    <th class="px-4 py-3 text-left font-medium text-white">Contexto</th>
+                    <th class="px-4 py-3 text-left font-medium text-white">Acciones</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-border">
                 @forelse($alertas as $alerta)
-                    <tr @class([
-                        'hover:bg-bg-main transition-colors',
-                        'bg-red-50 dark:bg-red-950/10' => $alerta['estado'] === 'activa',
-                    ])>
+                    <tr class="hover:bg-bg-main transition-colors {{ $alerta['estado'] === 'activa' ? 'bg-error/5' : '' }}">
                         <td class="px-4 py-3">
                             <x-inventariogestioncoleccion::seguimiento-fisico.alerta-badge
                                 :tipo="$alerta['tipo']"
                             />
                         </td>
-                        <td class="px-4 py-3 font-mono text-xs text-text-secondary">
-                            {{ substr($alerta['cajaId'], 0, 8) }}...
+                        <td class="px-4 py-3 font-medium text-text-primary">
+                            {{ $alerta['cajaCodigo'] }}
+                        </td>
+                        <td class="px-4 py-3">
+                            @if($alerta['cajaEstado'])
+                                <x-inventariogestioncoleccion::seguimiento-fisico.caja-estado-badge
+                                    :estado="$alerta['cajaEstado']"
+                                />
+                            @else
+                                <span class="text-text-secondary text-xs">—</span>
+                            @endif
                         </td>
                         <td class="px-4 py-3">
                             @php
-                                $estadoCfg = match($alerta['estado']) {
-                                    'activa'   => ['color' => 'red',    'label' => 'Activa'],
-                                    'resuelta' => ['color' => 'green',  'label' => 'Resuelta'],
-                                    'ignorada' => ['color' => 'zinc',   'label' => 'Ignorada'],
-                                    default    => ['color' => 'zinc',   'label' => $alerta['estado']],
+                                [$estadoBg, $estadoText, $estadoLabel] = match($alerta['estado']) {
+                                    'activa'   => ['bg-error',   'text-white',        'Activa'],
+                                    'resuelta' => ['bg-success', 'text-white',        'Resuelta'],
+                                    'ignorada' => ['bg-border',  'text-text-primary', 'Ignorada'],
+                                    default    => ['bg-border',  'text-text-primary', $alerta['estado']],
                                 };
                             @endphp
-                            <flux:badge :color="$estadoCfg['color']">{{ $estadoCfg['label'] }}</flux:badge>
+                            <span class="inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold {{ $estadoBg }} {{ $estadoText }}">
+                                {{ $estadoLabel }}
+                            </span>
                         </td>
-                        <td class="px-4 py-3 text-xs text-text-secondary max-w-xs truncate">
+                        <td class="px-4 py-3 text-xs text-text-secondary max-w-xs">
                             @if(count($alerta['datosContexto']) > 0)
-                                {{ collect($alerta['datosContexto'])->map(fn($v, $k) => "{$k}: {$v}")->implode(', ') }}
+                                <ul class="space-y-0.5">
+                                    @foreach($alerta['datosContexto'] as $k => $v)
+                                        <li><span class="font-medium text-text-primary">{{ $k }}:</span> {{ $v }}</li>
+                                    @endforeach
+                                </ul>
                             @else
                                 —
                             @endif
@@ -75,8 +88,7 @@
                                     >
                                         Resolver
                                     </flux:button>
-
-                                    <flux:tooltip content="Ignorar esta alerta sin resolverla">
+                                    <flux:tooltip content="Ignorar sin resolver">
                                         <flux:button
                                             size="sm"
                                             variant="ghost"
@@ -93,7 +105,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="5" class="px-4 py-8 text-center text-text-secondary">
+                        <td colspan="6" class="px-4 py-8 text-center text-text-primary">
                             No hay alertas en este estado.
                         </td>
                     </tr>
@@ -105,10 +117,8 @@
     {{-- Modal: Resolver alerta --}}
     <flux:modal wire:model="showResolverModal" class="w-full max-w-md">
         <div class="space-y-4 p-1">
-            <flux:heading size="lg">Resolver Alerta</flux:heading>
-            <p class="text-sm text-text-secondary">
-                Describe la acción tomada para resolver esta alerta.
-            </p>
+            <flux:heading size="lg" class="text-text-primary">Resolver Alerta</flux:heading>
+            <p class="text-sm text-text-primary">Describe la acción tomada para resolver esta alerta.</p>
 
             <flux:field>
                 <flux:label>Motivo de resolución</flux:label>
@@ -126,9 +136,9 @@
                 </flux:button>
                 <flux:button variant="primary" wire:click="resolver" wire:loading.attr="disabled">
                     <span wire:loading.remove wire:target="resolver">Confirmar Resolución</span>
-                    <span wire:loading wire:target="resolver">Guardando...</span>
+                    <span wire:loading wire:target="resolver">Guardando…</span>
                 </flux:button>
             </div>
         </div>
     </flux:modal>
-</div>
+</flux:main>

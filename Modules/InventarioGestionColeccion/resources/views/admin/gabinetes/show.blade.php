@@ -1,4 +1,4 @@
-<div class="p-6 space-y-6">
+<flux:main class="p-6 space-y-6">
     <div class="flex items-center gap-3">
         <flux:button
             icon="arrow-left"
@@ -8,11 +8,84 @@
             wire:navigate
         />
         <div>
-            <flux:heading size="xl" level="1">
+            <flux:heading size="xl" level="1" class="text-blue-navy font-semibold">
                 {{ $gabinete['codigo'] ?? '' }} — {{ $gabinete['nombre'] ?? '' }}
             </flux:heading>
             <p class="text-sm text-text-secondary">{{ count($ranuras) }} / {{ $gabinete['totalRanuras'] ?? 0 }} ranuras configuradas</p>
         </div>
+    </div>
+
+    {{-- Bloque de configuración ESP32 --}}
+    <div class="rounded-lg border border-border bg-surface shadow-sm p-4 space-y-4"
+         x-data="{ copiedId: false, copiedToken: false }">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <flux:icon name="cpu-chip" class="size-4 text-text-secondary" />
+                <flux:heading size="sm" level="3" class="text-text-secondary font-medium">Configuración ESP32</flux:heading>
+            </div>
+            @if($tieneToken && !$tokenGenerado)
+                <span class="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-semibold bg-success text-white">
+                    <flux:icon name="check-circle" class="size-3" />
+                    Token activo
+                </span>
+            @endif
+        </div>
+
+        {{-- gabinete_id --}}
+        <div class="flex items-center gap-3">
+            <span class="text-xs text-text-secondary shrink-0 w-24">gabinete_id</span>
+            <code class="flex-1 rounded bg-bg-main px-3 py-1.5 text-sm font-mono text-text-primary select-all">{{ $gabinete['id'] ?? '' }}</code>
+            <flux:button
+                size="sm"
+                variant="ghost"
+                icon="clipboard"
+                x-on:click="navigator.clipboard.writeText('{{ $gabinete['id'] ?? '' }}'); copiedId = true; setTimeout(() => copiedId = false, 2000)"
+            >
+                <span x-show="!copiedId">Copiar</span>
+                <span x-show="copiedId" class="text-success">Copiado</span>
+            </flux:button>
+        </div>
+
+        {{-- api_token --}}
+        @if($tokenGenerado)
+            <div class="space-y-1.5">
+                <div class="flex items-center gap-3">
+                    <span class="text-xs text-text-secondary shrink-0 w-24">api_token</span>
+                    <code class="flex-1 rounded bg-bg-main px-3 py-1.5 text-sm font-mono text-text-primary select-all break-all">{{ $tokenGenerado }}</code>
+                    <flux:button
+                        size="sm"
+                        variant="ghost"
+                        icon="clipboard"
+                        x-on:click="navigator.clipboard.writeText('{{ $tokenGenerado }}'); copiedToken = true; setTimeout(() => copiedToken = false, 2000)"
+                    >
+                        <span x-show="!copiedToken">Copiar</span>
+                        <span x-show="copiedToken" class="text-success">Copiado</span>
+                    </flux:button>
+                </div>
+                <flux:callout variant="warning" icon="exclamation-triangle">
+                    Guarda este token ahora. No se volverá a mostrar.
+                </flux:callout>
+            </div>
+        @else
+            <div class="flex items-center gap-3">
+                <span class="text-xs text-text-secondary shrink-0 w-24">api_token</span>
+                <span class="flex-1 text-sm text-text-secondary italic">
+                    @if($tieneToken) Token existente (no se muestra por seguridad) @else Sin token @endif
+                </span>
+                <flux:button
+                    size="sm"
+                    variant="{{ $tieneToken ? 'ghost' : 'primary' }}"
+                    wire:click="generarToken"
+                    wire:loading.attr="disabled"
+                    wire:confirm="{{ $tieneToken ? '¿Revocar el token actual y generar uno nuevo? El ESP32 dejará de funcionar hasta que flashees el nuevo token.' : null }}"
+                >
+                    <span wire:loading.remove wire:target="generarToken">
+                        {{ $tieneToken ? 'Regenerar token' : 'Generar token' }}
+                    </span>
+                    <span wire:loading wire:target="generarToken">Generando…</span>
+                </flux:button>
+            </div>
+        @endif
     </div>
 
     @if($successMessage)
@@ -25,7 +98,7 @@
 
     <div class="rounded-lg border border-border bg-surface shadow-sm p-4 space-y-4">
         <div class="flex items-center justify-between">
-            <flux:heading size="lg" level="2">Ranuras</flux:heading>
+            <flux:heading size="lg" level="2" class="text-blue-navy font-semibold">Ranuras</flux:heading>
             @if(count($ranuras) < ($gabinete['totalRanuras'] ?? 0))
                 <flux:button
                     icon="plus"
@@ -39,16 +112,16 @@
         </div>
 
         @if(count($ranuras) > 0)
-            <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+            <div class="grid gap-1.5" style="grid-template-columns: repeat(auto-fill, minmax(2.75rem, 1fr))">
                 @foreach($ranuras as $ranura)
                     <x-inventariogestioncoleccion::seguimiento-fisico.ranura-slot
                         :ranura="$ranura"
-                        :caja="null"
+                        :caja="$ranura['cajaActual'] ?? null"
                     />
                 @endforeach
             </div>
         @else
-            <p class="text-sm text-text-secondary py-4 text-center">
+            <p class="text-sm text-text-primary dark:text-text-primary py-4 text-center">
                 No hay ranuras configuradas. Agrega la primera ranura.
             </p>
         @endif
@@ -56,31 +129,39 @@
 
     <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
         <table class="w-full text-sm">
-            <thead class="bg-bg-main border-b border-border">
+            <thead class="bg-blue-navy border-b border-border">
                 <tr>
-                    <th class="px-4 py-3 text-left font-medium text-text-secondary">#</th>
-                    <th class="px-4 py-3 text-left font-medium text-text-secondary">Familia Taxonómica Esperada</th>
-                    <th class="px-4 py-3 text-left font-medium text-text-secondary">Estado</th>
+                    <th class="px-4 py-3 text-left font-medium text-white">#</th>
+                    <th class="px-4 py-3 text-left font-medium text-white">Familia Taxonómica Esperada</th>
+                    <th class="px-4 py-3 text-left font-medium text-white">Caja Actual</th>
+                    <th class="px-4 py-3 text-left font-medium text-white">Estado</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-border">
                 @forelse($ranuras as $ranura)
                     <tr class="hover:bg-bg-main transition-colors">
                         <td class="px-4 py-3 font-medium text-text-primary">{{ $ranura['numeroRanura'] }}</td>
-                        <td class="px-4 py-3 text-text-secondary">
+                        <td class="px-4 py-3 text-text-primary">
                             {{ $ranura['familiaTaxonomicaEsperadaId'] ?? '—' }}
+                        </td>
+                        <td class="px-4 py-3 text-text-primary">
+                            @if(isset($ranura['cajaActual']) && $ranura['cajaActual'])
+                                <span class="font-mono text-xs">{{ $ranura['cajaActual']['codigo'] }}</span>
+                            @else
+                                <span class="text-text-secondary">—</span>
+                            @endif
                         </td>
                         <td class="px-4 py-3">
                             @if($ranura['activa'])
-                                <flux:badge color="green">Activa</flux:badge>
+                                <span class="inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold bg-success text-white">Activa</span>
                             @else
-                                <flux:badge color="zinc">Inactiva</flux:badge>
+                                <span class="inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold bg-border text-text-primary">Inactiva</span>
                             @endif
                         </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="3" class="px-4 py-6 text-center text-text-secondary">Sin ranuras.</td>
+                        <td colspan="4" class="px-4 py-6 text-center text-text-primary">Sin ranuras.</td>
                     </tr>
                 @endforelse
             </tbody>
@@ -89,7 +170,7 @@
 
     <flux:modal wire:model="showAgregarRanura" class="w-full max-w-md">
         <div class="space-y-4 p-1">
-            <flux:heading size="lg">Agregar Ranura</flux:heading>
+            <flux:heading size="lg" class="text-text-primary dark:text-text-primary">Agregar Ranura</flux:heading>
 
             @if($errorMessage)
                 <flux:callout variant="danger">{{ $errorMessage }}</flux:callout>
@@ -119,4 +200,4 @@
             </div>
         </div>
     </flux:modal>
-</div>
+</flux:main>
