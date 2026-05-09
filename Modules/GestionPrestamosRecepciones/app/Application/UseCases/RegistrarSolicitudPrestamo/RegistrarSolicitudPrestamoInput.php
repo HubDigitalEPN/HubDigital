@@ -17,5 +17,6 @@ final readonly class RegistrarSolicitudPrestamoInput
         public string $propositoPrestamo,
         public int $duracionPropuestaMeses,
         public array $items,
+        public ?string $justificacionExtendida = null,
     ) {}
 }

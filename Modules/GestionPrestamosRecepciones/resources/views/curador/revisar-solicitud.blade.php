@@ -1,4 +1,4 @@
-<div class="space-y-6">
+<div class="p-6 space-y-6">
 
     <flux:breadcrumbs>
         <flux:breadcrumbs.item wire:navigate href="{{ route('prestamos.curador.solicitudes') }}">
@@ -58,14 +58,14 @@
                         </div>
                         <flux:table>
                             <flux:table.columns>
-                                <flux:table.column>Código de Espécimen</flux:table.column>
-                                <flux:table.column>Cantidad</flux:table.column>
+                                <flux:table.column class="!ps-4">Código de Espécimen</flux:table.column>
+                                <flux:table.column class="px-4">Cantidad</flux:table.column>
                             </flux:table.columns>
                             <flux:table.rows>
                                 @foreach($solicitud->items as $item)
                                     <flux:table.row>
-                                        <flux:table.cell class="font-mono text-sm">{{ $item->especimen_codigo_externo }}</flux:table.cell>
-                                        <flux:table.cell>{{ $item->cantidad_solicitada }}</flux:table.cell>
+                                        <flux:table.cell class="!ps-4 px-4 py-3 font-mono text-sm whitespace-nowrap">{{ $item->especimen_codigo_externo }}</flux:table.cell>
+                                        <flux:table.cell class="px-4 py-3">{{ $item->cantidad_solicitada }}</flux:table.cell>
                                     </flux:table.row>
                                 @endforeach
                             </flux:table.rows>

@@ -1,4 +1,4 @@
-<div class="space-y-6">
+<div class="p-6 space-y-6">
 
     <div class="flex items-center justify-between">
         <flux:heading size="xl" level="1" class="font-display">Mis Solicitudes de Préstamo</flux:heading>
@@ -20,7 +20,7 @@
         <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
             <flux:table>
                 <flux:table.columns>
-                    <flux:table.column>N.º Solicitud</flux:table.column>
+                    <flux:table.column class="!ps-4">N.º Solicitud</flux:table.column>
                     <flux:table.column>Título del Estudio</flux:table.column>
                     <flux:table.column>Estado</flux:table.column>
                     <flux:table.column>Fecha</flux:table.column>
@@ -29,19 +29,19 @@
                 <flux:table.rows>
                     @foreach($solicitudes as $solicitud)
                         <flux:table.row>
-                            <flux:table.cell class="font-mono text-xs text-text-secondary">
+                            <flux:table.cell class="!ps-4 px-4 py-3 font-mono text-xs text-text-secondary whitespace-nowrap">
                                 {{ $solicitud->numero_solicitud }}
                             </flux:table.cell>
-                            <flux:table.cell class="font-medium text-text-primary">
+                            <flux:table.cell class="px-4 py-3 font-medium text-text-primary">
                                 {{ $solicitud->titulo_estudio }}
                             </flux:table.cell>
-                            <flux:table.cell>
+                            <flux:table.cell class="px-4 py-3">
                                 <x-gestionprestamosrecepciones::solicitud-status-badge :estado="$solicitud->estado" />
                             </flux:table.cell>
-                            <flux:table.cell class="text-xs text-text-secondary">
+                            <flux:table.cell class="px-4 py-3 text-xs text-text-secondary whitespace-nowrap">
                                 {{ $solicitud->created_at->format('d/m/Y') }}
                             </flux:table.cell>
-                            <flux:table.cell>
+                            <flux:table.cell class="px-4 py-3">
                                 <div class="flex gap-2">
                                     <flux:button size="sm" variant="ghost" icon="eye"
                                         wire:navigate href="{{ route('prestamos.investigador.solicitud.detalle', $solicitud->id) }}">
