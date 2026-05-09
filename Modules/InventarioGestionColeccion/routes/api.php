@@ -23,16 +23,19 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function (): void {
     Route::get('horario', [HorarioController::class, 'show'])->name('api.v1.horario.show');
     Route::put('horario', [HorarioController::class, 'update'])->name('api.v1.horario.update');
 
-    // --- Seguimiento físico (eventos IoT) ---
-    Route::prefix('seguimiento-fisico')->name('api.v1.seguimiento-fisico.')->group(function (): void {
-        // ESP32: evento con tag_uid + gabinete_id + slot_index (backend resuelve IDs)
-        Route::post('eventos', [SeguimientoFisicoController::class, 'procesarEvento'])
-            ->name('eventos');
+    // --- Seguimiento físico (eventos IoT) — requiere token con habilidad 'esp32' ---
+    Route::middleware('ability:esp32')
+        ->prefix('seguimiento-fisico')
+        ->name('api.v1.seguimiento-fisico.')
+        ->group(function (): void {
+            // ESP32: evento con tag_uid + gabinete_id + slot_index (backend resuelve IDs)
+            Route::post('eventos', [SeguimientoFisicoController::class, 'procesarEvento'])
+                ->name('eventos');
 
-        // Acceso directo con IDs ya conocidos (testing / integración manual)
-        Route::post('cajas/{caja_id}/ingresos', [SeguimientoFisicoController::class, 'registrarIngreso'])
-            ->name('cajas.ingresos');
-        Route::post('cajas/{caja_id}/retiros', [SeguimientoFisicoController::class, 'registrarRetiro'])
-            ->name('cajas.retiros');
-    });
+            // Acceso directo con IDs ya conocidos (testing / integración manual)
+            Route::post('cajas/{caja_id}/ingresos', [SeguimientoFisicoController::class, 'registrarIngreso'])
+                ->name('cajas.ingresos');
+            Route::post('cajas/{caja_id}/retiros', [SeguimientoFisicoController::class, 'registrarRetiro'])
+                ->name('cajas.retiros');
+        });
 });

@@ -56,13 +56,47 @@
                             >
                                 Solicitudes
                             </flux:sidebar.item>
+                        </flux:sidebar.group>
+                        <flux:sidebar.group heading="Inventario IoT" class="grid">
                             <flux:sidebar.item
-                                icon="squares-2x2"
-                                :href="route('dashboard')"
-                                :current="request()->routeIs('inventariogestioncoleccion.*')"
+                                icon="chart-bar"
+                                :href="route('inventario.dashboard')"
+                                :current="request()->routeIs('inventario.dashboard')"
                                 wire:navigate
                             >
-                                Inventario
+                                Monitoreo
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="archive-box"
+                                :href="route('inventario.gabinetes')"
+                                :current="request()->routeIs('inventario.gabinetes*')"
+                                wire:navigate
+                            >
+                                Gabinetes
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="cube"
+                                :href="route('inventario.cajas')"
+                                :current="request()->routeIs('inventario.cajas')"
+                                wire:navigate
+                            >
+                                Cajas
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="bell-alert"
+                                :href="route('inventario.alertas')"
+                                :current="request()->routeIs('inventario.alertas')"
+                                wire:navigate
+                            >
+                                Alertas
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="clock"
+                                :href="route('inventario.horario')"
+                                :current="request()->routeIs('inventario.horario')"
+                                wire:navigate
+                            >
+                                Horario
                             </flux:sidebar.item>
                         </flux:sidebar.group>
                         <flux:sidebar.group heading="Divulgación" class="grid">
@@ -93,7 +127,7 @@
         </flux:sidebar>
 
         {{-- Mobile top bar --}}
-        <flux:header class="lg:hidden border-b border-blue-navy bg-blue-navy dark:bg-slate-900 dark:border-slate-700">
+        <flux:header class="lg:hidden border-b border-blue-navy bg-blue-navy">
             <flux:sidebar.toggle class="text-white/80 hover:text-white" icon="bars-2" inset="left" />
 
             <div class="flex items-center gap-2 mx-auto">

@@ -13,7 +13,7 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Li
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarRanurasGabinete\ListarRanurasGabineteHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarRanurasGabinete\ListarRanurasGabineteInput;
 
-#[Layout('layouts.admin')]
+#[Layout('layouts.app', params: ['title' => 'Monitoreo IoT'])]
 final class Dashboard extends Component
 {
     public array $gabinetes = [];
