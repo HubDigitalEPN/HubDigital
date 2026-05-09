@@ -1398,3 +1398,29 @@ This application is a Laravel application and its main Laravel ecosystems packag
 - Do NOT delete tests without approval.
 
 </laravel-boost-guidelines>
+
+## IoT Hardware Architecture (Module: Physical Tracking)
+
+**Goal:** Detect which entomological box (caja) occupies which slot (ranura) inside a metal cabinet.
+
+**Components:**
+- 1× ESP32 DevKit V1 — master controller (SPI bus, WiFi, inside cabinet)
+- 25× RC522 RFID readers (HF 13.56 MHz) — one per slot
+- 2× CD74HC4067 multiplexers — manage 25 CS lines with 5 ESP32 pins
+- 25× NFC tags — one per box
+- 30mm plastic spacers — isolate antennas from metal shelves
+
+**Reading strategy:** Sequential TDM sweep (never two adjacent antennas active simultaneously). One full sweep ≈ 3s. ESP32 sends JSON via REST to the Laravel API when a tag presence changes.
+
+**Why HF/RC522:** Near-field inductive coupling (<30mm range) prevents cross-slot reads. Field decays at 1/r³.
+
+**Data emitted per event:** `{ cabinet_id, slot_index, tag_uid, event: "inserted"|"removed", timestamp }`
+
+**Business rules enforced by software (not hardware):**
+- Tag UID → box → assigned taxonomy family; slot → expected taxonomy family → mismatch triggers `TaxonomicMismatch` alert
+- Box absent > 1 business day (unless marked as active loan) → `ExtractionTimeExceeded` alert
+- Loans operate at specimen level; IoT tracks at box level — coordinate state to avoid false "missing" alerts
+
+## Module Structure
+
+Use the folder SeguimientoFisico in each layer of the InventarioGestionColeccion module.

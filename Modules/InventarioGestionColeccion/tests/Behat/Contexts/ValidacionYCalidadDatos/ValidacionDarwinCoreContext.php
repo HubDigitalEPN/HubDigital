@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 declare(strict_types=1);
 
@@ -7,12 +7,12 @@ namespace Modules\InventarioGestionColeccion\Tests\Behat\Contexts\ValidacionYCal
 use Behat\Step\Given;
 use Behat\Step\Then;
 use Behat\Step\When;
-use Modules\InventarioGestionColeccion\Application\UseCases\ValidarDarwinCore\ValidarDarwinCoreHandler;
-use Modules\InventarioGestionColeccion\Application\UseCases\ValidarDarwinCore\ValidarDarwinCoreInput;
-use Modules\InventarioGestionColeccion\Domain\Entities\Especimen;
-use Modules\InventarioGestionColeccion\Domain\Entities\Taxon;
-use Modules\InventarioGestionColeccion\Domain\Repositories\EspecimenRepositoryInterface;
-use Modules\InventarioGestionColeccion\Domain\Repositories\TaxonRepositoryInterface;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ValidarDarwinCore\ValidarDarwinCoreHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ValidarDarwinCore\ValidarDarwinCoreInput;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especimen;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Taxon;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\TaxonRepositoryInterface;
 use Modules\InventarioGestionColeccion\Tests\Behat\Contexts\BaseContext;
 use PHPUnit\Framework\Assert;
 

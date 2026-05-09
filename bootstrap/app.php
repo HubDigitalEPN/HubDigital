@@ -20,6 +20,14 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->render(function (DomainException $e, Request $request): ?JsonResponse {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
+
+            return null;
+        });
+
         $exceptions->render(function (InvalidArgumentException $e, Request $request): ?JsonResponse {
             if ($request->expectsJson()) {
                 return response()->json(['message' => $e->getMessage()], 422);

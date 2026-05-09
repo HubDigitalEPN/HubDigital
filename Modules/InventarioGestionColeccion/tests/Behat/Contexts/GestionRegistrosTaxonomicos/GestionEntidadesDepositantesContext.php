@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 declare(strict_types=1);
 
@@ -7,12 +7,12 @@ namespace Modules\InventarioGestionColeccion\Tests\Behat\Contexts\GestionRegistr
 use Behat\Step\Given;
 use Behat\Step\Then;
 use Behat\Step\When;
-use Modules\InventarioGestionColeccion\Application\UseCases\ActualizarEntidadDepositante\ActualizarEntidadDepositanteHandler;
-use Modules\InventarioGestionColeccion\Application\UseCases\ActualizarEntidadDepositante\ActualizarEntidadDepositanteInput;
-use Modules\InventarioGestionColeccion\Application\UseCases\RegistrarEntidadDepositante\RegistrarEntidadDepositanteHandler;
-use Modules\InventarioGestionColeccion\Application\UseCases\RegistrarEntidadDepositante\RegistrarEntidadDepositanteInput;
-use Modules\InventarioGestionColeccion\Domain\Entities\EntidadDepositante;
-use Modules\InventarioGestionColeccion\Domain\Repositories\EntidadDepositanteRepositoryInterface;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarEntidadDepositante\ActualizarEntidadDepositanteHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarEntidadDepositante\ActualizarEntidadDepositanteInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarEntidadDepositante\RegistrarEntidadDepositanteHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarEntidadDepositante\RegistrarEntidadDepositanteInput;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\EntidadDepositante;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EntidadDepositanteRepositoryInterface;
 use Modules\InventarioGestionColeccion\Tests\Behat\Contexts\BaseContext;
 use PHPUnit\Framework\Assert;
 
