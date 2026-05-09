@@ -8,15 +8,17 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('iot.lecturas_ranura', function (Blueprint $table): void {
-            $table->id();
-            $table->foreignUuid('sincronizacion_id')
-                ->constrained('iot.sincronizaciones_esp32')
-                ->cascadeOnDelete();
-            $table->unsignedSmallInteger('numero_ranura');
-            $table->string('rfid_detectado', 8)->nullable();
-            $table->boolean('es_incongruente')->default(false);
-        });
+        if (! Schema::hasTable('iot.lecturas_ranura')) {
+            Schema::create('iot.lecturas_ranura', function (Blueprint $table): void {
+                $table->id();
+                $table->foreignUuid('sincronizacion_id')
+                    ->constrained('iot.sincronizaciones_esp32')
+                    ->cascadeOnDelete();
+                $table->unsignedSmallInteger('numero_ranura');
+                $table->string('rfid_detectado', 8)->nullable();
+                $table->boolean('es_incongruente')->default(false);
+            });
+        }
     }
 
     public function down(): void
