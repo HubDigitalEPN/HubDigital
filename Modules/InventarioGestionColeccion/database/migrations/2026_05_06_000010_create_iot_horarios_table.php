@@ -12,13 +12,15 @@ return new class extends Migration
     {
         DB::statement('CREATE SCHEMA IF NOT EXISTS iot');
 
-        Schema::create('iot.horarios', function (Blueprint $table): void {
-            $table->uuid('id')->primary();
-            $table->unsignedTinyInteger('hora_inicio');
-            $table->unsignedTinyInteger('hora_fin');
-            $table->boolean('activo')->default(true);
-            $table->timestamps();
-        });
+        if (! Schema::hasTable('iot.horarios')) {
+            Schema::create('iot.horarios', function (Blueprint $table): void {
+                $table->uuid('id')->primary();
+                $table->unsignedTinyInteger('hora_inicio');
+                $table->unsignedTinyInteger('hora_fin');
+                $table->boolean('activo')->default(true);
+                $table->timestamps();
+            });
+        }
 
         // Seed default horario
         $this->seedDefaultHorario();
