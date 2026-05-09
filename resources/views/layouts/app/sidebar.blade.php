@@ -50,11 +50,11 @@
                         <flux:sidebar.group heading="Gestión" class="grid">
                             <flux:sidebar.item
                                 icon="inbox"
-                                :href="route('dashboard')"
+                                :href="route('prestamos.curador.panel')"
                                 :current="request()->routeIs('prestamos.curador.*')"
                                 wire:navigate
                             >
-                                Solicitudes
+                                Préstamos
                             </flux:sidebar.item>
                             <flux:sidebar.item
                                 icon="squares-2x2"
