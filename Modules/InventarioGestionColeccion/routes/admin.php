@@ -10,7 +10,7 @@ use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\Seguimiento
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Admin\GabineteShow;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Admin\HorarioSettingsForm;
 
-Route::middleware(['web', 'admin.auth'])
+Route::middleware(['web', 'auth', 'verified', 'role:curador'])
     ->prefix('admin/inventario')
     ->name('admin.inventario.')
     ->group(function () {
