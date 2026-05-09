@@ -6,6 +6,7 @@ namespace Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\Fakes;
 
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\HorarioValidadorPort;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Horario;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryHorarioRepository;
 
 final class FakeHorarioValidadorAdapter implements HorarioValidadorPort
 {

@@ -57,4 +57,9 @@ final class InMemoryCajaRepository implements CajaRepository
     {
         return array_values($this->store);
     }
+
+    public function eliminar(CajaId $id): void
+    {
+        unset($this->store[(string) $id]);
+    }
 }
