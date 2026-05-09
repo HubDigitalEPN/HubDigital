@@ -42,3 +42,9 @@ Característica: Resolución de solicitud de préstamo
         Dado que existe una solicitud de préstamo enviada para resolución
         Cuando el curador intenta registrar la aprobación sin un tipo de préstamo
         Entonces la solicitud se mantiene en estado enviada
+
+    Escenario: Aprobar una solicitud de préstamo con condiciones generales
+        Dado que existe una solicitud de préstamo enviada para resolución
+        Cuando el curador registra la aprobación con condiciones generales para el préstamo
+        Entonces la solicitud queda en estado aprobada
+        Y el acta registra las condiciones generales del préstamo

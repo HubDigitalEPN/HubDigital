@@ -19,6 +19,7 @@ return new class extends Migration
             $table->date('fecha_inicio');
             $table->date('fecha_fin');
             $table->string('pdf_ruta');
+            $table->text('condiciones_generales')->nullable();
             $table->string('pdf_firmado_ruta')->nullable();
             $table->timestamp('firmada_subida_en')->nullable();
             $table->timestamp('validada_en')->nullable();

@@ -56,6 +56,7 @@ final class AprobarSolicitudPrestamoHandler
             fechaInicio: $ahora,
             fechaFin: $fechaFin,
             pdfRuta: $pdfRuta,
+            condicionesGenerales: $input->condicionesGenerales,
         );
 
         $this->transactionManager->executeTransactional(function () use ($solicitud, $acta): void {

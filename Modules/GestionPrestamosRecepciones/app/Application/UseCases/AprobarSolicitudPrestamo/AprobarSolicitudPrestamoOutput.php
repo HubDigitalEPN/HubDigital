@@ -15,6 +15,7 @@ final readonly class AprobarSolicitudPrestamoOutput
         public string $actaId,
         public string $numeroPrestamo,
         public string $tipoPrestamo,
+        public ?string $condicionesGenerales,
     ) {}
 
     public static function from(SolicitudPrestamo $solicitud, ActaPrestamo $acta): self
@@ -25,6 +26,7 @@ final readonly class AprobarSolicitudPrestamoOutput
             actaId: (string) $acta->id(),
             numeroPrestamo: (string) $acta->numeroPrestamo(),
             tipoPrestamo: $acta->tipoPrestamo()->value,
+            condicionesGenerales: $acta->condicionesGenerales(),
         );
     }
 }
