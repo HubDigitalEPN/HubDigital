@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
@@ -39,6 +41,11 @@ final class SolicitudPrestamoModel extends Model
         'enviada_en' => 'datetime',
         'resuelta_en' => 'datetime',
     ];
+
+    public function investigador(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'investigador_id');
+    }
 
     public function items(): HasMany
     {

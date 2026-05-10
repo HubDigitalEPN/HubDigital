@@ -41,6 +41,8 @@ final class SolicitudForm extends Component
 
     public string $justificacionExtendida = '';
 
+    public string $comentarioCurador = '';
+
     /** @var list<array{especimen_codigo_externo: string, cantidad_solicitada: int}> */
     public array $items = [];
 
@@ -63,6 +65,7 @@ final class SolicitudForm extends Component
             $this->propositoPrestamo = $solicitud->proposito_prestamo ?? '';
             $this->duracionPropuestaMeses = $solicitud->duracion_propuesta_meses ?? 1;
             $this->justificacionExtendida = $solicitud->justificacion_extendida ?? '';
+            $this->comentarioCurador = $solicitud->comentario_curador ?? '';
             $this->items = $solicitud->items
                 ->map(fn ($item) => [
                     'especimen_codigo_externo' => $item->especimen_codigo_externo,

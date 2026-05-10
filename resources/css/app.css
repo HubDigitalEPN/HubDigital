@@ -65,6 +65,17 @@
     }
 }
 
+/* flux.css importa --color-accent-foreground como estilo sin capa (unlayered),
+   ganando al @theme. Esta regla también es unlayered y viene después, por lo que gana. */
+:root {
+    --color-accent-foreground: #ffffff;
+}
+
+/* Forzar texto blanco en botones Flux variant="primary" (fondo de acento bio-green) */
+[data-flux-button].bg-\[var\(--color-accent\)\] {
+    color: white !important;
+}
+
 @layer base {
 
     *,

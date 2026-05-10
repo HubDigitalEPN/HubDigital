@@ -41,7 +41,7 @@
                                 {{ $solicitud->titulo_estudio }}
                             </flux:table.cell>
                             <flux:table.cell class="px-4 py-3 text-sm text-text-secondary">
-                                {{ $solicitud->investigador_id }}
+                                {{ $investigadores->get($solicitud->investigador_id)?->name ?? $solicitud->investigador_id }}
                             </flux:table.cell>
                             <flux:table.cell class="px-4 py-3">
                                 <x-gestionprestamosrecepciones::solicitud-status-badge :estado="$solicitud->estado" />
@@ -49,11 +49,19 @@
                             <flux:table.cell class="px-4 py-3 text-xs text-text-secondary whitespace-nowrap">
                                 {{ $solicitud->created_at->format('d/m/Y') }}
                             </flux:table.cell>
-                            <flux:table.cell class="px-4 py-3">
-                                <flux:button size="sm" variant="ghost" icon="eye"
-                                    wire:navigate href="{{ route('prestamos.curador.solicitud.revisar', $solicitud->id) }}">
-                                    Revisar
-                                </flux:button>
+                            <flux:table.cell class="px-4 py-3 pr-6 whitespace-nowrap">
+                                <div class="flex items-center gap-2">
+                                    <flux:button size="sm" variant="ghost" icon="eye"
+                                        wire:navigate href="{{ route('prestamos.curador.solicitud.revisar', $solicitud->id) }}">
+                                        Revisar
+                                    </flux:button>
+                                    @if($solicitud->estado === 'enviada')
+                                        <flux:button size="sm" variant="primary" icon="check-circle"
+                                            wire:navigate href="{{ route('prestamos.curador.solicitud.revisar', $solicitud->id) }}">
+                                            Decidir
+                                        </flux:button>
+                                    @endif
+                                </div>
                             </flux:table.cell>
                         </flux:table.row>
                     @endforeach
