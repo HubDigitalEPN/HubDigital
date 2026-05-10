@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Modules\GestionPrestamosRecepciones\Application\UseCases\DevolverActaParaRefirmar;
+namespace Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarActaPrestamo;
 
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
@@ -12,7 +12,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Repositories\ActaPrestamoReposito
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
 
-final class DevolverActaParaRefirmarHandler
+final class EnviarActaPrestamoHandler
 {
     public function __construct(
         private readonly ActaPrestamoRepositoryInterface $actaRepo,
@@ -21,7 +21,7 @@ final class DevolverActaParaRefirmarHandler
         private readonly TransactionManagerPort $transactionManager,
     ) {}
 
-    public function handle(DevolverActaParaRefirmarInput $input): DevolverActaParaRefirmarOutput
+    public function handle(EnviarActaPrestamoInput $input): EnviarActaPrestamoOutput
     {
         $actaId = ActaPrestamoId::fromString($input->actaId);
         $acta = $this->actaRepo->buscarPorId($actaId);
@@ -36,10 +36,7 @@ final class DevolverActaParaRefirmarHandler
             throw SolicitudPrestamoNoEncontradaException::paraSolicitud($acta->solicitudPrestamoId());
         }
 
-        $acta->devolver(
-            investigadorId: $solicitud->investigadorId(),
-            motivo: $input->motivo,
-        );
+        $acta->marcarEnviada($solicitud->investigadorId());
 
         $this->transactionManager->executeTransactional(function () use ($acta): void {
             $this->actaRepo->guardar($acta);
@@ -48,6 +45,6 @@ final class DevolverActaParaRefirmarHandler
             }
         });
 
-        return DevolverActaParaRefirmarOutput::fromPrimitives($acta);
+        return EnviarActaPrestamoOutput::fromPrimitives($acta, notificacionEnviada: true);
     }
 }
