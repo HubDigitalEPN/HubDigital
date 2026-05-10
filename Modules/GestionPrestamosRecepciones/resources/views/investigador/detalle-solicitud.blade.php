@@ -60,7 +60,21 @@
                             <dt class="text-text-secondary">Propósito del Préstamo</dt>
                             <dd class="text-text-primary mt-1">{{ $solicitud->proposito_prestamo }}</dd>
                         </div>
+                        @if($solicitud->justificacion_extendida)
+                            <div class="col-span-2">
+                                <dt class="text-text-secondary">Justificación para Duración Extendida</dt>
+                                <dd class="text-text-primary mt-1">{{ $solicitud->justificacion_extendida }}</dd>
+                            </div>
+                        @endif
                     </dl>
+
+                    @if($solicitud->estado === 'observada' && $solicitud->comentario_curador)
+                        <flux:separator />
+                        <flux:callout variant="warning" icon="exclamation-triangle">
+                            <flux:heading size="sm">Observación del Curador</flux:heading>
+                            <flux:text class="mt-1 text-sm">{{ $solicitud->comentario_curador }}</flux:text>
+                        </flux:callout>
+                    @endif
                 </div>
 
                 {{-- Especimenes --}}
@@ -158,7 +172,7 @@
                         <x-gestionprestamosrecepciones::timeline-event
                             :fecha="$solicitud->updated_at->format('d/m/Y H:i')"
                             titulo="Solicitud observada"
-                            :descripcion="$solicitud->motivo_observacion"
+                            :descripcion="$solicitud->comentario_curador"
                             :ultimo="true" />
                     @endif
                 </div>

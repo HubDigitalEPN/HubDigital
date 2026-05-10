@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador;
 
 use App\Concerns\HandlesDomainExceptions;
+use App\Models\User;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -26,14 +27,28 @@ final class BandejaSolicitudes extends Component
 
     public function render(): View
     {
-        $query = SolicitudPrestamoModel::query()->orderByDesc('created_at');
+        $query = SolicitudPrestamoModel::query()
+            ->whereNotIn('estado', ['borrador'])
+            ->orderByDesc('created_at');
 
         if ($this->filtroEstado !== 'todos') {
             $query->where('estado', $this->filtroEstado);
         }
 
+        $solicitudes = $query->get();
+
+        $uuidRegex = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i';
+        $validIds = $solicitudes
+            ->pluck('investigador_id')
+            ->filter(fn (string $id) => preg_match($uuidRegex, $id))
+            ->unique()
+            ->values();
+
+        $investigadores = User::whereIn('id', $validIds)->get()->keyBy('id');
+
         return view('gestionprestamosrecepciones::curador.bandeja-solicitudes', [
-            'solicitudes' => $query->get(),
+            'solicitudes'   => $solicitudes,
+            'investigadores' => $investigadores,
         ]);
     }
 }
