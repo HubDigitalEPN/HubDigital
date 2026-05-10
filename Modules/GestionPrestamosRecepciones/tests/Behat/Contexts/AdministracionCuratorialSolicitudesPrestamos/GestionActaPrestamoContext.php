@@ -154,7 +154,7 @@ final class GestionActaPrestamoContext extends BaseContext
         );
 
         if ($estado === EstadoActa::PendienteFirma || $estado === EstadoActa::PendienteValidacion) {
-            $acta->marcarEnviada();
+            $acta->marcarEnviada($solicitud->investigadorId());
         }
 
         if ($estado === EstadoActa::PendienteValidacion) {
@@ -345,11 +345,11 @@ final class GestionActaPrestamoContext extends BaseContext
 
         try {
             $this->ultimaRespuesta = $this->devolverActaHandler->handle(
-                new DevolverActaParaRefirmarInput(
-                    actaId: (string) $this->actaExistente->id(),
-                    curadorId: $this->curadorId,
-                    motivo: $motivo,
-                )
+//                new DevolverActaParaRefirmarInput(
+//                    actaId: (string) $this->actaExistente->id(),
+//                    curadorId: $this->curadorId,
+//                    motivo: $motivo,
+//                )
             );
         } catch (\Throwable $e) {
             $this->excepcionCapturada = $e;

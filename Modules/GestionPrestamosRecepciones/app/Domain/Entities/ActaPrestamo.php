@@ -7,7 +7,9 @@ namespace Modules\GestionPrestamosRecepciones\Domain\Entities;
 use DateTimeImmutable;
 use InvalidArgumentException;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaDevueltaPorFirmaInvalida;
+use Modules\GestionPrestamosRecepciones\Domain\Events\ActaEnviada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaFirmadaSubida;
+use Modules\GestionPrestamosRecepciones\Domain\Events\ActaValidada;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\TransicionDeEstadoInvalidaException;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoActa;
@@ -113,7 +115,7 @@ final class ActaPrestamo
     /**
      * Marca el acta como enviada al investigador para su firma.
      */
-    public function marcarEnviada(): void
+    public function marcarEnviada(string $investigadorId): void
     {
         if (! $this->estado->equals(EstadoActa::PendienteEnvio)) {
             throw TransicionDeEstadoInvalidaException::para(
@@ -123,7 +125,16 @@ final class ActaPrestamo
             );
         }
 
+        $ahora = new DateTimeImmutable;
+
         $this->estado = EstadoActa::PendienteFirma;
+
+        $this->events[] = new ActaEnviada(
+            actaId: $this->id,
+            solicitudId: $this->solicitudPrestamoId,
+            investigadorId: $investigadorId,
+            ocurridoEn: $ahora,
+        );
     }
 
     /**
@@ -208,6 +219,13 @@ final class ActaPrestamo
         $this->estado = EstadoActa::Validada;
         $this->validadaEn = $ahora;
         $this->validadaPor = $validadoPor;
+
+        $this->events[] = new ActaValidada(
+            actaId: $this->id,
+            solicitudId: $this->solicitudPrestamoId,
+            validadoPor: $validadoPor,
+            ocurridoEn: $ahora,
+        );
     }
 
     /**
