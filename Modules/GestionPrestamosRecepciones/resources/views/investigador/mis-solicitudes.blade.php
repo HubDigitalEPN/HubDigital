@@ -53,6 +53,14 @@
                                             Editar
                                         </flux:button>
                                     @endif
+                                    @if($solicitud->estado === 'borrador')
+                                        <flux:button size="sm" variant="primary" icon="paper-airplane"
+                                            wire:click="enviarSolicitud('{{ $solicitud->id }}')"
+                                            wire:confirm="¿Enviar esta solicitud para revisión del curador?"
+                                            wire:loading.attr="disabled">
+                                            Enviar
+                                        </flux:button>
+                                    @endif
                                 </div>
                             </flux:table.cell>
                         </flux:table.row>

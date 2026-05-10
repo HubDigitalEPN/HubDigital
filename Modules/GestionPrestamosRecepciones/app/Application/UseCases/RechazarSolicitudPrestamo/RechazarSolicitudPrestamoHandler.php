@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Modules\GestionPrestamosRecepciones\Application\UseCases\ObservarSolicitudPrestamo;
+namespace Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarSolicitudPrestamo;
 
 use InvalidArgumentException;
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
@@ -11,7 +11,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Exceptions\SolicitudPrestamoNoEnc
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudPrestamoId;
 
-final class ObservarSolicitudPrestamoHandler
+final class RechazarSolicitudPrestamoHandler
 {
     public function __construct(
         private readonly SolicitudPrestamoRepositoryInterface $solicitudRepo,
@@ -19,10 +19,10 @@ final class ObservarSolicitudPrestamoHandler
         private readonly TransactionManagerPort $transactionManager,
     ) {}
 
-    public function handle(ObservarSolicitudPrestamoInput $input): ObservarSolicitudPrestamoOutput
+    public function handle(RechazarSolicitudPrestamoInput $input): RechazarSolicitudPrestamoOutput
     {
-        if (trim($input->observacion) === '') {
-            throw new InvalidArgumentException('La observación del curador no puede estar vacía.');
+        if (trim($input->motivo) === '') {
+            throw new InvalidArgumentException('El motivo de rechazo no puede estar vacío.');
         }
 
         $solicitudId = SolicitudPrestamoId::fromString($input->solicitudId);
@@ -32,10 +32,7 @@ final class ObservarSolicitudPrestamoHandler
             throw SolicitudPrestamoNoEncontradaException::paraSolicitud($solicitudId);
         }
 
-        $solicitud->observar(
-            curadorId: $input->curadorId,
-            observacion: $input->observacion,
-        );
+        $solicitud->rechazar(curadorId: $input->curadorId, motivo: $input->motivo);
 
         $this->transactionManager->executeTransactional(function () use ($solicitud): void {
             $this->solicitudRepo->guardar($solicitud);
@@ -44,6 +41,6 @@ final class ObservarSolicitudPrestamoHandler
             }
         });
 
-        return ObservarSolicitudPrestamoOutput::fromPrimitives($solicitud);
+        return RechazarSolicitudPrestamoOutput::fromPrimitives($solicitud);
     }
 }
