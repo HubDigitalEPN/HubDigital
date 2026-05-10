@@ -29,12 +29,14 @@ final class ProcesarEventoEsp32Handler
             throw new \DomainException("Tag RFID '{$input->tagUid}' no está registrado en el sistema.");
         }
 
+        $numeroRanura = $input->slotIndex + 1;
+
         $ranura = $this->ranuraRepo->buscarPorNumeroEnGabinete(
             GabineteId::desde($input->gabineteId),
-            $input->slotIndex,
+            $numeroRanura,
         );
         if ($ranura === null) {
-            throw new \DomainException("Ranura {$input->slotIndex} del gabinete '{$input->gabineteId}' no está configurada.");
+            throw new \DomainException("Ranura {$numeroRanura} del gabinete '{$input->gabineteId}' no está configurada.");
         }
 
         $cajaId = (string) $caja->id();
