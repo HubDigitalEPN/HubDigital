@@ -1,4 +1,4 @@
-<div class="space-y-6 p-6">
+<div class="space-y-6 p-6" wire:poll.5s="refrescar">
     <div class="flex items-center justify-between">
         <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Monitoreo IoT</flux:heading>
         <div class="flex items-center gap-2 text-xs text-text-secondary">
@@ -46,6 +46,7 @@
                     size="sm"
                     variant="primary"
                     icon="cog-6-tooth"
+                    style="color: white;"
                     :href="route('inventario.gabinetes.show', $gabinete['id'])"
                     wire:navigate
                 >

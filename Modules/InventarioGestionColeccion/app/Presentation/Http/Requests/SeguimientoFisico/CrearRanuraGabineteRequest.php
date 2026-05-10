@@ -17,7 +17,7 @@ final class CrearRanuraGabineteRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'numero_ranura' => ['required', 'integer', 'min:0', 'max:24'],
+            'numero_ranura' => ['required', 'integer', 'min:1', 'max:25'],
             'familia_taxonomica_esperada_id' => ['nullable', 'string', 'max:255'],
         ];
     }

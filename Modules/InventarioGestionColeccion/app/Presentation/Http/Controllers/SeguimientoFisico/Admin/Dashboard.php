@@ -30,7 +30,7 @@ final class Dashboard extends Component
         $this->refrescar($gabineteHandler, $cajasHandler, $ranurasHandler);
     }
 
-    #[Poll('5s')]
+    #[Poll(5000)]
     public function refrescar(
         ListarGabineteHandler $gabineteHandler,
         ListarCajasHandler $cajasHandler,

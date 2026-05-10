@@ -16,8 +16,54 @@
     </div>
 
     {{-- Bloque de configuración ESP32 --}}
-    <div class="rounded-lg border border-border bg-surface shadow-sm p-4 space-y-4"
-         x-data="{ copiedId: false, copiedToken: false }">
+    <div
+        class="rounded-lg border border-border bg-surface shadow-sm p-4 space-y-4"
+        x-data="{
+            copiedId: false,
+            copiedToken: false,
+            copyValue(value, copiedKey) {
+                try {
+                    // Intenta usar la API moderna primero
+                    if (window.isSecureContext && navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(value).then(() => {
+                            this[copiedKey] = true;
+                            setTimeout(() => { this[copiedKey] = false; }, 2000);
+                        }).catch(err => {
+                            console.error('Clipboard write failed:', err);
+                            this.fallbackCopy(value, copiedKey);
+                        });
+                    } else {
+                        // Fallback para navegadores antiguos o contextos no seguros
+                        this.fallbackCopy(value, copiedKey);
+                    }
+                } catch (error) {
+                    console.error('Error al copiar:', error);
+                    this.fallbackCopy(value, copiedKey);
+                }
+            },
+            fallbackCopy(value, copiedKey) {
+                try {
+                    const textArea = document.createElement('textarea');
+                    textArea.value = value;
+                    textArea.setAttribute('readonly', '');
+                    textArea.style.position = 'absolute';
+                    textArea.style.left = '-9999px';
+                    textArea.style.top = '-9999px';
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    const success = document.execCommand('copy');
+                    textArea.remove();
+                    
+                    if (success) {
+                        this[copiedKey] = true;
+                        setTimeout(() => { this[copiedKey] = false; }, 2000);
+                    }
+                } catch (error) {
+                    console.error('Fallback copy failed:', error);
+                }
+            },
+        }"
+    >
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
                 <flux:icon name="cpu-chip" class="size-4 text-text-secondary" />
@@ -36,13 +82,14 @@
             <span class="text-xs text-text-secondary shrink-0 w-24">gabinete_id</span>
             <code class="flex-1 rounded bg-bg-main px-3 py-1.5 text-sm font-mono text-text-primary select-all">{{ $gabinete['id'] ?? '' }}</code>
             <flux:button
+                type="button"
                 size="sm"
                 variant="ghost"
                 icon="clipboard"
-                x-on:click="navigator.clipboard.writeText('{{ $gabinete['id'] ?? '' }}'); copiedId = true; setTimeout(() => copiedId = false, 2000)"
+                @click="copyValue('{{ $gabinete['id'] ?? '' }}', 'copiedId')"
             >
-                <span x-show="!copiedId">Copiar</span>
-                <span x-show="copiedId" class="text-success">Copiado</span>
+                <span x-show="!copiedId" x-cloak>Copiar</span>
+                <span x-show="copiedId" x-cloak class="text-success">Copiado</span>
             </flux:button>
         </div>
 
@@ -53,13 +100,14 @@
                     <span class="text-xs text-text-secondary shrink-0 w-24">api_token</span>
                     <code class="flex-1 rounded bg-bg-main px-3 py-1.5 text-sm font-mono text-text-primary select-all break-all">{{ $tokenGenerado }}</code>
                     <flux:button
+                        type="button"
                         size="sm"
                         variant="ghost"
                         icon="clipboard"
-                        x-on:click="navigator.clipboard.writeText('{{ $tokenGenerado }}'); copiedToken = true; setTimeout(() => copiedToken = false, 2000)"
+                        @click="copyValue('{{ $tokenGenerado }}', 'copiedToken')"
                     >
-                        <span x-show="!copiedToken">Copiar</span>
-                        <span x-show="copiedToken" class="text-success">Copiado</span>
+                        <span x-show="!copiedToken" x-cloak>Copiar</span>
+                        <span x-show="copiedToken" x-cloak class="text-success">Copiado</span>
                     </flux:button>
                 </div>
                 <flux:callout variant="warning" icon="exclamation-triangle">
