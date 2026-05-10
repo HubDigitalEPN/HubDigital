@@ -8,7 +8,7 @@ Característica: Gestión del acta de préstamo
         Dado que existe un acta en estado pendiente de envío
         Cuando el curador envía el acta al investigador
         Entonces el acta queda en estado pendiente de firma
-        Y el investigador recibe una notificación con el acta para su firma
+        Y el curador confirma que la notificación con el acta fue enviada al investigador
 
     Escenario: Validar el acta firmada por el investigador
         Dado que existe un acta en estado pendiente de validación
@@ -20,4 +20,4 @@ Característica: Gestión del acta de préstamo
         Dado que existe un acta en estado pendiente de validación
         Cuando el curador devuelve el acta por motivos de firma con un comentario
         Entonces el acta queda en estado pendiente de firma
-        Y el investigador recibe una notificación con el motivo de la devolución
+        Y el curador confirma que el investigador fue notificado con el motivo de la devolución

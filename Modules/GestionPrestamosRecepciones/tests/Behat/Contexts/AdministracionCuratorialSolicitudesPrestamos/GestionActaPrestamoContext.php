@@ -229,8 +229,8 @@ final class GestionActaPrestamoContext extends BaseContext
         );
     }
 
-    #[Then('el investigador recibe una notificación con el acta para su firma')]
-    public function elInvestigadorRecibeUnaNotificacionConElActaParaSuFirma(): void
+    #[Then('el curador confirma que la notificación con el acta fue enviada al investigador')]
+    public function elCuradorConfirmaQuelaNotificacionConElActaFueEnviadaAlInvestigador(): void
     {
         Assert::assertNotNull($this->ultimaRespuesta);
         Assert::assertTrue(
@@ -345,41 +345,19 @@ final class GestionActaPrestamoContext extends BaseContext
 
         try {
             $this->ultimaRespuesta = $this->devolverActaHandler->handle(
-//                new DevolverActaParaRefirmarInput(
-//                    actaId: (string) $this->actaExistente->id(),
-//                    curadorId: $this->curadorId,
-//                    motivo: $motivo,
-//                )
+                new DevolverActaParaRefirmarInput(
+                    actaId: (string) $this->actaExistente->id(),
+                    curadorId: $this->curadorId,
+                    motivo: $motivo,
+                )
             );
         } catch (\Throwable $e) {
             $this->excepcionCapturada = $e;
         }
     }
 
-    #[Then('el acta queda en estado pendiente de firma')]
-    public function elActaQuedaEnEstadoPendienteDeFirmaTrasDevolucion(): void
-    {
-        Assert::assertNull(
-            $this->excepcionCapturada,
-            'El handler lanzó una excepción inesperada: '.$this->excepcionCapturada?->getMessage()
-        );
-        Assert::assertNotNull($this->ultimaRespuesta);
-        Assert::assertSame(
-            EstadoActa::PendienteFirma->value,
-            $this->ultimaRespuesta->estadoActa,
-            "Se esperaba estado 'pendiente_firma' tras devolución, se obtuvo: {$this->ultimaRespuesta->estadoActa}"
-        );
-
-        $persistida = $this->actaRepo->buscarPorId($this->actaExistente->id());
-        Assert::assertNotNull($persistida);
-        Assert::assertTrue(
-            $persistida->estado()->equals(EstadoActa::PendienteFirma),
-            'El estado persistido en el repositorio no es PendienteFirma tras la devolución'
-        );
-    }
-
-    #[Then('el investigador recibe una notificación con el motivo de la devolución')]
-    public function elInvestigadorRecibeUnaNotificacionConElMotivoDeLaDevolucion(): void
+    #[Then('el curador confirma que el investigador fue notificado con el motivo de la devolución')]
+    public function elCuradorConfirmaQueElInvestigadorFueNotificadoConElMotivoDeLaDevolucion(): void
     {
         Assert::assertNull(
             $this->excepcionCapturada,
