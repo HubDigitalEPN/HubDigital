@@ -29,6 +29,7 @@ final class ActaPrestamo
         private readonly DateTimeImmutable $fechaInicio,
         private readonly DateTimeImmutable $fechaFin,
         private readonly string $pdfRuta,
+        private ?string $condicionesGenerales,
         private ?string $pdfFirmadoRuta,
         private ?DateTimeImmutable $firmadaSubidaEn,
         private ?DateTimeImmutable $validadaEn,
@@ -45,6 +46,7 @@ final class ActaPrestamo
         DateTimeImmutable $fechaInicio,
         DateTimeImmutable $fechaFin,
         string $pdfRuta,
+        ?string $condicionesGenerales = null,
     ): self {
         if (trim($pdfRuta) === '') {
             throw new InvalidArgumentException('La ruta del PDF del acta no puede estar vacía.');
@@ -63,6 +65,7 @@ final class ActaPrestamo
             fechaInicio: $fechaInicio,
             fechaFin: $fechaFin,
             pdfRuta: $pdfRuta,
+            condicionesGenerales: $condicionesGenerales,
             pdfFirmadoRuta: null,
             firmadaSubidaEn: null,
             validadaEn: null,
@@ -82,6 +85,7 @@ final class ActaPrestamo
         DateTimeImmutable $fechaInicio,
         DateTimeImmutable $fechaFin,
         string $pdfRuta,
+        ?string $condicionesGenerales,
         ?string $pdfFirmadoRuta,
         ?DateTimeImmutable $firmadaSubidaEn,
         ?DateTimeImmutable $validadaEn,
@@ -96,6 +100,7 @@ final class ActaPrestamo
             fechaInicio: $fechaInicio,
             fechaFin: $fechaFin,
             pdfRuta: $pdfRuta,
+            condicionesGenerales: $condicionesGenerales,
             pdfFirmadoRuta: $pdfFirmadoRuta,
             firmadaSubidaEn: $firmadaSubidaEn,
             validadaEn: $validadaEn,
@@ -258,6 +263,11 @@ final class ActaPrestamo
     public function pdfRuta(): string
     {
         return $this->pdfRuta;
+    }
+
+    public function condicionesGenerales(): ?string
+    {
+        return $this->condicionesGenerales;
     }
 
     public function pdfFirmadoRuta(): ?string

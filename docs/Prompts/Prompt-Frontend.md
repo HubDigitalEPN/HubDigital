@@ -1,7 +1,14 @@
-> **Prompt: Planificación del Frontend (TALL Stack, Flux UI & Traducción Visual)**
+> **Prompt: Planificación del Frontend / Capa de Presentación Web (TALL Stack, Flux UI & Traducción Visual)**
+>
+> ---
+> > **⚠️ Nota sobre la arquitectura de capas:**
+> > En proyectos que usan **Livewire como canal principal**, este prompt reemplaza a `Prompt-Capa-Presentacion.md`.
+> > El componente Livewire cumple simultáneamente el rol de **Presentación** (llama Handlers, valida input, gestiona estado) y de **Frontend** (renderiza la vista Blade con Flux UI).
+> > Usa `Prompt-Capa-Presentacion.md` únicamente cuando el canal de salida sea una **API REST** (Postman, app móvil, integración externa).
+> ---
 >
 > **Contexto del Proyecto:**
-> Estamos construyendo la interfaz de usuario de nuestro sistema modular (Hub Digital) utilizando estrictamente el **TALL Stack (Tailwind CSS, Alpine.js, Laravel, Livewire)** y la librería de componentes **Flux UI**. Ya existe una arquitectura backend definida (Clean Architecture/DDD), la API está planificada y ya contamos con Guidelines estrictos de Frontend que especifican paletas de colores, componentes base de Flux y pasos de implementación.
+> Estamos construyendo la interfaz de usuario de nuestro sistema modular (Hub Digital) utilizando estrictamente el **TALL Stack (Tailwind CSS, Alpine.js, Laravel, Livewire)** y la librería de componentes **Flux UI**. Ya existe una arquitectura backend definida (Clean Architecture/DDD) y contamos con Guidelines estrictos de Frontend que especifican paletas de colores, componentes base de Flux y pasos de implementación.
 >
 > **Insumos proporcionados:**
 > 1. **[Endpoints/Casos de Uso]: (ESTRICTOS)** Los contratos de entrada y salida (DTOs/JSON) definidos por la capa de Presentación/Aplicación.
