@@ -151,17 +151,62 @@ final class SolicitudForm extends Component
         $this->successMessage = 'Borrador guardado correctamente.';
     }
 
-    public function enviarSolicitud(EnviarSolicitudPrestamoHandler $handler): void
-    {
+    public function enviarSolicitud(
+        ActualizarSolicitudPrestamoHandler $actualizar,
+        EnviarSolicitudPrestamoHandler $enviar,
+    ): void {
         if ($this->solicitudId === null) {
             $this->addError('solicitudId', 'Primero guarda el borrador antes de enviar.');
 
             return;
         }
 
-        $handler->handle(new EnviarSolicitudPrestamoInput(
+        $this->validate([
+            'tituloEstudio' => 'required|string|max:255',
+            'institucionAdscripcion' => 'required|string|max:255',
+            'lineaInvestigacion' => 'required|string|max:255',
+            'propositoPrestamo' => 'required|string',
+            'duracionPropuestaMeses' => 'required|integer|min:1|max:24',
+            'justificacionExtendida' => $this->duracionPropuestaMeses > 12 ? 'required|string|min:20' : 'nullable|string',
+            'items' => 'required|array|min:1',
+            'items.*.especimen_codigo_externo' => 'required|string',
+            'items.*.cantidad_solicitada' => 'required|integer|min:1',
+        ], [
+            'tituloEstudio.required' => 'El título del estudio es obligatorio.',
+            'tituloEstudio.max' => 'El título no puede superar los 255 caracteres.',
+            'institucionAdscripcion.required' => 'La institución de adscripción es obligatoria.',
+            'lineaInvestigacion.required' => 'La línea de investigación es obligatoria.',
+            'propositoPrestamo.required' => 'El propósito del préstamo es obligatorio.',
+            'duracionPropuestaMeses.required' => 'La duración propuesta es obligatoria.',
+            'duracionPropuestaMeses.integer' => 'La duración debe ser un número entero.',
+            'duracionPropuestaMeses.min' => 'La duración mínima es 1 mes.',
+            'duracionPropuestaMeses.max' => 'La duración máxima permitida es 24 meses.',
+            'justificacionExtendida.required' => 'Debes justificar por qué la investigación requiere más de 12 meses.',
+            'justificacionExtendida.min' => 'La justificación debe tener al menos 20 caracteres.',
+            'items.required' => 'Debes agregar al menos un espécimen.',
+            'items.min' => 'Debes agregar al menos un espécimen.',
+            'items.*.especimen_codigo_externo.required' => 'El código del espécimen es obligatorio.',
+            'items.*.cantidad_solicitada.required' => 'La cantidad es obligatoria.',
+            'items.*.cantidad_solicitada.min' => 'La cantidad mínima es 1.',
+        ]);
+
+        $investigadorId = (string) auth()->id();
+
+        $actualizar->handle(new ActualizarSolicitudPrestamoInput(
             solicitudId: $this->solicitudId,
-            investigadorId: (string) auth()->id(),
+            investigadorId: $investigadorId,
+            tituloEstudio: $this->tituloEstudio,
+            institucionAdscripcion: $this->institucionAdscripcion,
+            lineaInvestigacion: $this->lineaInvestigacion,
+            propositoPrestamo: $this->propositoPrestamo,
+            duracionPropuestaMeses: $this->duracionPropuestaMeses,
+            items: $this->items,
+            justificacionExtendida: $this->duracionPropuestaMeses > 12 ? $this->justificacionExtendida : null,
+        ));
+
+        $enviar->handle(new EnviarSolicitudPrestamoInput(
+            solicitudId: $this->solicitudId,
+            investigadorId: $investigadorId,
         ));
 
         $this->redirectRoute('prestamos.investigador.solicitud.detalle', ['id' => $this->solicitudId], navigate: true);
