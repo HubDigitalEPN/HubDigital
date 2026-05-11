@@ -8,7 +8,7 @@ final readonly class DevolverActaParaRefirmarInput
 {
     public function __construct(
         public string $actaId,
-        public string $investigadorId,
+        public string $curadorId,
         public string $motivo,
     ) {}
 }

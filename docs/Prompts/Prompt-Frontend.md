@@ -39,7 +39,14 @@
 >      3. Agregar `class="px-4 py-3"` en todos los demás `<flux:table.cell>` y `<flux:table.column>`.
 >      4. Envolver el componente `<flux:table>` en un `<div class="p-6 ...">` (o asegurarte de que el wrapper externo de la vista tenga `p-6`) para que exista separación entre la tabla y los bordes de la tarjeta.
 >
-> 3. **Integración Livewire - Backend:**
+> 3. **Convención de Capitalización en Español:**
+    * En **toda** la interfaz, los textos en español siguen la regla: **solo la primera palabra de cada frase va en mayúscula**. El resto de palabras van en minúscula, salvo nombres propios o siglas.
+    * Ejemplos correctos: `Bandeja de solicitudes`, `Línea de investigación`, `Guardar borrador`, `Ver mis solicitudes`, `Código de espécimen`.
+    * Ejemplos incorrectos: `Bandeja de Solicitudes`, `Línea de Investigación`, `Guardar Borrador`.
+    * Esto aplica sin excepción a: títulos de página (`<flux:heading>`), etiquetas de formulario (`<flux:label>`), encabezados de tabla (`<flux:table.column>`), etiquetas de datos (`<dt>`), textos de botones, breadcrumbs y modales.
+    * Los elementos con `uppercase` en CSS (ej. secciones del acta) también deben tener el texto fuente en minúscula (el CSS se encarga de la transformación visual).
+
+ 4. **Integración Livewire - Backend:**
      >    * Diseña los Componentes Livewire (Full-page o anidados) que consumirán los endpoints o interactuarán con los Casos de Uso del backend.
 >    * Planifica el manejo de los estados (carga, éxito, errores). Para los errores de validación de backend (422), confía en el manejo nativo de `$errors` de Livewire/Blade.
 >

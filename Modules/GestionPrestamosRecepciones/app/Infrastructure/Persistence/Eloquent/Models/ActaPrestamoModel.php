@@ -28,6 +28,7 @@ final class ActaPrestamoModel extends Model
         'pdf_ruta',
         'condiciones_generales',
         'pdf_firmado_ruta',
+        'motivo_devolucion',
         'firmada_subida_en',
         'validada_en',
         'validada_por',

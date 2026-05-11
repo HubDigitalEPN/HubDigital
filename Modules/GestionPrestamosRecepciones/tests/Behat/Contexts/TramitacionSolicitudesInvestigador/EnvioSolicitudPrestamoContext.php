@@ -486,7 +486,7 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
         );
 
         // Transiciona a PendienteFirma para que SubirActaFirmadaHandler pueda operar
-        $acta->marcarEnviada();
+        $acta->marcarEnviada($this->investigadorId);
 
         $this->actaRepo->guardar($acta);
     }
@@ -555,7 +555,7 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
             pdfRuta: $pdfRuta,
         );
 
-        $acta->marcarEnviada();
+        $acta->marcarEnviada($this->investigadorId);
         $acta->subirFirma('actas/firmadas/MEPN-INV-001-2026-firmada.pdf');
         $this->actaRepo->guardar($acta);
     }

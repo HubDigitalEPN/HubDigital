@@ -1,7 +1,7 @@
 <div class="flex h-full w-full flex-1 flex-col gap-4 p-6">
 
     <div class="flex flex-col gap-1">
-        <h1 class="font-display text-2xl font-bold text-blue-navy">Gestión de Préstamos</h1>
+        <h1 class="font-display text-2xl font-bold text-blue-navy">Gestión de préstamos</h1>
         <p class="text-sm text-text-secondary">Selecciona una sección para gestionar</p>
     </div>
 
@@ -12,7 +12,7 @@
                 <flux:icon name="clipboard-document-list" variant="outline" class="size-6 text-science-blue" />
             </div>
             <div>
-                <p class="font-medium text-text-primary">Bandeja de Solicitudes</p>
+                <p class="font-medium text-text-primary">Bandeja de solicitudes</p>
                 <p class="text-xs text-text-secondary">Revisar y aprobar solicitudes de préstamo</p>
             </div>
         </a>
@@ -23,7 +23,7 @@
                 <flux:icon name="document-text" variant="outline" class="size-6 text-bio-green" />
             </div>
             <div>
-                <p class="font-medium text-text-primary">Bandeja de Actas</p>
+                <p class="font-medium text-text-primary">Bandeja de actas</p>
                 <p class="text-xs text-text-secondary">Validar actas de devolución</p>
             </div>
         </a>
