@@ -30,13 +30,13 @@ final class SolicitudPrestamoController extends Controller
         RegistrarSolicitudPrestamoHandler $handler,
     ): JsonResponse {
         $input = new RegistrarSolicitudPrestamoInput(
-            investigadorId:        $request->validated('investigador_id'),
-            tituloEstudio:         $request->validated('titulo_estudio'),
+            investigadorId: $request->validated('investigador_id'),
+            tituloEstudio: $request->validated('titulo_estudio'),
             institucionAdscripcion: $request->validated('institucion_adscripcion'),
-            lineaInvestigacion:    $request->validated('linea_investigacion'),
-            propositoPrestamo:     $request->validated('proposito_prestamo'),
+            lineaInvestigacion: $request->validated('linea_investigacion'),
+            propositoPrestamo: $request->validated('proposito_prestamo'),
             duracionPropuestaMeses: $request->validated('duracion_propuesta_meses'),
-            items:                 $request->validated('items'),
+            items: $request->validated('items'),
         );
 
         $output = $handler->handle($input);
@@ -52,14 +52,14 @@ final class SolicitudPrestamoController extends Controller
         string $id,
     ): JsonResponse {
         $input = new ActualizarSolicitudPrestamoInput(
-            solicitudId:           $id,
-            investigadorId:        $request->validated('investigador_id'),
-            tituloEstudio:         $request->validated('titulo_estudio'),
+            solicitudId: $id,
+            investigadorId: $request->validated('investigador_id'),
+            tituloEstudio: $request->validated('titulo_estudio'),
             institucionAdscripcion: $request->validated('institucion_adscripcion'),
-            lineaInvestigacion:    $request->validated('linea_investigacion'),
-            propositoPrestamo:     $request->validated('proposito_prestamo'),
+            lineaInvestigacion: $request->validated('linea_investigacion'),
+            propositoPrestamo: $request->validated('proposito_prestamo'),
             duracionPropuestaMeses: $request->validated('duracion_propuesta_meses'),
-            items:                 $request->validated('items'),
+            items: $request->validated('items'),
             justificacionExtendida: $request->validated('justificacion_extendida'),
         );
 
@@ -76,7 +76,7 @@ final class SolicitudPrestamoController extends Controller
         string $id,
     ): JsonResponse {
         $input = new EnviarSolicitudPrestamoInput(
-            solicitudId:    $id,
+            solicitudId: $id,
             investigadorId: $request->validated('investigador_id'),
         );
 
@@ -95,7 +95,7 @@ final class SolicitudPrestamoController extends Controller
         $ruta = Storage::putFile('actas-firmadas', $request->file('pdf_firmado'));
 
         $input = new SubirActaFirmadaInput(
-            solicitudId:    $id,
+            solicitudId: $id,
             investigadorId: $request->validated('investigador_id'),
             pdfFirmadoRuta: $ruta,
         );

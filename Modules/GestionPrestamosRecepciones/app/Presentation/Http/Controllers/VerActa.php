@@ -10,7 +10,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\ActaPrestamoModel;
 
-#[Layout('layouts.app', params: ['title' => 'Acta de Préstamo'])]
+#[Layout('layouts.app', params: ['title' => 'Acta de préstamo'])]
 final class VerActa extends Component
 {
     public string $id;

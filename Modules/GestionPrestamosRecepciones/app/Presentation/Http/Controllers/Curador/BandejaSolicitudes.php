@@ -12,7 +12,7 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\SolicitudPrestamoModel;
 
-#[Layout('layouts.app', params: ['title' => 'Bandeja de Solicitudes'])]
+#[Layout('layouts.app', params: ['title' => 'Bandeja de solicitudes'])]
 final class BandejaSolicitudes extends Component
 {
     use HandlesDomainExceptions;
@@ -47,7 +47,7 @@ final class BandejaSolicitudes extends Component
         $investigadores = User::whereIn('id', $validIds)->get()->keyBy('id');
 
         return view('gestionprestamosrecepciones::curador.bandeja-solicitudes', [
-            'solicitudes'   => $solicitudes,
+            'solicitudes' => $solicitudes,
             'investigadores' => $investigadores,
         ]);
     }

@@ -13,7 +13,7 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarSolicitudPres
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\ActaPrestamoModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\SolicitudPrestamoModel;
 
-#[Layout('layouts.app', params: ['title' => 'Mis Solicitudes de Préstamo'])]
+#[Layout('layouts.app', params: ['title' => 'Mis solicitudes de préstamo'])]
 final class MisSolicitudes extends Component
 {
     use HandlesDomainExceptions;
