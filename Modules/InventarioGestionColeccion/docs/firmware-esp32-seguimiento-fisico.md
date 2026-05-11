@@ -64,8 +64,8 @@ void setup() {
 void loop() {}
 ```
 
-El `gabinete_id` y el `api_token` se obtienen al completar el setup del backend
-(ver sección de backend al final).
+El `gabinete_id` se configura según el gabinete físico asignado y el `api_token`
+se obtiene al crear el token Sanctum para el ESP32.
 
 ---
 
@@ -224,25 +224,7 @@ void loop() {
 
 ## Setup del backend
 
-**1. Crear el gabinete**
-```http
-POST /api/v1/gabinetes
-{ "codigo": "GAB-01", "nombre": "Prototipo", "total_ranuras": 2 }
-```
-
-**2. Crear las 2 ranuras** (`numero_ranura` = `slot_index + 1`, empieza en 1)
-```http
-POST /api/v1/gabinetes/{id}/ranuras   → { "numero_ranura": 1 }
-POST /api/v1/gabinetes/{id}/ranuras   → { "numero_ranura": 2 }
-```
-
-**3. Registrar cada caja** (`codigo_rfid` = UID leído del tag, 8 hex chars)
-```http
-POST /api/v1/cajas
-{ "codigo": "CAJA-001", "codigo_rfid": "04AB1C2D" }
-```
-
-**4. Crear el token Sanctum para el ESP32**
+**1. Crear el token Sanctum para el ESP32**
 ```bash
 php artisan tinker --execute '
     echo \App\Models\User::first()->createToken("esp32")->plainTextToken;
