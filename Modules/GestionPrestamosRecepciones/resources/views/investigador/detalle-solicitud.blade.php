@@ -208,13 +208,17 @@
                            file:border-0 file:text-sm file:font-medium
                            file:bg-science-blue file:text-white
                            hover:file:bg-blue-700" />
+                <div wire:loading wire:target="pdfFirmado" class="flex items-center gap-1.5 mt-1 text-xs text-text-secondary">
+                    <flux:icon name="arrow-path" class="animate-spin size-3" />
+                    Subiendo archivo...
+                </div>
                 <flux:error name="pdfFirmado" />
             </flux:field>
 
             <div class="flex justify-end gap-2 pt-2">
                 <flux:button variant="ghost" wire:click="$set('showUploadModal', false)">Cancelar</flux:button>
                 <flux:button variant="primary" wire:click="subirActa"
-                    wire:loading.attr="disabled" wire:target="subirActa">
+                    wire:loading.attr="disabled" wire:target="subirActa,pdfFirmado">
                     <flux:icon wire:loading wire:target="subirActa" name="arrow-path" class="animate-spin" />
                     Subir acta
                 </flux:button>
