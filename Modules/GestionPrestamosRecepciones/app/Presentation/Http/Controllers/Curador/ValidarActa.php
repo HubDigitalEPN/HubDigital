@@ -15,7 +15,7 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarActaFirmada\
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarActaFirmada\ValidarActaFirmadaInput;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\ActaPrestamoModel;
 
-#[Layout('layouts.app', params: ['title' => 'Validar Acta Firmada'])]
+#[Layout('layouts.app', params: ['title' => 'Validar acta firmada'])]
 final class ValidarActa extends Component
 {
     use HandlesDomainExceptions;

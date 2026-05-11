@@ -1,6 +1,6 @@
 <div class="p-6 space-y-6">
 
-    <flux:heading size="xl" level="1" class="font-display">Bandeja de Solicitudes</flux:heading>
+    <flux:heading size="xl" level="1" class="font-display">Bandeja de solicitudes</flux:heading>
 
     {{-- Filtro de estado --}}
     <div class="flex items-center gap-3">
@@ -24,7 +24,7 @@
         <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
             <flux:table>
                 <flux:table.columns>
-                    <flux:table.column class="!ps-4">N.º Solicitud</flux:table.column>
+                    <flux:table.column class="!ps-4">N.º solicitud</flux:table.column>
                     <flux:table.column>Título</flux:table.column>
                     <flux:table.column>Investigador</flux:table.column>
                     <flux:table.column>Estado</flux:table.column>

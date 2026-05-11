@@ -1,6 +1,6 @@
 <div class="p-6 space-y-8">
 
-    <flux:heading size="xl" level="1" class="font-display">Bandeja de Actas</flux:heading>
+    <flux:heading size="xl" level="1" class="font-display">Bandeja de actas</flux:heading>
 
     @if($successMessage)
         <flux:callout variant="success" icon="check-circle">{{ $successMessage }}</flux:callout>
@@ -9,7 +9,7 @@
     {{-- Sección 1: Por Enviar --}}
     <div class="space-y-3">
         <div class="flex items-center gap-3">
-            <flux:heading size="lg" level="2" class="font-display">Pendientes de Envío</flux:heading>
+            <flux:heading size="lg" level="2" class="font-display">Pendientes de envío</flux:heading>
             @if($actasPorEnviar->isNotEmpty())
                 <flux:badge color="yellow" size="sm">{{ $actasPorEnviar->count() }}</flux:badge>
             @endif
@@ -54,7 +54,7 @@
                                             href="{{ route('prestamos.acta.ver', $acta->id) }}"
                                             target="_blank"
                                         >
-                                            Vista Previa
+                                            Vista previa
                                         </flux:button>
                                         <flux:button
                                             size="sm"
@@ -81,7 +81,7 @@
     {{-- Sección 2: Pendientes de Firma --}}
     <div class="space-y-3">
         <div class="flex items-center gap-3">
-            <flux:heading size="lg" level="2" class="font-display">Esperando Firma del Investigador</flux:heading>
+            <flux:heading size="lg" level="2" class="font-display">Esperando firma del investigador</flux:heading>
             @if($actasPendienteFirma->isNotEmpty())
                 <flux:badge color="orange" size="sm">{{ $actasPendienteFirma->count() }}</flux:badge>
             @endif
@@ -100,7 +100,7 @@
                         <flux:table.column class="px-4">Solicitud</flux:table.column>
                         <flux:table.column class="px-4">Estado</flux:table.column>
                         <flux:table.column class="px-4">Enviada</flux:table.column>
-                        <flux:table.column class="px-4">Vista Previa</flux:table.column>
+                        <flux:table.column class="px-4">Vista previa</flux:table.column>
                     </flux:table.columns>
                     <flux:table.rows>
                         @foreach($actasPendienteFirma as $acta)
@@ -125,7 +125,7 @@
                                         href="{{ route('prestamos.acta.ver', $acta->id) }}"
                                         target="_blank"
                                     >
-                                        Ver Acta
+                                        Ver acta
                                     </flux:button>
                                 </flux:table.cell>
                             </flux:table.row>
@@ -139,7 +139,7 @@
     {{-- Sección 3: Por Validar --}}
     <div class="space-y-3">
         <div class="flex items-center gap-3">
-            <flux:heading size="lg" level="2" class="font-display">Pendientes de Validación</flux:heading>
+            <flux:heading size="lg" level="2" class="font-display">Pendientes de validación</flux:heading>
             @if($actasPorValidar->isNotEmpty())
                 <flux:badge color="blue" size="sm">{{ $actasPorValidar->count() }}</flux:badge>
             @endif
@@ -157,7 +157,7 @@
                         <flux:table.column class="!ps-4">N.º Préstamo</flux:table.column>
                         <flux:table.column class="px-4">Solicitud</flux:table.column>
                         <flux:table.column class="px-4">Estado</flux:table.column>
-                        <flux:table.column class="px-4">Acta Subida</flux:table.column>
+                        <flux:table.column class="px-4">Acta subida</flux:table.column>
                         <flux:table.column class="px-4">Acciones</flux:table.column>
                     </flux:table.columns>
                     <flux:table.rows>

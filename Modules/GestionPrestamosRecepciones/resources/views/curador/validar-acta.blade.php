@@ -2,9 +2,9 @@
 
     <flux:breadcrumbs>
         <flux:breadcrumbs.item wire:navigate href="{{ route('prestamos.curador.actas') }}">
-            Bandeja de Actas
+            Bandeja de actas
         </flux:breadcrumbs.item>
-        <flux:breadcrumbs.item>{{ $acta?->numero_prestamo ?? 'Validar Acta' }}</flux:breadcrumbs.item>
+        <flux:breadcrumbs.item>{{ $acta?->numero_prestamo ?? 'Validar acta' }}</flux:breadcrumbs.item>
     </flux:breadcrumbs>
 
     @if($successMessage)
@@ -15,7 +15,7 @@
         <flux:callout variant="danger" icon="exclamation-triangle">Acta no encontrada.</flux:callout>
     @else
         <div class="flex items-center justify-between">
-            <flux:heading size="xl" level="1" class="font-display">Validar Acta Firmada</flux:heading>
+            <flux:heading size="xl" level="1" class="font-display">Validar acta firmada</flux:heading>
             <x-gestionprestamosrecepciones::acta-status-badge :estado="$acta->estado" />
         </div>
 
@@ -34,7 +34,7 @@
         <div class="grid gap-4 lg:grid-cols-2">
             <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
                 <div class="bg-bg-main px-4 py-2 border-b border-border flex items-center justify-between">
-                    <flux:text class="text-sm font-medium text-text-primary">Acta Original (generada)</flux:text>
+                    <flux:text class="text-sm font-medium text-text-primary">Acta original (generada)</flux:text>
                     <flux:button size="xs" variant="ghost" icon="arrow-top-right-on-square"
                         href="{{ route('prestamos.acta.ver', $acta->id) }}" target="_blank">
                         Abrir
@@ -46,7 +46,7 @@
 
             <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
                 <div class="bg-bg-main px-4 py-2 border-b border-border">
-                    <flux:text class="text-sm font-medium text-text-primary">Acta Firmada (por investigador)</flux:text>
+                    <flux:text class="text-sm font-medium text-text-primary">Acta firmada (por investigador)</flux:text>
                 </div>
                 @if($acta->pdf_firmado_ruta)
                     <iframe src="{{ route('prestamos.acta.pdf-firmado', $acta->id) }}"
@@ -70,7 +70,7 @@
                     wire:loading.attr="disabled" wire:target="validar"
                     wire:confirm="¿Confirmas que la firma es válida y el acta puede cerrarse?">
                     <flux:icon wire:loading wire:target="validar" name="arrow-path" class="animate-spin" />
-                    Validar Firma
+                    Validar firma
                 </flux:button>
             </div>
         @elseif($acta->estado === 'validada')
@@ -100,7 +100,7 @@
                 <flux:button variant="danger" wire:click="devolverParaRefirmar"
                     wire:loading.attr="disabled" wire:target="devolverParaRefirmar">
                     <flux:icon wire:loading wire:target="devolverParaRefirmar" name="arrow-path" class="animate-spin" />
-                    Devolver Acta
+                    Devolver acta
                 </flux:button>
             </div>
         </div>

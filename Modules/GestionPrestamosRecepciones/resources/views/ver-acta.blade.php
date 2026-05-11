@@ -3,35 +3,30 @@
 @media print {
     @page {
         size: A4 portrait;
-        margin: 0;
+        margin: 1.8cm 2cm;
     }
 
-    body, html {
-        margin: 0 !important;
-        padding: 0 !important;
-        background: white !important;
-    }
-
-    .print\:hidden {
+    /* Ocultar el layout de la app (sidebar, header de Flux UI) */
+    [data-flux-sidebar],
+    [data-flux-header],
+    aside,
+    header,
+    nav {
         display: none !important;
     }
 
     #acta-doc {
-        margin: 0 auto !important;
-        padding: 1.5cm !important;
         box-shadow: none !important;
         border: none !important;
         border-radius: 0 !important;
+        padding: 0 !important;
         max-width: 100% !important;
-        width: auto !important;
     }
 
-    /* Evitar cortes bruscos dentro de bloques */
-    #acta-doc > div,
+    /* Evitar cortes bruscos solo en elementos pequeños */
     #acta-doc li,
-    #acta-doc dl,
-    #acta-doc table,
-    #acta-doc tr {
+    #acta-doc tr,
+    #acta-doc dl > div {
         break-inside: avoid;
     }
 }
@@ -43,7 +38,7 @@
     {{-- Toolbar --}}
     <div class="flex items-center justify-between print:hidden">
         <flux:breadcrumbs>
-            <flux:breadcrumbs.item>Acta de Préstamo</flux:breadcrumbs.item>
+            <flux:breadcrumbs.item>Acta de préstamo</flux:breadcrumbs.item>
             <flux:breadcrumbs.item>{{ $acta?->numero_prestamo ?? '—' }}</flux:breadcrumbs.item>
         </flux:breadcrumbs>
         <div class="flex items-center gap-3">
@@ -60,7 +55,7 @@
         <flux:callout variant="danger" icon="exclamation-triangle">Acta no encontrada.</flux:callout>
     @else
         {{-- Document --}}
-        <div class="bg-white rounded-lg border border-border shadow-sm mx-auto max-w-3xl p-10 space-y-8 print:shadow-none print:border-none print:max-w-full print:rounded-none print:p-0">
+        <div id="acta-doc" class="bg-white rounded-lg border border-border shadow-sm mx-auto max-w-3xl p-10 space-y-8 print:shadow-none print:border-none print:max-w-full print:rounded-none print:p-0">
 
             {{-- Header --}}
             <div class="text-center space-y-1">
@@ -73,24 +68,24 @@
 
             {{-- Datos del préstamo --}}
             <div class="space-y-3">
-                <h2 class="text-sm font-semibold text-text-primary uppercase tracking-widest">Condiciones del Préstamo</h2>
+                <h2 class="text-sm font-semibold text-text-primary uppercase tracking-widest">Condiciones del préstamo</h2>
                 <dl class="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
                     <div>
-                        <dt class="text-text-secondary">Tipo de Préstamo</dt>
+                        <dt class="text-text-secondary">Tipo de préstamo</dt>
                         <dd class="font-medium text-text-primary capitalize">{{ $acta->tipo_prestamo }}</dd>
                     </div>
                     <div>
-                        <dt class="text-text-secondary">N.º Solicitud</dt>
+                        <dt class="text-text-secondary">N.º solicitud</dt>
                         <dd class="font-mono font-medium text-text-primary">{{ $acta->solicitud?->numero_solicitud }}</dd>
                     </div>
                     <div>
-                        <dt class="text-text-secondary">Fecha de Inicio</dt>
+                        <dt class="text-text-secondary">Fecha de inicio</dt>
                         <dd class="font-medium text-text-primary">
                             {{ ($acta->fecha_inicio instanceof \DateTimeInterface ? $acta->fecha_inicio : \Carbon\Carbon::parse($acta->fecha_inicio))->format('d/m/Y') }}
                         </dd>
                     </div>
                     <div>
-                        <dt class="text-text-secondary">Fecha de Vencimiento</dt>
+                        <dt class="text-text-secondary">Fecha de vencimiento</dt>
                         <dd class="font-medium text-text-primary">
                             {{ ($acta->fecha_fin instanceof \DateTimeInterface ? $acta->fecha_fin : \Carbon\Carbon::parse($acta->fecha_fin))->format('d/m/Y') }}
                         </dd>
@@ -100,22 +95,22 @@
 
             {{-- Investigador --}}
             <div class="space-y-3">
-                <h2 class="text-sm font-semibold text-text-primary uppercase tracking-widest">Investigador Solicitante</h2>
+                <h2 class="text-sm font-semibold text-text-primary uppercase tracking-widest">Investigador solicitante</h2>
                 <dl class="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
                     <div class="col-span-2">
-                        <dt class="text-text-secondary">Título del Estudio</dt>
+                        <dt class="text-text-secondary">Título del estudio</dt>
                         <dd class="font-medium text-text-primary mt-0.5">{{ $acta->solicitud?->titulo_estudio }}</dd>
                     </div>
                     <div>
-                        <dt class="text-text-secondary">Institución de Adscripción</dt>
+                        <dt class="text-text-secondary">Institución de adscripción</dt>
                         <dd class="font-medium text-text-primary">{{ $acta->solicitud?->institucion_adscripcion }}</dd>
                     </div>
                     <div>
-                        <dt class="text-text-secondary">Línea de Investigación</dt>
+                        <dt class="text-text-secondary">Línea de investigación</dt>
                         <dd class="font-medium text-text-primary">{{ $acta->solicitud?->linea_investigacion }}</dd>
                     </div>
                     <div class="col-span-2">
-                        <dt class="text-text-secondary">Propósito del Préstamo</dt>
+                        <dt class="text-text-secondary">Propósito del préstamo</dt>
                         <dd class="text-text-primary mt-0.5">{{ $acta->solicitud?->proposito_prestamo }}</dd>
                     </div>
                 </dl>
@@ -124,14 +119,14 @@
             {{-- Especímenes --}}
             @if($acta->solicitud?->items && $acta->solicitud->items->count())
                 <div class="space-y-3">
-                    <h2 class="text-sm font-semibold text-text-primary uppercase tracking-widest">Especímenes en Préstamo</h2>
+                    <h2 class="text-sm font-semibold text-text-primary uppercase tracking-widest">Especímenes en préstamo</h2>
                     <table class="w-full text-sm border border-border rounded">
                         <thead>
                             <tr class="bg-bg-main">
                                 <th class="text-left px-3 py-2 border-b border-border font-medium text-text-primary w-8">#</th>
-                                <th class="text-left px-3 py-2 border-b border-border font-medium text-text-primary">Código de Espécimen</th>
+                                <th class="text-left px-3 py-2 border-b border-border font-medium text-text-primary">Código de espécimen</th>
                                 <th class="text-left px-3 py-2 border-b border-border font-medium text-text-primary w-24">Cantidad</th>
-                                <th class="text-left px-3 py-2 border-b border-border font-medium text-text-primary">Condiciones Específicas</th>
+                                <th class="text-left px-3 py-2 border-b border-border font-medium text-text-primary">Condiciones específicas</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -150,7 +145,7 @@
 
             {{-- Condiciones generales --}}
             <div class="space-y-3">
-                <h2 class="text-sm font-semibold text-text-primary uppercase tracking-widest">Condiciones Generales</h2>
+                <h2 class="text-sm font-semibold text-text-primary uppercase tracking-widest">Condiciones generales</h2>
                 <ul class="text-sm text-text-primary leading-relaxed space-y-4 list-none">
 
                     <li class="flex gap-3">
@@ -195,7 +190,7 @@
 
             {{-- Compromiso --}}
             <div class="space-y-2">
-                <h2 class="text-sm font-semibold text-text-primary uppercase tracking-widest">Compromiso del Investigador</h2>
+                <h2 class="text-sm font-semibold text-text-primary uppercase tracking-widest">Compromiso del investigador</h2>
                 <p class="text-sm text-text-primary leading-relaxed">
                     El investigador solicitante se compromete a utilizar los especímenes en préstamo únicamente para los fines
                     declarados en la presente solicitud, a mantenerlos en condiciones adecuadas de conservación, y a devolverlos
@@ -209,14 +204,14 @@
             <div class="grid grid-cols-2 gap-16 pt-8">
                 <div>
                     <div class="border-t-2 border-text-primary pt-3 space-y-1">
-                        <p class="text-sm font-semibold text-text-primary">Curador Responsable</p>
+                        <p class="text-sm font-semibold text-text-primary">Curador responsable</p>
                         <p class="text-xs text-text-secondary">Laboratorio de Invertebrados — EPN</p>
                         <p class="text-xs text-text-secondary">Fecha: ___________________</p>
                     </div>
                 </div>
                 <div>
                     <div class="border-t-2 border-text-primary pt-3 space-y-1">
-                        <p class="text-sm font-semibold text-text-primary">Investigador Solicitante</p>
+                        <p class="text-sm font-semibold text-text-primary">Investigador solicitante</p>
                         <p class="text-xs text-text-secondary">{{ $acta->solicitud?->institucion_adscripcion }}</p>
                         <p class="text-xs text-text-secondary">Fecha: ___________________</p>
                     </div>

@@ -12,7 +12,7 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarActaPrestamo\
 use Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarActaPrestamo\EnviarActaPrestamoInput;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\ActaPrestamoModel;
 
-#[Layout('layouts.app', params: ['title' => 'Bandeja de Actas'])]
+#[Layout('layouts.app', params: ['title' => 'Bandeja de actas'])]
 final class BandejaActas extends Component
 {
     use HandlesDomainExceptions;
