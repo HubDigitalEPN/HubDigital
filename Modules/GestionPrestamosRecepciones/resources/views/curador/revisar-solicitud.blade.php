@@ -2,7 +2,7 @@
 
     <flux:breadcrumbs>
         <flux:breadcrumbs.item wire:navigate href="{{ route('prestamos.curador.solicitudes') }}">
-            Bandeja de Solicitudes
+            Bandeja de solicitudes
         </flux:breadcrumbs.item>
         <flux:breadcrumbs.item>{{ $solicitud?->numero_solicitud ?? 'Revisar' }}</flux:breadcrumbs.item>
     </flux:breadcrumbs>
@@ -24,7 +24,7 @@
 
                     <dl class="grid grid-cols-2 gap-4 text-sm">
                         <div>
-                            <dt class="text-text-secondary">N.º Solicitud</dt>
+                            <dt class="text-text-secondary">N.º solicitud</dt>
                             <dd class="font-mono font-medium text-text-primary">{{ $solicitud->numero_solicitud }}</dd>
                         </div>
                         <div>
@@ -36,20 +36,20 @@
                             <dd class="text-text-primary">{{ $solicitud->institucion_adscripcion }}</dd>
                         </div>
                         <div>
-                            <dt class="text-text-secondary">Línea de Investigación</dt>
+                            <dt class="text-text-secondary">Línea de investigación</dt>
                             <dd class="text-text-primary">{{ $solicitud->linea_investigacion }}</dd>
                         </div>
                         <div>
-                            <dt class="text-text-secondary">Duración Propuesta</dt>
+                            <dt class="text-text-secondary">Duración propuesta</dt>
                             <dd class="text-text-primary">{{ $solicitud->duracion_propuesta_meses }} meses</dd>
                         </div>
                         <div class="col-span-2">
-                            <dt class="text-text-secondary">Propósito del Préstamo</dt>
+                            <dt class="text-text-secondary">Propósito del préstamo</dt>
                             <dd class="text-text-primary mt-1">{{ $solicitud->proposito_prestamo }}</dd>
                         </div>
                         @if($solicitud->justificacion_extendida)
                             <div class="col-span-2">
-                                <dt class="text-text-secondary">Justificación para Duración Extendida</dt>
+                                <dt class="text-text-secondary">Justificación para duración extendida</dt>
                                 <dd class="text-text-primary mt-1">{{ $solicitud->justificacion_extendida }}</dd>
                             </div>
                         @endif
@@ -60,11 +60,11 @@
                 @if($solicitud->items && $solicitud->items->count())
                     <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
                         <div class="p-4">
-                            <flux:heading size="lg" level="2" class="font-display">Especimenes Solicitados</flux:heading>
+                            <flux:heading size="lg" level="2" class="font-display">Especímenes solicitados</flux:heading>
                         </div>
                         <flux:table>
                             <flux:table.columns>
-                                <flux:table.column class="!ps-4">Código de Espécimen</flux:table.column>
+                                <flux:table.column class="!ps-4">Código de espécimen</flux:table.column>
                                 <flux:table.column class="px-4">Cantidad</flux:table.column>
                             </flux:table.columns>
                             <flux:table.rows>
@@ -93,11 +93,11 @@
                     <div class="flex flex-col gap-2">
                         <flux:button variant="primary" icon="check-circle"
                             wire:click="$set('showAprobacionModal', true)">
-                            Aprobar y Generar Acta
+                            Aprobar y generar acta
                         </flux:button>
                         <flux:button variant="ghost" icon="arrow-uturn-left"
                             wire:click="$set('showMotivoModal', true)">
-                            Devolver con Observaciones
+                            Devolver con observaciones
                         </flux:button>
                     </div>
                 @else
@@ -114,7 +114,7 @@
     {{-- Modal: formulario de aprobación --}}
     <flux:modal wire:model="showAprobacionModal" class="max-w-2xl">
         <div class="space-y-5 p-2">
-            <flux:heading size="lg">Aprobar Solicitud de Préstamo</flux:heading>
+            <flux:heading size="lg">Aprobar solicitud de préstamo</flux:heading>
             <flux:text class="text-text-secondary text-sm">
                 Configura las condiciones del préstamo antes de generar el acta.
             </flux:text>
@@ -122,7 +122,7 @@
 
             {{-- Tipo de préstamo --}}
             <flux:field>
-                <flux:label>Tipo de Préstamo <span class="text-error">*</span></flux:label>
+                <flux:label>Tipo de préstamo <span class="text-error">*</span></flux:label>
                 <flux:select wire:model="tipoPrestamo">
                     <flux:select.option value="temporal">Temporal</flux:select.option>
                     <flux:select.option value="permanente">Permanente</flux:select.option>
@@ -132,7 +132,7 @@
 
             {{-- Duración --}}
             <flux:field>
-                <flux:label>Duración del Préstamo</flux:label>
+                <flux:label>Duración del préstamo</flux:label>
                 <div class="flex items-center gap-3 mt-1">
                     <input type="checkbox" wire:model.live="usarDuracionPropuesta" id="usar-propuesta"
                         class="rounded border-border text-science-blue focus:ring-science-blue" />
@@ -152,7 +152,7 @@
 
             {{-- Condiciones generales --}}
             <flux:field>
-                <flux:label>Condiciones Generales del Préstamo <span class="text-text-secondary text-xs">(opcional)</span></flux:label>
+                <flux:label>Condiciones generales del préstamo <span class="text-text-secondary text-xs">(opcional)</span></flux:label>
                 <flux:textarea wire:model="condicionesGenerales" rows="3"
                     placeholder="Ej. Los especímenes deben ser manipulados con guantes y en ambiente controlado..." />
             </flux:field>
@@ -160,7 +160,7 @@
             {{-- Condiciones por espécimen --}}
             @if($solicitud?->items && $solicitud->items->count())
                 <div class="space-y-3">
-                    <flux:label>Condiciones por Espécimen <span class="text-text-secondary text-xs">(opcional)</span></flux:label>
+                    <flux:label>Condiciones por espécimen <span class="text-text-secondary text-xs">(opcional)</span></flux:label>
                     @foreach($solicitud->items as $item)
                         <flux:field>
                             <flux:label class="font-mono text-xs text-text-secondary">{{ $item->especimen_codigo_externo }}</flux:label>
@@ -177,7 +177,7 @@
                     wire:loading.attr="disabled" wire:target="aprobar"
                     wire:confirm="¿Confirmas la aprobación? Se generará el acta de préstamo.">
                     <flux:icon wire:loading wire:target="aprobar" name="arrow-path" class="animate-spin" />
-                    Confirmar Aprobación
+                    Confirmar aprobación
                 </flux:button>
             </div>
         </div>
@@ -186,13 +186,13 @@
     {{-- Modal: motivo de observación --}}
     <flux:modal wire:model="showMotivoModal" class="max-w-md">
         <div class="space-y-4 p-2">
-            <flux:heading size="lg">Devolver con Observaciones</flux:heading>
+            <flux:heading size="lg">Devolver con observaciones</flux:heading>
             <flux:text class="text-text-secondary text-sm">
                 Indica el motivo por el que la solicitud debe ser corregida por el investigador.
             </flux:text>
 
             <flux:field>
-                <flux:label>Motivo de la Observación</flux:label>
+                <flux:label>Motivo de la observación</flux:label>
                 <flux:textarea wire:model="motivoObservacion" rows="4"
                     placeholder="Describe las correcciones necesarias..." />
                 <flux:error name="motivoObservacion" />
@@ -203,7 +203,7 @@
                 <flux:button variant="danger" wire:click="devolver"
                     wire:loading.attr="disabled" wire:target="devolver">
                     <flux:icon wire:loading wire:target="devolver" name="arrow-path" class="animate-spin" />
-                    Devolver Solicitud
+                    Devolver solicitud
                 </flux:button>
             </div>
         </div>

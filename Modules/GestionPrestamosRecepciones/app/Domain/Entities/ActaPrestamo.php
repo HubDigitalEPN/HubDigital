@@ -7,7 +7,9 @@ namespace Modules\GestionPrestamosRecepciones\Domain\Entities;
 use DateTimeImmutable;
 use InvalidArgumentException;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaDevueltaPorFirmaInvalida;
+use Modules\GestionPrestamosRecepciones\Domain\Events\ActaEnviada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaFirmadaSubida;
+use Modules\GestionPrestamosRecepciones\Domain\Events\ActaValidada;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\TransicionDeEstadoInvalidaException;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoActa;
@@ -31,6 +33,7 @@ final class ActaPrestamo
         private readonly string $pdfRuta,
         private ?string $condicionesGenerales,
         private ?string $pdfFirmadoRuta,
+        private ?string $motivoDevolucion,
         private ?DateTimeImmutable $firmadaSubidaEn,
         private ?DateTimeImmutable $validadaEn,
         private ?string $validadaPor,
@@ -67,6 +70,7 @@ final class ActaPrestamo
             pdfRuta: $pdfRuta,
             condicionesGenerales: $condicionesGenerales,
             pdfFirmadoRuta: null,
+            motivoDevolucion: null,
             firmadaSubidaEn: null,
             validadaEn: null,
             validadaPor: null,
@@ -87,6 +91,7 @@ final class ActaPrestamo
         string $pdfRuta,
         ?string $condicionesGenerales,
         ?string $pdfFirmadoRuta,
+        ?string $motivoDevolucion,
         ?DateTimeImmutable $firmadaSubidaEn,
         ?DateTimeImmutable $validadaEn,
         ?string $validadaPor,
@@ -102,6 +107,7 @@ final class ActaPrestamo
             pdfRuta: $pdfRuta,
             condicionesGenerales: $condicionesGenerales,
             pdfFirmadoRuta: $pdfFirmadoRuta,
+            motivoDevolucion: $motivoDevolucion,
             firmadaSubidaEn: $firmadaSubidaEn,
             validadaEn: $validadaEn,
             validadaPor: $validadaPor,
@@ -113,7 +119,7 @@ final class ActaPrestamo
     /**
      * Marca el acta como enviada al investigador para su firma.
      */
-    public function marcarEnviada(): void
+    public function marcarEnviada(string $investigadorId): void
     {
         if (! $this->estado->equals(EstadoActa::PendienteEnvio)) {
             throw TransicionDeEstadoInvalidaException::para(
@@ -123,7 +129,16 @@ final class ActaPrestamo
             );
         }
 
+        $ahora = new DateTimeImmutable;
+
         $this->estado = EstadoActa::PendienteFirma;
+
+        $this->events[] = new ActaEnviada(
+            actaId: $this->id,
+            solicitudId: $this->solicitudPrestamoId,
+            investigadorId: $investigadorId,
+            ocurridoEn: $ahora,
+        );
     }
 
     /**
@@ -180,6 +195,7 @@ final class ActaPrestamo
 
         $this->estado = EstadoActa::PendienteFirma;
         $this->pdfFirmadoRuta = null;
+        $this->motivoDevolucion = trim($motivo);
 
         $this->events[] = new ActaDevueltaPorFirmaInvalida(
             actaId: $this->id,
@@ -208,6 +224,13 @@ final class ActaPrestamo
         $this->estado = EstadoActa::Validada;
         $this->validadaEn = $ahora;
         $this->validadaPor = $validadoPor;
+
+        $this->events[] = new ActaValidada(
+            actaId: $this->id,
+            solicitudId: $this->solicitudPrestamoId,
+            validadoPor: $validadoPor,
+            ocurridoEn: $ahora,
+        );
     }
 
     /**
@@ -273,6 +296,11 @@ final class ActaPrestamo
     public function pdfFirmadoRuta(): ?string
     {
         return $this->pdfFirmadoRuta;
+    }
+
+    public function motivoDevolucion(): ?string
+    {
+        return $this->motivoDevolucion;
     }
 
     public function firmadaSubidaEn(): ?DateTimeImmutable

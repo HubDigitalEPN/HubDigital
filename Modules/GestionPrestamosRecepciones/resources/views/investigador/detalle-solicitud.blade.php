@@ -2,7 +2,7 @@
 
     <flux:breadcrumbs>
         <flux:breadcrumbs.item wire:navigate href="{{ route('prestamos.investigador.mis-solicitudes') }}">
-            Mis Solicitudes
+            Mis solicitudes
         </flux:breadcrumbs.item>
         <flux:breadcrumbs.item>{{ $solicitud?->numero_solicitud ?? 'Detalle' }}</flux:breadcrumbs.item>
     </flux:breadcrumbs>
@@ -41,7 +41,7 @@
 
                     <dl class="grid grid-cols-2 gap-4 text-sm">
                         <div>
-                            <dt class="text-text-secondary">N.º Solicitud</dt>
+                            <dt class="text-text-secondary">N.º solicitud</dt>
                             <dd class="font-mono font-medium text-text-primary">{{ $solicitud->numero_solicitud }}</dd>
                         </div>
                         <div>
@@ -49,7 +49,7 @@
                             <dd class="text-text-primary">{{ $solicitud->institucion_adscripcion }}</dd>
                         </div>
                         <div>
-                            <dt class="text-text-secondary">Línea de Investigación</dt>
+                            <dt class="text-text-secondary">Línea de investigación</dt>
                             <dd class="text-text-primary">{{ $solicitud->linea_investigacion }}</dd>
                         </div>
                         <div>
@@ -57,12 +57,12 @@
                             <dd class="text-text-primary">{{ $solicitud->duracion_propuesta_meses }} meses</dd>
                         </div>
                         <div class="col-span-2">
-                            <dt class="text-text-secondary">Propósito del Préstamo</dt>
+                            <dt class="text-text-secondary">Propósito del préstamo</dt>
                             <dd class="text-text-primary mt-1">{{ $solicitud->proposito_prestamo }}</dd>
                         </div>
                         @if($solicitud->justificacion_extendida)
                             <div class="col-span-2">
-                                <dt class="text-text-secondary">Justificación para Duración Extendida</dt>
+                                <dt class="text-text-secondary">Justificación para duración extendida</dt>
                                 <dd class="text-text-primary mt-1">{{ $solicitud->justificacion_extendida }}</dd>
                             </div>
                         @endif
@@ -71,7 +71,7 @@
                     @if($solicitud->estado === 'observada' && $solicitud->comentario_curador)
                         <flux:separator />
                         <flux:callout variant="warning" icon="exclamation-triangle">
-                            <flux:heading size="sm">Observación del Curador</flux:heading>
+                            <flux:heading size="sm">Observación del curador</flux:heading>
                             <flux:text class="mt-1 text-sm">{{ $solicitud->comentario_curador }}</flux:text>
                         </flux:callout>
                     @endif
@@ -81,11 +81,11 @@
                 @if($solicitud->items && $solicitud->items->count())
                     <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
                         <div class="p-4">
-                            <flux:heading size="lg" level="2" class="font-display">Especimenes Solicitados</flux:heading>
+                            <flux:heading size="lg" level="2" class="font-display">Especímenes solicitados</flux:heading>
                         </div>
                         <flux:table>
                             <flux:table.columns>
-                                <flux:table.column class="!ps-4">Código de Espécimen</flux:table.column>
+                                <flux:table.column class="!ps-4">Código de espécimen</flux:table.column>
                                 <flux:table.column class="px-4">Cantidad</flux:table.column>
                             </flux:table.columns>
                             <flux:table.rows>
@@ -104,7 +104,7 @@
                 @if($acta)
                     <div class="rounded-lg border border-border bg-surface shadow-sm p-5 space-y-4">
                         <div class="flex items-center justify-between">
-                            <flux:heading size="lg" level="2" class="font-display">Acta de Préstamo</flux:heading>
+                            <flux:heading size="lg" level="2" class="font-display">Acta de préstamo</flux:heading>
                             <x-gestionprestamosrecepciones::acta-status-badge :estado="$acta->estado" />
                         </div>
                         <flux:separator />
@@ -116,27 +116,38 @@
                             </div>
                         </dl>
 
-                        @if(in_array($acta->estado, ['pendiente_firma', 'pendiente_validacion']))
+                        @if($acta->estado === 'pendiente_envio')
+                            <flux:callout variant="info" icon="clock">
+                                El curador está preparando el acta de préstamo. Recibirás una notificación cuando esté lista para firmar.
+                            </flux:callout>
+                        @elseif($acta->estado === 'pendiente_firma' && $acta->motivo_devolucion)
+                            <flux:callout variant="warning" icon="arrow-uturn-left">
+                                <flux:heading size="sm">El acta fue devuelta para refirmar</flux:heading>
+                                <flux:text class="mt-1 text-sm">{{ $acta->motivo_devolucion }}</flux:text>
+                            </flux:callout>
+                        @elseif($acta->estado === 'pendiente_firma')
                             <flux:callout variant="info" icon="information-circle">
-                                @if($acta->estado === 'pendiente_firma')
-                                    El curador ha generado el acta. Descárgala, fírmala y sube el PDF firmado.
-                                @else
-                                    El acta firmada está en proceso de validación por el curador.
-                                @endif
+                                El acta está lista. Visualízala, imprímela, fírmala y sube el PDF firmado.
+                            </flux:callout>
+                        @elseif($acta->estado === 'pendiente_validacion')
+                            <flux:callout variant="info" icon="information-circle">
+                                El acta firmada está en proceso de validación por el curador.
+                            </flux:callout>
+                        @elseif($acta->estado === 'validada')
+                            <flux:callout variant="success" icon="check-circle">
+                                El acta ha sido validada. El préstamo está activo.
                             </flux:callout>
                         @endif
 
-                        @if($acta->pdf_ruta)
-                            <flux:button variant="ghost" icon="arrow-down-tray" size="sm"
-                                href="{{ Storage::url($acta->pdf_ruta) }}" target="_blank">
-                                Descargar Acta Original
-                            </flux:button>
-                        @endif
+                        <flux:button variant="ghost" icon="eye" size="sm"
+                            href="{{ route('prestamos.acta.ver', $acta->id) }}" target="_blank">
+                            Ver / imprimir acta
+                        </flux:button>
 
                         @if($acta->estado === 'pendiente_firma')
                             <flux:button variant="primary" icon="arrow-up-tray"
                                 wire:click="$set('showUploadModal', true)">
-                                Subir Acta Firmada
+                                Subir acta firmada
                             </flux:button>
                         @endif
                     </div>
@@ -184,7 +195,7 @@
     {{-- Modal: subir acta firmada --}}
     <flux:modal wire:model="showUploadModal" class="max-w-md">
         <div class="space-y-4 p-2">
-            <flux:heading size="lg">Subir Acta Firmada</flux:heading>
+            <flux:heading size="lg">Subir acta firmada</flux:heading>
             <flux:text class="text-text-secondary text-sm">
                 Sube el PDF del acta con tu firma. Máximo 10 MB, solo formato PDF.
             </flux:text>
@@ -197,15 +208,19 @@
                            file:border-0 file:text-sm file:font-medium
                            file:bg-science-blue file:text-white
                            hover:file:bg-blue-700" />
+                <div wire:loading wire:target="pdfFirmado" class="flex items-center gap-1.5 mt-1 text-xs text-text-secondary">
+                    <flux:icon name="arrow-path" class="animate-spin size-3" />
+                    Subiendo archivo...
+                </div>
                 <flux:error name="pdfFirmado" />
             </flux:field>
 
             <div class="flex justify-end gap-2 pt-2">
                 <flux:button variant="ghost" wire:click="$set('showUploadModal', false)">Cancelar</flux:button>
                 <flux:button variant="primary" wire:click="subirActa"
-                    wire:loading.attr="disabled" wire:target="subirActa">
+                    wire:loading.attr="disabled" wire:target="subirActa,pdfFirmado">
                     <flux:icon wire:loading wire:target="subirActa" name="arrow-path" class="animate-spin" />
-                    Subir Acta
+                    Subir acta
                 </flux:button>
             </div>
         </div>

@@ -11,11 +11,17 @@ use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\Va
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\DetalleSolicitud;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\MisSolicitudes;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\SolicitudForm;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ServirPdfFirmado;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\VerActa;
 
 Route::middleware(['auth', 'verified'])
     ->prefix('prestamos')
     ->name('prestamos.')
     ->group(function () {
+        // Compartido — curador e investigador (la autorización la aplica el componente)
+        Route::get('/acta/{id}/ver', VerActa::class)->name('acta.ver');
+        Route::get('/acta/{id}/pdf-firmado', ServirPdfFirmado::class)->name('acta.pdf-firmado');
+
         // Investigador — solo usuarios con rol PRESTAMISTA
         Route::middleware('role:prestamista')->group(function () {
             Route::get('/mis-solicitudes', MisSolicitudes::class)->name('investigador.mis-solicitudes');

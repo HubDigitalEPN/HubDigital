@@ -2,15 +2,15 @@
 
     <flux:breadcrumbs>
         <flux:breadcrumbs.item wire:navigate href="{{ route('prestamos.investigador.mis-solicitudes') }}">
-            Mis Solicitudes
+            Mis solicitudes
         </flux:breadcrumbs.item>
         <flux:breadcrumbs.item>
-            {{ $this->solicitudId ? 'Editar Solicitud' : 'Nueva Solicitud' }}
+            {{ $this->solicitudId ? 'Editar solicitud' : 'Nueva solicitud' }}
         </flux:breadcrumbs.item>
     </flux:breadcrumbs>
 
     <flux:heading size="xl" level="1" class="font-display">
-        {{ $this->solicitudId ? 'Editar Solicitud de Préstamo' : 'Nueva Solicitud de Préstamo' }}
+        {{ $this->solicitudId ? 'Editar solicitud de préstamo' : 'Nueva solicitud de préstamo' }}
     </flux:heading>
 
     @if($successMessage)
@@ -19,7 +19,7 @@
 
     @if($comentarioCurador)
         <flux:callout variant="warning" icon="exclamation-triangle">
-            <flux:heading size="sm">Observación del Curador</flux:heading>
+            <flux:heading size="sm">Observación del curador</flux:heading>
             <flux:text class="mt-1 text-sm">{{ $comentarioCurador }}</flux:text>
         </flux:callout>
     @endif
@@ -28,36 +28,36 @@
 
         {{-- Datos Generales --}}
         <div class="lg:col-span-2 rounded-lg border border-border bg-surface shadow-sm p-5 space-y-4">
-            <flux:heading size="lg" level="2" class="font-display">Datos Generales</flux:heading>
+            <flux:heading size="lg" level="2" class="font-display">Datos generales</flux:heading>
             <flux:separator />
 
             <flux:field>
-                <flux:label>Título del Estudio</flux:label>
+                <flux:label>Título del estudio</flux:label>
                 <flux:input wire:model="tituloEstudio" placeholder="Ej. Análisis taxonómico de lepidópteros andinos" />
                 <flux:error name="tituloEstudio" />
             </flux:field>
 
             <flux:field>
-                <flux:label>Institución de Adscripción</flux:label>
+                <flux:label>Institución de adscripción</flux:label>
                 <flux:input wire:model="institucionAdscripcion" placeholder="Ej. Escuela Politécnica Nacional" />
                 <flux:error name="institucionAdscripcion" />
             </flux:field>
 
             <flux:field>
-                <flux:label>Línea de Investigación</flux:label>
+                <flux:label>Línea de investigación</flux:label>
                 <flux:input wire:model="lineaInvestigacion" placeholder="Ej. Entomología sistemática" />
                 <flux:error name="lineaInvestigacion" />
             </flux:field>
 
             <flux:field>
-                <flux:label>Propósito del Préstamo</flux:label>
+                <flux:label>Propósito del préstamo</flux:label>
                 <flux:textarea wire:model="propositoPrestamo" rows="4"
                     placeholder="Describe el objetivo científico del préstamo..." />
                 <flux:error name="propositoPrestamo" />
             </flux:field>
 
             <flux:field>
-                <flux:label>Duración Propuesta</flux:label>
+                <flux:label>Duración propuesta</flux:label>
 
                 <div
                     x-data="{ val: $wire.duracionPropuestaMeses }"
@@ -178,12 +178,12 @@
                 <flux:button variant="primary" wire:click="guardarBorrador"
                     wire:loading.attr="disabled" wire:target="guardarBorrador">
                     <flux:icon wire:loading wire:target="guardarBorrador" name="arrow-path" class="animate-spin" />
-                    Guardar Borrador
+                    Guardar borrador
                 </flux:button>
                 <flux:button variant="primary" wire:click="enviarSolicitud"
                     wire:loading.attr="disabled" wire:target="enviarSolicitud">
                     <flux:icon wire:loading wire:target="enviarSolicitud" name="arrow-path" class="animate-spin" />
-                    Enviar para Revisión
+                    Enviar para revisión
                 </flux:button>
             </div>
             <flux:error name="solicitudId" />
@@ -194,7 +194,7 @@
     {{-- Especimenes solicitados --}}
     <div class="rounded-lg border border-border bg-surface shadow-sm p-5 space-y-4">
         <div class="flex items-center justify-between">
-            <flux:heading size="lg" level="2" class="font-display">Especimenes Solicitados</flux:heading>
+            <flux:heading size="lg" level="2" class="font-display">Especímenes solicitados</flux:heading>
             <flux:button size="sm" variant="ghost" icon="plus" wire:click="addItem">
                 Agregar espécimen
             </flux:button>
@@ -212,7 +212,7 @@
                 @foreach($items as $index => $item)
                     <div class="flex gap-3 items-end" wire:key="item-{{ $index }}">
                         <flux:field class="flex-1">
-                            <flux:label>Código de Espécimen</flux:label>
+                            <flux:label>Código de espécimen</flux:label>
                             <flux:input wire:model="items.{{ $index }}.especimen_codigo_externo"
                                 placeholder="Ej. MEPN-0001" />
                         </flux:field>

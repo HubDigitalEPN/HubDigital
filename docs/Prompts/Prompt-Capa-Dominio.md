@@ -4,6 +4,9 @@
 **Contexto del Proyecto:**
 Estoy trabajando en un sistema modular en PHP siguiendo estrictamente Clean Architecture y Domain-Driven Design (DDD). Utilizamos Behat para las pruebas de aceptación (BDD).
 
+**IMPORTANTISISMO: Actualmente primero debes revisar las capas de domain, application, infrastructure, por que puede (ojo, puede) que ya haya alguna otra feature ya desarollada, entonces puedes tomar ese codigo como referencia o en caso de que necesites mas contexto analizar ese codigo PERO NUNCA CAMBIARLO, y en caso de necesitar hacer un cambio en alguno de ellos avisarlo en el plan, por que puede que ya haya cosas implementadas, tu tienes que analizar y revisar en base a los insumos proporcionados y una breve revision del codigo de esta capa en especifico.**
+
+
 ### Insumos proporcionados:
 1.  **[Archivo .feature]: (OBLIGATORIO)** Es la única fuente de verdad. Define el comportamiento esperado del negocio.
 2.  **[Archivo *Context.php]: (REFERENCIA TÉCNICA)** Tómalo SOLO como una guía preliminar. **ADVERTENCIA CRÍTICA:** No debes seguir este archivo al pie de la letra. No contamines el Dominio creando métodos artificiales o constructores basura (ej. `crearIncompleta()`) solo para que los steps actuales del contexto no fallen. El Dominio dicta las reglas de negocio; los tests se adaptarán al Dominio más adelante.

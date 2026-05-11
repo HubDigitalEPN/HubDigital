@@ -1,7 +1,7 @@
 <div class="flex h-full w-full flex-1 flex-col gap-4 p-6">
 
     <div class="flex flex-col gap-1">
-        <h1 class="font-display text-2xl font-bold text-blue-navy">Panel del Curador</h1>
+        <h1 class="font-display text-2xl font-bold text-blue-navy">Panel del curador</h1>
         <p class="text-sm text-text-secondary">Bienvenido, {{ auth()->user()->name }}</p>
     </div>
 
@@ -12,8 +12,8 @@
                     <flux:icon name="inbox" variant="outline" class="size-5 text-science-blue" />
                 </div>
                 <div>
-                    <p class="text-xs text-text-secondary">Solicitudes Pendientes</p>
-                    <p class="text-xl font-semibold text-text-primary">—</p>
+                    <p class="text-xs text-text-secondary">Solicitudes pendientes</p>
+                    <p class="text-xl font-semibold text-text-primary">{{ $statSolicitudesPendientes }}</p>
                 </div>
             </div>
         </div>
@@ -25,7 +25,7 @@
                 </div>
                 <div>
                     <p class="text-xs text-text-secondary">Aprobadas</p>
-                    <p class="text-xl font-semibold text-text-primary">—</p>
+                    <p class="text-xl font-semibold text-text-primary">{{ $statAprobadas }}</p>
                 </div>
             </div>
         </div>
@@ -36,8 +36,8 @@
                     <flux:icon name="document-check" variant="outline" class="size-5 text-warning" />
                 </div>
                 <div>
-                    <p class="text-xs text-text-secondary">Actas por Validar</p>
-                    <p class="text-xl font-semibold text-text-primary">—</p>
+                    <p class="text-xs text-text-secondary">Actas por validar</p>
+                    <p class="text-xl font-semibold text-text-primary">{{ $statActasPorValidar }}</p>
                 </div>
             </div>
         </div>

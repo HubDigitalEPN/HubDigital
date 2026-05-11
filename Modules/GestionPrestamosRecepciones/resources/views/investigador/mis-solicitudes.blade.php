@@ -1,9 +1,9 @@
 <div class="p-6 space-y-6">
 
     <div class="flex items-center justify-between">
-        <flux:heading size="xl" level="1" class="font-display">Mis Solicitudes de Préstamo</flux:heading>
+        <flux:heading size="xl" level="1" class="font-display">Mis solicitudes de préstamo</flux:heading>
         <flux:button variant="primary" icon="plus" wire:navigate href="{{ route('prestamos.investigador.solicitud.crear') }}">
-            Nueva Solicitud
+            Nueva solicitud
         </flux:button>
     </div>
 
@@ -20,8 +20,8 @@
         <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
             <flux:table>
                 <flux:table.columns>
-                    <flux:table.column class="!ps-4">N.º Solicitud</flux:table.column>
-                    <flux:table.column>Título del Estudio</flux:table.column>
+                    <flux:table.column class="!ps-4">N.º solicitud</flux:table.column>
+                    <flux:table.column>Título del estudio</flux:table.column>
                     <flux:table.column>Estado</flux:table.column>
                     <flux:table.column>Fecha</flux:table.column>
                     <flux:table.column>Acciones</flux:table.column>
@@ -36,7 +36,13 @@
                                 {{ $solicitud->titulo_estudio }}
                             </flux:table.cell>
                             <flux:table.cell class="px-4 py-3">
-                                <x-gestionprestamosrecepciones::solicitud-status-badge :estado="$solicitud->estado" />
+                                @php $actaSolicitud = $actasPorSolicitud[$solicitud->id] ?? null; @endphp
+                                <div class="flex flex-col gap-1">
+                                    <x-gestionprestamosrecepciones::solicitud-status-badge :estado="$solicitud->estado" />
+                                    @if($actaSolicitud && in_array($actaSolicitud->estado, ['pendiente_firma', 'pendiente_validacion']))
+                                        <x-gestionprestamosrecepciones::acta-status-badge :estado="$actaSolicitud->estado" />
+                                    @endif
+                                </div>
                             </flux:table.cell>
                             <flux:table.cell class="px-4 py-3 text-xs text-text-secondary whitespace-nowrap">
                                 {{ $solicitud->created_at->format('d/m/Y') }}

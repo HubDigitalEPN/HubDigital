@@ -16,7 +16,7 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\ObservarSolicitudPr
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ObservarSolicitudPrestamo\ObservarSolicitudPrestamoInput;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\SolicitudPrestamoModel;
 
-#[Layout('layouts.app', params: ['title' => 'Revisar Solicitud'])]
+#[Layout('layouts.app', params: ['title' => 'Revisar solicitud'])]
 final class RevisarSolicitud extends Component
 {
     use HandlesDomainExceptions;
@@ -68,7 +68,7 @@ final class RevisarSolicitud extends Component
     public function aprobar(AprobarSolicitudPrestamoHandler $handler): void
     {
         $this->validate([
-            'tipoPrestamo'              => 'required|in:temporal,permanente',
+            'tipoPrestamo' => 'required|in:temporal,permanente',
             'duracionPersonalizadaMeses' => 'required|integer|min:1|max:60',
         ]);
 
@@ -82,11 +82,11 @@ final class RevisarSolicitud extends Component
         );
 
         $handler->handle(new AprobarSolicitudPrestamoInput(
-            solicitudId:         $this->id,
-            curadorId:           (string) auth()->id(),
-            tipoPrestamo:        $this->tipoPrestamo,
-            duracionMeses:       $duracion,
-            condicionesPorItem:  $condicionesPorItem,
+            solicitudId: $this->id,
+            curadorId: (string) auth()->id(),
+            tipoPrestamo: $this->tipoPrestamo,
+            duracionMeses: $duracion,
+            condicionesPorItem: $condicionesPorItem,
             condicionesGenerales: trim($this->condicionesGenerales) !== ''
                 ? trim($this->condicionesGenerales)
                 : null,
@@ -101,7 +101,7 @@ final class RevisarSolicitud extends Component
 
         $handler->handle(new ObservarSolicitudPrestamoInput(
             solicitudId: $this->id,
-            curadorId:   (string) auth()->id(),
+            curadorId: (string) auth()->id(),
             observacion: $this->motivoObservacion,
         ));
 
