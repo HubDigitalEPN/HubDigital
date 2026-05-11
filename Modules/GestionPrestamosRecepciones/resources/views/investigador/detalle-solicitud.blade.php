@@ -116,22 +116,33 @@
                             </div>
                         </dl>
 
-                        @if(in_array($acta->estado, ['pendiente_firma', 'pendiente_validacion']))
+                        @if($acta->estado === 'pendiente_envio')
+                            <flux:callout variant="info" icon="clock">
+                                El curador está preparando el acta de préstamo. Recibirás una notificación cuando esté lista para firmar.
+                            </flux:callout>
+                        @elseif($acta->estado === 'pendiente_firma' && $acta->motivo_devolucion)
+                            <flux:callout variant="warning" icon="arrow-uturn-left">
+                                <flux:heading size="sm">El acta fue devuelta para refirmar</flux:heading>
+                                <flux:text class="mt-1 text-sm">{{ $acta->motivo_devolucion }}</flux:text>
+                            </flux:callout>
+                        @elseif($acta->estado === 'pendiente_firma')
                             <flux:callout variant="info" icon="information-circle">
-                                @if($acta->estado === 'pendiente_firma')
-                                    El curador ha generado el acta. Descárgala, fírmala y sube el PDF firmado.
-                                @else
-                                    El acta firmada está en proceso de validación por el curador.
-                                @endif
+                                El acta está lista. Visualízala, imprímela, fírmala y sube el PDF firmado.
+                            </flux:callout>
+                        @elseif($acta->estado === 'pendiente_validacion')
+                            <flux:callout variant="info" icon="information-circle">
+                                El acta firmada está en proceso de validación por el curador.
+                            </flux:callout>
+                        @elseif($acta->estado === 'validada')
+                            <flux:callout variant="success" icon="check-circle">
+                                El acta ha sido validada. El préstamo está activo.
                             </flux:callout>
                         @endif
 
-                        @if($acta->pdf_ruta)
-                            <flux:button variant="ghost" icon="arrow-down-tray" size="sm"
-                                href="{{ Storage::url($acta->pdf_ruta) }}" target="_blank">
-                                Descargar Acta Original
-                            </flux:button>
-                        @endif
+                        <flux:button variant="ghost" icon="eye" size="sm"
+                            href="{{ route('prestamos.acta.ver', $acta->id) }}" target="_blank">
+                            Ver / Imprimir Acta
+                        </flux:button>
 
                         @if($acta->estado === 'pendiente_firma')
                             <flux:button variant="primary" icon="arrow-up-tray"
