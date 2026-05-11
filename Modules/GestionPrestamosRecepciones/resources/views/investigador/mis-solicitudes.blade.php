@@ -36,7 +36,13 @@
                                 {{ $solicitud->titulo_estudio }}
                             </flux:table.cell>
                             <flux:table.cell class="px-4 py-3">
-                                <x-gestionprestamosrecepciones::solicitud-status-badge :estado="$solicitud->estado" />
+                                @php $actaSolicitud = $actasPorSolicitud[$solicitud->id] ?? null; @endphp
+                                <div class="flex flex-col gap-1">
+                                    <x-gestionprestamosrecepciones::solicitud-status-badge :estado="$solicitud->estado" />
+                                    @if($actaSolicitud && in_array($actaSolicitud->estado, ['pendiente_firma', 'pendiente_validacion']))
+                                        <x-gestionprestamosrecepciones::acta-status-badge :estado="$actaSolicitud->estado" />
+                                    @endif
+                                </div>
                             </flux:table.cell>
                             <flux:table.cell class="px-4 py-3 text-xs text-text-secondary whitespace-nowrap">
                                 {{ $solicitud->created_at->format('d/m/Y') }}

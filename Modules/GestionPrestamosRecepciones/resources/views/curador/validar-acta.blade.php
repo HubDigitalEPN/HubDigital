@@ -33,17 +33,15 @@
         {{-- Comparación lado a lado de PDFs --}}
         <div class="grid gap-4 lg:grid-cols-2">
             <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
-                <div class="bg-bg-main px-4 py-2 border-b border-border">
+                <div class="bg-bg-main px-4 py-2 border-b border-border flex items-center justify-between">
                     <flux:text class="text-sm font-medium text-text-primary">Acta Original (generada)</flux:text>
+                    <flux:button size="xs" variant="ghost" icon="arrow-top-right-on-square"
+                        href="{{ route('prestamos.acta.ver', $acta->id) }}" target="_blank">
+                        Abrir
+                    </flux:button>
                 </div>
-                @if($acta->pdf_ruta)
-                    <iframe src="{{ Storage::url($acta->pdf_ruta) }}"
-                        class="w-full h-[600px]" title="Acta Original"></iframe>
-                @else
-                    <div class="flex items-center justify-center h-40 text-text-secondary text-sm">
-                        PDF no disponible
-                    </div>
-                @endif
+                <iframe src="{{ route('prestamos.acta.ver', $acta->id) }}"
+                    class="w-full h-[600px]" title="Acta Original"></iframe>
             </div>
 
             <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
@@ -51,7 +49,7 @@
                     <flux:text class="text-sm font-medium text-text-primary">Acta Firmada (por investigador)</flux:text>
                 </div>
                 @if($acta->pdf_firmado_ruta)
-                    <iframe src="{{ Storage::url($acta->pdf_firmado_ruta) }}"
+                    <iframe src="{{ route('prestamos.acta.pdf-firmado', $acta->id) }}"
                         class="w-full h-[600px]" title="Acta Firmada"></iframe>
                 @else
                     <div class="flex items-center justify-center h-40 text-text-secondary text-sm">

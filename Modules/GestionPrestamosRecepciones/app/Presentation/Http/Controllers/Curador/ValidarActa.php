@@ -52,11 +52,9 @@ final class ValidarActa extends Component
     {
         $this->validate(['motivoDevolucion' => 'required|string|min:10']);
 
-        $investigadorId = (string) $this->acta?->solicitud?->investigador_id;
-
         $handler->handle(new DevolverActaParaRefirmarInput(
             actaId: $this->id,
-            investigadorId: $investigadorId,
+            curadorId: (string) auth()->id(),
             motivo: $this->motivoDevolucion,
         ));
 

@@ -33,6 +33,7 @@ final class ActaPrestamo
         private readonly string $pdfRuta,
         private ?string $condicionesGenerales,
         private ?string $pdfFirmadoRuta,
+        private ?string $motivoDevolucion,
         private ?DateTimeImmutable $firmadaSubidaEn,
         private ?DateTimeImmutable $validadaEn,
         private ?string $validadaPor,
@@ -69,6 +70,7 @@ final class ActaPrestamo
             pdfRuta: $pdfRuta,
             condicionesGenerales: $condicionesGenerales,
             pdfFirmadoRuta: null,
+            motivoDevolucion: null,
             firmadaSubidaEn: null,
             validadaEn: null,
             validadaPor: null,
@@ -89,6 +91,7 @@ final class ActaPrestamo
         string $pdfRuta,
         ?string $condicionesGenerales,
         ?string $pdfFirmadoRuta,
+        ?string $motivoDevolucion,
         ?DateTimeImmutable $firmadaSubidaEn,
         ?DateTimeImmutable $validadaEn,
         ?string $validadaPor,
@@ -104,6 +107,7 @@ final class ActaPrestamo
             pdfRuta: $pdfRuta,
             condicionesGenerales: $condicionesGenerales,
             pdfFirmadoRuta: $pdfFirmadoRuta,
+            motivoDevolucion: $motivoDevolucion,
             firmadaSubidaEn: $firmadaSubidaEn,
             validadaEn: $validadaEn,
             validadaPor: $validadaPor,
@@ -191,6 +195,7 @@ final class ActaPrestamo
 
         $this->estado = EstadoActa::PendienteFirma;
         $this->pdfFirmadoRuta = null;
+        $this->motivoDevolucion = trim($motivo);
 
         $this->events[] = new ActaDevueltaPorFirmaInvalida(
             actaId: $this->id,
@@ -291,6 +296,11 @@ final class ActaPrestamo
     public function pdfFirmadoRuta(): ?string
     {
         return $this->pdfFirmadoRuta;
+    }
+
+    public function motivoDevolucion(): ?string
+    {
+        return $this->motivoDevolucion;
     }
 
     public function firmadaSubidaEn(): ?DateTimeImmutable
