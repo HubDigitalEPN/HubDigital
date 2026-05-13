@@ -14,6 +14,7 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Re
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\EntidadDepositante;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EntidadDepositanteRepositoryInterface;
 use Modules\InventarioGestionColeccion\Tests\Behat\Contexts\BaseContext;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryEntidadDepositanteRepository;
 use PHPUnit\Framework\Assert;
 
 final class GestionEntidadesDepositantesContext extends BaseContext
@@ -42,6 +43,9 @@ final class GestionEntidadesDepositantesContext extends BaseContext
 
     public function __construct()
     {
+        $entidadRepo = new InMemoryEntidadDepositanteRepository;
+        self::$app->instance(EntidadDepositanteRepositoryInterface::class, $entidadRepo);
+
         $this->registrarHandler = $this->make(RegistrarEntidadDepositanteHandler::class);
         $this->actualizarHandler = $this->make(ActualizarEntidadDepositanteHandler::class);
     }
