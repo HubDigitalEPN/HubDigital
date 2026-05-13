@@ -54,4 +54,16 @@ final class InMemoryTaxonRepository implements TaxonRepositoryInterface
     {
         return array_values($this->store);
     }
+
+    /**
+     * @param  string[]  $ids
+     * @return Taxon[]
+     */
+    public function buscarPorIds(array $ids): array
+    {
+        return array_values(array_filter(
+            $this->store,
+            fn (Taxon $t) => in_array((string) $t->id(), $ids, true)
+        ));
+    }
 }
