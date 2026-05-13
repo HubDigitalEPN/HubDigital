@@ -13,10 +13,10 @@ class Especimen
         private readonly EspecimenId $id,
         private readonly string $codigoCatalogo,
         private readonly string $taxonId,
-        private readonly string $localidad,
-        private readonly string $fechaColecta,
-        private readonly string $colector,
-        private readonly ?string $entidadDepositanteId,
+        private string $localidad,
+        private string $fechaColecta,
+        private string $colector,
+        private ?string $entidadDepositanteId,
         private EstadoEspecimen $estado,
     ) {}
 
@@ -61,6 +61,18 @@ class Especimen
             entidadDepositanteId: $entidadDepositanteId,
             estado: $estado,
         );
+    }
+
+    public function actualizar(
+        string $localidad,
+        string $fechaColecta,
+        string $colector,
+        ?string $entidadDepositanteId,
+    ): void {
+        $this->localidad = trim($localidad);
+        $this->fechaColecta = $fechaColecta;
+        $this->colector = trim($colector);
+        $this->entidadDepositanteId = $entidadDepositanteId;
     }
 
     public function marcarEnPrestamo(): void
