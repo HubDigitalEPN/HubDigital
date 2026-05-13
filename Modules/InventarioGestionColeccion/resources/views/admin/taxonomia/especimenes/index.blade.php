@@ -77,7 +77,7 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-border">
-                    @forelse($especimenes as $especimen)
+                    @forelse($especimenesPaginados as $especimen)
                         <tr class="hover:bg-bg-main transition-colors">
                             <td class="px-4 py-3 font-medium text-text-primary">{{ $especimen['codigoCatalogo'] }}</td>
                             <td class="px-4 py-3 text-text-secondary text-xs font-serif italic">{{ $especimen['taxonId'] }}</td>
@@ -103,6 +103,13 @@
                     @endforelse
                 </tbody>
             </table>
+            <x-inventariogestioncoleccion::paginacion-tabla
+                :pagina="$page"
+                :total-paginas="$totalPaginas"
+                :total-items="$totalItems"
+                :inicio="$inicio"
+                :fin="$fin"
+            />
         </div>
     @endif
 

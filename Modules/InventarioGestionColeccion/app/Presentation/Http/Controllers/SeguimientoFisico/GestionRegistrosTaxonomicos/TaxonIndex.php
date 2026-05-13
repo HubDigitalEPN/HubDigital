@@ -22,6 +22,10 @@ final class TaxonIndex extends Component
 
     public array $rangos = [];
 
+    public int $page = 1;
+
+    public int $perPage = 15;
+
     public bool $showModal = false;
 
     #[Rule('required|string|max:255')]
@@ -137,8 +141,28 @@ final class TaxonIndex extends Component
         }
     }
 
+    public function nextPage(): void
+    {
+        if ($this->page < (int) ceil(count($this->taxones) / $this->perPage)) {
+            $this->page++;
+        }
+    }
+
+    public function prevPage(): void
+    {
+        if ($this->page > 1) {
+            $this->page--;
+        }
+    }
+
+    public function goToPage(int $p): void
+    {
+        $this->page = max(1, min($p, (int) ceil(count($this->taxones) / $this->perPage)));
+    }
+
     private function cargarTaxones(ListarTaxonesHandler $handler): void
     {
+        $this->page = 1;
         $output = $handler->handle();
         $this->taxones = array_map(
             fn ($t) => [
@@ -156,6 +180,16 @@ final class TaxonIndex extends Component
 
     public function render(): View
     {
-        return view('inventariogestioncoleccion::admin.taxonomia.taxones.index');
+        $total = count($this->taxones);
+        $totalPaginas = $total > 0 ? (int) ceil($total / $this->perPage) : 1;
+        $offset = ($this->page - 1) * $this->perPage;
+
+        return view('inventariogestioncoleccion::admin.taxonomia.taxones.index', [
+            'taxonesPaginados' => array_slice($this->taxones, $offset, $this->perPage),
+            'totalPaginas' => $totalPaginas,
+            'totalItems' => $total,
+            'inicio' => $total > 0 ? $offset + 1 : 0,
+            'fin' => min($offset + $this->perPage, $total),
+        ]);
     }
 }
