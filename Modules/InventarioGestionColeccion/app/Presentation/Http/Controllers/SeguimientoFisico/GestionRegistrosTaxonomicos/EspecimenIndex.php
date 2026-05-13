@@ -8,6 +8,8 @@ use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Rule;
 use Livewire\Component;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarEspecimen\ActualizarEspecimenHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarEspecimen\ActualizarEspecimenInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\BuscarEspecimenes\BuscarEspecimenesHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\BuscarEspecimenes\BuscarEspecimenesInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarEntidadesDepositantes\ListarEntidadesDepositantesHandler;
@@ -58,6 +60,23 @@ final class EspecimenIndex extends Component
     public string $colector = '';
 
     public string $entidadDepositanteId = '';
+
+    // ── Edición ───────────────────────────────────────────────────────────────
+
+    public bool $showEditModal = false;
+
+    public string $editandoId = '';
+
+    #[Rule('required|string|max:255')]
+    public string $editLocalidad = '';
+
+    #[Rule('required|date_format:Y-m-d')]
+    public string $editFechaColecta = '';
+
+    #[Rule('required|string|max:255')]
+    public string $editColector = '';
+
+    public string $editEntidadDepositanteId = '';
 
     // ── Feedback ──────────────────────────────────────────────────────────────
 
@@ -115,6 +134,46 @@ final class EspecimenIndex extends Component
             if ($this->buscado) {
                 $this->errorMessage = null;
             }
+        } catch (\Throwable $e) {
+            $this->errorMessage = $e->getMessage();
+        }
+    }
+
+    public function abrirEditModal(string $id): void
+    {
+        $especimen = collect($this->especimenes)->firstWhere('id', $id);
+
+        if ($especimen === null) {
+            return;
+        }
+
+        $this->editandoId = $id;
+        $this->editLocalidad = $especimen['localidad'];
+        $this->editFechaColecta = $especimen['fechaColecta'];
+        $this->editColector = $especimen['colector'];
+        $this->editEntidadDepositanteId = '';
+        $this->errorMessage = null;
+        $this->showEditModal = true;
+    }
+
+    public function actualizarEspecimen(ActualizarEspecimenHandler $handler): void
+    {
+        $this->validateOnly('editLocalidad');
+        $this->validateOnly('editFechaColecta');
+        $this->validateOnly('editColector');
+
+        try {
+            $handler->handle(new ActualizarEspecimenInput(
+                especimenId: $this->editandoId,
+                localidad: $this->editLocalidad,
+                fechaColecta: $this->editFechaColecta,
+                colector: $this->editColector,
+                entidadDepositanteId: $this->editEntidadDepositanteId !== '' ? $this->editEntidadDepositanteId : null,
+            ));
+
+            $this->showEditModal = false;
+            $this->successMessage = 'Especímen actualizado correctamente.';
+            $this->errorMessage = null;
         } catch (\Throwable $e) {
             $this->errorMessage = $e->getMessage();
         }
