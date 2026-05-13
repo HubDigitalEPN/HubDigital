@@ -29,7 +29,7 @@
                 </tr>
             </thead>
             <tbody class="divide-y divide-border">
-                @forelse($entidades as $entidad)
+                @forelse($entidadesPaginadas as $entidad)
                     <tr class="hover:bg-bg-main transition-colors">
                         <td class="px-4 py-3 font-medium text-text-primary">{{ $entidad['nombre'] }}</td>
                         <td class="px-4 py-3">
@@ -74,6 +74,13 @@
                 @endforelse
             </tbody>
         </table>
+        <x-inventariogestioncoleccion::paginacion-tabla
+            :pagina="$page"
+            :total-paginas="$totalPaginas"
+            :total-items="$totalItems"
+            :inicio="$inicio"
+            :fin="$fin"
+        />
     </div>
 
     {{-- Modal: Registrar entidad --}}

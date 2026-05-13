@@ -24,6 +24,10 @@ final class EntidadDepositanteIndex extends Component
 
     public array $tipos = [];
 
+    public int $page = 1;
+
+    public int $perPage = 15;
+
     public bool $showModal = false;
 
     #[Rule('required|string|max:255')]
@@ -160,8 +164,28 @@ final class EntidadDepositanteIndex extends Component
         }
     }
 
+    public function nextPage(): void
+    {
+        if ($this->page < (int) ceil(count($this->entidades) / $this->perPage)) {
+            $this->page++;
+        }
+    }
+
+    public function prevPage(): void
+    {
+        if ($this->page > 1) {
+            $this->page--;
+        }
+    }
+
+    public function goToPage(int $p): void
+    {
+        $this->page = max(1, min($p, (int) ceil(count($this->entidades) / $this->perPage)));
+    }
+
     private function cargarEntidades(ListarEntidadesDepositantesHandler $handler): void
     {
+        $this->page = 1;
         $output = $handler->handle();
         $this->entidades = array_map(
             fn ($e) => [
@@ -176,6 +200,16 @@ final class EntidadDepositanteIndex extends Component
 
     public function render(): View
     {
-        return view('inventariogestioncoleccion::admin.taxonomia.entidades.index');
+        $total = count($this->entidades);
+        $totalPaginas = $total > 0 ? (int) ceil($total / $this->perPage) : 1;
+        $offset = ($this->page - 1) * $this->perPage;
+
+        return view('inventariogestioncoleccion::admin.taxonomia.entidades.index', [
+            'entidadesPaginadas' => array_slice($this->entidades, $offset, $this->perPage),
+            'totalPaginas' => $totalPaginas,
+            'totalItems' => $total,
+            'inicio' => $total > 0 ? $offset + 1 : 0,
+            'fin' => min($offset + $this->perPage, $total),
+        ]);
     }
 }
