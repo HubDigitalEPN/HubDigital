@@ -24,6 +24,10 @@ final class EspecimenIndex extends Component
 
     public bool $buscado = false;
 
+    public int $page = 1;
+
+    public int $perPage = 15;
+
     #[Rule('required|string|in:taxon,localidad,estado')]
     public string $criterio = 'taxon';
 
@@ -116,6 +120,25 @@ final class EspecimenIndex extends Component
         }
     }
 
+    public function nextPage(): void
+    {
+        if ($this->page < (int) ceil(count($this->especimenes) / $this->perPage)) {
+            $this->page++;
+        }
+    }
+
+    public function prevPage(): void
+    {
+        if ($this->page > 1) {
+            $this->page--;
+        }
+    }
+
+    public function goToPage(int $p): void
+    {
+        $this->page = max(1, min($p, (int) ceil(count($this->especimenes) / $this->perPage)));
+    }
+
     public function buscar(BuscarEspecimenesHandler $handler): void
     {
         $this->validate([
@@ -131,6 +154,7 @@ final class EspecimenIndex extends Component
 
             $this->especimenes = $output->items;
             $this->buscado = true;
+            $this->page = 1;
             $this->errorMessage = null;
         } catch (\Throwable $e) {
             $this->errorMessage = $e->getMessage();
@@ -139,13 +163,23 @@ final class EspecimenIndex extends Component
 
     public function limpiar(): void
     {
-        $this->reset('criterio', 'valor', 'especimenes', 'buscado', 'errorMessage', 'successMessage');
+        $this->reset('criterio', 'valor', 'especimenes', 'buscado', 'errorMessage', 'successMessage', 'page');
         $this->resetValidation();
         $this->criterio = 'taxon';
     }
 
     public function render(): View
     {
-        return view('inventariogestioncoleccion::admin.taxonomia.especimenes.index');
+        $total = count($this->especimenes);
+        $totalPaginas = $total > 0 ? (int) ceil($total / $this->perPage) : 1;
+        $offset = ($this->page - 1) * $this->perPage;
+
+        return view('inventariogestioncoleccion::admin.taxonomia.especimenes.index', [
+            'especimenesPaginados' => array_slice($this->especimenes, $offset, $this->perPage),
+            'totalPaginas' => $totalPaginas,
+            'totalItems' => $total,
+            'inicio' => $total > 0 ? $offset + 1 : 0,
+            'fin' => min($offset + $this->perPage, $total),
+        ]);
     }
 }

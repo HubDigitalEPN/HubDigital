@@ -31,7 +31,7 @@
                 </tr>
             </thead>
             <tbody class="divide-y divide-border">
-                @forelse($taxones as $taxon)
+                @forelse($taxonesPaginados as $taxon)
                     <tr class="hover:bg-bg-main transition-colors">
                         <td class="px-4 py-3 font-medium text-text-primary font-serif italic">{{ $taxon['nombreCientifico'] }}</td>
                         <td class="px-4 py-3 text-text-primary capitalize">{{ $taxon['rango'] }}</td>
@@ -64,6 +64,13 @@
                 @endforelse
             </tbody>
         </table>
+        <x-inventariogestioncoleccion::paginacion-tabla
+            :pagina="$page"
+            :total-paginas="$totalPaginas"
+            :total-items="$totalItems"
+            :inicio="$inicio"
+            :fin="$fin"
+        />
     </div>
 
     {{-- Modal: Registrar taxón --}}
