@@ -1,6 +1,10 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\ActaEntregaController;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\EntidadDepositanteController;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\EspecimenController;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\TaxonController;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\SeguimientoFisicoController;
 
 Route::middleware(['auth:sanctum'])->prefix('v1')->group(function (): void {
@@ -10,8 +14,32 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function (): void {
         ->prefix('seguimiento-fisico')
         ->name('api.v1.seguimiento-fisico.')
         ->group(function (): void {
-            // ESP32: evento con tag_uid + gabinete_id + slot_index (backend resuelve IDs)
             Route::post('eventos', [SeguimientoFisicoController::class, 'procesarEvento'])
                 ->name('eventos');
+        });
+
+    // --- Gestión de registros taxonómicos ---
+    Route::prefix('taxonomia')
+        ->name('api.v1.taxonomia.')
+        ->group(function (): void {
+            // Taxones
+            Route::post('taxones', [TaxonController::class, 'registrar'])
+                ->name('taxones.registrar');
+            Route::put('taxones/{id}', [TaxonController::class, 'actualizar'])
+                ->name('taxones.actualizar');
+
+            // Especímenes
+            Route::get('especimenes', [EspecimenController::class, 'buscar'])
+                ->name('especimenes.buscar');
+
+            // Entidades depositantes
+            Route::post('entidades-depositantes', [EntidadDepositanteController::class, 'registrar'])
+                ->name('entidades-depositantes.registrar');
+            Route::put('entidades-depositantes/{id}', [EntidadDepositanteController::class, 'actualizar'])
+                ->name('entidades-depositantes.actualizar');
+
+            // Acta de entrega
+            Route::post('entidades-depositantes/{entidadId}/actas', [ActaEntregaController::class, 'generar'])
+                ->name('entidades-depositantes.actas.generar');
         });
 });

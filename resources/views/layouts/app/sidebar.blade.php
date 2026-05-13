@@ -60,6 +60,32 @@
                                 Préstamos
                             </flux:sidebar.item>
                         </flux:sidebar.group>
+                        <flux:sidebar.group heading="Inventario" class="grid">
+                            <flux:sidebar.item
+                                icon="magnifying-glass"
+                                :href="route('inventario.taxonomia.especimenes')"
+                                :current="request()->routeIs('inventario.taxonomia.especimenes')"
+                                wire:navigate
+                            >
+                                Especímenes
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="tag"
+                                :href="route('inventario.taxonomia.taxones')"
+                                :current="request()->routeIs('inventario.taxonomia.taxones')"
+                                wire:navigate
+                            >
+                                Taxones
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="building-library"
+                                :href="route('inventario.taxonomia.entidades-depositantes')"
+                                :current="request()->routeIs('inventario.taxonomia.entidades-depositantes')"
+                                wire:navigate
+                            >
+                                Entidades Depositantes
+                            </flux:sidebar.item>
+                        </flux:sidebar.group>
                         <flux:sidebar.group heading="Inventario IoT" class="grid">
                             <flux:sidebar.item
                                 icon="chart-bar"
