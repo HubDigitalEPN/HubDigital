@@ -9,6 +9,9 @@ use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\Seguimiento
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Admin\GabineteIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Admin\GabineteShow;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Admin\HorarioSettingsForm;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\EntidadDepositanteIndex;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\EspecimenIndex;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\TaxonIndex;
 
 Route::middleware(['web', 'auth', 'verified', 'role:curador'])
     ->prefix('inventario')
@@ -20,4 +23,10 @@ Route::middleware(['web', 'auth', 'verified', 'role:curador'])
         Route::get('/cajas', CajaIndex::class)->name('cajas');
         Route::get('/alertas', AlertaIndex::class)->name('alertas');
         Route::get('/horario', HorarioSettingsForm::class)->name('horario');
+
+        Route::prefix('taxonomia')->name('taxonomia.')->group(function () {
+            Route::get('/taxones', TaxonIndex::class)->name('taxones');
+            Route::get('/especimenes', EspecimenIndex::class)->name('especimenes');
+            Route::get('/entidades-depositantes', EntidadDepositanteIndex::class)->name('entidades-depositantes');
+        });
     });
