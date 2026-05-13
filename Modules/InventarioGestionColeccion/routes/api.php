@@ -29,6 +29,8 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function (): void {
                 ->name('taxones.actualizar');
 
             // Especímenes
+            Route::post('especimenes', [EspecimenController::class, 'registrar'])
+                ->name('especimenes.registrar');
             Route::get('especimenes', [EspecimenController::class, 'buscar'])
                 ->name('especimenes.buscar');
 
