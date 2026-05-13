@@ -17,6 +17,17 @@ final class ListarTaxonesHandler
     {
         $taxones = $this->taxonRepo->buscarTodos();
 
+        $padreIds = array_values(array_unique(array_filter(
+            array_map(fn (Taxon $t) => $t->padreId() !== null ? (string) $t->padreId() : null, $taxones)
+        )));
+
+        $padresMap = [];
+        if ($padreIds !== []) {
+            foreach ($this->taxonRepo->buscarPorIds($padreIds) as $padre) {
+                $padresMap[(string) $padre->id()] = $padre->nombreCientifico();
+            }
+        }
+
         $items = array_map(
             fn (Taxon $t) => new ListarTaxonesItemOutput(
                 id: (string) $t->id(),
@@ -26,6 +37,7 @@ final class ListarTaxonesHandler
                 anioDescripcion: $t->anioDescripcion(),
                 estado: $t->estado()->value,
                 padreId: $t->padreId() !== null ? (string) $t->padreId() : null,
+                padreNombre: $t->padreId() !== null ? ($padresMap[(string) $t->padreId()] ?? null) : null,
             ),
             $taxones,
         );

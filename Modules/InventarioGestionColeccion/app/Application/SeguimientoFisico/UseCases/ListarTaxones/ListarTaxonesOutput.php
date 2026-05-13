@@ -14,6 +14,7 @@ final readonly class ListarTaxonesItemOutput
         public int $anioDescripcion,
         public string $estado,
         public ?string $padreId,
+        public ?string $padreNombre,
     ) {}
 }
 
