@@ -74,13 +74,14 @@
                         <th class="px-4 py-3 text-left font-medium text-white">Fecha Colecta</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Colector</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Estado</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">Acciones</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-border">
                     @forelse($especimenesPaginados as $especimen)
                         <tr class="hover:bg-bg-main transition-colors">
                             <td class="px-4 py-3 font-medium text-text-primary">{{ $especimen['codigoCatalogo'] }}</td>
-                            <td class="px-4 py-3 text-text-secondary text-xs font-serif italic">{{ $especimen['taxonId'] }}</td>
+                            <td class="px-4 py-3 text-text-secondary text-xs font-serif italic">{{ $especimen['taxonNombre'] ?? $especimen['taxonId'] }}</td>
                             <td class="px-4 py-3 text-text-primary">{{ $especimen['localidad'] }}</td>
                             <td class="px-4 py-3 text-text-primary">{{ $especimen['fechaColecta'] }}</td>
                             <td class="px-4 py-3 text-text-primary">{{ $especimen['colector'] }}</td>
@@ -93,10 +94,22 @@
                                     {{ ucfirst(str_replace('_', ' ', $especimen['estado'])) }}
                                 </span>
                             </td>
+                            <td class="px-4 py-3">
+                                @if($especimen['estado'] === 'disponible')
+                                    <flux:button
+                                        size="sm"
+                                        variant="ghost"
+                                        icon="pencil"
+                                        wire:click="abrirEditModal('{{ $especimen['id'] }}')"
+                                    >
+                                        Editar
+                                    </flux:button>
+                                @endif
+                            </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-4 py-8 text-center text-text-secondary">
+                            <td colspan="7" class="px-4 py-8 text-center text-text-secondary">
                                 No se encontraron especímenes con los criterios especificados.
                             </td>
                         </tr>
@@ -176,6 +189,55 @@
                 <flux:button variant="primary" wire:click="registrarEspecimen" wire:loading.attr="disabled">
                     <span wire:loading.remove wire:target="registrarEspecimen">Registrar</span>
                     <span wire:loading wire:target="registrarEspecimen">Registrando...</span>
+                </flux:button>
+            </div>
+        </div>
+    </flux:modal>
+
+    {{-- Modal: Editar especímen --}}
+    <flux:modal wire:model="showEditModal" class="w-full max-w-xl">
+        <div class="space-y-4 p-1">
+            <flux:heading size="lg" class="text-text-primary">Editar Especímen</flux:heading>
+
+            @if($errorMessage)
+                <flux:callout variant="danger">{{ $errorMessage }}</flux:callout>
+            @endif
+
+            <flux:field>
+                <flux:label>Localidad</flux:label>
+                <flux:input wire:model="editLocalidad" placeholder="Ej. Pichincha, Ecuador" />
+                <flux:error name="editLocalidad" />
+            </flux:field>
+
+            <flux:field>
+                <flux:label>Fecha de Colecta</flux:label>
+                <flux:input type="date" wire:model="editFechaColecta" />
+                <flux:error name="editFechaColecta" />
+            </flux:field>
+
+            <flux:field>
+                <flux:label>Colector</flux:label>
+                <flux:input wire:model="editColector" placeholder="Nombre del colector" />
+                <flux:error name="editColector" />
+            </flux:field>
+
+            <flux:field>
+                <flux:label>Entidad Depositante (opcional)</flux:label>
+                <flux:select wire:model="editEntidadDepositanteId">
+                    <option value="">Sin entidad depositante</option>
+                    @foreach($entidades as $entidad)
+                        <option value="{{ $entidad['id'] }}">{{ $entidad['label'] }}</option>
+                    @endforeach
+                </flux:select>
+            </flux:field>
+
+            <div class="flex justify-end gap-3 pt-2">
+                <flux:button variant="ghost" wire:click="$set('showEditModal', false)">
+                    Cancelar
+                </flux:button>
+                <flux:button variant="primary" wire:click="actualizarEspecimen" wire:loading.attr="disabled">
+                    <span wire:loading.remove wire:target="actualizarEspecimen">Guardar</span>
+                    <span wire:loading wire:target="actualizarEspecimen">Guardando...</span>
                 </flux:button>
             </div>
         </div>
