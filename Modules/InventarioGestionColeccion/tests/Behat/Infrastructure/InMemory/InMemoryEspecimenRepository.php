@@ -65,6 +65,17 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
         ));
     }
 
+    public function buscarPorCodigoCatalogo(string $codigo): ?Especimen
+    {
+        foreach ($this->store as $especimen) {
+            if ($especimen->codigoCatalogo() === $codigo) {
+                return $especimen;
+            }
+        }
+
+        return null;
+    }
+
     /** @return Especimen[] */
     public function buscarTodos(): array
     {
