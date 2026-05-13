@@ -24,11 +24,23 @@ final class BuscarEspecimenesHandler
             default => [],
         };
 
+        $taxonIds = array_values(array_unique(
+            array_map(fn (Especimen $e) => $e->taxonId(), $especimenes)
+        ));
+
+        $taxonesMap = [];
+        if ($taxonIds !== []) {
+            foreach ($this->taxonRepo->buscarPorIds($taxonIds) as $taxon) {
+                $taxonesMap[(string) $taxon->id()] = $taxon->nombreCientifico();
+            }
+        }
+
         return new BuscarEspecimenesOutput(
             items: array_map(fn (Especimen $e) => [
                 'id' => (string) $e->id(),
                 'codigoCatalogo' => $e->codigoCatalogo(),
                 'taxonId' => $e->taxonId(),
+                'taxonNombre' => $taxonesMap[$e->taxonId()] ?? $e->taxonId(),
                 'localidad' => $e->localidad(),
                 'fechaColecta' => $e->fechaColecta(),
                 'colector' => $e->colector(),
