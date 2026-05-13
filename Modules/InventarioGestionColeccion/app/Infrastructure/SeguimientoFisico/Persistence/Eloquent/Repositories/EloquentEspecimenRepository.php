@@ -77,6 +77,13 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
             ->all();
     }
 
+    public function buscarPorCodigoCatalogo(string $codigo): ?Especimen
+    {
+        $model = EspecimenEloquentModel::where('codigo_catalogo', $codigo)->first();
+
+        return $model ? $this->toDomain($model) : null;
+    }
+
     /** @return Especimen[] */
     public function buscarTodos(): array
     {
