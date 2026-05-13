@@ -24,6 +24,7 @@
                 <tr>
                     <th class="px-4 py-3 text-left font-medium text-white">Nombre Científico</th>
                     <th class="px-4 py-3 text-left font-medium text-white">Rango</th>
+                    <th class="px-4 py-3 text-left font-medium text-white">Taxón Padre</th>
                     <th class="px-4 py-3 text-left font-medium text-white">Autor</th>
                     <th class="px-4 py-3 text-left font-medium text-white">Año</th>
                     <th class="px-4 py-3 text-left font-medium text-white">Estado</th>
@@ -35,6 +36,9 @@
                     <tr class="hover:bg-bg-main transition-colors">
                         <td class="px-4 py-3 font-medium text-text-primary font-serif italic">{{ $taxon['nombreCientifico'] }}</td>
                         <td class="px-4 py-3 text-text-primary capitalize">{{ $taxon['rango'] }}</td>
+                        <td class="px-4 py-3 text-text-secondary text-xs font-serif italic">
+                            {{ $taxon['padreNombre'] ?? '—' }}
+                        </td>
                         <td class="px-4 py-3 text-text-primary">{{ $taxon['autor'] }}</td>
                         <td class="px-4 py-3 text-text-primary">{{ $taxon['anioDescripcion'] }}</td>
                         <td class="px-4 py-3">
@@ -44,7 +48,7 @@
                                 <span class="inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold bg-border text-text-primary">Inactivo</span>
                             @endif
                         </td>
-                        <td class="px-4 py-3">
+                        <td class="px-4 py-3 flex items-center gap-2">
                             <flux:button
                                 size="sm"
                                 variant="ghost"
@@ -53,6 +57,17 @@
                             >
                                 Editar
                             </flux:button>
+                            @if($taxon['estado'] === 'activo')
+                                <flux:button
+                                    size="sm"
+                                    variant="ghost"
+                                    icon="x-circle"
+                                    wire:click="desactivarTaxon('{{ $taxon['id'] }}')"
+                                    wire:confirm="¿Desactivar este taxón?"
+                                >
+                                    Desactivar
+                                </flux:button>
+                            @endif
                         </td>
                     </tr>
                 @empty

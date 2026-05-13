@@ -10,6 +10,8 @@ use Livewire\Attributes\Rule;
 use Livewire\Component;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarTaxon\ActualizarTaxonHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarTaxon\ActualizarTaxonInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\DesactivarTaxon\DesactivarTaxonHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\DesactivarTaxon\DesactivarTaxonInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarTaxones\ListarTaxonesHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarTaxon\RegistrarTaxonHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarTaxon\RegistrarTaxonInput;
@@ -141,6 +143,21 @@ final class TaxonIndex extends Component
         }
     }
 
+    public function desactivarTaxon(
+        string $id,
+        DesactivarTaxonHandler $desactivarHandler,
+        ListarTaxonesHandler $listarHandler,
+    ): void {
+        try {
+            $desactivarHandler->handle(new DesactivarTaxonInput(taxonId: $id));
+            $this->cargarTaxones($listarHandler);
+            $this->successMessage = 'Taxón desactivado correctamente.';
+            $this->errorMessage = null;
+        } catch (\Throwable $e) {
+            $this->errorMessage = $e->getMessage();
+        }
+    }
+
     public function nextPage(): void
     {
         if ($this->page < (int) ceil(count($this->taxones) / $this->perPage)) {
@@ -173,6 +190,7 @@ final class TaxonIndex extends Component
                 'anioDescripcion' => $t->anioDescripcion,
                 'estado' => $t->estado,
                 'padreId' => $t->padreId,
+                'padreNombre' => $t->padreNombre,
             ],
             $output->items,
         );
