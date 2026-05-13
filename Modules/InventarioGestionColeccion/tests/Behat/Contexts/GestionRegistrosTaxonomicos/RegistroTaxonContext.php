@@ -15,6 +15,7 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Taxon;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\TaxonRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoTaxon;
 use Modules\InventarioGestionColeccion\Tests\Behat\Contexts\BaseContext;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryTaxonRepository;
 use PHPUnit\Framework\Assert;
 
 final class RegistroTaxonContext extends BaseContext
@@ -44,6 +45,9 @@ final class RegistroTaxonContext extends BaseContext
 
     public function __construct()
     {
+        $taxonRepo = new InMemoryTaxonRepository;
+        self::$app->instance(TaxonRepositoryInterface::class, $taxonRepo);
+
         $this->registrarHandler = $this->make(RegistrarTaxonHandler::class);
         $this->actualizarHandler = $this->make(ActualizarTaxonHandler::class);
     }

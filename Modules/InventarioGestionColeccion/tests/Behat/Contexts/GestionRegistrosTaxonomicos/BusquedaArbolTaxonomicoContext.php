@@ -14,6 +14,8 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Taxon;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\TaxonRepositoryInterface;
 use Modules\InventarioGestionColeccion\Tests\Behat\Contexts\BaseContext;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryEspecimenRepository;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryTaxonRepository;
 use PHPUnit\Framework\Assert;
 
 final class BusquedaArbolTaxonomicoContext extends BaseContext
@@ -32,6 +34,11 @@ final class BusquedaArbolTaxonomicoContext extends BaseContext
 
     public function __construct()
     {
+        $taxonRepo = new InMemoryTaxonRepository;
+        $especimenRepo = new InMemoryEspecimenRepository;
+        self::$app->instance(TaxonRepositoryInterface::class, $taxonRepo);
+        self::$app->instance(EspecimenRepositoryInterface::class, $especimenRepo);
+
         $this->buscarHandler = $this->make(BuscarEspecimenesHandler::class);
     }
 
@@ -108,21 +115,6 @@ final class BusquedaArbolTaxonomicoContext extends BaseContext
     // =========================================================================
     // ESCENARIO: Búsqueda sin resultados
     // =========================================================================
-
-    #[When('se busca por taxon con el valor :valor')]
-    public function seBuscaPorTaxonConElValor(string $valor): void
-    {
-        try {
-            $this->ultimaRespuesta = $this->buscarHandler->handle(
-                new BuscarEspecimenesInput(
-                    criterio: 'taxon',
-                    valor: $valor,
-                )
-            );
-        } catch (\Throwable $e) {
-            $this->excepcionCapturada = $e;
-        }
-    }
 
     #[Then('el sistema retorna una lista vacía sin error')]
     public function elSistemaRetornaUnaListaVaciaSinError(): void
