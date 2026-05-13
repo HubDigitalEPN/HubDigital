@@ -28,6 +28,8 @@ interface EspecimenRepositoryInterface
      *  @return Especimen[] */
     public function buscarPorTaxonIds(array $taxonIds): array;
 
+    public function buscarPorCodigoCatalogo(string $codigo): ?Especimen;
+
     /** @return Especimen[] */
     public function buscarTodos(): array;
 }
