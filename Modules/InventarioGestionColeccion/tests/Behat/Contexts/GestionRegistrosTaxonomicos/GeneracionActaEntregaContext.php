@@ -7,6 +7,7 @@ namespace Modules\InventarioGestionColeccion\Tests\Behat\Contexts\GestionRegistr
 use Behat\Step\Given;
 use Behat\Step\Then;
 use Behat\Step\When;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\GeneradorActaPdfPort;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\GenerarActaEntrega\GenerarActaEntregaHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\GenerarActaEntrega\GenerarActaEntregaInput;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\EntidadDepositante;
@@ -17,6 +18,10 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\Esp
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\TaxonRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoEspecimen;
 use Modules\InventarioGestionColeccion\Tests\Behat\Contexts\BaseContext;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\Fakes\FakeGeneradorActaPdfAdapter;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryEntidadDepositanteRepository;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryEspecimenRepository;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryTaxonRepository;
 use PHPUnit\Framework\Assert;
 
 final class GeneracionActaEntregaContext extends BaseContext
@@ -37,6 +42,16 @@ final class GeneracionActaEntregaContext extends BaseContext
 
     public function __construct()
     {
+        $taxonRepo = new InMemoryTaxonRepository;
+        $especimenRepo = new InMemoryEspecimenRepository;
+        $entidadRepo = new InMemoryEntidadDepositanteRepository;
+        $fakePdf = new FakeGeneradorActaPdfAdapter;
+
+        self::$app->instance(TaxonRepositoryInterface::class, $taxonRepo);
+        self::$app->instance(EspecimenRepositoryInterface::class, $especimenRepo);
+        self::$app->instance(EntidadDepositanteRepositoryInterface::class, $entidadRepo);
+        self::$app->instance(GeneradorActaPdfPort::class, $fakePdf);
+
         $this->generarActaHandler = $this->make(GenerarActaEntregaHandler::class);
     }
 

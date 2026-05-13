@@ -12,6 +12,7 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Re
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Taxon;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\TaxonRepositoryInterface;
 use Modules\InventarioGestionColeccion\Tests\Behat\Contexts\BaseContext;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryTaxonRepository;
 use PHPUnit\Framework\Assert;
 
 final class UnicidadNomenclaturaContext extends BaseContext
@@ -32,6 +33,9 @@ final class UnicidadNomenclaturaContext extends BaseContext
 
     public function __construct()
     {
+        $taxonRepo = new InMemoryTaxonRepository;
+        self::$app->instance(TaxonRepositoryInterface::class, $taxonRepo);
+
         $this->registrarHandler = $this->make(RegistrarTaxonHandler::class);
     }
 
