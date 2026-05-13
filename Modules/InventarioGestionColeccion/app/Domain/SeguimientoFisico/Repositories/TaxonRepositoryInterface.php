@@ -23,4 +23,10 @@ interface TaxonRepositoryInterface
 
     /** @return Taxon[] */
     public function buscarTodos(): array;
+
+    /**
+     * @param  string[]  $ids
+     * @return Taxon[]
+     */
+    public function buscarPorIds(array $ids): array;
 }
