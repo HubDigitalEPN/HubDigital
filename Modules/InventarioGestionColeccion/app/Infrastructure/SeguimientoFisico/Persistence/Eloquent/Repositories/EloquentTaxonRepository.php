@@ -66,6 +66,18 @@ class EloquentTaxonRepository implements TaxonRepositoryInterface
             ->all();
     }
 
+    /**
+     * @param  string[]  $ids
+     * @return Taxon[]
+     */
+    public function buscarPorIds(array $ids): array
+    {
+        return TaxonEloquentModel::whereIn('id', $ids)
+            ->get()
+            ->map(fn ($m) => $this->toDomain($m))
+            ->all();
+    }
+
     private function toDomain(TaxonEloquentModel $model): Taxon
     {
         return Taxon::reconstituir(
