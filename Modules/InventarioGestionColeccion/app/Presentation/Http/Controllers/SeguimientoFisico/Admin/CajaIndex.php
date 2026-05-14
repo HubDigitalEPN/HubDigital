@@ -54,7 +54,7 @@ final class CajaIndex extends Component
     #[Rule('nullable|string|max:255')]
     public ?string $familiaTaxonomicaId = null;
 
-    #[Rule('nullable|integer|min:1')]
+    #[Rule('nullable|integer|min:1|max:32767')]
     public ?int $capacidadMaxima = null;
 
     public bool $showEditCajaModal = false;
@@ -67,7 +67,7 @@ final class CajaIndex extends Component
     #[Rule('nullable|string|max:255')]
     public ?string $editFamiliaTaxonomicaId = null;
 
-    #[Rule('nullable|integer|min:1')]
+    #[Rule('nullable|integer|min:1|max:32767')]
     public ?int $editCapacidadMaxima = null;
 
     public ?string $successMessage = null;
@@ -113,7 +113,7 @@ final class CajaIndex extends Component
             'codigoRfid' => 'required|string|size:8|regex:/^[0-9A-Fa-f]{8}$/',
             'nombre' => 'nullable|string|max:255',
             'familiaTaxonomicaId' => 'nullable|string|max:255',
-            'capacidadMaxima' => 'nullable|integer|min:1',
+            'capacidadMaxima' => 'nullable|integer|min:1|max:32767',
         ]);
 
         try {
@@ -159,7 +159,7 @@ final class CajaIndex extends Component
         $this->validate([
             'editNombre' => 'nullable|string|max:255',
             'editFamiliaTaxonomicaId' => 'nullable|string|max:255',
-            'editCapacidadMaxima' => 'nullable|integer|min:1',
+            'editCapacidadMaxima' => 'nullable|integer|min:1|max:32767',
         ]);
 
         try {
