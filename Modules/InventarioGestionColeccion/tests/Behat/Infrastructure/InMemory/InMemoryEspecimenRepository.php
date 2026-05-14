@@ -77,6 +77,23 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
     }
 
     /** @return Especimen[] */
+    public function buscarPorIdentificador(string $tipo, string $valor): array
+    {
+        return array_values(array_filter(
+            $this->store,
+            function (Especimen $e) use ($tipo, $valor): bool {
+                foreach ($e->identificadores() as $identificador) {
+                    if ($identificador->tipo()->value === $tipo && stripos($identificador->valor(), $valor) !== false) {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+        ));
+    }
+
+    /** @return Especimen[] */
     public function buscarTodos(): array
     {
         return array_values($this->store);

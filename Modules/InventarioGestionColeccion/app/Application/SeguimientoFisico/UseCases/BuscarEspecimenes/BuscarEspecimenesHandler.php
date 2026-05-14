@@ -7,6 +7,7 @@ namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCa
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especimen;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\TaxonRepositoryInterface;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TipoIdentificadorEspecimen;
 
 final class BuscarEspecimenesHandler
 {
@@ -21,6 +22,18 @@ final class BuscarEspecimenesHandler
             'taxon' => $this->buscarPorNombreTaxon($input->valor),
             'localidad' => $this->especimenRepo->buscarPorLocalidad($input->valor),
             'estado' => $this->especimenRepo->buscarPorEstado($input->valor),
+            'codigo' => $this->especimenRepo->buscarPorIdentificador(
+                TipoIdentificadorEspecimen::CodigoCatalogo->value,
+                $input->valor,
+            ),
+            'occurrence_id' => $this->especimenRepo->buscarPorIdentificador(
+                TipoIdentificadorEspecimen::OccurrenceId->value,
+                $input->valor,
+            ),
+            'catalog_number' => $this->especimenRepo->buscarPorIdentificador(
+                TipoIdentificadorEspecimen::CatalogNumber->value,
+                $input->valor,
+            ),
             default => [],
         };
 
@@ -45,6 +58,26 @@ final class BuscarEspecimenesHandler
                 'fechaColecta' => $e->fechaColecta(),
                 'colector' => $e->colector(),
                 'estado' => $e->estado()->value,
+                'occurrenceId' => $e->occurrenceId(),
+                'catalogNumber' => $e->catalogNumber(),
+                'oldCode' => $e->oldCode(),
+                'cardexLiquidCollectionCode' => $e->cardexLiquidCollectionCode(),
+                'individualCount' => $e->individualCount(),
+                'preparations' => $e->preparations(),
+                'disposition' => $e->disposition(),
+                'occurrenceStatus' => $e->occurrenceStatus(),
+                'specimenNotes' => $e->specimenNotes(),
+                'country' => $e->country(),
+                'stateProvince' => $e->stateProvince(),
+                'municipality' => $e->municipality(),
+                'localityName' => $e->localityName(),
+                'decimalLatitude' => $e->decimalLatitude(),
+                'decimalLongitude' => $e->decimalLongitude(),
+                'geodeticDatum' => $e->geodeticDatum(),
+                'elevationInMeters' => $e->elevationInMeters(),
+                'biome' => $e->biome(),
+                'habitat' => $e->habitat(),
+                'identificadores' => array_map(fn ($i) => $i->toArray(), $e->identificadores()),
             ], $especimenes)
         );
     }

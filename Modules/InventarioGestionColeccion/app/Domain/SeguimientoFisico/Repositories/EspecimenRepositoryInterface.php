@@ -31,5 +31,8 @@ interface EspecimenRepositoryInterface
     public function buscarPorCodigoCatalogo(string $codigo): ?Especimen;
 
     /** @return Especimen[] */
+    public function buscarPorIdentificador(string $tipo, string $valor): array;
+
+    /** @return Especimen[] */
     public function buscarTodos(): array;
 }
