@@ -61,6 +61,19 @@
                                         Ingresar
                                     </flux:button>
                                 @endif
+                                @if($caja['estado'] === 'en_gabinete')
+                                    <flux:button
+                                        size="sm"
+                                        variant="ghost"
+                                        icon="arrow-up-tray"
+                                        wire:click="registrarRetiro('{{ $caja['id'] }}')"
+                                        wire:confirm="¿Registrar retiro de la caja {{ $caja['codigo'] }}? Quedará en tránsito."
+                                        wire:loading.attr="disabled"
+                                        wire:target="registrarRetiro('{{ $caja['id'] }}')"
+                                    >
+                                        Retirar
+                                    </flux:button>
+                                @endif
                                 <flux:button
                                     size="sm"
                                     variant="ghost"
@@ -131,7 +144,8 @@
 
             <flux:field>
                 <flux:label>Capacidad máxima <flux:badge size="sm" color="zinc">Opcional</flux:badge></flux:label>
-                <flux:input type="number" wire:model="capacidadMaxima" min="1" max="32767" />
+                <flux:input type="number" wire:model="capacidadMaxima" min="1" max="32767"
+                    x-on:keydown="if(!/^\d$/.test($event.key) && !['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Home','End'].includes($event.key)) $event.preventDefault()" />
                 <flux:error name="capacidadMaxima" />
             </flux:field>
 
@@ -168,7 +182,8 @@
 
             <flux:field>
                 <flux:label>Capacidad máxima <flux:badge size="sm" color="zinc">Opcional</flux:badge></flux:label>
-                <flux:input type="number" wire:model="editCapacidadMaxima" min="1" max="32767" />
+                <flux:input type="number" wire:model="editCapacidadMaxima" min="1" max="32767"
+                    x-on:keydown="if(!/^\d$/.test($event.key) && !['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Home','End'].includes($event.key)) $event.preventDefault()" />
                 <flux:error name="editCapacidadMaxima" />
             </flux:field>
 

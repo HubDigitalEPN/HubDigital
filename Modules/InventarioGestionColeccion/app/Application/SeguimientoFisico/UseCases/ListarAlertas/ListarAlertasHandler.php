@@ -26,6 +26,7 @@ final class ListarAlertasHandler
                 tipo: $a->tipo()->valor(),
                 estado: $a->estado()->valor(),
                 datosContexto: $a->datosContexto(),
+                generadaEn: $a->generadaEn(),
             ),
             $alertas,
         );

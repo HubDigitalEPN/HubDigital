@@ -42,9 +42,9 @@ final class AlertaIndex extends Component
         $this->cargarAlertas($alertasHandler);
     }
 
-    public function updatedFiltroEstado(string $value, ListarAlertasHandler $handler): void
+    public function updatedFiltroEstado(): void
     {
-        $this->cargarAlertas($handler);
+        $this->cargarAlertas(app(ListarAlertasHandler::class));
     }
 
     public function abrirResolverModal(string $alertaId): void
@@ -114,6 +114,7 @@ final class AlertaIndex extends Component
                 'tipo' => $a->tipo,
                 'estado' => $a->estado,
                 'datosContexto' => $a->datosContexto,
+                'generadaEn' => $a->generadaEn->format('d/m/Y H:i'),
             ],
             $output->items,
         );
