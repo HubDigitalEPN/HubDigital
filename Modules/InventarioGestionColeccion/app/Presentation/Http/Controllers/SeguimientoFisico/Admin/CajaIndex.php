@@ -20,6 +20,8 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Li
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarRanurasGabinete\ListarRanurasGabineteInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarIngresoCaja\RegistrarIngresoCajaHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarIngresoCaja\RegistrarIngresoCajaInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarRetiroCaja\RegistrarRetiroCajaHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarRetiroCaja\RegistrarRetiroCajaInput;
 
 #[Layout('layouts.app', params: ['title' => 'Cajas'])]
 final class CajaIndex extends Component
@@ -54,7 +56,7 @@ final class CajaIndex extends Component
     #[Rule('nullable|string|max:255')]
     public ?string $familiaTaxonomicaId = null;
 
-    #[Rule('nullable|integer|min:1')]
+    #[Rule('nullable|integer|min:1|max:32767')]
     public ?int $capacidadMaxima = null;
 
     public bool $showEditCajaModal = false;
@@ -67,12 +69,35 @@ final class CajaIndex extends Component
     #[Rule('nullable|string|max:255')]
     public ?string $editFamiliaTaxonomicaId = null;
 
-    #[Rule('nullable|integer|min:1')]
+    #[Rule('nullable|integer|min:1|max:32767')]
     public ?int $editCapacidadMaxima = null;
 
     public ?string $successMessage = null;
 
     public ?string $errorMessage = null;
+
+    protected function validationAttributes(): array
+    {
+        return [
+            'capacidadMaxima' => 'capacidad máxima',
+            'editCapacidadMaxima' => 'capacidad máxima',
+            'codigo' => 'código',
+            'codigoRfid' => 'código RFID',
+            'ranuraIdSeleccionada' => 'ranura',
+        ];
+    }
+
+    protected function messages(): array
+    {
+        return [
+            'capacidadMaxima.max' => 'La capacidad máxima no puede superar 32.767 especímenes.',
+            'capacidadMaxima.min' => 'La capacidad máxima debe ser al menos 1.',
+            'capacidadMaxima.integer' => 'La capacidad máxima debe ser un número entero.',
+            'editCapacidadMaxima.max' => 'La capacidad máxima no puede superar 32.767 especímenes.',
+            'editCapacidadMaxima.min' => 'La capacidad máxima debe ser al menos 1.',
+            'editCapacidadMaxima.integer' => 'La capacidad máxima debe ser un número entero.',
+        ];
+    }
 
     public function mount(
         ListarCajasHandler $cajasHandler,
@@ -86,10 +111,8 @@ final class CajaIndex extends Component
         );
     }
 
-    public function updatedGabineteIdSeleccionado(
-        string $value,
-        ListarRanurasGabineteHandler $handler,
-    ): void {
+    public function updatedGabineteIdSeleccionado(string $value): void
+    {
         if ($value === '') {
             $this->ranurasDisponibles = [];
             $this->ranuraIdSeleccionada = '';
@@ -97,11 +120,12 @@ final class CajaIndex extends Component
             return;
         }
 
+        $handler = app(ListarRanurasGabineteHandler::class);
         $output = $handler->handle(new ListarRanurasGabineteInput($value));
-        $this->ranurasDisponibles = array_map(
+        $this->ranurasDisponibles = array_values(array_map(
             fn ($r) => ['id' => $r->id, 'label' => "Ranura {$r->numeroRanura}"],
             array_filter($output->items, fn ($r) => $r->cajaActualId === null && $r->activa),
-        );
+        ));
         $this->ranuraIdSeleccionada = '';
     }
 
@@ -114,7 +138,7 @@ final class CajaIndex extends Component
             'codigoRfid' => 'required|string|size:8|regex:/^[0-9A-Fa-f]{8}$/',
             'nombre' => 'nullable|string|max:255',
             'familiaTaxonomicaId' => 'nullable|string|max:255',
-            'capacidadMaxima' => 'nullable|integer|min:1',
+            'capacidadMaxima' => 'nullable|integer|min:1|max:32767',
         ]);
 
         try {
@@ -160,7 +184,7 @@ final class CajaIndex extends Component
         $this->validate([
             'editNombre' => 'nullable|string|max:255',
             'editFamiliaTaxonomicaId' => 'nullable|string|max:255',
-            'editCapacidadMaxima' => 'nullable|integer|min:1',
+            'editCapacidadMaxima' => 'nullable|integer|min:1|max:32767',
         ]);
 
         try {
@@ -195,6 +219,21 @@ final class CajaIndex extends Component
         }
     }
 
+    public function registrarRetiro(
+        string $id,
+        RegistrarRetiroCajaHandler $retiroHandler,
+        ListarCajasHandler $listarHandler,
+    ): void {
+        try {
+            $retiroHandler->handle(new RegistrarRetiroCajaInput(cajaId: $id));
+            $this->cargarCajas($listarHandler);
+            $this->successMessage = 'Retiro registrado correctamente.';
+            $this->errorMessage = null;
+        } catch (\Throwable $e) {
+            $this->errorMessage = $e->getMessage();
+        }
+    }
+
     public function abrirIngresoModal(string $cajaId): void
     {
         $this->cajaIdParaIngreso = $cajaId;
@@ -211,14 +250,16 @@ final class CajaIndex extends Component
         $this->validate(['ranuraIdSeleccionada' => 'required|string']);
 
         try {
-            $handler->handle(new RegistrarIngresoCajaInput(
+            $output = $handler->handle(new RegistrarIngresoCajaInput(
                 cajaId: $this->cajaIdParaIngreso,
                 ranuraId: $this->ranuraIdSeleccionada,
             ));
 
             $this->cargarCajas($listarHandler);
             $this->showIngresoModal = false;
-            $this->successMessage = 'Ingreso registrado correctamente.';
+            $this->successMessage = $output->alertaGenerada
+                ? 'Ingreso registrado. Se generó una alerta por acceso fuera de horario.'
+                : 'Ingreso registrado correctamente.';
             $this->errorMessage = null;
         } catch (\Throwable $e) {
             $this->errorMessage = $e->getMessage();

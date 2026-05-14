@@ -42,7 +42,7 @@ final class GabineteShow extends Component
     #[Rule('nullable|string|max:255')]
     public ?string $editFamiliaTaxonomica = null;
 
-    public bool $editActiva = true;
+    public int $editActiva = 1;
 
     public ?string $successMessage = null;
 
@@ -99,7 +99,7 @@ final class GabineteShow extends Component
 
         $this->editandoRanuraId = $ranuraId;
         $this->editFamiliaTaxonomica = $ranura['familiaTaxonomicaEsperadaId'];
-        $this->editActiva = $ranura['activa'];
+        $this->editActiva = $ranura['activa'] ? 1 : 0;
         $this->errorMessage = null;
         $this->showEditRanura = true;
     }
@@ -113,7 +113,7 @@ final class GabineteShow extends Component
             $actualizarHandler->handle(new ActualizarRanuraInput(
                 ranuraId: $this->editandoRanuraId,
                 familiaTaxonomicaEsperadaId: $this->editFamiliaTaxonomica ?: null,
-                activa: $this->editActiva,
+                activa: (bool) $this->editActiva,
             ));
 
             $this->cargarRanuras($listarHandler, $this->buildCajasPorId($cajasHandler));

@@ -24,6 +24,11 @@ class RanuraGabineteEloquentModel extends Model
         'activa',
     ];
 
+    protected $casts = [
+        'numero_ranura' => 'integer',
+        'activa' => 'boolean',
+    ];
+
     public function gabinete(): BelongsTo
     {
         return $this->belongsTo(GabineteEloquentModel::class, 'gabinete_id');
