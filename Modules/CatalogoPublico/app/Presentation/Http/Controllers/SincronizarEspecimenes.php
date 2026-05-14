@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Modules\CatalogoPublico\Presentation\Http\Controllers;
 
 use Illuminate\View\View;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Lazy;
 use Livewire\Component;
 use Modules\CatalogoPublico\Application\UseCases\SincronizarEspecimenes\SincronizarEspecimenesHandler;
 use Modules\CatalogoPublico\Application\UseCases\SincronizarEspecimenes\SincronizarEspecimenesInput;
@@ -32,6 +34,9 @@ final class SincronizarEspecimenes extends Component
     public array $occurrenceIDsActualizados = [];
 
     public bool $sincronizando = false;
+
+    /** @var array<string, array<string, bool>> */
+    private array $cacheConfiguracionesExistentes = [];
 
     private const GRUPOS = [
         'Identificación' => [
@@ -73,7 +78,7 @@ final class SincronizarEspecimenes extends Component
             }
         } else {
             $this->seleccionados[] = $occurrenceID;
-            $this->inicializarConfiguracion($occurrenceID);
+            $this->inicializarConfiguracionLote([$occurrenceID]);
             if ($this->especimenActivoId === null) {
                 $this->especimenActivoId = $occurrenceID;
             }
@@ -82,12 +87,16 @@ final class SincronizarEspecimenes extends Component
 
     public function seleccionarTodos(array $todosIds): void
     {
-        foreach ($todosIds as $id) {
-            if (! in_array($id, $this->seleccionados, true)) {
-                $this->seleccionados[] = $id;
-                $this->inicializarConfiguracion($id);
-            }
+        $nuevosIds = array_filter(
+            $todosIds,
+            fn ($id) => ! in_array($id, $this->seleccionados, true)
+        );
+
+        if (count($nuevosIds) > 0) {
+            $this->seleccionados = array_merge($this->seleccionados, array_values($nuevosIds));
+            $this->inicializarConfiguracionLote($nuevosIds);
         }
+
         if ($this->especimenActivoId === null && count($this->seleccionados) > 0) {
             $this->especimenActivoId = $this->seleccionados[0];
         }
@@ -153,6 +162,11 @@ final class SincronizarEspecimenes extends Component
         if ($this->paso === 1 && count($this->seleccionados) === 0) {
             return;
         }
+
+        if ($this->paso === 1 && $this->especimenActivoId === null && !empty($this->seleccionados)) {
+            $this->especimenActivoId = $this->seleccionados[0];
+        }
+
         if ($this->paso < 3) {
             $this->paso++;
         }
@@ -185,47 +199,95 @@ final class SincronizarEspecimenes extends Component
         $this->paso = 3;
     }
 
-    private function inicializarConfiguracion(string $occurrenceID): void
+    /**
+     * Caché computado de IDs sincronizados — se recalcula solo cuando es necesario.
+     */
+    #[Computed]
+    public function sincronizadosIds(): array
     {
-        $existente = EspecimenDivulgableEloquentModel::where('occurrence_id', $occurrenceID)->first();
+        return EspecimenDivulgableEloquentModel::pluck('occurrence_id')->all();
+    }
 
-        if ($existente !== null) {
-            $this->configuracionPorEspecimen[$occurrenceID] = [
-                'occurrenceIDVisible' => (bool) $existente->occurrence_id_visible,
-                'scientificNameVisible' => (bool) $existente->scientific_name_visible,
-                'individualCountVisible' => (bool) $existente->individual_count_visible,
-                'typeStatusVisible' => (bool) $existente->type_status_visible,
-                'typeNotesVisible' => (bool) $existente->type_notes_visible,
-                'specimenNotesVisible' => (bool) $existente->specimen_notes_visible,
-                'occurrenceStatusVisible' => (bool) $existente->occurrence_status_visible,
-                'samplingProtocolVisible' => (bool) $existente->sampling_protocol_visible,
-                'recordedByVisible' => (bool) $existente->recorded_by_visible,
-                'familyVisible' => (bool) $existente->family_visible,
-                'genusVisible' => (bool) $existente->genus_visible,
-                'countryVisible' => (bool) $existente->country_visible,
-                'localityNameVisible' => (bool) $existente->locality_name_visible,
-                'decimalLatitudeVisible' => (bool) $existente->decimal_latitude_visible,
-                'decimalLongitudeVisible' => (bool) $existente->decimal_longitude_visible,
-            ];
-        } else {
-            $campos = array_merge(...array_values(self::GRUPOS));
-            $this->configuracionPorEspecimen[$occurrenceID] = array_fill_keys(
-                array_column($campos, 'key'),
-                true,
-            );
+    /**
+     * Caché computado de especímenes — se carga UNA SOLA VEZ y se reutiliza en ambos pasos.
+     * Se invalida automáticamente cuando $paso o $seleccionados cambian.
+     */
+    #[Computed]
+    public function especimenesEnCache()
+    {
+        if ($this->paso === 1) {
+            // Paso 1: especímenes no sincronizados
+            return EspecimenEloquentModel::whereNotIn('occurrence_id', $this->sincronizadosIds())
+                ->orderBy('occurrence_id')
+                ->limit(100)
+                ->get();
+        }
+
+        // Paso 2/3: especímenes seleccionados
+        if (count($this->seleccionados) === 0) {
+            return collect();
+        }
+
+        return EspecimenEloquentModel::whereIn('occurrence_id', $this->seleccionados)
+            ->orderBy('occurrence_id')
+            ->get();
+    }
+
+    /**
+     * Inicializa configuración en lote para múltiples especímenes.
+     * Mejora: una query para traer las configuraciones existentes, no múltiples queries.
+     *
+     * @param array<string> $occurrenceIDs
+     */
+    private function inicializarConfiguracionLote(array $occurrenceIDs): void
+    {
+        if (count($occurrenceIDs) === 0) {
+            return;
+        }
+
+        // Traer configuraciones existentes en UNA SOLA QUERY
+        $existentes = EspecimenDivulgableEloquentModel::whereIn('occurrence_id', $occurrenceIDs)
+            ->get(['occurrence_id', 'occurrence_id_visible', 'scientific_name_visible', 'individual_count_visible',
+                'type_status_visible', 'type_notes_visible', 'specimen_notes_visible', 'occurrence_status_visible',
+                'sampling_protocol_visible', 'recorded_by_visible', 'family_visible', 'genus_visible',
+                'country_visible', 'locality_name_visible', 'decimal_latitude_visible', 'decimal_longitude_visible'])
+            ->keyBy('occurrence_id');
+
+        $camposDefault = array_merge(...array_values(self::GRUPOS));
+        $camposKeys = array_column($camposDefault, 'key');
+
+        foreach ($occurrenceIDs as $occurrenceID) {
+            if (isset($existentes[$occurrenceID])) {
+                $existente = $existentes[$occurrenceID];
+                $this->configuracionPorEspecimen[$occurrenceID] = [
+                    'occurrenceIDVisible' => (bool) $existente->occurrence_id_visible,
+                    'scientificNameVisible' => (bool) $existente->scientific_name_visible,
+                    'individualCountVisible' => (bool) $existente->individual_count_visible,
+                    'typeStatusVisible' => (bool) $existente->type_status_visible,
+                    'typeNotesVisible' => (bool) $existente->type_notes_visible,
+                    'specimenNotesVisible' => (bool) $existente->specimen_notes_visible,
+                    'occurrenceStatusVisible' => (bool) $existente->occurrence_status_visible,
+                    'samplingProtocolVisible' => (bool) $existente->sampling_protocol_visible,
+                    'recordedByVisible' => (bool) $existente->recorded_by_visible,
+                    'familyVisible' => (bool) $existente->family_visible,
+                    'genusVisible' => (bool) $existente->genus_visible,
+                    'countryVisible' => (bool) $existente->country_visible,
+                    'localityNameVisible' => (bool) $existente->locality_name_visible,
+                    'decimalLatitudeVisible' => (bool) $existente->decimal_latitude_visible,
+                    'decimalLongitudeVisible' => (bool) $existente->decimal_longitude_visible,
+                ];
+            } else {
+                $this->configuracionPorEspecimen[$occurrenceID] = array_fill_keys($camposKeys, true);
+            }
         }
     }
 
     public function render(): View
     {
-        $sincronizadosIds = EspecimenDivulgableEloquentModel::pluck('occurrence_id')->all();
-
-        $especimenes = EspecimenEloquentModel::whereNotIn('occurrence_id', $sincronizadosIds)
-            ->orderBy('occurrence_id')
-            ->get();
-
+        // Usa el caché computado que carga especímenes UNA SOLA VEZ
+        // No hace queries adicionales al cambiar entre pasos
         return view('catalogopublico::livewire.sincronizar-especimenes', [
-            'especimenes' => $especimenes,
+            'especimenes' => $this->especimenesEnCache(),
             'grupos' => self::GRUPOS,
         ]);
     }
