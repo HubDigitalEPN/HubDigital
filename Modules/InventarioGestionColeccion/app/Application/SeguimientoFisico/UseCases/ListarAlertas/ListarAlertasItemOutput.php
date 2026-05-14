@@ -12,5 +12,6 @@ final readonly class ListarAlertasItemOutput
         public string $tipo,
         public string $estado,
         public array $datosContexto,
+        public \DateTimeImmutable $generadaEn,
     ) {}
 }

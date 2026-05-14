@@ -127,7 +127,7 @@
     </flux:modal>
 
     {{-- Modal: Editar gabinete --}}
-    <flux:modal wire:model="showEditModal" class="w-full max-w-md">
+    <flux:modal wire:model="showEditModal" class="w-full max-w-lg">
         <div class="space-y-4 p-1">
             <flux:heading size="lg" class="text-text-primary">Editar Gabinete</flux:heading>
 
@@ -147,6 +147,36 @@
                 <flux:description>No puede ser menor al número de ranuras ya configuradas.</flux:description>
                 <flux:error name="editTotalRanuras" />
             </flux:field>
+
+            @if(count($editRanuras) > 0)
+                <div class="border border-border rounded-lg overflow-hidden">
+                    <div class="px-3 py-2 bg-bg-main border-b border-border">
+                        <span class="text-xs font-medium text-text-secondary uppercase tracking-wide">Actividad de ranuras</span>
+                    </div>
+                    <div class="divide-y divide-border">
+                        @foreach($editRanuras as $ranura)
+                            <div class="flex items-center justify-between px-3 py-2">
+                                <span class="text-sm text-text-primary">Ranura {{ $ranura['numeroRanura'] }}</span>
+                                <flux:button
+                                    size="sm"
+                                    variant="{{ $ranura['activa'] ? 'ghost' : 'filled' }}"
+                                    wire:click="toggleRanuraActiva('{{ $ranura['id'] }}')"
+                                    wire:loading.attr="disabled"
+                                    wire:target="toggleRanuraActiva('{{ $ranura['id'] }}')"
+                                >
+                                    @if($ranura['activa'])
+                                        <flux:icon name="check-circle" class="size-3.5 text-success" />
+                                        <span class="text-success">Activa</span>
+                                    @else
+                                        <flux:icon name="x-circle" class="size-3.5 text-text-secondary" />
+                                        <span class="text-text-secondary">Inactiva</span>
+                                    @endif
+                                </flux:button>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
 
             <div class="flex justify-end gap-3 pt-2">
                 <flux:button variant="ghost" wire:click="$set('showEditModal', false)">

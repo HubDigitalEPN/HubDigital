@@ -69,6 +69,7 @@ class EloquentAlertaUbicacionRepository implements AlertaUbicacionRepository
             tipo: TipoAlerta::from($model->tipo),
             estado: EstadoAlerta::from($model->estado),
             datosContexto: $model->datos_contexto ?? [],
+            generadaEn: $model->created_at->toDateTimeImmutable(),
         );
     }
 }
