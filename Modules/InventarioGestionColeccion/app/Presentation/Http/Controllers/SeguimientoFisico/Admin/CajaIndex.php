@@ -86,10 +86,8 @@ final class CajaIndex extends Component
         );
     }
 
-    public function updatedGabineteIdSeleccionado(
-        string $value,
-        ListarRanurasGabineteHandler $handler,
-    ): void {
+    public function updatedGabineteIdSeleccionado(string $value): void
+    {
         if ($value === '') {
             $this->ranurasDisponibles = [];
             $this->ranuraIdSeleccionada = '';
@@ -97,11 +95,12 @@ final class CajaIndex extends Component
             return;
         }
 
+        $handler = app(ListarRanurasGabineteHandler::class);
         $output = $handler->handle(new ListarRanurasGabineteInput($value));
-        $this->ranurasDisponibles = array_map(
+        $this->ranurasDisponibles = array_values(array_map(
             fn ($r) => ['id' => $r->id, 'label' => "Ranura {$r->numeroRanura}"],
             array_filter($output->items, fn ($r) => $r->cajaActualId === null && $r->activa),
-        );
+        ));
         $this->ranuraIdSeleccionada = '';
     }
 
@@ -211,14 +210,16 @@ final class CajaIndex extends Component
         $this->validate(['ranuraIdSeleccionada' => 'required|string']);
 
         try {
-            $handler->handle(new RegistrarIngresoCajaInput(
+            $output = $handler->handle(new RegistrarIngresoCajaInput(
                 cajaId: $this->cajaIdParaIngreso,
                 ranuraId: $this->ranuraIdSeleccionada,
             ));
 
             $this->cargarCajas($listarHandler);
             $this->showIngresoModal = false;
-            $this->successMessage = 'Ingreso registrado correctamente.';
+            $this->successMessage = $output->alertaGenerada
+                ? 'Ingreso registrado. Se generó una alerta por acceso fuera de horario.'
+                : 'Ingreso registrado correctamente.';
             $this->errorMessage = null;
         } catch (\Throwable $e) {
             $this->errorMessage = $e->getMessage();

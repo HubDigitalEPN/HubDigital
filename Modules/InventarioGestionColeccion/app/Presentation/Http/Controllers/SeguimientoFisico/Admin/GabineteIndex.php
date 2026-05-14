@@ -10,11 +10,15 @@ use Livewire\Attributes\Rule;
 use Livewire\Component;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarGabinete\ActualizarGabineteHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarGabinete\ActualizarGabineteInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarRanura\ActualizarRanuraHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarRanura\ActualizarRanuraInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\CrearGabinete\CrearGabineteHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\CrearGabinete\CrearGabineteInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\DesactivarGabinete\DesactivarGabineteHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\DesactivarGabinete\DesactivarGabineteInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarGabinetes\ListarGabineteHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarRanurasGabinete\ListarRanurasGabineteHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarRanurasGabinete\ListarRanurasGabineteInput;
 
 #[Layout('layouts.app', params: ['title' => 'Gabinetes'])]
 final class GabineteIndex extends Component
@@ -41,6 +45,8 @@ final class GabineteIndex extends Component
 
     #[Rule('required|integer|min:1|max:25')]
     public int $editTotalRanuras = 1;
+
+    public array $editRanuras = [];
 
     public ?string $successMessage = null;
 
@@ -94,7 +100,44 @@ final class GabineteIndex extends Component
         $this->editNombre = $gabinete['nombre'];
         $this->editTotalRanuras = $gabinete['totalRanuras'];
         $this->errorMessage = null;
+
+        $ranuraHandler = app(ListarRanurasGabineteHandler::class);
+        $ranuras = $ranuraHandler->handle(new ListarRanurasGabineteInput($id));
+        $this->editRanuras = array_map(
+            fn ($r) => [
+                'id' => $r->id,
+                'numeroRanura' => $r->numeroRanura,
+                'familiaTaxonomicaEsperadaId' => $r->familiaTaxonomicaEsperadaId,
+                'activa' => $r->activa,
+            ],
+            $ranuras->items,
+        );
+
         $this->showEditModal = true;
+    }
+
+    public function toggleRanuraActiva(string $ranuraId): void
+    {
+        $idx = collect($this->editRanuras)->search(fn ($r) => $r['id'] === $ranuraId);
+
+        if ($idx === false) {
+            return;
+        }
+
+        $nuevaActiva = ! $this->editRanuras[$idx]['activa'];
+
+        try {
+            $handler = app(ActualizarRanuraHandler::class);
+            $handler->handle(new ActualizarRanuraInput(
+                ranuraId: $ranuraId,
+                familiaTaxonomicaEsperadaId: $this->editRanuras[$idx]['familiaTaxonomicaEsperadaId'] ?? null,
+                activa: $nuevaActiva,
+            ));
+
+            $this->editRanuras[$idx]['activa'] = $nuevaActiva;
+        } catch (\Throwable $e) {
+            $this->errorMessage = $e->getMessage();
+        }
     }
 
     public function actualizarGabinete(
