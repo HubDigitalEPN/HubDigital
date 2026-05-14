@@ -37,6 +37,20 @@ final class ActualizarEspecimenHandler
             fechaColecta: $input->fechaColecta,
             colector: $input->colector,
             entidadDepositanteId: $input->entidadDepositanteId,
+            country: $input->country,
+            stateProvince: $input->stateProvince,
+            municipality: $input->municipality,
+            localityName: $input->localityName,
+            decimalLatitude: $input->decimalLatitude,
+            decimalLongitude: $input->decimalLongitude,
+            geodeticDatum: $input->geodeticDatum,
+            elevationInMeters: $input->elevationInMeters,
+            biome: $input->biome,
+            habitat: $input->habitat,
+            preparations: $input->preparations,
+            disposition: $input->disposition,
+            occurrenceStatus: $input->occurrenceStatus,
+            specimenNotes: $input->specimenNotes,
         );
 
         $this->especimenRepo->guardar($especimen);
@@ -48,6 +62,20 @@ final class ActualizarEspecimenHandler
             fechaColecta: $especimen->fechaColecta(),
             colector: $especimen->colector(),
             entidadDepositanteId: $especimen->entidadDepositanteId(),
+            country: $especimen->country(),
+            stateProvince: $especimen->stateProvince(),
+            municipality: $especimen->municipality(),
+            localityName: $especimen->localityName(),
+            decimalLatitude: $especimen->decimalLatitude(),
+            decimalLongitude: $especimen->decimalLongitude(),
+            geodeticDatum: $especimen->geodeticDatum(),
+            elevationInMeters: $especimen->elevationInMeters(),
+            biome: $especimen->biome(),
+            habitat: $especimen->habitat(),
+            preparations: $especimen->preparations(),
+            disposition: $especimen->disposition(),
+            occurrenceStatus: $especimen->occurrenceStatus(),
+            specimenNotes: $especimen->specimenNotes(),
         );
     }
 }
