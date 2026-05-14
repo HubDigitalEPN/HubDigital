@@ -17,7 +17,7 @@ final class RegistrarTaxonRequest extends FormRequest
     /** @return array<string, mixed> */
     public function rules(): array
     {
-        $rangos = implode(',', array_column(RangoTaxonomico::cases(), 'value'));
+        $rangos = implode(',', RangoTaxonomico::valoresAceptados());
 
         return [
             'nombre_cientifico' => ['required', 'string', 'max:255'],

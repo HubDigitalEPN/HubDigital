@@ -28,12 +28,12 @@ class Taxon
         int $anioDescripcion,
         ?string $padreId = null,
     ): self {
-        $rangoVO = RangoTaxonomico::tryFrom($rango);
+        $rangoVO = RangoTaxonomico::desdeValorFlexible($rango);
 
         if ($rangoVO === null) {
             throw new \InvalidArgumentException(
                 "Rango taxonómico inválido: '{$rango}'. Valores válidos: ".
-                implode(', ', array_column(RangoTaxonomico::cases(), 'value'))
+                implode(', ', RangoTaxonomico::valoresAceptados())
             );
         }
 
