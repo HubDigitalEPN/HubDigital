@@ -30,7 +30,7 @@ final class EspecimenIndex extends Component
 
     public int $perPage = 15;
 
-    #[Rule('required|string|in:taxon,localidad,estado')]
+    #[Rule('required|string|in:taxon,localidad,estado,codigo,occurrence_id,catalog_number')]
     public string $criterio = 'taxon';
 
     #[Rule('required|string|min:2|max:255')]
@@ -47,6 +47,18 @@ final class EspecimenIndex extends Component
     #[Rule('required|string|max:100')]
     public string $codigoCatalogo = '';
 
+    #[Rule('nullable|string|max:120')]
+    public string $occurrenceId = '';
+
+    #[Rule('nullable|string|max:120')]
+    public string $catalogNumber = '';
+
+    #[Rule('nullable|string|max:120')]
+    public string $oldCode = '';
+
+    #[Rule('nullable|string|max:120')]
+    public string $cardexLiquidCollectionCode = '';
+
     #[Rule('required|string|uuid')]
     public string $taxonId = '';
 
@@ -60,6 +72,51 @@ final class EspecimenIndex extends Component
     public string $colector = '';
 
     public string $entidadDepositanteId = '';
+
+    #[Rule('nullable|integer|min:0')]
+    public string $individualCount = '';
+
+    #[Rule('nullable|string|max:120')]
+    public string $preparations = '';
+
+    #[Rule('nullable|string|max:120')]
+    public string $disposition = '';
+
+    #[Rule('nullable|string|max:120')]
+    public string $occurrenceStatus = '';
+
+    #[Rule('nullable|string')]
+    public string $specimenNotes = '';
+
+    #[Rule('nullable|string|max:120')]
+    public string $country = '';
+
+    #[Rule('nullable|string|max:120')]
+    public string $stateProvince = '';
+
+    #[Rule('nullable|string|max:120')]
+    public string $municipality = '';
+
+    #[Rule('nullable|string|max:500')]
+    public string $localityName = '';
+
+    #[Rule('nullable|numeric|between:-90,90')]
+    public string $decimalLatitude = '';
+
+    #[Rule('nullable|numeric|between:-180,180')]
+    public string $decimalLongitude = '';
+
+    #[Rule('nullable|string|max:60')]
+    public string $geodeticDatum = '';
+
+    #[Rule('nullable|numeric')]
+    public string $elevationInMeters = '';
+
+    #[Rule('nullable|string|max:120')]
+    public string $biome = '';
+
+    #[Rule('nullable|string|max:255')]
+    public string $habitat = '';
 
     // ── Edición ───────────────────────────────────────────────────────────────
 
@@ -77,6 +134,34 @@ final class EspecimenIndex extends Component
     public string $editColector = '';
 
     public string $editEntidadDepositanteId = '';
+
+    public string $editPreparations = '';
+
+    public string $editDisposition = '';
+
+    public string $editOccurrenceStatus = '';
+
+    public string $editSpecimenNotes = '';
+
+    public string $editCountry = '';
+
+    public string $editStateProvince = '';
+
+    public string $editMunicipality = '';
+
+    public string $editLocalityName = '';
+
+    public string $editDecimalLatitude = '';
+
+    public string $editDecimalLongitude = '';
+
+    public string $editGeodeticDatum = '';
+
+    public string $editElevationInMeters = '';
+
+    public string $editBiome = '';
+
+    public string $editHabitat = '';
 
     // ── Feedback ──────────────────────────────────────────────────────────────
 
@@ -103,7 +188,33 @@ final class EspecimenIndex extends Component
 
     public function abrirModal(): void
     {
-        $this->reset('codigoCatalogo', 'taxonId', 'localidad', 'colector', 'entidadDepositanteId', 'errorMessage');
+        $this->reset(
+            'codigoCatalogo',
+            'occurrenceId',
+            'catalogNumber',
+            'oldCode',
+            'cardexLiquidCollectionCode',
+            'taxonId',
+            'localidad',
+            'colector',
+            'entidadDepositanteId',
+            'individualCount',
+            'preparations',
+            'disposition',
+            'occurrenceStatus',
+            'specimenNotes',
+            'country',
+            'stateProvince',
+            'municipality',
+            'localityName',
+            'decimalLatitude',
+            'decimalLongitude',
+            'geodeticDatum',
+            'elevationInMeters',
+            'biome',
+            'habitat',
+            'errorMessage',
+        );
         $this->resetValidation();
         $this->fechaColecta = date('Y-m-d');
         $this->showModal = true;
@@ -125,6 +236,25 @@ final class EspecimenIndex extends Component
                 fechaColecta: $this->fechaColecta,
                 colector: $this->colector,
                 entidadDepositanteId: $this->entidadDepositanteId !== '' ? $this->entidadDepositanteId : null,
+                occurrenceId: $this->nullableString($this->occurrenceId),
+                catalogNumber: $this->nullableString($this->catalogNumber),
+                oldCode: $this->nullableString($this->oldCode),
+                cardexLiquidCollectionCode: $this->nullableString($this->cardexLiquidCollectionCode),
+                individualCount: $this->nullableInt($this->individualCount),
+                preparations: $this->nullableString($this->preparations),
+                disposition: $this->nullableString($this->disposition),
+                occurrenceStatus: $this->nullableString($this->occurrenceStatus),
+                specimenNotes: $this->nullableString($this->specimenNotes),
+                country: $this->nullableString($this->country),
+                stateProvince: $this->nullableString($this->stateProvince),
+                municipality: $this->nullableString($this->municipality),
+                localityName: $this->nullableString($this->localityName),
+                decimalLatitude: $this->nullableFloat($this->decimalLatitude),
+                decimalLongitude: $this->nullableFloat($this->decimalLongitude),
+                geodeticDatum: $this->nullableString($this->geodeticDatum),
+                elevationInMeters: $this->nullableFloat($this->elevationInMeters),
+                biome: $this->nullableString($this->biome),
+                habitat: $this->nullableString($this->habitat),
             ));
 
             $this->showModal = false;
@@ -152,6 +282,20 @@ final class EspecimenIndex extends Component
         $this->editFechaColecta = $especimen['fechaColecta'];
         $this->editColector = $especimen['colector'];
         $this->editEntidadDepositanteId = '';
+        $this->editPreparations = (string) ($especimen['preparations'] ?? '');
+        $this->editDisposition = (string) ($especimen['disposition'] ?? '');
+        $this->editOccurrenceStatus = (string) ($especimen['occurrenceStatus'] ?? '');
+        $this->editSpecimenNotes = (string) ($especimen['specimenNotes'] ?? '');
+        $this->editCountry = (string) ($especimen['country'] ?? '');
+        $this->editStateProvince = (string) ($especimen['stateProvince'] ?? '');
+        $this->editMunicipality = (string) ($especimen['municipality'] ?? '');
+        $this->editLocalityName = (string) ($especimen['localityName'] ?? '');
+        $this->editDecimalLatitude = isset($especimen['decimalLatitude']) ? (string) $especimen['decimalLatitude'] : '';
+        $this->editDecimalLongitude = isset($especimen['decimalLongitude']) ? (string) $especimen['decimalLongitude'] : '';
+        $this->editGeodeticDatum = (string) ($especimen['geodeticDatum'] ?? '');
+        $this->editElevationInMeters = isset($especimen['elevationInMeters']) ? (string) $especimen['elevationInMeters'] : '';
+        $this->editBiome = (string) ($especimen['biome'] ?? '');
+        $this->editHabitat = (string) ($especimen['habitat'] ?? '');
         $this->errorMessage = null;
         $this->showEditModal = true;
     }
@@ -169,6 +313,20 @@ final class EspecimenIndex extends Component
                 fechaColecta: $this->editFechaColecta,
                 colector: $this->editColector,
                 entidadDepositanteId: $this->editEntidadDepositanteId !== '' ? $this->editEntidadDepositanteId : null,
+                country: $this->nullableString($this->editCountry),
+                stateProvince: $this->nullableString($this->editStateProvince),
+                municipality: $this->nullableString($this->editMunicipality),
+                localityName: $this->nullableString($this->editLocalityName),
+                decimalLatitude: $this->nullableFloat($this->editDecimalLatitude),
+                decimalLongitude: $this->nullableFloat($this->editDecimalLongitude),
+                geodeticDatum: $this->nullableString($this->editGeodeticDatum),
+                elevationInMeters: $this->nullableFloat($this->editElevationInMeters),
+                biome: $this->nullableString($this->editBiome),
+                habitat: $this->nullableString($this->editHabitat),
+                preparations: $this->nullableString($this->editPreparations),
+                disposition: $this->nullableString($this->editDisposition),
+                occurrenceStatus: $this->nullableString($this->editOccurrenceStatus),
+                specimenNotes: $this->nullableString($this->editSpecimenNotes),
             ));
 
             $this->showEditModal = false;
@@ -201,7 +359,7 @@ final class EspecimenIndex extends Component
     public function buscar(BuscarEspecimenesHandler $handler): void
     {
         $this->validate([
-            'criterio' => 'required|string|in:taxon,localidad,estado',
+            'criterio' => 'required|string|in:taxon,localidad,estado,codigo,occurrence_id,catalog_number',
             'valor' => 'required|string|min:2|max:255',
         ]);
 
@@ -240,5 +398,22 @@ final class EspecimenIndex extends Component
             'inicio' => $total > 0 ? $offset + 1 : 0,
             'fin' => min($offset + $this->perPage, $total),
         ]);
+    }
+
+    private function nullableString(string $value): ?string
+    {
+        $value = trim($value);
+
+        return $value !== '' ? $value : null;
+    }
+
+    private function nullableInt(string $value): ?int
+    {
+        return trim($value) !== '' ? (int) $value : null;
+    }
+
+    private function nullableFloat(string $value): ?float
+    {
+        return trim($value) !== '' ? (float) $value : null;
     }
 }

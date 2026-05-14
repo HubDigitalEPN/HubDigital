@@ -17,7 +17,7 @@ final class BuscarEspecimenesRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'criterio' => ['required', 'string', 'in:taxon,localidad,estado'],
+            'criterio' => ['required', 'string', 'in:taxon,localidad,estado,codigo,occurrence_id,catalog_number'],
             'valor' => ['required', 'string', 'max:255'],
         ];
     }
