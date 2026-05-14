@@ -131,7 +131,7 @@
 
             <flux:field>
                 <flux:label>Capacidad máxima <flux:badge size="sm" color="zinc">Opcional</flux:badge></flux:label>
-                <flux:input type="number" wire:model="capacidadMaxima" min="1" />
+                <flux:input type="number" wire:model="capacidadMaxima" min="1" max="32767" />
                 <flux:error name="capacidadMaxima" />
             </flux:field>
 
@@ -168,7 +168,7 @@
 
             <flux:field>
                 <flux:label>Capacidad máxima <flux:badge size="sm" color="zinc">Opcional</flux:badge></flux:label>
-                <flux:input type="number" wire:model="editCapacidadMaxima" min="1" />
+                <flux:input type="number" wire:model="editCapacidadMaxima" min="1" max="32767" />
                 <flux:error name="editCapacidadMaxima" />
             </flux:field>
 
@@ -201,7 +201,7 @@
             @if($gabineteIdSeleccionado)
                 <flux:field>
                     <flux:label>Ranura disponible</flux:label>
-                    <flux:select wire:model="ranuraIdSeleccionada">
+                    <flux:select wire:model.live="ranuraIdSeleccionada">
                         <option value="">Seleccionar ranura...</option>
                         @foreach($ranurasDisponibles as $r)
                             <option value="{{ $r['id'] }}">{{ $r['label'] }}</option>
