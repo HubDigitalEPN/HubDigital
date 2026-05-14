@@ -31,6 +31,7 @@
                     <th class="px-4 py-3 text-left font-medium text-white">Estado Actual</th>
                     <th class="px-4 py-3 text-left font-medium text-white">Estado Alerta</th>
                     <th class="px-4 py-3 text-left font-medium text-white">Contexto</th>
+                    <th class="px-4 py-3 text-left font-medium text-white">Fecha</th>
                     <th class="px-4 py-3 text-left font-medium text-white">Acciones</th>
                 </tr>
             </thead>
@@ -78,6 +79,9 @@
                                 —
                             @endif
                         </td>
+                        <td class="px-4 py-3 text-xs text-text-secondary whitespace-nowrap">
+                            {{ $alerta['generadaEn'] }}
+                        </td>
                         <td class="px-4 py-3">
                             @if($alerta['estado'] === 'activa')
                                 <div class="flex items-center gap-2">
@@ -105,7 +109,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="px-4 py-8 text-center text-text-primary">
+                        <td colspan="7" class="px-4 py-8 text-center text-text-primary">
                             No hay alertas en este estado.
                         </td>
                     </tr>
