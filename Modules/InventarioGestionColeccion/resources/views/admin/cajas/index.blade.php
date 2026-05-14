@@ -30,6 +30,7 @@
                     <th class="px-4 py-3 text-left font-medium text-white">Código</th>
                     <th class="px-4 py-3 text-left font-medium text-white">RFID</th>
                     <th class="px-4 py-3 text-left font-medium text-white">Nombre</th>
+                    <th class="px-4 py-3 text-left font-medium text-white">Cap. máx.</th>
                     <th class="px-4 py-3 text-left font-medium text-white">Estado</th>
                     <th class="px-4 py-3 text-left font-medium text-white">Acciones</th>
                 </tr>
@@ -40,6 +41,9 @@
                         <td class="px-4 py-3 font-medium text-text-primary">{{ $caja['codigo'] }}</td>
                         <td class="px-4 py-3 font-mono text-xs text-text-secondary">{{ $caja['codigoRfid'] }}</td>
                         <td class="px-4 py-3 text-text-primary">{{ $caja['nombre'] ?? '—' }}</td>
+                        <td class="px-4 py-3 text-text-primary text-center">
+                            {{ $caja['capacidadMaxima'] ?? '—' }}
+                        </td>
                         <td class="px-4 py-3">
                             <x-inventariogestioncoleccion::seguimiento-fisico.caja-estado-badge
                                 :estado="$caja['estado']"
@@ -82,7 +86,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="5" class="px-4 py-8 text-center text-text-primary">
+                        <td colspan="6" class="px-4 py-8 text-center text-text-primary">
                             @if($busqueda !== '')
                                 No se encontraron cajas para "{{ $busqueda }}".
                             @else
