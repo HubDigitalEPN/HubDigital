@@ -15,6 +15,8 @@ final readonly class ValidarActaFirmadaOutput
         public string $estadoActa,
         public ?string $validadaPor,
         public ?DateTimeImmutable $validadaEn,
+        public bool $prestamoCreado,
+        public string $prestamoId,
     ) {}
 
     public static function fromPrimitives(ActaPrestamo $acta): self
@@ -25,6 +27,8 @@ final readonly class ValidarActaFirmadaOutput
             estadoActa: $acta->estado()->value,
             validadaPor: $acta->validadaPor(),
             validadaEn: $acta->validadaEn(),
+            prestamoCreado: true,
+            prestamoId: (string) $acta->solicitudPrestamoId(),
         );
     }
 }

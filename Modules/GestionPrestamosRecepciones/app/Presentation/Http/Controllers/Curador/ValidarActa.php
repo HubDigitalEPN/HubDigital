@@ -15,7 +15,7 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarActaFirmada\
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarActaFirmada\ValidarActaFirmadaInput;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\ActaPrestamoModel;
 
-#[Layout('layouts.app', params: ['title' => 'Validar Acta Firmada'])]
+#[Layout('layouts.app', params: ['title' => 'Validar acta firmada'])]
 final class ValidarActa extends Component
 {
     use HandlesDomainExceptions;
@@ -52,11 +52,9 @@ final class ValidarActa extends Component
     {
         $this->validate(['motivoDevolucion' => 'required|string|min:10']);
 
-        $investigadorId = (string) $this->acta?->solicitud?->investigador_id;
-
         $handler->handle(new DevolverActaParaRefirmarInput(
             actaId: $this->id,
-            investigadorId: $investigadorId,
+            curadorId: (string) auth()->id(),
             motivo: $this->motivoDevolucion,
         ));
 

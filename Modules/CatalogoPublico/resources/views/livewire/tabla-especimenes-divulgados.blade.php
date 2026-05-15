@@ -38,60 +38,61 @@
 
     {{-- Table --}}
     <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
-        <flux:table>
-            <flux:table.columns>
-                <flux:table.column style="padding-inline-start:1rem;width:11rem">occurrenceID</flux:table.column>
-                <flux:table.column>Nombre científico</flux:table.column>
-                <flux:table.column class="hidden md:table-cell" style="width:8rem">Type Status</flux:table.column>
-                <flux:table.column class="hidden lg:table-cell">Familia</flux:table.column>
-                <flux:table.column class="hidden xl:table-cell">Estado</flux:table.column>
-                <flux:table.column style="width:9rem">Campos visibles</flux:table.column>
-                <flux:table.column align="end" style="width:5rem">Acción</flux:table.column>
-            </flux:table.columns>
-            <flux:table.rows>
-                @forelse($especimenes as $esp)
-                    <flux:table.row wire:key="{{ $esp->occurrence_id }}">
-                        <flux:table.cell class="font-mono text-xs text-text-secondary" style="padding-inline-start:1rem">
-                            {{ $esp->occurrence_id }}
-                        </flux:table.cell>
-                        <flux:table.cell>
+        <table class="w-full text-sm">
+            <thead class="bg-blue-navy border-b border-border">
+                <tr>
+                    <th class="px-4 py-3 text-left font-medium text-white">Occurrence ID</th>
+                    <th class="px-4 py-3 text-left font-medium text-white">Nombre científico</th>
+                    <th class="px-4 py-3 text-left font-medium text-white hidden md:table-cell">Type Status</th>
+                    <th class="px-4 py-3 text-left font-medium text-white hidden lg:table-cell">Familia</th>
+                    <th class="px-4 py-3 text-left font-medium text-white hidden xl:table-cell">Estado</th>
+                    <th class="px-4 py-3 text-left font-medium text-white">Campos visibles</th>
+                    <th class="px-4 py-3 text-right font-medium text-white">Acción</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-border">
+                @forelse($especimenes as $especimen)
+                    <tr wire:key="{{ $especimen->occurrence_id }}" class="hover:bg-bg-main transition-colors">
+                        <td class="px-4 py-3 font-mono text-xs text-text-secondary">
+                            {{ $especimen->occurrence_id }}
+                        </td>
+                        <td class="px-4 py-3">
                             <span class="font-serif italic text-sm text-text-primary">
-                                {{ $esp->scientific_name ?? '—' }}
+                                {{ $especimen->scientific_name ?? '—' }}
                             </span>
-                        </flux:table.cell>
-                        <flux:table.cell class="hidden md:table-cell text-xs text-text-secondary">
-                            {{ $esp->type_status ?? '—' }}
-                        </flux:table.cell>
-                        <flux:table.cell class="hidden lg:table-cell text-sm text-text-secondary">
-                            {{ $esp->family ?? '—' }}
-                        </flux:table.cell>
-                        <flux:table.cell class="hidden xl:table-cell">
-                            @if($esp->occurrence_status)
-                                <x-catalogopublico::occurrence-status-badge :status="$esp->occurrence_status" />
+                        </td>
+                        <td class="px-4 py-3 hidden md:table-cell text-xs text-text-secondary">
+                            {{ @$especimen->type_status ?? '—' }}
+                        </td>
+                        <td class="px-4 py-3 hidden lg:table-cell text-sm text-text-secondary">
+                            {{ $especimen->family ?? '—' }}
+                        </td>
+                        <td class="px-4 py-3 hidden xl:table-cell">
+                            @if($especimen->occurrence_status)
+                                <x-catalogopublico::occurrence-status-badge :status="$especimen->occurrence_status" />
                             @else
                                 <span class="text-text-secondary text-xs">—</span>
                             @endif
-                        </flux:table.cell>
-                        <flux:table.cell class="min-w-32">
+                        </td>
+                        <td class="px-4 py-3 min-w-32">
                             <x-catalogopublico::visibility-progress
-                                :visibles="(int)$esp->campos_visibles"
+                                :visibles="(int)$especimen->campos_visibles"
                                 :total="$totalCampos"
                             />
-                        </flux:table.cell>
-                        <flux:table.cell class="text-right">
+                        </td>
+                        <td class="px-4 py-3 text-right">
                             <flux:button
-                                wire:click="abrirConfiguracion('{{ $esp->occurrence_id }}')"
+                                wire:click="abrirConfiguracion('{{ $especimen->occurrence_id }}')"
                                 variant="ghost"
                                 size="sm"
                                 icon="adjustments-horizontal"
-                            >
-                                Config.
-                            </flux:button>
-                        </flux:table.cell>
-                    </flux:table.row>
+                                square
+                            />
+                        </td>
+                    </tr>
                 @empty
-                    <flux:table.row>
-                        <flux:table.cell colspan="7" class="py-12 text-center">
+                    <tr>
+                        <td colspan="7" class="px-4 py-12 text-center">
                             <div class="flex flex-col items-center gap-2 text-text-secondary">
                                 <flux:icon name="table-cells" class="size-8 opacity-40" />
                                 <span class="text-sm">No hay especímenes divulgados aún.</span>
@@ -104,11 +105,11 @@
                                     Sincronizar ahora
                                 </flux:button>
                             </div>
-                        </flux:table.cell>
-                    </flux:table.row>
+                        </td>
+                    </tr>
                 @endforelse
-            </flux:table.rows>
-        </flux:table>
+            </tbody>
+        </table>
     </div>
 
     {{-- Pagination --}}

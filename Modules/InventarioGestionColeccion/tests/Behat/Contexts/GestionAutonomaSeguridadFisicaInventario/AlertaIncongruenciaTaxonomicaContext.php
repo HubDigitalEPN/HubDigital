@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 declare(strict_types=1);
 
@@ -7,22 +7,20 @@ namespace Modules\InventarioGestionColeccion\Tests\Behat\Contexts\GestionAutonom
 use Behat\Step\Given;
 use Behat\Step\Then;
 use Behat\Step\When;
-use Modules\InventarioGestionColeccion\Application\UseCases\InsertarCajaEnRanura\InsertarCajaEnRanuraHandler;
-use Modules\InventarioGestionColeccion\Application\UseCases\InsertarCajaEnRanura\InsertarCajaEnRanuraInput;
-use Modules\InventarioGestionColeccion\Application\UseCases\InsertarCajaEnRanura\InsertarCajaEnRanuraOutput;
-use Modules\InventarioGestionColeccion\Domain\Entities\Caja;
-use Modules\InventarioGestionColeccion\Domain\Entities\Gabinete;
-use Modules\InventarioGestionColeccion\Domain\Entities\RanuraGabinete;
-use Modules\InventarioGestionColeccion\Domain\Repositories\AlertaUbicacionRepository;
-use Modules\InventarioGestionColeccion\Domain\Repositories\CajaRepository;
-use Modules\InventarioGestionColeccion\Domain\Repositories\GabineteRepository;
-use Modules\InventarioGestionColeccion\Domain\Repositories\RanuraGabineteRepository;
-use Modules\InventarioGestionColeccion\Domain\ValueObjects\CajaId;
-use Modules\InventarioGestionColeccion\Domain\ValueObjects\EstadoAlerta;
-use Modules\InventarioGestionColeccion\Domain\ValueObjects\EstadoCaja;
-use Modules\InventarioGestionColeccion\Domain\ValueObjects\GabineteId;
-use Modules\InventarioGestionColeccion\Domain\ValueObjects\RanuraId;
-use Modules\InventarioGestionColeccion\Domain\ValueObjects\TipoAlerta;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarIngresoCaja\RegistrarIngresoCajaHandler;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Caja;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Gabinete;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\RanuraGabinete;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\AlertaUbicacionRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\CajaRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\GabineteRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\RanuraGabineteRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\CajaId;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoAlerta;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoCaja;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\GabineteId;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\RanuraId;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TipoAlerta;
 use Modules\InventarioGestionColeccion\Tests\Behat\Contexts\BaseContext;
 use PHPUnit\Framework\Assert;
 
@@ -30,7 +28,7 @@ final class AlertaIncongruenciaTaxonomicaContext extends BaseContext
 {
     // ── Handlers ─────────────────────────────────────────────────────────────
 
-    private InsertarCajaEnRanuraHandler $handler;
+    private RegistrarIngresoCajaHandler $handler;
 
     // ── Repositories ─────────────────────────────────────────────────────────
 
@@ -60,7 +58,7 @@ final class AlertaIncongruenciaTaxonomicaContext extends BaseContext
 
     public function __construct()
     {
-        $this->handler = $this->make(InsertarCajaEnRanuraHandler::class);
+        $this->handler = $this->make(RegistrarIngresoCajaHandler::class);
         $this->gabineteRepo = $this->make(GabineteRepository::class);
         $this->ranuraRepo = $this->make(RanuraGabineteRepository::class);
         $this->cajaRepo = $this->make(CajaRepository::class);

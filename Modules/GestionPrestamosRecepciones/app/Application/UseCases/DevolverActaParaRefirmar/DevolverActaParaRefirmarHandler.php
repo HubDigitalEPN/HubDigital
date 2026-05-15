@@ -7,13 +7,16 @@ namespace Modules\GestionPrestamosRecepciones\Application\UseCases\DevolverActaP
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\ActaPrestamoNoEncontradaException;
+use Modules\GestionPrestamosRecepciones\Domain\Exceptions\SolicitudPrestamoNoEncontradaException;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\ActaPrestamoRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
 
 final class DevolverActaParaRefirmarHandler
 {
     public function __construct(
         private readonly ActaPrestamoRepositoryInterface $actaRepo,
+        private readonly SolicitudPrestamoRepositoryInterface $solicitudRepo,
         private readonly EventPublisherPort $publisher,
         private readonly TransactionManagerPort $transactionManager,
     ) {}
@@ -27,8 +30,14 @@ final class DevolverActaParaRefirmarHandler
             throw ActaPrestamoNoEncontradaException::conId($actaId);
         }
 
+        $solicitud = $this->solicitudRepo->buscarPorId($acta->solicitudPrestamoId());
+
+        if ($solicitud === null) {
+            throw SolicitudPrestamoNoEncontradaException::paraSolicitud($acta->solicitudPrestamoId());
+        }
+
         $acta->devolver(
-            investigadorId: $input->investigadorId,
+            investigadorId: $solicitud->investigadorId(),
             motivo: $input->motivo,
         );
 

@@ -53,7 +53,7 @@ final class GenerarActaPrestamoHandler
         );
 
         // Transiciona a PendienteFirma para que el investigador pueda firmarla
-        $acta->marcarEnviada();
+        $acta->marcarEnviada($solicitud->investigadorId());
 
         $this->transactionManager->executeTransactional(function () use ($solicitud, $acta): void {
             $this->solicitudRepo->guardar($solicitud);

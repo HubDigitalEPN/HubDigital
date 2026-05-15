@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 declare(strict_types=1);
 
@@ -7,27 +7,27 @@ namespace Modules\InventarioGestionColeccion\Tests\Behat\Contexts\TrazabilidadOp
 use Behat\Step\Given;
 use Behat\Step\Then;
 use Behat\Step\When;
-use Modules\InventarioGestionColeccion\Application\UseCases\RegistrarDevolucionCaja\RegistrarDevolucionCajaHandler;
-use Modules\InventarioGestionColeccion\Application\UseCases\RegistrarDevolucionCaja\RegistrarDevolucionCajaInput;
-use Modules\InventarioGestionColeccion\Application\UseCases\RegistrarDevolucionCaja\RegistrarDevolucionCajaOutput;
-use Modules\InventarioGestionColeccion\Application\UseCases\VerificarTiemposExtraccion\VerificarTiemposExtraccionHandler;
-use Modules\InventarioGestionColeccion\Application\UseCases\VerificarTiemposExtraccion\VerificarTiemposExtraccionInput;
-use Modules\InventarioGestionColeccion\Application\UseCases\VerificarTiemposExtraccion\VerificarTiemposExtraccionOutput;
-use Modules\InventarioGestionColeccion\Domain\Entities\Caja;
-use Modules\InventarioGestionColeccion\Domain\Entities\Gabinete;
-use Modules\InventarioGestionColeccion\Domain\Entities\RanuraGabinete;
-use Modules\InventarioGestionColeccion\Domain\Entities\UbicacionCaja;
-use Modules\InventarioGestionColeccion\Domain\Repositories\AlertaUbicacionRepository;
-use Modules\InventarioGestionColeccion\Domain\Repositories\CajaRepository;
-use Modules\InventarioGestionColeccion\Domain\Repositories\GabineteRepository;
-use Modules\InventarioGestionColeccion\Domain\Repositories\NotificacionRepository;
-use Modules\InventarioGestionColeccion\Domain\Repositories\RanuraGabineteRepository;
-use Modules\InventarioGestionColeccion\Domain\Repositories\UbicacionCajaRepository;
-use Modules\InventarioGestionColeccion\Domain\ValueObjects\CajaId;
-use Modules\InventarioGestionColeccion\Domain\ValueObjects\EstadoAlerta;
-use Modules\InventarioGestionColeccion\Domain\ValueObjects\EstadoCaja;
-use Modules\InventarioGestionColeccion\Domain\ValueObjects\RanuraId;
-use Modules\InventarioGestionColeccion\Domain\ValueObjects\TipoAlerta;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarDevolucionCaja\RegistrarDevolucionCajaHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarDevolucionCaja\RegistrarDevolucionCajaInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarDevolucionCaja\RegistrarDevolucionCajaOutput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\VerificarTiemposExtraccion\VerificarTiemposExtraccionHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\VerificarTiemposExtraccion\VerificarTiemposExtraccionInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\VerificarTiemposExtraccion\VerificarTiemposExtraccionOutput;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Caja;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Gabinete;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\RanuraGabinete;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\UbicacionCaja;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\AlertaUbicacionRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\CajaRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\GabineteRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\NotificacionRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\RanuraGabineteRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UbicacionCajaRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\CajaId;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoAlerta;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoCaja;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\RanuraId;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TipoAlerta;
 use Modules\InventarioGestionColeccion\Tests\Behat\Contexts\BaseContext;
 use PHPUnit\Framework\Assert;
 

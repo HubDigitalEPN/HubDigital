@@ -11,6 +11,10 @@ return new class extends Migration
     {
         DB::statement('CREATE SCHEMA IF NOT EXISTS usuarios');
 
+        if (Schema::hasTable('usuarios.users')) {
+            return;
+        }
+
         Schema::create('usuarios.users', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->string('name');

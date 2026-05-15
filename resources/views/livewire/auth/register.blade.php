@@ -134,7 +134,7 @@
         <flux:button
             type="submit"
             variant="primary"
-            class="mt-1 w-full bg-bio-green! border-bio-green! hover:bg-bio-green/90! font-semibold"
+            class="mt-1 w-full bg-bio-green! border-bio-green! hover:bg-bio-green/90! text-white! font-semibold"
             wire:loading.attr="disabled"
         >
             <span wire:loading.remove class="flex items-center justify-center gap-2">

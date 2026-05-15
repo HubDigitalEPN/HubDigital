@@ -171,7 +171,7 @@ final class SolicitudPrestamo
 
     /**
      * Actualiza los campos editables de la solicitud.
-     * Solo permitido en estado Borrador.
+     * Permitido en estado Borrador u Observada (corrección tras devolución del curador).
      *
      * @param  list<ItemPrestamo>  $items
      */
@@ -184,7 +184,10 @@ final class SolicitudPrestamo
         array $items,
         ?string $justificacionExtendida = null,
     ): void {
-        if (! $this->estado->equals(EstadoSolicitud::Borrador)) {
+        $puedeEditar = $this->estado->equals(EstadoSolicitud::Borrador)
+            || $this->estado->equals(EstadoSolicitud::Observada);
+
+        if (! $puedeEditar) {
             throw TransicionDeEstadoInvalidaException::para(
                 'SolicitudPrestamo',
                 $this->estado->value,

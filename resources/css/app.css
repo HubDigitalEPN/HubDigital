@@ -2,8 +2,9 @@
 @import '../../vendor/livewire/flux/dist/flux.css';
 
 @source '../views';
-@source '../../Modules/**/*.blade.php';
-@source inline("border-science-blue bg-science-blue/5 bg-science-blue/15 text-science-blue border-border bg-surface hover:border-science-blue/40 text-text-secondary text-text-primary bg-bg-main");
+@source '../../Modules/**/resources/views/**/*.blade.php';
+@source '../../Modules/**/app/Presentation/**/*.php';
+@source inline("border-science-blue bg-science-blue/5 bg-science-blue/15 text-science-blue border-border bg-surface hover:border-science-blue/40 text-text-secondary text-text-primary bg-bg-main bg-success bg-warning bg-error bg-info bg-bio-green border-success border-warning border-error border-info border-bio-green text-white animate-pulse aspect-square");
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../vendor/livewire/flux-pro/stubs/**/*.blade.php';
 @source '../../vendor/livewire/flux/stubs/**/*.blade.php';
@@ -44,12 +45,14 @@
     --color-zinc-900: #171717;
     --color-zinc-950: #0a0a0a;
 
-    --color-accent: var(--color-science-blue);
-    --color-accent-content: var(--color-science-blue);
-    --color-accent-foreground: var(--color-white);
+    --color-accent: var(--color-bio-green);
+    --color-accent-content: #ffffff;
+    --color-accent-foreground: #ffffff;
 }
 
 @layer theme {
+    /* Dark mode disabled — Hub Digital uses only light theme.
+       These overrides neutralize Flux's .dark variable swaps. */
     .dark {
         /* Flux accent */
         --color-accent: var(--color-white);
@@ -83,7 +86,26 @@
         --color-warning: #fcd34d;         /* amber-300 */
         --color-error:   #fca5a5;         /* red-300 */
         --color-info:    #7dd3fc;         /* sky-300 */
+        --color-accent: var(--color-bio-green);
+        --color-accent-content: #ffffff;
+        --color-accent-foreground: #ffffff;
+        --color-bg-main: #F5F7FA;
+        --color-surface: #FFFFFF;
+        --color-text-primary: #212121;
+        --color-text-secondary: #757575;
+        --color-border: #E0E0E0;
     }
+}
+
+/* flux.css importa --color-accent-foreground como estilo sin capa (unlayered),
+   ganando al @theme. Esta regla también es unlayered y viene después, por lo que gana. */
+:root {
+    --color-accent-foreground: #ffffff;
+}
+
+/* Forzar texto blanco en botones Flux variant="primary" (fondo de acento bio-green) */
+[data-flux-button].bg-\[var\(--color-accent\)\] {
+    color: white !important;
 }
 
 @layer base {
@@ -139,4 +161,42 @@ body {
     0%   { transform: translateX(-100%); width: 40%; }
     50%  { transform: translateX(150%); width: 60%; }
     100% { transform: translateX(300%); width: 40%; }
+/* Hub Digital Sidebar — Blue Navy Navigation */
+[data-flux-sidebar].bg-blue-navy {
+    background-color: var(--color-blue-navy);
+}
+
+[data-flux-sidebar].bg-blue-navy [data-flux-sidebar-item],
+[data-flux-sidebar].bg-blue-navy [data-flux-sidebar-group-heading] {
+    color: white;
+}
+
+[data-flux-sidebar].bg-blue-navy [data-flux-sidebar-item]:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-flux-sidebar].bg-blue-navy [data-flux-sidebar-item][aria-current="page"] {
+    background-color: var(--color-science-blue);
+    color: white;
+}
+
+/* Hub Digital Secondary Links — Science Blue */
+[data-flux-button].variant-ghost {
+    color: var(--color-science-blue);
+}
+
+[data-flux-button].variant-ghost:hover {
+    background-color: rgba(25, 118, 210, 0.1);
+}
+
+/* Hub Digital — Links */
+a {
+    @apply text-science-blue hover:text-science-blue/80 transition-colors;
+}
+
+/* Hub Digital — Form focus states (science-blue) */
+input:focus[data-flux-control],
+textarea:focus[data-flux-control],
+select:focus[data-flux-control] {
+    @apply outline-hidden ring-2 ring-science-blue ring-offset-2 ring-offset-white;
 }
