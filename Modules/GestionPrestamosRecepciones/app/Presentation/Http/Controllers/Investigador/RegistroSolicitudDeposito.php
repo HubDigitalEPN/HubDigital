@@ -312,9 +312,37 @@ final class RegistroSolicitudDeposito extends Component
     }
 
     public function solicitarIntervencion(
+        RegistrarSolicitudDepositoHandler $registrar,
+        ActualizarOrigenSolicitudDepositoHandler $actualizar,
         DeclararSinDocumentacionHandler $declarar,
         SolicitarIntervencionCuratoriaHandler $escalar,
     ): void {
+        if ($this->solicitudId === null) {
+            try {
+                $output = ($registrar)(new RegistrarSolicitudDepositoInput(
+                    investigadorId: (string) auth()->id(),
+                    tipoTramite: $this->tipoTramite,
+                ));
+                $this->solicitudId = $output->id;
+                $this->numeroSolicitud = $output->numero;
+            } catch (LimiteAnualDepositosAlcanzado $e) {
+                $this->limiteAlcanzado = true;
+                $this->mensajeLimite = $e->getMessage();
+                $this->paso = 1;
+
+                return;
+            }
+
+            if ($this->tipoTramite !== TipoTramite::Donacion->value) {
+                ($actualizar)(new ActualizarOrigenSolicitudDepositoInput(
+                    solicitudId: $this->solicitudId,
+                    origenRecoleccion: $this->origenRecoleccion,
+                    situacionRegulatoria: $this->situacionRegulatoria,
+                    provinciaOrigen: $this->provincia,
+                ));
+            }
+        }
+
         ($declarar)(new DeclararSinDocumentacionInput(solicitudId: $this->solicitudId));
         ($escalar)(new SolicitarIntervencionCuratoriaInput(
             solicitudId: $this->solicitudId,
