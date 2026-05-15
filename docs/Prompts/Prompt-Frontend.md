@@ -1,7 +1,14 @@
-> **Prompt: Planificación del Frontend (TALL Stack, Flux UI & Traducción Visual)**
+> **Prompt: Planificación del Frontend / Capa de Presentación Web (TALL Stack, Flux UI & Traducción Visual)**
+>
+> ---
+> > **⚠️ Nota sobre la arquitectura de capas:**
+> > En proyectos que usan **Livewire como canal principal**, este prompt reemplaza a `Prompt-Capa-Presentacion.md`.
+> > El componente Livewire cumple simultáneamente el rol de **Presentación** (llama Handlers, valida input, gestiona estado) y de **Frontend** (renderiza la vista Blade con Flux UI).
+> > Usa `Prompt-Capa-Presentacion.md` únicamente cuando el canal de salida sea una **API REST** (Postman, app móvil, integración externa).
+> ---
 >
 > **Contexto del Proyecto:**
-> Estamos construyendo la interfaz de usuario de nuestro sistema modular (Hub Digital) utilizando estrictamente el **TALL Stack (Tailwind CSS, Alpine.js, Laravel, Livewire)** y la librería de componentes **Flux UI**. Ya existe una arquitectura backend definida (Clean Architecture/DDD), la API está planificada y ya contamos con Guidelines estrictos de Frontend que especifican paletas de colores, componentes base de Flux y pasos de implementación.
+> Estamos construyendo la interfaz de usuario de nuestro sistema modular (Hub Digital) utilizando estrictamente el **TALL Stack (Tailwind CSS, Alpine.js, Laravel, Livewire)** y la librería de componentes **Flux UI**. Ya existe una arquitectura backend definida (Clean Architecture/DDD) y contamos con Guidelines estrictos de Frontend que especifican paletas de colores, componentes base de Flux y pasos de implementación.
 >
 > **Insumos proporcionados:**
 > 1. **[Endpoints/Casos de Uso]: (ESTRICTOS)** Los contratos de entrada y salida (DTOs/JSON) definidos por la capa de Presentación/Aplicación.
@@ -26,8 +33,20 @@
 >
 > 2. **Adhesión Estricta a los Guidelines y Flux UI:**
      >    * Usa ÚNICAMENTE los tokens de diseño (clases de Tailwind) y los componentes prefabricados de Flux UI especificados. No uses CSS personalizado ni códigos hex arbitrarios.
+>    * **⚠️ Tablas Flux UI — padding obligatorio:** `flux:table` aplica internamente `first:ps-0` a la primera `<th>` y `<td>` de cada fila, eliminando el padding izquierdo. Para evitar que el texto quede pegado al borde debes:
+>      1. Agregar `class="!ps-4"` en el primer `<flux:table.column>` del encabezado.
+>      2. Agregar `class="!ps-4 px-4 py-3"` en el primer `<flux:table.cell>` de cada fila.
+>      3. Agregar `class="px-4 py-3"` en todos los demás `<flux:table.cell>` y `<flux:table.column>`.
+>      4. Envolver el componente `<flux:table>` en un `<div class="p-6 ...">` (o asegurarte de que el wrapper externo de la vista tenga `p-6`) para que exista separación entre la tabla y los bordes de la tarjeta.
 >
-> 3. **Integración Livewire - Backend:**
+> 3. **Convención de Capitalización en Español:**
+    * En **toda** la interfaz, los textos en español siguen la regla: **solo la primera palabra de cada frase va en mayúscula**. El resto de palabras van en minúscula, salvo nombres propios o siglas.
+    * Ejemplos correctos: `Bandeja de solicitudes`, `Línea de investigación`, `Guardar borrador`, `Ver mis solicitudes`, `Código de espécimen`.
+    * Ejemplos incorrectos: `Bandeja de Solicitudes`, `Línea de Investigación`, `Guardar Borrador`.
+    * Esto aplica sin excepción a: títulos de página (`<flux:heading>`), etiquetas de formulario (`<flux:label>`), encabezados de tabla (`<flux:table.column>`), etiquetas de datos (`<dt>`), textos de botones, breadcrumbs y modales.
+    * Los elementos con `uppercase` en CSS (ej. secciones del acta) también deben tener el texto fuente en minúscula (el CSS se encarga de la transformación visual).
+
+ 4. **Integración Livewire - Backend:**
      >    * Diseña los Componentes Livewire (Full-page o anidados) que consumirán los endpoints o interactuarán con los Casos de Uso del backend.
 >    * Planifica el manejo de los estados (carga, éxito, errores). Para los errores de validación de backend (422), confía en el manejo nativo de `$errors` de Livewire/Blade.
 >

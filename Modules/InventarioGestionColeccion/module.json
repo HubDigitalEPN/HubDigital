@@ -5,7 +5,7 @@
     "keywords": [],
     "priority": 0,
     "providers": [
-        "Modules\\InventarioGestionColeccion\\Infrastructure\\Providers\\InventarioGestionColeccionServiceProvider"
+        "Modules\\InventarioGestionColeccion\\Infrastructure\\SeguimientoFisico\\Providers\\InventarioGestionColeccionServiceProvider"
     ],
     "files": []
 }

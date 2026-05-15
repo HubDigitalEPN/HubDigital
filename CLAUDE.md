@@ -1398,3 +1398,5 @@ This application is a Laravel application and its main Laravel ecosystems packag
 - Do NOT delete tests without approval.
 
 </laravel-boost-guidelines>
+<!-- Local-only include: see CLAUDE.local.md (not tracked) -->
+See local notes: @claude.local.md

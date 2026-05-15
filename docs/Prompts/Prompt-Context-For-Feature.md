@@ -10,6 +10,8 @@ Debes generar el código aplicando estrictamente las siguientes reglas, patrones
 * **PROHIBIDO Estado Estático:** Usa propiedades privadas de instancia (ej. `$this->ultimaRespuesta`, `$this->excepcionCapturada`).
 * **PROHIBIDO Hooks de Behat para Sembrado:** NUNCA uses `@BeforeScenario` o similares para crear entidades base.
 * **PROHIBIDO Implementar Lógica de Negocio:** No crees los Handlers, DTOs ni Entidades. Solo asume que existen e instáncialos en el Context.
+* **PROHIBIDO Implementar crear los handlers en cualquier capa, solo instancialos en la clase de context como si ya existieran, lo mismo para use cases, etc** 
+
 
 ### 2. PATRÓN DRY Y FACTORY METHODS (CÓMO SEMBRAR DATOS)
 * Si notas que varios escenarios requieren la creación de la misma entidad base, crea un **método privado de ayuda (Helper/Factory Method)** (ej. `private function sembrar[Entidad]Base(): [Entidad]`).
@@ -40,7 +42,7 @@ Usa `PHPUnit\Framework\Assert` exhaustivamente, no solo para verificar resultado
 
 ### ARCHIVOS DE REFERENCIA:
 
-**Archivo .feature a procesar:**
+**Archivo .feature a procesar de referencia:**
 C:\Users\djimm\Herd\hubdigitalepn\Modules\GestionPrestamosRecepciones\tests\Behat\Contexts\TramitacionSolicitudesInvestigador\EnvioSolicitudPrestamoContext.php
 
 **Contexto de Dominio/BD (Opcional pero recomendado):**

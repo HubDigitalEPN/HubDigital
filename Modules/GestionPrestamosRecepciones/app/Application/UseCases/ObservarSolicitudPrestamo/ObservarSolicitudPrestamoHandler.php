@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Application\UseCases\ObservarSolicitudPrestamo;
 
+use InvalidArgumentException;
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\SolicitudPrestamoNoEncontradaException;
@@ -20,6 +21,10 @@ final class ObservarSolicitudPrestamoHandler
 
     public function handle(ObservarSolicitudPrestamoInput $input): ObservarSolicitudPrestamoOutput
     {
+        if (trim($input->observacion) === '') {
+            throw new InvalidArgumentException('La observación del curador no puede estar vacía.');
+        }
+
         $solicitudId = SolicitudPrestamoId::fromString($input->solicitudId);
         $solicitud = $this->solicitudRepo->buscarPorId($solicitudId);
 

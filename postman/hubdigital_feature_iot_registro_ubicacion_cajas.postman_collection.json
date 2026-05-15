@@ -1,0 +1,632 @@
+{
+  "info": {
+    "name": "HubDigital - Feature iot registro ubicacion cajas",
+    "description": "Postman suite for the current feature branch. It is configured for Laravel Herd by default. If your Herd domain differs, update the baseUrl variable and keep the rest of the requests unchanged.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register Prestamista",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{prestamistaName}}\",\n  \"email\": \"{{prestamistaEmail}}\",\n  \"password\": \"{{prestamistaPassword}}\",\n  \"password_confirmation\": \"{{prestamistaPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/register/prestamista",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "register",
+                "prestamista"
+              ]
+            },
+            "description": "Creates a prestamista account and stores the returned token in authToken."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds with 201', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "var body = {};",
+                  "try {",
+                  "  body = pm.response.json();",
+                  "} catch (error) {",
+                  "  body = {};",
+                  "}",
+                  "if (body.token) {",
+                  "  pm.environment.set('authToken', body.token);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register Depositante",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{depositanteName}}\",\n  \"email\": \"{{depositanteEmail}}\",\n  \"password\": \"{{depositantePassword}}\",\n  \"password_confirmation\": \"{{depositantePassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/register/depositante",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "register",
+                "depositante"
+              ]
+            },
+            "description": "Creates a depositante account and stores the returned token in authToken."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds with 201', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "var body = {};",
+                  "try {",
+                  "  body = pm.response.json();",
+                  "} catch (error) {",
+                  "  body = {};",
+                  "}",
+                  "if (body.token) {",
+                  "  pm.environment.set('authToken', body.token);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{loginEmail}}\",\n  \"password\": \"{{loginPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "login"
+              ]
+            },
+            "description": "Authenticates an existing user and stores the returned token in authToken."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds with 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "var body = {};",
+                  "try {",
+                  "  body = pm.response.json();",
+                  "} catch (error) {",
+                  "  body = {};",
+                  "}",
+                  "if (body.token) {",
+                  "  pm.environment.set('authToken', body.token);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Me",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "me"
+              ]
+            },
+            "description": "Returns the authenticated user profile using the bearer token stored in authToken."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds with 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "logout"
+              ]
+            },
+            "description": "Revokes the current bearer token."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds with 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Solicitudes de prestamo",
+      "item": [
+        {
+          "name": "Create Solicitud",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"investigador_id\": \"{{investigadorId}}\",\n  \"titulo_estudio\": \"{{solicitudTitulo}}\",\n  \"institucion_adscripcion\": \"{{solicitudInstitucion}}\",\n  \"linea_investigacion\": \"{{solicitudLineaInvestigacion}}\",\n  \"proposito_prestamo\": \"{{solicitudProposito}}\",\n  \"duracion_propuesta_meses\": {{solicitudDuracionMeses}},\n  \"items\": [\n    {\n      \"especimen_codigo_externo\": \"{{solicitudEspecimenCodigo}}\",\n      \"cantidad_solicitada\": 1\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/solicitudes-prestamo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "solicitudes-prestamo"
+              ]
+            },
+            "description": "Creates a loan request and stores solicitudId from the response."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds with 201', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "var body = {};",
+                  "try {",
+                  "  body = pm.response.json();",
+                  "} catch (error) {",
+                  "  body = {};",
+                  "}",
+                  "var createdId = body.solicitud_id || body.id;",
+                  "if (createdId) {",
+                  "  pm.environment.set('solicitudId', createdId);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Solicitud",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"investigador_id\": \"{{investigadorId}}\",\n  \"titulo_estudio\": \"{{solicitudTitulo}}\",\n  \"institucion_adscripcion\": \"{{solicitudInstitucion}}\",\n  \"linea_investigacion\": \"{{solicitudLineaInvestigacion}}\",\n  \"proposito_prestamo\": \"{{solicitudPropositoActualizado}}\",\n  \"duracion_propuesta_meses\": {{solicitudDuracionMeses}},\n  \"justificacion_extendida\": \"{{solicitudJustificacionExtendida}}\",\n  \"items\": [\n    {\n      \"id\": null,\n      \"especimen_codigo_externo\": \"{{solicitudEspecimenCodigo}}\",\n      \"cantidad_solicitada\": 2\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/solicitudes-prestamo/{{solicitudId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "solicitudes-prestamo",
+                "{{solicitudId}}"
+              ]
+            },
+            "description": "Updates the active solicitud using the id captured from the create request."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds with 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send Solicitud",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"investigador_id\": \"{{investigadorId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/solicitudes-prestamo/{{solicitudId}}/envios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "solicitudes-prestamo",
+                "{{solicitudId}}",
+                "envios"
+              ]
+            },
+            "description": "Marks the solicitud as sent."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds with 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Upload Signed Acta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "investigador_id",
+                  "value": "{{investigadorId}}",
+                  "type": "text"
+                },
+                {
+                  "key": "pdf_firmado",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/solicitudes-prestamo/{{solicitudId}}/actas-firmadas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "solicitudes-prestamo",
+                "{{solicitudId}}",
+                "actas-firmadas"
+              ]
+            },
+            "description": "Uploads the signed acta as multipart/form-data. Select a local PDF file in the pdf_firmado field before sending."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds with 201', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Inventario gestion coleccion",
+      "item": [
+        {
+          "name": "Seguimiento fisico",
+          "item": [
+            {
+              "name": "Process ESP32 Event",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{authToken}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"tag_uid\": \"{{tagUid}}\",\n  \"gabinete_id\": \"{{gabineteId}}\",\n  \"slot_index\": {{slotIndex}},\n  \"evento\": \"{{eventoEsp32}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/seguimiento-fisico/eventos",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "seguimiento-fisico",
+                    "eventos"
+                  ]
+                },
+                "description": "Sends the IoT event payload that the ESP32 would deliver."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('responds with 200', function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://hubdigital.test"
+    },
+    {
+      "key": "authToken",
+      "value": ""
+    },
+    {
+      "key": "loginEmail",
+      "value": "user@example.test"
+    },
+    {
+      "key": "loginPassword",
+      "value": "password1234"
+    },
+    {
+      "key": "prestamistaName",
+      "value": "Prestamista Demo"
+    },
+    {
+      "key": "prestamistaEmail",
+      "value": "prestamista@example.test"
+    },
+    {
+      "key": "prestamistaPassword",
+      "value": "password1234"
+    },
+    {
+      "key": "depositanteName",
+      "value": "Depositante Demo"
+    },
+    {
+      "key": "depositanteEmail",
+      "value": "depositante@example.test"
+    },
+    {
+      "key": "depositantePassword",
+      "value": "password1234"
+    },
+    {
+      "key": "investigadorId",
+      "value": "inv-001"
+    },
+    {
+      "key": "solicitudTitulo",
+      "value": "Registro de ubicacion de cajas"
+    },
+    {
+      "key": "solicitudInstitucion",
+      "value": "Museo de Historia Natural"
+    },
+    {
+      "key": "solicitudLineaInvestigacion",
+      "value": "Entomologia"
+    },
+    {
+      "key": "solicitudProposito",
+      "value": "Validacion de flujo API"
+    },
+    {
+      "key": "solicitudPropositoActualizado",
+      "value": "Validacion de flujo API actualizado"
+    },
+    {
+      "key": "solicitudDuracionMeses",
+      "value": "6"
+    },
+    {
+      "key": "solicitudJustificacionExtendida",
+      "value": "Prueba de actualizacion desde Postman"
+    },
+    {
+      "key": "solicitudEspecimenCodigo",
+      "value": "ESP-0001"
+    },
+    {
+      "key": "solicitudId",
+      "value": ""
+    },
+    {
+      "key": "tagUid",
+      "value": "A1B2C3D4"
+    },
+    {
+      "key": "slotIndex",
+      "value": "0"
+    },
+    {
+      "key": "eventoEsp32",
+      "value": "ingreso"
+    }
+  ]
+}

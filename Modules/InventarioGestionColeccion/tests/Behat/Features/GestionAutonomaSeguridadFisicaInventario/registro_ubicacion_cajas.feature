@@ -1,25 +1,23 @@
 # language: es
-Característica: Registro automático de ubicación de cajas
-  Como curador responsable de la colección,
-  quiero que se registre automáticamente cuando una caja entomológica es ingresada o retirada de una ranura del gabinete,
-  para detectar movimientos no autorizados en tiempo real y evitar las pérdidas de material biológico.
+Característica: Localización de cajas y alertas por movimiento no autorizado
+  Como curador de la colección,
+  quiero saber en qué ranura se encuentra cada caja
+  y recibir una alerta cuando una caja se mueve fuera del horario autorizado,
+  para mantener la integridad y seguridad de la colección.
 
-  Esquema del escenario: Registro de movimiento de una caja en una ranura del gabinete
-    Dado que se está monitoreando una ranura del gabinete
-    Y existe una caja entomológica en condición de <condicion_previa>
-    Cuando <accion> la caja entomológica en la ranura
-    Entonces se debe registrar el evento de <accion>
-    Y el estado de la caja debe cambiar a <estado_resultante>
+  Escenario: El curador ubica una caja recién ingresada a una ranura
+    Dado que la caja "B-042" está disponible fuera de un gabinete
+    Y que la ranura 3 del gabinete "G-01" está libre
+    Cuando la caja "B-042" es colocada en la ranura 3 del gabinete "G-01"
+    Entonces el curador puede ver que "B-042" se encuentra en la ranura 3 del gabinete "G-01"
 
-    Ejemplos:
-      | condicion_previa          | accion  | estado_resultante |
-      | ranura vacía disponible   | ingreso | En Gabinete       |
-      | registrada en una ranura  | retiro  | En Tránsito       |
+  Escenario: El curador sabe que una caja fue retirada de su ranura
+    Dado que la caja "B-042" se encuentra en la ranura 3 del gabinete "G-01"
+    Cuando la caja "B-042" es retirada de su ranura
+    Entonces el curador puede ver que "B-042" no está ubicada en ninguna ranura
 
-  Escenario: Movimiento no autorizado fuera del horario establecido
-    Dado que el horario autorizado de movimiento de ranuras está configurado
-    Y la hora actual está fuera del horario autorizado
-    Cuando retiro una caja entomológica de su ranura
-    Entonces se debe registrar el evento de retiro
-    Y se debe generar una alerta de "Movimiento No Autorizado"
-    Y el curador responsable debe recibir una notificación inmediata
+  Escenario: El curador recibe una alerta cuando una caja se mueve fuera del horario autorizado
+    Dado que la caja "B-042" se encuentra en la ranura 3 del gabinete "G-01"
+    Y que el movimiento ocurre fuera del horario autorizado de la colección
+    Cuando la caja "B-042" es retirada de su ranura
+    Entonces el curador recibe una alerta de movimiento no autorizado

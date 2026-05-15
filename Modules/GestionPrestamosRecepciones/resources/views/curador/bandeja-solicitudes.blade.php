@@ -1,6 +1,6 @@
-<div class="space-y-6">
+<div class="p-6 space-y-6">
 
-    <flux:heading size="xl" level="1" class="font-display">Bandeja de Solicitudes</flux:heading>
+    <flux:heading size="xl" level="1" class="font-display">Bandeja de solicitudes</flux:heading>
 
     {{-- Filtro de estado --}}
     <div class="flex items-center gap-3">
@@ -24,7 +24,7 @@
         <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
             <flux:table>
                 <flux:table.columns>
-                    <flux:table.column>N.º Solicitud</flux:table.column>
+                    <flux:table.column class="!ps-4">N.º solicitud</flux:table.column>
                     <flux:table.column>Título</flux:table.column>
                     <flux:table.column>Investigador</flux:table.column>
                     <flux:table.column>Estado</flux:table.column>
@@ -34,26 +34,34 @@
                 <flux:table.rows>
                     @foreach($solicitudes as $solicitud)
                         <flux:table.row>
-                            <flux:table.cell class="font-mono text-xs text-text-secondary">
+                            <flux:table.cell class="!ps-4 px-4 py-3 font-mono text-xs text-text-secondary whitespace-nowrap">
                                 {{ $solicitud->numero_solicitud }}
                             </flux:table.cell>
-                            <flux:table.cell class="font-medium text-text-primary">
+                            <flux:table.cell class="px-4 py-3 font-medium text-text-primary">
                                 {{ $solicitud->titulo_estudio }}
                             </flux:table.cell>
-                            <flux:table.cell class="text-sm text-text-secondary">
-                                {{ $solicitud->investigador_id }}
+                            <flux:table.cell class="px-4 py-3 text-sm text-text-secondary">
+                                {{ $investigadores->get($solicitud->investigador_id)?->name ?? $solicitud->investigador_id }}
                             </flux:table.cell>
-                            <flux:table.cell>
+                            <flux:table.cell class="px-4 py-3">
                                 <x-gestionprestamosrecepciones::solicitud-status-badge :estado="$solicitud->estado" />
                             </flux:table.cell>
-                            <flux:table.cell class="text-xs text-text-secondary">
+                            <flux:table.cell class="px-4 py-3 text-xs text-text-secondary whitespace-nowrap">
                                 {{ $solicitud->created_at->format('d/m/Y') }}
                             </flux:table.cell>
-                            <flux:table.cell>
-                                <flux:button size="sm" variant="ghost" icon="eye"
-                                    wire:navigate href="{{ route('prestamos.curador.solicitud.revisar', $solicitud->id) }}">
-                                    Revisar
-                                </flux:button>
+                            <flux:table.cell class="px-4 py-3 pr-6 whitespace-nowrap">
+                                <div class="flex items-center gap-2">
+                                    <flux:button size="sm" variant="ghost" icon="eye"
+                                        wire:navigate href="{{ route('prestamos.curador.solicitud.revisar', $solicitud->id) }}">
+                                        Revisar
+                                    </flux:button>
+                                    @if($solicitud->estado === 'enviada')
+                                        <flux:button size="sm" variant="primary" icon="check-circle"
+                                            wire:navigate href="{{ route('prestamos.curador.solicitud.revisar', $solicitud->id) }}">
+                                            Decidir
+                                        </flux:button>
+                                    @endif
+                                </div>
                             </flux:table.cell>
                         </flux:table.row>
                     @endforeach
