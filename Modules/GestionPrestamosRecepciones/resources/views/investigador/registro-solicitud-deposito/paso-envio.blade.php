@@ -108,21 +108,21 @@
         {{-- Acciones --}}
         <div class="flex gap-3 flex-wrap justify-center">
             <flux:button
-                variant="ghost"
+                variant="filled"
                 icon="document-text"
                 wire:navigate
-                href="{{ route('prestamos.investigador.mis-solicitudes') }}"
+                href="{{ route('prestamos.investigador.mis-depositos') }}"
             >
                 Ver mis solicitudes
             </flux:button>
-            <flux:button
-                variant="primary"
-                icon="plus"
+            <a
                 wire:navigate
                 href="{{ route('prestamos.investigador.deposito.crear') }}"
+                class="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors"
             >
+                <flux:icon name="plus" class="size-4" />
                 Nueva solicitud
-            </flux:button>
+            </a>
         </div>
 
     </div>

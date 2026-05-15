@@ -5,20 +5,21 @@ declare(strict_types=1);
 namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador;
 
 use App\Concerns\HandlesDomainExceptions;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ActualizarOrigenSolicitudDeposito\ActualizarOrigenSolicitudDepositoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ActualizarOrigenSolicitudDeposito\ActualizarOrigenSolicitudDepositoInput;
-use Modules\GestionPrestamosRecepciones\Application\UseCases\CargarDocumentacionOficial\CargarDocumentacionOficialHandler;
-use Modules\GestionPrestamosRecepciones\Application\UseCases\CargarDocumentacionOficial\CargarDocumentacionOficialInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\CompletarDatosManualmente\CompletarDatosManualesHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\CompletarDatosManualmente\CompletarDatosManualesInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\DeclararSinDocumentacion\DeclararSinDocumentacionHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\DeclararSinDocumentacion\DeclararSinDocumentacionInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\DeterminarDocumentacionRequerida\DeterminarDocumentacionRequeridaHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\DeterminarDocumentacionRequerida\DeterminarDocumentacionRequeridaInput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarSolicitudDeposito\EnviarSolicitudDepositoHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarSolicitudDeposito\EnviarSolicitudDepositoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarSolicitudDeposito\RegistrarSolicitudDepositoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarSolicitudDeposito\RegistrarSolicitudDepositoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\SolicitarIntervencionCuratoria\SolicitarIntervencionCuratoriaHandler;
@@ -31,6 +32,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Exceptions\LimiteAnualDepositosAl
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoValidacionIdentidad;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoTramite;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Jobs\ExtraccionDatosDocumentoJob;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
 
 #[Layout('layouts.app', params: ['title' => 'Nueva Solicitud de Depósito'])]
@@ -94,7 +96,15 @@ final class RegistroSolicitudDeposito extends Component
     /** @var array<string, string> [nombre => ruta_storage] */
     public array $documentosCargados = [];
 
+    /** @var array<string, string> [nombre => nombre_original_archivo] */
+    public array $nombresArchivosOriginales = [];
+
     public bool $intervencionCuratoriaActiva = false;
+
+    public bool $extraccionProcesando = false;
+
+    /** @var string[] */
+    public array $documentosProcesados = [];
 
     // ── Paso 4 – Datos ────────────────────────────────────────────────────────────
 
@@ -103,6 +113,9 @@ final class RegistroSolicitudDeposito extends Component
 
     /** @var string[] */
     public array $datosFaltantes = [];
+
+    /** @var string[] */
+    public array $datosIngresadosManualmente = [];
 
     /** @var array<string, string> */
     public array $datosEnEdicion = [];
@@ -127,6 +140,7 @@ final class RegistroSolicitudDeposito extends Component
     {
         $this->solicitudesPreviasDeposito = SolicitudDepositoEloquentModel::where('investigador_id', (string) auth()->id())
             ->where('tipo_tramite', TipoTramite::Deposito->value)
+            ->where('estado', '!=', EstadoSolicitudDeposito::EnBorrador->value)
             ->whereYear('created_at', (int) date('Y'))
             ->count();
     }
@@ -143,7 +157,7 @@ final class RegistroSolicitudDeposito extends Component
 
     // ── Paso 1 ────────────────────────────────────────────────────────────────────
 
-    public function avanzarPaso1(RegistrarSolicitudDepositoHandler $handler): void
+    public function avanzarPaso1(): void
     {
         if (empty($this->tipoTramite)) {
             $this->addError('tipoTramite', 'Selecciona un tipo de trámite para continuar.');
@@ -151,51 +165,64 @@ final class RegistroSolicitudDeposito extends Component
             return;
         }
 
-        if ($this->solicitudId === null) {
-            try {
-                $output = ($handler)(new RegistrarSolicitudDepositoInput(
-                    investigadorId: (string) auth()->id(),
-                    tipoTramite: $this->tipoTramite,
-                ));
-                $this->solicitudId = $output->id;
-                $this->numeroSolicitud = $output->numero;
-                $this->limiteAlcanzado = false;
-                $this->mensajeLimite = '';
-            } catch (LimiteAnualDepositosAlcanzado $e) {
+        if ($this->tipoTramite === TipoTramite::Deposito->value) {
+            $conteo = SolicitudDepositoEloquentModel::where('investigador_id', (string) auth()->id())
+                ->where('tipo_tramite', TipoTramite::Deposito->value)
+                ->where('estado', '!=', EstadoSolicitudDeposito::EnBorrador->value)
+                ->whereYear('created_at', (int) date('Y'))
+                ->count();
+
+            if ($conteo >= 3) {
                 $this->limiteAlcanzado = true;
-                $this->mensajeLimite = $e->getMessage();
+                $this->mensajeLimite = 'Has alcanzado el límite anual de 3 depósitos.';
 
                 return;
             }
         }
 
+        $this->limiteAlcanzado = false;
+        $this->mensajeLimite = '';
         $this->pasosCompletados = array_values(array_unique([...$this->pasosCompletados, 1]));
+
+        if ($this->tipoTramite === TipoTramite::Donacion->value) {
+            // Donación no requiere declarar origen ni situación regulatoria
+            $this->documentosRequeridos = ['Formato Solicitud Donación', 'Carta de Cesión de Derechos / Origen Lícito'];
+            $this->pasosCompletados = array_values(array_unique([...$this->pasosCompletados, 2]));
+            $this->paso = 3;
+
+            return;
+        }
+
         $this->paso = 2;
     }
 
     // ── Paso 2 ────────────────────────────────────────────────────────────────────
 
-    public function guardarPasoDos(
-        ActualizarOrigenSolicitudDepositoHandler $actualizar,
-        DeterminarDocumentacionRequeridaHandler $determinar,
-    ): void {
-        $this->validate([
+    public function guardarPasoDos(DeterminarDocumentacionRequeridaHandler $determinar): void
+    {
+        $rules = [
             'origenRecoleccion' => 'required|string',
             'situacionRegulatoria' => 'required|string',
-        ], [
+        ];
+
+        $messages = [
             'origenRecoleccion.required' => 'Selecciona la procedencia de los especímenes.',
             'situacionRegulatoria.required' => 'Selecciona la situación regulatoria.',
-        ]);
+        ];
 
-        ($actualizar)(new ActualizarOrigenSolicitudDepositoInput(
-            solicitudId: $this->solicitudId,
-            origenRecoleccion: $this->origenRecoleccion,
-            situacionRegulatoria: $this->situacionRegulatoria,
-            provinciaOrigen: $this->provincia,
-        ));
+        if ($this->origenRecoleccion === 'Nacional (Ecuador)') {
+            $rules['provincia'] = 'required|in:Pichincha,Fuera de Pichincha';
+            $messages['provincia.required'] = 'Selecciona si la recolección fue dentro o fuera de Pichincha.';
+            $messages['provincia.in'] = 'Selecciona si la recolección fue dentro o fuera de Pichincha.';
+        }
+
+        $this->validate($rules, $messages);
 
         $output = ($determinar)(new DeterminarDocumentacionRequeridaInput(
-            solicitudId: $this->solicitudId,
+            tipoTramite: $this->tipoTramite,
+            origenRecoleccion: $this->origenRecoleccion,
+            situacionRegulatoria: $this->situacionRegulatoria,
+            provinciaOrigen: $this->provincia ?: null,
         ));
 
         $this->documentosRequeridos = $output->documentosRequeridos;
@@ -207,27 +234,28 @@ final class RegistroSolicitudDeposito extends Component
 
     public function updatedArchivoFormatoDeposito(): void
     {
-        $this->registrarDocumentoCargado('Formato Solicitud Depósito', $this->archivoFormatoDeposito);
+        $this->registrarDocumentoCargado('archivoFormatoDeposito', 'Formato Solicitud Depósito', $this->archivoFormatoDeposito);
     }
 
     public function updatedArchivoFormatoDonacion(): void
     {
-        $this->registrarDocumentoCargado('Formato Solicitud Donación', $this->archivoFormatoDonacion);
+        $this->registrarDocumentoCargado('archivoFormatoDonacion', 'Formato Solicitud Donación', $this->archivoFormatoDonacion);
     }
 
     public function updatedArchivoAutorizacionMaate(): void
     {
-        $this->registrarDocumentoCargado('Copia de la Autorización de Recolección (MAATE)', $this->archivoAutorizacionMaate);
+        $this->registrarDocumentoCargado('archivoAutorizacionMaate', 'Copia de la Autorización de Recolección (MAATE)', $this->archivoAutorizacionMaate);
     }
 
     public function updatedArchivoPermisoMovilizacion(): void
     {
-        $this->registrarDocumentoCargado('Copia del Permiso de Movilización', $this->archivoPermisoMovilizacion);
+        $this->registrarDocumentoCargado('archivoPermisoMovilizacion', 'Copia del Permiso de Movilización', $this->archivoPermisoMovilizacion);
     }
 
     public function updatedArchivoCartaJustificacion(): void
     {
         $this->registrarDocumentoCargado(
+            'archivoCartaJustificacion',
             'Documento de Explicación de Motivos y/o Carta de Justificación (Institucional o Personal)',
             $this->archivoCartaJustificacion
         );
@@ -236,6 +264,7 @@ final class RegistroSolicitudDeposito extends Component
     public function updatedArchivoCartaProcedencia(): void
     {
         $this->registrarDocumentoCargado(
+            'archivoCartaProcedencia',
             'Carta de Procedencia firmada por el responsable de la colección de origen',
             $this->archivoCartaProcedencia
         );
@@ -243,22 +272,43 @@ final class RegistroSolicitudDeposito extends Component
 
     public function updatedArchivoCartaCesion(): void
     {
-        $this->registrarDocumentoCargado('Carta de Cesión de Derechos / Origen Lícito', $this->archivoCartaCesion);
+        $this->registrarDocumentoCargado('archivoCartaCesion', 'Carta de Cesión de Derechos / Origen Lícito', $this->archivoCartaCesion);
     }
 
     public function updatedArchivoCartaDelegacion(): void
     {
-        $this->registrarDocumentoCargado('Carta de Delegación / Justificación de Tercero', $this->archivoCartaDelegacion);
+        $this->registrarDocumentoCargado('archivoCartaDelegacion', 'Carta de Delegación / Justificación de Tercero', $this->archivoCartaDelegacion);
     }
 
-    private function registrarDocumentoCargado(string $nombre, mixed $archivo): void
+    private function registrarDocumentoCargado(string $propiedad, string $nombre, mixed $archivo): void
     {
         if ($archivo === null) {
             return;
         }
 
+        $this->validate(
+            [$propiedad => 'file|mimes:pdf|max:20480'],
+            [
+                "{$propiedad}.mimes" => "Solo se aceptan archivos PDF para \"{$nombre}\".",
+                "{$propiedad}.max" => 'El archivo no debe superar los 20 MB.',
+            ]
+        );
+
         $ruta = $archivo->store('depositos', 'public');
         $this->documentosCargados[$nombre] = $ruta;
+        $this->nombresArchivosOriginales[$nombre] = $archivo->getClientOriginalName();
+    }
+
+    public function eliminarDocumento(string $nombre): void
+    {
+        if (isset($this->documentosCargados[$nombre])) {
+            Storage::disk('public')->delete($this->documentosCargados[$nombre]);
+            unset($this->documentosCargados[$nombre]);
+            unset($this->nombresArchivosOriginales[$nombre]);
+        }
+
+        $propiedad = $this->propiedadParaDocumento($nombre);
+        $this->reset($propiedad);
     }
 
     public function solicitarIntervencion(
@@ -274,8 +324,8 @@ final class RegistroSolicitudDeposito extends Component
     }
 
     public function guardarPasoTres(
-        CargarDocumentacionOficialHandler $cargar,
-        ValidarDocumentacionInicialHandler $validar,
+        RegistrarSolicitudDepositoHandler $registrar,
+        ActualizarOrigenSolicitudDepositoHandler $actualizar,
     ): void {
         foreach ($this->documentosRequeridos as $doc) {
             if (! isset($this->documentosCargados[$doc])) {
@@ -285,30 +335,92 @@ final class RegistroSolicitudDeposito extends Component
             }
         }
 
-        ($cargar)(new CargarDocumentacionOficialInput(
-            solicitudId: $this->solicitudId,
-            documentos: $this->documentosCargados,
-        ));
+        if ($this->solicitudId === null) {
+            try {
+                $output = ($registrar)(new RegistrarSolicitudDepositoInput(
+                    investigadorId: (string) auth()->id(),
+                    tipoTramite: $this->tipoTramite,
+                ));
+                $this->solicitudId = $output->id;
+                $this->numeroSolicitud = $output->numero;
+            } catch (LimiteAnualDepositosAlcanzado $e) {
+                $this->limiteAlcanzado = true;
+                $this->mensajeLimite = $e->getMessage();
+                $this->paso = 1;
 
-        $outputValidar = ($validar)(new ValidarDocumentacionInicialInput(
-            solicitudId: $this->solicitudId,
-            provinciaOrigen: $this->provincia,
-            documentosAdjuntos: $this->documentosCargados,
-        ));
-        $this->estadoDocumental = $outputValidar->estadoDocumental->value;
+                return;
+            }
 
-        $model = SolicitudDepositoEloquentModel::findOrFail($this->solicitudId);
-        $this->datosExtraidos = array_filter([
-            'N.º Permiso Recolección' => $model->nro_permiso_recoleccion,
-            'N.º Permiso Movilización' => $model->nro_permiso_movilizacion,
-            'Grupo Animal' => $model->grupo_animal,
-            'Provincia' => $model->provincia_origen,
-            'Localidad' => $model->localidad,
-        ]);
-        $this->datosFaltantes = $model->datos_faltantes ?? [];
+            if ($this->tipoTramite !== TipoTramite::Donacion->value) {
+                ($actualizar)(new ActualizarOrigenSolicitudDepositoInput(
+                    solicitudId: $this->solicitudId,
+                    origenRecoleccion: $this->origenRecoleccion,
+                    situacionRegulatoria: $this->situacionRegulatoria,
+                    provinciaOrigen: $this->provincia ?: null,
+                ));
+            }
+        }
 
-        $this->pasosCompletados = array_values(array_unique([...$this->pasosCompletados, 3]));
-        $this->paso = 4;
+        if (! $this->extraccionProcesando) {
+            ExtraccionDatosDocumentoJob::dispatch($this->solicitudId, $this->documentosCargados);
+            $this->extraccionProcesando = true;
+        }
+    }
+
+    public function verificarExtraccion(
+        ValidarDocumentacionInicialHandler $validar,
+        ValidarIdentidadSolicitudHandler $validarIdentidad,
+    ): void {
+        if (! $this->extraccionProcesando || $this->solicitudId === null) {
+            return;
+        }
+
+        $model = SolicitudDepositoEloquentModel::find($this->solicitudId);
+
+        if ($model === null) {
+            return;
+        }
+
+        $this->documentosProcesados = $model->documentos_procesados ?? [];
+
+        if ($model->extraccion_estado === 'completada') {
+            $this->extraccionProcesando = false;
+
+            $outputValidar = ($validar)(new ValidarDocumentacionInicialInput(
+                solicitudId: $this->solicitudId,
+                provinciaOrigen: $this->provincia ?: null,
+                documentosAdjuntos: $this->documentosCargados,
+            ));
+            $this->estadoDocumental = $outputValidar->estadoDocumental->value;
+
+            $nombreEnDoc = $model->nombre_investigador_documento;
+            if ($nombreEnDoc !== null) {
+                $this->nombreEnDocumento = $nombreEnDoc;
+                $outputId = ($validarIdentidad)(new ValidarIdentidadSolicitudInput(
+                    solicitudId: $this->solicitudId,
+                    nombrePerfil: auth()->user()->name,
+                    nombreEnDocumento: $nombreEnDoc,
+                ));
+                $this->resultadoIdentidad = $outputId->resultado->value;
+                $this->cartaDelegacionRequerida = $outputId->resultado === ResultadoValidacionIdentidad::DiscrepanciaTercero;
+            }
+
+            $this->datosExtraidos = [
+                'N.º Permiso Recolección' => $model->nro_permiso_recoleccion,
+                'N.º Permiso Movilización' => $model->nro_permiso_movilizacion,
+                'Grupo Animal' => $model->grupo_animal,
+                'Provincia' => ($model->provincia_origen === 'Fuera de Pichincha') ? null : $model->provincia_origen,
+                'Localidad' => $model->localidad,
+            ];
+            $this->datosFaltantes = $model->datos_faltantes ?? [];
+            $this->datosIngresadosManualmente = $model->datos_ingresados_manualmente ?? [];
+
+            $this->pasosCompletados = array_values(array_unique([...$this->pasosCompletados, 3]));
+            $this->paso = 4;
+        } elseif ($model->extraccion_estado === 'fallida') {
+            $this->extraccionProcesando = false;
+            $this->addError('documentos', 'No se pudo procesar la documentación. Por favor, intenta nuevamente.');
+        }
     }
 
     // ── Paso 4 ────────────────────────────────────────────────────────────────────
@@ -328,6 +440,14 @@ final class RegistroSolicitudDeposito extends Component
 
         $this->resultadoIdentidad = $output->resultado->value;
         $this->cartaDelegacionRequerida = $output->resultado === ResultadoValidacionIdentidad::DiscrepanciaTercero;
+    }
+
+    public function resetearValidacionIdentidad(): void
+    {
+        $this->resultadoIdentidad = '';
+        $this->nombreEnDocumento = '';
+        $this->cartaDelegacionRequerida = false;
+        $this->resetValidation(['nombreEnDocumento', 'identidad']);
     }
 
     public function iniciarEdicionDato(string $campo): void
@@ -361,10 +481,6 @@ final class RegistroSolicitudDeposito extends Component
             array_filter($this->datosFaltantes, fn (string $c) => $c !== $campo)
         );
         unset($this->datosEnEdicion[$campo]);
-
-        if ($output->estado === EstadoSolicitudDeposito::PendienteDeRevisionPorCuraduria) {
-            $this->estadoFinal = $output->estado->value;
-        }
     }
 
     public function guardarPasoCuatro(): void
@@ -393,15 +509,15 @@ final class RegistroSolicitudDeposito extends Component
 
     // ── Paso 5 ────────────────────────────────────────────────────────────────────
 
-    public function enviarSolicitud(): void
+    public function enviarSolicitud(EnviarSolicitudDepositoHandler $handler): void
     {
         $this->validate(
             ['declaracionAceptada' => 'accepted'],
             ['declaracionAceptada.accepted' => 'Debes aceptar la declaración para enviar la solicitud.']
         );
 
-        $model = SolicitudDepositoEloquentModel::findOrFail($this->solicitudId);
-        $this->estadoFinal = $model->estado;
+        $output = ($handler)(new EnviarSolicitudDepositoInput(solicitudId: $this->solicitudId));
+        $this->estadoFinal = $output->estado->value;
         $this->pasosCompletados = array_values(array_unique([...$this->pasosCompletados, 5]));
         $this->paso = 6;
     }
@@ -411,7 +527,26 @@ final class RegistroSolicitudDeposito extends Component
     public function retroceder(): void
     {
         if ($this->paso > 1) {
+            if ($this->paso === 4) {
+                $this->extraccionProcesando = false;
+
+                if ($this->solicitudId !== null) {
+                    SolicitudDepositoEloquentModel::where('id', $this->solicitudId)
+                        ->update(['extraccion_estado' => null]);
+                }
+
+                if (in_array('N.º Permiso Movilización', $this->datosFaltantes, true)
+                    && ! in_array('Copia del Permiso de Movilización', $this->documentosRequeridos, true)
+                ) {
+                    $this->documentosRequeridos[] = 'Copia del Permiso de Movilización';
+                }
+            }
+
             $this->paso--;
+
+            if ($this->paso === 2 && $this->tipoTramite === TipoTramite::Donacion->value) {
+                $this->paso = 1;
+            }
         }
     }
 

@@ -21,6 +21,8 @@ final class RegistrarSolicitudDepositoHandler
 
     public function __invoke(RegistrarSolicitudDepositoInput $input): RegistrarSolicitudDepositoOutput
     {
+        $this->repo->eliminarBorradoresDe($input->investigadorId);
+
         if ($input->tipoTramite === TipoTramite::Deposito->value) {
             $conteo = $this->repo->contarPorInvestigadorYTipoEnAnioActual(
                 $input->investigadorId,

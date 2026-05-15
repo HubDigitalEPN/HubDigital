@@ -10,6 +10,6 @@ final readonly class ActualizarOrigenSolicitudDepositoInput
         public string $solicitudId,
         public string $origenRecoleccion,
         public string $situacionRegulatoria,
-        public string $provinciaOrigen,
+        public ?string $provinciaOrigen = null,
     ) {}
 }

@@ -25,9 +25,20 @@ final class ReglaValidacionIdentidad
             return ResultadoValidacionIdentidad::Conforme;
         }
 
-        $distancia = levenshtein($normalPerfil, $normalDocumento);
+        // Similitud por caracteres (errores tipográficos menores)
+        if (levenshtein($normalPerfil, $normalDocumento) <= self::UMBRAL_DISCREPANCIA_TIPOGRAFICA) {
+            return ResultadoValidacionIdentidad::DiscrepanciaTypografica;
+        }
 
-        if ($distancia <= self::UMBRAL_DISCREPANCIA_TIPOGRAFICA) {
+        // Similitud por tokens: nombres faltantes o adicionales (ej. segundo nombre)
+        // Si el índice de Jaccard es > 0.5, es la misma persona con partes del nombre distintas.
+        $tokensPerfil = array_filter(explode(' ', $normalPerfil));
+        $tokensDocumento = array_filter(explode(' ', $normalDocumento));
+
+        $interseccion = count(array_intersect($tokensPerfil, $tokensDocumento));
+        $union = count(array_unique(array_merge($tokensPerfil, $tokensDocumento)));
+
+        if ($union > 0 && ($interseccion / $union) >= 0.5) {
             return ResultadoValidacionIdentidad::DiscrepanciaTypografica;
         }
 

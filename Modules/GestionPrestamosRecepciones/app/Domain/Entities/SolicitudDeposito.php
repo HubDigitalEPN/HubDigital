@@ -53,6 +53,9 @@ final class SolicitudDeposito
     /** @var string[] Nombres de campos pendientes de completar manualmente */
     private array $datosFaltantes = [];
 
+    /** @var string[] Nombres de campos que fueron ingresados o corregidos manualmente */
+    private array $datosIngresadosManualmente = [];
+
     // ── Datos integrados de documentación oficial ────────────────
 
     private ?string $nroPermisoRecoleccion = null;
@@ -64,6 +67,8 @@ final class SolicitudDeposito
     private ?string $localidad = null;
 
     private ?string $origenDonacion = null;
+
+    private ?string $nombreInvestigadorDocumento = null;
 
     // ── Cola interna de eventos de dominio ───────────────────────
 
@@ -157,12 +162,31 @@ final class SolicitudDeposito
      */
     public function integrarDatosDeDocumentos(DatosIntegradosDocumento $datos, array $nombresDocumentos): void
     {
+        // Cada llamada re-evalúa los datos desde cero: limpiamos los faltantes
+        // previos para que no persistan si el nuevo run sí los extrajo.
+        $this->datosFaltantes = [];
+
         if ($datos->nroPermisoRecoleccion !== null) {
             $this->nroPermisoRecoleccion = $datos->nroPermisoRecoleccion;
+        } elseif ($this->tipoTramite->equals(TipoTramite::Deposito)) {
+            $this->marcarDatoComoFaltante('N.º Permiso Recolección');
         }
 
         if ($datos->nroPermisoMovilizacion !== null) {
             $this->nroPermisoMovilizacion = $datos->nroPermisoMovilizacion;
+        }
+
+        if ($datos->provinciaOrigen !== null) {
+            $this->provinciaOrigen = $datos->provinciaOrigen;
+        } elseif ($this->tipoTramite->equals(TipoTramite::Deposito)) {
+            $this->marcarDatoComoFaltante('Provincia');
+        }
+
+        if ($this->nroPermisoMovilizacion === null
+            && $datos->provinciaOrigen !== null
+            && strtolower(trim($datos->provinciaOrigen)) !== 'pichincha'
+        ) {
+            $this->marcarDatoComoFaltante('N.º Permiso Movilización');
         }
 
         if ($datos->grupoAnimal !== null) {
@@ -171,26 +195,24 @@ final class SolicitudDeposito
             $this->marcarDatoComoFaltante('Grupo Animal');
         }
 
-        if ($datos->provinciaOrigen !== null) {
-            $this->provinciaOrigen = $datos->provinciaOrigen;
-        }
-
         if ($datos->localidad !== null) {
             $this->localidad = $datos->localidad;
+        } elseif ($this->tipoTramite->equals(TipoTramite::Deposito)) {
+            $this->marcarDatoComoFaltante('Localidad');
         }
 
         if ($datos->origenDonacion !== null) {
             $this->origenDonacion = $datos->origenDonacion;
         }
 
+        if ($datos->nombreInvestigador !== null) {
+            $this->nombreInvestigadorDocumento = $datos->nombreInvestigador;
+        }
+
         $this->events[] = new DocumentacionOficialCargada(
             solicitudId: $this->id,
             nombresDocumentos: $nombresDocumentos,
         );
-
-        if (! $this->tieneDatosFaltantes()) {
-            $this->avanzarARevisionCuraduria();
-        }
     }
 
     public function completarDatoFaltante(string $campo, string $valor): void
@@ -207,15 +229,23 @@ final class SolicitudDeposito
             array_filter($this->datosFaltantes, fn ($c) => $c !== $campo)
         );
 
+        if (! in_array($campo, $this->datosIngresadosManualmente, true)) {
+            $this->datosIngresadosManualmente[] = $campo;
+        }
+
+        if ($campo === 'Provincia'
+            && strtolower(trim($valor)) !== 'pichincha'
+            && $this->nroPermisoMovilizacion === null
+            && ! in_array('N.º Permiso Movilización', $this->datosFaltantes, true)
+        ) {
+            $this->marcarDatoComoFaltante('N.º Permiso Movilización');
+        }
+
         $this->events[] = new DatoFaltanteCompletado(
             solicitudId: $this->id,
             campo: $campo,
             valor: $valor,
         );
-
-        if (! $this->tieneDatosFaltantes()) {
-            $this->avanzarARevisionCuraduria();
-        }
     }
 
     public function escalarAIntervencionCuratoria(): void
@@ -342,6 +372,11 @@ final class SolicitudDeposito
         return $this->origenDonacion;
     }
 
+    public function nombreInvestigadorDocumento(): ?string
+    {
+        return $this->nombreInvestigadorDocumento;
+    }
+
     /**
      * @return array<string, DocumentoAdjunto>
      */
@@ -354,6 +389,12 @@ final class SolicitudDeposito
     public function datosFaltantesParaPersistir(): array
     {
         return $this->datosFaltantes;
+    }
+
+    /** @return string[] */
+    public function datosIngresadosManualmenterParaPersistir(): array
+    {
+        return $this->datosIngresadosManualmente;
     }
 
     /**
@@ -393,6 +434,8 @@ final class SolicitudDeposito
         ?string $origenDonacion,
         array $documentosAdjuntos,
         array $datosFaltantes,
+        ?string $nombreInvestigadorDocumento = null,
+        array $datosIngresadosManualmente = [],
     ): self {
         $solicitud = new self;
 
@@ -412,6 +455,8 @@ final class SolicitudDeposito
         $solicitud->origenDonacion = $origenDonacion;
         $solicitud->documentosAdjuntos = $documentosAdjuntos;
         $solicitud->datosFaltantes = $datosFaltantes;
+        $solicitud->nombreInvestigadorDocumento = $nombreInvestigadorDocumento;
+        $solicitud->datosIngresadosManualmente = $datosIngresadosManualmente;
 
         return $solicitud;
     }

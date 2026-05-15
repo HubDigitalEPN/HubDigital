@@ -18,24 +18,44 @@ final class DeterminarDocumentacionRequeridaHandler
 
     public function __invoke(DeterminarDocumentacionRequeridaInput $input): DeterminarDocumentacionRequeridaOutput
     {
-        $id = SolicitudDepositoId::from($input->solicitudId);
+        if ($input->solicitudId !== null) {
+            return $this->determinarDesdeSolicitud($input->solicitudId);
+        }
+
+        if ($input->tipoTramite === null || $input->origenRecoleccion === null || $input->situacionRegulatoria === null) {
+            throw new \DomainException('Se requiere solicitudId o los datos de tipo de trámite, origen y situación regulatoria');
+        }
+
+        return new DeterminarDocumentacionRequeridaOutput(
+            documentosRequeridos: $this->regla->determinar(
+                $input->tipoTramite,
+                $input->origenRecoleccion,
+                $input->situacionRegulatoria,
+                $input->provinciaOrigen,
+            ),
+        );
+    }
+
+    private function determinarDesdeSolicitud(string $solicitudId): DeterminarDocumentacionRequeridaOutput
+    {
+        $id = SolicitudDepositoId::from($solicitudId);
         $solicitud = $this->repo->buscarPorId($id);
 
         if ($solicitud === null) {
-            throw SolicitudNoEncontradaException::conId($input->solicitudId);
+            throw SolicitudNoEncontradaException::conId($solicitudId);
         }
 
         if ($solicitud->origenRecoleccion() === null || $solicitud->situacionRegulatoria() === null) {
             throw new \DomainException('La solicitud no tiene declarado el origen de recolección y/o la situación regulatoria');
         }
 
-        $documentosRequeridos = $this->regla->determinar(
-            $solicitud->origenRecoleccion(),
-            $solicitud->situacionRegulatoria()
-        );
-
         return new DeterminarDocumentacionRequeridaOutput(
-            documentosRequeridos: $documentosRequeridos,
+            documentosRequeridos: $this->regla->determinar(
+                $solicitud->tipoTramite(),
+                $solicitud->origenRecoleccion(),
+                $solicitud->situacionRegulatoria(),
+                $solicitud->provinciaOrigen(),
+            ),
         );
     }
 }

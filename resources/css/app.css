@@ -134,3 +134,9 @@ body {
         radial-gradient(circle at 18% 55%, rgba(27, 54, 93, 0.05) 0%, transparent 50%),
         radial-gradient(circle at 82% 20%, rgba(46, 125, 50, 0.04) 0%, transparent 45%);
 }
+
+@keyframes progress {
+    0%   { transform: translateX(-100%); width: 40%; }
+    50%  { transform: translateX(150%); width: 60%; }
+    100% { transform: translateX(300%); width: 40%; }
+}

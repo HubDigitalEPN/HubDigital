@@ -31,13 +31,19 @@ final class SolicitudDepositoEloquentModel extends Model
         'grupo_animal',
         'localidad',
         'origen_donacion',
+        'nombre_investigador_documento',
         'documentos_adjuntos',
         'datos_faltantes',
+        'datos_ingresados_manualmente',
+        'extraccion_estado',
+        'documentos_procesados',
     ];
 
     protected $casts = [
         'sin_documentacion' => 'boolean',
         'documentos_adjuntos' => 'array',
         'datos_faltantes' => 'array',
+        'datos_ingresados_manualmente' => 'array',
+        'documentos_procesados' => 'array',
     ];
 }

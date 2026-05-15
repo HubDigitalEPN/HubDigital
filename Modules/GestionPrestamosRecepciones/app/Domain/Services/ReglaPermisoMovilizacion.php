@@ -16,8 +16,13 @@ final class ReglaPermisoMovilizacion
     /**
      * @param  string[]  $nombresDocumentosAdjuntos
      */
-    public function validar(string $provinciaOrigen, array $nombresDocumentosAdjuntos): EstadoDocumental
+    public function validar(?string $provinciaOrigen, array $nombresDocumentosAdjuntos): EstadoDocumental
     {
+        // Sin provincia → origen exterior, no aplica permiso de movilización
+        if (empty($provinciaOrigen)) {
+            return EstadoDocumental::Valido;
+        }
+
         if (in_array($provinciaOrigen, self::PROVINCIAS_EXENTAS, true)) {
             return EstadoDocumental::Valido;
         }

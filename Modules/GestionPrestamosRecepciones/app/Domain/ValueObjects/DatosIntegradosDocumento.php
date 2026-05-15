@@ -13,5 +13,6 @@ final readonly class DatosIntegradosDocumento
         public readonly ?string $provinciaOrigen,
         public readonly ?string $localidad,
         public readonly ?string $origenDonacion,
+        public readonly ?string $nombreInvestigador = null,
     ) {}
 }

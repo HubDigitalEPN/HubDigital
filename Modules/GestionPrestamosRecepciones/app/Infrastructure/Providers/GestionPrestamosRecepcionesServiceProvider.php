@@ -18,10 +18,10 @@ use Modules\GestionPrestamosRecepciones\Domain\Exceptions\TransicionEstadoInvali
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\ActaPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
-use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\FakeExtraccionDatosDocumentoAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\FakeNotificacionCuratoriaAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\LaravelEventPublisherAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\LaravelTransactionManagerAdapter;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\OllamaExtraccionDatosDocumentoAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentActaPrestamoRepository;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentSolicitudPrestamoRepository;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Repositories\EloquentSolicitudDepositoRepository;
@@ -52,9 +52,18 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
         SolicitudDepositoRepositoryInterface::class => EloquentSolicitudDepositoRepository::class,
         EventPublisherPort::class => LaravelEventPublisherAdapter::class,
         TransactionManagerPort::class => LaravelTransactionManagerAdapter::class,
-        ExtraccionDatosDocumentoPort::class => FakeExtraccionDatosDocumentoAdapter::class,
         NotificacionCuratoriaPort::class => FakeNotificacionCuratoriaAdapter::class,
     ];
+
+    public function register(): void
+    {
+        parent::register();
+
+        $this->app->bind(ExtraccionDatosDocumentoPort::class, fn () => new OllamaExtraccionDatosDocumentoAdapter(
+            ollamaUrl: config('ai.providers.ollama.url', 'http://localhost:11434'),
+            modelo: env('OLLAMA_MODEL', 'qwen2.5:1.5b'),
+        ));
+    }
 
     public function boot(): void
     {
