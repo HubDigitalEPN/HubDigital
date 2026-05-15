@@ -42,8 +42,11 @@
                         </flux:sidebar.group>
                     @elseif(auth()->user()->rol === RolUsuario::DEPOSITANTE)
                         <flux:sidebar.group heading="Depósitos" class="grid">
-                            <flux:sidebar.item icon="archive-box" :href="route('dashboard')" wire:navigate>
+                            <flux:sidebar.item icon="archive-box" :href="route('prestamos.investigador.mis-depositos')" :current="request()->routeIs('prestamos.investigador.mis-depositos')" wire:navigate>
                                 Mis Depósitos
+                            </flux:sidebar.item>
+                            <flux:sidebar.item icon="plus-circle" :href="route('prestamos.investigador.deposito.crear')" :current="request()->routeIs('prestamos.investigador.deposito.crear')" wire:navigate>
+                                Nueva Solicitud
                             </flux:sidebar.item>
                         </flux:sidebar.group>
                     @elseif(auth()->user()->rol === RolUsuario::CURADOR)

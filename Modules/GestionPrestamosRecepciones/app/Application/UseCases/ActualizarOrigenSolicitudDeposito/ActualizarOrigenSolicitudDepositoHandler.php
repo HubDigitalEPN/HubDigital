@@ -30,7 +30,7 @@ final class ActualizarOrigenSolicitudDepositoHandler
         $solicitud->declararOrigenRecoleccion($input->origenRecoleccion);
         $solicitud->declararSituacionRegulatoria($input->situacionRegulatoria);
 
-        if ($input->provinciaOrigen !== '') {
+        if (! empty($input->provinciaOrigen)) {
             $solicitud->declararProvincia($input->provinciaOrigen);
         }
 

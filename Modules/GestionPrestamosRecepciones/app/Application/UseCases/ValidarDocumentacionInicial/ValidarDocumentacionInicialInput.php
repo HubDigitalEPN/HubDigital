@@ -8,7 +8,7 @@ final readonly class ValidarDocumentacionInicialInput
 {
     public function __construct(
         public string $solicitudId,
-        public string $provinciaOrigen,
+        public ?string $provinciaOrigen,
         /** @var array<string, string> [nombre => ruta] */
         public array $documentosAdjuntos,
     ) {}

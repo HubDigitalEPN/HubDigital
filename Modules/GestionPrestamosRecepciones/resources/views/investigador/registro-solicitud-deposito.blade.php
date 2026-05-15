@@ -76,7 +76,7 @@
         @if($paso < 6)
             <div class="px-6 py-4 border-t border-border bg-bg-main rounded-b-lg flex items-center justify-between gap-3">
                 <div>
-                    @if($paso > 1)
+                    @if($paso > 1 && !$extraccionProcesando)
                         <flux:button variant="ghost" wire:click="retroceder" icon="arrow-left">
                             Atrás
                         </flux:button>
@@ -109,15 +109,12 @@
                             Guardar y continuar
                         </flux:button>
                     @elseif($paso === 3)
-                        @if(!$intervencionCuratoriaActiva)
+                        @if(!$intervencionCuratoriaActiva && !$extraccionProcesando)
                             <flux:button
                                 variant="primary"
                                 icon-trailing="arrow-right"
                                 wire:click="guardarPasoTres"
-                                wire:loading.attr="disabled"
-                                wire:target="guardarPasoTres"
                             >
-                                <flux:icon wire:loading wire:target="guardarPasoTres" name="arrow-path" class="animate-spin size-4 mr-1" />
                                 Validar documentos
                             </flux:button>
                         @endif

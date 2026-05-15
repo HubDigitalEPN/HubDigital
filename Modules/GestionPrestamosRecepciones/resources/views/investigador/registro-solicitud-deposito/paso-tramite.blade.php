@@ -26,7 +26,7 @@
 
     <flux:error name="tipoTramite" />
 
-    <div class="grid gap-4 sm:grid-cols-2">
+    <div class="grid gap-4 sm:grid-cols-2" wire:ignore>
         <x-gestionprestamosrecepciones::radio-card
             :activo="$tipoTramite === 'Depósito'"
             :deshabilitado="$limiteAlcanzado"

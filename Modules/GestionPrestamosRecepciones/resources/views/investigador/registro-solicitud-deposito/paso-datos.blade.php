@@ -18,7 +18,18 @@
     {{-- Datos faltantes globales --}}
     <flux:error name="datosFaltantes" />
 
-    @if(!empty($datosFaltantes))
+    @if(in_array('N.º Permiso Movilización', $datosFaltantes))
+        <flux:callout variant="warning" icon="exclamation-triangle">
+            <flux:heading>Se requiere el Permiso de Movilización</flux:heading>
+            <flux:text>
+                Los documentos indican que la recolección ocurrió fuera de Pichincha.
+                Debes adjuntar la <strong>Copia del Permiso de Movilización</strong> para continuar.
+            </flux:text>
+            <flux:button size="sm" wire:click="retroceder" icon="arrow-left" class="mt-2">
+                Volver a adjuntar documentos
+            </flux:button>
+        </flux:callout>
+    @elseif(!empty($datosFaltantes))
         <flux:callout variant="danger" icon="x-circle">
             <flux:heading>{{ count($datosFaltantes) }} dato(s) requeridos no se pudieron extraer</flux:heading>
             <flux:text>La extracción automática no detectó: <strong>{{ implode(', ', $datosFaltantes) }}</strong>. Completa manualmente cada celda marcada abajo.</flux:text>
@@ -38,10 +49,7 @@
                 'Localidad' => 'Copia del Permiso de Movilización',
             ];
 
-            $camposParaMostrar = array_unique([
-                ...array_keys($datosExtraidos),
-                ...$datosFaltantes,
-            ]);
+            $camposParaMostrar = array_keys($datosExtraidos);
         @endphp
 
         <div class="grid gap-3 sm:grid-cols-2">
@@ -51,6 +59,7 @@
                     $valor = $datosExtraidos[$campo] ?? null;
                     $fuente = $fuentesPorCampo[$campo] ?? null;
                     $estaEditando = isset($datosEnEdicion[$campo]);
+                    $esManual = in_array($campo, $datosIngresadosManualmente);
                 @endphp
 
                 <x-gestionprestamosrecepciones::sum-cell
@@ -58,6 +67,7 @@
                     :valor="$valor"
                     :fuente="$fuente"
                     :faltante="$esFaltante && !$estaEditando"
+                    :manual="$esManual && !$esFaltante && !$estaEditando"
                 >
                     @if($estaEditando)
                         <div class="flex gap-2 mt-1">
@@ -83,17 +93,21 @@
                         </div>
                         <flux:error name="datosEnEdicion.{{ $campo }}" />
                     @elseif($esFaltante)
-                        <div class="mt-2">
-                            <flux:button
-                                size="sm"
-                                variant="ghost"
-                                wire:click="iniciarEdicionDato('{{ $campo }}')"
-                                class="text-science-blue hover:text-science-blue/80"
-                            >
-                                <flux:icon name="pencil-square" class="size-3" />
-                                Capturar manualmente
-                            </flux:button>
-                        </div>
+                        <button
+                            wire:click="iniciarEdicionDato('{{ $campo }}')"
+                            class="mt-2 flex items-center gap-1 text-xs font-medium text-science-blue hover:text-science-blue/70 transition-colors cursor-pointer"
+                        >
+                            <flux:icon name="pencil-square" class="size-3" />
+                            Capturar manualmente
+                        </button>
+                    @else
+                        <button
+                            wire:click="iniciarEdicionDato('{{ $campo }}')"
+                            class="mt-2 flex items-center gap-1 text-xs text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
+                        >
+                            <flux:icon name="pencil-square" class="size-3" />
+                            Editar
+                        </button>
                     @endif
                 </x-gestionprestamosrecepciones::sum-cell>
             @endforeach
@@ -150,8 +164,17 @@
             </flux:callout>
         @elseif($resultadoIdentidad === 'Discrepancia (Tercero)')
             <flux:callout variant="danger" icon="x-circle">
-                <flux:heading>Discrepancia por tercero — Acción obligatoria</flux:heading>
-                <flux:text>El nombre del documento difiere significativamente del usuario del sistema. Debes adjuntar una <strong>Carta de Delegación</strong> que autorice a tu nombre a gestionar este trámite.</flux:text>
+                <flux:heading>Discrepancia significativa detectada</flux:heading>
+                <flux:text>El nombre del documento y el del perfil difieren considerablemente. Elige una opción:</flux:text>
+                <div class="mt-3 flex flex-wrap gap-2">
+                    <flux:button size="sm" variant="ghost" wire:navigate href="{{ route('profile.edit') }}" icon="user">
+                        Actualizar nombre en perfil
+                    </flux:button>
+                    <flux:button size="sm" variant="ghost" wire:click="resetearValidacionIdentidad" icon="arrow-path">
+                        Reingresar nombre del documento
+                    </flux:button>
+                </div>
+                <flux:text class="mt-2 text-xs opacity-70">O adjunta la Carta de Delegación si gestionas el trámite a nombre de otra persona.</flux:text>
             </flux:callout>
 
             <x-gestionprestamosrecepciones::dropzone

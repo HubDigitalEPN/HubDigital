@@ -7,7 +7,9 @@ use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\Ba
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\BandejaSolicitudes;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\RevisarSolicitud;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\ValidarActa;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\DetalleDeposito;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\DetalleSolicitud;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\MisDepositos;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\MisSolicitudes;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\RegistroSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\SolicitudForm;
@@ -26,7 +28,9 @@ Route::middleware(['auth', 'verified'])
 
         // Depositante — solicitudes de depósito
         Route::middleware('role:depositante')->group(function () {
+            Route::get('/mis-depositos', MisDepositos::class)->name('investigador.mis-depositos');
             Route::get('/deposito/nueva', RegistroSolicitudDeposito::class)->name('investigador.deposito.crear');
+            Route::get('/deposito/{id}', DetalleDeposito::class)->name('investigador.deposito.detalle');
         });
 
         // Curador — solo usuarios con rol CURADOR

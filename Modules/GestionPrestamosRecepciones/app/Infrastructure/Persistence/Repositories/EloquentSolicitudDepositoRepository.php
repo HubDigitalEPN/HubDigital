@@ -43,8 +43,10 @@ final class EloquentSolicitudDepositoRepository implements SolicitudDepositoRepo
                 'grupo_animal' => $solicitud->grupoAnimal(),
                 'localidad' => $solicitud->localidad(),
                 'origen_donacion' => $solicitud->origenDonacion(),
+                'nombre_investigador_documento' => $solicitud->nombreInvestigadorDocumento(),
                 'documentos_adjuntos' => array_values($documentosAdjuntos),
                 'datos_faltantes' => $solicitud->datosFaltantesParaPersistir(),
+                'datos_ingresados_manualmente' => $solicitud->datosIngresadosManualmenterParaPersistir(),
             ]
         );
     }
@@ -64,8 +66,16 @@ final class EloquentSolicitudDepositoRepository implements SolicitudDepositoRepo
     {
         return SolicitudDepositoEloquentModel::where('investigador_id', $investigadorId)
             ->where('tipo_tramite', $tipoTramite)
+            ->where('estado', '!=', EstadoSolicitudDeposito::EnBorrador->value)
             ->whereYear('created_at', (int) date('Y'))
             ->count();
+    }
+
+    public function eliminarBorradoresDe(string $investigadorId): void
+    {
+        SolicitudDepositoEloquentModel::where('investigador_id', $investigadorId)
+            ->where('estado', EstadoSolicitudDeposito::EnBorrador->value)
+            ->delete();
     }
 
     private function reconstituir(SolicitudDepositoEloquentModel $model): SolicitudDeposito
@@ -92,6 +102,8 @@ final class EloquentSolicitudDepositoRepository implements SolicitudDepositoRepo
             origenDonacion: $model->origen_donacion,
             documentosAdjuntos: $documentosAdjuntos,
             datosFaltantes: $model->datos_faltantes ?? [],
+            nombreInvestigadorDocumento: $model->nombre_investigador_documento,
+            datosIngresadosManualmente: $model->datos_ingresados_manualmente ?? [],
         );
     }
 }

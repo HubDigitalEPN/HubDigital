@@ -10,8 +10,8 @@ use Behat\Hook\BeforeScenario;
 use Illuminate\Contracts\Console\Kernel as ConsoleKernel;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ExtraccionDatosDocumentoPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionCuratoriaPort;
-use Modules\GestionPrestamosRecepciones\Tests\Behat\Fakes\FakeExtraccionDatosDocumentoAdapter;
-use Modules\GestionPrestamosRecepciones\Tests\Behat\Fakes\FakeNotificacionCuratoriaAdapter;
+use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\Fakes\FakeExtraccionDatosDocumentoAdapter;
+use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\Fakes\FakeNotificacionCuratoriaAdapter;
 
 abstract class BaseContext implements Context
 {

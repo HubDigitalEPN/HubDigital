@@ -16,4 +16,6 @@ interface SolicitudDepositoRepositoryInterface
     public function buscarPorId(SolicitudDepositoId $id): ?SolicitudDeposito;
 
     public function contarPorInvestigadorYTipoEnAnioActual(string $investigadorId, string $tipoTramite): int;
+
+    public function eliminarBorradoresDe(string $investigadorId): void;
 }

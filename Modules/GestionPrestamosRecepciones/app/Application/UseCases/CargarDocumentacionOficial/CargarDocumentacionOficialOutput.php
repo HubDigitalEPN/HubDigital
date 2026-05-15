@@ -11,12 +11,14 @@ final readonly class CargarDocumentacionOficialOutput
 {
     public function __construct(
         public EstadoSolicitudDeposito $estado,
+        public ?string $nombreInvestigadorDocumento,
     ) {}
 
     public static function fromEntity(SolicitudDeposito $solicitud): self
     {
         return new self(
             estado: $solicitud->estado(),
+            nombreInvestigadorDocumento: $solicitud->nombreInvestigadorDocumento(),
         );
     }
 }
