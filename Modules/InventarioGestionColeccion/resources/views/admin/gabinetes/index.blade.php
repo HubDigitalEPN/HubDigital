@@ -90,7 +90,7 @@
     {{-- Modal: Crear gabinete --}}
     <flux:modal wire:model="showModal" class="w-full max-w-md">
         <div class="space-y-4 p-1">
-            <flux:heading size="lg" class="text-text-primary">Nuevo Gabinete</flux:heading>
+            <flux:heading size="lg" class="text-text-primary">Nuevo gabinete</flux:heading>
 
             @if($errorMessage)
                 <flux:callout variant="danger">{{ $errorMessage }}</flux:callout>
@@ -129,7 +129,7 @@
     {{-- Modal: Editar gabinete --}}
     <flux:modal wire:model="showEditModal" class="w-full max-w-lg">
         <div class="space-y-4 p-1">
-            <flux:heading size="lg" class="text-text-primary">Editar Gabinete</flux:heading>
+            <flux:heading size="lg" class="text-text-primary">Editar gabinete</flux:heading>
 
             @if($errorMessage)
                 <flux:callout variant="danger">{{ $errorMessage }}</flux:callout>
