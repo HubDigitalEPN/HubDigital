@@ -2,10 +2,10 @@
 
 @php
 $config = [
-    'En Borrador' => ['color' => 'zinc', 'label' => 'En Borrador'],
+    'En Borrador' => ['color' => 'zinc', 'label' => 'En borrador'],
     'Rechazada' => ['color' => 'red', 'label' => 'Rechazada'],
     'Retenida para Asesoría Curatorial' => ['color' => 'orange', 'label' => 'Retenida'],
-    'Pendiente de Revisión por Curaduría' => ['color' => 'blue', 'label' => 'Pendiente Revisión'],
+    'Pendiente de Revisión por Curaduría' => ['color' => 'blue', 'label' => 'Pendiente revisión'],
 ];
 
 $value = $estado instanceof \Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito

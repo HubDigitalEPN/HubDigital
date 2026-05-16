@@ -12,9 +12,9 @@
         $colorBorde = $esExito ? 'border-success/30' : ($esAviso ? 'border-warning/30' : 'border-error/30');
 
         $titulo = match($estadoFinal) {
-            'Pendiente de Revisión por Curaduría' => 'Solicitud enviada · Pendiente de Revisión por Curaduría',
+            'Pendiente de Revisión por Curaduría' => 'Solicitud enviada · pendiente de revisión por curaduría',
             'Registrada'                          => 'Solicitud registrada exitosamente',
-            'Retenida para Asesoría Curatorial'   => 'Solicitud retenida para Asesoría Curatorial',
+            'Retenida para Asesoría Curatorial'   => 'Solicitud retenida para asesoría curatorial',
             'Requiere Corrección'                 => 'La solicitud requiere corrección',
             'Rechazada'                           => 'Solicitud rechazada por límite anual',
             default                               => 'Solicitud procesada',
@@ -46,7 +46,7 @@
         {{-- Mini ficha de resumen --}}
         <div class="w-full max-w-md text-left rounded-lg border {{ $colorBorde }} bg-bg-main divide-y divide-border">
             <div class="flex items-center justify-between px-4 py-3">
-                <span class="text-xs text-text-secondary">ID de Solicitud</span>
+                <span class="text-xs text-text-secondary">ID de solicitud</span>
                 <span class="font-mono text-xs font-medium text-text-primary">{{ $numeroSolicitud }}</span>
             </div>
             <div class="flex items-center justify-between px-4 py-3">
@@ -99,7 +99,7 @@
                     <li class="pl-5">
                         <div class="absolute -left-1.5 mt-1 size-3 rounded-full bg-border border-2 border-border"></div>
                         <p class="text-xs text-text-secondary">Pendiente</p>
-                        <p class="text-sm text-text-secondary">Revisión por Curaduría · ETA 3 días hábiles</p>
+                        <p class="text-sm text-text-secondary">Revisión por curaduría · ETA 3 días hábiles</p>
                     </li>
                 </ol>
             </div>
@@ -133,7 +133,7 @@
     <div class="space-y-6">
 
         <div>
-            <flux:heading size="lg" level="2">Revisar y Enviar</flux:heading>
+            <flux:heading size="lg" level="2" class="font-display">Revisar y enviar</flux:heading>
             <flux:text class="text-text-secondary text-sm mt-1">
                 Confirma la información antes de remitir la solicitud al equipo curatorial.
             </flux:text>

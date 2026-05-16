@@ -24,7 +24,7 @@
             <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
                 <flux:table>
                     <flux:table.columns>
-                        <flux:table.column class="!ps-4">N.º Préstamo</flux:table.column>
+                        <flux:table.column class="!ps-4">N.º préstamo</flux:table.column>
                         <flux:table.column class="px-4">Solicitud</flux:table.column>
                         <flux:table.column class="px-4">Estado</flux:table.column>
                         <flux:table.column class="px-4">Generada</flux:table.column>
@@ -96,7 +96,7 @@
             <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
                 <flux:table>
                     <flux:table.columns>
-                        <flux:table.column class="!ps-4">N.º Préstamo</flux:table.column>
+                        <flux:table.column class="!ps-4">N.º préstamo</flux:table.column>
                         <flux:table.column class="px-4">Solicitud</flux:table.column>
                         <flux:table.column class="px-4">Estado</flux:table.column>
                         <flux:table.column class="px-4">Enviada</flux:table.column>
@@ -154,7 +154,7 @@
             <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
                 <flux:table>
                     <flux:table.columns>
-                        <flux:table.column class="!ps-4">N.º Préstamo</flux:table.column>
+                        <flux:table.column class="!ps-4">N.º préstamo</flux:table.column>
                         <flux:table.column class="px-4">Solicitud</flux:table.column>
                         <flux:table.column class="px-4">Estado</flux:table.column>
                         <flux:table.column class="px-4">Acta subida</flux:table.column>

@@ -1,7 +1,7 @@
 <div class="space-y-6" x-data="{ total: {{ count($documentosRequeridos) }} }">
 
     <div>
-        <flux:heading size="lg" level="2">Carga de Documentación Oficial</flux:heading>
+        <flux:heading size="lg" level="2" class="font-display">Carga de documentación oficial</flux:heading>
         <flux:text class="text-text-secondary text-sm mt-1">
             Adjunta los documentos requeridos según el origen y situación regulatoria declarados.
             Los documentos en formato PDF serán procesados automáticamente para extraer datos.
@@ -49,7 +49,7 @@
                     <flux:icon name="pause-circle" class="size-5 text-warning" />
                 </div>
                 <div>
-                    <p class="text-sm font-semibold text-text-primary">Solicitud retenida para Asesoría Curatorial</p>
+                    <p class="text-sm font-semibold text-text-primary">Solicitud retenida para asesoría curatorial</p>
                     <p class="text-xs text-text-secondary">N.º {{ $numeroSolicitud }}</p>
                 </div>
             </div>
@@ -65,7 +65,7 @@
                 <ul class="space-y-2">
                     <li class="flex items-start gap-2 text-sm text-text-primary">
                         <flux:icon name="check-circle" class="size-4 text-success shrink-0 mt-0.5" />
-                        Tu solicitud quedó registrada con el estado <strong>Retenida para Asesoría Curatorial</strong>.
+                        Tu solicitud quedó registrada con el estado <strong>Retenida para asesoría curatorial</strong>.
                     </li>
                     <li class="flex items-start gap-2 text-sm text-text-primary">
                         <flux:icon name="envelope" class="size-4 text-science-blue shrink-0 mt-0.5" />

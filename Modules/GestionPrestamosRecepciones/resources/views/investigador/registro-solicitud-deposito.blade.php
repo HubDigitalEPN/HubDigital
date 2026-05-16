@@ -20,15 +20,15 @@
         {{-- Breadcrumbs --}}
         <flux:breadcrumbs>
             <flux:breadcrumbs.item wire:navigate href="{{ route('prestamos.investigador.mis-solicitudes') }}">
-                Mis Solicitudes
+                Mis solicitudes
             </flux:breadcrumbs.item>
-            <flux:breadcrumbs.item>Nueva Solicitud de Depósito</flux:breadcrumbs.item>
+            <flux:breadcrumbs.item>Nueva solicitud de depósito</flux:breadcrumbs.item>
         </flux:breadcrumbs>
 
         {{-- Header --}}
         <div class="flex items-start justify-between gap-4 flex-wrap">
             <div>
-                <flux:heading size="xl" level="1">Nueva Solicitud de Depósito</flux:heading>
+                <flux:heading size="xl" level="1" class="font-display">Nueva solicitud de depósito</flux:heading>
                 <flux:text class="text-text-secondary mt-1">
                     Registra tu solicitud de depósito o donación de especímenes entomológicos.
                 </flux:text>

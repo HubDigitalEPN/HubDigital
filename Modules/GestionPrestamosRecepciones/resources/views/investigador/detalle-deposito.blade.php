@@ -2,7 +2,7 @@
 
     <flux:breadcrumbs>
         <flux:breadcrumbs.item wire:navigate href="{{ route('prestamos.investigador.mis-depositos') }}">
-            Mis Depósitos
+            Mis depósitos
         </flux:breadcrumbs.item>
         <flux:breadcrumbs.item>{{ $deposito?->numero ?? 'Detalle' }}</flux:breadcrumbs.item>
     </flux:breadcrumbs>
@@ -39,28 +39,28 @@
 
                     <dl class="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
                         <div>
-                            <dt class="text-text-secondary">Tipo de Trámite</dt>
+                            <dt class="text-text-secondary">Tipo de trámite</dt>
                             <dd class="font-medium text-text-primary mt-0.5">{{ $deposito->tipo_tramite }}</dd>
                         </div>
                         <div>
-                            <dt class="text-text-secondary">Fecha de Registro</dt>
+                            <dt class="text-text-secondary">Fecha de registro</dt>
                             <dd class="font-medium text-text-primary mt-0.5">{{ $deposito->created_at->format('d/m/Y H:i') }}</dd>
                         </div>
                         @if($deposito->origen_recoleccion)
                             <div>
-                                <dt class="text-text-secondary">Origen de Recolección</dt>
+                                <dt class="text-text-secondary">Origen de recolección</dt>
                                 <dd class="font-medium text-text-primary mt-0.5">{{ $deposito->origen_recoleccion }}</dd>
                             </div>
                         @endif
                         @if($deposito->situacion_regulatoria)
                             <div>
-                                <dt class="text-text-secondary">Situación Regulatoria</dt>
+                                <dt class="text-text-secondary">Situación regulatoria</dt>
                                 <dd class="font-medium text-text-primary mt-0.5">{{ $deposito->situacion_regulatoria }}</dd>
                             </div>
                         @endif
                         @if($deposito->provincia_origen)
                             <div>
-                                <dt class="text-text-secondary">Provincia de Origen</dt>
+                                <dt class="text-text-secondary">Provincia de origen</dt>
                                 <dd class="font-medium text-text-primary mt-0.5">{{ $deposito->provincia_origen }}</dd>
                             </div>
                         @endif
@@ -83,30 +83,30 @@
 
                 @if($tieneDatos)
                     <div class="rounded-lg border border-border bg-surface shadow-sm p-5 space-y-4">
-                        <flux:heading size="lg" level="2" class="font-display">Datos de Documentación Oficial</flux:heading>
+                        <flux:heading size="lg" level="2" class="font-display">Datos de documentación oficial</flux:heading>
                         <flux:separator />
                         <dl class="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
                             @if($deposito->nro_permiso_recoleccion)
                                 <div>
-                                    <dt class="text-text-secondary">N.º Permiso Recolección</dt>
+                                    <dt class="text-text-secondary">N.º permiso recolección</dt>
                                     <dd class="font-mono font-medium text-text-primary mt-0.5">{{ $deposito->nro_permiso_recoleccion }}</dd>
                                 </div>
                             @endif
                             @if($deposito->nro_permiso_movilizacion)
                                 <div>
-                                    <dt class="text-text-secondary">N.º Permiso Movilización</dt>
+                                    <dt class="text-text-secondary">N.º permiso movilización</dt>
                                     <dd class="font-mono font-medium text-text-primary mt-0.5">{{ $deposito->nro_permiso_movilizacion }}</dd>
                                 </div>
                             @endif
                             @if($deposito->grupo_animal)
                                 <div>
-                                    <dt class="text-text-secondary">Grupo Animal</dt>
+                                    <dt class="text-text-secondary">Grupo animal</dt>
                                     <dd class="font-medium text-text-primary mt-0.5 italic font-serif">{{ $deposito->grupo_animal }}</dd>
                                 </div>
                             @endif
                             @if($deposito->origen_donacion)
                                 <div class="col-span-2">
-                                    <dt class="text-text-secondary">Origen de Donación</dt>
+                                    <dt class="text-text-secondary">Origen de donación</dt>
                                     <dd class="font-medium text-text-primary mt-0.5">{{ $deposito->origen_donacion }}</dd>
                                 </div>
                             @endif
@@ -121,7 +121,7 @@
                             <div class="flex size-9 shrink-0 items-center justify-center rounded-full bg-warning/15">
                                 <flux:icon name="pause-circle" class="size-5 text-warning" />
                             </div>
-                            <p class="text-sm font-semibold text-text-primary">En espera de Asesoría Curatorial</p>
+                            <p class="text-sm font-semibold text-text-primary">En espera de asesoría curatorial</p>
                         </div>
                         <p class="text-sm text-text-secondary">
                             Un curador revisará tu caso y se pondrá en contacto contigo directamente. No necesitas realizar ninguna acción por ahora.
@@ -145,7 +145,7 @@
                     @if($deposito->estado === 'Retenida para Asesoría Curatorial')
                         <x-gestionprestamosrecepciones::timeline-event
                             :fecha="$deposito->updated_at->format('d/m/Y H:i')"
-                            titulo="Retenida para Asesoría Curatorial"
+                            titulo="Retenida para asesoría curatorial"
                             descripcion="Sin documentación disponible. Curador notificado."
                             :ultimo="true" />
                     @endif

@@ -111,7 +111,7 @@
 
                         <dl class="grid grid-cols-2 gap-4 text-sm">
                             <div>
-                                <dt class="text-text-secondary">N.º Préstamo</dt>
+                                <dt class="text-text-secondary">N.º préstamo</dt>
                                 <dd class="font-mono font-medium text-text-primary">{{ $acta->numero_prestamo }}</dd>
                             </div>
                         </dl>

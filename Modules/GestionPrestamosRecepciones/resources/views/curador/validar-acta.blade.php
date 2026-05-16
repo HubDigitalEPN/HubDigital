@@ -21,7 +21,7 @@
 
         <dl class="flex gap-6 text-sm">
             <div>
-                <dt class="text-text-secondary">N.º Préstamo</dt>
+                <dt class="text-text-secondary">N.º préstamo</dt>
                 <dd class="font-mono font-medium text-text-primary">{{ $acta->numero_prestamo }}</dd>
             </div>
             <div>
@@ -64,7 +64,7 @@
             <div class="flex gap-3 justify-end">
                 <flux:button variant="ghost" icon="arrow-uturn-left"
                     wire:click="$set('showMotivoModal', true)">
-                    Devolver para Refirmar
+                    Devolver para refirmar
                 </flux:button>
                 <flux:button variant="primary" icon="check-circle" wire:click="validar"
                     wire:loading.attr="disabled" wire:target="validar"
@@ -83,13 +83,13 @@
     {{-- Modal: motivo de devolución --}}
     <flux:modal wire:model="showMotivoModal" class="max-w-md">
         <div class="space-y-4 p-2">
-            <flux:heading size="lg">Devolver para Refirmar</flux:heading>
+            <flux:heading size="lg">Devolver para refirmar</flux:heading>
             <flux:text class="text-text-secondary text-sm">
                 Indica el motivo por el que el investigador debe volver a firmar el acta.
             </flux:text>
 
             <flux:field>
-                <flux:label>Motivo de la Devolución</flux:label>
+                <flux:label>Motivo de la devolución</flux:label>
                 <flux:textarea wire:model="motivoDevolucion" rows="4"
                     placeholder="Describe el problema con la firma (mínimo 10 caracteres)..." />
                 <flux:error name="motivoDevolucion" />
