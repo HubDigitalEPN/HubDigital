@@ -2,6 +2,8 @@
 
 <button
     type="button"
+    x-data="{ on: @js($checked) }"
+    x-on:click="on = !on"
     {{ $attributes->merge(['class' => 'flex w-full items-center justify-between gap-3 py-2 px-3 rounded-lg hover:bg-bg-main transition-colors cursor-pointer text-left']) }}
 >
     <div class="flex items-center gap-2 min-w-0">
@@ -15,15 +17,16 @@
             <span class="text-xs text-warning shrink-0">sensible</span>
         @endif
     </div>
-    <span @class([
-        'relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200',
-        'bg-zinc-200 dark:bg-zinc-600' => !$checked,
-        'bg-science-blue' => $checked,
-    ])>
-        <span @class([
-            'inline-block size-3.5 rounded-full bg-white shadow-sm transition-transform duration-200',
-            'translate-x-0.5' => !$checked,
-            'translate-x-5' => $checked,
-        ])></span>
+
+    <span
+        :class="on
+            ? 'bg-science-blue'
+            : 'bg-zinc-200 dark:bg-zinc-600'"
+        class="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200"
+    >
+        <span
+            :class="on ? 'translate-x-5' : 'translate-x-0.5'"
+            class="inline-block size-3.5 rounded-full bg-white shadow-sm transition-transform duration-200"
+        ></span>
     </span>
 </button>
