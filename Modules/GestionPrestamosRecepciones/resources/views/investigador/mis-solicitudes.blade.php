@@ -18,24 +18,26 @@
         </div>
     @else
         <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
-            <flux:table>
-                <flux:table.columns>
-                    <flux:table.column class="!ps-4">N.º solicitud</flux:table.column>
-                    <flux:table.column>Título del estudio</flux:table.column>
-                    <flux:table.column>Estado</flux:table.column>
-                    <flux:table.column>Fecha</flux:table.column>
-                    <flux:table.column>Acciones</flux:table.column>
-                </flux:table.columns>
-                <flux:table.rows>
+            <table class="w-full text-sm">
+                <thead class="bg-blue-navy border-b border-border">
+                    <tr>
+                        <th class="px-4 py-3 text-left font-medium text-white">N.º solicitud</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">Título del estudio</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">Estado</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">Fecha</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-border">
                     @foreach($solicitudes as $solicitud)
-                        <flux:table.row>
-                            <flux:table.cell class="!ps-4 px-4 py-3 font-mono text-xs text-text-secondary whitespace-nowrap">
+                        <tr class="hover:bg-bg-main transition-colors">
+                            <td class="px-4 py-3 font-mono text-xs text-text-secondary whitespace-nowrap">
                                 {{ $solicitud->numero_solicitud }}
-                            </flux:table.cell>
-                            <flux:table.cell class="px-4 py-3 font-medium text-text-primary">
+                            </td>
+                            <td class="px-4 py-3 font-medium text-text-primary">
                                 {{ $solicitud->titulo_estudio }}
-                            </flux:table.cell>
-                            <flux:table.cell class="px-4 py-3">
+                            </td>
+                            <td class="px-4 py-3">
                                 @php $actaSolicitud = $actasPorSolicitud[$solicitud->id] ?? null; @endphp
                                 <div class="flex flex-col gap-1">
                                     <x-gestionprestamosrecepciones::solicitud-status-badge :estado="$solicitud->estado" />
@@ -43,11 +45,11 @@
                                         <x-gestionprestamosrecepciones::acta-status-badge :estado="$actaSolicitud->estado" />
                                     @endif
                                 </div>
-                            </flux:table.cell>
-                            <flux:table.cell class="px-4 py-3 text-xs text-text-secondary whitespace-nowrap">
+                            </td>
+                            <td class="px-4 py-3 text-xs text-text-secondary whitespace-nowrap">
                                 {{ $solicitud->created_at->format('d/m/Y') }}
-                            </flux:table.cell>
-                            <flux:table.cell class="px-4 py-3">
+                            </td>
+                            <td class="px-4 py-3">
                                 <div class="flex gap-2">
                                     <flux:button size="sm" variant="ghost" icon="eye"
                                         wire:navigate href="{{ route('prestamos.investigador.solicitud.detalle', $solicitud->id) }}">
@@ -68,11 +70,11 @@
                                         </flux:button>
                                     @endif
                                 </div>
-                            </flux:table.cell>
-                        </flux:table.row>
+                            </td>
+                        </tr>
                     @endforeach
-                </flux:table.rows>
-            </flux:table>
+                </tbody>
+            </table>
         </div>
     @endif
 
