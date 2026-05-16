@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Infrastructure\Adapters;
 
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ExtraccionDatosDocumentoPort;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\DatosIntegradosDocumento;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Exceptions\OllamaNoDisponibleException;
 use Smalot\PdfParser\Parser;
 
 final class OllamaExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocumentoPort
@@ -115,6 +117,8 @@ final class OllamaExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocu
             ]);
 
             return $resultado;
+        } catch (ConnectionException $e) {
+            throw OllamaNoDisponibleException::porConexion($e->getMessage());
         } catch (\Throwable $e) {
             Log::warning('OllamaExtraccion: error al contactar Ollama', ['error' => $e->getMessage()]);
 
