@@ -22,30 +22,32 @@
             </div>
         @else
             <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
-                <flux:table>
-                    <flux:table.columns>
-                        <flux:table.column class="!ps-4">N.º préstamo</flux:table.column>
-                        <flux:table.column class="px-4">Solicitud</flux:table.column>
-                        <flux:table.column class="px-4">Estado</flux:table.column>
-                        <flux:table.column class="px-4">Generada</flux:table.column>
-                        <flux:table.column class="px-4">Acciones</flux:table.column>
-                    </flux:table.columns>
-                    <flux:table.rows>
+                <table class="w-full text-sm">
+                    <thead class="bg-blue-navy border-b border-border">
+                        <tr>
+                            <th class="px-4 py-3 text-left font-medium text-white">N.º Préstamo</th>
+                            <th class="px-4 py-3 text-left font-medium text-white">Solicitud</th>
+                            <th class="px-4 py-3 text-left font-medium text-white">Estado</th>
+                            <th class="px-4 py-3 text-left font-medium text-white">Generada</th>
+                            <th class="px-4 py-3 text-left font-medium text-white">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-border">
                         @foreach($actasPorEnviar as $acta)
-                            <flux:table.row>
-                                <flux:table.cell class="!ps-4 px-4 py-3 font-mono text-xs text-text-secondary whitespace-nowrap">
+                            <tr class="hover:bg-bg-main transition-colors">
+                                <td class="px-4 py-3 font-mono text-xs text-text-secondary whitespace-nowrap">
                                     {{ $acta->numero_prestamo }}
-                                </flux:table.cell>
-                                <flux:table.cell class="px-4 py-3 text-sm text-text-primary">
+                                </td>
+                                <td class="px-4 py-3 text-sm text-text-primary">
                                     {{ $acta->solicitud?->titulo_estudio ?? $acta->solicitud_prestamo_id }}
-                                </flux:table.cell>
-                                <flux:table.cell class="px-4 py-3">
+                                </td>
+                                <td class="px-4 py-3">
                                     <x-gestionprestamosrecepciones::acta-status-badge :estado="$acta->estado" />
-                                </flux:table.cell>
-                                <flux:table.cell class="px-4 py-3 text-xs text-text-secondary whitespace-nowrap">
+                                </td>
+                                <td class="px-4 py-3 text-xs text-text-secondary whitespace-nowrap">
                                     {{ $acta->created_at->format('d/m/Y') }}
-                                </flux:table.cell>
-                                <flux:table.cell class="px-4 py-3">
+                                </td>
+                                <td class="px-4 py-3">
                                     <div class="flex gap-2">
                                         <flux:button
                                             size="sm"
@@ -69,11 +71,11 @@
                                             Enviar
                                         </flux:button>
                                     </div>
-                                </flux:table.cell>
-                            </flux:table.row>
+                                </td>
+                            </tr>
                         @endforeach
-                    </flux:table.rows>
-                </flux:table>
+                    </tbody>
+                </table>
             </div>
         @endif
     </div>
@@ -94,30 +96,32 @@
             </div>
         @else
             <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
-                <flux:table>
-                    <flux:table.columns>
-                        <flux:table.column class="!ps-4">N.º préstamo</flux:table.column>
-                        <flux:table.column class="px-4">Solicitud</flux:table.column>
-                        <flux:table.column class="px-4">Estado</flux:table.column>
-                        <flux:table.column class="px-4">Enviada</flux:table.column>
-                        <flux:table.column class="px-4">Vista previa</flux:table.column>
-                    </flux:table.columns>
-                    <flux:table.rows>
+                <table class="w-full text-sm">
+                    <thead class="bg-blue-navy border-b border-border">
+                        <tr>
+                            <th class="px-4 py-3 text-left font-medium text-white">N.º Préstamo</th>
+                            <th class="px-4 py-3 text-left font-medium text-white">Solicitud</th>
+                            <th class="px-4 py-3 text-left font-medium text-white">Estado</th>
+                            <th class="px-4 py-3 text-left font-medium text-white">Enviada</th>
+                            <th class="px-4 py-3 text-left font-medium text-white">Vista previa</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-border">
                         @foreach($actasPendienteFirma as $acta)
-                            <flux:table.row>
-                                <flux:table.cell class="!ps-4 px-4 py-3 font-mono text-xs text-text-secondary whitespace-nowrap">
+                            <tr class="hover:bg-bg-main transition-colors">
+                                <td class="px-4 py-3 font-mono text-xs text-text-secondary whitespace-nowrap">
                                     {{ $acta->numero_prestamo }}
-                                </flux:table.cell>
-                                <flux:table.cell class="px-4 py-3 text-sm text-text-primary">
+                                </td>
+                                <td class="px-4 py-3 text-sm text-text-primary">
                                     {{ $acta->solicitud?->titulo_estudio ?? $acta->solicitud_prestamo_id }}
-                                </flux:table.cell>
-                                <flux:table.cell class="px-4 py-3">
+                                </td>
+                                <td class="px-4 py-3">
                                     <x-gestionprestamosrecepciones::acta-status-badge :estado="$acta->estado" />
-                                </flux:table.cell>
-                                <flux:table.cell class="px-4 py-3 text-xs text-text-secondary whitespace-nowrap">
+                                </td>
+                                <td class="px-4 py-3 text-xs text-text-secondary whitespace-nowrap">
                                     {{ $acta->updated_at->format('d/m/Y') }}
-                                </flux:table.cell>
-                                <flux:table.cell class="px-4 py-3">
+                                </td>
+                                <td class="px-4 py-3">
                                     <flux:button
                                         size="sm"
                                         variant="ghost"
@@ -127,11 +131,11 @@
                                     >
                                         Ver acta
                                     </flux:button>
-                                </flux:table.cell>
-                            </flux:table.row>
+                                </td>
+                            </tr>
                         @endforeach
-                    </flux:table.rows>
-                </flux:table>
+                    </tbody>
+                </table>
             </div>
         @endif
     </div>
@@ -152,39 +156,41 @@
             </div>
         @else
             <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
-                <flux:table>
-                    <flux:table.columns>
-                        <flux:table.column class="!ps-4">N.º préstamo</flux:table.column>
-                        <flux:table.column class="px-4">Solicitud</flux:table.column>
-                        <flux:table.column class="px-4">Estado</flux:table.column>
-                        <flux:table.column class="px-4">Acta subida</flux:table.column>
-                        <flux:table.column class="px-4">Acciones</flux:table.column>
-                    </flux:table.columns>
-                    <flux:table.rows>
+                <table class="w-full text-sm">
+                    <thead class="bg-blue-navy border-b border-border">
+                        <tr>
+                            <th class="px-4 py-3 text-left font-medium text-white">N.º Préstamo</th>
+                            <th class="px-4 py-3 text-left font-medium text-white">Solicitud</th>
+                            <th class="px-4 py-3 text-left font-medium text-white">Estado</th>
+                            <th class="px-4 py-3 text-left font-medium text-white">Acta subida</th>
+                            <th class="px-4 py-3 text-left font-medium text-white">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-border">
                         @foreach($actasPorValidar as $acta)
-                            <flux:table.row>
-                                <flux:table.cell class="!ps-4 px-4 py-3 font-mono text-xs text-text-secondary whitespace-nowrap">
+                            <tr class="hover:bg-bg-main transition-colors">
+                                <td class="px-4 py-3 font-mono text-xs text-text-secondary whitespace-nowrap">
                                     {{ $acta->numero_prestamo }}
-                                </flux:table.cell>
-                                <flux:table.cell class="px-4 py-3 text-sm text-text-primary">
+                                </td>
+                                <td class="px-4 py-3 text-sm text-text-primary">
                                     {{ $acta->solicitud?->titulo_estudio ?? $acta->solicitud_prestamo_id }}
-                                </flux:table.cell>
-                                <flux:table.cell class="px-4 py-3">
+                                </td>
+                                <td class="px-4 py-3">
                                     <x-gestionprestamosrecepciones::acta-status-badge :estado="$acta->estado" />
-                                </flux:table.cell>
-                                <flux:table.cell class="px-4 py-3 text-xs text-text-secondary whitespace-nowrap">
+                                </td>
+                                <td class="px-4 py-3 text-xs text-text-secondary whitespace-nowrap">
                                     {{ $acta->updated_at->format('d/m/Y') }}
-                                </flux:table.cell>
-                                <flux:table.cell class="px-4 py-3">
+                                </td>
+                                <td class="px-4 py-3">
                                     <flux:button size="sm" variant="ghost" icon="magnifying-glass"
                                         wire:navigate href="{{ route('prestamos.curador.acta.validar', $acta->id) }}">
                                         Validar
                                     </flux:button>
-                                </flux:table.cell>
-                            </flux:table.row>
+                                </td>
+                            </tr>
                         @endforeach
-                    </flux:table.rows>
-                </flux:table>
+                    </tbody>
+                </table>
             </div>
         @endif
     </div>

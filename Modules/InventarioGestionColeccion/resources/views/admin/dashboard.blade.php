@@ -11,11 +11,11 @@
     @if(count($resumenEstados) > 0)
         @php
             $estadoLabels = [
-                'en_gabinete'             => ['label' => 'En Gabinete',          'bg' => 'bg-success', 'text' => 'text-white'],
-                'en_transito'             => ['label' => 'En Tránsito',           'bg' => 'bg-warning', 'text' => 'text-text-primary'],
-                'extraccion_prolongada'   => ['label' => 'Extracción Prolongada', 'bg' => 'bg-warning', 'text' => 'text-text-primary'],
+                'en_gabinete'             => ['label' => 'En gabinete',          'bg' => 'bg-success', 'text' => 'text-white'],
+                'en_transito'             => ['label' => 'En tránsito',           'bg' => 'bg-warning', 'text' => 'text-text-primary'],
+                'extraccion_prolongada'   => ['label' => 'Extracción prolongada', 'bg' => 'bg-warning', 'text' => 'text-text-primary'],
                 'pendiente_clasificacion' => ['label' => 'Pendiente',             'bg' => 'bg-info',    'text' => 'text-white'],
-                'ubicacion_incorrecta'    => ['label' => 'Ubic. Incorrecta',      'bg' => 'bg-error',   'text' => 'text-white'],
+                'ubicacion_incorrecta'    => ['label' => 'Ubic. incorrecta',      'bg' => 'bg-error',   'text' => 'text-white'],
                 'extraviada'              => ['label' => 'Extraviada',            'bg' => 'bg-error',   'text' => 'text-white'],
             ];
         @endphp

@@ -154,7 +154,7 @@
                     variant="primary"
                     wire:click="$set('showAgregarRanura', true)"
                 >
-                    Agregar Ranura
+                    Agregar ranura
                 </flux:button>
             @endif
         </div>
@@ -180,7 +180,7 @@
             <thead class="bg-blue-navy border-b border-border">
                 <tr>
                     <th class="px-4 py-3 text-left font-medium text-white">Ranura</th>
-                    <th class="px-4 py-3 text-left font-medium text-white">Familia Taxonómica Esperada</th>
+                    <th class="px-4 py-3 text-left font-medium text-white">Familia taxonómica esperada</th>
                     <th class="px-4 py-3 text-left font-medium text-white">Caja Actual</th>
                     <th class="px-4 py-3 text-left font-medium text-white">Estado</th>
                     <th class="px-4 py-3 text-left font-medium text-white">Acciones</th>
@@ -230,7 +230,7 @@
     {{-- Modal: Agregar ranura --}}
     <flux:modal wire:model="showAgregarRanura" class="w-full max-w-md">
         <div class="space-y-4 p-1">
-            <flux:heading size="lg" class="text-text-primary">Agregar Ranura</flux:heading>
+            <flux:heading size="lg" class="text-text-primary">Agregar ranura</flux:heading>
 
             @if($errorMessage)
                 <flux:callout variant="danger">{{ $errorMessage }}</flux:callout>
@@ -264,7 +264,7 @@
     {{-- Modal: Editar ranura --}}
     <flux:modal wire:model="showEditRanura" class="w-full max-w-md">
         <div class="space-y-4 p-1">
-            <flux:heading size="lg" class="text-text-primary">Editar Ranura</flux:heading>
+            <flux:heading size="lg" class="text-text-primary">Editar ranura</flux:heading>
 
             @if($errorMessage)
                 <flux:callout variant="danger">{{ $errorMessage }}</flux:callout>
