@@ -1,5 +1,5 @@
 <div class="space-y-6 p-6">
-    <flux:heading size="xl" level="1" class="text-blue-navy font-bold font-display">Alertas de Ubicación</flux:heading>
+    <flux:heading size="xl" level="1" class="text-blue-navy font-bold font-display">Alertas de ubicación</flux:heading>
 
     @if($successMessage)
         <flux:callout variant="success" dismissible>{{ $successMessage }}</flux:callout>
@@ -26,10 +26,10 @@
         <table class="w-full text-sm">
             <thead class="bg-blue-navy border-b border-border">
                 <tr>
-                    <th class="px-4 py-3 text-left font-medium text-white">Tipo de Alerta</th>
+                    <th class="px-4 py-3 text-left font-medium text-white">Tipo de alerta</th>
                     <th class="px-4 py-3 text-left font-medium text-white">Caja</th>
-                    <th class="px-4 py-3 text-left font-medium text-white">Estado Actual</th>
-                    <th class="px-4 py-3 text-left font-medium text-white">Estado Alerta</th>
+                    <th class="px-4 py-3 text-left font-medium text-white">Estado actual</th>
+                    <th class="px-4 py-3 text-left font-medium text-white">Estado alerta</th>
                     <th class="px-4 py-3 text-left font-medium text-white">Contexto</th>
                     <th class="px-4 py-3 text-left font-medium text-white">Fecha</th>
                     <th class="px-4 py-3 text-left font-medium text-white">Acciones</th>
@@ -72,7 +72,7 @@
                             @if(count($alerta['datosContexto']) > 0)
                                 <ul class="space-y-0.5">
                                     @foreach($alerta['datosContexto'] as $k => $v)
-                                        <li><span class="font-medium text-text-primary">{{ $k }}:</span> {{ $v }}</li>
+                                        <li><span class="font-medium text-text-primary">{{ ucfirst($k) }}:</span> {{ ucfirst($v) }}</li>
                                     @endforeach
                                 </ul>
                             @else
@@ -121,7 +121,7 @@
     {{-- Modal: Resolver alerta --}}
     <flux:modal wire:model="showResolverModal" class="w-full max-w-md">
         <div class="space-y-4 p-1">
-            <flux:heading size="lg" class="text-text-primary">Resolver Alerta</flux:heading>
+            <flux:heading size="lg" class="text-text-primary">Resolver alerta</flux:heading>
             <p class="text-sm text-text-primary">Describe la acción tomada para resolver esta alerta.</p>
 
             <flux:field>
@@ -139,7 +139,7 @@
                     Cancelar
                 </flux:button>
                 <flux:button variant="primary" wire:click="resolver" wire:loading.attr="disabled">
-                    <span wire:loading.remove wire:target="resolver">Confirmar Resolución</span>
+                    <span wire:loading.remove wire:target="resolver">Confirmar resolución</span>
                     <span wire:loading wire:target="resolver">Guardando…</span>
                 </flux:button>
             </div>
