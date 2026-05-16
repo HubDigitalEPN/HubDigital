@@ -86,7 +86,7 @@
                                 Entidades depositantes
                             </flux:sidebar.item>
                         </flux:sidebar.group>
-                        <flux:sidebar.group heading="Inventario IoT" class="grid">
+                        <flux:sidebar.group heading="Seguimiento físico" class="grid">
                             <flux:sidebar.item
                                 icon="chart-bar"
                                 :href="route('inventario.dashboard')"

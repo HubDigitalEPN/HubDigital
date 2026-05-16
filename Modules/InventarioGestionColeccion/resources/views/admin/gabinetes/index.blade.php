@@ -1,6 +1,6 @@
 <div class="space-y-6 p-6">
     <div class="flex items-center justify-between">
-        <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Gabinetes</flux:heading>
+        <flux:heading size="xl" level="1" class="font-display text-blue-navy font-bold">Gabinetes</flux:heading>
         <flux:button icon="plus" variant="primary" wire:click="abrirModal">
             Nuevo Gabinete
         </flux:button>

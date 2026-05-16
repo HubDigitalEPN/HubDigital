@@ -2,10 +2,10 @@
 
 @php
 $config = match($tipo) {
-    'movimiento_no_autorizado' => ['bg' => 'bg-error',   'text' => 'text-white',        'label' => 'Mov. No Autorizado'],
-    'extraccion_prolongada'    => ['bg' => 'bg-warning',  'text' => 'text-text-primary', 'label' => 'Extracción Prolongada'],
-    'incongruencia_taxonomica' => ['bg' => 'bg-info',    'text' => 'text-white',        'label' => 'Incongruencia Taxonómica'],
-    'familia_no_asignada'      => ['bg' => 'bg-info',    'text' => 'text-white',        'label' => 'Familia No Asignada'],
+    'movimiento_no_autorizado' => ['bg' => 'bg-error',   'text' => 'text-white',        'label' => 'Mov. no autorizado'],
+    'extraccion_prolongada'    => ['bg' => 'bg-warning',  'text' => 'text-text-primary', 'label' => 'Extracción prolongada'],
+    'incongruencia_taxonomica' => ['bg' => 'bg-info',    'text' => 'text-white',        'label' => 'Incongruencia taxonómica'],
+    'familia_no_asignada'      => ['bg' => 'bg-info',    'text' => 'text-white',        'label' => 'Familia no asignada'],
     default                    => ['bg' => 'bg-border',   'text' => 'text-text-primary', 'label' => $tipo],
 };
 @endphp

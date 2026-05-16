@@ -1,5 +1,5 @@
 <div class="space-y-6 p-6">
-    <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Configuración de horario</flux:heading>
+    <flux:heading size="xl" level="1" class="font-display text-blue-navy font-bold">Configuración de horario</flux:heading>
 
     @if($successMessage)
         <flux:callout variant="success" dismissible>
