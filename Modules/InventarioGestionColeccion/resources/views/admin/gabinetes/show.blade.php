@@ -8,7 +8,7 @@
             wire:navigate
         />
         <div>
-            <flux:heading size="xl" level="1" class="text-blue-navy font-semibold">
+            <flux:heading size="xl" level="1" class="font-display text-blue-navy font-semibold">
                 {{ $gabinete['codigo'] ?? '' }} — {{ $gabinete['nombre'] ?? '' }}
             </flux:heading>
             <p class="text-sm text-text-secondary">{{ count($ranuras) }} / {{ $gabinete['totalRanuras'] ?? 0 }} ranuras configuradas</p>
@@ -146,7 +146,7 @@
 
     <div class="rounded-lg border border-border bg-surface shadow-sm p-4 space-y-4">
         <div class="flex items-center justify-between">
-            <flux:heading size="lg" level="2" class="text-blue-navy font-semibold">Ranuras</flux:heading>
+            <flux:heading size="lg" level="2" class="font-display text-blue-navy font-semibold">Ranuras</flux:heading>
             @if(count($ranuras) < ($gabinete['totalRanuras'] ?? 0))
                 <flux:button
                     icon="plus"
