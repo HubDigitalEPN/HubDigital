@@ -2,7 +2,7 @@
     {{-- Page header --}}
     <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <h1 class="font-display text-2xl font-bold text-blue-navy">Tabla de Divulgación</h1>
+            <h1 class="font-display text-2xl font-bold text-blue-navy">Tabla de divulgación</h1>
             <p class="text-sm text-text-secondary">Especímenes publicados en el catálogo público</p>
         </div>
         <flux:button

@@ -161,6 +161,8 @@ body {
     0%   { transform: translateX(-100%); width: 40%; }
     50%  { transform: translateX(150%); width: 60%; }
     100% { transform: translateX(300%); width: 40%; }
+}
+
 /* Hub Digital Sidebar — Blue Navy Navigation */
 [data-flux-sidebar].bg-blue-navy {
     background-color: var(--color-blue-navy);
