@@ -103,6 +103,15 @@ final class RegistroSolicitudDeposito extends Component
 
     public bool $extraccionProcesando = false;
 
+    /** Timestamp Unix del momento en que se despachó el job de extracción. */
+    public int $extraccionIniciadaEn = 0;
+
+    /**
+     * Tipo de advertencia cuando la extracción falla pero el flujo continúa.
+     * Valores posibles: '' | 'error_modelo' | 'error_cola'
+     */
+    public string $advertenciaExtraccion = '';
+
     /** @var string[] */
     public array $documentosProcesados = [];
 
@@ -392,6 +401,7 @@ final class RegistroSolicitudDeposito extends Component
         if (! $this->extraccionProcesando) {
             ExtraccionDatosDocumentoJob::dispatch($this->solicitudId, $this->documentosCargados);
             $this->extraccionProcesando = true;
+            $this->extraccionIniciadaEn = now()->timestamp;
         }
     }
 
@@ -410,6 +420,44 @@ final class RegistroSolicitudDeposito extends Component
         }
 
         $this->documentosProcesados = $model->documentos_procesados ?? [];
+
+        $segundosTranscurridos = $this->extraccionIniciadaEn > 0
+            ? now()->timestamp - $this->extraccionIniciadaEn
+            : 0;
+
+        // Queue nunca arrancó el job (estado sigue null tras 45 s).
+        if ($model->extraccion_estado === null && $segundosTranscurridos > 45) {
+            $this->extraccionProcesando = false;
+            $this->advertenciaExtraccion = 'error_cola';
+            $this->avanzarDesdeFalloExtraccion();
+
+            return;
+        }
+
+        // Job arrancó pero el worker murió a mitad (estado 'procesando' por más de 5 min).
+        if ($model->extraccion_estado === 'procesando' && $segundosTranscurridos > 300) {
+            $this->extraccionProcesando = false;
+            $this->advertenciaExtraccion = 'error_cola';
+            $this->avanzarDesdeFalloExtraccion();
+
+            return;
+        }
+
+        if ($model->extraccion_estado === 'error_modelo') {
+            $this->extraccionProcesando = false;
+            $this->advertenciaExtraccion = 'error_modelo';
+            $this->avanzarDesdeFalloExtraccion();
+
+            return;
+        }
+
+        if ($model->extraccion_estado === 'fallida') {
+            $this->extraccionProcesando = false;
+            $this->advertenciaExtraccion = 'error_modelo';
+            $this->avanzarDesdeFalloExtraccion();
+
+            return;
+        }
 
         if ($model->extraccion_estado === 'completada') {
             $this->extraccionProcesando = false;
@@ -433,22 +481,50 @@ final class RegistroSolicitudDeposito extends Component
                 $this->cartaDelegacionRequerida = $outputId->resultado === ResultadoValidacionIdentidad::DiscrepanciaTercero;
             }
 
-            $this->datosExtraidos = [
-                'N.º Permiso Recolección' => $model->nro_permiso_recoleccion,
-                'N.º Permiso Movilización' => $model->nro_permiso_movilizacion,
-                'Grupo Animal' => $model->grupo_animal,
-                'Provincia' => ($model->provincia_origen === 'Fuera de Pichincha') ? null : $model->provincia_origen,
-                'Localidad' => $model->localidad,
-            ];
+            $this->datosExtraidos = $this->tipoTramite === TipoTramite::Deposito->value
+                ? [
+                    'N.º Permiso Recolección' => $model->nro_permiso_recoleccion,
+                    'N.º Permiso Movilización' => $model->nro_permiso_movilizacion,
+                    'Grupo Animal' => $model->grupo_animal,
+                    'Provincia' => ($model->provincia_origen === 'Fuera de Pichincha') ? null : $model->provincia_origen,
+                    'Localidad' => $model->localidad,
+                ]
+                : [
+                    'Grupo Animal' => $model->grupo_animal,
+                    'Origen Donación' => $model->origen_donacion,
+                ];
             $this->datosFaltantes = $model->datos_faltantes ?? [];
             $this->datosIngresadosManualmente = $model->datos_ingresados_manualmente ?? [];
 
             $this->pasosCompletados = array_values(array_unique([...$this->pasosCompletados, 3]));
             $this->paso = 4;
-        } elseif ($model->extraccion_estado === 'fallida') {
-            $this->extraccionProcesando = false;
-            $this->addError('documentos', 'No se pudo procesar la documentación. Por favor, intenta nuevamente.');
         }
+    }
+
+    /**
+     * Avanza al paso 4 cuando la extracción falló, dejando todos los campos
+     * vacíos para que el usuario los complete manualmente.
+     */
+    private function avanzarDesdeFalloExtraccion(): void
+    {
+        if ($this->tipoTramite === TipoTramite::Deposito->value) {
+            $this->datosExtraidos = [
+                'N.º Permiso Recolección' => null,
+                'N.º Permiso Movilización' => null,
+                'Grupo Animal' => null,
+                'Provincia' => null,
+                'Localidad' => null,
+            ];
+            $this->datosFaltantes = ['N.º Permiso Recolección', 'Grupo Animal', 'Provincia', 'Localidad'];
+        } else {
+            $this->datosExtraidos = [
+                'Grupo Animal' => null,
+                'Origen Donación' => null,
+            ];
+        }
+
+        $this->pasosCompletados = array_values(array_unique([...$this->pasosCompletados, 3]));
+        $this->paso = 4;
     }
 
     // ── Paso 4 ────────────────────────────────────────────────────────────────────
@@ -480,20 +556,21 @@ final class RegistroSolicitudDeposito extends Component
 
     public function iniciarEdicionDato(string $campo): void
     {
-        $this->datosEnEdicion[$campo] = $this->datosExtraidos[$campo] ?? '';
+        $this->datosEnEdicion[$this->claveSegura($campo)] = $this->datosExtraidos[$campo] ?? '';
     }
 
     public function cancelarEdicionDato(string $campo): void
     {
-        unset($this->datosEnEdicion[$campo]);
+        unset($this->datosEnEdicion[$this->claveSegura($campo)]);
     }
 
     public function guardarDatoFaltante(string $campo, CompletarDatosManualesHandler $handler): void
     {
-        $valor = $this->datosEnEdicion[$campo] ?? '';
+        $clave = $this->claveSegura($campo);
+        $valor = $this->datosEnEdicion[$clave] ?? '';
 
         if (empty($valor)) {
-            $this->addError("datosEnEdicion.{$campo}", 'El valor no puede estar vacío.');
+            $this->addError("datosEnEdicion.{$clave}", 'El valor no puede estar vacío.');
 
             return;
         }
@@ -508,7 +585,10 @@ final class RegistroSolicitudDeposito extends Component
         $this->datosFaltantes = array_values(
             array_filter($this->datosFaltantes, fn (string $c) => $c !== $campo)
         );
-        unset($this->datosEnEdicion[$campo]);
+        if (! in_array($campo, $this->datosIngresadosManualmente, true)) {
+            $this->datosIngresadosManualmente[] = $campo;
+        }
+        unset($this->datosEnEdicion[$clave]);
     }
 
     public function guardarPasoCuatro(): void
@@ -579,6 +659,16 @@ final class RegistroSolicitudDeposito extends Component
     }
 
     // ── Helper público para vistas ────────────────────────────────────────────────
+
+    /**
+     * Convierte el nombre de un campo en una clave segura para usar en arrays
+     * de Livewire (wire:model). Los puntos y caracteres especiales en el nombre
+     * serían interpretados como separadores de anidamiento por Livewire.
+     */
+    public function claveSegura(string $campo): string
+    {
+        return preg_replace('/[^a-zA-Z0-9]/', '_', $campo);
+    }
 
     public function propiedadParaDocumento(string $nombre): string
     {

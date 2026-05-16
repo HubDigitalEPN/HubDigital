@@ -38,7 +38,7 @@
                     <flux:icon name="check" class="size-2.5" />
                     Cargado
                 </span>
-                <span class="text-xs text-text-secondary">Haz clic en eliminar para subir otro archivo</span>
+                <span class="text-xs text-text-secondary">Haz clic en eliminar para subir otro archivo.</span>
             @elseif($requerido)
                 <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-error/15 text-error">
                     Requerido
@@ -52,7 +52,10 @@
             <span x-show="!subiendo && !nombreArchivo" class="text-xs text-text-secondary">
                 Solo PDF
             </span>
-            <span x-show="nombreArchivo" x-text="nombreArchivo" class="text-xs text-text-secondary truncate max-w-xs"></span>
+        </div>
+        <div x-show="nombreArchivo" class="flex items-center gap-1 mt-1">
+            <flux:icon name="document-text" class="size-3 text-text-secondary shrink-0" />
+            <span x-text="nombreArchivo" class="text-xs font-medium text-text-primary truncate max-w-sm"></span>
         </div>
 
         {{-- Progress bar (solo si no está cargado aún) --}}
