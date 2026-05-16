@@ -1,6 +1,6 @@
 <div class="space-y-6 p-6">
     <div class="flex items-center justify-between">
-        <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Cajas Entomológicas</flux:heading>
+        <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Cajas entomológicas</flux:heading>
         <flux:button icon="plus" variant="primary" wire:click="$set('showCrearModal', true)">
             Nueva Caja
         </flux:button>
@@ -115,7 +115,7 @@
     {{-- Modal: Crear caja --}}
     <flux:modal wire:model="showCrearModal" class="w-full max-w-md">
         <div class="space-y-4 p-1">
-            <flux:heading size="lg" class="text-text-primary">Nueva Caja Entomológica</flux:heading>
+            <flux:heading size="lg" class="text-text-primary">Nueva caja entomológica</flux:heading>
 
             <flux:field>
                 <flux:label>Código</flux:label>
@@ -162,7 +162,7 @@
     {{-- Modal: Editar caja --}}
     <flux:modal wire:model="showEditCajaModal" class="w-full max-w-md">
         <div class="space-y-4 p-1">
-            <flux:heading size="lg" class="text-text-primary">Editar Caja</flux:heading>
+            <flux:heading size="lg" class="text-text-primary">Editar caja</flux:heading>
 
             @if($errorMessage)
                 <flux:callout variant="danger">{{ $errorMessage }}</flux:callout>
@@ -200,7 +200,7 @@
     {{-- Modal: Registrar ingreso manual --}}
     <flux:modal wire:model="showIngresoModal" class="w-full max-w-md">
         <div class="space-y-4 p-1">
-            <flux:heading size="lg" class="text-text-primary">Registrar Ingreso Manual</flux:heading>
+            <flux:heading size="lg" class="text-text-primary">Registrar ingreso manual</flux:heading>
             <p class="text-sm text-text-primary">Selecciona el gabinete y la ranura de destino.</p>
 
             <flux:field>
@@ -237,7 +237,7 @@
                     wire:loading.attr="disabled"
                     :disabled="$ranuraIdSeleccionada === ''"
                 >
-                    <span wire:loading.remove wire:target="registrarIngreso">Confirmar Ingreso</span>
+                    <span wire:loading.remove wire:target="registrarIngreso">Confirmar ingreso</span>
                     <span wire:loading wire:target="registrarIngreso">Registrando...</span>
                 </flux:button>
             </div>
