@@ -7,6 +7,25 @@
         </flux:text>
     </div>
 
+    {{-- Aviso cuando la extracción automática no pudo completarse --}}
+    @if($advertenciaExtraccion === 'error_modelo')
+        <flux:callout variant="warning" icon="cpu-chip">
+            <flux:heading>El modelo de IA ({{ env('OLLAMA_MODEL', 'qwen3:4b') }}) no está disponible</flux:heading>
+            <flux:text>
+                No fue posible extraer los datos automáticamente porque el servicio de IA no respondió.
+                Completa manualmente los campos marcados abajo. El flujo continúa con normalidad.
+            </flux:text>
+        </flux:callout>
+    @elseif($advertenciaExtraccion === 'error_cola')
+        <flux:callout variant="warning" icon="queue-list">
+            <flux:heading>El procesador de tareas en segundo plano no está activo</flux:heading>
+            <flux:text>
+                La extracción automática no pudo iniciarse porque el worker de colas (<code>php artisan queue:work</code>) no está corriendo.
+                Completa manualmente los campos marcados abajo. El flujo continúa con normalidad.
+            </flux:text>
+        </flux:callout>
+    @endif
+
     {{-- Estado documental --}}
     @if($estadoDocumental === 'Requiere Corrección')
         <flux:callout variant="warning" icon="exclamation-triangle">
@@ -44,9 +63,12 @@
             $fuentesPorCampo = [
                 'N.º Permiso Recolección' => 'Copia de la Autorización de Recolección (MAATE)',
                 'N.º Permiso Movilización' => 'Copia del Permiso de Movilización',
-                'Grupo Animal' => 'Copia del Permiso de Movilización',
+                'Grupo Animal' => $tipoTramite === 'Donación'
+                    ? 'Formato Solicitud Donación'
+                    : 'Copia del Permiso de Movilización',
                 'Provincia' => 'Copia del Permiso de Movilización',
                 'Localidad' => 'Copia del Permiso de Movilización',
+                'Origen Donación' => 'Carta de Cesión de Derechos / Origen Lícito',
             ];
 
             $camposParaMostrar = array_keys($datosExtraidos);
@@ -58,7 +80,8 @@
                     $esFaltante = in_array($campo, $datosFaltantes);
                     $valor = $datosExtraidos[$campo] ?? null;
                     $fuente = $fuentesPorCampo[$campo] ?? null;
-                    $estaEditando = isset($datosEnEdicion[$campo]);
+                    $clave = preg_replace('/[^a-zA-Z0-9]/', '_', $campo);
+                    $estaEditando = isset($datosEnEdicion[$clave]);
                     $esManual = in_array($campo, $datosIngresadosManualmente);
                 @endphp
 
@@ -72,7 +95,7 @@
                     @if($estaEditando)
                         <div class="flex gap-2 mt-1">
                             <flux:input
-                                wire:model="datosEnEdicion.{{ $campo }}"
+                                wire:model="datosEnEdicion.{{ $clave }}"
                                 size="sm"
                                 class="flex-1"
                                 placeholder="Ingresa el valor…"
@@ -91,7 +114,7 @@
                                 <flux:icon name="x-mark" class="size-3" />
                             </flux:button>
                         </div>
-                        <flux:error name="datosEnEdicion.{{ $campo }}" />
+                        <flux:error name="datosEnEdicion.{{ $clave }}" />
                     @elseif($esFaltante)
                         <button
                             wire:click="iniciarEdicionDato('{{ $campo }}')"
@@ -130,26 +153,31 @@
         />
 
         @if(!$resultadoIdentidad)
-            <div class="flex gap-3 items-end">
-                <flux:field class="flex-1">
-                    <flux:label>Nombre tal como aparece en el Formato de Solicitud</flux:label>
-                    <flux:input
-                        wire:model="nombreEnDocumento"
-                        placeholder="Ej. Juan Carlos Pérez Andrade"
-                    />
-                    <flux:error name="nombreEnDocumento" />
-                    <flux:description>Escribe el nombre exactamente como figura en el documento oficial cargado.</flux:description>
-                </flux:field>
-                <flux:button
-                    variant="filled"
-                    wire:click="validarIdentidad"
-                    wire:loading.attr="disabled"
-                    wire:target="validarIdentidad"
-                >
-                    <flux:icon wire:loading wire:target="validarIdentidad" name="arrow-path" class="animate-spin size-4" />
-                    <flux:icon wire:loading.remove wire:target="validarIdentidad" name="shield-check" class="size-4" />
-                    Validar identidad
-                </flux:button>
+            <div class="space-y-2">
+                <div class="flex gap-3 items-end">
+                    <flux:field class="flex-1 !mb-0">
+                        <flux:label>Nombre tal como aparece en el Formato de Solicitud</flux:label>
+                        <flux:input
+                            wire:model="nombreEnDocumento"
+                            placeholder="Ej. Juan Carlos Pérez Andrade"
+                        />
+                        <flux:error name="nombreEnDocumento" />
+                    </flux:field>
+                    <flux:button
+                        variant="primary"
+                        icon="shield-check"
+                        wire:click="validarIdentidad"
+                        wire:loading.attr="disabled"
+                        wire:target="validarIdentidad"
+                        class="shrink-0 bg-blue-navy hover:bg-blue-navy/90"
+                    >
+                        <flux:icon wire:loading wire:target="validarIdentidad" name="arrow-path" class="animate-spin size-4" />
+                        Validar identidad
+                    </flux:button>
+                </div>
+                <flux:text class="text-xs text-text-secondary">
+                    Escribe el nombre exactamente como figura en el documento oficial cargado.
+                </flux:text>
             </div>
         @endif
 
@@ -158,7 +186,7 @@
             <flux:callout variant="warning" icon="exclamation-triangle">
                 <flux:heading>Discrepancia tipográfica detectada</flux:heading>
                 <flux:text>Hay una diferencia menor entre tu nombre de perfil y el nombre del documento. Puedes continuar, pero se recomienda corregir el nombre en tu perfil de usuario.</flux:text>
-                <flux:button size="sm" variant="ghost" wire:navigate href="{{ route('profile.edit') }}" class="mt-2">
+                <flux:button size="sm" variant="outline" wire:navigate href="{{ route('profile.edit') }}" class="mt-2">
                     Corregir nombre en perfil
                 </flux:button>
             </flux:callout>
