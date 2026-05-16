@@ -99,6 +99,20 @@ return [
             'sslmode' => env('DB_SSLMODE', 'require'),
         ],
 
+        'pgsql_test' => [
+            'driver' => 'pgsql',
+            'host' => env('TEST_DB_HOST', '127.0.0.1'),
+            'port' => env('TEST_DB_PORT', '5432'),
+            'database' => env('TEST_DB_DATABASE', 'hubdigital'),
+            'username' => env('TEST_DB_USERNAME', 'postgres'),
+            'password' => env('TEST_DB_PASSWORD', ''),
+            'charset' => 'utf8',
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'search_path' => 'public',
+            'sslmode' => 'prefer',
+        ],
+
         'sqlsrv' => [
             'driver' => 'sqlsrv',
             'url' => env('DB_URL'),

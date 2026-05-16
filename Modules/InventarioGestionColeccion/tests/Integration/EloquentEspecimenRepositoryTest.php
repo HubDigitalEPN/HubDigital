@@ -2,19 +2,33 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Str;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especimen;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Taxon;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\TaxonRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EspecimenId;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TaxonId;
 use Modules\InventarioGestionColeccion\Tests\Integration\IntegrationTestCase;
 
 uses(IntegrationTestCase::class);
+
+function taxonEnDb(): string
+{
+    $repo = app(TaxonRepositoryInterface::class);
+    $nombre = 'Morpho '.substr((string) Str::uuid(), 0, 8);
+    $taxon = Taxon::crear(TaxonId::generar(), $nombre, 'especie', 'Kollar', 1850);
+    $repo->guardar($taxon);
+
+    return (string) $taxon->id();
+}
 
 function crearEspecimenSimple(string $codigo = 'COLEOP-001', string $taxonId = ''): Especimen
 {
     return Especimen::crear(
         EspecimenId::generar(),
         $codigo,
-        $taxonId ?: 'taxon-'.str_pad('1', 32, '0', STR_PAD_LEFT),
+        $taxonId ?: taxonEnDb(),
         'Pichincha',
         '2024-03-15',
         'Dr. Colector',
@@ -78,7 +92,7 @@ test('buscarPorCodigoCatalogo devuelve null cuando no existe', function (): void
 test('buscarPorLocalidad filtra por coincidencia parcial', function (): void {
     $repo = app(EspecimenRepositoryInterface::class);
     $e1 = crearEspecimenSimple('COLEOP-001');
-    $e2 = Especimen::crear(EspecimenId::generar(), 'COLEOP-002', 'taxon-'.str_pad('1', 32, '0'), 'Imbabura', '2024-01-01', 'Colector');
+    $e2 = Especimen::crear(EspecimenId::generar(), 'COLEOP-002', taxonEnDb(), 'Imbabura', '2024-01-01', 'Colector');
     $repo->guardar($e1);
     $repo->guardar($e2);
 
