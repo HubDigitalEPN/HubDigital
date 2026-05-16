@@ -11,7 +11,7 @@ use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\BaseContext;
 
 final class SeguimientoSolicitudesContext extends BaseContext
 {
-    #[Given('/^que existe una solicitud del investigador en estado (.+)$/u')]
+    #[Given('/^que existe una solicitud del investigador en estado ([^\s]+)$/u')]
     public function queExisteUnaSolicitudDelInvestigadorEnEstado(string $estado): void
     {
         throw new PendingException;

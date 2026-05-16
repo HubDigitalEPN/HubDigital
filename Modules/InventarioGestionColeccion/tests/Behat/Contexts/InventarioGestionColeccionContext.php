@@ -12,7 +12,7 @@ class InventarioGestionColeccionContext implements Context
     /** @BeforeSuite */
     public static function bootstrapLaravel(): void
     {
-        $bootstrap = dirname(__DIR__, 5) . '/bootstrap/app.php';
+        $bootstrap = dirname(__DIR__, 5).'/bootstrap/app.php';
 
         self::$app = require $bootstrap;
         self::$app->make(Kernel::class)->bootstrap();

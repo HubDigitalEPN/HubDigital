@@ -1,18 +1,20 @@
 # language: es
+# Feature: 2
 Característica: Revisión de la matriz de especies
-    Como investigador
+    Como investigador o representante de colección
     Quiero validar la integridad técnica y taxonómica de la matriz Darwin Core
     Para asegurar que los datos de los especímenes cumplan con los estándares científicos de la colección
 
     Antecedentes:
-        Dado que el investigador ha iniciado una solicitud de depósito
+        Dado que el investigador ha iniciado una solicitud en el sistema
         Y se ha cargado una matriz en formato Darwin Core (DwC)
 
+    # Este escenario aplica para ambos trámites (Depósito y Donación)
     Esquema del escenario: Validación de campos obligatorios dinámicos (DwC)
         Dado que el campo "<campo_dwc>" ha sido configurado como obligatorio por curaduría
-        Cuando el sistema procesa una matriz con el campo "<campo_dwc>" vacío
-        Entonces el sistema rechaza la carga de la matriz
-        Y el sistema indica que el campo "<campo_dwc>" es requerido para el estándar de la colección
+        Cuando se evalúa una matriz donde el campo "<campo_dwc>" está vacío
+        Entonces la carga de la matriz es rechazada
+        Y se indica al investigador que el campo "<campo_dwc>" es requerido para el estándar de la colección
 
         Ejemplos:
             | campo_dwc       |
@@ -20,9 +22,11 @@ Característica: Revisión de la matriz de especies
             | verbatimDepth   |
             | habitat         |
 
-    Esquema del escenario: Validación taxonómica con sugerencias de GBIF
-        Dado que la matriz contiene la especie "<especie_ingresada>"
-        Y el sistema identifica una posible inconsistencia tipográfica mediante GBIF
+    @deposito
+    Esquema del escenario: Validación taxonómica con sugerencias del catálogo de referencia
+        Dado que el trámite es un "Depósito" de recolección en campo
+        Y la matriz contiene la especie "<especie_ingresada>"
+        Y el catálogo taxonómico de referencia detecta una posible inconsistencia tipográfica
         Cuando el investigador acepta la sugerencia "<especie_sugerida>"
         Entonces el registro taxonómico se marca como "Corregido por Sugerencia"
         Y el estado del registro pasa a "Validado Técnicamente"
@@ -32,13 +36,24 @@ Característica: Revisión de la matriz de especies
             | Apis melifera     | Apis mellifera   |
             | Panthera oncae    | Panthera onca    |
 
+    @deposito
     Esquema del escenario: Justificación de hallazgos taxonómicos no catalogados
-        Dado que la matriz contiene la especie desconocida "<especie>"
-        Cuando el investigador selecciona el motivo "<motivo_justificacion>" para justificar el registro
-        Entonces el sistema marca el registro para "Validación Manual por Curaduría"
-        Y se permite finalizar la carga de la matriz con alertas
+        Dado que el trámite es un "Depósito" de recolección en campo
+        Y la matriz contiene la especie no registrada "<especie>"
+        Cuando el investigador justifica el registro indicando el motivo "<motivo_justificacion>"
+        Entonces el registro queda marcado para "Validación Manual por Curaduría"
+        Y la matriz asume el estado general de "Cargada con Alertas"
 
         Ejemplos:
             | especie           | motivo_justificacion   |
             | Morpho sp. nov.   | Es una Especie Nueva   |
             | Insecta incognita | No listada en catálogo |
+
+    @donacion
+    Escenario: Aceptación de taxonomía por transferencia de colecciones
+        Dado que el trámite es una "Donación"
+        Y los especímenes provienen de una colección biológica previamente establecida
+        Cuando se evalúa la matriz Darwin Core
+        Entonces se omite la validación de inconsistencias tipográficas contra el catálogo
+        Y se conserva la identificación taxonómica original de la colección donante
+        Y la matriz asume automáticamente el estado de "Validada Técnicamente"

@@ -1,0 +1,28 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        if (! Schema::hasTable('iot.notificaciones')) {
+            Schema::create('iot.notificaciones', function (Blueprint $table): void {
+                $table->uuid('id')->primary();
+                $table->foreignUuid('caja_id')
+                    ->constrained('iot.cajas')
+                    ->cascadeOnDelete();
+                $table->string('tipo', 60);
+                $table->json('datos_contexto')->default('{}');
+                $table->timestamps();
+            });
+        }
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('iot.notificaciones');
+    }
+};

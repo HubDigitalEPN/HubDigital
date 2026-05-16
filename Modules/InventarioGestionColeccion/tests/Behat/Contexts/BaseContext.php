@@ -23,4 +23,13 @@ abstract class BaseContext implements Context
         self::$app = require dirname(__DIR__, 5).'/bootstrap/app.php';
         self::$app->make(Kernel::class)->bootstrap();
     }
+
+    protected function make(string $abstract): mixed
+    {
+        if (self::$app === null) {
+            self::bootstrapLaravel();
+        }
+
+        return self::$app->make($abstract);
+    }
 }

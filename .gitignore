@@ -23,3 +23,6 @@ yarn-error.log
 /.zed
 Manual de Diseño.md
 .claude/settings.local.json
+/.claude/
+
+/Modules/GestionPrestamosRecepciones/References/

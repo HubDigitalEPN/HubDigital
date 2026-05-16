@@ -1,0 +1,37 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+final class ItemPrestamoModel extends Model
+{
+    protected $table = 'prestamos.items_prestamo';
+
+    protected $primaryKey = 'id';
+
+    public $incrementing = false;
+
+    protected $keyType = 'string';
+
+    protected $fillable = [
+        'id',
+        'solicitud_prestamo_id',
+        'especimen_codigo_externo',
+        'cantidad_solicitada',
+        'especimen_snapshot',
+        'condiciones_especificas',
+    ];
+
+    protected $casts = [
+        'especimen_snapshot' => 'array',
+    ];
+
+    public function solicitud(): BelongsTo
+    {
+        return $this->belongsTo(SolicitudPrestamoModel::class, 'solicitud_prestamo_id');
+    }
+}
