@@ -37,16 +37,16 @@
                     @if(auth()->user()->rol === RolUsuario::PRESTAMISTA)
                         <flux:sidebar.group heading="Préstamos" class="grid">
                             <flux:sidebar.item icon="document-text" :href="route('dashboard')" wire:navigate>
-                                Mis Solicitudes
+                                Mis solicitudes
                             </flux:sidebar.item>
                         </flux:sidebar.group>
                     @elseif(auth()->user()->rol === RolUsuario::DEPOSITANTE)
                         <flux:sidebar.group heading="Depósitos" class="grid">
                             <flux:sidebar.item icon="archive-box" :href="route('prestamos.investigador.mis-depositos')" :current="request()->routeIs('prestamos.investigador.mis-depositos')" wire:navigate>
-                                Mis Depósitos
+                                Mis depósitos
                             </flux:sidebar.item>
                             <flux:sidebar.item icon="plus-circle" :href="route('prestamos.investigador.deposito.crear')" :current="request()->routeIs('prestamos.investigador.deposito.crear')" wire:navigate>
-                                Nueva Solicitud
+                                Nueva solicitud
                             </flux:sidebar.item>
                         </flux:sidebar.group>
                     @elseif(auth()->user()->rol === RolUsuario::CURADOR)
@@ -83,7 +83,7 @@
                                 :current="request()->routeIs('inventario.taxonomia.entidades-depositantes')"
                                 wire:navigate
                             >
-                                Entidades Depositantes
+                                Entidades depositantes
                             </flux:sidebar.item>
                         </flux:sidebar.group>
                         <flux:sidebar.group heading="Inventario IoT" class="grid">

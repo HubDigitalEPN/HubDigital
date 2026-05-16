@@ -195,7 +195,7 @@ final class RegistroSolicitudDeposito extends Component
 
         if ($this->tipoTramite === TipoTramite::Donacion->value) {
             // Donación no requiere declarar origen ni situación regulatoria
-            $this->documentosRequeridos = ['Formato Solicitud Donación', 'Carta de Cesión de Derechos / Origen Lícito'];
+            $this->documentosRequeridos = ['Formato solicitud donación', 'Carta de cesión de derechos / origen lícito'];
             $this->pasosCompletados = array_values(array_unique([...$this->pasosCompletados, 2]));
             $this->paso = 3;
 
@@ -243,29 +243,29 @@ final class RegistroSolicitudDeposito extends Component
 
     public function updatedArchivoFormatoDeposito(): void
     {
-        $this->registrarDocumentoCargado('archivoFormatoDeposito', 'Formato Solicitud Depósito', $this->archivoFormatoDeposito);
+        $this->registrarDocumentoCargado('archivoFormatoDeposito', 'Formato solicitud depósito', $this->archivoFormatoDeposito);
     }
 
     public function updatedArchivoFormatoDonacion(): void
     {
-        $this->registrarDocumentoCargado('archivoFormatoDonacion', 'Formato Solicitud Donación', $this->archivoFormatoDonacion);
+        $this->registrarDocumentoCargado('archivoFormatoDonacion', 'Formato solicitud donación', $this->archivoFormatoDonacion);
     }
 
     public function updatedArchivoAutorizacionMaate(): void
     {
-        $this->registrarDocumentoCargado('archivoAutorizacionMaate', 'Copia de la Autorización de Recolección (MAATE)', $this->archivoAutorizacionMaate);
+        $this->registrarDocumentoCargado('archivoAutorizacionMaate', 'Copia de la autorización de recolección (MAATE)', $this->archivoAutorizacionMaate);
     }
 
     public function updatedArchivoPermisoMovilizacion(): void
     {
-        $this->registrarDocumentoCargado('archivoPermisoMovilizacion', 'Copia del Permiso de Movilización', $this->archivoPermisoMovilizacion);
+        $this->registrarDocumentoCargado('archivoPermisoMovilizacion', 'Copia del permiso de movilización', $this->archivoPermisoMovilizacion);
     }
 
     public function updatedArchivoCartaJustificacion(): void
     {
         $this->registrarDocumentoCargado(
             'archivoCartaJustificacion',
-            'Documento de Explicación de Motivos y/o Carta de Justificación (Institucional o Personal)',
+            'Documento de explicación de motivos y/o carta de justificación (institucional o personal)',
             $this->archivoCartaJustificacion
         );
     }
@@ -281,12 +281,12 @@ final class RegistroSolicitudDeposito extends Component
 
     public function updatedArchivoCartaCesion(): void
     {
-        $this->registrarDocumentoCargado('archivoCartaCesion', 'Carta de Cesión de Derechos / Origen Lícito', $this->archivoCartaCesion);
+        $this->registrarDocumentoCargado('archivoCartaCesion', 'Carta de cesión de derechos / origen lícito', $this->archivoCartaCesion);
     }
 
     public function updatedArchivoCartaDelegacion(): void
     {
-        $this->registrarDocumentoCargado('archivoCartaDelegacion', 'Carta de Delegación / Justificación de Tercero', $this->archivoCartaDelegacion);
+        $this->registrarDocumentoCargado('archivoCartaDelegacion', 'Carta de delegación / justificación de tercero', $this->archivoCartaDelegacion);
     }
 
     private function registrarDocumentoCargado(string $propiedad, string $nombre, mixed $archivo): void
@@ -605,7 +605,7 @@ final class RegistroSolicitudDeposito extends Component
             return;
         }
 
-        if ($this->cartaDelegacionRequerida && ! isset($this->documentosCargados['Carta de Delegación / Justificación de Tercero'])) {
+        if ($this->cartaDelegacionRequerida && ! isset($this->documentosCargados['Carta de delegación / justificación de tercero'])) {
             $this->addError('cartaDelegacion', 'Adjunta la Carta de Delegación para continuar.');
 
             return;
@@ -644,9 +644,9 @@ final class RegistroSolicitudDeposito extends Component
                 }
 
                 if (in_array('N.º Permiso Movilización', $this->datosFaltantes, true)
-                    && ! in_array('Copia del Permiso de Movilización', $this->documentosRequeridos, true)
+                    && ! in_array('Copia del permiso de movilización', $this->documentosRequeridos, true)
                 ) {
-                    $this->documentosRequeridos[] = 'Copia del Permiso de Movilización';
+                    $this->documentosRequeridos[] = 'Copia del permiso de movilización';
                 }
             }
 
@@ -673,14 +673,14 @@ final class RegistroSolicitudDeposito extends Component
     public function propiedadParaDocumento(string $nombre): string
     {
         return match ($nombre) {
-            'Formato Solicitud Depósito' => 'archivoFormatoDeposito',
-            'Formato Solicitud Donación' => 'archivoFormatoDonacion',
-            'Copia de la Autorización de Recolección (MAATE)' => 'archivoAutorizacionMaate',
-            'Copia del Permiso de Movilización' => 'archivoPermisoMovilizacion',
-            'Documento de Explicación de Motivos y/o Carta de Justificación (Institucional o Personal)' => 'archivoCartaJustificacion',
+            'Formato solicitud depósito' => 'archivoFormatoDeposito',
+            'Formato solicitud donación' => 'archivoFormatoDonacion',
+            'Copia de la autorización de recolección (MAATE)' => 'archivoAutorizacionMaate',
+            'Copia del permiso de movilización' => 'archivoPermisoMovilizacion',
+            'Documento de explicación de motivos y/o carta de justificación (institucional o personal)' => 'archivoCartaJustificacion',
             'Carta de Procedencia firmada por el responsable de la colección de origen' => 'archivoCartaProcedencia',
-            'Carta de Cesión de Derechos / Origen Lícito' => 'archivoCartaCesion',
-            'Carta de Delegación / Justificación de Tercero' => 'archivoCartaDelegacion',
+            'Carta de cesión de derechos / origen lícito' => 'archivoCartaCesion',
+            'Carta de delegación / justificación de tercero' => 'archivoCartaDelegacion',
             default => throw new \InvalidArgumentException("Documento desconocido: {$nombre}"),
         };
     }

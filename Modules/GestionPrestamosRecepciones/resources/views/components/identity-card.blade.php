@@ -16,7 +16,7 @@ $colorClasses = match($resultado) {
 <div class="rounded-lg border-2 p-4 {{ $colorClasses }} grid grid-cols-[1fr_auto_1fr] items-center gap-4">
     {{-- Left: Perfil del sistema --}}
     <div class="space-y-0.5">
-        <p class="text-[10px] uppercase font-semibold tracking-wider text-text-secondary">Perfil del sistema</p>
+        <p class="text-[10px] font-semibold tracking-wider text-text-secondary">Perfil del sistema</p>
         <p class="text-base font-semibold font-serif text-text-primary leading-snug">{{ $nombrePerfil }}</p>
         <p class="text-xs text-text-secondary">Nombre registrado</p>
     </div>
@@ -28,7 +28,7 @@ $colorClasses = match($resultado) {
 
     {{-- Right: Nombre en documento --}}
     <div class="space-y-0.5 text-right">
-        <p class="text-[10px] uppercase font-semibold tracking-wider text-text-secondary">Nombre en el formato</p>
+        <p class="text-[10px] font-semibold tracking-wider text-text-secondary">Nombre en el formato</p>
         <p class="text-base font-semibold font-serif leading-snug
             {{ $nombreEnDocumento ? 'text-text-primary' : 'text-text-secondary italic' }}"
         >
@@ -48,7 +48,7 @@ $colorClasses = match($resultado) {
             <span class="text-sm font-medium text-warning">Discrepancia tipográfica — corrige el nombre en tu perfil</span>
         @elseif($resultado === 'Discrepancia (Tercero)')
             <flux:icon name="x-circle" class="size-4 text-error shrink-0" />
-            <span class="text-sm font-medium text-error">Discrepancia por tercero — adjunta Carta de Delegación</span>
+            <span class="text-sm font-medium text-error">Discrepancia por tercero — adjunta carta de delegación</span>
         @endif
     </div>
 @endif

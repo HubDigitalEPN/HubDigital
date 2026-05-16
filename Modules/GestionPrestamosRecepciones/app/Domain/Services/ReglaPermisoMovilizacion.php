@@ -8,7 +8,7 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoDocumental;
 
 final class ReglaPermisoMovilizacion
 {
-    private const NOMBRE_DOCUMENTO = 'Copia del Permiso de Movilización';
+    private const NOMBRE_DOCUMENTO = 'Copia del permiso de movilización';
 
     /** Provincias que no requieren Permiso de Movilización */
     private const PROVINCIAS_EXENTAS = ['Pichincha'];

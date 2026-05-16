@@ -1,7 +1,7 @@
 <div class="space-y-6">
 
     <div>
-        <flux:heading size="lg" level="2">Resumen y Validación de Datos</flux:heading>
+        <flux:heading size="lg" level="2" class="font-display">Resumen y validación de datos</flux:heading>
         <flux:text class="text-text-secondary text-sm mt-1">
             Revisa los datos extraídos automáticamente de la documentación y valida la identidad del solicitante.
         </flux:text>
@@ -42,7 +42,7 @@
             <flux:heading>Se requiere el Permiso de Movilización</flux:heading>
             <flux:text>
                 Los documentos indican que la recolección ocurrió fuera de Pichincha.
-                Debes adjuntar la <strong>Copia del Permiso de Movilización</strong> para continuar.
+                Debes adjuntar la <strong>Copia del permiso de movilización</strong> para continuar.
             </flux:text>
             <flux:button size="sm" wire:click="retroceder" icon="arrow-left" class="mt-2">
                 Volver a adjuntar documentos
@@ -61,14 +61,14 @@
 
         @php
             $fuentesPorCampo = [
-                'N.º Permiso Recolección' => 'Copia de la Autorización de Recolección (MAATE)',
-                'N.º Permiso Movilización' => 'Copia del Permiso de Movilización',
+                'N.º Permiso Recolección' => 'Copia de la autorización de recolección (MAATE)',
+                'N.º Permiso Movilización' => 'Copia del permiso de movilización',
                 'Grupo Animal' => $tipoTramite === 'Donación'
-                    ? 'Formato Solicitud Donación'
-                    : 'Copia del Permiso de Movilización',
-                'Provincia' => 'Copia del Permiso de Movilización',
-                'Localidad' => 'Copia del Permiso de Movilización',
-                'Origen Donación' => 'Carta de Cesión de Derechos / Origen Lícito',
+                    ? 'Formato solicitud donación'
+                    : 'Copia del permiso de movilización',
+                'Provincia' => 'Copia del permiso de movilización',
+                'Localidad' => 'Copia del permiso de movilización',
+                'Origen Donación' => 'Carta de cesión de derechos / origen lícito',
             ];
 
             $camposParaMostrar = array_keys($datosExtraidos);
@@ -156,7 +156,7 @@
             <div class="space-y-2">
                 <div class="flex gap-3 items-end">
                     <flux:field class="flex-1 !mb-0">
-                        <flux:label>Nombre tal como aparece en el Formato de Solicitud</flux:label>
+                        <flux:label>Nombre tal como aparece en el formato de solicitud</flux:label>
                         <flux:input
                             wire:model="nombreEnDocumento"
                             placeholder="Ej. Juan Carlos Pérez Andrade"
@@ -202,14 +202,14 @@
                         Reingresar nombre del documento
                     </flux:button>
                 </div>
-                <flux:text class="mt-2 text-xs opacity-70">O adjunta la Carta de Delegación si gestionas el trámite a nombre de otra persona.</flux:text>
+                <flux:text class="mt-2 text-xs opacity-70">O adjunta la carta de delegación si gestionas el trámite a nombre de otra persona.</flux:text>
             </flux:callout>
 
             <x-gestionprestamosrecepciones::dropzone
-                nombre="Carta de Delegación / Justificación de Tercero"
+                nombre="Carta de delegación / justificación de tercero"
                 propiedad="archivoCartaDelegacion"
                 :requerido="true"
-                :cargado="isset($documentosCargados['Carta de Delegación / Justificación de Tercero'])"
+                :cargado="isset($documentosCargados['Carta de delegación / justificación de tercero'])"
             />
             <flux:error name="cartaDelegacion" />
         @elseif($resultadoIdentidad === 'Conforme')

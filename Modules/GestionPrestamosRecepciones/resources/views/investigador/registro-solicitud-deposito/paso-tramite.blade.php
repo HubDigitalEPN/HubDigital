@@ -11,7 +11,7 @@
 >
 
     <div>
-        <flux:heading size="lg" level="2">Tipo de Trámite</flux:heading>
+        <flux:heading size="lg" level="2" class="font-display">Tipo de trámite</flux:heading>
         <flux:text class="text-text-secondary text-sm mt-1">
             Selecciona cómo deseas registrar tus especímenes entomológicos en la colección.
         </flux:text>
@@ -73,7 +73,7 @@
     <div x-show="tipo === 'Donación'" x-cloak>
         <flux:callout variant="info" icon="information-circle">
             <flux:text class="text-sm">
-                La <strong>Donación</strong> transfiere permanentemente la propiedad de los especímenes a la colección. Se requiere Carta de Cesión de Derechos con firma del donante.
+                La <strong>Donación</strong> transfiere permanentemente la propiedad de los especímenes a la colección. Se requiere carta de cesión de derechos con firma del donante.
             </flux:text>
         </flux:callout>
     </div>

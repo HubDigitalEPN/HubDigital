@@ -28,7 +28,7 @@
 >
 
     <div>
-        <flux:heading size="lg" level="2">Origen de los Especímenes</flux:heading>
+        <flux:heading size="lg" level="2" class="font-display">Origen de los especímenes</flux:heading>
         <flux:text class="text-text-secondary text-sm mt-1">
             Declara la procedencia de los especímenes y tu situación regulatoria actual.
         </flux:text>
@@ -134,7 +134,7 @@
     <div x-show="origen === 'Exterior (Extranjero)'" x-cloak>
         <flux:callout variant="info" icon="information-circle">
             <flux:text class="text-sm">
-                Para especímenes del <strong>exterior</strong> se requiere una <strong>Carta de Procedencia</strong> firmada por el responsable de la colección de origen.
+                Para especímenes del <strong>exterior</strong> se requiere una <strong>Carta de procedencia</strong> firmada por el responsable de la colección de origen.
             </flux:text>
         </flux:callout>
     </div>

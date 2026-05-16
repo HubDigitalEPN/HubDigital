@@ -30,8 +30,8 @@ Característica: Registro de solicitud de depósito
 
         Ejemplos:
             | origen_recoleccion    | situacion_regulatoria           | documento_requerido                                                                           |
-            | Nacional (Ecuador)    | Posee permisos del MAATE        | Copia de la Autorización de Recolección (MAATE) y Copia del Permiso de Movilización           |
-            | Nacional (Ecuador)    | Sin permisos del MAATE          | Documento de Explicación de Motivos y/o Carta de Justificación (Institucional o Personal)     |
+            | Nacional (Ecuador)    | Posee permisos del MAATE        | Copia de la autorización de recolección (MAATE) y Copia del permiso de movilización           |
+            | Nacional (Ecuador)    | Sin permisos del MAATE          | Documento de explicación de motivos y/o carta de justificación (institucional o personal)     |
             | Exterior (Extranjero) | Proviene de colección foránea   | Carta de Procedencia firmada por el responsable de la colección de origen                     |
 
     @deposito @excepcion
@@ -44,7 +44,7 @@ Característica: Registro de solicitud de depósito
 
     Esquema del escenario: Validación de Permiso de Movilización por provincia de origen
         Dado que el investigador declara que las muestras provienen de la provincia de "<provincia>"
-        Y el documento "Copia del Permiso de Movilización" se encuentra "<estado_adjunto>"
+        Y el documento "Copia del permiso de movilización" se encuentra "<estado_adjunto>"
         Cuando el investigador envía la documentación inicial
         Entonces el estado documental de la solicitud es "<estado_documental>"
         Ejemplos:
@@ -59,24 +59,24 @@ Característica: Registro de solicitud de depósito
         Dado que el investigador seleccionó el trámite de "Depósito"
         Cuando el investigador carga los siguientes documentos:
             | Documento Oficial                               |
-            | Formato Solicitud Depósito                      |
-            | Copia de la Autorización de Recolección (MAATE) |
-            | Copia del Permiso de Movilización               |
+            | Formato solicitud depósito                      |
+            | Copia de la autorización de recolección (MAATE) |
+            | Copia del permiso de movilización               |
         Entonces la solicitud incorpora automáticamente la siguiente información:
             | Información requerida    | Extraída de                                     |
-            | N.º Permiso Recolección  | Copia de la Autorización de Recolección (MAATE) |
-            | N.º Permiso Movilización | Copia del Permiso de Movilización               |
-            | Grupo Animal             | Copia del Permiso de Movilización               |
-            | Provincia                | Copia del Permiso de Movilización               |
-            | Localidad                | Copia del Permiso de Movilización               |
+            | N.º Permiso Recolección  | Copia de la autorización de recolección (MAATE) |
+            | N.º Permiso Movilización | Copia del permiso de movilización               |
+            | Grupo Animal             | Copia del permiso de movilización               |
+            | Provincia                | Copia del permiso de movilización               |
+            | Localidad                | Copia del permiso de movilización               |
 
     @donacion
     Escenario: Carga de documentación oficial para Donaciones
         Dado que el investigador seleccionó el trámite de "Donación"
         Cuando el investigador carga los siguientes documentos obligatorios:
             | Documento Oficial                               |
-            | Formato Solicitud Donación                      |
-            | Carta de Cesión de Derechos / Origen Lícito     |
+            | Formato solicitud donación                      |
+            | Carta de cesión de derechos / origen lícito     |
         Entonces la solicitud registra el origen de la donación
         Y pasa a estar "Pendiente de Revisión por Curaduría"
 
@@ -87,7 +87,7 @@ Característica: Registro de solicitud de depósito
         Y pasa a estar "Pendiente de Revisión por Curaduría"
 
     Esquema del escenario: Validación de identidad mediante el Formato de Solicitud
-        Dado que el investigador ha cargado el "Formato Solicitud Depósito"
+        Dado que el investigador ha cargado el "Formato solicitud depósito"
         Y su perfil de usuario está registrado como "<nombre_perfil>"
         Cuando se compara el perfil del investigador con el nombre "<nombre_en_documento>" del formulario
         Entonces el resultado de la validación es "<resultado>"

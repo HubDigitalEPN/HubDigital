@@ -24,13 +24,13 @@
     {{-- Encabezado --}}
     <div class="flex items-center justify-between">
         <div>
-            <flux:heading size="xl" level="1" class="font-display">Mis Depósitos</flux:heading>
+            <flux:heading size="xl" level="1" class="font-display">Mis depósitos</flux:heading>
             <flux:text class="text-text-secondary text-sm mt-1">
                 Historial de tus solicitudes de depósito de especímenes.
             </flux:text>
         </div>
         <flux:button variant="primary" icon="plus" wire:navigate href="{{ route('prestamos.investigador.deposito.crear') }}">
-            Nueva Solicitud
+            Nueva solicitud
         </flux:button>
     </div>
 
@@ -128,7 +128,7 @@
                     </flux:text>
                 </div>
                 <flux:button variant="filled" icon="plus" wire:navigate href="{{ route('prestamos.investigador.deposito.crear') }}">
-                    Nueva Solicitud de Depósito
+                    Nueva solicitud de depósito
                 </flux:button>
             @endif
         </div>
