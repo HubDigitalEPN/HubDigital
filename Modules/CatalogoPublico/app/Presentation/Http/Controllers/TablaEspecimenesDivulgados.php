@@ -6,6 +6,7 @@ namespace Modules\CatalogoPublico\Presentation\Http\Controllers;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -49,12 +50,25 @@ final class TablaEspecimenesDivulgados extends Component
         'decimalLongitudeVisible' => 'decimal_longitude_visible',
     ];
 
+    /**
+     * Caché computado de especímenes divulgables indexados por occurrence_id.
+     * Se carga UNA SOLA VEZ y se reutiliza cuando se abre el modal de configuración.
+     * Se invalida automáticamente cuando cambian los datos principales.
+     */
+    #[Computed]
+    public function especimenesDivulgablesIndexados()
+    {
+        return EspecimenDivulgableEloquentModel::all()
+            ->keyBy('occurrence_id');
+    }
+
     public function abrirConfiguracion(string $occurrenceID): void
     {
         $this->occurrenceIDActivo = $occurrenceID;
         $this->configGuardada = false;
 
-        $registro = EspecimenDivulgableEloquentModel::where('occurrence_id', $occurrenceID)->first();
+        // Busca en el caché de especímenes divulgables, NO en BD
+        $registro = $this->especimenesDivulgablesIndexados()[$occurrenceID] ?? null;
 
         if ($registro !== null) {
             $config = [];
@@ -152,6 +166,7 @@ final class TablaEspecimenesDivulgados extends Component
         return view('catalogopublico::livewire.tabla-especimenes-divulgados', [
             'especimenes' => $especimenes,
             'totalCampos' => count(self::FLAG_MAP),
+            'especimenesDivulgablesIndexados' => $this->especimenesDivulgablesIndexados(),
         ]);
     }
 }

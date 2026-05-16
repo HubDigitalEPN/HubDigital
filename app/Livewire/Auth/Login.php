@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Auth;
 
+use App\Enums\RolUsuario;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -33,7 +34,14 @@ class Login extends Component
 
         Auth::login($user, $this->remember);
 
-        $this->redirect(route('dashboard'), navigate: true);
+        $destination = match ($user->rol) {
+            RolUsuario::DEPOSITANTE => route('prestamos.investigador.deposito.crear'),
+            RolUsuario::PRESTAMISTA => route('prestamos.investigador.mis-solicitudes'),
+            RolUsuario::CURADOR => route('prestamos.curador.solicitudes'),
+            default => route('dashboard'),
+        };
+
+        $this->redirect($destination, navigate: true);
     }
 
     public function render(): View

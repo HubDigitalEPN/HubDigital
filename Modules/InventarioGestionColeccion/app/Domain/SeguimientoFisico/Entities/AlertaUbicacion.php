@@ -17,6 +17,7 @@ class AlertaUbicacion
         private readonly TipoAlerta $tipo,
         private EstadoAlerta $estado,
         private readonly array $datosContexto,
+        private readonly \DateTimeImmutable $generadaEn,
     ) {}
 
     public static function generar(
@@ -31,6 +32,7 @@ class AlertaUbicacion
             tipo: $tipo,
             estado: EstadoAlerta::Activa,
             datosContexto: $datosContexto,
+            generadaEn: new \DateTimeImmutable,
         );
     }
 
@@ -40,6 +42,7 @@ class AlertaUbicacion
         TipoAlerta $tipo,
         EstadoAlerta $estado,
         array $datosContexto,
+        \DateTimeImmutable $generadaEn,
     ): self {
         return new self(
             id: $id,
@@ -47,13 +50,14 @@ class AlertaUbicacion
             tipo: $tipo,
             estado: $estado,
             datosContexto: $datosContexto,
+            generadaEn: $generadaEn,
         );
     }
 
     public function resolver(string $motivoResolucion): void
     {
-        if (!$this->estado->equals(EstadoAlerta::Activa)) {
-            throw new \DomainException("Solo se puede resolver una alerta activa.");
+        if (! $this->estado->equals(EstadoAlerta::Activa)) {
+            throw new \DomainException('Solo se puede resolver una alerta activa.');
         }
 
         $this->estado = EstadoAlerta::Resuelta;
@@ -61,8 +65,8 @@ class AlertaUbicacion
 
     public function ignorar(): void
     {
-        if (!$this->estado->equals(EstadoAlerta::Activa)) {
-            throw new \DomainException("Solo se puede ignorar una alerta activa.");
+        if (! $this->estado->equals(EstadoAlerta::Activa)) {
+            throw new \DomainException('Solo se puede ignorar una alerta activa.');
         }
 
         $this->estado = EstadoAlerta::Ignorada;
@@ -91,5 +95,10 @@ class AlertaUbicacion
     public function datosContexto(): array
     {
         return $this->datosContexto;
+    }
+
+    public function generadaEn(): \DateTimeImmutable
+    {
+        return $this->generadaEn;
     }
 }

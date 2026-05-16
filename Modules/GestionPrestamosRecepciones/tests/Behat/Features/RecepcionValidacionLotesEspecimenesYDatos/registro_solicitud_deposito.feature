@@ -1,4 +1,5 @@
 # language: es
+# Feature: 1
 Característica: Registro de solicitud de depósito
     Como investigador
     Quiero registrar una nueva solicitud de depósito con la documentación oficial
@@ -20,6 +21,26 @@ Característica: Registro de solicitud de depósito
             | Depósito     | 3                   | Rechazada        | Límite anual de depósitos alcanzado    |
             | Donación     | 3                   | En Borrador      | Ninguno                                |
             | Donación     | 10                  | En Borrador      | Ninguno                                |
+
+    @deposito
+    Esquema del escenario: Documentación legal requerida según el origen de los especímenes
+        Dado que el investigador declara que el origen de los especímenes es "<origen_recoleccion>"
+        Y su situación regulatoria actual es "<situacion_regulatoria>"
+        Entonces la solicitud exige adjuntar los siguientes documentos: "<documento_requerido>"
+
+        Ejemplos:
+            | origen_recoleccion    | situacion_regulatoria           | documento_requerido                                                                           |
+            | Nacional (Ecuador)    | Posee permisos del MAATE        | Copia de la Autorización de Recolección (MAATE) y Copia del Permiso de Movilización           |
+            | Nacional (Ecuador)    | Sin permisos del MAATE          | Documento de Explicación de Motivos y/o Carta de Justificación (Institucional o Personal)     |
+            | Exterior (Extranjero) | Proviene de colección foránea   | Carta de Procedencia firmada por el responsable de la colección de origen                     |
+
+    @deposito @excepcion
+    Escenario: Escalabilidad de la solicitud por falta total de documentación
+        Dado que el investigador carece de los documentos del MAATE y de carta de justificación
+        Cuando el investigador solicita la intervención directa de curaduría
+        Entonces el proceso de carga documental se pausa
+        Y la solicitud pasa al estado "Retenida para Asesoría Curatorial"
+        Y se notifica al curador para que inicie el contacto directo con el investigador
 
     Esquema del escenario: Validación de Permiso de Movilización por provincia de origen
         Dado que el investigador declara que las muestras provienen de la provincia de "<provincia>"
@@ -52,7 +73,7 @@ Característica: Registro de solicitud de depósito
     @donacion
     Escenario: Carga de documentación oficial para Donaciones
         Dado que el investigador seleccionó el trámite de "Donación"
-        Cuando el investigador carga los siguientes documentos:
+        Cuando el investigador carga los siguientes documentos obligatorios:
             | Documento Oficial                               |
             | Formato Solicitud Donación                      |
             | Carta de Cesión de Derechos / Origen Lícito     |
@@ -68,7 +89,8 @@ Característica: Registro de solicitud de depósito
     Esquema del escenario: Validación de identidad mediante el Formato de Solicitud
         Dado que el investigador ha cargado el "Formato Solicitud Depósito"
         Y su perfil de usuario está registrado como "<nombre_perfil>"
-        Cuando se compara el perfil del investigador con el nombre "<nombre_en_documento>" del formulario        Entonces el resultado de la validación es "<resultado>"
+        Cuando se compara el perfil del investigador con el nombre "<nombre_en_documento>" del formulario
+        Entonces el resultado de la validación es "<resultado>"
         Y se habilita la acción: "<accion_permitida>"
 
         Ejemplos:

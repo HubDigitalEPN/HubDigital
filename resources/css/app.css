@@ -54,6 +54,38 @@
     /* Dark mode disabled — Hub Digital uses only light theme.
        These overrides neutralize Flux's .dark variable swaps. */
     .dark {
+        /* Flux accent */
+        --color-accent: var(--color-white);
+        --color-accent-content: var(--color-white);
+        --color-accent-foreground: var(--color-neutral-800);
+
+        /* ── Dark Mode Token Overrides ─────────────────────────────────────── */
+
+        /* Fondos — escala slate (tinte azul frío, armoniza con blue-navy) */
+        --color-bg-main:  #0f172a;   /* slate-900 — fondo base de página */
+        --color-surface:  #1e293b;   /* slate-800 — tarjetas y paneles */
+
+        /* Texto */
+        --color-text-primary:   #f1f5f9;  /* slate-100 */
+        --color-text-secondary: #94a3b8;  /* slate-400 */
+
+        /* Bordes */
+        --color-border: #334155;          /* slate-700 */
+
+        /* Blue-Navy — aclarado para ser legible sobre fondos oscuros */
+        --color-blue-navy: #93c5fd;       /* blue-300 */
+
+        /* Bio-Green — aclarado */
+        --color-bio-green: #86efac;       /* green-300 */
+
+        /* Science Blue — aclarado */
+        --color-science-blue: #7dd3fc;    /* sky-300 */
+
+        /* Semánticos — aclarados a nivel 300 para pasar WCAG AA como texto */
+        --color-success: #86efac;         /* green-300 */
+        --color-warning: #fcd34d;         /* amber-300 */
+        --color-error:   #fca5a5;         /* red-300 */
+        --color-info:    #7dd3fc;         /* sky-300 */
         --color-accent: var(--color-bio-green);
         --color-accent-content: #ffffff;
         --color-accent-foreground: #ffffff;
@@ -77,6 +109,8 @@
 }
 
 @layer base {
+    [x-cloak] { display: none !important; }
+
 
     *,
     ::after,
@@ -123,6 +157,10 @@ body {
         radial-gradient(circle at 82% 20%, rgba(46, 125, 50, 0.04) 0%, transparent 45%);
 }
 
+@keyframes progress {
+    0%   { transform: translateX(-100%); width: 40%; }
+    50%  { transform: translateX(150%); width: 60%; }
+    100% { transform: translateX(300%); width: 40%; }
 /* Hub Digital Sidebar — Blue Navy Navigation */
 [data-flux-sidebar].bg-blue-navy {
     background-color: var(--color-blue-navy);

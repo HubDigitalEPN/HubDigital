@@ -27,6 +27,10 @@ class CajaEloquentModel extends Model
         'codigo_rfid',
     ];
 
+    protected $casts = [
+        'capacidad_maxima' => 'integer',
+    ];
+
     public function ranuraActual(): BelongsTo
     {
         return $this->belongsTo(RanuraGabineteEloquentModel::class, 'ranura_actual_id');

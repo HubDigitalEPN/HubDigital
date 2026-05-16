@@ -44,50 +44,59 @@
             </div>
 
             <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
-                <flux:table>
-                    <flux:table.columns>
-                        <flux:table.column style="padding-inline-start:1rem;width:2.5rem"></flux:table.column>
-                        <flux:table.column style="padding-inline-start:0.75rem;width:11rem">occurrenceID</flux:table.column>
-                        <flux:table.column>Nombre científico</flux:table.column>
-                        <flux:table.column class="hidden md:table-cell" style="width:10rem">Localidad</flux:table.column>
-                        <flux:table.column class="hidden lg:table-cell" style="width:9rem">Type Status</flux:table.column>
-                    </flux:table.columns>
-                    <flux:table.rows>
+                <table class="w-full text-sm">
+                    <thead class="bg-blue-navy border-b border-border">
+                        <tr>
+                            <th class="px-4 py-3 text-left font-medium text-white" style="width: 2.5rem;"></th>
+                            <th class="px-4 py-3 text-left font-medium text-white w-3/12">Occurrence ID</th>
+                            <th class="px-4 py-3 text-left font-medium text-white w-3/12">Nombre científico</th>
+                            <th class="px-4 py-3 text-left font-medium text-white hidden md:table-cell w-2/12">Type Status</th>
+                            <th class="px-4 py-3 text-left font-medium text-white hidden lg:table-cell w-2/12">Familia</th>
+                            <th class="px-4 py-3 text-left font-medium text-white hidden xl:table-cell w-2/12">Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-border">
                         @forelse($especimenes as $esp)
                             @php $seleccionado = in_array($esp->occurrence_id, $seleccionados, true); @endphp
-                            <flux:table.row
-                                wire:key="{{ $esp->occurrence_id }}"
+                            <tr
+                                wire:key="esp-paso1-{{ $esp->occurrence_id }}"
                                 wire:click="toggleSeleccion('{{ $esp->occurrence_id }}')"
                                 @class([
-                                    'cursor-pointer transition-colors',
+                                    'cursor-pointer transition-colors hover:bg-bg-main',
                                     'bg-science-blue/5' => $seleccionado,
-                                    'hover:bg-bg-main' => !$seleccionado,
                                 ])
                             >
-                                <flux:table.cell style="padding-inline-start:1rem">
+                                <td class="px-4 py-3">
                                     <input
                                         type="checkbox"
                                         @checked($seleccionado)
                                         wire:click.stop="toggleSeleccion('{{ $esp->occurrence_id }}')"
                                         class="size-4 rounded border-border cursor-pointer accent-science-blue"
                                     />
-                                </flux:table.cell>
-                                <flux:table.cell class="font-mono text-xs text-text-secondary" style="padding-inline-start:0.75rem">
+                                </td>
+                                <td class="px-4 py-3 font-mono text-xs text-text-secondary">
                                     {{ $esp->occurrence_id }}
-                                </flux:table.cell>
-                                <flux:table.cell>
-                                    <span class="font-serif italic text-sm">{{ $esp->scientific_name ?? '—' }}</span>
-                                </flux:table.cell>
-                                <flux:table.cell class="hidden md:table-cell text-sm text-text-secondary">
-                                    {{ $esp->locality_name ?? '—' }}
-                                </flux:table.cell>
-                                <flux:table.cell class="hidden lg:table-cell text-xs text-text-secondary">
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="font-serif italic text-sm text-text-primary">{{ $esp->scientific_name ?? '—' }}</span>
+                                </td>
+                                <td class="px-4 py-3 hidden md:table-cell text-xs text-text-secondary">
                                     {{ $esp->type_status ?? '—' }}
-                                </flux:table.cell>
-                            </flux:table.row>
+                                </td>
+                                <td class="px-4 py-3 hidden lg:table-cell text-sm text-text-secondary">
+                                    {{ $esp->family ?? '—' }}
+                                </td>
+                                <td class="px-4 py-3 hidden xl:table-cell">
+                                    @if($esp->occurrence_status)
+                                        <x-catalogopublico::occurrence-status-badge :status="$esp->occurrence_status" />
+                                    @else
+                                        <span class="text-text-secondary text-xs">—</span>
+                                    @endif
+                                </td>
+                            </tr>
                         @empty
-                            <flux:table.row>
-                                <flux:table.cell colspan="5" class="py-12 text-center">
+                            <tr>
+                                <td colspan="6" class="px-4 py-12 text-center">
                                     <div class="flex flex-col items-center gap-2 text-text-secondary">
                                         <flux:icon name="check-circle" class="size-8 text-success opacity-60" />
                                         <span class="text-sm">Todos los especímenes ya están sincronizados.</span>
@@ -100,11 +109,11 @@
                                             Ver tabla de divulgación
                                         </flux:button>
                                     </div>
-                                </flux:table.cell>
-                            </flux:table.row>
+                                </td>
+                            </tr>
                         @endforelse
-                    </flux:table.rows>
-                </flux:table>
+                    </tbody>
+                </table>
             </div>
 
             <div class="flex justify-end">
@@ -143,6 +152,7 @@
                                 $total = count($config);
                             @endphp
                             <button
+                                wire:key="paso2-esp-{{ $id }}"
                                 wire:click="setEspecimenActivo('{{ $id }}')"
                                 type="button"
                                 @class([
@@ -202,6 +212,7 @@
                                 <x-catalogopublico::field-group :titulo="$tituloGrupo" class="py-1">
                                     @foreach($campos as $campo)
                                         <x-catalogopublico::visibility-toggle
+                                            wire:key="campo-{{ $especimenActivoId }}-{{ $campo['key'] }}"
                                             :field="'configuracionPorEspecimen.' . $especimenActivoId . '.' . $campo['key']"
                                             :label="$campo['label']"
                                             :checked="$configuracionPorEspecimen[$especimenActivoId][$campo['key']] ?? true"
@@ -264,7 +275,7 @@
                     </div>
                     <ul class="divide-y divide-border max-h-64 overflow-y-auto">
                         @foreach($occurrenceIDsActualizados as $id)
-                            <li class="flex items-center gap-2 px-4 py-2.5">
+                            <li wire:key="resultado-{{ $id }}" class="flex items-center gap-2 px-4 py-2.5">
                                 <flux:icon name="check-circle" class="size-4 text-success shrink-0" />
                                 <span class="text-sm font-mono text-text-secondary">{{ $id }}</span>
                             </li>

@@ -10,6 +10,16 @@ $base = __DIR__;
 
 return (new Config)
     ->withProfile(
+        (new Profile('recepcion'))
+            ->withSuite(
+                (new Suite('RegistroSolicitudDeposito'))
+                    ->withPaths($base.'/Modules/GestionPrestamosRecepciones/tests/Behat/Features/RecepcionValidacionLotesEspecimenesYDatos/registro_solicitud_deposito.feature')
+                    ->withContexts(
+                        'Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\RecepcionValidacionLotesEspecimenesYDatos\RegistroSolicitudDepositoContext',
+                    )
+            )
+    )
+    ->withProfile(
         (new Profile('default'))
             ->withSuite(
                 (new Suite('CatalogoPublico'))
@@ -39,6 +49,7 @@ return (new Config)
                         // RecepcionValidacionLotesEspecimenesYDatos
                         'Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\RecepcionValidacionLotesEspecimenesYDatos\GestionCentralizadaEntidadesDepositantesContext',
                         'Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\RecepcionValidacionLotesEspecimenesYDatos\RecepcionMuestrasBiologicasContext',
+                        'Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\RecepcionValidacionLotesEspecimenesYDatos\RegistroSolicitudDepositoContext',
                     )
             )
             ->withSuite(
