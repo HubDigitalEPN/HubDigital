@@ -8,14 +8,14 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::connection('pgsql')->table('recepciones.solicitudes_deposito', function (Blueprint $table) {
+        Schema::table('recepciones.solicitudes_deposito', function (Blueprint $table) {
             $table->jsonb('datos_ingresados_manualmente')->default('[]')->after('datos_faltantes');
         });
     }
 
     public function down(): void
     {
-        Schema::connection('pgsql')->table('recepciones.solicitudes_deposito', function (Blueprint $table) {
+        Schema::table('recepciones.solicitudes_deposito', function (Blueprint $table) {
             $table->dropColumn('datos_ingresados_manualmente');
         });
     }
