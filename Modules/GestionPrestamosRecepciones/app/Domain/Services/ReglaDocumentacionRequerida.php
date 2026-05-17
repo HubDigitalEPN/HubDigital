@@ -25,7 +25,7 @@ final class ReglaDocumentacionRequerida
         ],
         'Exterior (Extranjero)' => [
             'Proviene de colección foránea' => [
-                'Carta de procedencia firmada por el responsable de la colección de origen',
+                'Carta de Procedencia firmada por el responsable de la colección de origen',
             ],
         ],
     ];
@@ -58,6 +58,6 @@ final class ReglaDocumentacionRequerida
             );
         }
 
-        return array_values(array_unique([...$base, ...$suplementarios]));
+        return array_values($suplementarios);
     }
 }
