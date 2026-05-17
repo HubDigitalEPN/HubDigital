@@ -61,7 +61,7 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
 
         $this->app->bind(ExtraccionDatosDocumentoPort::class, fn () => new OllamaExtraccionDatosDocumentoAdapter(
             ollamaUrl: config('ai.providers.ollama.url', 'http://localhost:11434'),
-            modelo: env('OLLAMA_MODEL', 'qwen2.5:1.5b'),
+            modelo: env('OLLAMA_MODEL', 'qwen2.5:3b'),
         ));
     }
 
