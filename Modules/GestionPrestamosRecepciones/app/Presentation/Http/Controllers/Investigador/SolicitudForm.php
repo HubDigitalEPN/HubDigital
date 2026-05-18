@@ -41,6 +41,8 @@ final class SolicitudForm extends Component
 
     public string $justificacionExtendida = '';
 
+    public string $estadoSolicitud = '';
+
     public string $comentarioCurador = '';
 
     /** @var list<array{especimen_codigo_externo: string, cantidad_solicitada: int}> */
@@ -65,11 +67,12 @@ final class SolicitudForm extends Component
             $this->propositoPrestamo = $solicitud->proposito_prestamo ?? '';
             $this->duracionPropuestaMeses = $solicitud->duracion_propuesta_meses ?? 1;
             $this->justificacionExtendida = $solicitud->justificacion_extendida ?? '';
+            $this->estadoSolicitud = $solicitud->estado ?? '';
             $this->comentarioCurador = $solicitud->comentario_curador ?? '';
             $this->items = $solicitud->items
                 ->map(fn ($item) => [
-                    'especimen_codigo_externo' => $item->especimen_codigo_externo,
-                    'cantidad_solicitada' => $item->cantidad_solicitada,
+                    'especimen_codigo_externo' => (string) $item->especimen_codigo_externo,
+                    'cantidad_solicitada'       => (int) $item->cantidad_solicitada,
                 ])
                 ->values()
                 ->toArray();
@@ -79,6 +82,14 @@ final class SolicitudForm extends Component
     public function addItem(): void
     {
         $this->items[] = ['especimen_codigo_externo' => '', 'cantidad_solicitada' => 1];
+    }
+
+    private function normalizeItems(): void
+    {
+        $this->items = array_values(array_map(fn (array $item) => [
+            'especimen_codigo_externo' => (string) ($item['especimen_codigo_externo'] ?? ''),
+            'cantidad_solicitada'       => (int) ($item['cantidad_solicitada'] ?? 1),
+        ], $this->items));
     }
 
     public function removeItem(int $index): void
@@ -91,6 +102,8 @@ final class SolicitudForm extends Component
         RegistrarSolicitudPrestamoHandler $registrar,
         ActualizarSolicitudPrestamoHandler $actualizar,
     ): void {
+        $this->normalizeItems();
+
         $this->validate([
             'tituloEstudio' => 'required|string|max:255',
             'institucionAdscripcion' => 'required|string|max:255',
@@ -133,20 +146,23 @@ final class SolicitudForm extends Component
                 items: $this->items,
                 justificacionExtendida: $this->duracionPropuestaMeses > 12 ? $this->justificacionExtendida : null,
             ));
-            $this->solicitudId = $output->solicitudId;
-        } else {
-            $actualizar->handle(new ActualizarSolicitudPrestamoInput(
-                solicitudId: $this->solicitudId,
-                investigadorId: $investigadorId,
-                tituloEstudio: $this->tituloEstudio,
-                institucionAdscripcion: $this->institucionAdscripcion,
-                lineaInvestigacion: $this->lineaInvestigacion,
-                propositoPrestamo: $this->propositoPrestamo,
-                duracionPropuestaMeses: $this->duracionPropuestaMeses,
-                items: $this->items,
-                justificacionExtendida: $this->duracionPropuestaMeses > 12 ? $this->justificacionExtendida : null,
-            ));
+
+            $this->redirectRoute('prestamos.investigador.mis-solicitudes', navigate: true);
+
+            return;
         }
+
+        $actualizar->handle(new ActualizarSolicitudPrestamoInput(
+            solicitudId: $this->solicitudId,
+            investigadorId: $investigadorId,
+            tituloEstudio: $this->tituloEstudio,
+            institucionAdscripcion: $this->institucionAdscripcion,
+            lineaInvestigacion: $this->lineaInvestigacion,
+            propositoPrestamo: $this->propositoPrestamo,
+            duracionPropuestaMeses: $this->duracionPropuestaMeses,
+            items: $this->items,
+            justificacionExtendida: $this->duracionPropuestaMeses > 12 ? $this->justificacionExtendida : null,
+        ));
 
         $this->successMessage = 'Borrador guardado correctamente.';
     }
@@ -155,6 +171,8 @@ final class SolicitudForm extends Component
         ActualizarSolicitudPrestamoHandler $actualizar,
         EnviarSolicitudPrestamoHandler $enviar,
     ): void {
+        $this->normalizeItems();
+
         if ($this->solicitudId === null) {
             $this->addError('solicitudId', 'Primero guarda el borrador antes de enviar.');
 

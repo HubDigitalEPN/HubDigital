@@ -142,9 +142,44 @@
                     </label>
                 </div>
                 @if(!$usarDuracionPropuesta)
-                    <div class="mt-2">
-                        <flux:input type="number" wire:model="duracionPersonalizadaMeses"
-                            min="1" max="60" placeholder="Duración en meses" />
+                    <div
+                        x-data="{ val: $wire.duracionPersonalizadaMeses }"
+                        x-init="$watch('val', v => { $wire.duracionPersonalizadaMeses = parseInt(v) })"
+                        class="mt-3 space-y-3"
+                    >
+                        <div class="flex items-end justify-between">
+                            <div class="flex items-baseline gap-1.5">
+                                <span
+                                    class="text-3xl font-bold tabular-nums text-science-blue transition-colors duration-200"
+                                    x-text="val"
+                                ></span>
+                                <span class="text-sm text-text-secondary">
+                                    <span x-text="val == 1 ? 'mes' : 'meses'"></span>
+                                </span>
+                            </div>
+                        </div>
+                        <input
+                            type="range"
+                            x-model="val"
+                            @change="$wire.duracionPersonalizadaMeses = parseInt(val)"
+                            min="1" max="60" step="1"
+                            class="w-full h-2 rounded-full appearance-none cursor-pointer bg-border focus:outline-none
+                                   [&::-webkit-slider-thumb]:appearance-none
+                                   [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5
+                                   [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow
+                                   [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:transition-colors
+                                   [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white
+                                   [&::-webkit-slider-thumb]:bg-science-blue"
+                            :style="`background: linear-gradient(to right, #1976D2 ${(val - 1) / 59 * 100}%, #E0E0E0 ${(val - 1) / 59 * 100}%)`"
+                        />
+                        <div class="flex justify-between text-[10px] text-text-secondary select-none">
+                            <span>1 mes</span>
+                            <span>12</span>
+                            <span>24</span>
+                            <span>36</span>
+                            <span>48</span>
+                            <span>60</span>
+                        </div>
                         <flux:error name="duracionPersonalizadaMeses" />
                     </div>
                 @endif
