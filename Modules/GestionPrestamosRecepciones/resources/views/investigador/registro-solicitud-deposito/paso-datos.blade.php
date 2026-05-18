@@ -37,7 +37,7 @@
     {{-- Datos faltantes globales --}}
     <flux:error name="datosFaltantes" />
 
-    @if(in_array('N.º Permiso Movilización', $datosFaltantes))
+    @if(in_array('N.º Permiso Movilización', $datosFaltantes) && !isset($documentosCargados['Copia del permiso de movilización']))
         <flux:callout variant="warning" icon="exclamation-triangle">
             <flux:heading>Se requiere el Permiso de Movilización</flux:heading>
             <flux:text>

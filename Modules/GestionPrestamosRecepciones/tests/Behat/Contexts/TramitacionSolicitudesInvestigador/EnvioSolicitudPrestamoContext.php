@@ -74,6 +74,8 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
 
     private string $investigadorId = 'inv-001';
 
+    private string $curadorId = 'cur-001';
+
     private array $datosSolicitudCompleta = [
         'titulo_estudio' => 'Revisión taxonómica del género Morpho en Ecuador',
         'institucion_adscripcion' => 'Universidad Central del Ecuador',
@@ -298,7 +300,7 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
         if ($estado_previo === 'observada') {
             $solicitud->enviar();
             $solicitud->observar(
-                curadorId:   'cur-001',
+                curadorId:   $this->curadorId,
                 observacion: 'Requiere información adicional sobre el período de estudio',
             );
             $this->solicitudRepo->guardar($solicitud);
@@ -419,7 +421,7 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
     {
         $solicitud = $this->sembrarSolicitudBase();
         $solicitud->enviar();
-        $solicitud->aprobar(curadorId: 'cur-001');
+        $solicitud->aprobar(curadorId: $this->curadorId);
         $this->solicitudRepo->guardar($solicitud);
     }
 
@@ -432,6 +434,7 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
             $this->ultimaRespuesta = $this->generarActaHandler->handle(
                 new GenerarActaPrestamoInput(
                     solicitudId: (string) $this->solicitudExistente->id(),
+                    curadorId: $this->curadorId,
                 )
             );
         } catch (\Throwable $e) {
@@ -467,7 +470,7 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
     {
         $solicitud = $this->sembrarSolicitudBase();
         $solicitud->enviar();
-        $solicitud->aprobar(curadorId: 'cur-001');
+        $solicitud->aprobar(curadorId: $this->curadorId);
         $this->solicitudRepo->guardar($solicitud);
 
         $pdfRuta  = 'actas/'.(string) $solicitud->id().'.pdf';
@@ -537,7 +540,7 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
     {
         $solicitud = $this->sembrarSolicitudBase();
         $solicitud->enviar();
-        $solicitud->aprobar(curadorId: 'cur-001');
+        $solicitud->aprobar(curadorId: $this->curadorId);
         $this->solicitudRepo->guardar($solicitud);
 
         $pdfRuta  = 'actas/'.(string) $solicitud->id().'.pdf';

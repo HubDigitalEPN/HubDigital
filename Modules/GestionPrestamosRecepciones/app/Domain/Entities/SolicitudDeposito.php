@@ -183,8 +183,8 @@ final class SolicitudDeposito
         }
 
         if ($this->nroPermisoMovilizacion === null
-            && $datos->provinciaOrigen !== null
-            && strtolower(trim($datos->provinciaOrigen)) !== 'pichincha'
+            && $this->tipoTramite->equals(TipoTramite::Deposito)
+            && ($datos->provinciaOrigen === null || strtolower(trim($datos->provinciaOrigen)) !== 'pichincha')
         ) {
             $this->marcarDatoComoFaltante('N.º Permiso Movilización');
         }
