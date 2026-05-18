@@ -86,6 +86,8 @@ final class GestionActaPrestamoContext extends BaseContext
 
     public function __construct()
     {
+        self::bootApp();
+
         $this->solicitudRepo = new InMemorySolicitudPrestamoRepository;
         $this->actaRepo = new InMemoryActaPrestamoRepository;
         $this->fakePublisher = new FakeEventPublisherAdapter;

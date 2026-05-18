@@ -58,6 +58,6 @@ final class ReglaDocumentacionRequerida
             );
         }
 
-        return array_values($suplementarios);
+        return array_values(array_unique([...$base, ...$suplementarios]));
     }
 }

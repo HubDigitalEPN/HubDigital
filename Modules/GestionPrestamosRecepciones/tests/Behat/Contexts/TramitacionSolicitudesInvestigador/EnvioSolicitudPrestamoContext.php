@@ -90,16 +90,18 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
 
     public function __construct()
     {
+        self::bootApp();
+
         // 1. Crear instancias in-memory fresh para este escenario
         $this->solicitudRepo = new InMemorySolicitudPrestamoRepository;
         $this->actaRepo      = new InMemoryActaPrestamoRepository;
         $this->fakePublisher = new FakeEventPublisherAdapter;
 
         // 2. Interceptar el container para que los Handlers reciban estas instancias
-        static::$app->instance(SolicitudPrestamoRepositoryInterface::class, $this->solicitudRepo);
-        static::$app->instance(ActaPrestamoRepositoryInterface::class, $this->actaRepo);
-        static::$app->instance(TransactionManagerPort::class, new PassThroughTransactionManagerAdapter);
-        static::$app->instance(EventPublisherPort::class, $this->fakePublisher);
+        self::$app->instance(SolicitudPrestamoRepositoryInterface::class, $this->solicitudRepo);
+        self::$app->instance(ActaPrestamoRepositoryInterface::class, $this->actaRepo);
+        self::$app->instance(TransactionManagerPort::class, new PassThroughTransactionManagerAdapter);
+        self::$app->instance(EventPublisherPort::class, $this->fakePublisher);
 
         // 3. Resolver Handlers — ya usan las instancias in-memory
         $this->registrarHandler = $this->make(RegistrarSolicitudPrestamoHandler::class);
