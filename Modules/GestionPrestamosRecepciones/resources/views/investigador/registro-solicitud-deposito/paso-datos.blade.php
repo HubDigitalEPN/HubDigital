@@ -20,7 +20,7 @@
         <flux:callout variant="warning" icon="queue-list">
             <flux:heading>El procesador de tareas en segundo plano no está activo</flux:heading>
             <flux:text>
-                La extracción automática no pudo iniciarse porque el worker de colas (<code>php artisan queue:work</code>) no está corriendo.
+                La extracción automática no pudo iniciarse porque el worker de colas no está corriendo.
                 Completa manualmente los campos marcados abajo. El flujo continúa con normalidad.
             </flux:text>
         </flux:callout>
