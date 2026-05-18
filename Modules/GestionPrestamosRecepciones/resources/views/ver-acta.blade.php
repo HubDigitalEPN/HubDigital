@@ -45,7 +45,8 @@
             <flux:text class="text-xs text-text-secondary text-right leading-tight max-w-48">
                 En el diálogo, desactiva<br><span class="font-medium">"Encabezados y pies de página"</span>
             </flux:text>
-            <flux:button icon="printer" onclick="window.print()">
+            <flux:button icon="printer"
+                onclick="let t=document.title; document.title='Acta{{ $acta?->solicitud?->numero_solicitud ?? $acta?->numero_prestamo }}'; window.print(); setTimeout(()=>document.title=t, 500)">
                 Imprimir / Descargar PDF
             </flux:button>
         </div>

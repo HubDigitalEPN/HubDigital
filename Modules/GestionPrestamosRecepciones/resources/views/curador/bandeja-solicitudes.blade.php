@@ -53,14 +53,15 @@
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap">
                                 <div class="flex items-center gap-2">
-                                    <flux:button size="sm" variant="ghost" icon="eye"
-                                        wire:navigate href="{{ route('prestamos.curador.solicitud.revisar', $solicitud->id) }}">
-                                        Revisar
-                                    </flux:button>
                                     @if($solicitud->estado === 'enviada')
                                         <flux:button size="sm" variant="primary" icon="check-circle"
                                             wire:navigate href="{{ route('prestamos.curador.solicitud.revisar', $solicitud->id) }}">
                                             Decidir
+                                        </flux:button>
+                                    @else
+                                        <flux:button size="sm" variant="ghost" icon="eye"
+                                            wire:navigate href="{{ route('prestamos.curador.solicitud.revisar', $solicitud->id) }}">
+                                            Revisar
                                         </flux:button>
                                     @endif
                                 </div>

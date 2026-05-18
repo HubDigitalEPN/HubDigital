@@ -59,6 +59,8 @@ final class AprobarSolicitudPrestamoHandler
             condicionesGenerales: $input->condicionesGenerales,
         );
 
+        $acta->marcarEnviada($solicitud->investigadorId());
+
         $this->transactionManager->executeTransactional(function () use ($solicitud, $acta): void {
             $this->solicitudRepo->guardar($solicitud);
             $this->actaRepo->guardar($acta);

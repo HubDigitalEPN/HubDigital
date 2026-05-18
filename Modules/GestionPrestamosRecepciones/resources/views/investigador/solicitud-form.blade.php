@@ -172,19 +172,21 @@
             <flux:heading size="lg" level="2" class="font-display">Acciones</flux:heading>
             <flux:separator />
             <flux:text class="text-text-secondary text-sm">
-                Guarda el borrador en cualquier momento. Cuando la solicitud esté completa, envíala para revisión del curador.
+                {{ $this->solicitudId ? 'Guarda los cambios o envía la solicitud para revisión del curador.' : 'Completa el formulario y guarda el borrador para continuar.' }}
             </flux:text>
             <div class="flex flex-col gap-2">
                 <flux:button variant="primary" wire:click="guardarBorrador"
                     wire:loading.attr="disabled" wire:target="guardarBorrador">
                     <flux:icon wire:loading wire:target="guardarBorrador" name="arrow-path" class="animate-spin" />
-                    Guardar borrador
+                    {{ $this->solicitudId ? 'Guardar' : 'Guardar borrador' }}
                 </flux:button>
-                <flux:button variant="primary" wire:click="enviarSolicitud"
-                    wire:loading.attr="disabled" wire:target="enviarSolicitud">
-                    <flux:icon wire:loading wire:target="enviarSolicitud" name="arrow-path" class="animate-spin" />
-                    Enviar para revisión
-                </flux:button>
+                @if($this->solicitudId && in_array($this->estadoSolicitud, ['borrador', 'observada']))
+                    <flux:button variant="primary" wire:click="enviarSolicitud"
+                        wire:loading.attr="disabled" wire:target="enviarSolicitud">
+                        <flux:icon wire:loading wire:target="enviarSolicitud" name="arrow-path" class="animate-spin" />
+                        Enviar para revisión
+                    </flux:button>
+                @endif
             </div>
             <flux:error name="solicitudId" />
         </div>
