@@ -10,7 +10,7 @@
     {{-- Aviso cuando la extracción automática no pudo completarse --}}
     @if($advertenciaExtraccion === 'error_modelo')
         <flux:callout variant="warning" icon="cpu-chip">
-            <flux:heading>El modelo de IA ({{ env('OLLAMA_MODEL', 'qwen3:4b') }}) no está disponible</flux:heading>
+            <flux:heading>El modelo de IA ({{ config('ai.providers.ollama.model') }}) no está disponible</flux:heading>
             <flux:text>
                 No fue posible extraer los datos automáticamente porque el servicio de IA no respondió.
                 Completa manualmente los campos marcados abajo. El flujo continúa con normalidad.
