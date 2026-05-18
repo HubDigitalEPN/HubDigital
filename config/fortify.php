@@ -121,6 +121,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Route Paths (Spanish)
+    |--------------------------------------------------------------------------
+    */
+
+    'paths' => [
+        'password.request' => '/recuperar-contrasena',
+        'password.email'   => '/recuperar-contrasena',
+        'password.reset'   => '/restablecer-contrasena/{token}',
+        'password.update'  => '/restablecer-contrasena',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Register View Routes
     |--------------------------------------------------------------------------
     |
