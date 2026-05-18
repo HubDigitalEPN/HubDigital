@@ -10,7 +10,7 @@
     {{-- Aviso cuando la extracción automática no pudo completarse --}}
     @if($advertenciaExtraccion === 'error_modelo')
         <flux:callout variant="warning" icon="cpu-chip">
-            <flux:heading>El modelo de IA ({{ env('OLLAMA_MODEL', 'qwen3:4b') }}) no está disponible</flux:heading>
+            <flux:heading>El modelo de IA ({{ config('ai.providers.ollama.model') }}) no está disponible</flux:heading>
             <flux:text>
                 No fue posible extraer los datos automáticamente porque el servicio de IA no respondió.
                 Completa manualmente los campos marcados abajo. El flujo continúa con normalidad.
@@ -20,7 +20,7 @@
         <flux:callout variant="warning" icon="queue-list">
             <flux:heading>El procesador de tareas en segundo plano no está activo</flux:heading>
             <flux:text>
-                La extracción automática no pudo iniciarse porque el worker de colas (<code>php artisan queue:work</code>) no está corriendo.
+                La extracción automática no pudo iniciarse porque el worker de colas no está corriendo.
                 Completa manualmente los campos marcados abajo. El flujo continúa con normalidad.
             </flux:text>
         </flux:callout>
@@ -37,7 +37,7 @@
     {{-- Datos faltantes globales --}}
     <flux:error name="datosFaltantes" />
 
-    @if(in_array('N.º Permiso Movilización', $datosFaltantes))
+    @if(in_array('N.º Permiso Movilización', $datosFaltantes) && !isset($documentosCargados['Copia del permiso de movilización']))
         <flux:callout variant="warning" icon="exclamation-triangle">
             <flux:heading>Se requiere el Permiso de Movilización</flux:heading>
             <flux:text>

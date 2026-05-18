@@ -29,6 +29,10 @@ final class CompletarDatosManualesHandler
 
         $solicitud->completarDatoFaltante($input->campo, $input->valor);
 
+        if (! $solicitud->tieneDatosFaltantes()) {
+            $solicitud->avanzarARevisionCuraduria();
+        }
+
         $this->transactionManager->executeTransactional(function () use ($solicitud): void {
             $this->repo->guardar($solicitud);
             foreach ($solicitud->pullEvents() as $event) {

@@ -35,6 +35,17 @@ final class OllamaExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocu
 
             $parcial = $this->consultarOllama($nombre, $texto);
 
+            // Red de seguridad para el número de autorización MAATE: el modelo
+            // pequeño (qwen2.5:3b) suele truncar el código en el primer espacio
+            // o acrónimo. Complementamos su salida con un regex sobre el texto
+            // crudo del PDF y nos quedamos con el resultado más completo.
+            if ($this->esDocumentoAutorizacion($nombre)) {
+                $parcial['nroPermisoRecoleccion'] = $this->consolidarCodigoRecoleccion(
+                    $this->limpiar($parcial['nroPermisoRecoleccion'] ?? null),
+                    $this->extraerCodigoRecoleccionPorRegex($texto),
+                );
+            }
+
             // Conservar el primer valor no nulo encontrado para cada campo.
             foreach ($parcial as $campo => $valor) {
                 if (! array_key_exists($campo, $acumulado) && $this->limpiar($valor) !== null) {
@@ -183,10 +194,17 @@ Instrucciones para este documento (autorización de recolección MAATE):
 
 Extrae SOLO estos campos:
 
-- "nroPermisoRecoleccion": Código alfanumérico de la autorización emitida por el MAATE.
-  Suele comenzar con "N.º" o "N.°" seguido de un código como "006-2025 RVS-...".
-  Extrae solo el código, sin el prefijo "N.º", "N.°" o similares.
-  null si no aparece.
+- "nroPermisoRecoleccion": Código alfanumérico COMPLETO de la autorización emitida por el MAATE.
+  Suele aparecer precedido por un prefijo tipo "N.º", "N.°", "Nro." o "No.".
+  El código está formado por una secuencia contigua de segmentos alfanuméricos unidos
+  por guiones "-", barras "/" y espacios, que pueden incluir acrónimos institucionales
+  en mayúsculas. La estructura puede variar entre documentos: no asumas un formato fijo.
+  Captura TODA la cadena desde el inicio del código hasta donde termina la secuencia
+  contigua de letras, dígitos, guiones, barras y espacios entre acrónimos. No la cortes
+  en el primer espacio ni en el primer acrónimo.
+  No incluyas el prefijo "N.º", "N.°", "Nro." o "No.".
+  No incluyas texto que aparezca después del código (nombres, fechas, frases, títulos).
+  Si no aparece, usa null.
 
 - "grupoAnimal": Grupo taxonómico principal autorizado para recolección.
   Puede estar en una tabla (Entomofauna, Macroinvertebrados, Herpetofauna, etc.).
@@ -257,6 +275,66 @@ INST;
 Este tipo de documento no requiere extracción de datos.
 Devuelve null para todos los campos.
 INST;
+    }
+
+    private function esDocumentoAutorizacion(string $nombreDocumento): bool
+    {
+        $nombre = mb_strtolower($nombreDocumento, 'UTF-8');
+
+        return str_contains($nombre, 'autorización de recolección')
+            || str_contains($nombre, 'autorizacion de recoleccion')
+            || str_contains($nombre, 'autorización maate')
+            || str_contains($nombre, 'autorizacion maate');
+    }
+
+    /**
+     * Busca en el texto crudo del PDF un código con la forma típica de
+     * autorización MAATE: dígitos-año seguido de uno o más segmentos
+     * alfanuméricos en mayúsculas unidos por guiones, barras o espacios.
+     * Devuelve la coincidencia más larga, o null si no encuentra ninguna.
+     */
+    private function extraerCodigoRecoleccionPorRegex(string $texto): ?string
+    {
+        $patron = '/\d{1,4}-\d{4}(?:[ \t\-\/]+[A-Z][A-Z0-9]*)+/u';
+
+        if (preg_match_all($patron, $texto, $coincidencias) === 0) {
+            return null;
+        }
+
+        $mejor = '';
+        foreach ($coincidencias[0] as $candidato) {
+            $candidato = trim($candidato);
+            if (mb_strlen($candidato, 'UTF-8') > mb_strlen($mejor, 'UTF-8')) {
+                $mejor = $candidato;
+            }
+        }
+
+        return $mejor !== '' ? $mejor : null;
+    }
+
+    /**
+     * Decide entre la extracción del LLM y la del regex. Si ambas existen y
+     * el regex contiene al output del LLM como substring (lo cual indica que
+     * el LLM truncó el código), gana el regex. En cualquier otro caso con
+     * ambas presentes, conservamos el valor del LLM como opción conservadora.
+     * Si solo una está disponible, se devuelve esa.
+     */
+    private function consolidarCodigoRecoleccion(?string $llm, ?string $regex): ?string
+    {
+        if ($llm === null) {
+            return $regex;
+        }
+
+        if ($regex === null) {
+            return $llm;
+        }
+
+        if (mb_stripos($regex, $llm, 0, 'UTF-8') !== false
+            && mb_strlen($regex, 'UTF-8') > mb_strlen($llm, 'UTF-8')) {
+            return $regex;
+        }
+
+        return $llm;
     }
 
     private function limpiar(mixed $valor): ?string

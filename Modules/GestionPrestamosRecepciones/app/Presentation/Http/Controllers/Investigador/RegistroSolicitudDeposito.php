@@ -515,7 +515,7 @@ final class RegistroSolicitudDeposito extends Component
                 'Provincia' => null,
                 'Localidad' => null,
             ];
-            $this->datosFaltantes = ['N.º Permiso Recolección', 'Grupo Animal', 'Provincia', 'Localidad'];
+            $this->datosFaltantes = ['N.º Permiso Recolección', 'N.º Permiso Movilización', 'Grupo Animal', 'Provincia', 'Localidad'];
         } else {
             $this->datosExtraidos = [
                 'Grupo Animal' => null,
