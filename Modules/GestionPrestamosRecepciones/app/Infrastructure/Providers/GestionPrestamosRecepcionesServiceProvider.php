@@ -60,8 +60,8 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
         parent::register();
 
         $this->app->bind(ExtraccionDatosDocumentoPort::class, fn () => new OllamaExtraccionDatosDocumentoAdapter(
-            ollamaUrl: config('ai.providers.ollama.url', 'http://localhost:11434'),
-            modelo: env('OLLAMA_MODEL', 'qwen2.5:1.5b'),
+            ollamaUrl: config('ai.providers.ollama.url'),
+            modelo: config('ai.providers.ollama.model'),
         ));
     }
 
@@ -73,29 +73,39 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
         $handler = $this->app->make(ExceptionHandler::class);
 
         $handler->renderable(function (SolicitudNoEncontradaException $e, Request $request) {
-            if ($request->is('api/*')) {
-                return response()->json(['message' => $e->getMessage()], 404);
+            if (! $request->is('api/*')) {
+                return null;
             }
+
+            return response()->json(['message' => $e->getMessage()], 404);
         });
         $handler->renderable(function (LimiteAnualDepositosAlcanzado $e, Request $request) {
-            if ($request->is('api/*')) {
-                return response()->json(['message' => $e->getMessage()], 422);
+            if (! $request->is('api/*')) {
+                return null;
             }
+
+            return response()->json(['message' => $e->getMessage()], 422);
         });
         $handler->renderable(function (TransicionEstadoInvalida $e, Request $request) {
-            if ($request->is('api/*')) {
-                return response()->json(['message' => $e->getMessage()], 422);
+            if (! $request->is('api/*')) {
+                return null;
             }
+
+            return response()->json(['message' => $e->getMessage()], 422);
         });
         $handler->renderable(function (DocumentacionInsuficiente $e, Request $request) {
-            if ($request->is('api/*')) {
-                return response()->json(['message' => $e->getMessage()], 422);
+            if (! $request->is('api/*')) {
+                return null;
             }
+
+            return response()->json(['message' => $e->getMessage()], 422);
         });
         $handler->renderable(function (\DomainException $e, Request $request) {
-            if ($request->is('api/*')) {
-                return response()->json(['message' => $e->getMessage()], 422);
+            if (! $request->is('api/*')) {
+                return null;
             }
+
+            return response()->json(['message' => $e->getMessage()], 422);
         });
         Livewire::component('prestamos.investigador.registro-solicitud-deposito', RegistroSolicitudDeposito::class);
         Livewire::component('prestamos.investigador.mis-solicitudes', MisSolicitudes::class);
