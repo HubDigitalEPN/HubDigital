@@ -274,7 +274,7 @@ final class RegistroSolicitudDeposito extends Component
     {
         $this->registrarDocumentoCargado(
             'archivoCartaProcedencia',
-            'Carta de Procedencia firmada por el responsable de la colección de origen',
+            'Carta de procedencia firmada por el responsable de la colección de origen',
             $this->archivoCartaProcedencia
         );
     }
@@ -678,7 +678,7 @@ final class RegistroSolicitudDeposito extends Component
             'Copia de la autorización de recolección (MAATE)' => 'archivoAutorizacionMaate',
             'Copia del permiso de movilización' => 'archivoPermisoMovilizacion',
             'Documento de explicación de motivos y/o carta de justificación (institucional o personal)' => 'archivoCartaJustificacion',
-            'Carta de Procedencia firmada por el responsable de la colección de origen' => 'archivoCartaProcedencia',
+            'Carta de procedencia firmada por el responsable de la colección de origen' => 'archivoCartaProcedencia',
             'Carta de cesión de derechos / origen lícito' => 'archivoCartaCesion',
             'Carta de delegación / justificación de tercero' => 'archivoCartaDelegacion',
             default => throw new \InvalidArgumentException("Documento desconocido: {$nombre}"),

@@ -32,7 +32,7 @@ Característica: Registro de solicitud de depósito
             | origen_recoleccion    | situacion_regulatoria           | documento_requerido                                                                                                        |
             | Nacional (Ecuador)    | Posee permisos del MAATE        | Formato solicitud depósito y Copia de la autorización de recolección (MAATE) y Copia del permiso de movilización           |
             | Nacional (Ecuador)    | Sin permisos del MAATE          | Formato solicitud depósito y Documento de explicación de motivos y/o carta de justificación (institucional o personal)     |
-            | Exterior (Extranjero) | Proviene de colección foránea   | Formato solicitud depósito y Carta de Procedencia firmada por el responsable de la colección de origen                     |
+            | Exterior (Extranjero) | Proviene de colección foránea   | Formato solicitud depósito y Carta de procedencia firmada por el responsable de la colección de origen                     |
 
     @deposito @excepcion
     Escenario: Escalabilidad de la solicitud por falta total de documentación
