@@ -29,7 +29,7 @@
                     <div class="flex items-start justify-between gap-4">
                         <div>
                             <flux:heading size="xl" level="1" class="font-display">
-                                Solicitud de {{ $deposito->tipo_tramite }}
+                                Solicitud de {{ mb_strtolower($deposito->tipo_tramite) }}
                             </flux:heading>
                             <p class="font-mono text-xs text-text-secondary mt-1">{{ $deposito->numero }}</p>
                         </div>
