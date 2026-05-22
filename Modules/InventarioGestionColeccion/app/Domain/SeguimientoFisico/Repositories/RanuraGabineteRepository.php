@@ -20,4 +20,13 @@ interface RanuraGabineteRepository
     public function buscarPorGabinete(GabineteId $gabineteId): array;
 
     public function buscarPorNumeroEnGabinete(GabineteId $gabineteId, int $numeroRanura): ?RanuraGabinete;
+
+    /**
+     * Retorna las ranuras ocupadas inmediatamente anterior y siguiente
+     * a $numeroRanura en el gabinete, en orden ascendente de número.
+     * El resultado puede contener 0, 1 o 2 ranuras.
+     *
+     * @return RanuraGabinete[]
+     */
+    public function buscarVecinasOcupadas(GabineteId $gabineteId, int $numeroRanura): array;
 }
