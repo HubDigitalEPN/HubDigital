@@ -39,13 +39,13 @@ final class EvaluadorOrdenTaxonomico
 
         if ($cajaAnterior !== null && ! $cajaAnterior->esEspecial()) {
             if ($this->estanInvertidas($cajaAnterior, $cajaAInsertar)) {
-                return TipoAlerta::IncongruenciaTaxonomica;
+                return TipoAlerta::OrdenTaxonomicoFueraDeSecuencia;
             }
         }
 
         if ($cajaSiguiente !== null && ! $cajaSiguiente->esEspecial()) {
             if ($this->estanInvertidas($cajaAInsertar, $cajaSiguiente)) {
-                return TipoAlerta::IncongruenciaTaxonomica;
+                return TipoAlerta::OrdenTaxonomicoFueraDeSecuencia;
             }
         }
 

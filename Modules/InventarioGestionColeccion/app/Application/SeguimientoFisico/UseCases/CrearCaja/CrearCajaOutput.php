@@ -10,8 +10,9 @@ final readonly class CrearCajaOutput
         public string $id,
         public string $codigo,
         public string $codigoRfid,
+        public bool $esEspecial,
+        public ?string $observacion,
         public ?string $nombre,
-        public ?string $familiaTaxonomicaId,
         public ?int $capacidadMaxima,
         public string $estado,
     ) {}

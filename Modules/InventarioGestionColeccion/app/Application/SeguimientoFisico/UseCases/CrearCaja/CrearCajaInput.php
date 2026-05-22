@@ -9,8 +9,9 @@ final readonly class CrearCajaInput
     public function __construct(
         public string $codigo,
         public string $codigoRfid,
+        public bool $esEspecial = false,
+        public ?string $observacion = null,
         public ?string $nombre = null,
-        public ?string $familiaTaxonomicaId = null,
         public ?int $capacidadMaxima = null,
     ) {}
 }

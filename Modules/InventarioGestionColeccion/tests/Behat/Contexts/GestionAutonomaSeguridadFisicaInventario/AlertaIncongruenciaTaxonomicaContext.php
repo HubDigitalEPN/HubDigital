@@ -98,15 +98,15 @@ final class AlertaIncongruenciaTaxonomicaContext extends BaseContext
 
     public function __construct()
     {
-        $this->horarioRepo      = new InMemoryHorarioRepository;
-        $this->cajaRepo         = new InMemoryCajaRepository;
-        $this->ranuraRepo       = new InMemoryRanuraGabineteRepository;
-        $this->gabineteRepo     = new InMemoryGabineteRepository;
-        $this->ubicacionRepo    = new InMemoryUbicacionCajaRepository;
-        $this->eventoRepo       = new InMemoryEventoCicloIotRepository;
-        $this->alertaRepo       = new InMemoryAlertaUbicacionRepository;
+        $this->horarioRepo = new InMemoryHorarioRepository;
+        $this->cajaRepo = new InMemoryCajaRepository;
+        $this->ranuraRepo = new InMemoryRanuraGabineteRepository;
+        $this->gabineteRepo = new InMemoryGabineteRepository;
+        $this->ubicacionRepo = new InMemoryUbicacionCajaRepository;
+        $this->eventoRepo = new InMemoryEventoCicloIotRepository;
+        $this->alertaRepo = new InMemoryAlertaUbicacionRepository;
         $this->notificacionRepo = new InMemoryNotificacionRepository;
-        $this->unitTrayRepo     = new InMemoryUnitTrayRepository;
+        $this->unitTrayRepo = new InMemoryUnitTrayRepository;
 
         $this->horarioRepo->guardar(Horario::crear(
             id: HorarioId::generar(),
@@ -196,9 +196,9 @@ final class AlertaIncongruenciaTaxonomicaContext extends BaseContext
         Assert::assertNotNull($this->ranuraDestino, 'Se requiere ranura destino sembrada (@Given anterior)');
 
         $clasificacion = match ($posicion) {
-            'en orden taxonómico correcto'              => ClasificacionTaxonomica::desde(subfamilia: 'Biblidinae',  genero: 'Byblia'),
-            'fuera del orden alfabético por subfamilia' => ClasificacionTaxonomica::desde(subfamilia: 'Zygaeninae',  genero: 'Zygaena'),
-            'fuera del orden alfabético por género'     => ClasificacionTaxonomica::desde(subfamilia: 'Nymphalinae', genero: 'Zygaena'),
+            'en orden taxonómico correcto' => ClasificacionTaxonomica::desde(subfamilia: 'Biblidinae', genero: 'Byblia'),
+            'fuera del orden alfabético por subfamilia' => ClasificacionTaxonomica::desde(subfamilia: 'Zygaeninae', genero: 'Zygaena'),
+            'fuera del orden alfabético por género' => ClasificacionTaxonomica::desde(subfamilia: 'Nymphalinae', genero: 'Zygaena'),
             default => throw new \InvalidArgumentException("Posición taxonómica no reconocida: '{$posicion}'"),
         };
 
@@ -433,8 +433,8 @@ final class AlertaIncongruenciaTaxonomicaContext extends BaseContext
     {
         $estadoEsperado = match ($nombreEstado) {
             'Pendiente de Clasificación' => EstadoCaja::PendienteClasificacion,
-            'En Gabinete'                => EstadoCaja::EnGabinete,
-            'En Tránsito'                => EstadoCaja::EnTransito,
+            'En Gabinete' => EstadoCaja::EnGabinete,
+            'En Tránsito' => EstadoCaja::EnTransito,
             default => throw new \InvalidArgumentException("Estado de caja no reconocido: '{$nombreEstado}'"),
         };
 
@@ -483,7 +483,7 @@ final class AlertaIncongruenciaTaxonomicaContext extends BaseContext
         $alertasTaxonomicasDeLaCaja = array_values(array_filter(
             $todasLasAlertas,
             fn (AlertaUbicacion $a) => $a->cajaId()->equals($this->cajaAInsertar)
-                && in_array($a->tipo(), [TipoAlerta::IncongruenciaTaxonomica, TipoAlerta::FamiliaNoAsignada], true)
+                && in_array($a->tipo(), [TipoAlerta::OrdenTaxonomicoFueraDeSecuencia, TipoAlerta::FamiliaNoAsignada], true)
         ));
 
         Assert::assertEmpty(
@@ -582,8 +582,8 @@ final class AlertaIncongruenciaTaxonomicaContext extends BaseContext
     private function resolverTipoAlerta(string $nombreMostrado): TipoAlerta
     {
         return match ($nombreMostrado) {
-            'Orden Taxonómico Fuera de Secuencia' => TipoAlerta::IncongruenciaTaxonomica,
-            'Familia No Asignada'                 => TipoAlerta::FamiliaNoAsignada,
+            'Orden Taxonómico Fuera de Secuencia' => TipoAlerta::OrdenTaxonomicoFueraDeSecuencia,
+            'Familia No Asignada' => TipoAlerta::FamiliaNoAsignada,
             default => throw new \InvalidArgumentException("Nombre de alerta no reconocido: '{$nombreMostrado}'"),
         };
     }

@@ -6,7 +6,7 @@ namespace Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjec
 
 enum TipoAlerta: string
 {
-    case IncongruenciaTaxonomica = 'incongruencia_taxonomica';
+    case OrdenTaxonomicoFueraDeSecuencia = 'orden_taxonomico_fuera_de_secuencia';
     case MovimientoNoAutorizado = 'movimiento_no_autorizado';
     case ExtraccionProlongada = 'extraccion_prolongada';
     case FamiliaNoAsignada = 'familia_no_asignada';

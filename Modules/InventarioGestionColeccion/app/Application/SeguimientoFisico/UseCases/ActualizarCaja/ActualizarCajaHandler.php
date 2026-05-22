@@ -25,12 +25,14 @@ final class ActualizarCajaHandler
         $actualizada = Caja::reconstituir(
             id: $caja->id(),
             codigo: $caja->codigo(),
-            familiaTaxonomicaId: $input->familiaTaxonomicaId,
             estado: $caja->estadoActual(),
             ranuraActualId: $caja->ranuraActualId(),
             codigoRfid: $caja->codigoRfid(),
+            esEspecial: $input->esEspecial,
+            observacion: $input->observacion,
             nombre: $input->nombre,
             capacidadMaxima: $input->capacidadMaxima,
+            clasificacionTaxonomica: $caja->clasificacionTaxonomica(),
         );
 
         $this->cajaRepo->guardar($actualizada);
