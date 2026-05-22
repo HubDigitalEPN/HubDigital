@@ -1,27 +1,31 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Modules\GestionPrestamosRecepciones\Infrastructure\Providers;
 
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
+use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoIniciado;
+use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoAprobada;
+use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoEnviada;
+use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoObservada;
+use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoRechazada;
+use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoRegistrada;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\RegistrarEventoHistorialListener;
 
 class EventServiceProvider extends ServiceProvider
 {
-    /**
-     * The event handler mappings for the application.
-     *
-     * @var array<string, array<int, string>>
-     */
-    protected $listen = [];
+    /** @var array<string, array<int, string>> */
+    protected $listen = [
+        SolicitudPrestamoRegistrada::class => [RegistrarEventoHistorialListener::class],
+        SolicitudPrestamoEnviada::class => [RegistrarEventoHistorialListener::class],
+        SolicitudPrestamoObservada::class => [RegistrarEventoHistorialListener::class],
+        SolicitudPrestamoAprobada::class => [RegistrarEventoHistorialListener::class],
+        SolicitudPrestamoRechazada::class => [RegistrarEventoHistorialListener::class],
+        PrestamoIniciado::class => [RegistrarEventoHistorialListener::class],
+    ];
 
-    /**
-     * Indicates if events should be discovered.
-     *
-     * @var bool
-     */
     protected static $shouldDiscoverEvents = true;
 
-    /**
-     * Configure the proper event listeners for email verification.
-     */
     protected function configureEmailVerification(): void {}
 }
