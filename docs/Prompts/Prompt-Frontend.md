@@ -48,22 +48,28 @@
 
  4. **Integración Livewire - Backend:**
      >    * Diseña los Componentes Livewire (Full-page o anidados) que consumirán los endpoints o interactuarán con los Casos de Uso del backend.
->    * Planifica el manejo de los estados (carga, éxito, errores). Para los errores de validación de backend (422), confía en el manejo nativo de `$errors` de Livewire/Blade.
->
-> 4. **Estructura de Componentes Blade/Livewire:**
+     >    * Planifica el manejo de los estados (carga, éxito, errores). Para los errores de validación de backend (422), confía en el manejo nativo de `$errors` de Livewire/Blade.
+
+5. **Estructura de Componentes Blade/Livewire:**
      >    * Desglosa la interfaz en componentes lógicos (Páginas Livewire, Layouts Blade, Componentes anónimos Blade) inspirándote en la estructura del prototipo visual, pero adaptándola a nuestro stack.
->    * Reutiliza los componentes globales ya documentados siempre que sea posible. Usa Alpine.js SOLAMENTE para interactividad puramente visual (modales, dropdowns, toggles) para evitar viajes innecesarios al servidor.
->
-> 5. **Gestión del Estado:**
+     >    * Reutiliza los componentes globales ya documentados siempre que sea posible. Usa Alpine.js SOLAMENTE para interactividad puramente visual (modales, dropdowns, toggles) para evitar viajes innecesarios al servidor.
+
+6. **Gestión del Estado:**
      >    * Define las propiedades públicas (`public properties`) de los componentes Livewire que representarán el estado local. Explica cómo se mantendrá la reactividad sin sobrecargar el servidor.
->
-> ---
->
-> **Entregable esperado:**
-> Presenta un **Plan de Diseño Estructurado** que incluya:
-> 1. **Mapa de Componentes:** Listado de los archivos a crear (`.php` de Livewire y `.blade.php`), referenciando qué componentes de Flux UI consumirán para replicar la estructura de la carpeta `/references`.
-> 2. **Integración y Flujo de Datos:** Explicación de cómo los métodos del componente Livewire llamarán a la capa de Aplicación/API y mapearán los datos a las propiedades públicas.
-> 3. **Flujo de Estados de UI:** Cómo se representarán visualmente los estados de `loading` (ej. `wire:loading`), `success` y `error` usando estrictamente los elementos de los Guidelines.
-> 4. **Mapeo de UI vs. Feature:** Una breve correlación demostrando cómo los pasos del `.feature` se satisfacen con las pantallas planificadas.
->
+
+7. **Responsive Design Obligatorio:**
+     >    * El diseño de esta pantalla y de **todas** las pantallas del módulo correspondiente debe planificarse como responsive desde el inicio.
+     >    * Define cómo se adaptará cada vista a móvil, tablet y escritorio usando únicamente Flux UI, Blade y Tailwind CSS, sin introducir CSS personalizado ni librerías externas.
+     >    * Prioriza una experiencia mobile-first y explica qué bloques se apilan, colapsan, ocultan o reordenan en los distintos breakpoints.
+
+---
+
+**Entregable esperado:**
+Presenta un **Plan de Diseño Estructurado** que incluya:
+1. **Mapa de Componentes:** Listado de los archivos a crear (`.php` de Livewire y `.blade.php`), referenciando qué componentes de Flux UI consumirán para replicar la estructura de la carpeta `/references`.
+2. **Integración y Flujo de Datos:** Explicación de cómo los métodos del componente Livewire llamarán a la capa de Aplicación/API y mapearán los datos a las propiedades públicas.
+3. **Flujo de Estados de UI:** Cómo se representarán visualmente los estados de `loading` (ej. `wire:loading`), `success` y `error` usando estrictamente los elementos de los Guidelines.
+4. **Mapeo de UI vs. Feature:** Una breve correlación demostrando cómo los pasos del `.feature` se satisfacen con las pantallas planificadas.
+5. **Responsividad por pantalla:** Una descripción breve de cómo cada pantalla del módulo se adapta en móvil, tablet y escritorio, indicando cambios de layout, densidad de información y comportamiento de componentes.
+
 > **¿Entendido? Analiza los insumos, LEE LOS GUIDELINES, extrae la esencia de /references y genera el plan de Frontend.**
