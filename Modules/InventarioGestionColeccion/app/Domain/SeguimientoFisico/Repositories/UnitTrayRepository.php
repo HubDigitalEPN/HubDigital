@@ -23,4 +23,6 @@ interface UnitTrayRepository
      * @return UnitTray[]
      */
     public function buscarPorCaja(CajaId $cajaId): array;
+
+    public function eliminar(UnitTrayId $id): void;
 }
