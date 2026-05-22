@@ -9,6 +9,7 @@ use Behat\Step\Then;
 use Behat\Step\When;
 use DateTimeImmutable;
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\HistorialPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarActaPrestamo\ConsultarActaPrestamoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarActaPrestamo\ConsultarActaPrestamoInput;
@@ -27,6 +28,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Entities\SolicitudPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\ActaPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\PrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoActa;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitud;
@@ -36,6 +38,7 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\NumeroSolicitud;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoPrestamo;
 use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\BaseContext;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\FakeEventPublisherAdapter;
+use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\InMemoryHistorialAdapter;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\PassThroughTransactionManagerAdapter;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Persistence\InMemoryActaPrestamoRepository;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Persistence\InMemoryPrestamoRepository;
@@ -57,6 +60,8 @@ final class SeguimientoProcesoPrestamoContext extends BaseContext
     private InMemoryPrestamoRepository $prestamoRepo;
 
     private FakeEventPublisherAdapter $fakePublisher;
+
+    private InMemoryHistorialAdapter $historialAdapter;
 
     // ── Handlers ─────────────────────────────────────────────────────────────
 
@@ -109,12 +114,14 @@ final class SeguimientoProcesoPrestamoContext extends BaseContext
         $this->actaRepo = new InMemoryActaPrestamoRepository;
         $this->prestamoRepo = new InMemoryPrestamoRepository;
         $this->fakePublisher = new FakeEventPublisherAdapter;
+        $this->historialAdapter = new InMemoryHistorialAdapter;
 
         self::$app->instance(SolicitudPrestamoRepositoryInterface::class, $this->solicitudRepo);
         self::$app->instance(ActaPrestamoRepositoryInterface::class, $this->actaRepo);
         self::$app->instance(PrestamoRepositoryInterface::class, $this->prestamoRepo);
         self::$app->instance(TransactionManagerPort::class, new PassThroughTransactionManagerAdapter);
         self::$app->instance(EventPublisherPort::class, $this->fakePublisher);
+        self::$app->instance(HistorialPort::class, $this->historialAdapter);
 
         $this->consultarSolicitudHandler = $this->make(ConsultarSolicitudPrestamoHandler::class);
         $this->consultarActaHandler = $this->make(ConsultarActaPrestamoHandler::class);
@@ -193,13 +200,15 @@ final class SeguimientoProcesoPrestamoContext extends BaseContext
 
     private function sembrarPrestamoEnEstado(EstadoPrestamo $estado): Prestamo
     {
+        $ahora = new DateTimeImmutable;
+
         $prestamo = Prestamo::reconstituir(
             id: $this->prestamoRepo->nextIdentity(),
-            numeroPrestamo: NumeroPrestamo::generate(),
+            actaPrestamoId: ActaPrestamoId::generate(),
             investigadorId: $this->investigadorId,
             estado: $estado,
-            fechaInicio: new DateTimeImmutable,
-            fechaFin: (new DateTimeImmutable)->modify('+3 months'),
+            iniciadoEn: $ahora,
+            fechaFin: $ahora->modify('+3 months'),
         );
 
         $this->prestamoRepo->guardar($prestamo);
@@ -459,6 +468,7 @@ final class SeguimientoProcesoPrestamoContext extends BaseContext
 
             foreach ($solicitud->pullEvents() as $evento) {
                 $this->fakePublisher->publish($evento);
+                $this->historialAdapter->registrar($evento);
             }
 
             Assert::assertNotEmpty(
@@ -533,20 +543,32 @@ final class SeguimientoProcesoPrestamoContext extends BaseContext
     #[Given('/^que existe un préstamo con (.+)$/u')]
     public function queExisteUnPrestamoCon(string $condicion): void
     {
-        $prestamo = $this->sembrarPrestamoEnEstado(EstadoPrestamo::Activo);
-
         if ($condicion === 'eventos registrados') {
+            $ahora = new DateTimeImmutable;
+            $prestamo = Prestamo::iniciar(
+                id: $this->prestamoRepo->nextIdentity(),
+                actaPrestamoId: ActaPrestamoId::generate(),
+                investigadorId: $this->investigadorId,
+                iniciadoEn: $ahora,
+                fechaFin: $ahora->modify('+3 months'),
+            );
+            $this->prestamoRepo->guardar($prestamo);
+            $this->prestamoExistente = $prestamo;
+
             foreach ($prestamo->pullEvents() as $evento) {
                 $this->fakePublisher->publish($evento);
+                $this->historialAdapter->registrar($evento);
             }
 
             Assert::assertNotEmpty(
                 $this->fakePublisher->publishedEvents(),
                 "Se esperaba al menos un evento publicado para la condición 'eventos registrados'"
             );
+        } else {
+            $this->sembrarPrestamoEnEstado(EstadoPrestamo::Activo);
         }
 
-        $persistido = $this->prestamoRepo->buscarPorId($prestamo->id());
+        $persistido = $this->prestamoRepo->buscarPorId($this->prestamoExistente->id());
         Assert::assertNotNull($persistido, 'El préstamo no fue persistido en el repositorio');
     }
 
