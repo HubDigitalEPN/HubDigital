@@ -10,7 +10,7 @@
     {{-- Aviso cuando la extracción automática no pudo completarse --}}
     @if($advertenciaExtraccion === 'error_modelo')
         <flux:callout variant="warning" icon="cpu-chip">
-            <flux:heading>El modelo de IA ({{ config('ai.providers.ollama.model') }}) no está disponible</flux:heading>
+            <flux:heading>El modelo de IA no está disponible</flux:heading>
             <flux:text>
                 No fue posible extraer los datos automáticamente porque el servicio de IA no respondió.
                 Completa manualmente los campos marcados abajo. El flujo continúa con normalidad.
@@ -195,10 +195,10 @@
                 <flux:heading>Discrepancia significativa detectada</flux:heading>
                 <flux:text>El nombre del documento y el del perfil difieren considerablemente. Elige una opción:</flux:text>
                 <div class="mt-3 flex flex-wrap gap-2">
-                    <flux:button size="sm" variant="ghost" wire:navigate href="{{ route('profile.edit') }}" icon="user">
+                    <flux:button size="sm" variant="outline" wire:navigate href="{{ route('profile.edit') }}" icon="user">
                         Actualizar nombre en perfil
                     </flux:button>
-                    <flux:button size="sm" variant="ghost" wire:click="resetearValidacionIdentidad" icon="arrow-path">
+                    <flux:button size="sm" variant="outline" wire:click="resetearValidacionIdentidad" icon="arrow-path">
                         Reingresar nombre del documento
                     </flux:button>
                 </div>

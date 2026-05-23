@@ -14,7 +14,7 @@ use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\DatosIntegradosDocumento;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
-use Modules\GestionPrestamosRecepciones\Infrastructure\Exceptions\OllamaNoDisponibleException;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Exceptions\ModeloIANoDisponibleException;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
 
 final class ExtraccionDatosDocumentoJob implements ShouldQueue
@@ -114,7 +114,7 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
 
             SolicitudDepositoEloquentModel::where('id', $this->solicitudId)
                 ->update(['extraccion_estado' => 'completada']);
-        } catch (OllamaNoDisponibleException $e) {
+        } catch (ModeloIANoDisponibleException $e) {
             Log::warning('ExtraccionDatosDocumentoJob: modelo de IA no disponible', [
                 'solicitudId' => $this->solicitudId,
                 'error' => $e->getMessage(),

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Infrastructure\Providers;
 
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Http\Request;
 use Livewire\Livewire;
@@ -19,9 +20,10 @@ use Modules\GestionPrestamosRecepciones\Domain\Repositories\ActaPrestamoReposito
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\FakeNotificacionCuratoriaAdapter;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\GroqExtraccionDatosDocumentoAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\LaravelEventPublisherAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\LaravelTransactionManagerAdapter;
-use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\OllamaExtraccionDatosDocumentoAdapter;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Console\Commands\LimpiarBorradoresAbandonadosCommand;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentActaPrestamoRepository;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentSolicitudPrestamoRepository;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Repositories\EloquentSolicitudDepositoRepository;
@@ -46,6 +48,10 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
         RouteServiceProvider::class,
     ];
 
+    protected array $commands = [
+        LimpiarBorradoresAbandonadosCommand::class,
+    ];
+
     public array $bindings = [
         SolicitudPrestamoRepositoryInterface::class => EloquentSolicitudPrestamoRepository::class,
         ActaPrestamoRepositoryInterface::class => EloquentActaPrestamoRepository::class,
@@ -59,10 +65,14 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
     {
         parent::register();
 
-        $this->app->bind(ExtraccionDatosDocumentoPort::class, fn () => new OllamaExtraccionDatosDocumentoAdapter(
-            ollamaUrl: config('ai.providers.ollama.url'),
-            modelo: config('ai.providers.ollama.model'),
+        $this->app->bind(ExtraccionDatosDocumentoPort::class, fn () => new GroqExtraccionDatosDocumentoAdapter(
+            modelo: config('ai.providers.groq.model'),
         ));
+    }
+
+    protected function configureSchedules(Schedule $schedule): void
+    {
+        $schedule->command(LimpiarBorradoresAbandonadosCommand::class)->daily();
     }
 
     public function boot(): void
