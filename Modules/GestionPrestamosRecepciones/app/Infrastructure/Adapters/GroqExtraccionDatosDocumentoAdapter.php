@@ -5,18 +5,19 @@ declare(strict_types=1);
 namespace Modules\GestionPrestamosRecepciones\Infrastructure\Adapters;
 
 use Illuminate\Http\Client\ConnectionException;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Laravel\Ai\Enums\Lab;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ExtraccionDatosDocumentoPort;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\DatosIntegradosDocumento;
-use Modules\GestionPrestamosRecepciones\Infrastructure\Exceptions\OllamaNoDisponibleException;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Exceptions\ModeloIANoDisponibleException;
 use Smalot\PdfParser\Parser;
 
-final class OllamaExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocumentoPort
+use function Laravel\Ai\agent;
+
+final class GroqExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocumentoPort
 {
     public function __construct(
-        private readonly string $ollamaUrl,
         private readonly string $modelo,
     ) {}
 
@@ -33,11 +34,10 @@ final class OllamaExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocu
                 continue;
             }
 
-            $parcial = $this->consultarOllama($nombre, $texto);
+            $parcial = $this->consultarGroq($nombre, $texto);
 
             // Red de seguridad para el número de autorización MAATE: el modelo
-            // pequeño (qwen2.5:3b) suele truncar el código en el primer espacio
-            // o acrónimo. Complementamos su salida con un regex sobre el texto
+            // puede truncar el código. Complementamos con un regex sobre el texto
             // crudo del PDF y nos quedamos con el resultado más completo.
             if ($this->esDocumentoAutorizacion($nombre)) {
                 $parcial['nroPermisoRecoleccion'] = $this->consolidarCodigoRecoleccion(
@@ -81,11 +81,10 @@ final class OllamaExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocu
             }
 
             // Limitar a los primeros 3000 caracteres: los datos relevantes
-            // (número de permiso, grupo animal, provincia) siempre aparecen
-            // en las primeras páginas. Esto reduce drásticamente el tiempo de inferencia.
+            // siempre aparecen en las primeras páginas.
             return mb_substr($texto, 0, 3000, 'UTF-8');
         } catch (\Throwable $e) {
-            Log::warning('OllamaExtraccion: no se pudo parsear PDF', [
+            Log::warning('GroqExtraccion: no se pudo parsear PDF', [
                 'documento' => $nombre,
                 'error' => $e->getMessage(),
             ]);
@@ -95,56 +94,51 @@ final class OllamaExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocu
     }
 
     /** @return array<string, mixed> */
-    private function consultarOllama(string $nombreDocumento, string $texto): array
+    private function consultarGroq(string $nombreDocumento, string $texto): array
     {
         try {
             set_time_limit(180);
+
+            $instrucciones = $this->construirInstrucciones($nombreDocumento);
             $prompt = $this->construirPrompt($nombreDocumento, $texto);
 
-            Log::debug('OllamaExtraccion: enviando prompt', [
+            Log::debug('GroqExtraccion: enviando prompt', [
                 'documento' => $nombreDocumento,
                 'prompt_preview' => mb_substr($prompt, 0, 800),
             ]);
 
-            $respuesta = Http::timeout(120)->post("{$this->ollamaUrl}/api/generate", [
-                'model' => $this->modelo,
-                'prompt' => $prompt,
-                'stream' => false,
-                'format' => 'json',
-                'think' => false,
-            ]);
+            $respuesta = agent(
+                instructions: $instrucciones,
+            )->prompt(
+                $prompt,
+                provider: Lab::Groq,
+                model: $this->modelo,
+                timeout: 120,
+            );
 
-            if (! $respuesta->successful()) {
-                Log::warning('OllamaExtraccion: respuesta no exitosa', ['status' => $respuesta->status()]);
+            $resultado = json_decode((string) $respuesta, true) ?? [];
 
-                return [];
-            }
-
-            $resultado = json_decode($respuesta->json('response', '{}'), true) ?? [];
-
-            Log::debug('OllamaExtraccion: respuesta recibida', [
+            Log::debug('GroqExtraccion: respuesta recibida', [
                 'documento' => $nombreDocumento,
                 'resultado' => $resultado,
             ]);
 
             return $resultado;
         } catch (ConnectionException $e) {
-            throw OllamaNoDisponibleException::porConexion($e->getMessage());
+            throw ModeloIANoDisponibleException::porConexion($e->getMessage());
         } catch (\Throwable $e) {
-            Log::warning('OllamaExtraccion: error al contactar Ollama', ['error' => $e->getMessage()]);
+            Log::warning('GroqExtraccion: error al contactar GROQ', ['error' => $e->getMessage()]);
 
             return [];
         }
     }
 
-    private function construirPrompt(string $nombreDocumento, string $texto): string
+    private function construirInstrucciones(string $nombreDocumento): string
     {
-        $instrucciones = $this->instruccionesPorDocumento($nombreDocumento);
+        $instruccionesPorDocumento = $this->instruccionesPorDocumento($nombreDocumento);
 
-        return <<<PROMPT
+        return <<<INSTRUCCIONES
 Eres un extractor de datos de documentos oficiales ecuatorianos sobre especímenes de vida silvestre.
-
-Documento: "{$nombreDocumento}"
 
 Reglas generales:
 - Responde ÚNICAMENTE con un objeto JSON válido con estos campos exactos:
@@ -152,13 +146,21 @@ Reglas generales:
 - Usa null sin comillas para campos ausentes. Nunca cadena vacía "".
 - No inventes datos. Si el dato no aparece claramente en el texto, usa null.
 - Extrae códigos y números sin prefijos: sin "N.º", "Nro.", "N°", "No.", "N.°".
+- NO incluyas texto antes o después del JSON. Solo el objeto JSON.
 
-{$instrucciones}
+{$instruccionesPorDocumento}
+INSTRUCCIONES;
+    }
 
-Texto:
+    private function construirPrompt(string $nombreDocumento, string $texto): string
+    {
+        return <<<PROMPT
+Documento: "{$nombreDocumento}"
+
+Texto del documento:
 {$texto}
 
-JSON:
+Extrae los datos solicitados del texto anterior. Responde SOLO con el JSON.
 PROMPT;
     }
 
@@ -291,7 +293,6 @@ INST;
      * Busca en el texto crudo del PDF un código con la forma típica de
      * autorización MAATE: dígitos-año seguido de uno o más segmentos
      * alfanuméricos en mayúsculas unidos por guiones, barras o espacios.
-     * Devuelve la coincidencia más larga, o null si no encuentra ninguna.
      */
     private function extraerCodigoRecoleccionPorRegex(string $texto): ?string
     {
@@ -314,10 +315,8 @@ INST;
 
     /**
      * Decide entre la extracción del LLM y la del regex. Si ambas existen y
-     * el regex contiene al output del LLM como substring (lo cual indica que
-     * el LLM truncó el código), gana el regex. En cualquier otro caso con
-     * ambas presentes, conservamos el valor del LLM como opción conservadora.
-     * Si solo una está disponible, se devuelve esa.
+     * el regex contiene al output del LLM como substring (truncamiento),
+     * gana el regex. En cualquier otro caso, conservamos el valor del LLM.
      */
     private function consolidarCodigoRecoleccion(?string $llm, ?string $regex): ?string
     {

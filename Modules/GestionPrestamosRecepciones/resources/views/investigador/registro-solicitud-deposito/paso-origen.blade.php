@@ -38,7 +38,7 @@
         <flux:label>Procedencia geográfica <span class="text-error">*</span></flux:label>
         <flux:error name="origenRecoleccion" />
 
-        <div class="grid gap-3 sm:grid-cols-2" wire:ignore>
+        <div class="grid gap-3 sm:grid-cols-2">
             <x-gestionprestamosrecepciones::radio-card
                 :activo="$origenRecoleccion === 'Nacional (Ecuador)'"
                 titulo="Nacional (Ecuador)"
@@ -71,7 +71,7 @@
             <flux:label>Situación regulatoria <span class="text-error">*</span></flux:label>
             <flux:error name="situacionRegulatoria" />
 
-            <div class="grid gap-3 sm:grid-cols-2" wire:ignore>
+            <div class="grid gap-3 sm:grid-cols-2">
                 <x-gestionprestamosrecepciones::radio-card
                     :activo="$situacionRegulatoria === 'Posee permisos del MAATE'"
                     titulo="Posee permisos del MAATE"
@@ -102,7 +102,7 @@
             <flux:label>Zona de recolección <span class="text-error">*</span></flux:label>
             <flux:error name="provincia" />
 
-            <div class="grid gap-3 sm:grid-cols-2" wire:ignore>
+            <div class="grid gap-3 sm:grid-cols-2">
                 <x-gestionprestamosrecepciones::radio-card
                     :activo="$provincia === 'Pichincha'"
                     titulo="Dentro de Pichincha"

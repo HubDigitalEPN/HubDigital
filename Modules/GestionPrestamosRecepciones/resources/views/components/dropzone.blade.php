@@ -4,20 +4,48 @@
     'requerido' => false,
     'cargado' => false,
     'archivoNombre' => null,
+    'plantilla' => null,
 ])
 
 <div
-    x-data="{ progreso: 0, subiendo: false, errorSubida: false, cargado: {{ $cargado ? 'true' : 'false' }}, nombreArchivo: {{ $archivoNombre ? "'" . addslashes($archivoNombre) . "'" : 'null' }} }"
+    x-data="{
+        progreso: 0,
+        subiendo: false,
+        errorSubida: false,
+        arrastrando: false,
+        cargado: {{ $cargado ? 'true' : 'false' }},
+        nombreArchivo: {{ $archivoNombre ? "'" . addslashes($archivoNombre) . "'" : 'null' }},
+        soltar(e) {
+            this.arrastrando = false;
+            if (this.cargado) return;
+            const archivo = e.dataTransfer.files[0];
+            if (!archivo) return;
+            if (archivo.type !== 'application/pdf') {
+                this.errorSubida = true;
+                return;
+            }
+            const input = this.$refs.fileInput;
+            const dt = new DataTransfer();
+            dt.items.add(archivo);
+            input.files = dt.files;
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+            this.nombreArchivo = archivo.name;
+        }
+    }"
     x-on:livewire-upload-start="subiendo = true; progreso = 0; errorSubida = false"
     x-on:livewire-upload-progress="progreso = $event.detail.progress"
     x-on:livewire-upload-finish="subiendo = false; progreso = 100; cargado = true"
     x-on:livewire-upload-error="subiendo = false; progreso = 0; errorSubida = true"
     x-on:click="if (!cargado) $refs.fileInput.click()"
+    x-on:dragover.prevent="if (!cargado) arrastrando = true"
+    x-on:dragleave.prevent="arrastrando = false"
+    x-on:drop.prevent="soltar($event)"
     class="flex items-center gap-4 rounded-lg border-2 p-4 transition-all
         {{ $cargado
             ? 'border-success/40 bg-success/5 cursor-default'
             : 'border-dashed cursor-pointer group ' . ($requerido ? 'border-warning/60 bg-warning/5' : 'border-border bg-bg-main') . ' hover:border-science-blue hover:bg-science-blue/5'
         }}"
+    x-bind:class="arrastrando && !cargado ? '!border-science-blue !bg-science-blue/10' : ''"
 >
     {{-- Icono --}}
     <div class="shrink-0 size-11 rounded-lg border border-border bg-surface flex items-center justify-center shadow-sm">
@@ -53,6 +81,27 @@
                 Solo PDF
             </span>
         </div>
+
+        {{-- Instrucción de acción --}}
+        @if(!$cargado)
+            <p x-show="!subiendo && !nombreArchivo" class="text-xs text-text-secondary mt-1.5">
+                Haz clic o arrastra tu archivo aquí
+            </p>
+        @endif
+
+        {{-- Enlace a plantilla de ejemplo --}}
+        @if($plantilla && !$cargado)
+            <a
+                href="{{ $plantilla }}"
+                download
+                x-on:click.stop
+                class="inline-flex items-center gap-1 text-xs text-science-blue hover:text-blue-navy transition-colors mt-1"
+            >
+                <flux:icon name="arrow-down-tray" class="size-3" />
+                Descargar ejemplo de referencia
+            </a>
+        @endif
+
         <div x-show="nombreArchivo" class="flex items-center gap-1 mt-1">
             <flux:icon name="document-text" class="size-3 text-text-secondary shrink-0" />
             <span x-text="nombreArchivo" class="text-xs font-medium text-text-primary truncate max-w-sm"></span>

@@ -25,6 +25,48 @@
             <flux:breadcrumbs.item>Nueva solicitud de depósito</flux:breadcrumbs.item>
         </flux:breadcrumbs>
 
+        {{-- Borrador restaurado --}}
+        @if($borradorRestaurado && $paso < 6)
+            <div class="rounded-lg border border-science-blue/30 bg-science-blue/5 p-4 flex items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <flux:icon name="bookmark" class="size-5 text-science-blue shrink-0" />
+                    <div>
+                        <p class="text-sm font-medium text-text-primary">Borrador pendiente recuperado</p>
+                        <p class="text-xs text-text-secondary mt-0.5">Puedes continuar donde lo dejaste o descartar para empezar de nuevo.</p>
+                    </div>
+                </div>
+                <flux:modal.trigger name="confirmar-descartar-borrador">
+                    <flux:button
+                        variant="outline"
+                        size="sm"
+                        icon="trash"
+                        class="shrink-0"
+                    >
+                        Descartar
+                    </flux:button>
+                </flux:modal.trigger>
+            </div>
+
+            <flux:modal name="confirmar-descartar-borrador" class="max-w-sm">
+                <div class="space-y-4">
+                    <div>
+                        <flux:heading size="lg">Descartar borrador</flux:heading>
+                        <flux:text class="text-text-secondary mt-1">
+                            Se eliminará el borrador y todos los documentos cargados. Esta acción no se puede deshacer.
+                        </flux:text>
+                    </div>
+                    <div class="flex justify-end gap-3">
+                        <flux:modal.close>
+                            <flux:button variant="ghost">Cancelar</flux:button>
+                        </flux:modal.close>
+                        <flux:button variant="danger" wire:click="descartarBorrador" icon="trash">
+                            Descartar
+                        </flux:button>
+                    </div>
+                </div>
+            </flux:modal>
+        @endif
+
         {{-- Header --}}
         <div class="flex items-start justify-between gap-4 flex-wrap">
             <div>
