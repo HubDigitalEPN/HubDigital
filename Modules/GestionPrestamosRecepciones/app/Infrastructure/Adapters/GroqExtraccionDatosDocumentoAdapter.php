@@ -116,6 +116,7 @@ final class GroqExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocume
                 timeout: 120,
             );
 
+            /** @var array<string, mixed> $resultado */
             $resultado = json_decode((string) $respuesta, true) ?? [];
 
             Log::debug('GroqExtraccion: respuesta recibida', [
