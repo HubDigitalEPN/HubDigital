@@ -48,10 +48,6 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
         RouteServiceProvider::class,
     ];
 
-    protected array $commands = [
-        LimpiarBorradoresAbandonadosCommand::class,
-    ];
-
     public array $bindings = [
         SolicitudPrestamoRepositoryInterface::class => EloquentSolicitudPrestamoRepository::class,
         ActaPrestamoRepositoryInterface::class => EloquentActaPrestamoRepository::class,
@@ -64,6 +60,10 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
     public function register(): void
     {
         parent::register();
+
+        $this->commands([
+            LimpiarBorradoresAbandonadosCommand::class,
+        ]);
 
         $this->app->bind(ExtraccionDatosDocumentoPort::class, fn () => new GroqExtraccionDatosDocumentoAdapter(
             modelo: config('ai.providers.groq.model'),
