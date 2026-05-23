@@ -174,7 +174,7 @@ final class GestionActaPrestamoContext extends BaseContext
     // ESCENARIO: Enviar el acta de préstamo al investigador para su firma
     // =========================================================================
 
-    #[Given('que existe un acta en estado pendiente de envío')]
+    #[Given('que el curador tiene un acta en estado pendiente de envío')]
     public function queExisteUnActaEnEstadoPendienteDeEnvio(): void
     {
         $acta = $this->sembrarActaEnEstado(EstadoActa::PendienteEnvio);
@@ -251,7 +251,7 @@ final class GestionActaPrestamoContext extends BaseContext
     // (Dado compartido — ambos parten de PendienteValidacion)
     // =========================================================================
 
-    #[Given('que existe un acta en estado pendiente de validación')]
+    #[Given('que el curador tiene un acta en estado pendiente de validación')]
     public function queExisteUnActaEnEstadoPendienteDeValidacion(): void
     {
         $acta = $this->sembrarActaEnEstado(EstadoActa::PendienteValidacion);
