@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarPrestamo;
 
 use DateTimeImmutable;
-use Modules\GestionPrestamosRecepciones\Domain\Entities\Prestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoPrestamo;
 
 final readonly class ConsultarPrestamoOutput
@@ -17,17 +16,6 @@ final readonly class ConsultarPrestamoOutput
         public EstadoPrestamo $estado,
         public DateTimeImmutable $iniciadoEn,
         public DateTimeImmutable $fechaFin,
+        public string $numeroPrestamo,
     ) {}
-
-    public static function fromEntity(Prestamo $prestamo): self
-    {
-        return new self(
-            prestamoId: (string) $prestamo->id(),
-            actaPrestamoId: (string) $prestamo->actaPrestamoId(),
-            investigadorId: $prestamo->investigadorId(),
-            estado: $prestamo->estado(),
-            iniciadoEn: $prestamo->iniciadoEn(),
-            fechaFin: $prestamo->fechaFin(),
-        );
-    }
 }

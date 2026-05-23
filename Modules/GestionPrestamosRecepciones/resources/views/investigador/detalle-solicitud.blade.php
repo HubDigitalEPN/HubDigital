@@ -7,10 +7,6 @@
         <flux:breadcrumbs.item>{{ $solicitud?->numero_solicitud ?? 'Detalle' }}</flux:breadcrumbs.item>
     </flux:breadcrumbs>
 
-    @if($successMessage)
-        <flux:callout variant="success" icon="check-circle">{{ $successMessage }}</flux:callout>
-    @endif
-
     @if(!$solicitud)
         <flux:callout variant="danger" icon="exclamation-triangle">Solicitud no encontrada.</flux:callout>
     @else
@@ -100,59 +96,6 @@
                     </div>
                 @endif
 
-                {{-- Acta de préstamo --}}
-                @if($acta)
-                    <div class="rounded-lg border border-border bg-surface shadow-sm p-5 space-y-4">
-                        <div class="flex items-center justify-between">
-                            <flux:heading size="lg" level="2" class="font-display">Acta de préstamo</flux:heading>
-                            <x-gestionprestamosrecepciones::acta-status-badge :estado="$acta->estado" />
-                        </div>
-                        <flux:separator />
-
-                        <dl class="grid grid-cols-2 gap-4 text-sm">
-                            <div>
-                                <dt class="text-text-secondary">N.º préstamo</dt>
-                                <dd class="font-mono font-medium text-text-primary">{{ $acta->numero_prestamo }}</dd>
-                            </div>
-                        </dl>
-
-                        @if($acta->estado === 'pendiente_envio')
-                            <flux:callout variant="info" icon="clock">
-                                El curador está preparando el acta de préstamo. Recibirás una notificación cuando esté lista para firmar.
-                            </flux:callout>
-                        @elseif($acta->estado === 'pendiente_firma' && $acta->motivo_devolucion)
-                            <flux:callout variant="warning" icon="arrow-uturn-left">
-                                <flux:heading size="sm">El acta fue devuelta para refirmar</flux:heading>
-                                <flux:text class="mt-1 text-sm">{{ $acta->motivo_devolucion }}</flux:text>
-                            </flux:callout>
-                        @elseif($acta->estado === 'pendiente_firma')
-                            <flux:callout variant="info" icon="information-circle">
-                                El acta está lista. Visualízala, imprímela, fírmala y sube el PDF firmado.
-                            </flux:callout>
-                        @elseif($acta->estado === 'pendiente_validacion')
-                            <flux:callout variant="info" icon="information-circle">
-                                El acta firmada está en proceso de validación por el curador.
-                            </flux:callout>
-                        @elseif($acta->estado === 'validada')
-                            <flux:callout variant="success" icon="check-circle">
-                                El acta ha sido validada. El préstamo está activo.
-                            </flux:callout>
-                        @endif
-
-                        <flux:button variant="ghost" icon="eye" size="sm"
-                            href="{{ route('prestamos.acta.ver', $acta->id) }}" target="_blank">
-                            Ver / imprimir acta
-                        </flux:button>
-
-                        @if($acta->estado === 'pendiente_firma')
-                            <flux:button variant="primary" icon="arrow-up-tray"
-                                wire:click="$set('showUploadModal', true)">
-                                Subir acta firmada
-                            </flux:button>
-                        @endif
-                    </div>
-                @endif
-
             </div>
 
             {{-- Timeline lateral --}}
@@ -160,70 +103,32 @@
                 <flux:heading size="lg" level="2" class="font-display">Historial</flux:heading>
                 <flux:separator />
                 <div class="mt-3">
-                    <x-gestionprestamosrecepciones::timeline-event
-                        :fecha="$solicitud->created_at->format('d/m/Y H:i')"
-                        titulo="Solicitud creada"
-                        :ultimo="$solicitud->estado === 'borrador'" />
-
-                    @if(!in_array($solicitud->estado, ['borrador']))
+                    @php
+                        $etiquetas = [
+                            'SolicitudPrestamoRegistrada' => 'Solicitud registrada',
+                            'SolicitudPrestamoEnviada'    => 'Solicitud enviada',
+                            'SolicitudPrestamoAprobada'   => 'Solicitud aprobada',
+                            'SolicitudPrestamoRechazada'  => 'Solicitud rechazada',
+                            'SolicitudPrestamoObservada'  => 'Solicitud observada',
+                        ];
+                        $eventosSolicitud = array_values(array_filter(
+                            $historial->eventos,
+                            fn ($e) => array_key_exists($e->tipo, $etiquetas)
+                        ));
+                    @endphp
+                    @forelse($eventosSolicitud as $i => $evento)
                         <x-gestionprestamosrecepciones::timeline-event
-                            :fecha="$solicitud->updated_at->format('d/m/Y H:i')"
-                            titulo="Solicitud enviada"
-                            :ultimo="$solicitud->estado === 'enviada'" />
-                    @endif
-
-                    @if($solicitud->estado === 'aprobada')
-                        <x-gestionprestamosrecepciones::timeline-event
-                            :fecha="$solicitud->updated_at->format('d/m/Y H:i')"
-                            titulo="Solicitud aprobada"
-                            :ultimo="!$acta" />
-                    @endif
-
-                    @if($solicitud->estado === 'observada')
-                        <x-gestionprestamosrecepciones::timeline-event
-                            :fecha="$solicitud->updated_at->format('d/m/Y H:i')"
-                            titulo="Solicitud observada"
-                            :descripcion="$solicitud->comentario_curador"
-                            :ultimo="true" />
-                    @endif
+                            :fecha="$evento->ocurridoEn->format('d/m/Y H:i')"
+                            :titulo="$etiquetas[$evento->tipo]"
+                            :ultimo="$i === count($eventosSolicitud) - 1" />
+                    @empty
+                        <flux:text class="text-xs text-text-secondary">Sin eventos registrados.</flux:text>
+                    @endforelse
                 </div>
             </div>
 
         </div>
     @endif
 
-    {{-- Modal: subir acta firmada --}}
-    <flux:modal wire:model="showUploadModal" class="max-w-md">
-        <div class="space-y-4 p-2">
-            <flux:heading size="lg">Subir acta firmada</flux:heading>
-            <flux:text class="text-text-secondary text-sm">
-                Sube el PDF del acta con tu firma. Máximo 10 MB, solo formato PDF.
-            </flux:text>
-
-            <flux:field>
-                <flux:label>Archivo PDF</flux:label>
-                <input type="file" wire:model="pdfFirmado" accept=".pdf"
-                    class="block w-full text-sm text-text-secondary
-                           file:mr-3 file:py-2 file:px-4 file:rounded-lg
-                           file:border-0 file:text-sm file:font-medium
-                           file:bg-science-blue file:text-white
-                           hover:file:bg-blue-700" />
-                <div wire:loading wire:target="pdfFirmado" class="flex items-center gap-1.5 mt-1 text-xs text-text-secondary">
-                    <flux:icon name="arrow-path" class="animate-spin size-3" />
-                    Subiendo archivo...
-                </div>
-                <flux:error name="pdfFirmado" />
-            </flux:field>
-
-            <div class="flex justify-end gap-2 pt-2">
-                <flux:button variant="ghost" wire:click="$set('showUploadModal', false)">Cancelar</flux:button>
-                <flux:button variant="primary" wire:click="subirActa"
-                    wire:loading.attr="disabled" wire:target="subirActa,pdfFirmado">
-                    <flux:icon wire:loading wire:target="subirActa" name="arrow-path" class="animate-spin" />
-                    Subir acta
-                </flux:button>
-            </div>
-        </div>
-    </flux:modal>
 
 </div>

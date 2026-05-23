@@ -7,6 +7,7 @@ namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Inve
 use App\Concerns\HandlesDomainExceptions;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarSolicitudPrestamo\EnviarSolicitudPrestamoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarSolicitudPrestamo\EnviarSolicitudPrestamoInput;
@@ -17,6 +18,31 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Mode
 final class MisSolicitudes extends Component
 {
     use HandlesDomainExceptions;
+
+    #[Url(as: 'q')]
+    public string $busqueda = '';
+
+    #[Url]
+    public string $estado = '';
+
+    #[Url]
+    public string $ordenCampo = 'fecha';
+
+    #[Url]
+    public string $ordenDireccion = 'desc';
+
+    public function toggleOrden(): void
+    {
+        $this->ordenDireccion = $this->ordenDireccion === 'asc' ? 'desc' : 'asc';
+    }
+
+    public function limpiarFiltros(): void
+    {
+        $this->busqueda = '';
+        $this->estado = '';
+        $this->ordenCampo = 'fecha';
+        $this->ordenDireccion = 'desc';
+    }
 
     public function enviarSolicitud(string $id, EnviarSolicitudPrestamoHandler $handler): void
     {
@@ -30,10 +56,23 @@ final class MisSolicitudes extends Component
 
     public function render(): View
     {
-        $solicitudes = SolicitudPrestamoModel::query()
-            ->where('investigador_id', (string) auth()->id())
-            ->orderByDesc('created_at')
-            ->get();
+        $query = SolicitudPrestamoModel::query()
+            ->where('investigador_id', (string) auth()->id());
+
+        if ($this->busqueda !== '') {
+            $term = $this->busqueda;
+            $query->where(fn ($q) => $q
+                ->where('titulo_estudio', 'ilike', "%{$term}%")
+                ->orWhere('numero_solicitud', 'ilike', "%{$term}%")
+            );
+        }
+
+        if ($this->estado !== '') {
+            $query->where('estado', $this->estado);
+        }
+
+        $campo = $this->ordenCampo === 'titulo' ? 'titulo_estudio' : 'created_at';
+        $solicitudes = $query->orderBy($campo, $this->ordenDireccion)->get();
 
         $actasPorSolicitud = ActaPrestamoModel::query()
             ->whereIn('solicitud_prestamo_id', $solicitudes->pluck('id'))

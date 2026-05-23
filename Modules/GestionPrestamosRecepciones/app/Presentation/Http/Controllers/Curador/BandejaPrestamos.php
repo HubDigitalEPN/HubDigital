@@ -10,10 +10,10 @@ use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
-use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\SolicitudPrestamoModel;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\PrestamoEloquentModel;
 
-#[Layout('layouts.app', params: ['title' => 'Bandeja de solicitudes'])]
-final class BandejaSolicitudes extends Component
+#[Layout('layouts.app', params: ['title' => 'Bandeja de préstamos'])]
+final class BandejaPrestamos extends Component
 {
     use HandlesDomainExceptions;
 
@@ -27,7 +27,7 @@ final class BandejaSolicitudes extends Component
     public string $busquedaInvestigador = '';
 
     #[Url]
-    public string $ordenCampo = 'fecha';
+    public string $ordenCampo = 'fecha_inicio';
 
     #[Url]
     public string $ordenDireccion = 'desc';
@@ -42,21 +42,18 @@ final class BandejaSolicitudes extends Component
         $this->busqueda = '';
         $this->estado = '';
         $this->busquedaInvestigador = '';
-        $this->ordenCampo = 'fecha';
+        $this->ordenCampo = 'fecha_inicio';
         $this->ordenDireccion = 'desc';
     }
 
     public function render(): View
     {
-        $query = SolicitudPrestamoModel::query()
-            ->whereNotIn('estado', ['borrador']);
+        $query = PrestamoEloquentModel::query()
+            ->with('acta');
 
         if ($this->busqueda !== '') {
             $term = $this->busqueda;
-            $query->where(fn ($q) => $q
-                ->where('titulo_estudio', 'ilike', "%{$term}%")
-                ->orWhere('numero_solicitud', 'ilike', "%{$term}%")
-            );
+            $query->whereHas('acta', fn ($q) => $q->where('numero_prestamo', 'ilike', "%{$term}%"));
         }
 
         if ($this->estado !== '') {
@@ -69,11 +66,11 @@ final class BandejaSolicitudes extends Component
             $query->whereIn('investigador_id', $ids);
         }
 
-        $campo = $this->ordenCampo === 'titulo' ? 'titulo_estudio' : 'created_at';
-        $solicitudes = $query->orderBy($campo, $this->ordenDireccion)->get();
+        $campo = $this->ordenCampo === 'fecha_vencimiento' ? 'fecha_fin' : 'iniciado_en';
+        $prestamos = $query->orderBy($campo, $this->ordenDireccion)->get();
 
         $uuidRegex = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i';
-        $validIds = $solicitudes
+        $validIds = $prestamos
             ->pluck('investigador_id')
             ->filter(fn (string $id) => preg_match($uuidRegex, $id))
             ->unique()
@@ -81,6 +78,6 @@ final class BandejaSolicitudes extends Component
 
         $investigadores = User::whereIn('id', $validIds)->get()->keyBy('id');
 
-        return view('gestionprestamosrecepciones::curador.bandeja-solicitudes', compact('solicitudes', 'investigadores'));
+        return view('gestionprestamosrecepciones::curador.bandeja-prestamos', compact('prestamos', 'investigadores'));
     }
 }

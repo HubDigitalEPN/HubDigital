@@ -36,8 +36,29 @@
                 @auth
                     @if(auth()->user()->rol === RolUsuario::PRESTAMISTA)
                         <flux:sidebar.group heading="Préstamos" class="grid">
-                            <flux:sidebar.item icon="document-text" :href="route('dashboard')" wire:navigate>
+                            <flux:sidebar.item
+                                icon="document-text"
+                                :href="route('prestamos.investigador.mis-solicitudes')"
+                                :current="request()->routeIs('prestamos.investigador.mis-solicitudes', 'prestamos.investigador.solicitud.*')"
+                                wire:navigate
+                            >
                                 Mis solicitudes
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="clipboard-document"
+                                :href="route('prestamos.investigador.mis-actas')"
+                                :current="request()->routeIs('prestamos.investigador.mis-actas')"
+                                wire:navigate
+                            >
+                                Mis actas
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="archive-box"
+                                :href="route('prestamos.investigador.mis-prestamos')"
+                                :current="request()->routeIs('prestamos.investigador.mis-prestamos', 'prestamos.investigador.prestamo.*')"
+                                wire:navigate
+                            >
+                                Mis préstamos
                             </flux:sidebar.item>
                         </flux:sidebar.group>
                     @elseif(auth()->user()->rol === RolUsuario::DEPOSITANTE)
@@ -50,11 +71,27 @@
                             </flux:sidebar.item>
                         </flux:sidebar.group>
                     @elseif(auth()->user()->rol === RolUsuario::CURADOR)
-                        <flux:sidebar.group heading="Gestión" class="grid">
+                        <flux:sidebar.group heading="Gestión de préstamos" class="grid">
                             <flux:sidebar.item
-                                icon="inbox"
-                                :href="route('prestamos.curador.panel')"
-                                :current="request()->routeIs('prestamos.curador.*')"
+                                icon="document-text"
+                                :href="route('prestamos.curador.solicitudes')"
+                                :current="request()->routeIs('prestamos.curador.solicitudes', 'prestamos.curador.solicitud.*')"
+                                wire:navigate
+                            >
+                                Solicitudes
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="clipboard-document"
+                                :href="route('prestamos.curador.actas')"
+                                :current="request()->routeIs('prestamos.curador.actas', 'prestamos.curador.acta.*')"
+                                wire:navigate
+                            >
+                                Actas
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="archive-box"
+                                :href="route('prestamos.curador.prestamos')"
+                                :current="request()->routeIs('prestamos.curador.prestamos', 'prestamos.curador.prestamo.*')"
                                 wire:navigate
                             >
                                 Préstamos
