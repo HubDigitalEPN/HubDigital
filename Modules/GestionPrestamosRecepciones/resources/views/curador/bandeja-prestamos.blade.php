@@ -1,13 +1,13 @@
 <div class="p-6 space-y-6">
 
-    <flux:heading size="xl" level="1" class="font-display">Bandeja de solicitudes</flux:heading>
+    <flux:heading size="xl" level="1" class="font-display">Bandeja de préstamos</flux:heading>
 
     {{-- Barra de filtros --}}
     <div class="space-y-3">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
             <flux:input
                 wire:model.live.debounce.300ms="busqueda"
-                placeholder="Buscar por título o N.º solicitud..."
+                placeholder="Buscar por N.º préstamo..."
                 icon="magnifying-glass"
                 clearable
                 class="flex-1" />
@@ -19,16 +19,18 @@
                 class="flex-1" />
         </div>
         <div class="flex flex-wrap items-center gap-2">
-            <flux:select wire:model.live="estado" class="w-44">
+            <flux:select wire:model.live="estado" class="w-52">
                 <flux:select.option value="">Todos los estados</flux:select.option>
-                <flux:select.option value="enviada">Enviada</flux:select.option>
-                <flux:select.option value="observada">Observada</flux:select.option>
-                <flux:select.option value="aprobada">Aprobada</flux:select.option>
-                <flux:select.option value="rechazada">Rechazada</flux:select.option>
+                <flux:select.option value="activo">Activo</flux:select.option>
+                <flux:select.option value="prorroga_solicitada">Prórroga solicitada</flux:select.option>
+                <flux:select.option value="vencido">Vencido</flux:select.option>
+                <flux:select.option value="en_revision">En revisión</flux:select.option>
+                <flux:select.option value="cerrado">Cerrado</flux:select.option>
+                <flux:select.option value="cerrado_con_observacion">Cerrado con observación</flux:select.option>
             </flux:select>
-            <flux:select wire:model.live="ordenCampo" class="w-44">
-                <flux:select.option value="fecha">Ordenar por fecha</flux:select.option>
-                <flux:select.option value="titulo">Ordenar por título</flux:select.option>
+            <flux:select wire:model.live="ordenCampo" class="w-52">
+                <flux:select.option value="fecha_inicio">Ordenar por fecha inicio</flux:select.option>
+                <flux:select.option value="fecha_vencimiento">Ordenar por vencimiento</flux:select.option>
             </flux:select>
             <flux:button
                 wire:click="toggleOrden"
@@ -43,17 +45,17 @@
 
     @php $filtroActivo = $busqueda !== '' || $estado !== '' || $busquedaInvestigador !== ''; @endphp
 
-    @if($solicitudes->isEmpty() && !$filtroActivo)
+    @if($prestamos->isEmpty() && !$filtroActivo)
         <div class="flex flex-col items-center justify-center rounded-lg border border-border bg-surface py-[60px] text-center">
-            <flux:icon name="inbox" class="size-12 text-text-secondary mb-3" />
-            <flux:heading size="lg" level="2">Sin solicitudes</flux:heading>
-            <flux:text class="text-text-secondary mt-1">No hay solicitudes enviadas por los investigadores todavía.</flux:text>
+            <flux:icon name="archive-box" class="size-12 text-text-secondary mb-3" />
+            <flux:heading size="lg" level="2">Sin préstamos</flux:heading>
+            <flux:text class="text-text-secondary mt-1">Los préstamos aparecerán aquí cuando se validen las actas.</flux:text>
         </div>
-    @elseif($solicitudes->isEmpty())
+    @elseif($prestamos->isEmpty())
         <div class="flex flex-col items-center justify-center rounded-lg border border-border bg-surface py-[60px] text-center">
             <flux:icon name="magnifying-glass" class="size-12 text-text-secondary mb-3" />
             <flux:heading size="lg" level="2">Sin resultados</flux:heading>
-            <flux:text class="text-text-secondary mt-1">No se encontraron solicitudes con los filtros aplicados.</flux:text>
+            <flux:text class="text-text-secondary mt-1">No se encontraron préstamos con los filtros aplicados.</flux:text>
             <flux:button variant="ghost" class="mt-4" wire:click="limpiarFiltros">
                 Limpiar filtros
             </flux:button>
@@ -63,46 +65,37 @@
             <table class="w-full text-sm">
                 <thead class="bg-blue-navy border-b border-border">
                     <tr>
-                        <th class="px-4 py-3 text-left font-medium text-white">N.º solicitud</th>
-                        <th class="px-4 py-3 text-left font-medium text-white">Título</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">N.º préstamo</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Investigador</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Estado</th>
-                        <th class="px-4 py-3 text-left font-medium text-white">Fecha</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">Inicio</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">Vencimiento</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Acciones</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-border">
-                    @foreach($solicitudes as $solicitud)
+                    @foreach($prestamos as $prestamo)
                         <tr class="hover:bg-bg-main transition-colors">
                             <td class="px-4 py-3 font-mono text-xs text-text-secondary whitespace-nowrap">
-                                {{ $solicitud->numero_solicitud }}
-                            </td>
-                            <td class="px-4 py-3 font-medium text-text-primary">
-                                {{ $solicitud->titulo_estudio }}
+                                {{ $prestamo->acta?->numero_prestamo ?? '—' }}
                             </td>
                             <td class="px-4 py-3 text-sm text-text-secondary">
-                                {{ $investigadores->get($solicitud->investigador_id)?->name ?? $solicitud->investigador_id }}
+                                {{ $investigadores->get($prestamo->investigador_id)?->name ?? $prestamo->investigador_id }}
                             </td>
                             <td class="px-4 py-3">
-                                <x-gestionprestamosrecepciones::solicitud-status-badge :estado="$solicitud->estado" />
+                                <x-gestionprestamosrecepciones::prestamo-status-badge :estado="$prestamo->estado" />
                             </td>
                             <td class="px-4 py-3 text-xs text-text-secondary whitespace-nowrap">
-                                {{ $solicitud->created_at->format('d/m/Y') }}
+                                {{ $prestamo->iniciado_en?->format('d/m/Y') ?? '—' }}
+                            </td>
+                            <td class="px-4 py-3 text-xs text-text-secondary whitespace-nowrap">
+                                {{ $prestamo->fecha_fin?->format('d/m/Y') ?? '—' }}
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap">
-                                <div class="flex items-center gap-2">
-                                    @if($solicitud->estado === 'enviada')
-                                        <flux:button size="sm" variant="primary" icon="check-circle"
-                                            wire:navigate href="{{ route('prestamos.curador.solicitud.revisar', $solicitud->id) }}">
-                                            Decidir
-                                        </flux:button>
-                                    @else
-                                        <flux:button size="sm" variant="ghost" icon="eye"
-                                            wire:navigate href="{{ route('prestamos.curador.solicitud.revisar', $solicitud->id) }}">
-                                            Revisar
-                                        </flux:button>
-                                    @endif
-                                </div>
+                                <flux:button size="sm" variant="ghost" icon="magnifying-glass"
+                                    wire:navigate href="{{ route('prestamos.curador.prestamo.auditar', $prestamo->id) }}">
+                                    Auditar
+                                </flux:button>
                             </td>
                         </tr>
                     @endforeach

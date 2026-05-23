@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 final class PrestamoEloquentModel extends Model
 {
@@ -29,4 +30,9 @@ final class PrestamoEloquentModel extends Model
         'iniciado_en' => 'datetime',
         'fecha_fin' => 'datetime',
     ];
+
+    public function acta(): BelongsTo
+    {
+        return $this->belongsTo(ActaPrestamoModel::class, 'acta_prestamo_id');
+    }
 }

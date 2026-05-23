@@ -6,12 +6,17 @@ namespace Modules\GestionPrestamosRecepciones\Infrastructure\Listeners;
 
 use DateTimeImmutable;
 use Illuminate\Support\Str;
+use Modules\GestionPrestamosRecepciones\Domain\Events\ActaDevueltaPorFirmaInvalida;
+use Modules\GestionPrestamosRecepciones\Domain\Events\ActaEnviada;
+use Modules\GestionPrestamosRecepciones\Domain\Events\ActaFirmadaSubida;
+use Modules\GestionPrestamosRecepciones\Domain\Events\ActaValidada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoIniciado;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoAprobada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoEnviada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoObservada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoRechazada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoRegistrada;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\ActaPrestamoModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\HistorialEventoEloquentModel;
 
 final class RegistrarEventoHistorialListener
@@ -35,7 +40,11 @@ final class RegistrarEventoHistorialListener
             $event instanceof SolicitudPrestamoEnviada,
             $event instanceof SolicitudPrestamoObservada,
             $event instanceof SolicitudPrestamoAprobada,
-            $event instanceof SolicitudPrestamoRechazada => 'solicitud_prestamo',
+            $event instanceof SolicitudPrestamoRechazada,
+            $event instanceof ActaEnviada,
+            $event instanceof ActaFirmadaSubida,
+            $event instanceof ActaDevueltaPorFirmaInvalida,
+            $event instanceof ActaValidada => 'solicitud_prestamo',
             $event instanceof PrestamoIniciado => 'prestamo',
         };
     }
@@ -48,6 +57,13 @@ final class RegistrarEventoHistorialListener
             $event instanceof SolicitudPrestamoObservada,
             $event instanceof SolicitudPrestamoAprobada,
             $event instanceof SolicitudPrestamoRechazada => (string) $event->solicitudId,
+            $event instanceof ActaEnviada,
+            $event instanceof ActaFirmadaSubida,
+            $event instanceof ActaValidada => (string) $event->solicitudId,
+            $event instanceof ActaDevueltaPorFirmaInvalida => (string) (
+                ActaPrestamoModel::find((string) $event->actaId)?->solicitud_prestamo_id
+                ?? (string) $event->actaId
+            ),
             $event instanceof PrestamoIniciado => (string) $event->prestamoId,
         };
     }
