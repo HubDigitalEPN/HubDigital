@@ -737,6 +737,26 @@ final class RegistroSolicitudDeposito extends Component
             return;
         }
 
+        // Validar que cada número de permiso ingresado tenga su documento de respaldo
+        $permisosConDocumento = [
+            'N.º Permiso Recolección' => 'Copia de la autorización de recolección (MAATE)',
+            'N.º Permiso Movilización' => 'Copia del permiso de movilización',
+        ];
+
+        foreach ($permisosConDocumento as $campo => $documento) {
+            $tieneNumero = ! empty($this->datosExtraidos[$campo] ?? null);
+            $tieneDocumento = isset($this->documentosCargados[$documento]);
+
+            if ($tieneNumero && ! $tieneDocumento) {
+                $this->mostrarToast(
+                    "Ingresaste el {$campo} pero no adjuntaste el documento «{$documento}». Regresa al paso anterior y cárgalo.",
+                    'error'
+                );
+
+                return;
+            }
+        }
+
         $sinFirmar = array_filter($this->firmasElectronicas, fn ($estado) => $estado !== 'firmado');
         if (! empty($sinFirmar)) {
             $this->mostrarToast('Documentos sin firma electrónica.', 'error');
