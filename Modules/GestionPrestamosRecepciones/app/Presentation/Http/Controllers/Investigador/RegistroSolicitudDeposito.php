@@ -139,6 +139,9 @@ final class RegistroSolicitudDeposito extends Component
 
     public string $estadoDocumental = '';
 
+    /** @var array<string, string> [nombre_documento => estado_firma] */
+    public array $firmasElectronicas = [];
+
     // ── Paso 5 – Envío ────────────────────────────────────────────────────────────
 
     public bool $declaracionAceptada = false;
@@ -221,6 +224,7 @@ final class RegistroSolicitudDeposito extends Component
             $this->datosExtraidos = $this->construirDatosExtraidos($model);
             $this->datosFaltantes = $model->datos_faltantes ?? [];
             $this->datosIngresadosManualmente = $model->datos_ingresados_manualmente ?? [];
+            $this->firmasElectronicas = $model->firmas_electronicas ?? [];
             $this->nombreEnDocumento = $model->nombre_investigador_documento ?? '';
             $this->documentosProcesados = $model->documentos_procesados ?? [];
 
@@ -626,6 +630,7 @@ final class RegistroSolicitudDeposito extends Component
             $this->datosExtraidos = $this->construirDatosExtraidos($model);
             $this->datosFaltantes = $model->datos_faltantes ?? [];
             $this->datosIngresadosManualmente = $model->datos_ingresados_manualmente ?? [];
+            $this->firmasElectronicas = $model->firmas_electronicas ?? [];
 
             $this->pasosCompletados = array_values(array_unique([...$this->pasosCompletados, 3]));
             $this->paso = 4;
@@ -727,19 +732,26 @@ final class RegistroSolicitudDeposito extends Component
     public function guardarPasoCuatro(): void
     {
         if (! empty($this->datosFaltantes)) {
-            $this->addError('datosFaltantes', 'Completa todos los datos faltantes antes de continuar.');
+            $this->mostrarToast('Completa los datos faltantes.', 'error');
+
+            return;
+        }
+
+        $sinFirmar = array_filter($this->firmasElectronicas, fn ($estado) => $estado !== 'firmado');
+        if (! empty($sinFirmar)) {
+            $this->mostrarToast('Documentos sin firma electrónica.', 'error');
 
             return;
         }
 
         if (empty($this->resultadoIdentidad)) {
-            $this->addError('identidad', 'Valida la identidad del documento antes de continuar.');
+            $this->mostrarToast('Valida la identidad del solicitante.', 'warning');
 
             return;
         }
 
         if ($this->cartaDelegacionRequerida && ! isset($this->documentosCargados['Carta de delegación / justificación de tercero'])) {
-            $this->addError('cartaDelegacion', 'Adjunta la Carta de Delegación para continuar.');
+            $this->mostrarToast('Adjunta la Carta de Delegación.', 'warning');
 
             return;
         }
@@ -771,10 +783,11 @@ final class RegistroSolicitudDeposito extends Component
         if ($this->paso > 1) {
             if ($this->paso === 4) {
                 $this->extraccionProcesando = false;
+                $this->firmasElectronicas = [];
 
                 if ($this->solicitudId !== null) {
                     SolicitudDepositoEloquentModel::where('id', $this->solicitudId)
-                        ->update(['extraccion_estado' => null]);
+                        ->update(['extraccion_estado' => null, 'firmas_electronicas' => '{}']);
                 }
 
                 if (in_array('N.º Permiso Movilización', $this->datosFaltantes, true)
@@ -792,6 +805,13 @@ final class RegistroSolicitudDeposito extends Component
 
             $this->persistirEstadoWizard();
         }
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────────
+
+    private function mostrarToast(string $message, string $variant = 'warning'): void
+    {
+        $this->dispatch('show-toast', message: $message, variant: $variant);
     }
 
     // ── Helper público para vistas ────────────────────────────────────────────────

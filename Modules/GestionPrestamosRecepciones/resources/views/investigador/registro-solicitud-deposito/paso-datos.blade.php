@@ -137,6 +137,68 @@
         </div>
     </div>
 
+    {{-- Validación de firma electrónica --}}
+    @if(!empty($firmasElectronicas))
+        <div class="space-y-3">
+            <flux:heading size="sm" level="3">Firma electrónica</flux:heading>
+
+            @php
+                $sinFirma = array_filter($firmasElectronicas, fn ($estado) => $estado === 'sin_firma');
+                $noVerificados = array_filter($firmasElectronicas, fn ($estado) => $estado === 'no_verificado');
+                $todosFirmados = empty($sinFirma) && empty($noVerificados);
+            @endphp
+
+            @if($todosFirmados)
+                <div class="rounded-lg border border-success/30 bg-success/5 p-4 flex items-center gap-3">
+                    <flux:icon name="shield-check" class="size-5 text-success shrink-0" />
+                    <div>
+                        <p class="text-sm font-semibold text-text-primary">Todos los documentos están firmados electrónicamente</p>
+                        <p class="text-xs text-text-secondary mt-0.5">Se verificó la firma digital de cada archivo cargado.</p>
+                    </div>
+                </div>
+            @else
+                <div class="rounded-lg border border-error/30 bg-error/5 p-4 space-y-3">
+                    <div class="flex items-center gap-3">
+                        <flux:icon name="shield-exclamation" class="size-5 text-error shrink-0" />
+                        <div>
+                            @if(!empty($noVerificados) && empty($sinFirma))
+                                <p class="text-sm font-semibold text-text-primary">No se pudo verificar la firma de {{ count($noVerificados) }} documento(s)</p>
+                                <p class="text-xs text-text-secondary mt-0.5">El sistema no pudo comprobar la firma electrónica. Vuelve al paso anterior y carga nuevamente los documentos.</p>
+                            @else
+                                <p class="text-sm font-semibold text-text-primary">{{ count($sinFirma) + count($noVerificados) }} documento(s) sin firma electrónica</p>
+                                <p class="text-xs text-text-secondary mt-0.5">Todos los documentos deben contar con firma electrónica válida. Vuelve al paso anterior y reemplaza los documentos señalados.</p>
+                            @endif
+                        </div>
+                    </div>
+                    <div class="space-y-1.5">
+                        @foreach($firmasElectronicas as $nombre => $estado)
+                            <div class="flex items-center gap-2 text-sm">
+                                @if($estado === 'firmado')
+                                    <flux:icon name="check-circle" class="size-4 text-success shrink-0" />
+                                    <span class="text-text-primary">{{ $nombre }}</span>
+                                    <span class="text-xs text-success font-medium">Firmado</span>
+                                @elseif($estado === 'no_verificado')
+                                    <flux:icon name="question-mark-circle" class="size-4 text-error shrink-0" />
+                                    <span class="text-text-primary">{{ $nombre }}</span>
+                                    <span class="text-xs text-error font-medium">No verificado</span>
+                                @else
+                                    <flux:icon name="x-circle" class="size-4 text-error shrink-0" />
+                                    <span class="text-text-primary">{{ $nombre }}</span>
+                                    <span class="text-xs text-error font-medium">Sin firma</span>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                    <div class="pt-1">
+                        <flux:button variant="filled" size="sm" icon="arrow-left" wire:click="retroceder">
+                            Volver a cargar documentos
+                        </flux:button>
+                    </div>
+                </div>
+            @endif
+        </div>
+    @endif
+
     {{-- Validación de identidad --}}
     <div class="space-y-4">
         <div class="flex items-center justify-between gap-4">
@@ -197,9 +259,6 @@
                 <div class="mt-3 flex flex-wrap gap-2">
                     <flux:button size="sm" variant="outline" wire:navigate href="{{ route('profile.edit') }}" icon="user">
                         Actualizar nombre en perfil
-                    </flux:button>
-                    <flux:button size="sm" variant="outline" wire:click="resetearValidacionIdentidad" icon="arrow-path">
-                        Reingresar nombre del documento
                     </flux:button>
                 </div>
                 <flux:text class="mt-2 text-xs opacity-70">O adjunta la carta de delegación si gestionas el trámite a nombre de otra persona.</flux:text>
