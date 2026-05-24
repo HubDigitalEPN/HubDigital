@@ -7,6 +7,7 @@ namespace Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Pe
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Caja;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\CajaRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\CajaId;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\ClasificacionTaxonomica;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\CodigoCaja;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\CodigoRfid;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoCaja;
@@ -26,7 +27,9 @@ class EloquentCajaRepository implements CajaRepository
             ['id' => (string) $caja->id()],
             [
                 'codigo' => (string) $caja->codigo(),
-                'familia_taxonomica_id' => $caja->familiaTaxonomicaId(),
+                'es_especial' => $caja->esEspecial(),
+                'observacion' => $caja->observacion(),
+                'clasificacion_taxonomica' => $this->clasificacionToArray($caja->clasificacionTaxonomica()),
                 'nombre' => $caja->nombre(),
                 'capacidad_maxima' => $caja->capacidadMaxima(),
                 'estado' => $caja->estadoActual()->valor(),
@@ -75,12 +78,50 @@ class EloquentCajaRepository implements CajaRepository
         return Caja::reconstituir(
             id: CajaId::desde($model->id),
             codigo: CodigoCaja::desde($model->codigo),
-            familiaTaxonomicaId: $model->familia_taxonomica_id,
             estado: EstadoCaja::from($model->estado),
             ranuraActualId: $model->ranura_actual_id ? RanuraId::desde($model->ranura_actual_id) : null,
             codigoRfid: $model->codigo_rfid ? CodigoRfid::desde($model->codigo_rfid) : null,
+            esEspecial: (bool) $model->es_especial,
+            observacion: $model->observacion,
             nombre: $model->nombre,
             capacidadMaxima: $model->capacidad_maxima,
+            clasificacionTaxonomica: $this->arrayToClasificacion($model->clasificacion_taxonomica),
         );
+    }
+
+    private function clasificacionToArray(?ClasificacionTaxonomica $clasificacion): ?array
+    {
+        if ($clasificacion === null || $clasificacion->estaVacia()) {
+            return null;
+        }
+
+        return [
+            'orden' => $clasificacion->orden(),
+            'suborden' => $clasificacion->suborden(),
+            'superfamilia' => $clasificacion->superfamilia(),
+            'familia' => $clasificacion->familia(),
+            'subfamilia' => $clasificacion->subfamilia(),
+            'genero' => $clasificacion->genero(),
+            'especie' => $clasificacion->especie(),
+        ];
+    }
+
+    private function arrayToClasificacion(?array $data): ?ClasificacionTaxonomica
+    {
+        if ($data === null) {
+            return null;
+        }
+
+        $clasificacion = ClasificacionTaxonomica::desde(
+            orden: $data['orden'] ?? null,
+            suborden: $data['suborden'] ?? null,
+            superfamilia: $data['superfamilia'] ?? null,
+            familia: $data['familia'] ?? null,
+            subfamilia: $data['subfamilia'] ?? null,
+            genero: $data['genero'] ?? null,
+            especie: $data['especie'] ?? null,
+        );
+
+        return $clasificacion->estaVacia() ? null : $clasificacion;
     }
 }

@@ -20,6 +20,7 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\Eve
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\NotificacionRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\RanuraGabineteRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UbicacionCajaRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\EvaluadorOrdenTaxonomico;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\ActorRol;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\CajaId;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoCaja;
@@ -40,6 +41,7 @@ final class RegistrarIngresoCajaHandler
         private readonly HorarioValidadorPort $horarioValidador,
         private readonly ContextoEjecucionPort $contextoEjecucion,
         private readonly EventPublisherPort $eventPublisher,
+        private readonly EvaluadorOrdenTaxonomico $evaluadorTaxonomico,
     ) {}
 
     public function handle(RegistrarIngresoCajaInput $input): RegistrarIngresoCajaOutput
@@ -126,6 +128,10 @@ final class RegistrarIngresoCajaHandler
             }
         );
 
+        if (! $alertaGenerada) {
+            $alertaGenerada = $this->evaluarOrdenTaxonomico($caja, $ranura, $cajaId, $ranuraId);
+        }
+
         return RegistrarIngresoCajaOutput::fromPrimitives([
             'cajaId' => (string) $cajaId,
             'ranuraId' => (string) $ranuraId,
@@ -133,6 +139,52 @@ final class RegistrarIngresoCajaHandler
             'ubicacionCajaId' => (string) $ubicacion->id(),
             'alertaGenerada' => $alertaGenerada,
         ]);
+    }
+
+    private function evaluarOrdenTaxonomico(
+        Caja $caja,
+        RanuraGabinete $ranura,
+        CajaId $cajaId,
+        RanuraId $ranuraId,
+    ): bool {
+        $vecinas = $this->ranuraRepo->buscarVecinasOcupadas($ranura->gabineteId(), $ranura->numeroRanura());
+
+        $cajaAnterior = null;
+        $cajaSiguiente = null;
+
+        foreach ($vecinas as $ranuraVecina) {
+            $cajaVecina = $this->cajaRepo->buscarPorId($ranuraVecina->cajaActualId());
+            if ($ranuraVecina->numeroRanura() < $ranura->numeroRanura()) {
+                $cajaAnterior = $cajaVecina;
+            } else {
+                $cajaSiguiente = $cajaVecina;
+            }
+        }
+
+        $tipoAlerta = $this->evaluadorTaxonomico->evaluar($caja, $cajaAnterior, $cajaSiguiente);
+
+        if ($tipoAlerta === null) {
+            return false;
+        }
+
+        $this->transactionManager->executeTransactional(
+            function () use ($caja, $cajaId, $ranuraId, $tipoAlerta): void {
+                $alerta = AlertaUbicacion::generar(
+                    id: $this->alertaRepo->nextIdentity(),
+                    cajaId: $cajaId,
+                    tipo: $tipoAlerta,
+                    datosContexto: ['ranura_id' => (string) $ranuraId],
+                );
+                $this->alertaRepo->guardar($alerta);
+
+                if ($tipoAlerta->equals(TipoAlerta::FamiliaNoAsignada)) {
+                    $caja->marcarPendienteClasificacion();
+                    $this->cajaRepo->guardar($caja);
+                }
+            }
+        );
+
+        return true;
     }
 
     private function reconciliar(

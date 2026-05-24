@@ -21,6 +21,7 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\Ran
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\SincronizacionEsp32Repository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\TaxonRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UbicacionCajaRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UnitTrayRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\Providers\EventServiceProvider;
 use Modules\InventarioGestionColeccion\Infrastructure\Providers\RouteServiceProvider;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\DatabaseHorarioValidadorAdapter;
@@ -40,6 +41,7 @@ use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persiste
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentSincronizacionEsp32Repository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentTaxonRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentUbicacionCajaRepository;
+use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentUnitTrayRepository;
 use Nwidart\Modules\Support\ModuleServiceProvider;
 
 class InventarioGestionColeccionServiceProvider extends ModuleServiceProvider
@@ -55,6 +57,7 @@ class InventarioGestionColeccionServiceProvider extends ModuleServiceProvider
 
     public array $bindings = [
         CajaRepository::class => EloquentCajaRepository::class,
+        UnitTrayRepository::class => EloquentUnitTrayRepository::class,
         GabineteRepository::class => EloquentGabineteRepository::class,
         RanuraGabineteRepository::class => EloquentRanuraGabineteRepository::class,
         HorarioRepository::class => EloquentHorarioRepository::class,

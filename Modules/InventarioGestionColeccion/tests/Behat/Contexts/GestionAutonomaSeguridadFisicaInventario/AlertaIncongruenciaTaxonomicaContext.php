@@ -115,6 +115,7 @@ final class AlertaIncongruenciaTaxonomicaContext extends BaseContext
         ));
 
         $horarioFake = new FakeHorarioValidadorAdapter($this->horarioRepo);
+        $horarioFake->setFueraDeHorario(false);
 
         self::$app->instance(HorarioValidadorPort::class, $horarioFake);
         self::$app->instance(HorarioRepository::class, $this->horarioRepo);
