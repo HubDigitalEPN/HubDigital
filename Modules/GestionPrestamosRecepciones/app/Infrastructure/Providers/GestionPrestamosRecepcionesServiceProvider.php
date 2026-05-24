@@ -19,7 +19,9 @@ use Modules\GestionPrestamosRecepciones\Domain\Exceptions\DocumentacionInsuficie
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\LimiteAnualDepositosAlcanzado;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\TransicionEstadoInvalida;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\ActaPrestamoRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\Repositories\ConfiguracionGlobalRecordatoriosRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\PrestamoRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\Repositories\RecordatorioDevolucionRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\EloquentHistorialAdapter;
@@ -30,7 +32,9 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\LaravelTransacti
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\PdfsigValidacionFirmaElectronicaAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Console\Commands\LimpiarBorradoresAbandonadosCommand;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentActaPrestamoRepository;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentConfiguracionGlobalRecordatoriosRepository;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentPrestamoRepository;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentRecordatorioDevolucionRepository;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentSolicitudPrestamoRepository;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Repositories\EloquentSolicitudDepositoRepository;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\BandejaActas;
@@ -64,6 +68,8 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
         NotificacionCuratoriaPort::class => FakeNotificacionCuratoriaAdapter::class,
         ValidacionFirmaElectronicaPort::class => PdfsigValidacionFirmaElectronicaAdapter::class,
         HistorialPort::class => EloquentHistorialAdapter::class,
+        RecordatorioDevolucionRepositoryInterface::class => EloquentRecordatorioDevolucionRepository::class,
+        ConfiguracionGlobalRecordatoriosRepositoryInterface::class => EloquentConfiguracionGlobalRecordatoriosRepository::class,
     ];
 
     public function register(): void
