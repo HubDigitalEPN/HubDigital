@@ -26,7 +26,7 @@
 
                 {{-- Encabezado --}}
                 <div class="rounded-lg border border-border bg-surface shadow-sm p-5 space-y-4">
-                    <div class="flex items-start justify-between gap-4">
+                    <div class="flex flex-wrap items-start justify-between gap-4">
                         <div>
                             <flux:heading size="xl" level="1" class="font-display">
                                 Solicitud de {{ mb_strtolower($deposito->tipo_tramite) }}
@@ -37,7 +37,7 @@
                     </div>
                     <flux:separator />
 
-                    <dl class="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
+                    <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-x-6 sm:gap-y-4 text-sm">
                         <div>
                             <dt class="text-text-secondary">Tipo de trámite</dt>
                             <dd class="font-medium text-text-primary mt-0.5">{{ $deposito->tipo_tramite }}</dd>
@@ -85,7 +85,7 @@
                     <div class="rounded-lg border border-border bg-surface shadow-sm p-5 space-y-4">
                         <flux:heading size="lg" level="2" class="font-display">Datos de documentación oficial</flux:heading>
                         <flux:separator />
-                        <dl class="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
+                        <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-x-6 sm:gap-y-4 text-sm">
                             @if($deposito->nro_permiso_recoleccion)
                                 <div>
                                     <dt class="text-text-secondary">N.º permiso recolección</dt>

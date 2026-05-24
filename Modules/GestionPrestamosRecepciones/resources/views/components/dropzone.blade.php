@@ -41,7 +41,7 @@
     x-on:dragover.prevent="if (!cargado) arrastrando = true"
     x-on:dragleave.prevent="arrastrando = false"
     x-on:drop.prevent="soltar($event)"
-    class="flex items-center gap-4 rounded-lg border-2 p-4 transition-all"
+    class="flex flex-col items-center gap-3 text-center sm:flex-row sm:items-center sm:gap-4 sm:text-left rounded-lg border-2 p-4 transition-all"
     x-bind:class="cargado
         ? 'border-success/40 bg-success/5 cursor-default'
         : arrastrando

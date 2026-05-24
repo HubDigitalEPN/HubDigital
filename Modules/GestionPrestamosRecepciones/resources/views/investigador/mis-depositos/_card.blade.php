@@ -1,4 +1,4 @@
-<div class="flex items-center justify-between gap-4">
+<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
 
     {{-- Info principal --}}
     <div class="min-w-0">

@@ -27,7 +27,7 @@
 
         {{-- Borrador restaurado --}}
         @if($borradorRestaurado && $paso < 6)
-            <div class="rounded-lg border border-science-blue/30 bg-science-blue/5 p-4 flex items-center justify-between gap-4">
+            <div class="rounded-lg border border-science-blue/30 bg-science-blue/5 p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                 <div class="flex items-center gap-3">
                     <flux:icon name="bookmark" class="size-5 text-science-blue shrink-0" />
                     <div>
@@ -100,7 +100,7 @@
     <div class="rounded-lg border border-border bg-surface shadow-sm">
 
         {{-- Step content --}}
-        <div class="p-6">
+        <div class="p-4 sm:p-6">
             @if($paso === 1)
                 @include('gestionprestamosrecepciones::investigador.registro-solicitud-deposito.paso-tramite')
             @elseif($paso === 2)
@@ -116,7 +116,7 @@
 
         {{-- Footer navigation --}}
         @if($paso < 6)
-            <div class="px-6 py-4 border-t border-border bg-bg-main rounded-b-lg flex items-center justify-between gap-3">
+            <div class="px-4 py-3 sm:px-6 sm:py-4 border-t border-border bg-bg-main rounded-b-lg flex items-center justify-between gap-3">
                 <div>
                     @if($paso > 1 && !$extraccionProcesando)
                         <flux:button variant="ghost" wire:click="retroceder" icon="arrow-left">

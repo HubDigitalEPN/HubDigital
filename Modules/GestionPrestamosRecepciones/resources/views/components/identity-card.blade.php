@@ -13,9 +13,9 @@ $colorClasses = match($resultado) {
 };
 @endphp
 
-<div class="rounded-lg border-2 p-4 {{ $colorClasses }} grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+<div class="rounded-lg border-2 p-4 {{ $colorClasses }} flex flex-col items-center gap-3 sm:grid sm:grid-cols-[1fr_auto_1fr] sm:items-center sm:gap-4">
     {{-- Left: Perfil del sistema --}}
-    <div class="space-y-0.5">
+    <div class="space-y-0.5 text-center sm:text-left">
         <p class="text-[10px] font-semibold tracking-wider text-text-secondary">Perfil del sistema</p>
         <p class="text-base font-semibold font-serif text-text-primary leading-snug">{{ $nombrePerfil }}</p>
         <p class="text-xs text-text-secondary">Nombre registrado</p>
@@ -27,7 +27,7 @@ $colorClasses = match($resultado) {
     </div>
 
     {{-- Right: Nombre en documento --}}
-    <div class="space-y-0.5 text-right">
+    <div class="space-y-0.5 text-center sm:text-right">
         <p class="text-[10px] font-semibold tracking-wider text-text-secondary">Nombre en el formato</p>
         <p class="text-base font-semibold font-serif leading-snug
             {{ $nombreEnDocumento ? 'text-text-primary' : 'text-text-secondary italic' }}"
