@@ -7,6 +7,8 @@ namespace Modules\GestionPrestamosRecepciones\Domain\Entities;
 use DateTimeImmutable;
 use InvalidArgumentException;
 use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoIniciado;
+use Modules\GestionPrestamosRecepciones\Domain\Events\ProrrogaAprobada;
+use Modules\GestionPrestamosRecepciones\Domain\Exceptions\TransicionDeEstadoInvalidaException;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrestamoId;
@@ -22,7 +24,7 @@ final class Prestamo
         private readonly string $investigadorId,
         private EstadoPrestamo $estado,
         private readonly DateTimeImmutable $iniciadoEn,
-        private readonly DateTimeImmutable $fechaFin,
+        private DateTimeImmutable $fechaFin,
     ) {}
 
     // ── Named constructors ────────────────────────────────────────────────────
@@ -75,6 +77,30 @@ final class Prestamo
             estado: $estado,
             iniciadoEn: $iniciadoEn,
             fechaFin: $fechaFin,
+        );
+    }
+
+    // ── Business methods ──────────────────────────────────────────────────────
+
+    public function prorrogar(string $curadorId, DateTimeImmutable $nuevaFechaFin): void
+    {
+        if ($nuevaFechaFin <= $this->fechaFin) {
+            throw TransicionDeEstadoInvalidaException::para(
+                'Prestamo',
+                $this->estado->name,
+                'prorrogar — la nueva fecha de fin debe ser posterior a la actual'
+            );
+        }
+
+        $fechaAnterior = $this->fechaFin;
+        $this->fechaFin = $nuevaFechaFin;
+
+        $this->events[] = new ProrrogaAprobada(
+            prestamoId: $this->id,
+            curadorId: $curadorId,
+            nuevaFechaFin: $nuevaFechaFin,
+            fechaAnterior: $fechaAnterior,
+            ocurridoEn: new DateTimeImmutable,
         );
     }
 
