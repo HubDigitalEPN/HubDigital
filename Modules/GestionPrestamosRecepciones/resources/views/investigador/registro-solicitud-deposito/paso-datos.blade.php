@@ -216,7 +216,7 @@
 
         @if(!$resultadoIdentidad)
             <div class="space-y-2">
-                <div class="flex gap-3 items-end">
+                <div class="flex flex-col gap-2 sm:flex-row sm:gap-3 sm:items-end">
                     <flux:field class="flex-1 !mb-0">
                         <flux:label>Nombre tal como aparece en el formato de solicitud</flux:label>
                         <flux:input
