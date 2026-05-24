@@ -560,7 +560,7 @@ final class DefinicionRecordatoriosDevolucionContext extends BaseContext
                 new AprobarProrrogaPrestamoInput(
                     prestamoId: (string) $this->prestamoExistente->id(),
                     curadorId: $this->curadorId,
-                    nuevaFechaFin: $nuevaFechaFin,
+                    nuevaFechaFin: $nuevaFechaFin->format(\DateTimeInterface::ATOM),
                 )
             );
         } catch (\Throwable $e) {
