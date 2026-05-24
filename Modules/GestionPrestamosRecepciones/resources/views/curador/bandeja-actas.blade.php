@@ -1,4 +1,4 @@
-<div class="p-6 space-y-8">
+<div class="p-6 space-y-6">
 
     <flux:heading size="xl" level="1" class="font-display">Bandeja de actas</flux:heading>
 
@@ -6,193 +6,132 @@
         <flux:callout variant="success" icon="check-circle">{{ $successMessage }}</flux:callout>
     @endif
 
-    {{-- Sección 1: Por Enviar --}}
+    {{-- Barra de filtros --}}
     <div class="space-y-3">
-        <div class="flex items-center gap-3">
-            <flux:heading size="lg" level="2" class="font-display">Pendientes de envío</flux:heading>
-            @if($actasPorEnviar->isNotEmpty())
-                <flux:badge color="yellow" size="sm">{{ $actasPorEnviar->count() }}</flux:badge>
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <flux:input
+                wire:model.live.debounce.300ms="busqueda"
+                placeholder="Buscar por N.º acta, N.º solicitud o título..."
+                icon="magnifying-glass"
+                clearable
+                class="flex-1" />
+            <flux:input
+                wire:model.live.debounce.300ms="busquedaInvestigador"
+                placeholder="Buscar por investigador..."
+                icon="user"
+                clearable
+                class="flex-1" />
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+            <flux:select wire:model.live="estado" class="w-52">
+                <flux:select.option value="">Todos los estados</flux:select.option>
+                <flux:select.option value="pendiente_envio">Pendiente de envío</flux:select.option>
+                <flux:select.option value="pendiente_firma">Pendiente de firma</flux:select.option>
+                <flux:select.option value="pendiente_validacion">Pendiente de validación</flux:select.option>
+                <flux:select.option value="validada">Validada</flux:select.option>
+                <flux:select.option value="rechazada">Rechazada</flux:select.option>
+            </flux:select>
+            <flux:select wire:model.live="ordenCampo" class="w-52">
+                <flux:select.option value="fecha">Ordenar por fecha</flux:select.option>
+                <flux:select.option value="numero_solicitud">Ordenar por N.º solicitud</flux:select.option>
+            </flux:select>
+            <flux:button
+                wire:click="toggleOrden"
+                variant="ghost"
+                icon="{{ $ordenDireccion === 'asc' ? 'bars-arrow-up' : 'bars-arrow-down' }}"
+                title="{{ $ordenDireccion === 'asc' ? 'Ascendente' : 'Descendente' }}" />
+            @if($busqueda !== '' || $estado !== '' || $busquedaInvestigador !== '')
+                <flux:button wire:click="limpiarFiltros" variant="ghost" icon="x-mark" title="Limpiar filtros" />
             @endif
         </div>
+    </div>
 
-        @if($actasPorEnviar->isEmpty())
-            <div class="flex flex-col items-center justify-center rounded-lg border border-border bg-surface py-8 text-center">
-                <flux:icon name="paper-airplane" class="size-10 text-text-secondary mb-2" />
-                <flux:text class="text-text-secondary text-sm">No hay actas pendientes de envío.</flux:text>
-            </div>
-        @else
-            <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
-                <table class="w-full text-sm">
-                    <thead class="bg-blue-navy border-b border-border">
-                        <tr>
-                            <th class="px-4 py-3 text-left font-medium text-white">N.º Préstamo</th>
-                            <th class="px-4 py-3 text-left font-medium text-white">Solicitud</th>
-                            <th class="px-4 py-3 text-left font-medium text-white">Estado</th>
-                            <th class="px-4 py-3 text-left font-medium text-white">Generada</th>
-                            <th class="px-4 py-3 text-left font-medium text-white">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-border">
-                        @foreach($actasPorEnviar as $acta)
-                            <tr class="hover:bg-bg-main transition-colors">
-                                <td class="px-4 py-3 font-mono text-xs text-text-secondary whitespace-nowrap">
-                                    {{ $acta->numero_prestamo }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-text-primary">
-                                    {{ $acta->solicitud?->titulo_estudio ?? $acta->solicitud_prestamo_id }}
-                                </td>
-                                <td class="px-4 py-3">
-                                    <x-gestionprestamosrecepciones::acta-status-badge :estado="$acta->estado" />
-                                </td>
-                                <td class="px-4 py-3 text-xs text-text-secondary whitespace-nowrap">
-                                    {{ $acta->created_at->format('d/m/Y') }}
-                                </td>
-                                <td class="px-4 py-3">
-                                    <div class="flex gap-2">
-                                        <flux:button
-                                            size="sm"
-                                            variant="ghost"
-                                            icon="eye"
-                                            href="{{ route('prestamos.acta.ver', $acta->id) }}"
-                                            target="_blank"
-                                        >
+    @php $filtroActivo = $busqueda !== '' || $estado !== '' || $busquedaInvestigador !== ''; @endphp
+
+    @if($actas->isEmpty() && !$filtroActivo)
+        <div class="flex flex-col items-center justify-center rounded-lg border border-border bg-surface py-[60px] text-center">
+            <flux:icon name="clipboard-document" class="size-12 text-text-secondary mb-3" />
+            <flux:heading size="lg" level="2">Sin actas</flux:heading>
+            <flux:text class="text-text-secondary mt-1">Las actas aparecerán aquí cuando se aprueben solicitudes.</flux:text>
+        </div>
+    @elseif($actas->isEmpty())
+        <div class="flex flex-col items-center justify-center rounded-lg border border-border bg-surface py-[60px] text-center">
+            <flux:icon name="magnifying-glass" class="size-12 text-text-secondary mb-3" />
+            <flux:heading size="lg" level="2">Sin resultados</flux:heading>
+            <flux:text class="text-text-secondary mt-1">No se encontraron actas con los filtros aplicados.</flux:text>
+            <flux:button variant="ghost" class="mt-4" wire:click="limpiarFiltros">
+                Limpiar filtros
+            </flux:button>
+        </div>
+    @else
+        <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
+            <table class="w-full text-sm">
+                <thead class="bg-blue-navy border-b border-border">
+                    <tr>
+                        <th class="px-4 py-3 text-left font-medium text-white">N.º acta</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">N.º solicitud</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">Investigador</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">Estado</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">Fecha</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-border">
+                    @foreach($actas as $acta)
+                        <tr class="hover:bg-bg-main transition-colors">
+                            <td class="px-4 py-3 font-mono text-xs text-text-secondary whitespace-nowrap">
+                                {{ $acta->numero_prestamo }}
+                            </td>
+                            <td class="px-4 py-3 font-mono text-xs text-text-secondary whitespace-nowrap">
+                                {{ $acta->solicitud?->numero_solicitud ?? '—' }}
+                            </td>
+                            <td class="px-4 py-3 text-sm text-text-secondary">
+                                {{ $investigadores->get($acta->solicitud?->investigador_id)?->name ?? '—' }}
+                            </td>
+                            <td class="px-4 py-3">
+                                <x-gestionprestamosrecepciones::acta-status-badge :estado="$acta->estado" />
+                            </td>
+                            <td class="px-4 py-3 text-xs text-text-secondary whitespace-nowrap">
+                                {{ $acta->created_at->format('d/m/Y') }}
+                            </td>
+                            <td class="px-4 py-3">
+                                <div class="flex gap-2">
+                                    @if($acta->estado === 'pendiente_envio')
+                                        <flux:button size="sm" variant="ghost" icon="eye"
+                                            href="{{ route('prestamos.acta.ver', $acta->id) }}" target="_blank">
                                             Vista previa
                                         </flux:button>
-                                        <flux:button
-                                            size="sm"
-                                            variant="primary"
-                                            icon="paper-airplane"
+                                        <flux:button size="sm" variant="primary" icon="paper-airplane"
                                             wire:click="enviarActa('{{ $acta->id }}')"
                                             wire:loading.attr="disabled"
                                             wire:target="enviarActa('{{ $acta->id }}')"
-                                            wire:confirm="¿Confirmas que deseas enviar el acta al investigador para su firma?"
-                                        >
+                                            wire:confirm="¿Confirmas que deseas enviar el acta al investigador para su firma?">
                                             <flux:icon wire:loading wire:target="enviarActa('{{ $acta->id }}')" name="arrow-path" class="animate-spin" />
                                             Enviar
                                         </flux:button>
-                                    </div>
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        @endif
-    </div>
-
-    {{-- Sección 2: Pendientes de Firma --}}
-    <div class="space-y-3">
-        <div class="flex items-center gap-3">
-            <flux:heading size="lg" level="2" class="font-display">Esperando firma del investigador</flux:heading>
-            @if($actasPendienteFirma->isNotEmpty())
-                <flux:badge color="orange" size="sm">{{ $actasPendienteFirma->count() }}</flux:badge>
-            @endif
-        </div>
-
-        @if($actasPendienteFirma->isEmpty())
-            <div class="flex flex-col items-center justify-center rounded-lg border border-border bg-surface py-8 text-center">
-                <flux:icon name="clock" class="size-10 text-text-secondary mb-2" />
-                <flux:text class="text-text-secondary text-sm">No hay actas esperando firma del investigador.</flux:text>
-            </div>
-        @else
-            <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
-                <table class="w-full text-sm">
-                    <thead class="bg-blue-navy border-b border-border">
-                        <tr>
-                            <th class="px-4 py-3 text-left font-medium text-white">N.º Préstamo</th>
-                            <th class="px-4 py-3 text-left font-medium text-white">Solicitud</th>
-                            <th class="px-4 py-3 text-left font-medium text-white">Estado</th>
-                            <th class="px-4 py-3 text-left font-medium text-white">Enviada</th>
-                            <th class="px-4 py-3 text-left font-medium text-white">Vista previa</th>
+                                    @elseif($acta->estado === 'pendiente_firma')
+                                        <flux:button size="sm" variant="ghost" icon="document-text"
+                                            href="{{ route('prestamos.acta.ver', $acta->id) }}" target="_blank">
+                                            Ver acta
+                                        </flux:button>
+                                    @elseif($acta->estado === 'pendiente_validacion')
+                                        <flux:button size="sm" variant="primary" icon="magnifying-glass"
+                                            wire:navigate href="{{ route('prestamos.curador.acta.validar', $acta->id) }}">
+                                            Validar
+                                        </flux:button>
+                                    @else
+                                        <flux:button size="sm" variant="ghost" icon="eye"
+                                            href="{{ route('prestamos.acta.ver', $acta->id) }}" target="_blank">
+                                            Ver
+                                        </flux:button>
+                                    @endif
+                                </div>
+                            </td>
                         </tr>
-                    </thead>
-                    <tbody class="divide-y divide-border">
-                        @foreach($actasPendienteFirma as $acta)
-                            <tr class="hover:bg-bg-main transition-colors">
-                                <td class="px-4 py-3 font-mono text-xs text-text-secondary whitespace-nowrap">
-                                    {{ $acta->numero_prestamo }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-text-primary">
-                                    {{ $acta->solicitud?->titulo_estudio ?? $acta->solicitud_prestamo_id }}
-                                </td>
-                                <td class="px-4 py-3">
-                                    <x-gestionprestamosrecepciones::acta-status-badge :estado="$acta->estado" />
-                                </td>
-                                <td class="px-4 py-3 text-xs text-text-secondary whitespace-nowrap">
-                                    {{ $acta->updated_at->format('d/m/Y') }}
-                                </td>
-                                <td class="px-4 py-3">
-                                    <flux:button
-                                        size="sm"
-                                        variant="ghost"
-                                        icon="document-text"
-                                        href="{{ route('prestamos.acta.ver', $acta->id) }}"
-                                        target="_blank"
-                                    >
-                                        Ver acta
-                                    </flux:button>
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        @endif
-    </div>
-
-    {{-- Sección 3: Por Validar --}}
-    <div class="space-y-3">
-        <div class="flex items-center gap-3">
-            <flux:heading size="lg" level="2" class="font-display">Pendientes de validación</flux:heading>
-            @if($actasPorValidar->isNotEmpty())
-                <flux:badge color="blue" size="sm">{{ $actasPorValidar->count() }}</flux:badge>
-            @endif
+                    @endforeach
+                </tbody>
+            </table>
         </div>
-
-        @if($actasPorValidar->isEmpty())
-            <div class="flex flex-col items-center justify-center rounded-lg border border-border bg-surface py-8 text-center">
-                <flux:icon name="document-check" class="size-10 text-text-secondary mb-2" />
-                <flux:text class="text-text-secondary text-sm">No hay actas firmadas esperando validación.</flux:text>
-            </div>
-        @else
-            <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
-                <table class="w-full text-sm">
-                    <thead class="bg-blue-navy border-b border-border">
-                        <tr>
-                            <th class="px-4 py-3 text-left font-medium text-white">N.º Préstamo</th>
-                            <th class="px-4 py-3 text-left font-medium text-white">Solicitud</th>
-                            <th class="px-4 py-3 text-left font-medium text-white">Estado</th>
-                            <th class="px-4 py-3 text-left font-medium text-white">Acta subida</th>
-                            <th class="px-4 py-3 text-left font-medium text-white">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-border">
-                        @foreach($actasPorValidar as $acta)
-                            <tr class="hover:bg-bg-main transition-colors">
-                                <td class="px-4 py-3 font-mono text-xs text-text-secondary whitespace-nowrap">
-                                    {{ $acta->numero_prestamo }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-text-primary">
-                                    {{ $acta->solicitud?->titulo_estudio ?? $acta->solicitud_prestamo_id }}
-                                </td>
-                                <td class="px-4 py-3">
-                                    <x-gestionprestamosrecepciones::acta-status-badge :estado="$acta->estado" />
-                                </td>
-                                <td class="px-4 py-3 text-xs text-text-secondary whitespace-nowrap">
-                                    {{ $acta->updated_at->format('d/m/Y') }}
-                                </td>
-                                <td class="px-4 py-3">
-                                    <flux:button size="sm" variant="ghost" icon="magnifying-glass"
-                                        wire:navigate href="{{ route('prestamos.curador.acta.validar', $acta->id) }}">
-                                        Validar
-                                    </flux:button>
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        @endif
-    </div>
+    @endif
 
 </div>
