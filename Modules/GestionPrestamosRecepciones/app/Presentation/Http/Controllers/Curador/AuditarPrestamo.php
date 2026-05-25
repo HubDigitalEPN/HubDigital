@@ -8,10 +8,14 @@ use App\Concerns\HandlesDomainExceptions;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ActualizarRecordatoriosPrestamoEspecifico\ActualizarRecordatoriosPrestamoEspecificoHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ActualizarRecordatoriosPrestamoEspecifico\ActualizarRecordatoriosPrestamoEspecificoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialPrestamo\ConsultarHistorialPrestamoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialPrestamo\ConsultarHistorialPrestamoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudInput;
+use Modules\GestionPrestamosRecepciones\Domain\Repositories\RecordatorioDevolucionRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrestamoId;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\PrestamoEloquentModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\SolicitudPrestamoModel;
 
@@ -22,7 +26,17 @@ final class AuditarPrestamo extends Component
 
     public string $prestamoId;
 
-    public function mount(string $id): void
+    /** @var list<array{diasAntes: int, fecha: string}> */
+    public array $recordatoriosPersonalizados = [];
+
+    public bool $mostrarModalRecordatorios = false;
+
+    /** @var list<int> */
+    public array $diasAntesModal = [];
+
+    public string $nuevoDiaModal = '';
+
+    public function mount(string $id, RecordatorioDevolucionRepositoryInterface $repo): void
     {
         $this->prestamoId = $id;
 
@@ -31,6 +45,88 @@ final class AuditarPrestamo extends Component
         if ($prestamo === null) {
             abort(404);
         }
+
+        $this->cargarRecordatorios($repo);
+    }
+
+    public function abrirModalRecordatorios(): void
+    {
+        $this->diasAntesModal = count($this->recordatoriosPersonalizados) > 0
+            ? array_column($this->recordatoriosPersonalizados, 'diasAntes')
+            : [30, 15, 7, 1];
+
+        $this->nuevoDiaModal = '';
+        $this->mostrarModalRecordatorios = true;
+    }
+
+    public function toggleDiaModal(int $dia): void
+    {
+        if (in_array($dia, array_map('intval', $this->diasAntesModal), true)) {
+            $this->diasAntesModal = array_values(
+                array_filter($this->diasAntesModal, fn (mixed $d) => (int) $d !== $dia)
+            );
+        } else {
+            $this->diasAntesModal[] = $dia;
+            rsort($this->diasAntesModal);
+        }
+    }
+
+    public function agregarDiaModal(): void
+    {
+        $dia = (int) $this->nuevoDiaModal;
+
+        if ($dia < 1 || in_array($dia, array_map('intval', $this->diasAntesModal), true)) {
+            $this->nuevoDiaModal = '';
+
+            return;
+        }
+
+        $this->diasAntesModal[] = $dia;
+        rsort($this->diasAntesModal);
+        $this->nuevoDiaModal = '';
+    }
+
+    public function quitarDiaModal(int $dia): void
+    {
+        $this->diasAntesModal = array_values(
+            array_filter($this->diasAntesModal, fn (mixed $d) => (int) $d !== $dia)
+        );
+    }
+
+    public function actualizarRecordatorios(
+        ActualizarRecordatoriosPrestamoEspecificoHandler $handler,
+        RecordatorioDevolucionRepositoryInterface $repo,
+    ): void {
+        $this->validate([
+            'diasAntesModal' => ['required', 'array', 'min:1'],
+            'diasAntesModal.*' => ['integer', 'min:1'],
+        ]);
+
+        try {
+            $handler->handle(new ActualizarRecordatoriosPrestamoEspecificoInput(
+                prestamoId: $this->prestamoId,
+                curadorId: (string) auth()->id(),
+                diasAntes: array_values(array_map('intval', $this->diasAntesModal)),
+            ));
+
+            $this->cargarRecordatorios($repo);
+            $this->mostrarModalRecordatorios = false;
+        } catch (\Throwable $e) {
+            $this->dispatch('domain-error', message: $e->getMessage());
+        }
+    }
+
+    private function cargarRecordatorios(RecordatorioDevolucionRepositoryInterface $repo): void
+    {
+        $recordatorios = $repo->listarPorPrestamo(PrestamoId::fromString($this->prestamoId));
+
+        $this->recordatoriosPersonalizados = array_map(
+            fn ($r) => [
+                'diasAntes' => $r->diasAntesVencimiento(),
+                'fecha' => $r->fechaProgramada()->format('d/m/Y'),
+            ],
+            $recordatorios,
+        );
     }
 
     public function render(
