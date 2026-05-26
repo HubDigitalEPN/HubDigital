@@ -19,6 +19,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Exceptions\DocumentacionInsuficie
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\LimiteAnualDepositosAlcanzado;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\TransicionEstadoInvalida;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\ActaPrestamoRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\PrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
@@ -32,6 +33,7 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Console\Commands\LimpiarB
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentActaPrestamoRepository;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentPrestamoRepository;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentSolicitudPrestamoRepository;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Repositories\EloquentMatrizEspeciesRepository;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Repositories\EloquentSolicitudDepositoRepository;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\BandejaActas;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\BandejaSolicitudes;
@@ -59,6 +61,7 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
         ActaPrestamoRepositoryInterface::class => EloquentActaPrestamoRepository::class,
         PrestamoRepositoryInterface::class => EloquentPrestamoRepository::class,
         SolicitudDepositoRepositoryInterface::class => EloquentSolicitudDepositoRepository::class,
+        MatrizEspeciesRepositoryInterface::class => EloquentMatrizEspeciesRepository::class,
         EventPublisherPort::class => LaravelEventPublisherAdapter::class,
         TransactionManagerPort::class => LaravelTransactionManagerAdapter::class,
         NotificacionCuratoriaPort::class => FakeNotificacionCuratoriaAdapter::class,
