@@ -9,18 +9,21 @@ use Behat\Hook\BeforeScenario;
 use Behat\Step\Given;
 use Behat\Step\Then;
 use Behat\Step\When;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Modules\CatalogoPublico\Application\Ports\DatosEspecimenProveedor;
+use Modules\CatalogoPublico\Application\Ports\ProveedorEspecimenesPort;
 use Modules\CatalogoPublico\Application\UseCases\ConsultarInformacionDivulgada\ConsultarInformacionDivulgadaHandler;
 use Modules\CatalogoPublico\Application\UseCases\ConsultarInformacionDivulgada\ConsultarInformacionDivulgadaInput;
 use Modules\CatalogoPublico\Application\UseCases\ModificarConfiguracionDivulgacion\ModificarConfiguracionDivulgacionHandler;
 use Modules\CatalogoPublico\Application\UseCases\ModificarConfiguracionDivulgacion\ModificarConfiguracionDivulgacionInput;
 use Modules\CatalogoPublico\Application\UseCases\SincronizarEspecimenes\SincronizarEspecimenesHandler;
 use Modules\CatalogoPublico\Application\UseCases\SincronizarEspecimenes\SincronizarEspecimenesInput;
-use Modules\CatalogoPublico\Domain\Entities\Especimen;
 use Modules\CatalogoPublico\Domain\Entities\EspecimenDivulgable;
 use Modules\CatalogoPublico\Domain\Repositories\EspecimenDivulgableRepositoryInterface;
-use Modules\CatalogoPublico\Domain\Repositories\EspecimenRepositoryInterface;
 use Modules\CatalogoPublico\Domain\ValueObjects\ConfiguracionVisibilidad;
 use Modules\CatalogoPublico\Tests\Behat\Contexts\BaseContext;
+use Modules\CatalogoPublico\Tests\Support\FakeProveedorEspecimenesPort;
 use PHPUnit\Framework\Assert;
 
 final class SincronizacionInformacionEspecimenesContext extends BaseContext
@@ -35,18 +38,23 @@ final class SincronizacionInformacionEspecimenesContext extends BaseContext
 
     // ── Estado del escenario ─────────────────────────────────────────────────
 
-    /** @var array<string, Especimen> Especímenes de la base interna, indexados por occurrenceID */
+    /** @var array<string, DatosEspecimenProveedor> Datos internos del Supplier, indexados por occurrenceID */
     private array $especimenesInternos = [];
 
     private mixed $ultimaRespuesta = null;
 
     private ?\Throwable $excepcionCapturada = null;
 
+    private FakeProveedorEspecimenesPort $fakeProveedor;
+
     // ── Inicialización por escenario ─────────────────────────────────────────
 
     #[BeforeScenario]
     public function initializeHandlers(): void
     {
+        $this->fakeProveedor = new FakeProveedorEspecimenesPort;
+        self::$app->instance(ProveedorEspecimenesPort::class, $this->fakeProveedor);
+
         $this->sincronizarHandler = $this->make(SincronizarEspecimenesHandler::class);
         $this->modificarConfiguracionHandler = $this->make(ModificarConfiguracionDivulgacionHandler::class);
         $this->consultarInformacionHandler = $this->make(ConsultarInformacionDivulgadaHandler::class);
@@ -62,16 +70,39 @@ final class SincronizacionInformacionEspecimenesContext extends BaseContext
     #[Given('que existen los siguientes especímenes en la base de información interna del laboratorio:')]
     public function queExistenLosEspecimenesEnLaBaseInternaDelLaboratorio(TableNode $tabla): void
     {
-        $repo = $this->make(EspecimenRepositoryInterface::class);
-
         foreach ($tabla->getHash() as $fila) {
             Assert::assertNotEmpty($fila['occurrenceID'], 'occurrenceID es requerido en los antecedentes');
             Assert::assertNotEmpty($fila['scientificName'], 'scientificName es requerido en los antecedentes');
             Assert::assertNotEmpty($fila['occurrenceStatus'], 'occurrenceStatus es requerido en los antecedentes');
 
-            $especimen = Especimen::registrar(
-                id: $repo->nextIdentity(),
-                occurrenceID: $fila['occurrenceID'],
+            // Sembramos en taxonomia para satisfacer el FK especimen_id → taxonomia.especimenes.id
+            $taxonId = (string) Str::uuid();
+            DB::table('taxonomia.taxones')->insert([
+                'id' => $taxonId,
+                'nombre_cientifico' => $fila['scientificName'],
+                'rango' => 'especie',
+                'padre_id' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            $especimenId = (string) Str::uuid();
+            DB::table('taxonomia.especimenes')->insert([
+                'id' => $especimenId,
+                'codigo_catalogo' => 'BHT-'.strtoupper(substr($especimenId, 0, 8)),
+                'taxon_id' => $taxonId,
+                'occurrence_id' => $fila['occurrenceID'],
+                'localidad' => 'Test',
+                'fecha_colecta' => '2024-01-01',
+                'colector' => $fila['recordedBy'] !== '' ? $fila['recordedBy'] : 'Test',
+                'estado' => 'disponible',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            $datos = new DatosEspecimenProveedor(
+                especimenId: $especimenId,
+                occurrenceId: $fila['occurrenceID'],
                 scientificName: $fila['scientificName'],
                 individualCount: (int) $fila['individualCount'],
                 typeStatus: $fila['typeStatus'] !== '' ? $fila['typeStatus'] : null,
@@ -88,14 +119,14 @@ final class SincronizacionInformacionEspecimenesContext extends BaseContext
                 decimalLongitude: $fila['decimalLongitude'] !== '' ? (float) $fila['decimalLongitude'] : null,
             );
 
-            $repo->guardar($especimen);
-            $this->especimenesInternos[$fila['occurrenceID']] = $especimen;
+            $this->fakeProveedor->agregar($datos);
+            $this->especimenesInternos[$fila['occurrenceID']] = $datos;
         }
 
         Assert::assertCount(
             count($tabla->getHash()),
             $this->especimenesInternos,
-            'No todos los especímenes de antecedentes fueron ingresados correctamente'
+            'No todos los especímenes de antecedentes fueron registrados en el proveedor'
         );
     }
 
@@ -134,7 +165,7 @@ final class SincronizacionInformacionEspecimenesContext extends BaseContext
             Assert::assertArrayHasKey(
                 $id,
                 $this->especimenesInternos,
-                "El espécimen '{$id}' no fue ingresado en la base interna"
+                "El espécimen '{$id}' no fue registrado en la base interna"
             );
         }
 
@@ -221,7 +252,7 @@ final class SincronizacionInformacionEspecimenesContext extends BaseContext
             Assert::assertArrayHasKey(
                 $occurrenceID,
                 $this->especimenesInternos,
-                "El espécimen '{$occurrenceID}' no fue ingresado en la base interna"
+                "El espécimen '{$occurrenceID}' no fue registrado en la base interna"
             );
 
             $especimenesInput[] = [
@@ -296,7 +327,7 @@ final class SincronizacionInformacionEspecimenesContext extends BaseContext
 
             $divulgable = EspecimenDivulgable::sincronizar(
                 id: $repoDivulgable->nextIdentity(),
-                occurrenceID: $occurrenceID,
+                especimenId: $this->especimenesInternos[$occurrenceID]->especimenId,
                 configuracion: ConfiguracionVisibilidad::desde($configuracion),
             );
 

@@ -18,7 +18,7 @@ final class EspecimenDivulgableEloquentModel extends Model
 
     protected $fillable = [
         'id',
-        'occurrence_id',
+        'especimen_id',
         'occurrence_id_visible',
         'scientific_name_visible',
         'individual_count_visible',
