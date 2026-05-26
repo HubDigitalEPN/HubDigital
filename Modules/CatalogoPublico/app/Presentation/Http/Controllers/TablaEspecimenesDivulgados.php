@@ -50,15 +50,18 @@ final class TablaEspecimenesDivulgados extends Component
         'decimalLongitudeVisible' => 'decimal_longitude_visible',
     ];
 
-    /**
-     * Caché computado de especímenes divulgables indexados por occurrence_id.
-     * Se carga UNA SOLA VEZ y se reutiliza cuando se abre el modal de configuración.
-     * Se invalida automáticamente cuando cambian los datos principales.
-     */
     #[Computed]
     public function especimenesDivulgablesIndexados()
     {
-        return EspecimenDivulgableEloquentModel::all()
+        return EspecimenDivulgableEloquentModel::query()
+            ->join(
+                'taxonomia.especimenes',
+                'taxonomia.especimenes.id',
+                '=',
+                'divulgacion.especimenes_divulgables.especimen_id'
+            )
+            ->select('divulgacion.especimenes_divulgables.*', 'taxonomia.especimenes.occurrence_id')
+            ->get()
             ->keyBy('occurrence_id');
     }
 
@@ -67,7 +70,6 @@ final class TablaEspecimenesDivulgados extends Component
         $this->occurrenceIDActivo = $occurrenceID;
         $this->configGuardada = false;
 
-        // Busca en el caché de especímenes divulgables, NO en BD
         $registro = $this->especimenesDivulgablesIndexados()[$occurrenceID] ?? null;
 
         if ($registro !== null) {
@@ -129,15 +131,18 @@ final class TablaEspecimenesDivulgados extends Component
     public function render(): View
     {
         $query = DB::table('divulgacion.especimenes_divulgables as ed')
-            ->join('divulgacion.especimenes as e', 'ed.occurrence_id', '=', 'e.occurrence_id')
+            ->join('taxonomia.especimenes as te', 'te.id', '=', 'ed.especimen_id')
+            ->join('taxonomia.taxones as tx_species', 'tx_species.id', '=', 'te.taxon_id')
+            ->leftJoin('taxonomia.taxones as tx_genus', 'tx_genus.id', '=', 'tx_species.padre_id')
+            ->leftJoin('taxonomia.taxones as tx_family', 'tx_family.id', '=', 'tx_genus.padre_id')
             ->select([
-                'ed.occurrence_id',
-                'e.scientific_name',
-                'e.type_status',
-                'e.family',
-                'e.genus',
-                'e.occurrence_status',
-                'e.country',
+                'te.occurrence_id',
+                'tx_species.nombre_cientifico as scientific_name',
+                DB::raw('te.disposition as type_status'),
+                'tx_genus.nombre_cientifico as genus',
+                'tx_family.nombre_cientifico as family',
+                'te.occurrence_status',
+                'te.country',
                 DB::raw('(
                     (ed.occurrence_id_visible::int) + (ed.scientific_name_visible::int) +
                     (ed.individual_count_visible::int) + (ed.type_status_visible::int) +
@@ -152,15 +157,15 @@ final class TablaEspecimenesDivulgados extends Component
 
         if ($this->buscar !== '') {
             $termino = '%'.mb_strtolower($this->buscar).'%';
-            $query->where(function ($q) use ($termino) {
-                $q->whereRaw('LOWER(e.scientific_name) ILIKE ?', [$termino])
-                    ->orWhereRaw('LOWER(ed.occurrence_id) ILIKE ?', [$termino])
-                    ->orWhereRaw('LOWER(e.family) ILIKE ?', [$termino]);
+            $query->where(function ($q) use ($termino): void {
+                $q->whereRaw('LOWER(tx_species.nombre_cientifico) ILIKE ?', [$termino])
+                    ->orWhereRaw('LOWER(te.occurrence_id) ILIKE ?', [$termino])
+                    ->orWhereRaw('LOWER(tx_family.nombre_cientifico) ILIKE ?', [$termino]);
             });
         }
 
         $especimenes = $query
-            ->orderBy('ed.occurrence_id')
+            ->orderBy('te.occurrence_id')
             ->paginate(25);
 
         return view('catalogopublico::livewire.tabla-especimenes-divulgados', [
