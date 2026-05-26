@@ -30,8 +30,10 @@
                     <th class="px-4 py-3 text-left font-medium text-white">Código</th>
                     <th class="px-4 py-3 text-left font-medium text-white">RFID</th>
                     <th class="px-4 py-3 text-left font-medium text-white">Nombre</th>
+                    <th class="hidden sm:table-cell px-4 py-3 text-left font-medium text-white">Observación</th>
                     <th class="px-4 py-3 text-left font-medium text-white">Cap. máx.</th>
                     <th class="px-4 py-3 text-left font-medium text-white">Estado</th>
+                    <th class="px-4 py-3 text-left font-medium text-white">Especial</th>
                     <th class="px-4 py-3 text-left font-medium text-white">Acciones</th>
                 </tr>
             </thead>
@@ -41,6 +43,15 @@
                         <td class="px-4 py-3 font-medium text-text-primary">{{ $caja['codigo'] }}</td>
                         <td class="px-4 py-3 font-mono text-xs text-text-secondary">{{ $caja['codigoRfid'] }}</td>
                         <td class="px-4 py-3 text-text-primary">{{ $caja['nombre'] ?? '—' }}</td>
+                        <td class="hidden sm:table-cell px-4 py-3 text-text-secondary max-w-xs">
+                            @if($caja['observacion'])
+                                <flux:tooltip :content="$caja['observacion']">
+                                    <span class="truncate block max-w-[180px] cursor-default">{{ $caja['observacion'] }}</span>
+                                </flux:tooltip>
+                            @else
+                                <span class="text-xs">—</span>
+                            @endif
+                        </td>
                         <td class="px-4 py-3 text-text-primary text-center">
                             {{ $caja['capacidadMaxima'] ?? '—' }}
                         </td>
@@ -48,6 +59,13 @@
                             <x-inventariogestioncoleccion::seguimiento-fisico.caja-estado-badge
                                 :estado="$caja['estado']"
                             />
+                        </td>
+                        <td class="px-4 py-3">
+                            @if($caja['esEspecial'])
+                                <span class="inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold bg-info text-white">Especial</span>
+                            @else
+                                <span class="text-text-secondary text-xs">—</span>
+                            @endif
                         </td>
                         <td class="px-4 py-3">
                             <div class="flex items-center gap-2">
@@ -99,7 +117,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="px-4 py-8 text-center text-text-primary">
+                        <td colspan="8" class="px-4 py-8 text-center text-text-primary">
                             @if($busqueda !== '')
                                 No se encontraron cajas para "{{ $busqueda }}".
                             @else
@@ -137,9 +155,9 @@
             </flux:field>
 
             <flux:field>
-                <flux:label>Familia taxonómica <flux:badge size="sm" color="zinc">Opcional</flux:badge></flux:label>
-                <flux:input wire:model="familiaTaxonomicaId" placeholder="Cerambycidae" />
-                <flux:error name="familiaTaxonomicaId" />
+                <flux:label>Observación <flux:badge size="sm" color="zinc">Opcional</flux:badge></flux:label>
+                <flux:textarea wire:model="observacion" rows="2" placeholder="Ej. Especímenes incautados - origen no determinado" />
+                <flux:error name="observacion" />
             </flux:field>
 
             <flux:field>
@@ -147,6 +165,12 @@
                 <flux:input type="number" wire:model="capacidadMaxima" min="1" max="32767"
                     x-on:keydown="if(!/^\d$/.test($event.key) && !['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Home','End'].includes($event.key)) $event.preventDefault()" />
                 <flux:error name="capacidadMaxima" />
+            </flux:field>
+
+            <flux:field variant="inline">
+                <flux:checkbox wire:model="esEspecial" id="crear-es-especial" />
+                <flux:label for="crear-es-especial">Caja especial</flux:label>
+                <flux:description>Marca si la caja tiene origen especial o no determinado.</flux:description>
             </flux:field>
 
             <div class="flex justify-end gap-3 pt-2">
@@ -175,9 +199,9 @@
             </flux:field>
 
             <flux:field>
-                <flux:label>Familia taxonómica <flux:badge size="sm" color="zinc">Opcional</flux:badge></flux:label>
-                <flux:input wire:model="editFamiliaTaxonomicaId" placeholder="Cerambycidae" />
-                <flux:error name="editFamiliaTaxonomicaId" />
+                <flux:label>Observación <flux:badge size="sm" color="zinc">Opcional</flux:badge></flux:label>
+                <flux:textarea wire:model="editObservacion" rows="2" placeholder="Ej. Especímenes incautados - origen no determinado" />
+                <flux:error name="editObservacion" />
             </flux:field>
 
             <flux:field>
@@ -185,6 +209,12 @@
                 <flux:input type="number" wire:model="editCapacidadMaxima" min="1" max="32767"
                     x-on:keydown="if(!/^\d$/.test($event.key) && !['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Home','End'].includes($event.key)) $event.preventDefault()" />
                 <flux:error name="editCapacidadMaxima" />
+            </flux:field>
+
+            <flux:field variant="inline">
+                <flux:checkbox wire:model="editEsEspecial" id="edit-es-especial" />
+                <flux:label for="edit-es-especial">Caja especial</flux:label>
+                <flux:description>Marca si la caja tiene origen especial o no determinado.</flux:description>
             </flux:field>
 
             <div class="flex justify-end gap-3 pt-2">

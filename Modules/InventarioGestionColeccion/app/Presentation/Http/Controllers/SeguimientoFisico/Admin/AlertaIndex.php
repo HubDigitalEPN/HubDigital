@@ -13,6 +13,9 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Ig
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarAlertas\ListarAlertasHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarAlertas\ListarAlertasInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarCajas\ListarCajasHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarGabinetes\ListarGabineteHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarRanurasGabinete\ListarRanurasGabineteHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarRanurasGabinete\ListarRanurasGabineteInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ResolverAlerta\ResolverAlertaHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ResolverAlerta\ResolverAlertaInput;
 
@@ -36,9 +39,16 @@ final class AlertaIndex extends Component
 
     private array $cajasPorId = [];
 
-    public function mount(ListarAlertasHandler $alertasHandler, ListarCajasHandler $cajasHandler): void
-    {
+    private array $ranurasInfo = [];
+
+    public function mount(
+        ListarAlertasHandler $alertasHandler,
+        ListarCajasHandler $cajasHandler,
+        ListarGabineteHandler $gabineteHandler,
+        ListarRanurasGabineteHandler $ranurasHandler,
+    ): void {
         $this->buildCajasPorId($cajasHandler);
+        $this->buildRanurasInfo($gabineteHandler, $ranurasHandler);
         $this->cargarAlertas($alertasHandler);
     }
 
@@ -100,6 +110,19 @@ final class AlertaIndex extends Component
         }
     }
 
+    private function buildRanurasInfo(
+        ListarGabineteHandler $gabineteHandler,
+        ListarRanurasGabineteHandler $ranurasHandler,
+    ): void {
+        $this->ranurasInfo = [];
+        foreach ($gabineteHandler->handle()->items as $g) {
+            $output = $ranurasHandler->handle(new ListarRanurasGabineteInput($g->id));
+            foreach ($output->items as $r) {
+                $this->ranurasInfo[$r->id] = "Ranura {$r->numeroRanura} — {$g->codigo}";
+            }
+        }
+    }
+
     private function cargarAlertas(ListarAlertasHandler $handler): void
     {
         $estado = $this->filtroEstado !== 'todas' ? $this->filtroEstado : null;
@@ -113,11 +136,24 @@ final class AlertaIndex extends Component
                 'cajaEstado' => $this->cajasPorId[$a->cajaId]['estado'] ?? null,
                 'tipo' => $a->tipo,
                 'estado' => $a->estado,
-                'datosContexto' => $a->datosContexto,
+                'datosContexto' => $this->enriquecerContexto($a->tipo, $a->datosContexto),
                 'generadaEn' => $a->generadaEn->format('d/m/Y H:i'),
             ],
             $output->items,
         );
+    }
+
+    private function enriquecerContexto(string $tipo, array $datosContexto): array
+    {
+        if (in_array($tipo, ['incongruencia_taxonomica', 'familia_no_asignada'], true)
+            && isset($datosContexto['ranura_id'])
+        ) {
+            $label = $this->ranurasInfo[$datosContexto['ranura_id']] ?? $datosContexto['ranura_id'];
+
+            return ['ranura' => $label];
+        }
+
+        return $datosContexto;
     }
 
     public function render(): View

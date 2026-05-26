@@ -53,8 +53,10 @@ final class CajaIndex extends Component
     #[Rule('nullable|string|max:255')]
     public ?string $nombre = null;
 
-    #[Rule('nullable|string|max:255')]
-    public ?string $familiaTaxonomicaId = null;
+    #[Rule('nullable|string|max:1000')]
+    public ?string $observacion = null;
+
+    public bool $esEspecial = false;
 
     #[Rule('nullable|integer|min:1|max:32767')]
     public ?int $capacidadMaxima = null;
@@ -66,8 +68,10 @@ final class CajaIndex extends Component
     #[Rule('nullable|string|max:255')]
     public ?string $editNombre = null;
 
-    #[Rule('nullable|string|max:255')]
-    public ?string $editFamiliaTaxonomicaId = null;
+    public bool $editEsEspecial = false;
+
+    #[Rule('nullable|string|max:1000')]
+    public ?string $editObservacion = null;
 
     #[Rule('nullable|integer|min:1|max:32767')]
     public ?int $editCapacidadMaxima = null;
@@ -137,7 +141,7 @@ final class CajaIndex extends Component
             'codigo' => 'required|string|max:100',
             'codigoRfid' => 'required|string|size:8|regex:/^[0-9A-Fa-f]{8}$/',
             'nombre' => 'nullable|string|max:255',
-            'familiaTaxonomicaId' => 'nullable|string|max:255',
+            'observacion' => 'nullable|string|max:1000',
             'capacidadMaxima' => 'nullable|integer|min:1|max:32767',
         ]);
 
@@ -145,14 +149,15 @@ final class CajaIndex extends Component
             $crearHandler->handle(new CrearCajaInput(
                 codigo: $this->codigo,
                 codigoRfid: strtoupper($this->codigoRfid),
+                esEspecial: $this->esEspecial,
+                observacion: $this->observacion ?: null,
                 nombre: $this->nombre ?: null,
-                familiaTaxonomicaId: $this->familiaTaxonomicaId ?: null,
                 capacidadMaxima: $this->capacidadMaxima,
             ));
 
             $this->cargarCajas($listarHandler);
             $this->showCrearModal = false;
-            $this->reset('codigo', 'codigoRfid', 'nombre', 'familiaTaxonomicaId', 'capacidadMaxima');
+            $this->reset('codigo', 'codigoRfid', 'nombre', 'observacion', 'esEspecial', 'capacidadMaxima');
             $this->resetValidation();
             $this->successMessage = 'Caja creada correctamente.';
             $this->errorMessage = null;
@@ -171,7 +176,8 @@ final class CajaIndex extends Component
 
         $this->editandoCajaId = $id;
         $this->editNombre = $caja['nombre'];
-        $this->editFamiliaTaxonomicaId = $caja['familiaTaxonomicaId'];
+        $this->editEsEspecial = $caja['esEspecial'];
+        $this->editObservacion = $caja['observacion'];
         $this->editCapacidadMaxima = $caja['capacidadMaxima'];
         $this->errorMessage = null;
         $this->showEditCajaModal = true;
@@ -183,15 +189,16 @@ final class CajaIndex extends Component
     ): void {
         $this->validate([
             'editNombre' => 'nullable|string|max:255',
-            'editFamiliaTaxonomicaId' => 'nullable|string|max:255',
+            'editObservacion' => 'nullable|string|max:1000',
             'editCapacidadMaxima' => 'nullable|integer|min:1|max:32767',
         ]);
 
         try {
             $actualizarHandler->handle(new ActualizarCajaInput(
                 cajaId: $this->editandoCajaId,
+                esEspecial: $this->editEsEspecial,
+                observacion: $this->editObservacion ?: null,
                 nombre: $this->editNombre ?: null,
-                familiaTaxonomicaId: $this->editFamiliaTaxonomicaId ?: null,
                 capacidadMaxima: $this->editCapacidadMaxima,
             ));
 
@@ -289,7 +296,8 @@ final class CajaIndex extends Component
                 'codigo' => $c->codigo,
                 'codigoRfid' => $c->codigoRfid,
                 'nombre' => $c->nombre,
-                'familiaTaxonomicaId' => $c->familiaTaxonomicaId,
+                'esEspecial' => $c->esEspecial,
+                'observacion' => $c->observacion,
                 'capacidadMaxima' => $c->capacidadMaxima,
                 'estado' => $c->estado,
             ],
