@@ -128,9 +128,11 @@ final class RegistrarIngresoCajaHandler
             }
         );
 
-        if (! $alertaGenerada) {
-            $alertaGenerada = $this->evaluarOrdenTaxonomico($caja, $ranura, $cajaId, $ranuraId);
-        }
+        // El orden taxonómico y el movimiento fuera de horario son preocupaciones
+        // ortogonales: una caja puede ingresar de noche Y fuera de secuencia, y debe
+        // recibir ambas alertas. Por eso la evaluación taxonómica corre siempre.
+        $alertaTaxonomica = $this->evaluarOrdenTaxonomico($caja, $ranura, $cajaId, $ranuraId);
+        $alertaGenerada = $alertaGenerada || $alertaTaxonomica;
 
         return RegistrarIngresoCajaOutput::fromPrimitives([
             'cajaId' => (string) $cajaId,

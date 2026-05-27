@@ -265,7 +265,7 @@ final class CajaIndex extends Component
             $this->cargarCajas($listarHandler);
             $this->showIngresoModal = false;
             $this->successMessage = $output->alertaGenerada
-                ? 'Ingreso registrado. Se generó una alerta por acceso fuera de horario.'
+                ? 'Ingreso registrado. Se generó una alerta; revísala en el panel de alertas.'
                 : 'Ingreso registrado correctamente.';
             $this->errorMessage = null;
         } catch (\Throwable $e) {
