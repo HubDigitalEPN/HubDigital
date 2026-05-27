@@ -9,6 +9,7 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Caja;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\CajaRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UnitTrayRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\CalculadorClasificacionDominante;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\CajaId;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\ClasificacionTaxonomica;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EspecimenId;
@@ -77,38 +78,10 @@ trait PropagaClasificacionTaxonomica
     }
 
     /**
-     * Devuelve la ClasificacionTaxonomica más frecuente del array.
-     * Criterio primario: subfamilia más frecuente.
-     * Criterio de desempate: género más frecuente dentro de esa subfamilia.
-     *
      * @param  ClasificacionTaxonomica[]  $clasificaciones
      */
     private function clasificacionMasFrecuente(array $clasificaciones): ?ClasificacionTaxonomica
     {
-        if ($clasificaciones === []) {
-            return null;
-        }
-
-        $frecuencias = [];
-        foreach ($clasificaciones as $cls) {
-            $key = ($cls->subfamilia() ?? '').'|'.($cls->genero() ?? '');
-            if (! isset($frecuencias[$key])) {
-                $frecuencias[$key] = ['cls' => $cls, 'count' => 0];
-            }
-            $frecuencias[$key]['count']++;
-        }
-
-        usort($frecuencias, static function (array $a, array $b): int {
-            if ($b['count'] !== $a['count']) {
-                return $b['count'] - $a['count'];
-            }
-
-            return strcasecmp(
-                ($a['cls']->subfamilia() ?? '').($a['cls']->genero() ?? ''),
-                ($b['cls']->subfamilia() ?? '').($b['cls']->genero() ?? ''),
-            );
-        });
-
-        return $frecuencias[0]['cls'];
+        return (new CalculadorClasificacionDominante)->calcular($clasificaciones);
     }
 }
