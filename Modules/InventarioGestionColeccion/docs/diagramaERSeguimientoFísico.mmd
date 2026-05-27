@@ -77,7 +77,7 @@ erDiagram
   alertas_ubicacion {
     uuid id PK
     uuid caja_id FK
-    varchar tipo "incongruencia_taxonomica movimiento_no_autorizado extraccion_prolongada familia_no_asignada"
+    varchar tipo "orden_taxonomico_fuera_de_secuencia movimiento_no_autorizado extraccion_prolongada familia_no_asignada"
     varchar estado "activa resuelta ignorada"
     jsonb datos_contexto
     uuid resuelta_por "nullable"

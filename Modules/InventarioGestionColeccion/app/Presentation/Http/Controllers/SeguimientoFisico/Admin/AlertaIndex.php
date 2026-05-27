@@ -18,6 +18,7 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Li
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarRanurasGabinete\ListarRanurasGabineteInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ResolverAlerta\ResolverAlertaHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ResolverAlerta\ResolverAlertaInput;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TipoAlerta;
 
 #[Layout('layouts.app', params: ['title' => 'Alertas'])]
 final class AlertaIndex extends Component
@@ -145,7 +146,10 @@ final class AlertaIndex extends Component
 
     private function enriquecerContexto(string $tipo, array $datosContexto): array
     {
-        if (in_array($tipo, ['incongruencia_taxonomica', 'familia_no_asignada'], true)
+        if (in_array($tipo, [
+            TipoAlerta::OrdenTaxonomicoFueraDeSecuencia->value,
+            TipoAlerta::FamiliaNoAsignada->value,
+        ], true)
             && isset($datosContexto['ranura_id'])
         ) {
             $label = $this->ranurasInfo[$datosContexto['ranura_id']] ?? $datosContexto['ranura_id'];
