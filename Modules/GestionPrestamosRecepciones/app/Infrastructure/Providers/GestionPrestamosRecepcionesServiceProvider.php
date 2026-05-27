@@ -12,6 +12,7 @@ use Modules\GestionPrestamosRecepciones\Application\Exceptions\SolicitudNoEncont
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ExtraccionDatosDocumentoPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\HistorialPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\InvestigadorEmailPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionCuratoriaPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ValidacionFirmaElectronicaPort;
@@ -30,7 +31,9 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\GroqExtraccionDa
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\LaravelEventPublisherAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\LaravelTransactionManagerAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\PdfsigValidacionFirmaElectronicaAdapter;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Console\Commands\EvaluarPlazosDevolucionTodosLosPrestamosCommand;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Console\Commands\LimpiarBorradoresAbandonadosCommand;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Gateways\LaravelUserInvestigadorEmailAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentActaPrestamoRepository;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentConfiguracionGlobalRecordatoriosRepository;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentPrestamoRepository;
@@ -70,6 +73,7 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
         HistorialPort::class => EloquentHistorialAdapter::class,
         RecordatorioDevolucionRepositoryInterface::class => EloquentRecordatorioDevolucionRepository::class,
         ConfiguracionGlobalRecordatoriosRepositoryInterface::class => EloquentConfiguracionGlobalRecordatoriosRepository::class,
+        InvestigadorEmailPort::class => LaravelUserInvestigadorEmailAdapter::class,
     ];
 
     public function register(): void
@@ -78,6 +82,7 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
 
         $this->commands([
             LimpiarBorradoresAbandonadosCommand::class,
+            EvaluarPlazosDevolucionTodosLosPrestamosCommand::class,
         ]);
 
         $this->app->bind(ExtraccionDatosDocumentoPort::class, fn () => new GroqExtraccionDatosDocumentoAdapter(
@@ -88,6 +93,7 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
     protected function configureSchedules(Schedule $schedule): void
     {
         $schedule->command(LimpiarBorradoresAbandonadosCommand::class)->daily();
+        $schedule->command(EvaluarPlazosDevolucionTodosLosPrestamosCommand::class)->daily();
     }
 
     public function boot(): void
