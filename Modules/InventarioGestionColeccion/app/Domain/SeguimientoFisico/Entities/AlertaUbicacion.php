@@ -18,6 +18,7 @@ class AlertaUbicacion
         private EstadoAlerta $estado,
         private readonly array $datosContexto,
         private readonly \DateTimeImmutable $generadaEn,
+        private ?string $motivoResolucion = null,
     ) {}
 
     public static function generar(
@@ -43,6 +44,7 @@ class AlertaUbicacion
         EstadoAlerta $estado,
         array $datosContexto,
         \DateTimeImmutable $generadaEn,
+        ?string $motivoResolucion = null,
     ): self {
         return new self(
             id: $id,
@@ -51,6 +53,7 @@ class AlertaUbicacion
             estado: $estado,
             datosContexto: $datosContexto,
             generadaEn: $generadaEn,
+            motivoResolucion: $motivoResolucion,
         );
     }
 
@@ -61,6 +64,7 @@ class AlertaUbicacion
         }
 
         $this->estado = EstadoAlerta::Resuelta;
+        $this->motivoResolucion = $motivoResolucion;
     }
 
     public function ignorar(): void
@@ -100,5 +104,10 @@ class AlertaUbicacion
     public function generadaEn(): \DateTimeImmutable
     {
         return $this->generadaEn;
+    }
+
+    public function motivoResolucion(): ?string
+    {
+        return $this->motivoResolucion;
     }
 }
