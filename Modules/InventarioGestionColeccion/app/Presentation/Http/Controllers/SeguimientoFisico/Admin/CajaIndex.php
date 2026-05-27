@@ -137,13 +137,7 @@ final class CajaIndex extends Component
         CrearCajaHandler $crearHandler,
         ListarCajasHandler $listarHandler,
     ): void {
-        $this->validate([
-            'codigo' => 'required|string|max:100',
-            'codigoRfid' => 'required|string|size:8|regex:/^[0-9A-Fa-f]{8}$/',
-            'nombre' => 'nullable|string|max:255',
-            'observacion' => 'nullable|string|max:1000',
-            'capacidadMaxima' => 'nullable|integer|min:1|max:32767',
-        ]);
+        $this->validate();
 
         try {
             $crearHandler->handle(new CrearCajaInput(

@@ -103,7 +103,7 @@ trait PropagaClasificacionTaxonomica
                 return $b['count'] - $a['count'];
             }
 
-            return strcmp(
+            return strcasecmp(
                 ($a['cls']->subfamilia() ?? '').($a['cls']->genero() ?? ''),
                 ($b['cls']->subfamilia() ?? '').($b['cls']->genero() ?? ''),
             );

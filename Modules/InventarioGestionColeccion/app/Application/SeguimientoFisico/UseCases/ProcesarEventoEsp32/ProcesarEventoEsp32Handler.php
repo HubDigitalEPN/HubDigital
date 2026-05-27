@@ -64,7 +64,7 @@ final class ProcesarEventoEsp32Handler
 
         return new ProcesarEventoEsp32Output(
             cajaId: $output->cajaId,
-            ranuraId: $ranuraId,
+            ranuraId: $output->ranuraId !== '' ? $output->ranuraId : $ranuraId,
             estadoCaja: $output->estadoCaja,
             alertaGenerada: $output->alertaGenerada,
             notificacionEnviada: $output->notificacionEnviada,
