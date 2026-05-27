@@ -13,5 +13,10 @@ interface PrestamoRepositoryInterface
 
     public function buscarPorId(PrestamoId $id): ?Prestamo;
 
+    /**
+     * @return list<Prestamo>
+     */
+    public function listarActivos(): array;
+
     public function nextIdentity(): PrestamoId;
 }
