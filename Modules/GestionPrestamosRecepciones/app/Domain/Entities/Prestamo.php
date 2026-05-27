@@ -8,9 +8,11 @@ use DateTimeImmutable;
 use InvalidArgumentException;
 use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoIniciado;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ProrrogaAprobada;
+use Modules\GestionPrestamosRecepciones\Domain\Events\RecordatorioDevolucionEnviado;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\TransicionDeEstadoInvalidaException;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoPrestamo;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoRecordatorio;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrestamoId;
 
 final class Prestamo
@@ -101,6 +103,49 @@ final class Prestamo
             nuevaFechaFin: $nuevaFechaFin,
             fechaAnterior: $fechaAnterior,
             ocurridoEn: new DateTimeImmutable,
+        );
+    }
+
+    /**
+     * Determina si aplica enviar un recordatorio según la configuración de días antes.
+     * Consulta pura — no muta estado ni registra eventos.
+     *
+     * @param  list<int>  $diasAntes
+     */
+    public function evaluarEstadoRecordatorio(
+        array $diasAntes,
+        DateTimeImmutable $ahora,
+    ): ?EstadoRecordatorio {
+        if ($ahora >= $this->fechaFin) {
+            return EstadoRecordatorio::Vencido;
+        }
+
+        $diasRestantes = (int) ceil(
+            ($this->fechaFin->getTimestamp() - $ahora->getTimestamp()) / 86400
+        );
+
+        foreach ($diasAntes as $umbral) {
+            if ($diasRestantes <= $umbral) {
+                return EstadoRecordatorio::ProximoAVencer;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Registra en el agregado que se envió un recordatorio de devolución.
+     * Debe llamarse después de haber despachado la notificación vía Port.
+     */
+    public function registrarEnvioDeRecordatorio(
+        EstadoRecordatorio $estado,
+        DateTimeImmutable $ahora,
+    ): void {
+        $this->events[] = new RecordatorioDevolucionEnviado(
+            prestamoId:          $this->id,
+            investigadorId:      $this->investigadorId,
+            estadoRecordatorio:  $estado,
+            ocurridoEn:          $ahora,
         );
     }
 
