@@ -31,6 +31,7 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\Not
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\RanuraGabineteRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UbicacionCajaRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\CajaId;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\ClasificacionTaxonomica;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\CodigoCaja;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\CodigoGabinete;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoAlerta;
@@ -137,7 +138,7 @@ final class RegistroUbicacionCajasContext extends BaseContext
         $caja = Caja::crear(
             id: $this->cajaRepo->nextIdentity(),
             codigo: CodigoCaja::desde($codigo),
-            familiaTaxonomicaId: 'Nymphalidae',
+            clasificacionTaxonomica: ClasificacionTaxonomica::desde(subfamilia: 'Nymphalinae', genero: 'Nymphalis'),
             capacidadMaxima: 10,
         );
         $this->cajaRepo->guardar($caja);
@@ -226,7 +227,7 @@ final class RegistroUbicacionCajasContext extends BaseContext
         $caja = Caja::crear(
             id: $this->cajaRepo->nextIdentity(),
             codigo: CodigoCaja::desde($codigo),
-            familiaTaxonomicaId: 'Nymphalidae',
+            clasificacionTaxonomica: ClasificacionTaxonomica::desde(subfamilia: 'Nymphalinae', genero: 'Nymphalis'),
             capacidadMaxima: 10,
         );
         $caja->ingresarEnRanura($this->ranuraId);
