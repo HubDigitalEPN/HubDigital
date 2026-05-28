@@ -46,9 +46,21 @@
                                 </tr>
                             </table>
 
-                            <p style="margin:0 0 8px;font-size:15px;color:#212121;line-height:1.6;">
+                            <p style="margin:0 0 24px;font-size:15px;color:#212121;line-height:1.6;">
                                 Por favor, coordina la devolución de los especímenes antes de la fecha indicada para evitar inconvenientes.
                             </p>
+
+                            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
+                                <tr>
+                                    <td align="center">
+                                        <a href="{{ route('prestamos.investigador.prestamo.detalle', $prestamoId) }}"
+                                           style="display:inline-block;background-color:#1976D2;color:#ffffff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:14px;font-weight:600;">
+                                            Ver mi préstamo
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+
                             <p style="margin:0;font-size:14px;color:#757575;line-height:1.6;">
                                 Si ya coordinaste la devolución, puedes ignorar este mensaje.
                             </p>

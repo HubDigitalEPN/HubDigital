@@ -69,7 +69,18 @@
                                 </tr>
                             </table>
 
-                            <table width="100%" cellpadding="12" cellspacing="0" style="background-color:#FFEBEE;border-radius:8px;margin-top:24px;">
+                            <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:28px;margin-bottom:20px;">
+                                <tr>
+                                    <td align="center">
+                                        <a href="{{ route('prestamos.investigador.prestamo.detalle', $prestamoId) }}"
+                                           style="display:inline-block;background-color:#D32F2F;color:#ffffff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:14px;font-weight:600;">
+                                            Ver mi préstamo
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <table width="100%" cellpadding="12" cellspacing="0" style="background-color:#FFEBEE;border-radius:8px;">
                                 <tr>
                                     <td style="font-size:13px;color:#B71C1C;">
                                         <strong>Contacto curador:</strong> {{ config('prestamos.curador_email', 'curador@epn.edu.ec') }}
