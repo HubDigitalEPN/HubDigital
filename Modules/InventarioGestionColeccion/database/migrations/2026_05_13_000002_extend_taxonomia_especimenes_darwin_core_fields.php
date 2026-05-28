@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::table('taxonomia.especimenes', function (Blueprint $table): void {
             if (! Schema::hasColumn('taxonomia.especimenes', 'occurrence_id')) {
-                $table->string('occurrence_id', 120)->nullable()->after('codigo_catalogo');
+                $table->string('occurrence_id', 120)->nullable()->unique()->after('codigo_catalogo');
             }
 
             if (! Schema::hasColumn('taxonomia.especimenes', 'catalog_number')) {

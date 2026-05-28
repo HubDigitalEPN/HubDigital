@@ -10,9 +10,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        DB::statement('CREATE SCHEMA IF NOT EXISTS recordatorios');
-
-        DB::statement('CREATE TABLE IF NOT EXISTS "recordatorios"."configuracion_global_recordatorios" (
+        DB::statement('CREATE TABLE IF NOT EXISTS "prestamos"."configuracion_global_recordatorios" (
             "id"         uuid NOT NULL,
             "curador_id" varchar(255) NOT NULL,
             "dias_antes" jsonb NOT NULL,
@@ -24,6 +22,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('recordatorios.configuracion_global_recordatorios');
+        Schema::dropIfExists('prestamos.configuracion_global_recordatorios');
     }
 };

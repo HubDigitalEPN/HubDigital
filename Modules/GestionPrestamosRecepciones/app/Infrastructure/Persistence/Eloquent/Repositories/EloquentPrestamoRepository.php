@@ -35,6 +35,14 @@ final class EloquentPrestamoRepository implements PrestamoRepositoryInterface
         return $model !== null ? $this->toDomain($model) : null;
     }
 
+    public function listarActivos(): array
+    {
+        return PrestamoEloquentModel::where('estado', EstadoPrestamo::Activo->value)
+            ->get()
+            ->map(fn (PrestamoEloquentModel $m) => $this->toDomain($m))
+            ->all();
+    }
+
     public function nextIdentity(): PrestamoId
     {
         return PrestamoId::generate();

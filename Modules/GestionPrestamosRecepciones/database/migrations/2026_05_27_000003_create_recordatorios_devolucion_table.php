@@ -10,7 +10,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        DB::statement('CREATE TABLE IF NOT EXISTS "recordatorios"."recordatorios_devolucion" (
+        DB::statement('CREATE TABLE IF NOT EXISTS "prestamos"."recordatorios_devolucion" (
             "id"                     uuid NOT NULL,
             "prestamo_id"            uuid NOT NULL,
             "dias_antes_vencimiento" integer NOT NULL,
@@ -26,6 +26,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('recordatorios.recordatorios_devolucion');
+        Schema::dropIfExists('prestamos.recordatorios_devolucion');
     }
 };

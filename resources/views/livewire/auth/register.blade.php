@@ -131,6 +131,13 @@
             <flux:error name="password_confirmation" />
         </flux:field>
 
+        @error('form')
+            <p class="flex items-center gap-1 text-xs text-error">
+                <flux:icon name="exclamation-circle" variant="outline" class="size-3.5 shrink-0" />
+                {{ $message }}
+            </p>
+        @enderror
+
         <flux:button
             type="submit"
             variant="primary"
