@@ -6,6 +6,7 @@ namespace Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Persistence;
 
 use Modules\GestionPrestamosRecepciones\Domain\Entities\Prestamo;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\PrestamoRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrestamoId;
 
 final class InMemoryPrestamoRepository implements PrestamoRepositoryInterface
@@ -21,6 +22,14 @@ final class InMemoryPrestamoRepository implements PrestamoRepositoryInterface
     public function buscarPorId(PrestamoId $id): ?Prestamo
     {
         return $this->store[(string) $id] ?? null;
+    }
+
+    public function listarActivos(): array
+    {
+        return array_values(array_filter(
+            $this->store,
+            fn (Prestamo $p) => $p->estado()->equals(EstadoPrestamo::Activo),
+        ));
     }
 
     public function nextIdentity(): PrestamoId

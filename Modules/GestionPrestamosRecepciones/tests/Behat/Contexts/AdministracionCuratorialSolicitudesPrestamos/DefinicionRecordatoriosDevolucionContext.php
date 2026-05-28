@@ -395,7 +395,7 @@ final class DefinicionRecordatoriosDevolucionContext extends BaseContext
     // ESCENARIO: Generar recordatorios automáticamente al activar un préstamo
     // =========================================================================
 
-    #[Given('que existe un préstamo en estado activo')]
+    #[Given('que existe un acta de préstamo lista para ser iniciada')]
     public function queExisteUnPrestamoEnEstadoActivo(): void
     {
         // Sembramos ActaPrestamo + SolicitudPrestamo listos para IniciarPrestamoHandler

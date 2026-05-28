@@ -10,11 +10,13 @@ use Modules\GestionPrestamosRecepciones\Domain\Events\ActaEnviada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaFirmadaSubida;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaValidada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoIniciado;
+use Modules\GestionPrestamosRecepciones\Domain\Events\RecordatorioDevolucionEnviado;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoAprobada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoEnviada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoObservada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoRechazada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoRegistrada;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\EnviarNotificacionRecordatorioListener;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\IniciarPrestamoAlValidarActaListener;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\RegistrarEventoHistorialListener;
 
@@ -34,6 +36,10 @@ class EventServiceProvider extends ServiceProvider
         ActaValidada::class => [
             RegistrarEventoHistorialListener::class,
             IniciarPrestamoAlValidarActaListener::class,
+        ],
+        RecordatorioDevolucionEnviado::class => [
+            RegistrarEventoHistorialListener::class,
+            EnviarNotificacionRecordatorioListener::class,
         ],
     ];
 

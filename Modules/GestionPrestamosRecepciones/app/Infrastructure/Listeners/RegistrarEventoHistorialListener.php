@@ -11,6 +11,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Events\ActaEnviada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaFirmadaSubida;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaValidada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoIniciado;
+use Modules\GestionPrestamosRecepciones\Domain\Events\RecordatorioDevolucionEnviado;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoAprobada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoEnviada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoObservada;
@@ -45,7 +46,8 @@ final class RegistrarEventoHistorialListener
             $event instanceof ActaFirmadaSubida,
             $event instanceof ActaDevueltaPorFirmaInvalida,
             $event instanceof ActaValidada => 'solicitud_prestamo',
-            $event instanceof PrestamoIniciado => 'prestamo',
+            $event instanceof PrestamoIniciado,
+            $event instanceof RecordatorioDevolucionEnviado => 'prestamo',
         };
     }
 
@@ -64,7 +66,8 @@ final class RegistrarEventoHistorialListener
                 ActaPrestamoModel::find((string) $event->actaId)?->solicitud_prestamo_id
                 ?? (string) $event->actaId
             ),
-            $event instanceof PrestamoIniciado => (string) $event->prestamoId,
+            $event instanceof PrestamoIniciado,
+            $event instanceof RecordatorioDevolucionEnviado => (string) $event->prestamoId,
         };
     }
 
@@ -83,6 +86,10 @@ final class RegistrarEventoHistorialListener
         foreach (get_object_vars($event) as $key => $value) {
             if ($value instanceof DateTimeImmutable) {
                 $datos[$key] = $value->format('Y-m-d H:i:s');
+            } elseif ($value instanceof \BackedEnum) {
+                $datos[$key] = $value->value;
+            } elseif ($value instanceof \UnitEnum) {
+                $datos[$key] = $value->name;
             } elseif (is_object($value)) {
                 $datos[$key] = (string) $value;
             } else {
