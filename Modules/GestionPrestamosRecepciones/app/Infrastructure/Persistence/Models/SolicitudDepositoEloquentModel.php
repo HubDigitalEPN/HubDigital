@@ -37,6 +37,11 @@ final class SolicitudDepositoEloquentModel extends Model
         'datos_ingresados_manualmente',
         'extraccion_estado',
         'documentos_procesados',
+        'firmas_electronicas',
+        'paso_actual',
+        'documentos_cargados',
+        'nombres_archivos_originales',
+        'documentos_requeridos',
     ];
 
     protected $casts = [
@@ -45,5 +50,10 @@ final class SolicitudDepositoEloquentModel extends Model
         'datos_faltantes' => 'array',
         'datos_ingresados_manualmente' => 'array',
         'documentos_procesados' => 'array',
+        'firmas_electronicas' => 'array',
+        'paso_actual' => 'integer',
+        'documentos_cargados' => 'array',
+        'nombres_archivos_originales' => 'array',
+        'documentos_requeridos' => 'array',
     ];
 }

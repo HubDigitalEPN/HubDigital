@@ -4,14 +4,16 @@ declare(strict_types=1);
 
 namespace Modules\CatalogoPublico\Application\UseCases\ConsultarInformacionDivulgada;
 
+use Modules\CatalogoPublico\Application\Ports\DatosEspecimenProveedor;
+use Modules\CatalogoPublico\Application\Ports\ProveedorEspecimenesPort;
+use Modules\CatalogoPublico\Domain\Entities\EspecimenDivulgable;
 use Modules\CatalogoPublico\Domain\Repositories\EspecimenDivulgableRepositoryInterface;
-use Modules\CatalogoPublico\Domain\Repositories\EspecimenRepositoryInterface;
 use RuntimeException;
 
 final class ConsultarInformacionDivulgadaHandler
 {
     public function __construct(
-        private readonly EspecimenRepositoryInterface $repoEspecimen,
+        private readonly ProveedorEspecimenesPort $proveedorEspecimenes,
         private readonly EspecimenDivulgableRepositoryInterface $repoDivulgable,
     ) {}
 
@@ -25,16 +27,70 @@ final class ConsultarInformacionDivulgadaHandler
             );
         }
 
-        $especimen = $this->repoEspecimen->buscarPorOccurrenceID($input->occurrenceID);
+        $datos = $this->proveedorEspecimenes->buscarPorOccurrenceId($input->occurrenceID);
 
-        if ($especimen === null) {
+        if ($datos === null) {
             throw new RuntimeException(
                 "El espécimen '{$input->occurrenceID}' no existe en la base interna"
             );
         }
 
-        $datosVisibles = $divulgable->obtenerDatosVisibles($especimen);
+        return ConsultarInformacionDivulgadaOutput::fromPrimitives(
+            $this->filtrarPorVisibilidad($divulgable, $datos)
+        );
+    }
 
-        return ConsultarInformacionDivulgadaOutput::fromPrimitives($datosVisibles);
+    /** @return array<string, scalar|null> */
+    private function filtrarPorVisibilidad(EspecimenDivulgable $divulgable, DatosEspecimenProveedor $datos): array
+    {
+        $result = [];
+
+        if ($divulgable->occurrenceIDVisible()) {
+            $result['occurrenceID'] = $datos->occurrenceId;
+        }
+        if ($divulgable->scientificNameVisible()) {
+            $result['scientificName'] = $datos->scientificName;
+        }
+        if ($divulgable->individualCountVisible()) {
+            $result['individualCount'] = $datos->individualCount;
+        }
+        if ($divulgable->typeStatusVisible()) {
+            $result['typeStatus'] = $datos->typeStatus;
+        }
+        if ($divulgable->typeNotesVisible()) {
+            $result['typeNotes'] = $datos->typeNotes;
+        }
+        if ($divulgable->specimenNotesVisible()) {
+            $result['specimenNotes'] = $datos->specimenNotes;
+        }
+        if ($divulgable->samplingProtocolVisible()) {
+            $result['samplingProtocol'] = $datos->samplingProtocol;
+        }
+        if ($divulgable->recordedByVisible()) {
+            $result['recordedBy'] = $datos->recordedBy;
+        }
+        if ($divulgable->occurrenceStatusVisible()) {
+            $result['occurrenceStatus'] = $datos->occurrenceStatus;
+        }
+        if ($divulgable->familyVisible()) {
+            $result['family'] = $datos->family;
+        }
+        if ($divulgable->genusVisible()) {
+            $result['genus'] = $datos->genus;
+        }
+        if ($divulgable->countryVisible()) {
+            $result['country'] = $datos->country;
+        }
+        if ($divulgable->localityNameVisible()) {
+            $result['localityName'] = $datos->localityName;
+        }
+        if ($divulgable->decimalLatitudeVisible()) {
+            $result['decimalLatitude'] = $datos->decimalLatitude;
+        }
+        if ($divulgable->decimalLongitudeVisible()) {
+            $result['decimalLongitude'] = $datos->decimalLongitude;
+        }
+
+        return $result;
     }
 }

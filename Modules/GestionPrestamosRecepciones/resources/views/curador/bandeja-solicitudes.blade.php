@@ -2,23 +2,61 @@
 
     <flux:heading size="xl" level="1" class="font-display">Bandeja de solicitudes</flux:heading>
 
-    {{-- Filtro de estado --}}
-    <div class="flex items-center gap-3">
-        <flux:text class="text-sm text-text-secondary">Filtrar por estado:</flux:text>
-        <flux:select wire:model.live="filtroEstado" class="w-48">
-            <flux:select.option value="todos">Todos</flux:select.option>
-            <flux:select.option value="enviada">Enviadas</flux:select.option>
-            <flux:select.option value="aprobada">Aprobadas</flux:select.option>
-            <flux:select.option value="observada">Observadas</flux:select.option>
-            <flux:select.option value="rechazada">Rechazadas</flux:select.option>
-        </flux:select>
+    {{-- Barra de filtros --}}
+    <div class="space-y-3">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <flux:input
+                wire:model.live.debounce.300ms="busqueda"
+                placeholder="Buscar por título o N.º solicitud..."
+                icon="magnifying-glass"
+                clearable
+                class="flex-1" />
+            <flux:input
+                wire:model.live.debounce.300ms="busquedaInvestigador"
+                placeholder="Buscar por investigador..."
+                icon="user"
+                clearable
+                class="flex-1" />
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+            <flux:select wire:model.live="estado" class="w-44">
+                <flux:select.option value="">Todos los estados</flux:select.option>
+                <flux:select.option value="enviada">Enviada</flux:select.option>
+                <flux:select.option value="observada">Observada</flux:select.option>
+                <flux:select.option value="aprobada">Aprobada</flux:select.option>
+                <flux:select.option value="rechazada">Rechazada</flux:select.option>
+            </flux:select>
+            <flux:select wire:model.live="ordenCampo" class="w-44">
+                <flux:select.option value="fecha">Ordenar por fecha</flux:select.option>
+                <flux:select.option value="titulo">Ordenar por título</flux:select.option>
+            </flux:select>
+            <flux:button
+                wire:click="toggleOrden"
+                variant="ghost"
+                icon="{{ $ordenDireccion === 'asc' ? 'bars-arrow-up' : 'bars-arrow-down' }}"
+                title="{{ $ordenDireccion === 'asc' ? 'Ascendente' : 'Descendente' }}" />
+            @if($busqueda !== '' || $estado !== '' || $busquedaInvestigador !== '')
+                <flux:button wire:click="limpiarFiltros" variant="ghost" icon="x-mark" title="Limpiar filtros" />
+            @endif
+        </div>
     </div>
 
-    @if($solicitudes->isEmpty())
+    @php $filtroActivo = $busqueda !== '' || $estado !== '' || $busquedaInvestigador !== ''; @endphp
+
+    @if($solicitudes->isEmpty() && !$filtroActivo)
         <div class="flex flex-col items-center justify-center rounded-lg border border-border bg-surface py-[60px] text-center">
             <flux:icon name="inbox" class="size-12 text-text-secondary mb-3" />
             <flux:heading size="lg" level="2">Sin solicitudes</flux:heading>
-            <flux:text class="text-text-secondary mt-1">No hay solicitudes con el filtro seleccionado.</flux:text>
+            <flux:text class="text-text-secondary mt-1">No hay solicitudes enviadas por los investigadores todavía.</flux:text>
+        </div>
+    @elseif($solicitudes->isEmpty())
+        <div class="flex flex-col items-center justify-center rounded-lg border border-border bg-surface py-[60px] text-center">
+            <flux:icon name="magnifying-glass" class="size-12 text-text-secondary mb-3" />
+            <flux:heading size="lg" level="2">Sin resultados</flux:heading>
+            <flux:text class="text-text-secondary mt-1">No se encontraron solicitudes con los filtros aplicados.</flux:text>
+            <flux:button variant="ghost" class="mt-4" wire:click="limpiarFiltros">
+                Limpiar filtros
+            </flux:button>
         </div>
     @else
         <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">

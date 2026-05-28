@@ -3,8 +3,7 @@
     <div>
         <flux:heading size="lg" level="2" class="font-display">Carga de documentación oficial</flux:heading>
         <flux:text class="text-text-secondary text-sm mt-1">
-            Adjunta los documentos requeridos según el origen y situación regulatoria declarados.
-            Los documentos en formato PDF serán procesados automáticamente para extraer datos.
+            Adjunta los documentos requeridos en formato PDF.
         </flux:text>
     </div>
 
@@ -87,6 +86,20 @@
 
         {{-- Dropzones dinámicas --}}
         @if(!empty($documentosRequeridos))
+            @php
+                $plantillas = [
+                    'Formato solicitud depósito' => asset('plantillas/depositos/formato-solicitud-deposito.pdf'),
+                    'Formato solicitud donación' => asset('plantillas/depositos/formato-solicitud-donacion.pdf'),
+                    'Copia de la autorización de recolección (MAATE)' => asset('plantillas/depositos/autorizacion-maate-ejemplo.pdf'),
+                    'Copia del permiso de movilización' => asset('plantillas/depositos/permiso-movilizacion-ejemplo.pdf'),
+                    'Documento de explicación de motivos y/o carta de justificación (institucional o personal)' => asset('plantillas/depositos/carta-justificacion-ejemplo.pdf'),
+                    'Carta de procedencia firmada por el responsable de la colección de origen' => asset('plantillas/depositos/carta-procedencia-ejemplo.pdf'),
+                    'Carta de cesión de derechos / origen lícito' => asset('plantillas/depositos/carta-cesion-ejemplo.pdf'),
+                    'Carta de delegación / justificación de tercero' => asset('plantillas/depositos/carta-delegacion-ejemplo.pdf'),
+                ];
+                $plantillasDisponibles = array_intersect_key($plantillas, array_flip($documentosRequeridos));
+            @endphp
+
             <div class="space-y-3">
                 @foreach($documentosRequeridos as $docNombre)
                     @php $prop = $this->propiedadParaDocumento($docNombre); @endphp
@@ -96,6 +109,7 @@
                         :requerido="true"
                         :cargado="isset($documentosCargados[$docNombre])"
                         :archivo-nombre="$nombresArchivosOriginales[$docNombre] ?? null"
+                        :plantilla="$plantillasDisponibles[$docNombre] ?? null"
                     />
                 @endforeach
             </div>
@@ -128,7 +142,7 @@
                 icon:loading="arrow-path"
                 class="text-warning border-warning/40 hover:bg-warning/10"
             >
-                Solicitar intervención de curaduría
+                Solicitar asistencia
             </flux:button>
         </div>
 

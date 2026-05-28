@@ -81,12 +81,12 @@
 
             </div>
 
-            {{-- Acciones del curador --}}
-            <div class="rounded-lg border border-border bg-surface shadow-sm p-5 space-y-4 h-fit">
-                <flux:heading size="lg" level="2" class="font-display">Resolución</flux:heading>
-                <flux:separator />
+            {{-- Acciones del curador — solo visible cuando la solicitud está en estado enviada --}}
+            @if($solicitud->estado === 'enviada')
+                <div class="rounded-lg border border-border bg-surface shadow-sm p-5 space-y-4 h-fit">
+                    <flux:heading size="lg" level="2" class="font-display">Resolución</flux:heading>
+                    <flux:separator />
 
-                @if($solicitud->estado === 'enviada')
                     <flux:text class="text-text-secondary text-sm">
                         Revisa la información y decide si apruebas la solicitud o la devuelves con observaciones.
                     </flux:text>
@@ -100,13 +100,8 @@
                             Devolver con observaciones
                         </flux:button>
                     </div>
-                @else
-                    <flux:callout variant="info" icon="information-circle">
-                        Esta solicitud está en estado
-                        <strong>{{ $solicitud->estado }}</strong> y no puede modificarse.
-                    </flux:callout>
-                @endif
-            </div>
+                </div>
+            @endif
 
         </div>
     @endif

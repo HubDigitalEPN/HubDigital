@@ -7,6 +7,7 @@
 ])
 
 <div
+    wire:ignore.self
     x-data="{ active: @js($activo) }"
     x-on:radio-card-select.window="if ($event.detail.grupo === @js($grupo)) active = ($event.detail.valor === @js($titulo))"
     {{ $attributes->merge(['class' => 'relative rounded-lg border-2 p-4 transition-all select-none ' . ($deshabilitado ? 'opacity-55 cursor-not-allowed pointer-events-none' : 'cursor-pointer')]) }}

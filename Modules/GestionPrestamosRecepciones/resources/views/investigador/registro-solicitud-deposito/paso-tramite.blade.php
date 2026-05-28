@@ -63,19 +63,50 @@
         </x-gestionprestamosrecepciones::radio-card>
     </div>
 
-    <div x-show="tipo === 'Depósito'" x-cloak>
+    <div x-show="tipo === 'Depósito'" x-cloak class="space-y-3">
         <flux:callout variant="info" icon="information-circle">
             <flux:text class="text-sm">
                 El <strong>Depósito</strong> es temporal. Los especímenes permanecerán en custodia y serán devueltos según el acta de préstamo correspondiente.
             </flux:text>
         </flux:callout>
+        <div class="rounded-lg border border-border bg-bg-main p-4">
+            <p class="text-xs font-medium text-text-primary mb-2">Documentos que necesitarás preparar:</p>
+            <ul class="text-xs text-text-secondary space-y-1">
+                <li class="flex items-center gap-2">
+                    <flux:icon name="document-text" class="size-3.5 text-text-secondary shrink-0" />
+                    Formato de solicitud de depósito
+                </li>
+                <li class="flex items-center gap-2">
+                    <flux:icon name="document-check" class="size-3.5 text-text-secondary shrink-0" />
+                    Autorización de recolección y/o permiso de movilización <span class="text-text-secondary/60">(según origen)</span>
+                </li>
+                <li class="flex items-center gap-2">
+                    <flux:icon name="document-text" class="size-3.5 text-text-secondary shrink-0" />
+                    Carta de procedencia o justificación <span class="text-text-secondary/60">(según situación regulatoria)</span>
+                </li>
+            </ul>
+            <p class="text-xs text-text-secondary/60 mt-2 italic">Los documentos exactos se determinarán en el siguiente paso según el origen de los especímenes.</p>
+        </div>
     </div>
-    <div x-show="tipo === 'Donación'" x-cloak>
+    <div x-show="tipo === 'Donación'" x-cloak class="space-y-3">
         <flux:callout variant="info" icon="information-circle">
             <flux:text class="text-sm">
                 La <strong>Donación</strong> transfiere permanentemente la propiedad de los especímenes a la colección. Se requiere carta de cesión de derechos con firma del donante.
             </flux:text>
         </flux:callout>
+        <div class="rounded-lg border border-border bg-bg-main p-4">
+            <p class="text-xs font-medium text-text-primary mb-2">Documentos que necesitarás preparar:</p>
+            <ul class="text-xs text-text-secondary space-y-1">
+                <li class="flex items-center gap-2">
+                    <flux:icon name="document-text" class="size-3.5 text-text-secondary shrink-0" />
+                    Formato de solicitud de donación
+                </li>
+                <li class="flex items-center gap-2">
+                    <flux:icon name="document-check" class="size-3.5 text-text-secondary shrink-0" />
+                    Carta de cesión de derechos / origen lícito
+                </li>
+            </ul>
+        </div>
     </div>
 
 </div>
