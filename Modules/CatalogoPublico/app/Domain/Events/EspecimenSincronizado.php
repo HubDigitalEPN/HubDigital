@@ -11,7 +11,7 @@ final class EspecimenSincronizado extends DomainEvent
 {
     public function __construct(
         public readonly EspecimenDivulgableId $id,
-        public readonly string $occurrenceID,
+        public readonly string $especimenId,
         public readonly ConfiguracionVisibilidad $configuracion,
     ) {
         parent::__construct();

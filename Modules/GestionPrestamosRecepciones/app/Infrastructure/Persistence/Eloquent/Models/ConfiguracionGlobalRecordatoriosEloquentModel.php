@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 
 final class ConfiguracionGlobalRecordatoriosEloquentModel extends Model
 {
-    protected $table = 'recordatorios.configuracion_global_recordatorios';
+    protected $table = 'prestamos.configuracion_global_recordatorios';
 
     protected $primaryKey = 'id';
 

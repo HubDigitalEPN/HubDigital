@@ -7,16 +7,23 @@ namespace Modules\CatalogoPublico\Presentation\Http\Controllers;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
-use Livewire\Attributes\Lazy;
 use Livewire\Component;
+use Modules\CatalogoPublico\Application\Ports\DatosEspecimenProveedor;
+use Modules\CatalogoPublico\Application\Ports\ProveedorEspecimenesPort;
 use Modules\CatalogoPublico\Application\UseCases\SincronizarEspecimenes\SincronizarEspecimenesHandler;
 use Modules\CatalogoPublico\Application\UseCases\SincronizarEspecimenes\SincronizarEspecimenesInput;
 use Modules\CatalogoPublico\Infrastructure\Persistence\Eloquent\Models\EspecimenDivulgableEloquentModel;
-use Modules\CatalogoPublico\Infrastructure\Persistence\Eloquent\Models\EspecimenEloquentModel;
 
 #[Layout('layouts.app', params: ['title' => 'Sincronizar Especímenes'])]
 final class SincronizarEspecimenes extends Component
 {
+    private ProveedorEspecimenesPort $proveedorEspecimenes;
+
+    public function boot(ProveedorEspecimenesPort $proveedorEspecimenes): void
+    {
+        $this->proveedorEspecimenes = $proveedorEspecimenes;
+    }
+
     public int $paso = 1;
 
     /** @var string[] */
@@ -163,7 +170,7 @@ final class SincronizarEspecimenes extends Component
             return;
         }
 
-        if ($this->paso === 1 && $this->especimenActivoId === null && !empty($this->seleccionados)) {
+        if ($this->paso === 1 && $this->especimenActivoId === null && ! empty($this->seleccionados)) {
             $this->especimenActivoId = $this->seleccionados[0];
         }
 
@@ -205,39 +212,64 @@ final class SincronizarEspecimenes extends Component
     #[Computed]
     public function sincronizadosIds(): array
     {
-        return EspecimenDivulgableEloquentModel::pluck('occurrence_id')->all();
+        return EspecimenDivulgableEloquentModel::pluck('especimen_id')->all();
     }
 
     /**
      * Caché computado de especímenes — se carga UNA SOLA VEZ y se reutiliza en ambos pasos.
      * Se invalida automáticamente cuando $paso o $seleccionados cambian.
+     *
+     * Paso 1: lee desde el Supplier (taxonomia.especimenes) vía ACL — no desde divulgacion.especimenes,
+     * que solo existe después de sincronizar. Filtra los ya sincronizados.
+     * Paso 2: igual pero solo los seleccionados.
      */
     #[Computed]
     public function especimenesEnCache()
     {
+        $sincronizados = $this->sincronizadosIds();
+
         if ($this->paso === 1) {
-            // Paso 1: especímenes no sincronizados
-            return EspecimenEloquentModel::whereNotIn('occurrence_id', $this->sincronizadosIds())
-                ->orderBy('occurrence_id')
-                ->limit(100)
-                ->get();
+            $todos = $this->proveedorEspecimenes->obtenerTodos();
+            $pendientes = array_filter(
+                $todos,
+                fn (DatosEspecimenProveedor $d) => ! in_array($d->especimenId, $sincronizados, true)
+            );
+
+            return collect(array_slice(array_values($pendientes), 0, 100))
+                ->map(fn (DatosEspecimenProveedor $d) => $this->dtoParaVista($d))
+                ->sortBy('occurrence_id')
+                ->values();
         }
 
-        // Paso 2/3: especímenes seleccionados
         if (count($this->seleccionados) === 0) {
             return collect();
         }
 
-        return EspecimenEloquentModel::whereIn('occurrence_id', $this->seleccionados)
-            ->orderBy('occurrence_id')
-            ->get();
+        return collect($this->seleccionados)
+            ->map(fn (string $id) => $this->proveedorEspecimenes->buscarPorOccurrenceId($id))
+            ->filter()
+            ->map(fn (DatosEspecimenProveedor $d) => $this->dtoParaVista($d))
+            ->sortBy('occurrence_id')
+            ->values();
+    }
+
+    private function dtoParaVista(DatosEspecimenProveedor $datos): \stdClass
+    {
+        $obj = new \stdClass;
+        $obj->occurrence_id = $datos->occurrenceId;
+        $obj->scientific_name = $datos->scientificName;
+        $obj->type_status = $datos->typeStatus;
+        $obj->family = $datos->family;
+        $obj->occurrence_status = $datos->occurrenceStatus;
+
+        return $obj;
     }
 
     /**
      * Inicializa configuración en lote para múltiples especímenes.
      * Mejora: una query para traer las configuraciones existentes, no múltiples queries.
      *
-     * @param array<string> $occurrenceIDs
+     * @param  array<string>  $occurrenceIDs
      */
     private function inicializarConfiguracionLote(array $occurrenceIDs): void
     {
@@ -245,12 +277,33 @@ final class SincronizarEspecimenes extends Component
             return;
         }
 
-        // Traer configuraciones existentes en UNA SOLA QUERY
-        $existentes = EspecimenDivulgableEloquentModel::whereIn('occurrence_id', $occurrenceIDs)
-            ->get(['occurrence_id', 'occurrence_id_visible', 'scientific_name_visible', 'individual_count_visible',
-                'type_status_visible', 'type_notes_visible', 'specimen_notes_visible', 'occurrence_status_visible',
-                'sampling_protocol_visible', 'recorded_by_visible', 'family_visible', 'genus_visible',
-                'country_visible', 'locality_name_visible', 'decimal_latitude_visible', 'decimal_longitude_visible'])
+        // Traer configuraciones existentes en UNA SOLA QUERY (JOIN para resolver occurrence_id)
+        $existentes = EspecimenDivulgableEloquentModel::query()
+            ->join(
+                'taxonomia.especimenes',
+                'taxonomia.especimenes.id',
+                '=',
+                'divulgacion.especimenes_divulgables.especimen_id'
+            )
+            ->whereIn('taxonomia.especimenes.occurrence_id', $occurrenceIDs)
+            ->get([
+                'taxonomia.especimenes.occurrence_id',
+                'divulgacion.especimenes_divulgables.occurrence_id_visible',
+                'divulgacion.especimenes_divulgables.scientific_name_visible',
+                'divulgacion.especimenes_divulgables.individual_count_visible',
+                'divulgacion.especimenes_divulgables.type_status_visible',
+                'divulgacion.especimenes_divulgables.type_notes_visible',
+                'divulgacion.especimenes_divulgables.specimen_notes_visible',
+                'divulgacion.especimenes_divulgables.occurrence_status_visible',
+                'divulgacion.especimenes_divulgables.sampling_protocol_visible',
+                'divulgacion.especimenes_divulgables.recorded_by_visible',
+                'divulgacion.especimenes_divulgables.family_visible',
+                'divulgacion.especimenes_divulgables.genus_visible',
+                'divulgacion.especimenes_divulgables.country_visible',
+                'divulgacion.especimenes_divulgables.locality_name_visible',
+                'divulgacion.especimenes_divulgables.decimal_latitude_visible',
+                'divulgacion.especimenes_divulgables.decimal_longitude_visible',
+            ])
             ->keyBy('occurrence_id');
 
         $camposDefault = array_merge(...array_values(self::GRUPOS));
