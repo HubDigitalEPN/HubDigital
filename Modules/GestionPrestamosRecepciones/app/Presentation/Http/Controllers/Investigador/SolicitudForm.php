@@ -24,7 +24,7 @@ final class SolicitudForm extends Component
 
     public ?string $solicitudId = null;
 
-    #[Validate('required|string|max:255')]
+    #[Validate('required|string|max:200')]
     public string $tituloEstudio = '';
 
     #[Validate('required|string|max:255')]
@@ -72,7 +72,7 @@ final class SolicitudForm extends Component
             $this->items = $solicitud->items
                 ->map(fn ($item) => [
                     'especimen_codigo_externo' => (string) $item->especimen_codigo_externo,
-                    'cantidad_solicitada'       => (int) $item->cantidad_solicitada,
+                    'cantidad_solicitada' => (int) $item->cantidad_solicitada,
                 ])
                 ->values()
                 ->toArray();
@@ -88,7 +88,7 @@ final class SolicitudForm extends Component
     {
         $this->items = array_values(array_map(fn (array $item) => [
             'especimen_codigo_externo' => (string) ($item['especimen_codigo_externo'] ?? ''),
-            'cantidad_solicitada'       => (int) ($item['cantidad_solicitada'] ?? 1),
+            'cantidad_solicitada' => (int) ($item['cantidad_solicitada'] ?? 1),
         ], $this->items));
     }
 
@@ -105,7 +105,7 @@ final class SolicitudForm extends Component
         $this->normalizeItems();
 
         $this->validate([
-            'tituloEstudio' => 'required|string|max:255',
+            'tituloEstudio' => 'required|string|max:200',
             'institucionAdscripcion' => 'required|string|max:255',
             'lineaInvestigacion' => 'required|string|max:255',
             'propositoPrestamo' => 'required|string',
@@ -116,7 +116,7 @@ final class SolicitudForm extends Component
             'items.*.cantidad_solicitada' => 'required|integer|min:1',
         ], [
             'tituloEstudio.required' => 'El título del estudio es obligatorio.',
-            'tituloEstudio.max' => 'El título no puede superar los 255 caracteres.',
+            'tituloEstudio.max' => 'El título no puede superar los 200 caracteres.',
             'institucionAdscripcion.required' => 'La institución de adscripción es obligatoria.',
             'lineaInvestigacion.required' => 'La línea de investigación es obligatoria.',
             'propositoPrestamo.required' => 'El propósito del préstamo es obligatorio.',
@@ -180,7 +180,7 @@ final class SolicitudForm extends Component
         }
 
         $this->validate([
-            'tituloEstudio' => 'required|string|max:255',
+            'tituloEstudio' => 'required|string|max:200',
             'institucionAdscripcion' => 'required|string|max:255',
             'lineaInvestigacion' => 'required|string|max:255',
             'propositoPrestamo' => 'required|string',
@@ -191,7 +191,7 @@ final class SolicitudForm extends Component
             'items.*.cantidad_solicitada' => 'required|integer|min:1',
         ], [
             'tituloEstudio.required' => 'El título del estudio es obligatorio.',
-            'tituloEstudio.max' => 'El título no puede superar los 255 caracteres.',
+            'tituloEstudio.max' => 'El título no puede superar los 200 caracteres.',
             'institucionAdscripcion.required' => 'La institución de adscripción es obligatoria.',
             'lineaInvestigacion.required' => 'La línea de investigación es obligatoria.',
             'propositoPrestamo.required' => 'El propósito del préstamo es obligatorio.',
