@@ -94,7 +94,11 @@ class Caja
 
     public function ingresarEnRanura(RanuraId $ranuraId): void
     {
-        if (! $this->estado->equals(EstadoCaja::EnTransito)) {
+        // Una caja entra a una ranura tanto en su ingreso normal (EnTransito) como
+        // al devolverse tras una extracción prolongada. El ESP32 detecta ambos casos
+        // como el mismo evento físico de inserción.
+        if (! $this->estado->equals(EstadoCaja::EnTransito)
+            && ! $this->estado->equals(EstadoCaja::ExtraccionProlongada)) {
             throw new CajaNoEnTransitoException($this->id, $this->estado);
         }
 
@@ -162,6 +166,15 @@ class Caja
         }
 
         $this->estado = EstadoCaja::PendienteClasificacion;
+    }
+
+    public function marcarExtraccionProlongada(): void
+    {
+        if (! $this->estado->equals(EstadoCaja::EnTransito)) {
+            throw new CajaNoEnTransitoException($this->id, $this->estado);
+        }
+
+        $this->estado = EstadoCaja::ExtraccionProlongada;
     }
 
     /**

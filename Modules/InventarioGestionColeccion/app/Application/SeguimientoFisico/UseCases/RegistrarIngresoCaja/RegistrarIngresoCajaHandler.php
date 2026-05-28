@@ -67,11 +67,23 @@ final class RegistrarIngresoCajaHandler
             return $this->reconciliar($caja, $ranura, $cajaId, $ranuraId, $actorId, $actorRol);
         }
 
-        // Normal flow: caja is EnTransito.
+        // La devolución de una caja en Extracción Prolongada llega como un ingreso
+        // detectado por el ESP32; al reinsertarse debe resolverse su alerta activa.
+        $estabaProlongada = $caja->estadoActual()->equals(EstadoCaja::ExtraccionProlongada);
+
+        // Normal flow: caja is EnTransito (o devolución desde ExtraccionProlongada).
         [$ubicacion, $alertaGenerada] = $this->transactionManager->executeTransactional(
-            function () use ($caja, $ranura, $cajaId, $ranuraId, $actorRol, $actorId): array {
+            function () use ($caja, $ranura, $cajaId, $ranuraId, $actorRol, $actorId, $estabaProlongada): array {
                 $caja->ingresarEnRanura($ranuraId);
                 $ranura->asignarCaja($cajaId);
+
+                if ($estabaProlongada) {
+                    $alertaProlongada = $this->alertaRepo->buscarActivaPorCaja($cajaId);
+                    if ($alertaProlongada !== null && $alertaProlongada->tipo()->equals(TipoAlerta::ExtraccionProlongada)) {
+                        $alertaProlongada->resolver('Caja devuelta a su ranura (detectada por el sistema)');
+                        $this->alertaRepo->guardar($alertaProlongada);
+                    }
+                }
 
                 $ocurridoEn = new \DateTimeImmutable;
 
