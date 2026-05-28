@@ -157,6 +157,14 @@
                                 Cajas
                             </flux:sidebar.item>
                             <flux:sidebar.item
+                                icon="squares-2x2"
+                                :href="route('inventario.unit-trays')"
+                                :current="request()->routeIs('inventario.unit-trays')"
+                                wire:navigate
+                            >
+                                Unit Trays
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
                                 icon="bell-alert"
                                 :href="route('inventario.alertas')"
                                 :current="request()->routeIs('inventario.alertas')"

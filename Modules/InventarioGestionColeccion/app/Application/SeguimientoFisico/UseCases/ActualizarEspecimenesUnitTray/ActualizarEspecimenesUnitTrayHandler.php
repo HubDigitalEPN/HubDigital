@@ -9,6 +9,7 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\Trans
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Support\PropagaClasificacionTaxonomica;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\CajaRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UnitTrayEspecimenRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UnitTrayRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\UnitTrayId;
 
@@ -20,6 +21,7 @@ final class ActualizarEspecimenesUnitTrayHandler
         private readonly UnitTrayRepository $unitTrayRepo,
         private readonly CajaRepository $cajaRepo,
         private readonly EspecimenRepositoryInterface $especimenRepo,
+        private readonly UnitTrayEspecimenRepository $asignacionRepo,
         private readonly ClasificacionTaxonomicaPort $clasificacionPort,
         private readonly TransactionManagerPort $transactionManager,
     ) {}
@@ -55,6 +57,7 @@ final class ActualizarEspecimenesUnitTrayHandler
                 }
 
                 $this->unitTrayRepo->guardar($unitTray);
+                $this->asignacionRepo->sincronizar($unitTray->id(), $input->especimenIds);
 
                 $this->propagarClasificacionACaja(
                     $unitTray->cajaId(),

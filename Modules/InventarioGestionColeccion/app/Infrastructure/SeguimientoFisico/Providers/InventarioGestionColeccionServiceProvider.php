@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Providers;
 
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\ClasificacionTaxonomicaPort;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\ContextoEjecucionPort;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\EventPublisherPort;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\GeneradorActaPdfPort;
@@ -21,6 +22,7 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\Ran
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\SincronizacionEsp32Repository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\TaxonRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UbicacionCajaRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UnitTrayEspecimenRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UnitTrayRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\Providers\EventServiceProvider;
 use Modules\InventarioGestionColeccion\Infrastructure\Providers\RouteServiceProvider;
@@ -29,6 +31,7 @@ use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\LaravelEventPublisherAdapter;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\LaravelTransactionManagerAdapter;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\SimplePdfActaAdapter;
+use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\TaxonArbolClasificacionTaxonomicaAdapter;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentAlertaUbicacionRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentCajaRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentEntidadDepositanteRepository;
@@ -41,6 +44,7 @@ use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persiste
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentSincronizacionEsp32Repository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentTaxonRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentUbicacionCajaRepository;
+use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentUnitTrayEspecimenRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentUnitTrayRepository;
 use Nwidart\Modules\Support\ModuleServiceProvider;
 
@@ -58,6 +62,7 @@ class InventarioGestionColeccionServiceProvider extends ModuleServiceProvider
     public array $bindings = [
         CajaRepository::class => EloquentCajaRepository::class,
         UnitTrayRepository::class => EloquentUnitTrayRepository::class,
+        UnitTrayEspecimenRepository::class => EloquentUnitTrayEspecimenRepository::class,
         GabineteRepository::class => EloquentGabineteRepository::class,
         RanuraGabineteRepository::class => EloquentRanuraGabineteRepository::class,
         HorarioRepository::class => EloquentHorarioRepository::class,
@@ -74,6 +79,7 @@ class InventarioGestionColeccionServiceProvider extends ModuleServiceProvider
         EspecimenRepositoryInterface::class => EloquentEspecimenRepository::class,
         EntidadDepositanteRepositoryInterface::class => EloquentEntidadDepositanteRepository::class,
         GeneradorActaPdfPort::class => SimplePdfActaAdapter::class,
+        ClasificacionTaxonomicaPort::class => TaxonArbolClasificacionTaxonomicaAdapter::class,
     ];
 
     public function boot(): void

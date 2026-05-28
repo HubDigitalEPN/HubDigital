@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Admin\AlertaIndex;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Admin\AsignacionUnitTrayIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Admin\CajaIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Admin\Dashboard;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Admin\GabineteIndex;
@@ -21,6 +22,7 @@ Route::middleware(['web', 'auth', 'verified', 'role:curador'])
         Route::get('/gabinetes', GabineteIndex::class)->name('gabinetes');
         Route::get('/gabinetes/{id}', GabineteShow::class)->name('gabinetes.show');
         Route::get('/cajas', CajaIndex::class)->name('cajas');
+        Route::get('/unit-trays', AsignacionUnitTrayIndex::class)->name('unit-trays');
         Route::get('/alertas', AlertaIndex::class)->name('alertas');
         Route::get('/horario', HorarioSettingsForm::class)->name('horario');
 
