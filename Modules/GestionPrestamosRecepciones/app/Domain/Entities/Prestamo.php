@@ -108,6 +108,7 @@ final class Prestamo
 
     /**
      * Determina si aplica enviar un recordatorio según la configuración de días antes.
+     * Retorna Vencido solo 1 día después del vencimiento (para evitar notificaciones repetidas).
      * Consulta pura — no muta estado ni registra eventos.
      *
      * @param  list<int>  $diasAntes
@@ -116,7 +117,7 @@ final class Prestamo
         array $diasAntes,
         DateTimeImmutable $ahora,
     ): ?EstadoRecordatorio {
-        if ($ahora >= $this->fechaFin) {
+        if ($ahora >= $this->fechaFin->modify('+1 day')) {
             return EstadoRecordatorio::Vencido;
         }
 
@@ -131,6 +132,26 @@ final class Prestamo
         }
 
         return null;
+    }
+
+    /**
+     * Transiciona el préstamo a Vencido y registra el evento de recordatorio.
+     * Solo actúa si el préstamo está en estado Activo.
+     */
+    public function vencer(DateTimeImmutable $ahora): void
+    {
+        if (! $this->estado->equals(EstadoPrestamo::Activo)) {
+            return;
+        }
+
+        $this->estado = EstadoPrestamo::Vencido;
+
+        $this->events[] = new RecordatorioDevolucionEnviado(
+            prestamoId: $this->id,
+            investigadorId: $this->investigadorId,
+            estadoRecordatorio: EstadoRecordatorio::Vencido,
+            ocurridoEn: $ahora,
+        );
     }
 
     /**

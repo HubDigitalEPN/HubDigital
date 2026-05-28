@@ -10,6 +10,7 @@ use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\PrestamoNoEncontradoException;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\ConfiguracionGlobalRecordatoriosRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\PrestamoRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoRecordatorio;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrestamoId;
 
 final class EvaluarPlazoDevolucionPrestamoHandler
@@ -48,10 +49,14 @@ final class EvaluarPlazoDevolucionPrestamoHandler
             return EvaluarPlazoDevolucionPrestamoOutput::from(false, null);
         }
 
-        $prestamo->registrarEnvioDeRecordatorio(
-            estado: $estadoRecordatorio,
-            ahora: $ahora,
-        );
+        if ($estadoRecordatorio === EstadoRecordatorio::Vencido) {
+            $prestamo->vencer($ahora);
+        } else {
+            $prestamo->registrarEnvioDeRecordatorio(
+                estado: $estadoRecordatorio,
+                ahora: $ahora,
+            );
+        }
 
         $this->transactionManager->executeTransactional(function () use ($prestamo): void {
             $this->prestamoRepo->guardar($prestamo);

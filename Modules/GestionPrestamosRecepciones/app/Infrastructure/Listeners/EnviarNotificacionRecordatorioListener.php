@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace Modules\GestionPrestamosRecepciones\Infrastructure\Listeners;
 
 use Carbon\Carbon;
+use Illuminate\Mail\Mailable;
 use Illuminate\Support\Facades\Mail;
 use Modules\GestionPrestamosRecepciones\Application\Ports\InvestigadorEmailPort;
 use Modules\GestionPrestamosRecepciones\Domain\Events\RecordatorioDevolucionEnviado;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\PrestamoRepositoryInterface;
-use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\Mails\RecordatorioDevolucionMailable;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoRecordatorio;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\Mails\RecordatorioProximoAVencerMailable;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\Mails\RecordatorioVencidoMailable;
 
 final class EnviarNotificacionRecordatorioListener
 {
@@ -32,10 +35,20 @@ final class EnviarNotificacionRecordatorioListener
 
         $email = $this->investigadorEmail->obtenerEmail($event->investigadorId);
 
-        Mail::to($email)->send(new RecordatorioDevolucionMailable(
-            estadoRecordatorio: $event->estadoRecordatorio->value,
-            prestamoId: (string) $event->prestamoId,
-            fechaLimite: $fechaLimite,
-        ));
+        Mail::to($email)->send($this->resolverMailable($event->estadoRecordatorio, (string) $event->prestamoId, $fechaLimite));
+    }
+
+    private function resolverMailable(EstadoRecordatorio $estado, string $prestamoId, string $fechaLimite): Mailable
+    {
+        return match ($estado) {
+            EstadoRecordatorio::ProximoAVencer => new RecordatorioProximoAVencerMailable(
+                prestamoId: $prestamoId,
+                fechaLimite: $fechaLimite,
+            ),
+            EstadoRecordatorio::Vencido => new RecordatorioVencidoMailable(
+                prestamoId: $prestamoId,
+                fechaLimite: $fechaLimite,
+            ),
+        };
     }
 }
