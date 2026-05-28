@@ -80,10 +80,11 @@ final class RecordatoriosDevolucionPrestamosContext extends BaseContext
 
     private function sembrarPrestamoConFechaFin(DateTimeImmutable $fechaFin): Prestamo
     {
-        $prestamo = Prestamo::iniciar(
+        $prestamo = Prestamo::reconstituir(
             id:             $this->prestamoRepo->nextIdentity(),
             actaPrestamoId: ActaPrestamoId::generate(),
             investigadorId: $this->investigadorId,
+            estado:         EstadoPrestamo::Activo,
             iniciadoEn:     new DateTimeImmutable('2026-01-01'),
             fechaFin:       $fechaFin,
         );
