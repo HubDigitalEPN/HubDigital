@@ -22,10 +22,13 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Re
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarIngresoCaja\RegistrarIngresoCajaInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarRetiroCaja\RegistrarRetiroCajaHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarRetiroCaja\RegistrarRetiroCajaInput;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
 
 #[Layout('layouts.app', params: ['title' => 'Cajas'])]
 final class CajaIndex extends Component
 {
+    use TraduceErroresPersistencia;
+
     public array $cajas = [];
 
     public string $busqueda = '';
@@ -156,7 +159,7 @@ final class CajaIndex extends Component
             $this->successMessage = 'Caja creada correctamente.';
             $this->errorMessage = null;
         } catch (\Throwable $e) {
-            $this->errorMessage = $e->getMessage();
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 
@@ -201,7 +204,7 @@ final class CajaIndex extends Component
             $this->successMessage = 'Caja actualizada correctamente.';
             $this->errorMessage = null;
         } catch (\Throwable $e) {
-            $this->errorMessage = $e->getMessage();
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 
@@ -216,7 +219,7 @@ final class CajaIndex extends Component
             $this->successMessage = 'Caja eliminada correctamente.';
             $this->errorMessage = null;
         } catch (\Throwable $e) {
-            $this->errorMessage = $e->getMessage();
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 
@@ -231,7 +234,7 @@ final class CajaIndex extends Component
             $this->successMessage = 'Retiro registrado correctamente.';
             $this->errorMessage = null;
         } catch (\Throwable $e) {
-            $this->errorMessage = $e->getMessage();
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 
@@ -263,7 +266,7 @@ final class CajaIndex extends Component
                 : 'Ingreso registrado correctamente.';
             $this->errorMessage = null;
         } catch (\Throwable $e) {
-            $this->errorMessage = $e->getMessage();
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 

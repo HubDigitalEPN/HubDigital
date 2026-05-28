@@ -19,10 +19,13 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\De
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarGabinetes\ListarGabineteHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarRanurasGabinete\ListarRanurasGabineteHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarRanurasGabinete\ListarRanurasGabineteInput;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
 
 #[Layout('layouts.app', params: ['title' => 'Gabinetes'])]
 final class GabineteIndex extends Component
 {
+    use TraduceErroresPersistencia;
+
     public array $gabinetes = [];
 
     public bool $showModal = false;
@@ -84,7 +87,7 @@ final class GabineteIndex extends Component
             $this->showModal = false;
             $this->successMessage = 'Gabinete creado correctamente.';
         } catch (\Throwable $e) {
-            $this->errorMessage = $e->getMessage();
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 
@@ -136,7 +139,7 @@ final class GabineteIndex extends Component
 
             $this->editRanuras[$idx]['activa'] = $nuevaActiva;
         } catch (\Throwable $e) {
-            $this->errorMessage = $e->getMessage();
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 
@@ -159,7 +162,7 @@ final class GabineteIndex extends Component
             $this->successMessage = 'Gabinete actualizado correctamente.';
             $this->errorMessage = null;
         } catch (\Throwable $e) {
-            $this->errorMessage = $e->getMessage();
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 
@@ -174,7 +177,7 @@ final class GabineteIndex extends Component
             $this->successMessage = 'Gabinete desactivado.';
             $this->errorMessage = null;
         } catch (\Throwable $e) {
-            $this->errorMessage = $e->getMessage();
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 

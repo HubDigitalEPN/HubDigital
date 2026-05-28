@@ -16,10 +16,13 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Li
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarTaxon\RegistrarTaxonHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarTaxon\RegistrarTaxonInput;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\RangoTaxonomico;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
 
 #[Layout('layouts.app', params: ['title' => 'Taxones'])]
 final class TaxonIndex extends Component
 {
+    use TraduceErroresPersistencia;
+
     public array $taxones = [];
 
     public array $rangos = [];
@@ -98,7 +101,7 @@ final class TaxonIndex extends Component
             $this->successMessage = 'Taxón registrado correctamente.';
             $this->errorMessage = null;
         } catch (\Throwable $e) {
-            $this->errorMessage = $e->getMessage();
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 
@@ -139,7 +142,7 @@ final class TaxonIndex extends Component
             $this->successMessage = 'Taxón actualizado correctamente.';
             $this->errorMessage = null;
         } catch (\Throwable $e) {
-            $this->errorMessage = $e->getMessage();
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 
@@ -154,7 +157,7 @@ final class TaxonIndex extends Component
             $this->successMessage = 'Taxón desactivado correctamente.';
             $this->errorMessage = null;
         } catch (\Throwable $e) {
-            $this->errorMessage = $e->getMessage();
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 

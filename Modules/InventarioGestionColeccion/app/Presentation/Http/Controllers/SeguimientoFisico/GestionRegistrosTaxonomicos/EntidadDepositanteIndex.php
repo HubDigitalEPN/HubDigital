@@ -16,10 +16,13 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Li
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarEntidadDepositante\RegistrarEntidadDepositanteHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarEntidadDepositante\RegistrarEntidadDepositanteInput;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TipoEntidadDepositante;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
 
 #[Layout('layouts.app', params: ['title' => 'Entidades Depositantes'])]
 final class EntidadDepositanteIndex extends Component
 {
+    use TraduceErroresPersistencia;
+
     public array $entidades = [];
 
     public array $tipos = [];
@@ -97,7 +100,7 @@ final class EntidadDepositanteIndex extends Component
             $this->successMessage = 'Entidad depositante registrada correctamente.';
             $this->errorMessage = null;
         } catch (\Throwable $e) {
-            $this->errorMessage = $e->getMessage();
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 
@@ -138,7 +141,7 @@ final class EntidadDepositanteIndex extends Component
             $this->successMessage = 'Entidad depositante actualizada correctamente.';
             $this->errorMessage = null;
         } catch (\Throwable $e) {
-            $this->errorMessage = $e->getMessage();
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 
@@ -160,7 +163,7 @@ final class EntidadDepositanteIndex extends Component
             $this->showActaModal = true;
             $this->successMessage = "Acta generada para {$output->entidadNombre}: {$output->totalEspecimenes} especímenes.";
         } catch (\Throwable $e) {
-            $this->errorMessage = $e->getMessage();
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 

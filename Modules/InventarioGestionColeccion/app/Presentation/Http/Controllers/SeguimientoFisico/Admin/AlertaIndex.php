@@ -19,10 +19,13 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Li
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ResolverAlerta\ResolverAlertaHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ResolverAlerta\ResolverAlertaInput;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TipoAlerta;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
 
 #[Layout('layouts.app', params: ['title' => 'Alertas'])]
 final class AlertaIndex extends Component
 {
+    use TraduceErroresPersistencia;
+
     public array $alertas = [];
 
     public string $filtroEstado = 'activa';
@@ -83,7 +86,7 @@ final class AlertaIndex extends Component
             $this->successMessage = 'Alerta resuelta correctamente.';
             $this->errorMessage = null;
         } catch (\Throwable $e) {
-            $this->errorMessage = $e->getMessage();
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 
@@ -99,7 +102,7 @@ final class AlertaIndex extends Component
             $this->successMessage = 'Alerta ignorada.';
             $this->errorMessage = null;
         } catch (\Throwable $e) {
-            $this->errorMessage = $e->getMessage();
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 
