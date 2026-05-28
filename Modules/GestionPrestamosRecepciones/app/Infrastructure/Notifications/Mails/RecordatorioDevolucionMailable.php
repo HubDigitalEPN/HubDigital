@@ -13,6 +13,7 @@ final class RecordatorioDevolucionMailable extends Mailable
     public function __construct(
         public readonly string $estadoRecordatorio,
         public readonly string $prestamoId,
+        public readonly string $fechaLimite,
     ) {}
 
     public function envelope(): Envelope
