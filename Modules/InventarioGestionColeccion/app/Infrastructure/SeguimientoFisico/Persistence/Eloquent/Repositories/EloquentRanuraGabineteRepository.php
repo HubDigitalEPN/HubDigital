@@ -56,6 +56,33 @@ class EloquentRanuraGabineteRepository implements RanuraGabineteRepository
         return $model ? $this->toDomain($model) : null;
     }
 
+    public function buscarVecinasOcupadas(GabineteId $gabineteId, int $numeroRanura): array
+    {
+        $resultado = [];
+
+        $anterior = RanuraGabineteEloquentModel::where('gabinete_id', (string) $gabineteId)
+            ->whereNotNull('caja_actual_id')
+            ->where('numero_ranura', '<', $numeroRanura)
+            ->orderByDesc('numero_ranura')
+            ->first();
+
+        if ($anterior !== null) {
+            $resultado[] = $this->toDomain($anterior);
+        }
+
+        $siguiente = RanuraGabineteEloquentModel::where('gabinete_id', (string) $gabineteId)
+            ->whereNotNull('caja_actual_id')
+            ->where('numero_ranura', '>', $numeroRanura)
+            ->orderBy('numero_ranura')
+            ->first();
+
+        if ($siguiente !== null) {
+            $resultado[] = $this->toDomain($siguiente);
+        }
+
+        return $resultado;
+    }
+
     private function toDomain(RanuraGabineteEloquentModel $model): RanuraGabinete
     {
         return RanuraGabinete::reconstituir(
