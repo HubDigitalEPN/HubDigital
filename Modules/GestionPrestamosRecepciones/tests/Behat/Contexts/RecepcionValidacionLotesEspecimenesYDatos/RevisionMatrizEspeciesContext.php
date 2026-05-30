@@ -24,6 +24,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRep
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoMatrizEspecies;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoRegistroEspecimen;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\MatrizEspeciesId;
 use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\BaseContext;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\FakeEventPublisherAdapter;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\PassThroughTransactionManagerAdapter;
@@ -143,6 +144,7 @@ final class RevisionMatrizEspeciesContext extends BaseContext
     private function sembrarMatrizConRegistro(
         string $nombreCientifico,
         array $camposDwC = ['scientificName' => 'present', 'decimalLatitude' => 'present', 'decimalLongitude' => 'present'],
+        bool $noCatalogado = false,
     ): void {
         Assert::assertNotNull($this->solicitudEnCurso, 'Se requiere una solicitud en curso antes de crear la matriz');
 
@@ -153,12 +155,12 @@ final class RevisionMatrizEspeciesContext extends BaseContext
             tipoTramite: $this->solicitudEnCurso->tipoTramite(),
         );
 
-        $this->registroIdEnCurso = $matriz->agregarRegistroEspecimen($nombreCientifico);
+        $this->registroIdEnCurso = $matriz->agregarRegistroEspecimen($nombreCientifico, $noCatalogado);
         $this->matrizRepo->guardar($matriz);
         $this->matrizIdEnCurso = (string) $matriz->id();
 
         // Aserción de integridad
-        $persistida = $this->matrizRepo->buscarPorId($this->matrizIdEnCurso);
+        $persistida = $this->matrizRepo->buscarPorId(MatrizEspeciesId::from($this->matrizIdEnCurso));
         Assert::assertNotNull($persistida, 'La matriz no fue persistida correctamente');
         Assert::assertTrue(
             $persistida->contieneEspecimen($nombreCientifico),
@@ -349,7 +351,7 @@ final class RevisionMatrizEspeciesContext extends BaseContext
         $this->especieIngresada = $especieIngresada;
         $this->sembrarMatrizConRegistro($especieIngresada);
 
-        $persistida = $this->matrizRepo->buscarPorId($this->matrizIdEnCurso);
+        $persistida = $this->matrizRepo->buscarPorId(MatrizEspeciesId::from($this->matrizIdEnCurso));
         Assert::assertNotNull($persistida, 'La matriz no fue persistida correctamente tras agregar la especie');
         Assert::assertTrue(
             $persistida->contieneEspecimen($especieIngresada),
@@ -430,7 +432,7 @@ final class RevisionMatrizEspeciesContext extends BaseContext
         Assert::assertNotNull($this->matrizIdEnCurso, 'Se requiere un ID de matriz para verificar el registro');
 
         // Verificar el estado del registro en el repositorio In-Memory
-        $matriz = $this->matrizRepo->buscarPorId($this->matrizIdEnCurso);
+        $matriz = $this->matrizRepo->buscarPorId(MatrizEspeciesId::from($this->matrizIdEnCurso));
         Assert::assertNotNull($matriz, 'La matriz no fue encontrada en el repositorio tras la corrección');
         Assert::assertTrue(
             $matriz->estadoRegistro($this->registroIdEnCurso)->equals(EstadoRegistroEspecimen::from($estadoMarcado)),
@@ -448,9 +450,9 @@ final class RevisionMatrizEspeciesContext extends BaseContext
         Assert::assertNotEmpty($especie, 'El nombre de la especie no catalogada no puede estar vacío');
 
         $this->especieIngresada = $especie;
-        $this->sembrarMatrizConRegistro($especie);
+        $this->sembrarMatrizConRegistro($especie, noCatalogado: true);
 
-        $persistida = $this->matrizRepo->buscarPorId($this->matrizIdEnCurso);
+        $persistida = $this->matrizRepo->buscarPorId(MatrizEspeciesId::from($this->matrizIdEnCurso));
         Assert::assertNotNull($persistida, 'La matriz no fue persistida correctamente');
         Assert::assertTrue(
             $persistida->contieneEspecimen($especie),
@@ -494,7 +496,7 @@ final class RevisionMatrizEspeciesContext extends BaseContext
         Assert::assertNotNull($this->ultimaRespuesta, 'El handler no retornó ninguna respuesta');
         Assert::assertNotNull($this->matrizIdEnCurso, 'Se requiere un ID de matriz para verificar la etiqueta');
 
-        $matriz = $this->matrizRepo->buscarPorId($this->matrizIdEnCurso);
+        $matriz = $this->matrizRepo->buscarPorId(MatrizEspeciesId::from($this->matrizIdEnCurso));
         Assert::assertNotNull($matriz, 'La matriz no fue encontrada en el repositorio tras justificar el hallazgo');
         Assert::assertTrue(
             $matriz->estadoRegistro($this->registroIdEnCurso)->equals(EstadoRegistroEspecimen::from($etiquetaEsperada)),
@@ -513,7 +515,7 @@ final class RevisionMatrizEspeciesContext extends BaseContext
         Assert::assertNotNull($this->ultimaRespuesta, 'El handler no retornó ninguna respuesta');
         Assert::assertNotNull($this->matrizIdEnCurso, 'Se requiere un ID de matriz para verificar su estado');
 
-        $matriz = $this->matrizRepo->buscarPorId($this->matrizIdEnCurso);
+        $matriz = $this->matrizRepo->buscarPorId(MatrizEspeciesId::from($this->matrizIdEnCurso));
         Assert::assertNotNull($matriz, 'La matriz no fue encontrada en el repositorio');
         Assert::assertTrue(
             $matriz->estado()->equals(EstadoMatrizEspecies::from($estadoMatrizEsperado)),
@@ -533,9 +535,9 @@ final class RevisionMatrizEspeciesContext extends BaseContext
 
         // Sembrar la matriz con un espécimen no catalogado y justificarlo vía dominio
         // para que la matriz transite naturalmente a "Cargada con Alertas"
-        $this->sembrarMatrizConRegistro('Morpho sp. nov.');
+        $this->sembrarMatrizConRegistro('Morpho sp. nov.', noCatalogado: true);
 
-        $matriz = $this->matrizRepo->buscarPorId($this->matrizIdEnCurso);
+        $matriz = $this->matrizRepo->buscarPorId(MatrizEspeciesId::from($this->matrizIdEnCurso));
         Assert::assertNotNull($matriz, 'La matriz no fue encontrada tras su creación');
 
         // Justificar el registro directamente vía dominio para establecer el estado precondición
@@ -543,7 +545,7 @@ final class RevisionMatrizEspeciesContext extends BaseContext
         $this->matrizRepo->guardar($matriz);
 
         // Aserción de precondición
-        $verificacion = $this->matrizRepo->buscarPorId($this->matrizIdEnCurso);
+        $verificacion = $this->matrizRepo->buscarPorId(MatrizEspeciesId::from($this->matrizIdEnCurso));
         Assert::assertNotNull($verificacion, 'La matriz no fue encontrada tras la justificación');
         Assert::assertTrue(
             $verificacion->estado()->equals(EstadoMatrizEspecies::from($estadoMatriz)),
@@ -557,7 +559,7 @@ final class RevisionMatrizEspeciesContext extends BaseContext
     {
         Assert::assertNotNull($this->matrizIdEnCurso, 'Se requiere una matriz en curso del paso anterior');
 
-        $matriz = $this->matrizRepo->buscarPorId($this->matrizIdEnCurso);
+        $matriz = $this->matrizRepo->buscarPorId(MatrizEspeciesId::from($this->matrizIdEnCurso));
         Assert::assertNotNull($matriz, 'La matriz no fue encontrada en el repositorio');
 
         // Justificar cualquier registro pendiente para garantizar la precondición
@@ -567,7 +569,7 @@ final class RevisionMatrizEspeciesContext extends BaseContext
         $this->matrizRepo->guardar($matriz);
 
         // Aserción de precondición
-        $matrizActualizada = $this->matrizRepo->buscarPorId($this->matrizIdEnCurso);
+        $matrizActualizada = $this->matrizRepo->buscarPorId(MatrizEspeciesId::from($this->matrizIdEnCurso));
         Assert::assertNotNull($matrizActualizada);
         Assert::assertTrue(
             $matrizActualizada->todosLosHallazgosJustificados(),
@@ -691,7 +693,7 @@ final class RevisionMatrizEspeciesContext extends BaseContext
         Assert::assertNotNull($this->ultimaRespuesta, 'El handler no retornó ninguna respuesta');
         Assert::assertNotNull($this->matrizIdEnCurso, 'Se requiere un ID de matriz para verificar la integridad');
 
-        $matriz = $this->matrizRepo->buscarPorId($this->matrizIdEnCurso);
+        $matriz = $this->matrizRepo->buscarPorId(MatrizEspeciesId::from($this->matrizIdEnCurso));
         Assert::assertNotNull($matriz, 'La matriz no fue encontrada en el repositorio');
         Assert::assertTrue(
             $matriz->identificacionOriginalConservada(),

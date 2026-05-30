@@ -9,6 +9,7 @@ use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Http\Request;
 use Livewire\Livewire;
 use Modules\GestionPrestamosRecepciones\Application\Exceptions\SolicitudNoEncontradaException;
+use Modules\GestionPrestamosRecepciones\Application\Ports\CatalogoCuraduriaPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ExtraccionDatosDocumentoPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\HistorialPort;
@@ -24,6 +25,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Repositories\PrestamoRepositoryIn
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\EloquentHistorialAdapter;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\FakeCatalogoCuraduriaAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\FakeNotificacionCuratoriaAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\GroqExtraccionDatosDocumentoAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\LaravelEventPublisherAdapter;
@@ -67,6 +69,7 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
         NotificacionCuratoriaPort::class => FakeNotificacionCuratoriaAdapter::class,
         ValidacionFirmaElectronicaPort::class => PdfsigValidacionFirmaElectronicaAdapter::class,
         HistorialPort::class => EloquentHistorialAdapter::class,
+        CatalogoCuraduriaPort::class => FakeCatalogoCuraduriaAdapter::class,
     ];
 
     public function register(): void
