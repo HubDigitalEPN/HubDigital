@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\AprobarVerificacion;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\AuditarPrestamo;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\BandejaActas;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\BandejaPrestamos as CuradorBandejaPrestamos;
@@ -22,6 +23,7 @@ use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigad
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\MisSolicitudes;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\RegistroSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\SolicitudForm;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\VerificacionEntrega;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ServirDocumentoIdentidad;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ServirPdfActa;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ServirPdfFirmado;
@@ -50,6 +52,7 @@ Route::middleware(['auth', 'verified'])
             Route::get('/solicitud/{id}', DetalleSolicitud::class)->name('investigador.solicitud.detalle');
             Route::get('/acta/{id}', DetalleActa::class)->name('investigador.acta.detalle');
             Route::get('/prestamo/{id}', InvestigadorDetallePrestamo::class)->name('investigador.prestamo.detalle');
+            Route::get('/prestamo/{id}/verificacion-entrega', VerificacionEntrega::class)->name('investigador.prestamo.verificacion-entrega');
         });
 
         // Depositante — solicitudes de depósito
@@ -69,6 +72,7 @@ Route::middleware(['auth', 'verified'])
             Route::get('/curador/prestamos', CuradorBandejaPrestamos::class)->name('curador.prestamos');
             Route::get('/curador/prestamo/{id}', CuradorDetallePrestamo::class)->name('curador.prestamo.detalle');
             Route::get('/curador/prestamo/{id}/auditar', AuditarPrestamo::class)->name('curador.prestamo.auditar');
+            Route::get('/curador/prestamo/{id}/aprobar-verificacion', AprobarVerificacion::class)->name('curador.prestamo.aprobar-verificacion');
             Route::get('/curador/configuracion', ConfiguracionRecordatorios::class)->name('curador.configuracion');
         });
     });

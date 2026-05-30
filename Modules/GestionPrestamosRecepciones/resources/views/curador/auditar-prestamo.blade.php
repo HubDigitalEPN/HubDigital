@@ -112,6 +112,33 @@
                         <dd class="text-text-primary">{{ $prestamo->fecha_fin?->format('d/m/Y') ?? '—' }}</dd>
                     </div>
                 </dl>
+
+                @if($verificacion)
+                    <flux:separator />
+                    <div class="space-y-2">
+                        <p class="text-xs font-medium text-text-secondary uppercase tracking-wide">Verificación de entrega</p>
+                        <div class="flex items-center gap-2">
+                            @if($verificacion->estadoEnvio()->value === 'sin_novedades')
+                                <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold bg-[#E8F5E9] text-[#2E7D32] border border-[#A5D6A7]">
+                                    <span class="size-1.5 rounded-full bg-[#2E7D32]"></span>
+                                    Sin novedades
+                                </span>
+                                <span class="text-xs text-text-secondary">Todos los especímenes llegaron en buen estado.</span>
+                            @else
+                                <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold bg-[#FFEBEE] text-[#C62828] border border-[#EF9A9A]">
+                                    <span class="size-1.5 rounded-full bg-[#C62828]"></span>
+                                    Con novedades
+                                </span>
+                            @endif
+                        </div>
+                        @foreach($verificacion->observaciones() as $obs)
+                            <div class="rounded-lg border border-border bg-bg-main px-3 py-2">
+                                <p class="text-xs text-text-secondary font-mono">{{ $obs->itemPrestamoId }}</p>
+                                <p class="text-sm text-text-primary mt-0.5">{{ $obs->descripcion }}</p>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
             </div>
 
         </div>
@@ -148,7 +175,10 @@
                             'ActaFirmadaSubida'             => 'Acta firmada subida',
                             'ActaDevueltaPorFirmaInvalida'  => 'Acta devuelta por el curador',
                             'ActaValidada'                  => 'Acta validada',
-                            'PrestamoIniciado'              => 'Préstamo iniciado',
+                            'PrestamoIniciado'              => 'Especímenes despachados',
+                            'VerificacionEntregaRegistrada' => 'Verificación de entrega registrada',
+                            'VerificacionEntregaAprobada'   => 'Verificación de entrega aprobada',
+                            'PrestamoActivado'              => 'Préstamo activo',
                         ];
                         $colores = [
                             'solicitud' => '#1976D2',

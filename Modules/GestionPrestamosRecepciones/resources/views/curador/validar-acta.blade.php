@@ -154,7 +154,7 @@
             </div>
         @elseif($acta->estado === 'validada')
             <flux:callout variant="success" icon="check-circle">
-                Esta acta ha sido validada y el proceso de préstamo está completo.
+                Acta validada. Los especímenes están siendo coordinados para el despacho al investigador. El préstamo se activará una vez que el investigador confirme la recepción.
             </flux:callout>
         @endif
     @endif

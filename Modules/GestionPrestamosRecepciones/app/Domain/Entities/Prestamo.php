@@ -6,9 +6,12 @@ namespace Modules\GestionPrestamosRecepciones\Domain\Entities;
 
 use DateTimeImmutable;
 use InvalidArgumentException;
+use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoActivado;
 use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoIniciado;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ProrrogaAprobada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\RecordatorioDevolucionEnviado;
+use Modules\GestionPrestamosRecepciones\Domain\Events\VerificacionEntregaAprobada;
+use Modules\GestionPrestamosRecepciones\Domain\Events\VerificacionEntregaRegistrada;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\TransicionDeEstadoInvalidaException;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoPrestamo;
@@ -46,7 +49,7 @@ final class Prestamo
             id: $id,
             actaPrestamoId: $actaPrestamoId,
             investigadorId: $investigadorId,
-            estado: EstadoPrestamo::Activo,
+            estado: EstadoPrestamo::EnTransito,
             iniciadoEn: $iniciadoEn,
             fechaFin: $fechaFin,
         );
@@ -83,6 +86,50 @@ final class Prestamo
     }
 
     // ── Business methods ──────────────────────────────────────────────────────
+
+    public function registrarVerificacion(DateTimeImmutable $ahora): void
+    {
+        if (! $this->estado->equals(EstadoPrestamo::EnTransito)) {
+            throw TransicionDeEstadoInvalidaException::para(
+                'Prestamo',
+                $this->estado->name,
+                'registrarVerificacion — el préstamo debe estar en tránsito'
+            );
+        }
+
+        $this->estado = EstadoPrestamo::PendienteAprobacionVerificacion;
+
+        $this->events[] = new VerificacionEntregaRegistrada(
+            prestamoId: $this->id,
+            investigadorId: $this->investigadorId,
+            ocurridoEn: $ahora,
+        );
+    }
+
+    public function aprobarVerificacion(string $curadorId, DateTimeImmutable $ahora): void
+    {
+        if (! $this->estado->equals(EstadoPrestamo::PendienteAprobacionVerificacion)) {
+            throw TransicionDeEstadoInvalidaException::para(
+                'Prestamo',
+                $this->estado->name,
+                'aprobarVerificacion — el préstamo debe estar pendiente de aprobación de verificación'
+            );
+        }
+
+        $this->estado = EstadoPrestamo::Activo;
+
+        $this->events[] = new VerificacionEntregaAprobada(
+            prestamoId: $this->id,
+            curadorId: $curadorId,
+            ocurridoEn: $ahora,
+        );
+
+        $this->events[] = new PrestamoActivado(
+            prestamoId: $this->id,
+            curadorId: $curadorId,
+            ocurridoEn: $ahora,
+        );
+    }
 
     public function prorrogar(string $curadorId, DateTimeImmutable $nuevaFechaFin): void
     {
@@ -163,10 +210,10 @@ final class Prestamo
         DateTimeImmutable $ahora,
     ): void {
         $this->events[] = new RecordatorioDevolucionEnviado(
-            prestamoId:          $this->id,
-            investigadorId:      $this->investigadorId,
-            estadoRecordatorio:  $estado,
-            ocurridoEn:          $ahora,
+            prestamoId: $this->id,
+            investigadorId: $this->investigadorId,
+            estadoRecordatorio: $estado,
+            ocurridoEn: $ahora,
         );
     }
 

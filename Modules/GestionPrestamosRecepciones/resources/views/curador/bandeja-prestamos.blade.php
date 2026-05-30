@@ -21,6 +21,8 @@
         <div class="flex flex-wrap items-center gap-2">
             <flux:select wire:model.live="estado" class="w-52">
                 <flux:select.option value="">Todos los estados</flux:select.option>
+                <flux:select.option value="en_transito">Despachado</flux:select.option>
+                <flux:select.option value="pendiente_aprobacion_verificacion">Pte. verificación</flux:select.option>
                 <flux:select.option value="activo">Activo</flux:select.option>
                 <flux:select.option value="prorroga_solicitada">Prórroga solicitada</flux:select.option>
                 <flux:select.option value="vencido">Vencido</flux:select.option>
@@ -92,10 +94,18 @@
                                 {{ $prestamo->fecha_fin?->format('d/m/Y') ?? '—' }}
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap">
-                                <flux:button size="sm" variant="ghost" icon="magnifying-glass"
-                                    wire:navigate href="{{ route('prestamos.curador.prestamo.auditar', $prestamo->id) }}">
-                                    Auditar
-                                </flux:button>
+                                <div class="flex items-center gap-2">
+                                    @if($prestamo->estado === 'pendiente_aprobacion_verificacion')
+                                        <flux:button size="sm" variant="primary" icon="clipboard-document-check"
+                                            wire:navigate href="{{ route('prestamos.curador.prestamo.aprobar-verificacion', $prestamo->id) }}">
+                                            Aprobar verificación
+                                        </flux:button>
+                                    @endif
+                                    <flux:button size="sm" variant="ghost" icon="magnifying-glass"
+                                        wire:navigate href="{{ route('prestamos.curador.prestamo.auditar', $prestamo->id) }}">
+                                        Auditar
+                                    </flux:button>
+                                </div>
                             </td>
                         </tr>
                     @endforeach

@@ -15,6 +15,7 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialP
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudInput;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\RecordatorioDevolucionRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\Repositories\VerificacionEntregaPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrestamoId;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\PrestamoEloquentModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\SolicitudPrestamoModel;
@@ -132,6 +133,7 @@ final class AuditarPrestamo extends Component
     public function render(
         ConsultarHistorialSolicitudHandler $historialSolicitudHandler,
         ConsultarHistorialPrestamoHandler $historialPrestamoHandler,
+        VerificacionEntregaPrestamoRepositoryInterface $verificacionRepo,
     ): View {
         $prestamo = PrestamoEloquentModel::query()->with('acta')->findOrFail($this->prestamoId);
         $acta = $prestamo->acta;
@@ -168,6 +170,8 @@ final class AuditarPrestamo extends Component
             ->values()
             ->all();
 
-        return view('gestionprestamosrecepciones::curador.auditar-prestamo', compact('prestamo', 'acta', 'solicitud', 'timeline'));
+        $verificacion = $verificacionRepo->buscarPorPrestamoId(PrestamoId::fromString($this->prestamoId));
+
+        return view('gestionprestamosrecepciones::curador.auditar-prestamo', compact('prestamo', 'acta', 'solicitud', 'timeline', 'verificacion'));
     }
 }

@@ -61,9 +61,19 @@
                         Tus documentos están en revisión por el curador.
                     </flux:callout>
                 @elseif($acta->estado === 'validada')
-                    <flux:callout variant="success" icon="check-circle">
-                        El acta ha sido validada. El préstamo está activo.
-                    </flux:callout>
+                    @if($prestamo?->estado === 'en_transito')
+                        <flux:callout variant="success" icon="check-circle">
+                            El acta ha sido validada. Los especímenes serán despachados a tu dirección. Cuando los recibas, deberás confirmar la recepción desde el detalle del préstamo.
+                        </flux:callout>
+                    @elseif($prestamo?->estado === 'pendiente_aprobacion_verificacion')
+                        <flux:callout variant="info" icon="clock">
+                            Has reportado la recepción de los especímenes. El curador está revisando tu informe.
+                        </flux:callout>
+                    @else
+                        <flux:callout variant="success" icon="check-circle">
+                            El acta ha sido validada y el préstamo está activo.
+                        </flux:callout>
+                    @endif
                 @endif
 
                 <div class="flex flex-wrap gap-2">
@@ -77,7 +87,7 @@
                     @if($prestamo)
                         <flux:button variant="ghost" icon="archive-box" size="sm" wire:navigate
                             href="{{ route('prestamos.investigador.prestamo.detalle', $prestamo->id) }}">
-                            Ver préstamo activo
+                            Ver préstamo
                         </flux:button>
                     @endif
                 </div>

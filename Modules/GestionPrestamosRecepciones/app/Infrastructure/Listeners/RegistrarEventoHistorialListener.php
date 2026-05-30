@@ -10,9 +10,12 @@ use Modules\GestionPrestamosRecepciones\Domain\Events\ActaDevueltaPorFirmaInvali
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaEnviada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaFirmadaSubida;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaValidada;
+use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoActivado;
 use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoIniciado;
 use Modules\GestionPrestamosRecepciones\Domain\Events\RecordatorioDevolucionEnviado;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoAprobada;
+use Modules\GestionPrestamosRecepciones\Domain\Events\VerificacionEntregaAprobada;
+use Modules\GestionPrestamosRecepciones\Domain\Events\VerificacionEntregaRegistrada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoEnviada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoObservada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoRechazada;
@@ -47,7 +50,10 @@ final class RegistrarEventoHistorialListener
             $event instanceof ActaDevueltaPorFirmaInvalida,
             $event instanceof ActaValidada => 'solicitud_prestamo',
             $event instanceof PrestamoIniciado,
-            $event instanceof RecordatorioDevolucionEnviado => 'prestamo',
+            $event instanceof RecordatorioDevolucionEnviado,
+            $event instanceof VerificacionEntregaRegistrada,
+            $event instanceof VerificacionEntregaAprobada,
+            $event instanceof PrestamoActivado => 'prestamo',
         };
     }
 
@@ -67,7 +73,10 @@ final class RegistrarEventoHistorialListener
                 ?? (string) $event->actaId
             ),
             $event instanceof PrestamoIniciado,
-            $event instanceof RecordatorioDevolucionEnviado => (string) $event->prestamoId,
+            $event instanceof RecordatorioDevolucionEnviado,
+            $event instanceof VerificacionEntregaRegistrada,
+            $event instanceof VerificacionEntregaAprobada,
+            $event instanceof PrestamoActivado => (string) $event->prestamoId,
         };
     }
 

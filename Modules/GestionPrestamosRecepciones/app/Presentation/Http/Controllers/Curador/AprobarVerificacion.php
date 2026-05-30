@@ -10,17 +10,14 @@ use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarVerificacionEntrega\AprobarVerificacionEntregaHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarVerificacionEntrega\AprobarVerificacionEntregaInput;
-use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialPrestamo\ConsultarHistorialPrestamoHandler;
-use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialPrestamo\ConsultarHistorialPrestamoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarPrestamo\ConsultarPrestamoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarPrestamo\ConsultarPrestamoInput;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\PrestamoNoEncontradoException;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\VerificacionEntregaPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrestamoId;
-use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\ActaPrestamoModel;
 
-#[Layout('layouts.app', params: ['title' => 'Detalle del Préstamo'])]
-final class DetallePrestamo extends Component
+#[Layout('layouts.app', params: ['title' => 'Aprobar verificación de entrega'])]
+final class AprobarVerificacion extends Component
 {
     use HandlesDomainExceptions;
 
@@ -47,12 +44,11 @@ final class DetallePrestamo extends Component
             curadorId: (string) auth()->id(),
         ));
 
-        $this->redirect(route('prestamos.curador.prestamo.auditar', $this->id), navigate: true);
+        $this->redirect(route('prestamos.curador.prestamo.detalle', $this->id), navigate: true);
     }
 
     public function render(
         ConsultarPrestamoHandler $prestamoHandler,
-        ConsultarHistorialPrestamoHandler $historialHandler,
         VerificacionEntregaPrestamoRepositoryInterface $verificacionRepo,
     ): View {
         $prestamo = $prestamoHandler->handle(new ConsultarPrestamoInput(
@@ -60,19 +56,8 @@ final class DetallePrestamo extends Component
             usuarioId: (string) auth()->id(),
         ));
 
-        $historial = $historialHandler->handle(new ConsultarHistorialPrestamoInput(
-            prestamoId: $this->id,
-            usuarioId: (string) auth()->id(),
-        ));
+        $verificacion = $verificacionRepo->buscarPorPrestamoId(PrestamoId::fromString($this->id));
 
-        $acta = ActaPrestamoModel::query()
-            ->with('solicitud')
-            ->find($prestamo->actaPrestamoId);
-
-        $verificacion = $prestamo->estado === 'pendiente_aprobacion_verificacion'
-            ? $verificacionRepo->buscarPorPrestamoId(PrestamoId::fromString($this->id))
-            : null;
-
-        return view('gestionprestamosrecepciones::curador.detalle-prestamo', compact('prestamo', 'historial', 'acta', 'verificacion'));
+        return view('gestionprestamosrecepciones::curador.aprobar-verificacion', compact('prestamo', 'verificacion'));
     }
 }

@@ -79,6 +79,21 @@
             </div>
         @endif
 
+        {{-- Acción: Reportar recepción de especímenes --}}
+        @if($prestamo->estado === 'en_transito')
+            <div class="rounded-lg border border-[#FFE082] bg-[#FFF8E1] p-6 flex flex-col items-center text-center gap-4">
+                <flux:icon name="truck" class="size-8 text-[#F57F17]" />
+                <div>
+                    <p class="text-sm font-semibold text-[#F57F17]">Especímenes en camino</p>
+                    <p class="text-xs text-[#E65100] mt-1">Cuando recibas los especímenes debes reportar su estado para activar el préstamo.</p>
+                </div>
+                <flux:button variant="primary" wire:navigate
+                    href="{{ route('prestamos.investigador.prestamo.verificacion-entrega', $prestamo->id) }}">
+                    Reportar recepción de especímenes
+                </flux:button>
+            </div>
+        @endif
+
         {{-- Préstamo --}}
         <div class="rounded-lg border border-border bg-surface shadow-sm p-5 space-y-3">
             <div class="flex items-center justify-between">
@@ -109,6 +124,33 @@
                     </div>
                 @endif
             </dl>
+
+            @if($verificacion)
+                <flux:separator />
+                <div class="space-y-2">
+                    <p class="text-xs font-medium text-text-secondary uppercase tracking-wide">Verificación de entrega</p>
+                    <div class="flex items-center gap-2">
+                        @if($verificacion->estadoEnvio()->value === 'sin_novedades')
+                            <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold bg-[#E8F5E9] text-[#2E7D32] border border-[#A5D6A7]">
+                                <span class="size-1.5 rounded-full bg-[#2E7D32]"></span>
+                                Sin novedades
+                            </span>
+                            <span class="text-xs text-text-secondary">Todos los especímenes llegaron en buen estado.</span>
+                        @else
+                            <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold bg-[#FFEBEE] text-[#C62828] border border-[#EF9A9A]">
+                                <span class="size-1.5 rounded-full bg-[#C62828]"></span>
+                                Con novedades
+                            </span>
+                        @endif
+                    </div>
+                    @foreach($verificacion->observaciones() as $obs)
+                        <div class="rounded-lg border border-border bg-bg-main px-3 py-2">
+                            <p class="text-xs text-text-secondary font-mono">{{ $obs->itemPrestamoId }}</p>
+                            <p class="text-sm text-text-primary mt-0.5">{{ $obs->descripcion }}</p>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
         </div>
 
         </div>
@@ -144,7 +186,10 @@
                         'ActaFirmadaSubida'             => 'Acta firmada subida',
                         'ActaDevueltaPorFirmaInvalida'  => 'Acta devuelta por el curador',
                         'ActaValidada'                  => 'Acta validada',
-                        'PrestamoIniciado'              => 'Préstamo iniciado',
+                        'PrestamoIniciado'              => 'Especímenes despachados',
+                        'VerificacionEntregaRegistrada' => 'Verificación de entrega registrada',
+                        'VerificacionEntregaAprobada'   => 'Verificación de entrega aprobada',
+                        'PrestamoActivado'              => 'Préstamo activo',
                     ];
                     $colores = [
                         'solicitud' => '#1976D2',
