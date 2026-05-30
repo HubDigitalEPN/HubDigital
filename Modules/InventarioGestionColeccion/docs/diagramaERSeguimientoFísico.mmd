@@ -14,7 +14,6 @@ erDiagram
     uuid id PK
     uuid gabinete_id FK
     smallint numero_ranura
-    varchar familia_taxonomica_esperada_id "nullable - ref. externa módulo taxonómico"
     uuid caja_actual_id "nullable - desnorm. hacia cajas activa en esta ranura"
     boolean activa
     timestamptz creada_en

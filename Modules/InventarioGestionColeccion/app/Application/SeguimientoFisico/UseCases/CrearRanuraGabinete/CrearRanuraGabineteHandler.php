@@ -30,7 +30,6 @@ final class CrearRanuraGabineteHandler
             id: $id,
             gabineteId: $gabineteId,
             numeroRanura: $input->numeroRanura,
-            familiaTaxonomicaEsperadaId: $input->familiaTaxonomicaEsperadaId,
         );
 
         $this->ranuraRepo->guardar($ranura);
@@ -39,7 +38,6 @@ final class CrearRanuraGabineteHandler
             id: (string) $ranura->id(),
             gabineteId: (string) $ranura->gabineteId(),
             numeroRanura: $ranura->numeroRanura(),
-            familiaTaxonomicaEsperadaId: $ranura->familiaTaxonomicaEsperadaId(),
             activa: $ranura->activa(),
         );
     }

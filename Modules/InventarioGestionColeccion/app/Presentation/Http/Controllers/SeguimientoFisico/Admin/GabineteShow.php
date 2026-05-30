@@ -35,15 +35,9 @@ final class GabineteShow extends Component
     #[Rule('required|integer|min:1|max:25')]
     public int $numeroRanura = 1;
 
-    #[Rule('nullable|string|max:255')]
-    public ?string $familiaTaxonomicaEsperadaId = null;
-
     public bool $showEditRanura = false;
 
     public string $editandoRanuraId = '';
-
-    #[Rule('nullable|string|max:255')]
-    public ?string $editFamiliaTaxonomica = null;
 
     public int $editActiva = 1;
 
@@ -79,12 +73,11 @@ final class GabineteShow extends Component
             $crearHandler->handle(new CrearRanuraGabineteInput(
                 gabineteId: $this->gabineteId,
                 numeroRanura: $this->numeroRanura,
-                familiaTaxonomicaEsperadaId: $this->familiaTaxonomicaEsperadaId ?: null,
             ));
 
             $this->cargarRanuras($listarHandler, $this->buildCajasPorId($cajasHandler));
             $this->showAgregarRanura = false;
-            $this->reset('numeroRanura', 'familiaTaxonomicaEsperadaId');
+            $this->reset('numeroRanura');
             $this->resetValidation();
             $this->successMessage = 'Ranura agregada correctamente.';
         } catch (\Throwable $e) {
@@ -101,7 +94,6 @@ final class GabineteShow extends Component
         }
 
         $this->editandoRanuraId = $ranuraId;
-        $this->editFamiliaTaxonomica = $ranura['familiaTaxonomicaEsperadaId'];
         $this->editActiva = $ranura['activa'] ? 1 : 0;
         $this->errorMessage = null;
         $this->showEditRanura = true;
@@ -115,7 +107,6 @@ final class GabineteShow extends Component
         try {
             $actualizarHandler->handle(new ActualizarRanuraInput(
                 ranuraId: $this->editandoRanuraId,
-                familiaTaxonomicaEsperadaId: $this->editFamiliaTaxonomica ?: null,
                 activa: (bool) $this->editActiva,
             ));
 
@@ -174,7 +165,6 @@ final class GabineteShow extends Component
                 'id' => $r->id,
                 'gabineteId' => $r->gabineteId,
                 'numeroRanura' => $r->numeroRanura,
-                'familiaTaxonomicaEsperadaId' => $r->familiaTaxonomicaEsperadaId,
                 'activa' => $r->activa,
                 'cajaActual' => $r->cajaActualId ? ($cajasPorId[$r->cajaActualId] ?? null) : null,
             ],

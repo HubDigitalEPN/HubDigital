@@ -110,7 +110,6 @@ final class GabineteIndex extends Component
             fn ($r) => [
                 'id' => $r->id,
                 'numeroRanura' => $r->numeroRanura,
-                'familiaTaxonomicaEsperadaId' => $r->familiaTaxonomicaEsperadaId,
                 'activa' => $r->activa,
             ],
             $ranuras->items,
@@ -133,7 +132,6 @@ final class GabineteIndex extends Component
             $handler = app(ActualizarRanuraHandler::class);
             $handler->handle(new ActualizarRanuraInput(
                 ranuraId: $ranuraId,
-                familiaTaxonomicaEsperadaId: $this->editRanuras[$idx]['familiaTaxonomicaEsperadaId'] ?? null,
                 activa: $nuevaActiva,
             ));
 

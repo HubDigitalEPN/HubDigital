@@ -9,6 +9,5 @@ final readonly class CrearRanuraGabineteInput
     public function __construct(
         public string $gabineteId,
         public int $numeroRanura,
-        public ?string $familiaTaxonomicaEsperadaId = null,
     ) {}
 }

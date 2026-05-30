@@ -180,7 +180,6 @@
             <thead class="bg-blue-navy border-b border-border">
                 <tr>
                     <th class="px-4 py-3 text-left font-medium text-white">Ranura</th>
-                    <th class="px-4 py-3 text-left font-medium text-white">Familia taxonómica esperada</th>
                     <th class="px-4 py-3 text-left font-medium text-white">Caja Actual</th>
                     <th class="px-4 py-3 text-left font-medium text-white">Estado</th>
                     <th class="px-4 py-3 text-left font-medium text-white">Acciones</th>
@@ -190,9 +189,6 @@
                 @forelse($ranuras as $ranura)
                     <tr class="hover:bg-bg-main transition-colors">
                         <td class="px-4 py-3 font-medium text-text-primary">Ranura {{ $ranura['numeroRanura'] }}</td>
-                        <td class="px-4 py-3 text-text-primary">
-                            {{ $ranura['familiaTaxonomicaEsperadaId'] ?? '—' }}
-                        </td>
                         <td class="px-4 py-3 text-text-primary">
                             @if(isset($ranura['cajaActual']) && $ranura['cajaActual'])
                                 <span class="font-mono text-xs">{{ $ranura['cajaActual']['codigo'] }}</span>
@@ -220,7 +216,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="5" class="px-4 py-6 text-center text-text-primary">Sin ranuras.</td>
+                        <td colspan="4" class="px-4 py-6 text-center text-text-primary">Sin ranuras.</td>
                     </tr>
                 @endforelse
             </tbody>
@@ -240,13 +236,6 @@
                 <flux:label>Número de ranura</flux:label>
                 <flux:input type="number" wire:model="numeroRanura" min="1" :max="$gabinete['totalRanuras'] ?? 25" />
                 <flux:error name="numeroRanura" />
-            </flux:field>
-
-            <flux:field>
-                <flux:label>Familia taxonómica esperada <flux:badge size="sm" color="zinc">Opcional</flux:badge></flux:label>
-                <flux:input wire:model="familiaTaxonomicaEsperadaId" placeholder="ej. Cerambycidae" />
-                <flux:description>Identificador de la familia taxonómica asignada a esta ranura.</flux:description>
-                <flux:error name="familiaTaxonomicaEsperadaId" />
             </flux:field>
 
             <div class="flex justify-end gap-3 pt-2">
@@ -269,12 +258,6 @@
             @if($errorMessage)
                 <flux:callout variant="danger">{{ $errorMessage }}</flux:callout>
             @endif
-
-            <flux:field>
-                <flux:label>Familia taxonómica esperada <flux:badge size="sm" color="zinc">Opcional</flux:badge></flux:label>
-                <flux:input wire:model="editFamiliaTaxonomica" placeholder="ej. Cerambycidae" />
-                <flux:error name="editFamiliaTaxonomica" />
-            </flux:field>
 
             <flux:field>
                 <flux:label>Estado</flux:label>

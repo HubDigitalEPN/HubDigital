@@ -25,7 +25,6 @@ class EloquentRanuraGabineteRepository implements RanuraGabineteRepository
             [
                 'gabinete_id' => (string) $ranura->gabineteId(),
                 'numero_ranura' => $ranura->numeroRanura(),
-                'familia_taxonomica_esperada_id' => $ranura->familiaTaxonomicaEsperadaId(),
                 'caja_actual_id' => $ranura->cajaActualId() ? (string) $ranura->cajaActualId() : null,
                 'activa' => $ranura->activa(),
             ]
@@ -89,7 +88,6 @@ class EloquentRanuraGabineteRepository implements RanuraGabineteRepository
             id: RanuraId::desde($model->id),
             gabineteId: GabineteId::desde($model->gabinete_id),
             numeroRanura: $model->numero_ranura,
-            familiaTaxonomicaEsperadaId: $model->familia_taxonomica_esperada_id,
             cajaActualId: $model->caja_actual_id ? CajaId::desde($model->caja_actual_id) : null,
             activa: (bool) $model->activa,
         );

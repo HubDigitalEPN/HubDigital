@@ -15,7 +15,6 @@ return new class extends Migration
                     ->constrained('iot.gabinetes')
                     ->cascadeOnDelete();
                 $table->unsignedSmallInteger('numero_ranura');
-                $table->string('familia_taxonomica_esperada_id')->nullable();
                 $table->foreignUuid('caja_actual_id')
                     ->nullable()
                     ->constrained('iot.cajas')
