@@ -43,6 +43,10 @@
                             </div>
                         @endif
                     </dl>
+                    <flux:button variant="ghost" icon="document-magnifying-glass" size="sm" wire:navigate
+                        href="{{ route('prestamos.curador.solicitud.revisar', $solicitud->id) }}">
+                        Ver solicitud
+                    </flux:button>
                 </div>
             @endif
 
@@ -84,9 +88,9 @@
                             </div>
                         @endif
                     </dl>
-                    <flux:button variant="ghost" icon="document-text" size="sm"
-                        href="{{ route('prestamos.acta.ver', $acta->id) }}" target="_blank">
-                        Ver acta PDF
+                    <flux:button variant="ghost" icon="document-text" size="sm" wire:navigate
+                        href="{{ route('prestamos.curador.acta.validar', $acta->id) }}">
+                        Ver acta y documentos
                     </flux:button>
                 </div>
             @endif

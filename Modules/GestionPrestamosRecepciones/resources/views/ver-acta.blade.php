@@ -35,8 +35,8 @@
 
 <div class="p-6 space-y-4">
 
-    {{-- Toolbar --}}
-    <div class="flex items-center justify-between print:hidden">
+    {{-- Toolbar (oculto en modo embed/iframe) --}}
+    <div class="flex items-center justify-between print:hidden {{ ($isEmbed ?? false) ? 'hidden' : '' }}">
         <flux:breadcrumbs>
             <flux:breadcrumbs.item>Acta de préstamo</flux:breadcrumbs.item>
             <flux:breadcrumbs.item>{{ $acta?->numero_prestamo ?? '—' }}</flux:breadcrumbs.item>

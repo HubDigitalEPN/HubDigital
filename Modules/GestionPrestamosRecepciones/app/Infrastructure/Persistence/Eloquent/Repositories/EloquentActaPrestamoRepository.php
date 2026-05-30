@@ -30,6 +30,7 @@ final class EloquentActaPrestamoRepository implements ActaPrestamoRepositoryInte
                 'pdf_ruta' => $acta->pdfRuta(),
                 'condiciones_generales' => $acta->condicionesGenerales(),
                 'pdf_firmado_ruta' => $acta->pdfFirmadoRuta(),
+                'documento_identidad_ruta' => $acta->documentoIdentidadRuta(),
                 'motivo_devolucion' => $acta->motivoDevolucion(),
                 'firmada_subida_en' => $acta->firmadaSubidaEn()?->format('Y-m-d H:i:s'),
                 'validada_en' => $acta->validadaEn()?->format('Y-m-d H:i:s'),
@@ -70,6 +71,7 @@ final class EloquentActaPrestamoRepository implements ActaPrestamoRepositoryInte
             pdfRuta: $model->pdf_ruta,
             condicionesGenerales: $model->condiciones_generales,
             pdfFirmadoRuta: $model->pdf_firmado_ruta,
+            documentoIdentidadRuta: $model->documento_identidad_ruta,
             motivoDevolucion: $model->motivo_devolucion,
             firmadaSubidaEn: $model->firmada_subida_en !== null
                 ? DateTimeImmutable::createFromInterface($model->firmada_subida_en)

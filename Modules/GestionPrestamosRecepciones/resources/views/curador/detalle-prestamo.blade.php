@@ -10,8 +10,9 @@
     <div class="grid gap-6 lg:grid-cols-3">
 
         {{-- Info principal --}}
-        <div class="lg:col-span-2 space-y-6">
+        <div class="lg:col-span-2 space-y-5">
 
+            {{-- Préstamo --}}
             <div class="rounded-lg border border-border bg-surface shadow-sm p-5 space-y-4">
                 <div class="flex items-start justify-between gap-4">
                     <flux:heading size="xl" level="1" class="font-display">
@@ -20,7 +21,6 @@
                     <x-gestionprestamosrecepciones::prestamo-status-badge :estado="$prestamo->estado" />
                 </div>
                 <flux:separator />
-
                 <dl class="grid grid-cols-2 gap-4 text-sm">
                     <div>
                         <dt class="text-text-secondary">Fecha de inicio</dt>
@@ -42,14 +42,69 @@
                         </dd>
                     </div>
                 </dl>
-
-                <flux:separator />
-
-                <flux:button variant="ghost" icon="document-text" size="sm" wire:navigate
-                    href="{{ route('prestamos.acta.ver', $prestamo->actaPrestamoId) }}">
-                    Ver acta de préstamo
-                </flux:button>
             </div>
+
+            {{-- Solicitud --}}
+            @if($acta?->solicitud)
+                <div class="rounded-lg border border-border bg-surface shadow-sm p-5 space-y-3">
+                    <div class="flex items-center justify-between gap-4">
+                        <flux:heading size="lg" level="2" class="font-display">Solicitud</flux:heading>
+                        <x-gestionprestamosrecepciones::solicitud-status-badge :estado="$acta->solicitud->estado" />
+                    </div>
+                    <flux:separator />
+                    <dl class="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                            <dt class="text-text-secondary">N.º solicitud</dt>
+                            <dd class="font-mono font-medium text-text-primary">{{ $acta->solicitud->numero_solicitud }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-text-secondary">Institución</dt>
+                            <dd class="text-text-primary">{{ $acta->solicitud->institucion_adscripcion }}</dd>
+                        </div>
+                        <div class="col-span-2">
+                            <dt class="text-text-secondary">Título del estudio</dt>
+                            <dd class="font-medium text-text-primary">{{ $acta->solicitud->titulo_estudio }}</dd>
+                        </div>
+                    </dl>
+                    <flux:button variant="ghost" icon="document-magnifying-glass" size="sm" wire:navigate
+                        href="{{ route('prestamos.curador.solicitud.revisar', $acta->solicitud_prestamo_id) }}">
+                        Ver solicitud
+                    </flux:button>
+                </div>
+            @endif
+
+            {{-- Acta --}}
+            @if($acta)
+                <div class="rounded-lg border border-border bg-surface shadow-sm p-5 space-y-3">
+                    <div class="flex items-center justify-between gap-4">
+                        <flux:heading size="lg" level="2" class="font-display">Acta de préstamo</flux:heading>
+                        <x-gestionprestamosrecepciones::acta-status-badge :estado="$acta->estado" />
+                    </div>
+                    <flux:separator />
+                    <dl class="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                            <dt class="text-text-secondary">N.º acta</dt>
+                            <dd class="font-mono font-medium text-text-primary">{{ $acta->numero_prestamo }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-text-secondary">Tipo</dt>
+                            <dd class="text-text-primary capitalize">{{ str_replace('_', ' ', $acta->tipo_prestamo) }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-text-secondary">Fecha inicio</dt>
+                            <dd class="text-text-primary">{{ $acta->fecha_inicio?->format('d/m/Y') ?? '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-text-secondary">Fecha fin</dt>
+                            <dd class="text-text-primary">{{ $acta->fecha_fin?->format('d/m/Y') ?? '—' }}</dd>
+                        </div>
+                    </dl>
+                    <flux:button variant="ghost" icon="document-text" size="sm" wire:navigate
+                        href="{{ route('prestamos.curador.acta.validar', $acta->id) }}">
+                        Ver acta y documentos
+                    </flux:button>
+                </div>
+            @endif
 
         </div>
 

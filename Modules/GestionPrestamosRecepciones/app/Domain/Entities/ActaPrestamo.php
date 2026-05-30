@@ -33,6 +33,7 @@ final class ActaPrestamo
         private readonly string $pdfRuta,
         private ?string $condicionesGenerales,
         private ?string $pdfFirmadoRuta,
+        private ?string $documentoIdentidadRuta,
         private ?string $motivoDevolucion,
         private ?DateTimeImmutable $firmadaSubidaEn,
         private ?DateTimeImmutable $validadaEn,
@@ -70,6 +71,7 @@ final class ActaPrestamo
             pdfRuta: $pdfRuta,
             condicionesGenerales: $condicionesGenerales,
             pdfFirmadoRuta: null,
+            documentoIdentidadRuta: null,
             motivoDevolucion: null,
             firmadaSubidaEn: null,
             validadaEn: null,
@@ -91,6 +93,7 @@ final class ActaPrestamo
         string $pdfRuta,
         ?string $condicionesGenerales,
         ?string $pdfFirmadoRuta,
+        ?string $documentoIdentidadRuta,
         ?string $motivoDevolucion,
         ?DateTimeImmutable $firmadaSubidaEn,
         ?DateTimeImmutable $validadaEn,
@@ -107,6 +110,7 @@ final class ActaPrestamo
             pdfRuta: $pdfRuta,
             condicionesGenerales: $condicionesGenerales,
             pdfFirmadoRuta: $pdfFirmadoRuta,
+            documentoIdentidadRuta: $documentoIdentidadRuta,
             motivoDevolucion: $motivoDevolucion,
             firmadaSubidaEn: $firmadaSubidaEn,
             validadaEn: $validadaEn,
@@ -142,10 +146,10 @@ final class ActaPrestamo
     }
 
     /**
-     * El investigador sube el acta firmada.
+     * El investigador sube el acta firmada y su documento de identidad.
      * Solo permitido desde PendienteFirma.
      */
-    public function subirFirma(string $pdfFirmadoRuta): void
+    public function subirFirma(string $pdfFirmadoRuta, string $documentoIdentidadRuta): void
     {
         if (! $this->estado->equals(EstadoActa::PendienteFirma)) {
             throw TransicionDeEstadoInvalidaException::para(
@@ -159,16 +163,22 @@ final class ActaPrestamo
             throw new InvalidArgumentException('La ruta del PDF firmado no puede estar vacía.');
         }
 
+        if (trim($documentoIdentidadRuta) === '') {
+            throw new InvalidArgumentException('La ruta del documento de identidad no puede estar vacía.');
+        }
+
         $ahora = new DateTimeImmutable;
 
         $this->estado = EstadoActa::PendienteValidacion;
         $this->pdfFirmadoRuta = trim($pdfFirmadoRuta);
+        $this->documentoIdentidadRuta = trim($documentoIdentidadRuta);
         $this->firmadaSubidaEn = $ahora;
 
         $this->events[] = new ActaFirmadaSubida(
             actaId: $this->id,
             solicitudId: $this->solicitudPrestamoId,
             pdfFirmadoRuta: $this->pdfFirmadoRuta,
+            documentoIdentidadRuta: $this->documentoIdentidadRuta,
             ocurridoEn: $ahora,
         );
     }
@@ -195,6 +205,7 @@ final class ActaPrestamo
 
         $this->estado = EstadoActa::PendienteFirma;
         $this->pdfFirmadoRuta = null;
+        $this->documentoIdentidadRuta = null;
         $this->motivoDevolucion = trim($motivo);
 
         $this->events[] = new ActaDevueltaPorFirmaInvalida(
@@ -296,6 +307,11 @@ final class ActaPrestamo
     public function pdfFirmadoRuta(): ?string
     {
         return $this->pdfFirmadoRuta;
+    }
+
+    public function documentoIdentidadRuta(): ?string
+    {
+        return $this->documentoIdentidadRuta;
     }
 
     public function motivoDevolucion(): ?string

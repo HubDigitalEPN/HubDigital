@@ -22,8 +22,11 @@ use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigad
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\MisSolicitudes;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\RegistroSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\SolicitudForm;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ServirDocumentoIdentidad;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ServirPdfActa;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ServirPdfFirmado;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\VerActa;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\VerActaEmbed;
 
 Route::middleware(['auth', 'verified'])
     ->prefix('prestamos')
@@ -32,7 +35,10 @@ Route::middleware(['auth', 'verified'])
 
         // Compartido — curador e investigador (la autorización la aplica el componente)
         Route::get('/acta/{id}/ver', VerActa::class)->name('acta.ver');
+        Route::get('/acta/{id}/embed', VerActaEmbed::class)->name('acta.embed');
+        Route::get('/acta/{id}/pdf-original', ServirPdfActa::class)->name('acta.pdf-original');
         Route::get('/acta/{id}/pdf-firmado', ServirPdfFirmado::class)->name('acta.pdf-firmado');
+        Route::get('/acta/{id}/documento-identidad', ServirDocumentoIdentidad::class)->name('acta.documento-identidad');
 
         // Investigador — solo usuarios con rol PRESTAMISTA
         Route::middleware('role:prestamista')->group(function () {

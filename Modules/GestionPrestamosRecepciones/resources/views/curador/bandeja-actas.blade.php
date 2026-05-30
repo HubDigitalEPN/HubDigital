@@ -120,9 +120,9 @@
                                             Validar
                                         </flux:button>
                                     @else
-                                        <flux:button size="sm" variant="ghost" icon="eye"
-                                            href="{{ route('prestamos.acta.ver', $acta->id) }}" target="_blank">
-                                            Ver
+                                        <flux:button size="sm" variant="ghost" icon="document-text"
+                                            wire:navigate href="{{ route('prestamos.curador.acta.validar', $acta->id) }}">
+                                            Ver documentos
                                         </flux:button>
                                     @endif
                                 </div>

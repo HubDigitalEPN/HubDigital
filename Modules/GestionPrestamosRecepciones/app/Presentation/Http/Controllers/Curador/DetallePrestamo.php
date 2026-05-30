@@ -13,6 +13,7 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialP
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarPrestamo\ConsultarPrestamoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarPrestamo\ConsultarPrestamoInput;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\PrestamoNoEncontradoException;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\ActaPrestamoModel;
 
 #[Layout('layouts.app', params: ['title' => 'Detalle del Préstamo'])]
 final class DetallePrestamo extends Component
@@ -49,6 +50,10 @@ final class DetallePrestamo extends Component
             usuarioId: (string) auth()->id(),
         ));
 
-        return view('gestionprestamosrecepciones::curador.detalle-prestamo', compact('prestamo', 'historial'));
+        $acta = ActaPrestamoModel::query()
+            ->with('solicitud')
+            ->find($prestamo->actaPrestamoId);
+
+        return view('gestionprestamosrecepciones::curador.detalle-prestamo', compact('prestamo', 'historial', 'acta'));
     }
 }

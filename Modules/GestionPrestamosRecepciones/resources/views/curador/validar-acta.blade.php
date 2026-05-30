@@ -14,49 +14,128 @@
     @if(!$acta)
         <flux:callout variant="danger" icon="exclamation-triangle">Acta no encontrada.</flux:callout>
     @else
-        <div class="flex items-center justify-between">
-            <flux:heading size="xl" level="1" class="font-display">Validar acta firmada</flux:heading>
+        <div class="flex items-center justify-between gap-4">
+            <flux:heading size="xl" level="1" class="font-display">
+                {{ $acta->estado === 'validada' ? 'Acta de préstamo' : 'Validar acta firmada' }}
+            </flux:heading>
             <x-gestionprestamosrecepciones::acta-status-badge :estado="$acta->estado" />
         </div>
 
-        <dl class="flex gap-6 text-sm">
-            <div>
-                <dt class="text-text-secondary">N.º préstamo</dt>
-                <dd class="font-mono font-medium text-text-primary">{{ $acta->numero_prestamo }}</dd>
-            </div>
-            <div>
-                <dt class="text-text-secondary">Solicitud</dt>
-                <dd class="text-text-primary">{{ $acta->solicitud?->titulo_estudio }}</dd>
-            </div>
-        </dl>
+        <div class="rounded-lg border border-border bg-surface shadow-sm p-5">
+            <dl class="grid grid-cols-2 gap-x-8 gap-y-3 text-sm lg:grid-cols-4">
+                <div>
+                    <dt class="text-text-secondary">N.º préstamo</dt>
+                    <dd class="font-mono font-medium text-text-primary">{{ $acta->numero_prestamo }}</dd>
+                </div>
+                <div>
+                    <dt class="text-text-secondary">N.º solicitud</dt>
+                    <dd class="font-mono text-text-primary">{{ $acta->solicitud?->numero_solicitud ?? '—' }}</dd>
+                </div>
+                <div>
+                    <dt class="text-text-secondary">Fecha de inicio</dt>
+                    <dd class="text-text-primary">{{ $acta->fecha_inicio?->format('d/m/Y') ?? '—' }}</dd>
+                </div>
+                <div>
+                    <dt class="text-text-secondary">Fecha de vencimiento</dt>
+                    <dd class="text-text-primary">{{ $acta->fecha_fin?->format('d/m/Y') ?? '—' }}</dd>
+                </div>
+                <div class="col-span-2">
+                    <dt class="text-text-secondary">Título del estudio</dt>
+                    <dd class="font-medium text-text-primary">{{ $acta->solicitud?->titulo_estudio ?? '—' }}</dd>
+                </div>
+                <div>
+                    <dt class="text-text-secondary">Institución</dt>
+                    <dd class="text-text-primary">{{ $acta->solicitud?->institucion_adscripcion ?? '—' }}</dd>
+                </div>
+                <div>
+                    <dt class="text-text-secondary">Tipo de préstamo</dt>
+                    <dd class="text-text-primary capitalize">{{ str_replace('_', ' ', $acta->tipo_prestamo) }}</dd>
+                </div>
+            </dl>
+        </div>
 
-        {{-- Comparación lado a lado de PDFs --}}
-        <div class="grid gap-4 lg:grid-cols-2">
-            <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
-                <div class="bg-bg-main px-4 py-2 border-b border-border flex items-center justify-between">
-                    <flux:text class="text-sm font-medium text-text-primary">Acta original (generada)</flux:text>
-                    <flux:button size="xs" variant="ghost" icon="arrow-top-right-on-square"
-                        href="{{ route('prestamos.acta.ver', $acta->id) }}" target="_blank">
+        {{-- Visor de documentos con pestañas --}}
+        <div x-data="{ tab: '{{ $acta->pdf_firmado_ruta ? 'firmada' : 'original' }}' }" class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
+
+            {{-- Barra de pestañas --}}
+            <div class="flex items-center gap-1 border-b border-border bg-bg-main px-2">
+                <button @click="tab = 'original'"
+                    :class="tab === 'original' ? 'border-b-2 border-science-blue text-science-blue' : 'text-text-secondary hover:text-text-primary'"
+                    class="px-3 py-2.5 text-sm font-medium transition-colors whitespace-nowrap">
+                    Acta original
+                </button>
+                <button @click="tab = 'firmada'"
+                    :class="tab === 'firmada' ? 'border-b-2 border-science-blue text-science-blue' : 'text-text-secondary hover:text-text-primary'"
+                    class="px-3 py-2.5 text-sm font-medium transition-colors whitespace-nowrap">
+                    Acta firmada
+                </button>
+                @if($acta->documento_identidad_ruta)
+                    <button @click="tab = 'identidad'"
+                        :class="tab === 'identidad' ? 'border-b-2 border-science-blue text-science-blue' : 'text-text-secondary hover:text-text-primary'"
+                        class="px-3 py-2.5 text-sm font-medium transition-colors whitespace-nowrap">
+                        Doc. de identidad
+                    </button>
+                @endif
+
+                {{-- Botón "Abrir en nueva pestaña" contextual --}}
+                <div class="ml-auto">
+                    <a x-show="tab === 'original'"
+                        href="{{ route('prestamos.acta.embed', $acta->id) }}" target="_blank"
+                        class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded">
+                        <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                        </svg>
                         Abrir
-                    </flux:button>
+                    </a>
+                    <a x-show="tab === 'firmada'" x-cloak
+                        href="{{ route('prestamos.acta.pdf-firmado', $acta->id) }}" target="_blank"
+                        class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded">
+                        <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                        </svg>
+                        Abrir
+                    </a>
+                    @if($acta->documento_identidad_ruta)
+                        <a x-show="tab === 'identidad'" x-cloak
+                            href="{{ route('prestamos.acta.documento-identidad', $acta->id) }}" target="_blank"
+                            class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded">
+                            <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                            </svg>
+                            Abrir
+                        </a>
+                    @endif
                 </div>
-                <iframe src="{{ route('prestamos.acta.ver', $acta->id) }}"
-                    class="w-full h-[600px]" title="Acta Original"></iframe>
             </div>
 
-            <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
-                <div class="bg-bg-main px-4 py-2 border-b border-border">
-                    <flux:text class="text-sm font-medium text-text-primary">Acta firmada (por investigador)</flux:text>
-                </div>
+            {{-- Contenido de cada pestaña --}}
+            <div x-show="tab === 'original'">
+                <iframe src="{{ route('prestamos.acta.embed', $acta->id) }}"
+                    class="w-full" style="height: calc(100vh - 310px); min-height: 520px;"
+                    title="Acta original"></iframe>
+            </div>
+
+            <div x-show="tab === 'firmada'" x-cloak>
                 @if($acta->pdf_firmado_ruta)
                     <iframe src="{{ route('prestamos.acta.pdf-firmado', $acta->id) }}"
-                        class="w-full h-[600px]" title="Acta Firmada"></iframe>
+                        class="w-full" style="height: calc(100vh - 310px); min-height: 520px;"
+                        title="Acta firmada"></iframe>
                 @else
-                    <div class="flex items-center justify-center h-40 text-text-secondary text-sm">
-                        Acta firmada no disponible aún
+                    <div class="flex items-center justify-center text-text-secondary text-sm"
+                        style="height: 300px;">
+                        El investigador aún no ha subido el acta firmada.
                     </div>
                 @endif
             </div>
+
+            @if($acta->documento_identidad_ruta)
+                <div x-show="tab === 'identidad'" x-cloak>
+                    <iframe src="{{ route('prestamos.acta.documento-identidad', $acta->id) }}"
+                        class="w-full" style="height: calc(100vh - 310px); min-height: 520px;"
+                        title="Documento de identidad"></iframe>
+                </div>
+            @endif
+
         </div>
 
         {{-- Acciones de validación --}}

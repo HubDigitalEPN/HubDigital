@@ -35,6 +35,9 @@ final class DetalleActa extends Component
     /** @var TemporaryUploadedFile|null */
     public $pdfFirmado = null;
 
+    /** @var TemporaryUploadedFile|null */
+    public $documentoIdentidad = null;
+
     public string $successMessage = '';
 
     private static array $eventosActa = [
@@ -61,20 +64,24 @@ final class DetalleActa extends Component
     public function subirActa(SubirActaFirmadaHandler $handler): void
     {
         $this->validate([
-            'pdfFirmado' => 'required|file|mimes:pdf|max:10240',
+            'pdfFirmado'         => 'required|file|mimes:pdf|max:10240',
+            'documentoIdentidad' => 'required|file|mimes:pdf|max:10240',
         ]);
 
-        $ruta = Storage::putFile('actas-firmadas', $this->pdfFirmado);
+        $rutaActa      = Storage::putFile('actas-firmadas', $this->pdfFirmado);
+        $rutaIdentidad = Storage::putFile('documentos-identidad', $this->documentoIdentidad);
 
         $handler->handle(new SubirActaFirmadaInput(
-            solicitudId: $this->acta->solicitud_prestamo_id,
-            investigadorId: (string) auth()->id(),
-            pdfFirmadoRuta: $ruta,
+            solicitudId:            $this->acta->solicitud_prestamo_id,
+            investigadorId:         (string) auth()->id(),
+            pdfFirmadoRuta:         $rutaActa,
+            documentoIdentidadRuta: $rutaIdentidad,
         ));
 
         $this->showUploadModal = false;
         $this->pdfFirmado = null;
-        $this->successMessage = 'Acta firmada subida correctamente. Espera la validación del curador.';
+        $this->documentoIdentidad = null;
+        $this->successMessage = 'Documentos subidos correctamente. Espera la validación del curador.';
         $this->cargarDatos();
     }
 
