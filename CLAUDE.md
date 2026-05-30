@@ -81,6 +81,9 @@ Pest/Unit (Reglas dominio aisladas sin DB)
 
 * **Formateador:** vendor/bin/pint --dirty --format agent (Obligatorio antes de confirmar cambios).
 * **Ejecutar Behat:** vendor/bin/behat --suite=
-* **Ejecutar Pest:** php artisan test --compact
 
 See local notes: @claude.local.md
+
+## OBLIGACIONES
+
+- **NUNCA TIENES PERMITIDO EJECUTAR DB:FRESH O PARECIDO PARA REINICIAR LA BD, LA INFORMACIÓN ES VITAL QUE SE PRESERVE**
