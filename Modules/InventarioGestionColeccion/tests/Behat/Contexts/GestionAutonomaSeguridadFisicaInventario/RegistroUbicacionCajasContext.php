@@ -159,7 +159,6 @@ final class RegistroUbicacionCajasContext extends BaseContext
             id: $this->ranuraRepo->nextIdentity(),
             gabineteId: $gabinete->id(),
             numeroRanura: $numero,
-            familiaTaxonomicaEsperadaId: 'Nymphalidae',
         );
         $this->ranuraRepo->guardar($ranura);
         $this->ranuraId = $ranura->id();
@@ -218,7 +217,6 @@ final class RegistroUbicacionCajasContext extends BaseContext
             id: $this->ranuraRepo->nextIdentity(),
             gabineteId: $gabinete->id(),
             numeroRanura: $numero,
-            familiaTaxonomicaEsperadaId: 'Nymphalidae',
         );
         $this->ranuraRepo->guardar($ranura);
         $this->ranuraId = $ranura->id();
@@ -229,6 +227,44 @@ final class RegistroUbicacionCajasContext extends BaseContext
             clasificacionTaxonomica: ClasificacionTaxonomica::desde(subfamilia: 'Nymphalinae', genero: 'Nymphalis'),
         );
         $caja->ingresarEnRanura($this->ranuraId);
+        $this->cajaRepo->guardar($caja);
+        $this->cajaId = $caja->id();
+
+        $ubicacion = UbicacionCaja::registrar(
+            id: $this->ubicacionRepo->nextIdentity(),
+            cajaId: $caja->id(),
+            ranuraGabineteId: $this->ranuraId,
+            ingresadaEn: new \DateTimeImmutable,
+        );
+        $this->ubicacionRepo->guardar($ubicacion);
+    }
+
+    #[Given('/^que la caja "([^"]+)" se encuentra pendiente de clasificación en la ranura (\d+) del gabinete "([^"]+)"$/u')]
+    public function queLaCajaSeEncuentraPendienteDeClasificacionEnLaRanura(string $codigo, int $numero, string $codigoGabinete): void
+    {
+        $gabinete = Gabinete::crear(
+            id: $this->gabineteRepo->nextIdentity(),
+            codigo: CodigoGabinete::desde($codigoGabinete),
+            nombre: "Gabinete {$codigoGabinete}",
+            totalRanuras: 5,
+        );
+        $this->gabineteRepo->guardar($gabinete);
+
+        $ranura = RanuraGabinete::crear(
+            id: $this->ranuraRepo->nextIdentity(),
+            gabineteId: $gabinete->id(),
+            numeroRanura: $numero,
+        );
+        $this->ranuraRepo->guardar($ranura);
+        $this->ranuraId = $ranura->id();
+
+        $caja = Caja::crear(
+            id: $this->cajaRepo->nextIdentity(),
+            codigo: CodigoCaja::desde($codigo),
+            clasificacionTaxonomica: ClasificacionTaxonomica::desde(subfamilia: 'Nymphalinae', genero: 'Nymphalis'),
+        );
+        $caja->ingresarEnRanura($this->ranuraId);
+        $caja->marcarPendienteClasificacion();
         $this->cajaRepo->guardar($caja);
         $this->cajaId = $caja->id();
 

@@ -104,7 +104,11 @@ class Caja
 
     public function retirarDeRanura(): void
     {
-        if (! $this->estado->equals(EstadoCaja::EnGabinete)) {
+        // El retiro físico es válido desde cualquier estado en que la caja está alojada
+        // en su ranura (EnGabinete, UbicacionIncorrecta, PendienteClasificacion). Las dos
+        // últimas son banderas de negocio sobre una caja presente: sacarla del gabinete las
+        // resuelve igual que un retiro normal.
+        if (! $this->estado->estaAlojadaEnRanura()) {
             throw new CajaNoEnGabineteException($this->id, $this->estado);
         }
 
