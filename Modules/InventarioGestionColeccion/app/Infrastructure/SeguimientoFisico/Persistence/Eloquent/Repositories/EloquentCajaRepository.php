@@ -31,7 +31,6 @@ class EloquentCajaRepository implements CajaRepository
                 'observacion' => $caja->observacion(),
                 'clasificacion_taxonomica' => $this->clasificacionToArray($caja->clasificacionTaxonomica()),
                 'nombre' => $caja->nombre(),
-                'capacidad_maxima' => $caja->capacidadMaxima(),
                 'estado' => $caja->estadoActual()->valor(),
                 'ranura_actual_id' => $caja->ranuraActualId() ? (string) $caja->ranuraActualId() : null,
                 'codigo_rfid' => $caja->codigoRfid() ? (string) $caja->codigoRfid() : null,
@@ -84,7 +83,6 @@ class EloquentCajaRepository implements CajaRepository
             esEspecial: (bool) $model->es_especial,
             observacion: $model->observacion,
             nombre: $model->nombre,
-            capacidadMaxima: $model->capacidad_maxima,
             clasificacionTaxonomica: $this->arrayToClasificacion($model->clasificacion_taxonomica),
         );
     }

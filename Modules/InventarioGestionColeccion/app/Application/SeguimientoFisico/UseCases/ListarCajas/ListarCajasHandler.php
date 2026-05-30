@@ -25,7 +25,6 @@ final class ListarCajasHandler
                 esEspecial: $c->esEspecial(),
                 observacion: $c->observacion(),
                 nombre: $c->nombre(),
-                capacidadMaxima: $c->capacidadMaxima(),
                 estado: $c->estadoActual()->valor(),
             ),
             $cajas,

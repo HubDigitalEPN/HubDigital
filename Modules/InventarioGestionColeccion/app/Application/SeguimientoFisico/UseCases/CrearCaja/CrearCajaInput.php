@@ -12,6 +12,5 @@ final readonly class CrearCajaInput
         public bool $esEspecial = false,
         public ?string $observacion = null,
         public ?string $nombre = null,
-        public ?int $capacidadMaxima = null,
     ) {}
 }

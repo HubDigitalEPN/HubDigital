@@ -139,7 +139,6 @@ final class RegistroUbicacionCajasContext extends BaseContext
             id: $this->cajaRepo->nextIdentity(),
             codigo: CodigoCaja::desde($codigo),
             clasificacionTaxonomica: ClasificacionTaxonomica::desde(subfamilia: 'Nymphalinae', genero: 'Nymphalis'),
-            capacidadMaxima: 10,
         );
         $this->cajaRepo->guardar($caja);
         $this->cajaId = $caja->id();
@@ -228,7 +227,6 @@ final class RegistroUbicacionCajasContext extends BaseContext
             id: $this->cajaRepo->nextIdentity(),
             codigo: CodigoCaja::desde($codigo),
             clasificacionTaxonomica: ClasificacionTaxonomica::desde(subfamilia: 'Nymphalinae', genero: 'Nymphalis'),
-            capacidadMaxima: 10,
         );
         $caja->ingresarEnRanura($this->ranuraId);
         $this->cajaRepo->guardar($caja);

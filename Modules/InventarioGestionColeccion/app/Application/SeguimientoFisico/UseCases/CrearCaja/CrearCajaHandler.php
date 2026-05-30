@@ -25,7 +25,6 @@ final class CrearCajaHandler
             esEspecial: $input->esEspecial,
             observacion: $input->observacion,
             nombre: $input->nombre,
-            capacidadMaxima: $input->capacidadMaxima,
         );
 
         $caja->asignarRfid(CodigoRfid::desde($input->codigoRfid));
@@ -39,7 +38,6 @@ final class CrearCajaHandler
             esEspecial: $caja->esEspecial(),
             observacion: $caja->observacion(),
             nombre: $caja->nombre(),
-            capacidadMaxima: $caja->capacidadMaxima(),
             estado: $caja->estadoActual()->valor(),
         );
     }

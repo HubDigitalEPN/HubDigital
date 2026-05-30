@@ -31,7 +31,6 @@
                     <th class="px-4 py-3 text-left font-medium text-white">RFID</th>
                     <th class="px-4 py-3 text-left font-medium text-white">Nombre</th>
                     <th class="hidden sm:table-cell px-4 py-3 text-left font-medium text-white">Observación</th>
-                    <th class="px-4 py-3 text-left font-medium text-white">Cap. máx.</th>
                     <th class="px-4 py-3 text-left font-medium text-white">Estado</th>
                     <th class="px-4 py-3 text-left font-medium text-white">Especial</th>
                     <th class="px-4 py-3 text-left font-medium text-white">Acciones</th>
@@ -51,9 +50,6 @@
                             @else
                                 <span class="text-xs">—</span>
                             @endif
-                        </td>
-                        <td class="px-4 py-3 text-text-primary text-center">
-                            {{ $caja['capacidadMaxima'] ?? '—' }}
                         </td>
                         <td class="px-4 py-3">
                             <x-inventariogestioncoleccion::seguimiento-fisico.caja-estado-badge
@@ -160,13 +156,6 @@
                 <flux:error name="observacion" />
             </flux:field>
 
-            <flux:field>
-                <flux:label>Capacidad máxima <flux:badge size="sm" color="zinc">Opcional</flux:badge></flux:label>
-                <flux:input type="number" wire:model="capacidadMaxima" min="1" max="32767"
-                    x-on:keydown="if(!/^\d$/.test($event.key) && !['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Home','End'].includes($event.key)) $event.preventDefault()" />
-                <flux:error name="capacidadMaxima" />
-            </flux:field>
-
             <flux:field variant="inline">
                 <flux:checkbox wire:model="esEspecial" id="crear-es-especial" />
                 <flux:label for="crear-es-especial">Caja especial</flux:label>
@@ -202,13 +191,6 @@
                 <flux:label>Observación <flux:badge size="sm" color="zinc">Opcional</flux:badge></flux:label>
                 <flux:textarea wire:model="editObservacion" rows="2" placeholder="Ej. Especímenes incautados - origen no determinado" />
                 <flux:error name="editObservacion" />
-            </flux:field>
-
-            <flux:field>
-                <flux:label>Capacidad máxima <flux:badge size="sm" color="zinc">Opcional</flux:badge></flux:label>
-                <flux:input type="number" wire:model="editCapacidadMaxima" min="1" max="32767"
-                    x-on:keydown="if(!/^\d$/.test($event.key) && !['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Home','End'].includes($event.key)) $event.preventDefault()" />
-                <flux:error name="editCapacidadMaxima" />
             </flux:field>
 
             <flux:field variant="inline">

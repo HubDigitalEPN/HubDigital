@@ -75,7 +75,6 @@ final class ReubicacionDigitalGuiadaContext extends BaseContext
         $cajaOrigen = $this->sembrarCajaBase(
             codigo: 'CAJA-ORIGEN-001',
             familia: 'Nymphalidae',
-            capacidad: 10,
             especimenesActuales: 1,
         );
         $this->cajaOrigenId = $cajaOrigen->id();
@@ -108,7 +107,6 @@ final class ReubicacionDigitalGuiadaContext extends BaseContext
         $cajaDestino = $this->sembrarCajaBase(
             codigo: 'CAJA-DESTINO-001',
             familia: $cajaOrigen->familiaTaxonomicaId(),
-            capacidad: 10,
             especimenesActuales: 3,
         );
         $this->cajaDestinoId = $cajaDestino->id();
@@ -208,82 +206,6 @@ final class ReubicacionDigitalGuiadaContext extends BaseContext
     }
 
     // ==========================================
-    // ESCENARIO: Intento de traslado a contenedor lleno
-    // ==========================================
-
-    #[Given('la caja de destino ha alcanzado su capacidad máxima')]
-    public function laCajaDeDestinoHaAlcanzadoSuCapacidadMáxima(): void
-    {
-        Assert::assertNotNull($this->cajaOrigenId, 'Se requiere la caja de origen como precondición');
-
-        $cajaOrigen = $this->cajaRepo->buscarPorId($this->cajaOrigenId);
-        Assert::assertNotNull($cajaOrigen);
-
-        // Caja de destino llena: capacidad = especímenes actuales
-        $cajaDestino = $this->sembrarCajaBase(
-            codigo: 'CAJA-LLENA-001',
-            familia: $cajaOrigen->familiaTaxonomicaId(),
-            capacidad: 5,
-            especimenesActuales: 5,
-        );
-        $this->cajaDestinoId = $cajaDestino->id();
-
-        Assert::assertFalse(
-            $cajaDestino->tieneEspacioDisponible(),
-            'La caja de destino debe estar llena como precondición del escenario'
-        );
-    }
-
-    #[When('intento reubicar el espécimen en la caja de destino')]
-    public function intentoReubicarElEspécimenEnLaCajaDeDestino(): void
-    {
-        Assert::assertNotNull($this->especimenCodigo, 'Se requiere un espécimen seleccionado');
-        Assert::assertNotNull($this->cajaOrigenId);
-        Assert::assertNotNull($this->cajaDestinoId);
-
-        try {
-            $this->ultimaReubicacionOutput = $this->reubicacionHandler->handle(
-                new IniciarReubicacionEspecimenInput(
-                    especimenCodigoExterno: $this->especimenCodigo,
-                    cajaOrigenId: (string) $this->cajaOrigenId,
-                    cajaDestinoId: (string) $this->cajaDestinoId,
-                    iniciadorId: 'curador-001',
-                    motivo: 'reubicacion',
-                )
-            );
-        } catch (\Throwable $e) {
-            $this->excepcionCapturada = $e;
-        }
-    }
-
-    #[Then('se debe mostrar un mensaje de error "Contenedor destino lleno"')]
-    public function seDebeMostrarUnMensajeDeErrorContenedorDestinoLleno(): void
-    {
-        Assert::assertNotNull(
-            $this->excepcionCapturada,
-            'Se esperaba una excepción de dominio por contenedor lleno'
-        );
-        Assert::assertStringContainsString(
-            'Contenedor destino lleno',
-            $this->excepcionCapturada->getMessage(),
-            'El mensaje de error debe indicar que el contenedor de destino está lleno'
-        );
-    }
-
-    #[Then('el espécimen permanece en su contenedor de origen')]
-    public function elEspécimenPermaneceEnSuContenedorDeOrigen(): void
-    {
-        Assert::assertNotNull($this->cajaOrigenId);
-
-        $especimen = $this->especimenRepo->buscarPorCodigoExterno($this->especimenCodigo);
-        Assert::assertNotNull($especimen, 'El espécimen debe seguir existiendo');
-        Assert::assertTrue(
-            $especimen->cajaId()->equals($this->cajaOrigenId),
-            'El espécimen debe permanecer en la caja de origen tras el error'
-        );
-    }
-
-    // ==========================================
     // ESCENARIO: Intento de traslado a contenedor con familia taxonómica incompatible
     // ==========================================
 
@@ -293,7 +215,6 @@ final class ReubicacionDigitalGuiadaContext extends BaseContext
         $cajaOrigen = $this->sembrarCajaBase(
             codigo: 'CAJA-FAM-ORIGEN-001',
             familia: 'Nymphalidae',
-            capacidad: 10,
             especimenesActuales: 1,
         );
         $this->cajaOrigenId = $cajaOrigen->id();
@@ -332,7 +253,6 @@ final class ReubicacionDigitalGuiadaContext extends BaseContext
         $cajaDestino = $this->sembrarCajaBase(
             codigo: 'CAJA-FAM-DEST-001',
             familia: $familiaDestino,
-            capacidad: 10,
             especimenesActuales: 0,
         );
         $this->cajaDestinoId = $cajaDestino->id();
@@ -368,7 +288,6 @@ final class ReubicacionDigitalGuiadaContext extends BaseContext
         $cajaOrigen = $this->sembrarCajaBase(
             codigo: 'CAJA-HIST-001',
             familia: 'Nymphalidae',
-            capacidad: 10,
             especimenesActuales: 1,
         );
         $this->cajaOrigenId = $cajaOrigen->id();
@@ -386,7 +305,6 @@ final class ReubicacionDigitalGuiadaContext extends BaseContext
             $cajaAnterior = $this->sembrarCajaBase(
                 codigo: 'CAJA-HIST-PREV-001',
                 familia: 'Nymphalidae',
-                capacidad: 10,
                 especimenesActuales: 0,
             );
 
@@ -471,14 +389,12 @@ final class ReubicacionDigitalGuiadaContext extends BaseContext
     private function sembrarCajaBase(
         string $codigo,
         string $familia,
-        int $capacidad,
         int $especimenesActuales,
     ): Caja {
         $caja = Caja::crear(
             id: $this->cajaRepo->nextIdentity(),
             codigo: $codigo,
             familiaTaxonomicaId: $familia,
-            capacidadMaxima: $capacidad,
             especimenesActuales: $especimenesActuales,
         );
         $this->cajaRepo->guardar($caja);

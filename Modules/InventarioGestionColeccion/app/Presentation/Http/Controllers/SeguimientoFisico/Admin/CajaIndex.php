@@ -61,9 +61,6 @@ final class CajaIndex extends Component
 
     public bool $esEspecial = false;
 
-    #[Rule('nullable|integer|min:1|max:32767')]
-    public ?int $capacidadMaxima = null;
-
     public bool $showEditCajaModal = false;
 
     public string $editandoCajaId = '';
@@ -76,9 +73,6 @@ final class CajaIndex extends Component
     #[Rule('nullable|string|max:1000')]
     public ?string $editObservacion = null;
 
-    #[Rule('nullable|integer|min:1|max:32767')]
-    public ?int $editCapacidadMaxima = null;
-
     public ?string $successMessage = null;
 
     public ?string $errorMessage = null;
@@ -86,23 +80,9 @@ final class CajaIndex extends Component
     protected function validationAttributes(): array
     {
         return [
-            'capacidadMaxima' => 'capacidad máxima',
-            'editCapacidadMaxima' => 'capacidad máxima',
             'codigo' => 'código',
             'codigoRfid' => 'código RFID',
             'ranuraIdSeleccionada' => 'ranura',
-        ];
-    }
-
-    protected function messages(): array
-    {
-        return [
-            'capacidadMaxima.max' => 'La capacidad máxima no puede superar 32.767 especímenes.',
-            'capacidadMaxima.min' => 'La capacidad máxima debe ser al menos 1.',
-            'capacidadMaxima.integer' => 'La capacidad máxima debe ser un número entero.',
-            'editCapacidadMaxima.max' => 'La capacidad máxima no puede superar 32.767 especímenes.',
-            'editCapacidadMaxima.min' => 'La capacidad máxima debe ser al menos 1.',
-            'editCapacidadMaxima.integer' => 'La capacidad máxima debe ser un número entero.',
         ];
     }
 
@@ -149,12 +129,11 @@ final class CajaIndex extends Component
                 esEspecial: $this->esEspecial,
                 observacion: $this->observacion ?: null,
                 nombre: $this->nombre ?: null,
-                capacidadMaxima: $this->capacidadMaxima,
             ));
 
             $this->cargarCajas($listarHandler);
             $this->showCrearModal = false;
-            $this->reset('codigo', 'codigoRfid', 'nombre', 'observacion', 'esEspecial', 'capacidadMaxima');
+            $this->reset('codigo', 'codigoRfid', 'nombre', 'observacion', 'esEspecial');
             $this->resetValidation();
             $this->successMessage = 'Caja creada correctamente.';
             $this->errorMessage = null;
@@ -175,7 +154,6 @@ final class CajaIndex extends Component
         $this->editNombre = $caja['nombre'];
         $this->editEsEspecial = $caja['esEspecial'];
         $this->editObservacion = $caja['observacion'];
-        $this->editCapacidadMaxima = $caja['capacidadMaxima'];
         $this->errorMessage = null;
         $this->showEditCajaModal = true;
     }
@@ -187,7 +165,6 @@ final class CajaIndex extends Component
         $this->validate([
             'editNombre' => 'nullable|string|max:255',
             'editObservacion' => 'nullable|string|max:1000',
-            'editCapacidadMaxima' => 'nullable|integer|min:1|max:32767',
         ]);
 
         try {
@@ -196,7 +173,6 @@ final class CajaIndex extends Component
                 esEspecial: $this->editEsEspecial,
                 observacion: $this->editObservacion ?: null,
                 nombre: $this->editNombre ?: null,
-                capacidadMaxima: $this->editCapacidadMaxima,
             ));
 
             $this->cargarCajas($listarHandler);
@@ -295,7 +271,6 @@ final class CajaIndex extends Component
                 'nombre' => $c->nombre,
                 'esEspecial' => $c->esEspecial,
                 'observacion' => $c->observacion,
-                'capacidadMaxima' => $c->capacidadMaxima,
                 'estado' => $c->estado,
             ],
             $handler->handle()->items,

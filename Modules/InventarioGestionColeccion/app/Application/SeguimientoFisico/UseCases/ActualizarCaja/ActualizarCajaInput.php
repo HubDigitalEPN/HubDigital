@@ -11,6 +11,5 @@ final readonly class ActualizarCajaInput
         public bool $esEspecial = false,
         public ?string $observacion = null,
         public ?string $nombre = null,
-        public ?int $capacidadMaxima = null,
     ) {}
 }

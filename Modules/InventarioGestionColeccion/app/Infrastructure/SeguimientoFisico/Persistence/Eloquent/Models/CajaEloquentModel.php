@@ -23,7 +23,6 @@ class CajaEloquentModel extends Model
         'observacion',
         'clasificacion_taxonomica',
         'nombre',
-        'capacidad_maxima',
         'estado',
         'ranura_actual_id',
         'codigo_rfid',
@@ -31,7 +30,6 @@ class CajaEloquentModel extends Model
 
     protected $casts = [
         'es_especial' => 'boolean',
-        'capacidad_maxima' => 'integer',
         'clasificacion_taxonomica' => 'array',
     ];
 

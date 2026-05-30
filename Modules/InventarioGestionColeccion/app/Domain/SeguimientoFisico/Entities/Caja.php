@@ -28,7 +28,6 @@ class Caja
         private readonly bool $esEspecial,
         private readonly ?string $observacion,
         private readonly ?string $nombre,
-        private readonly ?int $capacidadMaxima,
         private ?ClasificacionTaxonomica $clasificacionTaxonomica,
         private EstadoCaja $estado,
         private ?RanuraId $ranuraActualId,
@@ -41,7 +40,6 @@ class Caja
         bool $esEspecial = false,
         ?string $observacion = null,
         ?string $nombre = null,
-        ?int $capacidadMaxima = null,
         ?ClasificacionTaxonomica $clasificacionTaxonomica = null,
     ): self {
         if ($esEspecial && ($observacion === null || trim($observacion) === '')) {
@@ -54,7 +52,6 @@ class Caja
             esEspecial: $esEspecial,
             observacion: $observacion,
             nombre: $nombre,
-            capacidadMaxima: $capacidadMaxima,
             clasificacionTaxonomica: $clasificacionTaxonomica,
             estado: EstadoCaja::EnTransito,
             ranuraActualId: null,
@@ -71,7 +68,6 @@ class Caja
         bool $esEspecial = false,
         ?string $observacion = null,
         ?string $nombre = null,
-        ?int $capacidadMaxima = null,
         ?ClasificacionTaxonomica $clasificacionTaxonomica = null,
     ): self {
         if ($esEspecial && ($observacion === null || trim($observacion) === '')) {
@@ -84,7 +80,6 @@ class Caja
             esEspecial: $esEspecial,
             observacion: $observacion,
             nombre: $nombre,
-            capacidadMaxima: $capacidadMaxima,
             clasificacionTaxonomica: $clasificacionTaxonomica,
             estado: $estado,
             ranuraActualId: $ranuraActualId,
@@ -241,11 +236,6 @@ class Caja
     public function nombre(): ?string
     {
         return $this->nombre;
-    }
-
-    public function capacidadMaxima(): ?int
-    {
-        return $this->capacidadMaxima;
     }
 
     public function estadoActual(): EstadoCaja

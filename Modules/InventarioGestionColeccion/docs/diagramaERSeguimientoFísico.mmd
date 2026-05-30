@@ -26,7 +26,6 @@ erDiagram
     varchar codigo UK
     varchar nombre "nullable"
     varchar familia_taxonomica_id "ref. externa módulo taxonómico"
-    smallint capacidad_maxima "nullable"
     varchar estado_actual "en_gabinete en_transito ubicacion_incorrecta pendiente_clasificacion extraccion_prolongada extraviada"
     uuid ubicacion_actual_id "nullable - desnorm. hacia ranuras_gabinete activa"
     timestamptz creada_en

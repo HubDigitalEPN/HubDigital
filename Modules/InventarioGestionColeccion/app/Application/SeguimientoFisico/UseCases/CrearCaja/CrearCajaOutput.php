@@ -13,7 +13,6 @@ final readonly class CrearCajaOutput
         public bool $esEspecial,
         public ?string $observacion,
         public ?string $nombre,
-        public ?int $capacidadMaxima,
         public string $estado,
     ) {}
 }
