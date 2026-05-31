@@ -73,7 +73,8 @@ Pest/Unit (Reglas dominio aisladas sin DB)
 1. **Estado del Sistema IoT:** Siempre visible en el header con un indicador visual (bg-success / Online).
 2. **Prevención de Errores:** Formularios taxonómicos deben usar autocompletado en base a datos reales (<flux:input list="taxa-list">), nunca texto libre puro.
 3. **Reconocimiento:** Mostrar siempre el nombre legible por humanos al referenciar entidades (Ej: Box A1 junto a su ID).
-4. **Accesibilidad en Laboratorio:** Diseño mobile-first optimizado para tablets. Áreas de toque de botones/escaners $\ge 44\times44\text{px}$.
+4. **Accesibilidad en Laboratorio:** Diseño mobile-first optimizado para móviles. Áreas de toque de botones/escaners $\ge 44\times44\text{px}$.
+5. **Tablas responsivas (patrón obligatorio):** Toda tabla de datos se renderiza con **dos bloques** alimentados por el mismo bucle: la `<table>` envuelta en `hidden md:block` + `overflow-x-auto` para escritorio, y una lista de **tarjetas apiladas** (`md:hidden`) para móvil — nunca scroll horizontal forzado en móvil. El par etiqueta/valor de cada tarjeta usa el componente `seguimiento-fisico.campo-movil`. Padding raíz de página `p-4 sm:p-6`; encabezado con acción `flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between` y botón `w-full sm:w-auto`. Los botones de acción dentro de tarjetas móviles no usan `size="sm"` (deben respetar el toque $\ge 44\text{px}$).
 
 ---
 

@@ -1,4 +1,4 @@
-<div class="space-y-6 p-6">
+<div class="space-y-6 p-4 sm:p-6">
     <div class="flex items-center gap-3">
         <flux:button
             icon="arrow-left"
@@ -7,8 +7,8 @@
             :href="route('inventario.gabinetes')"
             wire:navigate
         />
-        <div>
-            <flux:heading size="xl" level="1" class="font-display text-blue-navy font-semibold">
+        <div class="min-w-0">
+            <flux:heading size="xl" level="1" class="font-display text-blue-navy font-semibold truncate">
                 {{ $gabinete['codigo'] ?? '' }} — {{ $gabinete['nombre'] ?? '' }}
             </flux:heading>
             <p class="text-sm text-text-secondary">{{ count($ranuras) }} / {{ $gabinete['totalRanuras'] ?? 0 }} ranuras configuradas</p>
@@ -78,14 +78,15 @@
         </div>
 
         {{-- gabinete_id --}}
-        <div class="flex items-center gap-3">
-            <span class="text-xs text-text-secondary shrink-0 w-24">gabinete_id</span>
-            <code class="flex-1 rounded bg-bg-main px-3 py-1.5 text-sm font-mono text-text-primary select-all">{{ $gabinete['id'] ?? '' }}</code>
+        <div class="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+            <span class="text-xs text-text-secondary shrink-0 sm:w-24">gabinete_id</span>
+            <code class="w-full flex-1 rounded bg-bg-main px-3 py-1.5 text-sm font-mono text-text-primary select-all break-all">{{ $gabinete['id'] ?? '' }}</code>
             <flux:button
                 type="button"
                 size="sm"
                 variant="ghost"
                 icon="clipboard"
+                class="w-full sm:w-auto"
                 @click="copyValue('{{ $gabinete['id'] ?? '' }}', 'copiedId')"
             >
                 <span x-show="!copiedId" x-cloak>Copiar</span>
@@ -96,14 +97,15 @@
         {{-- api_token --}}
         @if($tokenGenerado)
             <div class="space-y-1.5">
-                <div class="flex items-center gap-3">
-                    <span class="text-xs text-text-secondary shrink-0 w-24">api_token</span>
-                    <code class="flex-1 rounded bg-bg-main px-3 py-1.5 text-sm font-mono text-text-primary select-all break-all">{{ $tokenGenerado }}</code>
+                <div class="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+                    <span class="text-xs text-text-secondary shrink-0 sm:w-24">api_token</span>
+                    <code class="w-full flex-1 rounded bg-bg-main px-3 py-1.5 text-sm font-mono text-text-primary select-all break-all">{{ $tokenGenerado }}</code>
                     <flux:button
                         type="button"
                         size="sm"
                         variant="ghost"
                         icon="clipboard"
+                        class="w-full sm:w-auto"
                         @click="copyValue('{{ $tokenGenerado }}', 'copiedToken')"
                     >
                         <span x-show="!copiedToken" x-cloak>Copiar</span>
@@ -115,14 +117,15 @@
                 </flux:callout>
             </div>
         @else
-            <div class="flex items-center gap-3">
-                <span class="text-xs text-text-secondary shrink-0 w-24">api_token</span>
-                <span class="flex-1 text-sm text-text-secondary italic">
+            <div class="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+                <span class="text-xs text-text-secondary shrink-0 sm:w-24">api_token</span>
+                <span class="w-full flex-1 text-sm text-text-secondary italic">
                     @if($tieneToken) Token existente (no se muestra por seguridad) @else Sin token @endif
                 </span>
                 <flux:button
                     size="sm"
                     variant="{{ $tieneToken ? 'ghost' : 'primary' }}"
+                    class="w-full sm:w-auto"
                     wire:click="generarToken"
                     wire:loading.attr="disabled"
                     wire:confirm="{{ $tieneToken ? '¿Revocar el token actual y generar uno nuevo? El ESP32 dejará de funcionar hasta que flashees el nuevo token.' : null }}"
@@ -158,47 +161,84 @@
             </div>
         </div>
 
-        <table class="w-full text-sm border-t border-border">
-            <thead class="bg-blue-navy border-b border-border">
-                <tr>
-                    <th class="px-4 py-3 text-left font-medium text-white">Ranura</th>
-                    <th class="px-4 py-3 text-left font-medium text-white">Caja Actual</th>
-                    <th class="px-4 py-3 text-left font-medium text-white">Estado</th>
-                    <th class="px-4 py-3 text-left font-medium text-white">Acciones</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-border">
-                @foreach($ranuras as $ranura)
-                    <tr class="hover:bg-bg-main transition-colors">
-                        <td class="px-4 py-3 font-medium text-text-primary">Ranura {{ $ranura['numeroRanura'] }}</td>
-                        <td class="px-4 py-3 text-text-primary">
+        {{-- Tabla (desktop) --}}
+        <div class="hidden md:block border-t border-border overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-blue-navy border-b border-border">
+                    <tr>
+                        <th class="px-4 py-3 text-left font-medium text-white">Ranura</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">Caja Actual</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">Estado</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-border">
+                    @foreach($ranuras as $ranura)
+                        <tr class="hover:bg-bg-main transition-colors">
+                            <td class="px-4 py-3 font-medium text-text-primary">Ranura {{ $ranura['numeroRanura'] }}</td>
+                            <td class="px-4 py-3 text-text-primary">
+                                @if(isset($ranura['cajaActual']) && $ranura['cajaActual'])
+                                    <span class="font-mono text-xs">{{ $ranura['cajaActual']['codigo'] }}</span>
+                                @else
+                                    <span class="text-text-secondary">—</span>
+                                @endif
+                            </td>
+                            <td class="px-4 py-3">
+                                @if($ranura['activa'])
+                                    <span class="inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold bg-success text-white">Activa</span>
+                                @else
+                                    <span class="inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold bg-border text-text-primary">Inactiva</span>
+                                @endif
+                            </td>
+                            <td class="px-4 py-3">
+                                <flux:button
+                                    size="sm"
+                                    variant="ghost"
+                                    icon="pencil"
+                                    wire:click="abrirEditRanura('{{ $ranura['id'] }}')"
+                                >
+                                    Editar
+                                </flux:button>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+
+        {{-- Tarjetas (móvil) --}}
+        <div class="md:hidden border-t border-border p-4 space-y-3">
+            @foreach($ranuras as $ranura)
+                <div class="rounded-lg border border-border bg-surface p-4 shadow-sm space-y-3">
+                    <div class="flex items-start justify-between gap-2">
+                        <span class="font-medium text-text-primary">Ranura {{ $ranura['numeroRanura'] }}</span>
+                        @if($ranura['activa'])
+                            <span class="inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold bg-success text-white">Activa</span>
+                        @else
+                            <span class="inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold bg-border text-text-primary">Inactiva</span>
+                        @endif
+                    </div>
+                    <dl class="space-y-1.5 text-sm">
+                        <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="Caja actual">
                             @if(isset($ranura['cajaActual']) && $ranura['cajaActual'])
                                 <span class="font-mono text-xs">{{ $ranura['cajaActual']['codigo'] }}</span>
                             @else
-                                <span class="text-text-secondary">—</span>
+                                —
                             @endif
-                        </td>
-                        <td class="px-4 py-3">
-                            @if($ranura['activa'])
-                                <span class="inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold bg-success text-white">Activa</span>
-                            @else
-                                <span class="inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold bg-border text-text-primary">Inactiva</span>
-                            @endif
-                        </td>
-                        <td class="px-4 py-3">
-                            <flux:button
-                                size="sm"
-                                variant="ghost"
-                                icon="pencil"
-                                wire:click="abrirEditRanura('{{ $ranura['id'] }}')"
-                            >
-                                Editar
-                            </flux:button>
-                        </td>
-                    </tr>
-                @endforeach
-            </tbody>
-        </table>
+                        </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
+                    </dl>
+                    <div class="flex flex-wrap gap-2 pt-1">
+                        <flux:button
+                            variant="ghost"
+                            icon="pencil"
+                            wire:click="abrirEditRanura('{{ $ranura['id'] }}')"
+                        >
+                            Editar
+                        </flux:button>
+                    </div>
+                </div>
+            @endforeach
+        </div>
     </div>
 
     {{-- Modal: Editar ranura --}}

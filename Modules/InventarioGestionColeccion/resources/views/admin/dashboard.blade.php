@@ -1,5 +1,5 @@
-<div class="space-y-6 p-6" wire:poll.5s="refrescar">
-    <div class="flex items-center justify-between">
+<div class="space-y-6 p-4 sm:p-6" wire:poll.5s="refrescar">
+    <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <flux:heading size="xl" level="1" class="font-display text-blue-navy font-bold">Monitoreo IoT</flux:heading>
         <div class="flex items-center gap-2 text-xs text-text-secondary">
             <span class="inline-block size-2 rounded-full bg-success animate-pulse"></span>
@@ -35,8 +35,8 @@
     {{-- Grid de gabinetes --}}
     @forelse($gabinetes as $gabinete)
         <div class="rounded-lg border border-border bg-surface shadow-sm p-4 space-y-3">
-            <div class="flex items-center justify-between">
-                <div>
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div class="min-w-0">
                     <flux:heading size="lg" level="2" class="font-display text-blue-navy font-semibold">{{ $gabinete['codigo'] }} — {{ $gabinete['nombre'] }}</flux:heading>
                     <p class="text-xs text-text-secondary">
                         {{ count($gabinete['ranuras']) }} ranuras configuradas de {{ $gabinete['totalRanuras'] }}
@@ -47,6 +47,7 @@
                     variant="primary"
                     icon="cog-6-tooth"
                     style="color: white;"
+                    class="w-full sm:w-auto"
                     :href="route('inventario.gabinetes.show', $gabinete['id'])"
                     wire:navigate
                 >

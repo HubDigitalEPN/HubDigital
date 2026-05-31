@@ -26,11 +26,11 @@ $tooltip = $caja
         'animate-pulse' => $estado === 'extraviada',
     ])>
         @if($caja !== null)
-            <span class="text-[9px] font-bold leading-none text-center w-full truncate px-0.5">
+            <span class="text-[10px] font-bold leading-none text-center w-full truncate px-0.5">
                 {{ $caja['codigo'] }}
             </span>
         @else
-            <span class="text-[10px] font-medium">{{ $ranura['numeroRanura'] }}</span>
+            <span class="text-[11px] font-medium">{{ $ranura['numeroRanura'] }}</span>
         @endif
     </div>
 </flux:tooltip>

@@ -1,4 +1,4 @@
-<div class="space-y-6 p-6">
+<div class="space-y-6 p-4 sm:p-6">
     <flux:heading size="xl" level="1" class="font-display text-blue-navy font-bold">
         Asignación de Unit Trays
     </flux:heading>
@@ -42,44 +42,80 @@
         </div>
 
         @if($cajaSeleccionada !== '')
-            <div class="rounded-lg border border-border overflow-hidden">
-                <table class="w-full text-sm">
-                    <thead class="bg-blue-navy">
-                        <tr>
-                            <th class="px-4 py-3 text-left font-medium text-white">N.°</th>
-                            <th class="px-4 py-3 text-left font-medium text-white">Subfamilia</th>
-                            <th class="px-4 py-3 text-left font-medium text-white">Género</th>
-                            <th class="px-4 py-3 text-left font-medium text-white">Especímenes</th>
-                            <th class="px-4 py-3 text-left font-medium text-white">Acción</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-border">
-                        @forelse($unitTrays as $tray)
-                            <tr class="hover:bg-bg-main transition-colors {{ $unitTraySeleccionado === $tray['unitTrayId'] ? 'bg-bg-main' : '' }}">
-                                <td class="px-4 py-3 font-medium text-text-primary">{{ $tray['numero'] }}</td>
-                                <td class="px-4 py-3 text-text-primary">{{ $tray['subfamilia'] ?? '—' }}</td>
-                                <td class="px-4 py-3 font-serif italic text-text-primary">{{ $tray['genero'] ?? '—' }}</td>
-                                <td class="px-4 py-3 text-text-secondary">{{ $tray['totalEspecimenes'] }}</td>
-                                <td class="px-4 py-3">
-                                    <flux:button
-                                        size="sm"
-                                        variant="filled"
-                                        wire:click="seleccionarUnitTray('{{ $tray['unitTrayId'] }}')"
-                                        class="min-h-[44px]"
-                                    >
-                                        Asignar especímenes
-                                    </flux:button>
-                                </td>
-                            </tr>
-                        @empty
+            {{-- Tabla (desktop) --}}
+            <div class="hidden md:block rounded-lg border border-border overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-blue-navy">
                             <tr>
-                                <td colspan="5" class="px-4 py-6 text-center text-text-secondary">
-                                    Esta caja no tiene unit trays todavía.
-                                </td>
+                                <th class="px-4 py-3 text-left font-medium text-white">N.°</th>
+                                <th class="px-4 py-3 text-left font-medium text-white">Subfamilia</th>
+                                <th class="px-4 py-3 text-left font-medium text-white">Género</th>
+                                <th class="px-4 py-3 text-left font-medium text-white">Especímenes</th>
+                                <th class="px-4 py-3 text-left font-medium text-white">Acción</th>
                             </tr>
-                        @endforelse
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody class="divide-y divide-border">
+                            @forelse($unitTrays as $tray)
+                                <tr class="hover:bg-bg-main transition-colors {{ $unitTraySeleccionado === $tray['unitTrayId'] ? 'bg-bg-main' : '' }}">
+                                    <td class="px-4 py-3 font-medium text-text-primary">{{ $tray['numero'] }}</td>
+                                    <td class="px-4 py-3 text-text-primary">{{ $tray['subfamilia'] ?? '—' }}</td>
+                                    <td class="px-4 py-3 font-serif italic text-text-primary">{{ $tray['genero'] ?? '—' }}</td>
+                                    <td class="px-4 py-3 text-text-secondary">{{ $tray['totalEspecimenes'] }}</td>
+                                    <td class="px-4 py-3">
+                                        <flux:button
+                                            size="sm"
+                                            variant="filled"
+                                            wire:click="seleccionarUnitTray('{{ $tray['unitTrayId'] }}')"
+                                            class="min-h-[44px]"
+                                        >
+                                            Asignar especímenes
+                                        </flux:button>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="5" class="px-4 py-6 text-center text-text-secondary">
+                                        Esta caja no tiene unit trays todavía.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {{-- Tarjetas (móvil) --}}
+            <div class="md:hidden space-y-3">
+                @forelse($unitTrays as $tray)
+                    <div class="rounded-lg border border-border bg-surface p-4 shadow-sm space-y-3 {{ $unitTraySeleccionado === $tray['unitTrayId'] ? 'ring-1 ring-blue-navy' : '' }}">
+                        <div class="flex items-start justify-between gap-2">
+                            <span class="font-medium text-text-primary">Tray N.° {{ $tray['numero'] }}</span>
+                            <span class="text-xs text-text-secondary">{{ $tray['totalEspecimenes'] }} especímenes</span>
+                        </div>
+                        <dl class="space-y-1.5 text-sm">
+                            <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="Subfamilia">
+                                {{ $tray['subfamilia'] ?? '—' }}
+                            </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
+                            <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="Género">
+                                <span class="font-serif italic">{{ $tray['genero'] ?? '—' }}</span>
+                            </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
+                        </dl>
+                        <div class="flex flex-wrap gap-2 pt-1">
+                            <flux:button
+                                variant="filled"
+                                wire:click="seleccionarUnitTray('{{ $tray['unitTrayId'] }}')"
+                                class="w-full min-h-[44px]"
+                            >
+                                Asignar especímenes
+                            </flux:button>
+                        </div>
+                    </div>
+                @empty
+                    <div class="rounded-lg border border-dashed border-border p-8 text-center text-text-secondary">
+                        Esta caja no tiene unit trays todavía.
+                    </div>
+                @endforelse
             </div>
         @endif
     </div>
