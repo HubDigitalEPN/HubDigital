@@ -18,6 +18,7 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\Eve
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\GabineteRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\HorarioRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\NotificacionRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\OrdenEsperadoFamiliasRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\RanuraGabineteRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\SincronizacionEsp32Repository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\TaxonRepositoryInterface;
@@ -40,6 +41,7 @@ use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persiste
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentGabineteRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentHorarioRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentNotificacionRepository;
+use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentOrdenEsperadoFamiliasRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentRanuraGabineteRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentSincronizacionEsp32Repository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentTaxonRepository;
@@ -69,6 +71,7 @@ class InventarioGestionColeccionServiceProvider extends ModuleServiceProvider
         AlertaUbicacionRepository::class => EloquentAlertaUbicacionRepository::class,
         UbicacionCajaRepository::class => EloquentUbicacionCajaRepository::class,
         NotificacionRepository::class => EloquentNotificacionRepository::class,
+        OrdenEsperadoFamiliasRepository::class => EloquentOrdenEsperadoFamiliasRepository::class,
         EventoCicloIotRepository::class => EloquentEventoCicloIotRepository::class,
         SincronizacionEsp32Repository::class => EloquentSincronizacionEsp32Repository::class,
         TransactionManagerPort::class => LaravelTransactionManagerAdapter::class,

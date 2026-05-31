@@ -23,6 +23,8 @@ yarn-error.log
 /.vscode
 /.zed
 Manual de Diseño.md
+CLAUDE.local.md
+claude.local.md
 .claude/settings.local.json
 /.claude/
 

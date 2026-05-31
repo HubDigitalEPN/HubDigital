@@ -18,6 +18,7 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\Ale
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\CajaRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EventoCicloIotRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\NotificacionRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\OrdenEsperadoFamiliasRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\RanuraGabineteRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UbicacionCajaRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\EvaluadorOrdenTaxonomico;
@@ -42,6 +43,7 @@ final class RegistrarIngresoCajaHandler
         private readonly ContextoEjecucionPort $contextoEjecucion,
         private readonly EventPublisherPort $eventPublisher,
         private readonly EvaluadorOrdenTaxonomico $evaluadorTaxonomico,
+        private readonly OrdenEsperadoFamiliasRepository $ordenFamiliasRepo,
     ) {}
 
     public function handle(RegistrarIngresoCajaInput $input): RegistrarIngresoCajaOutput
@@ -175,7 +177,8 @@ final class RegistrarIngresoCajaHandler
             }
         }
 
-        $tipoAlerta = $this->evaluadorTaxonomico->evaluar($caja, $cajaAnterior, $cajaSiguiente);
+        $ordenFamilias = $this->ordenFamiliasRepo->obtener();
+        $tipoAlerta = $this->evaluadorTaxonomico->evaluar($caja, $cajaAnterior, $cajaSiguiente, $ordenFamilias);
 
         if ($tipoAlerta === null) {
             return false;

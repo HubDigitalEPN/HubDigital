@@ -25,6 +25,7 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\Eve
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\GabineteRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\HorarioRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\NotificacionRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\OrdenEsperadoFamiliasRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\RanuraGabineteRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UbicacionCajaRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UnitTrayRepository;
@@ -49,6 +50,7 @@ use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMem
 use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryGabineteRepository;
 use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryHorarioRepository;
 use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryNotificacionRepository;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryOrdenEsperadoFamiliasRepository;
 use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryRanuraGabineteRepository;
 use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryUbicacionCajaRepository;
 use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryUnitTrayRepository;
@@ -80,6 +82,8 @@ final class AlertaIncongruenciaTaxonomicaContext extends BaseContext
 
     private InMemoryUnitTrayRepository $unitTrayRepo;
 
+    private InMemoryOrdenEsperadoFamiliasRepository $ordenFamiliasRepo;
+
     // ── Estado del escenario ─────────────────────────────────────────────────
 
     private ?CajaId $cajaAInsertar = null;
@@ -107,6 +111,7 @@ final class AlertaIncongruenciaTaxonomicaContext extends BaseContext
         $this->alertaRepo = new InMemoryAlertaUbicacionRepository;
         $this->notificacionRepo = new InMemoryNotificacionRepository;
         $this->unitTrayRepo = new InMemoryUnitTrayRepository;
+        $this->ordenFamiliasRepo = new InMemoryOrdenEsperadoFamiliasRepository;
 
         $this->horarioRepo->guardar(Horario::crear(
             id: HorarioId::generar(),
@@ -130,6 +135,7 @@ final class AlertaIncongruenciaTaxonomicaContext extends BaseContext
         self::$app->instance(AlertaUbicacionRepository::class, $this->alertaRepo);
         self::$app->instance(NotificacionRepository::class, $this->notificacionRepo);
         self::$app->instance(UnitTrayRepository::class, $this->unitTrayRepo);
+        self::$app->instance(OrdenEsperadoFamiliasRepository::class, $this->ordenFamiliasRepo);
 
         $this->ingresoHandler = $this->make(RegistrarIngresoCajaHandler::class);
     }

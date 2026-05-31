@@ -13,6 +13,7 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Events\Incongrue
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\AlertaUbicacionRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\CajaRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EventoCicloIotRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\OrdenEsperadoFamiliasRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\RanuraGabineteRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\EvaluadorOrdenTaxonomico;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\ActorRol;
@@ -30,6 +31,7 @@ final class EvaluarOrdenTaxonomicoCajaHandler
         private readonly TransactionManagerPort $transactionManager,
         private readonly EventPublisherPort $eventPublisher,
         private readonly EvaluadorOrdenTaxonomico $evaluador,
+        private readonly OrdenEsperadoFamiliasRepository $ordenFamiliasRepo,
     ) {}
 
     public function handle(EvaluarOrdenTaxonomicoCajaInput $input): EvaluarOrdenTaxonomicoCajaOutput
@@ -64,7 +66,8 @@ final class EvaluarOrdenTaxonomicoCajaHandler
             }
         }
 
-        $tipoAlerta = $this->evaluador->evaluar($caja, $cajaAnterior, $cajaSiguiente);
+        $ordenFamilias = $this->ordenFamiliasRepo->obtener();
+        $tipoAlerta = $this->evaluador->evaluar($caja, $cajaAnterior, $cajaSiguiente, $ordenFamilias);
 
         if ($tipoAlerta === null) {
             return EvaluarOrdenTaxonomicoCajaOutput::fromPrimitives([

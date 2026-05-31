@@ -173,6 +173,14 @@
                                 Alertas
                             </flux:sidebar.item>
                             <flux:sidebar.item
+                                icon="bars-arrow-down"
+                                :href="route('inventario.orden-familias')"
+                                :current="request()->routeIs('inventario.orden-familias')"
+                                wire:navigate
+                            >
+                                Orden de familias
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
                                 icon="clock"
                                 :href="route('inventario.horario')"
                                 :current="request()->routeIs('inventario.horario')"
