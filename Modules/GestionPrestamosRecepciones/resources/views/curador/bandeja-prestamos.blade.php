@@ -1,6 +1,6 @@
 <div class="p-6 space-y-6">
 
-    <flux:heading size="xl" level="1" class="font-display">Bandeja de préstamos</flux:heading>
+    <flux:heading size="xl" level="1" class="font-display">Préstamos</flux:heading>
 
     {{-- Barra de filtros --}}
     <div class="space-y-3">
@@ -13,7 +13,7 @@
                 class="flex-1" />
             <flux:input
                 wire:model.live.debounce.300ms="busquedaInvestigador"
-                placeholder="Buscar por investigador..."
+                placeholder="Buscar por solicitante..."
                 icon="user"
                 clearable
                 class="flex-1" />
@@ -66,7 +66,7 @@
                 <thead class="bg-blue-navy border-b border-border">
                     <tr>
                         <th class="px-4 py-3 text-left font-medium text-white">N.º préstamo</th>
-                        <th class="px-4 py-3 text-left font-medium text-white">Investigador</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">Solicitante</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Estado</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Inicio</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Vencimiento</th>

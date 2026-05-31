@@ -33,7 +33,15 @@
 
             <flux:field>
                 <flux:label>Título del estudio</flux:label>
-                <flux:input wire:model="tituloEstudio" placeholder="Ej. Análisis taxonómico de lepidópteros andinos" />
+                <div
+                    x-data="{ len: {{ strlen($tituloEstudio ?? '') }} }"
+                    x-init="$watch(() => $wire.tituloEstudio, v => len = (v ?? '').length)">
+                    <flux:input wire:model="tituloEstudio" maxlength="200"
+                        placeholder="Ej. Análisis taxonómico de lepidópteros andinos" />
+                    <p class="text-xs mt-1 tabular-nums"
+                        :class="len > 180 ? 'text-warning' : 'text-text-secondary'"
+                        x-text="`${200 - len} caracteres restantes`"></p>
+                </div>
                 <flux:error name="tituloEstudio" />
             </flux:field>
 

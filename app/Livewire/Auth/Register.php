@@ -4,6 +4,7 @@ namespace App\Livewire\Auth;
 
 use App\Enums\RolUsuario;
 use App\Models\User;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 use Livewire\Attributes\Validate;
@@ -35,12 +36,18 @@ class Register extends Component
             return;
         }
 
-        $user = User::create([
-            'name' => $this->name,
-            'email' => $this->email,
-            'password' => $this->password,
-            'rol' => RolUsuario::from(strtoupper($this->role)),
-        ]);
+        try {
+            $user = User::create([
+                'name' => $this->name,
+                'email' => $this->email,
+                'password' => $this->password,
+                'rol' => RolUsuario::from(strtoupper($this->role)),
+            ]);
+        } catch (UniqueConstraintViolationException) {
+            $this->addError('form', 'No se pudo completar el registro. Verifica los datos e intenta de nuevo.');
+
+            return;
+        }
 
         Auth::login($user);
 

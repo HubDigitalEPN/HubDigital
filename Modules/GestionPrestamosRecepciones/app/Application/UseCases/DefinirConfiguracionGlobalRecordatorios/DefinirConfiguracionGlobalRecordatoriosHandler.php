@@ -1,0 +1,37 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\GestionPrestamosRecepciones\Application\UseCases\DefinirConfiguracionGlobalRecordatorios;
+
+use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
+use Modules\GestionPrestamosRecepciones\Domain\Entities\ConfiguracionGlobalRecordatorios;
+use Modules\GestionPrestamosRecepciones\Domain\Repositories\ConfiguracionGlobalRecordatoriosRepositoryInterface;
+
+final class DefinirConfiguracionGlobalRecordatoriosHandler
+{
+    public function __construct(
+        private readonly ConfiguracionGlobalRecordatoriosRepositoryInterface $configRepo,
+        private readonly EventPublisherPort $publisher,
+        private readonly TransactionManagerPort $transactionManager,
+    ) {}
+
+    public function handle(DefinirConfiguracionGlobalRecordatoriosInput $input): DefinirConfiguracionGlobalRecordatoriosOutput
+    {
+        $configuracion = ConfiguracionGlobalRecordatorios::definir(
+            id: $this->configRepo->nextIdentity(),
+            curadorId: $input->curadorId,
+            diasAntes: $input->diasAntes,
+        );
+
+        $this->transactionManager->executeTransactional(function () use ($configuracion): void {
+            $this->configRepo->guardar($configuracion);
+            foreach ($configuracion->pullEvents() as $event) {
+                $this->publisher->publish($event);
+            }
+        });
+
+        return DefinirConfiguracionGlobalRecordatoriosOutput::from($configuracion);
+    }
+}

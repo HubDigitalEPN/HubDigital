@@ -96,6 +96,14 @@
                             >
                                 Préstamos
                             </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="cog-6-tooth"
+                                :href="route('prestamos.curador.configuracion')"
+                                :current="request()->routeIs('prestamos.curador.configuracion')"
+                                wire:navigate
+                            >
+                                Configuración
+                            </flux:sidebar.item>
                         </flux:sidebar.group>
                         <flux:sidebar.group heading="Inventario" class="grid">
                             <flux:sidebar.item

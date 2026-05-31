@@ -1,6 +1,6 @@
 <div class="p-6 space-y-6">
 
-    <flux:heading size="xl" level="1" class="font-display">Bandeja de actas</flux:heading>
+    <flux:heading size="xl" level="1" class="font-display">Actas</flux:heading>
 
     @if($successMessage)
         <flux:callout variant="success" icon="check-circle">{{ $successMessage }}</flux:callout>
@@ -17,7 +17,7 @@
                 class="flex-1" />
             <flux:input
                 wire:model.live.debounce.300ms="busquedaInvestigador"
-                placeholder="Buscar por investigador..."
+                placeholder="Buscar por solicitante..."
                 icon="user"
                 clearable
                 class="flex-1" />
@@ -70,9 +70,9 @@
                     <tr>
                         <th class="px-4 py-3 text-left font-medium text-white">N.º acta</th>
                         <th class="px-4 py-3 text-left font-medium text-white">N.º solicitud</th>
-                        <th class="px-4 py-3 text-left font-medium text-white">Investigador</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">Solicitante</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Estado</th>
-                        <th class="px-4 py-3 text-left font-medium text-white">Fecha</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">Fecha de acta</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Acciones</th>
                     </tr>
                 </thead>

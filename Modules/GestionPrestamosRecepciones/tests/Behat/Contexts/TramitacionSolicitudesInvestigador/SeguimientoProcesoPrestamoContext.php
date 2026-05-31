@@ -402,7 +402,7 @@ final class SeguimientoProcesoPrestamoContext extends BaseContext
     // ESQUEMA DE ESCENARIO: Conocer el estado de un préstamo
     // =========================================================================
 
-    #[Given('/^que existe un préstamo en estado (.+)$/u')]
+    #[Given('/^que existe un préstamo en estado ([^\s]+)$/u')]
     public function queExisteUnPrestamoEnEstado(string $estadoHumano): void
     {
         $estadoEnum = $this->mapearEstadoPrestamo($estadoHumano);

@@ -1,6 +1,6 @@
 <div class="p-6 space-y-6">
 
-    <flux:heading size="xl" level="1" class="font-display">Mis actas de préstamo</flux:heading>
+    <flux:heading size="xl" level="1" class="font-display">Mis actas</flux:heading>
 
     {{-- Barra de filtros --}}
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -60,7 +60,7 @@
                         <th class="px-4 py-3 text-left font-medium text-white">N.º acta</th>
                         <th class="px-4 py-3 text-left font-medium text-white">N.º solicitud</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Estado</th>
-                        <th class="px-4 py-3 text-left font-medium text-white">Fecha</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">Fecha de acta</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Acciones</th>
                     </tr>
                 </thead>

@@ -11,6 +11,8 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialP
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialPrestamo\ConsultarHistorialPrestamoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudInput;
+use Modules\GestionPrestamosRecepciones\Domain\Repositories\RecordatorioDevolucionRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrestamoId;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\PrestamoEloquentModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\SolicitudPrestamoModel;
 
@@ -37,6 +39,7 @@ final class DetallePrestamo extends Component
     public function render(
         ConsultarHistorialSolicitudHandler $historialSolicitudHandler,
         ConsultarHistorialPrestamoHandler $historialPrestamoHandler,
+        RecordatorioDevolucionRepositoryInterface $recordatorioRepo,
     ): View {
         $prestamo = PrestamoEloquentModel::query()->with('acta')->findOrFail($this->id);
         $acta = $prestamo->acta;
@@ -72,6 +75,14 @@ final class DetallePrestamo extends Component
             ->values()
             ->all();
 
-        return view('gestionprestamosrecepciones::investigador.detalle-prestamo', compact('prestamo', 'acta', 'solicitud', 'timeline'));
+        $recordatorios = array_map(
+            fn ($r) => [
+                'diasAntes' => $r->diasAntesVencimiento(),
+                'fecha' => $r->fechaProgramada()->format('d/m/Y'),
+            ],
+            $recordatorioRepo->listarPorPrestamo(PrestamoId::fromString($this->id)),
+        );
+
+        return view('gestionprestamosrecepciones::investigador.detalle-prestamo', compact('prestamo', 'acta', 'solicitud', 'timeline', 'recordatorios'));
     }
 }

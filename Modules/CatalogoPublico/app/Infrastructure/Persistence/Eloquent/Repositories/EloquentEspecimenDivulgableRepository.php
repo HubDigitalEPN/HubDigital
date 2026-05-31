@@ -24,7 +24,7 @@ final class EloquentEspecimenDivulgableRepository implements EspecimenDivulgable
         EspecimenDivulgableEloquentModel::updateOrCreate(
             ['id' => $divulgable->id()->toString()],
             [
-                'occurrence_id' => $divulgable->occurrenceID(),
+                'especimen_id' => $divulgable->especimenId(),
                 'occurrence_id_visible' => $flags['occurrenceIDVisible'],
                 'scientific_name_visible' => $flags['scientificNameVisible'],
                 'individual_count_visible' => $flags['individualCountVisible'],
@@ -46,13 +46,32 @@ final class EloquentEspecimenDivulgableRepository implements EspecimenDivulgable
 
     public function buscarPorOccurrenceID(string $occurrenceID): ?EspecimenDivulgable
     {
-        $model = EspecimenDivulgableEloquentModel::where('occurrence_id', $occurrenceID)->first();
+        // JOIN con taxonomia.especimenes para resolver occurrence_id → especimen_id (FK estable)
+        $model = EspecimenDivulgableEloquentModel::query()
+            ->join(
+                'taxonomia.especimenes',
+                'taxonomia.especimenes.id',
+                '=',
+                'divulgacion.especimenes_divulgables.especimen_id'
+            )
+            ->where('taxonomia.especimenes.occurrence_id', $occurrenceID)
+            ->select('divulgacion.especimenes_divulgables.*')
+            ->first();
 
         if ($model === null) {
             return null;
         }
 
-        $configuracion = ConfiguracionVisibilidad::desde([
+        return EspecimenDivulgable::reconstituir(
+            id: EspecimenDivulgableId::fromString($model->id),
+            especimenId: $model->especimen_id,
+            configuracion: $this->buildConfiguracion($model),
+        );
+    }
+
+    private function buildConfiguracion(EspecimenDivulgableEloquentModel $model): ConfiguracionVisibilidad
+    {
+        return ConfiguracionVisibilidad::desde([
             'occurrenceIDVisible' => (bool) $model->occurrence_id_visible,
             'scientificNameVisible' => (bool) $model->scientific_name_visible,
             'individualCountVisible' => (bool) $model->individual_count_visible,
@@ -69,11 +88,5 @@ final class EloquentEspecimenDivulgableRepository implements EspecimenDivulgable
             'decimalLatitudeVisible' => (bool) $model->decimal_latitude_visible,
             'decimalLongitudeVisible' => (bool) $model->decimal_longitude_visible,
         ]);
-
-        return EspecimenDivulgable::reconstituir(
-            id: EspecimenDivulgableId::fromString($model->id),
-            occurrenceID: $model->occurrence_id,
-            configuracion: $configuracion,
-        );
     }
 }

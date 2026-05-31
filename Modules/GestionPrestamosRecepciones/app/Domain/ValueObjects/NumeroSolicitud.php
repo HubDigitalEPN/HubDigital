@@ -8,13 +8,14 @@ use InvalidArgumentException;
 
 final readonly class NumeroSolicitud
 {
-    private const PREFIX = 'sol_';
+    private const PREFIX = 'MEPN-INV-';
 
     private const CHARSET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
     private const SUFFIX_LENGTH = 6;
 
-    private const PATTERN = '/^sol_[A-Z0-9]{6}$/';
+    /** Acepta el formato actual y el legado (sol_XXXXXX) para registros existentes en BD. */
+    private const PATTERN = '/^(MEPN-INV-[A-Z0-9]{6}|sol_[A-Z0-9]{6})$/';
 
     private function __construct(private string $value) {}
 
@@ -35,7 +36,7 @@ final readonly class NumeroSolicitud
     {
         if (! preg_match(self::PATTERN, $value)) {
             throw new InvalidArgumentException(
-                "Formato inválido para NumeroSolicitud: '{$value}'. Se esperaba 'sol_' seguido de 6 caracteres alfanuméricos en mayúsculas."
+                "Formato inválido para NumeroSolicitud: '{$value}'. Se esperaba 'MEPN-INV-' seguido de 6 caracteres alfanuméricos en mayúsculas."
             );
         }
 

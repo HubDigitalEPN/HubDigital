@@ -113,8 +113,10 @@
 
         </div>
 
-        {{-- Historial --}}
-        <div class="rounded-lg border border-border bg-surface shadow-sm p-5 space-y-2 h-fit">
+        {{-- Columna derecha: Historial + Recordatorios --}}
+        <div class="space-y-5">
+
+        <div class="rounded-lg border border-border bg-surface shadow-sm p-5 space-y-2">
             <flux:heading size="lg" level="2" class="font-display">Historial</flux:heading>
             <flux:separator />
 
@@ -166,6 +168,35 @@
                 @endforelse
             </div>
         </div>
+
+        {{-- Recordatorios de devolución --}}
+        <div class="rounded-lg border border-border bg-surface shadow-sm p-5 space-y-3">
+            <flux:heading size="lg" level="2" class="font-display">Recordatorios de devolución</flux:heading>
+            <flux:separator />
+
+            @if(count($recordatorios) > 0)
+                <div class="space-y-2">
+                    @foreach(collect($recordatorios)->sortByDesc('diasAntes')->values() as $recordatorio)
+                        <div class="flex items-center gap-3 rounded-lg border border-border px-3 py-2">
+                            <flux:icon name="bell" class="size-4 text-warning shrink-0" />
+                            <div class="min-w-0">
+                                <p class="text-xs font-medium text-text-primary">
+                                    {{ $recordatorio['diasAntes'] }} {{ $recordatorio['diasAntes'] === 1 ? 'día' : 'días' }} antes del vencimiento
+                                </p>
+                                <p class="text-xs text-text-secondary">{{ $recordatorio['fecha'] }}</p>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            @else
+                <div class="flex items-center gap-2 text-sm text-text-secondary">
+                    <flux:icon name="information-circle" class="size-4 shrink-0" />
+                    <span>No hay recordatorios programados para este préstamo.</span>
+                </div>
+            @endif
+        </div>
+
+        </div>{{-- fin columna derecha --}}
 
     </div>
 

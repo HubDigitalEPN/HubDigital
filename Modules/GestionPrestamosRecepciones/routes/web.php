@@ -7,6 +7,7 @@ use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\Au
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\BandejaActas;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\BandejaPrestamos as CuradorBandejaPrestamos;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\BandejaSolicitudes;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\ConfiguracionRecordatorios;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\DetallePrestamo as CuradorDetallePrestamo;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\PanelPrestamos;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\RevisarSolicitud;
@@ -62,5 +63,6 @@ Route::middleware(['auth', 'verified'])
             Route::get('/curador/prestamos', CuradorBandejaPrestamos::class)->name('curador.prestamos');
             Route::get('/curador/prestamo/{id}', CuradorDetallePrestamo::class)->name('curador.prestamo.detalle');
             Route::get('/curador/prestamo/{id}/auditar', AuditarPrestamo::class)->name('curador.prestamo.auditar');
+            Route::get('/curador/configuracion', ConfiguracionRecordatorios::class)->name('curador.configuracion');
         });
     });

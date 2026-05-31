@@ -1,6 +1,6 @@
 <div class="p-6 space-y-6">
 
-    <flux:heading size="xl" level="1" class="font-display">Bandeja de solicitudes</flux:heading>
+    <flux:heading size="xl" level="1" class="font-display">Solicitudes</flux:heading>
 
     {{-- Barra de filtros --}}
     <div class="space-y-3">
@@ -13,7 +13,7 @@
                 class="flex-1" />
             <flux:input
                 wire:model.live.debounce.300ms="busquedaInvestigador"
-                placeholder="Buscar por investigador..."
+                placeholder="Buscar por solicitante..."
                 icon="user"
                 clearable
                 class="flex-1" />
@@ -47,7 +47,7 @@
         <div class="flex flex-col items-center justify-center rounded-lg border border-border bg-surface py-[60px] text-center">
             <flux:icon name="inbox" class="size-12 text-text-secondary mb-3" />
             <flux:heading size="lg" level="2">Sin solicitudes</flux:heading>
-            <flux:text class="text-text-secondary mt-1">No hay solicitudes enviadas por los investigadores todavía.</flux:text>
+            <flux:text class="text-text-secondary mt-1">No hay solicitudes enviadas por los solicitantes todavía.</flux:text>
         </div>
     @elseif($solicitudes->isEmpty())
         <div class="flex flex-col items-center justify-center rounded-lg border border-border bg-surface py-[60px] text-center">
@@ -64,10 +64,10 @@
                 <thead class="bg-blue-navy border-b border-border">
                     <tr>
                         <th class="px-4 py-3 text-left font-medium text-white">N.º solicitud</th>
-                        <th class="px-4 py-3 text-left font-medium text-white">Título</th>
-                        <th class="px-4 py-3 text-left font-medium text-white">Investigador</th>
+                        <th class="px-4 py-3 text-left font-medium text-white w-72">Título</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">Solicitante</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Estado</th>
-                        <th class="px-4 py-3 text-left font-medium text-white">Fecha</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">Fecha de solicitud</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Acciones</th>
                     </tr>
                 </thead>
@@ -77,8 +77,10 @@
                             <td class="px-4 py-3 font-mono text-xs text-text-secondary whitespace-nowrap">
                                 {{ $solicitud->numero_solicitud }}
                             </td>
-                            <td class="px-4 py-3 font-medium text-text-primary">
-                                {{ $solicitud->titulo_estudio }}
+                            <td class="px-4 py-3 font-medium text-text-primary w-72">
+                                <flux:tooltip content="{{ $solicitud->titulo_estudio }}">
+                                    <span class="block truncate max-w-xs cursor-default">{{ $solicitud->titulo_estudio }}</span>
+                                </flux:tooltip>
                             </td>
                             <td class="px-4 py-3 text-sm text-text-secondary">
                                 {{ $investigadores->get($solicitud->investigador_id)?->name ?? $solicitud->investigador_id }}

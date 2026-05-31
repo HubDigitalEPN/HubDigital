@@ -1,7 +1,7 @@
 <div class="p-6 space-y-6">
 
     <div class="flex items-center justify-between">
-        <flux:heading size="xl" level="1" class="font-display">Mis solicitudes de préstamo</flux:heading>
+        <flux:heading size="xl" level="1" class="font-display">Mis solicitudes</flux:heading>
         <flux:button variant="primary" icon="plus" wire:navigate href="{{ route('prestamos.investigador.solicitud.crear') }}">
             Nueva solicitud
         </flux:button>
@@ -66,9 +66,9 @@
                 <thead class="bg-blue-navy border-b border-border">
                     <tr>
                         <th class="px-4 py-3 text-left font-medium text-white">N.º solicitud</th>
-                        <th class="px-4 py-3 text-left font-medium text-white">Título del estudio</th>
+                        <th class="px-4 py-3 text-left font-medium text-white w-72">Título del estudio</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Estado</th>
-                        <th class="px-4 py-3 text-left font-medium text-white">Fecha</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">Fecha de solicitud</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Acciones</th>
                     </tr>
                 </thead>
@@ -78,8 +78,10 @@
                             <td class="px-4 py-3 font-mono text-xs text-text-secondary whitespace-nowrap">
                                 {{ $solicitud->numero_solicitud }}
                             </td>
-                            <td class="px-4 py-3 font-medium text-text-primary">
-                                {{ $solicitud->titulo_estudio }}
+                            <td class="px-4 py-3 font-medium text-text-primary w-72">
+                                <flux:tooltip content="{{ $solicitud->titulo_estudio }}">
+                                    <span class="block truncate max-w-xs cursor-default">{{ $solicitud->titulo_estudio }}</span>
+                                </flux:tooltip>
                             </td>
                             <td class="px-4 py-3">
                                 @php $actaSolicitud = $actasPorSolicitud[$solicitud->id] ?? null; @endphp
