@@ -16,6 +16,7 @@ use Modules\GestionPrestamosRecepciones\Application\Ports\HistorialPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionCuratoriaPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ValidacionFirmaElectronicaPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\ValidacionTaxonomicaPort;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\DocumentacionInsuficiente;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\LimiteAnualDepositosAlcanzado;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\TransicionEstadoInvalida;
@@ -27,6 +28,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRep
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\EloquentHistorialAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\FakeCatalogoCuraduriaAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\FakeNotificacionCuratoriaAdapter;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\GbifValidacionTaxonomicaAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\GroqExtraccionDatosDocumentoAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\LaravelEventPublisherAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\LaravelTransactionManagerAdapter;
@@ -70,6 +72,7 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
         ValidacionFirmaElectronicaPort::class => PdfsigValidacionFirmaElectronicaAdapter::class,
         HistorialPort::class => EloquentHistorialAdapter::class,
         CatalogoCuraduriaPort::class => FakeCatalogoCuraduriaAdapter::class,
+        ValidacionTaxonomicaPort::class => GbifValidacionTaxonomicaAdapter::class,
     ];
 
     public function register(): void

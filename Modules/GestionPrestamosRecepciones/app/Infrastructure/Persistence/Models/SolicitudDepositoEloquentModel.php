@@ -42,6 +42,7 @@ final class SolicitudDepositoEloquentModel extends Model
         'documentos_cargados',
         'nombres_archivos_originales',
         'documentos_requeridos',
+        'matriz_id',
     ];
 
     protected $casts = [

@@ -41,6 +41,24 @@ final class CargarMatrizEspeciesHandler
 
         $matriz->validarCamposDwC($input->camposDwCExigidosPorCatalogo);
 
+        // TODO: Normalización de datos antes de la ingesta (data cleansing)
+        // Antes de persistir cada registro, normalizar los campos que tienen
+        // un dominio cerrado conocido para garantizar data limpia desde el origen.
+        //
+        // IMPORTANTE: los campos concretos aún no están definidos — dependen de
+        // qué columnas DwC exija el catálogo de curaduría (InventarioGestionColeccion),
+        // que todavía no está implementado. Los ejemplos de abajo son orientativos.
+        //
+        // Criterio para decidir si un campo es normalizable:
+        //   - ¿Existe un catálogo cerrado o estándar externo que lo defina?
+        //     → Normalizable (ej. provincias INEC, enums DwC, códigos ISO).
+        //   - ¿Es descripción libre del colector?
+        //     → No normalizable (ej. locality, habitat, fieldNotes).
+        //
+        // Estrategia de corrección:
+        //   - Diferencia solo de mayúsculas/tildes → corregir silenciosamente.
+        //   - Typo con alta similitud → sugerir sin bloquear.
+        //   - Sin coincidencia → marcar para revisión, nunca rechazar el envío.
         foreach ($input->registros as $datosRegistro) {
             $nombreCientifico = $datosRegistro['scientificName'] ?? '';
             $matriz->agregarRegistroEspecimen($nombreCientifico);

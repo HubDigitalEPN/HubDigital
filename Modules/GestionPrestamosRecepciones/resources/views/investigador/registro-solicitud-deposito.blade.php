@@ -7,6 +7,7 @@
         situacionRegulatoria: $wire.entangle('situacionRegulatoria'),
         declaracionAceptada: $wire.entangle('declaracionAceptada'),
         limiteAlcanzado: $wire.entangle('limiteAlcanzado'),
+        matrizCargada: $wire.entangle('matrizCargada'),
     }"
     x-on:domain-error.window="domainError = $event.detail.message; setTimeout(() => domainError = null, 6000)"
 >
@@ -16,7 +17,7 @@
         <p class="text-sm text-error font-medium" x-text="domainError"></p>
     </div>
 
-    @if($paso < 6)
+    @if($paso < 7)
         {{-- Breadcrumbs --}}
         <flux:breadcrumbs>
             <flux:breadcrumbs.item wire:navigate href="{{ route('prestamos.investigador.mis-solicitudes') }}">
@@ -89,6 +90,7 @@
                 ['label' => 'Origen',     'sub' => 'Procedencia y permisos'],
                 ['label' => 'Documentos', 'sub' => 'Carga oficial'],
                 ['label' => 'Datos',      'sub' => 'Resumen y validación'],
+                ['label' => 'Matriz',     'sub' => 'Especies Darwin Core'],
                 ['label' => 'Envío',      'sub' => 'Confirmación'],
             ]"
             :pasoActual="$paso"
@@ -109,13 +111,15 @@
                 @include('gestionprestamosrecepciones::investigador.registro-solicitud-deposito.paso-documentos')
             @elseif($paso === 4)
                 @include('gestionprestamosrecepciones::investigador.registro-solicitud-deposito.paso-datos')
-            @elseif($paso === 5 || $paso === 6)
+            @elseif($paso === 5)
+                @include('gestionprestamosrecepciones::investigador.registro-solicitud-deposito.paso-matriz')
+            @elseif($paso === 6 || $paso === 7)
                 @include('gestionprestamosrecepciones::investigador.registro-solicitud-deposito.paso-envio')
             @endif
         </div>
 
         {{-- Footer navigation --}}
-        @if($paso < 6)
+        @if($paso < 7)
             <div class="px-4 py-3 sm:px-6 sm:py-4 border-t border-border bg-bg-main rounded-b-lg flex items-center justify-between gap-3">
                 <div>
                     @if($paso > 1 && !$extraccionProcesando)
@@ -169,9 +173,20 @@
                             wire:target="guardarPasoCuatro"
                         >
                             <flux:icon wire:loading wire:target="guardarPasoCuatro" name="arrow-path" class="animate-spin size-4 mr-1" />
-                            Revisar y enviar
+                            Continuar
                         </flux:button>
                     @elseif($paso === 5)
+                        <flux:button
+                            variant="primary"
+                            icon-trailing="arrow-right"
+                            wire:click="guardarPasoCinco"
+                            wire:loading.attr="disabled"
+                            wire:target="guardarPasoCinco"
+                        >
+                            <flux:icon wire:loading wire:target="guardarPasoCinco" name="arrow-path" class="animate-spin size-4 mr-1" />
+                            Revisar y enviar
+                        </flux:button>
+                    @elseif($paso === 6)
                         <flux:button
                             variant="primary"
                             icon-trailing="paper-airplane"

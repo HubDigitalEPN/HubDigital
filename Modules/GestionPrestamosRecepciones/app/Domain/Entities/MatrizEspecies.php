@@ -6,9 +6,11 @@ namespace Modules\GestionPrestamosRecepciones\Domain\Entities;
 
 use Modules\GestionPrestamosRecepciones\Domain\Events\DomainEvent;
 use Modules\GestionPrestamosRecepciones\Domain\Events\HallazgoTaxonomicoJustificado;
+use Modules\GestionPrestamosRecepciones\Domain\Events\JustificacionTaxonomicaCambiada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\MatrizEspeciesCargada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\MatrizValidadaTecnicamente;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SugerenciaTaxonomicaAceptada;
+use Modules\GestionPrestamosRecepciones\Domain\Events\SugerenciaTaxonomicaRevertida;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\CamposDwCFaltantesException;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\RegistroEspecimenNoEncontradoException;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoMatrizEspecies;
@@ -183,6 +185,58 @@ final class MatrizEspecies
         );
     }
 
+    /**
+     * Marca un registro como no catalogado tras la validación taxonómica.
+     */
+    public function marcarRegistroNoCatalogado(string $registroId): void
+    {
+        $registro = $this->obtenerRegistroOFallar($registroId);
+        $registro->marcarComoNoCatalogado();
+    }
+
+    /**
+     * Revierte una sugerencia de corrección tipográfica previamente aceptada.
+     * Solo aplica a solicitudes de tipo Depósito.
+     */
+    public function revertirSugerencia(string $registroId): void
+    {
+        if ($this->tipoTramite->equals(TipoTramite::Donacion)) {
+            throw new \DomainException(
+                'No se permite revertir correcciones en solicitudes de tipo Donación'
+            );
+        }
+
+        $registro = $this->obtenerRegistroOFallar($registroId);
+        $especieOriginal = $registro->nombreCientifico();
+
+        $registro->revertirCorreccion();
+
+        $this->events[] = new SugerenciaTaxonomicaRevertida(
+            matrizId: $this->id,
+            registroId: $registroId,
+            especieOriginal: $especieOriginal,
+        );
+
+        $this->recalcularEstadoMatriz();
+    }
+
+    /**
+     * Cambia el motivo de justificación de un registro ya justificado.
+     */
+    public function cambiarJustificacionRegistro(string $registroId, string $nuevoMotivo): void
+    {
+        $registro = $this->obtenerRegistroOFallar($registroId);
+
+        $registro->cambiarJustificacion($nuevoMotivo);
+
+        $this->events[] = new JustificacionTaxonomicaCambiada(
+            matrizId: $this->id,
+            registroId: $registroId,
+            especie: $registro->nombreCientifico(),
+            nuevoMotivo: $nuevoMotivo,
+        );
+    }
+
     // ── Queries ──────────────────────────────────────────────────
 
     public function id(): MatrizEspeciesId
@@ -344,6 +398,8 @@ final class MatrizEspecies
                 matrizId: $this->id,
                 solicitudId: $this->solicitudId,
             );
+        } elseif (! $todosValidados && $this->estado->equals(EstadoMatrizEspecies::ValidadaTecnicamente)) {
+            $this->estado = EstadoMatrizEspecies::Pendiente;
         }
     }
 }

@@ -80,6 +80,38 @@ final class RegistroEspecimen
         $this->estado = EstadoRegistroEspecimen::ValidacionManualPorCuraduria;
     }
 
+    public function marcarComoNoCatalogado(): void
+    {
+        $this->noCatalogado = true;
+    }
+
+    public function revertirCorreccion(): void
+    {
+        if (! $this->estado->equals(EstadoRegistroEspecimen::ValidadoTecnicamente) || $this->nombreCorregido === null) {
+            throw new \DomainException(
+                'Solo se puede revertir una corrección en registros que fueron corregidos por sugerencia'
+            );
+        }
+
+        $this->nombreCorregido = null;
+        $this->estado = EstadoRegistroEspecimen::Pendiente;
+    }
+
+    public function cambiarJustificacion(string $nuevoMotivo): void
+    {
+        if (trim($nuevoMotivo) === '') {
+            throw new \DomainException('El motivo de justificación no puede estar vacío');
+        }
+
+        if (! $this->estado->equals(EstadoRegistroEspecimen::ValidacionManualPorCuraduria)) {
+            throw new \DomainException(
+                'Solo se puede cambiar la justificación de registros en estado "Validación Manual por Curaduría"'
+            );
+        }
+
+        $this->motivoJustificacion = $nuevoMotivo;
+    }
+
     // ── Queries ──────────────────────────────────────────────────
 
     public function id(): RegistroEspecimenId
