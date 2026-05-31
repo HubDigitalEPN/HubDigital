@@ -7,12 +7,9 @@ namespace Modules\InventarioGestionColeccion\Presentation\Http\Controllers\Segui
 use Illuminate\View\View;
 use Laravel\Sanctum\PersonalAccessToken;
 use Livewire\Attributes\Layout;
-use Livewire\Attributes\Rule;
 use Livewire\Component;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarRanura\ActualizarRanuraHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarRanura\ActualizarRanuraInput;
-use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\CrearRanuraGabinete\CrearRanuraGabineteHandler;
-use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\CrearRanuraGabinete\CrearRanuraGabineteInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarCajas\ListarCajasHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarGabinetes\ListarGabineteHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarRanurasGabinete\ListarRanurasGabineteHandler;
@@ -29,11 +26,6 @@ final class GabineteShow extends Component
     public array $gabinete = [];
 
     public array $ranuras = [];
-
-    public bool $showAgregarRanura = false;
-
-    #[Rule('required|integer|min:1|max:25')]
-    public int $numeroRanura = 1;
 
     public bool $showEditRanura = false;
 
@@ -61,29 +53,6 @@ final class GabineteShow extends Component
         $cajasPorId = $this->buildCajasPorId($listarCajas);
         $this->cargarRanuras($listarRanuras, $cajasPorId);
         $this->tieneToken = PersonalAccessToken::where('name', "esp32-{$id}")->exists();
-    }
-
-    public function agregarRanura(
-        CrearRanuraGabineteHandler $crearHandler,
-        ListarRanurasGabineteHandler $listarHandler,
-        ListarCajasHandler $cajasHandler,
-    ): void {
-        $this->validate();
-
-        try {
-            $crearHandler->handle(new CrearRanuraGabineteInput(
-                gabineteId: $this->gabineteId,
-                numeroRanura: $this->numeroRanura,
-            ));
-
-            $this->cargarRanuras($listarHandler, $this->buildCajasPorId($cajasHandler));
-            $this->showAgregarRanura = false;
-            $this->reset('numeroRanura');
-            $this->resetValidation();
-            $this->successMessage = 'Ranura agregada correctamente.';
-        } catch (\Throwable $e) {
-            $this->errorMessage = $this->traducirErrorParaUsuario($e);
-        }
     }
 
     public function abrirEditRanura(string $ranuraId): void

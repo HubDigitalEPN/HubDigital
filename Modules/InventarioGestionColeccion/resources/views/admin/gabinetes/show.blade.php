@@ -144,22 +144,10 @@
         <flux:callout variant="danger" dismissible>{{ $errorMessage }}</flux:callout>
     @endif
 
-    <div class="rounded-lg border border-border bg-surface shadow-sm p-4 space-y-4">
-        <div class="flex items-center justify-between">
+    <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
+        <div class="p-4 space-y-4">
             <flux:heading size="lg" level="2" class="font-display text-blue-navy font-semibold">Ranuras</flux:heading>
-            @if(count($ranuras) < ($gabinete['totalRanuras'] ?? 0))
-                <flux:button
-                    icon="plus"
-                    size="sm"
-                    variant="primary"
-                    wire:click="$set('showAgregarRanura', true)"
-                >
-                    Agregar ranura
-                </flux:button>
-            @endif
-        </div>
 
-        @if(count($ranuras) > 0)
             <div class="grid gap-1.5" style="grid-template-columns: repeat(auto-fill, minmax(2.75rem, 1fr))">
                 @foreach($ranuras as $ranura)
                     <x-inventariogestioncoleccion::seguimiento-fisico.ranura-slot
@@ -168,15 +156,9 @@
                     />
                 @endforeach
             </div>
-        @else
-            <p class="text-sm text-text-primary py-4 text-center">
-                No hay ranuras configuradas. Agrega la primera ranura.
-            </p>
-        @endif
-    </div>
+        </div>
 
-    <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
-        <table class="w-full text-sm">
+        <table class="w-full text-sm border-t border-border">
             <thead class="bg-blue-navy border-b border-border">
                 <tr>
                     <th class="px-4 py-3 text-left font-medium text-white">Ranura</th>
@@ -186,7 +168,7 @@
                 </tr>
             </thead>
             <tbody class="divide-y divide-border">
-                @forelse($ranuras as $ranura)
+                @foreach($ranuras as $ranura)
                     <tr class="hover:bg-bg-main transition-colors">
                         <td class="px-4 py-3 font-medium text-text-primary">Ranura {{ $ranura['numeroRanura'] }}</td>
                         <td class="px-4 py-3 text-text-primary">
@@ -214,41 +196,10 @@
                             </flux:button>
                         </td>
                     </tr>
-                @empty
-                    <tr>
-                        <td colspan="4" class="px-4 py-6 text-center text-text-primary">Sin ranuras.</td>
-                    </tr>
-                @endforelse
+                @endforeach
             </tbody>
         </table>
     </div>
-
-    {{-- Modal: Agregar ranura --}}
-    <flux:modal wire:model="showAgregarRanura" class="w-full max-w-md">
-        <div class="space-y-4 p-1">
-            <flux:heading size="lg" class="text-text-primary">Agregar ranura</flux:heading>
-
-            @if($errorMessage)
-                <flux:callout variant="danger">{{ $errorMessage }}</flux:callout>
-            @endif
-
-            <flux:field>
-                <flux:label>Número de ranura</flux:label>
-                <flux:input type="number" wire:model="numeroRanura" min="1" :max="$gabinete['totalRanuras'] ?? 25" />
-                <flux:error name="numeroRanura" />
-            </flux:field>
-
-            <div class="flex justify-end gap-3 pt-2">
-                <flux:button variant="ghost" wire:click="$set('showAgregarRanura', false)">
-                    Cancelar
-                </flux:button>
-                <flux:button variant="primary" wire:click="agregarRanura" wire:loading.attr="disabled">
-                    <span wire:loading.remove wire:target="agregarRanura">Agregar</span>
-                    <span wire:loading wire:target="agregarRanura">Agregando...</span>
-                </flux:button>
-            </div>
-        </div>
-    </flux:modal>
 
     {{-- Modal: Editar ranura --}}
     <flux:modal wire:model="showEditRanura" class="w-full max-w-md">

@@ -14,6 +14,8 @@ interface RanuraGabineteRepository
 
     public function guardar(RanuraGabinete $ranura): void;
 
+    public function eliminar(RanuraId $id): void;
+
     public function buscarPorId(RanuraId $id): ?RanuraGabinete;
 
     /** @return RanuraGabinete[] */

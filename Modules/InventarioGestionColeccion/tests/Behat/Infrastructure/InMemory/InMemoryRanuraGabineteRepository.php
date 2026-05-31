@@ -24,6 +24,11 @@ final class InMemoryRanuraGabineteRepository implements RanuraGabineteRepository
         $this->store[(string) $ranura->id()] = $ranura;
     }
 
+    public function eliminar(RanuraId $id): void
+    {
+        unset($this->store[(string) $id]);
+    }
+
     public function buscarPorId(RanuraId $id): ?RanuraGabinete
     {
         return $this->store[(string) $id] ?? null;
@@ -32,10 +37,14 @@ final class InMemoryRanuraGabineteRepository implements RanuraGabineteRepository
     /** @return RanuraGabinete[] */
     public function buscarPorGabinete(GabineteId $gabineteId): array
     {
-        return array_values(array_filter(
+        $ranuras = array_values(array_filter(
             $this->store,
             fn (RanuraGabinete $r) => $r->gabineteId()->equals($gabineteId),
         ));
+
+        usort($ranuras, fn (RanuraGabinete $a, RanuraGabinete $b) => $a->numeroRanura() <=> $b->numeroRanura());
+
+        return $ranuras;
     }
 
     public function buscarPorNumeroEnGabinete(GabineteId $gabineteId, int $numeroRanura): ?RanuraGabinete

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarGabinete;
 
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Gabinete;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\RanuraGabinete;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\GabineteRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\RanuraGabineteRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\GabineteId;
@@ -25,23 +26,47 @@ final class ActualizarGabineteHandler
             throw new \DomainException('Gabinete no encontrado.');
         }
 
-        $ranurasConfiguradas = count($this->ranuraRepo->buscarPorGabinete($id));
+        $nuevoTotal = $input->totalRanuras;
 
-        if ($input->totalRanuras < $ranurasConfiguradas) {
-            throw new \DomainException(
-                "El total de ranuras no puede ser menor al número de ranuras ya configuradas ({$ranurasConfiguradas})."
-            );
+        $existentes = [];
+        foreach ($this->ranuraRepo->buscarPorGabinete($id) as $ranura) {
+            $existentes[$ranura->numeroRanura()] = $ranura;
+        }
+
+        foreach ($existentes as $numero => $ranura) {
+            if ($numero > $nuevoTotal && $ranura->estaOcupada()) {
+                throw new \DomainException(
+                    "No se puede reducir: la ranura {$numero} tiene una caja. Retira la caja primero."
+                );
+            }
         }
 
         $actualizado = Gabinete::reconstituir(
             id: $gabinete->id(),
             codigo: $gabinete->codigo(),
             nombre: $input->nombre,
-            totalRanuras: $input->totalRanuras,
+            totalRanuras: $nuevoTotal,
             activo: $gabinete->activo(),
         );
 
         $this->gabineteRepo->guardar($actualizado);
+
+        // Mantiene el invariante: las ranuras del gabinete son exactamente {1..nuevoTotal}.
+        foreach ($existentes as $numero => $ranura) {
+            if ($numero > $nuevoTotal) {
+                $this->ranuraRepo->eliminar($ranura->id());
+            }
+        }
+
+        for ($numero = 1; $numero <= $nuevoTotal; $numero++) {
+            if (! isset($existentes[$numero])) {
+                $this->ranuraRepo->guardar(RanuraGabinete::crear(
+                    id: $this->ranuraRepo->nextIdentity(),
+                    gabineteId: $id,
+                    numeroRanura: $numero,
+                ));
+            }
+        }
 
         return new ActualizarGabineteOutput;
     }

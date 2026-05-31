@@ -31,6 +31,11 @@ class EloquentRanuraGabineteRepository implements RanuraGabineteRepository
         );
     }
 
+    public function eliminar(RanuraId $id): void
+    {
+        RanuraGabineteEloquentModel::where('id', (string) $id)->delete();
+    }
+
     public function buscarPorId(RanuraId $id): ?RanuraGabinete
     {
         $model = RanuraGabineteEloquentModel::find((string) $id);
@@ -41,6 +46,7 @@ class EloquentRanuraGabineteRepository implements RanuraGabineteRepository
     public function buscarPorGabinete(GabineteId $gabineteId): array
     {
         return RanuraGabineteEloquentModel::where('gabinete_id', (string) $gabineteId)
+            ->orderBy('numero_ranura')
             ->get()
             ->map(fn (RanuraGabineteEloquentModel $m) => $this->toDomain($m))
             ->all();
