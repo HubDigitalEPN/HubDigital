@@ -56,6 +56,7 @@ final class GabineteShow extends Component
         ListarCajasHandler $listarCajas,
     ): void {
         $this->gabineteId = $id;
+        $this->successMessage = session('successMessage');
         $this->cargarGabinete($listarGabinetes);
         $cajasPorId = $this->buildCajasPorId($listarCajas);
         $this->cargarRanuras($listarRanuras, $cajasPorId);

@@ -68,24 +68,22 @@ final class GabineteIndex extends Component
         $this->showModal = true;
     }
 
-    public function crearGabinete(
-        CrearGabineteHandler $crearHandler,
-        ListarGabineteHandler $listarHandler,
-    ): void {
+    public function crearGabinete(CrearGabineteHandler $crearHandler)
+    {
         $this->validateOnly('codigo');
         $this->validateOnly('nombre');
         $this->validateOnly('totalRanuras');
 
         try {
-            $crearHandler->handle(new CrearGabineteInput(
+            $output = $crearHandler->handle(new CrearGabineteInput(
                 codigo: $this->codigo,
                 nombre: $this->nombre,
                 totalRanuras: $this->totalRanuras,
             ));
 
-            $this->cargarGabinetes($listarHandler);
-            $this->showModal = false;
-            $this->successMessage = 'Gabinete creado correctamente.';
+            session()->flash('successMessage', 'Gabinete creado. Configura el ESP32 con su ID y token de API.');
+
+            return $this->redirectRoute('inventario.gabinetes.show', ['id' => $output->id], navigate: true);
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
