@@ -5,11 +5,11 @@ void setup() {
     Serial.begin(115200);
     Preferences p;
     p.begin("hub-digital", false);
-    p.putString("wifi_ssid",   "CLARO_MICHAEL");
-    p.putString("wifi_pass",   "0401064001");
+    p.putString("wifi_ssid",   "CELERITY_EMA0205");
+    p.putString("wifi_pass",   "Ema2022.");
     p.putString("api_url",     "https://semisweet-nonfavorable-milena.ngrok-free.dev");
-    p.putString("api_token",   "2|PfS7OOGuIk5qb4UMwaLtwvtkXgWzlg51S4agpLY4adecdd71");
-    p.putString("gabinete_id", "46ce7395-6ea1-4762-ac62-5e4c58cbb23b");
+    p.putString("api_token",   "1|A4hLhAXRfQHgjA2TzPes4eZANu2BeBOozCnxyMIT184ecaa3");
+    p.putString("gabinete_id", "f6b06935-0607-441a-a475-36adb25dbf1a");
     p.end();
     Serial.println("OK");
 }

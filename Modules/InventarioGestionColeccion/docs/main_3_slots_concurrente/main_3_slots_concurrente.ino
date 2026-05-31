@@ -14,6 +14,7 @@
 #include <SPI.h>
 #include <MFRC522.h>
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <Preferences.h>
@@ -130,8 +131,8 @@ void tareaSensado(void* pv) {
 // ═══════════════════════════════════════════════════════════
 //  TAREA RED  (core 0) — drena la cola y hace los POST
 // ═══════════════════════════════════════════════════════════
-// Cliente HTTP persistente: mantiene la conexion TLS viva entre POST
-// (keep-alive) en vez de rehacer el handshake cada vez. Vive en la tarea de red.
+// Cliente HTTP reutilizado como objeto, pero cada POST abre/cierra su propio
+// socket (Connection: close). Vive en la tarea de red.
 HTTPClient http;
 
 // Devuelve el codigo HTTP crudo: >0 es respuesta del servidor, <=0 es error de
@@ -139,13 +140,23 @@ HTTPClient http;
 int postEvento(const Evento& ev) {
     char url[200];
     snprintf(url, sizeof(url), "%s/api/v1/seguimiento-fisico/eventos", apiUrl);
-    http.begin(url);
+
+    // Socket nuevo y limpio por POST: evita heredar un socket medio-cerrado de
+    // la peticion anterior, que es lo que disparaba el -1 intermitente.
+    WiFiClientSecure client;
+    client.setInsecure();                // ngrok: no validamos cert
+    client.setTimeout(15000);
+
+    if (!http.begin(client, url)) {
+        Serial.println("[red] http.begin fallo");
+        return -1;
+    }
     http.addHeader("Content-Type",               "application/json");
     http.addHeader("Accept",                     "application/json");
     http.addHeader("Authorization",              (String("Bearer ") + apiToken).c_str());
     http.addHeader("ngrok-skip-browser-warning", "1");
-    http.addHeader("Connection",                 "keep-alive");
-    http.setReuse(true);                 // reusa la conexion TLS
+    http.addHeader("Connection",                 "close");   // sin keep-alive sobre ngrok
+    http.setReuse(false);                                     // coherente con begin/end por POST
     http.setTimeout(15000);
 
     JsonDocument doc;
