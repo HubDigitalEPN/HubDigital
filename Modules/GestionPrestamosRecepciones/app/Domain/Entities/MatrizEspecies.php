@@ -264,6 +264,11 @@ final class MatrizEspecies
         return $this->obtenerRegistroOFallar($registroId)->estado();
     }
 
+    public function nombreCientificoDeRegistro(string $registroId): string
+    {
+        return $this->obtenerRegistroOFallar($registroId)->nombreCientifico();
+    }
+
     public function contieneEspecimen(string $nombreCientifico): bool
     {
         foreach ($this->registros as $registro) {

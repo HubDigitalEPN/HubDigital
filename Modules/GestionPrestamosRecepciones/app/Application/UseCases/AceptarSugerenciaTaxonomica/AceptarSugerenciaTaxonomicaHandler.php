@@ -30,8 +30,7 @@ final class AceptarSugerenciaTaxonomicaHandler
         }
 
         // Capturar la especie original antes de la corrección
-        $registros = $matriz->registros();
-        $especieOriginal = $registros[$input->registroId]->nombreCientifico();
+        $especieOriginal = $matriz->nombreCientificoDeRegistro($input->registroId);
 
         $matriz->aceptarSugerencia($input->registroId, $input->especieCorregida);
 

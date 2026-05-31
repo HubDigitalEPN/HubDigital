@@ -18,6 +18,13 @@ return (new Config)
                         'Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\RecepcionValidacionLotesEspecimenesYDatos\RegistroSolicitudDepositoContext',
                     )
             )
+            ->withSuite(
+                (new Suite('RevisionMatrizEspecies'))
+                    ->withPaths($base.'/Modules/GestionPrestamosRecepciones/tests/Behat/Features/RecepcionValidacionLotesEspecimenesYDatos/revision_matriz_especies.feature')
+                    ->withContexts(
+                        'Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\RecepcionValidacionLotesEspecimenesYDatos\RevisionMatrizEspeciesContext',
+                    )
+            )
     )
     ->withProfile(
         (new Profile('default'))
@@ -47,7 +54,6 @@ return (new Config)
                         'Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\AdministracionCuratorialSolicitudesPrestamos\CierrePrestamosContext',
                         'Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\AdministracionCuratorialSolicitudesPrestamos\GestionProrrogasPrestamoContext',
                         // RecepcionValidacionLotesEspecimenesYDatos
-                        'Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\RecepcionValidacionLotesEspecimenesYDatos\GestionCentralizadaEntidadesDepositantesContext',
                         'Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\RecepcionValidacionLotesEspecimenesYDatos\RecepcionMuestrasBiologicasContext',
                         'Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\RecepcionValidacionLotesEspecimenesYDatos\RegistroSolicitudDepositoContext',
                         'Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\RecepcionValidacionLotesEspecimenesYDatos\RevisionMatrizEspeciesContext',

@@ -76,6 +76,10 @@
             "@lint:check",
             "@php artisan test"
         ],
+        "behat:recepcion": [
+            "vendor/bin/behat --profile=recepcion --suite=RegistroSolicitudDeposito",
+            "vendor/bin/behat --profile=recepcion --suite=RevisionMatrizEspecies"
+        ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi"
