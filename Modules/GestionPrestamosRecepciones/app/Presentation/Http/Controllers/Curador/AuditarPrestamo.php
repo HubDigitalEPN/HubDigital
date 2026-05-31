@@ -7,13 +7,17 @@ namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Cura
 use App\Concerns\HandlesDomainExceptions;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Validate;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ActualizarRecordatoriosPrestamoEspecifico\ActualizarRecordatoriosPrestamoEspecificoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ActualizarRecordatoriosPrestamoEspecifico\ActualizarRecordatoriosPrestamoEspecificoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialPrestamo\ConsultarHistorialPrestamoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialPrestamo\ConsultarHistorialPrestamoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudInput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\HabilitarEnvioInternacional\HabilitarEnvioInternacionalHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\HabilitarEnvioInternacional\HabilitarEnvioInternacionalInput;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\RecordatorioDevolucionRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\VerificacionEntregaPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrestamoId;
@@ -24,8 +28,14 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Mode
 final class AuditarPrestamo extends Component
 {
     use HandlesDomainExceptions;
+    use WithFileUploads;
 
     public string $prestamoId;
+
+    public string $successMessage = '';
+
+    #[Validate('required|file|mimes:pdf|max:10240')]
+    public $documentoExportacion = null;
 
     /** @var list<array{diasAntes: int, fecha: string}> */
     public array $recordatoriosPersonalizados = [];
@@ -115,6 +125,23 @@ final class AuditarPrestamo extends Component
         } catch (\Throwable $e) {
             $this->dispatch('domain-error', message: $e->getMessage());
         }
+    }
+
+    public function habilitarEnvio(HabilitarEnvioInternacionalHandler $handler): void
+    {
+        $this->validate(['documentoExportacion' => 'required|file|mimes:pdf|max:10240']);
+
+        $prestamoModel = PrestamoEloquentModel::findOrFail($this->prestamoId);
+        $ruta = $this->documentoExportacion->store('exportaciones', 'public');
+
+        $handler->handle(new HabilitarEnvioInternacionalInput(
+            actaId: $prestamoModel->acta_prestamo_id,
+            curadorId: (string) auth()->id(),
+            documentoRuta: $ruta,
+        ));
+
+        $this->successMessage = 'Documento registrado. El préstamo pasa a en tránsito.';
+        $this->documentoExportacion = null;
     }
 
     private function cargarRecordatorios(RecordatorioDevolucionRepositoryInterface $repo): void

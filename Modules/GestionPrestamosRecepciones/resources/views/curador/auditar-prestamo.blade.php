@@ -141,6 +141,53 @@
                 @endif
             </div>
 
+            {{-- Trámite de exportación — solo préstamos internacionales pendientes --}}
+            @if($prestamo->estado === 'pendiente_documento_ministerio')
+                <div class="rounded-lg border border-[#FFCC80] bg-[#FFF8E1] p-5 space-y-4">
+                    <div class="flex items-center gap-2">
+                        <flux:icon name="document-arrow-up" class="size-5 text-[#E65100] shrink-0" />
+                        <p class="text-sm font-semibold text-[#E65100]">Trámite de exportación pendiente</p>
+                    </div>
+                    <flux:separator />
+                    <p class="text-sm text-text-secondary">
+                        Sube el documento de aprobación del Ministerio del Ambiente para habilitar el envío de especímenes al exterior.
+                    </p>
+
+                    @if($successMessage)
+                        <flux:callout variant="success" icon="check-circle">{{ $successMessage }}</flux:callout>
+                    @endif
+
+                    <flux:field>
+                        <flux:label>Documento de aprobación del ministerio (PDF)</flux:label>
+                        <div x-data="{ nombre: '' }">
+                            <label for="upload-doc-exportacion-auditar"
+                                class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium text-text-primary shadow-sm hover:bg-bg-main transition-colors">
+                                <flux:icon name="paper-clip" class="size-4 shrink-0" />
+                                Seleccionar archivo PDF
+                            </label>
+                            <input id="upload-doc-exportacion-auditar" type="file"
+                                wire:model="documentoExportacion" accept=".pdf"
+                                x-on:change="nombre = $event.target.files[0]?.name ?? ''"
+                                class="sr-only" />
+                            <p class="mt-1.5 text-xs text-text-secondary"
+                                x-text="nombre || 'Ningún archivo seleccionado'"></p>
+                            <div wire:loading wire:target="documentoExportacion"
+                                class="flex items-center gap-1.5 mt-1 text-xs text-text-secondary">
+                                <flux:icon name="arrow-path" class="animate-spin size-3" />
+                                Subiendo archivo...
+                            </div>
+                        </div>
+                        <flux:error name="documentoExportacion" />
+                    </flux:field>
+
+                    <flux:button wire:click="habilitarEnvio" variant="primary"
+                        wire:loading.attr="disabled" wire:target="habilitarEnvio">
+                        <flux:icon wire:loading wire:target="habilitarEnvio" name="arrow-path" class="animate-spin" />
+                        Habilitar envío
+                    </flux:button>
+                </div>
+            @endif
+
         </div>
 
         {{-- Columna derecha: Trazabilidad + Recordatorios --}}
@@ -165,6 +212,9 @@
 
                 <div class="mt-1">
                     @php
+                        $tieneHabilitacionEnvio = collect($timeline)
+                            ->contains(fn($item) => $item['evento']->tipo === 'PrestamoHabilitadoParaEnvio');
+
                         $etiquetas = [
                             'SolicitudPrestamoRegistrada'   => 'Solicitud registrada',
                             'SolicitudPrestamoEnviada'      => 'Solicitud enviada',
@@ -175,7 +225,9 @@
                             'ActaFirmadaSubida'             => 'Acta firmada subida',
                             'ActaDevueltaPorFirmaInvalida'  => 'Acta devuelta por el curador',
                             'ActaValidada'                  => 'Acta validada',
-                            'PrestamoIniciado'              => 'Especímenes despachados',
+                            'PrestamoIniciado'              => $tieneHabilitacionEnvio ? 'Préstamo iniciado' : 'Especímenes despachados',
+                            'DocumentoExportacionSubido'    => 'Documento de exportación registrado',
+                            'PrestamoHabilitadoParaEnvio'   => 'Especímenes despachados',
                             'VerificacionEntregaRegistrada' => 'Verificación de entrega registrada',
                             'VerificacionEntregaAprobada'   => 'Verificación de entrega aprobada',
                             'PrestamoActivado'              => 'Préstamo activo',

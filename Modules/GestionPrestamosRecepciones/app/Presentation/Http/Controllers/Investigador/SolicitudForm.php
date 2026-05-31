@@ -24,6 +24,9 @@ final class SolicitudForm extends Component
 
     public ?string $solicitudId = null;
 
+    #[Validate('required|in:nacional,internacional')]
+    public string $alcancePrestamo = 'nacional';
+
     #[Validate('required|string|max:200')]
     public string $tituloEstudio = '';
 
@@ -61,6 +64,7 @@ final class SolicitudForm extends Component
                 abort(403);
             }
 
+            $this->alcancePrestamo = $solicitud->alcance_prestamo ?? 'nacional';
             $this->tituloEstudio = $solicitud->titulo_estudio ?? '';
             $this->institucionAdscripcion = $solicitud->institucion_adscripcion ?? '';
             $this->lineaInvestigacion = $solicitud->linea_investigacion ?? '';
@@ -138,6 +142,7 @@ final class SolicitudForm extends Component
         if ($this->solicitudId === null) {
             $output = $registrar->handle(new RegistrarSolicitudPrestamoInput(
                 investigadorId: $investigadorId,
+                alcancePrestamo: $this->alcancePrestamo,
                 tituloEstudio: $this->tituloEstudio,
                 institucionAdscripcion: $this->institucionAdscripcion,
                 lineaInvestigacion: $this->lineaInvestigacion,

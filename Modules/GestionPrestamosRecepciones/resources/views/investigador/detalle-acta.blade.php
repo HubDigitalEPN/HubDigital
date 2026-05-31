@@ -69,10 +69,6 @@
                         <flux:callout variant="info" icon="clock">
                             Has reportado la recepción de los especímenes. El curador está revisando tu informe.
                         </flux:callout>
-                    @else
-                        <flux:callout variant="success" icon="check-circle">
-                            El acta ha sido validada y el préstamo está activo.
-                        </flux:callout>
                     @endif
                 @endif
 
@@ -131,13 +127,25 @@
         <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
             <div class="flex items-center justify-between bg-bg-main px-4 py-2 border-b border-border">
                 <flux:text class="text-sm font-medium text-text-primary">Acta de préstamo</flux:text>
-                <a href="{{ route('prestamos.acta.embed', $acta->id) }}" target="_blank"
-                    class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded">
-                    <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-                    </svg>
-                    Abrir
-                </a>
+                <div class="flex items-center gap-1">
+                    <a href="{{ route('prestamos.acta.embed', $acta->id) }}" target="_blank"
+                        class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded">
+                        <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                        </svg>
+                        Abrir
+                    </a>
+                    @if($acta->pdf_ruta)
+                        <a href="{{ route('prestamos.acta.pdf-original', $acta->id) }}"
+                            download="acta-{{ $acta->numero_prestamo }}.pdf"
+                            class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded">
+                            <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                            </svg>
+                            Descargar
+                        </a>
+                    @endif
+                </div>
             </div>
             <iframe src="{{ route('prestamos.acta.embed', $acta->id) }}"
                 class="w-full" style="height: calc(100vh - 310px); min-height: 520px;"
@@ -161,6 +169,13 @@
                         Doc. de identidad
                     </button>
                 @endif
+                @if($acta->documento_exportacion_ruta)
+                    <button @click="tab = 'exportacion'"
+                        :class="tab === 'exportacion' ? 'border-b-2 border-science-blue text-science-blue' : 'text-text-secondary hover:text-text-primary'"
+                        class="px-3 py-2.5 text-sm font-medium transition-colors whitespace-nowrap">
+                        Doc. Ministerio
+                    </button>
+                @endif
 
                 <div class="ml-auto">
                     <a x-show="tab === 'firmada'"
@@ -174,6 +189,16 @@
                     @if($acta->documento_identidad_ruta)
                         <a x-show="tab === 'identidad'" x-cloak
                             href="{{ route('prestamos.acta.documento-identidad', $acta->id) }}" target="_blank"
+                            class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded">
+                            <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                            </svg>
+                            Abrir
+                        </a>
+                    @endif
+                    @if($acta->documento_exportacion_ruta)
+                        <a x-show="tab === 'exportacion'" x-cloak
+                            href="{{ route('prestamos.acta.documento-exportacion', $acta->id) }}" target="_blank"
                             class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded">
                             <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
@@ -195,6 +220,14 @@
                     <iframe src="{{ route('prestamos.acta.documento-identidad', $acta->id) }}"
                         class="w-full" style="height: calc(100vh - 310px); min-height: 520px;"
                         title="Documento de identidad"></iframe>
+                </div>
+            @endif
+
+            @if($acta->documento_exportacion_ruta)
+                <div x-show="tab === 'exportacion'" x-cloak>
+                    <iframe src="{{ route('prestamos.acta.documento-exportacion', $acta->id) }}"
+                        class="w-full" style="height: calc(100vh - 310px); min-height: 520px;"
+                        title="Documento de exportación"></iframe>
                 </div>
             @endif
 

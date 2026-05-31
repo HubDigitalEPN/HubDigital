@@ -81,10 +81,17 @@
                                 {{ $prestamo->fecha_fin?->format('d/m/Y') ?? '—' }}
                             </td>
                             <td class="px-4 py-3">
-                                <flux:button size="sm" variant="ghost" icon="eye"
-                                    wire:navigate href="{{ route('prestamos.investigador.prestamo.detalle', $prestamo->id) }}">
-                                    Ver
-                                </flux:button>
+                                @if($prestamo->estado === 'en_transito')
+                                    <flux:button size="sm" variant="primary" icon="clipboard-document-check"
+                                        wire:navigate href="{{ route('prestamos.investigador.prestamo.verificacion-entrega', $prestamo->id) }}">
+                                        Reportar recepción
+                                    </flux:button>
+                                @else
+                                    <flux:button size="sm" variant="ghost" icon="eye"
+                                        wire:navigate href="{{ route('prestamos.investigador.prestamo.detalle', $prestamo->id) }}">
+                                        Ver
+                                    </flux:button>
+                                @endif
                             </td>
                         </tr>
                     @endforeach

@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\ItemPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\SolicitudPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\AlcancePrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitud;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ItemPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\NumeroSolicitud;
@@ -24,6 +25,7 @@ final class EloquentSolicitudPrestamoRepository implements SolicitudPrestamoRepo
             [
                 'numero_solicitud' => (string) $solicitud->numeroSolicitud(),
                 'investigador_id' => $solicitud->investigadorId(),
+                'alcance_prestamo' => $solicitud->alcancePrestamo()->value,
                 'estado' => $solicitud->estado()->value,
                 'titulo_estudio' => $solicitud->tituloEstudio(),
                 'institucion_adscripcion' => $solicitud->institucionAdscripcion(),
@@ -60,7 +62,7 @@ final class EloquentSolicitudPrestamoRepository implements SolicitudPrestamoRepo
     /** @param list<ItemPrestamo> $items */
     private function sincronizarItems(SolicitudPrestamoModel $model, array $items): void
     {
-        $newIds = array_map(fn(ItemPrestamo $item) => (string) $item->id(), $items);
+        $newIds = array_map(fn (ItemPrestamo $item) => (string) $item->id(), $items);
 
         foreach ($items as $item) {
             ItemPrestamoModel::updateOrCreate(
@@ -82,7 +84,7 @@ final class EloquentSolicitudPrestamoRepository implements SolicitudPrestamoRepo
 
     private function toDomain(SolicitudPrestamoModel $model): SolicitudPrestamo
     {
-        $items = $model->items->map(fn(ItemPrestamoModel $row) => ItemPrestamo::reconstituir(
+        $items = $model->items->map(fn (ItemPrestamoModel $row) => ItemPrestamo::reconstituir(
             id: ItemPrestamoId::fromString($row->id),
             especimenCodigoExterno: $row->especimen_codigo_externo,
             cantidadSolicitada: $row->cantidad_solicitada,
@@ -94,6 +96,7 @@ final class EloquentSolicitudPrestamoRepository implements SolicitudPrestamoRepo
             id: SolicitudPrestamoId::fromString($model->id),
             numeroSolicitud: NumeroSolicitud::fromString($model->numero_solicitud),
             investigadorId: $model->investigador_id,
+            alcancePrestamo: AlcancePrestamo::from($model->alcance_prestamo),
             estado: EstadoSolicitud::from($model->estado),
             tituloEstudio: $model->titulo_estudio,
             institucionAdscripcion: $model->institucion_adscripcion,

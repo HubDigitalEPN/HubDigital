@@ -80,10 +80,17 @@
                                 {{ $acta->created_at->format('d/m/Y') }}
                             </td>
                             <td class="px-4 py-3">
-                                <flux:button size="sm" variant="ghost" icon="eye"
-                                    wire:navigate href="{{ route('prestamos.investigador.acta.detalle', $acta->id) }}">
-                                    Ver detalle
-                                </flux:button>
+                                @if($acta->estado === 'pendiente_firma')
+                                    <flux:button size="sm" variant="primary" icon="arrow-up-tray"
+                                        wire:navigate href="{{ route('prestamos.investigador.acta.detalle', $acta->id) }}">
+                                        Adjuntar documentos
+                                    </flux:button>
+                                @else
+                                    <flux:button size="sm" variant="ghost" icon="eye"
+                                        wire:navigate href="{{ route('prestamos.investigador.acta.detalle', $acta->id) }}">
+                                        Ver detalle
+                                    </flux:button>
+                                @endif
                             </td>
                         </tr>
                     @endforeach

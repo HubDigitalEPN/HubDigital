@@ -76,6 +76,10 @@
                         <dd class="font-medium text-text-primary capitalize">{{ $acta->tipo_prestamo }}</dd>
                     </div>
                     <div>
+                        <dt class="text-text-secondary">Alcance</dt>
+                        <dd class="font-medium text-text-primary">{{ ($acta->alcance_prestamo ?? 'nacional') === 'internacional' ? 'Internacional' : 'Nacional' }}</dd>
+                    </div>
+                    <div>
                         <dt class="text-text-secondary">N.º solicitud</dt>
                         <dd class="font-mono font-medium text-text-primary">{{ $acta->solicitud?->numero_solicitud }}</dd>
                     </div>

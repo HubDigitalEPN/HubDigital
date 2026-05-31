@@ -51,6 +51,22 @@
                     <dt class="text-text-secondary">Tipo de préstamo</dt>
                     <dd class="text-text-primary capitalize">{{ str_replace('_', ' ', $acta->tipo_prestamo) }}</dd>
                 </div>
+                <div>
+                    <dt class="text-text-secondary">Alcance</dt>
+                    <dd class="text-text-primary">
+                        @if(($acta->alcance_prestamo ?? 'nacional') === 'internacional')
+                            <span class="inline-flex items-center gap-1 rounded-full bg-[#E3F2FD] text-[#1565C0] border border-[#90CAF9] px-2 py-0.5 text-xs font-semibold">
+                                <flux:icon name="globe-alt" class="size-3" />
+                                Internacional
+                            </span>
+                        @else
+                            <span class="inline-flex items-center gap-1 rounded-full bg-[#E8F5E9] text-[#2E7D32] border border-[#A5D6A7] px-2 py-0.5 text-xs font-semibold">
+                                <flux:icon name="map-pin" class="size-3" />
+                                Nacional
+                            </span>
+                        @endif
+                    </dd>
+                </div>
             </dl>
         </div>
 
@@ -76,6 +92,13 @@
                         Doc. de identidad
                     </button>
                 @endif
+                @if($acta->documento_exportacion_ruta)
+                    <button @click="tab = 'exportacion'"
+                        :class="tab === 'exportacion' ? 'border-b-2 border-science-blue text-science-blue' : 'text-text-secondary hover:text-text-primary'"
+                        class="px-3 py-2.5 text-sm font-medium transition-colors whitespace-nowrap">
+                        Doc. Ministerio
+                    </button>
+                @endif
 
                 {{-- Botón "Abrir en nueva pestaña" contextual --}}
                 <div class="ml-auto">
@@ -98,6 +121,16 @@
                     @if($acta->documento_identidad_ruta)
                         <a x-show="tab === 'identidad'" x-cloak
                             href="{{ route('prestamos.acta.documento-identidad', $acta->id) }}" target="_blank"
+                            class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded">
+                            <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                            </svg>
+                            Abrir
+                        </a>
+                    @endif
+                    @if($acta->documento_exportacion_ruta)
+                        <a x-show="tab === 'exportacion'" x-cloak
+                            href="{{ route('prestamos.acta.documento-exportacion', $acta->id) }}" target="_blank"
                             class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded">
                             <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
@@ -136,6 +169,14 @@
                 </div>
             @endif
 
+            @if($acta->documento_exportacion_ruta)
+                <div x-show="tab === 'exportacion'" x-cloak>
+                    <iframe src="{{ route('prestamos.acta.documento-exportacion', $acta->id) }}"
+                        class="w-full" style="height: calc(100vh - 310px); min-height: 520px;"
+                        title="Documento de exportación"></iframe>
+                </div>
+            @endif
+
         </div>
 
         {{-- Acciones de validación --}}
@@ -152,10 +193,6 @@
                     Validar firma
                 </flux:button>
             </div>
-        @elseif($acta->estado === 'validada')
-            <flux:callout variant="success" icon="check-circle">
-                Acta validada. Los especímenes están siendo coordinados para el despacho al investigador. El préstamo se activará una vez que el investigador confirme la recepción.
-            </flux:callout>
         @endif
     @endif
 

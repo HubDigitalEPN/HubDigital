@@ -24,6 +24,30 @@
         </flux:callout>
     @endif
 
+    {{-- Selector de alcance --}}
+    <div class="rounded-lg border border-border bg-surface shadow-sm p-5 space-y-3">
+        <flux:heading size="lg" level="2" class="font-display">Tipo de préstamo</flux:heading>
+        <flux:separator />
+        <flux:field>
+            <flux:label>Destino de los especímenes</flux:label>
+            <div class="flex flex-wrap gap-3 mt-1">
+                <label class="flex items-center gap-2 cursor-pointer {{ $solicitudId ? 'opacity-60 pointer-events-none' : '' }}">
+                    <input type="radio" wire:model="alcancePrestamo" value="nacional"
+                        class="text-science-blue focus:ring-science-blue" {{ $solicitudId ? 'disabled' : '' }} />
+                    <span class="text-sm font-medium text-text-primary">Nacional</span>
+                    <span class="text-xs text-text-secondary">(dentro de Ecuador)</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer {{ $solicitudId ? 'opacity-60 pointer-events-none' : '' }}">
+                    <input type="radio" wire:model="alcancePrestamo" value="internacional"
+                        class="text-science-blue focus:ring-science-blue" {{ $solicitudId ? 'disabled' : '' }} />
+                    <span class="text-sm font-medium text-text-primary">Internacional</span>
+                    <span class="text-xs text-text-secondary">(fuera de Ecuador — requiere trámite de exportación)</span>
+                </label>
+            </div>
+            <flux:error name="alcancePrestamo" />
+        </flux:field>
+    </div>
+
     <div class="grid gap-6 lg:grid-cols-3">
 
         {{-- Datos Generales --}}

@@ -10,8 +10,10 @@ use Modules\GestionPrestamosRecepciones\Domain\Events\ActaDevueltaPorFirmaInvali
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaEnviada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaFirmadaSubida;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaValidada;
+use Modules\GestionPrestamosRecepciones\Domain\Events\DocumentoExportacionSubido;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\TransicionDeEstadoInvalidaException;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\AlcancePrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoActa;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\NumeroPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudPrestamoId;
@@ -28,12 +30,14 @@ final class ActaPrestamo
         private readonly SolicitudPrestamoId $solicitudPrestamoId,
         private EstadoActa $estado,
         private readonly TipoPrestamo $tipoPrestamo,
+        private readonly AlcancePrestamo $alcancePrestamo,
         private readonly DateTimeImmutable $fechaInicio,
         private readonly DateTimeImmutable $fechaFin,
         private readonly string $pdfRuta,
         private ?string $condicionesGenerales,
         private ?string $pdfFirmadoRuta,
         private ?string $documentoIdentidadRuta,
+        private ?string $documentoExportacionRuta,
         private ?string $motivoDevolucion,
         private ?DateTimeImmutable $firmadaSubidaEn,
         private ?DateTimeImmutable $validadaEn,
@@ -47,6 +51,7 @@ final class ActaPrestamo
         NumeroPrestamo $numeroPrestamo,
         SolicitudPrestamoId $solicitudPrestamoId,
         TipoPrestamo $tipoPrestamo,
+        AlcancePrestamo $alcancePrestamo,
         DateTimeImmutable $fechaInicio,
         DateTimeImmutable $fechaFin,
         string $pdfRuta,
@@ -66,12 +71,14 @@ final class ActaPrestamo
             solicitudPrestamoId: $solicitudPrestamoId,
             estado: EstadoActa::PendienteEnvio,
             tipoPrestamo: $tipoPrestamo,
+            alcancePrestamo: $alcancePrestamo,
             fechaInicio: $fechaInicio,
             fechaFin: $fechaFin,
             pdfRuta: $pdfRuta,
             condicionesGenerales: $condicionesGenerales,
             pdfFirmadoRuta: null,
             documentoIdentidadRuta: null,
+            documentoExportacionRuta: null,
             motivoDevolucion: null,
             firmadaSubidaEn: null,
             validadaEn: null,
@@ -88,12 +95,14 @@ final class ActaPrestamo
         SolicitudPrestamoId $solicitudPrestamoId,
         EstadoActa $estado,
         TipoPrestamo $tipoPrestamo,
+        AlcancePrestamo $alcancePrestamo,
         DateTimeImmutable $fechaInicio,
         DateTimeImmutable $fechaFin,
         string $pdfRuta,
         ?string $condicionesGenerales,
         ?string $pdfFirmadoRuta,
         ?string $documentoIdentidadRuta,
+        ?string $documentoExportacionRuta,
         ?string $motivoDevolucion,
         ?DateTimeImmutable $firmadaSubidaEn,
         ?DateTimeImmutable $validadaEn,
@@ -105,12 +114,14 @@ final class ActaPrestamo
             solicitudPrestamoId: $solicitudPrestamoId,
             estado: $estado,
             tipoPrestamo: $tipoPrestamo,
+            alcancePrestamo: $alcancePrestamo,
             fechaInicio: $fechaInicio,
             fechaFin: $fechaFin,
             pdfRuta: $pdfRuta,
             condicionesGenerales: $condicionesGenerales,
             pdfFirmadoRuta: $pdfFirmadoRuta,
             documentoIdentidadRuta: $documentoIdentidadRuta,
+            documentoExportacionRuta: $documentoExportacionRuta,
             motivoDevolucion: $motivoDevolucion,
             firmadaSubidaEn: $firmadaSubidaEn,
             validadaEn: $validadaEn,
@@ -217,6 +228,29 @@ final class ActaPrestamo
     }
 
     /**
+     * El curador adjunta el documento de exportación del Ministerio del Ambiente.
+     * Solo aplica para actas de alcance Internacional.
+     */
+    public function adjuntarDocumentoExportacion(string $ruta): void
+    {
+        if (! $this->alcancePrestamo->esInternacional()) {
+            throw new \DomainException('Solo préstamos internacionales requieren documento de exportación.');
+        }
+
+        if (trim($ruta) === '') {
+            throw new InvalidArgumentException('La ruta del documento de exportación no puede estar vacía.');
+        }
+
+        $this->documentoExportacionRuta = trim($ruta);
+
+        $this->events[] = new DocumentoExportacionSubido(
+            actaId: $this->id,
+            solicitudId: $this->solicitudPrestamoId,
+            ocurridoEn: new DateTimeImmutable,
+        );
+    }
+
+    /**
      * El curador valida el acta firmada.
      * Solo permitido desde PendienteValidacion.
      */
@@ -284,6 +318,11 @@ final class ActaPrestamo
         return $this->tipoPrestamo;
     }
 
+    public function alcancePrestamo(): AlcancePrestamo
+    {
+        return $this->alcancePrestamo;
+    }
+
     public function fechaInicio(): DateTimeImmutable
     {
         return $this->fechaInicio;
@@ -312,6 +351,11 @@ final class ActaPrestamo
     public function documentoIdentidadRuta(): ?string
     {
         return $this->documentoIdentidadRuta;
+    }
+
+    public function documentoExportacionRuta(): ?string
+    {
+        return $this->documentoExportacionRuta;
     }
 
     public function motivoDevolucion(): ?string

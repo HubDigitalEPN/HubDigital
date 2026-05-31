@@ -7,6 +7,7 @@ namespace Modules\GestionPrestamosRecepciones\Domain\Entities;
 use DateTimeImmutable;
 use InvalidArgumentException;
 use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoActivado;
+use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoHabilitadoParaEnvio;
 use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoIniciado;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ProrrogaAprobada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\RecordatorioDevolucionEnviado;
@@ -14,6 +15,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Events\VerificacionEntregaAprobad
 use Modules\GestionPrestamosRecepciones\Domain\Events\VerificacionEntregaRegistrada;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\TransicionDeEstadoInvalidaException;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\AlcancePrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoRecordatorio;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrestamoId;
@@ -38,6 +40,7 @@ final class Prestamo
         PrestamoId $id,
         ActaPrestamoId $actaPrestamoId,
         string $investigadorId,
+        AlcancePrestamo $alcancePrestamo,
         DateTimeImmutable $iniciadoEn,
         DateTimeImmutable $fechaFin,
     ): self {
@@ -45,11 +48,15 @@ final class Prestamo
             throw new InvalidArgumentException('La fecha de fin debe ser posterior a la fecha de inicio del préstamo.');
         }
 
+        $estadoInicial = $alcancePrestamo->esInternacional()
+            ? EstadoPrestamo::PendienteDocumentoMinisterio
+            : EstadoPrestamo::EnTransito;
+
         $prestamo = new self(
             id: $id,
             actaPrestamoId: $actaPrestamoId,
             investigadorId: $investigadorId,
-            estado: EstadoPrestamo::EnTransito,
+            estado: $estadoInicial,
             iniciadoEn: $iniciadoEn,
             fechaFin: $fechaFin,
         );
@@ -86,6 +93,25 @@ final class Prestamo
     }
 
     // ── Business methods ──────────────────────────────────────────────────────
+
+    public function habilitarEnvio(string $curadorId): void
+    {
+        if (! $this->estado->equals(EstadoPrestamo::PendienteDocumentoMinisterio)) {
+            throw TransicionDeEstadoInvalidaException::para(
+                'Prestamo',
+                $this->estado->name,
+                'habilitarEnvio — el préstamo debe estar pendiente de documento del ministerio'
+            );
+        }
+
+        $this->estado = EstadoPrestamo::EnTransito;
+
+        $this->events[] = new PrestamoHabilitadoParaEnvio(
+            prestamoId: $this->id,
+            curadorId: $curadorId,
+            ocurridoEn: new DateTimeImmutable,
+        );
+    }
 
     public function registrarVerificacion(DateTimeImmutable $ahora): void
     {

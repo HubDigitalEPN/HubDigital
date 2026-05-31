@@ -100,6 +100,11 @@
                                             wire:navigate href="{{ route('prestamos.curador.prestamo.aprobar-verificacion', $prestamo->id) }}">
                                             Aprobar verificación
                                         </flux:button>
+                                    @elseif($prestamo->estado === 'pendiente_documento_ministerio')
+                                        <flux:button size="sm" variant="primary" icon="document-arrow-up"
+                                            wire:navigate href="{{ route('prestamos.curador.prestamo.auditar', $prestamo->id) }}">
+                                            Subir documento
+                                        </flux:button>
                                     @endif
                                     <flux:button size="sm" variant="ghost" icon="magnifying-glass"
                                         wire:navigate href="{{ route('prestamos.curador.prestamo.auditar', $prestamo->id) }}">

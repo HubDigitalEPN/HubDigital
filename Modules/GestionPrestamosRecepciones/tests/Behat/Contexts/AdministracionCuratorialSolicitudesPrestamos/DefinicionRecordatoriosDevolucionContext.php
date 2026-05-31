@@ -31,6 +31,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Repositories\PrestamoRepositoryIn
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\RecordatorioDevolucionRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\AlcancePrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitud;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\NumeroPrestamo;
@@ -403,6 +404,7 @@ final class DefinicionRecordatoriosDevolucionContext extends BaseContext
             id: $this->solicitudRepo->nextIdentity(),
             numeroSolicitud: NumeroSolicitud::generate(),
             investigadorId: $this->investigadorId,
+            alcancePrestamo: AlcancePrestamo::Nacional,
             estado: EstadoSolicitud::Aprobada,
             tituloEstudio: 'Estudio de musgos ecuatorianos',
             institucionAdscripcion: 'Escuela Politécnica Nacional',
@@ -426,6 +428,7 @@ final class DefinicionRecordatoriosDevolucionContext extends BaseContext
             numeroPrestamo: NumeroPrestamo::generate(),
             solicitudPrestamoId: $solicitud->id(),
             tipoPrestamo: TipoPrestamo::Temporal,
+            alcancePrestamo: AlcancePrestamo::Nacional,
             fechaInicio: $ahora,
             fechaFin: $fechaFin,
             pdfRuta: 'actas/escenario-activacion.pdf',

@@ -9,7 +9,9 @@ use Modules\GestionPrestamosRecepciones\Domain\Events\ActaDevueltaPorFirmaInvali
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaEnviada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaFirmadaSubida;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaValidada;
+use Modules\GestionPrestamosRecepciones\Domain\Events\DocumentoExportacionSubido;
 use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoActivado;
+use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoHabilitadoParaEnvio;
 use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoIniciado;
 use Modules\GestionPrestamosRecepciones\Domain\Events\RecordatorioDevolucionEnviado;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoAprobada;
@@ -47,6 +49,8 @@ class EventServiceProvider extends ServiceProvider
         VerificacionEntregaRegistrada::class => [RegistrarEventoHistorialListener::class],
         VerificacionEntregaAprobada::class => [RegistrarEventoHistorialListener::class],
         PrestamoActivado::class => [RegistrarEventoHistorialListener::class],
+        DocumentoExportacionSubido::class => [RegistrarEventoHistorialListener::class],
+        PrestamoHabilitadoParaEnvio::class => [RegistrarEventoHistorialListener::class],
     ];
 
     protected static $shouldDiscoverEvents = true;

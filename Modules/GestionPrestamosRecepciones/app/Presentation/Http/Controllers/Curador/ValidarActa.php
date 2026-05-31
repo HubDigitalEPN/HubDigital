@@ -14,6 +14,7 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\DevolverActaParaRef
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarActaFirmada\ValidarActaFirmadaHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarActaFirmada\ValidarActaFirmadaInput;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\ActaPrestamoModel;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\PrestamoEloquentModel;
 
 #[Layout('layouts.app', params: ['title' => 'Validar acta firmada'])]
 final class ValidarActa extends Component
@@ -44,7 +45,7 @@ final class ValidarActa extends Component
             curadorId: (string) auth()->id(),
         ));
 
-        $this->successMessage = 'Acta validada correctamente.';
+        $this->successMessage = 'Acta validada. Los especímenes están siendo coordinados para el despacho al investigador. El préstamo se activará una vez que el investigador confirme la recepción.';
         $this->acta = ActaPrestamoModel::query()->with('solicitud')->find($this->id);
     }
 
@@ -63,6 +64,8 @@ final class ValidarActa extends Component
 
     public function render(): View
     {
-        return view('gestionprestamosrecepciones::curador.validar-acta');
+        $prestamo = PrestamoEloquentModel::where('acta_prestamo_id', $this->id)->first();
+
+        return view('gestionprestamosrecepciones::curador.validar-acta', compact('prestamo'));
     }
 }

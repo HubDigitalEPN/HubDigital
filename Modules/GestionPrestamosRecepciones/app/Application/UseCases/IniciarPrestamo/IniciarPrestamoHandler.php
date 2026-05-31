@@ -50,6 +50,7 @@ final class IniciarPrestamoHandler
             id: $this->prestamoRepo->nextIdentity(),
             actaPrestamoId: $actaId,
             investigadorId: $solicitud->investigadorId(),
+            alcancePrestamo: $acta->alcancePrestamo(),
             iniciadoEn: $acta->fechaInicio(),
             fechaFin: $acta->fechaFin(),
         );

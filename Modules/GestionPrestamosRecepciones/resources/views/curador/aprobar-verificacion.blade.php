@@ -10,7 +10,7 @@
         <flux:breadcrumbs.item>Verificación de entrega</flux:breadcrumbs.item>
     </flux:breadcrumbs>
 
-    <div class="max-w-2xl space-y-6">
+    <div class="max-w-2xl mx-auto space-y-6">
 
         <flux:heading size="xl" level="1" class="font-display">Verificación de entrega</flux:heading>
 

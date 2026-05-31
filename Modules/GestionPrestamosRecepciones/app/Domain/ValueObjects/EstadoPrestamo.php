@@ -6,6 +6,7 @@ namespace Modules\GestionPrestamosRecepciones\Domain\ValueObjects;
 
 enum EstadoPrestamo: string
 {
+    case PendienteDocumentoMinisterio = 'pendiente_documento_ministerio';
     case EnTransito = 'en_transito';
     case PendienteAprobacionVerificacion = 'pendiente_aprobacion_verificacion';
     case Activo = 'activo';

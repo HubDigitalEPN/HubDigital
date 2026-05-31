@@ -11,6 +11,7 @@ final readonly class RegistrarSolicitudPrestamoInput
      */
     public function __construct(
         public string $investigadorId,
+        public string $alcancePrestamo,
         public string $tituloEstudio,
         public string $institucionAdscripcion,
         public string $lineaInvestigacion,

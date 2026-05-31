@@ -2,6 +2,7 @@
 
 @php
 $config = [
+    'pendiente_documento_ministerio'     => ['classes' => 'bg-[#FFF8E1] text-[#E65100] border border-[#FFCC80]', 'label' => 'Pte. doc. ministerio'],
     'en_transito'                        => ['classes' => 'bg-[#FFF8E1] text-[#F57F17] border border-[#FFE082]', 'label' => 'Despachado'],
     'pendiente_aprobacion_verificacion'  => ['classes' => 'bg-[#E3F2FD] text-[#1565C0] border border-[#90CAF9]', 'label' => 'Pte. verificación'],
     'activo'                  => ['classes' => 'bg-[#E8F5E9] text-[#2E7D32] border border-[#A5D6A7]', 'label' => 'Activo'],

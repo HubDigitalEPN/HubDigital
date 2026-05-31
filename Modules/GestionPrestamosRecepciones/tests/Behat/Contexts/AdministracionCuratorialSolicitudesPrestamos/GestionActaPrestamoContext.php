@@ -22,6 +22,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Entities\SolicitudPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaDevueltaPorFirmaInvalida;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\ActaPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\AlcancePrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoActa;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ItemPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\NumeroPrestamo;
@@ -119,6 +120,7 @@ final class GestionActaPrestamoContext extends BaseContext
             id: $this->solicitudRepo->nextIdentity(),
             numeroSolicitud: NumeroSolicitud::generate(),
             investigadorId: $this->investigadorId,
+            alcancePrestamo: AlcancePrestamo::Nacional,
             tituloEstudio: $this->datosSolicitud['titulo_estudio'],
             institucionAdscripcion: $this->datosSolicitud['institucion_adscripcion'],
             lineaInvestigacion: $this->datosSolicitud['linea_investigacion'],
@@ -150,6 +152,7 @@ final class GestionActaPrestamoContext extends BaseContext
             numeroPrestamo: NumeroPrestamo::generate(),
             solicitudPrestamoId: $solicitud->id(),
             tipoPrestamo: TipoPrestamo::Temporal,
+            alcancePrestamo: AlcancePrestamo::Nacional,
             fechaInicio: $ahora,
             fechaFin: $fechaFin,
             pdfRuta: $pdfRuta,
@@ -312,7 +315,7 @@ final class GestionActaPrestamoContext extends BaseContext
             'El estado persistido en el repositorio no es Validada'
         );
         Assert::assertNotNull($persistida->validadaEn(), "Se esperaba que 'validada_en' quedara registrado");
-        Assert::assertSame($this->curadorId, $persistida->validadaPor(), "Se esperaba que el curador validador quedara registrado");
+        Assert::assertSame($this->curadorId, $persistida->validadaPor(), 'Se esperaba que el curador validador quedara registrado');
     }
 
     #[Then('se crea un préstamo en estado activo')]

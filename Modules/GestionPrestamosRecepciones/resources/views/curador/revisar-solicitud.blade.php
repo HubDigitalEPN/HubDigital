@@ -10,7 +10,7 @@
     @if(!$solicitud)
         <flux:callout variant="danger" icon="exclamation-triangle">Solicitud no encontrada.</flux:callout>
     @else
-        <div class="grid gap-6 lg:grid-cols-3">
+        <div class="grid gap-6 lg:grid-cols-3 max-w-5xl mx-auto">
 
             {{-- Detalle --}}
             <div class="lg:col-span-2 space-y-6">

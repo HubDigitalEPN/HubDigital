@@ -44,8 +44,55 @@
                 </dl>
             </div>
 
+            {{-- Trámite de exportación — solo préstamos internacionales pendientes --}}
+            @if($prestamo->estado->value === 'pendiente_documento_ministerio')
+                <div class="rounded-lg border border-[#FFCC80] bg-[#FFF8E1] p-5 space-y-4">
+                    <div class="flex items-center gap-2">
+                        <flux:icon name="document-arrow-up" class="size-5 text-[#E65100] shrink-0" />
+                        <p class="text-sm font-semibold text-[#E65100]">Trámite de exportación pendiente</p>
+                    </div>
+                    <flux:separator />
+                    <p class="text-sm text-text-secondary">
+                        Sube el documento de aprobación del Ministerio del Ambiente para habilitar el envío de especímenes al exterior.
+                    </p>
+
+                    @if($successMessage)
+                        <flux:callout variant="success" icon="check-circle">{{ $successMessage }}</flux:callout>
+                    @endif
+
+                    <flux:field>
+                        <flux:label>Documento de aprobación del ministerio (PDF)</flux:label>
+                        <div x-data="{ nombre: '' }">
+                            <label for="upload-doc-exportacion-detalle"
+                                class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium text-text-primary shadow-sm hover:bg-bg-main transition-colors">
+                                <flux:icon name="paper-clip" class="size-4 shrink-0" />
+                                Seleccionar archivo PDF
+                            </label>
+                            <input id="upload-doc-exportacion-detalle" type="file"
+                                wire:model="documentoExportacion" accept=".pdf"
+                                x-on:change="nombre = $event.target.files[0]?.name ?? ''"
+                                class="sr-only" />
+                            <p class="mt-1.5 text-xs text-text-secondary"
+                                x-text="nombre || 'Ningún archivo seleccionado'"></p>
+                            <div wire:loading wire:target="documentoExportacion"
+                                class="flex items-center gap-1.5 mt-1 text-xs text-text-secondary">
+                                <flux:icon name="arrow-path" class="animate-spin size-3" />
+                                Subiendo archivo...
+                            </div>
+                        </div>
+                        <flux:error name="documentoExportacion" />
+                    </flux:field>
+
+                    <flux:button wire:click="habilitarEnvio" variant="primary"
+                        wire:loading.attr="disabled" wire:target="habilitarEnvio">
+                        <flux:icon wire:loading wire:target="habilitarEnvio" name="arrow-path" class="animate-spin" />
+                        Habilitar envío
+                    </flux:button>
+                </div>
+            @endif
+
             {{-- Verificación de entrega pendiente de aprobación --}}
-            @if($prestamo->estado === 'pendiente_aprobacion_verificacion' && $verificacion)
+            @if($prestamo->estado->value === 'pendiente_aprobacion_verificacion' && $verificacion)
                 <div class="rounded-lg border border-[#90CAF9] bg-[#E3F2FD] p-5 space-y-4">
                     <div class="flex items-center gap-2">
                         <flux:icon name="clipboard-document-check" class="size-5 text-[#1565C0] shrink-0" />
