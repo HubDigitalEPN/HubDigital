@@ -163,7 +163,10 @@ final class GestionActaPrestamoContext extends BaseContext
         }
 
         if ($estado === EstadoActa::PendienteValidacion) {
-            $acta->subirFirma('actas/firmadas/'.(string) $solicitud->id().'-firmada.pdf');
+            $acta->subirFirma(
+                pdfFirmadoRuta: 'actas/firmadas/'.(string) $solicitud->id().'-firmada.pdf',
+                documentoIdentidadRuta: 'documentos-identidad/'.(string) $solicitud->id().'-id.pdf',
+            );
         }
 
         $acta->pullEvents();

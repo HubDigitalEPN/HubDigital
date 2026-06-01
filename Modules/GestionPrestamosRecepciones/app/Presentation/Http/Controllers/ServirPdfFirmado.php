@@ -29,9 +29,13 @@ final class ServirPdfFirmado
             abort(404);
         }
 
+        $isFirmaDigital = str_starts_with($acta->pdf_firmado_ruta, 'firmas-investigador/');
+        $contentType = $isFirmaDigital ? 'image/png' : 'application/pdf';
+        $filename = $isFirmaDigital ? 'acta-firma.png' : 'acta-firmada.pdf';
+
         return response(Storage::get($acta->pdf_firmado_ruta), 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="acta-firmada.pdf"',
+            'Content-Type' => $contentType,
+            'Content-Disposition' => 'inline; filename="' . $filename . '"',
         ]);
     }
 }

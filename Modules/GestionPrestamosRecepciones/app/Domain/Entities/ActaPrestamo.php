@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use InvalidArgumentException;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaDevueltaPorFirmaInvalida;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaEnviada;
+use Modules\GestionPrestamosRecepciones\Domain\Events\ActaFirmadaDigitalmente;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaFirmadaSubida;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaValidada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\DocumentoExportacionSubido;
@@ -182,6 +183,79 @@ final class ActaPrestamo
 
         $this->estado = EstadoActa::PendienteValidacion;
         $this->pdfFirmadoRuta = trim($pdfFirmadoRuta);
+        $this->documentoIdentidadRuta = trim($documentoIdentidadRuta);
+        $this->firmadaSubidaEn = $ahora;
+
+        $this->events[] = new ActaFirmadaSubida(
+            actaId: $this->id,
+            solicitudId: $this->solicitudPrestamoId,
+            pdfFirmadoRuta: $this->pdfFirmadoRuta,
+            documentoIdentidadRuta: $this->documentoIdentidadRuta,
+            ocurridoEn: $ahora,
+        );
+    }
+
+    /**
+     * El investigador firma el acta digitalmente mediante canvas.
+     * Solo permitido desde PendienteFirma.
+     */
+    /**
+     * El investigador firma el acta digitalmente mediante canvas.
+     * Solo guarda la imagen de la firma; el estado permanece en PendienteFirma
+     * hasta que el investigador suba su documento de identidad.
+     */
+    public function firmarDigitalmente(string $firmaImagenRuta): void
+    {
+        if (! $this->estado->equals(EstadoActa::PendienteFirma)) {
+            throw TransicionDeEstadoInvalidaException::para(
+                'ActaPrestamo',
+                $this->estado->value,
+                'firmarDigitalmente',
+            );
+        }
+
+        if (trim($firmaImagenRuta) === '') {
+            throw new InvalidArgumentException('La ruta de la imagen de firma no puede estar vacía.');
+        }
+
+        $ahora = new DateTimeImmutable;
+
+        // No se cambia el estado: sigue en PendienteFirma hasta subir documento de identidad.
+        $this->pdfFirmadoRuta = trim($firmaImagenRuta);
+
+        $this->events[] = new ActaFirmadaDigitalmente(
+            actaId: $this->id,
+            solicitudId: $this->solicitudPrestamoId,
+            pdfFirmadoRuta: $this->pdfFirmadoRuta,
+            ocurridoEn: $ahora,
+        );
+    }
+
+    /**
+     * Completa la firma digital subiendo el documento de identidad.
+     * Solo permitido desde PendienteFirma cuando ya existe firma digital.
+     */
+    public function completarFirmaDigitalConIdentidad(string $documentoIdentidadRuta): void
+    {
+        if (! $this->estado->equals(EstadoActa::PendienteFirma)) {
+            throw TransicionDeEstadoInvalidaException::para(
+                'ActaPrestamo',
+                $this->estado->value,
+                'completarFirmaDigitalConIdentidad',
+            );
+        }
+
+        if ($this->pdfFirmadoRuta === null) {
+            throw new InvalidArgumentException('Debe existir una firma digital antes de subir el documento de identidad.');
+        }
+
+        if (trim($documentoIdentidadRuta) === '') {
+            throw new InvalidArgumentException('La ruta del documento de identidad no puede estar vacía.');
+        }
+
+        $ahora = new DateTimeImmutable;
+
+        $this->estado = EstadoActa::PendienteValidacion;
         $this->documentoIdentidadRuta = trim($documentoIdentidadRuta);
         $this->firmadaSubidaEn = $ahora;
 

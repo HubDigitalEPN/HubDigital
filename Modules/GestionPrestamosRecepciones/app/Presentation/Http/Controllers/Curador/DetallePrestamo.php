@@ -68,15 +68,7 @@ final class DetallePrestamo extends Component
         $this->documentoExportacion = null;
     }
 
-    public function aprobar(AprobarVerificacionEntregaHandler $handler): void
-    {
-        $handler->handle(new AprobarVerificacionEntregaInput(
-            prestamoId: $this->id,
-            curadorId: (string) auth()->id(),
-        ));
 
-        $this->redirect(route('prestamos.curador.prestamo.auditar', $this->id), navigate: true);
-    }
 
     public function render(
         ConsultarPrestamoHandler $prestamoHandler,

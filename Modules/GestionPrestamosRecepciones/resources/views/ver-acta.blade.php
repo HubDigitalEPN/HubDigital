@@ -215,10 +215,27 @@
                     </div>
                 </div>
                 <div>
+                    @php
+                        $firmaPath = 'firmas-investigador/' . $acta->id . '.png';
+                        $firmaBase64 = \Illuminate\Support\Facades\Storage::exists($firmaPath)
+                            ? 'data:image/png;base64,' . base64_encode(\Illuminate\Support\Facades\Storage::get($firmaPath))
+                            : null;
+                    @endphp
+                    @if($firmaBase64)
+                        <img src="{{ $firmaBase64 }}" alt="Firma" class="h-16 max-w-56 mb-1 object-contain">
+                    @else
+                        <div class="h-16"></div>
+                    @endif
                     <div class="border-t-2 border-text-primary pt-3 space-y-1">
                         <p class="text-sm font-semibold text-text-primary">Investigador solicitante</p>
                         <p class="text-xs text-text-secondary">{{ $acta->solicitud?->institucion_adscripcion }}</p>
-                        <p class="text-xs text-text-secondary">Fecha: ___________________</p>
+                        <p class="text-xs text-text-secondary">
+                            @if($firmaBase64)
+                                Firmado digitalmente
+                            @else
+                                Fecha: ___________________
+                            @endif
+                        </p>
                     </div>
                 </div>
             </div>
@@ -227,3 +244,14 @@
     @endif
 
 </div>
+
+@if(request('download') == '1')
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        let originalTitle = document.title;
+        document.title = 'Acta-{{ $acta?->numero_prestamo ?? 'firmada' }}';
+        window.print();
+        setTimeout(() => document.title = originalTitle, 500);
+    });
+</script>
+@endif

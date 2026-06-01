@@ -144,8 +144,13 @@
                         @endif
                     </div>
                     @foreach($verificacion->observaciones() as $obs)
+                        @php
+                            $codigoEspecimen = \Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\ItemPrestamoModel::query()
+                                ->where('id', $obs->itemPrestamoId)
+                                ->value('especimen_codigo_externo') ?? $obs->itemPrestamoId;
+                        @endphp
                         <div class="rounded-lg border border-border bg-bg-main px-3 py-2">
-                            <p class="text-xs text-text-secondary font-mono">{{ $obs->itemPrestamoId }}</p>
+                            <p class="text-xs text-text-secondary font-mono">Espécimen: {{ $codigoEspecimen }}</p>
                             <p class="text-sm text-text-primary mt-0.5">{{ $obs->descripcion }}</p>
                         </div>
                     @endforeach

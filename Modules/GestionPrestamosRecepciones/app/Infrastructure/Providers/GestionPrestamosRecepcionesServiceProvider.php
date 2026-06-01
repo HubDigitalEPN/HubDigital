@@ -14,6 +14,7 @@ use Modules\GestionPrestamosRecepciones\Application\Ports\ExtraccionDatosDocumen
 use Modules\GestionPrestamosRecepciones\Application\Ports\HistorialPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\InvestigadorEmailPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionCuratoriaPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\PdfGeneratorPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ValidacionFirmaElectronicaPort;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\DocumentacionInsuficiente;
@@ -34,6 +35,7 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\LaravelTransacti
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\PdfsigValidacionFirmaElectronicaAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Console\Commands\EvaluarPlazosDevolucionTodosLosPrestamosCommand;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Console\Commands\LimpiarBorradoresAbandonadosCommand;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Gateways\DomPdfGeneratorAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Gateways\LaravelUserInvestigadorEmailAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentActaPrestamoRepository;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentConfiguracionGlobalRecordatoriosRepository;
@@ -74,6 +76,7 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
         TransactionManagerPort::class => LaravelTransactionManagerAdapter::class,
         NotificacionCuratoriaPort::class => FakeNotificacionCuratoriaAdapter::class,
         ValidacionFirmaElectronicaPort::class => PdfsigValidacionFirmaElectronicaAdapter::class,
+        PdfGeneratorPort::class => DomPdfGeneratorAdapter::class,
         HistorialPort::class => EloquentHistorialAdapter::class,
         RecordatorioDevolucionRepositoryInterface::class => EloquentRecordatorioDevolucionRepository::class,
         ConfiguracionGlobalRecordatoriosRepositoryInterface::class => EloquentConfiguracionGlobalRecordatoriosRepository::class,

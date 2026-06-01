@@ -101,42 +101,96 @@
                 @endif
 
                 {{-- Botón "Abrir en nueva pestaña" contextual --}}
-                <div class="ml-auto">
-                    <a x-show="tab === 'original'"
-                        href="{{ route('prestamos.acta.embed', $acta->id) }}" target="_blank"
-                        class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded">
-                        <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-                        </svg>
-                        Abrir
-                    </a>
-                    <a x-show="tab === 'firmada'" x-cloak
-                        href="{{ route('prestamos.acta.pdf-firmado', $acta->id) }}" target="_blank"
-                        class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded">
-                        <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-                        </svg>
-                        Abrir
-                    </a>
+                <div class="ml-auto flex items-center gap-2">
+                    {{-- Original --}}
+                    <div x-show="tab === 'original'" class="flex items-center gap-1">
+                        <a href="{{ route('prestamos.acta.embed', $acta->id) }}" target="_blank"
+                            class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded">
+                            <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                            </svg>
+                            Abrir
+                        </a>
+                        <a href="{{ route('prestamos.acta.pdf-original', $acta->id) }}" download="acta-{{ $acta->numero_prestamo }}.pdf"
+                            class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded">
+                            <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                            </svg>
+                            Descargar
+                        </a>
+                    </div>
+
+                    {{-- Firmada --}}
+                    @php
+                        $esFirmaDigital = str_starts_with($acta->pdf_firmado_ruta ?? '', 'firmas-investigador/');
+                    @endphp
+                    <div x-show="tab === 'firmada'" x-cloak class="flex items-center gap-1">
+                        <a href="{{ route('prestamos.acta.ver', $acta->id) }}" target="_blank"
+                            class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded">
+                            <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                            </svg>
+                            Abrir
+                        </a>
+                        @if($acta->pdf_firmado_ruta)
+                            @if($esFirmaDigital)
+                                <a href="{{ route('prestamos.acta.ver', $acta->id) }}?download=1" target="_blank"
+                                    class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded">
+                                    <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                                    </svg>
+                                    Descargar
+                                </a>
+                            @else
+                                <a href="{{ route('prestamos.acta.pdf-firmado', $acta->id) }}" download="acta-firmada-{{ $acta->numero_prestamo }}.pdf"
+                                    class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded">
+                                    <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                                    </svg>
+                                    Descargar
+                                </a>
+                            @endif
+                        @endif
+                    </div>
+
+                    {{-- Identidad --}}
                     @if($acta->documento_identidad_ruta)
-                        <a x-show="tab === 'identidad'" x-cloak
-                            href="{{ route('prestamos.acta.documento-identidad', $acta->id) }}" target="_blank"
-                            class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded">
-                            <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-                            </svg>
-                            Abrir
-                        </a>
+                        <div x-show="tab === 'identidad'" x-cloak class="flex items-center gap-1">
+                            <a href="{{ route('prestamos.acta.documento-identidad', $acta->id) }}" target="_blank"
+                                class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded">
+                                <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                                </svg>
+                                Abrir
+                            </a>
+                            <a href="{{ route('prestamos.acta.documento-identidad', $acta->id) }}" download="identidad-{{ $acta->numero_prestamo }}.pdf"
+                                class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded">
+                                <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                                </svg>
+                                Descargar
+                            </a>
+                        </div>
                     @endif
+
+                    {{-- Exportacion --}}
                     @if($acta->documento_exportacion_ruta)
-                        <a x-show="tab === 'exportacion'" x-cloak
-                            href="{{ route('prestamos.acta.documento-exportacion', $acta->id) }}" target="_blank"
-                            class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded">
-                            <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-                            </svg>
-                            Abrir
-                        </a>
+                        <div x-show="tab === 'exportacion'" x-cloak class="flex items-center gap-1">
+                            <a href="{{ route('prestamos.acta.documento-exportacion', $acta->id) }}" target="_blank"
+                                class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded">
+                                <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                                </svg>
+                                Abrir
+                            </a>
+                            <a href="{{ route('prestamos.acta.documento-exportacion', $acta->id) }}" download="exportacion-{{ $acta->numero_prestamo }}.pdf"
+                                class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded">
+                                <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                                </svg>
+                                Descargar
+                            </a>
+                        </div>
                     @endif
                 </div>
             </div>
@@ -150,13 +204,13 @@
 
             <div x-show="tab === 'firmada'" x-cloak>
                 @if($acta->pdf_firmado_ruta)
-                    <iframe src="{{ route('prestamos.acta.pdf-firmado', $acta->id) }}"
+                    <iframe src="{{ route('prestamos.acta.embed', $acta->id) }}"
                         class="w-full" style="height: calc(100vh - 310px); min-height: 520px;"
                         title="Acta firmada"></iframe>
                 @else
                     <div class="flex items-center justify-center text-text-secondary text-sm"
                         style="height: 300px;">
-                        El investigador aún no ha subido el acta firmada.
+                        El investigador aún no ha firmado el acta digitalmente.
                     </div>
                 @endif
             </div>
