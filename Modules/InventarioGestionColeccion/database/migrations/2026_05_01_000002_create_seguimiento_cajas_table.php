@@ -14,6 +14,7 @@ return new class extends Migration
                 $table->string('codigo', 100)->unique();
                 $table->string('familia_taxonomica_id')->nullable();
                 $table->string('nombre')->nullable();
+                $table->unsignedSmallInteger('capacidad_maxima')->nullable();
                 $table->string('estado', 50);
                 // No FK constraint — circular reference with ranuras_gabinete; integridad gestionada por el Dominio
                 $table->uuid('ranura_actual_id')->nullable();
