@@ -29,6 +29,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Repositories\ActaPrestamoReposito
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\PrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\AlcancePrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoActa;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitud;
@@ -147,6 +148,7 @@ final class SeguimientoProcesoPrestamoContext extends BaseContext
             id: $this->solicitudRepo->nextIdentity(),
             numeroSolicitud: NumeroSolicitud::generate(),
             investigadorId: $this->investigadorId,
+            alcancePrestamo: AlcancePrestamo::Nacional,
             tituloEstudio: $this->datosSolicitudBase['titulo_estudio'],
             institucionAdscripcion: $this->datosSolicitudBase['institucion_adscripcion'],
             lineaInvestigacion: $this->datosSolicitudBase['linea_investigacion'],
@@ -177,6 +179,7 @@ final class SeguimientoProcesoPrestamoContext extends BaseContext
             numeroPrestamo: NumeroPrestamo::generate(),
             solicitudPrestamoId: $solicitud->id(),
             tipoPrestamo: TipoPrestamo::Temporal,
+            alcancePrestamo: AlcancePrestamo::Nacional,
             fechaInicio: $ahora,
             fechaFin: $fechaFin,
             pdfRuta: $pdfRuta,
@@ -549,6 +552,7 @@ final class SeguimientoProcesoPrestamoContext extends BaseContext
                 id: $this->prestamoRepo->nextIdentity(),
                 actaPrestamoId: ActaPrestamoId::generate(),
                 investigadorId: $this->investigadorId,
+                alcancePrestamo: AlcancePrestamo::Nacional,
                 iniciadoEn: $ahora,
                 fechaFin: $ahora->modify('+3 months'),
             );

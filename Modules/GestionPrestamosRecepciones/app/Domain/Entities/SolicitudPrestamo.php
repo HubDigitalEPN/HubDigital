@@ -12,6 +12,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoRechazada
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoRegistrada;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\SolicitudPrestamoIncompletaException;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\TransicionDeEstadoInvalidaException;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\AlcancePrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitud;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\NumeroSolicitud;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudPrestamoId;
@@ -25,6 +26,7 @@ final class SolicitudPrestamo
         private readonly SolicitudPrestamoId $id,
         private readonly NumeroSolicitud $numeroSolicitud,
         private readonly string $investigadorId,
+        private readonly AlcancePrestamo $alcancePrestamo,
         private EstadoSolicitud $estado,
         private ?string $tituloEstudio,
         private ?string $institucionAdscripcion,
@@ -51,6 +53,7 @@ final class SolicitudPrestamo
         SolicitudPrestamoId $id,
         NumeroSolicitud $numeroSolicitud,
         string $investigadorId,
+        AlcancePrestamo $alcancePrestamo,
         string $tituloEstudio,
         string $institucionAdscripcion,
         string $lineaInvestigacion,
@@ -65,6 +68,7 @@ final class SolicitudPrestamo
             id: $id,
             numeroSolicitud: $numeroSolicitud,
             investigadorId: $investigadorId,
+            alcancePrestamo: $alcancePrestamo,
             estado: EstadoSolicitud::Borrador,
             tituloEstudio: $tituloEstudio,
             institucionAdscripcion: $institucionAdscripcion,
@@ -96,6 +100,7 @@ final class SolicitudPrestamo
         SolicitudPrestamoId $id,
         NumeroSolicitud $numeroSolicitud,
         string $investigadorId,
+        AlcancePrestamo $alcancePrestamo,
     ): self {
         $ahora = new DateTimeImmutable;
 
@@ -103,6 +108,7 @@ final class SolicitudPrestamo
             id: $id,
             numeroSolicitud: $numeroSolicitud,
             investigadorId: $investigadorId,
+            alcancePrestamo: $alcancePrestamo,
             estado: EstadoSolicitud::Borrador,
             tituloEstudio: null,
             institucionAdscripcion: null,
@@ -135,6 +141,7 @@ final class SolicitudPrestamo
         SolicitudPrestamoId $id,
         NumeroSolicitud $numeroSolicitud,
         string $investigadorId,
+        AlcancePrestamo $alcancePrestamo,
         EstadoSolicitud $estado,
         ?string $tituloEstudio,
         ?string $institucionAdscripcion,
@@ -152,6 +159,7 @@ final class SolicitudPrestamo
             id: $id,
             numeroSolicitud: $numeroSolicitud,
             investigadorId: $investigadorId,
+            alcancePrestamo: $alcancePrestamo,
             estado: $estado,
             tituloEstudio: $tituloEstudio,
             institucionAdscripcion: $institucionAdscripcion,
@@ -358,6 +366,11 @@ final class SolicitudPrestamo
     public function investigadorId(): string
     {
         return $this->investigadorId;
+    }
+
+    public function alcancePrestamo(): AlcancePrestamo
+    {
+        return $this->alcancePrestamo;
     }
 
     public function estado(): EstadoSolicitud

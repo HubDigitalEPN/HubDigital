@@ -27,7 +27,10 @@ final class SubirActaFirmadaHandler
             throw ActaPrestamoNoEncontradaException::paraSolicitud($solicitudId);
         }
 
-        $acta->subirFirma(pdfFirmadoRuta: $input->pdfFirmadoRuta);
+        $acta->subirFirma(
+            pdfFirmadoRuta: $input->pdfFirmadoRuta,
+            documentoIdentidadRuta: $input->documentoIdentidadRuta,
+        );
 
         $this->transactionManager->executeTransactional(function () use ($acta): void {
             $this->actaRepo->guardar($acta);

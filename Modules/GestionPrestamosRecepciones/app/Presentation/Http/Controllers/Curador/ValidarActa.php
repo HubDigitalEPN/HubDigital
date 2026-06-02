@@ -9,11 +9,14 @@ use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\DevolverActaParaRefirmar\DevolverActaParaRefirmarHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\DevolverActaParaRefirmar\DevolverActaParaRefirmarInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarActaFirmada\ValidarActaFirmadaHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarActaFirmada\ValidarActaFirmadaInput;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\ActaPrestamoModel;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\PrestamoEloquentModel;
 
 #[Layout('layouts.app', params: ['title' => 'Validar acta firmada'])]
 final class ValidarActa extends Component
@@ -44,7 +47,7 @@ final class ValidarActa extends Component
             curadorId: (string) auth()->id(),
         ));
 
-        $this->successMessage = 'Acta validada correctamente.';
+        $this->successMessage = 'Acta validada. Los especímenes están siendo coordinados para el despacho al investigador. El préstamo se activará una vez que el investigador confirme la recepción.';
         $this->acta = ActaPrestamoModel::query()->with('solicitud')->find($this->id);
     }
 
@@ -61,8 +64,34 @@ final class ValidarActa extends Component
         $this->redirectRoute('prestamos.curador.actas', navigate: true);
     }
 
-    public function render(): View
+    private static array $eventosActa = [
+        'ActaEnviada',
+        'ActaFirmadaSubida',
+        'ActaFirmadaDigitalmente',
+        'ActaDevueltaPorFirmaInvalida',
+        'ActaValidada',
+    ];
+
+    public function render(ConsultarHistorialSolicitudHandler $historialHandler): View
     {
-        return view('gestionprestamosrecepciones::curador.validar-acta');
+        $prestamo = PrestamoEloquentModel::where('acta_prestamo_id', $this->id)->first();
+
+        $historialActa = [];
+
+        if ($this->acta !== null) {
+            $historial = $historialHandler->handle(new ConsultarHistorialSolicitudInput(
+                solicitudId: $this->acta->solicitud_prestamo_id,
+                usuarioId: (string) auth()->id(),
+            ));
+
+            $historialActa = array_values(
+                array_filter(
+                    $historial->eventos,
+                    fn ($e) => in_array($e->tipo, self::$eventosActa, true),
+                )
+            );
+        }
+
+        return view('gestionprestamosrecepciones::curador.validar-acta', compact('prestamo', 'historialActa'));
     }
 }

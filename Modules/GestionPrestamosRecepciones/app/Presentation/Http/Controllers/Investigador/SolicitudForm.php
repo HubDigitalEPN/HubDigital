@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador;
 
 use App\Concerns\HandlesDomainExceptions;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
@@ -23,6 +24,9 @@ final class SolicitudForm extends Component
     use HandlesDomainExceptions;
 
     public ?string $solicitudId = null;
+
+    #[Validate('required|in:nacional,internacional')]
+    public string $alcancePrestamo = 'nacional';
 
     #[Validate('required|string|max:200')]
     public string $tituloEstudio = '';
@@ -50,6 +54,8 @@ final class SolicitudForm extends Component
 
     public string $successMessage = '';
 
+    public string $lastAutoSavedAt = '';
+
     public function mount(?string $id = null): void
     {
         $this->solicitudId = $id;
@@ -61,6 +67,7 @@ final class SolicitudForm extends Component
                 abort(403);
             }
 
+            $this->alcancePrestamo = $solicitud->alcance_prestamo ?? 'nacional';
             $this->tituloEstudio = $solicitud->titulo_estudio ?? '';
             $this->institucionAdscripcion = $solicitud->institucion_adscripcion ?? '';
             $this->lineaInvestigacion = $solicitud->linea_investigacion ?? '';
@@ -76,6 +83,49 @@ final class SolicitudForm extends Component
                 ])
                 ->values()
                 ->toArray();
+        }
+    }
+
+    public function autoGuardar(ActualizarSolicitudPrestamoHandler $actualizar): void
+    {
+        if ($this->solicitudId === null) {
+            return;
+        }
+
+        $this->normalizeItems();
+
+        try {
+            $this->validate([
+                'tituloEstudio' => 'required|string|max:200',
+                'institucionAdscripcion' => 'required|string|max:255',
+                'lineaInvestigacion' => 'required|string|max:255',
+                'propositoPrestamo' => 'required|string',
+                'duracionPropuestaMeses' => 'required|integer|min:1|max:24',
+                'justificacionExtendida' => $this->duracionPropuestaMeses > 12 ? 'required|string|min:20' : 'nullable|string',
+                'items' => 'required|array|min:1',
+                'items.*.especimen_codigo_externo' => 'required|string',
+                'items.*.cantidad_solicitada' => 'required|integer|min:1',
+            ]);
+        } catch (ValidationException) {
+            return;
+        }
+
+        try {
+            $actualizar->handle(new ActualizarSolicitudPrestamoInput(
+                solicitudId: $this->solicitudId,
+                investigadorId: (string) auth()->id(),
+                tituloEstudio: $this->tituloEstudio,
+                institucionAdscripcion: $this->institucionAdscripcion,
+                lineaInvestigacion: $this->lineaInvestigacion,
+                propositoPrestamo: $this->propositoPrestamo,
+                duracionPropuestaMeses: $this->duracionPropuestaMeses,
+                items: $this->items,
+                justificacionExtendida: $this->duracionPropuestaMeses > 12 ? $this->justificacionExtendida : null,
+            ));
+
+            $this->lastAutoSavedAt = now()->format('H:i');
+        } catch (\Throwable) {
+            // fallo silencioso; el usuario puede guardar manualmente
         }
     }
 
@@ -138,6 +188,7 @@ final class SolicitudForm extends Component
         if ($this->solicitudId === null) {
             $output = $registrar->handle(new RegistrarSolicitudPrestamoInput(
                 investigadorId: $investigadorId,
+                alcancePrestamo: $this->alcancePrestamo,
                 tituloEstudio: $this->tituloEstudio,
                 institucionAdscripcion: $this->institucionAdscripcion,
                 lineaInvestigacion: $this->lineaInvestigacion,
