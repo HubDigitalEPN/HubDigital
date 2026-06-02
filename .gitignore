@@ -29,4 +29,7 @@ claude.local.md
 /.claude/
 
 /Modules/GestionPrestamosRecepciones/References/
-Modules/InventarioGestionColeccion/docs/provisioning_prod/provisioning_prod.ino
+# Firmware de provisioning con credenciales — nunca versionar
+Modules/InventarioGestionColeccion/docs/provisioning_prod/
+**/provisioning_prod/
+**/provisioning_prod*.ino
