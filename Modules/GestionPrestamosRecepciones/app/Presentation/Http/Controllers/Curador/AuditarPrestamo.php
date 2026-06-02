@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador;
 
 use App\Concerns\HandlesDomainExceptions;
+use App\Models\User;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
@@ -199,6 +200,10 @@ final class AuditarPrestamo extends Component
 
         $verificacion = $verificacionRepo->buscarPorPrestamoId(PrestamoId::fromString($this->prestamoId));
 
-        return view('gestionprestamosrecepciones::curador.auditar-prestamo', compact('prestamo', 'acta', 'solicitud', 'timeline', 'verificacion'));
+        $nombreValidador = $acta?->validada_por
+            ? (User::find($acta->validada_por)?->name ?? $acta->validada_por)
+            : null;
+
+        return view('gestionprestamosrecepciones::curador.auditar-prestamo', compact('prestamo', 'acta', 'solicitud', 'timeline', 'verificacion', 'nombreValidador'));
     }
 }

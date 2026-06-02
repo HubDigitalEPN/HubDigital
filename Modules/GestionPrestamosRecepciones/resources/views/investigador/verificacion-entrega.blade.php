@@ -1,4 +1,4 @@
-<div class="p-6 space-y-6">
+<div class="space-y-5 pb-24">
 
     <flux:breadcrumbs>
         <flux:breadcrumbs.item wire:navigate href="{{ route('prestamos.investigador.mis-prestamos') }}">
@@ -10,41 +10,66 @@
         <flux:breadcrumbs.item>Reportar recepción</flux:breadcrumbs.item>
     </flux:breadcrumbs>
 
-    <div class="max-w-2xl mx-auto space-y-6">
-
+    <div>
         <flux:heading size="xl" level="1" class="font-display">Reportar recepción de especímenes</flux:heading>
+        <flux:text class="text-text-secondary text-sm mt-1">
+            Indica el estado en que recibiste los especímenes para activar el préstamo.
+        </flux:text>
+    </div>
 
-        {{-- Estado general del envío --}}
-        <div class="rounded-lg border border-border bg-surface shadow-sm p-5 space-y-4">
-            <flux:heading size="lg" level="2" class="font-display">Estado general del envío</flux:heading>
-            <flux:separator />
-
+    {{-- Sección 1: Estado general --}}
+    <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
+        <div class="px-5 py-4 border-b border-border flex items-center gap-3">
+            <div class="flex h-7 w-7 items-center justify-center rounded-full bg-blue-navy text-white text-sm font-bold shrink-0">
+                1
+            </div>
+            <flux:heading size="base" level="2" class="font-display">Estado general del envío</flux:heading>
+        </div>
+        <div class="p-5">
             <div class="flex flex-col gap-3">
-                <label class="flex items-start gap-3 cursor-pointer rounded-lg border border-border p-3 hover:bg-bg-main transition-colors
-                    {{ $estadoEnvio === 'sin_novedades' ? 'border-bio-green bg-[#E8F5E9]' : '' }}">
-                    <input type="radio" wire:model.live="estadoEnvio" value="sin_novedades" class="mt-0.5 accent-bio-green" />
-                    <div>
-                        <p class="text-sm font-medium text-text-primary">Sin novedades</p>
-                        <p class="text-xs text-text-secondary">Todos los especímenes llegaron en buen estado.</p>
+                <label class="flex items-start gap-4 cursor-pointer rounded-lg border-2 p-4 transition-all
+                    {{ $estadoEnvio === 'sin_novedades'
+                        ? 'border-bio-green bg-bio-green/5 ring-1 ring-bio-green/20'
+                        : 'border-border hover:border-bio-green/40' }}">
+                    <input type="radio" wire:model.live="estadoEnvio" value="sin_novedades"
+                        class="mt-0.5 accent-bio-green shrink-0" />
+                    <div class="flex-1">
+                        <p class="text-sm font-semibold text-text-primary">Sin novedades</p>
+                        <p class="text-xs text-text-secondary mt-0.5">Todos los especímenes llegaron en buen estado y en la cantidad correcta.</p>
                     </div>
+                    @if($estadoEnvio === 'sin_novedades')
+                        <flux:icon name="check-circle" class="size-5 text-bio-green shrink-0" />
+                    @endif
                 </label>
 
-                <label class="flex items-start gap-3 cursor-pointer rounded-lg border border-border p-3 hover:bg-bg-main transition-colors
-                    {{ $estadoEnvio === 'con_novedades' ? 'border-error bg-[#FFEBEE]' : '' }}">
-                    <input type="radio" wire:model.live="estadoEnvio" value="con_novedades" class="mt-0.5 accent-error" />
-                    <div>
-                        <p class="text-sm font-medium text-text-primary">Con novedades</p>
-                        <p class="text-xs text-text-secondary">Uno o más especímenes presentan observaciones.</p>
+                <label class="flex items-start gap-4 cursor-pointer rounded-lg border-2 p-4 transition-all
+                    {{ $estadoEnvio === 'con_novedades'
+                        ? 'border-error bg-error/5 ring-1 ring-error/20'
+                        : 'border-border hover:border-error/40' }}">
+                    <input type="radio" wire:model.live="estadoEnvio" value="con_novedades"
+                        class="mt-0.5 accent-error shrink-0" />
+                    <div class="flex-1">
+                        <p class="text-sm font-semibold text-text-primary">Con novedades</p>
+                        <p class="text-xs text-text-secondary mt-0.5">Uno o más especímenes presentan daños, faltan unidades o hay irregularidades.</p>
                     </div>
+                    @if($estadoEnvio === 'con_novedades')
+                        <flux:icon name="exclamation-triangle" class="size-5 text-error shrink-0" />
+                    @endif
                 </label>
             </div>
         </div>
+    </div>
 
-        {{-- Observaciones por especímen (solo si ConNovedades) --}}
-        @if($estadoEnvio === 'con_novedades')
-            <div class="rounded-lg border border-border bg-surface shadow-sm p-5 space-y-4">
-                <flux:heading size="lg" level="2" class="font-display">Observaciones por especímen</flux:heading>
-                <flux:separator />
+    {{-- Sección 2: Observaciones (solo si hay novedades) --}}
+    @if($estadoEnvio === 'con_novedades')
+        <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
+            <div class="px-5 py-4 border-b border-border flex items-center gap-3">
+                <div class="flex h-7 w-7 items-center justify-center rounded-full bg-blue-navy text-white text-sm font-bold shrink-0">
+                    2
+                </div>
+                <flux:heading size="base" level="2" class="font-display">Observaciones por espécimen</flux:heading>
+            </div>
+            <div class="p-5 space-y-3">
 
                 @php $items = collect($prestamo->acta?->solicitud?->items ?? []); @endphp
 
@@ -54,43 +79,51 @@
                     @error('observaciones')
                         <p class="text-xs text-error">{{ $message }}</p>
                     @enderror
-                    <div class="space-y-3">
-                        @foreach($observaciones as $i => $obs)
-                            <div class="rounded-lg border border-border p-3 space-y-2">
-                                @php $item = $items->get($i); @endphp
-                                <p class="text-sm font-medium text-text-primary">
-                                    {{ $item?->especimen_codigo_externo ?? 'Especímen ' . ($i + 1) }}
-                                    @if($item?->especimen_snapshot)
-                                        <span class="text-text-secondary font-normal">— {{ $item->especimen_snapshot['nombre'] ?? '' }}</span>
-                                    @endif
+
+                    @foreach($observaciones as $i => $obs)
+                        @php $item = $items->get($i); @endphp
+                        <div class="rounded-lg border border-border bg-bg-main overflow-hidden">
+                            <div class="flex items-center gap-3 px-4 py-2.5 border-b border-border">
+                                <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-science-blue/10">
+                                    <flux:icon name="beaker" class="size-4 text-science-blue" />
+                                </div>
+                                <p class="text-sm font-mono font-medium text-text-primary">
+                                    {{ $item?->especimen_codigo_externo ?? 'Espécimen ' . ($i + 1) }}
                                 </p>
+                                @if($item?->especimen_snapshot)
+                                    <span class="text-xs text-text-secondary">— {{ $item->especimen_snapshot['nombre'] ?? '' }}</span>
+                                @endif
+                            </div>
+                            <div class="p-3">
                                 <flux:field>
                                     <flux:label class="sr-only">Observación</flux:label>
                                     <flux:textarea
                                         wire:model="observaciones.{{ $i }}.descripcion"
-                                        placeholder="Opcional — describe el estado del especímen si presenta alguna irregularidad."
+                                        placeholder="Describe el estado del espécimen si presenta alguna irregularidad (opcional)."
                                         rows="2" />
                                     <flux:error name="observaciones.{{ $i }}.descripcion" />
                                 </flux:field>
                             </div>
-                        @endforeach
-                    </div>
+                        </div>
+                    @endforeach
                 @endif
             </div>
-        @endif
-
-        {{-- Acciones --}}
-        <div class="flex items-center gap-3">
-            <flux:button variant="primary" wire:click="registrar" wire:loading.attr="disabled">
-                <span wire:loading.remove wire:target="registrar">Enviar verificación</span>
-                <span wire:loading wire:target="registrar">Enviando…</span>
-            </flux:button>
-            <flux:button variant="ghost" wire:navigate
-                href="{{ route('prestamos.investigador.prestamo.detalle', $prestamo->id) }}">
-                Cancelar
-            </flux:button>
         </div>
+    @endif
 
+</div>
+
+{{-- Barra de acciones fija al fondo --}}
+<div class="fixed bottom-0 inset-x-0 z-20 bg-surface border-t border-border shadow-lg">
+    <div class="px-6 py-3 flex items-center gap-3 justify-end">
+        <flux:button variant="ghost" wire:navigate
+            href="{{ route('prestamos.investigador.prestamo.detalle', $prestamo->id) }}">
+            Cancelar
+        </flux:button>
+        <flux:button variant="primary" wire:click="registrar" wire:loading.attr="disabled">
+            <flux:icon wire:loading wire:target="registrar" name="arrow-path" class="animate-spin" />
+            <flux:icon name="check" class="size-4" />
+            Enviar verificación
+        </flux:button>
     </div>
-
 </div>

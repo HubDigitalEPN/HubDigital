@@ -12,6 +12,8 @@ use Livewire\Attributes\Validate;
 use Livewire\Component;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarSolicitudPrestamo\AprobarSolicitudPrestamoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarSolicitudPrestamo\AprobarSolicitudPrestamoInput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ObservarSolicitudPrestamo\ObservarSolicitudPrestamoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ObservarSolicitudPrestamo\ObservarSolicitudPrestamoInput;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\SolicitudPrestamoModel;
@@ -111,8 +113,13 @@ final class RevisarSolicitud extends Component
         $this->redirectRoute('prestamos.curador.solicitudes', navigate: true);
     }
 
-    public function render(): View
+    public function render(ConsultarHistorialSolicitudHandler $historialHandler): View
     {
-        return view('gestionprestamosrecepciones::curador.revisar-solicitud');
+        $historial = $historialHandler->handle(new ConsultarHistorialSolicitudInput(
+            solicitudId: $this->id,
+            usuarioId: (string) auth()->id(),
+        ));
+
+        return view('gestionprestamosrecepciones::curador.revisar-solicitud', compact('historial'));
     }
 }

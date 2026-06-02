@@ -1,4 +1,4 @@
-<div class="space-y-6">
+<div class="space-y-5">
 
     <flux:breadcrumbs>
         <flux:breadcrumbs.item wire:navigate href="{{ route('prestamos.curador.actas') }}">
@@ -14,66 +14,108 @@
     @if(!$acta)
         <flux:callout variant="danger" icon="exclamation-triangle">Acta no encontrada.</flux:callout>
     @else
-        <div class="flex items-center justify-between gap-4">
+
+        {{-- Encabezado --}}
+        <div>
             <flux:heading size="xl" level="1" class="font-display">
                 {{ $acta->estado === 'validada' ? 'Acta de préstamo' : 'Validar acta firmada' }}
             </flux:heading>
-            <x-gestionprestamosrecepciones::acta-status-badge :estado="$acta->estado" />
+            <div class="flex items-center gap-3 mt-1.5 flex-wrap">
+                <p class="font-mono text-xs text-text-secondary">{{ $acta->numero_prestamo }}</p>
+                <x-gestionprestamosrecepciones::acta-status-badge :estado="$acta->estado" />
+            </div>
         </div>
 
-        <div class="rounded-lg border border-border bg-surface shadow-sm p-5">
-            <dl class="grid grid-cols-2 gap-x-8 gap-y-3 text-sm lg:grid-cols-4">
-                <div>
-                    <dt class="text-text-secondary">N.º préstamo</dt>
-                    <dd class="font-mono font-medium text-text-primary">{{ $acta->numero_prestamo }}</dd>
+        {{-- Grid: datos + historial --}}
+        <div class="grid gap-6 lg:grid-cols-3">
+
+            {{-- Datos del acta --}}
+            <div class="lg:col-span-2 rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
+                <div class="px-5 py-4 border-b border-border flex items-center gap-3">
+                    <div class="flex h-7 w-7 items-center justify-center rounded-full bg-blue-navy text-white shrink-0">
+                        <flux:icon name="clipboard-document" class="size-3.5" />
+                    </div>
+                    <flux:heading size="base" level="2" class="font-display">Información del acta</flux:heading>
                 </div>
-                <div>
-                    <dt class="text-text-secondary">N.º solicitud</dt>
-                    <dd class="font-mono text-text-primary">{{ $acta->solicitud?->numero_solicitud ?? '—' }}</dd>
+                <div class="p-5">
+                    <dl class="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
+                        <div>
+                            <dt class="text-xs text-text-secondary uppercase tracking-wide">N.º préstamo</dt>
+                            <dd class="font-mono font-medium text-text-primary mt-1">{{ $acta->numero_prestamo }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs text-text-secondary uppercase tracking-wide">N.º solicitud</dt>
+                            <dd class="font-mono text-text-primary mt-1">{{ $acta->solicitud?->numero_solicitud ?? '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs text-text-secondary uppercase tracking-wide">Fecha de inicio</dt>
+                            <dd class="font-medium text-text-primary mt-1">{{ $acta->fecha_inicio?->format('d/m/Y') ?? '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs text-text-secondary uppercase tracking-wide">Fecha de vencimiento</dt>
+                            <dd class="font-medium text-text-primary mt-1">{{ $acta->fecha_fin?->format('d/m/Y') ?? '—' }}</dd>
+                        </div>
+                        <div class="col-span-2">
+                            <dt class="text-xs text-text-secondary uppercase tracking-wide">Título del estudio</dt>
+                            <dd class="font-medium text-text-primary mt-1">{{ $acta->solicitud?->titulo_estudio ?? '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs text-text-secondary uppercase tracking-wide">Institución</dt>
+                            <dd class="font-medium text-text-primary mt-1">{{ $acta->solicitud?->institucion_adscripcion ?? '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs text-text-secondary uppercase tracking-wide">Tipo / Alcance</dt>
+                            <dd class="mt-1 capitalize font-medium text-text-primary">{{ str_replace('_', ' ', $acta->tipo_prestamo) }} ·
+                                @if(($acta->alcance_prestamo ?? 'nacional') === 'internacional')
+                                    <span class="inline-flex items-center gap-1 rounded-full bg-science-blue/10 text-science-blue px-2 py-0.5 text-xs font-semibold">
+                                        <flux:icon name="globe-alt" class="size-3" /> Internacional
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center gap-1 rounded-full bg-bio-green/10 text-bio-green px-2 py-0.5 text-xs font-semibold">
+                                        <flux:icon name="map-pin" class="size-3" /> Nacional
+                                    </span>
+                                @endif
+                            </dd>
+                        </div>
+                    </dl>
                 </div>
-                <div>
-                    <dt class="text-text-secondary">Fecha de inicio</dt>
-                    <dd class="text-text-primary">{{ $acta->fecha_inicio?->format('d/m/Y') ?? '—' }}</dd>
+            </div>
+
+            {{-- Historial del acta --}}
+            <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden h-fit">
+                <div class="px-5 py-4 border-b border-border flex items-center gap-3">
+                    <div class="flex h-7 w-7 items-center justify-center rounded-full bg-blue-navy text-white shrink-0">
+                        <flux:icon name="clock" class="size-3.5" />
+                    </div>
+                    <flux:heading size="base" level="2" class="font-display">Historial</flux:heading>
                 </div>
-                <div>
-                    <dt class="text-text-secondary">Fecha de vencimiento</dt>
-                    <dd class="text-text-primary">{{ $acta->fecha_fin?->format('d/m/Y') ?? '—' }}</dd>
+                <div class="p-5">
+                    @php
+                        $etiquetasActa = [
+                            'ActaEnviada'                  => 'Acta enviada',
+                            'ActaFirmadaSubida'            => 'Firma subida',
+                            'ActaFirmadaDigitalmente'      => 'Firmada digitalmente',
+                            'ActaDevueltaPorFirmaInvalida' => 'Devuelta para refirmar',
+                            'ActaValidada'                 => 'Acta validada',
+                        ];
+                    @endphp
+                    @forelse($historialActa as $i => $evento)
+                        <x-gestionprestamosrecepciones::timeline-event
+                            :fecha="$evento->ocurridoEn->format('d/m/Y H:i')"
+                            :titulo="$etiquetasActa[$evento->tipo] ?? $evento->tipo"
+                            :ultimo="$i === count($historialActa) - 1" />
+                    @empty
+                        <flux:text class="text-xs text-text-secondary">Sin eventos registrados.</flux:text>
+                    @endforelse
                 </div>
-                <div class="col-span-2">
-                    <dt class="text-text-secondary">Título del estudio</dt>
-                    <dd class="font-medium text-text-primary">{{ $acta->solicitud?->titulo_estudio ?? '—' }}</dd>
-                </div>
-                <div>
-                    <dt class="text-text-secondary">Institución</dt>
-                    <dd class="text-text-primary">{{ $acta->solicitud?->institucion_adscripcion ?? '—' }}</dd>
-                </div>
-                <div>
-                    <dt class="text-text-secondary">Tipo de préstamo</dt>
-                    <dd class="text-text-primary capitalize">{{ str_replace('_', ' ', $acta->tipo_prestamo) }}</dd>
-                </div>
-                <div>
-                    <dt class="text-text-secondary">Alcance</dt>
-                    <dd class="text-text-primary">
-                        @if(($acta->alcance_prestamo ?? 'nacional') === 'internacional')
-                            <span class="inline-flex items-center gap-1 rounded-full bg-[#E3F2FD] text-[#1565C0] border border-[#90CAF9] px-2 py-0.5 text-xs font-semibold">
-                                <flux:icon name="globe-alt" class="size-3" />
-                                Internacional
-                            </span>
-                        @else
-                            <span class="inline-flex items-center gap-1 rounded-full bg-[#E8F5E9] text-[#2E7D32] border border-[#A5D6A7] px-2 py-0.5 text-xs font-semibold">
-                                <flux:icon name="map-pin" class="size-3" />
-                                Nacional
-                            </span>
-                        @endif
-                    </dd>
-                </div>
-            </dl>
+            </div>
+
         </div>
 
-        {{-- Visor de documentos con pestañas --}}
-        <div x-data="{ tab: '{{ $acta->pdf_firmado_ruta ? 'firmada' : 'original' }}' }" class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
+        {{-- Visor de documentos --}}
+        <div x-data="{ tab: '{{ $acta->pdf_firmado_ruta ? 'firmada' : 'original' }}' }"
+             class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
 
-            {{-- Barra de pestañas --}}
             <div class="flex items-center gap-1 border-b border-border bg-bg-main px-2">
                 <button @click="tab = 'original'"
                     :class="tab === 'original' ? 'border-b-2 border-science-blue text-science-blue' : 'text-text-secondary hover:text-text-primary'"
@@ -100,102 +142,67 @@
                     </button>
                 @endif
 
-                {{-- Botón "Abrir en nueva pestaña" contextual --}}
                 <div class="ml-auto flex items-center gap-2">
-                    {{-- Original --}}
                     <div x-show="tab === 'original'" class="flex items-center gap-1">
                         <a href="{{ route('prestamos.acta.embed', $acta->id) }}" target="_blank"
-                            class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded">
-                            <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-                            </svg>
-                            Abrir
+                            class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded transition-colors">
+                            <flux:icon name="arrow-top-right-on-square" class="size-3.5" /> Abrir
                         </a>
                         <a href="{{ route('prestamos.acta.pdf-original', $acta->id) }}" download="acta-{{ $acta->numero_prestamo }}.pdf"
-                            class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded">
-                            <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                            </svg>
-                            Descargar
+                            class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded transition-colors">
+                            <flux:icon name="arrow-down-tray" class="size-3.5" /> Descargar
                         </a>
                     </div>
 
-                    {{-- Firmada --}}
-                    @php
-                        $esFirmaDigital = str_starts_with($acta->pdf_firmado_ruta ?? '', 'firmas-investigador/');
-                    @endphp
+                    @php $esFirmaDigital = str_starts_with($acta->pdf_firmado_ruta ?? '', 'firmas-investigador/'); @endphp
                     <div x-show="tab === 'firmada'" x-cloak class="flex items-center gap-1">
                         <a href="{{ route('prestamos.acta.ver', $acta->id) }}" target="_blank"
-                            class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded">
-                            <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-                            </svg>
-                            Abrir
+                            class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded transition-colors">
+                            <flux:icon name="arrow-top-right-on-square" class="size-3.5" /> Abrir
                         </a>
                         @if($acta->pdf_firmado_ruta)
                             @if($esFirmaDigital)
                                 <a href="{{ route('prestamos.acta.ver', $acta->id) }}?download=1" target="_blank"
-                                    class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded">
-                                    <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                                    </svg>
-                                    Descargar
+                                    class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded transition-colors">
+                                    <flux:icon name="arrow-down-tray" class="size-3.5" /> Descargar
                                 </a>
                             @else
                                 <a href="{{ route('prestamos.acta.pdf-firmado', $acta->id) }}" download="acta-firmada-{{ $acta->numero_prestamo }}.pdf"
-                                    class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded">
-                                    <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                                    </svg>
-                                    Descargar
+                                    class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded transition-colors">
+                                    <flux:icon name="arrow-down-tray" class="size-3.5" /> Descargar
                                 </a>
                             @endif
                         @endif
                     </div>
 
-                    {{-- Identidad --}}
                     @if($acta->documento_identidad_ruta)
                         <div x-show="tab === 'identidad'" x-cloak class="flex items-center gap-1">
                             <a href="{{ route('prestamos.acta.documento-identidad', $acta->id) }}" target="_blank"
-                                class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded">
-                                <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-                                </svg>
-                                Abrir
+                                class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded transition-colors">
+                                <flux:icon name="arrow-top-right-on-square" class="size-3.5" /> Abrir
                             </a>
                             <a href="{{ route('prestamos.acta.documento-identidad', $acta->id) }}" download="identidad-{{ $acta->numero_prestamo }}.pdf"
-                                class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded">
-                                <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                                </svg>
-                                Descargar
+                                class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded transition-colors">
+                                <flux:icon name="arrow-down-tray" class="size-3.5" /> Descargar
                             </a>
                         </div>
                     @endif
 
-                    {{-- Exportacion --}}
                     @if($acta->documento_exportacion_ruta)
                         <div x-show="tab === 'exportacion'" x-cloak class="flex items-center gap-1">
                             <a href="{{ route('prestamos.acta.documento-exportacion', $acta->id) }}" target="_blank"
-                                class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded">
-                                <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-                                </svg>
-                                Abrir
+                                class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded transition-colors">
+                                <flux:icon name="arrow-top-right-on-square" class="size-3.5" /> Abrir
                             </a>
                             <a href="{{ route('prestamos.acta.documento-exportacion', $acta->id) }}" download="exportacion-{{ $acta->numero_prestamo }}.pdf"
-                                class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded">
-                                <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                                </svg>
-                                Descargar
+                                class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded transition-colors">
+                                <flux:icon name="arrow-down-tray" class="size-3.5" /> Descargar
                             </a>
                         </div>
                     @endif
                 </div>
             </div>
 
-            {{-- Contenido de cada pestaña --}}
             <div x-show="tab === 'original'">
                 <iframe src="{{ route('prestamos.acta.embed', $acta->id) }}"
                     class="w-full" style="height: calc(100vh - 310px); min-height: 520px;"
@@ -208,9 +215,9 @@
                         class="w-full" style="height: calc(100vh - 310px); min-height: 520px;"
                         title="Acta firmada"></iframe>
                 @else
-                    <div class="flex items-center justify-center text-text-secondary text-sm"
-                        style="height: 300px;">
-                        El investigador aún no ha firmado el acta digitalmente.
+                    <div class="flex flex-col items-center justify-center text-text-secondary text-sm gap-2" style="height: 300px;">
+                        <flux:icon name="clock" class="size-8 opacity-40" />
+                        <span>El investigador aún no ha firmado el acta.</span>
                     </div>
                 @endif
             </div>
@@ -230,7 +237,6 @@
                         title="Documento de exportación"></iframe>
                 </div>
             @endif
-
         </div>
 
         {{-- Acciones de validación --}}
@@ -257,14 +263,12 @@
             <flux:text class="text-text-secondary text-sm">
                 Indica el motivo por el que el investigador debe volver a firmar el acta.
             </flux:text>
-
             <flux:field>
                 <flux:label>Motivo de la devolución</flux:label>
                 <flux:textarea wire:model="motivoDevolucion" rows="4"
                     placeholder="Describe el problema con la firma (mínimo 10 caracteres)..." />
                 <flux:error name="motivoDevolucion" />
             </flux:field>
-
             <div class="flex justify-end gap-2 pt-2">
                 <flux:button variant="ghost" wire:click="$set('showMotivoModal', false)">Cancelar</flux:button>
                 <flux:button variant="danger" wire:click="devolverParaRefirmar"

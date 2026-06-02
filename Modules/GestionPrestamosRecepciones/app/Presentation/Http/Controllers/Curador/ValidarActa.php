@@ -9,6 +9,8 @@ use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\DevolverActaParaRefirmar\DevolverActaParaRefirmarHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\DevolverActaParaRefirmar\DevolverActaParaRefirmarInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarActaFirmada\ValidarActaFirmadaHandler;
@@ -62,10 +64,34 @@ final class ValidarActa extends Component
         $this->redirectRoute('prestamos.curador.actas', navigate: true);
     }
 
-    public function render(): View
+    private static array $eventosActa = [
+        'ActaEnviada',
+        'ActaFirmadaSubida',
+        'ActaFirmadaDigitalmente',
+        'ActaDevueltaPorFirmaInvalida',
+        'ActaValidada',
+    ];
+
+    public function render(ConsultarHistorialSolicitudHandler $historialHandler): View
     {
         $prestamo = PrestamoEloquentModel::where('acta_prestamo_id', $this->id)->first();
 
-        return view('gestionprestamosrecepciones::curador.validar-acta', compact('prestamo'));
+        $historialActa = [];
+
+        if ($this->acta !== null) {
+            $historial = $historialHandler->handle(new ConsultarHistorialSolicitudInput(
+                solicitudId: $this->acta->solicitud_prestamo_id,
+                usuarioId: (string) auth()->id(),
+            ));
+
+            $historialActa = array_values(
+                array_filter(
+                    $historial->eventos,
+                    fn ($e) => in_array($e->tipo, self::$eventosActa, true),
+                )
+            );
+        }
+
+        return view('gestionprestamosrecepciones::curador.validar-acta', compact('prestamo', 'historialActa'));
     }
 }
