@@ -51,14 +51,16 @@ final class AlertaIndex extends Component
         ListarGabineteHandler $gabineteHandler,
         ListarRanurasGabineteHandler $ranurasHandler,
     ): void {
-        $this->buildCajasPorId($cajasHandler);
-        $this->buildRanurasInfo($gabineteHandler, $ranurasHandler);
-        $this->cargarAlertas($alertasHandler);
+        $this->cargarProtegido(function () use ($alertasHandler, $cajasHandler, $gabineteHandler, $ranurasHandler) {
+            $this->buildCajasPorId($cajasHandler);
+            $this->buildRanurasInfo($gabineteHandler, $ranurasHandler);
+            $this->cargarAlertas($alertasHandler);
+        });
     }
 
     public function updatedFiltroEstado(): void
     {
-        $this->cargarAlertas(app(ListarAlertasHandler::class));
+        $this->cargarProtegido(fn () => $this->cargarAlertas(app(ListarAlertasHandler::class)));
     }
 
     public function abrirResolverModal(string $alertaId): void

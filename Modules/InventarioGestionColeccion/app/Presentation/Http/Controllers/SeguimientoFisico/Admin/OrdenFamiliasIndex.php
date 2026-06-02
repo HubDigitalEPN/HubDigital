@@ -31,7 +31,7 @@ final class OrdenFamiliasIndex extends Component
 
     public function mount(ObtenerOrdenFamiliasColeccionHandler $handler): void
     {
-        $this->cargar($handler);
+        $this->cargarProtegido(fn () => $this->cargar($handler));
     }
 
     public function subir(int $index): void

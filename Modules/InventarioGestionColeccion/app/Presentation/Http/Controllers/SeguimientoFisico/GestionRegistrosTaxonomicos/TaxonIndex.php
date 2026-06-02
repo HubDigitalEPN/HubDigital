@@ -67,7 +67,7 @@ final class TaxonIndex extends Component
     public function mount(ListarTaxonesHandler $handler): void
     {
         $this->rangos = array_column(RangoTaxonomico::cases(), 'value');
-        $this->cargarTaxones($handler);
+        $this->cargarProtegido(fn () => $this->cargarTaxones($handler));
     }
 
     public function abrirModal(): void

@@ -176,15 +176,17 @@ final class EspecimenIndex extends Component
         ListarTaxonesHandler $taxonesHandler,
         ListarEntidadesDepositantesHandler $entidadesHandler,
     ): void {
-        $this->taxones = array_map(
-            fn ($t) => ['id' => $t->id, 'label' => "{$t->nombreCientifico} ({$t->rango})"],
-            $taxonesHandler->handle()->items,
-        );
+        $this->cargarProtegido(function () use ($taxonesHandler, $entidadesHandler) {
+            $this->taxones = array_map(
+                fn ($t) => ['id' => $t->id, 'label' => "{$t->nombreCientifico} ({$t->rango})"],
+                $taxonesHandler->handle()->items,
+            );
 
-        $this->entidades = array_map(
-            fn ($e) => ['id' => $e->id, 'label' => $e->nombre],
-            $entidadesHandler->handle()->items,
-        );
+            $this->entidades = array_map(
+                fn ($e) => ['id' => $e->id, 'label' => $e->nombre],
+                $entidadesHandler->handle()->items,
+            );
+        });
 
         $this->fechaColecta = date('Y-m-d');
     }

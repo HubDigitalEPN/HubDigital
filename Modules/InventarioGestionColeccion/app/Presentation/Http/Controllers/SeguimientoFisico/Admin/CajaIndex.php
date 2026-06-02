@@ -90,12 +90,14 @@ final class CajaIndex extends Component
         ListarCajasHandler $cajasHandler,
         ListarGabineteHandler $gabineteHandler,
     ): void {
-        $this->cargarCajas($cajasHandler);
+        $this->cargarProtegido(function () use ($cajasHandler, $gabineteHandler) {
+            $this->cargarCajas($cajasHandler);
 
-        $this->gabinetes = array_map(
-            fn ($g) => ['id' => $g->id, 'label' => "{$g->codigo} — {$g->nombre}"],
-            $gabineteHandler->handle()->items,
-        );
+            $this->gabinetes = array_map(
+                fn ($g) => ['id' => $g->id, 'label' => "{$g->codigo} — {$g->nombre}"],
+                $gabineteHandler->handle()->items,
+            );
+        });
     }
 
     public function updatedGabineteIdSeleccionado(string $value): void
@@ -107,13 +109,15 @@ final class CajaIndex extends Component
             return;
         }
 
-        $handler = app(ListarRanurasGabineteHandler::class);
-        $output = $handler->handle(new ListarRanurasGabineteInput($value));
-        $this->ranurasDisponibles = array_values(array_map(
-            fn ($r) => ['id' => $r->id, 'label' => "Ranura {$r->numeroRanura}"],
-            array_filter($output->items, fn ($r) => $r->cajaActualId === null && $r->activa),
-        ));
-        $this->ranuraIdSeleccionada = '';
+        $this->cargarProtegido(function () use ($value) {
+            $handler = app(ListarRanurasGabineteHandler::class);
+            $output = $handler->handle(new ListarRanurasGabineteInput($value));
+            $this->ranurasDisponibles = array_values(array_map(
+                fn ($r) => ['id' => $r->id, 'label' => "Ranura {$r->numeroRanura}"],
+                array_filter($output->items, fn ($r) => $r->cajaActualId === null && $r->activa),
+            ));
+            $this->ranuraIdSeleccionada = '';
+        });
     }
 
     public function crearCaja(

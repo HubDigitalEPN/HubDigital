@@ -70,7 +70,7 @@ final class EntidadDepositanteIndex extends Component
     public function mount(ListarEntidadesDepositantesHandler $handler): void
     {
         $this->tipos = array_column(TipoEntidadDepositante::cases(), 'value');
-        $this->cargarEntidades($handler);
+        $this->cargarProtegido(fn () => $this->cargarEntidades($handler));
     }
 
     public function abrirModal(): void

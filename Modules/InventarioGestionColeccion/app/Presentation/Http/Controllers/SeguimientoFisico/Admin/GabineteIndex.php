@@ -57,7 +57,7 @@ final class GabineteIndex extends Component
 
     public function mount(ListarGabineteHandler $handler): void
     {
-        $this->cargarGabinetes($handler);
+        $this->cargarProtegido(fn () => $this->cargarGabinetes($handler));
     }
 
     public function abrirModal(): void

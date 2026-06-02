@@ -7,6 +7,10 @@
         </div>
     </div>
 
+    @if($errorMessage)
+        <flux:callout variant="danger" icon="exclamation-triangle">{{ $errorMessage }}</flux:callout>
+    @endif
+
     {{-- Resumen de estados --}}
     @if(count($resumenEstados) > 0)
         @php

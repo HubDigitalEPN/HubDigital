@@ -40,6 +40,23 @@ trait TraduceErroresPersistencia
         'taxonomia_especimen_identificadores_especimen_id_tipo_valor_unique' => 'Ese identificador ya está registrado para el espécimen.',
     ];
 
+    /**
+     * Ejecuta la carga inicial de datos (típicamente en mount) protegiéndola de
+     * fallos de base de datos. Si la carga falla, deja un mensaje claro en
+     * $this->errorMessage y permite que la página se renderice (con listas
+     * vacías) en lugar de romper con un error 500 sin contexto para el usuario.
+     *
+     * Requiere que el componente declare la propiedad pública ?string $errorMessage.
+     */
+    protected function cargarProtegido(callable $carga): void
+    {
+        try {
+            $carga();
+        } catch (Throwable $e) {
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
+        }
+    }
+
     protected function traducirErrorParaUsuario(Throwable $e): string
     {
         $errorBaseDatos = $this->detectarErrorBaseDatos($e);
@@ -82,20 +99,87 @@ trait TraduceErroresPersistencia
     private function mensajeParaErrorBaseDatos(Throwable $db): string
     {
         $mensaje = $db->getMessage();
+        $sqlState = $this->extraerSqlState($mensaje, $db);
+
+        // Los problemas de conexión/disponibilidad se evalúan primero: no son culpa
+        // del dato ingresado y se resuelven reintentando, por lo que merecen un
+        // mensaje distinto al de las violaciones de unicidad/integridad.
+        if ($this->esErrorDeConexion($sqlState, $mensaje)) {
+            return 'No se pudo conectar con la base de datos en este momento. Espera unos segundos e inténtalo de nuevo; si el problema persiste, avisa al administrador.';
+        }
+
         $constraint = $this->extraerNombreConstraint($mensaje);
 
         if ($constraint !== null && isset($this->mensajesPorConstraint[$constraint])) {
             return $this->mensajesPorConstraint[$constraint];
         }
 
-        return match ($this->extraerSqlState($mensaje, $db)) {
+        return match ($sqlState) {
             '23505' => 'El registro ya existe: hay un valor que debe ser único y está duplicado.',
             '23503' => 'No se puede completar la operación porque el registro está vinculado con otros datos.',
             '23502' => 'Falta un dato obligatorio para completar la operación.',
             '23514' => 'Uno de los valores ingresados no cumple las restricciones permitidas.',
             '23000' => 'La operación viola una restricción de integridad de los datos.',
-            default => 'No se pudo guardar la información por un problema con la base de datos. Inténtalo de nuevo.',
+            '40001' => 'Hubo un conflicto al guardar simultáneamente con otra operación. Inténtalo de nuevo.',
+            '40P01' => 'Hubo un bloqueo entre operaciones simultáneas (deadlock). Inténtalo de nuevo.',
+            '57014' => 'La operación tardó demasiado y fue cancelada. Inténtalo de nuevo.',
+            '55P03' => 'El registro está siendo usado por otra operación. Espera un momento e inténtalo de nuevo.',
+            default => 'No se pudo completar la operación por un problema con la base de datos. Inténtalo de nuevo.',
         };
+    }
+
+    /**
+     * Determina si el error es de conexión/disponibilidad del servidor (no de los datos).
+     * Cubre los SQLSTATE de la clase 08 (fallo de conexión), agotamiento de recursos
+     * (demasiadas conexiones, apagado del servidor) y, como respaldo, los mensajes típicos
+     * del pooler de PostgreSQL/Supabase cuando no traen un SQLSTATE limpio.
+     */
+    private function esErrorDeConexion(string $sqlState, string $mensaje): bool
+    {
+        $estadosDeConexion = [
+            '08000', // connection_exception
+            '08003', // connection_does_not_exist
+            '08006', // connection_failure
+            '08001', // sqlclient_unable_to_establish_sqlconnection
+            '08004', // sqlserver_rejected_establishment_of_sqlconnection
+            '08007', // transaction_resolution_unknown
+            '53300', // too_many_connections
+            '53400', // configuration_limit_exceeded
+            '57P01', // admin_shutdown
+            '57P02', // crash_shutdown
+            '57P03', // cannot_connect_now
+            'HY000', // error genérico de PDO (a menudo "server has gone away" / timeouts)
+        ];
+
+        if (in_array($sqlState, $estadosDeConexion, true)) {
+            return true;
+        }
+
+        $patrones = [
+            'could not connect',
+            'connection refused',
+            'connection timed out',
+            'connection reset',
+            'server closed the connection',
+            'no connection to the server',
+            'terminating connection',
+            'gone away',
+            'too many connections',
+            'could not translate host name',
+            'connection to server',
+            'sslconnection',
+            'timeout expired',
+        ];
+
+        $mensajeMinuscula = strtolower($mensaje);
+
+        foreach ($patrones as $patron) {
+            if (str_contains($mensajeMinuscula, $patron)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function extraerNombreConstraint(string $mensaje): ?string

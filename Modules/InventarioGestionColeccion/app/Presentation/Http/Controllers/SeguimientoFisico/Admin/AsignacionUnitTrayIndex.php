@@ -44,18 +44,20 @@ final class AsignacionUnitTrayIndex extends Component
         ListarCajasHandler $cajasHandler,
         ListarEspecimenesAsignablesHandler $especimenesHandler,
     ): void {
-        $this->cajas = array_map(
-            fn ($c) => ['id' => $c->id, 'label' => "{$c->codigo}".($c->nombre ? " — {$c->nombre}" : '')],
-            $cajasHandler->handle()->items,
-        );
-        $this->especimenes = $especimenesHandler->handle()->items;
+        $this->cargarProtegido(function () use ($cajasHandler, $especimenesHandler) {
+            $this->cajas = array_map(
+                fn ($c) => ['id' => $c->id, 'label' => "{$c->codigo}".($c->nombre ? " — {$c->nombre}" : '')],
+                $cajasHandler->handle()->items,
+            );
+            $this->especimenes = $especimenesHandler->handle()->items;
+        });
     }
 
     public function updatedCajaSeleccionada(string $value): void
     {
         $this->unitTraySeleccionado = '';
         $this->especimenesSeleccionados = [];
-        $this->cargarUnitTrays($value);
+        $this->cargarProtegido(fn () => $this->cargarUnitTrays($value));
     }
 
     public function crearUnitTray(CrearUnitTrayHandler $handler): void

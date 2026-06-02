@@ -49,10 +49,12 @@ final class GabineteShow extends Component
     ): void {
         $this->gabineteId = $id;
         $this->successMessage = session('successMessage');
-        $this->cargarGabinete($listarGabinetes);
-        $cajasPorId = $this->buildCajasPorId($listarCajas);
-        $this->cargarRanuras($listarRanuras, $cajasPorId);
-        $this->tieneToken = PersonalAccessToken::where('name', "esp32-{$id}")->exists();
+        $this->cargarProtegido(function () use ($id, $listarGabinetes, $listarRanuras, $listarCajas) {
+            $this->cargarGabinete($listarGabinetes);
+            $cajasPorId = $this->buildCajasPorId($listarCajas);
+            $this->cargarRanuras($listarRanuras, $cajasPorId);
+            $this->tieneToken = PersonalAccessToken::where('name', "esp32-{$id}")->exists();
+        });
     }
 
     public function abrirEditRanura(string $ranuraId): void
