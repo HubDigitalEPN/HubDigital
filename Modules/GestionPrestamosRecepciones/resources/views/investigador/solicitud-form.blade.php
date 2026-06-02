@@ -2,41 +2,19 @@
     class="min-h-screen bg-bg-main pb-24"
     x-data="{
         alcance: @entangle('alcancePrestamo'),
-        duracion: @entangle('duracionPropuestaMeses'),
-        get pct() {
-            let n = 0;
-            if (this.alcance) n += 25;
-            if (@js($tituloEstudio) && @js($institucionAdscripcion) && @js($lineaInvestigacion) && @js($propositoPrestamo)) n += 50;
-            if (@js(count($items)) > 0) n += 25;
-            return n;
+        debounceTimer: null,
+        scheduleAutoSave() {
+            clearTimeout(this.debounceTimer);
+            this.debounceTimer = setTimeout(() => { $wire.autoGuardar() }, 2000);
+        },
+        init() {
+            this.$el.addEventListener('input', () => this.scheduleAutoSave());
+            this.$el.addEventListener('change', () => this.scheduleAutoSave());
         }
     }"
 >
-    {{-- Barra superior con breadcrumbs y progreso --}}
-    <div class="sticky top-0 z-10 bg-surface border-b border-border shadow-sm">
-        <div class="max-w-3xl mx-auto px-4 py-3 space-y-2">
-            <flux:breadcrumbs>
-                <flux:breadcrumbs.item wire:navigate href="{{ route('prestamos.investigador.mis-solicitudes') }}">
-                    Mis solicitudes
-                </flux:breadcrumbs.item>
-                <flux:breadcrumbs.item>
-                    {{ $this->solicitudId ? 'Editar solicitud' : 'Nueva solicitud' }}
-                </flux:breadcrumbs.item>
-            </flux:breadcrumbs>
 
-            <div class="flex items-center gap-3">
-                <div class="flex-1 h-1.5 bg-border rounded-full overflow-hidden">
-                    <div
-                        class="h-full bg-bio-green rounded-full transition-all duration-500"
-                        :style="`width: ${pct}%`"
-                    ></div>
-                </div>
-                <span class="text-xs text-text-secondary tabular-nums shrink-0" x-text="`${pct}% completado`"></span>
-            </div>
-        </div>
-    </div>
-
-    <div class="max-w-3xl mx-auto px-4 py-6 space-y-5">
+<div class="max-w-3xl mx-auto px-4 py-6 space-y-5">
 
         {{-- Título de página --}}
         <div>
@@ -425,7 +403,11 @@
     <div class="fixed bottom-0 inset-x-0 z-20 bg-surface border-t border-border shadow-lg">
         <div class="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
             <p class="hidden sm:block text-xs text-text-secondary flex-1">
-                Los cambios no se guardan automáticamente.
+                @if($lastAutoSavedAt)
+                    Guardado automáticamente a las {{ $lastAutoSavedAt }}
+                @else
+                    Los cambios no se guardan automáticamente.
+                @endif
             </p>
 
             <div class="flex gap-2 ml-auto">
@@ -442,12 +424,11 @@
                 @if($this->solicitudId && in_array($this->estadoSolicitud, ['borrador', 'observada']))
                     <flux:button
                         variant="primary"
+                        icon="paper-airplane"
                         wire:click="enviarSolicitud"
                         wire:loading.attr="disabled"
                         wire:target="enviarSolicitud"
                     >
-                        <flux:icon wire:loading wire:target="enviarSolicitud" name="arrow-path" class="animate-spin" />
-                        <flux:icon name="paper-airplane" class="size-4" />
                         Enviar para revisión
                     </flux:button>
                 @endif

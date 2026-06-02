@@ -1,3 +1,4 @@
+<div>
 <div class="space-y-5 pb-24">
 
     <flux:breadcrumbs>
@@ -126,4 +127,5 @@
             Enviar verificación
         </flux:button>
     </div>
+</div>
 </div>
