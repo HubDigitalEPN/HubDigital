@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\AprobarVerificacion;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\AuditarPrestamo;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\BandejaActas;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\BandejaPrestamos as CuradorBandejaPrestamos;
@@ -22,8 +23,13 @@ use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigad
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\MisSolicitudes;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\RegistroSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\SolicitudForm;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\VerificacionEntrega;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ServirDocumentoExportacion;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ServirDocumentoIdentidad;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ServirPdfActa;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ServirPdfFirmado;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\VerActa;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\VerActaEmbed;
 
 Route::middleware(['auth', 'verified'])
     ->prefix('prestamos')
@@ -32,7 +38,11 @@ Route::middleware(['auth', 'verified'])
 
         // Compartido — curador e investigador (la autorización la aplica el componente)
         Route::get('/acta/{id}/ver', VerActa::class)->name('acta.ver');
+        Route::get('/acta/{id}/embed', VerActaEmbed::class)->name('acta.embed');
+        Route::get('/acta/{id}/pdf-original', ServirPdfActa::class)->name('acta.pdf-original');
         Route::get('/acta/{id}/pdf-firmado', ServirPdfFirmado::class)->name('acta.pdf-firmado');
+        Route::get('/acta/{id}/documento-identidad', ServirDocumentoIdentidad::class)->name('acta.documento-identidad');
+        Route::get('/acta/{id}/documento-exportacion', ServirDocumentoExportacion::class)->name('acta.documento-exportacion');
 
         // Investigador — solo usuarios con rol PRESTAMISTA
         Route::middleware('role:prestamista')->group(function () {
@@ -44,6 +54,7 @@ Route::middleware(['auth', 'verified'])
             Route::get('/solicitud/{id}', DetalleSolicitud::class)->name('investigador.solicitud.detalle');
             Route::get('/acta/{id}', DetalleActa::class)->name('investigador.acta.detalle');
             Route::get('/prestamo/{id}', InvestigadorDetallePrestamo::class)->name('investigador.prestamo.detalle');
+            Route::get('/prestamo/{id}/verificacion-entrega', VerificacionEntrega::class)->name('investigador.prestamo.verificacion-entrega');
         });
 
         // Depositante — solicitudes de depósito
@@ -63,6 +74,7 @@ Route::middleware(['auth', 'verified'])
             Route::get('/curador/prestamos', CuradorBandejaPrestamos::class)->name('curador.prestamos');
             Route::get('/curador/prestamo/{id}', CuradorDetallePrestamo::class)->name('curador.prestamo.detalle');
             Route::get('/curador/prestamo/{id}/auditar', AuditarPrestamo::class)->name('curador.prestamo.auditar');
+            Route::get('/curador/prestamo/{id}/aprobar-verificacion', AprobarVerificacion::class)->name('curador.prestamo.aprobar-verificacion');
             Route::get('/curador/configuracion', ConfiguracionRecordatorios::class)->name('curador.configuracion');
         });
     });

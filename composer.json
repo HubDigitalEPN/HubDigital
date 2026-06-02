@@ -10,6 +10,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.3",
+        "barryvdh/laravel-dompdf": "^3.1",
         "laravel/ai": "^0.6.0",
         "laravel/fortify": "^1.34",
         "laravel/framework": "^13.0",
@@ -75,6 +76,10 @@
             "@php artisan config:clear --ansi",
             "@lint:check",
             "@php artisan test"
+        ],
+        "behat:recepcion": [
+            "vendor/bin/behat --profile=recepcion --suite=RegistroSolicitudDeposito",
+            "vendor/bin/behat --profile=recepcion --suite=RevisionMatrizEspecies"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",

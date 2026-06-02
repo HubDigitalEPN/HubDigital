@@ -40,4 +40,13 @@ abstract class BaseContext implements Context
 
         return self::$app->make($abstract);
     }
+
+    protected function make(string $abstract): mixed
+    {
+        if (self::$app === null) {
+            self::bootstrapLaravel();
+        }
+
+        return self::$app->make($abstract);
+    }
 }

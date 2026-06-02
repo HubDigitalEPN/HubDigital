@@ -10,8 +10,16 @@ use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithFileUploads;
+use Modules\GestionPrestamosRecepciones\Application\Ports\CatalogoCuraduriaPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\ValidacionTaxonomicaPort;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\AceptarSugerenciaTaxonomica\AceptarSugerenciaTaxonomicaHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\AceptarSugerenciaTaxonomica\AceptarSugerenciaTaxonomicaInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ActualizarOrigenSolicitudDeposito\ActualizarOrigenSolicitudDepositoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ActualizarOrigenSolicitudDeposito\ActualizarOrigenSolicitudDepositoInput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\CambiarJustificacionTaxonomica\CambiarJustificacionTaxonomicaHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\CambiarJustificacionTaxonomica\CambiarJustificacionTaxonomicaInput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\CargarMatrizEspecies\CargarMatrizEspeciesHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\CargarMatrizEspecies\CargarMatrizEspeciesInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\CompletarDatosManualmente\CompletarDatosManualesHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\CompletarDatosManualmente\CompletarDatosManualesInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\DeclararSinDocumentacion\DeclararSinDocumentacionHandler;
@@ -20,19 +28,29 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\DeterminarDocumenta
 use Modules\GestionPrestamosRecepciones\Application\UseCases\DeterminarDocumentacionRequerida\DeterminarDocumentacionRequeridaInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarSolicitudDeposito\EnviarSolicitudDepositoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarSolicitudDeposito\EnviarSolicitudDepositoInput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\JustificarHallazgoTaxonomico\JustificarHallazgoTaxonomicoHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\JustificarHallazgoTaxonomico\JustificarHallazgoTaxonomicoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarSolicitudDeposito\RegistrarSolicitudDepositoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarSolicitudDeposito\RegistrarSolicitudDepositoInput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\RevertirSugerenciaTaxonomica\RevertirSugerenciaTaxonomicaHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\RevertirSugerenciaTaxonomica\RevertirSugerenciaTaxonomicaInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\SolicitarIntervencionCuratoria\SolicitarIntervencionCuratoriaHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\SolicitarIntervencionCuratoria\SolicitarIntervencionCuratoriaInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarDocumentacionInicial\ValidarDocumentacionInicialHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarDocumentacionInicial\ValidarDocumentacionInicialInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarIdentidadSolicitud\ValidarIdentidadSolicitudHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarIdentidadSolicitud\ValidarIdentidadSolicitudInput;
+use Modules\GestionPrestamosRecepciones\Domain\Entities\MatrizEspecies;
+use Modules\GestionPrestamosRecepciones\Domain\Exceptions\CamposDwCFaltantesException;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\LimiteAnualDepositosAlcanzado;
+use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoRegistroEspecimen;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\MatrizEspeciesId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoValidacionIdentidad;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoTramite;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Jobs\ExtraccionDatosDocumentoJob;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\MatrizEspeciesEloquentModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
 
 #[Layout('layouts.app', params: ['title' => 'Nueva Solicitud de Depósito'])]
@@ -142,7 +160,43 @@ final class RegistroSolicitudDeposito extends Component
     /** @var array<string, string> [nombre_documento => estado_firma] */
     public array $firmasElectronicas = [];
 
-    // ── Paso 5 – Envío ────────────────────────────────────────────────────────────
+    // ── Paso 5 – Matriz de especies ─────────────────────────────────────────────
+
+    public $archivoMatriz = null;
+
+    public ?string $matrizId = null;
+
+    public string $estadoMatriz = '';
+
+    public bool $validacionTipograficaAplicada = false;
+
+    public int $totalRegistros = 0;
+
+    /** @var string[] */
+    public array $camposDwCPresentes = [];
+
+    /** @var string[] */
+    public array $camposDwCRequeridos = [];
+
+    /** @var array<int, array<string, mixed>> */
+    public array $registrosMatriz = [];
+
+    /**
+     * Estado de cada registro para la tabla visual.
+     *
+     * @var array<string, array{catalogoId: string|null, especieIngresada: string, estado: string, especieSugerida: string|null, especieCorregida: string|null, noCatalogado: bool, motivoJustificacion: string|null}>
+     */
+    public array $estadosRegistros = [];
+
+    public string $archivoMatrizNombre = '';
+
+    public bool $matrizCargada = false;
+
+    public string $errorMatriz = '';
+
+    public string $filtroTabla = 'todos';
+
+    // ── Paso 6 – Envío ────────────────────────────────────────────────────────────
 
     public bool $declaracionAceptada = false;
 
@@ -250,6 +304,27 @@ final class RegistroSolicitudDeposito extends Component
             $this->estadoDocumental = $outputDoc->estadoDocumental->value;
         }
 
+        // Paso 5+ data (Matriz de especies)
+        if ($pasoGuardado >= 5 && $model->matriz_id !== null) {
+            $this->matrizId = $model->matriz_id;
+            $this->matrizCargada = true;
+
+            $matrizRepo = app(MatrizEspeciesRepositoryInterface::class);
+            $matriz = $matrizRepo->buscarPorId(MatrizEspeciesId::from($model->matriz_id));
+
+            if ($matriz !== null) {
+                $this->estadoMatriz = $matriz->estado()->value;
+                $this->totalRegistros = count($matriz->registros());
+                $this->camposDwCPresentes = array_keys($matriz->camposDwCPresentes());
+                $this->archivoMatrizNombre = 'Matriz cargada';
+
+                $catalogo = app(CatalogoCuraduriaPort::class);
+                $this->camposDwCRequeridos = $catalogo->camposRequeridos($this->solicitudId ?? '');
+
+                $this->poblarEstadosRegistros($matriz);
+            }
+        }
+
         // Restaurar paso y pasos completados
         $this->paso = $pasoGuardado;
         $this->pasosCompletados = $this->calcularPasosCompletados($pasoGuardado);
@@ -308,6 +383,7 @@ final class RegistroSolicitudDeposito extends Component
             'documentos_cargados' => $this->documentosCargados,
             'nombres_archivos_originales' => $this->nombresArchivosOriginales,
             'documentos_requeridos' => $this->documentosRequeridos,
+            'matriz_id' => $this->matrizId,
         ]);
     }
 
@@ -781,7 +857,353 @@ final class RegistroSolicitudDeposito extends Component
         $this->persistirEstadoWizard();
     }
 
-    // ── Paso 5 ────────────────────────────────────────────────────────────────────
+    // ── Paso 5 – Matriz de especies ─────────────────────────────────────────────
+
+    public function updatedArchivoMatriz(): void
+    {
+        if ($this->archivoMatriz === null) {
+            return;
+        }
+
+        $this->validate(
+            ['archivoMatriz' => 'file|mimes:csv,txt|max:10240'],
+            [
+                'archivoMatriz.mimes' => 'Solo se admiten archivos .csv o .txt',
+                'archivoMatriz.max' => 'El archivo no debe superar los 10 MB.',
+            ]
+        );
+
+        $this->errorMatriz = '';
+        $this->archivoMatrizNombre = $this->archivoMatriz->getClientOriginalName();
+
+        // Si ya existe una matriz para esta solicitud, eliminarla antes de crear la nueva
+        if ($this->matrizId) {
+            MatrizEspeciesEloquentModel::where('id', $this->matrizId)->delete();
+            $this->matrizId = null;
+        }
+
+        $parseado = $this->parsearCsv($this->archivoMatriz);
+        $campos = $parseado['campos'];
+        $registros = $parseado['registros'];
+
+        $this->camposDwCPresentes = $campos;
+
+        $catalogo = app(CatalogoCuraduriaPort::class);
+        $this->camposDwCRequeridos = $catalogo->camposRequeridos($this->solicitudId ?? '');
+
+        $cargar = app(CargarMatrizEspeciesHandler::class);
+
+        try {
+            $output = ($cargar)(new CargarMatrizEspeciesInput(
+                solicitudId: $this->solicitudId,
+                camposDwCPresentes: array_fill_keys($campos, true),
+                camposDwCExigidosPorCatalogo: $this->camposDwCRequeridos,
+                registros: $registros,
+            ));
+        } catch (CamposDwCFaltantesException $e) {
+            $this->errorMatriz = $e->getMessage();
+            $this->matrizCargada = true;
+
+            return;
+        }
+
+        $this->matrizId = $output->matrizId;
+        $this->estadoMatriz = $output->estadoMatriz->value;
+        $this->validacionTipograficaAplicada = $output->validacionTipograficaAplicada;
+        $this->totalRegistros = $output->totalRegistros;
+        $this->matrizCargada = true;
+        $this->registrosMatriz = $registros;
+
+        $repo = app(MatrizEspeciesRepositoryInterface::class);
+        $matriz = $repo->buscarPorId(MatrizEspeciesId::from($this->matrizId));
+
+        $this->poblarEstadosRegistros($matriz, $registros);
+        $this->persistirEstadoWizard();
+    }
+
+    /**
+     * Pobla $estadosRegistros usando los IDs reales de la entidad MatrizEspecies.
+     *
+     * @param  array<int, array<string, mixed>>  $csvRegistros  Filas del CSV (solo en carga inicial, vacío en restauración)
+     */
+    private function poblarEstadosRegistros(MatrizEspecies $matriz, array $csvRegistros = []): void
+    {
+        $registros = $matriz->registros();
+
+        if ($this->tipoTramite === TipoTramite::Donacion->value) {
+            $i = 0;
+
+            foreach ($registros as $id => $registro) {
+                $csvRow = $csvRegistros[$i] ?? [];
+                $this->estadosRegistros[$id] = [
+                    'catalogoId' => $csvRow['catalogNumber'] ?? null,
+                    'especieIngresada' => $registro->nombreCientifico(),
+                    'estado' => 'Validado Técnicamente',
+                    'especieSugerida' => null,
+                    'especieCorregida' => null,
+                    'noCatalogado' => false,
+                    'motivoJustificacion' => null,
+                ];
+                $i++;
+            }
+
+            return;
+        }
+
+        $nombres = array_values(array_map(fn ($r) => $r->nombreCientifico(), $registros));
+        $validador = app(ValidacionTaxonomicaPort::class);
+        $resultados = $validador->validarEspecies($nombres);
+
+        $i = 0;
+        $huboActualizacionEntidad = false;
+
+        foreach ($registros as $id => $registro) {
+            $csvRow = $csvRegistros[$i] ?? [];
+            $validacion = $resultados[$i] ?? ['estado' => 'catalogado', 'sugerencia' => null];
+            $estadoEntidad = $registro->estado();
+
+            // Si el registro ya fue resuelto (sugerencia aceptada o hallazgo justificado),
+            // usar el estado de la entidad en vez de re-consultar GBIF.
+            if (! $estadoEntidad->equals(EstadoRegistroEspecimen::Pendiente)) {
+                $this->estadosRegistros[$id] = [
+                    'catalogoId' => $csvRow['catalogNumber'] ?? null,
+                    'especieIngresada' => $registro->nombreCientifico(),
+                    'estado' => $estadoEntidad->value,
+                    'especieSugerida' => null,
+                    'especieCorregida' => $registro->nombreCorregido(),
+                    'noCatalogado' => $registro->esNoCatalogado(),
+                    'motivoJustificacion' => $registro->motivoJustificacion(),
+                ];
+            } else {
+                $estado = match ($validacion['estado']) {
+                    'catalogado' => 'Validado Técnicamente',
+                    'inconsistencia_tipografica' => 'Pendiente',
+                    'no_catalogado' => 'Pendiente',
+                    'no_verificado' => 'No Verificado',
+                    default => 'Pendiente',
+                };
+
+                $esNoCatalogado = $validacion['estado'] === 'no_catalogado';
+
+                // Sincronizar el flag noCatalogado en la entidad para que el guard
+                // de justificar() funcione correctamente.
+                if ($esNoCatalogado && ! $registro->esNoCatalogado()) {
+                    $matriz->marcarRegistroNoCatalogado($id);
+                    $huboActualizacionEntidad = true;
+                }
+
+                $this->estadosRegistros[$id] = [
+                    'catalogoId' => $csvRow['catalogNumber'] ?? null,
+                    'especieIngresada' => $registro->nombreCientifico(),
+                    'estado' => $estado,
+                    'especieSugerida' => $validacion['sugerencia'],
+                    'especieCorregida' => null,
+                    'noCatalogado' => $esNoCatalogado,
+                    'motivoJustificacion' => null,
+                ];
+            }
+
+            $i++;
+        }
+
+        // Persistir los flags noCatalogado actualizados en la entidad
+        if ($huboActualizacionEntidad) {
+            $repo = app(MatrizEspeciesRepositoryInterface::class);
+            $repo->guardar($matriz);
+        }
+    }
+
+    /**
+     * @return array{campos: string[], registros: array<int, array<string, mixed>>}
+     */
+    private function parsearCsv(mixed $archivo): array
+    {
+        $contenido = file_get_contents($archivo->getRealPath());
+        $lineas = array_filter(explode("\n", str_replace("\r\n", "\n", $contenido)));
+
+        if (count($lineas) < 2) {
+            return ['campos' => [], 'registros' => []];
+        }
+
+        $separador = str_contains($lineas[0], "\t") ? "\t" : ',';
+        $campos = str_getcsv(array_shift($lineas), $separador);
+        $campos = array_map('trim', $campos);
+
+        $registros = [];
+        foreach ($lineas as $linea) {
+            $valores = str_getcsv($linea, $separador);
+            if (count($valores) < count($campos)) {
+                continue;
+            }
+            $registro = [];
+            foreach ($campos as $j => $campo) {
+                $registro[$campo] = trim($valores[$j] ?? '');
+            }
+            $registros[] = $registro;
+        }
+
+        return ['campos' => $campos, 'registros' => $registros];
+    }
+
+    public function eliminarMatriz(): void
+    {
+        if ($this->matrizId) {
+            MatrizEspeciesEloquentModel::where('id', $this->matrizId)->delete();
+        }
+
+        $this->archivoMatriz = null;
+        $this->archivoMatrizNombre = '';
+        $this->matrizCargada = false;
+        $this->matrizId = null;
+        $this->estadoMatriz = '';
+        $this->errorMatriz = '';
+        $this->totalRegistros = 0;
+        $this->camposDwCPresentes = [];
+        $this->registrosMatriz = [];
+        $this->estadosRegistros = [];
+        $this->validacionTipograficaAplicada = false;
+        $this->persistirEstadoWizard();
+    }
+
+    public function aceptarSugerencia(string $registroId, string $especieCorregida): void
+    {
+        $handler = app(AceptarSugerenciaTaxonomicaHandler::class);
+
+        $output = ($handler)(new AceptarSugerenciaTaxonomicaInput(
+            solicitudId: $this->solicitudId,
+            matrizId: $this->matrizId,
+            registroId: $registroId,
+            especieCorregida: $especieCorregida,
+        ));
+
+        if (isset($this->estadosRegistros[$registroId])) {
+            $this->estadosRegistros[$registroId]['estado'] = $output->estadoRegistro->value;
+            $this->estadosRegistros[$registroId]['especieCorregida'] = $especieCorregida;
+        }
+
+        $this->estadoMatriz = $output->estadoMatriz->value;
+    }
+
+    public function aceptarTodasLasSugerencias(): void
+    {
+        foreach ($this->estadosRegistros as $id => $reg) {
+            if ($reg['estado'] === 'Pendiente' && $reg['especieSugerida'] !== null) {
+                $this->aceptarSugerencia($id, $reg['especieSugerida']);
+            }
+        }
+
+        $this->dispatch('modal-close', name: 'confirmar-aceptar-todas');
+    }
+
+    public function justificarHallazgo(string $registroId, string $motivo): void
+    {
+        if (empty($motivo)) {
+            return;
+        }
+
+        $handler = app(JustificarHallazgoTaxonomicoHandler::class);
+
+        $output = ($handler)(new JustificarHallazgoTaxonomicoInput(
+            solicitudId: $this->solicitudId,
+            matrizId: $this->matrizId,
+            registroId: $registroId,
+            motivoJustificacion: $motivo,
+        ));
+
+        if (isset($this->estadosRegistros[$registroId])) {
+            $this->estadosRegistros[$registroId]['estado'] = $output->estadoRegistro->value;
+            $this->estadosRegistros[$registroId]['motivoJustificacion'] = $motivo;
+        }
+
+        $this->estadoMatriz = $output->estadoMatriz->value;
+    }
+
+    public function cambiarJustificacion(string $registroId, string $nuevoMotivo): void
+    {
+        if (empty($nuevoMotivo)) {
+            return;
+        }
+
+        $handler = app(CambiarJustificacionTaxonomicaHandler::class);
+
+        ($handler)(new CambiarJustificacionTaxonomicaInput(
+            solicitudId: $this->solicitudId,
+            matrizId: $this->matrizId,
+            registroId: $registroId,
+            nuevoMotivo: $nuevoMotivo,
+        ));
+
+        if (isset($this->estadosRegistros[$registroId])) {
+            $this->estadosRegistros[$registroId]['motivoJustificacion'] = $nuevoMotivo;
+        }
+    }
+
+    public function deshacerSugerencia(string $registroId): void
+    {
+        $handler = app(RevertirSugerenciaTaxonomicaHandler::class);
+
+        $output = ($handler)(new RevertirSugerenciaTaxonomicaInput(
+            solicitudId: $this->solicitudId,
+            matrizId: $this->matrizId,
+            registroId: $registroId,
+        ));
+
+        if (isset($this->estadosRegistros[$registroId])) {
+            $especieOriginal = $this->estadosRegistros[$registroId]['especieIngresada'];
+
+            // Re-consultar validación taxonómica para recuperar la sugerencia
+            $validador = app(ValidacionTaxonomicaPort::class);
+            $especieSugerida = null;
+
+            try {
+                $resultados = $validador->validarEspecies([$especieOriginal]);
+
+                if (isset($resultados[0]) && $resultados[0]['estado'] === 'inconsistencia_tipografica') {
+                    $especieSugerida = $resultados[0]['sugerencia'];
+                }
+            } catch (\Throwable) {
+                // Si GBIF no responde, se muestra como pendiente sin sugerencia
+            }
+
+            $this->estadosRegistros[$registroId]['estado'] = $output->estadoRegistro->value;
+            $this->estadosRegistros[$registroId]['especieCorregida'] = null;
+            $this->estadosRegistros[$registroId]['especieSugerida'] = $especieSugerida;
+        }
+
+        $this->estadoMatriz = $output->estadoMatriz->value;
+    }
+
+    public function guardarPasoCinco(): void
+    {
+        if (! $this->matrizCargada) {
+            $this->mostrarToast('La matriz de especímenes es obligatoria.', 'error');
+
+            return;
+        }
+
+        if (! empty($this->errorMatriz)) {
+            $this->mostrarToast('Corrige los errores de la matriz antes de continuar.', 'error');
+
+            return;
+        }
+
+        $pendientes = array_filter(
+            $this->estadosRegistros,
+            fn (array $r) => $r['estado'] === 'Pendiente'
+        );
+
+        if (! empty($pendientes)) {
+            $this->mostrarToast(count($pendientes).' registro(s) requieren tu acción.', 'warning');
+
+            return;
+        }
+
+        $this->pasosCompletados = array_values(array_unique([...$this->pasosCompletados, 5]));
+        $this->paso = 6;
+        $this->persistirEstadoWizard();
+    }
+
+    // ── Paso 6 – Envío ───────────────────────────────────────────────────────────
 
     public function enviarSolicitud(EnviarSolicitudDepositoHandler $handler): void
     {
@@ -792,8 +1214,8 @@ final class RegistroSolicitudDeposito extends Component
 
         $output = ($handler)(new EnviarSolicitudDepositoInput(solicitudId: $this->solicitudId));
         $this->estadoFinal = $output->estado->value;
-        $this->pasosCompletados = array_values(array_unique([...$this->pasosCompletados, 5]));
-        $this->paso = 6;
+        $this->pasosCompletados = array_values(array_unique([...$this->pasosCompletados, 6]));
+        $this->paso = 7;
     }
 
     // ── Navegación ────────────────────────────────────────────────────────────────
@@ -815,6 +1237,10 @@ final class RegistroSolicitudDeposito extends Component
                 ) {
                     $this->documentosRequeridos[] = 'Copia del permiso de movilización';
                 }
+            }
+
+            if ($this->paso === 6) {
+                $this->declaracionAceptada = false;
             }
 
             $this->paso--;

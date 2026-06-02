@@ -8,10 +8,13 @@ use DateTimeImmutable;
 use InvalidArgumentException;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaDevueltaPorFirmaInvalida;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaEnviada;
+use Modules\GestionPrestamosRecepciones\Domain\Events\ActaFirmadaDigitalmente;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaFirmadaSubida;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaValidada;
+use Modules\GestionPrestamosRecepciones\Domain\Events\DocumentoExportacionSubido;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\TransicionDeEstadoInvalidaException;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\AlcancePrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoActa;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\NumeroPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudPrestamoId;
@@ -28,11 +31,14 @@ final class ActaPrestamo
         private readonly SolicitudPrestamoId $solicitudPrestamoId,
         private EstadoActa $estado,
         private readonly TipoPrestamo $tipoPrestamo,
+        private readonly AlcancePrestamo $alcancePrestamo,
         private readonly DateTimeImmutable $fechaInicio,
         private readonly DateTimeImmutable $fechaFin,
         private readonly string $pdfRuta,
         private ?string $condicionesGenerales,
         private ?string $pdfFirmadoRuta,
+        private ?string $documentoIdentidadRuta,
+        private ?string $documentoExportacionRuta,
         private ?string $motivoDevolucion,
         private ?DateTimeImmutable $firmadaSubidaEn,
         private ?DateTimeImmutable $validadaEn,
@@ -46,6 +52,7 @@ final class ActaPrestamo
         NumeroPrestamo $numeroPrestamo,
         SolicitudPrestamoId $solicitudPrestamoId,
         TipoPrestamo $tipoPrestamo,
+        AlcancePrestamo $alcancePrestamo,
         DateTimeImmutable $fechaInicio,
         DateTimeImmutable $fechaFin,
         string $pdfRuta,
@@ -65,11 +72,14 @@ final class ActaPrestamo
             solicitudPrestamoId: $solicitudPrestamoId,
             estado: EstadoActa::PendienteEnvio,
             tipoPrestamo: $tipoPrestamo,
+            alcancePrestamo: $alcancePrestamo,
             fechaInicio: $fechaInicio,
             fechaFin: $fechaFin,
             pdfRuta: $pdfRuta,
             condicionesGenerales: $condicionesGenerales,
             pdfFirmadoRuta: null,
+            documentoIdentidadRuta: null,
+            documentoExportacionRuta: null,
             motivoDevolucion: null,
             firmadaSubidaEn: null,
             validadaEn: null,
@@ -86,11 +96,14 @@ final class ActaPrestamo
         SolicitudPrestamoId $solicitudPrestamoId,
         EstadoActa $estado,
         TipoPrestamo $tipoPrestamo,
+        AlcancePrestamo $alcancePrestamo,
         DateTimeImmutable $fechaInicio,
         DateTimeImmutable $fechaFin,
         string $pdfRuta,
         ?string $condicionesGenerales,
         ?string $pdfFirmadoRuta,
+        ?string $documentoIdentidadRuta,
+        ?string $documentoExportacionRuta,
         ?string $motivoDevolucion,
         ?DateTimeImmutable $firmadaSubidaEn,
         ?DateTimeImmutable $validadaEn,
@@ -102,11 +115,14 @@ final class ActaPrestamo
             solicitudPrestamoId: $solicitudPrestamoId,
             estado: $estado,
             tipoPrestamo: $tipoPrestamo,
+            alcancePrestamo: $alcancePrestamo,
             fechaInicio: $fechaInicio,
             fechaFin: $fechaFin,
             pdfRuta: $pdfRuta,
             condicionesGenerales: $condicionesGenerales,
             pdfFirmadoRuta: $pdfFirmadoRuta,
+            documentoIdentidadRuta: $documentoIdentidadRuta,
+            documentoExportacionRuta: $documentoExportacionRuta,
             motivoDevolucion: $motivoDevolucion,
             firmadaSubidaEn: $firmadaSubidaEn,
             validadaEn: $validadaEn,
@@ -142,10 +158,10 @@ final class ActaPrestamo
     }
 
     /**
-     * El investigador sube el acta firmada.
+     * El investigador sube el acta firmada y su documento de identidad.
      * Solo permitido desde PendienteFirma.
      */
-    public function subirFirma(string $pdfFirmadoRuta): void
+    public function subirFirma(string $pdfFirmadoRuta, string $documentoIdentidadRuta): void
     {
         if (! $this->estado->equals(EstadoActa::PendienteFirma)) {
             throw TransicionDeEstadoInvalidaException::para(
@@ -159,16 +175,95 @@ final class ActaPrestamo
             throw new InvalidArgumentException('La ruta del PDF firmado no puede estar vacía.');
         }
 
+        if (trim($documentoIdentidadRuta) === '') {
+            throw new InvalidArgumentException('La ruta del documento de identidad no puede estar vacía.');
+        }
+
         $ahora = new DateTimeImmutable;
 
         $this->estado = EstadoActa::PendienteValidacion;
         $this->pdfFirmadoRuta = trim($pdfFirmadoRuta);
+        $this->documentoIdentidadRuta = trim($documentoIdentidadRuta);
         $this->firmadaSubidaEn = $ahora;
 
         $this->events[] = new ActaFirmadaSubida(
             actaId: $this->id,
             solicitudId: $this->solicitudPrestamoId,
             pdfFirmadoRuta: $this->pdfFirmadoRuta,
+            documentoIdentidadRuta: $this->documentoIdentidadRuta,
+            ocurridoEn: $ahora,
+        );
+    }
+
+    /**
+     * El investigador firma el acta digitalmente mediante canvas.
+     * Solo permitido desde PendienteFirma.
+     */
+    /**
+     * El investigador firma el acta digitalmente mediante canvas.
+     * Solo guarda la imagen de la firma; el estado permanece en PendienteFirma
+     * hasta que el investigador suba su documento de identidad.
+     */
+    public function firmarDigitalmente(string $firmaImagenRuta): void
+    {
+        if (! $this->estado->equals(EstadoActa::PendienteFirma)) {
+            throw TransicionDeEstadoInvalidaException::para(
+                'ActaPrestamo',
+                $this->estado->value,
+                'firmarDigitalmente',
+            );
+        }
+
+        if (trim($firmaImagenRuta) === '') {
+            throw new InvalidArgumentException('La ruta de la imagen de firma no puede estar vacía.');
+        }
+
+        $ahora = new DateTimeImmutable;
+
+        // No se cambia el estado: sigue en PendienteFirma hasta subir documento de identidad.
+        $this->pdfFirmadoRuta = trim($firmaImagenRuta);
+
+        $this->events[] = new ActaFirmadaDigitalmente(
+            actaId: $this->id,
+            solicitudId: $this->solicitudPrestamoId,
+            pdfFirmadoRuta: $this->pdfFirmadoRuta,
+            ocurridoEn: $ahora,
+        );
+    }
+
+    /**
+     * Completa la firma digital subiendo el documento de identidad.
+     * Solo permitido desde PendienteFirma cuando ya existe firma digital.
+     */
+    public function completarFirmaDigitalConIdentidad(string $documentoIdentidadRuta): void
+    {
+        if (! $this->estado->equals(EstadoActa::PendienteFirma)) {
+            throw TransicionDeEstadoInvalidaException::para(
+                'ActaPrestamo',
+                $this->estado->value,
+                'completarFirmaDigitalConIdentidad',
+            );
+        }
+
+        if ($this->pdfFirmadoRuta === null) {
+            throw new InvalidArgumentException('Debe existir una firma digital antes de subir el documento de identidad.');
+        }
+
+        if (trim($documentoIdentidadRuta) === '') {
+            throw new InvalidArgumentException('La ruta del documento de identidad no puede estar vacía.');
+        }
+
+        $ahora = new DateTimeImmutable;
+
+        $this->estado = EstadoActa::PendienteValidacion;
+        $this->documentoIdentidadRuta = trim($documentoIdentidadRuta);
+        $this->firmadaSubidaEn = $ahora;
+
+        $this->events[] = new ActaFirmadaSubida(
+            actaId: $this->id,
+            solicitudId: $this->solicitudPrestamoId,
+            pdfFirmadoRuta: $this->pdfFirmadoRuta,
+            documentoIdentidadRuta: $this->documentoIdentidadRuta,
             ocurridoEn: $ahora,
         );
     }
@@ -195,6 +290,7 @@ final class ActaPrestamo
 
         $this->estado = EstadoActa::PendienteFirma;
         $this->pdfFirmadoRuta = null;
+        $this->documentoIdentidadRuta = null;
         $this->motivoDevolucion = trim($motivo);
 
         $this->events[] = new ActaDevueltaPorFirmaInvalida(
@@ -202,6 +298,29 @@ final class ActaPrestamo
             investigadorId: $investigadorId,
             motivo: trim($motivo),
             ocurridoEn: $ahora,
+        );
+    }
+
+    /**
+     * El curador adjunta el documento de exportación del Ministerio del Ambiente.
+     * Solo aplica para actas de alcance Internacional.
+     */
+    public function adjuntarDocumentoExportacion(string $ruta): void
+    {
+        if (! $this->alcancePrestamo->esInternacional()) {
+            throw new \DomainException('Solo préstamos internacionales requieren documento de exportación.');
+        }
+
+        if (trim($ruta) === '') {
+            throw new InvalidArgumentException('La ruta del documento de exportación no puede estar vacía.');
+        }
+
+        $this->documentoExportacionRuta = trim($ruta);
+
+        $this->events[] = new DocumentoExportacionSubido(
+            actaId: $this->id,
+            solicitudId: $this->solicitudPrestamoId,
+            ocurridoEn: new DateTimeImmutable,
         );
     }
 
@@ -273,6 +392,11 @@ final class ActaPrestamo
         return $this->tipoPrestamo;
     }
 
+    public function alcancePrestamo(): AlcancePrestamo
+    {
+        return $this->alcancePrestamo;
+    }
+
     public function fechaInicio(): DateTimeImmutable
     {
         return $this->fechaInicio;
@@ -296,6 +420,16 @@ final class ActaPrestamo
     public function pdfFirmadoRuta(): ?string
     {
         return $this->pdfFirmadoRuta;
+    }
+
+    public function documentoIdentidadRuta(): ?string
+    {
+        return $this->documentoIdentidadRuta;
+    }
+
+    public function documentoExportacionRuta(): ?string
+    {
+        return $this->documentoExportacionRuta;
     }
 
     public function motivoDevolucion(): ?string

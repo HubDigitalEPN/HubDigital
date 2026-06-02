@@ -1,4 +1,4 @@
-@if($paso === 6)
+@if($paso === 7)
 
     {{-- ── Pantalla de confirmación final ──────────────────────────────────────── --}}
     @php
@@ -91,6 +91,13 @@
                         <p class="text-xs text-text-secondary">{{ now()->format('d M Y · H:i') }}</p>
                         <p class="text-sm font-medium text-text-primary">Documentos cargados y validados</p>
                     </li>
+                    @if($matrizCargada)
+                        <li class="pl-5">
+                            <div class="absolute -left-1.5 mt-1 size-3 rounded-full bg-success"></div>
+                            <p class="text-xs text-text-secondary">{{ now()->format('d M Y · H:i') }}</p>
+                            <p class="text-sm font-medium text-text-primary">Matriz Darwin Core validada</p>
+                        </li>
+                    @endif
                     <li class="pl-5">
                         <div class="absolute -left-1.5 mt-1 size-3 rounded-full bg-success"></div>
                         <p class="text-xs text-text-secondary">{{ now()->format('d M Y · H:i') }}</p>
@@ -194,6 +201,17 @@
                                 </li>
                             @endforeach
                         </ul>
+                    </div>
+                @endif
+
+                @if($matrizCargada && $estadoMatriz)
+                    <div class="sm:col-span-2 rounded-lg border border-border bg-bg-main p-3 space-y-1.5">
+                        <p class="text-xs text-text-secondary">Matriz de especies</p>
+                        <div class="flex items-center gap-3 flex-wrap">
+                            <p class="text-sm font-semibold text-text-primary">{{ $archivoMatrizNombre ?: 'Cargada' }}</p>
+                            <x-gestionprestamosrecepciones::matrix-status-badge :estado="$estadoMatriz" />
+                        </div>
+                        <p class="text-xs text-text-secondary">{{ $totalRegistros }} registro(s)</p>
                     </div>
                 @endif
 

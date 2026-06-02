@@ -53,6 +53,7 @@ final class AprobarSolicitudPrestamoHandler
             numeroPrestamo: NumeroPrestamo::generate(),
             solicitudPrestamoId: $solicitudId,
             tipoPrestamo: $tipoPrestamo,
+            alcancePrestamo: $solicitud->alcancePrestamo(),
             fechaInicio: $ahora,
             fechaFin: $fechaFin,
             pdfRuta: $pdfRuta,

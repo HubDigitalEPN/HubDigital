@@ -10,6 +10,9 @@ use Modules\GestionPrestamosRecepciones\Domain\Events\ActaDevueltaPorFirmaInvali
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaEnviada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaFirmadaSubida;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaValidada;
+use Modules\GestionPrestamosRecepciones\Domain\Events\DocumentoExportacionSubido;
+use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoActivado;
+use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoHabilitadoParaEnvio;
 use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoIniciado;
 use Modules\GestionPrestamosRecepciones\Domain\Events\RecordatorioDevolucionEnviado;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoAprobada;
@@ -17,8 +20,11 @@ use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoEnviada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoObservada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoRechazada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoRegistrada;
+use Modules\GestionPrestamosRecepciones\Domain\Events\VerificacionEntregaAprobada;
+use Modules\GestionPrestamosRecepciones\Domain\Events\VerificacionEntregaRegistrada;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\ActaPrestamoModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\HistorialEventoEloquentModel;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\PrestamoEloquentModel;
 
 final class RegistrarEventoHistorialListener
 {
@@ -47,7 +53,12 @@ final class RegistrarEventoHistorialListener
             $event instanceof ActaDevueltaPorFirmaInvalida,
             $event instanceof ActaValidada => 'solicitud_prestamo',
             $event instanceof PrestamoIniciado,
-            $event instanceof RecordatorioDevolucionEnviado => 'prestamo',
+            $event instanceof PrestamoHabilitadoParaEnvio,
+            $event instanceof RecordatorioDevolucionEnviado,
+            $event instanceof VerificacionEntregaRegistrada,
+            $event instanceof VerificacionEntregaAprobada,
+            $event instanceof PrestamoActivado => 'prestamo',
+            $event instanceof DocumentoExportacionSubido => 'prestamo',
         };
     }
 
@@ -66,8 +77,16 @@ final class RegistrarEventoHistorialListener
                 ActaPrestamoModel::find((string) $event->actaId)?->solicitud_prestamo_id
                 ?? (string) $event->actaId
             ),
+            $event instanceof DocumentoExportacionSubido => (string) (
+                PrestamoEloquentModel::where('acta_prestamo_id', (string) $event->actaId)->value('id')
+                    ?? (string) $event->solicitudId
+            ),
             $event instanceof PrestamoIniciado,
-            $event instanceof RecordatorioDevolucionEnviado => (string) $event->prestamoId,
+            $event instanceof PrestamoHabilitadoParaEnvio,
+            $event instanceof RecordatorioDevolucionEnviado,
+            $event instanceof VerificacionEntregaRegistrada,
+            $event instanceof VerificacionEntregaAprobada,
+            $event instanceof PrestamoActivado => (string) $event->prestamoId,
         };
     }
 

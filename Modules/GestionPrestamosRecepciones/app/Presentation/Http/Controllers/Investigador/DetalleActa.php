@@ -13,6 +13,10 @@ use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudInput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\CompletarFirmaDigitalConIdentidad\CompletarFirmaDigitalConIdentidadHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\CompletarFirmaDigitalConIdentidad\CompletarFirmaDigitalConIdentidadInput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\FirmarActaDigitalmente\FirmarActaDigitalmenteHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\FirmarActaDigitalmente\FirmarActaDigitalmenteInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\SubirActaFirmada\SubirActaFirmadaHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\SubirActaFirmada\SubirActaFirmadaInput;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\ActaPrestamoModel;
@@ -32,14 +36,27 @@ final class DetalleActa extends Component
 
     public bool $showUploadModal = false;
 
+    public bool $showFirmaCanvasModal = false;
+
+    public bool $showIdentidadModal = false;
+
+    public string $firmaBase64 = '';
+
     /** @var TemporaryUploadedFile|null */
     public $pdfFirmado = null;
+
+    /** @var TemporaryUploadedFile|null */
+    public $documentoIdentidad = null;
+
+    /** @var TemporaryUploadedFile|null */
+    public $documentoIdentidadSolo = null;
 
     public string $successMessage = '';
 
     private static array $eventosActa = [
         'ActaEnviada',
         'ActaFirmadaSubida',
+        'ActaFirmadaDigitalmente',
         'ActaDevueltaPorFirmaInvalida',
         'ActaValidada',
     ];
@@ -62,19 +79,59 @@ final class DetalleActa extends Component
     {
         $this->validate([
             'pdfFirmado' => 'required|file|mimes:pdf|max:10240',
+            'documentoIdentidad' => 'required|file|mimes:pdf|max:10240',
         ]);
 
-        $ruta = Storage::putFile('actas-firmadas', $this->pdfFirmado);
+        $rutaActa = Storage::putFile('actas-firmadas', $this->pdfFirmado);
+        $rutaIdentidad = Storage::putFile('documentos-identidad', $this->documentoIdentidad);
 
         $handler->handle(new SubirActaFirmadaInput(
             solicitudId: $this->acta->solicitud_prestamo_id,
             investigadorId: (string) auth()->id(),
-            pdfFirmadoRuta: $ruta,
+            pdfFirmadoRuta: $rutaActa,
+            documentoIdentidadRuta: $rutaIdentidad,
         ));
 
         $this->showUploadModal = false;
         $this->pdfFirmado = null;
-        $this->successMessage = 'Acta firmada subida correctamente. Espera la validación del curador.';
+        $this->documentoIdentidad = null;
+        $this->successMessage = 'Documentos subidos correctamente. Espera la validación del curador.';
+        $this->cargarDatos();
+    }
+
+    public function firmarDigitalmente(FirmarActaDigitalmenteHandler $handler): void
+    {
+        $this->validate(['firmaBase64' => 'required|string']);
+
+        $handler->handle(new FirmarActaDigitalmenteInput(
+            actaId: $this->actaId,
+            investigadorId: (string) auth()->id(),
+            firmaBase64: $this->firmaBase64,
+        ));
+
+        $this->showFirmaCanvasModal = false;
+        $this->firmaBase64 = '';
+        $this->successMessage = 'Firma registrada. Ahora sube tu documento de identidad (cédula o pasaporte) para completar el proceso.';
+        $this->cargarDatos();
+    }
+
+    public function subirDocumentoIdentidad(CompletarFirmaDigitalConIdentidadHandler $handler): void
+    {
+        $this->validate([
+            'documentoIdentidadSolo' => 'required|file|mimes:pdf|max:10240',
+        ]);
+
+        $rutaIdentidad = Storage::putFile('documentos-identidad', $this->documentoIdentidadSolo);
+
+        $handler->handle(new CompletarFirmaDigitalConIdentidadInput(
+            actaId: $this->actaId,
+            investigadorId: (string) auth()->id(),
+            documentoIdentidadRuta: $rutaIdentidad,
+        ));
+
+        $this->showIdentidadModal = false;
+        $this->documentoIdentidadSolo = null;
+        $this->successMessage = 'Documento de identidad subido. Espera la validación del curador.';
         $this->cargarDatos();
     }
 
