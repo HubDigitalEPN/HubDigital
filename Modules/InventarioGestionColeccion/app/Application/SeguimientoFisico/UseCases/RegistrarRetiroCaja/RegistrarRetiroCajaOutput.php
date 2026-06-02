@@ -11,6 +11,7 @@ final readonly class RegistrarRetiroCajaOutput
         public string $estadoCaja,
         public bool $alertaGenerada,
         public bool $notificacionEnviada,
+        public string $ranuraId = '',
     ) {}
 
     /** @param array<string, mixed> $data */
@@ -21,6 +22,7 @@ final readonly class RegistrarRetiroCajaOutput
             estadoCaja: $data['estadoCaja'],
             alertaGenerada: $data['alertaGenerada'],
             notificacionEnviada: $data['notificacionEnviada'],
+            ranuraId: $data['ranuraId'] ?? '',
         );
     }
 }

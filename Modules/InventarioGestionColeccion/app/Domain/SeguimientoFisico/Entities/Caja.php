@@ -11,6 +11,7 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Exceptions\CajaN
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Exceptions\RfidNoAsignadoException;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Exceptions\RfidYaAsignadoException;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\CajaId;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\ClasificacionTaxonomica;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\CodigoCaja;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\CodigoRfid;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoCaja;
@@ -24,9 +25,10 @@ class Caja
     private function __construct(
         private readonly CajaId $id,
         private readonly CodigoCaja $codigo,
-        private readonly ?string $familiaTaxonomicaId,
+        private readonly bool $esEspecial,
+        private readonly ?string $observacion,
         private readonly ?string $nombre,
-        private readonly ?int $capacidadMaxima,
+        private ?ClasificacionTaxonomica $clasificacionTaxonomica,
         private EstadoCaja $estado,
         private ?RanuraId $ranuraActualId,
         private ?CodigoRfid $codigoRfid,
@@ -35,16 +37,22 @@ class Caja
     public static function crear(
         CajaId $id,
         CodigoCaja $codigo,
-        ?string $familiaTaxonomicaId = null,
+        bool $esEspecial = false,
+        ?string $observacion = null,
         ?string $nombre = null,
-        ?int $capacidadMaxima = null,
+        ?ClasificacionTaxonomica $clasificacionTaxonomica = null,
     ): self {
+        if ($esEspecial && ($observacion === null || trim($observacion) === '')) {
+            throw new \InvalidArgumentException('Una Caja especial requiere una observación no vacía.');
+        }
+
         return new self(
             id: $id,
             codigo: $codigo,
-            familiaTaxonomicaId: $familiaTaxonomicaId,
+            esEspecial: $esEspecial,
+            observacion: $observacion,
             nombre: $nombre,
-            capacidadMaxima: $capacidadMaxima,
+            clasificacionTaxonomica: $clasificacionTaxonomica,
             estado: EstadoCaja::EnTransito,
             ranuraActualId: null,
             codigoRfid: null,
@@ -54,19 +62,25 @@ class Caja
     public static function reconstituir(
         CajaId $id,
         CodigoCaja $codigo,
-        ?string $familiaTaxonomicaId,
         EstadoCaja $estado,
         ?RanuraId $ranuraActualId,
         ?CodigoRfid $codigoRfid,
+        bool $esEspecial = false,
+        ?string $observacion = null,
         ?string $nombre = null,
-        ?int $capacidadMaxima = null,
+        ?ClasificacionTaxonomica $clasificacionTaxonomica = null,
     ): self {
+        if ($esEspecial && ($observacion === null || trim($observacion) === '')) {
+            throw new \InvalidArgumentException('Una Caja especial requiere una observación no vacía.');
+        }
+
         return new self(
             id: $id,
             codigo: $codigo,
-            familiaTaxonomicaId: $familiaTaxonomicaId,
+            esEspecial: $esEspecial,
+            observacion: $observacion,
             nombre: $nombre,
-            capacidadMaxima: $capacidadMaxima,
+            clasificacionTaxonomica: $clasificacionTaxonomica,
             estado: $estado,
             ranuraActualId: $ranuraActualId,
             codigoRfid: $codigoRfid,
@@ -75,7 +89,11 @@ class Caja
 
     public function ingresarEnRanura(RanuraId $ranuraId): void
     {
-        if (! $this->estado->equals(EstadoCaja::EnTransito)) {
+        // Una caja entra a una ranura tanto en su ingreso normal (EnTransito) como
+        // al devolverse tras una extracción prolongada. El ESP32 detecta ambos casos
+        // como el mismo evento físico de inserción.
+        if (! $this->estado->equals(EstadoCaja::EnTransito)
+            && ! $this->estado->equals(EstadoCaja::ExtraccionProlongada)) {
             throw new CajaNoEnTransitoException($this->id, $this->estado);
         }
 
@@ -86,7 +104,11 @@ class Caja
 
     public function retirarDeRanura(): void
     {
-        if (! $this->estado->equals(EstadoCaja::EnGabinete)) {
+        // El retiro físico es válido desde cualquier estado en que la caja está alojada
+        // en su ranura (EnGabinete, UbicacionIncorrecta, PendienteClasificacion). Las dos
+        // últimas son banderas de negocio sobre una caja presente: sacarla del gabinete las
+        // resuelve igual que un retiro normal.
+        if (! $this->estado->estaAlojadaEnRanura()) {
             throw new CajaNoEnGabineteException($this->id, $this->estado);
         }
 
@@ -145,6 +167,32 @@ class Caja
         $this->estado = EstadoCaja::PendienteClasificacion;
     }
 
+    public function marcarExtraccionProlongada(): void
+    {
+        if (! $this->estado->equals(EstadoCaja::EnTransito)) {
+            throw new CajaNoEnTransitoException($this->id, $this->estado);
+        }
+
+        $this->estado = EstadoCaja::ExtraccionProlongada;
+    }
+
+    /**
+     * Actualiza la clasificación taxonómica cacheada en la Caja.
+     * La Application layer la llama cuando los UnitTrays propagan su clasificación dominante.
+     */
+    public function actualizarClasificacion(ClasificacionTaxonomica $clasificacion): void
+    {
+        $this->clasificacionTaxonomica = $clasificacion;
+    }
+
+    /**
+     * Limpia la clasificación cuando la Caja queda sin UnitTrays clasificados.
+     */
+    public function limpiarClasificacion(): void
+    {
+        $this->clasificacionTaxonomica = null;
+    }
+
     public function tieneRfidAsignado(): bool
     {
         return $this->codigoRfid !== null;
@@ -174,19 +222,24 @@ class Caja
         return $this->codigo;
     }
 
-    public function familiaTaxonomicaId(): ?string
+    public function esEspecial(): bool
     {
-        return $this->familiaTaxonomicaId;
+        return $this->esEspecial;
+    }
+
+    public function observacion(): ?string
+    {
+        return $this->observacion;
+    }
+
+    public function clasificacionTaxonomica(): ?ClasificacionTaxonomica
+    {
+        return $this->clasificacionTaxonomica;
     }
 
     public function nombre(): ?string
     {
         return $this->nombre;
-    }
-
-    public function capacidadMaxima(): ?int
-    {
-        return $this->capacidadMaxima;
     }
 
     public function estadoActual(): EstadoCaja

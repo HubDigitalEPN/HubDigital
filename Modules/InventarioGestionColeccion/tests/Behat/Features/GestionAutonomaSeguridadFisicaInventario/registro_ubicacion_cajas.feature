@@ -16,6 +16,11 @@ Característica: Localización de cajas y alertas por movimiento no autorizado
     Cuando la caja "B-042" es retirada de su ranura
     Entonces el curador puede ver que "B-042" no está ubicada en ninguna ranura
 
+  Escenario: El curador retira una caja que estaba pendiente de clasificación
+    Dado que la caja "B-042" se encuentra pendiente de clasificación en la ranura 3 del gabinete "G-01"
+    Cuando la caja "B-042" es retirada de su ranura
+    Entonces el curador puede ver que "B-042" no está ubicada en ninguna ranura
+
   Escenario: El curador recibe una alerta cuando una caja se mueve fuera del horario autorizado
     Dado que la caja "B-042" se encuentra en la ranura 3 del gabinete "G-01"
     Y que el movimiento ocurre fuera del horario autorizado de la colección

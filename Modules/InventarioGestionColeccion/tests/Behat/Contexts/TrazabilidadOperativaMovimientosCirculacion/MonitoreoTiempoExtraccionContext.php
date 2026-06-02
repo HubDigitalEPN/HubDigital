@@ -7,53 +7,75 @@ namespace Modules\InventarioGestionColeccion\Tests\Behat\Contexts\TrazabilidadOp
 use Behat\Step\Given;
 use Behat\Step\Then;
 use Behat\Step\When;
-use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarDevolucionCaja\RegistrarDevolucionCajaHandler;
-use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarDevolucionCaja\RegistrarDevolucionCajaInput;
-use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarDevolucionCaja\RegistrarDevolucionCajaOutput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\ContextoEjecucionPort;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\EventPublisherPort;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\HorarioValidadorPort;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\TransactionManagerPort;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarIngresoCaja\RegistrarIngresoCajaHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarIngresoCaja\RegistrarIngresoCajaInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarIngresoCaja\RegistrarIngresoCajaOutput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\VerificarTiemposExtraccion\VerificarTiemposExtraccionHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\VerificarTiemposExtraccion\VerificarTiemposExtraccionInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\VerificarTiemposExtraccion\VerificarTiemposExtraccionOutput;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\AlertaUbicacion;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Caja;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Gabinete;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Horario;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\RanuraGabinete;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\UbicacionCaja;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\AlertaUbicacionRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\CajaRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EventoCicloIotRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\GabineteRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\HorarioRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\NotificacionRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\OrdenEsperadoFamiliasRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\RanuraGabineteRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UbicacionCajaRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UnitTrayRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\CajaId;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\ClasificacionTaxonomica;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\CodigoCaja;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\CodigoGabinete;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoAlerta;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoCaja;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\HorarioId;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\RanuraId;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TipoAlerta;
 use Modules\InventarioGestionColeccion\Tests\Behat\Contexts\BaseContext;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\Fakes\FakeContextoEjecucionAdapter;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\Fakes\FakeEventPublisherAdapter;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\Fakes\FakeHorarioValidadorAdapter;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\Fakes\PassThroughTransactionManagerAdapter;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryAlertaUbicacionRepository;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryCajaRepository;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryEventoCicloIotRepository;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryGabineteRepository;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryHorarioRepository;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryNotificacionRepository;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryOrdenEsperadoFamiliasRepository;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryRanuraGabineteRepository;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryUbicacionCajaRepository;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryUnitTrayRepository;
 use PHPUnit\Framework\Assert;
 
 final class MonitoreoTiempoExtraccionContext extends BaseContext
 {
-    // ── Handlers ─────────────────────────────────────────────────────────────
-
     private VerificarTiemposExtraccionHandler $verificarHandler;
 
-    private RegistrarDevolucionCajaHandler $devolucionHandler;
+    private RegistrarIngresoCajaHandler $ingresoHandler;
 
-    // ── Repositories ─────────────────────────────────────────────────────────
+    private InMemoryGabineteRepository $gabineteRepo;
 
-    private GabineteRepository $gabineteRepo;
+    private InMemoryRanuraGabineteRepository $ranuraRepo;
 
-    private RanuraGabineteRepository $ranuraRepo;
+    private InMemoryCajaRepository $cajaRepo;
 
-    private CajaRepository $cajaRepo;
+    private InMemoryUbicacionCajaRepository $ubicacionRepo;
 
-    private UbicacionCajaRepository $ubicacionRepo;
+    private InMemoryAlertaUbicacionRepository $alertaRepo;
 
-    private AlertaUbicacionRepository $alertaRepo;
-
-    private NotificacionRepository $notificacionRepo;
-
-    // ── Estado del escenario ─────────────────────────────────────────────────
+    private InMemoryNotificacionRepository $notificacionRepo;
 
     private ?CajaId $cajaId = null;
 
@@ -61,67 +83,82 @@ final class MonitoreoTiempoExtraccionContext extends BaseContext
 
     private ?VerificarTiemposExtraccionOutput $ultimaVerificacionOutput = null;
 
-    private ?RegistrarDevolucionCajaOutput $ultimaDevolucionOutput = null;
+    private ?RegistrarIngresoCajaOutput $ultimaIngresoOutput = null;
 
     private ?\Throwable $excepcionCapturada = null;
 
-    // ── Constructor ──────────────────────────────────────────────────────────
-
     public function __construct()
     {
+        $this->gabineteRepo = new InMemoryGabineteRepository;
+        $this->ranuraRepo = new InMemoryRanuraGabineteRepository;
+        $this->cajaRepo = new InMemoryCajaRepository;
+        $this->ubicacionRepo = new InMemoryUbicacionCajaRepository;
+        $this->alertaRepo = new InMemoryAlertaUbicacionRepository;
+        $this->notificacionRepo = new InMemoryNotificacionRepository;
+
+        $horarioRepo = new InMemoryHorarioRepository;
+        $horarioRepo->guardar(Horario::crear(id: HorarioId::generar(), horaInicio: 8, horaFin: 18));
+
+        $horarioFake = new FakeHorarioValidadorAdapter($horarioRepo);
+        $horarioFake->setFueraDeHorario(false);
+
+        self::$app->instance(HorarioValidadorPort::class, $horarioFake);
+        self::$app->instance(HorarioRepository::class, $horarioRepo);
+        self::$app->instance(EventPublisherPort::class, new FakeEventPublisherAdapter);
+        self::$app->instance(TransactionManagerPort::class, new PassThroughTransactionManagerAdapter);
+        self::$app->instance(ContextoEjecucionPort::class, new FakeContextoEjecucionAdapter);
+        self::$app->instance(GabineteRepository::class, $this->gabineteRepo);
+        self::$app->instance(RanuraGabineteRepository::class, $this->ranuraRepo);
+        self::$app->instance(CajaRepository::class, $this->cajaRepo);
+        self::$app->instance(UbicacionCajaRepository::class, $this->ubicacionRepo);
+        self::$app->instance(AlertaUbicacionRepository::class, $this->alertaRepo);
+        self::$app->instance(NotificacionRepository::class, $this->notificacionRepo);
+        self::$app->instance(EventoCicloIotRepository::class, new InMemoryEventoCicloIotRepository);
+        self::$app->instance(UnitTrayRepository::class, new InMemoryUnitTrayRepository);
+        self::$app->instance(OrdenEsperadoFamiliasRepository::class, new InMemoryOrdenEsperadoFamiliasRepository);
+
         $this->verificarHandler = $this->make(VerificarTiemposExtraccionHandler::class);
-        $this->devolucionHandler = $this->make(RegistrarDevolucionCajaHandler::class);
-        $this->gabineteRepo = $this->make(GabineteRepository::class);
-        $this->ranuraRepo = $this->make(RanuraGabineteRepository::class);
-        $this->cajaRepo = $this->make(CajaRepository::class);
-        $this->ubicacionRepo = $this->make(UbicacionCajaRepository::class);
-        $this->alertaRepo = $this->make(AlertaUbicacionRepository::class);
-        $this->notificacionRepo = $this->make(NotificacionRepository::class);
+        $this->ingresoHandler = $this->make(RegistrarIngresoCajaHandler::class);
     }
 
     // ==========================================
     // ESQUEMA: Evaluación del tiempo de extracción
     // ==========================================
 
-    #[Given('/^que existe una caja entomológica fuera de su posición con condición (.+)$/u')]
-    public function queExisteUnaCajaEntomológicaFueraDeSuPosiciónConCondición(string $condicion): void
+    #[Given('/^que existe una caja fuera de su posición con condición (.+)$/u')]
+    public function queExisteUnaCajaFueraDeSuPosicionConCondicion(string $condicion): void
     {
-        [$caja, $ranura] = $this->sembrarCajaEnTransitoConRanuraOrigen();
-
-        // Ajustar el tiempo de retiro según la condición para simular cada escenario
-        $tiempoRetiro = match (true) {
-            str_contains($condicion, 'dentro del límite') => now()->subHours(4),
-            str_contains($condicion, 'próxima a superar') => now()->subHours(22),
-            str_contains($condicion, 'superando el límite') => now()->subHours(26),
+        $retiradaEn = match (true) {
+            str_contains($condicion, 'dentro del límite') => new \DateTimeImmutable('-4 hours'),
+            str_contains($condicion, 'próxima a superar') => new \DateTimeImmutable('-22 hours'),
+            str_contains($condicion, 'superando el límite') => new \DateTimeImmutable('-26 hours'),
             default => throw new \InvalidArgumentException("Condición desconocida: {$condicion}"),
         };
 
-        // Actualizar la ubicación cerrada con el tiempo de retiro simulado
-        $ubicacion = UbicacionCaja::registrarRetiro(
+        $ranura = $this->sembrarGabineteConRanura('GAB-EXT-001', 'CAJA-EXT-001');
+
+        // Historial de retiro: una ubicación cerrada cuyo retiro ocurrió en el pasado.
+        $ubicacion = UbicacionCaja::registrar(
             id: $this->ubicacionRepo->nextIdentity(),
-            cajaId: $caja->id(),
-            ranuraId: $ranura->id(),
-            ingresadaEn: $tiempoRetiro->copy()->subHours(2),
-            retiradaEn: $tiempoRetiro,
+            cajaId: $this->cajaId,
+            ranuraGabineteId: $ranura->id(),
+            ingresadaEn: $retiradaEn->modify('-2 hours'),
         );
+        $ubicacion->cerrar($retiradaEn);
         $this->ubicacionRepo->guardar($ubicacion);
 
-        $cajaPersistida = $this->cajaRepo->buscarPorId($caja->id());
-        Assert::assertNotNull($cajaPersistida, 'La caja debe estar persistida');
+        $caja = $this->cajaRepo->buscarPorId($this->cajaId);
+        Assert::assertNotNull($caja, 'La caja debe estar persistida');
         Assert::assertTrue(
-            $cajaPersistida->estadoActual()->equals(EstadoCaja::EnTransito),
+            $caja->estadoActual()->equals(EstadoCaja::EnTransito),
             'La caja debe estar en tránsito (fuera de su posición)'
         );
-
-        $ubicacionPersistida = $this->ubicacionRepo->buscarUltimaRetiroActivaPorCaja($caja->id());
-        Assert::assertNotNull($ubicacionPersistida, 'Debe existir registro de retiro activo');
-        Assert::assertNotNull($ubicacionPersistida->retiradaEn(), 'El tiempo de retiro debe estar registrado');
     }
 
     #[When('se verifican los tiempos de extracción')]
-    public function seVerificanLosTiemposDeExtracción(): void
+    public function seVerificanLosTiemposDeExtraccion(): void
     {
-        Assert::assertNotNull($this->cajaId, 'Se requiere una caja en estado de tránsito (@Given)');
+        Assert::assertNotNull($this->cajaId, 'Se requiere una caja sembrada (@Given)');
 
         try {
             $this->ultimaVerificacionOutput = $this->verificarHandler->handle(
@@ -135,18 +172,24 @@ final class MonitoreoTiempoExtraccionContext extends BaseContext
         }
     }
 
-    #[Then('se debe registrar sin alertas y el estado permanece "En Tránsito"')]
-    public function seDebeRegistrarSinAlertasYElEstadoPermanece(): void
+    #[Then('el estado permanece "En Tránsito" sin alertas')]
+    public function elEstadoPermaneceEnTransitoSinAlertas(): void
     {
         Assert::assertNull($this->excepcionCapturada, 'No se esperaba excepción al verificar tiempos');
         Assert::assertNotNull($this->ultimaVerificacionOutput, 'El handler debe retornar una respuesta');
         Assert::assertFalse(
-            $this->ultimaVerificacionOutput->alertaGenerada(),
-            'No debe generarse alerta cuando la caja está dentro del límite'
+            $this->ultimaVerificacionOutput->alertaGenerada,
+            'No debe generarse alerta dentro del límite'
+        );
+        Assert::assertFalse(
+            $this->ultimaVerificacionOutput->notificacionPreventiva,
+            'No debe enviarse notificación preventiva dentro del límite'
         );
 
-        $alerta = $this->alertaRepo->buscarActivaPorCaja($this->cajaId);
-        Assert::assertNull($alerta, 'No debe existir ninguna alerta activa para esta caja');
+        Assert::assertNull(
+            $this->alertaRepo->buscarActivaPorCaja($this->cajaId),
+            'No debe existir ninguna alerta activa para esta caja'
+        );
 
         $caja = $this->cajaRepo->buscarPorId($this->cajaId);
         Assert::assertNotNull($caja);
@@ -156,13 +199,13 @@ final class MonitoreoTiempoExtraccionContext extends BaseContext
         );
     }
 
-    #[Then('se debe enviar una notificación preventiva al curador responsable')]
-    public function seDebeEnviarUnaNotificaciónPreventivaAlCuradorResponsable(): void
+    #[Then('se envía una notificación preventiva al curador responsable')]
+    public function seEnviaUnaNotificacionPreventivaAlCuradorResponsable(): void
     {
         Assert::assertNull($this->excepcionCapturada, 'No se esperaba excepción');
         Assert::assertNotNull($this->ultimaVerificacionOutput);
         Assert::assertTrue(
-            $this->ultimaVerificacionOutput->notificacionPreventiva(),
+            $this->ultimaVerificacionOutput->notificacionPreventiva,
             'El output debe indicar que se generó notificación preventiva'
         );
 
@@ -173,15 +216,20 @@ final class MonitoreoTiempoExtraccionContext extends BaseContext
             $notificacion->tipo(),
             'La notificación debe ser de tipo preventivo'
         );
+
+        Assert::assertNull(
+            $this->alertaRepo->buscarActivaPorCaja($this->cajaId),
+            'Una notificación preventiva no debe generar todavía una alerta formal'
+        );
     }
 
-    #[Then('se debe generar una alerta de "Tiempo de Extracción Excedido" y el estado cambia a "Extracción Prolongada"')]
-    public function seDebeGenerarUnaAlertaDeTiempoDeExtraccionExcedido(): void
+    #[Then('se genera una alerta de "Extracción Prolongada" y el estado de la caja cambia a "Extracción Prolongada"')]
+    public function seGeneraUnaAlertaDeExtraccionProlongada(): void
     {
         Assert::assertNull($this->excepcionCapturada, 'No se esperaba excepción');
         Assert::assertNotNull($this->ultimaVerificacionOutput);
         Assert::assertTrue(
-            $this->ultimaVerificacionOutput->alertaGenerada(),
+            $this->ultimaVerificacionOutput->alertaGenerada,
             'El output debe indicar que se generó alerta de exceso'
         );
 
@@ -205,40 +253,54 @@ final class MonitoreoTiempoExtraccionContext extends BaseContext
     }
 
     // ==========================================
-    // ESCENARIO: Devolución de caja en estado Extracción Prolongada
+    // ESCENARIO: Devolución (detectada por el sistema como ingreso)
     // ==========================================
 
-    #[Given('que existe una caja entomológica en estado "Extracción Prolongada"')]
-    public function queExisteUnaCajaEntomológicaEnEstadoExtracciónProlongada(): void
+    #[Given('que existe una caja en estado "Extracción Prolongada"')]
+    public function queExisteUnaCajaEnEstadoExtraccionProlongada(): void
     {
-        [$caja, $ranura] = $this->sembrarCajaEnTransitoConRanuraOrigen();
+        $ranura = $this->sembrarGabineteConRanura(
+            'GAB-EXT-PROL-001',
+            'CAJA-EXT-PROL-001',
+            ClasificacionTaxonomica::desde(subfamilia: 'Nymphalinae', genero: 'Nymphalis'),
+        );
 
-        // Forzar estado de extracción prolongada directamente en el dominio
+        $caja = $this->cajaRepo->buscarPorId($this->cajaId);
+        Assert::assertNotNull($caja);
         $caja->marcarExtraccionProlongada();
+        $caja->pullEvents();
         $this->cajaRepo->guardar($caja);
 
-        $cajaPersistida = $this->cajaRepo->buscarPorId($caja->id());
-        Assert::assertNotNull($cajaPersistida, 'La caja debe estar persistida');
+        // Alerta activa que la devolución debe resolver automáticamente.
+        $alerta = AlertaUbicacion::generar(
+            id: $this->alertaRepo->nextIdentity(),
+            cajaId: $caja->id(),
+            tipo: TipoAlerta::ExtraccionProlongada,
+            datosContexto: ['motivo' => 'tiempo_extraccion_excedido'],
+        );
+        $this->alertaRepo->guardar($alerta);
+
+        $persistida = $this->cajaRepo->buscarPorId($this->cajaId);
+        Assert::assertNotNull($persistida);
         Assert::assertTrue(
-            $cajaPersistida->estadoActual()->equals(EstadoCaja::ExtraccionProlongada),
+            $persistida->estadoActual()->equals(EstadoCaja::ExtraccionProlongada),
             'La caja debe estar en estado "extraccion_prolongada" como precondición'
         );
-        Assert::assertNotNull($this->ranuraOrigenId, 'Debe existir la ranura de origen para la devolución');
+        Assert::assertNotNull($this->ranuraOrigenId, 'Debe existir la ranura para la devolución');
+        Assert::assertFalse($ranura->estaOcupada(), 'La ranura de devolución debe estar libre');
     }
 
-    #[When('el curador registra la devolución de la caja a su ranura en el gabinete')]
-    public function elCuradorRegistraLaDevoluciónDeLaCajaASuRanuraEnElGabinete(): void
+    #[When('el sistema detecta que la caja fue insertada en su ranura del gabinete')]
+    public function elSistemaDetectaQueLaCajaFueInsertadaEnSuRanura(): void
     {
         Assert::assertNotNull($this->cajaId, 'Se requiere una caja en estado previo');
         Assert::assertNotNull($this->ranuraOrigenId, 'Se requiere la ranura de destino para la devolución');
 
         try {
-            $this->ultimaDevolucionOutput = $this->devolucionHandler->handle(
-                new RegistrarDevolucionCajaInput(
+            $this->ultimaIngresoOutput = $this->ingresoHandler->handle(
+                new RegistrarIngresoCajaInput(
                     cajaId: (string) $this->cajaId,
                     ranuraId: (string) $this->ranuraOrigenId,
-                    actorId: 'curador-001',
-                    actorRol: 'curador',
                 )
             );
         } catch (\Throwable $e) {
@@ -246,23 +308,22 @@ final class MonitoreoTiempoExtraccionContext extends BaseContext
         }
     }
 
-    #[Then('se debe registrar la devolución')]
-    public function seDebeRegistrarLaDevolución(): void
+    #[Then('la devolución se registra')]
+    public function laDevolucionSeRegistra(): void
     {
         Assert::assertNull(
             $this->excepcionCapturada,
             'No se esperaba excepción al registrar la devolución: '.($this->excepcionCapturada?->getMessage() ?? '')
         );
-        Assert::assertNotNull($this->ultimaDevolucionOutput, 'El handler de devolución debe retornar una respuesta');
-        Assert::assertTrue($this->ultimaDevolucionOutput->exitoso(), 'La devolución debe reportarse como exitosa');
+        Assert::assertNotNull($this->ultimaIngresoOutput, 'El handler debe retornar una respuesta');
 
-        $ubicacionActiva = $this->ubicacionRepo->buscarUbicacionActivaPorCaja($this->cajaId);
+        $ubicacionActiva = $this->ubicacionRepo->buscarActivaPorCaja($this->cajaId);
         Assert::assertNotNull($ubicacionActiva, 'Debe existir un registro activo de ubicación tras la devolución');
         Assert::assertNull($ubicacionActiva->retiradaEn(), 'La ubicación activa no debe tener fecha de retiro');
     }
 
-    #[Then('el estado de la caja debe cambiar a "En Gabinete"')]
-    public function elEstadoDeLaCajaDebeCambiarAEnGabinete(): void
+    #[Then('el estado de la caja vuelve a "En Gabinete"')]
+    public function elEstadoDeLaCajaVuelveAEnGabinete(): void
     {
         $caja = $this->cajaRepo->buscarPorId($this->cajaId);
         Assert::assertNotNull($caja, 'La caja debe existir en el repositorio');
@@ -270,18 +331,23 @@ final class MonitoreoTiempoExtraccionContext extends BaseContext
             $caja->estadoActual()->equals(EstadoCaja::EnGabinete),
             'La caja debe cambiar a estado "en_gabinete" tras la devolución'
         );
+
+        $alerta = $this->alertaRepo->buscarActivaPorCaja($this->cajaId);
+        Assert::assertNull($alerta, 'La devolución debe resolver la alerta de extracción prolongada');
     }
 
     // ==========================================
     // Factory Methods
     // ==========================================
 
-    /** @return array{0: Caja, 1: RanuraGabinete} */
-    private function sembrarCajaEnTransitoConRanuraOrigen(): array
-    {
+    private function sembrarGabineteConRanura(
+        string $codigoGabinete,
+        string $codigoCaja,
+        ?ClasificacionTaxonomica $clasificacion = null,
+    ): RanuraGabinete {
         $gabinete = Gabinete::crear(
             id: $this->gabineteRepo->nextIdentity(),
-            codigo: 'GAB-EXT-001',
+            codigo: CodigoGabinete::desde($codigoGabinete),
             nombre: 'Gabinete Extracción',
             totalRanuras: 5,
         );
@@ -291,24 +357,18 @@ final class MonitoreoTiempoExtraccionContext extends BaseContext
             id: $this->ranuraRepo->nextIdentity(),
             gabineteId: $gabinete->id(),
             numeroRanura: 1,
-            familiaTaxonomicaEsperadaId: 'Nymphalidae',
         );
         $this->ranuraRepo->guardar($ranura);
         $this->ranuraOrigenId = $ranura->id();
 
         $caja = Caja::crear(
             id: $this->cajaRepo->nextIdentity(),
-            codigo: 'CAJA-EXT-001',
-            familiaTaxonomicaId: 'Nymphalidae',
-            capacidadMaxima: 10,
+            codigo: CodigoCaja::desde($codigoCaja),
+            clasificacionTaxonomica: $clasificacion,
         );
         $this->cajaRepo->guardar($caja);
         $this->cajaId = $caja->id();
 
-        $persistida = $this->cajaRepo->buscarPorId($caja->id());
-        Assert::assertNotNull($persistida, 'La caja de extracción debe estar persistida');
-        Assert::assertNotEmpty($persistida->codigo(), 'La caja debe tener código');
-
-        return [$persistida, $ranura];
+        return $ranura;
     }
 }

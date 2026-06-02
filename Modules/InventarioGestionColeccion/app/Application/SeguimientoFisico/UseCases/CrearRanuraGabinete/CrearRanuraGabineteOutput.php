@@ -10,7 +10,6 @@ final readonly class CrearRanuraGabineteOutput
         public string $id,
         public string $gabineteId,
         public int $numeroRanura,
-        public ?string $familiaTaxonomicaEsperadaId,
         public bool $activa,
         public ?string $cajaActualId = null,
     ) {}

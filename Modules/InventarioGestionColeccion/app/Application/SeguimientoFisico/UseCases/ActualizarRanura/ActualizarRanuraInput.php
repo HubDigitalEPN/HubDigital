@@ -8,7 +8,6 @@ final readonly class ActualizarRanuraInput
 {
     public function __construct(
         public string $ranuraId,
-        public ?string $familiaTaxonomicaEsperadaId,
         public bool $activa,
     ) {}
 }

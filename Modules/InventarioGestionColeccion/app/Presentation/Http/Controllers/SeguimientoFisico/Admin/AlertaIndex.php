@@ -13,12 +13,19 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Ig
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarAlertas\ListarAlertasHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarAlertas\ListarAlertasInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarCajas\ListarCajasHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarGabinetes\ListarGabineteHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarRanurasGabinete\ListarRanurasGabineteHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarRanurasGabinete\ListarRanurasGabineteInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ResolverAlerta\ResolverAlertaHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ResolverAlerta\ResolverAlertaInput;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TipoAlerta;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
 
 #[Layout('layouts.app', params: ['title' => 'Alertas'])]
 final class AlertaIndex extends Component
 {
+    use TraduceErroresPersistencia;
+
     public array $alertas = [];
 
     public string $filtroEstado = 'activa';
@@ -36,15 +43,24 @@ final class AlertaIndex extends Component
 
     private array $cajasPorId = [];
 
-    public function mount(ListarAlertasHandler $alertasHandler, ListarCajasHandler $cajasHandler): void
-    {
-        $this->buildCajasPorId($cajasHandler);
-        $this->cargarAlertas($alertasHandler);
+    private array $ranurasInfo = [];
+
+    public function mount(
+        ListarAlertasHandler $alertasHandler,
+        ListarCajasHandler $cajasHandler,
+        ListarGabineteHandler $gabineteHandler,
+        ListarRanurasGabineteHandler $ranurasHandler,
+    ): void {
+        $this->cargarProtegido(function () use ($alertasHandler, $cajasHandler, $gabineteHandler, $ranurasHandler) {
+            $this->buildCajasPorId($cajasHandler);
+            $this->buildRanurasInfo($gabineteHandler, $ranurasHandler);
+            $this->cargarAlertas($alertasHandler);
+        });
     }
 
     public function updatedFiltroEstado(): void
     {
-        $this->cargarAlertas(app(ListarAlertasHandler::class));
+        $this->cargarProtegido(fn () => $this->cargarAlertas(app(ListarAlertasHandler::class)));
     }
 
     public function abrirResolverModal(string $alertaId): void
@@ -72,7 +88,7 @@ final class AlertaIndex extends Component
             $this->successMessage = 'Alerta resuelta correctamente.';
             $this->errorMessage = null;
         } catch (\Throwable $e) {
-            $this->errorMessage = $e->getMessage();
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 
@@ -88,7 +104,7 @@ final class AlertaIndex extends Component
             $this->successMessage = 'Alerta ignorada.';
             $this->errorMessage = null;
         } catch (\Throwable $e) {
-            $this->errorMessage = $e->getMessage();
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 
@@ -97,6 +113,19 @@ final class AlertaIndex extends Component
         $this->cajasPorId = [];
         foreach ($handler->handle()->items as $c) {
             $this->cajasPorId[$c->id] = ['codigo' => $c->codigo, 'estado' => $c->estado];
+        }
+    }
+
+    private function buildRanurasInfo(
+        ListarGabineteHandler $gabineteHandler,
+        ListarRanurasGabineteHandler $ranurasHandler,
+    ): void {
+        $this->ranurasInfo = [];
+        foreach ($gabineteHandler->handle()->items as $g) {
+            $output = $ranurasHandler->handle(new ListarRanurasGabineteInput($g->id));
+            foreach ($output->items as $r) {
+                $this->ranurasInfo[$r->id] = "Ranura {$r->numeroRanura} — {$g->codigo}";
+            }
         }
     }
 
@@ -113,11 +142,27 @@ final class AlertaIndex extends Component
                 'cajaEstado' => $this->cajasPorId[$a->cajaId]['estado'] ?? null,
                 'tipo' => $a->tipo,
                 'estado' => $a->estado,
-                'datosContexto' => $a->datosContexto,
+                'datosContexto' => $this->enriquecerContexto($a->tipo, $a->datosContexto),
                 'generadaEn' => $a->generadaEn->format('d/m/Y H:i'),
             ],
             $output->items,
         );
+    }
+
+    private function enriquecerContexto(string $tipo, array $datosContexto): array
+    {
+        if (in_array($tipo, [
+            TipoAlerta::OrdenTaxonomicoFueraDeSecuencia->value,
+            TipoAlerta::FamiliaNoAsignada->value,
+        ], true)
+            && isset($datosContexto['ranura_id'])
+        ) {
+            $label = $this->ranurasInfo[$datosContexto['ranura_id']] ?? $datosContexto['ranura_id'];
+
+            return ['ranura' => $label];
+        }
+
+        return $datosContexto;
     }
 
     public function render(): View

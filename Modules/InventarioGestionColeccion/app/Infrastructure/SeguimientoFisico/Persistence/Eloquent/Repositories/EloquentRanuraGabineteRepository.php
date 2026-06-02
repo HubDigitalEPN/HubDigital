@@ -25,11 +25,15 @@ class EloquentRanuraGabineteRepository implements RanuraGabineteRepository
             [
                 'gabinete_id' => (string) $ranura->gabineteId(),
                 'numero_ranura' => $ranura->numeroRanura(),
-                'familia_taxonomica_esperada_id' => $ranura->familiaTaxonomicaEsperadaId(),
                 'caja_actual_id' => $ranura->cajaActualId() ? (string) $ranura->cajaActualId() : null,
                 'activa' => $ranura->activa(),
             ]
         );
+    }
+
+    public function eliminar(RanuraId $id): void
+    {
+        RanuraGabineteEloquentModel::where('id', (string) $id)->delete();
     }
 
     public function buscarPorId(RanuraId $id): ?RanuraGabinete
@@ -42,6 +46,7 @@ class EloquentRanuraGabineteRepository implements RanuraGabineteRepository
     public function buscarPorGabinete(GabineteId $gabineteId): array
     {
         return RanuraGabineteEloquentModel::where('gabinete_id', (string) $gabineteId)
+            ->orderBy('numero_ranura')
             ->get()
             ->map(fn (RanuraGabineteEloquentModel $m) => $this->toDomain($m))
             ->all();
@@ -56,13 +61,39 @@ class EloquentRanuraGabineteRepository implements RanuraGabineteRepository
         return $model ? $this->toDomain($model) : null;
     }
 
+    public function buscarVecinasOcupadas(GabineteId $gabineteId, int $numeroRanura): array
+    {
+        $resultado = [];
+
+        $anterior = RanuraGabineteEloquentModel::where('gabinete_id', (string) $gabineteId)
+            ->whereNotNull('caja_actual_id')
+            ->where('numero_ranura', '<', $numeroRanura)
+            ->orderByDesc('numero_ranura')
+            ->first();
+
+        if ($anterior !== null) {
+            $resultado[] = $this->toDomain($anterior);
+        }
+
+        $siguiente = RanuraGabineteEloquentModel::where('gabinete_id', (string) $gabineteId)
+            ->whereNotNull('caja_actual_id')
+            ->where('numero_ranura', '>', $numeroRanura)
+            ->orderBy('numero_ranura')
+            ->first();
+
+        if ($siguiente !== null) {
+            $resultado[] = $this->toDomain($siguiente);
+        }
+
+        return $resultado;
+    }
+
     private function toDomain(RanuraGabineteEloquentModel $model): RanuraGabinete
     {
         return RanuraGabinete::reconstituir(
             id: RanuraId::desde($model->id),
             gabineteId: GabineteId::desde($model->gabinete_id),
             numeroRanura: $model->numero_ranura,
-            familiaTaxonomicaEsperadaId: $model->familia_taxonomica_esperada_id,
             cajaActualId: $model->caja_actual_id ? CajaId::desde($model->caja_actual_id) : null,
             activa: (bool) $model->activa,
         );

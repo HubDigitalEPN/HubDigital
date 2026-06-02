@@ -34,4 +34,26 @@ final class InMemoryUbicacionCajaRepository implements UbicacionCajaRepository
 
         return null;
     }
+
+    public function buscarUltimaRetiradaPorCaja(CajaId $cajaId): ?UbicacionCaja
+    {
+        $ultima = null;
+
+        foreach ($this->store as $ubicacion) {
+            if (! $ubicacion->cajaId()->equals($cajaId)) {
+                continue;
+            }
+
+            $retiradaEn = $ubicacion->retiradaEn();
+            if ($retiradaEn === null) {
+                continue;
+            }
+
+            if ($ultima === null || $retiradaEn > $ultima->retiradaEn()) {
+                $ultima = $ubicacion;
+            }
+        }
+
+        return $ultima;
+    }
 }

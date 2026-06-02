@@ -8,8 +8,8 @@ final readonly class ActualizarCajaInput
 {
     public function __construct(
         public string $cajaId,
-        public ?string $nombre,
-        public ?string $familiaTaxonomicaId,
-        public ?int $capacidadMaxima,
+        public bool $esEspecial = false,
+        public ?string $observacion = null,
+        public ?string $nombre = null,
     ) {}
 }

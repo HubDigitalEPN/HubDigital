@@ -18,8 +18,10 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\Ale
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\CajaRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EventoCicloIotRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\NotificacionRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\OrdenEsperadoFamiliasRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\RanuraGabineteRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UbicacionCajaRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\EvaluadorOrdenTaxonomico;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\ActorRol;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\CajaId;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoCaja;
@@ -40,6 +42,8 @@ final class RegistrarIngresoCajaHandler
         private readonly HorarioValidadorPort $horarioValidador,
         private readonly ContextoEjecucionPort $contextoEjecucion,
         private readonly EventPublisherPort $eventPublisher,
+        private readonly EvaluadorOrdenTaxonomico $evaluadorTaxonomico,
+        private readonly OrdenEsperadoFamiliasRepository $ordenFamiliasRepo,
     ) {}
 
     public function handle(RegistrarIngresoCajaInput $input): RegistrarIngresoCajaOutput
@@ -65,11 +69,23 @@ final class RegistrarIngresoCajaHandler
             return $this->reconciliar($caja, $ranura, $cajaId, $ranuraId, $actorId, $actorRol);
         }
 
-        // Normal flow: caja is EnTransito.
+        // La devolución de una caja en Extracción Prolongada llega como un ingreso
+        // detectado por el ESP32; al reinsertarse debe resolverse su alerta activa.
+        $estabaProlongada = $caja->estadoActual()->equals(EstadoCaja::ExtraccionProlongada);
+
+        // Normal flow: caja is EnTransito (o devolución desde ExtraccionProlongada).
         [$ubicacion, $alertaGenerada] = $this->transactionManager->executeTransactional(
-            function () use ($caja, $ranura, $cajaId, $ranuraId, $actorRol, $actorId): array {
+            function () use ($caja, $ranura, $cajaId, $ranuraId, $actorRol, $actorId, $estabaProlongada): array {
                 $caja->ingresarEnRanura($ranuraId);
                 $ranura->asignarCaja($cajaId);
+
+                if ($estabaProlongada) {
+                    $alertaProlongada = $this->alertaRepo->buscarActivaPorCaja($cajaId);
+                    if ($alertaProlongada !== null && $alertaProlongada->tipo()->equals(TipoAlerta::ExtraccionProlongada)) {
+                        $alertaProlongada->resolver('Caja devuelta a su ranura (detectada por el sistema)');
+                        $this->alertaRepo->guardar($alertaProlongada);
+                    }
+                }
 
                 $ocurridoEn = new \DateTimeImmutable;
 
@@ -126,6 +142,12 @@ final class RegistrarIngresoCajaHandler
             }
         );
 
+        // El orden taxonómico y el movimiento fuera de horario son preocupaciones
+        // ortogonales: una caja puede ingresar de noche Y fuera de secuencia, y debe
+        // recibir ambas alertas. Por eso la evaluación taxonómica corre siempre.
+        $alertaTaxonomica = $this->evaluarOrdenTaxonomico($caja, $ranura, $cajaId, $ranuraId);
+        $alertaGenerada = $alertaGenerada || $alertaTaxonomica;
+
         return RegistrarIngresoCajaOutput::fromPrimitives([
             'cajaId' => (string) $cajaId,
             'ranuraId' => (string) $ranuraId,
@@ -133,6 +155,53 @@ final class RegistrarIngresoCajaHandler
             'ubicacionCajaId' => (string) $ubicacion->id(),
             'alertaGenerada' => $alertaGenerada,
         ]);
+    }
+
+    private function evaluarOrdenTaxonomico(
+        Caja $caja,
+        RanuraGabinete $ranura,
+        CajaId $cajaId,
+        RanuraId $ranuraId,
+    ): bool {
+        $vecinas = $this->ranuraRepo->buscarVecinasOcupadas($ranura->gabineteId(), $ranura->numeroRanura());
+
+        $cajaAnterior = null;
+        $cajaSiguiente = null;
+
+        foreach ($vecinas as $ranuraVecina) {
+            $cajaVecina = $this->cajaRepo->buscarPorId($ranuraVecina->cajaActualId());
+            if ($ranuraVecina->numeroRanura() < $ranura->numeroRanura()) {
+                $cajaAnterior = $cajaVecina;
+            } else {
+                $cajaSiguiente = $cajaVecina;
+            }
+        }
+
+        $ordenFamilias = $this->ordenFamiliasRepo->obtener();
+        $tipoAlerta = $this->evaluadorTaxonomico->evaluar($caja, $cajaAnterior, $cajaSiguiente, $ordenFamilias);
+
+        if ($tipoAlerta === null) {
+            return false;
+        }
+
+        $this->transactionManager->executeTransactional(
+            function () use ($caja, $cajaId, $ranuraId, $tipoAlerta): void {
+                $alerta = AlertaUbicacion::generar(
+                    id: $this->alertaRepo->nextIdentity(),
+                    cajaId: $cajaId,
+                    tipo: $tipoAlerta,
+                    datosContexto: ['ranura_id' => (string) $ranuraId],
+                );
+                $this->alertaRepo->guardar($alerta);
+
+                if ($tipoAlerta->equals(TipoAlerta::FamiliaNoAsignada)) {
+                    $caja->marcarPendienteClasificacion();
+                    $this->cajaRepo->guardar($caja);
+                }
+            }
+        );
+
+        return true;
     }
 
     private function reconciliar(

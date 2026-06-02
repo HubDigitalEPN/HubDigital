@@ -16,10 +16,13 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Li
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarTaxones\ListarTaxonesHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarEspecimen\RegistrarEspecimenHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarEspecimen\RegistrarEspecimenInput;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
 
 #[Layout('layouts.app', params: ['title' => 'Especímenes'])]
 final class EspecimenIndex extends Component
 {
+    use TraduceErroresPersistencia;
+
     // ── Búsqueda ──────────────────────────────────────────────────────────────
 
     public array $especimenes = [];
@@ -173,15 +176,17 @@ final class EspecimenIndex extends Component
         ListarTaxonesHandler $taxonesHandler,
         ListarEntidadesDepositantesHandler $entidadesHandler,
     ): void {
-        $this->taxones = array_map(
-            fn ($t) => ['id' => $t->id, 'label' => "{$t->nombreCientifico} ({$t->rango})"],
-            $taxonesHandler->handle()->items,
-        );
+        $this->cargarProtegido(function () use ($taxonesHandler, $entidadesHandler) {
+            $this->taxones = array_map(
+                fn ($t) => ['id' => $t->id, 'label' => "{$t->nombreCientifico} ({$t->rango})"],
+                $taxonesHandler->handle()->items,
+            );
 
-        $this->entidades = array_map(
-            fn ($e) => ['id' => $e->id, 'label' => $e->nombre],
-            $entidadesHandler->handle()->items,
-        );
+            $this->entidades = array_map(
+                fn ($e) => ['id' => $e->id, 'label' => $e->nombre],
+                $entidadesHandler->handle()->items,
+            );
+        });
 
         $this->fechaColecta = date('Y-m-d');
     }
@@ -265,7 +270,7 @@ final class EspecimenIndex extends Component
                 $this->errorMessage = null;
             }
         } catch (\Throwable $e) {
-            $this->errorMessage = $e->getMessage();
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 
@@ -333,7 +338,7 @@ final class EspecimenIndex extends Component
             $this->successMessage = 'Especímen actualizado correctamente.';
             $this->errorMessage = null;
         } catch (\Throwable $e) {
-            $this->errorMessage = $e->getMessage();
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 
@@ -374,7 +379,7 @@ final class EspecimenIndex extends Component
             $this->page = 1;
             $this->errorMessage = null;
         } catch (\Throwable $e) {
-            $this->errorMessage = $e->getMessage();
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 

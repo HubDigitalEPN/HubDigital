@@ -157,12 +157,28 @@
                                 Cajas
                             </flux:sidebar.item>
                             <flux:sidebar.item
+                                icon="squares-2x2"
+                                :href="route('inventario.unit-trays')"
+                                :current="request()->routeIs('inventario.unit-trays')"
+                                wire:navigate
+                            >
+                                Unit Trays
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
                                 icon="bell-alert"
                                 :href="route('inventario.alertas')"
                                 :current="request()->routeIs('inventario.alertas')"
                                 wire:navigate
                             >
                                 Alertas
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="bars-arrow-down"
+                                :href="route('inventario.orden-familias')"
+                                :current="request()->routeIs('inventario.orden-familias')"
+                                wire:navigate
+                            >
+                                Orden de familias
                             </flux:sidebar.item>
                             <flux:sidebar.item
                                 icon="clock"
