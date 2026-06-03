@@ -39,6 +39,7 @@ use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\LaravelTransactionManagerAdapter;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\SimplePdfActaAdapter;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\TaxonArbolClasificacionTaxonomicaAdapter;
+use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Console\ExportarGbifCommand;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Console\ImportarCatalogoInvertebradosCommand;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentAlertaUbicacionRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentCajaRepository;
@@ -111,6 +112,7 @@ class InventarioGestionColeccionServiceProvider extends ModuleServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 ImportarCatalogoInvertebradosCommand::class,
+                ExportarGbifCommand::class,
             ]);
         }
     }

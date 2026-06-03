@@ -178,4 +178,41 @@
             </flux:button>
         </div>
     </form>
+
+    {{-- Sección: Exportar Darwin Core Archive --}}
+    <div class="rounded-lg border border-border bg-surface shadow-sm">
+        <div class="px-5 py-4 bg-bg-main border-b border-border">
+            <flux:heading size="md" level="2" class="text-text-primary">
+                <span class="inline-flex items-center gap-2">
+                    <flux:icon name="cloud-arrow-down" class="size-5 text-bio-green" />
+                    Exportar Darwin Core Archive
+                </span>
+            </flux:heading>
+            <p class="text-xs text-text-secondary mt-1">
+                Genera el ZIP listo para publicar en GBIF/IPT con los 4 archivos: <code>meta.xml</code>, <code>eml.xml</code>, <code>occurrence.txt</code> y <code>taxon.txt</code>.
+            </p>
+        </div>
+        <div class="p-5 space-y-3">
+            @if($existeConfig)
+                <p class="text-sm text-text-primary">
+                    Solo se incluyen especímenes que pasan <code class="text-xs">CriteriosCalidadGbif</code>: con taxón identificado, coordenadas válidas y no descartados.
+                </p>
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <p class="text-xs text-text-secondary">
+                        También desde terminal:
+                        <code class="text-xs">php artisan inventario:exportar-gbif</code>
+                    </p>
+                    <a href="{{ route('inventario.taxonomia.dwc.descargar') }}"
+                       class="inline-flex items-center gap-2 rounded-lg bg-bio-green text-white px-4 py-2 text-sm font-medium hover:opacity-90 transition-opacity">
+                        <flux:icon name="arrow-down-tray" class="size-4" />
+                        Descargar DwC-A (.zip)
+                    </a>
+                </div>
+            @else
+                <flux:callout variant="warning">
+                    Configura primero el dataset (arriba) antes de exportar.
+                </flux:callout>
+            @endif
+        </div>
+    </div>
 </div>
