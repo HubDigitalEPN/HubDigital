@@ -65,6 +65,7 @@ final class GroqExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocume
 
             // Conservar el primer valor no nulo encontrado para cada campo.
             foreach ($parcial as $campo => $valor) {
+                $campo = (string) $campo;
                 if (! array_key_exists($campo, $acumulado) && $this->limpiar($valor) !== null) {
                     $acumulado[$campo] = $valor;
                 }
