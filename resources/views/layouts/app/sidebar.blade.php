@@ -186,6 +186,14 @@
                             >
                                 Entidades depositantes
                             </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="globe-alt"
+                                :href="route('inventario.taxonomia.dataset.config')"
+                                :current="request()->routeIs('inventario.taxonomia.dataset.config')"
+                                wire:navigate
+                            >
+                                Dataset GBIF
+                            </flux:sidebar.item>
                         </flux:sidebar.group>
                         <flux:sidebar.group heading="Seguimiento físico" class="grid">
                             <flux:sidebar.item
