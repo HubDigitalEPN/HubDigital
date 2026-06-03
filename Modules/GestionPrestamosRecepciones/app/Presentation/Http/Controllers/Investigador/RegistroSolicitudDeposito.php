@@ -212,7 +212,19 @@ final class RegistroSolicitudDeposito extends Component
             ->first();
 
         if ($borrador) {
-            $this->restaurarDesdeBorrador($borrador);
+            try {
+                $this->restaurarDesdeBorrador($borrador);
+            } catch (\Throwable $e) {
+                \Log::error('Error al restaurar borrador de depósito', [
+                    'borrador_id' => $borrador->id,
+                    'error' => $e->getMessage(),
+                ]);
+                // Reset total: evitar que el estado parcial (solicitudId asignado, paso=1)
+                // permita que avanzarPaso1() sobreescriba el paso_actual real del borrador.
+                $this->solicitudId = null;
+                $this->borradorRestaurado = false;
+                $this->dispatch('domain-error', message: 'No se pudo restaurar el borrador. Por favor, intenta nuevamente.');
+            }
 
             return;
         }
@@ -279,6 +291,16 @@ final class RegistroSolicitudDeposito extends Component
             $this->datosExtraidos = $this->construirDatosExtraidos($model);
             $this->datosFaltantes = $model->datos_faltantes ?? [];
             $this->datosIngresadosManualmente = $model->datos_ingresados_manualmente ?? [];
+
+            // Compatibilidad: borradores creados antes del commit 5265671 no incluyen
+            // los campos cuantitativos en datos_faltantes. Agregarlos si son null en BD.
+            foreach (['N.º Individuos', 'N.º Morfoespecies', 'N.º Lotes'] as $campo) {
+                if (($this->datosExtraidos[$campo] ?? null) === null
+                    && ! in_array($campo, $this->datosFaltantes, true)) {
+                    $this->datosFaltantes[] = $campo;
+                }
+            }
+
             $this->firmasElectronicas = $model->firmas_electronicas ?? [];
             $this->nombreEnDocumento = $model->nombre_investigador_documento ?? '';
             $this->documentosProcesados = $model->documentos_procesados ?? [];
@@ -631,6 +653,10 @@ final class RegistroSolicitudDeposito extends Component
             ExtraccionDatosDocumentoJob::dispatch($this->solicitudId, $this->documentosCargados);
             $this->extraccionProcesando = true;
             $this->extraccionIniciadaEn = now()->timestamp;
+            // Persiste el estado para que updated_at refleje el momento del dispatch,
+            // no el de la última subida de documento. Así el timeout de verificarExtraccion()
+            // se mide desde el instante correcto tras una recarga de página.
+            $this->persistirEstadoWizard();
         }
     }
 
