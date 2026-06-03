@@ -36,11 +36,11 @@ final class EntidadDepositanteIndex extends Component
     #[Rule('required|string|max:255')]
     public string $nombre = '';
 
-    #[Rule('required|string')]
-    public string $tipo = '';
+    #[Rule('nullable|string')]
+    public ?string $tipo = null;
 
-    #[Rule('required|string|max:255')]
-    public string $contacto = '';
+    #[Rule('nullable|string|max:255')]
+    public ?string $contacto = null;
 
     public bool $showEditModal = false;
 
@@ -49,11 +49,11 @@ final class EntidadDepositanteIndex extends Component
     #[Rule('required|string|max:255')]
     public string $editNombre = '';
 
-    #[Rule('required|string')]
-    public string $editTipo = '';
+    #[Rule('nullable|string')]
+    public ?string $editTipo = null;
 
-    #[Rule('required|string|max:255')]
-    public string $editContacto = '';
+    #[Rule('nullable|string|max:255')]
+    public ?string $editContacto = null;
 
     public bool $showActaModal = false;
 

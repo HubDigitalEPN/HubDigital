@@ -13,6 +13,7 @@ use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\Seguimiento
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Admin\OrdenFamiliasIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\EntidadDepositanteIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\EspecimenIndex;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\LocalidadIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\TaxonIndex;
 
 Route::middleware(['web', 'auth', 'verified', 'role:curador'])
@@ -30,6 +31,7 @@ Route::middleware(['web', 'auth', 'verified', 'role:curador'])
 
         Route::prefix('taxonomia')->name('taxonomia.')->group(function () {
             Route::get('/taxones', TaxonIndex::class)->name('taxones');
+            Route::get('/localidades', LocalidadIndex::class)->name('localidades');
             Route::get('/especimenes', EspecimenIndex::class)->name('especimenes');
             Route::get('/entidades-depositantes', EntidadDepositanteIndex::class)->name('entidades-depositantes');
         });

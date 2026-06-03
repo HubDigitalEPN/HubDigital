@@ -8,7 +8,7 @@ final readonly class RegistrarEntidadDepositanteInput
 {
     public function __construct(
         public string $nombre,
-        public string $tipo,
-        public string $contacto,
+        public ?string $tipo = null,
+        public ?string $contacto = null,
     ) {}
 }
