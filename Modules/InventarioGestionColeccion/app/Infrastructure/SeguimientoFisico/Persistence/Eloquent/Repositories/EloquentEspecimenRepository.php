@@ -331,15 +331,18 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
             ]);
     }
 
-    /** @return array<string, int> */
+    /**
+     * @return array<string, int>
+     *
+     * Nota: `fecha_colecta` es columna `date NULL` post-hardening, por lo
+     * que NO se compara contra string vacío (Postgres rechazaría con tipo
+     * inválido). El único estado "pendiente" es NULL.
+     */
     public function agruparFechaVerbatimsPendientes(int $limit, int $offset): array
     {
         $rows = EspecimenEloquentModel::whereNotNull('fecha_verbatim')
             ->where('fecha_verbatim', '!=', '')
-            ->where(function ($q): void {
-                $q->whereNull('fecha_colecta')
-                    ->orWhere('fecha_colecta', '');
-            })
+            ->whereNull('fecha_colecta')
             ->selectRaw('fecha_verbatim, COUNT(*) AS total')
             ->groupBy('fecha_verbatim')
             ->orderByRaw('COUNT(*) DESC')
@@ -359,10 +362,7 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
     {
         return EspecimenEloquentModel::whereNotNull('fecha_verbatim')
             ->where('fecha_verbatim', '!=', '')
-            ->where(function ($q): void {
-                $q->whereNull('fecha_colecta')
-                    ->orWhere('fecha_colecta', '');
-            })
+            ->whereNull('fecha_colecta')
             ->distinct('fecha_verbatim')
             ->count('fecha_verbatim');
     }
@@ -370,15 +370,10 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
     public function enlazarFechaPorVerbatim(string $verbatim, string $fechaInicio, ?string $fechaFin = null): int
     {
         return EspecimenEloquentModel::where('fecha_verbatim', $verbatim)
-            ->where(function ($q): void {
-                $q->whereNull('fecha_colecta')
-                    ->orWhere('fecha_colecta', '');
-            })
+            ->whereNull('fecha_colecta')
             ->update([
                 'fecha_colecta' => $fechaInicio,
                 'fecha_colecta_fin' => $fechaFin,
-                // Si el motivo era exclusivamente la fecha no parseable, ya quedó resuelta.
-                // El curador puede ver el estado luego y confirmar manualmente si es necesario.
                 'updated_at' => now(),
             ]);
     }
