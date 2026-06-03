@@ -54,6 +54,7 @@ final class RegistrarTaxonHandler
             autor: $input->autor,
             anioDescripcion: $input->anioDescripcion,
             padreId: $input->padreId,
+            epitetoInfraespecifico: $input->epitetoInfraespecifico,
         );
 
         $this->taxonRepo->guardar($taxon);
@@ -65,6 +66,7 @@ final class RegistrarTaxonHandler
             autor: $taxon->autor(),
             anioDescripcion: $taxon->anioDescripcion(),
             estado: $taxon->estado()->value,
+            epitetoInfraespecifico: $taxon->epitetoInfraespecifico(),
         );
     }
 }

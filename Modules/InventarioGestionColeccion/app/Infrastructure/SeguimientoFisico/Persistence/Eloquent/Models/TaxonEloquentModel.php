@@ -22,6 +22,7 @@ class TaxonEloquentModel extends Model
         'rango',
         'autor',
         'anio_descripcion',
+        'epiteto_infraespecifico',
         'estado',
         'padre_id',
     ];

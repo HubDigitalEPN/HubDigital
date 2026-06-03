@@ -25,6 +25,7 @@ final class ActualizarTaxonHandler
             nombreCientifico: $input->nombreCientifico,
             autor: $input->autor,
             anioDescripcion: $input->anioDescripcion,
+            epitetoInfraespecifico: $input->epitetoInfraespecifico,
         );
 
         $this->taxonRepo->guardar($taxon);
@@ -36,6 +37,7 @@ final class ActualizarTaxonHandler
             autor: $taxon->autor(),
             anioDescripcion: $taxon->anioDescripcion(),
             estado: $taxon->estado()->value,
+            epitetoInfraespecifico: $taxon->epitetoInfraespecifico(),
         );
     }
 }

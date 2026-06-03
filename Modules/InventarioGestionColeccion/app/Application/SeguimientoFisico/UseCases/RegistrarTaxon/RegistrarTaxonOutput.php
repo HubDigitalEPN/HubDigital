@@ -12,8 +12,9 @@ final readonly class RegistrarTaxonOutput
         public TaxonId $id,
         public string $nombreCientifico,
         public string $rango,
-        public string $autor,
-        public int $anioDescripcion,
+        public ?string $autor,
+        public ?int $anioDescripcion,
         public string $estado,
+        public ?string $epitetoInfraespecifico = null,
     ) {}
 }

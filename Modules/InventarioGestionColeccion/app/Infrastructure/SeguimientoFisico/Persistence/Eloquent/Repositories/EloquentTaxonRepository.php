@@ -27,6 +27,7 @@ class EloquentTaxonRepository implements TaxonRepositoryInterface
                 'rango' => $taxon->rango()->value,
                 'autor' => $taxon->autor(),
                 'anio_descripcion' => $taxon->anioDescripcion(),
+                'epiteto_infraespecifico' => $taxon->epitetoInfraespecifico(),
                 'estado' => $taxon->estado()->value,
                 'padre_id' => $taxon->padreId() ? (string) $taxon->padreId() : null,
             ]
@@ -85,9 +86,10 @@ class EloquentTaxonRepository implements TaxonRepositoryInterface
             nombreCientifico: $model->nombre_cientifico,
             rango: RangoTaxonomico::from($model->rango),
             autor: $model->autor,
-            anioDescripcion: (int) $model->anio_descripcion,
+            anioDescripcion: $model->anio_descripcion !== null ? (int) $model->anio_descripcion : null,
             estado: EstadoTaxon::from($model->estado),
             padreId: $model->padre_id ? TaxonId::desde($model->padre_id) : null,
+            epitetoInfraespecifico: $model->epiteto_infraespecifico,
         );
     }
 }
