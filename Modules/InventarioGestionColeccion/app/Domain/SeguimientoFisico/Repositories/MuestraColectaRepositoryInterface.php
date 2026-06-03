@@ -25,4 +25,11 @@ interface MuestraColectaRepositoryInterface
     public function buscarTodas(): array;
 
     public function contarTodas(): int;
+
+    /**
+     * Inserta múltiples muestras en una sola transacción (importador masivo).
+     *
+     * @param  MuestraColecta[]  $muestras
+     */
+    public function guardarBatch(array $muestras): void;
 }

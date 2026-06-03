@@ -41,4 +41,22 @@ interface EspecimenRepositoryInterface
      * a partir de una fila específica del Excel, no se duplica al re-correr.
      */
     public function existePorFilaOrigen(int $filaOrigenExcel): bool;
+
+    /**
+     * Inserta múltiples especímenes en una sola transacción para reducir
+     * round-trips contra la BD (clave para el importador masivo del catálogo).
+     *
+     * @param  Especimen[]  $especimenes
+     */
+    public function guardarBatch(array $especimenes): void;
+
+    /**
+     * Devuelve los `fila_origen_excel` ya persistidos cuyo valor está dentro
+     * del set proporcionado. Permite chequear idempotencia en bulk antes de
+     * abrir el chunk de inserts.
+     *
+     * @param  int[]  $filasOrigen
+     * @return int[]
+     */
+    public function filasOrigenExistentes(array $filasOrigen): array;
 }

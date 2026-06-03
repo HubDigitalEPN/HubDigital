@@ -59,4 +59,11 @@ final class InMemoryMuestraColectaRepository implements MuestraColectaRepository
     {
         return count($this->store);
     }
+
+    public function guardarBatch(array $muestras): void
+    {
+        foreach ($muestras as $muestra) {
+            $this->guardar($muestra);
+        }
+    }
 }

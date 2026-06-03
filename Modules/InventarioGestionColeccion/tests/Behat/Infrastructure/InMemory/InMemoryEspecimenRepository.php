@@ -109,4 +109,27 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
 
         return false;
     }
+
+    /** @param int[] $filasOrigen
+     *  @return int[] */
+    public function filasOrigenExistentes(array $filasOrigen): array
+    {
+        $set = array_flip($filasOrigen);
+        $existentes = [];
+        foreach ($this->store as $especimen) {
+            $fila = $especimen->filaOrigenExcel();
+            if ($fila !== null && isset($set[$fila])) {
+                $existentes[] = $fila;
+            }
+        }
+
+        return $existentes;
+    }
+
+    public function guardarBatch(array $especimenes): void
+    {
+        foreach ($especimenes as $especimen) {
+            $this->guardar($especimen);
+        }
+    }
 }

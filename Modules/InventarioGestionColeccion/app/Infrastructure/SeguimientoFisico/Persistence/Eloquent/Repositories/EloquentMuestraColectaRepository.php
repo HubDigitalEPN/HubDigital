@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories;
 
+use Illuminate\Support\Facades\DB;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\MuestraColecta;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\MuestraColectaRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoRevision;
@@ -71,6 +72,34 @@ class EloquentMuestraColectaRepository implements MuestraColectaRepositoryInterf
     public function contarTodas(): int
     {
         return MuestraColectaEloquentModel::count();
+    }
+
+    public function guardarBatch(array $muestras): void
+    {
+        if ($muestras === []) {
+            return;
+        }
+
+        $ahora = now();
+        $rows = [];
+        foreach ($muestras as $muestra) {
+            $rows[] = [
+                'id' => (string) $muestra->id(),
+                'codigo_muestra' => $muestra->codigoMuestra(),
+                'fecha_colecta' => $muestra->fechaColecta()?->format('Y-m-d'),
+                'fecha_verbatim' => $muestra->fechaVerbatim(),
+                'localidad_id' => $muestra->localidadId() !== null ? (string) $muestra->localidadId() : null,
+                'localidad_verbatim' => $muestra->localidadVerbatim(),
+                'colector' => $muestra->colector(),
+                'sampling_protocol' => $muestra->samplingProtocol(),
+                'estado_revision' => $muestra->estadoRevision()->value,
+                'motivo_revision' => $muestra->motivoRevision(),
+                'created_at' => $ahora,
+                'updated_at' => $ahora,
+            ];
+        }
+
+        DB::table('taxonomia.muestras_colecta')->insert($rows);
     }
 
     private function toDomain(MuestraColectaEloquentModel $model): MuestraColecta

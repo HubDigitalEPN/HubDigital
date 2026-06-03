@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories;
 
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especimen;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
@@ -177,6 +178,106 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
     public function existePorFilaOrigen(int $filaOrigenExcel): bool
     {
         return EspecimenEloquentModel::where('fila_origen_excel', $filaOrigenExcel)->exists();
+    }
+
+    /** @param int[] $filasOrigen
+     *  @return int[] */
+    public function filasOrigenExistentes(array $filasOrigen): array
+    {
+        if ($filasOrigen === []) {
+            return [];
+        }
+
+        return EspecimenEloquentModel::whereIn('fila_origen_excel', $filasOrigen)
+            ->pluck('fila_origen_excel')
+            ->map(fn ($v) => (int) $v)
+            ->all();
+    }
+
+    public function guardarBatch(array $especimenes): void
+    {
+        if ($especimenes === []) {
+            return;
+        }
+
+        $ahora = now();
+        $especimenRows = [];
+        $identificadorRows = [];
+
+        foreach ($especimenes as $especimen) {
+            $especimenRows[] = [
+                'id' => (string) $especimen->id(),
+                'codigo_catalogo' => $especimen->codigoCatalogo(),
+                'occurrence_id' => $especimen->occurrenceId(),
+                'catalog_number' => $especimen->catalogNumber(),
+                'old_code' => $especimen->oldCode(),
+                'cardex_liquid_collection_code' => $especimen->cardexLiquidCollectionCode(),
+                'taxon_id' => $especimen->taxonId(),
+                'taxon_verbatim' => $especimen->taxonVerbatim(),
+                'muestra_id' => $especimen->muestraId(),
+                'localidad_id' => $especimen->localidadId(),
+                'localidad' => $this->stringNullable($especimen->localidad()),
+                'localidad_verbatim' => $especimen->localidadVerbatim(),
+                'fecha_colecta' => $this->stringNullable($especimen->fechaColecta()),
+                'fecha_verbatim' => $especimen->fechaVerbatim(),
+                'fecha_colecta_fin' => $especimen->fechaColectaFin(),
+                'colector' => $this->stringNullable($especimen->colector()),
+                'entidad_depositante_id' => $especimen->entidadDepositanteId(),
+                'estado' => $especimen->estado()->value,
+                'individual_count' => $especimen->individualCount(),
+                'individual_count_verbatim' => $especimen->individualCountVerbatim(),
+                'sex' => $especimen->sex(),
+                'life_stage' => $especimen->lifeStage(),
+                'caste' => $especimen->caste(),
+                'type_status' => $especimen->typeStatus(),
+                'preparations' => $especimen->preparations(),
+                'disposition' => $especimen->disposition(),
+                'occurrence_status' => $especimen->occurrenceStatus(),
+                'specimen_notes' => $especimen->specimenNotes(),
+                'country' => $especimen->country(),
+                'state_province' => $especimen->stateProvince(),
+                'municipality' => $especimen->municipality(),
+                'locality_name' => $especimen->localityName(),
+                'decimal_latitude' => $especimen->decimalLatitude(),
+                'decimal_longitude' => $especimen->decimalLongitude(),
+                'coord_verbatim' => $especimen->coordVerbatim(),
+                'geodetic_datum' => $especimen->geodeticDatum(),
+                'elevation_min_m' => $especimen->elevationMinM(),
+                'elevation_max_m' => $especimen->elevationMaxM(),
+                'biome' => $especimen->biome(),
+                'habitat' => $especimen->habitat(),
+                'microhabitat' => $especimen->microhabitat(),
+                'biogeographic_region' => $especimen->biogeographicRegion(),
+                'endemic' => $especimen->endemic(),
+                'dna_notes' => $especimen->dnaNotes(),
+                'occurrence_remarks' => $especimen->occurrenceRemarks(),
+                'taxonomic_notes' => $especimen->taxonomicNotes(),
+                'acta_recepcion' => $especimen->actaRecepcion(),
+                'estado_revision' => $especimen->estadoRevision()->value,
+                'motivo_revision' => $especimen->motivoRevision(),
+                'fila_origen_excel' => $especimen->filaOrigenExcel(),
+                'created_at' => $ahora,
+                'updated_at' => $ahora,
+            ];
+
+            foreach ($especimen->identificadores() as $identificador) {
+                $identificadorRows[] = [
+                    'id' => (string) Str::uuid(),
+                    'especimen_id' => (string) $especimen->id(),
+                    'tipo' => $identificador->tipo()->value,
+                    'valor' => $identificador->valor(),
+                    'created_at' => $ahora,
+                    'updated_at' => $ahora,
+                ];
+            }
+        }
+
+        DB::transaction(function () use ($especimenRows, $identificadorRows): void {
+            DB::table('taxonomia.especimenes')->insert($especimenRows);
+            if ($identificadorRows !== []) {
+                DB::table('taxonomia.especimen_identificadores')->insert($identificadorRows);
+            }
+        });
     }
 
     private function stringNullable(?string $valor): ?string

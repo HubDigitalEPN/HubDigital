@@ -48,9 +48,28 @@ final class ConstructorTaxonomiaImport
     /** @var array<string, TaxonId> Cache rango+nombre → TaxonId. */
     private array $cache = [];
 
+    private bool $cachePrecargado = false;
+
     public function __construct(
         private readonly TaxonRepositoryInterface $taxonRepo,
     ) {}
+
+    /**
+     * Pre-carga TODOS los taxones existentes en memoria con una sola consulta.
+     * Crítico para el importador masivo: sin esto, cada fila dispara hasta 9
+     * SELECTs (uno por nivel jerárquico) contra la BD remota.
+     */
+    public function precargarTaxonomiaExistente(): void
+    {
+        if ($this->cachePrecargado) {
+            return;
+        }
+        foreach ($this->taxonRepo->buscarTodos() as $taxon) {
+            $clave = $taxon->rango()->value.'|'.$taxon->nombreCientifico();
+            $this->cache[$clave] = $taxon->id();
+        }
+        $this->cachePrecargado = true;
+    }
 
     /**
      * Resuelve la jerarquía completa de la fila y devuelve el TaxonId del taxón
@@ -108,11 +127,16 @@ final class ConstructorTaxonomiaImport
             return $this->cache[$clave];
         }
 
-        $existente = $this->taxonRepo->buscarPorNombreYRango($nombre, $rango);
-        if ($existente !== null) {
-            $this->cache[$clave] = $existente->id();
+        // Cache miss: si la taxonomía ya fue precargada en memoria, sabemos que
+        // el taxón no existe en BD → saltamos el SELECT redundante y vamos
+        // directo al INSERT.
+        if (! $this->cachePrecargado) {
+            $existente = $this->taxonRepo->buscarPorNombreYRango($nombre, $rango);
+            if ($existente !== null) {
+                $this->cache[$clave] = $existente->id();
 
-            return $existente->id();
+                return $existente->id();
+            }
         }
 
         $nuevo = Taxon::crear(
