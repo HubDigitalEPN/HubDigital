@@ -110,6 +110,23 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
         return false;
     }
 
+    /** @param string[] $muestraIds
+     *  @return array<string, int> */
+    public function contarPorMuestraIds(array $muestraIds): array
+    {
+        $out = [];
+        $set = array_flip($muestraIds);
+        foreach ($this->store as $e) {
+            $mid = $e->muestraId();
+            if ($mid === null || ! isset($set[$mid])) {
+                continue;
+            }
+            $out[$mid] = ($out[$mid] ?? 0) + 1;
+        }
+
+        return $out;
+    }
+
     /** @return Especimen[] */
     public function buscarParaRevision(?string $contieneMotivo = null, int $limit = 200): array
     {

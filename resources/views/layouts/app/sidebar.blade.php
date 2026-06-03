@@ -115,12 +115,28 @@
                                 Especímenes
                             </flux:sidebar.item>
                             <flux:sidebar.item
+                                icon="rectangle-stack"
+                                :href="route('inventario.taxonomia.muestras')"
+                                :current="request()->routeIs('inventario.taxonomia.muestras')"
+                                wire:navigate
+                            >
+                                Muestras de colecta
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
                                 icon="tag"
                                 :href="route('inventario.taxonomia.taxones')"
                                 :current="request()->routeIs('inventario.taxonomia.taxones')"
                                 wire:navigate
                             >
                                 Taxones
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="map-pin"
+                                :href="route('inventario.taxonomia.localidades')"
+                                :current="request()->routeIs('inventario.taxonomia.localidades')"
+                                wire:navigate
+                            >
+                                Localidades
                             </flux:sidebar.item>
                             <flux:sidebar.item
                                 icon="building-library"

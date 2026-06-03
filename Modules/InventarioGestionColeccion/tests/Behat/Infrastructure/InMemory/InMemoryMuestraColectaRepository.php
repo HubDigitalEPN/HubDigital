@@ -66,4 +66,24 @@ final class InMemoryMuestraColectaRepository implements MuestraColectaRepository
             $this->guardar($muestra);
         }
     }
+
+    /** @return MuestraColecta[] */
+    public function listarParaRevision(int $limit, int $offset): array
+    {
+        $pendientes = array_values(array_filter(
+            $this->store,
+            fn (MuestraColecta $m) => $m->estadoRevision()->value === 'pendiente' && $m->motivoRevision() !== null
+        ));
+        usort($pendientes, fn ($a, $b) => strcmp((string) $a->codigoMuestra(), (string) $b->codigoMuestra()));
+
+        return array_slice($pendientes, $offset, $limit);
+    }
+
+    public function contarParaRevision(): int
+    {
+        return count(array_filter(
+            $this->store,
+            fn (MuestraColecta $m) => $m->estadoRevision()->value === 'pendiente' && $m->motivoRevision() !== null
+        ));
+    }
 }

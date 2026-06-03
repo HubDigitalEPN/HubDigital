@@ -32,4 +32,15 @@ interface MuestraColectaRepositoryInterface
      * @param  MuestraColecta[]  $muestras
      */
     public function guardarBatch(array $muestras): void;
+
+    /**
+     * Lista paginada de muestras con `estado_revision='pendiente'` y un
+     * motivo no nulo. Ordenadas por código de muestra. Para la bandeja de
+     * revisión del curador.
+     *
+     * @return MuestraColecta[]
+     */
+    public function listarParaRevision(int $limit, int $offset): array;
+
+    public function contarParaRevision(): int;
 }

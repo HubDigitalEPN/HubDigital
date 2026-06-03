@@ -74,6 +74,26 @@ class EloquentMuestraColectaRepository implements MuestraColectaRepositoryInterf
         return MuestraColectaEloquentModel::count();
     }
 
+    /** @return MuestraColecta[] */
+    public function listarParaRevision(int $limit, int $offset): array
+    {
+        return MuestraColectaEloquentModel::where('estado_revision', 'pendiente')
+            ->whereNotNull('motivo_revision')
+            ->orderBy('codigo_muestra')
+            ->limit($limit)
+            ->offset($offset)
+            ->get()
+            ->map(fn ($m) => $this->toDomain($m))
+            ->all();
+    }
+
+    public function contarParaRevision(): int
+    {
+        return MuestraColectaEloquentModel::where('estado_revision', 'pendiente')
+            ->whereNotNull('motivo_revision')
+            ->count();
+    }
+
     public function guardarBatch(array $muestras): void
     {
         if ($muestras === []) {

@@ -60,6 +60,17 @@ interface EspecimenRepositoryInterface
     public function buscarParaRevision(?string $contieneMotivo = null, int $limit = 200): array;
 
     /**
+     * Cuenta cuántos especímenes están enganchados a cada `muestra_id` del
+     * conjunto provisto. Devuelve mapa `muestra_id => conteo`. Útil para
+     * la bandeja de muestras (mostrar cuántos especímenes contiene cada
+     * grupo de oldCode).
+     *
+     * @param  string[]  $muestraIds
+     * @return array<string, int>
+     */
+    public function contarPorMuestraIds(array $muestraIds): array;
+
+    /**
      * Devuelve los `fila_origen_excel` ya persistidos cuyo valor está dentro
      * del set proporcionado. Permite chequear idempotencia en bulk antes de
      * abrir el chunk de inserts.

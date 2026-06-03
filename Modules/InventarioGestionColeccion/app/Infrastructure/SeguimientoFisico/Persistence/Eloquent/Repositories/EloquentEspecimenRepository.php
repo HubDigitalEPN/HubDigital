@@ -180,6 +180,27 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
         return EspecimenEloquentModel::where('fila_origen_excel', $filaOrigenExcel)->exists();
     }
 
+    /** @param string[] $muestraIds
+     *  @return array<string, int> */
+    public function contarPorMuestraIds(array $muestraIds): array
+    {
+        if ($muestraIds === []) {
+            return [];
+        }
+
+        $rows = EspecimenEloquentModel::whereIn('muestra_id', $muestraIds)
+            ->selectRaw('muestra_id, COUNT(*) AS total')
+            ->groupBy('muestra_id')
+            ->get();
+
+        $out = [];
+        foreach ($rows as $row) {
+            $out[(string) $row->muestra_id] = (int) $row->total;
+        }
+
+        return $out;
+    }
+
     /** @return Especimen[] */
     public function buscarParaRevision(?string $contieneMotivo = null, int $limit = 200): array
     {

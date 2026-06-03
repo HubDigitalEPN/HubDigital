@@ -214,68 +214,79 @@
                 @endif
             </div>
 
-            {{-- Escritorio --}}
-            <div class="hidden md:block overflow-x-auto">
-                <table class="w-full text-sm">
-                    <thead class="bg-blue-navy">
-                        <tr>
-                            @foreach($columnasRegistro as $col)
-                                <th class="px-4 py-3 text-left font-medium text-white whitespace-nowrap"
-                                    x-show="visibles.includes('{{ $col['clave'] }}')" x-cloak>
-                                    <span class="inline-flex items-center gap-1.5">
-                                        <span class="inline-block size-2 rounded-full
-                                            @if($col['prioridad']==='critica') bg-error
-                                            @elseif($col['prioridad']==='recomendada') bg-warning
-                                            @else bg-text-secondary
-                                            @endif"></span>
-                                        {{ $col['etiqueta'] }}
-                                    </span>
-                                </th>
-                            @endforeach
-                            <th class="px-4 py-3 text-left font-medium text-white whitespace-nowrap">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-border">
-                        @forelse($especimenesPaginados as $especimen)
-                            <tr class="hover:bg-bg-main transition-colors align-top
+            {{-- Escritorio: CSS grid (cada fila = grid container) para que reorder + show/hide funcionen vía CSS `order`. --}}
+            <div class="hidden md:block overflow-x-auto" role="table" aria-label="Especímenes">
+                {{-- Header --}}
+                <div role="row"
+                     class="grid bg-blue-navy text-white text-sm"
+                     :style="`grid-template-columns: repeat(${visibles.length + 1}, minmax(140px, auto));`">
+                    @foreach($columnasRegistro as $col)
+                        <div role="columnheader"
+                             class="px-4 py-3 text-left font-medium whitespace-nowrap"
+                             x-show="visibles.includes('{{ $col['clave'] }}')" x-cloak
+                             :style="`order: ${ordenColumnas.indexOf('{{ $col['clave'] }}')}`">
+                            <span class="inline-flex items-center gap-1.5">
+                                <span class="inline-block size-2 rounded-full
+                                    @if($col['prioridad']==='critica') bg-error
+                                    @elseif($col['prioridad']==='recomendada') bg-warning
+                                    @else bg-text-secondary
+                                    @endif"></span>
+                                {{ $col['etiqueta'] }}
+                            </span>
+                        </div>
+                    @endforeach
+                    <div role="columnheader"
+                         class="px-4 py-3 text-left font-medium whitespace-nowrap"
+                         style="order: 99999;">
+                        Acciones
+                    </div>
+                </div>
+
+                {{-- Filas --}}
+                @forelse($especimenesPaginados as $especimen)
+                    <div role="row"
+                         class="grid border-t border-border hover:bg-bg-main transition-colors text-sm
+                             @if(($especimen['estadoRevision'] ?? '') === 'pendiente' && !empty($especimen['motivoRevision']))
+                                 border-l-4 border-l-error
+                             @endif"
+                         :style="`grid-template-columns: repeat(${visibles.length + 1}, minmax(140px, auto));`">
+                        @foreach($columnasRegistro as $col)
+                            <div role="cell"
+                                 class="px-4 py-3 text-text-primary align-top"
+                                 x-show="visibles.includes('{{ $col['clave'] }}')" x-cloak
+                                 :style="`order: ${ordenColumnas.indexOf('{{ $col['clave'] }}')}`">
+                                {!! $renderCelda($especimen, $col['clave']) !!}
+                            </div>
+                        @endforeach
+                        <div role="cell"
+                             class="px-4 py-3 whitespace-nowrap"
+                             style="order: 99999;">
+                            <div class="flex items-center gap-2">
                                 @if(($especimen['estadoRevision'] ?? '') === 'pendiente' && !empty($especimen['motivoRevision']))
-                                    border-l-4 border-l-error
-                                @endif">
-                                @foreach($columnasRegistro as $col)
-                                    <td class="px-4 py-3 text-text-primary"
-                                        x-show="visibles.includes('{{ $col['clave'] }}')" x-cloak>
-                                        {!! $renderCelda($especimen, $col['clave']) !!}
-                                    </td>
-                                @endforeach
-                                <td class="px-4 py-3 whitespace-nowrap">
-                                    <div class="flex items-center gap-2">
-                                        @if(($especimen['estadoRevision'] ?? '') === 'pendiente' && !empty($especimen['motivoRevision']))
-                                            <flux:button size="sm" variant="primary" icon="check"
-                                                         wire:click="confirmarRevision('{{ $especimen['id'] }}')">
-                                                Confirmar
-                                            </flux:button>
-                                        @endif
-                                        @if(($especimen['estado'] ?? '') === 'disponible')
-                                            <flux:button size="sm" variant="ghost" icon="pencil"
-                                                         wire:click="abrirEditModal('{{ $especimen['id'] }}')">
-                                                Editar
-                                            </flux:button>
-                                        @endif
-                                    </div>
-                                </td>
-                            </tr>
-                        @empty
-                            <tr><td colspan="99" class="px-4 py-8 text-center text-text-secondary">No se encontraron especímenes.</td></tr>
-                        @endforelse
-                    </tbody>
-                </table>
+                                    <flux:button size="sm" variant="primary" icon="check"
+                                                 wire:click="confirmarRevision('{{ $especimen['id'] }}')">
+                                        Confirmar
+                                    </flux:button>
+                                @endif
+                                @if(($especimen['estado'] ?? '') === 'disponible')
+                                    <flux:button size="sm" variant="ghost" icon="pencil"
+                                                 wire:click="abrirEditModal('{{ $especimen['id'] }}')">
+                                        Editar
+                                    </flux:button>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                @empty
+                    <div class="px-4 py-8 text-center text-text-secondary border-t border-border">No se encontraron especímenes.</div>
+                @endforelse
             </div>
 
             {{-- Móvil --}}
             <div class="md:hidden divide-y divide-border">
                 @forelse($especimenesPaginados as $especimen)
-                    <div class="p-4 space-y-2 @if(($especimen['estadoRevision'] ?? '') === 'pendiente' && !empty($especimen['motivoRevision'])) border-l-4 border-l-error @endif">
-                        <div class="flex items-start justify-between gap-2">
+                    <div class="p-4 flex flex-col gap-2 @if(($especimen['estadoRevision'] ?? '') === 'pendiente' && !empty($especimen['motivoRevision'])) border-l-4 border-l-error @endif">
+                        <div class="flex items-start justify-between gap-2" style="order: -1;">
                             <div class="font-medium text-text-primary text-sm break-all">{{ $especimen['codigoCatalogo'] }}</div>
                             {!! $renderCelda($especimen, 'estadoRevision') !!}
                         </div>
@@ -283,7 +294,9 @@
                             @if($col['clave'] === 'codigoCatalogo' || $col['clave'] === 'estadoRevision')
                                 @continue
                             @endif
-                            <div class="flex justify-between gap-3" x-show="visibles.includes('{{ $col['clave'] }}')" x-cloak>
+                            <div class="flex justify-between gap-3"
+                                 x-show="visibles.includes('{{ $col['clave'] }}')" x-cloak
+                                 :style="`order: ${ordenColumnas.indexOf('{{ $col['clave'] }}')}`">
                                 <dt class="shrink-0 text-text-secondary text-xs">
                                     <span class="inline-flex items-center gap-1.5">
                                         <span class="inline-block size-2 rounded-full
@@ -297,7 +310,7 @@
                                 <dd class="text-right text-text-primary text-sm">{!! $renderCelda($especimen, $col['clave']) !!}</dd>
                             </div>
                         @endforeach
-                        <div class="flex flex-wrap gap-2 pt-2">
+                        <div class="flex flex-wrap gap-2 pt-2" style="order: 99999;">
                             @if(($especimen['estadoRevision'] ?? '') === 'pendiente' && !empty($especimen['motivoRevision']))
                                 <flux:button variant="primary" icon="check"
                                              wire:click="confirmarRevision('{{ $especimen['id'] }}')">
