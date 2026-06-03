@@ -139,6 +139,27 @@ interface EspecimenRepositoryInterface
     public function marcarRevisionPorCatalogNumber(string $catalogNumber, string $motivo): int;
 
     /**
+     * Agrupa los `fecha_verbatim` cuyo `fecha_colecta` es null/vacío.
+     * Pares verbatim => conteo, ordenados por conteo desc, paginado.
+     *
+     * @return array<string, int>
+     */
+    public function agruparFechaVerbatimsPendientes(int $limit, int $offset): array;
+
+    public function contarFechaVerbatimsPendientes(): int;
+
+    /**
+     * Asigna `fecha_colecta` (y opcionalmente `fecha_colecta_fin` para rangos)
+     * a todos los especímenes con un `fecha_verbatim` dado cuya fecha aún no
+     * está parseada. Devuelve filas afectadas.
+     *
+     * Adicionalmente: cuando el motivo de revisión contiene la cadena
+     * "fecha_colecta no parseable", el handler debe limpiarlo o marcar el
+     * espécimen como confirmada según corresponda.
+     */
+    public function enlazarFechaPorVerbatim(string $verbatim, string $fechaInicio, ?string $fechaFin = null): int;
+
+    /**
      * Devuelve los `fila_origen_excel` ya persistidos cuyo valor está dentro
      * del set proporcionado. Permite chequear idempotencia en bulk antes de
      * abrir el chunk de inserts.

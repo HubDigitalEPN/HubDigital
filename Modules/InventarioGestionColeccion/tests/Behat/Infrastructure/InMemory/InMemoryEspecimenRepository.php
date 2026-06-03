@@ -299,6 +299,62 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
         return $contador;
     }
 
+    /** @return array<string, int> */
+    public function agruparFechaVerbatimsPendientes(int $limit, int $offset): array
+    {
+        $grupos = [];
+        foreach ($this->store as $e) {
+            $v = $e->fechaVerbatim();
+            if ($v === null || $v === '') {
+                continue;
+            }
+            if ($e->fechaColecta() !== '' && $e->fechaColecta() !== null) {
+                continue;
+            }
+            $grupos[$v] = ($grupos[$v] ?? 0) + 1;
+        }
+        arsort($grupos);
+
+        return array_slice($grupos, $offset, $limit, true);
+    }
+
+    public function contarFechaVerbatimsPendientes(): int
+    {
+        $unicos = [];
+        foreach ($this->store as $e) {
+            $v = $e->fechaVerbatim();
+            if ($v === null || $v === '') {
+                continue;
+            }
+            if ($e->fechaColecta() !== '' && $e->fechaColecta() !== null) {
+                continue;
+            }
+            $unicos[$v] = true;
+        }
+
+        return count($unicos);
+    }
+
+    public function enlazarFechaPorVerbatim(string $verbatim, string $fechaInicio, ?string $fechaFin = null): int
+    {
+        // La entidad no expone un setter directo para fecha_colecta; en InMemory
+        // este método es informativo (devuelve cuántos habrían sido afectados).
+        // La rama Eloquent ejecuta el UPDATE real. Tests de integración cubren el
+        // path real con la BD.
+        $contador = 0;
+        foreach ($this->store as $e) {
+            if ($e->fechaVerbatim() !== $verbatim) {
+                continue;
+            }
+            if ($e->fechaColecta() !== '' && $e->fechaColecta() !== null) {
+                continue;
+            }
+            $contador++;
+        }
+
+        return $contador;
+    }
+
     /** @param string[] $muestraIds
      *  @return array<string, int> */
     public function contarPorMuestraIds(array $muestraIds): array

@@ -123,6 +123,14 @@
                                 Duplicados catalog#
                             </flux:sidebar.item>
                             <flux:sidebar.item
+                                icon="calendar-days"
+                                :href="route('inventario.taxonomia.fechas.revision')"
+                                :current="request()->routeIs('inventario.taxonomia.fechas.revision')"
+                                wire:navigate
+                            >
+                                Parseo de fechas
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
                                 icon="rectangle-stack"
                                 :href="route('inventario.taxonomia.muestras')"
                                 :current="request()->routeIs('inventario.taxonomia.muestras')"

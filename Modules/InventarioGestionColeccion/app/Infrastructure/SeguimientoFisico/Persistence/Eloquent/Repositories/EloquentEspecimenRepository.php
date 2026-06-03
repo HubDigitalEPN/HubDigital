@@ -331,6 +331,58 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
             ]);
     }
 
+    /** @return array<string, int> */
+    public function agruparFechaVerbatimsPendientes(int $limit, int $offset): array
+    {
+        $rows = EspecimenEloquentModel::whereNotNull('fecha_verbatim')
+            ->where('fecha_verbatim', '!=', '')
+            ->where(function ($q): void {
+                $q->whereNull('fecha_colecta')
+                    ->orWhere('fecha_colecta', '');
+            })
+            ->selectRaw('fecha_verbatim, COUNT(*) AS total')
+            ->groupBy('fecha_verbatim')
+            ->orderByRaw('COUNT(*) DESC')
+            ->limit($limit)
+            ->offset($offset)
+            ->get();
+
+        $out = [];
+        foreach ($rows as $r) {
+            $out[(string) $r->fecha_verbatim] = (int) $r->total;
+        }
+
+        return $out;
+    }
+
+    public function contarFechaVerbatimsPendientes(): int
+    {
+        return EspecimenEloquentModel::whereNotNull('fecha_verbatim')
+            ->where('fecha_verbatim', '!=', '')
+            ->where(function ($q): void {
+                $q->whereNull('fecha_colecta')
+                    ->orWhere('fecha_colecta', '');
+            })
+            ->distinct('fecha_verbatim')
+            ->count('fecha_verbatim');
+    }
+
+    public function enlazarFechaPorVerbatim(string $verbatim, string $fechaInicio, ?string $fechaFin = null): int
+    {
+        return EspecimenEloquentModel::where('fecha_verbatim', $verbatim)
+            ->where(function ($q): void {
+                $q->whereNull('fecha_colecta')
+                    ->orWhere('fecha_colecta', '');
+            })
+            ->update([
+                'fecha_colecta' => $fechaInicio,
+                'fecha_colecta_fin' => $fechaFin,
+                // Si el motivo era exclusivamente la fecha no parseable, ya quedó resuelta.
+                // El curador puede ver el estado luego y confirmar manualmente si es necesario.
+                'updated_at' => now(),
+            ]);
+    }
+
     /** @param string[] $muestraIds
      *  @return array<string, int> */
     public function contarPorMuestraIds(array $muestraIds): array

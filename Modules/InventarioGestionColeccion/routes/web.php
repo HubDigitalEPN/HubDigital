@@ -14,6 +14,7 @@ use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\Seguimiento
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\DuplicadosCatalogNumberIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\EntidadDepositanteIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\EspecimenIndex;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\FechasRevisionIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\LocalidadesRevisionIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\LocalidadIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\MuestrasColectaIndex;
@@ -41,6 +42,7 @@ Route::middleware(['web', 'auth', 'verified', 'role:curador'])
             Route::get('/especimenes', EspecimenIndex::class)->name('especimenes');
             Route::get('/especimenes/duplicados', DuplicadosCatalogNumberIndex::class)->name('especimenes.duplicados');
             Route::get('/muestras', MuestrasColectaIndex::class)->name('muestras');
+            Route::get('/fechas/revision', FechasRevisionIndex::class)->name('fechas.revision');
             Route::get('/entidades-depositantes', EntidadDepositanteIndex::class)->name('entidades-depositantes');
         });
     });
