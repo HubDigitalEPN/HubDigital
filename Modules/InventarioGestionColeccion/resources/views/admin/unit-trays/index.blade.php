@@ -7,6 +7,10 @@
         <flux:callout variant="success" dismissible>{{ $successMessage }}</flux:callout>
     @endif
 
+    @if($warningMessage)
+        <flux:callout variant="warning" icon="exclamation-triangle" dismissible>{{ $warningMessage }}</flux:callout>
+    @endif
+
     @if($errorMessage)
         <flux:callout variant="danger" dismissible>{{ $errorMessage }}</flux:callout>
     @endif
@@ -15,42 +19,44 @@
     <div class="rounded-lg border border-border bg-surface shadow-sm p-4 space-y-4">
         <flux:heading size="lg" class="text-blue-navy">1. Unit trays en una caja</flux:heading>
 
-        <div class="flex flex-col sm:flex-row gap-3 sm:items-end">
-            <flux:field class="flex-1">
-                <flux:label>Caja disponible</flux:label>
-                <flux:select wire:model.live="cajaSeleccionada" placeholder="Selecciona una caja...">
-                    @foreach($cajas as $caja)
-                        <flux:select.option value="{{ $caja['id'] }}">{{ $caja['label'] }}</flux:select.option>
-                    @endforeach
-                </flux:select>
-            </flux:field>
-
-            <flux:field class="w-full sm:w-40">
-                <flux:label>Número de tray</flux:label>
-                <flux:input type="number" min="1" wire:model="numeroNuevoTray" placeholder="Ej. 1" />
-            </flux:field>
-
-            <flux:button
-                variant="primary"
-                icon="plus"
-                wire:click="crearUnitTray"
-                class="min-h-[44px]"
-                :disabled="$cajaSeleccionada === ''"
-            >
-                Crear unit tray
-            </flux:button>
-        </div>
+        <flux:field>
+            <flux:label>Caja disponible</flux:label>
+            <flux:select wire:model.live="cajaSeleccionada" placeholder="Selecciona una caja...">
+                @foreach($cajas as $caja)
+                    <flux:select.option value="{{ $caja['id'] }}">{{ $caja['label'] }}</flux:select.option>
+                @endforeach
+            </flux:select>
+        </flux:field>
 
         @if($cajaSeleccionada !== '')
+            {{-- Contexto de la caja seleccionada + acción de crear --}}
+            <div class="flex flex-col gap-3 rounded-lg bg-bg-main p-3 sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex items-center gap-2 text-sm text-text-primary">
+                    <flux:icon name="archive-box" class="size-5 text-blue-navy" />
+                    <span>Trabajando en <span class="font-medium">{{ $cajaSeleccionadaLabel }}</span></span>
+                </div>
+                <flux:button
+                    variant="primary"
+                    icon="plus"
+                    wire:click="crearUnitTray"
+                    class="w-full min-h-[44px] sm:w-auto"
+                >
+                    Nuevo unit tray
+                </flux:button>
+            </div>
+
+            <p class="text-xs text-text-secondary">
+                Los unit trays se numeran solos y se ordenan por su taxonomía (subfamilia → género → especie).
+            </p>
+
             {{-- Tabla (desktop) --}}
             <div class="hidden md:block rounded-lg border border-border overflow-hidden">
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm">
                         <thead class="bg-blue-navy">
                             <tr>
+                                <th class="px-4 py-3 text-left font-medium text-white">Taxonomía</th>
                                 <th class="px-4 py-3 text-left font-medium text-white">N.°</th>
-                                <th class="px-4 py-3 text-left font-medium text-white">Subfamilia</th>
-                                <th class="px-4 py-3 text-left font-medium text-white">Género</th>
                                 <th class="px-4 py-3 text-left font-medium text-white">Especímenes</th>
                                 <th class="px-4 py-3 text-left font-medium text-white">Acción</th>
                             </tr>
@@ -58,9 +64,14 @@
                         <tbody class="divide-y divide-border">
                             @forelse($unitTrays as $tray)
                                 <tr class="hover:bg-bg-main transition-colors {{ $unitTraySeleccionado === $tray['unitTrayId'] ? 'bg-bg-main' : '' }}">
-                                    <td class="px-4 py-3 font-medium text-text-primary">{{ $tray['numero'] }}</td>
-                                    <td class="px-4 py-3 text-text-primary">{{ $tray['subfamilia'] ?? '—' }}</td>
-                                    <td class="px-4 py-3 font-serif italic text-text-primary">{{ $tray['genero'] ?? '—' }}</td>
+                                    <td class="px-4 py-3">
+                                        <x-inventariogestioncoleccion::seguimiento-fisico.taxonomia-resumen
+                                            :subfamilia="$tray['subfamilia']"
+                                            :genero="$tray['genero']"
+                                            :especie="$tray['especie']"
+                                        />
+                                    </td>
+                                    <td class="px-4 py-3 text-text-secondary">{{ $tray['numero'] }}</td>
                                     <td class="px-4 py-3 text-text-secondary">{{ $tray['totalEspecimenes'] }}</td>
                                     <td class="px-4 py-3">
                                         <flux:button
@@ -75,7 +86,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="5" class="px-4 py-6 text-center text-text-secondary">
+                                    <td colspan="4" class="px-4 py-6 text-center text-text-secondary">
                                         Esta caja no tiene unit trays todavía.
                                     </td>
                                 </tr>
@@ -90,15 +101,16 @@
                 @forelse($unitTrays as $tray)
                     <div class="rounded-lg border border-border bg-surface p-4 shadow-sm space-y-3 {{ $unitTraySeleccionado === $tray['unitTrayId'] ? 'ring-1 ring-blue-navy' : '' }}">
                         <div class="flex items-start justify-between gap-2">
-                            <span class="font-medium text-text-primary">Tray N.° {{ $tray['numero'] }}</span>
-                            <span class="text-xs text-text-secondary">{{ $tray['totalEspecimenes'] }} especímenes</span>
+                            <x-inventariogestioncoleccion::seguimiento-fisico.taxonomia-resumen
+                                :subfamilia="$tray['subfamilia']"
+                                :genero="$tray['genero']"
+                                :especie="$tray['especie']"
+                            />
+                            <span class="shrink-0 text-xs text-text-secondary">N.° {{ $tray['numero'] }}</span>
                         </div>
                         <dl class="space-y-1.5 text-sm">
-                            <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="Subfamilia">
-                                {{ $tray['subfamilia'] ?? '—' }}
-                            </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
-                            <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="Género">
-                                <span class="font-serif italic">{{ $tray['genero'] ?? '—' }}</span>
+                            <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="Especímenes">
+                                {{ $tray['totalEspecimenes'] }}
                             </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
                         </dl>
                         <div class="flex flex-wrap gap-2 pt-1">

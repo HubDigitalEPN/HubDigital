@@ -26,7 +26,7 @@ final class AsignacionUnitTrayIndex extends Component
 
     public string $cajaSeleccionada = '';
 
-    public ?int $numeroNuevoTray = null;
+    public string $cajaSeleccionadaLabel = '';
 
     public array $unitTrays = [];
 
@@ -37,6 +37,8 @@ final class AsignacionUnitTrayIndex extends Component
     public array $especimenesSeleccionados = [];
 
     public ?string $successMessage = null;
+
+    public ?string $warningMessage = null;
 
     public ?string $errorMessage = null;
 
@@ -57,24 +59,19 @@ final class AsignacionUnitTrayIndex extends Component
     {
         $this->unitTraySeleccionado = '';
         $this->especimenesSeleccionados = [];
+        $this->cajaSeleccionadaLabel = $this->labelDeCaja($value);
+        $this->limpiarMensajes();
         $this->cargarProtegido(fn () => $this->cargarUnitTrays($value));
     }
 
     public function crearUnitTray(CrearUnitTrayHandler $handler): void
     {
-        $this->validate([
-            'cajaSeleccionada' => 'required|string',
-            'numeroNuevoTray' => 'required|integer|min:1',
-        ]);
+        $this->validate(['cajaSeleccionada' => 'required|string']);
 
         try {
-            $handler->handle(new CrearUnitTrayInput(
-                cajaId: $this->cajaSeleccionada,
-                numero: $this->numeroNuevoTray,
-            ));
-            $this->numeroNuevoTray = null;
+            $handler->handle(new CrearUnitTrayInput(cajaId: $this->cajaSeleccionada));
             $this->cargarUnitTrays($this->cajaSeleccionada);
-            $this->flash('Unit tray creado en la caja seleccionada.');
+            $this->flash('Unit tray creado y numerado automáticamente.');
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
@@ -83,6 +80,7 @@ final class AsignacionUnitTrayIndex extends Component
     public function seleccionarUnitTray(string $unitTrayId): void
     {
         $this->unitTraySeleccionado = $unitTrayId;
+        $this->limpiarMensajes();
         $this->especimenesSeleccionados = array_values(array_map(
             fn ($e) => $e['id'],
             array_filter($this->especimenes, fn ($e) => $e['unitTrayId'] === $unitTrayId),
@@ -96,13 +94,14 @@ final class AsignacionUnitTrayIndex extends Component
         $this->validate(['unitTraySeleccionado' => 'required|string']);
 
         try {
-            $handler->handle(new ActualizarEspecimenesUnitTrayInput(
+            $output = $handler->handle(new ActualizarEspecimenesUnitTrayInput(
                 unitTrayId: $this->unitTraySeleccionado,
                 especimenIds: array_values($this->especimenesSeleccionados),
             ));
             $this->especimenes = $especimenesHandler->handle()->items;
             $this->cargarUnitTrays($this->cajaSeleccionada);
             $this->flash('Especímenes asignados al unit tray.');
+            $this->advertirFueraDeLugar($output->especimenesFueraDeLugar);
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
@@ -125,5 +124,41 @@ final class AsignacionUnitTrayIndex extends Component
     {
         $this->successMessage = $mensaje;
         $this->errorMessage = null;
+        $this->warningMessage = null;
+    }
+
+    private function limpiarMensajes(): void
+    {
+        $this->successMessage = null;
+        $this->warningMessage = null;
+        $this->errorMessage = null;
+    }
+
+    /**
+     * Soft alert: avisa, sin bloquear, qué especímenes no parecen pertenecer al tray.
+     *
+     * @param  string[]  $codigos
+     */
+    private function advertirFueraDeLugar(array $codigos): void
+    {
+        if ($codigos === []) {
+            return;
+        }
+
+        $lista = implode(', ', $codigos);
+        $this->warningMessage = count($codigos) === 1
+            ? "El especimen {$lista} no parece pertenecer a este unit tray según su taxonomía. Revisa su ubicación."
+            : "Estos especímenes no parecen pertenecer a este unit tray según su taxonomía: {$lista}. Revisa su ubicación.";
+    }
+
+    private function labelDeCaja(string $cajaId): string
+    {
+        foreach ($this->cajas as $caja) {
+            if ($caja['id'] === $cajaId) {
+                return $caja['label'];
+            }
+        }
+
+        return '';
     }
 }
