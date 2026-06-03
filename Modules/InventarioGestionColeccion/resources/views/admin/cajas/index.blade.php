@@ -30,6 +30,7 @@
                 <thead class="bg-blue-navy border-b border-border">
                     <tr>
                         <th class="px-4 py-3 text-left font-medium text-white">Código</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">Taxonomía</th>
                         <th class="px-4 py-3 text-left font-medium text-white">RFID</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Nombre</th>
                         <th class="hidden lg:table-cell px-4 py-3 text-left font-medium text-white">Observación</th>
@@ -42,6 +43,13 @@
                     @forelse($cajasFiltradas as $caja)
                         <tr class="hover:bg-bg-main transition-colors">
                             <td class="px-4 py-3 font-medium text-text-primary">{{ $caja['codigo'] }}</td>
+                            <td class="px-4 py-3">
+                                <x-inventariogestioncoleccion::seguimiento-fisico.taxonomia-resumen
+                                    :subfamilia="$caja['subfamilia']"
+                                    :genero="$caja['genero']"
+                                    :especie="$caja['especie']"
+                                />
+                            </td>
                             <td class="px-4 py-3 font-mono text-xs text-text-secondary">{{ $caja['codigoRfid'] }}</td>
                             <td class="px-4 py-3 text-text-primary">{{ $caja['nombre'] ?? '—' }}</td>
                             <td class="hidden lg:table-cell px-4 py-3 text-text-secondary max-w-xs">
@@ -115,7 +123,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="px-4 py-8 text-center text-text-primary">
+                            <td colspan="9" class="px-4 py-8 text-center text-text-primary">
                                 @if($busqueda !== '')
                                     No se encontraron cajas para "{{ $busqueda }}".
                                 @else
@@ -139,6 +147,11 @@
                         :estado="$caja['estado']"
                     />
                 </div>
+                <x-inventariogestioncoleccion::seguimiento-fisico.taxonomia-resumen
+                    :subfamilia="$caja['subfamilia']"
+                    :genero="$caja['genero']"
+                    :especie="$caja['especie']"
+                />
                 <dl class="space-y-1.5 text-sm">
                     <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="RFID">
                         <span class="font-mono text-xs">{{ $caja['codigoRfid'] }}</span>
