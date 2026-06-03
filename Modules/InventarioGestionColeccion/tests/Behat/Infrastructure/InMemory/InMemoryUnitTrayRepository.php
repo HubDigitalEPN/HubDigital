@@ -19,6 +19,16 @@ final class InMemoryUnitTrayRepository implements UnitTrayRepository
         return UnitTrayId::generar();
     }
 
+    public function siguienteNumero(CajaId $cajaId): int
+    {
+        $numeros = array_map(
+            fn (UnitTray $tray) => $tray->numero(),
+            $this->buscarPorCaja($cajaId),
+        );
+
+        return $numeros === [] ? 1 : max($numeros) + 1;
+    }
+
     public function guardar(UnitTray $unitTray): void
     {
         $this->store[(string) $unitTray->id()] = $unitTray;

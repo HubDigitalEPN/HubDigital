@@ -18,6 +18,13 @@ class EloquentUnitTrayRepository implements UnitTrayRepository
         return UnitTrayId::generar();
     }
 
+    public function siguienteNumero(CajaId $cajaId): int
+    {
+        $maximo = UnitTrayEloquentModel::where('caja_id', (string) $cajaId)->max('numero');
+
+        return ((int) $maximo) + 1;
+    }
+
     public function guardar(UnitTray $unitTray): void
     {
         UnitTrayEloquentModel::updateOrCreate(

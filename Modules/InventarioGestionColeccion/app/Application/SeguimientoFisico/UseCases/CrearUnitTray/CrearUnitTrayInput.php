@@ -11,7 +11,6 @@ final readonly class CrearUnitTrayInput
      */
     public function __construct(
         public string $cajaId,
-        public int $numero,
         public array $especimenIds = [],
     ) {}
 }

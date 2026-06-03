@@ -12,6 +12,13 @@ interface UnitTrayRepository
 {
     public function nextIdentity(): UnitTrayId;
 
+    /**
+     * Siguiente número correlativo disponible para un UnitTray dentro de la Caja.
+     * Retorna 1 si la caja aún no tiene trays. El número es un identificador
+     * autogenerado: el orden de presentación lo decide la taxonomía, no este valor.
+     */
+    public function siguienteNumero(CajaId $cajaId): int;
+
     public function guardar(UnitTray $unitTray): void;
 
     public function buscarPorId(UnitTrayId $id): ?UnitTray;

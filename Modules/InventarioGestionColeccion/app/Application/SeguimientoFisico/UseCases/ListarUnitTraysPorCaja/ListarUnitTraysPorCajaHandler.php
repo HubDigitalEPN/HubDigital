@@ -7,6 +7,7 @@ namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCa
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\UnitTray;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UnitTrayEspecimenRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UnitTrayRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\ComparadorTaxonomicoUnitTray;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\CajaId;
 
 final class ListarUnitTraysPorCajaHandler
@@ -20,6 +21,17 @@ final class ListarUnitTraysPorCajaHandler
     {
         $cajaId = CajaId::desde($input->cajaId);
 
+        $trays = $this->unitTrayRepo->buscarPorCaja($cajaId);
+
+        // Los trays se presentan organizados alfabéticamente por taxonomía
+        // (subfamilia → género → especie); el número solo desempata trays equivalentes.
+        $comparador = new ComparadorTaxonomicoUnitTray;
+        usort($trays, function (UnitTray $a, UnitTray $b) use ($comparador): int {
+            $cmp = $comparador->comparar($a->clasificacionDominante(), $b->clasificacionDominante());
+
+            return $cmp !== 0 ? $cmp : $a->numero() <=> $b->numero();
+        });
+
         $items = array_map(function (UnitTray $tray): array {
             $clasificacion = $tray->clasificacionDominante();
 
@@ -28,9 +40,10 @@ final class ListarUnitTraysPorCajaHandler
                 'numero' => $tray->numero(),
                 'subfamilia' => $clasificacion?->subfamilia(),
                 'genero' => $clasificacion?->genero(),
+                'especie' => $clasificacion?->especie(),
                 'totalEspecimenes' => count($this->asignacionRepo->especimenIdsPorUnitTray($tray->id())),
             ];
-        }, $this->unitTrayRepo->buscarPorCaja($cajaId));
+        }, $trays);
 
         return new ListarUnitTraysPorCajaOutput(items: $items);
     }

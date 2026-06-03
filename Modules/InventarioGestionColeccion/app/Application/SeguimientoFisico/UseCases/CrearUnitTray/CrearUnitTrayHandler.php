@@ -41,7 +41,7 @@ final class CrearUnitTrayHandler
                 $unitTray = UnitTray::crear(
                     id: $this->unitTrayRepo->nextIdentity(),
                     cajaId: $cajaId,
-                    numero: $input->numero,
+                    numero: $this->unitTrayRepo->siguienteNumero($cajaId),
                 );
 
                 if ($input->especimenIds !== []) {
