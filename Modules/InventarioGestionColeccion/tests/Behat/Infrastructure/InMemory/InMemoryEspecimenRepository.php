@@ -220,6 +220,85 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
         return $contador;
     }
 
+    /** @return array<string, int> */
+    public function listarCatalogNumbersDuplicados(int $minimo, int $limit, int $offset): array
+    {
+        $grupos = [];
+        foreach ($this->store as $e) {
+            $cn = $e->catalogNumber();
+            if ($cn === null || $cn === '') {
+                continue;
+            }
+            $grupos[$cn] = ($grupos[$cn] ?? 0) + 1;
+        }
+        $grupos = array_filter($grupos, fn ($t) => $t >= $minimo);
+        arsort($grupos);
+
+        return array_slice($grupos, $offset, $limit, true);
+    }
+
+    public function contarGruposCatalogNumberDuplicados(int $minimo): int
+    {
+        $grupos = [];
+        foreach ($this->store as $e) {
+            $cn = $e->catalogNumber();
+            if ($cn === null || $cn === '') {
+                continue;
+            }
+            $grupos[$cn] = ($grupos[$cn] ?? 0) + 1;
+        }
+
+        return count(array_filter($grupos, fn ($t) => $t >= $minimo));
+    }
+
+    /** @param string[] $catalogNumbers
+     *  @return Especimen[] */
+    public function buscarPorCatalogNumbersIn(array $catalogNumbers): array
+    {
+        $set = array_flip($catalogNumbers);
+        $items = array_values(array_filter(
+            $this->store,
+            fn (Especimen $e) => $e->catalogNumber() !== null && isset($set[$e->catalogNumber()])
+        ));
+        usort($items, function (Especimen $a, Especimen $b): int {
+            $cmp = strcmp((string) $a->catalogNumber(), (string) $b->catalogNumber());
+
+            return $cmp !== 0 ? $cmp : strcmp($a->fechaColecta(), $b->fechaColecta());
+        });
+
+        return $items;
+    }
+
+    public function confirmarRevisionPorCatalogNumber(string $catalogNumber): int
+    {
+        $contador = 0;
+        foreach ($this->store as $e) {
+            if ($e->catalogNumber() !== $catalogNumber) {
+                continue;
+            }
+            if ($e->estadoRevision()->puedeConfirmarse()) {
+                $e->confirmarRevision();
+            }
+            $contador++;
+        }
+
+        return $contador;
+    }
+
+    public function marcarRevisionPorCatalogNumber(string $catalogNumber, string $motivo): int
+    {
+        $contador = 0;
+        foreach ($this->store as $e) {
+            if ($e->catalogNumber() !== $catalogNumber) {
+                continue;
+            }
+            $e->marcarParaRevision($motivo);
+            $contador++;
+        }
+
+        return $contador;
+    }
+
     /** @param string[] $muestraIds
      *  @return array<string, int> */
     public function contarPorMuestraIds(array $muestraIds): array

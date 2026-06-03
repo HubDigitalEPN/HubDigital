@@ -87,17 +87,31 @@ test('rechaza catalogNumber vacío', function (): void {
     );
 })->throws(InvalidArgumentException::class, 'catalogNumber');
 
-test('rechaza motivo vacío', function (): void {
+test('rechaza motivo vacío SOLO en error_catalogacion (eventos_distintos no requiere motivo)', function (): void {
     $repo = sembrarGrupoConCatalogNumber('1', 2);
 
     (new ResolverDuplicadoDeCatalogNumberHandler($repo))->handle(
+        new ResolverDuplicadoDeCatalogNumberInput(
+            catalogNumber: '1',
+            decision: ResolverDuplicadoDeCatalogNumberInput::DECISION_ERROR_CATALOGACION,
+            motivo: '',
+        )
+    );
+})->throws(InvalidArgumentException::class, 'motivo');
+
+test('eventos_distintos acepta motivo vacío (refactor SQL-side: motivo no aplica)', function (): void {
+    $repo = sembrarGrupoConCatalogNumber('1', 2);
+
+    $output = (new ResolverDuplicadoDeCatalogNumberHandler($repo))->handle(
         new ResolverDuplicadoDeCatalogNumberInput(
             catalogNumber: '1',
             decision: ResolverDuplicadoDeCatalogNumberInput::DECISION_EVENTOS_DISTINTOS,
             motivo: '',
         )
     );
-})->throws(InvalidArgumentException::class, 'motivo');
+
+    expect($output->especimenesAfectados)->toBe(2);
+});
 
 test('solo afecta a especímenes con el catalog_number indicado', function (): void {
     $repo = new InMemoryEspecimenRepository;

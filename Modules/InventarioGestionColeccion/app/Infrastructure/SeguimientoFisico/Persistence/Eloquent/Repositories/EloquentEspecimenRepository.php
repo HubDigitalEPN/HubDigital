@@ -260,6 +260,77 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
             ]);
     }
 
+    /** @return array<string, int> */
+    public function listarCatalogNumbersDuplicados(int $minimo, int $limit, int $offset): array
+    {
+        $rows = EspecimenEloquentModel::whereNotNull('catalog_number')
+            ->where('catalog_number', '!=', '')
+            ->selectRaw('catalog_number, COUNT(*) AS total')
+            ->groupBy('catalog_number')
+            ->havingRaw('COUNT(*) >= ?', [$minimo])
+            ->orderByRaw('COUNT(*) DESC')
+            ->limit($limit)
+            ->offset($offset)
+            ->get();
+
+        $out = [];
+        foreach ($rows as $r) {
+            $out[(string) $r->catalog_number] = (int) $r->total;
+        }
+
+        return $out;
+    }
+
+    public function contarGruposCatalogNumberDuplicados(int $minimo): int
+    {
+        $sub = EspecimenEloquentModel::whereNotNull('catalog_number')
+            ->where('catalog_number', '!=', '')
+            ->selectRaw('catalog_number, COUNT(*) AS total')
+            ->groupBy('catalog_number')
+            ->havingRaw('COUNT(*) >= ?', [$minimo]);
+
+        return DB::query()
+            ->fromSub($sub, 'grupos')
+            ->count();
+    }
+
+    /** @param string[] $catalogNumbers
+     *  @return Especimen[] */
+    public function buscarPorCatalogNumbersIn(array $catalogNumbers): array
+    {
+        if ($catalogNumbers === []) {
+            return [];
+        }
+
+        return EspecimenEloquentModel::with('identificadores')
+            ->whereIn('catalog_number', $catalogNumbers)
+            ->orderBy('catalog_number')
+            ->orderBy('fecha_colecta')
+            ->get()
+            ->map(fn ($m) => $this->toDomain($m))
+            ->all();
+    }
+
+    public function confirmarRevisionPorCatalogNumber(string $catalogNumber): int
+    {
+        return EspecimenEloquentModel::where('catalog_number', $catalogNumber)
+            ->update([
+                'estado_revision' => 'confirmada',
+                'motivo_revision' => null,
+                'updated_at' => now(),
+            ]);
+    }
+
+    public function marcarRevisionPorCatalogNumber(string $catalogNumber, string $motivo): int
+    {
+        return EspecimenEloquentModel::where('catalog_number', $catalogNumber)
+            ->update([
+                'estado_revision' => 'pendiente',
+                'motivo_revision' => $motivo,
+                'updated_at' => now(),
+            ]);
+    }
+
     /** @param string[] $muestraIds
      *  @return array<string, int> */
     public function contarPorMuestraIds(array $muestraIds): array

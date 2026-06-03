@@ -8,5 +8,7 @@ final readonly class ListarCatalogNumberDuplicadosInput
 {
     public function __construct(
         public int $minimoDuplicados = 2,
+        public int $pagina = 1,
+        public int $porPagina = 20,
     ) {}
 }

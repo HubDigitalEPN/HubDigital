@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ResolverDuplicadoDeCatalogNumber;
 
-use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especimen;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
 
 /**
@@ -12,10 +11,11 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\Esp
  * el mismo `catalog_number`.
  *
  *  - `eventos_distintos`: los registros son legítimos eventos separados.
- *    Cada especímen pasa a `estadoRevision = confirmada`, motivo limpio.
- *  - `error_catalogacion`: hay un error de catalogación. Cada especímen pasa
- *    a `estadoRevision = pendiente` con el motivo provisto, para que el
- *    curador investigue y corrija catalog_number manualmente.
+ *    UPDATE estado_revision='confirmada', motivo_revision=NULL.
+ *  - `error_catalogacion`: hay un error. UPDATE estado_revision='pendiente',
+ *    motivo_revision=$motivo. El curador investiga después.
+ *
+ * UPDATE SQL único — escalable.
  */
 final class ResolverDuplicadoDeCatalogNumberHandler
 {
@@ -30,47 +30,28 @@ final class ResolverDuplicadoDeCatalogNumberHandler
             throw new \InvalidArgumentException('catalogNumber no puede estar vacío.');
         }
 
-        $motivo = trim($input->motivo);
-        if ($motivo === '') {
-            throw new \InvalidArgumentException('motivo no puede estar vacío.');
-        }
-
-        if (! in_array($input->decision, [
+        $decision = $input->decision;
+        if (! in_array($decision, [
             ResolverDuplicadoDeCatalogNumberInput::DECISION_EVENTOS_DISTINTOS,
             ResolverDuplicadoDeCatalogNumberInput::DECISION_ERROR_CATALOGACION,
         ], true)) {
-            throw new \InvalidArgumentException("Decisión inválida: '{$input->decision}'.");
+            throw new \InvalidArgumentException("Decisión inválida: '{$decision}'.");
         }
 
-        $afectados = 0;
-        foreach ($this->especimenRepo->buscarTodos() as $especimen) {
-            if ($especimen->catalogNumber() !== $catalogNumber) {
-                continue;
+        if ($decision === ResolverDuplicadoDeCatalogNumberInput::DECISION_EVENTOS_DISTINTOS) {
+            $afectados = $this->especimenRepo->confirmarRevisionPorCatalogNumber($catalogNumber);
+        } else {
+            $motivo = trim($input->motivo);
+            if ($motivo === '') {
+                throw new \InvalidArgumentException('Para error_catalogacion el motivo no puede estar vacío.');
             }
-            $this->aplicarDecision($especimen, $input->decision, $motivo);
-            $this->especimenRepo->guardar($especimen);
-            $afectados++;
+            $afectados = $this->especimenRepo->marcarRevisionPorCatalogNumber($catalogNumber, $motivo);
         }
 
         return new ResolverDuplicadoDeCatalogNumberOutput(
             catalogNumber: $catalogNumber,
-            decisionAplicada: $input->decision,
+            decisionAplicada: $decision,
             especimenesAfectados: $afectados,
         );
-    }
-
-    private function aplicarDecision(Especimen $especimen, string $decision, string $motivo): void
-    {
-        if ($decision === ResolverDuplicadoDeCatalogNumberInput::DECISION_EVENTOS_DISTINTOS) {
-            // Si ya está confirmado, no hacemos nada. Si está pendiente, lo confirmamos.
-            if ($especimen->estadoRevision()->puedeConfirmarse()) {
-                $especimen->confirmarRevision();
-            }
-
-            return;
-        }
-
-        // DECISION_ERROR_CATALOGACION: marcar para revisión con el motivo del curador.
-        $especimen->marcarParaRevision($motivo);
     }
 }

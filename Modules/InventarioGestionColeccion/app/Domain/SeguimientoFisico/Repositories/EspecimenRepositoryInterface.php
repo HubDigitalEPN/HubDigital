@@ -106,6 +106,39 @@ interface EspecimenRepositoryInterface
     public function enlazarTaxonPorVerbatim(string $verbatim, string $taxonId): int;
 
     /**
+     * Lista catalog_numbers que aparecen >= $minimo veces. Devuelve pares
+     * `catalog_number => conteo` ordenados por conteo desc, paginado.
+     *
+     * @return array<string, int>
+     */
+    public function listarCatalogNumbersDuplicados(int $minimo, int $limit, int $offset): array;
+
+    public function contarGruposCatalogNumberDuplicados(int $minimo): int;
+
+    /**
+     * Devuelve los especímenes asociados a un conjunto de catalog_numbers
+     * (para mostrar el detalle de cada grupo). Una sola query con WHERE IN.
+     *
+     * @param  string[]  $catalogNumbers
+     * @return Especimen[]
+     */
+    public function buscarPorCatalogNumbersIn(array $catalogNumbers): array;
+
+    /**
+     * Marca todos los especímenes con un catalog_number dado como
+     * estado_revision='confirmada' y limpia motivo_revision. Útil para
+     * resolver duplicados como "eventos distintos".
+     */
+    public function confirmarRevisionPorCatalogNumber(string $catalogNumber): int;
+
+    /**
+     * Marca todos los especímenes con un catalog_number dado como
+     * estado_revision='pendiente' con motivo provisto. Para resolver
+     * duplicados como "error de catalogación".
+     */
+    public function marcarRevisionPorCatalogNumber(string $catalogNumber, string $motivo): int;
+
+    /**
      * Devuelve los `fila_origen_excel` ya persistidos cuyo valor está dentro
      * del set proporcionado. Permite chequear idempotencia en bulk antes de
      * abrir el chunk de inserts.

@@ -109,10 +109,18 @@
                             <flux:sidebar.item
                                 icon="magnifying-glass"
                                 :href="route('inventario.taxonomia.especimenes')"
-                                :current="request()->routeIs('inventario.taxonomia.especimenes')"
+                                :current="request()->routeIs('inventario.taxonomia.especimenes') && !request()->routeIs('inventario.taxonomia.especimenes.duplicados')"
                                 wire:navigate
                             >
                                 Especímenes
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="exclamation-triangle"
+                                :href="route('inventario.taxonomia.especimenes.duplicados')"
+                                :current="request()->routeIs('inventario.taxonomia.especimenes.duplicados')"
+                                wire:navigate
+                            >
+                                Duplicados catalog#
                             </flux:sidebar.item>
                             <flux:sidebar.item
                                 icon="rectangle-stack"

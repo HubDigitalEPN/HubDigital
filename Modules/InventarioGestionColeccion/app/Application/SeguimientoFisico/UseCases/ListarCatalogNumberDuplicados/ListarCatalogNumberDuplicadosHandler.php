@@ -14,6 +14,10 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\Esp
  * Cuando dos especímenes tienen el mismo catalog_number pero fechas distintas,
  * suelen ser DOS eventos legítimos (ej. MEPN:INV:1 con 1994 y 2006), no un error
  * de catalogación. El curador decide caso por caso.
+ *
+ * Estrategia escalable:
+ *  - Paso 1: GROUP BY + COUNT con HAVING (SQL-side, paginado).
+ *  - Paso 2: WHERE catalog_number IN (...) para traer los especímenes del page.
  */
 final class ListarCatalogNumberDuplicadosHandler
 {
@@ -24,43 +28,50 @@ final class ListarCatalogNumberDuplicadosHandler
     public function handle(ListarCatalogNumberDuplicadosInput $input): ListarCatalogNumberDuplicadosOutput
     {
         $minimo = max(2, $input->minimoDuplicados);
+        $pagina = max(1, $input->pagina);
+        $porPagina = max(1, min(100, $input->porPagina));
+        $offset = ($pagina - 1) * $porPagina;
 
-        /** @var array<string, Especimen[]> $grupos */
-        $grupos = [];
-        foreach ($this->especimenRepo->buscarTodos() as $especimen) {
-            $catalogNumber = $especimen->catalogNumber();
-            if ($catalogNumber === null || $catalogNumber === '') {
-                continue;
-            }
-            $grupos[$catalogNumber][] = $especimen;
+        $grupos = $this->especimenRepo->listarCatalogNumbersDuplicados($minimo, $porPagina, $offset);
+        $total = $this->especimenRepo->contarGruposCatalogNumberDuplicados($minimo);
+
+        // Una sola query para los especímenes de todos los catalog_numbers de la página.
+        $especimenes = $this->especimenRepo->buscarPorCatalogNumbersIn(array_keys($grupos));
+
+        /** @var array<string, Especimen[]> $porCatalog */
+        $porCatalog = [];
+        foreach ($especimenes as $e) {
+            $cn = (string) $e->catalogNumber();
+            $porCatalog[$cn][] = $e;
         }
 
         $items = [];
-        foreach ($grupos as $catalogNumber => $especimenes) {
-            if (count($especimenes) < $minimo) {
-                continue;
-            }
-
-            $fechas = array_unique(array_map(fn (Especimen $e) => $e->fechaColecta(), $especimenes));
+        foreach ($grupos as $catalogNumber => $conteo) {
+            $delGrupo = $porCatalog[(string) $catalogNumber] ?? [];
+            $fechas = array_unique(array_map(fn (Especimen $e) => $e->fechaColecta(), $delGrupo));
 
             $items[] = new ListarCatalogNumberDuplicadosItem(
                 catalogNumber: (string) $catalogNumber,
-                total: count($especimenes),
+                total: $conteo,
                 especimenes: array_map(
                     fn (Especimen $e) => [
                         'id' => (string) $e->id(),
                         'codigoCatalogo' => $e->codigoCatalogo(),
                         'fechaColecta' => $e->fechaColecta(),
                         'colector' => $e->colector(),
+                        'estadoRevision' => $e->estadoRevision()->value,
                     ],
-                    $especimenes,
+                    $delGrupo,
                 ),
-                fechasDistintas: count($fechas) > 1,
+                fechasDistintas: count(array_filter($fechas, fn ($f) => $f !== '')) > 1,
             );
         }
 
-        usort($items, fn (ListarCatalogNumberDuplicadosItem $a, ListarCatalogNumberDuplicadosItem $b) => $b->total <=> $a->total);
-
-        return new ListarCatalogNumberDuplicadosOutput(items: $items, totalGrupos: count($items));
+        return new ListarCatalogNumberDuplicadosOutput(
+            items: $items,
+            totalGrupos: $total,
+            pagina: $pagina,
+            porPagina: $porPagina,
+        );
     }
 }
