@@ -16,6 +16,7 @@ use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\Seguimiento
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\LocalidadesRevisionIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\LocalidadIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\MuestrasColectaIndex;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\TaxaRevisionIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\TaxonIndex;
 
 Route::middleware(['web', 'auth', 'verified', 'role:curador'])
@@ -33,6 +34,7 @@ Route::middleware(['web', 'auth', 'verified', 'role:curador'])
 
         Route::prefix('taxonomia')->name('taxonomia.')->group(function () {
             Route::get('/taxones', TaxonIndex::class)->name('taxones');
+            Route::get('/taxones/revision', TaxaRevisionIndex::class)->name('taxones.revision');
             Route::get('/localidades', LocalidadIndex::class)->name('localidades');
             Route::get('/localidades/revision', LocalidadesRevisionIndex::class)->name('localidades.revision');
             Route::get('/especimenes', EspecimenIndex::class)->name('especimenes');

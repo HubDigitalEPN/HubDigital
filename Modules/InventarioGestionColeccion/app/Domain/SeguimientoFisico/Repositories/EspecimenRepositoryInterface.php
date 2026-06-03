@@ -90,6 +90,22 @@ interface EspecimenRepositoryInterface
     public function enlazarLocalidadPorVerbatim(string $verbatim, string $localidadId): int;
 
     /**
+     * Agrupa los `taxon_verbatim` con `taxon_id IS NULL`. Pares
+     * `verbatim => conteo`, ordenados por conteo desc, paginado.
+     *
+     * @return array<string, int>
+     */
+    public function agruparTaxonVerbatimsPendientes(int $limit, int $offset): array;
+
+    public function contarTaxonVerbatimsPendientes(): int;
+
+    /**
+     * Enlaza en bloque todos los especímenes con un `taxon_verbatim` dado y
+     * `taxon_id IS NULL` al taxón canónico. Devuelve filas afectadas.
+     */
+    public function enlazarTaxonPorVerbatim(string $verbatim, string $taxonId): int;
+
+    /**
      * Devuelve los `fila_origen_excel` ya persistidos cuyo valor está dentro
      * del set proporcionado. Permite chequear idempotencia en bulk antes de
      * abrir el chunk de inserts.

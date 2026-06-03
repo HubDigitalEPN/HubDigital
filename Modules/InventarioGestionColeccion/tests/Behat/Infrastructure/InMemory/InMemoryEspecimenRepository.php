@@ -8,6 +8,7 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especim
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EspecimenId;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\LocalidadId;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TaxonId;
 
 final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
 {
@@ -159,6 +160,60 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
                 continue;
             }
             $e->enlazarLocalidad($localidad);
+            $contador++;
+        }
+
+        return $contador;
+    }
+
+    /** @return array<string, int> */
+    public function agruparTaxonVerbatimsPendientes(int $limit, int $offset): array
+    {
+        $grupos = [];
+        foreach ($this->store as $e) {
+            if ($e->taxonId() !== null) {
+                continue;
+            }
+            $v = $e->taxonVerbatim();
+            if ($v === null || $v === '') {
+                continue;
+            }
+            $grupos[$v] = ($grupos[$v] ?? 0) + 1;
+        }
+        arsort($grupos);
+
+        return array_slice($grupos, $offset, $limit, true);
+    }
+
+    public function contarTaxonVerbatimsPendientes(): int
+    {
+        $unicos = [];
+        foreach ($this->store as $e) {
+            if ($e->taxonId() !== null) {
+                continue;
+            }
+            $v = $e->taxonVerbatim();
+            if ($v === null || $v === '') {
+                continue;
+            }
+            $unicos[$v] = true;
+        }
+
+        return count($unicos);
+    }
+
+    public function enlazarTaxonPorVerbatim(string $verbatim, string $taxonId): int
+    {
+        $contador = 0;
+        $taxon = TaxonId::desde($taxonId);
+        foreach ($this->store as $e) {
+            if ($e->taxonId() !== null) {
+                continue;
+            }
+            if ($e->taxonVerbatim() !== $verbatim) {
+                continue;
+            }
+            $e->enlazarTaxon($taxon);
             $contador++;
         }
 

@@ -220,6 +220,46 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
             ]);
     }
 
+    /** @return array<string, int> */
+    public function agruparTaxonVerbatimsPendientes(int $limit, int $offset): array
+    {
+        $rows = EspecimenEloquentModel::whereNull('taxon_id')
+            ->whereNotNull('taxon_verbatim')
+            ->where('taxon_verbatim', '!=', '')
+            ->selectRaw('taxon_verbatim, COUNT(*) AS total')
+            ->groupBy('taxon_verbatim')
+            ->orderByRaw('COUNT(*) DESC')
+            ->limit($limit)
+            ->offset($offset)
+            ->get();
+
+        $out = [];
+        foreach ($rows as $r) {
+            $out[(string) $r->taxon_verbatim] = (int) $r->total;
+        }
+
+        return $out;
+    }
+
+    public function contarTaxonVerbatimsPendientes(): int
+    {
+        return EspecimenEloquentModel::whereNull('taxon_id')
+            ->whereNotNull('taxon_verbatim')
+            ->where('taxon_verbatim', '!=', '')
+            ->distinct('taxon_verbatim')
+            ->count('taxon_verbatim');
+    }
+
+    public function enlazarTaxonPorVerbatim(string $verbatim, string $taxonId): int
+    {
+        return EspecimenEloquentModel::whereNull('taxon_id')
+            ->where('taxon_verbatim', $verbatim)
+            ->update([
+                'taxon_id' => $taxonId,
+                'updated_at' => now(),
+            ]);
+    }
+
     /** @param string[] $muestraIds
      *  @return array<string, int> */
     public function contarPorMuestraIds(array $muestraIds): array

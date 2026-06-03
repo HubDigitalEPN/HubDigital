@@ -125,10 +125,18 @@
                             <flux:sidebar.item
                                 icon="tag"
                                 :href="route('inventario.taxonomia.taxones')"
-                                :current="request()->routeIs('inventario.taxonomia.taxones')"
+                                :current="request()->routeIs('inventario.taxonomia.taxones') && !request()->routeIs('inventario.taxonomia.taxones.revision')"
                                 wire:navigate
                             >
                                 Taxones
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="exclamation-triangle"
+                                :href="route('inventario.taxonomia.taxones.revision')"
+                                :current="request()->routeIs('inventario.taxonomia.taxones.revision')"
+                                wire:navigate
+                            >
+                                Revisión taxa
                             </flux:sidebar.item>
                             <flux:sidebar.item
                                 icon="map-pin"
