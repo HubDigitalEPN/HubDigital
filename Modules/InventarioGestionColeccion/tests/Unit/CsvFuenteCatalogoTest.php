@@ -7,6 +7,7 @@ use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importer
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\ImportarCatalogoInvertebrados;
 use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryEspecimenRepository;
 use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryMuestraColectaRepository;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryTaxonRepository;
 
 const CATALOGO_CSV_FIXTURE = __DIR__.'/Fixtures/catalogo_invertebrados_sample.csv';
 
@@ -27,7 +28,13 @@ test('CsvFuenteCatalogo lee headers y filas como arrays asociativos', function (
 test('end-to-end con fixture CSV: 6 filas → 6 especímenes, 2 muestras (BT2F3 y LT2F2)', function (): void {
     $especimenRepo = new InMemoryEspecimenRepository;
     $muestraRepo = new InMemoryMuestraColectaRepository;
-    $importer = new ImportarCatalogoInvertebrados($especimenRepo, $muestraRepo, new FilaCatalogoMapper);
+    $taxonRepo = new InMemoryTaxonRepository;
+    $importer = new ImportarCatalogoInvertebrados(
+        $especimenRepo,
+        $muestraRepo,
+        $taxonRepo,
+        new FilaCatalogoMapper,
+    );
 
     $fuente = new CsvFuenteCatalogo(CATALOGO_CSV_FIXTURE);
     $resultado = $importer->ejecutar($fuente);

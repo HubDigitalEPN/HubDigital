@@ -34,12 +34,14 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
                 'taxon_verbatim' => $especimen->taxonVerbatim(),
                 'muestra_id' => $especimen->muestraId(),
                 'localidad_id' => $especimen->localidadId(),
-                'localidad' => $especimen->localidad(),
+                // BD acepta null (post-hardening). Bridge '' → null para que la entidad,
+                // que sigue usando string vacío como "ausente", persista coherentemente.
+                'localidad' => $this->stringNullable($especimen->localidad()),
                 'localidad_verbatim' => $especimen->localidadVerbatim(),
-                'fecha_colecta' => $especimen->fechaColecta(),
+                'fecha_colecta' => $this->stringNullable($especimen->fechaColecta()),
                 'fecha_verbatim' => $especimen->fechaVerbatim(),
                 'fecha_colecta_fin' => $especimen->fechaColectaFin(),
-                'colector' => $especimen->colector(),
+                'colector' => $this->stringNullable($especimen->colector()),
                 'entidad_depositante_id' => $especimen->entidadDepositanteId(),
                 'estado' => $especimen->estado()->value,
                 'individual_count' => $especimen->individualCount(),
@@ -73,6 +75,7 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
                 'acta_recepcion' => $especimen->actaRecepcion(),
                 'estado_revision' => $especimen->estadoRevision()->value,
                 'motivo_revision' => $especimen->motivoRevision(),
+                'fila_origen_excel' => $especimen->filaOrigenExcel(),
             ]
         );
 
@@ -171,6 +174,21 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
             ->all();
     }
 
+    public function existePorFilaOrigen(int $filaOrigenExcel): bool
+    {
+        return EspecimenEloquentModel::where('fila_origen_excel', $filaOrigenExcel)->exists();
+    }
+
+    private function stringNullable(?string $valor): ?string
+    {
+        if ($valor === null) {
+            return null;
+        }
+        $trim = trim($valor);
+
+        return $trim === '' ? null : $trim;
+    }
+
     private function toDomain(EspecimenEloquentModel $model): Especimen
     {
         $fechaColecta = $model->fecha_colecta !== null
@@ -184,9 +202,10 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
             id: EspecimenId::desde($model->id),
             codigoCatalogo: $model->codigo_catalogo,
             taxonId: $model->taxon_id,
-            localidad: $model->localidad,
+            // BD puede tener null; la entidad usa '' para "ausente" en estos legacy fields.
+            localidad: $model->localidad ?? '',
             fechaColecta: $fechaColecta,
-            colector: $model->colector,
+            colector: $model->colector ?? '',
             estado: EstadoEspecimen::from($model->estado),
             entidadDepositanteId: $model->entidad_depositante_id,
             occurrenceId: $model->occurrence_id,
@@ -235,6 +254,7 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
                 ? EstadoRevision::from($model->estado_revision)
                 : EstadoRevision::porDefecto(),
             motivoRevision: $model->motivo_revision,
+            filaOrigenExcel: $model->fila_origen_excel !== null ? (int) $model->fila_origen_excel : null,
         );
     }
 }

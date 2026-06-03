@@ -8,17 +8,23 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especim
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\MuestraColecta;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\MuestraColectaRepositoryInterface;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\TaxonRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\MuestraColectaId;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\Contracts\FuenteCatalogoIterator;
 
 /**
- * Orchestrator del importador (spec P6).
+ * Orchestrator del importador (spec P6 + hardening).
  *
  * Lee filas de una `FuenteCatalogoIterator`, las mapea con `FilaCatalogoMapper`,
- * y persiste `Especimen` + `MuestraColecta` (agrupando por `oldCode`).
+ * construye la jerarquía taxonómica con `ConstructorTaxonomiaImport` y persiste
+ * `Especimen` + `MuestraColecta` (agrupando por `oldCode`).
  *
  * Características clave:
  *  - **Cero pérdida**: cada fila genera un espécimen, incluso si tiene warnings.
+ *  - **Idempotencia**: si la fila ya fue importada (mismo `fila_origen_excel`),
+ *    se salta y se incrementa `duplicadosSaltados`.
+ *  - **Taxonomía construida en vuelo**: kingdom..genus + species (binomen)
+ *    encadenados vía `padre_id`. El `taxon_id` final se decide por `taxonRank`.
  *  - **Agrupación de muestras**: filas con mismo `oldCode` comparten `muestra_id`.
  *  - **Estado de revisión**: especímenes con warnings → `pendiente` + motivo.
  *  - **Dry-run**: cuenta sin persistir.
@@ -30,6 +36,7 @@ final class ImportarCatalogoInvertebrados
     public function __construct(
         private readonly EspecimenRepositoryInterface $especimenRepo,
         private readonly MuestraColectaRepositoryInterface $muestraRepo,
+        private readonly TaxonRepositoryInterface $taxonRepo,
         private readonly FilaCatalogoMapper $mapper,
     ) {}
 
@@ -43,9 +50,12 @@ final class ImportarCatalogoInvertebrados
         $filasLeidas = 0;
         $especimenesPersistidos = 0;
         $muestrasCreadas = 0;
+        $duplicadosSaltados = 0;
         $marcadosParaRevision = 0;
         $motivosRevision = [];
         $erroresFatales = [];
+
+        $constructorTaxonomia = new ConstructorTaxonomiaImport($this->taxonRepo);
 
         /** @var array<string, MuestraColectaId> $muestrasPorOldCode */
         $muestrasPorOldCode = [];
@@ -61,7 +71,18 @@ final class ImportarCatalogoInvertebrados
             $filasLeidas++;
 
             try {
+                // Idempotencia: saltar filas ya importadas (mismo número de fila origen).
+                if (! $dryRun && $this->especimenRepo->existePorFilaOrigen($numFila)) {
+                    $duplicadosSaltados++;
+
+                    continue;
+                }
+
                 $mapeada = $this->mapper->mapear($fila);
+                $normalizada = $this->mapper->normalizarClaves($fila);
+
+                // Resolver taxonomía: kingdom..genus + species binomen.
+                $taxonId = $constructorTaxonomia->resolverDeFila($normalizada);
 
                 // Resolver muestra: si hay oldCode, agrupamos en una muestra
                 // compartida entre todos los especímenes con el mismo código.
@@ -88,7 +109,7 @@ final class ImportarCatalogoInvertebrados
                 $especimen = Especimen::crear(
                     id: $this->especimenRepo->nextIdentity(),
                     codigoCatalogo: $mapeada->codigoCatalogo,
-                    taxonId: null,
+                    taxonId: $taxonId !== null ? (string) $taxonId : null,
                     localidad: $mapeada->localidad,
                     fechaColecta: $mapeada->fechaColecta,
                     colector: $mapeada->colector,
@@ -130,6 +151,7 @@ final class ImportarCatalogoInvertebrados
                     occurrenceRemarks: $mapeada->occurrenceRemarks,
                     taxonomicNotes: $mapeada->taxonomicNotes,
                     actaRecepcion: $mapeada->actaRecepcion,
+                    filaOrigenExcel: $numFila,
                 );
 
                 if ($mapeada->requiereRevision()) {
@@ -163,6 +185,7 @@ final class ImportarCatalogoInvertebrados
             filasLeidas: $filasLeidas,
             especimenesPersistidos: $especimenesPersistidos,
             muestrasCreadas: $muestrasCreadas,
+            duplicadosSaltados: $duplicadosSaltados,
             marcadosParaRevision: $marcadosParaRevision,
             motivosRevision: $motivosRevision,
             erroresFatales: $erroresFatales,

@@ -80,6 +80,7 @@ class Especimen
         private EstadoRevision $estadoRevision,
         private ?string $motivoRevision,
         private array $identificadores,
+        private ?int $filaOrigenExcel = null,
     ) {}
 
     /**
@@ -134,6 +135,7 @@ class Especimen
         ?string $taxonomicNotes = null,
         ?string $actaRecepcion = null,
         ?string $motivoRevision = null,
+        ?int $filaOrigenExcel = null,
     ): self {
         $localidad = trim($localidad);
         $localityName = self::limpiarTexto($localityName) ?? $localidad;
@@ -197,6 +199,7 @@ class Especimen
                 oldCode: self::limpiarTexto($oldCode),
                 cardexLiquidCollectionCode: self::limpiarTexto($cardexLiquidCollectionCode),
             ),
+            filaOrigenExcel: $filaOrigenExcel,
         );
     }
 
@@ -254,6 +257,7 @@ class Especimen
         ?string $actaRecepcion = null,
         ?EstadoRevision $estadoRevision = null,
         ?string $motivoRevision = null,
+        ?int $filaOrigenExcel = null,
     ): self {
         return new self(
             id: $id,
@@ -306,7 +310,13 @@ class Especimen
             estadoRevision: $estadoRevision ?? EstadoRevision::porDefecto(),
             motivoRevision: $motivoRevision,
             identificadores: $identificadores,
+            filaOrigenExcel: $filaOrigenExcel,
         );
+    }
+
+    public function filaOrigenExcel(): ?int
+    {
+        return $this->filaOrigenExcel;
     }
 
     public function actualizar(

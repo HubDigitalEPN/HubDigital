@@ -28,6 +28,9 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\Parsear
  */
 final class FilaCatalogoMapper
 {
+    /** Pivot de siglo per spec del usuario: yy ≤ 25 → 20yy, yy > 25 → 19yy. */
+    public const PIVOT_SIGLO_DOS_DIGITOS = 25;
+
     public function mapear(array $fila): FilaMapeada
     {
         $normalizada = $this->normalizarClaves($fila);
@@ -51,50 +54,78 @@ final class FilaCatalogoMapper
             ?? $catalogNumber
             ?? ('MEPN:INV:GEN-'.bin2hex(random_bytes(6)));
 
-        // Taxonomía: el verbatim siempre se guarda. La resolución a taxon_id es P5.4.
-        $taxonVerbatim = $this->limpiar($normalizada['scientific_name'] ?? null);
+        // Taxonomía: verbatim explícito del CSV preferido sobre scientific_name.
+        $taxonVerbatim = $this->limpiar(
+            $normalizada['taxon_verbatim'] ?? $normalizada['scientific_name'] ?? null
+        );
 
-        // Localidad: localityName preferido; verbatim guarda el original (también localityName).
+        // Localidad: verbatim explícito del CSV preferido. Luego verbatim_locality, luego locality_name.
         $localityName = $this->limpiar($normalizada['locality_name'] ?? null);
-        $verbatimLocality = $this->limpiar($normalizada['verbatim_locality'] ?? null);
-        $localidadVerbatim = $verbatimLocality ?? $localityName;
+        $localidadVerbatim = $this->limpiar(
+            $normalizada['localidad_verbatim']
+            ?? $normalizada['verbatim_locality']
+            ?? $normalizada['locality_name']
+            ?? null
+        );
         $country = $this->limpiar($normalizada['country'] ?? null);
         $stateProvince = $this->limpiar($normalizada['state_province'] ?? null);
         $municipality = $this->limpiar($normalizada['municipality'] ?? null);
         $localidad = $localityName ?? $country ?? '';
 
-        // Fechas
-        $fechaVerbatim = $this->limpiar($normalizada['event_date'] ?? null);
+        // Fechas — usa parsearRango para soportar "14-26/feb/2001", "Jun-Jul-1998", etc.
+        // Prefiere fecha_verbatim explícito del CSV sobre event_date.
+        $fechaVerbatim = $this->limpiar(
+            $normalizada['fecha_verbatim'] ?? $normalizada['event_date'] ?? null
+        );
         $fechaColectaFinVerbatim = $this->limpiar($normalizada['datecollected_end'] ?? null);
-        $parsedInicio = $fechaVerbatim !== null ? ParsearFechaVerbatim::parsear($fechaVerbatim) : null;
-        $parsedFin = $fechaColectaFinVerbatim !== null ? ParsearFechaVerbatim::parsear($fechaColectaFinVerbatim) : null;
-        $fechaColecta = $parsedInicio?->format('Y-m-d') ?? '';
-        if ($fechaVerbatim !== null && $parsedInicio === null) {
-            $warnings[] = "fecha_colecta no parseable ('{$fechaVerbatim}')";
+        $parsedInicio = null;
+        $parsedFin = null;
+        if ($fechaVerbatim !== null) {
+            [$parsedInicio, $parsedFin] = ParsearFechaVerbatim::parsearRango(
+                $fechaVerbatim,
+                self::PIVOT_SIGLO_DOS_DIGITOS,
+            );
+            if ($parsedInicio === null) {
+                $warnings[] = "fecha_colecta no parseable ('{$fechaVerbatim}')";
+            }
         }
+        // datecollectedEnd explícito tiene prioridad sobre el fin del rango parseado.
+        if ($fechaColectaFinVerbatim !== null) {
+            $parsedFinExplicito = ParsearFechaVerbatim::parsear(
+                $fechaColectaFinVerbatim,
+                self::PIVOT_SIGLO_DOS_DIGITOS,
+            );
+            if ($parsedFinExplicito !== null) {
+                $parsedFin = $parsedFinExplicito;
+            }
+        }
+        $fechaColecta = $parsedInicio?->format('Y-m-d') ?? '';
 
         // Colector
         $colector = $this->limpiar($normalizada['recorded_by'] ?? null) ?? '';
 
         // individual_count: si no es numérico, mover a verbatim.
+        // Prefiere individual_count_verbatim explícito del CSV.
+        $individualCountVerbatim = $this->limpiar($normalizada['individual_count_verbatim'] ?? null);
         $individualCountRaw = $this->limpiar($normalizada['individual_count'] ?? $normalizada['invidual_count'] ?? null);
         $individualCount = null;
-        $individualCountVerbatim = null;
         if ($individualCountRaw !== null) {
             if (ctype_digit(ltrim($individualCountRaw, '-'))) {
                 $individualCount = (int) $individualCountRaw;
             } else {
-                $individualCountVerbatim = $individualCountRaw;
+                $individualCountVerbatim ??= $individualCountRaw;
                 $warnings[] = "individual_count no numérico ('{$individualCountRaw}')";
             }
         }
 
         // Coordenadas: si decimal_latitude/longitude no son numéricas, mover a coord_verbatim.
+        // Prefiere coord_verbatim explícito del CSV.
+        $coordVerbatimExplicito = $this->limpiar($normalizada['coord_verbatim'] ?? null);
         $latRaw = $this->limpiar($normalizada['decimal_latitude'] ?? null);
         $lonRaw = $this->limpiar($normalizada['decimal_longitude'] ?? null);
         $decimalLatitude = null;
         $decimalLongitude = null;
-        $coordVerbatim = null;
+        $coordVerbatim = $coordVerbatimExplicito;
         if ($latRaw !== null || $lonRaw !== null) {
             $latNum = $latRaw !== null && is_numeric($latRaw) ? (float) $latRaw : null;
             $lonNum = $lonRaw !== null && is_numeric($lonRaw) ? (float) $lonRaw : null;
@@ -104,7 +135,7 @@ final class FilaCatalogoMapper
                 $decimalLatitude = $latNum;
                 $decimalLongitude = $lonNum;
             } else {
-                $coordVerbatim = trim(($latRaw ?? '').' / '.($lonRaw ?? ''), ' /');
+                $coordVerbatim ??= trim(($latRaw ?? '').' / '.($lonRaw ?? ''), ' /');
                 $warnings[] = "coordenadas no numéricas o fuera de rango ('{$coordVerbatim}')";
             }
         }
@@ -164,12 +195,13 @@ final class FilaCatalogoMapper
 
     /**
      * Normaliza claves del array: camelCase / snake_case mezclado, espacios,
-     * typos del Excel → snake_case canónico.
+     * typos del Excel → snake_case canónico. Público para que el orchestrator
+     * pase el array normalizado a ConstructorTaxonomiaImport sin re-snakeizar.
      *
      * @param  array<string, mixed>  $fila
      * @return array<string, string|null>
      */
-    private function normalizarClaves(array $fila): array
+    public function normalizarClaves(array $fila): array
     {
         $out = [];
         foreach ($fila as $clave => $valor) {

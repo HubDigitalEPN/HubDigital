@@ -98,4 +98,15 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
     {
         return array_values($this->store);
     }
+
+    public function existePorFilaOrigen(int $filaOrigenExcel): bool
+    {
+        foreach ($this->store as $especimen) {
+            if ($especimen->filaOrigenExcel() === $filaOrigenExcel) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }

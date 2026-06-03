@@ -19,6 +19,7 @@ final readonly class ResultadoImport
         public int $filasLeidas,
         public int $especimenesPersistidos,
         public int $muestrasCreadas,
+        public int $duplicadosSaltados,
         public int $marcadosParaRevision,
         public array $motivosRevision,
         public array $erroresFatales,
@@ -32,6 +33,7 @@ final readonly class ResultadoImport
         return "[{$modo}] {$this->filasLeidas} filas leídas, ".
             "{$this->especimenesPersistidos} especímenes, ".
             "{$this->muestrasCreadas} muestras, ".
+            "{$this->duplicadosSaltados} duplicados saltados, ".
             "{$this->marcadosParaRevision} para revisión, ".
             count($this->erroresFatales).' errores fatales';
     }

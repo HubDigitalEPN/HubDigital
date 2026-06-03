@@ -35,4 +35,10 @@ interface EspecimenRepositoryInterface
 
     /** @return Especimen[] */
     public function buscarTodos(): array;
+
+    /**
+     * Permite la idempotencia del importador: si un espécimen ya fue creado
+     * a partir de una fila específica del Excel, no se duplica al re-correr.
+     */
+    public function existePorFilaOrigen(int $filaOrigenExcel): bool;
 }

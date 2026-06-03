@@ -7,6 +7,7 @@ use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importer
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\ImportarCatalogoInvertebrados;
 use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryEspecimenRepository;
 use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryMuestraColectaRepository;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryTaxonRepository;
 
 /**
  * Fuente en-memoria que recibe un array de filas (sin necesidad de archivo).
@@ -34,9 +35,15 @@ function bootstrapImporter(): array
 {
     $especimenRepo = new InMemoryEspecimenRepository;
     $muestraRepo = new InMemoryMuestraColectaRepository;
-    $importer = new ImportarCatalogoInvertebrados($especimenRepo, $muestraRepo, new FilaCatalogoMapper);
+    $taxonRepo = new InMemoryTaxonRepository;
+    $importer = new ImportarCatalogoInvertebrados(
+        $especimenRepo,
+        $muestraRepo,
+        $taxonRepo,
+        new FilaCatalogoMapper,
+    );
 
-    return [$importer, $especimenRepo, $muestraRepo];
+    return [$importer, $especimenRepo, $muestraRepo, $taxonRepo];
 }
 
 test('persiste un espécimen mínimo (camino feliz)', function (): void {
@@ -161,4 +168,141 @@ test('reporte agrega motivos ordenados por frecuencia descendente', function ():
     // Top motivo debe ser 'occurrence_id ausente' con 3 ocurrencias
     expect($motivos[0])->toBe('occurrence_id ausente')
         ->and($resultado->motivosRevision['occurrence_id ausente'])->toBe(3);
+});
+
+test('persiste la fila_origen_excel para idempotencia', function (): void {
+    [$importer, $especimenRepo] = bootstrapImporter();
+
+    $fuente = new ArrayFuenteCatalogo([
+        ['occurrenceID' => 'A', 'recordedBy' => 'Juan'],
+        ['occurrenceID' => 'B', 'recordedBy' => 'Maria'],
+    ]);
+
+    $importer->ejecutar($fuente);
+
+    $a = $especimenRepo->buscarPorCodigoCatalogo('A');
+    $b = $especimenRepo->buscarPorCodigoCatalogo('B');
+    expect($a->filaOrigenExcel())->toBe(1)
+        ->and($b->filaOrigenExcel())->toBe(2);
+});
+
+test('idempotencia: segunda corrida no duplica especímenes ya importados', function (): void {
+    [$importer, $especimenRepo] = bootstrapImporter();
+
+    $fuente = new ArrayFuenteCatalogo([
+        ['occurrenceID' => 'A', 'recordedBy' => 'Juan'],
+        ['occurrenceID' => 'B', 'recordedBy' => 'Maria'],
+    ]);
+
+    $primera = $importer->ejecutar($fuente);
+    expect($primera->especimenesPersistidos)->toBe(2)
+        ->and($primera->duplicadosSaltados)->toBe(0);
+
+    $segunda = $importer->ejecutar($fuente);
+    expect($segunda->especimenesPersistidos)->toBe(0)
+        ->and($segunda->duplicadosSaltados)->toBe(2)
+        ->and($especimenRepo->buscarTodos())->toHaveCount(2);
+});
+
+test('construye la jerarquía taxonómica encadenada desde kingdom hasta especie', function (): void {
+    [$importer, $especimenRepo, , $taxonRepo] = bootstrapImporter();
+
+    $fuente = new ArrayFuenteCatalogo([[
+        'occurrenceID' => 'MEPN:INV:1',
+        'recordedBy' => 'Juan',
+        'kingdom' => 'Animalia',
+        'phylum' => 'Arthropoda',
+        'class' => 'Insecta',
+        'order' => 'Lepidoptera',
+        'family' => 'Nymphalidae',
+        'genus' => 'Morpho',
+        'specificEpithet' => 'peleides',
+        'taxonRank' => 'species',
+    ]]);
+
+    $importer->ejecutar($fuente);
+
+    $taxones = $taxonRepo->buscarTodos();
+    $nombres = array_map(fn ($t) => $t->nombreCientifico(), $taxones);
+
+    expect($nombres)->toContain('Animalia', 'Arthropoda', 'Insecta', 'Lepidoptera', 'Nymphalidae', 'Morpho', 'Morpho peleides');
+
+    $especimen = $especimenRepo->buscarPorCodigoCatalogo('MEPN:INV:1');
+    expect($especimen->taxonId())->not->toBeNull();
+});
+
+test('reutiliza taxones entre filas (no duplica género/familia entre especímenes)', function (): void {
+    [$importer, , , $taxonRepo] = bootstrapImporter();
+
+    $fuente = new ArrayFuenteCatalogo([
+        [
+            'occurrenceID' => '1', 'recordedBy' => 'X',
+            'kingdom' => 'Animalia', 'phylum' => 'Arthropoda',
+            'class' => 'Insecta', 'order' => 'Lepidoptera',
+            'family' => 'Nymphalidae', 'genus' => 'Morpho',
+            'specificEpithet' => 'peleides', 'taxonRank' => 'species',
+        ],
+        [
+            'occurrenceID' => '2', 'recordedBy' => 'Y',
+            'kingdom' => 'Animalia', 'phylum' => 'Arthropoda',
+            'class' => 'Insecta', 'order' => 'Lepidoptera',
+            'family' => 'Nymphalidae', 'genus' => 'Morpho',
+            'specificEpithet' => 'menelaus', 'taxonRank' => 'species',
+        ],
+    ]);
+
+    $importer->ejecutar($fuente);
+
+    $taxones = $taxonRepo->buscarTodos();
+    // Esperamos: Animalia + Arthropoda + Insecta + Lepidoptera + Nymphalidae + Morpho +
+    // Morpho peleides + Morpho menelaus = 8 taxones (no 14).
+    expect($taxones)->toHaveCount(8);
+});
+
+test('rango de fechas en una sola celda: dd-dd/mes/yyyy', function (): void {
+    [$importer, $especimenRepo] = bootstrapImporter();
+
+    $fuente = new ArrayFuenteCatalogo([[
+        'occurrenceID' => 'R1',
+        'recordedBy' => 'Juan',
+        'eventDate' => '14-26/feb/2001',
+    ]]);
+
+    $importer->ejecutar($fuente);
+
+    $e = $especimenRepo->buscarPorCodigoCatalogo('R1');
+    expect($e->fechaColecta())->toBe('2001-02-14')
+        ->and($e->fechaColectaFin())->toBe('2001-02-26');
+});
+
+test('rango de fechas mes-mes: Jun-Jul-1998', function (): void {
+    [$importer, $especimenRepo] = bootstrapImporter();
+
+    $fuente = new ArrayFuenteCatalogo([[
+        'occurrenceID' => 'R2',
+        'recordedBy' => 'Juan',
+        'eventDate' => 'Jun-Jul-1998',
+    ]]);
+
+    $importer->ejecutar($fuente);
+
+    $e = $especimenRepo->buscarPorCodigoCatalogo('R2');
+    expect($e->fechaColecta())->toBe('1998-06-01')
+        ->and($e->fechaColectaFin())->toBe('1998-07-31');
+});
+
+test('rango de fechas dd-mes/dd-mes/yyyy', function (): void {
+    [$importer, $especimenRepo] = bootstrapImporter();
+
+    $fuente = new ArrayFuenteCatalogo([[
+        'occurrenceID' => 'R3',
+        'recordedBy' => 'Juan',
+        'eventDate' => '30-jun/02-jul/2005',
+    ]]);
+
+    $importer->ejecutar($fuente);
+
+    $e = $especimenRepo->buscarPorCodigoCatalogo('R3');
+    expect($e->fechaColecta())->toBe('2005-06-30')
+        ->and($e->fechaColectaFin())->toBe('2005-07-02');
 });

@@ -66,6 +66,7 @@ class EspecimenEloquentModel extends Model
         'acta_recepcion',
         'estado_revision',
         'motivo_revision',
+        'fila_origen_excel',
     ];
 
     protected $casts = [

@@ -79,3 +79,56 @@ test('29 de febrero en año no-bisiesto devuelve null', function (): void {
 test('29 de febrero en año bisiesto es válido', function (): void {
     expect(ParsearFechaVerbatim::parsear('29-Feb-20', 26)?->format('Y-m-d'))->toBe('2020-02-29');
 });
+
+test('parsearRango: dd-dd/mes/yyyy devuelve par inicio-fin', function (): void {
+    [$inicio, $fin] = ParsearFechaVerbatim::parsearRango('14-26/feb/2001');
+
+    expect($inicio?->format('Y-m-d'))->toBe('2001-02-14')
+        ->and($fin?->format('Y-m-d'))->toBe('2001-02-26');
+});
+
+test('parsearRango: mes-mes/yyyy expande a primer/último día', function (): void {
+    [$inicio, $fin] = ParsearFechaVerbatim::parsearRango('Jun-Jul-1998');
+
+    expect($inicio?->format('Y-m-d'))->toBe('1998-06-01')
+        ->and($fin?->format('Y-m-d'))->toBe('1998-07-31');
+});
+
+test('parsearRango: dd-mes/dd-mes/yyyy soporta cruces de mes', function (): void {
+    [$inicio, $fin] = ParsearFechaVerbatim::parsearRango('30-jun/02-jul/2005');
+
+    expect($inicio?->format('Y-m-d'))->toBe('2005-06-30')
+        ->and($fin?->format('Y-m-d'))->toBe('2005-07-02');
+});
+
+test('parsearRango: fecha simple devuelve fin null', function (): void {
+    [$inicio, $fin] = ParsearFechaVerbatim::parsearRango('21-Jul-01', 25);
+
+    expect($inicio?->format('Y-m-d'))->toBe('2001-07-21')
+        ->and($fin)->toBeNull();
+});
+
+test('parsearRango: ISO YYYY-MM-DD devuelve fin null', function (): void {
+    [$inicio, $fin] = ParsearFechaVerbatim::parsearRango('2024-05-12');
+
+    expect($inicio?->format('Y-m-d'))->toBe('2024-05-12')
+        ->and($fin)->toBeNull();
+});
+
+test('parsearRango: verbatim vacío devuelve [null, null]', function (): void {
+    [$inicio, $fin] = ParsearFechaVerbatim::parsearRango('');
+
+    expect($inicio)->toBeNull()->and($fin)->toBeNull();
+});
+
+test('parsearRango: pivot 25 — yy 26..99 → 19xx, yy 00..25 → 20xx', function (string $verbatim, string $esperado): void {
+    [$inicio] = ParsearFechaVerbatim::parsearRango($verbatim, 25);
+
+    expect($inicio?->format('Y-m-d'))->toBe($esperado);
+})->with([
+    ['10-Ene-25', '2025-01-10'],
+    ['10-Ene-26', '1926-01-10'],
+    ['10-Ene-50', '1950-01-10'],
+    ['10-Ene-99', '1999-01-10'],
+    ['10-Ene-00', '2000-01-10'],
+]);
