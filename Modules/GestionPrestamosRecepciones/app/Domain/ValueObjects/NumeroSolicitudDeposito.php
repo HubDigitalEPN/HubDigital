@@ -6,35 +6,30 @@ namespace Modules\GestionPrestamosRecepciones\Domain\ValueObjects;
 
 final readonly class NumeroSolicitudDeposito
 {
-    private const PREFIJO = 'sol_';
+    private const PREFIJO = 'MEPN-INV-';
 
-    private const LONGITUD_SUFIJO = 6;
-
-    private const CARACTERES = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    private const LONGITUD_SECUENCIA = 5;
 
     private function __construct(private string $value) {}
 
     public static function from(string $numero): self
     {
-        if (! preg_match('/^sol_[A-Z0-9]{6}$/', $numero)) {
+        if (! preg_match('/^MEPN-INV-\d{5}$/', $numero)) {
             throw new \DomainException(
-                sprintf('"%s" no es un número de solicitud válido. Formato esperado: sol_XXXXXX', $numero)
+                sprintf('"%s" no es un número de solicitud válido. Formato esperado: MEPN-INV-00001', $numero)
             );
         }
 
         return new self($numero);
     }
 
-    public static function generate(): self
+    public static function fromSecuencia(int $secuencia): self
     {
-        $sufijo = '';
-        $max = strlen(self::CARACTERES) - 1;
-
-        for ($i = 0; $i < self::LONGITUD_SUFIJO; $i++) {
-            $sufijo .= self::CARACTERES[random_int(0, $max)];
+        if ($secuencia < 1) {
+            throw new \DomainException('La secuencia del número de solicitud debe ser mayor a 0');
         }
 
-        return new self(self::PREFIJO.$sufijo);
+        return new self(self::PREFIJO.str_pad((string) $secuencia, self::LONGITUD_SECUENCIA, '0', STR_PAD_LEFT));
     }
 
     public function __toString(): string

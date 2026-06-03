@@ -70,6 +70,12 @@ final class SolicitudDeposito
 
     private ?string $nombreInvestigadorDocumento = null;
 
+    private ?string $nroIndividuos = null;
+
+    private ?string $nroMorfoespecies = null;
+
+    private ?string $nroLotes = null;
+
     // ── Cola interna de eventos de dominio ───────────────────────
 
     /** @var DomainEvent[] */
@@ -83,6 +89,7 @@ final class SolicitudDeposito
 
     public static function crear(
         SolicitudDepositoId $id,
+        NumeroSolicitudDeposito $numero,
         string $investigadorId,
         string $tipoTramite,
     ): self {
@@ -92,7 +99,7 @@ final class SolicitudDeposito
 
         $solicitud = new self;
         $solicitud->id = $id;
-        $solicitud->numero = NumeroSolicitudDeposito::generate();
+        $solicitud->numero = $numero;
         $solicitud->investigadorId = $investigadorId;
         $solicitud->tipoTramite = TipoTramite::from($tipoTramite);
         $solicitud->estado = EstadoSolicitudDeposito::EnBorrador;
@@ -207,6 +214,18 @@ final class SolicitudDeposito
 
         if ($datos->nombreInvestigador !== null) {
             $this->nombreInvestigadorDocumento = $datos->nombreInvestigador;
+        }
+
+        if ($this->nroIndividuos === null) {
+            $this->marcarDatoComoFaltante('N.º Individuos');
+        }
+
+        if ($this->nroMorfoespecies === null) {
+            $this->marcarDatoComoFaltante('N.º Morfoespecies');
+        }
+
+        if ($this->nroLotes === null) {
+            $this->marcarDatoComoFaltante('N.º Lotes');
         }
 
         $this->events[] = new DocumentacionOficialCargada(
@@ -332,6 +351,11 @@ final class SolicitudDeposito
         return $this->sinDocumentacion;
     }
 
+    public function estaEnBorrador(): bool
+    {
+        return $this->estado->equals(EstadoSolicitudDeposito::EnBorrador);
+    }
+
     public function tieneDocumentoAdjunto(string $nombre): bool
     {
         return isset($this->documentosAdjuntos[$nombre]);
@@ -375,6 +399,21 @@ final class SolicitudDeposito
     public function nombreInvestigadorDocumento(): ?string
     {
         return $this->nombreInvestigadorDocumento;
+    }
+
+    public function nroIndividuos(): ?string
+    {
+        return $this->nroIndividuos;
+    }
+
+    public function nroMorfoespecies(): ?string
+    {
+        return $this->nroMorfoespecies;
+    }
+
+    public function nroLotes(): ?string
+    {
+        return $this->nroLotes;
     }
 
     /**
@@ -436,6 +475,9 @@ final class SolicitudDeposito
         array $datosFaltantes,
         ?string $nombreInvestigadorDocumento = null,
         array $datosIngresadosManualmente = [],
+        ?string $nroIndividuos = null,
+        ?string $nroMorfoespecies = null,
+        ?string $nroLotes = null,
     ): self {
         $solicitud = new self;
 
@@ -457,6 +499,9 @@ final class SolicitudDeposito
         $solicitud->datosFaltantes = $datosFaltantes;
         $solicitud->nombreInvestigadorDocumento = $nombreInvestigadorDocumento;
         $solicitud->datosIngresadosManualmente = $datosIngresadosManualmente;
+        $solicitud->nroIndividuos = $nroIndividuos;
+        $solicitud->nroMorfoespecies = $nroMorfoespecies;
+        $solicitud->nroLotes = $nroLotes;
 
         return $solicitud;
     }
@@ -471,6 +516,9 @@ final class SolicitudDeposito
             'N.º Permiso Movilización' => $this->nroPermisoMovilizacion = $valor,
             'Provincia' => $this->provinciaOrigen = $valor,
             'Localidad' => $this->localidad = $valor,
+            'N.º Individuos' => $this->nroIndividuos = $valor,
+            'N.º Morfoespecies' => $this->nroMorfoespecies = $valor,
+            'N.º Lotes' => $this->nroLotes = $valor,
             default => throw new \DomainException(
                 sprintf('El campo "%s" no es un campo de datos conocido de la solicitud', $campo)
             ),

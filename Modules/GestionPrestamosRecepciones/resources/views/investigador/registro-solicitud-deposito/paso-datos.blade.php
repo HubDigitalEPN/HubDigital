@@ -69,7 +69,12 @@
                 'Provincia' => 'Copia del permiso de movilización',
                 'Localidad' => 'Copia del permiso de movilización',
                 'Origen Donación' => 'Carta de cesión de derechos / origen lícito',
+                'N.º Individuos' => null,
+                'N.º Morfoespecies' => null,
+                'N.º Lotes' => null,
             ];
+
+            $camposCuantitativos = ['N.º Individuos', 'N.º Morfoespecies', 'N.º Lotes'];
 
             $camposParaMostrar = array_keys($datosExtraidos);
         @endphp
@@ -83,6 +88,7 @@
                     $clave = preg_replace('/[^a-zA-Z0-9]/', '_', $campo);
                     $estaEditando = isset($datosEnEdicion[$clave]);
                     $esManual = in_array($campo, $datosIngresadosManualmente);
+                    $esCuantitativo = in_array($campo, $camposCuantitativos);
                 @endphp
 
                 <x-gestionprestamosrecepciones::sum-cell
@@ -99,6 +105,8 @@
                                 size="sm"
                                 class="flex-1"
                                 placeholder="Ingresa el valor…"
+                                :type="$esCuantitativo ? 'number' : 'text'"
+                                :min="$esCuantitativo ? 0 : null"
                             />
                             <flux:button
                                 size="sm"
@@ -156,18 +164,14 @@
                         <p class="text-xs text-text-secondary mt-0.5">Se verificó la firma digital de cada archivo cargado.</p>
                     </div>
                 </div>
-            @else
-                <div class="rounded-lg border border-error/30 bg-error/5 p-4 space-y-3">
+            @elseif(!empty($sinFirma) && empty($noVerificados))
+                {{-- Documentos escaneados con firma manual: advertencia, no bloqueo --}}
+                <div class="rounded-lg border border-warning/30 bg-warning/5 p-4 space-y-3">
                     <div class="flex items-center gap-3">
-                        <flux:icon name="shield-exclamation" class="size-5 text-error shrink-0" />
+                        <flux:icon name="exclamation-triangle" class="size-5 text-warning shrink-0" />
                         <div>
-                            @if(!empty($noVerificados) && empty($sinFirma))
-                                <p class="text-sm font-semibold text-text-primary">No se pudo verificar la firma de {{ count($noVerificados) }} documento(s)</p>
-                                <p class="text-xs text-text-secondary mt-0.5">El sistema no pudo comprobar la firma electrónica. Vuelve al paso anterior y carga nuevamente los documentos.</p>
-                            @else
-                                <p class="text-sm font-semibold text-text-primary">{{ count($sinFirma) + count($noVerificados) }} documento(s) sin firma electrónica</p>
-                                <p class="text-xs text-text-secondary mt-0.5">Todos los documentos deben contar con firma electrónica válida. Vuelve al paso anterior y reemplaza los documentos señalados.</p>
-                            @endif
+                            <p class="text-sm font-semibold text-text-primary">{{ count($sinFirma) }} documento(s) sin firma electrónica digital</p>
+                            <p class="text-xs text-text-secondary mt-0.5">Puedes continuar, pero el curador revisará los documentos antes de aprobar la solicitud.</p>
                         </div>
                     </div>
                     <div class="space-y-1.5">
@@ -177,14 +181,40 @@
                                     <flux:icon name="check-circle" class="size-4 text-success shrink-0" />
                                     <span class="text-text-primary">{{ $nombre }}</span>
                                     <span class="text-xs text-success font-medium">Firmado</span>
-                                @elseif($estado === 'no_verificado')
+                                @else
+                                    <flux:icon name="exclamation-circle" class="size-4 text-warning shrink-0" />
+                                    <span class="text-text-primary">{{ $nombre }}</span>
+                                    <span class="text-xs text-warning font-medium">Sin firma digital</span>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @else
+                {{-- no_verificado: error real de pdfsig, bloquea --}}
+                <div class="rounded-lg border border-error/30 bg-error/5 p-4 space-y-3">
+                    <div class="flex items-center gap-3">
+                        <flux:icon name="shield-exclamation" class="size-5 text-error shrink-0" />
+                        <div>
+                            <p class="text-sm font-semibold text-text-primary">No se pudo verificar la firma de {{ count($noVerificados) }} documento(s)</p>
+                            <p class="text-xs text-text-secondary mt-0.5">El sistema no pudo comprobar la firma electrónica. Vuelve al paso anterior y carga nuevamente los documentos.</p>
+                        </div>
+                    </div>
+                    <div class="space-y-1.5">
+                        @foreach($firmasElectronicas as $nombre => $estado)
+                            <div class="flex items-center gap-2 text-sm">
+                                @if($estado === 'firmado')
+                                    <flux:icon name="check-circle" class="size-4 text-success shrink-0" />
+                                    <span class="text-text-primary">{{ $nombre }}</span>
+                                    <span class="text-xs text-success font-medium">Firmado</span>
+                                @elseif($estado === 'sin_firma')
+                                    <flux:icon name="exclamation-circle" class="size-4 text-warning shrink-0" />
+                                    <span class="text-text-primary">{{ $nombre }}</span>
+                                    <span class="text-xs text-warning font-medium">Sin firma digital</span>
+                                @else
                                     <flux:icon name="question-mark-circle" class="size-4 text-error shrink-0" />
                                     <span class="text-text-primary">{{ $nombre }}</span>
                                     <span class="text-xs text-error font-medium">No verificado</span>
-                                @else
-                                    <flux:icon name="x-circle" class="size-4 text-error shrink-0" />
-                                    <span class="text-text-primary">{{ $nombre }}</span>
-                                    <span class="text-xs text-error font-medium">Sin firma</span>
                                 @endif
                             </div>
                         @endforeach

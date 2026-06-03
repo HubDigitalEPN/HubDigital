@@ -12,7 +12,7 @@ Característica: Registro de solicitud de depósito
     Esquema del escenario: Aplicación de límite anual por tipo de trámite
         Dado que el investigador tiene <solicitudes_previas> solicitudes de tipo "<tipo_tramite>" registradas este año
         Cuando el investigador intenta crear una nueva solicitud de tipo "<tipo_tramite>"
-        Entonces la solicitud queda en estado "<estado_solicitud>"
+        Entonces la nueva solicitud de depósito queda en estado "<estado_solicitud>"
         Y el investigador es notificado con el mensaje "<mensaje_alerta>"
 
         Ejemplos:
@@ -26,6 +26,7 @@ Característica: Registro de solicitud de depósito
     Esquema del escenario: Documentación legal requerida según el origen de los especímenes
         Dado que el investigador declara que el origen de los especímenes es "<origen_recoleccion>"
         Y su situación regulatoria actual es "<situacion_regulatoria>"
+        Cuando el investigador consulta la documentación requerida para su solicitud
         Entonces la solicitud exige adjuntar los siguientes documentos: "<documento_requerido>"
 
         Ejemplos:
@@ -78,7 +79,13 @@ Característica: Registro de solicitud de depósito
             | Formato solicitud donación                      |
             | Carta de cesión de derechos / origen lícito     |
         Entonces la solicitud registra el origen de la donación
-        Y pasa a estar "Pendiente de Revisión por Curaduría"
+
+    @donacion
+    Escenario: Donación con datos cuantitativos completos avanza a revisión por curaduría
+        Dado que el investigador seleccionó el trámite de "Donación"
+        Y ha cargado la documentación oficial de la donación
+        Cuando el investigador completa los datos cuantitativos de la colección
+        Entonces pasa a estar "Pendiente de Revisión por Curaduría"
 
     Escenario: Completitud de datos obligatorios faltantes en la documentación
         Dado que la documentación oficial no contiene el "Grupo Animal"

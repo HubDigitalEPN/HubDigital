@@ -129,6 +129,7 @@ final class RegistroSolicitudDepositoContext extends BaseContext
     {
         $solicitud = SolicitudDeposito::crear(
             id: $this->repo->nextIdentity(),
+            numero: $this->repo->nextNumero(),
             investigadorId: $this->investigadorId,
             tipoTramite: $tipoTramite,
         );
@@ -158,6 +159,7 @@ final class RegistroSolicitudDepositoContext extends BaseContext
         for ($i = 0; $i < $cantidad; $i++) {
             $solicitud = SolicitudDeposito::crear(
                 id: $this->repo->nextIdentity(),
+                numero: $this->repo->nextNumero(),
                 investigadorId: $this->investigadorId,
                 tipoTramite: $tipoTramite,
             );
@@ -233,7 +235,7 @@ final class RegistroSolicitudDepositoContext extends BaseContext
         }
     }
 
-    #[Then('la solicitud queda en estado :estadoSolicitud')]
+    #[Then('la nueva solicitud de depósito queda en estado :estadoSolicitud')]
     public function laSolicitudQuedaEnEstado(string $estadoSolicitud): void
     {
         if ($estadoSolicitud === 'Rechazada') {
@@ -325,8 +327,8 @@ final class RegistroSolicitudDepositoContext extends BaseContext
         );
     }
 
-    #[Then('la solicitud exige adjuntar los siguientes documentos: :documentoRequerido')]
-    public function laSolicitudExigeAdjuntarLosSiguientesDocumentos(string $documentoRequerido): void
+    #[When('el investigador consulta la documentación requerida para su solicitud')]
+    public function elInvestigadorConsultaLaDocumentacionRequeridaParaSuSolicitud(): void
     {
         Assert::assertNotNull($this->solicitudEnCurso, 'Se requiere una solicitud en curso');
         Assert::assertNotEmpty($this->origenRecoleccion, 'Se requiere el origen de recolección');
@@ -341,7 +343,11 @@ final class RegistroSolicitudDepositoContext extends BaseContext
         } catch (\Throwable $e) {
             $this->excepcionCapturada = $e;
         }
+    }
 
+    #[Then('la solicitud exige adjuntar los siguientes documentos: :documentoRequerido')]
+    public function laSolicitudExigeAdjuntarLosSiguientesDocumentos(string $documentoRequerido): void
+    {
         Assert::assertNull(
             $this->excepcionCapturada,
             'El handler lanzó una excepción inesperada: '.$this->excepcionCapturada?->getMessage()
@@ -644,6 +650,52 @@ final class RegistroSolicitudDepositoContext extends BaseContext
             );
         } catch (\Throwable $e) {
             $this->excepcionCapturada = $e;
+        }
+    }
+
+    #[Given('ha cargado la documentación oficial de la donación')]
+    public function haCargadoLaDocumentacionOficialDeLaDonacion(): void
+    {
+        Assert::assertNotNull($this->solicitudEnCurso, 'Se requiere una solicitud en curso');
+
+        $documentos = [
+            'Formato solicitud donación' => 'documentos/formato-solicitud-donacion-test.pdf',
+            'Carta de cesión de derechos / origen lícito' => 'documentos/carta-de-cesion-de-derechos-origen-licito-test.pdf',
+        ];
+
+        try {
+            ($this->cargarDocumentacionHandler)(
+                new CargarDocumentacionOficialInput(
+                    solicitudId: (string) $this->solicitudEnCurso->id(),
+                    documentos: $documentos,
+                )
+            );
+        } catch (\Throwable $e) {
+            $this->excepcionCapturada = $e;
+        }
+    }
+
+    #[When('el investigador completa los datos cuantitativos de la colección')]
+    public function elInvestigadorCompletaLosDatosCuantitativosDelaColeccion(): void
+    {
+        Assert::assertNotNull($this->solicitudEnCurso, 'Se requiere una solicitud en curso');
+
+        $campos = ['N.º Individuos' => '10', 'N.º Morfoespecies' => '5', 'N.º Lotes' => '2'];
+
+        foreach ($campos as $campo => $valor) {
+            try {
+                $this->ultimaRespuesta = ($this->completarDatosHandler)(
+                    new CompletarDatosManualesInput(
+                        solicitudId: (string) $this->solicitudEnCurso->id(),
+                        campo: $campo,
+                        valor: $valor,
+                    )
+                );
+            } catch (\Throwable $e) {
+                $this->excepcionCapturada = $e;
+
+                return;
+            }
         }
     }
 

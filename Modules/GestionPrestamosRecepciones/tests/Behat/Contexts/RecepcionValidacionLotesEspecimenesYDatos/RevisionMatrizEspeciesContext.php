@@ -120,6 +120,7 @@ final class RevisionMatrizEspeciesContext extends BaseContext
     {
         $solicitud = SolicitudDeposito::crear(
             id: $this->solicitudRepo->nextIdentity(),
+            numero: $this->solicitudRepo->nextNumero(),
             investigadorId: $this->investigadorId,
             tipoTramite: $tipoTramite,
         );

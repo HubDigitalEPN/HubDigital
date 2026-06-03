@@ -30,7 +30,8 @@ final class CargarMatrizEspeciesHandler
             );
         }
 
-        $matrizId = $this->matrizRepo->nextIdentity();
+        $existente = $this->matrizRepo->buscarPorSolicitudId($input->solicitudId);
+        $matrizId = $existente?->id() ?? $this->matrizRepo->nextIdentity();
 
         $matriz = MatrizEspecies::crear(
             id: $matrizId,

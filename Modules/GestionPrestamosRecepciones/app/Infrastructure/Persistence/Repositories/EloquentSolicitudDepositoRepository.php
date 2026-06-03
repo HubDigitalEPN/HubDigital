@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Repositories;
 
+use Illuminate\Support\Facades\DB;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\SolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\DocumentoAdjunto;
@@ -18,6 +19,17 @@ final class EloquentSolicitudDepositoRepository implements SolicitudDepositoRepo
     public function nextIdentity(): SolicitudDepositoId
     {
         return SolicitudDepositoId::generate();
+    }
+
+    public function nextNumero(): NumeroSolicitudDeposito
+    {
+        $maxSeq = DB::selectOne(
+            "SELECT MAX(CAST(SUBSTRING(numero FROM 10) AS INTEGER)) AS max_seq
+             FROM recepciones.solicitudes_deposito
+             WHERE numero LIKE 'MEPN-INV-%'"
+        );
+
+        return NumeroSolicitudDeposito::fromSecuencia(($maxSeq->max_seq ?? 0) + 1);
     }
 
     public function guardar(SolicitudDeposito $solicitud): void
@@ -47,6 +59,9 @@ final class EloquentSolicitudDepositoRepository implements SolicitudDepositoRepo
                 'documentos_adjuntos' => array_values($documentosAdjuntos),
                 'datos_faltantes' => $solicitud->datosFaltantesParaPersistir(),
                 'datos_ingresados_manualmente' => $solicitud->datosIngresadosManualmenterParaPersistir(),
+                'nro_individuos' => $solicitud->nroIndividuos() !== null ? (int) $solicitud->nroIndividuos() : null,
+                'nro_morfoespecies' => $solicitud->nroMorfoespecies() !== null ? (int) $solicitud->nroMorfoespecies() : null,
+                'nro_lotes' => $solicitud->nroLotes() !== null ? (int) $solicitud->nroLotes() : null,
             ]
         );
     }
@@ -104,6 +119,9 @@ final class EloquentSolicitudDepositoRepository implements SolicitudDepositoRepo
             datosFaltantes: $model->datos_faltantes ?? [],
             nombreInvestigadorDocumento: $model->nombre_investigador_documento,
             datosIngresadosManualmente: $model->datos_ingresados_manualmente ?? [],
+            nroIndividuos: $model->nro_individuos !== null ? (string) $model->nro_individuos : null,
+            nroMorfoespecies: $model->nro_morfoespecies !== null ? (string) $model->nro_morfoespecies : null,
+            nroLotes: $model->nro_lotes !== null ? (string) $model->nro_lotes : null,
         );
     }
 }

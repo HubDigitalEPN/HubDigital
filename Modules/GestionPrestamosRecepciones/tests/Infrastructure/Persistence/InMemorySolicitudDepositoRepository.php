@@ -6,6 +6,7 @@ namespace Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Persistence;
 
 use Modules\GestionPrestamosRecepciones\Domain\Entities\SolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\NumeroSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
 
 final class InMemorySolicitudDepositoRepository implements SolicitudDepositoRepositoryInterface
@@ -13,9 +14,18 @@ final class InMemorySolicitudDepositoRepository implements SolicitudDepositoRepo
     /** @var array<string, SolicitudDeposito> */
     private array $store = [];
 
+    private int $contadorNumero = 0;
+
     public function nextIdentity(): SolicitudDepositoId
     {
         return SolicitudDepositoId::generate();
+    }
+
+    public function nextNumero(): NumeroSolicitudDeposito
+    {
+        $this->contadorNumero++;
+
+        return NumeroSolicitudDeposito::fromSecuencia($this->contadorNumero);
     }
 
     public function guardar(SolicitudDeposito $solicitud): void

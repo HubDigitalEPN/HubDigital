@@ -36,7 +36,7 @@ final class CargarDocumentacionOficialHandler
             nombresDocumentos: array_keys($input->documentos),
         );
 
-        if (! $solicitud->tieneDatosFaltantes()) {
+        if (! $solicitud->tieneDatosFaltantes() && $solicitud->estaEnBorrador()) {
             $solicitud->avanzarARevisionCuraduria();
         }
 

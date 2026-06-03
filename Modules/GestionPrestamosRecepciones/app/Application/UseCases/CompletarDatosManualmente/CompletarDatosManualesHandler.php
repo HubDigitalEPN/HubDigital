@@ -29,7 +29,7 @@ final class CompletarDatosManualesHandler
 
         $solicitud->completarDatoFaltante($input->campo, $input->valor);
 
-        if (! $solicitud->tieneDatosFaltantes()) {
+        if (! $solicitud->tieneDatosFaltantes() && $solicitud->estaEnBorrador()) {
             $solicitud->avanzarARevisionCuraduria();
         }
 

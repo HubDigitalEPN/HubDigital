@@ -22,8 +22,8 @@ use Modules\GestionPrestamosRecepciones\Domain\Exceptions\DocumentacionInsuficie
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\LimiteAnualDepositosAlcanzado;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\TransicionEstadoInvalida;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\ActaPrestamoRepositoryInterface;
-use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\ConfiguracionGlobalRecordatoriosRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\PrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\RecordatorioDevolucionRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
@@ -81,6 +81,8 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
         RecordatorioDevolucionRepositoryInterface::class => EloquentRecordatorioDevolucionRepository::class,
         ConfiguracionGlobalRecordatoriosRepositoryInterface::class => EloquentConfiguracionGlobalRecordatoriosRepository::class,
         InvestigadorEmailPort::class => LaravelUserInvestigadorEmailAdapter::class,
+        CatalogoCuraduriaPort::class => FakeCatalogoCuraduriaAdapter::class,
+        ValidacionTaxonomicaPort::class => GbifValidacionTaxonomicaAdapter::class,
     ];
 
     public function register(): void

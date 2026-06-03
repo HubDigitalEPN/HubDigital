@@ -363,12 +363,18 @@ final class RegistroSolicitudDeposito extends Component
                 'Grupo Animal' => $model->grupo_animal,
                 'Provincia' => ($model->provincia_origen === 'Fuera de Pichincha') ? null : $model->provincia_origen,
                 'Localidad' => $model->localidad,
+                'N.º Individuos' => $model->nro_individuos !== null ? (string) $model->nro_individuos : null,
+                'N.º Morfoespecies' => $model->nro_morfoespecies !== null ? (string) $model->nro_morfoespecies : null,
+                'N.º Lotes' => $model->nro_lotes !== null ? (string) $model->nro_lotes : null,
             ];
         }
 
         return [
             'Grupo Animal' => $model->grupo_animal,
             'Origen Donación' => $model->origen_donacion,
+            'N.º Individuos' => $model->nro_individuos !== null ? (string) $model->nro_individuos : null,
+            'N.º Morfoespecies' => $model->nro_morfoespecies !== null ? (string) $model->nro_morfoespecies : null,
+            'N.º Lotes' => $model->nro_lotes !== null ? (string) $model->nro_lotes : null,
         ];
     }
 
@@ -727,13 +733,20 @@ final class RegistroSolicitudDeposito extends Component
                 'Grupo Animal' => null,
                 'Provincia' => null,
                 'Localidad' => null,
+                'N.º Individuos' => null,
+                'N.º Morfoespecies' => null,
+                'N.º Lotes' => null,
             ];
-            $this->datosFaltantes = ['N.º Permiso Recolección', 'N.º Permiso Movilización', 'Grupo Animal', 'Provincia', 'Localidad'];
+            $this->datosFaltantes = ['N.º Permiso Recolección', 'N.º Permiso Movilización', 'Grupo Animal', 'Provincia', 'Localidad', 'N.º Individuos', 'N.º Morfoespecies', 'N.º Lotes'];
         } else {
             $this->datosExtraidos = [
                 'Grupo Animal' => null,
                 'Origen Donación' => null,
+                'N.º Individuos' => null,
+                'N.º Morfoespecies' => null,
+                'N.º Lotes' => null,
             ];
+            $this->datosFaltantes = ['N.º Individuos', 'N.º Morfoespecies', 'N.º Lotes'];
         }
 
         $this->pasosCompletados = array_values(array_unique([...$this->pasosCompletados, 3]));
@@ -789,6 +802,13 @@ final class RegistroSolicitudDeposito extends Component
             return;
         }
 
+        $camposCuantitativos = ['N.º Individuos', 'N.º Morfoespecies', 'N.º Lotes'];
+        if (in_array($campo, $camposCuantitativos, true) && (! is_numeric($valor) || (int) $valor < 0)) {
+            $this->addError("datosEnEdicion.{$clave}", 'Ingresa un número entero válido mayor o igual a 0.');
+
+            return;
+        }
+
         $output = ($handler)(new CompletarDatosManualesInput(
             solicitudId: $this->solicitudId,
             campo: $campo,
@@ -833,9 +853,9 @@ final class RegistroSolicitudDeposito extends Component
             }
         }
 
-        $sinFirmar = array_filter($this->firmasElectronicas, fn ($estado) => $estado !== 'firmado');
-        if (! empty($sinFirmar)) {
-            $this->mostrarToast('Documentos sin firma electrónica.', 'error');
+        $sinVerificar = array_filter($this->firmasElectronicas, fn ($estado) => $estado === 'no_verificado');
+        if (! empty($sinVerificar)) {
+            $this->mostrarToast('No se pudo verificar la firma de algunos documentos. Vuelve al paso anterior y vuelve a subirlos.', 'error');
 
             return;
         }
