@@ -9,6 +9,7 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especim
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EspecimenId;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoEspecimen;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoRevision;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\IdentificadorEspecimen;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Models\EspecimenEloquentModel;
 
@@ -30,12 +31,23 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
                 'old_code' => $especimen->oldCode(),
                 'cardex_liquid_collection_code' => $especimen->cardexLiquidCollectionCode(),
                 'taxon_id' => $especimen->taxonId(),
+                'taxon_verbatim' => $especimen->taxonVerbatim(),
+                'muestra_id' => $especimen->muestraId(),
+                'localidad_id' => $especimen->localidadId(),
                 'localidad' => $especimen->localidad(),
+                'localidad_verbatim' => $especimen->localidadVerbatim(),
                 'fecha_colecta' => $especimen->fechaColecta(),
+                'fecha_verbatim' => $especimen->fechaVerbatim(),
+                'fecha_colecta_fin' => $especimen->fechaColectaFin(),
                 'colector' => $especimen->colector(),
                 'entidad_depositante_id' => $especimen->entidadDepositanteId(),
                 'estado' => $especimen->estado()->value,
                 'individual_count' => $especimen->individualCount(),
+                'individual_count_verbatim' => $especimen->individualCountVerbatim(),
+                'sex' => $especimen->sex(),
+                'life_stage' => $especimen->lifeStage(),
+                'caste' => $especimen->caste(),
+                'type_status' => $especimen->typeStatus(),
                 'preparations' => $especimen->preparations(),
                 'disposition' => $especimen->disposition(),
                 'occurrence_status' => $especimen->occurrenceStatus(),
@@ -46,10 +58,21 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
                 'locality_name' => $especimen->localityName(),
                 'decimal_latitude' => $especimen->decimalLatitude(),
                 'decimal_longitude' => $especimen->decimalLongitude(),
+                'coord_verbatim' => $especimen->coordVerbatim(),
                 'geodetic_datum' => $especimen->geodeticDatum(),
-                'elevation_in_meters' => $especimen->elevationInMeters(),
+                'elevation_min_m' => $especimen->elevationMinM(),
+                'elevation_max_m' => $especimen->elevationMaxM(),
                 'biome' => $especimen->biome(),
                 'habitat' => $especimen->habitat(),
+                'microhabitat' => $especimen->microhabitat(),
+                'biogeographic_region' => $especimen->biogeographicRegion(),
+                'endemic' => $especimen->endemic(),
+                'dna_notes' => $especimen->dnaNotes(),
+                'occurrence_remarks' => $especimen->occurrenceRemarks(),
+                'taxonomic_notes' => $especimen->taxonomicNotes(),
+                'acta_recepcion' => $especimen->actaRecepcion(),
+                'estado_revision' => $especimen->estadoRevision()->value,
+                'motivo_revision' => $especimen->motivoRevision(),
             ]
         );
 
@@ -150,12 +173,19 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
 
     private function toDomain(EspecimenEloquentModel $model): Especimen
     {
+        $fechaColecta = $model->fecha_colecta !== null
+            ? (is_string($model->fecha_colecta) ? $model->fecha_colecta : $model->fecha_colecta->format('Y-m-d'))
+            : '';
+        $fechaColectaFin = $model->fecha_colecta_fin !== null
+            ? (is_string($model->fecha_colecta_fin) ? $model->fecha_colecta_fin : $model->fecha_colecta_fin->format('Y-m-d'))
+            : null;
+
         return Especimen::reconstituir(
             id: EspecimenId::desde($model->id),
             codigoCatalogo: $model->codigo_catalogo,
             taxonId: $model->taxon_id,
             localidad: $model->localidad,
-            fechaColecta: $model->fecha_colecta,
+            fechaColecta: $fechaColecta,
             colector: $model->colector,
             estado: EstadoEspecimen::from($model->estado),
             entidadDepositanteId: $model->entidad_depositante_id,
@@ -175,12 +205,36 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
             decimalLatitude: $model->decimal_latitude !== null ? (float) $model->decimal_latitude : null,
             decimalLongitude: $model->decimal_longitude !== null ? (float) $model->decimal_longitude : null,
             geodeticDatum: $model->geodetic_datum,
-            elevationInMeters: $model->elevation_in_meters !== null ? (float) $model->elevation_in_meters : null,
+            elevationMinM: $model->elevation_min_m !== null ? (float) $model->elevation_min_m : null,
             biome: $model->biome,
             habitat: $model->habitat,
             identificadores: $model->identificadores
                 ->map(fn ($identificador) => IdentificadorEspecimen::crear($identificador->tipo, $identificador->valor))
                 ->all(),
+            taxonVerbatim: $model->taxon_verbatim,
+            muestraId: $model->muestra_id,
+            localidadId: $model->localidad_id,
+            localidadVerbatim: $model->localidad_verbatim,
+            fechaVerbatim: $model->fecha_verbatim,
+            fechaColectaFin: $fechaColectaFin,
+            individualCountVerbatim: $model->individual_count_verbatim,
+            sex: $model->sex,
+            lifeStage: $model->life_stage,
+            caste: $model->caste,
+            typeStatus: $model->type_status,
+            coordVerbatim: $model->coord_verbatim,
+            elevationMaxM: $model->elevation_max_m !== null ? (float) $model->elevation_max_m : null,
+            microhabitat: $model->microhabitat,
+            biogeographicRegion: $model->biogeographic_region,
+            endemic: $model->endemic !== null ? (bool) $model->endemic : null,
+            dnaNotes: $model->dna_notes,
+            occurrenceRemarks: $model->occurrence_remarks,
+            taxonomicNotes: $model->taxonomic_notes,
+            actaRecepcion: $model->acta_recepcion,
+            estadoRevision: $model->estado_revision !== null
+                ? EstadoRevision::from($model->estado_revision)
+                : EstadoRevision::porDefecto(),
+            motivoRevision: $model->motivo_revision,
         );
     }
 }

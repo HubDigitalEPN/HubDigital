@@ -39,7 +39,7 @@ final class EspecimenResource extends JsonResource
             'decimal_latitude' => $this->resource->decimalLatitude,
             'decimal_longitude' => $this->resource->decimalLongitude,
             'geodetic_datum' => $this->resource->geodeticDatum,
-            'elevation_in_meters' => $this->resource->elevationInMeters,
+            'elevation_min_m' => $this->resource->elevationMinM,
             'biome' => $this->resource->biome,
             'habitat' => $this->resource->habitat,
             'identificadores' => $this->resource->identificadores,

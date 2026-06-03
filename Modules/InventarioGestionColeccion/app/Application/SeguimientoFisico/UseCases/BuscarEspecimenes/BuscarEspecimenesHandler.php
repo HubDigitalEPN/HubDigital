@@ -74,7 +74,7 @@ final class BuscarEspecimenesHandler
                 'decimalLatitude' => $e->decimalLatitude(),
                 'decimalLongitude' => $e->decimalLongitude(),
                 'geodeticDatum' => $e->geodeticDatum(),
-                'elevationInMeters' => $e->elevationInMeters(),
+                'elevationMinM' => $e->elevationMinM(),
                 'biome' => $e->biome(),
                 'habitat' => $e->habitat(),
                 'identificadores' => array_map(fn ($i) => $i->toArray(), $e->identificadores()),

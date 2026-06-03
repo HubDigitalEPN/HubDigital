@@ -259,8 +259,8 @@
 
                 <flux:field>
                     <flux:label>Elevación</flux:label>
-                    <flux:input wire:model="elevationInMeters" placeholder="216.3" />
-                    <flux:error name="elevationInMeters" />
+                    <flux:input wire:model="elevationMinM" placeholder="216.3" />
+                    <flux:error name="elevationMinM" />
                 </flux:field>
             </div>
 

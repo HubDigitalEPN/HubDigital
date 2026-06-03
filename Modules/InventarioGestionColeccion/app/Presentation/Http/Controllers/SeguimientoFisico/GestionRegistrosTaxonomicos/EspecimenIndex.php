@@ -113,7 +113,7 @@ final class EspecimenIndex extends Component
     public string $geodeticDatum = '';
 
     #[Rule('nullable|numeric')]
-    public string $elevationInMeters = '';
+    public string $elevationMinM = '';
 
     #[Rule('nullable|string|max:120')]
     public string $biome = '';
@@ -160,7 +160,7 @@ final class EspecimenIndex extends Component
 
     public string $editGeodeticDatum = '';
 
-    public string $editElevationInMeters = '';
+    public string $editElevationMinM = '';
 
     public string $editBiome = '';
 
@@ -215,7 +215,7 @@ final class EspecimenIndex extends Component
             'decimalLatitude',
             'decimalLongitude',
             'geodeticDatum',
-            'elevationInMeters',
+            'elevationMinM',
             'biome',
             'habitat',
             'errorMessage',
@@ -257,7 +257,7 @@ final class EspecimenIndex extends Component
                 decimalLatitude: $this->nullableFloat($this->decimalLatitude),
                 decimalLongitude: $this->nullableFloat($this->decimalLongitude),
                 geodeticDatum: $this->nullableString($this->geodeticDatum),
-                elevationInMeters: $this->nullableFloat($this->elevationInMeters),
+                elevationMinM: $this->nullableFloat($this->elevationMinM),
                 biome: $this->nullableString($this->biome),
                 habitat: $this->nullableString($this->habitat),
             ));
@@ -298,7 +298,7 @@ final class EspecimenIndex extends Component
         $this->editDecimalLatitude = isset($especimen['decimalLatitude']) ? (string) $especimen['decimalLatitude'] : '';
         $this->editDecimalLongitude = isset($especimen['decimalLongitude']) ? (string) $especimen['decimalLongitude'] : '';
         $this->editGeodeticDatum = (string) ($especimen['geodeticDatum'] ?? '');
-        $this->editElevationInMeters = isset($especimen['elevationInMeters']) ? (string) $especimen['elevationInMeters'] : '';
+        $this->editElevationMinM = isset($especimen['elevationMinM']) ? (string) $especimen['elevationMinM'] : '';
         $this->editBiome = (string) ($especimen['biome'] ?? '');
         $this->editHabitat = (string) ($especimen['habitat'] ?? '');
         $this->errorMessage = null;
@@ -325,7 +325,7 @@ final class EspecimenIndex extends Component
                 decimalLatitude: $this->nullableFloat($this->editDecimalLatitude),
                 decimalLongitude: $this->nullableFloat($this->editDecimalLongitude),
                 geodeticDatum: $this->nullableString($this->editGeodeticDatum),
-                elevationInMeters: $this->nullableFloat($this->editElevationInMeters),
+                elevationMinM: $this->nullableFloat($this->editElevationMinM),
                 biome: $this->nullableString($this->editBiome),
                 habitat: $this->nullableString($this->editHabitat),
                 preparations: $this->nullableString($this->editPreparations),
