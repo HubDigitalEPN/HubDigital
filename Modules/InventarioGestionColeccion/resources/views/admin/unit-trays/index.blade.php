@@ -15,13 +15,33 @@
         <flux:callout variant="danger" dismissible>{{ $errorMessage }}</flux:callout>
     @endif
 
+    {{-- Contenido dependiente de la caja: se bloquea visualmente mientras cambia --}}
+    <div class="relative space-y-6">
+        {{-- Overlay de carga al cambiar de caja: evita ver datos de la caja anterior --}}
+        <div
+            wire:loading.flex
+            wire:target="cajaSeleccionada"
+            wire:key="overlay-cambio-caja"
+            class="absolute inset-0 z-20 hidden items-center justify-center rounded-lg bg-bg-main/70 backdrop-blur-sm"
+        >
+            <div class="flex items-center gap-3 rounded-lg border border-border bg-surface px-4 py-3 shadow-sm">
+                <flux:icon name="arrow-path" class="size-5 animate-spin text-blue-navy" />
+                <span class="text-sm font-medium text-text-primary">Cargando unit trays…</span>
+            </div>
+        </div>
+
     {{-- Paso 1: Unit trays en una caja disponible --}}
     <div class="rounded-lg border border-border bg-surface shadow-sm p-4 space-y-4">
         <flux:heading size="lg" class="text-blue-navy">1. Unit trays en una caja</flux:heading>
 
         <flux:field>
             <flux:label>Caja disponible</flux:label>
-            <flux:select wire:model.live="cajaSeleccionada" placeholder="Selecciona una caja...">
+            <flux:select
+                wire:model.live="cajaSeleccionada"
+                wire:loading.attr="disabled"
+                wire:target="cajaSeleccionada"
+                placeholder="Selecciona una caja..."
+            >
                 @foreach($cajas as $caja)
                     <flux:select.option value="{{ $caja['id'] }}">{{ $caja['label'] }}</flux:select.option>
                 @endforeach
@@ -167,4 +187,5 @@
             </div>
         </div>
     @endif
+    </div>
 </div>
