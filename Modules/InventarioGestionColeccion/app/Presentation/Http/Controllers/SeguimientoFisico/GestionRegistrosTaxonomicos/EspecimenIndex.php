@@ -26,6 +26,7 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Li
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarEspecimen\RegistrarEspecimenHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarEspecimen\RegistrarEspecimenInput;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\RegistroColumnasEspecimen;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\ResolverPrioridadColumnas;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
 
 #[Layout('layouts.app', params: ['title' => 'Especímenes'])]
@@ -539,7 +540,8 @@ final class EspecimenIndex extends Component
             'totalItems' => $total,
             'inicio' => $total > 0 ? $offset + 1 : 0,
             'fin' => min($offset + $this->perPage, $total),
-            'columnasRegistro' => RegistroColumnasEspecimen::todas(),
+            'columnasRegistro' => app(ResolverPrioridadColumnas::class)
+                ->aplicar('especimenes', RegistroColumnasEspecimen::todas()),
             'columnasVisiblesPorDefecto' => RegistroColumnasEspecimen::clavesVisiblesPorDefecto(),
         ]);
     }

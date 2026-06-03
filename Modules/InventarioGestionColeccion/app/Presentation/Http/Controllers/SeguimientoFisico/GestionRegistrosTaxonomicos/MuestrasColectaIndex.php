@@ -14,6 +14,7 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Li
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\MarcarMuestraParaRevision\MarcarMuestraParaRevisionHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\MarcarMuestraParaRevision\MarcarMuestraParaRevisionInput;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\RegistroColumnasMuestra;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\ResolverPrioridadColumnas;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
 
 #[Layout('layouts.app', params: ['title' => 'Muestras de colecta'])]
@@ -114,7 +115,8 @@ final class MuestrasColectaIndex extends Component
             'totalPaginas' => $totalPaginas,
             'inicio' => $inicio,
             'fin' => $fin,
-            'columnasRegistro' => RegistroColumnasMuestra::todas(),
+            'columnasRegistro' => app(ResolverPrioridadColumnas::class)
+                ->aplicar('muestras', RegistroColumnasMuestra::todas()),
             'columnasVisiblesPorDefecto' => RegistroColumnasMuestra::clavesVisiblesPorDefecto(),
         ]);
     }

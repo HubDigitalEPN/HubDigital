@@ -11,6 +11,7 @@ use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\Seguimiento
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Admin\GabineteShow;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Admin\HorarioSettingsForm;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Admin\OrdenFamiliasIndex;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\ConfiguracionColumnasIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\DatasetConfigForm;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\DuplicadosCatalogNumberIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\EntidadDepositanteIndex;
@@ -50,5 +51,6 @@ Route::middleware(['web', 'auth', 'verified', 'role:curador'])
             Route::get('/entidades-depositantes', EntidadDepositanteIndex::class)->name('entidades-depositantes');
             Route::get('/dataset-config', DatasetConfigForm::class)->name('dataset.config');
             Route::get('/dwc/descargar', ExportarDwcController::class)->name('dwc.descargar');
+            Route::get('/columnas-config', ConfiguracionColumnasIndex::class)->name('columnas.config');
         });
     });

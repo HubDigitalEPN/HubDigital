@@ -194,6 +194,14 @@
                             >
                                 Dataset GBIF
                             </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="swatch"
+                                :href="route('inventario.taxonomia.columnas.config')"
+                                :current="request()->routeIs('inventario.taxonomia.columnas.config')"
+                                wire:navigate
+                            >
+                                Prioridad columnas
+                            </flux:sidebar.item>
                         </flux:sidebar.group>
                         <flux:sidebar.group heading="Seguimiento físico" class="grid">
                             <flux:sidebar.item

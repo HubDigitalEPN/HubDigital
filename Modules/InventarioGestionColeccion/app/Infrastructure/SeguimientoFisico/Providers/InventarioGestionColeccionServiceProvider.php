@@ -12,6 +12,7 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\Horar
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\TransactionManagerPort;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\AlertaUbicacionRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\CajaRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\ConfiguracionColumnaRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\DatasetConfigRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EntidadDepositanteRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenPermisoRepositoryInterface;
@@ -43,6 +44,7 @@ use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Console\
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Console\ImportarCatalogoInvertebradosCommand;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentAlertaUbicacionRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentCajaRepository;
+use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentConfiguracionColumnaRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentDatasetConfigRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentEntidadDepositanteRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentEspecimenPermisoRepository;
@@ -96,6 +98,7 @@ class InventarioGestionColeccionServiceProvider extends ModuleServiceProvider
         EspecimenRepositoryInterface::class => EloquentEspecimenRepository::class,
         EntidadDepositanteRepositoryInterface::class => EloquentEntidadDepositanteRepository::class,
         DatasetConfigRepositoryInterface::class => EloquentDatasetConfigRepository::class,
+        ConfiguracionColumnaRepositoryInterface::class => EloquentConfiguracionColumnaRepository::class,
         LocalidadRepositoryInterface::class => EloquentLocalidadRepository::class,
         MuestraColectaRepositoryInterface::class => EloquentMuestraColectaRepository::class,
         PermisoRepositoryInterface::class => EloquentPermisoRepository::class,
