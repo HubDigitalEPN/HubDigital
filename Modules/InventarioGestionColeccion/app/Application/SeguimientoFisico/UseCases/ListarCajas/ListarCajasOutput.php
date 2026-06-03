@@ -6,6 +6,6 @@ namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCa
 
 final readonly class ListarCajasOutput
 {
-    /** @param CajaListadoItem[] $items */
+    /** @param ListarCajasItemOutput[] $items */
     public function __construct(public array $items) {}
 }

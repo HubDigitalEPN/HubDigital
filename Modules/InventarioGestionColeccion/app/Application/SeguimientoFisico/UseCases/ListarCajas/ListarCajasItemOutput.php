@@ -8,7 +8,7 @@ namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCa
  * Read model de una Caja para los listados. Incluye la clasificación taxonómica
  * propagada desde sus UnitTrays, que identifica a la caja mejor que su código numérico.
  */
-final readonly class CajaListadoItem
+final readonly class ListarCajasItemOutput
 {
     public function __construct(
         public string $id,

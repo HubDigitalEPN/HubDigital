@@ -16,10 +16,10 @@ final class ListarCajasHandler
     {
         $cajas = $this->cajaRepo->buscarTodas();
 
-        $items = array_map(function ($c): CajaListadoItem {
+        $items = array_map(function ($c): ListarCajasItemOutput {
             $clasificacion = $c->clasificacionTaxonomica();
 
-            return new CajaListadoItem(
+            return new ListarCajasItemOutput(
                 id: (string) $c->id(),
                 codigo: (string) $c->codigo(),
                 codigoRfid: $c->codigoRfid() ? (string) $c->codigoRfid() : '',
