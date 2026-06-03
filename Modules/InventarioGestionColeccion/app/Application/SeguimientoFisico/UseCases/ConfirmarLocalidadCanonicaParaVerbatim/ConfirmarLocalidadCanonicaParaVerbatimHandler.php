@@ -12,8 +12,7 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\Loc
  * Confirma una localidad canónica para todos los especímenes con un mismo
  * `localidad_verbatim` que aún no tienen `localidad_id`.
  *
- * NOTA de rendimiento: itera con `buscarTodos()`. La versión bulk-update SQL
- * se hará en P6 cuando el importador maneje 48.856 filas.
+ * Usa `enlazarLocalidadPorVerbatim()` (UPDATE SQL único) — escala a 48k filas.
  */
 final class ConfirmarLocalidadCanonicaParaVerbatimHandler
 {
@@ -35,19 +34,7 @@ final class ConfirmarLocalidadCanonicaParaVerbatimHandler
             throw new \InvalidArgumentException('El verbatim no puede estar vacío.');
         }
 
-        $contador = 0;
-        foreach ($this->especimenRepo->buscarTodos() as $especimen) {
-            if ($especimen->localidadId() !== null) {
-                continue;
-            }
-            if ($especimen->localidadVerbatim() !== $verbatim) {
-                continue;
-            }
-
-            $especimen->enlazarLocalidad($localidadId);
-            $this->especimenRepo->guardar($especimen);
-            $contador++;
-        }
+        $contador = $this->especimenRepo->enlazarLocalidadPorVerbatim($verbatim, (string) $localidadId);
 
         return new ConfirmarLocalidadCanonicaParaVerbatimOutput(
             verbatim: $verbatim,

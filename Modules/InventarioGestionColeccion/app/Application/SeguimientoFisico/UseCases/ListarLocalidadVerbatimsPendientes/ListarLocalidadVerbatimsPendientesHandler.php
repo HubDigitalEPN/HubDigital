@@ -9,12 +9,14 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\Esp
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\LocalidadRepositoryInterface;
 
 /**
- * Bandeja de revisión: agrupa los especímenes que tienen `localidad_verbatim`
- * sin `localidad_id` enlazada, y propone candidatos canónicos por similitud.
+ * Bandeja de revisión: agrupa los `localidad_verbatim` con `localidad_id` null
+ * y propone candidatos canónicos por similitud.
  *
- * NOTA de rendimiento: usa `buscarTodos()` — O(N) en memoria. Suficiente para
- * miles de registros, no para los 48.856 del Excel. La versión escalable
- * usa SQL agrupado y se hará en P6 cuando el importador esté en producción.
+ * Estrategia escalable:
+ *  - El agrupamiento se hace SQL-side (GROUP BY + COUNT) → 1 query para
+ *    todas las 48k filas.
+ *  - Las localidades canónicas son pocas (cientos), se cargan en memoria
+ *    una vez y se computa similar_text() en PHP.
  */
 final class ListarLocalidadVerbatimsPendientesHandler
 {
@@ -26,38 +28,29 @@ final class ListarLocalidadVerbatimsPendientesHandler
     public function handle(ListarLocalidadVerbatimsPendientesInput $input): ListarLocalidadVerbatimsPendientesOutput
     {
         $limiteCandidatos = max(1, min(20, $input->limiteCandidatosPorVerbatim));
+        $pagina = max(1, $input->pagina);
+        $porPagina = max(1, min(100, $input->porPagina));
+        $offset = ($pagina - 1) * $porPagina;
 
-        $todosEspecimenes = $this->especimenRepo->buscarTodos();
+        $grupos = $this->especimenRepo->agruparLocalidadVerbatimsPendientes($porPagina, $offset);
+        $total = $this->especimenRepo->contarLocalidadVerbatimsPendientes();
         $todasLocalidades = $this->localidadRepo->buscarTodos();
 
-        $grupos = [];
-        foreach ($todosEspecimenes as $especimen) {
-            if ($especimen->localidadId() !== null) {
-                continue;
-            }
-            $verbatim = $especimen->localidadVerbatim();
-            if ($verbatim === null || $verbatim === '') {
-                continue;
-            }
-            $grupos[$verbatim] = ($grupos[$verbatim] ?? 0) + 1;
-        }
-
-        // Ordenar por frecuencia descendente — los verbatims más comunes primero.
-        arsort($grupos);
-
         $items = [];
-        foreach ($grupos as $verbatim => $total) {
-            $candidatos = $this->candidatosParaVerbatim($verbatim, $todasLocalidades, $limiteCandidatos);
+        foreach ($grupos as $verbatim => $conteo) {
+            $candidatos = $this->candidatosParaVerbatim((string) $verbatim, $todasLocalidades, $limiteCandidatos);
             $items[] = new ListarLocalidadVerbatimsPendientesItem(
                 verbatim: (string) $verbatim,
-                totalEspecimenes: $total,
+                totalEspecimenes: $conteo,
                 candidatos: $candidatos,
             );
         }
 
         return new ListarLocalidadVerbatimsPendientesOutput(
             items: $items,
-            totalVerbatimsDistintos: count($grupos),
+            totalVerbatimsDistintos: $total,
+            pagina: $pagina,
+            porPagina: $porPagina,
         );
     }
 

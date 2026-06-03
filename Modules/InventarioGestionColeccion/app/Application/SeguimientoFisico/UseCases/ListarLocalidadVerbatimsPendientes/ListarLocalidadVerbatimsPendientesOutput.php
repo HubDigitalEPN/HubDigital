@@ -10,5 +10,12 @@ final readonly class ListarLocalidadVerbatimsPendientesOutput
     public function __construct(
         public array $items,
         public int $totalVerbatimsDistintos,
+        public int $pagina = 1,
+        public int $porPagina = 20,
     ) {}
+
+    public function totalPaginas(): int
+    {
+        return $this->totalVerbatimsDistintos === 0 ? 1 : (int) ceil($this->totalVerbatimsDistintos / $this->porPagina);
+    }
 }

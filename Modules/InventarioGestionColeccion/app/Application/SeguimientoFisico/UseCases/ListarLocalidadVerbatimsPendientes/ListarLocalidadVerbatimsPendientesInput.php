@@ -8,5 +8,7 @@ final readonly class ListarLocalidadVerbatimsPendientesInput
 {
     public function __construct(
         public int $limiteCandidatosPorVerbatim = 5,
+        public int $pagina = 1,
+        public int $porPagina = 20,
     ) {}
 }

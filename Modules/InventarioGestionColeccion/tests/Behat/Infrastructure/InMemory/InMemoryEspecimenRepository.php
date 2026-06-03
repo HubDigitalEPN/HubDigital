@@ -7,6 +7,7 @@ namespace Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especimen;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EspecimenId;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\LocalidadId;
 
 final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
 {
@@ -108,6 +109,60 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
         }
 
         return false;
+    }
+
+    /** @return array<string, int> */
+    public function agruparLocalidadVerbatimsPendientes(int $limit, int $offset): array
+    {
+        $grupos = [];
+        foreach ($this->store as $e) {
+            if ($e->localidadId() !== null) {
+                continue;
+            }
+            $v = $e->localidadVerbatim();
+            if ($v === null || $v === '') {
+                continue;
+            }
+            $grupos[$v] = ($grupos[$v] ?? 0) + 1;
+        }
+        arsort($grupos);
+
+        return array_slice($grupos, $offset, $limit, true);
+    }
+
+    public function contarLocalidadVerbatimsPendientes(): int
+    {
+        $unicos = [];
+        foreach ($this->store as $e) {
+            if ($e->localidadId() !== null) {
+                continue;
+            }
+            $v = $e->localidadVerbatim();
+            if ($v === null || $v === '') {
+                continue;
+            }
+            $unicos[$v] = true;
+        }
+
+        return count($unicos);
+    }
+
+    public function enlazarLocalidadPorVerbatim(string $verbatim, string $localidadId): int
+    {
+        $contador = 0;
+        $localidad = LocalidadId::desde($localidadId);
+        foreach ($this->store as $e) {
+            if ($e->localidadId() !== null) {
+                continue;
+            }
+            if ($e->localidadVerbatim() !== $verbatim) {
+                continue;
+            }
+            $e->enlazarLocalidad($localidad);
+            $contador++;
+        }
+
+        return $contador;
     }
 
     /** @param string[] $muestraIds

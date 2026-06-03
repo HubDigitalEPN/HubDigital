@@ -180,6 +180,46 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
         return EspecimenEloquentModel::where('fila_origen_excel', $filaOrigenExcel)->exists();
     }
 
+    /** @return array<string, int> */
+    public function agruparLocalidadVerbatimsPendientes(int $limit, int $offset): array
+    {
+        $rows = EspecimenEloquentModel::whereNull('localidad_id')
+            ->whereNotNull('localidad_verbatim')
+            ->where('localidad_verbatim', '!=', '')
+            ->selectRaw('localidad_verbatim, COUNT(*) AS total')
+            ->groupBy('localidad_verbatim')
+            ->orderByRaw('COUNT(*) DESC')
+            ->limit($limit)
+            ->offset($offset)
+            ->get();
+
+        $out = [];
+        foreach ($rows as $r) {
+            $out[(string) $r->localidad_verbatim] = (int) $r->total;
+        }
+
+        return $out;
+    }
+
+    public function contarLocalidadVerbatimsPendientes(): int
+    {
+        return EspecimenEloquentModel::whereNull('localidad_id')
+            ->whereNotNull('localidad_verbatim')
+            ->where('localidad_verbatim', '!=', '')
+            ->distinct('localidad_verbatim')
+            ->count('localidad_verbatim');
+    }
+
+    public function enlazarLocalidadPorVerbatim(string $verbatim, string $localidadId): int
+    {
+        return EspecimenEloquentModel::whereNull('localidad_id')
+            ->where('localidad_verbatim', $verbatim)
+            ->update([
+                'localidad_id' => $localidadId,
+                'updated_at' => now(),
+            ]);
+    }
+
     /** @param string[] $muestraIds
      *  @return array<string, int> */
     public function contarPorMuestraIds(array $muestraIds): array

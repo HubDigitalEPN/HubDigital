@@ -71,6 +71,25 @@ interface EspecimenRepositoryInterface
     public function contarPorMuestraIds(array $muestraIds): array;
 
     /**
+     * Agrupa los `localidad_verbatim` con `localidad_id IS NULL`. Devuelve
+     * pares `verbatim => conteo`, ordenados por conteo desc. SQL-side
+     * (GROUP BY) — escalable a las 48k filas del Excel.
+     *
+     * @return array<string, int>
+     */
+    public function agruparLocalidadVerbatimsPendientes(int $limit, int $offset): array;
+
+    /** Cuenta cuántos `localidad_verbatim` distintos están sin enlazar. */
+    public function contarLocalidadVerbatimsPendientes(): int;
+
+    /**
+     * Enlaza en bloque todos los especímenes con un `localidad_verbatim` dado
+     * y `localidad_id IS NULL` a la localidad canónica. Devuelve número de
+     * filas afectadas. UPDATE SQL — escalable.
+     */
+    public function enlazarLocalidadPorVerbatim(string $verbatim, string $localidadId): int;
+
+    /**
      * Devuelve los `fila_origen_excel` ya persistidos cuyo valor está dentro
      * del set proporcionado. Permite chequear idempotencia en bulk antes de
      * abrir el chunk de inserts.

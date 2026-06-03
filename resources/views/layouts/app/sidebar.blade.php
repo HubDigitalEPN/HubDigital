@@ -133,10 +133,18 @@
                             <flux:sidebar.item
                                 icon="map-pin"
                                 :href="route('inventario.taxonomia.localidades')"
-                                :current="request()->routeIs('inventario.taxonomia.localidades')"
+                                :current="request()->routeIs('inventario.taxonomia.localidades') && !request()->routeIs('inventario.taxonomia.localidades.revision')"
                                 wire:navigate
                             >
                                 Localidades
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="exclamation-triangle"
+                                :href="route('inventario.taxonomia.localidades.revision')"
+                                :current="request()->routeIs('inventario.taxonomia.localidades.revision')"
+                                wire:navigate
+                            >
+                                Revisión localidades
                             </flux:sidebar.item>
                             <flux:sidebar.item
                                 icon="building-library"
