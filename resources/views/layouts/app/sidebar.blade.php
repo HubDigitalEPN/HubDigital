@@ -171,14 +171,6 @@
                                 Revisión localidades
                             </flux:sidebar.item>
                             <flux:sidebar.item
-                                icon="key"
-                                :href="route('inventario.taxonomia.permisos')"
-                                :current="request()->routeIs('inventario.taxonomia.permisos')"
-                                wire:navigate
-                            >
-                                Permisos
-                            </flux:sidebar.item>
-                            <flux:sidebar.item
                                 icon="building-library"
                                 :href="route('inventario.taxonomia.entidades-depositantes')"
                                 :current="request()->routeIs('inventario.taxonomia.entidades-depositantes')"

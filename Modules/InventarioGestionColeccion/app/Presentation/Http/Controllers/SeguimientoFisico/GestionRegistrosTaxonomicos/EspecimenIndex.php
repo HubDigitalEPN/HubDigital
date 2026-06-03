@@ -10,18 +10,11 @@ use Livewire\Attributes\Rule;
 use Livewire\Component;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarEspecimen\ActualizarEspecimenHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarEspecimen\ActualizarEspecimenInput;
-use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\AsociarPermisoAEspecimen\AsociarPermisoAEspecimenHandler;
-use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\AsociarPermisoAEspecimen\AsociarPermisoAEspecimenInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\BuscarEspecimenes\BuscarEspecimenesHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\BuscarEspecimenes\BuscarEspecimenesInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConfirmarRevisionEspecimen\ConfirmarRevisionEspecimenHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConfirmarRevisionEspecimen\ConfirmarRevisionEspecimenInput;
-use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\DesasociarPermisoDeEspecimen\DesasociarPermisoDeEspecimenHandler;
-use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\DesasociarPermisoDeEspecimen\DesasociarPermisoDeEspecimenInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarEntidadesDepositantes\ListarEntidadesDepositantesHandler;
-use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarPermisos\ListarPermisosHandler;
-use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarPermisosDeEspecimen\ListarPermisosDeEspecimenHandler;
-use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarPermisosDeEspecimen\ListarPermisosDeEspecimenInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarTaxones\ListarTaxonesHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarEspecimen\RegistrarEspecimenHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarEspecimen\RegistrarEspecimenInput;
@@ -177,22 +170,6 @@ final class EspecimenIndex extends Component
     public string $editBiome = '';
 
     public string $editHabitat = '';
-
-    // ── Permisos ──────────────────────────────────────────────────────────────
-
-    public bool $showPermisosModal = false;
-
-    public string $gestionandoEspecimenId = '';
-
-    public string $gestionandoCodigoCatalogo = '';
-
-    /** @var list<array{id:string, tipo:string, numero:?string, responsable:?string, detalles:?string}> */
-    public array $permisosAsociados = [];
-
-    /** @var list<array{id:string, tipo:string, numero:?string, label:string}> */
-    public array $todosLosPermisos = [];
-
-    public string $permisoParaAsociar = '';
 
     // ── Feedback ──────────────────────────────────────────────────────────────
 
@@ -366,85 +343,6 @@ final class EspecimenIndex extends Component
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
-    }
-
-    public function abrirPermisos(
-        ListarPermisosDeEspecimenHandler $listarDel,
-        ListarPermisosHandler $listarTodos,
-        string $id,
-    ): void {
-        $row = collect($this->especimenes)->firstWhere('id', $id);
-        if ($row === null) {
-            return;
-        }
-        $this->gestionandoEspecimenId = $id;
-        $this->gestionandoCodigoCatalogo = (string) ($row['codigoCatalogo'] ?? '');
-        $this->permisoParaAsociar = '';
-        $this->errorMessage = null;
-
-        $this->refrescarPermisosAsociados($listarDel);
-
-        $todos = $listarTodos->handle();
-        $this->todosLosPermisos = array_map(fn ($p) => [
-            'id' => $p->id,
-            'tipo' => $p->tipo,
-            'numero' => $p->numero,
-            'label' => trim(($p->tipo === 'research' ? 'Investigación' : ($p->tipo === 'transport' ? 'Transporte' : 'Exp/Imp')).
-                ($p->numero !== null ? ' — '.$p->numero : '').
-                ($p->responsable !== null ? ' ('.$p->responsable.')' : '')),
-        ], $todos->items);
-
-        $this->showPermisosModal = true;
-    }
-
-    public function asociarPermiso(
-        AsociarPermisoAEspecimenHandler $asociar,
-        ListarPermisosDeEspecimenHandler $listarDel,
-    ): void {
-        if ($this->permisoParaAsociar === '') {
-            $this->errorMessage = 'Selecciona un permiso para asociar.';
-
-            return;
-        }
-
-        try {
-            $asociar->handle(new AsociarPermisoAEspecimenInput(
-                especimenId: $this->gestionandoEspecimenId,
-                permisoId: $this->permisoParaAsociar,
-            ));
-            $this->refrescarPermisosAsociados($listarDel);
-            $this->permisoParaAsociar = '';
-            $this->successMessage = 'Permiso asociado.';
-            $this->errorMessage = null;
-        } catch (\Throwable $e) {
-            $this->errorMessage = $this->traducirErrorParaUsuario($e);
-        }
-    }
-
-    public function desasociarPermiso(
-        DesasociarPermisoDeEspecimenHandler $desasociar,
-        ListarPermisosDeEspecimenHandler $listarDel,
-        string $permisoId,
-    ): void {
-        try {
-            $desasociar->handle(new DesasociarPermisoDeEspecimenInput(
-                especimenId: $this->gestionandoEspecimenId,
-                permisoId: $permisoId,
-            ));
-            $this->refrescarPermisosAsociados($listarDel);
-            $this->successMessage = 'Permiso desasociado.';
-            $this->errorMessage = null;
-        } catch (\Throwable $e) {
-            $this->errorMessage = $this->traducirErrorParaUsuario($e);
-        }
-    }
-
-    private function refrescarPermisosAsociados(ListarPermisosDeEspecimenHandler $listarDel): void
-    {
-        $output = $listarDel->handle(new ListarPermisosDeEspecimenInput(
-            especimenId: $this->gestionandoEspecimenId,
-        ));
-        $this->permisosAsociados = $output->items;
     }
 
     public function confirmarRevision(ConfirmarRevisionEspecimenHandler $handler, string $id): void

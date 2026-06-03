@@ -274,10 +274,6 @@
                                         Editar
                                     </flux:button>
                                 @endif
-                                <flux:button size="sm" variant="ghost" icon="key"
-                                             wire:click="abrirPermisos('{{ $especimen['id'] }}')">
-                                    Permisos
-                                </flux:button>
                             </div>
                         </div>
                     </div>
@@ -327,10 +323,6 @@
                                     Editar
                                 </flux:button>
                             @endif
-                            <flux:button variant="ghost" icon="key"
-                                         wire:click="abrirPermisos('{{ $especimen['id'] }}')">
-                                Permisos
-                            </flux:button>
                         </div>
                     </div>
                 @empty
@@ -396,83 +388,6 @@
             <div class="flex justify-end gap-3 pt-2">
                 <flux:button variant="ghost" wire:click="$set('showModal', false)">Cancelar</flux:button>
                 <flux:button variant="primary" wire:click="registrarEspecimen">Registrar</flux:button>
-            </div>
-        </div>
-    </flux:modal>
-
-    {{-- Modal: Gestionar permisos del espécimen --}}
-    <flux:modal wire:model="showPermisosModal" class="w-full max-w-2xl">
-        <div class="space-y-4 p-1">
-            <div>
-                <flux:heading size="lg" class="text-text-primary">Permisos asociados</flux:heading>
-                <p class="text-xs text-text-secondary mt-1 font-mono">{{ $gestionandoCodigoCatalogo }}</p>
-            </div>
-
-            @if($errorMessage)<flux:callout variant="danger">{{ $errorMessage }}</flux:callout>@endif
-
-            <div class="space-y-2">
-                @forelse($permisosAsociados as $p)
-                    @php
-                        $clases = match ($p['tipo']) {
-                            'research' => 'bg-blue-navy/10 text-blue-navy border-blue-navy/30',
-                            'transport' => 'bg-warning/10 text-warning border-warning',
-                            'export_import' => 'bg-bio-green/10 text-bio-green border-bio-green',
-                            default => 'bg-border/30 text-text-secondary border-border',
-                        };
-                        $label = match ($p['tipo']) {
-                            'research' => 'Investigación',
-                            'transport' => 'Transporte',
-                            'export_import' => 'Exp/Imp',
-                            default => $p['tipo'],
-                        };
-                    @endphp
-                    <div class="rounded-lg border border-border bg-bg-main p-3 flex flex-wrap items-center gap-3">
-                        <span class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold {{ $clases }}">{{ $label }}</span>
-                        <div class="flex-1 min-w-0">
-                            @if($p['numero'])
-                                <div class="font-mono text-sm text-text-primary break-all">{{ $p['numero'] }}</div>
-                            @endif
-                            @if($p['responsable'])
-                                <div class="text-xs text-text-secondary">{{ $p['responsable'] }}</div>
-                            @endif
-                        </div>
-                        <flux:button size="sm" variant="ghost" icon="x-mark"
-                                     wire:click="desasociarPermiso('{{ $p['id'] }}')"
-                                     wire:loading.attr="disabled" wire:target="desasociarPermiso">
-                            Desasociar
-                        </flux:button>
-                    </div>
-                @empty
-                    <p class="text-sm text-text-secondary italic">Este espécimen aún no tiene permisos asociados.</p>
-                @endforelse
-            </div>
-
-            <div class="border-t border-border pt-4 space-y-3">
-                <div class="text-xs font-semibold text-text-secondary uppercase tracking-wide">Asociar nuevo permiso</div>
-                @if(count($todosLosPermisos) === 0)
-                    <p class="text-sm text-text-secondary italic">
-                        No hay permisos registrados.
-                        <a href="{{ route('inventario.taxonomia.permisos') }}" class="text-info hover:underline" wire:navigate>Registra uno aquí</a>.
-                    </p>
-                @else
-                    <div class="flex flex-col gap-2 sm:flex-row">
-                        <flux:select wire:model="permisoParaAsociar" class="flex-1">
-                            <option value="">Selecciona un permiso...</option>
-                            @foreach($todosLosPermisos as $p)
-                                <option value="{{ $p['id'] }}">{{ $p['label'] }}</option>
-                            @endforeach
-                        </flux:select>
-                        <flux:button variant="primary" icon="plus"
-                                     wire:click="asociarPermiso"
-                                     wire:loading.attr="disabled" wire:target="asociarPermiso">
-                            Asociar
-                        </flux:button>
-                    </div>
-                @endif
-            </div>
-
-            <div class="flex justify-end pt-2">
-                <flux:button variant="ghost" wire:click="$set('showPermisosModal', false)">Cerrar</flux:button>
             </div>
         </div>
     </flux:modal>
