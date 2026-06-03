@@ -51,6 +51,15 @@ interface EspecimenRepositoryInterface
     public function guardarBatch(array $especimenes): void;
 
     /**
+     * Busca especímenes marcados para revisión (estado_revision='pendiente'
+     * + motivo_revision NOT NULL). Si `$contieneMotivo` se provee, filtra
+     * adicionalmente por ILIKE sobre el motivo.
+     *
+     * @return Especimen[]
+     */
+    public function buscarParaRevision(?string $contieneMotivo = null, int $limit = 200): array;
+
+    /**
      * Devuelve los `fila_origen_excel` ya persistidos cuyo valor está dentro
      * del set proporcionado. Permite chequear idempotencia en bulk antes de
      * abrir el chunk de inserts.

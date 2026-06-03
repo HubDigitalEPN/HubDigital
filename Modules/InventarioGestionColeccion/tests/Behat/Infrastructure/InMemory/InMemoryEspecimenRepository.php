@@ -110,6 +110,31 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
         return false;
     }
 
+    /** @return Especimen[] */
+    public function buscarParaRevision(?string $contieneMotivo = null, int $limit = 200): array
+    {
+        $resultado = [];
+        $contiene = $contieneMotivo !== null ? trim($contieneMotivo) : null;
+        foreach ($this->store as $e) {
+            if ($e->estadoRevision()->value !== 'pendiente') {
+                continue;
+            }
+            $motivo = $e->motivoRevision();
+            if ($motivo === null) {
+                continue;
+            }
+            if ($contiene !== null && $contiene !== '' && stripos($motivo, $contiene) === false) {
+                continue;
+            }
+            $resultado[] = $e;
+            if (count($resultado) >= $limit) {
+                break;
+            }
+        }
+
+        return $resultado;
+    }
+
     /** @param int[] $filasOrigen
      *  @return int[] */
     public function filasOrigenExistentes(array $filasOrigen): array

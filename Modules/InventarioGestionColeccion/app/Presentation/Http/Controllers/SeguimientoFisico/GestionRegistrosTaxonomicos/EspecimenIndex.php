@@ -12,10 +12,13 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Ac
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarEspecimen\ActualizarEspecimenInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\BuscarEspecimenes\BuscarEspecimenesHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\BuscarEspecimenes\BuscarEspecimenesInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConfirmarRevisionEspecimen\ConfirmarRevisionEspecimenHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConfirmarRevisionEspecimen\ConfirmarRevisionEspecimenInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarEntidadesDepositantes\ListarEntidadesDepositantesHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarTaxones\ListarTaxonesHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarEspecimen\RegistrarEspecimenHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarEspecimen\RegistrarEspecimenInput;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\RegistroColumnasEspecimen;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
 
 #[Layout('layouts.app', params: ['title' => 'Especímenes'])]
@@ -31,12 +34,13 @@ final class EspecimenIndex extends Component
 
     public int $page = 1;
 
-    public int $perPage = 15;
+    public int $perPage = 25;
 
-    #[Rule('required|string|in:taxon,localidad,estado,codigo,occurrence_id,catalog_number')]
-    public string $criterio = 'taxon';
+    #[Rule('required|string|in:taxon,localidad,estado,codigo,occurrence_id,catalog_number,para_revision')]
+    public string $criterio = 'para_revision';
 
-    #[Rule('required|string|min:2|max:255')]
+    /** Para criterio=para_revision, $valor puede ir vacío (lista todos los pendientes). */
+    #[Rule('nullable|string|max:255')]
     public string $valor = '';
 
     // ── Registro ──────────────────────────────────────────────────────────────
@@ -265,10 +269,6 @@ final class EspecimenIndex extends Component
             $this->showModal = false;
             $this->successMessage = "Especímen '{$this->codigoCatalogo}' registrado correctamente.";
             $this->errorMessage = null;
-
-            if ($this->buscado) {
-                $this->errorMessage = null;
-            }
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
@@ -337,6 +337,28 @@ final class EspecimenIndex extends Component
             $this->showEditModal = false;
             $this->successMessage = 'Especímen actualizado correctamente.';
             $this->errorMessage = null;
+            // Reaplicar la búsqueda actual sería ideal, pero requiere injection de handler.
+            // Por ahora marcamos los datos como sucios para que el curador re-busque.
+        } catch (\Throwable $e) {
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
+        }
+    }
+
+    public function confirmarRevision(ConfirmarRevisionEspecimenHandler $handler, string $id): void
+    {
+        try {
+            $handler->handle(new ConfirmarRevisionEspecimenInput(especimenId: $id));
+
+            // Actualizar la copia local del row para feedback inmediato.
+            foreach ($this->especimenes as $i => $row) {
+                if (($row['id'] ?? null) === $id) {
+                    $this->especimenes[$i]['estadoRevision'] = 'confirmada';
+                    $this->especimenes[$i]['motivoRevision'] = null;
+                    break;
+                }
+            }
+            $this->successMessage = 'Revisión confirmada.';
+            $this->errorMessage = null;
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
@@ -363,10 +385,16 @@ final class EspecimenIndex extends Component
 
     public function buscar(BuscarEspecimenesHandler $handler): void
     {
-        $this->validate([
-            'criterio' => 'required|string|in:taxon,localidad,estado,codigo,occurrence_id,catalog_number',
-            'valor' => 'required|string|min:2|max:255',
-        ]);
+        // Regla condicional: para criterios distintos a para_revision se exigen 2+ chars.
+        $reglas = [
+            'criterio' => 'required|string|in:taxon,localidad,estado,codigo,occurrence_id,catalog_number,para_revision',
+        ];
+        if ($this->criterio !== 'para_revision') {
+            $reglas['valor'] = 'required|string|min:2|max:255';
+        } else {
+            $reglas['valor'] = 'nullable|string|max:255';
+        }
+        $this->validate($reglas);
 
         try {
             $output = $handler->handle(new BuscarEspecimenesInput(
@@ -383,11 +411,18 @@ final class EspecimenIndex extends Component
         }
     }
 
+    public function aplicarFiltroRapido(string $criterio, string $valor = ''): void
+    {
+        $this->criterio = $criterio;
+        $this->valor = $valor;
+        $this->resetValidation();
+    }
+
     public function limpiar(): void
     {
-        $this->reset('criterio', 'valor', 'especimenes', 'buscado', 'errorMessage', 'successMessage', 'page');
+        $this->reset('valor', 'especimenes', 'buscado', 'errorMessage', 'successMessage', 'page');
         $this->resetValidation();
-        $this->criterio = 'taxon';
+        $this->criterio = 'para_revision';
     }
 
     public function render(): View
@@ -402,6 +437,8 @@ final class EspecimenIndex extends Component
             'totalItems' => $total,
             'inicio' => $total > 0 ? $offset + 1 : 0,
             'fin' => min($offset + $this->perPage, $total),
+            'columnasRegistro' => RegistroColumnasEspecimen::todas(),
+            'columnasVisiblesPorDefecto' => RegistroColumnasEspecimen::clavesVisiblesPorDefecto(),
         ]);
     }
 

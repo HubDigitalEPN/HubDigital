@@ -180,6 +180,23 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
         return EspecimenEloquentModel::where('fila_origen_excel', $filaOrigenExcel)->exists();
     }
 
+    /** @return Especimen[] */
+    public function buscarParaRevision(?string $contieneMotivo = null, int $limit = 200): array
+    {
+        $query = EspecimenEloquentModel::with('identificadores')
+            ->where('estado_revision', 'pendiente')
+            ->whereNotNull('motivo_revision');
+
+        if ($contieneMotivo !== null && trim($contieneMotivo) !== '') {
+            $query->where('motivo_revision', 'ilike', '%'.trim($contieneMotivo).'%');
+        }
+
+        return $query->limit($limit)
+            ->get()
+            ->map(fn ($m) => $this->toDomain($m))
+            ->all();
+    }
+
     /** @param int[] $filasOrigen
      *  @return int[] */
     public function filasOrigenExistentes(array $filasOrigen): array
