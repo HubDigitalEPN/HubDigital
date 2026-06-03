@@ -84,6 +84,18 @@
                     <flux:icon name="document-text" class="size-3.5 text-text-secondary shrink-0" />
                     Carta de procedencia o justificación <span class="text-text-secondary/60">(según situación regulatoria)</span>
                 </li>
+                <li class="flex items-center gap-2 flex-wrap">
+                    <flux:icon name="table-cells" class="size-3.5 text-text-secondary shrink-0" />
+                    Matriz de especies en formato Darwin Core
+                    <a href="{{ asset('templates/formato_matriz_invertebrados.xlsx') }}"
+                       download
+                       class="inline-flex items-center gap-1 text-science-blue hover:underline text-xs"
+                       x-on:click.stop
+                    >
+                        <flux:icon name="arrow-down-tray" class="size-3" />
+                        Descargar plantilla
+                    </a>
+                </li>
             </ul>
             <p class="text-xs text-text-secondary/60 mt-2 italic">Los documentos exactos se determinarán en el siguiente paso según el origen de los especímenes.</p>
         </div>
@@ -104,6 +116,18 @@
                 <li class="flex items-center gap-2">
                     <flux:icon name="document-check" class="size-3.5 text-text-secondary shrink-0" />
                     Carta de cesión de derechos / origen lícito
+                </li>
+                <li class="flex items-center gap-2 flex-wrap">
+                    <flux:icon name="table-cells" class="size-3.5 text-text-secondary shrink-0" />
+                    Matriz de especies en formato Darwin Core
+                    <a href="{{ asset('templates/formato_matriz_invertebrados.xlsx') }}"
+                       download
+                       class="inline-flex items-center gap-1 text-science-blue hover:underline text-xs"
+                       x-on:click.stop
+                    >
+                        <flux:icon name="arrow-down-tray" class="size-3" />
+                        Descargar plantilla
+                    </a>
                 </li>
             </ul>
         </div>

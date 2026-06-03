@@ -21,7 +21,7 @@
             const archivo = e.dataTransfer.files[0];
             if (!archivo) return;
             const ext = archivo.name.split('.').pop().toLowerCase();
-            if (!['csv', 'txt'].includes(ext)) {
+            if (!['xlsx'].includes(ext)) {
                 this.errorSubida = true;
                 return;
             }
@@ -90,24 +90,32 @@
             @endif
 
             <span x-show="!cargado && !subiendo && !nombreArchivo" class="text-xs text-text-secondary">
-                CSV o TXT · Hasta 10 MB · UTF-8
+                Excel (.xlsx) · Hasta 10 MB
             </span>
         </div>
 
         <p x-show="!cargado && !subiendo && !nombreArchivo" class="text-xs text-text-secondary mt-1.5">
-            Archivo .csv / .txt con una fila por espécimen y columnas Darwin Core.
+            Archivo .xlsx con una fila por espécimen y columnas Darwin Core.
         </p>
 
-        <a x-show="!cargado && !subiendo && !nombreArchivo"
-           href="https://dwc.tdwg.org/terms/"
-           target="_blank"
-           rel="noopener"
-           class="inline-flex items-center gap-1 text-xs text-science-blue hover:underline mt-1"
-           x-on:click.stop
-        >
-            <flux:icon name="question-mark-circle" class="size-3" />
-            Ver formato Darwin Core requerido
-        </a>
+        <div x-show="!cargado && !subiendo && !nombreArchivo" class="flex items-center gap-3 flex-wrap mt-1" x-on:click.stop>
+            <a href="{{ asset('templates/formato_matriz_invertebrados.xlsx') }}"
+               download
+               class="inline-flex items-center gap-1 text-xs font-medium text-science-blue hover:underline"
+            >
+                <flux:icon name="arrow-down-tray" class="size-3.5" />
+                Descargar plantilla XLSX
+            </a>
+            <span class="text-text-secondary/40 text-xs">·</span>
+            <a href="https://dwc.tdwg.org/terms/"
+               target="_blank"
+               rel="noopener"
+               class="inline-flex items-center gap-1 text-xs text-text-secondary hover:underline"
+            >
+                <flux:icon name="question-mark-circle" class="size-3" />
+                Estándar Darwin Core ↗
+            </a>
+        </div>
 
         <div x-show="nombreArchivo && nombreArchivo.trim().length > 0" x-cloak class="flex items-center gap-1 mt-1">
             <flux:icon name="document-text" class="size-3 text-text-secondary shrink-0" />
@@ -124,7 +132,7 @@
         </div>
         <span x-show="!cargado && (subiendo || progreso > 0)" x-cloak x-text="progreso + '%'" class="text-xs text-text-secondary mt-0.5 block"></span>
 
-        <p x-show="errorSubida" class="text-xs text-error mt-1">Solo se admiten archivos .csv o .txt</p>
+        <p x-show="errorSubida" class="text-xs text-error mt-1">Solo se admiten archivos .xlsx</p>
         <flux:error :name="$propiedad" />
     </div>
 
@@ -150,7 +158,7 @@
         wire:model="{{ $propiedad }}"
         class="hidden"
         x-ref="fileInput"
-        accept=".csv,.txt"
+        accept=".xlsx"
         x-on:click.stop
         x-on:change="nombreArchivo = $event.target.files[0]?.name ?? null"
     />

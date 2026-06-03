@@ -52,6 +52,7 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoTramite;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Jobs\ExtraccionDatosDocumentoJob;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\MatrizEspeciesEloquentModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 #[Layout('layouts.app', params: ['title' => 'Nueva Solicitud de Depósito'])]
 final class RegistroSolicitudDeposito extends Component
@@ -886,9 +887,9 @@ final class RegistroSolicitudDeposito extends Component
         }
 
         $this->validate(
-            ['archivoMatriz' => 'file|mimes:csv,txt|max:10240'],
+            ['archivoMatriz' => 'file|mimes:xlsx|max:10240'],
             [
-                'archivoMatriz.mimes' => 'Solo se admiten archivos .csv o .txt',
+                'archivoMatriz.mimes' => 'Solo se admiten archivos .xlsx',
                 'archivoMatriz.max' => 'El archivo no debe superar los 10 MB.',
             ]
         );
@@ -902,7 +903,7 @@ final class RegistroSolicitudDeposito extends Component
             $this->matrizId = null;
         }
 
-        $parseado = $this->parsearCsv($this->archivoMatriz);
+        $parseado = $this->parsearXlsx($this->archivoMatriz);
         $campos = $parseado['campos'];
         $registros = $parseado['registros'];
 
@@ -1036,33 +1037,56 @@ final class RegistroSolicitudDeposito extends Component
     /**
      * @return array{campos: string[], registros: array<int, array<string, mixed>>}
      */
-    private function parsearCsv(mixed $archivo): array
+    private function parsearXlsx(mixed $archivo): array
     {
-        $contenido = file_get_contents($archivo->getRealPath());
-        $lineas = array_filter(explode("\n", str_replace("\r\n", "\n", $contenido)));
+        $spreadsheet = IOFactory::load($archivo->getRealPath());
+        $filas = $spreadsheet->getActiveSheet()->toArray(null, true, true, false);
 
-        if (count($lineas) < 2) {
+        if (empty($filas)) {
             return ['campos' => [], 'registros' => []];
         }
 
-        $separador = str_contains($lineas[0], "\t") ? "\t" : ',';
-        $campos = str_getcsv(array_shift($lineas), $separador);
-        $campos = array_map('trim', $campos);
+        // Buscar la fila de cabeceras DwC: la primera que contenga 'scientificName'.
+        // Esto permite que el XLSX tenga filas de título o encabezados decorativos antes.
+        $indiceCabecera = null;
+        foreach ($filas as $i => $fila) {
+            $valores = array_map(fn ($v) => trim((string) $v), $fila);
+            if (in_array('scientificName', $valores, true)) {
+                $indiceCabecera = $i;
+                break;
+            }
+        }
+
+        if ($indiceCabecera === null) {
+            return ['campos' => [], 'registros' => []];
+        }
+
+        $campos = array_map(fn ($c) => trim((string) $c), $filas[$indiceCabecera]);
+        $filasData = array_slice($filas, $indiceCabecera + 1);
 
         $registros = [];
-        foreach ($lineas as $linea) {
-            $valores = str_getcsv($linea, $separador);
-            if (count($valores) < count($campos)) {
+        foreach ($filasData as $fila) {
+            $valores = array_map(fn ($v) => trim((string) $v), $fila);
+            if (empty(array_filter($valores))) {
                 continue;
             }
             $registro = [];
             foreach ($campos as $j => $campo) {
-                $registro[$campo] = trim($valores[$j] ?? '');
+                if ($campo === '') {
+                    continue;
+                }
+                $registro[$campo] = $valores[$j] ?? '';
+            }
+            if (trim($registro['scientificName'] ?? '') === '') {
+                continue;
             }
             $registros[] = $registro;
         }
 
-        return ['campos' => $campos, 'registros' => $registros];
+        return [
+            'campos' => array_values(array_filter($campos)),
+            'registros' => $registros,
+        ];
     }
 
     public function eliminarMatriz(): void
