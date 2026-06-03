@@ -17,7 +17,7 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Li
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarUnitTraysPorCaja\ListarUnitTraysPorCajaInput;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
 
-#[Layout('layouts.app', params: ['title' => 'Asignación de Unit Trays'])]
+#[Layout('layouts.app', params: ['title' => 'Asignación de unit trays'])]
 final class AsignacionUnitTrayIndex extends Component
 {
     use TraduceErroresPersistencia;

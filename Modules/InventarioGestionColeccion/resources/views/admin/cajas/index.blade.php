@@ -2,7 +2,7 @@
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <flux:heading size="xl" level="1" class="font-display text-blue-navy font-bold">Cajas entomológicas</flux:heading>
         <flux:button icon="plus" variant="primary" class="w-full sm:w-auto" wire:click="$set('showCrearModal', true)">
-            Nueva Caja
+            Nueva caja
         </flux:button>
     </div>
 
@@ -317,7 +317,7 @@
             <div class="flex justify-end gap-3 pt-2">
                 <flux:button variant="ghost" wire:click="$set('showCrearModal', false)">Cancelar</flux:button>
                 <flux:button variant="primary" wire:click="crearCaja" wire:loading.attr="disabled">
-                    <span wire:loading.remove wire:target="crearCaja">Crear Caja</span>
+                    <span wire:loading.remove wire:target="crearCaja">Crear caja</span>
                     <span wire:loading wire:target="crearCaja">Creando...</span>
                 </flux:button>
             </div>

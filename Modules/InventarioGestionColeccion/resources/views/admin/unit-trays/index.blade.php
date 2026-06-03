@@ -1,6 +1,6 @@
 <div class="space-y-6 p-4 sm:p-6">
     <flux:heading size="xl" level="1" class="font-display text-blue-navy font-bold">
-        Asignación de Unit Trays
+        Asignación de unit trays
     </flux:heading>
 
     @if($successMessage)

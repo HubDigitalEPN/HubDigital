@@ -162,7 +162,7 @@
                                 :current="request()->routeIs('inventario.unit-trays')"
                                 wire:navigate
                             >
-                                Unit Trays
+                                Unit trays
                             </flux:sidebar.item>
                             <flux:sidebar.item
                                 icon="bell-alert"

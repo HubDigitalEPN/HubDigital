@@ -1,8 +1,8 @@
 <div class="space-y-6 p-6">
     <div class="flex items-center justify-between">
-        <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Entidades Depositantes</flux:heading>
+        <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Entidades depositantes</flux:heading>
         <flux:button icon="plus" variant="primary" wire:click="abrirModal">
-            Nueva Entidad
+            Nueva entidad
         </flux:button>
     </div>
 
@@ -60,7 +60,7 @@
                                     wire:target="generarActa('{{ $entidad['id'] }}')"
                                     wire:confirm="¿Generar acta de entrega para {{ $entidad['nombre'] }}?"
                                 >
-                                    Generar Acta
+                                    Generar acta
                                 </flux:button>
                             </div>
                         </td>
@@ -86,7 +86,7 @@
     {{-- Modal: Registrar entidad --}}
     <flux:modal wire:model="showModal" class="w-full max-w-md">
         <div class="space-y-4 p-1">
-            <flux:heading size="lg" class="text-text-primary">Nueva Entidad Depositante</flux:heading>
+            <flux:heading size="lg" class="text-text-primary">Nueva entidad depositante</flux:heading>
 
             @if($errorMessage)
                 <flux:callout variant="danger">{{ $errorMessage }}</flux:callout>
@@ -130,7 +130,7 @@
     {{-- Modal: Editar entidad --}}
     <flux:modal wire:model="showEditModal" class="w-full max-w-md">
         <div class="space-y-4 p-1">
-            <flux:heading size="lg" class="text-text-primary">Editar Entidad Depositante</flux:heading>
+            <flux:heading size="lg" class="text-text-primary">Editar entidad depositante</flux:heading>
 
             @if($errorMessage)
                 <flux:callout variant="danger">{{ $errorMessage }}</flux:callout>
@@ -173,7 +173,7 @@
     {{-- Modal: Acta generada --}}
     <flux:modal wire:model="showActaModal" class="w-full max-w-md">
         <div class="space-y-4 p-1">
-            <flux:heading size="lg" class="text-text-primary">Acta Generada</flux:heading>
+            <flux:heading size="lg" class="text-text-primary">Acta generada</flux:heading>
 
             <flux:callout variant="success">
                 El acta de entrega para <strong>{{ $actaEntidadNombre }}</strong> ha sido generada correctamente.

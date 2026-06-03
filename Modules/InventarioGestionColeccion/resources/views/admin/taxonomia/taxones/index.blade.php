@@ -2,7 +2,7 @@
     <div class="flex items-center justify-between">
         <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Taxones</flux:heading>
         <flux:button icon="plus" variant="primary" wire:click="abrirModal">
-            Nuevo Taxón
+            Nuevo taxón
         </flux:button>
     </div>
 
@@ -91,7 +91,7 @@
     {{-- Modal: Registrar taxón --}}
     <flux:modal wire:model="showModal" class="w-full max-w-lg">
         <div class="space-y-4 p-1">
-            <flux:heading size="lg" class="text-text-primary">Nuevo Taxón</flux:heading>
+            <flux:heading size="lg" class="text-text-primary">Nuevo taxón</flux:heading>
 
             @if($errorMessage)
                 <flux:callout variant="danger">{{ $errorMessage }}</flux:callout>
@@ -151,7 +151,7 @@
     {{-- Modal: Editar taxón --}}
     <flux:modal wire:model="showEditModal" class="w-full max-w-lg">
         <div class="space-y-4 p-1">
-            <flux:heading size="lg" class="text-text-primary">Editar Taxón</flux:heading>
+            <flux:heading size="lg" class="text-text-primary">Editar taxón</flux:heading>
 
             @if($errorMessage)
                 <flux:callout variant="danger">{{ $errorMessage }}</flux:callout>

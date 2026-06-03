@@ -18,7 +18,7 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Re
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TipoEntidadDepositante;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
 
-#[Layout('layouts.app', params: ['title' => 'Entidades Depositantes'])]
+#[Layout('layouts.app', params: ['title' => 'Entidades depositantes'])]
 final class EntidadDepositanteIndex extends Component
 {
     use TraduceErroresPersistencia;

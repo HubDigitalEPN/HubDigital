@@ -2,7 +2,7 @@
     <div class="flex items-center justify-between">
         <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Especímenes</flux:heading>
         <flux:button icon="plus" variant="primary" wire:click="abrirModal">
-            Nuevo Especímen
+            Nuevo especímen
         </flux:button>
     </div>
 
@@ -151,7 +151,7 @@
     {{-- Modal: Registrar especímen --}}
     <flux:modal wire:model="showModal" class="w-full max-w-4xl">
         <div class="space-y-4 p-1">
-            <flux:heading size="lg" class="text-text-primary">Nuevo Especímen</flux:heading>
+            <flux:heading size="lg" class="text-text-primary">Nuevo especímen</flux:heading>
 
             @if($errorMessage)
                 <flux:callout variant="danger">{{ $errorMessage }}</flux:callout>
@@ -315,7 +315,7 @@
             </flux:field>
 
             <flux:field>
-                <flux:label>Entidad Depositante (opcional)</flux:label>
+                <flux:label>Entidad depositante (opcional)</flux:label>
                 <flux:select wire:model="entidadDepositanteId">
                     <option value="">Sin entidad depositante</option>
                     @foreach($entidades as $entidad)
@@ -339,7 +339,7 @@
     {{-- Modal: Editar especímen --}}
     <flux:modal wire:model="showEditModal" class="w-full max-w-4xl">
         <div class="space-y-4 p-1">
-            <flux:heading size="lg" class="text-text-primary">Editar Especímen</flux:heading>
+            <flux:heading size="lg" class="text-text-primary">Editar especímen</flux:heading>
 
             @if($errorMessage)
                 <flux:callout variant="danger">{{ $errorMessage }}</flux:callout>
@@ -438,7 +438,7 @@
             </flux:field>
 
             <flux:field>
-                <flux:label>Entidad Depositante (opcional)</flux:label>
+                <flux:label>Entidad depositante (opcional)</flux:label>
                 <flux:select wire:model="editEntidadDepositanteId">
                     <option value="">Sin entidad depositante</option>
                     @foreach($entidades as $entidad)

@@ -2,7 +2,7 @@
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <flux:heading size="xl" level="1" class="font-display text-blue-navy font-bold">Gabinetes</flux:heading>
         <flux:button icon="plus" variant="primary" class="w-full sm:w-auto" wire:click="abrirModal">
-            Nuevo Gabinete
+            Nuevo gabinete
         </flux:button>
     </div>
 
