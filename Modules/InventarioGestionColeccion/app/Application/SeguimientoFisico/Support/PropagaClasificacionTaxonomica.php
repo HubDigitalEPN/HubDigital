@@ -10,6 +10,7 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\Caj
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UnitTrayRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\CalculadorClasificacionDominante;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\ComparadorTaxonomicoUnitTray;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\CajaId;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\ClasificacionTaxonomica;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EspecimenId;
@@ -46,6 +47,46 @@ trait PropagaClasificacionTaxonomica
         }
 
         return $this->clasificacionMasFrecuente($clasificaciones);
+    }
+
+    /**
+     * Soft alert: identifica los especímenes cuya clasificación NO coincide con la
+     * dominante del tray (hasta especie). No bloquea la asignación — solo advierte que
+     * "no parecen pertenecer" a este tray. Los especímenes sin clasificación se ignoran.
+     *
+     * @param  string[]  $especimenIds
+     * @return string[] códigos de catálogo de los especímenes fuera de lugar
+     */
+    private function detectarEspecimenesFueraDeLugar(
+        array $especimenIds,
+        ?ClasificacionTaxonomica $dominante,
+        EspecimenRepositoryInterface $especimenRepo,
+        ClasificacionTaxonomicaPort $clasificacionPort,
+    ): array {
+        if ($dominante === null || $dominante->estaVacia()) {
+            return [];
+        }
+
+        $comparador = new ComparadorTaxonomicoUnitTray;
+        $fueraDeLugar = [];
+
+        foreach ($especimenIds as $rawId) {
+            $especimen = $especimenRepo->buscarPorId(EspecimenId::desde($rawId));
+            if ($especimen === null) {
+                continue;
+            }
+
+            $cls = $clasificacionPort->resolverParaTaxon($especimen->taxonId());
+            if ($cls === null || $cls->estaVacia()) {
+                continue;
+            }
+
+            if (! $comparador->perteneceAlGrupo($cls, $dominante)) {
+                $fueraDeLugar[] = $especimen->codigoCatalogo();
+            }
+        }
+
+        return $fueraDeLugar;
     }
 
     /**

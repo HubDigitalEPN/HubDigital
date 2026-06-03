@@ -6,11 +6,16 @@ namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCa
 
 final readonly class ActualizarEspecimenesUnitTrayOutput
 {
+    /**
+     * @param  string[]  $especimenesFueraDeLugar  códigos de catálogo de especímenes
+     *                                             cuya taxonomía no coincide con el tray
+     */
     private function __construct(
         public string $unitTrayId,
         public bool $tieneClasificacion,
         public ?string $subfamiliaAsignada,
         public ?string $generoAsignado,
+        public array $especimenesFueraDeLugar = [],
     ) {}
 
     public static function fromPrimitives(array $data): self
@@ -20,6 +25,7 @@ final readonly class ActualizarEspecimenesUnitTrayOutput
             tieneClasificacion: $data['tieneClasificacion'],
             subfamiliaAsignada: $data['subfamiliaAsignada'],
             generoAsignado: $data['generoAsignado'],
+            especimenesFueraDeLugar: $data['especimenesFueraDeLugar'] ?? [],
         );
     }
 }

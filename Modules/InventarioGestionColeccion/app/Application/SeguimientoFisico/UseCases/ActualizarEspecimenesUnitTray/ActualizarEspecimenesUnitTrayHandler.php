@@ -70,11 +70,19 @@ final class ActualizarEspecimenesUnitTrayHandler
 
         $cls = $unitTray->clasificacionDominante();
 
+        $fueraDeLugar = $this->detectarEspecimenesFueraDeLugar(
+            $input->especimenIds,
+            $cls,
+            $this->especimenRepo,
+            $this->clasificacionPort,
+        );
+
         return ActualizarEspecimenesUnitTrayOutput::fromPrimitives([
             'unitTrayId' => (string) $unitTrayId,
             'tieneClasificacion' => $cls !== null && ! $cls->estaVacia(),
             'subfamiliaAsignada' => $cls?->subfamilia(),
             'generoAsignado' => $cls?->genero(),
+            'especimenesFueraDeLugar' => $fueraDeLugar,
         ]);
     }
 }
