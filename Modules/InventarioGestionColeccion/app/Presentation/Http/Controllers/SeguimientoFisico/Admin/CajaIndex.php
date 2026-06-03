@@ -276,6 +276,9 @@ final class CajaIndex extends Component
                 'esEspecial' => $c->esEspecial,
                 'observacion' => $c->observacion,
                 'estado' => $c->estado,
+                'subfamilia' => $c->subfamilia,
+                'genero' => $c->genero,
+                'especie' => $c->especie,
             ],
             $handler->handle()->items,
         );
