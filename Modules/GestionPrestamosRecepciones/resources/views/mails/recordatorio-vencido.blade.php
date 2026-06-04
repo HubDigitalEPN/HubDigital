@@ -58,7 +58,7 @@
                                 <tr>
                                     <td style="padding:8px 0;font-size:14px;color:#212121;line-height:1.6;">
                                         <span style="display:inline-block;background-color:#D32F2F;color:#fff;border-radius:50%;width:20px;height:20px;text-align:center;font-size:12px;font-weight:700;line-height:20px;margin-right:10px;">2</span>
-                                        Contacta al curador responsable de la colección para acordar la entrega.
+                                        Contacta al funcionario responsable de la colección para acordar la entrega.
                                     </td>
                                 </tr>
                                 <tr>
@@ -83,7 +83,7 @@
                             <table width="100%" cellpadding="12" cellspacing="0" style="background-color:#FFEBEE;border-radius:8px;">
                                 <tr>
                                     <td style="font-size:13px;color:#B71C1C;">
-                                        <strong>Contacto curador:</strong> {{ config('prestamos.curador_email', 'curador@epn.edu.ec') }}
+                                        <strong>Contacto:</strong> {{ config('prestamos.curador_email', 'curador@epn.edu.ec') }}
                                     </td>
                                 </tr>
                             </table>

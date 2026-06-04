@@ -132,7 +132,7 @@
                                     @if($solicitud->estado === 'borrador')
                                         <flux:button size="sm" variant="primary" icon="paper-airplane"
                                             wire:click="enviarSolicitud('{{ $solicitud->id }}')"
-                                            wire:confirm="¿Enviar esta solicitud para revisión del curador?"
+                                            wire:confirm="¿Enviar esta solicitud para revisión del funcionario responsable?"
                                             wire:loading.attr="disabled">
                                             Enviar
                                         </flux:button>

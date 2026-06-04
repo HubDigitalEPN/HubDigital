@@ -57,7 +57,7 @@
                     </flux:callout>
                 @elseif($acta->estado === 'pendiente_validacion')
                     <flux:callout variant="info" icon="information-circle">
-                        El acta firmada está en proceso de validación por el curador.
+                        El acta firmada está en proceso de validación por el funcionario responsable.
                     </flux:callout>
                 @elseif($acta->estado === 'validada')
                     <flux:callout variant="success" icon="check-circle">
@@ -98,7 +98,7 @@
                     $etiquetasActa = [
                         'ActaEnviada'                   => 'Acta enviada al investigador',
                         'ActaFirmadaSubida'              => 'Acta firmada subida',
-                        'ActaDevueltaPorFirmaInvalida'   => 'Acta devuelta por el curador',
+                        'ActaDevueltaPorFirmaInvalida'   => 'Acta devuelta por el funcionario responsable',
                         'ActaValidada'                   => 'Acta validada',
                     ];
                 @endphp

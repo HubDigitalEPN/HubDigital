@@ -25,7 +25,7 @@ final class ReglaDocumentacionRequerida
         ],
         'Exterior (Extranjero)' => [
             'Proviene de colección foránea' => [
-                'Carta de procedencia firmada por el responsable de la colección de origen',
+                'Documento de procedencia de los especimenes',
             ],
         ],
     ];

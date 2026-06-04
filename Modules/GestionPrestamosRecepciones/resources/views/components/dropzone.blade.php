@@ -64,11 +64,14 @@
                     x-data="{ infoAbierta: false }"
                     x-on:mouseenter="infoAbierta = true"
                     x-on:mouseleave="infoAbierta = false"
+                    x-on:click.outside="infoAbierta = false"
                     class="relative shrink-0"
                 >
                     <span
+                        x-on:click.stop="infoAbierta = !infoAbierta"
                         :class="infoAbierta ? 'text-science-blue' : 'text-text-secondary'"
-                        class="mt-0.5 flex cursor-help transition-colors duration-200"
+                        class="-m-2 flex cursor-help p-2 transition-colors duration-200"
+                        aria-label="Más información sobre este documento"
                     >
                         <flux:icon name="information-circle" class="size-4" />
                     </span>
@@ -82,7 +85,7 @@
                         x-transition:leave="transition ease-in duration-150"
                         x-transition:leave-start="opacity-100 translate-y-0 scale-100"
                         x-transition:leave-end="opacity-0 -translate-y-2 scale-[0.97]"
-                        class="absolute left-0 top-full z-30 mt-1.5 w-64 origin-top-left overflow-hidden rounded-lg bg-surface bg-gradient-to-br from-science-blue/10 via-surface to-bio-green/5 shadow-lg ring-1 ring-science-blue/20 sm:w-72"
+                        class="absolute right-0 top-full z-30 mt-1.5 w-64 max-w-[calc(100vw-3rem)] origin-top-right overflow-hidden rounded-lg bg-surface bg-gradient-to-br from-science-blue/10 via-surface to-bio-green/5 shadow-lg ring-1 ring-science-blue/20 sm:w-72"
                     >
                         <div class="flex gap-2.5 p-3">
                             <div class="flex size-7 shrink-0 items-center justify-center rounded-full bg-science-blue/15 ring-1 ring-science-blue/20">

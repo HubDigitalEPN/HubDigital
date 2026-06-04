@@ -67,7 +67,7 @@
                     @if($solicitud->estado === 'observada' && $solicitud->comentario_curador)
                         <flux:separator />
                         <flux:callout variant="warning" icon="exclamation-triangle">
-                            <flux:heading size="sm">Observación del curador</flux:heading>
+                            <flux:heading size="sm">Observación del funcionario responsable</flux:heading>
                             <flux:text class="mt-1 text-sm">{{ $solicitud->comentario_curador }}</flux:text>
                         </flux:callout>
                     @endif

@@ -292,10 +292,18 @@ final class RegistroSolicitudDeposito extends Component
             $this->datosFaltantes = $model->datos_faltantes ?? [];
             $this->datosIngresadosManualmente = $model->datos_ingresados_manualmente ?? [];
 
+            // Eliminar faltantes obsoletos que ya no pertenecen al flujo actual
+            // (ej. borradores extranjeros con campos nacionales en datos_faltantes).
+            $this->datosFaltantes = array_values(
+                array_filter($this->datosFaltantes, fn ($campo) => array_key_exists($campo, $this->datosExtraidos))
+            );
+
             // Compatibilidad: borradores creados antes del commit 5265671 no incluyen
-            // los campos cuantitativos en datos_faltantes. Agregarlos si son null en BD.
+            // los campos cuantitativos en datos_faltantes. Agregarlos solo si pertenecen
+            // al flujo actual y tienen valor null en BD.
             foreach (['N.º Individuos', 'N.º Morfoespecies', 'N.º Lotes'] as $campo) {
-                if (($this->datosExtraidos[$campo] ?? null) === null
+                if (array_key_exists($campo, $this->datosExtraidos)
+                    && ($this->datosExtraidos[$campo] ?? null) === null
                     && ! in_array($campo, $this->datosFaltantes, true)) {
                     $this->datosFaltantes[] = $campo;
                 }
@@ -380,6 +388,16 @@ final class RegistroSolicitudDeposito extends Component
     private function construirDatosExtraidos(SolicitudDepositoEloquentModel $model): array
     {
         if ($this->tipoTramite === TipoTramite::Deposito->value) {
+            if ($this->origenRecoleccion === 'Exterior (Extranjero)') {
+                return [
+                    'N.º Investigación' => $model->nro_permiso_recoleccion,
+                    'Grupo Animal' => $model->grupo_animal,
+                    'Administración Política' => $model->provincia_origen,
+                    'Localidad' => $model->localidad,
+                    'N.º Individuos' => $model->nro_individuos !== null ? (string) $model->nro_individuos : null,
+                ];
+            }
+
             return [
                 'N.º Permiso Recolección' => $model->nro_permiso_recoleccion,
                 'N.º Permiso Movilización' => $model->nro_permiso_movilizacion,
@@ -577,7 +595,7 @@ final class RegistroSolicitudDeposito extends Component
     {
         $this->registrarDocumentoCargado(
             'archivoCartaProcedencia',
-            'Carta de procedencia firmada por el responsable de la colección de origen',
+            'Documento de procedencia de los especimenes',
             $this->archivoCartaProcedencia
         );
     }
@@ -739,6 +757,12 @@ final class RegistroSolicitudDeposito extends Component
             $this->datosExtraidos = $this->construirDatosExtraidos($model);
             $this->datosFaltantes = $model->datos_faltantes ?? [];
             $this->datosIngresadosManualmente = $model->datos_ingresados_manualmente ?? [];
+
+            // Eliminar faltantes obsoletos que ya no pertenecen al flujo actual.
+            $this->datosFaltantes = array_values(
+                array_filter($this->datosFaltantes, fn ($campo) => array_key_exists($campo, $this->datosExtraidos))
+            );
+
             $this->firmasElectronicas = $model->firmas_electronicas ?? [];
 
             $this->pasosCompletados = array_values(array_unique([...$this->pasosCompletados, 3]));
@@ -754,17 +778,27 @@ final class RegistroSolicitudDeposito extends Component
     private function avanzarDesdeFalloExtraccion(): void
     {
         if ($this->tipoTramite === TipoTramite::Deposito->value) {
-            $this->datosExtraidos = [
-                'N.º Permiso Recolección' => null,
-                'N.º Permiso Movilización' => null,
-                'Grupo Animal' => null,
-                'Provincia' => null,
-                'Localidad' => null,
-                'N.º Individuos' => null,
-                'N.º Morfoespecies' => null,
-                'N.º Lotes' => null,
-            ];
-            $this->datosFaltantes = ['N.º Permiso Recolección', 'N.º Permiso Movilización', 'Grupo Animal', 'Provincia', 'Localidad', 'N.º Individuos', 'N.º Morfoespecies', 'N.º Lotes'];
+            if ($this->origenRecoleccion === 'Exterior (Extranjero)') {
+                $this->datosExtraidos = [
+                    'N.º Investigación' => null,
+                    'Grupo Animal' => null,
+                    'Administración Política' => null,
+                    'Localidad' => null,
+                    'N.º Individuos' => null,
+                ];
+            } else {
+                $this->datosExtraidos = [
+                    'N.º Permiso Recolección' => null,
+                    'N.º Permiso Movilización' => null,
+                    'Grupo Animal' => null,
+                    'Provincia' => null,
+                    'Localidad' => null,
+                    'N.º Individuos' => null,
+                    'N.º Morfoespecies' => null,
+                    'N.º Lotes' => null,
+                ];
+            }
+            $this->datosFaltantes = array_keys($this->datosExtraidos);
         } else {
             $this->datosExtraidos = [
                 'Grupo Animal' => null,
@@ -1350,6 +1384,7 @@ final class RegistroSolicitudDeposito extends Component
             'Copia de la autorización de recolección (MAE)' => 'archivoAutorizacionMae',
             'Copia del permiso de movilización' => 'archivoPermisoMovilizacion',
             'Documento de explicación de motivos y/o carta de justificación (institucional o personal)' => 'archivoCartaJustificacion',
+            'Documento de procedencia de los especimenes',
             'Carta de procedencia firmada por el responsable de la colección de origen' => 'archivoCartaProcedencia',
             'Carta de cesión de derechos / origen lícito' => 'archivoCartaCesion',
             'Carta de delegación / justificación de tercero' => 'archivoCartaDelegacion',

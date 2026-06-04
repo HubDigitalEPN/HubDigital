@@ -19,7 +19,7 @@
 
     @if($comentarioCurador)
         <flux:callout variant="warning" icon="exclamation-triangle">
-            <flux:heading size="sm">Observación del curador</flux:heading>
+            <flux:heading size="sm">Observación del funcionario responsable</flux:heading>
             <flux:text class="mt-1 text-sm">{{ $comentarioCurador }}</flux:text>
         </flux:callout>
     @endif
@@ -142,7 +142,7 @@
                     >
                         <flux:icon name="exclamation-triangle" class="mt-0.5 size-4 shrink-0 text-warning" />
                         <p class="text-xs text-warning">
-                            Las solicitudes de más de 12 meses requieren una justificación adicional que será evaluada por el curador.
+                            Las solicitudes de más de 12 meses requieren una justificación adicional que será evaluada por el funcionario responsable.
                         </p>
                     </div>
 
@@ -180,7 +180,7 @@
             <flux:heading size="lg" level="2" class="font-display">Acciones</flux:heading>
             <flux:separator />
             <flux:text class="text-text-secondary text-sm">
-                {{ $this->solicitudId ? 'Guarda los cambios o envía la solicitud para revisión del curador.' : 'Completa el formulario y guarda el borrador para continuar.' }}
+                {{ $this->solicitudId ? 'Guarda los cambios o envía la solicitud para revisión del funcionario responsable.' : 'Completa el formulario y guarda el borrador para continuar.' }}
             </flux:text>
             <div class="flex flex-col gap-2">
                 <flux:button variant="primary" wire:click="guardarBorrador"

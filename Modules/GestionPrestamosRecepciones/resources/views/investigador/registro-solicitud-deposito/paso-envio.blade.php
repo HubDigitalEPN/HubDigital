@@ -3,7 +3,7 @@
     {{-- ── Pantalla de confirmación final ──────────────────────────────────────── --}}
     @php
         $esExito  = in_array($estadoFinal, ['Pendiente de Revisión por Curaduría', 'Registrada']);
-        $esAviso  = in_array($estadoFinal, ['Retenida para Asesoría Curatorial', 'Requiere Corrección']);
+        $esAviso  = in_array($estadoFinal, ['Pausada para Asesoría', 'Requiere Corrección']);
         $esError  = $estadoFinal === 'Rechazada';
 
         $icono  = $esExito ? 'check-circle' : ($esAviso ? 'exclamation-triangle' : 'x-circle');
@@ -14,7 +14,7 @@
         $titulo = match($estadoFinal) {
             'Pendiente de Revisión por Curaduría' => 'Solicitud enviada · pendiente de revisión por curaduría',
             'Registrada'                          => 'Solicitud registrada exitosamente',
-            'Retenida para Asesoría Curatorial'   => 'Solicitud retenida para asesoría curatorial',
+            'Pausada para Asesoría'   => 'Solicitud pausada — en espera de asesoría',
             'Requiere Corrección'                 => 'La solicitud requiere corrección',
             'Rechazada'                           => 'Solicitud rechazada por límite anual',
             default                               => 'Solicitud procesada',
@@ -23,7 +23,7 @@
         $subtitulo = match($estadoFinal) {
             'Pendiente de Revisión por Curaduría' => 'Tu solicitud ha sido remitida al equipo curatorial. Recibirás notificación cuando inicie la revisión.',
             'Registrada'                          => 'El registro fue aceptado y archivado en la colección.',
-            'Retenida para Asesoría Curatorial'   => 'Un curador se pondrá en contacto contigo para guiar el caso documental.',
+            'Pausada para Asesoría'   => 'El funcionario responsable se pondrá en contacto contigo para guiar el caso documental.',
             'Requiere Corrección'                 => 'Algunos documentos no cumplen los requisitos. Revisa las observaciones y reenvía.',
             'Rechazada'                           => 'No es posible continuar. El cupo anual de depósitos ha sido alcanzado.',
             default                               => '',

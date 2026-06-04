@@ -74,7 +74,7 @@
                 <flux:select wire:model.live="filtroEstado" size="sm" class="w-full sm:w-52">
                     <flux:select.option value="">Todos</flux:select.option>
                     <flux:select.option value="{{ EstadoSolicitudDeposito::PendienteDeRevisionPorCuraduria->value }}">Pendiente de Revisión</flux:select.option>
-                    <flux:select.option value="{{ EstadoSolicitudDeposito::RetenidaParaAsesoriaCuratorial->value }}">Retenida para Asesoría</flux:select.option>
+                    <flux:select.option value="{{ EstadoSolicitudDeposito::RetenidaParaAsesoriaCuratorial->value }}">Pausada para Asesoría</flux:select.option>
                     <flux:select.option value="{{ EstadoSolicitudDeposito::Rechazada->value }}">Rechazada</flux:select.option>
                 </flux:select>
             </flux:field>
@@ -139,7 +139,7 @@
         @if($activas->where('estado', EstadoSolicitudDeposito::RetenidaParaAsesoriaCuratorial->value)->isNotEmpty())
             <flux:callout variant="warning" icon="pause-circle">
                 <flux:heading>{{ $activas->where('estado', EstadoSolicitudDeposito::RetenidaParaAsesoriaCuratorial->value)->count() }} solicitud(es) retenida(s) para Asesoría Curatorial</flux:heading>
-                <flux:text>Un curador se pondrá en contacto contigo próximamente. No necesitas hacer nada por ahora.</flux:text>
+                <flux:text>El funcionario responsable se pondrá en contacto contigo próximamente. No necesitas hacer nada por ahora.</flux:text>
             </flux:callout>
         @endif
 

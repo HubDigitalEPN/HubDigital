@@ -40,7 +40,7 @@ Característica: Registro de solicitud de depósito
         Dado que el investigador carece de los documentos del MAE y de carta de justificación
         Cuando el investigador solicita la intervención directa de curaduría
         Entonces el proceso de carga documental se pausa
-        Y la solicitud pasa al estado "Retenida para Asesoría Curatorial"
+        Y la solicitud pasa al estado "Pausada para Asesoría"
         Y se notifica al curador para que inicie el contacto directo con el investigador
 
     Esquema del escenario: Validación de Permiso de Movilización por provincia de origen

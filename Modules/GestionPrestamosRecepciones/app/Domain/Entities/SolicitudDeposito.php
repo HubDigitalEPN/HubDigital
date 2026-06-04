@@ -173,10 +173,12 @@ final class SolicitudDeposito
         // previos para que no persistan si el nuevo run sí los extrajo.
         $this->datosFaltantes = [];
 
+        $esExtranjero = $this->origenRecoleccion === 'Exterior (Extranjero)';
+
         if ($datos->nroPermisoRecoleccion !== null) {
             $this->nroPermisoRecoleccion = $datos->nroPermisoRecoleccion;
         } elseif ($this->tipoTramite->equals(TipoTramite::Deposito)) {
-            $this->marcarDatoComoFaltante('N.º Permiso Recolección');
+            $this->marcarDatoComoFaltante($esExtranjero ? 'N.º Investigación' : 'N.º Permiso Recolección');
         }
 
         if ($datos->nroPermisoMovilizacion !== null) {
@@ -186,10 +188,11 @@ final class SolicitudDeposito
         if ($datos->provinciaOrigen !== null) {
             $this->provinciaOrigen = $datos->provinciaOrigen;
         } elseif ($this->tipoTramite->equals(TipoTramite::Deposito)) {
-            $this->marcarDatoComoFaltante('Provincia');
+            $this->marcarDatoComoFaltante($esExtranjero ? 'Administración Política' : 'Provincia');
         }
 
-        if ($this->nroPermisoMovilizacion === null
+        if (! $esExtranjero
+            && $this->nroPermisoMovilizacion === null
             && $this->tipoTramite->equals(TipoTramite::Deposito)
             && ($datos->provinciaOrigen === null || strtolower(trim($datos->provinciaOrigen)) !== 'pichincha')
         ) {
@@ -220,12 +223,14 @@ final class SolicitudDeposito
             $this->marcarDatoComoFaltante('N.º Individuos');
         }
 
-        if ($this->nroMorfoespecies === null) {
-            $this->marcarDatoComoFaltante('N.º Morfoespecies');
-        }
+        if (! $esExtranjero) {
+            if ($this->nroMorfoespecies === null) {
+                $this->marcarDatoComoFaltante('N.º Morfoespecies');
+            }
 
-        if ($this->nroLotes === null) {
-            $this->marcarDatoComoFaltante('N.º Lotes');
+            if ($this->nroLotes === null) {
+                $this->marcarDatoComoFaltante('N.º Lotes');
+            }
         }
 
         $this->events[] = new DocumentacionOficialCargada(
@@ -512,9 +517,9 @@ final class SolicitudDeposito
     {
         match ($campo) {
             'Grupo Animal' => $this->grupoAnimal = $valor,
-            'N.º Permiso Recolección' => $this->nroPermisoRecoleccion = $valor,
+            'N.º Permiso Recolección', 'N.º Investigación' => $this->nroPermisoRecoleccion = $valor,
             'N.º Permiso Movilización' => $this->nroPermisoMovilizacion = $valor,
-            'Provincia' => $this->provinciaOrigen = $valor,
+            'Provincia', 'Administración Política' => $this->provinciaOrigen = $valor,
             'Localidad' => $this->localidad = $valor,
             'N.º Individuos' => $this->nroIndividuos = $valor,
             'N.º Morfoespecies' => $this->nroMorfoespecies = $valor,

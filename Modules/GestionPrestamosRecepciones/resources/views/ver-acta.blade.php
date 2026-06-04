@@ -154,7 +154,7 @@
                         <div class="space-y-1">
                             <p>En caso de ser de interés para el receptor del préstamo, se autoriza el depósito de réplicas de especies, o morfoespecies, de series de colecciones, en la colección de la institución receptora. El material único, de localidades únicas (singletons) debe ser retornado al MHNGOV, posterior a su estudio.</p>
                             <p class="text-text-secondary italic text-xs border-l-2 border-border pl-3">
-                                <span class="font-semibold not-italic">Nota:</span> En caso de requerir el depósito de réplicas en la institución receptora, se deben notificar los detalles previamente al Curador, puesto que es necesario firmar un documento de "préstamo permanente".
+                                <span class="font-semibold not-italic">Nota:</span> En caso de requerir el depósito de réplicas en la institución receptora, se deben notificar los detalles previamente al funcionario responsable, puesto que es necesario firmar un documento de "préstamo permanente".
                             </p>
                         </div>
                     </li>
@@ -205,7 +205,7 @@
             <div class="grid grid-cols-2 gap-16 pt-8">
                 <div>
                     <div class="border-t-2 border-text-primary pt-3 space-y-1">
-                        <p class="text-sm font-semibold text-text-primary">Curador responsable</p>
+                        <p class="text-sm font-semibold text-text-primary">Funcionario responsable</p>
                         <p class="text-xs text-text-secondary">Laboratorio de Invertebrados — EPN</p>
                         <p class="text-xs text-text-secondary">Fecha: ___________________</p>
                     </div>

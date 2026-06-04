@@ -75,7 +75,7 @@
                     <a href="{{ route('prestamos.investigador.mis-prestamos') }}" style="display:inline-block;background:#0F6E56;color:#E1F5EE;text-decoration:none;padding:10px 28px;border-radius:6px;font-size:14px;font-weight:500;">Ver mi préstamo</a>
                 </div>
 
-                <p style="font-size:13px;color:#757575;line-height:1.6;margin:0;">Si ya realizó la devolución o tiene alguna consulta, comuníquese con el curador responsable de la colección.</p>
+                <p style="font-size:13px;color:#757575;line-height:1.6;margin:0;">Si ya realizó la devolución o tiene alguna consulta, comuníquese con el funcionario responsable de la colección.</p>
             </div>
 
             {{-- Footer --}}

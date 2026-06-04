@@ -13,7 +13,7 @@
         @php
             $badgeVariant = match($deposito->estado) {
                 'Pendiente de Revisión por Curaduría' => 'info',
-                'Retenida para Asesoría Curatorial'   => 'warning',
+                'Pausada para Asesoría'   => 'warning',
                 'Rechazada'                           => 'danger',
                 default                               => 'ghost',
             };
@@ -240,7 +240,7 @@
                                         @endif
                                     </div>
                                     <p class="text-xs text-text-secondary leading-relaxed">
-                                        {{ $nRevision === 1 ? 'Esta especie no fue encontrada' : 'Estas especies no fueron encontradas' }} en el catálogo de referencia. El curador {{ $nRevision === 1 ? 'la revisará' : 'las revisará' }} antes de proceder con el depósito.
+                                        {{ $nRevision === 1 ? 'Esta especie no fue encontrada' : 'Estas especies no fueron encontradas' }} en el catálogo de referencia. El funcionario responsable {{ $nRevision === 1 ? 'la revisará' : 'las revisará' }} antes de proceder con el depósito.
                                     </p>
                                 </div>
                             @endif
@@ -249,7 +249,7 @@
                 @endif
 
                 {{-- Alerta si retenida --}}
-                @if($deposito->estado === 'Retenida para Asesoría Curatorial')
+                @if($deposito->estado === 'Pausada para Asesoría')
                     <div class="rounded-xl border border-warning/40 bg-warning/5 p-5 space-y-3">
                         <div class="flex items-center gap-3">
                             <div class="flex size-9 shrink-0 items-center justify-center rounded-full bg-warning/15">
@@ -258,7 +258,7 @@
                             <p class="text-sm font-semibold text-text-primary">En espera de asesoría curatorial</p>
                         </div>
                         <p class="text-sm text-text-secondary">
-                            Un curador revisará tu caso y se pondrá en contacto contigo directamente. No necesitas realizar ninguna acción por ahora.
+                            El funcionario responsable revisará tu caso y se pondrá en contacto contigo directamente. No necesitas realizar ninguna acción por ahora.
                         </p>
                     </div>
                 @endif
@@ -283,11 +283,11 @@
                             :ultimo="$deposito->estado === 'En Borrador'" />
                     @endif
 
-                    @if($deposito->estado === 'Retenida para Asesoría Curatorial')
+                    @if($deposito->estado === 'Pausada para Asesoría')
                         <x-gestionprestamosrecepciones::timeline-event
                             :fecha="$deposito->updated_at->format('d/m/Y H:i')"
-                            titulo="Retenida para asesoría curatorial"
-                            descripcion="Sin documentación disponible. Curador notificado."
+                            titulo="Pausada para asesoría"
+                            descripcion="Sin documentación disponible. Funcionario responsable notificado."
                             :ultimo="true" />
                     @endif
 

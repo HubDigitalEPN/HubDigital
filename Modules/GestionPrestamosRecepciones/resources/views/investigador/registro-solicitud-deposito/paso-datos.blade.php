@@ -37,6 +37,21 @@
     {{-- Datos faltantes globales --}}
     <flux:error name="datosFaltantes" />
 
+    @php
+        // Campos que siempre se ingresan manualmente (la IA no los extrae de documentos).
+        $camposSiempreManuales = ['N.º Individuos', 'N.º Morfoespecies', 'N.º Lotes'];
+
+        // Solo mostramos en el callout los faltantes que (a) pertenecen al flujo actual
+        // y (b) se esperaba extraer automáticamente.
+        $datosFaltantesExtraccion = array_values(
+            array_filter(
+                $datosFaltantes,
+                fn ($campo) => array_key_exists($campo, $datosExtraidos)
+                    && ! in_array($campo, $camposSiempreManuales, true),
+            )
+        );
+    @endphp
+
     @if(in_array('N.º Permiso Movilización', $datosFaltantes) && !isset($documentosCargados['Copia del permiso de movilización']))
         <flux:callout variant="warning" icon="exclamation-triangle">
             <flux:heading>Se requiere el Permiso de Movilización</flux:heading>
@@ -48,10 +63,15 @@
                 Volver a adjuntar documentos
             </flux:button>
         </flux:callout>
-    @elseif(!empty($datosFaltantes))
+    @elseif(!empty($datosFaltantesExtraccion))
         <flux:callout variant="danger" icon="x-circle">
-            <flux:heading>{{ count($datosFaltantes) }} dato(s) requeridos no se pudieron extraer</flux:heading>
-            <flux:text>La extracción automática no detectó: <strong>{{ implode(', ', $datosFaltantes) }}</strong>. Completa manualmente cada celda marcada abajo.</flux:text>
+            <flux:heading>{{ count($datosFaltantesExtraccion) }} dato(s) requeridos no se pudieron extraer</flux:heading>
+            <flux:text>La extracción automática no detectó: <strong>{{ implode(', ', $datosFaltantesExtraccion) }}</strong>. Completa manualmente cada celda marcada abajo.</flux:text>
+        </flux:callout>
+    @elseif(!empty($datosFaltantes))
+        <flux:callout variant="warning" icon="pencil-square">
+            <flux:heading>{{ count($datosFaltantes) }} dato(s) pendientes de completar</flux:heading>
+            <flux:text>Completa manualmente los campos marcados abajo para continuar.</flux:text>
         </flux:callout>
     @endif
 
@@ -63,15 +83,31 @@
             $fuentesPorCampo = [
                 'N.º Permiso Recolección' => 'Copia de la autorización de recolección (MAE)',
                 'N.º Permiso Movilización' => 'Copia del permiso de movilización',
+                'N.º Investigación' => 'Documento de procedencia de los especimenes',
                 'Grupo Animal' => $tipoTramite === 'Donación'
                     ? 'Formato solicitud donación'
                     : 'Copia del permiso de movilización',
                 'Provincia' => 'Copia del permiso de movilización',
+                'Administración Política' => 'Documento de procedencia de los especimenes',
                 'Localidad' => 'Copia del permiso de movilización',
                 'Origen Donación' => 'Carta de cesión de derechos / origen lícito',
                 'N.º Individuos' => null,
                 'N.º Morfoespecies' => null,
                 'N.º Lotes' => null,
+            ];
+
+            $tooltipsPorCampo = [
+                'N.º Permiso Recolección'  => 'Número del permiso emitido por el Ministerio del Ambiente y Agua (MAE/MAATE) que autoriza la recolección de los especímenes en campo.',
+                'N.º Permiso Movilización' => 'Número de la guía de movilización emitida por el MAE que autoriza el traslado de los especímenes desde su lugar de recolección.',
+                'N.º Investigación'        => 'Número o código del proyecto de investigación bajo el cual se obtuvieron los especímenes en el país de origen. Puede ser una referencia institucional, gubernamental o de la colección foránea.',
+                'Grupo Animal'             => 'Por favor colocar una referencia taxonómica de lo que está depositando (Familia, Género o Especie).',
+                'Provincia'                => 'Provincia del Ecuador donde se realizó la recolección. Se extrae del permiso de movilización adjunto.',
+                'Administración Política'  => 'División político-administrativa del lugar de recolección en el país de origen. Puede ser una provincia, departamento, estado u otra unidad administrativa equivalente.',
+                'Localidad'                => 'Nombre específico del lugar donde se recolectaron los especímenes (ciudad, área natural, reserva, parroquia, etc.).',
+                'Origen Donación'          => 'Descripción del origen de los especímenes que serán donados, confirmando la legalidad de su obtención.',
+                'N.º Individuos'           => 'Número total de especímenes individuales incluidos en esta solicitud.',
+                'N.º Morfoespecies'        => 'Número de morfoespecies distintas (grupos morfológicamente diferenciables) presentes en la colección.',
+                'N.º Lotes'                => 'Número de lotes en que se agrupan los especímenes para su organización y registro en la colección.',
             ];
 
             $camposCuantitativos = ['N.º Individuos', 'N.º Morfoespecies', 'N.º Lotes'];
@@ -97,6 +133,7 @@
                     :fuente="$fuente"
                     :faltante="$esFaltante && !$estaEditando"
                     :manual="$esManual && !$esFaltante && !$estaEditando"
+                    :ayuda="$tooltipsPorCampo[$campo] ?? null"
                 >
                     @if($estaEditando)
                         <div class="flex gap-2 mt-1">
@@ -171,7 +208,7 @@
                         <flux:icon name="exclamation-triangle" class="size-5 text-warning shrink-0" />
                         <div>
                             <p class="text-sm font-semibold text-text-primary">{{ count($sinFirma) }} documento(s) sin firma electrónica digital</p>
-                            <p class="text-xs text-text-secondary mt-0.5">Puedes continuar, pero el curador revisará los documentos antes de aprobar la solicitud.</p>
+                            <p class="text-xs text-text-secondary mt-0.5">Puedes continuar, pero el funcionario responsable revisará los documentos antes de aprobar la solicitud.</p>
                         </div>
                     </div>
                     <div class="space-y-1.5">

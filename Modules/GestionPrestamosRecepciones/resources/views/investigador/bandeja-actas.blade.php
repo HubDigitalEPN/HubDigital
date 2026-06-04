@@ -41,7 +41,7 @@
         <div class="flex flex-col items-center justify-center rounded-lg border border-border bg-surface py-[60px] text-center">
             <flux:icon name="clipboard-document" class="size-12 text-text-secondary mb-3" />
             <flux:heading size="lg" level="2">Sin actas</flux:heading>
-            <flux:text class="text-text-secondary mt-1">Tus actas aparecerán aquí cuando el curador apruebe tu solicitud.</flux:text>
+            <flux:text class="text-text-secondary mt-1">Tus actas aparecerán aquí cuando el funcionario responsable apruebe tu solicitud.</flux:text>
         </div>
     @elseif($actas->isEmpty())
         <div class="flex flex-col items-center justify-center rounded-lg border border-border bg-surface py-[60px] text-center">

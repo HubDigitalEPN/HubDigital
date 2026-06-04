@@ -48,14 +48,14 @@
                     <flux:icon name="pause-circle" class="size-5 text-warning" />
                 </div>
                 <div>
-                    <p class="text-sm font-semibold text-text-primary">Solicitud retenida para asesoría curatorial</p>
+                    <p class="text-sm font-semibold text-text-primary">Solicitud pausada — en espera de asesoría</p>
                     <p class="text-xs text-text-secondary">N.º {{ $numeroSolicitud }}</p>
                 </div>
             </div>
 
             {{-- Qué pasó --}}
             <p class="text-sm text-text-secondary">
-                La carga de documentos ha sido pausada. Un curador revisará tu caso y se pondrá en contacto contigo directamente para orientarte en el proceso.
+                La carga de documentos ha sido pausada. El funcionario responsable revisará tu caso y se pondrá en contacto contigo directamente para orientarte en el proceso.
             </p>
 
             {{-- Próximos pasos --}}
@@ -64,11 +64,11 @@
                 <ul class="space-y-2">
                     <li class="flex items-start gap-2 text-sm text-text-primary">
                         <flux:icon name="check-circle" class="size-4 text-success shrink-0 mt-0.5" />
-                        Tu solicitud quedó registrada con el estado <strong>Retenida para asesoría curatorial</strong>.
+                        Tu solicitud quedó registrada con el estado <strong>Pausada para asesoría</strong>.
                     </li>
                     <li class="flex items-start gap-2 text-sm text-text-primary">
                         <flux:icon name="envelope" class="size-4 text-science-blue shrink-0 mt-0.5" />
-                        Recibirás una notificación cuando el curador inicie el contacto contigo.
+                        Recibirás una notificación cuando el funcionario responsable inicie el contacto contigo.
                     </li>
                     <li class="flex items-start gap-2 text-sm text-text-primary">
                         <flux:icon name="clock" class="size-4 text-text-secondary shrink-0 mt-0.5" />
@@ -93,7 +93,7 @@
                     'Copia de la autorización de recolección (MAE)' => asset('plantillas/depositos/autorizacion-mae-ejemplo.pdf'),
                     'Copia del permiso de movilización' => asset('plantillas/depositos/permiso-movilizacion-ejemplo.pdf'),
                     'Documento de explicación de motivos y/o carta de justificación (institucional o personal)' => asset('plantillas/depositos/carta-justificacion-ejemplo.pdf'),
-                    'Carta de procedencia firmada por el responsable de la colección de origen' => asset('plantillas/depositos/carta-procedencia-ejemplo.pdf'),
+                    'Documento de procedencia de los especimenes' => asset('plantillas/depositos/carta-procedencia-ejemplo.pdf'),
                     'Carta de cesión de derechos / origen lícito' => asset('plantillas/depositos/carta-cesion-ejemplo.pdf'),
                     'Carta de delegación / justificación de tercero' => asset('plantillas/depositos/carta-delegacion-ejemplo.pdf'),
                 ];
@@ -110,8 +110,8 @@
                         => 'Guía de movilización emitida por el MAE que ampara el traslado de los especímenes. Sube la copia del documento que tienes; el ejemplo te orienta sobre su formato.',
                     'Documento de explicación de motivos y/o carta de justificación (institucional o personal)'
                         => 'Carta redactada por ti o tu institución que explica por qué no cuentas con permisos del MAE. El ejemplo te muestra el tipo de contenido y tono esperados.',
-                    'Carta de procedencia firmada por el responsable de la colección de origen'
-                        => 'Carta firmada por el responsable de la colección extranjera de donde provienen los especímenes. El ejemplo te indica qué información debe incluir.',
+                    'Documento de procedencia de los especimenes'
+                        => 'Este documento explica y justifica cómo obtuviste los especímenes que deseas depositar. Debe incluir el origen, la procedencia y cualquier información que respalde la legalidad de su obtención.',
                     'Carta de cesión de derechos / origen lícito'
                         => 'Documento que certifica que los especímenes se donan voluntariamente y que su obtención fue legal. El ejemplo te orienta sobre su contenido.',
                     'Carta de delegación / justificación de tercero'
@@ -147,8 +147,8 @@
                 <div class="flex-1">
                     <p class="text-sm font-semibold text-text-primary">¿No cuentas con ningún documento disponible?</p>
                     <p class="text-xs text-text-secondary mt-0.5">
-                        Si carecés totalmente de documentación, puedes solicitar la intervención directa de un curador.
-                        La carga documental se pausará y el curador iniciará el contacto contigo.
+                        Si no cuentas con ningún documento, puedes solicitar la intervención directa del funcionario responsable.
+                        La carga documental se pausará y él se pondrá en contacto contigo para orientarte.
                     </p>
                 </div>
             </div>

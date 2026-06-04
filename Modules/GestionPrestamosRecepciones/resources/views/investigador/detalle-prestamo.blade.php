@@ -142,7 +142,7 @@
                         'SolicitudPrestamoObservada'    => 'Solicitud observada',
                         'ActaEnviada'                   => 'Acta enviada al investigador',
                         'ActaFirmadaSubida'             => 'Acta firmada subida',
-                        'ActaDevueltaPorFirmaInvalida'  => 'Acta devuelta por el curador',
+                        'ActaDevueltaPorFirmaInvalida'  => 'Acta devuelta por el funcionario responsable',
                         'ActaValidada'                  => 'Acta validada',
                         'PrestamoIniciado'              => 'Préstamo iniciado',
                     ];

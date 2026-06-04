@@ -8,7 +8,7 @@ enum EstadoSolicitudDeposito: string
 {
     case EnBorrador = 'En Borrador';
     case Rechazada = 'Rechazada';
-    case RetenidaParaAsesoriaCuratorial = 'Retenida para Asesoría Curatorial';
+    case RetenidaParaAsesoriaCuratorial = 'Pausada para Asesoría';
     case PendienteDeRevisionPorCuraduria = 'Pendiente de Revisión por Curaduría';
 
     public function equals(self $other): bool
