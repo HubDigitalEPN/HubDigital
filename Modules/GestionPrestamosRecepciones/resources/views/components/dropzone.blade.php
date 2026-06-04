@@ -5,6 +5,7 @@
     'cargado' => false,
     'archivoNombre' => null,
     'plantilla' => null,
+    'ayuda' => null,
 ])
 
 <div
@@ -56,7 +57,46 @@
 
     {{-- Body --}}
     <div class="flex-1 min-w-0">
-        <p class="text-sm font-semibold text-text-primary leading-snug">{{ $nombre }}</p>
+        <div class="flex items-start gap-1.5">
+            <p class="text-sm font-semibold text-text-primary leading-snug">{{ $nombre }}</p>
+            @if($ayuda)
+                <div
+                    x-data="{ infoAbierta: false }"
+                    x-on:mouseenter="infoAbierta = true"
+                    x-on:mouseleave="infoAbierta = false"
+                    class="relative shrink-0"
+                >
+                    <span
+                        :class="infoAbierta ? 'text-science-blue' : 'text-text-secondary'"
+                        class="mt-0.5 flex cursor-help transition-colors duration-200"
+                    >
+                        <flux:icon name="information-circle" class="size-4" />
+                    </span>
+
+                    <div
+                        x-show="infoAbierta"
+                        x-cloak
+                        x-transition:enter="transition ease-out duration-300"
+                        x-transition:enter-start="opacity-0 -translate-y-2 scale-[0.97]"
+                        x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                        x-transition:leave="transition ease-in duration-150"
+                        x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+                        x-transition:leave-end="opacity-0 -translate-y-2 scale-[0.97]"
+                        class="absolute left-0 top-full z-30 mt-1.5 w-64 origin-top-left overflow-hidden rounded-lg bg-surface bg-gradient-to-br from-science-blue/10 via-surface to-bio-green/5 shadow-lg ring-1 ring-science-blue/20 sm:w-72"
+                    >
+                        <div class="flex gap-2.5 p-3">
+                            <div class="flex size-7 shrink-0 items-center justify-center rounded-full bg-science-blue/15 ring-1 ring-science-blue/20">
+                                <flux:icon name="light-bulb" class="size-4 text-science-blue" />
+                            </div>
+                            <div class="space-y-0.5">
+                                <p class="text-xs font-semibold uppercase tracking-wide text-science-blue">¿Qué subo aquí?</p>
+                                <p class="text-xs text-text-secondary leading-relaxed">{{ $ayuda }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
+        </div>
 
         <div class="flex items-center gap-2 mt-1 flex-wrap">
             <template x-if="cargado">

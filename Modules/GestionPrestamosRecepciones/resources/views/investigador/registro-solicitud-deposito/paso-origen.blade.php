@@ -73,11 +73,11 @@
 
             <div class="grid gap-3 sm:grid-cols-2">
                 <x-gestionprestamosrecepciones::radio-card
-                    :activo="$situacionRegulatoria === 'Posee permisos del MAATE'"
-                    titulo="Posee permisos del MAATE"
+                    :activo="$situacionRegulatoria === 'Posee permisos del MAE'"
+                    titulo="Posee permisos del MAE"
                     grupo="situacionRegulatoria"
-                    descripcion="Cuenta con autorización vigente de recolección y permiso de movilización emitidos por el MAATE."
-                    x-on:click="seleccionarSituacion('Posee permisos del MAATE')"
+                    descripcion="Cuenta con autorización vigente de recolección y permiso de movilización emitidos por el MAE."
+                    x-on:click="seleccionarSituacion('Posee permisos del MAE')"
                 >
                     <x-slot:icono>
                         <flux:icon name="document-check" class="size-5 text-bio-green" />
@@ -85,11 +85,11 @@
                 </x-gestionprestamosrecepciones::radio-card>
 
                 <x-gestionprestamosrecepciones::radio-card
-                    :activo="$situacionRegulatoria === 'Sin permisos del MAATE'"
-                    titulo="Sin permisos del MAATE"
+                    :activo="$situacionRegulatoria === 'Sin permisos del MAE'"
+                    titulo="Sin permisos del MAE"
                     grupo="situacionRegulatoria"
                     descripcion="Solo dispone de carta de justificación institucional o personal que explica la ausencia de permisos."
-                    x-on:click="seleccionarSituacion('Sin permisos del MAATE')"
+                    x-on:click="seleccionarSituacion('Sin permisos del MAE')"
                 >
                     <x-slot:icono>
                         <flux:icon name="exclamation-triangle" class="size-5 text-warning" />

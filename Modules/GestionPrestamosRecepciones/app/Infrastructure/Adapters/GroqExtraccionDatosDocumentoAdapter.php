@@ -53,7 +53,7 @@ final class GroqExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocume
 
             $parcial = $this->consultarGroq($nombre, $texto);
 
-            // Red de seguridad para el número de autorización MAATE: el modelo
+            // Red de seguridad para el número de autorización MAE: el modelo
             // puede truncar el código. Complementamos con un regex sobre el texto
             // crudo del PDF y nos quedamos con el resultado más completo.
             if ($this->clasificarDocumento($nombre) === self::TIPO_AUTORIZACION) {
@@ -308,11 +308,11 @@ final class GroqExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocume
     private function instruccionesAutorizacion(): string
     {
         return <<<'INST'
-        Instrucciones para este documento (autorización de recolección MAATE):
+        Instrucciones para este documento (autorización de recolección MAE):
 
         Extrae SOLO estos campos:
 
-        - "nroPermisoRecoleccion": Código alfanumérico COMPLETO de la autorización emitida por el MAATE.
+        - "nroPermisoRecoleccion": Código alfanumérico COMPLETO de la autorización emitida por el MAE.
           Suele aparecer precedido por un prefijo tipo "N.º", "N.°", "Nro." o "No.".
           El código está formado por una secuencia contigua de segmentos alfanuméricos unidos
           por guiones "-", barras "/" y espacios, que pueden incluir acrónimos institucionales
@@ -340,11 +340,11 @@ final class GroqExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocume
 
         --- Ejemplos de extracción correcta ---
 
-        Texto: "...AUTORIZACIÓN DE INVESTIGACIÓN CIENTÍFICA N.º 007-2023-IC-FAU-DPAO-MAATE... se autoriza la recolección de fauna silvestre (Entomofauna)... Área geográfica: Provincia de Sucumbíos... Bloque 56 Lago Agrio..."
-        Resultado: {"nroPermisoRecoleccion": "007-2023-IC-FAU-DPAO-MAATE", "nroPermisoMovilizacion": null, "grupoAnimal": "Entomofauna", "provinciaOrigen": "Sucumbíos", "localidad": "Bloque 56 Lago Agrio", "origenDonacion": null, "nombreInvestigador": null}
+        Texto: "...AUTORIZACIÓN DE INVESTIGACIÓN CIENTÍFICA N.º 007-2023-IC-FAU-DPAO-MAE... se autoriza la recolección de fauna silvestre (Entomofauna)... Área geográfica: Provincia de Sucumbíos... Bloque 56 Lago Agrio..."
+        Resultado: {"nroPermisoRecoleccion": "007-2023-IC-FAU-DPAO-MAE", "nroPermisoMovilizacion": null, "grupoAnimal": "Entomofauna", "provinciaOrigen": "Sucumbíos", "localidad": "Bloque 56 Lago Agrio", "origenDonacion": null, "nombreInvestigador": null}
 
-        Texto: "...Autorización Nro. 012-2024-ENT-DPAN-MAATE... recolección de macroinvertebrados acuáticos... Provincia: Napo..."
-        Resultado: {"nroPermisoRecoleccion": "012-2024-ENT-DPAN-MAATE", "nroPermisoMovilizacion": null, "grupoAnimal": "Macroinvertebrados acuáticos", "provinciaOrigen": "Napo", "localidad": null, "origenDonacion": null, "nombreInvestigador": null}
+        Texto: "...Autorización Nro. 012-2024-ENT-DPAN-MAE... recolección de macroinvertebrados acuáticos... Provincia: Napo..."
+        Resultado: {"nroPermisoRecoleccion": "012-2024-ENT-DPAN-MAE", "nroPermisoMovilizacion": null, "grupoAnimal": "Macroinvertebrados acuáticos", "provinciaOrigen": "Napo", "localidad": null, "origenDonacion": null, "nombreInvestigador": null}
         INST;
     }
 
@@ -379,7 +379,7 @@ final class GroqExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocume
 
         --- Ejemplos de extracción correcta ---
 
-        Texto: "...GUÍA DE MOVILIZACIÓN DE ESPECÍMENES Nro. GM-2024-00145... Autorización Nro. 007-2023-IC-FAU-DPAO-MAATE... ORIGEN: Provincia Orellana, Cantón Aguarico, Sitio: Estación Tiputini... DESTINO: Provincia Pichincha, Cantón Quito... Orden: Lepidoptera..."
+        Texto: "...GUÍA DE MOVILIZACIÓN DE ESPECÍMENES Nro. GM-2024-00145... Autorización Nro. 007-2023-IC-FAU-DPAO-MAE... ORIGEN: Provincia Orellana, Cantón Aguarico, Sitio: Estación Tiputini... DESTINO: Provincia Pichincha, Cantón Quito... Orden: Lepidoptera..."
         Resultado: {"nroPermisoRecoleccion": null, "nroPermisoMovilizacion": "GM-2024-00145", "grupoAnimal": "Lepidoptera", "provinciaOrigen": "Orellana", "localidad": "Estación Tiputini", "origenDonacion": null, "nombreInvestigador": null}
 
         Texto: "...Guía de Movilización Nro. 0089-2024-SUIA... Origen: Napo... Especie: Pristimantis sp. (Anura)..."
@@ -424,8 +424,8 @@ final class GroqExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocume
             ],
             self::TIPO_AUTORIZACION => [
                 'autorizacion de recoleccion',
-                'autorizacion maate',
-                'permiso recoleccion maate',
+                'autorizacion mae',
+                'permiso recoleccion mae',
                 'autorizacion investigacion',
             ],
             self::TIPO_MOVILIZACION => [
@@ -540,11 +540,11 @@ final class GroqExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocume
         return true;
     }
 
-    // ── Seguridad para código de recolección MAATE ───────────────────────────────
+    // ── Seguridad para código de recolección MAE ───────────────────────────────
 
     /**
      * Busca en el texto crudo del PDF un código con la forma típica de
-     * autorización MAATE: dígitos-año seguido de uno o más segmentos
+     * autorización MAE: dígitos-año seguido de uno o más segmentos
      * alfanuméricos en mayúsculas unidos por guiones, barras o espacios.
      */
     private function extraerCodigoRecoleccionPorRegex(string $texto): ?string

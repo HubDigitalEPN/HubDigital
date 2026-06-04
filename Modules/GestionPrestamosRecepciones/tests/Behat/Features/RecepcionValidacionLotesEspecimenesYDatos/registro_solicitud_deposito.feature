@@ -31,13 +31,13 @@ Característica: Registro de solicitud de depósito
 
         Ejemplos:
             | origen_recoleccion    | situacion_regulatoria           | documento_requerido                                                                                                        |
-            | Nacional (Ecuador)    | Posee permisos del MAATE        | Formato solicitud depósito y Copia de la autorización de recolección (MAATE) y Copia del permiso de movilización           |
-            | Nacional (Ecuador)    | Sin permisos del MAATE          | Formato solicitud depósito y Documento de explicación de motivos y/o carta de justificación (institucional o personal)     |
+            | Nacional (Ecuador)    | Posee permisos del MAE        | Formato solicitud depósito y Copia de la autorización de recolección (MAE) y Copia del permiso de movilización           |
+            | Nacional (Ecuador)    | Sin permisos del MAE          | Formato solicitud depósito y Documento de explicación de motivos y/o carta de justificación (institucional o personal)     |
             | Exterior (Extranjero) | Proviene de colección foránea   | Formato solicitud depósito y Carta de procedencia firmada por el responsable de la colección de origen                     |
 
     @deposito @excepcion
     Escenario: Escalabilidad de la solicitud por falta total de documentación
-        Dado que el investigador carece de los documentos del MAATE y de carta de justificación
+        Dado que el investigador carece de los documentos del MAE y de carta de justificación
         Cuando el investigador solicita la intervención directa de curaduría
         Entonces el proceso de carga documental se pausa
         Y la solicitud pasa al estado "Retenida para Asesoría Curatorial"
@@ -61,11 +61,11 @@ Característica: Registro de solicitud de depósito
         Cuando el investigador carga los siguientes documentos:
             | Documento Oficial                               |
             | Formato solicitud depósito                      |
-            | Copia de la autorización de recolección (MAATE) |
+            | Copia de la autorización de recolección (MAE) |
             | Copia del permiso de movilización               |
         Entonces la solicitud incorpora automáticamente la siguiente información:
             | Información requerida    | Extraída de                                     |
-            | N.º Permiso Recolección  | Copia de la autorización de recolección (MAATE) |
+            | N.º Permiso Recolección  | Copia de la autorización de recolección (MAE) |
             | N.º Permiso Movilización | Copia del permiso de movilización               |
             | Grupo Animal             | Copia del permiso de movilización               |
             | Provincia                | Copia del permiso de movilización               |

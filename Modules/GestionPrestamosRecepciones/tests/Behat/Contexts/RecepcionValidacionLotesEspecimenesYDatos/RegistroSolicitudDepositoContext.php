@@ -366,8 +366,8 @@ final class RegistroSolicitudDepositoContext extends BaseContext
     // ESCENARIO: Escalabilidad por falta total de documentación
     // =========================================================================
 
-    #[Given('que el investigador carece de los documentos del MAATE y de carta de justificación')]
-    public function queElInvestigadorCareceDeLosDocumentosDelMAATEYDeJustificacionesFormales(): void
+    #[Given('que el investigador carece de los documentos del MAE y de carta de justificación')]
+    public function queElInvestigadorCareceDeLosDocumentosDelMAEYDeJustificacionesFormales(): void
     {
         $solicitud = $this->sembrarSolicitudDepositoBase();
         $solicitud->marcarSinDocumentacionDisponible();

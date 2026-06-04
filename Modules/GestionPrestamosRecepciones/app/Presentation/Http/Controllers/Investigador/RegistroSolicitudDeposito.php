@@ -99,7 +99,7 @@ final class RegistroSolicitudDeposito extends Component
 
     public $archivoFormatoDonacion = null;
 
-    public $archivoAutorizacionMaate = null;
+    public $archivoAutorizacionMae = null;
 
     public $archivoPermisoMovilizacion = null;
 
@@ -554,9 +554,9 @@ final class RegistroSolicitudDeposito extends Component
         $this->registrarDocumentoCargado('archivoFormatoDonacion', 'Formato solicitud donación', $this->archivoFormatoDonacion);
     }
 
-    public function updatedArchivoAutorizacionMaate(): void
+    public function updatedArchivoAutorizacionMae(): void
     {
-        $this->registrarDocumentoCargado('archivoAutorizacionMaate', 'Copia de la autorización de recolección (MAATE)', $this->archivoAutorizacionMaate);
+        $this->registrarDocumentoCargado('archivoAutorizacionMae', 'Copia de la autorización de recolección (MAE)', $this->archivoAutorizacionMae);
     }
 
     public function updatedArchivoPermisoMovilizacion(): void
@@ -862,7 +862,7 @@ final class RegistroSolicitudDeposito extends Component
 
         // Validar que cada número de permiso ingresado tenga su documento de respaldo
         $permisosConDocumento = [
-            'N.º Permiso Recolección' => 'Copia de la autorización de recolección (MAATE)',
+            'N.º Permiso Recolección' => 'Copia de la autorización de recolección (MAE)',
             'N.º Permiso Movilización' => 'Copia del permiso de movilización',
         ];
 
@@ -1347,7 +1347,7 @@ final class RegistroSolicitudDeposito extends Component
         return match ($nombre) {
             'Formato solicitud depósito' => 'archivoFormatoDeposito',
             'Formato solicitud donación' => 'archivoFormatoDonacion',
-            'Copia de la autorización de recolección (MAATE)' => 'archivoAutorizacionMaate',
+            'Copia de la autorización de recolección (MAE)' => 'archivoAutorizacionMae',
             'Copia del permiso de movilización' => 'archivoPermisoMovilizacion',
             'Documento de explicación de motivos y/o carta de justificación (institucional o personal)' => 'archivoCartaJustificacion',
             'Carta de procedencia firmada por el responsable de la colección de origen' => 'archivoCartaProcedencia',

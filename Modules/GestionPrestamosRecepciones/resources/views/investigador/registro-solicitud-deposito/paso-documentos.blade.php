@@ -90,7 +90,7 @@
                 $plantillas = [
                     'Formato solicitud depósito' => asset('plantillas/depositos/formato-solicitud-deposito.pdf'),
                     'Formato solicitud donación' => asset('plantillas/depositos/formato-solicitud-donacion.pdf'),
-                    'Copia de la autorización de recolección (MAATE)' => asset('plantillas/depositos/autorizacion-maate-ejemplo.pdf'),
+                    'Copia de la autorización de recolección (MAE)' => asset('plantillas/depositos/autorizacion-mae-ejemplo.pdf'),
                     'Copia del permiso de movilización' => asset('plantillas/depositos/permiso-movilizacion-ejemplo.pdf'),
                     'Documento de explicación de motivos y/o carta de justificación (institucional o personal)' => asset('plantillas/depositos/carta-justificacion-ejemplo.pdf'),
                     'Carta de procedencia firmada por el responsable de la colección de origen' => asset('plantillas/depositos/carta-procedencia-ejemplo.pdf'),
@@ -98,6 +98,25 @@
                     'Carta de delegación / justificación de tercero' => asset('plantillas/depositos/carta-delegacion-ejemplo.pdf'),
                 ];
                 $plantillasDisponibles = array_intersect_key($plantillas, array_flip($documentosRequeridos));
+
+                $ayudas = [
+                    'Formato solicitud depósito'
+                        => 'Formulario oficial de la colección que debes completar para iniciar tu solicitud. El ejemplo de referencia te muestra cómo luce correctamente llenado.',
+                    'Formato solicitud donación'
+                        => 'Formulario oficial para formalizar la transferencia permanente de los especímenes. Consulta el ejemplo de referencia para ver cómo debe quedar.',
+                    'Copia de la autorización de recolección (MAE)'
+                        => 'Documento emitido por el Ministerio del Ambiente y Agua (MAE) que autoriza la recolección en campo. Sube la copia del que ya tienes; el ejemplo te muestra cómo identificarlo.',
+                    'Copia del permiso de movilización'
+                        => 'Guía de movilización emitida por el MAE que ampara el traslado de los especímenes. Sube la copia del documento que tienes; el ejemplo te orienta sobre su formato.',
+                    'Documento de explicación de motivos y/o carta de justificación (institucional o personal)'
+                        => 'Carta redactada por ti o tu institución que explica por qué no cuentas con permisos del MAE. El ejemplo te muestra el tipo de contenido y tono esperados.',
+                    'Carta de procedencia firmada por el responsable de la colección de origen'
+                        => 'Carta firmada por el responsable de la colección extranjera de donde provienen los especímenes. El ejemplo te indica qué información debe incluir.',
+                    'Carta de cesión de derechos / origen lícito'
+                        => 'Documento que certifica que los especímenes se donan voluntariamente y que su obtención fue legal. El ejemplo te orienta sobre su contenido.',
+                    'Carta de delegación / justificación de tercero'
+                        => 'Si el nombre en los documentos no coincide con tu perfil, adjunta esta carta explicando el motivo o autorizando a otra persona a realizar el trámite.',
+                ];
             @endphp
 
             <div class="space-y-3">
@@ -110,6 +129,7 @@
                         :cargado="isset($documentosCargados[$docNombre])"
                         :archivo-nombre="$nombresArchivosOriginales[$docNombre] ?? null"
                         :plantilla="$plantillasDisponibles[$docNombre] ?? null"
+                        :ayuda="$ayudas[$docNombre] ?? null"
                     />
                 @endforeach
             </div>

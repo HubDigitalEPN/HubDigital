@@ -61,7 +61,7 @@
 
         @php
             $fuentesPorCampo = [
-                'N.º Permiso Recolección' => 'Copia de la autorización de recolección (MAATE)',
+                'N.º Permiso Recolección' => 'Copia de la autorización de recolección (MAE)',
                 'N.º Permiso Movilización' => 'Copia del permiso de movilización',
                 'Grupo Animal' => $tipoTramite === 'Donación'
                     ? 'Formato solicitud donación'

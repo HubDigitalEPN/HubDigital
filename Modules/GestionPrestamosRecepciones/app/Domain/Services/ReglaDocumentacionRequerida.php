@@ -15,11 +15,11 @@ final class ReglaDocumentacionRequerida
     /** Documentos suplementarios según origen y situación regulatoria */
     private const TABLA = [
         'Nacional (Ecuador)' => [
-            'Posee permisos del MAATE' => [
-                'Copia de la autorización de recolección (MAATE)',
+            'Posee permisos del MAE' => [
+                'Copia de la autorización de recolección (MAE)',
                 'Copia del permiso de movilización',
             ],
-            'Sin permisos del MAATE' => [
+            'Sin permisos del MAE' => [
                 'Documento de explicación de motivos y/o carta de justificación (institucional o personal)',
             ],
         ],
@@ -35,7 +35,7 @@ final class ReglaDocumentacionRequerida
     {
         $base = self::FORMATO_BASE[$tipoTramite] ?? [];
 
-        // Los documentos suplementarios (MAATE, Movilización, etc.) solo aplican a Depósito
+        // Los documentos suplementarios (MAE, Movilización, etc.) solo aplican a Depósito
         if ($tipoTramite !== 'Depósito') {
             return array_values($base);
         }
