@@ -27,7 +27,7 @@ final class EspecimenIndex extends Component
 {
     use TraduceErroresPersistencia;
 
-    // ── Búsqueda ──────────────────────────────────────────────────────────────
+    // ── Búsqueda multi-filtro ─────────────────────────────────────────────────
 
     public array $especimenes = [];
 
@@ -37,12 +37,46 @@ final class EspecimenIndex extends Component
 
     public int $perPage = 25;
 
-    #[Rule('required|string|in:taxon,localidad,estado,codigo,occurrence_id,catalog_number,para_revision')]
-    public string $criterio = 'para_revision';
+    public bool $filtrosAbiertos = true;
 
-    /** Para criterio=para_revision, $valor puede ir vacío (lista todos los pendientes). */
-    #[Rule('nullable|string|max:255')]
-    public string $valor = '';
+    // Filtros combinables (todos opcionales, AND lógico)
+    #[Rule('nullable|string|max:120')]
+    public string $fTaxon = '';
+
+    #[Rule('nullable|string|max:120')]
+    public string $fFamilia = '';
+
+    #[Rule('nullable|string|max:120')]
+    public string $fCodigoCatalogo = '';
+
+    #[Rule('nullable|string|max:120')]
+    public string $fOccurrenceId = '';
+
+    #[Rule('nullable|string|max:120')]
+    public string $fCatalogNumber = '';
+
+    #[Rule('nullable|string|max:200')]
+    public string $fLocalidad = '';
+
+    #[Rule('nullable|string|max:200')]
+    public string $fColector = '';
+
+    #[Rule('nullable|date_format:Y-m-d')]
+    public string $fFechaDesde = '';
+
+    #[Rule('nullable|date_format:Y-m-d')]
+    public string $fFechaHasta = '';
+
+    #[Rule('nullable|string|in:disponible,en_prestamo')]
+    public string $fEstado = '';
+
+    #[Rule('nullable|string|in:pendiente,confirmada,descartada')]
+    public string $fEstadoRevision = '';
+
+    #[Rule('nullable|string|max:200')]
+    public string $fMotivoRevision = '';
+
+    public bool $fParaRevision = true;
 
     // ── Registro ──────────────────────────────────────────────────────────────
 
@@ -386,21 +420,23 @@ final class EspecimenIndex extends Component
 
     public function buscar(BuscarEspecimenesHandler $handler): void
     {
-        // Regla condicional: para criterios distintos a para_revision se exigen 2+ chars.
-        $reglas = [
-            'criterio' => 'required|string|in:taxon,localidad,estado,codigo,occurrence_id,catalog_number,para_revision',
-        ];
-        if ($this->criterio !== 'para_revision') {
-            $reglas['valor'] = 'required|string|min:2|max:255';
-        } else {
-            $reglas['valor'] = 'nullable|string|max:255';
-        }
-        $this->validate($reglas);
+        $this->validate();
 
         try {
             $output = $handler->handle(new BuscarEspecimenesInput(
-                criterio: $this->criterio,
-                valor: $this->valor,
+                taxonNombre: $this->nullableString($this->fTaxon),
+                codigoCatalogo: $this->nullableString($this->fCodigoCatalogo),
+                occurrenceId: $this->nullableString($this->fOccurrenceId),
+                catalogNumber: $this->nullableString($this->fCatalogNumber),
+                localidad: $this->nullableString($this->fLocalidad),
+                colector: $this->nullableString($this->fColector),
+                familia: $this->nullableString($this->fFamilia),
+                fechaDesde: $this->nullableString($this->fFechaDesde),
+                fechaHasta: $this->nullableString($this->fFechaHasta),
+                estado: $this->nullableString($this->fEstado),
+                estadoRevision: $this->nullableString($this->fEstadoRevision),
+                motivoRevision: $this->nullableString($this->fMotivoRevision),
+                paraRevision: $this->fParaRevision,
             ));
 
             $this->especimenes = $output->items;
@@ -412,18 +448,36 @@ final class EspecimenIndex extends Component
         }
     }
 
-    public function aplicarFiltroRapido(string $criterio, string $valor = ''): void
+    public function preset(string $nombre): void
     {
-        $this->criterio = $criterio;
-        $this->valor = $valor;
+        // Resets all + sets a preset combination
+        $this->reset(
+            'fTaxon', 'fFamilia', 'fCodigoCatalogo', 'fOccurrenceId', 'fCatalogNumber',
+            'fLocalidad', 'fColector', 'fFechaDesde', 'fFechaHasta',
+            'fEstado', 'fEstadoRevision', 'fMotivoRevision', 'fParaRevision',
+        );
+
+        match ($nombre) {
+            'para_revision' => $this->fParaRevision = true,
+            'sin_coords' => [$this->fParaRevision = true, $this->fMotivoRevision = 'coordenadas'],
+            'fechas_raras' => [$this->fParaRevision = true, $this->fMotivoRevision = 'fecha'],
+            'sin_occurrence_id' => [$this->fParaRevision = true, $this->fMotivoRevision = 'occurrence_id ausente'],
+            'todos' => null,
+            default => null,
+        };
         $this->resetValidation();
     }
 
     public function limpiar(): void
     {
-        $this->reset('valor', 'especimenes', 'buscado', 'errorMessage', 'successMessage', 'page');
+        $this->reset(
+            'especimenes', 'buscado', 'errorMessage', 'successMessage', 'page',
+            'fTaxon', 'fFamilia', 'fCodigoCatalogo', 'fOccurrenceId', 'fCatalogNumber',
+            'fLocalidad', 'fColector', 'fFechaDesde', 'fFechaHasta',
+            'fEstado', 'fEstadoRevision', 'fMotivoRevision',
+        );
+        $this->fParaRevision = true;
         $this->resetValidation();
-        $this->criterio = 'para_revision';
     }
 
     public function render(): View

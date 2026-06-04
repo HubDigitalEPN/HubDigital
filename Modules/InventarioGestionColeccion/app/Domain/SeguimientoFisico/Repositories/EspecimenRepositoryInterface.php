@@ -60,6 +60,28 @@ interface EspecimenRepositoryInterface
     public function buscarParaRevision(?string $contieneMotivo = null, int $limit = 200): array;
 
     /**
+     * Búsqueda multi-filtro AND. Todos los campos son opcionales.
+     *
+     * @param  array{
+     *   taxonIds?: string[],
+     *   codigoCatalogo?: string,
+     *   occurrenceId?: string,
+     *   catalogNumber?: string,
+     *   localidad?: string,
+     *   colector?: string,
+     *   fechaDesde?: string,
+     *   fechaHasta?: string,
+     *   estado?: string,
+     *   estadoRevision?: string,
+     *   motivoRevision?: string,
+     *   paraRevision?: bool,
+     *   limit?: int,
+     * }  $filtros
+     * @return Especimen[]
+     */
+    public function buscarConFiltros(array $filtros): array;
+
+    /**
      * Cuenta cuántos especímenes están enganchados a cada `muestra_id` del
      * conjunto provisto. Devuelve mapa `muestra_id => conteo`. Útil para
      * la bandeja de muestras (mostrar cuántos especímenes contiene cada

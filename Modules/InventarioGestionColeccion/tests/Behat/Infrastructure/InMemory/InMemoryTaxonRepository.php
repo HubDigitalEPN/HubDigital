@@ -66,4 +66,24 @@ final class InMemoryTaxonRepository implements TaxonRepositoryInterface
             fn (Taxon $t) => in_array((string) $t->id(), $ids, true)
         ));
     }
+
+    /** @return string[] */
+    public function listarDescendientesIds(string $taxonId): array
+    {
+        $resultado = [$taxonId];
+        $pendientes = [$taxonId];
+        while ($pendientes !== []) {
+            $actual = array_shift($pendientes);
+            foreach ($this->store as $t) {
+                $padre = $t->padreId();
+                if ($padre !== null && (string) $padre === $actual) {
+                    $id = (string) $t->id();
+                    $resultado[] = $id;
+                    $pendientes[] = $id;
+                }
+            }
+        }
+
+        return array_values(array_unique($resultado));
+    }
 }

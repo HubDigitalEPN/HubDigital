@@ -135,73 +135,127 @@
         </div>
     </div>
 
-    {{-- Filtros rápidos --}}
+    {{-- Presets rápidos --}}
     <div class="flex flex-wrap items-center gap-2">
-        <span class="text-xs font-medium text-text-secondary">Filtros rápidos:</span>
+        <span class="text-xs font-medium text-text-secondary">Presets:</span>
         @php
-            $chips = [
-                ['label' => 'Para revisión (todos)', 'criterio' => 'para_revision', 'valor' => ''],
-                ['label' => 'Sin coordenadas válidas', 'criterio' => 'para_revision', 'valor' => 'coordenadas'],
-                ['label' => 'Fechas no parseables', 'criterio' => 'para_revision', 'valor' => 'fecha'],
-                ['label' => 'Sin occurrence_id', 'criterio' => 'para_revision', 'valor' => 'occurrence_id ausente'],
+            $presets = [
+                ['label' => 'Para revisión', 'key' => 'para_revision'],
+                ['label' => 'Sin coordenadas', 'key' => 'sin_coords'],
+                ['label' => 'Fechas no parseables', 'key' => 'fechas_raras'],
+                ['label' => 'Sin occurrence_id', 'key' => 'sin_occurrence_id'],
+                ['label' => 'Limpiar filtros', 'key' => 'todos'],
             ];
         @endphp
-        @foreach($chips as $chip)
-            @php $activo = $criterio === $chip['criterio'] && $valor === $chip['valor']; @endphp
-            <button type="button"
-                    wire:click="aplicarFiltroRapido('{{ $chip['criterio'] }}', '{{ $chip['valor'] }}')"
-                    @class([
-                        'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition-colors',
-                        'bg-error text-white border-error' => $activo,
-                        'border-border text-text-primary hover:bg-bg-main' => !$activo,
-                    ])>
-                {{ $chip['label'] }}
+        @foreach($presets as $p)
+            <button type="button" wire:click="preset('{{ $p['key'] }}')"
+                    class="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1 text-xs hover:bg-bg-main transition-colors">
+                {{ $p['label'] }}
             </button>
         @endforeach
     </div>
 
-    {{-- Formulario de búsqueda --}}
-    <div class="rounded-lg border border-border bg-surface shadow-sm p-5 space-y-4">
-        <flux:heading size="md" level="2" class="text-text-primary">Búsqueda</flux:heading>
-
-        <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <flux:field>
-                <flux:label>Buscar por</flux:label>
-                <flux:select wire:model.live="criterio">
-                    <option value="para_revision">Para revisión (motivo)</option>
-                    <option value="taxon">Nombre de Taxón</option>
-                    <option value="codigo">Código</option>
-                    <option value="occurrence_id">Occurrence ID</option>
-                    <option value="catalog_number">Catalog Number</option>
-                    <option value="localidad">Localidad</option>
-                    <option value="estado">Estado</option>
-                </flux:select>
-                <flux:error name="criterio" />
-            </flux:field>
-
-            <flux:field class="md:col-span-2">
-                <flux:label>
-                    Valor
-                    @if($criterio === 'para_revision')
-                        <span class="text-xs text-text-secondary font-normal">(vacío = todos los marcados; o palabra clave del motivo)</span>
-                    @endif
-                </flux:label>
-                <flux:input
-                    wire:model="valor"
-                    wire:keydown.enter="buscar"
-                    placeholder="{{ $criterio === 'para_revision' ? 'Ej. coordenadas, fecha, occurrence_id' : 'Ingrese el valor de búsqueda...' }}"
-                />
-                <flux:error name="valor" />
-            </flux:field>
-        </div>
-
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <flux:button variant="primary" icon="magnifying-glass" wire:click="buscar" wire:loading.attr="disabled" class="w-full sm:w-auto">
-                <span wire:loading.remove wire:target="buscar">Buscar</span>
-                <span wire:loading wire:target="buscar">Buscando...</span>
+    {{-- Panel de filtros múltiples --}}
+    <div class="rounded-lg border border-border bg-surface shadow-sm">
+        <div class="px-5 py-4 bg-bg-main border-b border-border flex items-center justify-between gap-2">
+            <div>
+                <flux:heading size="md" level="2" class="text-text-primary">Filtros de búsqueda</flux:heading>
+                <p class="text-xs text-text-secondary mt-1">Todos opcionales. Se combinan con AND (todos deben cumplirse).</p>
+            </div>
+            <flux:button size="sm" variant="ghost"
+                         icon="{{ $filtrosAbiertos ? 'chevron-up' : 'chevron-down' }}"
+                         wire:click="$toggle('filtrosAbiertos')">
+                {{ $filtrosAbiertos ? 'Plegar' : 'Mostrar' }}
             </flux:button>
-            @if($buscado)<flux:button variant="ghost" icon="x-mark" wire:click="limpiar">Limpiar</flux:button>@endif
         </div>
+
+        @if($filtrosAbiertos)
+            <div class="p-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <flux:field>
+                    <flux:label>Taxón (nombre científico)</flux:label>
+                    <flux:input wire:model="fTaxon" wire:keydown.enter="buscar" placeholder="Ej. Morpho, peleides, Nymphal..." />
+                </flux:field>
+
+                <flux:field>
+                    <flux:label>Familia (busca descendientes)</flux:label>
+                    <flux:input wire:model="fFamilia" wire:keydown.enter="buscar" placeholder="Ej. Nymphalidae" />
+                </flux:field>
+
+                <flux:field>
+                    <flux:label>Colector</flux:label>
+                    <flux:input wire:model="fColector" wire:keydown.enter="buscar" placeholder="Ej. Villamarín" />
+                </flux:field>
+
+                <flux:field>
+                    <flux:label>Localidad / país / provincia</flux:label>
+                    <flux:input wire:model="fLocalidad" wire:keydown.enter="buscar" placeholder="Ej. Yasuní" />
+                </flux:field>
+
+                <flux:field>
+                    <flux:label>Fecha desde</flux:label>
+                    <flux:input type="date" wire:model="fFechaDesde" />
+                </flux:field>
+
+                <flux:field>
+                    <flux:label>Fecha hasta</flux:label>
+                    <flux:input type="date" wire:model="fFechaHasta" />
+                </flux:field>
+
+                <flux:field>
+                    <flux:label>Código catálogo</flux:label>
+                    <flux:input wire:model="fCodigoCatalogo" wire:keydown.enter="buscar" placeholder="MEPN:INV:1234" />
+                </flux:field>
+
+                <flux:field>
+                    <flux:label>occurrence_id</flux:label>
+                    <flux:input wire:model="fOccurrenceId" wire:keydown.enter="buscar" placeholder="MEPN:INV:..." />
+                </flux:field>
+
+                <flux:field>
+                    <flux:label>catalog_number</flux:label>
+                    <flux:input wire:model="fCatalogNumber" wire:keydown.enter="buscar" placeholder="50494" />
+                </flux:field>
+
+                <flux:field>
+                    <flux:label>Estado físico</flux:label>
+                    <flux:select wire:model="fEstado">
+                        <option value="">— Cualquiera —</option>
+                        <option value="disponible">Disponible</option>
+                        <option value="en_prestamo">En préstamo</option>
+                    </flux:select>
+                </flux:field>
+
+                <flux:field>
+                    <flux:label>Estado de revisión</flux:label>
+                    <flux:select wire:model="fEstadoRevision">
+                        <option value="">— Cualquiera —</option>
+                        <option value="pendiente">Pendiente</option>
+                        <option value="confirmada">Confirmada</option>
+                        <option value="descartada">Descartada</option>
+                    </flux:select>
+                </flux:field>
+
+                <flux:field>
+                    <flux:label>Motivo revisión contiene</flux:label>
+                    <flux:input wire:model="fMotivoRevision" wire:keydown.enter="buscar" placeholder="Ej. coordenadas, fecha" />
+                </flux:field>
+
+                <flux:field class="sm:col-span-2 lg:col-span-3">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" wire:model="fParaRevision" class="size-4 rounded border-border" />
+                        <span class="text-sm text-text-primary">Solo marcados para revisión (estado_revision=pendiente con motivo)</span>
+                    </label>
+                </flux:field>
+            </div>
+
+            <div class="px-5 pb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+                @if($buscado)<flux:button variant="ghost" icon="x-mark" wire:click="limpiar">Limpiar filtros</flux:button>@endif
+                <flux:button variant="primary" icon="magnifying-glass" wire:click="buscar" wire:loading.attr="disabled">
+                    <span wire:loading.remove wire:target="buscar">Buscar</span>
+                    <span wire:loading wire:target="buscar">Buscando...</span>
+                </flux:button>
+            </div>
+        @endif
     </div>
 
     {{-- Resultados --}}
@@ -209,8 +263,8 @@
         <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
             <div class="px-4 py-3 bg-bg-main border-b border-border flex flex-wrap items-center justify-between gap-2">
                 <span class="text-sm font-medium text-text-primary">{{ $totalItems }} resultado(s)</span>
-                @if($criterio === 'para_revision')
-                    <span class="text-xs text-text-secondary">Mostrando especímenes marcados por el importador</span>
+                @if($fParaRevision)
+                    <span class="text-xs text-text-secondary">Filtrando por estado_revision=pendiente</span>
                 @endif
             </div>
 

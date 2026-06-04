@@ -416,6 +416,63 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
             ->all();
     }
 
+    /** @return Especimen[] */
+    public function buscarConFiltros(array $filtros): array
+    {
+        $query = EspecimenEloquentModel::with('identificadores');
+
+        if (! empty($filtros['taxonIds'])) {
+            $query->whereIn('taxon_id', $filtros['taxonIds']);
+        }
+        if (! empty($filtros['codigoCatalogo'])) {
+            $query->where('codigo_catalogo', 'ilike', '%'.$filtros['codigoCatalogo'].'%');
+        }
+        if (! empty($filtros['occurrenceId'])) {
+            $query->where('occurrence_id', 'ilike', '%'.$filtros['occurrenceId'].'%');
+        }
+        if (! empty($filtros['catalogNumber'])) {
+            $query->where('catalog_number', 'ilike', '%'.$filtros['catalogNumber'].'%');
+        }
+        if (! empty($filtros['localidad'])) {
+            $pat = '%'.$filtros['localidad'].'%';
+            $query->where(function ($q) use ($pat): void {
+                $q->where('localidad', 'ilike', $pat)
+                    ->orWhere('locality_name', 'ilike', $pat)
+                    ->orWhere('state_province', 'ilike', $pat)
+                    ->orWhere('municipality', 'ilike', $pat)
+                    ->orWhere('country', 'ilike', $pat);
+            });
+        }
+        if (! empty($filtros['colector'])) {
+            $query->where('colector', 'ilike', '%'.$filtros['colector'].'%');
+        }
+        if (! empty($filtros['fechaDesde'])) {
+            $query->where('fecha_colecta', '>=', $filtros['fechaDesde']);
+        }
+        if (! empty($filtros['fechaHasta'])) {
+            $query->where('fecha_colecta', '<=', $filtros['fechaHasta']);
+        }
+        if (! empty($filtros['estado'])) {
+            $query->where('estado', $filtros['estado']);
+        }
+        if (! empty($filtros['estadoRevision'])) {
+            $query->where('estado_revision', $filtros['estadoRevision']);
+        }
+        if (! empty($filtros['motivoRevision'])) {
+            $query->where('motivo_revision', 'ilike', '%'.$filtros['motivoRevision'].'%');
+        }
+        if (! empty($filtros['paraRevision'])) {
+            $query->where('estado_revision', 'pendiente')->whereNotNull('motivo_revision');
+        }
+
+        $limit = (int) ($filtros['limit'] ?? 200);
+
+        return $query->limit($limit)
+            ->get()
+            ->map(fn ($m) => $this->toDomain($m))
+            ->all();
+    }
+
     /** @param int[] $filasOrigen
      *  @return int[] */
     public function filasOrigenExistentes(array $filasOrigen): array
