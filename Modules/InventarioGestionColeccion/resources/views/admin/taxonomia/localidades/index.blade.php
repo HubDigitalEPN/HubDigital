@@ -1,74 +1,97 @@
-<div class="space-y-6 p-6">
-    <div class="flex items-center justify-between">
+<div class="space-y-6 p-4 sm:p-6">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Localidades</flux:heading>
-        <flux:button icon="plus" variant="primary" wire:click="abrirModal">
+        <flux:button icon="plus" variant="primary" wire:click="abrirModal" class="w-full sm:w-auto">
             Nueva Localidad
         </flux:button>
     </div>
 
-    @if($successMessage)
-        <flux:callout variant="success" dismissible>{{ $successMessage }}</flux:callout>
-    @endif
-
-    @if($errorMessage && !$showModal && !$showEditModal)
-        <flux:callout variant="danger" dismissible>{{ $errorMessage }}</flux:callout>
-    @endif
+    @if($successMessage)<flux:callout variant="success" dismissible>{{ $successMessage }}</flux:callout>@endif
+    @if($errorMessage && !$showModal && !$showEditModal)<flux:callout variant="danger" dismissible>{{ $errorMessage }}</flux:callout>@endif
 
     <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
-        <table class="w-full text-sm">
-            <thead class="bg-blue-navy border-b border-border">
-                <tr>
-                    <th class="px-4 py-3 text-left font-medium text-white">Nombre canónico</th>
-                    <th class="px-4 py-3 text-left font-medium text-white">Rango</th>
-                    <th class="px-4 py-3 text-left font-medium text-white">Padre</th>
-                    <th class="px-4 py-3 text-left font-medium text-white">País</th>
-                    <th class="px-4 py-3 text-left font-medium text-white">Provincia</th>
-                    <th class="px-4 py-3 text-left font-medium text-white">Coordenadas</th>
-                    <th class="px-4 py-3 text-left font-medium text-white">Acciones</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-border">
-                @forelse($localidadesPaginadas as $l)
-                    <tr class="hover:bg-bg-main transition-colors">
-                        <td class="px-4 py-3 font-medium text-text-primary">{{ $l['nombreCanonico'] }}</td>
-                        <td class="px-4 py-3 text-text-primary capitalize">{{ str_replace('_', ' ', $l['rango']) }}</td>
-                        <td class="px-4 py-3 text-text-secondary text-xs">{{ $l['padreNombre'] ?? '—' }}</td>
-                        <td class="px-4 py-3 text-text-primary">{{ $l['country'] ?? '—' }}</td>
-                        <td class="px-4 py-3 text-text-primary">{{ $l['stateProvince'] ?? '—' }}</td>
-                        <td class="px-4 py-3 text-text-secondary text-xs">
-                            @if($l['latitud'] !== null && $l['longitud'] !== null)
-                                {{ number_format((float) $l['latitud'], 4) }}, {{ number_format((float) $l['longitud'], 4) }}
-                            @else
-                                —
-                            @endif
-                        </td>
-                        <td class="px-4 py-3">
-                            <flux:button
-                                size="sm"
-                                variant="ghost"
-                                icon="pencil"
-                                wire:click="abrirEditModal('{{ $l['id'] }}')"
-                            >
-                                Editar
-                            </flux:button>
-                        </td>
-                    </tr>
-                @empty
+        {{-- Escritorio --}}
+        <div class="hidden md:block overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-blue-navy border-b border-border">
                     <tr>
-                        <td colspan="7" class="px-4 py-8 text-center text-text-secondary">
-                            No hay localidades registradas.
-                        </td>
+                        <th class="px-4 py-3 text-left font-medium text-white">Nombre canónico</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">Rango</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">Padre</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">País</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">Provincia</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">Coordenadas</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">Acciones</th>
                     </tr>
-                @endforelse
-            </tbody>
-        </table>
+                </thead>
+                <tbody class="divide-y divide-border">
+                    @forelse($localidadesPaginadas as $l)
+                        <tr class="hover:bg-bg-main transition-colors">
+                            <td class="px-4 py-3 font-medium text-text-primary">{{ $l['nombreCanonico'] }}</td>
+                            <td class="px-4 py-3 text-text-primary capitalize">{{ str_replace('_', ' ', $l['rango']) }}</td>
+                            <td class="px-4 py-3 text-text-secondary text-xs">{{ $l['padreNombre'] ?? '—' }}</td>
+                            <td class="px-4 py-3 text-text-primary">{{ $l['country'] ?? '—' }}</td>
+                            <td class="px-4 py-3 text-text-primary">{{ $l['stateProvince'] ?? '—' }}</td>
+                            <td class="px-4 py-3 text-text-secondary text-xs font-mono">
+                                @if($l['latitud'] !== null && $l['longitud'] !== null)
+                                    {{ number_format((float) $l['latitud'], 4) }}, {{ number_format((float) $l['longitud'], 4) }}
+                                @else
+                                    —
+                                @endif
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap">
+                                <flux:button size="sm" variant="ghost" icon="pencil"
+                                             wire:click="abrirEditModal('{{ $l['id'] }}')">Editar</flux:button>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="7" class="px-4 py-8 text-center text-text-secondary">No hay localidades registradas.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+        {{-- Móvil --}}
+        <div class="md:hidden divide-y divide-border">
+            @forelse($localidadesPaginadas as $l)
+                <div class="p-4 space-y-2">
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="min-w-0">
+                            <div class="font-medium text-text-primary break-words">{{ $l['nombreCanonico'] }}</div>
+                            <div class="text-xs text-text-secondary capitalize">{{ str_replace('_', ' ', $l['rango']) }}</div>
+                        </div>
+                        <flux:button variant="ghost" icon="pencil"
+                                     wire:click="abrirEditModal('{{ $l['id'] }}')">Editar</flux:button>
+                    </div>
+                    @if(! empty($l['padreNombre']))
+                        <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="Padre">
+                            {{ $l['padreNombre'] }}
+                        </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
+                    @endif
+                    @if(! empty($l['country']))
+                        <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="País">
+                            {{ $l['country'] }}
+                        </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
+                    @endif
+                    @if(! empty($l['stateProvince']))
+                        <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="Provincia">
+                            {{ $l['stateProvince'] }}
+                        </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
+                    @endif
+                    @if($l['latitud'] !== null && $l['longitud'] !== null)
+                        <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="Coords">
+                            <span class="font-mono text-xs">{{ number_format((float) $l['latitud'], 4) }}, {{ number_format((float) $l['longitud'], 4) }}</span>
+                        </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
+                    @endif
+                </div>
+            @empty
+                <div class="p-6 text-center text-text-secondary text-sm">No hay localidades registradas.</div>
+            @endforelse
+        </div>
+
         <x-inventariogestioncoleccion::paginacion-tabla
-            :pagina="$page"
-            :total-paginas="$totalPaginas"
-            :total-items="$totalItems"
-            :inicio="$inicio"
-            :fin="$fin"
-        />
+            :pagina="$page" :total-paginas="$totalPaginas" :total-items="$totalItems"
+            :inicio="$inicio" :fin="$fin" />
     </div>
 
     {{-- Modal: Registrar localidad --}}
