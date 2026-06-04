@@ -38,6 +38,7 @@ final class ListarTaxonesHandler
                 estado: $t->estado()->value,
                 padreId: $t->padreId() !== null ? (string) $t->padreId() : null,
                 padreNombre: $t->padreId() !== null ? ($padresMap[(string) $t->padreId()] ?? null) : null,
+                epitetoInfraespecifico: $t->epitetoInfraespecifico(),
             ),
             $taxones,
         );

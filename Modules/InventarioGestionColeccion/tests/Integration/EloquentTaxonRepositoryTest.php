@@ -96,3 +96,53 @@ test('buscarPorNombreYRango devuelve null cuando no existe', function (): void {
 
     expect($resultado)->toBeNull();
 });
+
+test('guarda y recupera un taxón con autor y anio nulos', function (): void {
+    $repo = app(TaxonRepositoryInterface::class);
+
+    $taxon = Taxon::crear(TaxonId::generar(), 'Acragas sp.1', 'morfoespecie');
+    $repo->guardar($taxon);
+
+    $encontrado = $repo->buscarPorId($taxon->id());
+
+    expect($encontrado)->not->toBeNull()
+        ->and($encontrado->autor())->toBeNull()
+        ->and($encontrado->anioDescripcion())->toBeNull()
+        ->and($encontrado->rango())->toBe(RangoTaxonomico::Morfoespecie);
+});
+
+test('persiste y recupera un taxón especie con epiteto infraespecifico', function (): void {
+    $repo = app(TaxonRepositoryInterface::class);
+
+    $taxon = Taxon::crear(
+        id: TaxonId::generar(),
+        nombreCientifico: 'Neoponera apicalis',
+        rango: 'especie',
+        autor: 'Latreille',
+        anioDescripcion: 1802,
+        padreId: null,
+        epitetoInfraespecifico: 'sensu_stricto',
+    );
+    $repo->guardar($taxon);
+
+    $encontrado = $repo->buscarPorId($taxon->id());
+
+    expect($encontrado)->not->toBeNull()
+        ->and($encontrado->epitetoInfraespecifico())->toBe('sensu_stricto');
+});
+
+test('persiste un taxón suborder dentro de la jerarquía orden → suborder → familia', function (): void {
+    $repo = app(TaxonRepositoryInterface::class);
+
+    $orden = Taxon::crear($repo->nextIdentity(), 'Hymenoptera', 'orden');
+    $repo->guardar($orden);
+
+    $suborden = Taxon::crear($repo->nextIdentity(), 'Apocrita', 'suborder', padreId: (string) $orden->id());
+    $repo->guardar($suborden);
+
+    $encontrado = $repo->buscarPorId($suborden->id());
+
+    expect($encontrado)->not->toBeNull()
+        ->and($encontrado->rango())->toBe(RangoTaxonomico::Suborden)
+        ->and((string) $encontrado->padreId())->toBe((string) $orden->id());
+});

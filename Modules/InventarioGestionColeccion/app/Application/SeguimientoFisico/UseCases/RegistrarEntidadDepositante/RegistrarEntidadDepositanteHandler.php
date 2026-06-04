@@ -34,7 +34,7 @@ final class RegistrarEntidadDepositanteHandler
         return new RegistrarEntidadDepositanteOutput(
             id: $entidad->id(),
             nombre: $entidad->nombre(),
-            tipo: $entidad->tipo()->value,
+            tipo: $entidad->tipo()?->value,
             contacto: $entidad->contacto(),
         );
     }

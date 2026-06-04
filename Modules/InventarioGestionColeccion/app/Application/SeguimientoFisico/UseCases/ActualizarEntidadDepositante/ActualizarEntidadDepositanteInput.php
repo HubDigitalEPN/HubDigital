@@ -9,7 +9,7 @@ final readonly class ActualizarEntidadDepositanteInput
     public function __construct(
         public string $entidadId,
         public string $nombre,
-        public string $tipo,
-        public string $contacto,
+        public ?string $tipo = null,
+        public ?string $contacto = null,
     ) {}
 }

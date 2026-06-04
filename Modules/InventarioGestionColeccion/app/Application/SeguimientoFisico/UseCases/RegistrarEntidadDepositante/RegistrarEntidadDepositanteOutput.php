@@ -11,7 +11,7 @@ final readonly class RegistrarEntidadDepositanteOutput
     public function __construct(
         public EntidadDepositanteId $id,
         public string $nombre,
-        public string $tipo,
-        public string $contacto,
+        public ?string $tipo,
+        public ?string $contacto,
     ) {}
 }

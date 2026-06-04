@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasColumn('recepciones.solicitudes_deposito', 'documentos_procesados')) {
+            return;
+        }
+
         Schema::table('recepciones.solicitudes_deposito', function (Blueprint $table): void {
             $table->jsonb('documentos_procesados')->default('[]')->after('extraccion_estado');
         });
@@ -15,6 +19,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (! Schema::hasColumn('recepciones.solicitudes_deposito', 'documentos_procesados')) {
+            return;
+        }
+
         Schema::table('recepciones.solicitudes_deposito', function (Blueprint $table): void {
             $table->dropColumn('documentos_procesados');
         });

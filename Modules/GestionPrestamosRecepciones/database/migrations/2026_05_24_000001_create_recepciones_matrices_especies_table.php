@@ -13,38 +13,42 @@ return new class extends Migration
     {
         DB::statement('CREATE SCHEMA IF NOT EXISTS recepciones');
 
-        Schema::create('recepciones.matrices_especies', function (Blueprint $table): void {
-            $table->uuid('id')->primary();
-            $table->uuid('solicitud_id');
-            $table->string('tipo_tramite');
-            $table->string('estado');
-            $table->jsonb('campos_dwc_presentes')->default('{}');
-            $table->boolean('identificacion_original_conservada')->default(false);
-            $table->timestamps();
+        if (! Schema::hasTable('recepciones.matrices_especies')) {
+            Schema::create('recepciones.matrices_especies', function (Blueprint $table): void {
+                $table->uuid('id')->primary();
+                $table->uuid('solicitud_id');
+                $table->string('tipo_tramite');
+                $table->string('estado');
+                $table->jsonb('campos_dwc_presentes')->default('{}');
+                $table->boolean('identificacion_original_conservada')->default(false);
+                $table->timestamps();
 
-            $table->unique('solicitud_id');
-            $table->foreign('solicitud_id')
-                ->references('id')
-                ->on('recepciones.solicitudes_deposito')
-                ->onDelete('cascade');
-        });
+                $table->unique('solicitud_id');
+                $table->foreign('solicitud_id')
+                    ->references('id')
+                    ->on('recepciones.solicitudes_deposito')
+                    ->onDelete('cascade');
+            });
+        }
 
-        Schema::create('recepciones.registros_especimen', function (Blueprint $table): void {
-            $table->uuid('id')->primary();
-            $table->uuid('matriz_id');
-            $table->string('nombre_cientifico');
-            $table->string('nombre_corregido')->nullable();
-            $table->string('estado');
-            $table->boolean('no_catalogado')->default(false);
-            $table->text('motivo_justificacion')->nullable();
-            $table->timestamps();
+        if (! Schema::hasTable('recepciones.registros_especimen')) {
+            Schema::create('recepciones.registros_especimen', function (Blueprint $table): void {
+                $table->uuid('id')->primary();
+                $table->uuid('matriz_id');
+                $table->string('nombre_cientifico');
+                $table->string('nombre_corregido')->nullable();
+                $table->string('estado');
+                $table->boolean('no_catalogado')->default(false);
+                $table->text('motivo_justificacion')->nullable();
+                $table->timestamps();
 
-            $table->index('matriz_id');
-            $table->foreign('matriz_id')
-                ->references('id')
-                ->on('recepciones.matrices_especies')
-                ->onDelete('cascade');
-        });
+                $table->index('matriz_id');
+                $table->foreign('matriz_id')
+                    ->references('id')
+                    ->on('recepciones.matrices_especies')
+                    ->onDelete('cascade');
+            });
+        }
     }
 
     public function down(): void

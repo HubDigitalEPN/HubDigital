@@ -6,17 +6,41 @@ namespace Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities;
 
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EspecimenId;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoEspecimen;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoRevision;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\IdentificadorEspecimen;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\LocalidadId;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\MuestraColectaId;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TaxonId;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TipoIdentificadorEspecimen;
 
+/**
+ * Especimen — entidad agregada principal del catálogo.
+ *
+ * El espécimen acumula campos verbatim (datos crudos del Excel) y campos
+ * normalizados (FKs a taxones, localidades, muestras). Su `estado_revision`
+ * indica si la información fue confirmada por el curador.
+ *
+ * Campos que siguen siendo required (legacy): `codigoCatalogo`, `localidad`,
+ * `fechaColecta`, `colector`. La relajación final a nullable se hará cuando
+ * el importador (P6) los necesite null. Solo `taxonId` es nullable en P3.
+ */
 class Especimen
 {
+    /**
+     * @param  IdentificadorEspecimen[]  $identificadores
+     */
     private function __construct(
         private readonly EspecimenId $id,
         private readonly string $codigoCatalogo,
-        private readonly string $taxonId,
+        private ?string $taxonId,
+        private ?string $taxonVerbatim,
+        private ?string $muestraId,
         private string $localidad,
+        private ?string $localidadId,
+        private ?string $localidadVerbatim,
         private string $fechaColecta,
+        private ?string $fechaVerbatim,
+        private ?string $fechaColectaFin,
         private string $colector,
         private ?string $entidadDepositanteId,
         private EstadoEspecimen $estado,
@@ -25,6 +49,11 @@ class Especimen
         private ?string $oldCode,
         private ?string $cardexLiquidCollectionCode,
         private ?int $individualCount,
+        private ?string $individualCountVerbatim,
+        private ?string $sex,
+        private ?string $lifeStage,
+        private ?string $caste,
+        private ?string $typeStatus,
         private ?string $preparations,
         private ?string $disposition,
         private ?string $occurrenceStatus,
@@ -35,18 +64,32 @@ class Especimen
         private ?string $localityName,
         private ?float $decimalLatitude,
         private ?float $decimalLongitude,
+        private ?string $coordVerbatim,
         private ?string $geodeticDatum,
-        private ?float $elevationInMeters,
+        private ?float $elevationMinM,
+        private ?float $elevationMaxM,
         private ?string $biome,
         private ?string $habitat,
-        /** @var IdentificadorEspecimen[] */
+        private ?string $microhabitat,
+        private ?string $biogeographicRegion,
+        private ?bool $endemic,
+        private ?string $dnaNotes,
+        private ?string $occurrenceRemarks,
+        private ?string $taxonomicNotes,
+        private ?string $actaRecepcion,
+        private EstadoRevision $estadoRevision,
+        private ?string $motivoRevision,
         private array $identificadores,
+        private ?int $filaOrigenExcel = null,
     ) {}
 
+    /**
+     * @param  array<int, IdentificadorEspecimen|array{tipo: string, valor: string}>  $identificadores
+     */
     public static function crear(
         EspecimenId $id,
         string $codigoCatalogo,
-        string $taxonId,
+        ?string $taxonId,
         string $localidad,
         string $fechaColecta,
         string $colector,
@@ -67,20 +110,49 @@ class Especimen
         ?float $decimalLatitude = null,
         ?float $decimalLongitude = null,
         ?string $geodeticDatum = null,
-        ?float $elevationInMeters = null,
+        ?float $elevationMinM = null,
         ?string $biome = null,
         ?string $habitat = null,
         array $identificadores = [],
+        ?string $taxonVerbatim = null,
+        ?string $muestraId = null,
+        ?string $localidadId = null,
+        ?string $localidadVerbatim = null,
+        ?string $fechaVerbatim = null,
+        ?string $fechaColectaFin = null,
+        ?string $individualCountVerbatim = null,
+        ?string $sex = null,
+        ?string $lifeStage = null,
+        ?string $caste = null,
+        ?string $typeStatus = null,
+        ?string $coordVerbatim = null,
+        ?float $elevationMaxM = null,
+        ?string $microhabitat = null,
+        ?string $biogeographicRegion = null,
+        ?bool $endemic = null,
+        ?string $dnaNotes = null,
+        ?string $occurrenceRemarks = null,
+        ?string $taxonomicNotes = null,
+        ?string $actaRecepcion = null,
+        ?string $motivoRevision = null,
+        ?int $filaOrigenExcel = null,
     ): self {
         $localidad = trim($localidad);
         $localityName = self::limpiarTexto($localityName) ?? $localidad;
+        $codigoCatalogoLimpio = trim($codigoCatalogo);
 
         return new self(
             id: $id,
-            codigoCatalogo: trim($codigoCatalogo),
+            codigoCatalogo: $codigoCatalogoLimpio,
             taxonId: $taxonId,
+            taxonVerbatim: self::limpiarTexto($taxonVerbatim),
+            muestraId: $muestraId,
             localidad: $localidad,
+            localidadId: $localidadId,
+            localidadVerbatim: self::limpiarTexto($localidadVerbatim),
             fechaColecta: $fechaColecta,
+            fechaVerbatim: self::limpiarTexto($fechaVerbatim),
+            fechaColectaFin: self::limpiarTexto($fechaColectaFin),
             colector: trim($colector),
             entidadDepositanteId: $entidadDepositanteId,
             estado: EstadoEspecimen::Disponible,
@@ -89,6 +161,11 @@ class Especimen
             oldCode: self::limpiarTexto($oldCode),
             cardexLiquidCollectionCode: self::limpiarTexto($cardexLiquidCollectionCode),
             individualCount: $individualCount,
+            individualCountVerbatim: self::limpiarTexto($individualCountVerbatim),
+            sex: self::limpiarTexto($sex),
+            lifeStage: self::limpiarTexto($lifeStage),
+            caste: self::limpiarTexto($caste),
+            typeStatus: self::limpiarTexto($typeStatus),
             preparations: self::limpiarTexto($preparations),
             disposition: self::limpiarTexto($disposition),
             occurrenceStatus: self::limpiarTexto($occurrenceStatus),
@@ -99,25 +176,40 @@ class Especimen
             localityName: $localityName,
             decimalLatitude: $decimalLatitude,
             decimalLongitude: $decimalLongitude,
+            coordVerbatim: self::limpiarTexto($coordVerbatim),
             geodeticDatum: self::limpiarTexto($geodeticDatum),
-            elevationInMeters: $elevationInMeters,
+            elevationMinM: $elevationMinM,
+            elevationMaxM: $elevationMaxM,
             biome: self::limpiarTexto($biome),
             habitat: self::limpiarTexto($habitat),
+            microhabitat: self::limpiarTexto($microhabitat),
+            biogeographicRegion: self::limpiarTexto($biogeographicRegion),
+            endemic: $endemic,
+            dnaNotes: self::limpiarTexto($dnaNotes),
+            occurrenceRemarks: self::limpiarTexto($occurrenceRemarks),
+            taxonomicNotes: self::limpiarTexto($taxonomicNotes),
+            actaRecepcion: self::limpiarTexto($actaRecepcion),
+            estadoRevision: EstadoRevision::porDefecto(),
+            motivoRevision: self::limpiarTexto($motivoRevision),
             identificadores: self::normalizarIdentificadores(
                 identificadores: $identificadores,
-                codigoCatalogo: trim($codigoCatalogo),
+                codigoCatalogo: $codigoCatalogoLimpio,
                 occurrenceId: self::limpiarTexto($occurrenceId),
                 catalogNumber: self::limpiarTexto($catalogNumber),
                 oldCode: self::limpiarTexto($oldCode),
                 cardexLiquidCollectionCode: self::limpiarTexto($cardexLiquidCollectionCode),
             ),
+            filaOrigenExcel: $filaOrigenExcel,
         );
     }
 
+    /**
+     * @param  IdentificadorEspecimen[]  $identificadores
+     */
     public static function reconstituir(
         EspecimenId $id,
         string $codigoCatalogo,
-        string $taxonId,
+        ?string $taxonId,
         string $localidad,
         string $fechaColecta,
         string $colector,
@@ -139,17 +231,46 @@ class Especimen
         ?float $decimalLatitude = null,
         ?float $decimalLongitude = null,
         ?string $geodeticDatum = null,
-        ?float $elevationInMeters = null,
+        ?float $elevationMinM = null,
         ?string $biome = null,
         ?string $habitat = null,
         array $identificadores = [],
+        ?string $taxonVerbatim = null,
+        ?string $muestraId = null,
+        ?string $localidadId = null,
+        ?string $localidadVerbatim = null,
+        ?string $fechaVerbatim = null,
+        ?string $fechaColectaFin = null,
+        ?string $individualCountVerbatim = null,
+        ?string $sex = null,
+        ?string $lifeStage = null,
+        ?string $caste = null,
+        ?string $typeStatus = null,
+        ?string $coordVerbatim = null,
+        ?float $elevationMaxM = null,
+        ?string $microhabitat = null,
+        ?string $biogeographicRegion = null,
+        ?bool $endemic = null,
+        ?string $dnaNotes = null,
+        ?string $occurrenceRemarks = null,
+        ?string $taxonomicNotes = null,
+        ?string $actaRecepcion = null,
+        ?EstadoRevision $estadoRevision = null,
+        ?string $motivoRevision = null,
+        ?int $filaOrigenExcel = null,
     ): self {
         return new self(
             id: $id,
             codigoCatalogo: $codigoCatalogo,
             taxonId: $taxonId,
+            taxonVerbatim: $taxonVerbatim,
+            muestraId: $muestraId,
             localidad: $localidad,
+            localidadId: $localidadId,
+            localidadVerbatim: $localidadVerbatim,
             fechaColecta: $fechaColecta,
+            fechaVerbatim: $fechaVerbatim,
+            fechaColectaFin: $fechaColectaFin,
             colector: $colector,
             entidadDepositanteId: $entidadDepositanteId,
             estado: $estado,
@@ -158,6 +279,11 @@ class Especimen
             oldCode: $oldCode,
             cardexLiquidCollectionCode: $cardexLiquidCollectionCode,
             individualCount: $individualCount,
+            individualCountVerbatim: $individualCountVerbatim,
+            sex: $sex,
+            lifeStage: $lifeStage,
+            caste: $caste,
+            typeStatus: $typeStatus,
             preparations: $preparations,
             disposition: $disposition,
             occurrenceStatus: $occurrenceStatus,
@@ -168,12 +294,29 @@ class Especimen
             localityName: $localityName ?? $localidad,
             decimalLatitude: $decimalLatitude,
             decimalLongitude: $decimalLongitude,
+            coordVerbatim: $coordVerbatim,
             geodeticDatum: $geodeticDatum,
-            elevationInMeters: $elevationInMeters,
+            elevationMinM: $elevationMinM,
+            elevationMaxM: $elevationMaxM,
             biome: $biome,
             habitat: $habitat,
+            microhabitat: $microhabitat,
+            biogeographicRegion: $biogeographicRegion,
+            endemic: $endemic,
+            dnaNotes: $dnaNotes,
+            occurrenceRemarks: $occurrenceRemarks,
+            taxonomicNotes: $taxonomicNotes,
+            actaRecepcion: $actaRecepcion,
+            estadoRevision: $estadoRevision ?? EstadoRevision::porDefecto(),
+            motivoRevision: $motivoRevision,
             identificadores: $identificadores,
+            filaOrigenExcel: $filaOrigenExcel,
         );
+    }
+
+    public function filaOrigenExcel(): ?int
+    {
+        return $this->filaOrigenExcel;
     }
 
     public function actualizar(
@@ -188,7 +331,7 @@ class Especimen
         ?float $decimalLatitude = null,
         ?float $decimalLongitude = null,
         ?string $geodeticDatum = null,
-        ?float $elevationInMeters = null,
+        ?float $elevationMinM = null,
         ?string $biome = null,
         ?string $habitat = null,
         ?string $preparations = null,
@@ -207,7 +350,7 @@ class Especimen
         $this->decimalLatitude = $decimalLatitude ?? $this->decimalLatitude;
         $this->decimalLongitude = $decimalLongitude ?? $this->decimalLongitude;
         $this->geodeticDatum = self::limpiarTexto($geodeticDatum) ?? $this->geodeticDatum;
-        $this->elevationInMeters = $elevationInMeters ?? $this->elevationInMeters;
+        $this->elevationMinM = $elevationMinM ?? $this->elevationMinM;
         $this->biome = self::limpiarTexto($biome) ?? $this->biome;
         $this->habitat = self::limpiarTexto($habitat) ?? $this->habitat;
         $this->preparations = self::limpiarTexto($preparations) ?? $this->preparations;
@@ -226,6 +369,49 @@ class Especimen
         $this->estado = EstadoEspecimen::Disponible;
     }
 
+    public function enlazarTaxon(TaxonId $taxonId): void
+    {
+        $this->taxonId = (string) $taxonId;
+    }
+
+    public function desvincularTaxon(): void
+    {
+        $this->taxonId = null;
+    }
+
+    public function enlazarLocalidad(LocalidadId $localidadId): void
+    {
+        $this->localidadId = (string) $localidadId;
+    }
+
+    public function enlazarMuestra(MuestraColectaId $muestraId): void
+    {
+        $this->muestraId = (string) $muestraId;
+    }
+
+    public function marcarParaRevision(string $motivo): void
+    {
+        $motivoNormalizado = trim($motivo);
+        if ($motivoNormalizado === '') {
+            throw new \InvalidArgumentException('El motivo de revisión es requerido.');
+        }
+        $this->estadoRevision = EstadoRevision::Pendiente;
+        $this->motivoRevision = $motivoNormalizado;
+    }
+
+    public function confirmarRevision(): void
+    {
+        if (! $this->estadoRevision->puedeConfirmarse()) {
+            throw new \DomainException(
+                "No se puede confirmar la revisión de un espécimen en estado '{$this->estadoRevision->value}'."
+            );
+        }
+        $this->estadoRevision = EstadoRevision::Confirmada;
+        $this->motivoRevision = null;
+    }
+
+    // ── Getters ──────────────────────────────────────────────────────────────
+
     public function id(): EspecimenId
     {
         return $this->id;
@@ -236,9 +422,19 @@ class Especimen
         return $this->codigoCatalogo;
     }
 
-    public function taxonId(): string
+    public function taxonId(): ?string
     {
         return $this->taxonId;
+    }
+
+    public function taxonVerbatim(): ?string
+    {
+        return $this->taxonVerbatim;
+    }
+
+    public function muestraId(): ?string
+    {
+        return $this->muestraId;
     }
 
     public function localidad(): string
@@ -246,9 +442,29 @@ class Especimen
         return $this->localidad;
     }
 
+    public function localidadId(): ?string
+    {
+        return $this->localidadId;
+    }
+
+    public function localidadVerbatim(): ?string
+    {
+        return $this->localidadVerbatim;
+    }
+
     public function fechaColecta(): string
     {
         return $this->fechaColecta;
+    }
+
+    public function fechaVerbatim(): ?string
+    {
+        return $this->fechaVerbatim;
+    }
+
+    public function fechaColectaFin(): ?string
+    {
+        return $this->fechaColectaFin;
     }
 
     public function colector(): string
@@ -284,6 +500,31 @@ class Especimen
     public function individualCount(): ?int
     {
         return $this->individualCount;
+    }
+
+    public function individualCountVerbatim(): ?string
+    {
+        return $this->individualCountVerbatim;
+    }
+
+    public function sex(): ?string
+    {
+        return $this->sex;
+    }
+
+    public function lifeStage(): ?string
+    {
+        return $this->lifeStage;
+    }
+
+    public function caste(): ?string
+    {
+        return $this->caste;
+    }
+
+    public function typeStatus(): ?string
+    {
+        return $this->typeStatus;
     }
 
     public function preparations(): ?string
@@ -336,14 +577,24 @@ class Especimen
         return $this->decimalLongitude;
     }
 
+    public function coordVerbatim(): ?string
+    {
+        return $this->coordVerbatim;
+    }
+
     public function geodeticDatum(): ?string
     {
         return $this->geodeticDatum;
     }
 
-    public function elevationInMeters(): ?float
+    public function elevationMinM(): ?float
     {
-        return $this->elevationInMeters;
+        return $this->elevationMinM;
+    }
+
+    public function elevationMaxM(): ?float
+    {
+        return $this->elevationMaxM;
     }
 
     public function biome(): ?string
@@ -354,6 +605,51 @@ class Especimen
     public function habitat(): ?string
     {
         return $this->habitat;
+    }
+
+    public function microhabitat(): ?string
+    {
+        return $this->microhabitat;
+    }
+
+    public function biogeographicRegion(): ?string
+    {
+        return $this->biogeographicRegion;
+    }
+
+    public function endemic(): ?bool
+    {
+        return $this->endemic;
+    }
+
+    public function dnaNotes(): ?string
+    {
+        return $this->dnaNotes;
+    }
+
+    public function occurrenceRemarks(): ?string
+    {
+        return $this->occurrenceRemarks;
+    }
+
+    public function taxonomicNotes(): ?string
+    {
+        return $this->taxonomicNotes;
+    }
+
+    public function actaRecepcion(): ?string
+    {
+        return $this->actaRecepcion;
+    }
+
+    public function estadoRevision(): EstadoRevision
+    {
+        return $this->estadoRevision;
+    }
+
+    public function motivoRevision(): ?string
+    {
+        return $this->motivoRevision;
     }
 
     /** @return IdentificadorEspecimen[] */

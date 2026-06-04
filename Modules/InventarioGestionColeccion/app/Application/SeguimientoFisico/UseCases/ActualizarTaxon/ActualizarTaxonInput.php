@@ -9,7 +9,8 @@ final readonly class ActualizarTaxonInput
     public function __construct(
         public string $taxonId,
         public string $nombreCientifico,
-        public string $autor,
-        public int $anioDescripcion,
+        public ?string $autor = null,
+        public ?int $anioDescripcion = null,
+        public ?string $epitetoInfraespecifico = null,
     ) {}
 }

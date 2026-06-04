@@ -10,6 +10,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasColumn('prestamos.actas_prestamo', 'motivo_devolucion')) {
+            return;
+        }
+
         Schema::table('prestamos.actas_prestamo', function (Blueprint $table): void {
             $table->text('motivo_devolucion')->nullable()->after('pdf_firmado_ruta');
         });
@@ -17,6 +21,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (! Schema::hasColumn('prestamos.actas_prestamo', 'motivo_devolucion')) {
+            return;
+        }
+
         Schema::table('prestamos.actas_prestamo', function (Blueprint $table): void {
             $table->dropColumn('motivo_devolucion');
         });

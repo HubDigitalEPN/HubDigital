@@ -21,8 +21,8 @@ final class ActualizarEntidadDepositanteRequest extends FormRequest
 
         return [
             'nombre' => ['required', 'string', 'max:255'],
-            'tipo' => ['required', 'string', "in:{$tipos}"],
-            'contacto' => ['required', 'string', 'max:255'],
+            'tipo' => ['nullable', 'string', "in:{$tipos}"],
+            'contacto' => ['nullable', 'string', 'max:255'],
         ];
     }
 }

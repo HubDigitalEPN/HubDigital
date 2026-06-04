@@ -39,13 +39,16 @@ final class TaxonIndex extends Component
     #[Rule('required|string')]
     public string $rango = '';
 
-    #[Rule('required|string|max:255')]
-    public string $autor = '';
+    #[Rule('nullable|string|max:255')]
+    public ?string $autor = null;
 
-    #[Rule('required|integer|min:1700|max:2100')]
-    public int $anioDescripcion = 2000;
+    #[Rule('nullable|integer|min:1700|max:2100')]
+    public ?int $anioDescripcion = null;
 
     public string $padreId = '';
+
+    #[Rule('nullable|string|max:120')]
+    public ?string $epitetoInfraespecifico = null;
 
     public bool $showEditModal = false;
 
@@ -54,11 +57,14 @@ final class TaxonIndex extends Component
     #[Rule('required|string|max:255')]
     public string $editNombreCientifico = '';
 
-    #[Rule('required|string|max:255')]
-    public string $editAutor = '';
+    #[Rule('nullable|string|max:255')]
+    public ?string $editAutor = null;
 
-    #[Rule('required|integer|min:1700|max:2100')]
-    public int $editAnioDescripcion = 2000;
+    #[Rule('nullable|integer|min:1700|max:2100')]
+    public ?int $editAnioDescripcion = null;
+
+    #[Rule('nullable|string|max:120')]
+    public ?string $editEpitetoInfraespecifico = null;
 
     public ?string $successMessage = null;
 
@@ -72,9 +78,8 @@ final class TaxonIndex extends Component
 
     public function abrirModal(): void
     {
-        $this->reset('nombreCientifico', 'rango', 'autor', 'padreId', 'successMessage', 'errorMessage');
+        $this->reset('nombreCientifico', 'rango', 'autor', 'anioDescripcion', 'padreId', 'epitetoInfraespecifico', 'successMessage', 'errorMessage');
         $this->resetValidation();
-        $this->anioDescripcion = (int) date('Y');
         $this->showModal = true;
     }
 
@@ -94,6 +99,7 @@ final class TaxonIndex extends Component
                 autor: $this->autor,
                 anioDescripcion: $this->anioDescripcion,
                 padreId: $this->padreId !== '' ? $this->padreId : null,
+                epitetoInfraespecifico: $this->epitetoInfraespecifico,
             ));
 
             $this->cargarTaxones($listarHandler);
@@ -117,6 +123,7 @@ final class TaxonIndex extends Component
         $this->editNombreCientifico = $taxon['nombreCientifico'];
         $this->editAutor = $taxon['autor'];
         $this->editAnioDescripcion = $taxon['anioDescripcion'];
+        $this->editEpitetoInfraespecifico = $taxon['epitetoInfraespecifico'] ?? null;
         $this->errorMessage = null;
         $this->showEditModal = true;
     }
@@ -135,6 +142,7 @@ final class TaxonIndex extends Component
                 nombreCientifico: $this->editNombreCientifico,
                 autor: $this->editAutor,
                 anioDescripcion: $this->editAnioDescripcion,
+                epitetoInfraespecifico: $this->editEpitetoInfraespecifico,
             ));
 
             $this->cargarTaxones($listarHandler);
@@ -194,6 +202,7 @@ final class TaxonIndex extends Component
                 'estado' => $t->estado,
                 'padreId' => $t->padreId,
                 'padreNombre' => $t->padreNombre,
+                'epitetoInfraespecifico' => $t->epitetoInfraespecifico,
             ],
             $output->items,
         );

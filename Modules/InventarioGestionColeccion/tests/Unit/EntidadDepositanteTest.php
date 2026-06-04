@@ -83,3 +83,44 @@ test('el id asignado en crear se conserva', function (): void {
 
     expect((string) $entidad->id())->toBe((string) $id);
 });
+
+test('crear acepta nombre solo, dejando tipo y contacto en null', function (): void {
+    $entidad = EntidadDepositante::crear(
+        EntidadDepositanteId::generar(),
+        'Donante anónimo',
+    );
+
+    expect($entidad->nombre())->toBe('Donante anónimo')
+        ->and($entidad->tipo())->toBeNull()
+        ->and($entidad->contacto())->toBeNull();
+});
+
+test('crear con tipo o contacto vacíos los normaliza a null', function (?string $tipo, ?string $contacto): void {
+    $entidad = EntidadDepositante::crear(
+        EntidadDepositanteId::generar(),
+        'Donante',
+        $tipo,
+        $contacto,
+    );
+
+    expect($entidad->tipo())->toBeNull()
+        ->and($entidad->contacto())->toBeNull();
+})->with([
+    [null, null],
+    ['', ''],
+    ['   ', '   '],
+]);
+
+test('actualizar puede llevar tipo y contacto a null', function (): void {
+    $entidad = EntidadDepositante::crear(
+        EntidadDepositanteId::generar(),
+        'Universidad Central',
+        'institucion',
+        'contacto@uce.edu.ec',
+    );
+
+    $entidad->actualizar('Universidad Central', null, null);
+
+    expect($entidad->tipo())->toBeNull()
+        ->and($entidad->contacto())->toBeNull();
+});

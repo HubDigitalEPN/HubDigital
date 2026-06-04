@@ -34,12 +34,15 @@ final class BuscarEspecimenesHandler
                 TipoIdentificadorEspecimen::CatalogNumber->value,
                 $input->valor,
             ),
+            'para_revision' => $this->especimenRepo->buscarParaRevision(
+                $input->valor !== '' ? $input->valor : null,
+            ),
             default => [],
         };
 
-        $taxonIds = array_values(array_unique(
+        $taxonIds = array_values(array_unique(array_filter(
             array_map(fn (Especimen $e) => $e->taxonId(), $especimenes)
-        ));
+        )));
 
         $taxonesMap = [];
         if ($taxonIds !== []) {
@@ -53,9 +56,13 @@ final class BuscarEspecimenesHandler
                 'id' => (string) $e->id(),
                 'codigoCatalogo' => $e->codigoCatalogo(),
                 'taxonId' => $e->taxonId(),
-                'taxonNombre' => $taxonesMap[$e->taxonId()] ?? $e->taxonId(),
+                'taxonNombre' => $e->taxonId() !== null ? ($taxonesMap[$e->taxonId()] ?? $e->taxonId()) : null,
+                'taxonVerbatim' => $e->taxonVerbatim(),
                 'localidad' => $e->localidad(),
+                'localidadVerbatim' => $e->localidadVerbatim(),
                 'fechaColecta' => $e->fechaColecta(),
+                'fechaColectaFin' => $e->fechaColectaFin(),
+                'fechaVerbatim' => $e->fechaVerbatim(),
                 'colector' => $e->colector(),
                 'estado' => $e->estado()->value,
                 'occurrenceId' => $e->occurrenceId(),
@@ -63,6 +70,11 @@ final class BuscarEspecimenesHandler
                 'oldCode' => $e->oldCode(),
                 'cardexLiquidCollectionCode' => $e->cardexLiquidCollectionCode(),
                 'individualCount' => $e->individualCount(),
+                'individualCountVerbatim' => $e->individualCountVerbatim(),
+                'sex' => $e->sex(),
+                'lifeStage' => $e->lifeStage(),
+                'caste' => $e->caste(),
+                'typeStatus' => $e->typeStatus(),
                 'preparations' => $e->preparations(),
                 'disposition' => $e->disposition(),
                 'occurrenceStatus' => $e->occurrenceStatus(),
@@ -73,10 +85,22 @@ final class BuscarEspecimenesHandler
                 'localityName' => $e->localityName(),
                 'decimalLatitude' => $e->decimalLatitude(),
                 'decimalLongitude' => $e->decimalLongitude(),
+                'coordVerbatim' => $e->coordVerbatim(),
                 'geodeticDatum' => $e->geodeticDatum(),
-                'elevationInMeters' => $e->elevationInMeters(),
+                'elevationMinM' => $e->elevationMinM(),
+                'elevationMaxM' => $e->elevationMaxM(),
                 'biome' => $e->biome(),
                 'habitat' => $e->habitat(),
+                'microhabitat' => $e->microhabitat(),
+                'biogeographicRegion' => $e->biogeographicRegion(),
+                'endemic' => $e->endemic(),
+                'dnaNotes' => $e->dnaNotes(),
+                'occurrenceRemarks' => $e->occurrenceRemarks(),
+                'taxonomicNotes' => $e->taxonomicNotes(),
+                'actaRecepcion' => $e->actaRecepcion(),
+                'estadoRevision' => $e->estadoRevision()->value,
+                'motivoRevision' => $e->motivoRevision(),
+                'filaOrigenExcel' => $e->filaOrigenExcel(),
                 'identificadores' => array_map(fn ($i) => $i->toArray(), $e->identificadores()),
             ], $especimenes)
         );

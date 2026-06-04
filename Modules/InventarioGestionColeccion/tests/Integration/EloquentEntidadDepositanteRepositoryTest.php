@@ -81,3 +81,16 @@ test('buscarTodas devuelve todas las entidades', function (): void {
 
     expect($resultado)->toHaveCount(2);
 });
+
+test('persiste y recupera una entidad con tipo y contacto en null', function (): void {
+    $repo = app(EntidadDepositanteRepositoryInterface::class);
+
+    $entidad = EntidadDepositante::crear(EntidadDepositanteId::generar(), 'Donante anónimo');
+    $repo->guardar($entidad);
+
+    $encontrada = $repo->buscarPorId($entidad->id());
+
+    expect($encontrada)->not->toBeNull()
+        ->and($encontrada->tipo())->toBeNull()
+        ->and($encontrada->contacto())->toBeNull();
+});

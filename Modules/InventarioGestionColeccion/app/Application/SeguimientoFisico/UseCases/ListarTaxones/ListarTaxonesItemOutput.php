@@ -10,10 +10,11 @@ final readonly class ListarTaxonesItemOutput
         public string $id,
         public string $nombreCientifico,
         public string $rango,
-        public string $autor,
-        public int $anioDescripcion,
+        public ?string $autor,
+        public ?int $anioDescripcion,
         public string $estado,
         public ?string $padreId,
         public ?string $padreNombre,
+        public ?string $epitetoInfraespecifico = null,
     ) {}
 }

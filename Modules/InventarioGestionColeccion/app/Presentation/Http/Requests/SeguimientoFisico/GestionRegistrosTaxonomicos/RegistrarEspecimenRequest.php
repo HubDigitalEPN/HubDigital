@@ -39,7 +39,7 @@ final class RegistrarEspecimenRequest extends FormRequest
             'decimal_latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'decimal_longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'geodetic_datum' => ['nullable', 'string', 'max:60'],
-            'elevation_in_meters' => ['nullable', 'numeric'],
+            'elevation_min_m' => ['nullable', 'numeric'],
             'biome' => ['nullable', 'string', 'max:120'],
             'habitat' => ['nullable', 'string', 'max:255'],
             'identificadores' => ['nullable', 'array'],
