@@ -192,7 +192,7 @@
                             value="{{ $especimen['id'] }}"
                         />
                         <span class="shrink-0 font-medium text-text-primary">{{ $especimen['codigoCatalogo'] }}</span>
-                        <span class="font-serif text-sm text-text-secondary">{{ $especimen['taxonNombre'] }}</span>
+                        <span class="font-serif italic text-text-secondary">{{ $especimen['taxonNombre'] }}</span>
                         @if($especimen['unitTrayId'] && $especimen['unitTrayId'] !== $unitTraySeleccionado)
                             <span class="ml-auto shrink-0 text-xs text-warning">en otro unit tray</span>
                         @endif
