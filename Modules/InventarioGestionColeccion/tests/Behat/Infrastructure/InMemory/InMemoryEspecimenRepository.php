@@ -397,6 +397,62 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
         return $resultado;
     }
 
+    /** @return Especimen[] */
+    public function buscarConFiltros(array $filtros): array
+    {
+        $items = array_values($this->store);
+
+        if (! empty($filtros['taxonIds'])) {
+            $set = array_flip($filtros['taxonIds']);
+            $items = array_filter($items, fn (Especimen $e) => $e->taxonId() !== null && isset($set[$e->taxonId()]));
+        }
+        if (! empty($filtros['codigoCatalogo'])) {
+            $items = array_filter($items, fn (Especimen $e) => stripos($e->codigoCatalogo(), $filtros['codigoCatalogo']) !== false);
+        }
+        if (! empty($filtros['occurrenceId'])) {
+            $items = array_filter($items, fn (Especimen $e) => $e->occurrenceId() !== null && stripos($e->occurrenceId(), $filtros['occurrenceId']) !== false);
+        }
+        if (! empty($filtros['catalogNumber'])) {
+            $items = array_filter($items, fn (Especimen $e) => $e->catalogNumber() !== null && stripos($e->catalogNumber(), $filtros['catalogNumber']) !== false);
+        }
+        if (! empty($filtros['localidad'])) {
+            $items = array_filter($items, function (Especimen $e) use ($filtros): bool {
+                foreach ([$e->localidad(), $e->localityName(), $e->stateProvince(), $e->municipality(), $e->country()] as $v) {
+                    if ($v !== null && stripos($v, $filtros['localidad']) !== false) {
+                        return true;
+                    }
+                }
+
+                return false;
+            });
+        }
+        if (! empty($filtros['colector'])) {
+            $items = array_filter($items, fn (Especimen $e) => stripos($e->colector(), $filtros['colector']) !== false);
+        }
+        if (! empty($filtros['fechaDesde'])) {
+            $items = array_filter($items, fn (Especimen $e) => $e->fechaColecta() !== '' && $e->fechaColecta() >= $filtros['fechaDesde']);
+        }
+        if (! empty($filtros['fechaHasta'])) {
+            $items = array_filter($items, fn (Especimen $e) => $e->fechaColecta() !== '' && $e->fechaColecta() <= $filtros['fechaHasta']);
+        }
+        if (! empty($filtros['estado'])) {
+            $items = array_filter($items, fn (Especimen $e) => $e->estado()->value === $filtros['estado']);
+        }
+        if (! empty($filtros['estadoRevision'])) {
+            $items = array_filter($items, fn (Especimen $e) => $e->estadoRevision()->value === $filtros['estadoRevision']);
+        }
+        if (! empty($filtros['motivoRevision'])) {
+            $items = array_filter($items, fn (Especimen $e) => $e->motivoRevision() !== null && stripos($e->motivoRevision(), $filtros['motivoRevision']) !== false);
+        }
+        if (! empty($filtros['paraRevision'])) {
+            $items = array_filter($items, fn (Especimen $e) => $e->estadoRevision()->value === 'pendiente' && $e->motivoRevision() !== null);
+        }
+
+        $limit = (int) ($filtros['limit'] ?? 200);
+
+        return array_slice(array_values($items), 0, $limit);
+    }
+
     /** @param int[] $filasOrigen
      *  @return int[] */
     public function filasOrigenExistentes(array $filasOrigen): array

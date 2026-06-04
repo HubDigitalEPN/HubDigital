@@ -53,6 +53,11 @@ function repoTaxonesEnMemoria(array $taxones): TaxonRepositoryInterface
         {
             return array_values(array_intersect_key($this->porId, array_flip($ids)));
         }
+
+        public function listarDescendientesIds(string $taxonId): array
+        {
+            return [$taxonId];
+        }
     };
 }
 

@@ -5,10 +5,21 @@ declare(strict_types=1);
 namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\BuscarEspecimenes;
 
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especimen;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Taxon;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\TaxonRepositoryInterface;
-use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TipoIdentificadorEspecimen;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\RangoTaxonomico;
 
+/**
+ * Búsqueda multi-filtro de especímenes. Combina campos opcionales con AND.
+ *
+ * Resoluciones especiales:
+ *  - `taxonNombre`: traduce a IDs de taxa cuyo nombre contiene la cadena.
+ *  - `familia`: encuentra taxa con rango=familia + nombre contiene, expande
+ *    a todos sus descendientes (vía CTE recursivo), y filtra por esos IDs.
+ *  - Si `taxonNombre` Y `familia` se especifican, se intersectan los sets
+ *    de IDs.
+ */
 final class BuscarEspecimenesHandler
 {
     public function __construct(
@@ -18,28 +29,94 @@ final class BuscarEspecimenesHandler
 
     public function handle(BuscarEspecimenesInput $input): BuscarEspecimenesOutput
     {
-        $especimenes = match ($input->criterio) {
-            'taxon' => $this->buscarPorNombreTaxon($input->valor),
-            'localidad' => $this->especimenRepo->buscarPorLocalidad($input->valor),
-            'estado' => $this->especimenRepo->buscarPorEstado($input->valor),
-            'codigo' => $this->especimenRepo->buscarPorIdentificador(
-                TipoIdentificadorEspecimen::CodigoCatalogo->value,
-                $input->valor,
-            ),
-            'occurrence_id' => $this->especimenRepo->buscarPorIdentificador(
-                TipoIdentificadorEspecimen::OccurrenceId->value,
-                $input->valor,
-            ),
-            'catalog_number' => $this->especimenRepo->buscarPorIdentificador(
-                TipoIdentificadorEspecimen::CatalogNumber->value,
-                $input->valor,
-            ),
-            'para_revision' => $this->especimenRepo->buscarParaRevision(
-                $input->valor !== '' ? $input->valor : null,
-            ),
-            default => [],
-        };
+        if (! $input->tieneFiltros()) {
+            // Sin filtros, devolvemos vacío para evitar cargar miles de filas.
+            return new BuscarEspecimenesOutput(items: []);
+        }
 
+        // Resolver taxa por nombre y/o familia.
+        $taxonIds = $this->resolverTaxonIds($input);
+        if ($taxonIds === false) {
+            // Se pidió filtro taxonómico pero no hay matches: resultado vacío.
+            return new BuscarEspecimenesOutput(items: []);
+        }
+
+        $filtros = [
+            'taxonIds' => $taxonIds,
+            'codigoCatalogo' => $input->codigoCatalogo,
+            'occurrenceId' => $input->occurrenceId,
+            'catalogNumber' => $input->catalogNumber,
+            'localidad' => $input->localidad,
+            'colector' => $input->colector,
+            'fechaDesde' => $input->fechaDesde,
+            'fechaHasta' => $input->fechaHasta,
+            'estado' => $input->estado,
+            'estadoRevision' => $input->estadoRevision,
+            'motivoRevision' => $input->motivoRevision,
+            'paraRevision' => $input->paraRevision,
+            'limit' => $input->limit,
+        ];
+        // Limpia las claves null para que el repo no filtre por ellas.
+        $filtros = array_filter($filtros, fn ($v) => $v !== null && $v !== '' && $v !== []);
+
+        $especimenes = $this->especimenRepo->buscarConFiltros($filtros);
+
+        return new BuscarEspecimenesOutput(items: $this->mapearItems($especimenes));
+    }
+
+    /**
+     * Resuelve los IDs de taxa según `taxonNombre` y `familia`. Retorna:
+     *  - null si no se pidió filtro taxonómico (no aplicar).
+     *  - false si se pidió filtro pero no hay coincidencias (resultado vacío).
+     *  - array de IDs si hay matches.
+     *
+     * @return string[]|null|false
+     */
+    private function resolverTaxonIds(BuscarEspecimenesInput $input): array|null|false
+    {
+        $idsTaxonNombre = null;
+        if ($input->taxonNombre !== null && trim($input->taxonNombre) !== '') {
+            $taxa = $this->taxonRepo->buscarPorNombreContiene($input->taxonNombre);
+            $idsTaxonNombre = array_map(fn (Taxon $t) => (string) $t->id(), $taxa);
+            if ($idsTaxonNombre === []) {
+                return false;
+            }
+        }
+
+        $idsFamilia = null;
+        if ($input->familia !== null && trim($input->familia) !== '') {
+            $familiaCandidatos = array_filter(
+                $this->taxonRepo->buscarPorNombreContiene($input->familia),
+                fn (Taxon $t) => $t->rango() === RangoTaxonomico::Familia,
+            );
+            if ($familiaCandidatos === []) {
+                return false;
+            }
+            $idsFamilia = [];
+            foreach ($familiaCandidatos as $t) {
+                $idsFamilia = array_merge($idsFamilia, $this->taxonRepo->listarDescendientesIds((string) $t->id()));
+            }
+            $idsFamilia = array_values(array_unique($idsFamilia));
+            if ($idsFamilia === []) {
+                return false;
+            }
+        }
+
+        if ($idsTaxonNombre !== null && $idsFamilia !== null) {
+            $intersec = array_values(array_intersect($idsTaxonNombre, $idsFamilia));
+
+            return $intersec === [] ? false : $intersec;
+        }
+
+        return $idsTaxonNombre ?? $idsFamilia;
+    }
+
+    /**
+     * @param  Especimen[]  $especimenes
+     * @return list<array<string, mixed>>
+     */
+    private function mapearItems(array $especimenes): array
+    {
         $taxonIds = array_values(array_unique(array_filter(
             array_map(fn (Especimen $e) => $e->taxonId(), $especimenes)
         )));
@@ -51,72 +128,56 @@ final class BuscarEspecimenesHandler
             }
         }
 
-        return new BuscarEspecimenesOutput(
-            items: array_map(fn (Especimen $e) => [
-                'id' => (string) $e->id(),
-                'codigoCatalogo' => $e->codigoCatalogo(),
-                'taxonId' => $e->taxonId(),
-                'taxonNombre' => $e->taxonId() !== null ? ($taxonesMap[$e->taxonId()] ?? $e->taxonId()) : null,
-                'taxonVerbatim' => $e->taxonVerbatim(),
-                'localidad' => $e->localidad(),
-                'localidadVerbatim' => $e->localidadVerbatim(),
-                'fechaColecta' => $e->fechaColecta(),
-                'fechaColectaFin' => $e->fechaColectaFin(),
-                'fechaVerbatim' => $e->fechaVerbatim(),
-                'colector' => $e->colector(),
-                'estado' => $e->estado()->value,
-                'occurrenceId' => $e->occurrenceId(),
-                'catalogNumber' => $e->catalogNumber(),
-                'oldCode' => $e->oldCode(),
-                'cardexLiquidCollectionCode' => $e->cardexLiquidCollectionCode(),
-                'individualCount' => $e->individualCount(),
-                'individualCountVerbatim' => $e->individualCountVerbatim(),
-                'sex' => $e->sex(),
-                'lifeStage' => $e->lifeStage(),
-                'caste' => $e->caste(),
-                'typeStatus' => $e->typeStatus(),
-                'preparations' => $e->preparations(),
-                'disposition' => $e->disposition(),
-                'occurrenceStatus' => $e->occurrenceStatus(),
-                'specimenNotes' => $e->specimenNotes(),
-                'country' => $e->country(),
-                'stateProvince' => $e->stateProvince(),
-                'municipality' => $e->municipality(),
-                'localityName' => $e->localityName(),
-                'decimalLatitude' => $e->decimalLatitude(),
-                'decimalLongitude' => $e->decimalLongitude(),
-                'coordVerbatim' => $e->coordVerbatim(),
-                'geodeticDatum' => $e->geodeticDatum(),
-                'elevationMinM' => $e->elevationMinM(),
-                'elevationMaxM' => $e->elevationMaxM(),
-                'biome' => $e->biome(),
-                'habitat' => $e->habitat(),
-                'microhabitat' => $e->microhabitat(),
-                'biogeographicRegion' => $e->biogeographicRegion(),
-                'endemic' => $e->endemic(),
-                'dnaNotes' => $e->dnaNotes(),
-                'occurrenceRemarks' => $e->occurrenceRemarks(),
-                'taxonomicNotes' => $e->taxonomicNotes(),
-                'actaRecepcion' => $e->actaRecepcion(),
-                'estadoRevision' => $e->estadoRevision()->value,
-                'motivoRevision' => $e->motivoRevision(),
-                'filaOrigenExcel' => $e->filaOrigenExcel(),
-                'identificadores' => array_map(fn ($i) => $i->toArray(), $e->identificadores()),
-            ], $especimenes)
-        );
-    }
-
-    /** @return Especimen[] */
-    private function buscarPorNombreTaxon(string $nombre): array
-    {
-        $taxones = $this->taxonRepo->buscarPorNombreContiene($nombre);
-
-        if (empty($taxones)) {
-            return [];
-        }
-
-        $taxonIds = array_map(fn ($t) => (string) $t->id(), $taxones);
-
-        return $this->especimenRepo->buscarPorTaxonIds($taxonIds);
+        return array_map(fn (Especimen $e) => [
+            'id' => (string) $e->id(),
+            'codigoCatalogo' => $e->codigoCatalogo(),
+            'taxonId' => $e->taxonId(),
+            'taxonNombre' => $e->taxonId() !== null ? ($taxonesMap[$e->taxonId()] ?? $e->taxonId()) : null,
+            'taxonVerbatim' => $e->taxonVerbatim(),
+            'localidad' => $e->localidad(),
+            'localidadVerbatim' => $e->localidadVerbatim(),
+            'fechaColecta' => $e->fechaColecta(),
+            'fechaColectaFin' => $e->fechaColectaFin(),
+            'fechaVerbatim' => $e->fechaVerbatim(),
+            'colector' => $e->colector(),
+            'estado' => $e->estado()->value,
+            'occurrenceId' => $e->occurrenceId(),
+            'catalogNumber' => $e->catalogNumber(),
+            'oldCode' => $e->oldCode(),
+            'cardexLiquidCollectionCode' => $e->cardexLiquidCollectionCode(),
+            'individualCount' => $e->individualCount(),
+            'individualCountVerbatim' => $e->individualCountVerbatim(),
+            'sex' => $e->sex(),
+            'lifeStage' => $e->lifeStage(),
+            'caste' => $e->caste(),
+            'typeStatus' => $e->typeStatus(),
+            'preparations' => $e->preparations(),
+            'disposition' => $e->disposition(),
+            'occurrenceStatus' => $e->occurrenceStatus(),
+            'specimenNotes' => $e->specimenNotes(),
+            'country' => $e->country(),
+            'stateProvince' => $e->stateProvince(),
+            'municipality' => $e->municipality(),
+            'localityName' => $e->localityName(),
+            'decimalLatitude' => $e->decimalLatitude(),
+            'decimalLongitude' => $e->decimalLongitude(),
+            'coordVerbatim' => $e->coordVerbatim(),
+            'geodeticDatum' => $e->geodeticDatum(),
+            'elevationMinM' => $e->elevationMinM(),
+            'elevationMaxM' => $e->elevationMaxM(),
+            'biome' => $e->biome(),
+            'habitat' => $e->habitat(),
+            'microhabitat' => $e->microhabitat(),
+            'biogeographicRegion' => $e->biogeographicRegion(),
+            'endemic' => $e->endemic(),
+            'dnaNotes' => $e->dnaNotes(),
+            'occurrenceRemarks' => $e->occurrenceRemarks(),
+            'taxonomicNotes' => $e->taxonomicNotes(),
+            'actaRecepcion' => $e->actaRecepcion(),
+            'estadoRevision' => $e->estadoRevision()->value,
+            'motivoRevision' => $e->motivoRevision(),
+            'filaOrigenExcel' => $e->filaOrigenExcel(),
+            'identificadores' => array_map(fn ($i) => $i->toArray(), $e->identificadores()),
+        ], $especimenes);
     }
 }

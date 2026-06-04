@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories;
 
+use Illuminate\Support\Facades\DB;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Taxon;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\TaxonRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoTaxon;
@@ -77,6 +78,23 @@ class EloquentTaxonRepository implements TaxonRepositoryInterface
             ->get()
             ->map(fn ($m) => $this->toDomain($m))
             ->all();
+    }
+
+    /** @return string[] */
+    public function listarDescendientesIds(string $taxonId): array
+    {
+        // CTE recursivo: incluye el taxón raíz + todos sus descendientes.
+        $sql = 'WITH RECURSIVE descendientes(id) AS (
+                    SELECT id FROM taxonomia.taxones WHERE id = ?
+                    UNION ALL
+                    SELECT t.id FROM taxonomia.taxones t
+                    INNER JOIN descendientes d ON t.padre_id = d.id
+                )
+                SELECT id FROM descendientes';
+
+        $rows = DB::select($sql, [$taxonId]);
+
+        return array_map(fn ($r) => (string) $r->id, $rows);
     }
 
     private function toDomain(TaxonEloquentModel $model): Taxon
