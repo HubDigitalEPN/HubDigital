@@ -28,5 +28,14 @@ interface UnitTrayEspecimenRepository
 
     public function unitTrayDeEspecimen(string $especimenId): ?UnitTrayId;
 
+    /**
+     * Resuelve en una sola consulta el unit tray de cada espécimen del conjunto,
+     * evitando el N+1 al listar especímenes asignables.
+     *
+     * @param  string[]  $especimenIds
+     * @return array<string, string> especimenId => unitTrayId (solo los asignados)
+     */
+    public function unitTraysDeEspecimenes(array $especimenIds): array;
+
     public function eliminarPorUnitTray(UnitTrayId $unitTrayId): void;
 }

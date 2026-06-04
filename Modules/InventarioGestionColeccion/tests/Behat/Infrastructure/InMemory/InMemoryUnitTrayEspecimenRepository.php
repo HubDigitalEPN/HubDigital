@@ -45,6 +45,22 @@ final class InMemoryUnitTrayEspecimenRepository implements UnitTrayEspecimenRepo
             : null;
     }
 
+    /**
+     * @param  string[]  $especimenIds
+     * @return array<string, string>
+     */
+    public function unitTraysDeEspecimenes(array $especimenIds): array
+    {
+        $out = [];
+        foreach ($especimenIds as $especimenId) {
+            if (isset($this->asignaciones[$especimenId])) {
+                $out[$especimenId] = $this->asignaciones[$especimenId];
+            }
+        }
+
+        return $out;
+    }
+
     public function eliminarPorUnitTray(UnitTrayId $unitTrayId): void
     {
         $tray = (string) $unitTrayId;

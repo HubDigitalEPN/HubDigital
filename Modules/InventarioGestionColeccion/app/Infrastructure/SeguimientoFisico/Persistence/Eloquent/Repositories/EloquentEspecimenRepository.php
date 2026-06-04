@@ -175,6 +175,45 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
             ->all();
     }
 
+    /**
+     * @param  string[]  $incluirSiempre
+     * @return array<int, array{id: string, codigoCatalogo: string, taxonId: ?string}>
+     */
+    public function buscarParaAsignacion(?string $busqueda, int $limite, array $incluirSiempre = []): array
+    {
+        $columnas = ['id', 'codigo_catalogo', 'taxon_id'];
+
+        $base = EspecimenEloquentModel::query()->select($columnas);
+
+        $busqueda = $busqueda !== null ? trim($busqueda) : '';
+        if ($busqueda !== '') {
+            $patron = '%'.$busqueda.'%';
+            $base->where(function ($q) use ($patron): void {
+                $q->where('codigo_catalogo', 'ilike', $patron)
+                    ->orWhereHas('taxon', fn ($t) => $t->where('nombre_cientifico', 'ilike', $patron));
+            });
+        }
+
+        $coincidencias = $base->orderBy('codigo_catalogo')
+            ->limit($limite)
+            ->get();
+
+        // Garantiza la presencia de los ya asignados al tray aunque la búsqueda
+        // (o el límite) los dejara fuera: se traen aparte y se anteponen.
+        $faltantes = array_values(array_diff($incluirSiempre, $coincidencias->pluck('id')->all()));
+        $forzados = $faltantes === []
+            ? collect()
+            : EspecimenEloquentModel::query()->select($columnas)->whereIn('id', $faltantes)->get();
+
+        return $forzados->concat($coincidencias)
+            ->map(fn ($m) => [
+                'id' => (string) $m->id,
+                'codigoCatalogo' => $m->codigo_catalogo,
+                'taxonId' => $m->taxon_id,
+            ])
+            ->all();
+    }
+
     public function existePorFilaOrigen(int $filaOrigenExcel): bool
     {
         return EspecimenEloquentModel::where('fila_origen_excel', $filaOrigenExcel)->exists();

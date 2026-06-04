@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarEspecimenesAsignables;
 
-use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especimen;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\TaxonRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UnitTrayEspecimenRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\UnitTrayId;
 
 final class ListarEspecimenesAsignablesHandler
 {
@@ -17,13 +17,26 @@ final class ListarEspecimenesAsignablesHandler
         private readonly UnitTrayEspecimenRepository $asignacionRepo,
     ) {}
 
-    public function handle(): ListarEspecimenesAsignablesOutput
+    public function handle(ListarEspecimenesAsignablesInput $input): ListarEspecimenesAsignablesOutput
     {
-        $especimenes = $this->especimenRepo->buscarTodos();
+        // Los especímenes ya asignados al tray en contexto se incluyen siempre,
+        // para que el curador pueda verlos/desmarcarlos aunque la búsqueda no los
+        // devuelva. El resto de la lista es una proyección acotada por $limite:
+        // jamás se hidrata el catálogo completo (decenas de miles de filas).
+        $incluirSiempre = $input->unitTrayId !== null
+            ? $this->asignacionRepo->especimenIdsPorUnitTray(UnitTrayId::desde($input->unitTrayId))
+            : [];
 
-        $taxonIds = array_values(array_unique(
-            array_map(fn (Especimen $e) => $e->taxonId(), $especimenes)
-        ));
+        $filas = $this->especimenRepo->buscarParaAsignacion(
+            $input->busqueda,
+            $input->limite,
+            $incluirSiempre,
+        );
+
+        $taxonIds = array_values(array_unique(array_filter(
+            array_map(fn (array $f) => $f['taxonId'], $filas),
+            fn (?string $id) => $id !== null && $id !== '',
+        )));
 
         $nombresPorTaxon = [];
         if ($taxonIds !== []) {
@@ -32,16 +45,21 @@ final class ListarEspecimenesAsignablesHandler
             }
         }
 
-        $items = array_map(function (Especimen $e) use ($nombresPorTaxon): array {
-            $unitTrayId = $this->asignacionRepo->unitTrayDeEspecimen((string) $e->id());
+        $especimenIds = array_map(fn (array $f) => $f['id'], $filas);
+        $unitTrayPorEspecimen = $this->asignacionRepo->unitTraysDeEspecimenes($especimenIds);
+
+        $items = array_map(function (array $f) use ($nombresPorTaxon, $unitTrayPorEspecimen): array {
+            $taxonId = $f['taxonId'];
 
             return [
-                'id' => (string) $e->id(),
-                'codigoCatalogo' => $e->codigoCatalogo(),
-                'taxonNombre' => $nombresPorTaxon[$e->taxonId()] ?? $e->taxonId(),
-                'unitTrayId' => $unitTrayId !== null ? (string) $unitTrayId : null,
+                'id' => $f['id'],
+                'codigoCatalogo' => $f['codigoCatalogo'],
+                'taxonNombre' => $taxonId !== null && $taxonId !== ''
+                    ? ($nombresPorTaxon[$taxonId] ?? $taxonId)
+                    : '—',
+                'unitTrayId' => $unitTrayPorEspecimen[$f['id']] ?? null,
             ];
-        }, $especimenes);
+        }, $filas);
 
         return new ListarEspecimenesAsignablesOutput(items: $items);
     }

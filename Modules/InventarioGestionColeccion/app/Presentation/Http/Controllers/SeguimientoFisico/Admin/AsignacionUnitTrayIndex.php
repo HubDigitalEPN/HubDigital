@@ -13,6 +13,7 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Cr
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\CrearUnitTray\CrearUnitTrayInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarCajas\ListarCajasHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarEspecimenesAsignables\ListarEspecimenesAsignablesHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarEspecimenesAsignables\ListarEspecimenesAsignablesInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarUnitTraysPorCaja\ListarUnitTraysPorCajaHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarUnitTraysPorCaja\ListarUnitTraysPorCajaInput;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
@@ -36,22 +37,23 @@ final class AsignacionUnitTrayIndex extends Component
 
     public array $especimenesSeleccionados = [];
 
+    public string $busquedaEspecimen = '';
+
     public ?string $successMessage = null;
 
     public ?string $warningMessage = null;
 
     public ?string $errorMessage = null;
 
-    public function mount(
-        ListarCajasHandler $cajasHandler,
-        ListarEspecimenesAsignablesHandler $especimenesHandler,
-    ): void {
-        $this->cargarProtegido(function () use ($cajasHandler, $especimenesHandler) {
+    public function mount(ListarCajasHandler $cajasHandler): void
+    {
+        // Solo se cargan las cajas al montar. Los especímenes (catálogo de 48k+)
+        // jamás se cargan de golpe: se buscan de forma acotada al elegir un tray.
+        $this->cargarProtegido(function () use ($cajasHandler) {
             $this->cajas = array_map(
                 fn ($c) => ['id' => $c->id, 'label' => "{$c->codigo}".($c->nombre ? " — {$c->nombre}" : '')],
                 $cajasHandler->handle()->items,
             );
-            $this->especimenes = $especimenesHandler->handle()->items;
         });
     }
 
@@ -80,17 +82,22 @@ final class AsignacionUnitTrayIndex extends Component
     public function seleccionarUnitTray(string $unitTrayId): void
     {
         $this->unitTraySeleccionado = $unitTrayId;
+        $this->busquedaEspecimen = '';
         $this->limpiarMensajes();
+        $this->cargarProtegido(fn () => $this->cargarEspecimenes());
         $this->especimenesSeleccionados = array_values(array_map(
             fn ($e) => $e['id'],
             array_filter($this->especimenes, fn ($e) => $e['unitTrayId'] === $unitTrayId),
         ));
     }
 
-    public function asignarEspecimenes(
-        ActualizarEspecimenesUnitTrayHandler $handler,
-        ListarEspecimenesAsignablesHandler $especimenesHandler,
-    ): void {
+    public function updatedBusquedaEspecimen(): void
+    {
+        $this->cargarProtegido(fn () => $this->cargarEspecimenes());
+    }
+
+    public function asignarEspecimenes(ActualizarEspecimenesUnitTrayHandler $handler): void
+    {
         $this->validate(['unitTraySeleccionado' => 'required|string']);
 
         try {
@@ -98,7 +105,7 @@ final class AsignacionUnitTrayIndex extends Component
                 unitTrayId: $this->unitTraySeleccionado,
                 especimenIds: array_values($this->especimenesSeleccionados),
             ));
-            $this->especimenes = $especimenesHandler->handle()->items;
+            $this->cargarEspecimenes();
             $this->cargarUnitTrays($this->cajaSeleccionada);
             $this->flash('Especímenes asignados al unit tray.');
             $this->advertirFueraDeLugar($output->especimenesFueraDeLugar);
@@ -118,6 +125,23 @@ final class AsignacionUnitTrayIndex extends Component
             ? []
             : app(ListarUnitTraysPorCajaHandler::class)
                 ->handle(new ListarUnitTraysPorCajaInput($cajaId))->items;
+    }
+
+    private function cargarEspecimenes(): void
+    {
+        if ($this->unitTraySeleccionado === '') {
+            $this->especimenes = [];
+
+            return;
+        }
+
+        $busqueda = trim($this->busquedaEspecimen);
+
+        $this->especimenes = app(ListarEspecimenesAsignablesHandler::class)
+            ->handle(new ListarEspecimenesAsignablesInput(
+                busqueda: $busqueda !== '' ? $busqueda : null,
+                unitTrayId: $this->unitTraySeleccionado,
+            ))->items;
     }
 
     private function flash(string $mensaje): void
