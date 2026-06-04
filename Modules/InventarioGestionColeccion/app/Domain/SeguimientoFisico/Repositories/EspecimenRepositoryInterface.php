@@ -37,6 +37,22 @@ interface EspecimenRepositoryInterface
     public function buscarTodos(): array;
 
     /**
+     * Proyección ligera para la pantalla de asignación a unit trays: NO hidrata
+     * entidades de dominio ni carga identificadores, por lo que escala a las 48k+
+     * filas del catálogo. Devuelve solo `id`, `codigoCatalogo` y `taxonId`.
+     *
+     * - `$busqueda`: si se provee, filtra por código de catálogo o nombre
+     *   científico del taxón (ILIKE). Vacío/null = primeras filas por código.
+     * - `$limite`: tope de coincidencias devueltas.
+     * - `$incluirSiempre`: ids que deben devolverse aunque no coincidan con la
+     *   búsqueda ni entren en el límite (los ya asignados al tray en contexto).
+     *
+     * @param  string[]  $incluirSiempre
+     * @return array<int, array{id: string, codigoCatalogo: string, taxonId: ?string}>
+     */
+    public function buscarParaAsignacion(?string $busqueda, int $limite, array $incluirSiempre = []): array;
+
+    /**
      * Permite la idempotencia del importador: si un espécimen ya fue creado
      * a partir de una fila específica del Excel, no se duplica al re-correr.
      */

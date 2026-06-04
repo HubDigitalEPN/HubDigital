@@ -157,8 +157,29 @@
         <div class="rounded-lg border border-border bg-surface shadow-sm p-4 space-y-4">
             <flux:heading size="lg" class="text-blue-navy">2. Especímenes a asignar</flux:heading>
             <p class="text-sm text-text-secondary">
-                Marca los especímenes que pertenecen al unit tray seleccionado. La clasificación de la caja se recalcula automáticamente.
+                Busca por código de catálogo o nombre científico y marca los especímenes que pertenecen al unit tray seleccionado. La clasificación de la caja se recalcula automáticamente.
             </p>
+
+            <flux:field>
+                <flux:label>Buscar espécimen</flux:label>
+                <flux:input
+                    wire:model.live.debounce.400ms="busquedaEspecimen"
+                    icon="magnifying-glass"
+                    placeholder="Código de catálogo o nombre científico..."
+                />
+                <flux:description>
+                    La lista muestra los ya asignados a este tray más las primeras coincidencias. Refina la búsqueda para encontrar otros.
+                </flux:description>
+            </flux:field>
+
+            <div
+                wire:loading.flex
+                wire:target="busquedaEspecimen"
+                class="items-center gap-2 text-sm text-text-secondary"
+            >
+                <flux:icon name="arrow-path" class="size-4 animate-spin text-blue-navy" />
+                <span>Buscando especímenes…</span>
+            </div>
 
             <div class="max-h-96 overflow-y-auto rounded-lg border border-border divide-y divide-border">
                 @forelse($especimenes as $especimen)
@@ -175,7 +196,11 @@
                     </label>
                 @empty
                     <div class="px-4 py-6 text-center text-text-secondary">
-                        No hay especímenes registrados.
+                        @if(trim($busquedaEspecimen) !== '')
+                            Ningún espécimen coincide con «{{ $busquedaEspecimen }}».
+                        @else
+                            No hay especímenes registrados.
+                        @endif
                     </div>
                 @endforelse
             </div>

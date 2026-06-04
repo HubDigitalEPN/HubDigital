@@ -101,6 +101,43 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
         return array_values($this->store);
     }
 
+    /**
+     * @param  string[]  $incluirSiempre
+     * @return array<int, array{id: string, codigoCatalogo: string, taxonId: ?string}>
+     */
+    public function buscarParaAsignacion(?string $busqueda, int $limite, array $incluirSiempre = []): array
+    {
+        $busqueda = $busqueda !== null ? trim($busqueda) : '';
+
+        $coincide = function (Especimen $e) use ($busqueda): bool {
+            if ($busqueda === '') {
+                return true;
+            }
+
+            return stripos($e->codigoCatalogo(), $busqueda) !== false;
+        };
+
+        $forzados = array_flip($incluirSiempre);
+        $resultado = [];
+
+        foreach ($this->store as $e) {
+            $id = (string) $e->id();
+            $esForzado = isset($forzados[$id]);
+
+            if (! $esForzado && (! $coincide($e) || count($resultado) >= $limite)) {
+                continue;
+            }
+
+            $resultado[$id] = [
+                'id' => $id,
+                'codigoCatalogo' => $e->codigoCatalogo(),
+                'taxonId' => $e->taxonId(),
+            ];
+        }
+
+        return array_values($resultado);
+    }
+
     public function existePorFilaOrigen(int $filaOrigenExcel): bool
     {
         foreach ($this->store as $especimen) {

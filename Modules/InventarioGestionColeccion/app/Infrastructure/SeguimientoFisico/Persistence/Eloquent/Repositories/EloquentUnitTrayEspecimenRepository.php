@@ -51,6 +51,21 @@ class EloquentUnitTrayEspecimenRepository implements UnitTrayEspecimenRepository
         return $model ? UnitTrayId::desde($model->unit_tray_id) : null;
     }
 
+    /**
+     * @param  string[]  $especimenIds
+     * @return array<string, string>
+     */
+    public function unitTraysDeEspecimenes(array $especimenIds): array
+    {
+        if ($especimenIds === []) {
+            return [];
+        }
+
+        return UnitTrayEspecimenEloquentModel::whereIn('especimen_id', $especimenIds)
+            ->pluck('unit_tray_id', 'especimen_id')
+            ->all();
+    }
+
     public function eliminarPorUnitTray(UnitTrayId $unitTrayId): void
     {
         UnitTrayEspecimenEloquentModel::where('unit_tray_id', (string) $unitTrayId)->delete();
