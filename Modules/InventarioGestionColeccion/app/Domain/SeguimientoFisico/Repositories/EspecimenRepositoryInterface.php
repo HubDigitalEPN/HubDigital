@@ -42,7 +42,9 @@ interface EspecimenRepositoryInterface
      * filas del catálogo. Devuelve solo `id`, `codigoCatalogo` y `taxonId`.
      *
      * - `$busqueda`: si se provee, filtra por código de catálogo o nombre
-     *   científico del taxón (ILIKE). Vacío/null = primeras filas por código.
+     *   científico del taxón (ILIKE). Vacío/null = vista inicial: primeras filas
+     *   por código, EXCLUYENDO los especímenes sin determinar que solo cuelgan
+     *   del reino (p. ej. "Animalia"); estos siguen siendo localizables al buscar.
      * - `$limite`: tope de coincidencias devueltas.
      * - `$incluirSiempre`: ids que deben devolverse aunque no coincidan con la
      *   búsqueda ni entren en el límite (los ya asignados al tray en contexto).

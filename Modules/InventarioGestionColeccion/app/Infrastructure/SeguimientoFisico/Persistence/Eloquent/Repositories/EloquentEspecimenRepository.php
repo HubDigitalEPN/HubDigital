@@ -192,6 +192,12 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
                 $q->where('codigo_catalogo', 'ilike', $patron)
                     ->orWhereHas('taxon', fn ($t) => $t->where('nombre_cientifico', 'ilike', $patron));
             });
+        } else {
+            // Vista inicial (sin búsqueda): se ocultan los especímenes sin
+            // determinar que solo cuelgan del reino (p. ej. "Animalia"), pues no
+            // aportan al armado de unit trays. Siguen siendo localizables al
+            // escribir un término de búsqueda.
+            $base->whereDoesntHave('taxon', fn ($t) => $t->where('rango', 'reino'));
         }
 
         $coincidencias = $base->orderBy('codigo_catalogo')

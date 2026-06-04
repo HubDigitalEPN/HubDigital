@@ -183,15 +183,18 @@
 
             <div class="max-h-96 overflow-y-auto rounded-lg border border-border divide-y divide-border">
                 @forelse($especimenes as $especimen)
-                    <label class="flex items-center gap-3 px-4 py-3 hover:bg-bg-main cursor-pointer min-h-[44px]">
+                    <label
+                        wire:key="especimen-{{ $especimen['id'] }}"
+                        class="flex items-center gap-3 px-4 py-3 hover:bg-bg-main cursor-pointer min-h-[44px]"
+                    >
                         <flux:checkbox
                             wire:model="especimenesSeleccionados"
                             value="{{ $especimen['id'] }}"
                         />
-                        <span class="font-medium text-text-primary">{{ $especimen['codigoCatalogo'] }}</span>
-                        <span class="font-serif italic text-text-secondary">{{ $especimen['taxonNombre'] }}</span>
+                        <span class="shrink-0 font-medium text-text-primary">{{ $especimen['codigoCatalogo'] }}</span>
+                        <span class="font-serif text-sm text-text-secondary">{{ $especimen['taxonNombre'] }}</span>
                         @if($especimen['unitTrayId'] && $especimen['unitTrayId'] !== $unitTraySeleccionado)
-                            <span class="ml-auto text-xs text-warning">en otro unit tray</span>
+                            <span class="ml-auto shrink-0 text-xs text-warning">en otro unit tray</span>
                         @endif
                     </label>
                 @empty
