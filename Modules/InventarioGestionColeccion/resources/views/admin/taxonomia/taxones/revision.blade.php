@@ -14,6 +14,20 @@
     @if($successMessage)<flux:callout variant="success" dismissible>{{ $successMessage }}</flux:callout>@endif
     @if($errorMessage)<flux:callout variant="danger" dismissible>{{ $errorMessage }}</flux:callout>@endif
 
+    <x-inventariogestioncoleccion::bandeja-ayuda titulo="¿Cómo uso esta pantalla?" storage-key="ayuda-taxones-revision">
+        <p>
+            Cada tarjeta agrupa especímenes con el mismo <code>taxon_verbatim</code> (e.g. <code>"Acragas_sp.1"</code>)
+            que el importador no pudo asociar a un taxón del catálogo.
+        </p>
+        <ol class="list-decimal pl-6 space-y-1 text-xs text-text-secondary">
+            <li>El sistema sugiere candidatos por similitud + boost si el primer token coincide con un género conocido.</li>
+            <li>Si el verbatim es claro → click en el candidato top → "Confirmar enlace".</li>
+            <li>Si el verbatim es ambiguo (<code>"_"</code>, <code>"indet"</code>) registra una morfoespecie en
+                <a href="{{ route('inventario.taxonomia.taxones') }}" wire:navigate class="text-info hover:underline">/taxones</a> y vuelve a esta pantalla.</li>
+            <li>Si es irrecuperable, deja la tarjeta sin acción — esos especímenes no se exportan a GBIF.</li>
+        </ol>
+    </x-inventariogestioncoleccion::bandeja-ayuda>
+
     <div class="rounded-lg border border-border bg-surface shadow-sm p-4 flex flex-wrap items-center justify-between gap-2">
         <span class="text-sm font-medium text-text-primary">
             {{ $total }} verbatim(s) distinto(s) pendiente(s)

@@ -12,6 +12,21 @@
     @if($successMessage)<flux:callout variant="success" dismissible>{{ $successMessage }}</flux:callout>@endif
     @if($errorMessage)<flux:callout variant="danger" dismissible>{{ $errorMessage }}</flux:callout>@endif
 
+    <x-inventariogestioncoleccion::bandeja-ayuda titulo="¿Cómo uso esta pantalla?" storage-key="ayuda-fechas-revision">
+        <p>
+            Estos son los <code>fecha_verbatim</code> que el parser no pudo entender automáticamente
+            (formatos como <code>"25 a 27-May-09"</code>, <code>"10/18-22/2007"</code>, <code>"s/f"</code>).
+        </p>
+        <ol class="list-decimal pl-6 space-y-1 text-xs text-text-secondary">
+            <li>Si la tarjeta dice <strong>"Sugerencia disponible"</strong> (chip azul), los inputs ya están
+                pre-llenados con lo que el parser intuyó. Revisa y aplica.</li>
+            <li>Si dice <strong>"Parser no logró interpretarla"</strong> (chip naranja), escribe la fecha de inicio
+                (y de fin si es un rango) en formato <code>YYYY-MM-DD</code>.</li>
+            <li>Click "Aplicar fecha" → todos los especímenes con ese verbatim quedan con la fecha asignada.</li>
+            <li>Si el verbatim es irrecuperable (<code>"s/f"</code>, "sin fecha"), déjala vacía.</li>
+        </ol>
+    </x-inventariogestioncoleccion::bandeja-ayuda>
+
     <div class="rounded-lg border border-border bg-surface shadow-sm p-4 flex flex-wrap items-center justify-between gap-2">
         <span class="text-sm font-medium text-text-primary">
             {{ $total }} verbatim(s) distinto(s) pendiente(s)

@@ -14,6 +14,22 @@
     @if($successMessage)<flux:callout variant="success" dismissible>{{ $successMessage }}</flux:callout>@endif
     @if($errorMessage)<flux:callout variant="danger" dismissible>{{ $errorMessage }}</flux:callout>@endif
 
+    <x-inventariogestioncoleccion::bandeja-ayuda titulo="¿Cómo uso esta pantalla?" storage-key="ayuda-localidades-revision">
+        <p>
+            Cada tarjeta agrupa los especímenes que tienen el mismo <code>localidad_verbatim</code>
+            (texto crudo del Excel) y que <strong>aún no</strong> tienen una localidad canónica asociada.
+        </p>
+        <ol class="list-decimal pl-6 space-y-1 text-xs text-text-secondary">
+            <li>Si no hay candidatos sugeridos, registra primero la localidad canónica en
+                <a href="{{ route('inventario.taxonomia.localidades') }}" wire:navigate class="text-info hover:underline">/localidades</a>.</li>
+            <li>El sistema propone candidatos por similitud de nombre. El de mayor % aparece pre-seleccionado.</li>
+            <li>Click en el candidato correcto → "Confirmar enlace" → todos los especímenes con ese verbatim quedan asociados.</li>
+        </ol>
+        <p class="text-xs text-text-secondary">
+            <strong>Estado final esperado:</strong> esta bandeja vacía. Cada espécimen sabe en qué localidad canónica fue colectado.
+        </p>
+    </x-inventariogestioncoleccion::bandeja-ayuda>
+
     {{-- Resumen --}}
     <div class="rounded-lg border border-border bg-surface shadow-sm p-4 flex flex-wrap items-center justify-between gap-2">
         <span class="text-sm font-medium text-text-primary">
