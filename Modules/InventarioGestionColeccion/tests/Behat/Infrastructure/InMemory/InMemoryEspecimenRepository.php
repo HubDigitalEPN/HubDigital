@@ -112,6 +112,38 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
         return false;
     }
 
+    public function contarTotal(): int
+    {
+        return count($this->store);
+    }
+
+    public function contarPublicablesGbif(): int
+    {
+        $c = 0;
+        foreach ($this->store as $e) {
+            if ($e->taxonId() !== null
+                && $e->decimalLatitude() !== null
+                && $e->decimalLongitude() !== null
+                && $e->estadoRevision()->value !== 'descartada') {
+                $c++;
+            }
+        }
+
+        return $c;
+    }
+
+    public function contarPendientesRevision(): int
+    {
+        $c = 0;
+        foreach ($this->store as $e) {
+            if ($e->estadoRevision()->value === 'pendiente' && $e->motivoRevision() !== null) {
+                $c++;
+            }
+        }
+
+        return $c;
+    }
+
     /** @return array<string, int> */
     public function agruparLocalidadVerbatimsPendientes(int $limit, int $offset): array
     {

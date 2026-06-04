@@ -42,6 +42,18 @@ interface EspecimenRepositoryInterface
      */
     public function existePorFilaOrigen(int $filaOrigenExcel): bool;
 
+    /** Cuenta total de especímenes en el catálogo. */
+    public function contarTotal(): int;
+
+    /**
+     * Cuenta especímenes que cumplen criterios mínimos GBIF: taxon_id NOT NULL,
+     * coordenadas NOT NULL y estado_revision distinto de 'descartada'.
+     */
+    public function contarPublicablesGbif(): int;
+
+    /** Cuenta especímenes con estado_revision='pendiente' AND motivo NOT NULL. */
+    public function contarPendientesRevision(): int;
+
     /**
      * Inserta múltiples especímenes en una sola transacción para reducir
      * round-trips contra la BD (clave para el importador masivo del catálogo).

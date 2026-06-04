@@ -11,6 +11,7 @@ use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\Seguimiento
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Admin\GabineteShow;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Admin\HorarioSettingsForm;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Admin\OrdenFamiliasIndex;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\CentroRevisionIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\ConfiguracionColumnasIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\DatasetConfigForm;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\DuplicadosCatalogNumberIndex;
@@ -38,6 +39,7 @@ Route::middleware(['web', 'auth', 'verified', 'role:curador'])
         Route::get('/horario', HorarioSettingsForm::class)->name('horario');
 
         Route::prefix('taxonomia')->name('taxonomia.')->group(function () {
+            Route::get('/revision', CentroRevisionIndex::class)->name('revision');
             Route::get('/taxones', TaxonIndex::class)->name('taxones');
             Route::get('/taxones/revision', TaxaRevisionIndex::class)->name('taxones.revision');
             Route::get('/localidades', LocalidadIndex::class)->name('localidades');

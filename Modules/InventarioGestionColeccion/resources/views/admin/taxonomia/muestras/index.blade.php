@@ -63,6 +63,18 @@
     @if($successMessage)<flux:callout variant="success" dismissible>{{ $successMessage }}</flux:callout>@endif
     @if($errorMessage)<flux:callout variant="danger" dismissible>{{ $errorMessage }}</flux:callout>@endif
 
+    <x-inventariogestioncoleccion::bandeja-ayuda titulo="¿Cómo uso esta pantalla?" storage-key="ayuda-muestras">
+        <p>
+            El importador agrupó especímenes que compartían el mismo <code>oldCode</code> en una misma "muestra
+            de colecta" (una salida de campo). Las creó como <strong>pendientes</strong> esperando tu confirmación.
+        </p>
+        <ol class="list-decimal pl-6 space-y-1 text-xs text-text-secondary">
+            <li>Mira cada fila: oldCode + colector + fecha + localidad. ¿Hacen sentido juntos como una sola muestra real?</li>
+            <li>Si sí → <strong>Confirmar</strong>. Las muestras confirmadas desaparecen de esta bandeja.</li>
+            <li>Si parece basura o duplicado → <strong>Descartar</strong>. Queda en BD marcada con motivo.</li>
+        </ol>
+    </x-inventariogestioncoleccion::bandeja-ayuda>
+
     {{-- Leyenda de prioridad --}}
     <div class="flex flex-wrap items-center gap-4 text-xs text-text-secondary">
         <span class="font-medium">Prioridad de columnas:</span>

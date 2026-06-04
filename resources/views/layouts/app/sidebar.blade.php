@@ -107,6 +107,14 @@
                         </flux:sidebar.group>
                         <flux:sidebar.group heading="Inventario" class="grid">
                             <flux:sidebar.item
+                                icon="clipboard-document-check"
+                                :href="route('inventario.taxonomia.revision')"
+                                :current="request()->routeIs('inventario.taxonomia.revision')"
+                                wire:navigate
+                            >
+                                Centro de revisión
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
                                 icon="magnifying-glass"
                                 :href="route('inventario.taxonomia.especimenes')"
                                 :current="request()->routeIs('inventario.taxonomia.especimenes') && !request()->routeIs('inventario.taxonomia.especimenes.duplicados')"

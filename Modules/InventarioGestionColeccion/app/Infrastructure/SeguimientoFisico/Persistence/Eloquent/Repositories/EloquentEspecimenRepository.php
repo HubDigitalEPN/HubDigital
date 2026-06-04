@@ -180,6 +180,27 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
         return EspecimenEloquentModel::where('fila_origen_excel', $filaOrigenExcel)->exists();
     }
 
+    public function contarTotal(): int
+    {
+        return EspecimenEloquentModel::count();
+    }
+
+    public function contarPublicablesGbif(): int
+    {
+        return EspecimenEloquentModel::whereNotNull('taxon_id')
+            ->whereNotNull('decimal_latitude')
+            ->whereNotNull('decimal_longitude')
+            ->where('estado_revision', '!=', 'descartada')
+            ->count();
+    }
+
+    public function contarPendientesRevision(): int
+    {
+        return EspecimenEloquentModel::where('estado_revision', 'pendiente')
+            ->whereNotNull('motivo_revision')
+            ->count();
+    }
+
     /** @return array<string, int> */
     public function agruparLocalidadVerbatimsPendientes(int $limit, int $offset): array
     {
