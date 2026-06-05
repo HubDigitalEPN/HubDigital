@@ -21,14 +21,23 @@
             <span class="text-[10px] font-semibold uppercase tracking-wider text-text-secondary">{{ $campo }}</span>
             @if($ayuda)
                 <div
-                    x-data="{ infoAbierta: false }"
-                    x-on:mouseenter="infoAbierta = true"
+                    x-data="{
+                        infoAbierta: false,
+                        x: 0,
+                        y: 0,
+                        abrir() {
+                            const r = this.$el.getBoundingClientRect();
+                            this.x = Math.min(r.left, window.innerWidth - 272);
+                            this.y = r.bottom + 6;
+                            this.infoAbierta = true;
+                        }
+                    }"
+                    x-on:mouseenter="abrir()"
                     x-on:mouseleave="infoAbierta = false"
-                    x-on:click.outside="infoAbierta = false"
                     class="relative shrink-0"
                 >
                     <span
-                        x-on:click.stop="infoAbierta = !infoAbierta"
+                        x-on:click.stop="infoAbierta ? infoAbierta = false : abrir()"
                         :class="infoAbierta ? 'text-science-blue' : 'text-text-secondary'"
                         class="-m-1.5 flex cursor-help p-1.5 transition-colors duration-200"
                         aria-label="Más información sobre este campo"
@@ -36,27 +45,30 @@
                         <flux:icon name="information-circle" class="size-3" />
                     </span>
 
-                    <div
-                        x-show="infoAbierta"
-                        x-cloak
-                        x-transition:enter="transition ease-out duration-300"
-                        x-transition:enter-start="opacity-0 -translate-y-2 scale-[0.97]"
-                        x-transition:enter-end="opacity-100 translate-y-0 scale-100"
-                        x-transition:leave="transition ease-in duration-150"
-                        x-transition:leave-start="opacity-100 translate-y-0 scale-100"
-                        x-transition:leave-end="opacity-0 -translate-y-2 scale-[0.97]"
-                        class="absolute left-0 top-full z-30 mt-1.5 w-64 max-w-[calc(100vw-3rem)] origin-top-left overflow-hidden rounded-lg bg-surface bg-gradient-to-br from-science-blue/10 via-surface to-bio-green/5 shadow-lg ring-1 ring-science-blue/20 sm:w-72"
-                    >
-                        <div class="flex gap-2.5 p-3">
-                            <div class="flex size-7 shrink-0 items-center justify-center rounded-full bg-science-blue/15 ring-1 ring-science-blue/20">
-                                <flux:icon name="light-bulb" class="size-4 text-science-blue" />
-                            </div>
-                            <div class="space-y-0.5">
-                                <p class="text-xs font-semibold uppercase tracking-wide text-science-blue">¿Qué es este campo?</p>
-                                <p class="text-xs text-text-secondary leading-relaxed">{{ $ayuda }}</p>
+                    <template x-teleport="body">
+                        <div
+                            x-show="infoAbierta"
+                            x-cloak
+                            x-transition:enter="transition ease-out duration-200"
+                            x-transition:enter-start="opacity-0 -translate-y-1 scale-[0.97]"
+                            x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                            x-transition:leave="transition ease-in duration-150"
+                            x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+                            x-transition:leave-end="opacity-0 -translate-y-1 scale-[0.97]"
+                            :style="'position:fixed;left:'+x+'px;top:'+y+'px;z-index:9999'"
+                            class="w-64 max-w-[calc(100vw-2rem)] origin-top-left overflow-hidden rounded-lg bg-surface shadow-lg ring-1 ring-science-blue/30 sm:w-72"
+                        >
+                            <div class="flex gap-2.5 p-3">
+                                <div class="flex size-7 shrink-0 items-center justify-center rounded-full bg-science-blue/15 ring-1 ring-science-blue/20">
+                                    <flux:icon name="light-bulb" class="size-4 text-science-blue" />
+                                </div>
+                                <div class="space-y-0.5">
+                                    <p class="text-xs font-semibold uppercase tracking-wide text-science-blue">¿Qué es este campo?</p>
+                                    <p class="text-xs text-text-secondary leading-relaxed">{{ $ayuda }}</p>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    </template>
                 </div>
             @endif
         </div>

@@ -42,7 +42,7 @@
     x-on:dragover.prevent="if (!cargado) arrastrando = true"
     x-on:dragleave.prevent="arrastrando = false"
     x-on:drop.prevent="soltar($event)"
-    class="flex flex-col items-center gap-3 text-center sm:flex-row sm:items-center sm:gap-4 sm:text-left rounded-lg border-2 p-4 transition-all"
+    class="flex flex-col items-center gap-3 text-center sm:flex-row sm:items-center sm:gap-3 sm:text-left rounded-lg border-2 p-3 transition-all"
     x-bind:class="cargado
         ? 'border-success/40 bg-success/5 cursor-default'
         : arrastrando
@@ -57,18 +57,27 @@
 
     {{-- Body --}}
     <div class="flex-1 min-w-0">
-        <div class="flex items-start gap-1.5">
+        <div class="flex items-center gap-1.5">
             <p class="text-sm font-semibold text-text-primary leading-snug">{{ $nombre }}</p>
             @if($ayuda)
                 <div
-                    x-data="{ infoAbierta: false }"
-                    x-on:mouseenter="infoAbierta = true"
+                    x-data="{
+                        infoAbierta: false,
+                        x: 0,
+                        y: 0,
+                        abrir() {
+                            const r = this.$el.getBoundingClientRect();
+                            this.x = Math.max(8, r.right - 256);
+                            this.y = r.bottom + 6;
+                            this.infoAbierta = true;
+                        }
+                    }"
+                    x-on:mouseenter="abrir()"
                     x-on:mouseleave="infoAbierta = false"
-                    x-on:click.outside="infoAbierta = false"
-                    class="relative shrink-0"
+                    class="shrink-0"
                 >
                     <span
-                        x-on:click.stop="infoAbierta = !infoAbierta"
+                        x-on:click.stop="infoAbierta ? infoAbierta = false : abrir()"
                         :class="infoAbierta ? 'text-science-blue' : 'text-text-secondary'"
                         class="-m-2 flex cursor-help p-2 transition-colors duration-200"
                         aria-label="Más información sobre este documento"
@@ -76,27 +85,30 @@
                         <flux:icon name="information-circle" class="size-4" />
                     </span>
 
-                    <div
-                        x-show="infoAbierta"
-                        x-cloak
-                        x-transition:enter="transition ease-out duration-300"
-                        x-transition:enter-start="opacity-0 -translate-y-2 scale-[0.97]"
-                        x-transition:enter-end="opacity-100 translate-y-0 scale-100"
-                        x-transition:leave="transition ease-in duration-150"
-                        x-transition:leave-start="opacity-100 translate-y-0 scale-100"
-                        x-transition:leave-end="opacity-0 -translate-y-2 scale-[0.97]"
-                        class="absolute right-0 top-full z-30 mt-1.5 w-64 max-w-[calc(100vw-3rem)] origin-top-right overflow-hidden rounded-lg bg-surface bg-gradient-to-br from-science-blue/10 via-surface to-bio-green/5 shadow-lg ring-1 ring-science-blue/20 sm:w-72"
-                    >
-                        <div class="flex gap-2.5 p-3">
-                            <div class="flex size-7 shrink-0 items-center justify-center rounded-full bg-science-blue/15 ring-1 ring-science-blue/20">
-                                <flux:icon name="light-bulb" class="size-4 text-science-blue" />
-                            </div>
-                            <div class="space-y-0.5">
-                                <p class="text-xs font-semibold uppercase tracking-wide text-science-blue">¿Qué subo aquí?</p>
-                                <p class="text-xs text-text-secondary leading-relaxed">{{ $ayuda }}</p>
+                    <template x-teleport="body">
+                        <div
+                            x-show="infoAbierta"
+                            x-cloak
+                            x-transition:enter="transition ease-out duration-200"
+                            x-transition:enter-start="opacity-0 -translate-y-1 scale-[0.97]"
+                            x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                            x-transition:leave="transition ease-in duration-150"
+                            x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+                            x-transition:leave-end="opacity-0 -translate-y-1 scale-[0.97]"
+                            :style="'position:fixed;left:'+x+'px;top:'+y+'px;z-index:9999'"
+                            class="w-64 max-w-[calc(100vw-2rem)] origin-top-right overflow-hidden rounded-lg bg-surface shadow-lg ring-1 ring-science-blue/30 sm:w-72"
+                        >
+                            <div class="flex gap-2.5 p-3">
+                                <div class="flex size-7 shrink-0 items-center justify-center rounded-full bg-science-blue/15 ring-1 ring-science-blue/20">
+                                    <flux:icon name="light-bulb" class="size-4 text-science-blue" />
+                                </div>
+                                <div class="space-y-0.5">
+                                    <p class="text-xs font-semibold uppercase tracking-wide text-science-blue">¿Qué subo aquí?</p>
+                                    <p class="text-xs text-text-secondary leading-relaxed">{{ $ayuda }}</p>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    </template>
                 </div>
             @endif
         </div>
@@ -123,14 +135,9 @@
             @endif
 
             <span x-show="!cargado && !subiendo && !nombreArchivo" class="text-xs text-text-secondary">
-                Solo PDF
+                Solo PDF · Haz clic o arrastra aquí
             </span>
         </div>
-
-        {{-- Instrucción de acción --}}
-        <p x-show="!cargado && !subiendo && !nombreArchivo" class="text-xs text-text-secondary mt-1.5">
-            Haz clic o arrastra tu archivo aquí
-        </p>
 
         {{-- Enlace a plantilla de ejemplo --}}
         @if($plantilla)
