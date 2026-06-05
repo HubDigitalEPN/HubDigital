@@ -10,4 +10,10 @@ interface ProveedorEspecimenesPort
 
     /** @return DatosEspecimenProveedor[] */
     public function obtenerTodos(): array;
+
+    /**
+     * @param  list<string>  $occurrenceIds
+     * @return DatosEspecimenProveedor[]
+     */
+    public function buscarPorOccurrenceIds(array $occurrenceIds): array;
 }

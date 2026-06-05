@@ -112,6 +112,42 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
         return array_map(fn ($fila) => $this->traducir($fila), $filas);
     }
 
+    /**
+     * @param  list<string>  $occurrenceIds
+     * @return DatosEspecimenProveedor[]
+     */
+    public function buscarPorOccurrenceIds(array $occurrenceIds): array
+    {
+        if ($occurrenceIds === []) {
+            return [];
+        }
+
+        $filas = DB::table('taxonomia.especimenes as e')
+            ->join('taxonomia.taxones as t', 't.id', '=', 'e.taxon_id')
+            ->whereIn('e.occurrence_id', $occurrenceIds)
+            ->select([
+                'e.id',
+                'e.occurrence_id',
+                'e.colector',
+                'e.individual_count',
+                'e.disposition',
+                'e.occurrence_status',
+                'e.specimen_notes',
+                'e.country',
+                'e.locality_name',
+                'e.decimal_latitude',
+                'e.decimal_longitude',
+                't.nombre_cientifico',
+                DB::raw('NULL as family'),  // jerarquía completa no requerida en detalle de especie
+                DB::raw('NULL as genus'),
+            ])
+            ->orderByRaw('e.disposition IS NULL')
+            ->orderBy('e.occurrence_id')
+            ->get();
+
+        return $filas->map(fn ($fila) => $this->traducir($fila))->all();
+    }
+
     private function traducir(mixed $fila): DatosEspecimenProveedor
     {
         return new DatosEspecimenProveedor(

@@ -3,6 +3,7 @@
 namespace Modules\CatalogoPublico\Infrastructure\Providers;
 
 use Modules\CatalogoPublico\Application\Ports\EventPublisherPort;
+use Modules\CatalogoPublico\Application\Ports\ProveedorEspecimenesParaArbolPort;
 use Modules\CatalogoPublico\Application\Ports\ProveedorEspecimenesPort;
 use Modules\CatalogoPublico\Application\Ports\TransactionManagerPort;
 use Modules\CatalogoPublico\Domain\Repositories\EspecimenDivulgableRepositoryInterface;
@@ -10,6 +11,7 @@ use Modules\CatalogoPublico\Infrastructure\Adapters\InventarioGestionColeccionEs
 use Modules\CatalogoPublico\Infrastructure\Adapters\LaravelTransactionManager;
 use Modules\CatalogoPublico\Infrastructure\Adapters\NullEventPublisher;
 use Modules\CatalogoPublico\Infrastructure\Persistence\Eloquent\Repositories\EloquentEspecimenDivulgableRepository;
+use Modules\CatalogoPublico\Infrastructure\Persistence\Eloquent\Repositories\EloquentProveedorEspecimenesParaArbol;
 use Nwidart\Modules\Support\ModuleServiceProvider;
 
 class CatalogoPublicoServiceProvider extends ModuleServiceProvider
@@ -28,6 +30,7 @@ class CatalogoPublicoServiceProvider extends ModuleServiceProvider
         TransactionManagerPort::class => LaravelTransactionManager::class,
         EventPublisherPort::class => NullEventPublisher::class,
         ProveedorEspecimenesPort::class => InventarioGestionColeccionEspecimenAdapter::class,
+        ProveedorEspecimenesParaArbolPort::class => EloquentProveedorEspecimenesParaArbol::class,
     ];
 
     public function boot(): void
