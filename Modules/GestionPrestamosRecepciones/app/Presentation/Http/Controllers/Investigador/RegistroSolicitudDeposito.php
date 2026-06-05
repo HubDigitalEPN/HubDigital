@@ -177,7 +177,13 @@ final class RegistroSolicitudDeposito extends Component
     public array $camposDwCPresentes = [];
 
     /** @var string[] */
-    public array $camposDwCRequeridos = [];
+    public array $camposDwCCriticos = [];
+
+    /** @var string[] */
+    public array $camposDwCRecomendados = [];
+
+    /** @var string[] Recomendados ausentes en el Excel — advertencia, no bloqueo */
+    public array $camposDwCRecomendadosFaltantes = [];
 
     /** @var array<int, array<string, mixed>> */
     public array $registrosMatriz = [];
@@ -350,7 +356,12 @@ final class RegistroSolicitudDeposito extends Component
                 $this->archivoMatrizNombre = 'Matriz cargada';
 
                 $catalogo = app(CatalogoCuraduriaPort::class);
-                $this->camposDwCRequeridos = $catalogo->camposRequeridos($this->solicitudId ?? '');
+                $this->camposDwCCriticos = $catalogo->camposCriticos($this->solicitudId ?? '');
+                $this->camposDwCRecomendados = $catalogo->camposRecomendados($this->solicitudId ?? '');
+                $this->camposDwCRecomendadosFaltantes = array_values(array_filter(
+                    $this->camposDwCRecomendados,
+                    fn (string $campo) => ! in_array($campo, $this->camposDwCPresentes, true)
+                ));
 
                 $this->poblarEstadosRegistros($matriz);
             }
@@ -970,7 +981,8 @@ final class RegistroSolicitudDeposito extends Component
         $this->camposDwCPresentes = $campos;
 
         $catalogo = app(CatalogoCuraduriaPort::class);
-        $this->camposDwCRequeridos = $catalogo->camposRequeridos($this->solicitudId ?? '');
+        $this->camposDwCCriticos = $catalogo->camposCriticos($this->solicitudId ?? '');
+        $this->camposDwCRecomendados = $catalogo->camposRecomendados($this->solicitudId ?? '');
 
         $cargar = app(CargarMatrizEspeciesHandler::class);
 
@@ -978,7 +990,8 @@ final class RegistroSolicitudDeposito extends Component
             $output = ($cargar)(new CargarMatrizEspeciesInput(
                 solicitudId: $this->solicitudId,
                 camposDwCPresentes: array_fill_keys($campos, true),
-                camposDwCExigidosPorCatalogo: $this->camposDwCRequeridos,
+                camposCriticos: $this->camposDwCCriticos,
+                camposRecomendados: $this->camposDwCRecomendados,
                 registros: $registros,
             ));
         } catch (CamposDwCFaltantesException $e) {
@@ -992,6 +1005,7 @@ final class RegistroSolicitudDeposito extends Component
         $this->estadoMatriz = $output->estadoMatriz->value;
         $this->validacionTipograficaAplicada = $output->validacionTipograficaAplicada;
         $this->totalRegistros = $output->totalRegistros;
+        $this->camposDwCRecomendadosFaltantes = $output->camposRecomendadosFaltantes;
         $this->matrizCargada = true;
         $this->registrosMatriz = $registros;
 
@@ -1163,6 +1177,9 @@ final class RegistroSolicitudDeposito extends Component
         $this->errorMatriz = '';
         $this->totalRegistros = 0;
         $this->camposDwCPresentes = [];
+        $this->camposDwCCriticos = [];
+        $this->camposDwCRecomendados = [];
+        $this->camposDwCRecomendadosFaltantes = [];
         $this->registrosMatriz = [];
         $this->estadosRegistros = [];
         $this->validacionTipograficaAplicada = false;

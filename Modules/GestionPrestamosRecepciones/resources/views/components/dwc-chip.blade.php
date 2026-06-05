@@ -1,18 +1,22 @@
 @props([
     'campo',
     'presente' => true,
-    'requerido' => false,
+    'prioridad' => 'opcional', {{-- critica | recomendada | opcional --}}
 ])
 
 @php
-    if ($presente && $requerido) {
+    if ($presente) {
         $clases = 'border-success/40 bg-success/5 text-success';
         $icono = 'check';
-        $etiqueta = 'Presente';
-    } elseif (!$presente && $requerido) {
+        $etiqueta = null;
+    } elseif ($prioridad === 'critica') {
         $clases = 'border-error/40 bg-error/5 text-error';
         $icono = 'exclamation-triangle';
-        $etiqueta = 'Faltante · requerido';
+        $etiqueta = 'Faltante · crítico';
+    } elseif ($prioridad === 'recomendada') {
+        $clases = 'border-warning/40 bg-warning/5 text-warning';
+        $icono = 'exclamation-circle';
+        $etiqueta = 'Faltante · recomendado';
     } else {
         $clases = 'border-border bg-bg-main text-text-secondary';
         $icono = 'check';
@@ -24,7 +28,8 @@
     <flux:icon :name="$icono" class="size-3.5" />
     <span class="font-mono text-xs">{{ $campo }}</span>
     @if($etiqueta)
-        <span class="text-[10px] font-semibold uppercase tracking-wide ml-0.5 px-1.5 py-0.5 rounded {{ $presente ? 'bg-success/15' : 'bg-error/15' }}">
+        <span class="text-[10px] font-semibold uppercase tracking-wide ml-0.5 px-1.5 py-0.5 rounded
+            {{ $prioridad === 'critica' ? 'bg-error/15' : 'bg-warning/15' }}">
             {{ $etiqueta }}
         </span>
     @endif

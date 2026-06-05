@@ -47,68 +47,82 @@ final class RegistroColumnasEspecimen
      *   etiqueta: string,
      *   grupo: string,
      *   prioridad: string,
-     *   visiblePorDefecto: bool
+     *   visiblePorDefecto: bool,
+     *   nombreDwC: string|null
      * }>
      */
     public static function todas(): array
     {
         return [
             // Identificación
-            self::col('codigoCatalogo', 'Código catálogo', self::GRUPO_IDENTIFICACION, self::PRIORIDAD_RECOMENDADA, true),
-            self::col('occurrenceId', 'occurrenceID', self::GRUPO_IDENTIFICACION, self::PRIORIDAD_RECOMENDADA, false),
-            self::col('catalogNumber', 'catalogNumber', self::GRUPO_IDENTIFICACION, self::PRIORIDAD_OPCIONAL, false),
-            self::col('oldCode', 'oldCode (muestra)', self::GRUPO_IDENTIFICACION, self::PRIORIDAD_OPCIONAL, false),
-            self::col('cardexLiquidCollectionCode', 'Cardex líquido', self::GRUPO_IDENTIFICACION, self::PRIORIDAD_OPCIONAL, false),
-            self::col('filaOrigenExcel', 'Fila origen Excel', self::GRUPO_IDENTIFICACION, self::PRIORIDAD_OPCIONAL, false),
+            self::col('codigoCatalogo', 'Código catálogo', self::GRUPO_IDENTIFICACION, self::PRIORIDAD_RECOMENDADA, true, null),
+            self::col('occurrenceId', 'occurrenceID', self::GRUPO_IDENTIFICACION, self::PRIORIDAD_RECOMENDADA, false, 'occurrenceID'),
+            self::col('catalogNumber', 'catalogNumber', self::GRUPO_IDENTIFICACION, self::PRIORIDAD_OPCIONAL, false, 'catalogNumber'),
+            self::col('oldCode', 'oldCode (muestra)', self::GRUPO_IDENTIFICACION, self::PRIORIDAD_OPCIONAL, false, null),
+            self::col('cardexLiquidCollectionCode', 'Cardex líquido', self::GRUPO_IDENTIFICACION, self::PRIORIDAD_OPCIONAL, false, null),
+            self::col('filaOrigenExcel', 'Fila origen Excel', self::GRUPO_IDENTIFICACION, self::PRIORIDAD_OPCIONAL, false, null),
 
             // Taxonomía
-            self::col('taxonNombre', 'Taxón (científico)', self::GRUPO_TAXONOMIA, self::PRIORIDAD_CRITICA, true),
-            self::col('taxonVerbatim', 'Taxón verbatim', self::GRUPO_TAXONOMIA, self::PRIORIDAD_RECOMENDADA, false),
+            self::col('taxonNombre', 'Taxón (científico)', self::GRUPO_TAXONOMIA, self::PRIORIDAD_CRITICA, true, 'scientificName'),
+            self::col('taxonVerbatim', 'Taxón verbatim', self::GRUPO_TAXONOMIA, self::PRIORIDAD_RECOMENDADA, false, 'verbatimIdentification'),
 
             // Localidad
-            self::col('localidad', 'Localidad', self::GRUPO_LOCALIDAD, self::PRIORIDAD_RECOMENDADA, true),
-            self::col('localidadVerbatim', 'Localidad verbatim', self::GRUPO_LOCALIDAD, self::PRIORIDAD_RECOMENDADA, false),
-            self::col('localityName', 'Locality name', self::GRUPO_LOCALIDAD, self::PRIORIDAD_OPCIONAL, false),
-            self::col('country', 'País', self::GRUPO_LOCALIDAD, self::PRIORIDAD_RECOMENDADA, false),
-            self::col('stateProvince', 'Provincia', self::GRUPO_LOCALIDAD, self::PRIORIDAD_OPCIONAL, false),
-            self::col('municipality', 'Cantón/Municipio', self::GRUPO_LOCALIDAD, self::PRIORIDAD_OPCIONAL, false),
-            self::col('decimalLatitude', 'Latitud', self::GRUPO_LOCALIDAD, self::PRIORIDAD_CRITICA, true),
-            self::col('decimalLongitude', 'Longitud', self::GRUPO_LOCALIDAD, self::PRIORIDAD_CRITICA, true),
-            self::col('coordVerbatim', 'Coord verbatim', self::GRUPO_LOCALIDAD, self::PRIORIDAD_OPCIONAL, false),
-            self::col('geodeticDatum', 'Datum', self::GRUPO_LOCALIDAD, self::PRIORIDAD_OPCIONAL, false),
-            self::col('elevationMinM', 'Elevación min (m)', self::GRUPO_LOCALIDAD, self::PRIORIDAD_OPCIONAL, false),
-            self::col('elevationMaxM', 'Elevación max (m)', self::GRUPO_LOCALIDAD, self::PRIORIDAD_OPCIONAL, false),
+            self::col('localidad', 'Localidad', self::GRUPO_LOCALIDAD, self::PRIORIDAD_RECOMENDADA, true, 'verbatimLocality'),
+            self::col('localidadVerbatim', 'Localidad verbatim', self::GRUPO_LOCALIDAD, self::PRIORIDAD_RECOMENDADA, false, null),
+            self::col('localityName', 'Locality name', self::GRUPO_LOCALIDAD, self::PRIORIDAD_OPCIONAL, false, 'locality'),
+            self::col('country', 'País', self::GRUPO_LOCALIDAD, self::PRIORIDAD_RECOMENDADA, false, 'country'),
+            self::col('stateProvince', 'Provincia', self::GRUPO_LOCALIDAD, self::PRIORIDAD_OPCIONAL, false, 'stateProvince'),
+            self::col('municipality', 'Cantón/Municipio', self::GRUPO_LOCALIDAD, self::PRIORIDAD_OPCIONAL, false, 'municipality'),
+            self::col('decimalLatitude', 'Latitud', self::GRUPO_LOCALIDAD, self::PRIORIDAD_CRITICA, true, 'decimalLatitude'),
+            self::col('decimalLongitude', 'Longitud', self::GRUPO_LOCALIDAD, self::PRIORIDAD_CRITICA, true, 'decimalLongitude'),
+            self::col('coordVerbatim', 'Coord verbatim', self::GRUPO_LOCALIDAD, self::PRIORIDAD_OPCIONAL, false, 'verbatimCoordinates'),
+            self::col('geodeticDatum', 'Datum', self::GRUPO_LOCALIDAD, self::PRIORIDAD_OPCIONAL, false, 'geodeticDatum'),
+            self::col('elevationMinM', 'Elevación min (m)', self::GRUPO_LOCALIDAD, self::PRIORIDAD_OPCIONAL, false, 'minimumElevationInMeters'),
+            self::col('elevationMaxM', 'Elevación max (m)', self::GRUPO_LOCALIDAD, self::PRIORIDAD_OPCIONAL, false, 'maximumElevationInMeters'),
 
             // Fecha
-            self::col('fechaColecta', 'Fecha colecta', self::GRUPO_FECHA, self::PRIORIDAD_RECOMENDADA, true),
-            self::col('fechaColectaFin', 'Fecha colecta fin', self::GRUPO_FECHA, self::PRIORIDAD_OPCIONAL, false),
-            self::col('fechaVerbatim', 'Fecha verbatim', self::GRUPO_FECHA, self::PRIORIDAD_RECOMENDADA, false),
+            self::col('fechaColecta', 'Fecha colecta', self::GRUPO_FECHA, self::PRIORIDAD_RECOMENDADA, true, 'eventDate'),
+            self::col('fechaColectaFin', 'Fecha colecta fin', self::GRUPO_FECHA, self::PRIORIDAD_OPCIONAL, false, null),
+            self::col('fechaVerbatim', 'Fecha verbatim', self::GRUPO_FECHA, self::PRIORIDAD_RECOMENDADA, false, 'verbatimEventDate'),
 
             // Registro
-            self::col('colector', 'Colector (recordedBy)', self::GRUPO_REGISTRO, self::PRIORIDAD_RECOMENDADA, true),
-            self::col('individualCount', 'Individual count', self::GRUPO_REGISTRO, self::PRIORIDAD_OPCIONAL, false),
-            self::col('individualCountVerbatim', 'Count verbatim', self::GRUPO_REGISTRO, self::PRIORIDAD_OPCIONAL, false),
-            self::col('preparations', 'Preparación', self::GRUPO_REGISTRO, self::PRIORIDAD_OPCIONAL, false),
-            self::col('disposition', 'Disposición', self::GRUPO_REGISTRO, self::PRIORIDAD_OPCIONAL, false),
-            self::col('occurrenceStatus', 'Occurrence status', self::GRUPO_REGISTRO, self::PRIORIDAD_OPCIONAL, false),
-            self::col('actaRecepcion', '#Acta recepción', self::GRUPO_REGISTRO, self::PRIORIDAD_OPCIONAL, false),
-            self::col('estado', 'Estado físico', self::GRUPO_REGISTRO, self::PRIORIDAD_OPCIONAL, false),
+            self::col('colector', 'Colector (recordedBy)', self::GRUPO_REGISTRO, self::PRIORIDAD_RECOMENDADA, true, 'recordedBy'),
+            self::col('individualCount', 'Individual count', self::GRUPO_REGISTRO, self::PRIORIDAD_OPCIONAL, false, 'individualCount'),
+            self::col('individualCountVerbatim', 'Count verbatim', self::GRUPO_REGISTRO, self::PRIORIDAD_OPCIONAL, false, null),
+            self::col('preparations', 'Preparación', self::GRUPO_REGISTRO, self::PRIORIDAD_OPCIONAL, false, 'preparations'),
+            self::col('disposition', 'Disposición', self::GRUPO_REGISTRO, self::PRIORIDAD_OPCIONAL, false, 'disposition'),
+            self::col('occurrenceStatus', 'Occurrence status', self::GRUPO_REGISTRO, self::PRIORIDAD_OPCIONAL, false, 'occurrenceStatus'),
+            self::col('actaRecepcion', '#Acta recepción', self::GRUPO_REGISTRO, self::PRIORIDAD_OPCIONAL, false, null),
+            self::col('estado', 'Estado físico', self::GRUPO_REGISTRO, self::PRIORIDAD_OPCIONAL, false, null),
 
             // Atributos
-            self::col('sex', 'Sexo', self::GRUPO_ATRIBUTOS, self::PRIORIDAD_OPCIONAL, false),
-            self::col('lifeStage', 'Estadio', self::GRUPO_ATRIBUTOS, self::PRIORIDAD_OPCIONAL, false),
-            self::col('caste', 'Casta', self::GRUPO_ATRIBUTOS, self::PRIORIDAD_OPCIONAL, false),
-            self::col('typeStatus', 'Type status', self::GRUPO_ATRIBUTOS, self::PRIORIDAD_RECOMENDADA, false),
-            self::col('biome', 'Bioma', self::GRUPO_ATRIBUTOS, self::PRIORIDAD_OPCIONAL, false),
-            self::col('habitat', 'Hábitat', self::GRUPO_ATRIBUTOS, self::PRIORIDAD_OPCIONAL, false),
-            self::col('microhabitat', 'Microhábitat', self::GRUPO_ATRIBUTOS, self::PRIORIDAD_OPCIONAL, false),
-            self::col('biogeographicRegion', 'Región biogeográfica', self::GRUPO_ATRIBUTOS, self::PRIORIDAD_OPCIONAL, false),
-            self::col('endemic', 'Endémico', self::GRUPO_ATRIBUTOS, self::PRIORIDAD_OPCIONAL, false),
+            self::col('sex', 'Sexo', self::GRUPO_ATRIBUTOS, self::PRIORIDAD_OPCIONAL, false, 'sex'),
+            self::col('lifeStage', 'Estadio', self::GRUPO_ATRIBUTOS, self::PRIORIDAD_OPCIONAL, false, 'lifeStage'),
+            self::col('caste', 'Casta', self::GRUPO_ATRIBUTOS, self::PRIORIDAD_OPCIONAL, false, null),
+            self::col('typeStatus', 'Type status', self::GRUPO_ATRIBUTOS, self::PRIORIDAD_RECOMENDADA, false, 'typeStatus'),
+            self::col('biome', 'Bioma', self::GRUPO_ATRIBUTOS, self::PRIORIDAD_OPCIONAL, false, null),
+            self::col('habitat', 'Hábitat', self::GRUPO_ATRIBUTOS, self::PRIORIDAD_OPCIONAL, false, 'habitat'),
+            self::col('microhabitat', 'Microhábitat', self::GRUPO_ATRIBUTOS, self::PRIORIDAD_OPCIONAL, false, null),
+            self::col('biogeographicRegion', 'Región biogeográfica', self::GRUPO_ATRIBUTOS, self::PRIORIDAD_OPCIONAL, false, null),
+            self::col('endemic', 'Endémico', self::GRUPO_ATRIBUTOS, self::PRIORIDAD_OPCIONAL, false, null),
 
             // Revisión (siempre crítica para flujo curador post-import)
-            self::col('estadoRevision', 'Estado revisión', self::GRUPO_REVISION, self::PRIORIDAD_CRITICA, true),
-            self::col('motivoRevision', 'Motivo revisión', self::GRUPO_REVISION, self::PRIORIDAD_CRITICA, true),
+            self::col('estadoRevision', 'Estado revisión', self::GRUPO_REVISION, self::PRIORIDAD_CRITICA, true, null),
+            self::col('motivoRevision', 'Motivo revisión', self::GRUPO_REVISION, self::PRIORIDAD_CRITICA, true, null),
         ];
+    }
+
+    /** @return array<string, string> Mapa clave interna → nombre DwC (solo columnas con DwC no nulo). */
+    public static function mapaClaveADwC(): array
+    {
+        $mapa = [];
+        foreach (self::todas() as $col) {
+            if ($col['nombreDwC'] !== null) {
+                $mapa[$col['clave']] = $col['nombreDwC'];
+            }
+        }
+
+        return $mapa;
     }
 
     /** @return string[] Claves visibles por defecto, en el orden del registro. */
@@ -137,7 +151,8 @@ final class RegistroColumnasEspecimen
      *   etiqueta: string,
      *   grupo: string,
      *   prioridad: string,
-     *   visiblePorDefecto: bool
+     *   visiblePorDefecto: bool,
+     *   nombreDwC: string|null
      * }
      */
     private static function col(
@@ -146,7 +161,8 @@ final class RegistroColumnasEspecimen
         string $grupo,
         string $prioridad,
         bool $visiblePorDefecto,
+        ?string $nombreDwC,
     ): array {
-        return compact('clave', 'etiqueta', 'grupo', 'prioridad', 'visiblePorDefecto');
+        return compact('clave', 'etiqueta', 'grupo', 'prioridad', 'visiblePorDefecto', 'nombreDwC');
     }
 }

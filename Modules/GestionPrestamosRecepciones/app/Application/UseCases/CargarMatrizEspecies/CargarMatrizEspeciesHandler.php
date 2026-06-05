@@ -40,7 +40,7 @@ final class CargarMatrizEspeciesHandler
             tipoTramite: $solicitud->tipoTramite(),
         );
 
-        $matriz->validarCamposDwC($input->camposDwCExigidosPorCatalogo);
+        $matriz->validarCamposDwC($input->camposCriticos, $input->camposRecomendados);
 
         // TODO: Normalización de datos antes de la ingesta (data cleansing)
         // Antes de persistir cada registro, normalizar los campos que tienen
@@ -80,6 +80,7 @@ final class CargarMatrizEspeciesHandler
             estadoMatriz: $matriz->estado(),
             validacionTipograficaAplicada: $validacionTipograficaAplicada,
             totalRegistros: count($input->registros),
+            camposRecomendadosFaltantes: $matriz->camposRecomendadosFaltantes(),
         );
     }
 }

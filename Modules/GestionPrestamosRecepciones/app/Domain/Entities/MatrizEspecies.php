@@ -47,6 +47,11 @@ final class MatrizEspecies
 
     private bool $identificacionOriginalConservada = false;
 
+    // ── Advertencias de campos recomendados ──────────────────────
+
+    /** @var string[] */
+    private array $camposRecomendadosFaltantes = [];
+
     // ── Cola interna de eventos de dominio ───────────────────────
 
     /** @var DomainEvent[] */
@@ -96,21 +101,29 @@ final class MatrizEspecies
     // ── Métodos de Negocio ───────────────────────────────────────
 
     /**
-     * Valida que la matriz contenga todos los campos DwC exigidos por el catálogo.
-     * Lanza excepción si falta alguno. No muta estado — es un guard.
+     * Valida los campos DwC según su nivel de prioridad.
      *
-     * @param  string[]  $camposExigidosPorCatalogo
+     * - Críticos: lanza excepción si falta alguno (bloquea la carga).
+     * - Recomendados: registra los faltantes como advertencias (no bloquea).
+     *
+     * @param  string[]  $camposCriticos
+     * @param  string[]  $camposRecomendados
      */
-    public function validarCamposDwC(array $camposExigidosPorCatalogo): void
+    public function validarCamposDwC(array $camposCriticos, array $camposRecomendados): void
     {
-        $faltantes = array_filter(
-            $camposExigidosPorCatalogo,
+        $criticosFaltantes = array_values(array_filter(
+            $camposCriticos,
             fn (string $campo) => ! array_key_exists($campo, $this->camposDwCPresentes)
-        );
+        ));
 
-        if (! empty($faltantes)) {
-            throw CamposDwCFaltantesException::porCamposFaltantes(array_values($faltantes));
+        if (! empty($criticosFaltantes)) {
+            throw CamposDwCFaltantesException::porCamposFaltantes($criticosFaltantes);
         }
+
+        $this->camposRecomendadosFaltantes = array_values(array_filter(
+            $camposRecomendados,
+            fn (string $campo) => ! array_key_exists($campo, $this->camposDwCPresentes)
+        ));
     }
 
     /**
@@ -327,6 +340,17 @@ final class MatrizEspecies
     public function camposDwCPresentes(): array
     {
         return $this->camposDwCPresentes;
+    }
+
+    /**
+     * Campos DwC recomendados que no estaban presentes en el Excel.
+     * Poblado tras llamar a validarCamposDwC(). No bloquea la carga.
+     *
+     * @return string[]
+     */
+    public function camposRecomendadosFaltantes(): array
+    {
+        return $this->camposRecomendadosFaltantes;
     }
 
     /**
