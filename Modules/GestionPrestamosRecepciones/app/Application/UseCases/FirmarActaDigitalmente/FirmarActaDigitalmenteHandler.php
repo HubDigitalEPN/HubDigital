@@ -48,6 +48,16 @@ final class FirmarActaDigitalmenteHandler
             rutaDestino: $firmaImagenRuta,
         );
 
+        $this->pdfGenerator->generarYAlmacenar(
+            vista: 'gestionprestamosrecepciones::pdf.acta-pdf',
+            datos: [
+                'acta' => $acta,
+                'solicitud' => $solicitud,
+                'firmaBase64' => $input->firmaBase64,
+            ],
+            rutaDestino: $acta->pdfRuta(),
+        );
+
         $acta->firmarDigitalmente($firmaImagenRuta);
 
         $this->transactionManager->executeTransactional(function () use ($acta): void {
