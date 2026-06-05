@@ -1,0 +1,7 @@
+occurrenceID,oldCode,recordedBy,scientificName,invidualCount,eventDate,decimalLatitude,decimalLongitude,localityName,verbatimLocality,country,stateProvince,Endemic,#actaRecepcion
+MEPN:INV:1,BT2F3,Juan Pérez,Morpho peleides,8,21-Jul-01,-0.658,-76.452,Yasuní Onkonegare,Yasuní_Onko,Ecuador,Orellana,Yes,AR-2024-001
+MEPN:INV:2,BT2F3,Juan Pérez,Heliconius melpomene,12,21-Jul-01,-0.658,-76.452,Yasuní Onkonegare,Yasuní_Onko,Ecuador,Orellana,No,AR-2024-001
+MEPN:INV:3,BT2F3,Juan Pérez,Acragas_sp.1,RBSO9-2,21-Jul-01,dañada,dañada,Yasuní Onkonegare,Yasuní_Onko,Ecuador,Orellana,,AR-2024-001
+MEPN:INV:4,LT2F2,María Cárdenas,Azteca trigona,2,11-Abr-01,-1.234,-78.567,Mindo,Mindo Cloud Forest,Ecuador,Pichincha,Yes,AR-2024-002
+,LT2F2,María Cárdenas,Azteca sp.,1,11-Abr-01,-1.234,-78.567,Mindo,Mindo Cloud Forest,Ecuador,Pichincha,,AR-2024-002
+MEPN:INV:6,,Ana López,Atta cephalotes,15,fecha ilegible,200.5,500.0,,,Ecuador,,,

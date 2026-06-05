@@ -17,25 +17,60 @@ final class BandejaSolicitudes extends Component
 {
     use HandlesDomainExceptions;
 
-    #[Url(as: 'estado')]
-    public string $filtroEstado = 'todos';
+    #[Url(as: 'q')]
+    public string $busqueda = '';
 
-    public function updatedFiltroEstado(): void
+    #[Url]
+    public string $estado = '';
+
+    #[Url(as: 'inv')]
+    public string $busquedaInvestigador = '';
+
+    #[Url]
+    public string $ordenCampo = 'fecha';
+
+    #[Url]
+    public string $ordenDireccion = 'desc';
+
+    public function toggleOrden(): void
     {
-        // Livewire re-renders automáticamente; la query se recalcula en render()
+        $this->ordenDireccion = $this->ordenDireccion === 'asc' ? 'desc' : 'asc';
+    }
+
+    public function limpiarFiltros(): void
+    {
+        $this->busqueda = '';
+        $this->estado = '';
+        $this->busquedaInvestigador = '';
+        $this->ordenCampo = 'fecha';
+        $this->ordenDireccion = 'desc';
     }
 
     public function render(): View
     {
         $query = SolicitudPrestamoModel::query()
-            ->whereNotIn('estado', ['borrador'])
-            ->orderByDesc('created_at');
+            ->whereNotIn('estado', ['borrador']);
 
-        if ($this->filtroEstado !== 'todos') {
-            $query->where('estado', $this->filtroEstado);
+        if ($this->busqueda !== '') {
+            $term = $this->busqueda;
+            $query->where(fn ($q) => $q
+                ->where('titulo_estudio', 'ilike', "%{$term}%")
+                ->orWhere('numero_solicitud', 'ilike', "%{$term}%")
+            );
         }
 
-        $solicitudes = $query->get();
+        if ($this->estado !== '') {
+            $query->where('estado', $this->estado);
+        }
+
+        if ($this->busquedaInvestigador !== '') {
+            $term = $this->busquedaInvestigador;
+            $ids = User::where('name', 'ilike', "%{$term}%")->pluck('id');
+            $query->whereIn('investigador_id', $ids);
+        }
+
+        $campo = $this->ordenCampo === 'titulo' ? 'titulo_estudio' : 'created_at';
+        $solicitudes = $query->orderBy($campo, $this->ordenDireccion)->get();
 
         $uuidRegex = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i';
         $validIds = $solicitudes
@@ -46,9 +81,6 @@ final class BandejaSolicitudes extends Component
 
         $investigadores = User::whereIn('id', $validIds)->get()->keyBy('id');
 
-        return view('gestionprestamosrecepciones::curador.bandeja-solicitudes', [
-            'solicitudes' => $solicitudes,
-            'investigadores' => $investigadores,
-        ]);
+        return view('gestionprestamosrecepciones::curador.bandeja-solicitudes', compact('solicitudes', 'investigadores'));
     }
 }

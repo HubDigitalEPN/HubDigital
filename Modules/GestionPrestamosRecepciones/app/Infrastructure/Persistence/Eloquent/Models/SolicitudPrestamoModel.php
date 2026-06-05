@@ -24,6 +24,7 @@ final class SolicitudPrestamoModel extends Model
         'id',
         'numero_solicitud',
         'investigador_id',
+        'alcance_prestamo',
         'estado',
         'titulo_estudio',
         'institucion_adscripcion',

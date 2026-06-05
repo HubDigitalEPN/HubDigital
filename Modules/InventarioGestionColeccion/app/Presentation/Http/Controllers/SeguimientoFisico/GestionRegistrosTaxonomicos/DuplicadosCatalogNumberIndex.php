@@ -1,0 +1,157 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos;
+
+use Illuminate\View\View;
+use Livewire\Attributes\Layout;
+use Livewire\Component;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarCatalogNumberDuplicados\ListarCatalogNumberDuplicadosHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarCatalogNumberDuplicados\ListarCatalogNumberDuplicadosInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ResolverDuplicadoDeCatalogNumber\ResolverDuplicadoDeCatalogNumberHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ResolverDuplicadoDeCatalogNumber\ResolverDuplicadoDeCatalogNumberInput;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
+
+#[Layout('layouts.app', params: ['title' => 'Duplicados de catalog_number'])]
+final class DuplicadosCatalogNumberIndex extends Component
+{
+    use TraduceErroresPersistencia;
+
+    /**
+     * @var list<array{
+     *   catalogNumber: string,
+     *   total: int,
+     *   especimenes: list<array{
+     *     id:string,
+     *     codigoCatalogo:string,
+     *     fechaColecta:string,
+     *     colector:string,
+     *     estadoRevision:string
+     *   }>,
+     *   fechasDistintas: bool,
+     *   motivoInput: string,
+     * }>
+     */
+    public array $items = [];
+
+    public int $total = 0;
+
+    public int $pagina = 1;
+
+    public int $porPagina = 20;
+
+    public int $minimoDuplicados = 2;
+
+    public ?string $successMessage = null;
+
+    public ?string $errorMessage = null;
+
+    public function mount(ListarCatalogNumberDuplicadosHandler $handler): void
+    {
+        $this->cargar($handler);
+    }
+
+    public function cargar(ListarCatalogNumberDuplicadosHandler $handler): void
+    {
+        try {
+            $output = $handler->handle(new ListarCatalogNumberDuplicadosInput(
+                minimoDuplicados: $this->minimoDuplicados,
+                pagina: $this->pagina,
+                porPagina: $this->porPagina,
+            ));
+
+            $this->total = $output->totalGrupos;
+            $this->items = array_map(fn ($item) => [
+                'catalogNumber' => $item->catalogNumber,
+                'total' => $item->total,
+                'especimenes' => $item->especimenes,
+                'fechasDistintas' => $item->fechasDistintas,
+                'motivoInput' => '',
+            ], $output->items);
+            $this->errorMessage = null;
+        } catch (\Throwable $e) {
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
+        }
+    }
+
+    public function siguientePagina(ListarCatalogNumberDuplicadosHandler $handler): void
+    {
+        $maxPaginas = $this->total === 0 ? 1 : (int) ceil($this->total / $this->porPagina);
+        if ($this->pagina < $maxPaginas) {
+            $this->pagina++;
+            $this->cargar($handler);
+        }
+    }
+
+    public function paginaAnterior(ListarCatalogNumberDuplicadosHandler $handler): void
+    {
+        if ($this->pagina > 1) {
+            $this->pagina--;
+            $this->cargar($handler);
+        }
+    }
+
+    public function marcarEventosDistintos(ResolverDuplicadoDeCatalogNumberHandler $handler, int $idx): void
+    {
+        if (! isset($this->items[$idx])) {
+            return;
+        }
+
+        try {
+            $output = $handler->handle(new ResolverDuplicadoDeCatalogNumberInput(
+                catalogNumber: $this->items[$idx]['catalogNumber'],
+                decision: ResolverDuplicadoDeCatalogNumberInput::DECISION_EVENTOS_DISTINTOS,
+                motivo: '',
+            ));
+            $this->successMessage = "Confirmados como eventos distintos: {$output->especimenesAfectados} espécimen(es).";
+            $this->removerDelListado($idx);
+        } catch (\Throwable $e) {
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
+        }
+    }
+
+    public function marcarErrorCatalogacion(ResolverDuplicadoDeCatalogNumberHandler $handler, int $idx): void
+    {
+        if (! isset($this->items[$idx])) {
+            return;
+        }
+        $motivo = trim($this->items[$idx]['motivoInput'] ?? '');
+        if ($motivo === '') {
+            $this->errorMessage = 'Para marcar error de catalogación, primero escribe un motivo en el campo del grupo.';
+
+            return;
+        }
+
+        try {
+            $output = $handler->handle(new ResolverDuplicadoDeCatalogNumberInput(
+                catalogNumber: $this->items[$idx]['catalogNumber'],
+                decision: ResolverDuplicadoDeCatalogNumberInput::DECISION_ERROR_CATALOGACION,
+                motivo: $motivo,
+            ));
+            $this->successMessage = "Marcados con motivo para revisión: {$output->especimenesAfectados} espécimen(es).";
+            $this->removerDelListado($idx);
+        } catch (\Throwable $e) {
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
+        }
+    }
+
+    private function removerDelListado(int $idx): void
+    {
+        unset($this->items[$idx]);
+        $this->items = array_values($this->items);
+        $this->total = max(0, $this->total - 1);
+        $this->errorMessage = null;
+    }
+
+    public function render(): View
+    {
+        $totalPaginas = $this->total === 0 ? 1 : (int) ceil($this->total / $this->porPagina);
+
+        return view('inventariogestioncoleccion::admin.taxonomia.duplicados.index', [
+            'totalPaginas' => $totalPaginas,
+            'inicio' => $this->total > 0 ? ($this->pagina - 1) * $this->porPagina + 1 : 0,
+            'fin' => min($this->pagina * $this->porPagina, $this->total),
+        ]);
+    }
+}

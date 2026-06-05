@@ -22,7 +22,7 @@ Característica: Definición de recordatorios de devolución
             Entonces el préstamo queda configurado con los recordatorios actualizados
 
         Escenario: Generar recordatorios automáticamente al activar un préstamo
-            Dado que existe un préstamo en estado activo
+            Dado que existe un acta de préstamo lista para ser iniciada
             Y existe una configuración global de recordatorios definida
             Cuando el préstamo es activado
             Entonces se generan los recordatorios de devolución según la configuración global

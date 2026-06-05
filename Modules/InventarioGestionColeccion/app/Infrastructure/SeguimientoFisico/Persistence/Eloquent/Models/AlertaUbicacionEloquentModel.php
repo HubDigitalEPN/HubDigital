@@ -21,6 +21,7 @@ class AlertaUbicacionEloquentModel extends Model
         'tipo',
         'estado',
         'datos_contexto',
+        'motivo_resolucion',
     ];
 
     protected $casts = [

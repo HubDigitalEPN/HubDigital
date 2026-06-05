@@ -12,15 +12,22 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Ac
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarEspecimen\ActualizarEspecimenInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\BuscarEspecimenes\BuscarEspecimenesHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\BuscarEspecimenes\BuscarEspecimenesInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConfirmarRevisionEspecimen\ConfirmarRevisionEspecimenHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConfirmarRevisionEspecimen\ConfirmarRevisionEspecimenInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarEntidadesDepositantes\ListarEntidadesDepositantesHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarTaxones\ListarTaxonesHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarEspecimen\RegistrarEspecimenHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarEspecimen\RegistrarEspecimenInput;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\RegistroColumnasEspecimen;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\ResolverPrioridadColumnas;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
 
 #[Layout('layouts.app', params: ['title' => 'Especímenes'])]
 final class EspecimenIndex extends Component
 {
-    // ── Búsqueda ──────────────────────────────────────────────────────────────
+    use TraduceErroresPersistencia;
+
+    // ── Búsqueda multi-filtro ─────────────────────────────────────────────────
 
     public array $especimenes = [];
 
@@ -28,13 +35,48 @@ final class EspecimenIndex extends Component
 
     public int $page = 1;
 
-    public int $perPage = 15;
+    public int $perPage = 25;
 
-    #[Rule('required|string|in:taxon,localidad,estado,codigo,occurrence_id,catalog_number')]
-    public string $criterio = 'taxon';
+    public bool $filtrosAbiertos = true;
 
-    #[Rule('required|string|min:2|max:255')]
-    public string $valor = '';
+    // Filtros combinables (todos opcionales, AND lógico)
+    #[Rule('nullable|string|max:120')]
+    public string $fTaxon = '';
+
+    #[Rule('nullable|string|max:120')]
+    public string $fFamilia = '';
+
+    #[Rule('nullable|string|max:120')]
+    public string $fCodigoCatalogo = '';
+
+    #[Rule('nullable|string|max:120')]
+    public string $fOccurrenceId = '';
+
+    #[Rule('nullable|string|max:120')]
+    public string $fCatalogNumber = '';
+
+    #[Rule('nullable|string|max:200')]
+    public string $fLocalidad = '';
+
+    #[Rule('nullable|string|max:200')]
+    public string $fColector = '';
+
+    #[Rule('nullable|date_format:Y-m-d')]
+    public string $fFechaDesde = '';
+
+    #[Rule('nullable|date_format:Y-m-d')]
+    public string $fFechaHasta = '';
+
+    #[Rule('nullable|string|in:disponible,en_prestamo')]
+    public string $fEstado = '';
+
+    #[Rule('nullable|string|in:pendiente,confirmada,descartada')]
+    public string $fEstadoRevision = '';
+
+    #[Rule('nullable|string|max:200')]
+    public string $fMotivoRevision = '';
+
+    public bool $fParaRevision = true;
 
     // ── Registro ──────────────────────────────────────────────────────────────
 
@@ -110,7 +152,7 @@ final class EspecimenIndex extends Component
     public string $geodeticDatum = '';
 
     #[Rule('nullable|numeric')]
-    public string $elevationInMeters = '';
+    public string $elevationMinM = '';
 
     #[Rule('nullable|string|max:120')]
     public string $biome = '';
@@ -157,7 +199,7 @@ final class EspecimenIndex extends Component
 
     public string $editGeodeticDatum = '';
 
-    public string $editElevationInMeters = '';
+    public string $editElevationMinM = '';
 
     public string $editBiome = '';
 
@@ -173,15 +215,17 @@ final class EspecimenIndex extends Component
         ListarTaxonesHandler $taxonesHandler,
         ListarEntidadesDepositantesHandler $entidadesHandler,
     ): void {
-        $this->taxones = array_map(
-            fn ($t) => ['id' => $t->id, 'label' => "{$t->nombreCientifico} ({$t->rango})"],
-            $taxonesHandler->handle()->items,
-        );
+        $this->cargarProtegido(function () use ($taxonesHandler, $entidadesHandler) {
+            $this->taxones = array_map(
+                fn ($t) => ['id' => $t->id, 'label' => "{$t->nombreCientifico} ({$t->rango})"],
+                $taxonesHandler->handle()->items,
+            );
 
-        $this->entidades = array_map(
-            fn ($e) => ['id' => $e->id, 'label' => $e->nombre],
-            $entidadesHandler->handle()->items,
-        );
+            $this->entidades = array_map(
+                fn ($e) => ['id' => $e->id, 'label' => $e->nombre],
+                $entidadesHandler->handle()->items,
+            );
+        });
 
         $this->fechaColecta = date('Y-m-d');
     }
@@ -210,7 +254,7 @@ final class EspecimenIndex extends Component
             'decimalLatitude',
             'decimalLongitude',
             'geodeticDatum',
-            'elevationInMeters',
+            'elevationMinM',
             'biome',
             'habitat',
             'errorMessage',
@@ -252,7 +296,7 @@ final class EspecimenIndex extends Component
                 decimalLatitude: $this->nullableFloat($this->decimalLatitude),
                 decimalLongitude: $this->nullableFloat($this->decimalLongitude),
                 geodeticDatum: $this->nullableString($this->geodeticDatum),
-                elevationInMeters: $this->nullableFloat($this->elevationInMeters),
+                elevationMinM: $this->nullableFloat($this->elevationMinM),
                 biome: $this->nullableString($this->biome),
                 habitat: $this->nullableString($this->habitat),
             ));
@@ -260,12 +304,8 @@ final class EspecimenIndex extends Component
             $this->showModal = false;
             $this->successMessage = "Especímen '{$this->codigoCatalogo}' registrado correctamente.";
             $this->errorMessage = null;
-
-            if ($this->buscado) {
-                $this->errorMessage = null;
-            }
         } catch (\Throwable $e) {
-            $this->errorMessage = $e->getMessage();
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 
@@ -293,7 +333,7 @@ final class EspecimenIndex extends Component
         $this->editDecimalLatitude = isset($especimen['decimalLatitude']) ? (string) $especimen['decimalLatitude'] : '';
         $this->editDecimalLongitude = isset($especimen['decimalLongitude']) ? (string) $especimen['decimalLongitude'] : '';
         $this->editGeodeticDatum = (string) ($especimen['geodeticDatum'] ?? '');
-        $this->editElevationInMeters = isset($especimen['elevationInMeters']) ? (string) $especimen['elevationInMeters'] : '';
+        $this->editElevationMinM = isset($especimen['elevationMinM']) ? (string) $especimen['elevationMinM'] : '';
         $this->editBiome = (string) ($especimen['biome'] ?? '');
         $this->editHabitat = (string) ($especimen['habitat'] ?? '');
         $this->errorMessage = null;
@@ -320,7 +360,7 @@ final class EspecimenIndex extends Component
                 decimalLatitude: $this->nullableFloat($this->editDecimalLatitude),
                 decimalLongitude: $this->nullableFloat($this->editDecimalLongitude),
                 geodeticDatum: $this->nullableString($this->editGeodeticDatum),
-                elevationInMeters: $this->nullableFloat($this->editElevationInMeters),
+                elevationMinM: $this->nullableFloat($this->editElevationMinM),
                 biome: $this->nullableString($this->editBiome),
                 habitat: $this->nullableString($this->editHabitat),
                 preparations: $this->nullableString($this->editPreparations),
@@ -332,8 +372,30 @@ final class EspecimenIndex extends Component
             $this->showEditModal = false;
             $this->successMessage = 'Especímen actualizado correctamente.';
             $this->errorMessage = null;
+            // Reaplicar la búsqueda actual sería ideal, pero requiere injection de handler.
+            // Por ahora marcamos los datos como sucios para que el curador re-busque.
         } catch (\Throwable $e) {
-            $this->errorMessage = $e->getMessage();
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
+        }
+    }
+
+    public function confirmarRevision(ConfirmarRevisionEspecimenHandler $handler, string $id): void
+    {
+        try {
+            $handler->handle(new ConfirmarRevisionEspecimenInput(especimenId: $id));
+
+            // Actualizar la copia local del row para feedback inmediato.
+            foreach ($this->especimenes as $i => $row) {
+                if (($row['id'] ?? null) === $id) {
+                    $this->especimenes[$i]['estadoRevision'] = 'confirmada';
+                    $this->especimenes[$i]['motivoRevision'] = null;
+                    break;
+                }
+            }
+            $this->successMessage = 'Revisión confirmada.';
+            $this->errorMessage = null;
+        } catch (\Throwable $e) {
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 
@@ -358,15 +420,23 @@ final class EspecimenIndex extends Component
 
     public function buscar(BuscarEspecimenesHandler $handler): void
     {
-        $this->validate([
-            'criterio' => 'required|string|in:taxon,localidad,estado,codigo,occurrence_id,catalog_number',
-            'valor' => 'required|string|min:2|max:255',
-        ]);
+        $this->validate();
 
         try {
             $output = $handler->handle(new BuscarEspecimenesInput(
-                criterio: $this->criterio,
-                valor: $this->valor,
+                taxonNombre: $this->nullableString($this->fTaxon),
+                codigoCatalogo: $this->nullableString($this->fCodigoCatalogo),
+                occurrenceId: $this->nullableString($this->fOccurrenceId),
+                catalogNumber: $this->nullableString($this->fCatalogNumber),
+                localidad: $this->nullableString($this->fLocalidad),
+                colector: $this->nullableString($this->fColector),
+                familia: $this->nullableString($this->fFamilia),
+                fechaDesde: $this->nullableString($this->fFechaDesde),
+                fechaHasta: $this->nullableString($this->fFechaHasta),
+                estado: $this->nullableString($this->fEstado),
+                estadoRevision: $this->nullableString($this->fEstadoRevision),
+                motivoRevision: $this->nullableString($this->fMotivoRevision),
+                paraRevision: $this->fParaRevision,
             ));
 
             $this->especimenes = $output->items;
@@ -374,15 +444,40 @@ final class EspecimenIndex extends Component
             $this->page = 1;
             $this->errorMessage = null;
         } catch (\Throwable $e) {
-            $this->errorMessage = $e->getMessage();
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
+    }
+
+    public function preset(string $nombre): void
+    {
+        // Resets all + sets a preset combination
+        $this->reset(
+            'fTaxon', 'fFamilia', 'fCodigoCatalogo', 'fOccurrenceId', 'fCatalogNumber',
+            'fLocalidad', 'fColector', 'fFechaDesde', 'fFechaHasta',
+            'fEstado', 'fEstadoRevision', 'fMotivoRevision', 'fParaRevision',
+        );
+
+        match ($nombre) {
+            'para_revision' => $this->fParaRevision = true,
+            'sin_coords' => [$this->fParaRevision = true, $this->fMotivoRevision = 'coordenadas'],
+            'fechas_raras' => [$this->fParaRevision = true, $this->fMotivoRevision = 'fecha'],
+            'sin_occurrence_id' => [$this->fParaRevision = true, $this->fMotivoRevision = 'occurrence_id ausente'],
+            'todos' => null,
+            default => null,
+        };
+        $this->resetValidation();
     }
 
     public function limpiar(): void
     {
-        $this->reset('criterio', 'valor', 'especimenes', 'buscado', 'errorMessage', 'successMessage', 'page');
+        $this->reset(
+            'especimenes', 'buscado', 'errorMessage', 'successMessage', 'page',
+            'fTaxon', 'fFamilia', 'fCodigoCatalogo', 'fOccurrenceId', 'fCatalogNumber',
+            'fLocalidad', 'fColector', 'fFechaDesde', 'fFechaHasta',
+            'fEstado', 'fEstadoRevision', 'fMotivoRevision',
+        );
+        $this->fParaRevision = true;
         $this->resetValidation();
-        $this->criterio = 'taxon';
     }
 
     public function render(): View
@@ -397,6 +492,9 @@ final class EspecimenIndex extends Component
             'totalItems' => $total,
             'inicio' => $total > 0 ? $offset + 1 : 0,
             'fin' => min($offset + $this->perPage, $total),
+            'columnasRegistro' => app(ResolverPrioridadColumnas::class)
+                ->aplicar('especimenes', RegistroColumnasEspecimen::todas()),
+            'columnasVisiblesPorDefecto' => RegistroColumnasEspecimen::clavesVisiblesPorDefecto(),
         ]);
     }
 

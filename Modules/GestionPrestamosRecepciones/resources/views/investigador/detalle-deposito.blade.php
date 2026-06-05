@@ -13,7 +13,7 @@
         @php
             $badgeVariant = match($deposito->estado) {
                 'Pendiente de Revisión por Curaduría' => 'info',
-                'Retenida para Asesoría Curatorial'   => 'warning',
+                'Pausada para Asesoría'   => 'warning',
                 'Rechazada'                           => 'danger',
                 default                               => 'ghost',
             };
@@ -26,10 +26,10 @@
 
                 {{-- Encabezado --}}
                 <div class="rounded-lg border border-border bg-surface shadow-sm p-5 space-y-4">
-                    <div class="flex items-start justify-between gap-4">
+                    <div class="flex flex-wrap items-start justify-between gap-4">
                         <div>
                             <flux:heading size="xl" level="1" class="font-display">
-                                Solicitud de {{ $deposito->tipo_tramite }}
+                                Solicitud de {{ mb_strtolower($deposito->tipo_tramite) }}
                             </flux:heading>
                             <p class="font-mono text-xs text-text-secondary mt-1">{{ $deposito->numero }}</p>
                         </div>
@@ -37,7 +37,7 @@
                     </div>
                     <flux:separator />
 
-                    <dl class="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
+                    <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-x-6 sm:gap-y-4 text-sm">
                         <div>
                             <dt class="text-text-secondary">Tipo de trámite</dt>
                             <dd class="font-medium text-text-primary mt-0.5">{{ $deposito->tipo_tramite }}</dd>
@@ -85,7 +85,7 @@
                     <div class="rounded-lg border border-border bg-surface shadow-sm p-5 space-y-4">
                         <flux:heading size="lg" level="2" class="font-display">Datos de documentación oficial</flux:heading>
                         <flux:separator />
-                        <dl class="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
+                        <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-x-6 sm:gap-y-4 text-sm">
                             @if($deposito->nro_permiso_recoleccion)
                                 <div>
                                     <dt class="text-text-secondary">N.º permiso recolección</dt>
@@ -114,8 +114,142 @@
                     </div>
                 @endif
 
+                {{-- Matriz de especímenes --}}
+                @if($matriz)
+                    @php
+                        $registros        = $matriz->registros();
+                        $totalRegistros   = count($registros);
+                        $validados        = 0;
+                        $listaCorregidos  = [];
+                        $listaRevision    = [];
+
+                        foreach ($registros as $reg) {
+                            $estadoReg = $reg->estado()->value;
+                            if (in_array($estadoReg, ['Validado Técnicamente', 'Corregido por Sugerencia'], true)) {
+                                $validados++;
+                            }
+                            if ($estadoReg === 'Corregido por Sugerencia') {
+                                $listaCorregidos[] = $reg;
+                            }
+                            if ($estadoReg === 'Validación Manual por Curaduría') {
+                                $listaRevision[] = $reg;
+                            }
+                        }
+
+                        $nCorregidos     = count($listaCorregidos);
+                        $nRevision       = count($listaRevision);
+                        $sinExcepciones  = $nCorregidos === 0 && $nRevision === 0;
+                        $limite          = 8;
+
+                        $estadoMatrizValor = $matriz->estado()->value;
+                        [$estadoBadgeBg, $estadoBadgeText, $estadoBadgeBorder, $estadoBadgeIcon] = match($estadoMatrizValor) {
+                            'Validada Técnicamente' => ['bg-success/10', 'text-success', 'border-success/30', 'check-circle'],
+                            'Cargada con Alertas'   => ['bg-warning/10', 'text-warning', 'border-warning/30', 'exclamation-triangle'],
+                            default                 => ['bg-info/10', 'text-info', 'border-info/30', 'clock'],
+                        };
+                    @endphp
+
+                    <div class="rounded-lg border border-border bg-surface shadow-sm p-5 space-y-4">
+                        {{-- Encabezado --}}
+                        <div class="flex items-center justify-between gap-3">
+                            <flux:heading size="lg" level="2" class="font-display">Matriz de especímenes</flux:heading>
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border {{ $estadoBadgeBg }} {{ $estadoBadgeBorder }} {{ $estadoBadgeText }}">
+                                <flux:icon name="{{ $estadoBadgeIcon }}" class="size-3.5" />
+                                {{ $estadoMatrizValor }}
+                            </span>
+                        </div>
+                        <flux:separator />
+
+                        {{-- Contadores --}}
+                        <div class="flex flex-wrap gap-2">
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-bg-main border border-border text-text-secondary">
+                                <flux:icon name="table-cells" class="size-3.5" />
+                                {{ $totalRegistros }} {{ $totalRegistros === 1 ? 'espécimen' : 'especímenes' }}
+                            </span>
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-success/10 border border-success/20 text-success">
+                                <flux:icon name="check" class="size-3.5" />
+                                {{ $validados }} validados
+                            </span>
+                            @if($nCorregidos > 0)
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-bio-green/10 border border-bio-green/20 text-bio-green">
+                                    <flux:icon name="sparkles" class="size-3.5" />
+                                    {{ $nCorregidos }} {{ $nCorregidos === 1 ? 'corrección' : 'correcciones' }}
+                                </span>
+                            @endif
+                            @if($nRevision > 0)
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-warning/10 border border-warning/20 text-warning">
+                                    <flux:icon name="exclamation-triangle" class="size-3.5" />
+                                    {{ $nRevision }} revisión curatorial
+                                </span>
+                            @endif
+                        </div>
+
+                        {{-- Sin excepciones: mensaje de éxito limpio --}}
+                        @if($sinExcepciones)
+                            <div class="flex items-center gap-3 rounded-lg bg-success/5 border border-success/20 px-4 py-3">
+                                <flux:icon name="check-circle" class="size-5 text-success shrink-0" />
+                                <p class="text-sm text-text-primary">
+                                    Todos los especímenes pasaron la validación taxonómica sin observaciones.
+                                </p>
+                            </div>
+
+                        {{-- Hay excepciones: mostrar solo las que le afectan --}}
+                        @else
+                            {{-- Correcciones tipográficas --}}
+                            @if($nCorregidos > 0)
+                                <div class="space-y-2">
+                                    <p class="text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                                        Nombres corregidos automáticamente
+                                    </p>
+                                    <div class="rounded-lg border border-border overflow-hidden">
+                                        @foreach(array_slice($listaCorregidos, 0, $limite) as $reg)
+                                            <div class="flex items-center gap-2 px-4 py-3 border-b border-border last:border-b-0 text-sm">
+                                                <span class="font-serif italic text-text-secondary line-through text-xs shrink-0">{{ $reg->nombreCientifico() }}</span>
+                                                <flux:icon name="arrow-right" class="size-3 text-text-secondary shrink-0" />
+                                                <span class="font-serif italic text-bio-green font-medium">{{ $reg->nombreCorregido() }}</span>
+                                            </div>
+                                        @endforeach
+                                        @if($nCorregidos > $limite)
+                                            <div class="px-4 py-2.5 bg-bg-main border-t border-border">
+                                                <span class="text-xs text-text-secondary">y {{ $nCorregidos - $limite }} más...</span>
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endif
+
+                            {{-- Especies para revisión curatorial --}}
+                            @if($nRevision > 0)
+                                <div class="space-y-2">
+                                    <p class="text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                                        Hallazgos para revisión curatorial
+                                    </p>
+                                    <div class="rounded-lg border border-warning/30 overflow-hidden">
+                                        @foreach(array_slice($listaRevision, 0, $limite) as $reg)
+                                            <div class="flex items-center justify-between gap-4 px-4 py-3 border-b border-warning/20 last:border-b-0 text-sm bg-warning/5">
+                                                <span class="font-serif italic text-text-primary">{{ $reg->nombreCientifico() }}</span>
+                                                @if($reg->motivoJustificacion())
+                                                    <span class="shrink-0 text-xs text-text-secondary">{{ $reg->motivoJustificacion() }}</span>
+                                                @endif
+                                            </div>
+                                        @endforeach
+                                        @if($nRevision > $limite)
+                                            <div class="px-4 py-2.5 bg-warning/5 border-t border-warning/20">
+                                                <span class="text-xs text-text-secondary">y {{ $nRevision - $limite }} más...</span>
+                                            </div>
+                                        @endif
+                                    </div>
+                                    <p class="text-xs text-text-secondary leading-relaxed">
+                                        {{ $nRevision === 1 ? 'Esta especie no fue encontrada' : 'Estas especies no fueron encontradas' }} en el catálogo de referencia. El funcionario responsable {{ $nRevision === 1 ? 'la revisará' : 'las revisará' }} antes de proceder con el depósito.
+                                    </p>
+                                </div>
+                            @endif
+                        @endif
+                    </div>
+                @endif
+
                 {{-- Alerta si retenida --}}
-                @if($deposito->estado === 'Retenida para Asesoría Curatorial')
+                @if($deposito->estado === 'Pausada para Asesoría')
                     <div class="rounded-xl border border-warning/40 bg-warning/5 p-5 space-y-3">
                         <div class="flex items-center gap-3">
                             <div class="flex size-9 shrink-0 items-center justify-center rounded-full bg-warning/15">
@@ -124,7 +258,7 @@
                             <p class="text-sm font-semibold text-text-primary">En espera de asesoría curatorial</p>
                         </div>
                         <p class="text-sm text-text-secondary">
-                            Un curador revisará tu caso y se pondrá en contacto contigo directamente. No necesitas realizar ninguna acción por ahora.
+                            El funcionario responsable revisará tu caso y se pondrá en contacto contigo directamente. No necesitas realizar ninguna acción por ahora.
                         </p>
                     </div>
                 @endif
@@ -142,11 +276,18 @@
                         titulo="Solicitud registrada"
                         :ultimo="$deposito->estado === 'En Borrador'" />
 
-                    @if($deposito->estado === 'Retenida para Asesoría Curatorial')
+                    @if($matriz && $matriz->estado()->value !== 'Pendiente')
                         <x-gestionprestamosrecepciones::timeline-event
                             :fecha="$deposito->updated_at->format('d/m/Y H:i')"
-                            titulo="Retenida para asesoría curatorial"
-                            descripcion="Sin documentación disponible. Curador notificado."
+                            titulo="Matriz de especímenes procesada"
+                            :ultimo="$deposito->estado === 'En Borrador'" />
+                    @endif
+
+                    @if($deposito->estado === 'Pausada para Asesoría')
+                        <x-gestionprestamosrecepciones::timeline-event
+                            :fecha="$deposito->updated_at->format('d/m/Y H:i')"
+                            titulo="Pausada para asesoría"
+                            descripcion="Sin documentación disponible. Funcionario responsable notificado."
                             :ultimo="true" />
                     @endif
 

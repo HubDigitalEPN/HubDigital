@@ -4,7 +4,7 @@
 $config = [
     'En Borrador' => ['color' => 'zinc', 'label' => 'En borrador'],
     'Rechazada' => ['color' => 'red', 'label' => 'Rechazada'],
-    'Retenida para Asesoría Curatorial' => ['color' => 'orange', 'label' => 'Retenida'],
+    'Pausada para Asesoría' => ['color' => 'orange', 'label' => 'Pausada'],
     'Pendiente de Revisión por Curaduría' => ['color' => 'blue', 'label' => 'Pendiente revisión'],
 ];
 

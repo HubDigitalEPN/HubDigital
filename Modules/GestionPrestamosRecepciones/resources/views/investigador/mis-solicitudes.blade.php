@@ -1,28 +1,97 @@
-<div class="p-6 space-y-6">
+<div class="space-y-6">
 
-    <div class="flex items-center justify-between">
-        <flux:heading size="xl" level="1" class="font-display">Mis solicitudes de préstamo</flux:heading>
-        <flux:button variant="primary" icon="plus" wire:navigate href="{{ route('prestamos.investigador.solicitud.crear') }}">
+    {{-- Encabezado --}}
+    <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <flux:heading size="xl" level="1" class="font-display">Mis solicitudes</flux:heading>
+            <flux:text class="text-text-secondary text-sm mt-1">
+                Gestiona tus solicitudes de préstamo de especímenes entomológicos.
+            </flux:text>
+        </div>
+        <flux:button variant="primary" icon="plus"
+            wire:navigate href="{{ route('prestamos.investigador.solicitud.crear') }}"
+            class="shrink-0 self-start sm:self-auto">
             Nueva solicitud
         </flux:button>
     </div>
 
-    @if($solicitudes->isEmpty())
-        <div class="flex flex-col items-center justify-center rounded-lg border border-border bg-surface py-[60px] text-center">
-            <flux:icon name="document-text" class="size-12 text-text-secondary mb-3" />
-            <flux:heading size="lg" level="2">Aún no tienes solicitudes</flux:heading>
-            <flux:text class="text-text-secondary mt-1">Crea tu primera solicitud de préstamo para comenzar.</flux:text>
-            <flux:button variant="primary" class="mt-4" wire:navigate href="{{ route('prestamos.investigador.solicitud.crear') }}">
+    {{-- Panel de filtros --}}
+    <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
+        <div class="flex items-center gap-2 px-4 py-2.5 bg-bg-main border-b border-border">
+            <flux:icon name="funnel" class="size-3.5 text-text-secondary" />
+            <span class="text-xs font-semibold uppercase tracking-wide text-text-secondary">Filtros</span>
+            @if($busqueda !== '' || $estado !== '')
+                <button wire:click="limpiarFiltros" class="ml-auto text-xs font-medium text-science-blue hover:underline transition-colors">
+                    Limpiar todo
+                </button>
+            @endif
+        </div>
+        <div class="px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div class="flex-1">
+                <flux:input
+                    wire:model.live.debounce.300ms="busqueda"
+                    placeholder="Buscar por título o N.º solicitud..."
+                    icon="magnifying-glass"
+                    clearable />
+            </div>
+            <div class="flex items-center gap-2 flex-wrap">
+                <flux:select wire:model.live="estado" class="w-48">
+                    <flux:select.option value="">Todos los estados</flux:select.option>
+                    <flux:select.option value="borrador">Borrador</flux:select.option>
+                    <flux:select.option value="enviada">Enviada</flux:select.option>
+                    <flux:select.option value="observada">Observada</flux:select.option>
+                    <flux:select.option value="aprobada">Aprobada</flux:select.option>
+                    <flux:select.option value="rechazada">Rechazada</flux:select.option>
+                </flux:select>
+                <flux:select wire:model.live="ordenCampo" class="w-44">
+                    <flux:select.option value="fecha">Por fecha</flux:select.option>
+                    <flux:select.option value="titulo">Por título</flux:select.option>
+                </flux:select>
+                <flux:button
+                    wire:click="toggleOrden"
+                    variant="ghost"
+                    icon="{{ $ordenDireccion === 'asc' ? 'bars-arrow-up' : 'bars-arrow-down' }}"
+                    title="{{ $ordenDireccion === 'asc' ? 'Ascendente' : 'Descendente' }}" />
+            </div>
+        </div>
+    </div>
+
+    @php $filtroActivo = $busqueda !== '' || $estado !== ''; @endphp
+
+    @if($solicitudes->isEmpty() && !$filtroActivo)
+        <div class="flex flex-col items-center justify-center rounded-lg border border-border bg-surface py-16 text-center px-8 gap-4">
+            <div class="flex h-16 w-16 items-center justify-center rounded-full bg-bg-main border border-border">
+                <flux:icon name="document-text" class="size-8 text-text-secondary/50" />
+            </div>
+            <div>
+                <flux:heading size="lg" level="2">Aún no tienes solicitudes</flux:heading>
+                <flux:text class="text-text-secondary mt-1 text-sm">Crea tu primera solicitud de préstamo para comenzar.</flux:text>
+            </div>
+            <flux:button variant="primary" wire:navigate href="{{ route('prestamos.investigador.solicitud.crear') }}">
                 Crear solicitud
             </flux:button>
         </div>
+
+    @elseif($solicitudes->isEmpty())
+        <div class="flex flex-col items-center justify-center rounded-lg border border-border bg-surface py-16 text-center px-8 gap-4">
+            <div class="flex h-16 w-16 items-center justify-center rounded-full bg-bg-main border border-border">
+                <flux:icon name="magnifying-glass" class="size-8 text-text-secondary/50" />
+            </div>
+            <div>
+                <flux:heading size="lg" level="2">Sin resultados</flux:heading>
+                <flux:text class="text-text-secondary mt-1 text-sm">No se encontraron solicitudes con los filtros aplicados.</flux:text>
+            </div>
+            <flux:button variant="ghost" wire:click="limpiarFiltros">Limpiar filtros</flux:button>
+        </div>
+
     @else
         <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
-            <table class="w-full text-sm">
+            <div class="overflow-x-auto">
+            <table class="w-full text-sm min-w-[640px]">
                 <thead class="bg-blue-navy border-b border-border">
                     <tr>
                         <th class="px-4 py-3 text-left font-medium text-white">N.º solicitud</th>
-                        <th class="px-4 py-3 text-left font-medium text-white">Título del estudio</th>
+                        <th class="px-4 py-3 text-left font-medium text-white w-72">Título del estudio</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Estado</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Fecha</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Acciones</th>
@@ -34,15 +103,39 @@
                             <td class="px-4 py-3 font-mono text-xs text-text-secondary whitespace-nowrap">
                                 {{ $solicitud->numero_solicitud }}
                             </td>
-                            <td class="px-4 py-3 font-medium text-text-primary">
-                                {{ $solicitud->titulo_estudio }}
+                            <td class="px-4 py-3 font-medium text-text-primary w-72">
+                                <flux:tooltip content="{{ $solicitud->titulo_estudio }}">
+                                    <span class="block truncate max-w-xs cursor-default">{{ $solicitud->titulo_estudio }}</span>
+                                </flux:tooltip>
                             </td>
                             <td class="px-4 py-3">
                                 @php $actaSolicitud = $actasPorSolicitud[$solicitud->id] ?? null; @endphp
-                                <div class="flex flex-col gap-1">
+                                <div class="flex flex-col gap-1.5">
                                     <x-gestionprestamosrecepciones::solicitud-status-badge :estado="$solicitud->estado" />
-                                    @if($actaSolicitud && in_array($actaSolicitud->estado, ['pendiente_firma', 'pendiente_validacion']))
-                                        <x-gestionprestamosrecepciones::acta-status-badge :estado="$actaSolicitud->estado" />
+                                    @if($actaSolicitud)
+                                        @if($actaSolicitud->estado === 'pendiente_firma')
+                                            <a wire:navigate href="{{ route('prestamos.investigador.acta.detalle', $actaSolicitud->id) }}"
+                                               class="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-0.5 w-fit hover:bg-amber-100 transition-colors">
+                                                <flux:icon name="exclamation-triangle" class="size-3" />
+                                                Requiere tu firma
+                                            </a>
+                                        @elseif($actaSolicitud->estado === 'pendiente_validacion')
+                                            <span class="inline-flex items-center gap-1 text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded px-2 py-0.5 w-fit">
+                                                <flux:icon name="clock" class="size-3" />
+                                                Acta en validación
+                                            </span>
+                                        @elseif($actaSolicitud->estado === 'pendiente_envio')
+                                            <span class="inline-flex items-center gap-1 text-xs text-text-secondary bg-bg-main border border-border rounded px-2 py-0.5 w-fit">
+                                                <flux:icon name="document-text" class="size-3" />
+                                                Acta en preparación
+                                            </span>
+                                        @elseif($actaSolicitud->estado === 'validada')
+                                            <a wire:navigate href="{{ route('prestamos.investigador.mis-actas') }}"
+                                               class="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded px-2 py-0.5 w-fit hover:bg-green-100 transition-colors">
+                                                <flux:icon name="check-circle" class="size-3" />
+                                                Préstamo activo
+                                            </a>
+                                        @endif
                                     @endif
                                 </div>
                             </td>
@@ -64,7 +157,7 @@
                                     @if($solicitud->estado === 'borrador')
                                         <flux:button size="sm" variant="primary" icon="paper-airplane"
                                             wire:click="enviarSolicitud('{{ $solicitud->id }}')"
-                                            wire:confirm="¿Enviar esta solicitud para revisión del curador?"
+                                            wire:confirm="¿Enviar esta solicitud para revisión del funcionario responsable?"
                                             wire:loading.attr="disabled">
                                             Enviar
                                         </flux:button>
@@ -75,6 +168,7 @@
                     @endforeach
                 </tbody>
             </table>
+            </div>
         </div>
     @endif
 

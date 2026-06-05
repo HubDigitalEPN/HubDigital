@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\ActaPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\ActaPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\AlcancePrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoActa;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\NumeroPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudPrestamoId;
@@ -25,11 +26,14 @@ final class EloquentActaPrestamoRepository implements ActaPrestamoRepositoryInte
                 'solicitud_prestamo_id' => (string) $acta->solicitudPrestamoId(),
                 'estado' => $acta->estado()->value,
                 'tipo_prestamo' => $acta->tipoPrestamo()->value,
+                'alcance_prestamo' => $acta->alcancePrestamo()->value,
                 'fecha_inicio' => $acta->fechaInicio()->format('Y-m-d'),
                 'fecha_fin' => $acta->fechaFin()->format('Y-m-d'),
                 'pdf_ruta' => $acta->pdfRuta(),
                 'condiciones_generales' => $acta->condicionesGenerales(),
                 'pdf_firmado_ruta' => $acta->pdfFirmadoRuta(),
+                'documento_identidad_ruta' => $acta->documentoIdentidadRuta(),
+                'documento_exportacion_ruta' => $acta->documentoExportacionRuta(),
                 'motivo_devolucion' => $acta->motivoDevolucion(),
                 'firmada_subida_en' => $acta->firmadaSubidaEn()?->format('Y-m-d H:i:s'),
                 'validada_en' => $acta->validadaEn()?->format('Y-m-d H:i:s'),
@@ -65,11 +69,14 @@ final class EloquentActaPrestamoRepository implements ActaPrestamoRepositoryInte
             solicitudPrestamoId: SolicitudPrestamoId::fromString($model->solicitud_prestamo_id),
             estado: EstadoActa::from($model->estado),
             tipoPrestamo: TipoPrestamo::from($model->tipo_prestamo),
+            alcancePrestamo: AlcancePrestamo::from($model->alcance_prestamo),
             fechaInicio: DateTimeImmutable::createFromInterface($model->fecha_inicio),
             fechaFin: DateTimeImmutable::createFromInterface($model->fecha_fin),
             pdfRuta: $model->pdf_ruta,
             condicionesGenerales: $model->condiciones_generales,
             pdfFirmadoRuta: $model->pdf_firmado_ruta,
+            documentoIdentidadRuta: $model->documento_identidad_ruta,
+            documentoExportacionRuta: $model->documento_exportacion_ruta,
             motivoDevolucion: $model->motivo_devolucion,
             firmadaSubidaEn: $model->firmada_subida_en !== null
                 ? DateTimeImmutable::createFromInterface($model->firmada_subida_en)

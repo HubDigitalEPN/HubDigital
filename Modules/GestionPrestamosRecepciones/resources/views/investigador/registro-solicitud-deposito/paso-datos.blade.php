@@ -10,7 +10,7 @@
     {{-- Aviso cuando la extracción automática no pudo completarse --}}
     @if($advertenciaExtraccion === 'error_modelo')
         <flux:callout variant="warning" icon="cpu-chip">
-            <flux:heading>El modelo de IA ({{ env('OLLAMA_MODEL', 'qwen3:4b') }}) no está disponible</flux:heading>
+            <flux:heading>El modelo de IA no está disponible</flux:heading>
             <flux:text>
                 No fue posible extraer los datos automáticamente porque el servicio de IA no respondió.
                 Completa manualmente los campos marcados abajo. El flujo continúa con normalidad.
@@ -20,7 +20,7 @@
         <flux:callout variant="warning" icon="queue-list">
             <flux:heading>El procesador de tareas en segundo plano no está activo</flux:heading>
             <flux:text>
-                La extracción automática no pudo iniciarse porque el worker de colas (<code>php artisan queue:work</code>) no está corriendo.
+                La extracción automática no pudo iniciarse porque el worker de colas no está corriendo.
                 Completa manualmente los campos marcados abajo. El flujo continúa con normalidad.
             </flux:text>
         </flux:callout>
@@ -37,7 +37,22 @@
     {{-- Datos faltantes globales --}}
     <flux:error name="datosFaltantes" />
 
-    @if(in_array('N.º Permiso Movilización', $datosFaltantes))
+    @php
+        // Campos que siempre se ingresan manualmente (la IA no los extrae de documentos).
+        $camposSiempreManuales = ['N.º Individuos', 'N.º Morfoespecies', 'N.º Lotes'];
+
+        // Solo mostramos en el callout los faltantes que (a) pertenecen al flujo actual
+        // y (b) se esperaba extraer automáticamente.
+        $datosFaltantesExtraccion = array_values(
+            array_filter(
+                $datosFaltantes,
+                fn ($campo) => array_key_exists($campo, $datosExtraidos)
+                    && ! in_array($campo, $camposSiempreManuales, true),
+            )
+        );
+    @endphp
+
+    @if(in_array('N.º Permiso Movilización', $datosFaltantes) && !isset($documentosCargados['Copia del permiso de movilización']))
         <flux:callout variant="warning" icon="exclamation-triangle">
             <flux:heading>Se requiere el Permiso de Movilización</flux:heading>
             <flux:text>
@@ -48,10 +63,15 @@
                 Volver a adjuntar documentos
             </flux:button>
         </flux:callout>
-    @elseif(!empty($datosFaltantes))
+    @elseif(!empty($datosFaltantesExtraccion))
         <flux:callout variant="danger" icon="x-circle">
-            <flux:heading>{{ count($datosFaltantes) }} dato(s) requeridos no se pudieron extraer</flux:heading>
-            <flux:text>La extracción automática no detectó: <strong>{{ implode(', ', $datosFaltantes) }}</strong>. Completa manualmente cada celda marcada abajo.</flux:text>
+            <flux:heading>{{ count($datosFaltantesExtraccion) }} dato(s) requeridos no se pudieron extraer</flux:heading>
+            <flux:text>La extracción automática no detectó: <strong>{{ implode(', ', $datosFaltantesExtraccion) }}</strong>. Completa manualmente cada celda marcada abajo.</flux:text>
+        </flux:callout>
+    @elseif(!empty($datosFaltantes))
+        <flux:callout variant="warning" icon="pencil-square">
+            <flux:heading>{{ count($datosFaltantes) }} dato(s) pendientes de completar</flux:heading>
+            <flux:text>Completa manualmente los campos marcados abajo para continuar.</flux:text>
         </flux:callout>
     @endif
 
@@ -61,15 +81,36 @@
 
         @php
             $fuentesPorCampo = [
-                'N.º Permiso Recolección' => 'Copia de la autorización de recolección (MAATE)',
+                'N.º Permiso Recolección' => 'Copia de la autorización de recolección (MAE)',
                 'N.º Permiso Movilización' => 'Copia del permiso de movilización',
+                'N.º Investigación' => 'Documento de procedencia de los especimenes',
                 'Grupo Animal' => $tipoTramite === 'Donación'
                     ? 'Formato solicitud donación'
                     : 'Copia del permiso de movilización',
                 'Provincia' => 'Copia del permiso de movilización',
+                'Administración Política' => 'Documento de procedencia de los especimenes',
                 'Localidad' => 'Copia del permiso de movilización',
                 'Origen Donación' => 'Carta de cesión de derechos / origen lícito',
+                'N.º Individuos' => null,
+                'N.º Morfoespecies' => null,
+                'N.º Lotes' => null,
             ];
+
+            $tooltipsPorCampo = [
+                'N.º Permiso Recolección'  => 'Número del permiso emitido por el Ministerio del Ambiente y Agua (MAE/MAATE) que autoriza la recolección de los especímenes en campo.',
+                'N.º Permiso Movilización' => 'Número de la guía de movilización emitida por el MAE que autoriza el traslado de los especímenes desde su lugar de recolección.',
+                'N.º Investigación'        => 'Número o código del proyecto de investigación bajo el cual se obtuvieron los especímenes en el país de origen. Puede ser una referencia institucional, gubernamental o de la colección foránea.',
+                'Grupo Animal'             => 'Referencia taxonómica del grupo de especímenes que se deposita. Puede indicarse a nivel de Familia, Género o Especie.',
+                'Provincia'                => 'Provincia del Ecuador donde se realizó la recolección de los especímenes.',
+                'Administración Política'  => 'División político-administrativa del lugar de recolección en el país de origen. Puede ser una provincia, departamento, estado u otra unidad administrativa equivalente.',
+                'Localidad'                => 'Nombre específico del lugar donde se recolectaron los especímenes (ciudad, área natural, reserva, parroquia, etc.).',
+                'Origen Donación'          => 'Descripción del origen de los especímenes que serán donados, confirmando la legalidad de su obtención.',
+                'N.º Individuos'           => 'Número total de especímenes individuales incluidos en esta solicitud.',
+                'N.º Morfoespecies'        => 'Número de morfoespecies distintas (grupos morfológicamente diferenciables) presentes en la colección.',
+                'N.º Lotes'                => 'Número de lotes en que se agrupan los especímenes para su organización y registro en la colección.',
+            ];
+
+            $camposCuantitativos = ['N.º Individuos', 'N.º Morfoespecies', 'N.º Lotes'];
 
             $camposParaMostrar = array_keys($datosExtraidos);
         @endphp
@@ -83,6 +124,7 @@
                     $clave = preg_replace('/[^a-zA-Z0-9]/', '_', $campo);
                     $estaEditando = isset($datosEnEdicion[$clave]);
                     $esManual = in_array($campo, $datosIngresadosManualmente);
+                    $esCuantitativo = in_array($campo, $camposCuantitativos);
                 @endphp
 
                 <x-gestionprestamosrecepciones::sum-cell
@@ -91,6 +133,7 @@
                     :fuente="$fuente"
                     :faltante="$esFaltante && !$estaEditando"
                     :manual="$esManual && !$esFaltante && !$estaEditando"
+                    :ayuda="$tooltipsPorCampo[$campo] ?? null"
                 >
                     @if($estaEditando)
                         <div class="flex gap-2 mt-1">
@@ -99,6 +142,8 @@
                                 size="sm"
                                 class="flex-1"
                                 placeholder="Ingresa el valor…"
+                                :type="$esCuantitativo ? 'number' : 'text'"
+                                :min="$esCuantitativo ? 0 : null"
                             />
                             <flux:button
                                 size="sm"
@@ -137,6 +182,90 @@
         </div>
     </div>
 
+    {{-- Validación de firma electrónica --}}
+    @if(!empty($firmasElectronicas))
+        <div class="space-y-3">
+            <flux:heading size="sm" level="3">Firma electrónica</flux:heading>
+
+            @php
+                $sinFirma = array_filter($firmasElectronicas, fn ($estado) => $estado === 'sin_firma');
+                $noVerificados = array_filter($firmasElectronicas, fn ($estado) => $estado === 'no_verificado');
+                $todosFirmados = empty($sinFirma) && empty($noVerificados);
+            @endphp
+
+            @if($todosFirmados)
+                <div class="rounded-lg border border-success/30 bg-success/5 p-4 flex items-center gap-3">
+                    <flux:icon name="shield-check" class="size-5 text-success shrink-0" />
+                    <div>
+                        <p class="text-sm font-semibold text-text-primary">Todos los documentos están firmados electrónicamente</p>
+                        <p class="text-xs text-text-secondary mt-0.5">Se verificó la firma digital de cada archivo cargado.</p>
+                    </div>
+                </div>
+            @elseif(!empty($sinFirma) && empty($noVerificados))
+                {{-- Documentos escaneados con firma manual: advertencia, no bloqueo --}}
+                <div class="rounded-lg border border-warning/30 bg-warning/5 p-4 space-y-3">
+                    <div class="flex items-center gap-3">
+                        <flux:icon name="exclamation-triangle" class="size-5 text-warning shrink-0" />
+                        <div>
+                            <p class="text-sm font-semibold text-text-primary">{{ count($sinFirma) }} documento(s) sin firma electrónica digital</p>
+                            <p class="text-xs text-text-secondary mt-0.5">Puedes continuar, pero el funcionario responsable revisará los documentos antes de aprobar la solicitud.</p>
+                        </div>
+                    </div>
+                    <div class="space-y-1.5">
+                        @foreach($firmasElectronicas as $nombre => $estado)
+                            <div class="flex items-center gap-2 text-sm">
+                                @if($estado === 'firmado')
+                                    <flux:icon name="check-circle" class="size-4 text-success shrink-0" />
+                                    <span class="text-text-primary">{{ $nombre }}</span>
+                                    <span class="text-xs text-success font-medium">Firmado</span>
+                                @else
+                                    <flux:icon name="exclamation-circle" class="size-4 text-warning shrink-0" />
+                                    <span class="text-text-primary">{{ $nombre }}</span>
+                                    <span class="text-xs text-warning font-medium">Sin firma digital</span>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @else
+                {{-- no_verificado: error real de pdfsig, bloquea --}}
+                <div class="rounded-lg border border-error/30 bg-error/5 p-4 space-y-3">
+                    <div class="flex items-center gap-3">
+                        <flux:icon name="shield-exclamation" class="size-5 text-error shrink-0" />
+                        <div>
+                            <p class="text-sm font-semibold text-text-primary">No se pudo verificar la firma de {{ count($noVerificados) }} documento(s)</p>
+                            <p class="text-xs text-text-secondary mt-0.5">El sistema no pudo comprobar la firma electrónica. Vuelve al paso anterior y carga nuevamente los documentos.</p>
+                        </div>
+                    </div>
+                    <div class="space-y-1.5">
+                        @foreach($firmasElectronicas as $nombre => $estado)
+                            <div class="flex items-center gap-2 text-sm">
+                                @if($estado === 'firmado')
+                                    <flux:icon name="check-circle" class="size-4 text-success shrink-0" />
+                                    <span class="text-text-primary">{{ $nombre }}</span>
+                                    <span class="text-xs text-success font-medium">Firmado</span>
+                                @elseif($estado === 'sin_firma')
+                                    <flux:icon name="exclamation-circle" class="size-4 text-warning shrink-0" />
+                                    <span class="text-text-primary">{{ $nombre }}</span>
+                                    <span class="text-xs text-warning font-medium">Sin firma digital</span>
+                                @else
+                                    <flux:icon name="question-mark-circle" class="size-4 text-error shrink-0" />
+                                    <span class="text-text-primary">{{ $nombre }}</span>
+                                    <span class="text-xs text-error font-medium">No verificado</span>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                    <div class="pt-1">
+                        <flux:button variant="filled" size="sm" icon="arrow-left" wire:click="retroceder">
+                            Volver a cargar documentos
+                        </flux:button>
+                    </div>
+                </div>
+            @endif
+        </div>
+    @endif
+
     {{-- Validación de identidad --}}
     <div class="space-y-4">
         <div class="flex items-center justify-between gap-4">
@@ -154,7 +283,7 @@
 
         @if(!$resultadoIdentidad)
             <div class="space-y-2">
-                <div class="flex gap-3 items-end">
+                <div class="flex flex-col gap-2 sm:flex-row sm:gap-3 sm:items-end">
                     <flux:field class="flex-1 !mb-0">
                         <flux:label>Nombre tal como aparece en el formato de solicitud</flux:label>
                         <flux:input
@@ -195,11 +324,8 @@
                 <flux:heading>Discrepancia significativa detectada</flux:heading>
                 <flux:text>El nombre del documento y el del perfil difieren considerablemente. Elige una opción:</flux:text>
                 <div class="mt-3 flex flex-wrap gap-2">
-                    <flux:button size="sm" variant="ghost" wire:navigate href="{{ route('profile.edit') }}" icon="user">
+                    <flux:button size="sm" variant="outline" wire:navigate href="{{ route('profile.edit') }}" icon="user">
                         Actualizar nombre en perfil
-                    </flux:button>
-                    <flux:button size="sm" variant="ghost" wire:click="resetearValidacionIdentidad" icon="arrow-path">
-                        Reingresar nombre del documento
                     </flux:button>
                 </div>
                 <flux:text class="mt-2 text-xs opacity-70">O adjunta la carta de delegación si gestionas el trámite a nombre de otra persona.</flux:text>

@@ -16,10 +16,13 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Li
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarEntidadDepositante\RegistrarEntidadDepositanteHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarEntidadDepositante\RegistrarEntidadDepositanteInput;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TipoEntidadDepositante;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
 
-#[Layout('layouts.app', params: ['title' => 'Entidades Depositantes'])]
+#[Layout('layouts.app', params: ['title' => 'Entidades depositantes'])]
 final class EntidadDepositanteIndex extends Component
 {
+    use TraduceErroresPersistencia;
+
     public array $entidades = [];
 
     public array $tipos = [];
@@ -33,11 +36,11 @@ final class EntidadDepositanteIndex extends Component
     #[Rule('required|string|max:255')]
     public string $nombre = '';
 
-    #[Rule('required|string')]
-    public string $tipo = '';
+    #[Rule('nullable|string')]
+    public ?string $tipo = null;
 
-    #[Rule('required|string|max:255')]
-    public string $contacto = '';
+    #[Rule('nullable|string|max:255')]
+    public ?string $contacto = null;
 
     public bool $showEditModal = false;
 
@@ -46,11 +49,11 @@ final class EntidadDepositanteIndex extends Component
     #[Rule('required|string|max:255')]
     public string $editNombre = '';
 
-    #[Rule('required|string')]
-    public string $editTipo = '';
+    #[Rule('nullable|string')]
+    public ?string $editTipo = null;
 
-    #[Rule('required|string|max:255')]
-    public string $editContacto = '';
+    #[Rule('nullable|string|max:255')]
+    public ?string $editContacto = null;
 
     public bool $showActaModal = false;
 
@@ -67,7 +70,7 @@ final class EntidadDepositanteIndex extends Component
     public function mount(ListarEntidadesDepositantesHandler $handler): void
     {
         $this->tipos = array_column(TipoEntidadDepositante::cases(), 'value');
-        $this->cargarEntidades($handler);
+        $this->cargarProtegido(fn () => $this->cargarEntidades($handler));
     }
 
     public function abrirModal(): void
@@ -97,7 +100,7 @@ final class EntidadDepositanteIndex extends Component
             $this->successMessage = 'Entidad depositante registrada correctamente.';
             $this->errorMessage = null;
         } catch (\Throwable $e) {
-            $this->errorMessage = $e->getMessage();
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 
@@ -138,7 +141,7 @@ final class EntidadDepositanteIndex extends Component
             $this->successMessage = 'Entidad depositante actualizada correctamente.';
             $this->errorMessage = null;
         } catch (\Throwable $e) {
-            $this->errorMessage = $e->getMessage();
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 
@@ -160,7 +163,7 @@ final class EntidadDepositanteIndex extends Component
             $this->showActaModal = true;
             $this->successMessage = "Acta generada para {$output->entidadNombre}: {$output->totalEspecimenes} especímenes.";
         } catch (\Throwable $e) {
-            $this->errorMessage = $e->getMessage();
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 

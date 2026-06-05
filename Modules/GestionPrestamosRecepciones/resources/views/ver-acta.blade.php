@@ -35,8 +35,8 @@
 
 <div class="p-6 space-y-4">
 
-    {{-- Toolbar --}}
-    <div class="flex items-center justify-between print:hidden">
+    {{-- Toolbar (oculto en modo embed/iframe) --}}
+    <div class="flex items-center justify-between print:hidden {{ ($isEmbed ?? false) ? 'hidden' : '' }}">
         <flux:breadcrumbs>
             <flux:breadcrumbs.item>Acta de préstamo</flux:breadcrumbs.item>
             <flux:breadcrumbs.item>{{ $acta?->numero_prestamo ?? '—' }}</flux:breadcrumbs.item>
@@ -45,7 +45,8 @@
             <flux:text class="text-xs text-text-secondary text-right leading-tight max-w-48">
                 En el diálogo, desactiva<br><span class="font-medium">"Encabezados y pies de página"</span>
             </flux:text>
-            <flux:button icon="printer" onclick="window.print()">
+            <flux:button icon="printer"
+                onclick="let t=document.title; document.title='Acta{{ $acta?->solicitud?->numero_solicitud ?? $acta?->numero_prestamo }}'; window.print(); setTimeout(()=>document.title=t, 500)">
                 Imprimir / Descargar PDF
             </flux:button>
         </div>
@@ -73,6 +74,10 @@
                     <div>
                         <dt class="text-text-secondary">Tipo de préstamo</dt>
                         <dd class="font-medium text-text-primary capitalize">{{ $acta->tipo_prestamo }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-text-secondary">Alcance</dt>
+                        <dd class="font-medium text-text-primary">{{ ($acta->alcance_prestamo ?? 'nacional') === 'internacional' ? 'Internacional' : 'Nacional' }}</dd>
                     </div>
                     <div>
                         <dt class="text-text-secondary">N.º solicitud</dt>
@@ -153,7 +158,7 @@
                         <div class="space-y-1">
                             <p>En caso de ser de interés para el receptor del préstamo, se autoriza el depósito de réplicas de especies, o morfoespecies, de series de colecciones, en la colección de la institución receptora. El material único, de localidades únicas (singletons) debe ser retornado al MHNGOV, posterior a su estudio.</p>
                             <p class="text-text-secondary italic text-xs border-l-2 border-border pl-3">
-                                <span class="font-semibold not-italic">Nota:</span> En caso de requerir el depósito de réplicas en la institución receptora, se deben notificar los detalles previamente al Curador, puesto que es necesario firmar un documento de "préstamo permanente".
+                                <span class="font-semibold not-italic">Nota:</span> En caso de requerir el depósito de réplicas en la institución receptora, se deben notificar los detalles previamente al funcionario responsable, puesto que es necesario firmar un documento de "préstamo permanente".
                             </p>
                         </div>
                     </li>
@@ -204,16 +209,33 @@
             <div class="grid grid-cols-2 gap-16 pt-8">
                 <div>
                     <div class="border-t-2 border-text-primary pt-3 space-y-1">
-                        <p class="text-sm font-semibold text-text-primary">Curador responsable</p>
+                        <p class="text-sm font-semibold text-text-primary">Funcionario responsable</p>
                         <p class="text-xs text-text-secondary">Laboratorio de Invertebrados — EPN</p>
                         <p class="text-xs text-text-secondary">Fecha: ___________________</p>
                     </div>
                 </div>
                 <div>
+                    @php
+                        $firmaPath = 'firmas-investigador/' . $acta->id . '.png';
+                        $firmaBase64 = \Illuminate\Support\Facades\Storage::exists($firmaPath)
+                            ? 'data:image/png;base64,' . base64_encode(\Illuminate\Support\Facades\Storage::get($firmaPath))
+                            : null;
+                    @endphp
+                    @if($firmaBase64)
+                        <img src="{{ $firmaBase64 }}" alt="Firma" class="h-16 max-w-56 mb-1 object-contain">
+                    @else
+                        <div class="h-16"></div>
+                    @endif
                     <div class="border-t-2 border-text-primary pt-3 space-y-1">
                         <p class="text-sm font-semibold text-text-primary">Investigador solicitante</p>
                         <p class="text-xs text-text-secondary">{{ $acta->solicitud?->institucion_adscripcion }}</p>
-                        <p class="text-xs text-text-secondary">Fecha: ___________________</p>
+                        <p class="text-xs text-text-secondary">
+                            @if($firmaBase64)
+                                Firmado digitalmente
+                            @else
+                                Fecha: ___________________
+                            @endif
+                        </p>
                     </div>
                 </div>
             </div>
@@ -222,3 +244,14 @@
     @endif
 
 </div>
+
+@if(request('download') == '1')
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        let originalTitle = document.title;
+        document.title = 'Acta-{{ $acta?->numero_prestamo ?? 'firmada' }}';
+        window.print();
+        setTimeout(() => document.title = originalTitle, 500);
+    });
+</script>
+@endif

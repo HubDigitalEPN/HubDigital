@@ -22,14 +22,14 @@
 <div class="space-y-6">
 
     {{-- Encabezado --}}
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <flux:heading size="xl" level="1" class="font-display">Mis depósitos</flux:heading>
             <flux:text class="text-text-secondary text-sm mt-1">
                 Historial de tus solicitudes de depósito de especímenes.
             </flux:text>
         </div>
-        <flux:button variant="primary" icon="plus" wire:navigate href="{{ route('prestamos.investigador.deposito.crear') }}">
+        <flux:button variant="primary" icon="plus" wire:navigate href="{{ route('prestamos.investigador.deposito.crear') }}" class="shrink-0 self-start sm:self-auto">
             Nueva solicitud
         </flux:button>
     </div>
@@ -61,7 +61,7 @@
             {{-- Tipo --}}
             <flux:field>
                 <flux:label class="text-xs">Tipo</flux:label>
-                <flux:select wire:model.live="filtroTipo" size="sm" class="w-36">
+                <flux:select wire:model.live="filtroTipo" size="sm" class="w-full sm:w-36">
                     <flux:select.option value="">Todos</flux:select.option>
                     <flux:select.option value="{{ TipoTramite::Deposito->value }}">Depósito</flux:select.option>
                     <flux:select.option value="{{ TipoTramite::Donacion->value }}">Donación</flux:select.option>
@@ -71,10 +71,10 @@
             {{-- Estado --}}
             <flux:field>
                 <flux:label class="text-xs">Estado</flux:label>
-                <flux:select wire:model.live="filtroEstado" size="sm" class="w-52">
+                <flux:select wire:model.live="filtroEstado" size="sm" class="w-full sm:w-52">
                     <flux:select.option value="">Todos</flux:select.option>
                     <flux:select.option value="{{ EstadoSolicitudDeposito::PendienteDeRevisionPorCuraduria->value }}">Pendiente de Revisión</flux:select.option>
-                    <flux:select.option value="{{ EstadoSolicitudDeposito::RetenidaParaAsesoriaCuratorial->value }}">Retenida para Asesoría</flux:select.option>
+                    <flux:select.option value="{{ EstadoSolicitudDeposito::RetenidaParaAsesoriaCuratorial->value }}">Pausada para Asesoría</flux:select.option>
                     <flux:select.option value="{{ EstadoSolicitudDeposito::Rechazada->value }}">Rechazada</flux:select.option>
                 </flux:select>
             </flux:field>
@@ -85,7 +85,7 @@
                 <input
                     type="date"
                     wire:model.live="filtroDesde"
-                    class="px-3 py-1 text-xs rounded-lg border bg-bg-main text-text-primary transition-colors focus:outline-none focus:ring-1
+                    class="px-3 py-2 text-sm sm:py-1 sm:text-xs rounded-lg border bg-bg-main text-text-primary transition-colors focus:outline-none focus:ring-1
                         {{ $filtroDesde ? 'border-science-blue ring-1 ring-science-blue' : 'border-border' }}"
                 />
             </flux:field>
@@ -95,7 +95,7 @@
                 <input
                     type="date"
                     wire:model.live="filtroHasta"
-                    class="px-3 py-1 text-xs rounded-lg border bg-bg-main text-text-primary transition-colors focus:outline-none focus:ring-1
+                    class="px-3 py-2 text-sm sm:py-1 sm:text-xs rounded-lg border bg-bg-main text-text-primary transition-colors focus:outline-none focus:ring-1
                         {{ $filtroHasta ? 'border-science-blue ring-1 ring-science-blue' : 'border-border' }}"
                 />
             </flux:field>
@@ -139,7 +139,7 @@
         @if($activas->where('estado', EstadoSolicitudDeposito::RetenidaParaAsesoriaCuratorial->value)->isNotEmpty())
             <flux:callout variant="warning" icon="pause-circle">
                 <flux:heading>{{ $activas->where('estado', EstadoSolicitudDeposito::RetenidaParaAsesoriaCuratorial->value)->count() }} solicitud(es) retenida(s) para Asesoría Curatorial</flux:heading>
-                <flux:text>Un curador se pondrá en contacto contigo próximamente. No necesitas hacer nada por ahora.</flux:text>
+                <flux:text>El funcionario responsable se pondrá en contacto contigo próximamente. No necesitas hacer nada por ahora.</flux:text>
             </flux:callout>
         @endif
 

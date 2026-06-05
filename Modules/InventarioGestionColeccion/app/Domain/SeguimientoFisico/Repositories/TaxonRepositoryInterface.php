@@ -29,4 +29,13 @@ interface TaxonRepositoryInterface
      * @return Taxon[]
      */
     public function buscarPorIds(array $ids): array;
+
+    /**
+     * Devuelve los IDs (string) de todos los descendientes recursivos de un
+     * taxón (incluyéndolo). Útil para filtrar especímenes "por familia"
+     * resolviéndola a sus géneros y especies hijos.
+     *
+     * @return string[]
+     */
+    public function listarDescendientesIds(string $taxonId): array;
 }

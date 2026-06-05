@@ -19,16 +19,18 @@ class CajaEloquentModel extends Model
     protected $fillable = [
         'id',
         'codigo',
-        'familia_taxonomica_id',
+        'es_especial',
+        'observacion',
+        'clasificacion_taxonomica',
         'nombre',
-        'capacidad_maxima',
         'estado',
         'ranura_actual_id',
         'codigo_rfid',
     ];
 
     protected $casts = [
-        'capacidad_maxima' => 'integer',
+        'es_especial' => 'boolean',
+        'clasificacion_taxonomica' => 'array',
     ];
 
     public function ranuraActual(): BelongsTo

@@ -14,8 +14,9 @@ class Taxon
         private readonly TaxonId $id,
         private string $nombreCientifico,
         private readonly RangoTaxonomico $rango,
-        private string $autor,
-        private int $anioDescripcion,
+        private ?string $autor,
+        private ?int $anioDescripcion,
+        private ?string $epitetoInfraespecifico,
         private EstadoTaxon $estado,
         private ?TaxonId $padreId,
     ) {}
@@ -24,9 +25,10 @@ class Taxon
         TaxonId $id,
         string $nombreCientifico,
         string $rango,
-        string $autor,
-        int $anioDescripcion,
+        ?string $autor = null,
+        ?int $anioDescripcion = null,
         ?string $padreId = null,
+        ?string $epitetoInfraespecifico = null,
     ): self {
         $rangoVO = RangoTaxonomico::desdeValorFlexible($rango);
 
@@ -37,12 +39,20 @@ class Taxon
             );
         }
 
+        $epitetoNormalizado = self::normalizarOpcional($epitetoInfraespecifico);
+        if ($epitetoNormalizado !== null && ! $rangoVO->admiteEpitetoInfraespecifico()) {
+            throw new \InvalidArgumentException(
+                "El epíteto infraespecífico sólo aplica a taxones de rango 'especie', no a '{$rangoVO->value}'."
+            );
+        }
+
         return new self(
             id: $id,
             nombreCientifico: trim($nombreCientifico),
             rango: $rangoVO,
-            autor: trim($autor),
+            autor: self::normalizarOpcional($autor),
             anioDescripcion: $anioDescripcion,
+            epitetoInfraespecifico: $epitetoNormalizado,
             estado: EstadoTaxon::Activo,
             padreId: $padreId !== null ? TaxonId::desde($padreId) : null,
         );
@@ -52,10 +62,11 @@ class Taxon
         TaxonId $id,
         string $nombreCientifico,
         RangoTaxonomico $rango,
-        string $autor,
-        int $anioDescripcion,
+        ?string $autor,
+        ?int $anioDescripcion,
         EstadoTaxon $estado,
         ?TaxonId $padreId = null,
+        ?string $epitetoInfraespecifico = null,
     ): self {
         return new self(
             id: $id,
@@ -63,21 +74,44 @@ class Taxon
             rango: $rango,
             autor: $autor,
             anioDescripcion: $anioDescripcion,
+            epitetoInfraespecifico: $epitetoInfraespecifico,
             estado: $estado,
             padreId: $padreId,
         );
     }
 
-    public function actualizar(string $nombreCientifico, string $autor, int $anioDescripcion): void
-    {
+    public function actualizar(
+        string $nombreCientifico,
+        ?string $autor,
+        ?int $anioDescripcion,
+        ?string $epitetoInfraespecifico = null,
+    ): void {
+        $epitetoNormalizado = self::normalizarOpcional($epitetoInfraespecifico);
+        if ($epitetoNormalizado !== null && ! $this->rango->admiteEpitetoInfraespecifico()) {
+            throw new \InvalidArgumentException(
+                "El epíteto infraespecífico sólo aplica a taxones de rango 'especie', no a '{$this->rango->value}'."
+            );
+        }
+
         $this->nombreCientifico = trim($nombreCientifico);
-        $this->autor = trim($autor);
+        $this->autor = self::normalizarOpcional($autor);
         $this->anioDescripcion = $anioDescripcion;
+        $this->epitetoInfraespecifico = $epitetoNormalizado;
     }
 
     public function desactivar(): void
     {
         $this->estado = EstadoTaxon::Inactivo;
+    }
+
+    private static function normalizarOpcional(?string $valor): ?string
+    {
+        if ($valor === null) {
+            return null;
+        }
+        $trim = trim($valor);
+
+        return $trim === '' ? null : $trim;
     }
 
     public function id(): TaxonId
@@ -95,14 +129,19 @@ class Taxon
         return $this->rango;
     }
 
-    public function autor(): string
+    public function autor(): ?string
     {
         return $this->autor;
     }
 
-    public function anioDescripcion(): int
+    public function anioDescripcion(): ?int
     {
         return $this->anioDescripcion;
+    }
+
+    public function epitetoInfraespecifico(): ?string
+    {
+        return $this->epitetoInfraespecifico;
     }
 
     public function estado(): EstadoTaxon

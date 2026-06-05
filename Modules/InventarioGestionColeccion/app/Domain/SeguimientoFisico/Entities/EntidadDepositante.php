@@ -12,53 +12,69 @@ class EntidadDepositante
     private function __construct(
         private readonly EntidadDepositanteId $id,
         private string $nombre,
-        private TipoEntidadDepositante $tipo,
-        private string $contacto,
+        private ?TipoEntidadDepositante $tipo,
+        private ?string $contacto,
     ) {}
 
     public static function crear(
         EntidadDepositanteId $id,
         string $nombre,
-        string $tipo,
-        string $contacto,
+        ?string $tipo = null,
+        ?string $contacto = null,
     ): self {
-        $tipoVO = TipoEntidadDepositante::tryFrom($tipo);
-
-        if ($tipoVO === null) {
-            throw new \InvalidArgumentException(
-                "Tipo de entidad depositante inválido: '{$tipo}'. Valores válidos: ".
-                implode(', ', array_column(TipoEntidadDepositante::cases(), 'value'))
-            );
-        }
-
         return new self(
             id: $id,
             nombre: trim($nombre),
-            tipo: $tipoVO,
-            contacto: trim($contacto),
+            tipo: self::resolverTipo($tipo),
+            contacto: self::normalizarOpcional($contacto),
         );
     }
 
     public static function reconstituir(
         EntidadDepositanteId $id,
         string $nombre,
-        TipoEntidadDepositante $tipo,
-        string $contacto,
+        ?TipoEntidadDepositante $tipo,
+        ?string $contacto,
     ): self {
         return new self(id: $id, nombre: $nombre, tipo: $tipo, contacto: $contacto);
     }
 
-    public function actualizar(string $nombre, string $tipo, string $contacto): void
+    public function actualizar(string $nombre, ?string $tipo = null, ?string $contacto = null): void
     {
-        $tipoVO = TipoEntidadDepositante::tryFrom($tipo);
+        $this->nombre = trim($nombre);
+        $this->tipo = self::resolverTipo($tipo);
+        $this->contacto = self::normalizarOpcional($contacto);
+    }
 
-        if ($tipoVO === null) {
-            throw new \InvalidArgumentException("Tipo de entidad depositante inválido: '{$tipo}'");
+    private static function resolverTipo(?string $tipo): ?TipoEntidadDepositante
+    {
+        if ($tipo === null) {
+            return null;
+        }
+        $trim = trim($tipo);
+        if ($trim === '') {
+            return null;
+        }
+        $vo = TipoEntidadDepositante::tryFrom($trim);
+
+        if ($vo === null) {
+            throw new \InvalidArgumentException(
+                "Tipo de entidad depositante inválido: '{$tipo}'. Valores válidos: ".
+                implode(', ', array_column(TipoEntidadDepositante::cases(), 'value'))
+            );
         }
 
-        $this->nombre = trim($nombre);
-        $this->tipo = $tipoVO;
-        $this->contacto = trim($contacto);
+        return $vo;
+    }
+
+    private static function normalizarOpcional(?string $valor): ?string
+    {
+        if ($valor === null) {
+            return null;
+        }
+        $trim = trim($valor);
+
+        return $trim === '' ? null : $trim;
     }
 
     public function id(): EntidadDepositanteId
@@ -71,12 +87,12 @@ class EntidadDepositante
         return $this->nombre;
     }
 
-    public function tipo(): TipoEntidadDepositante
+    public function tipo(): ?TipoEntidadDepositante
     {
         return $this->tipo;
     }
 
-    public function contacto(): string
+    public function contacto(): ?string
     {
         return $this->contacto;
     }

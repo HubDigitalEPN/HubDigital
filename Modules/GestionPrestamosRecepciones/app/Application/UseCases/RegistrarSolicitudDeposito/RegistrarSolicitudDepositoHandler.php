@@ -35,8 +35,10 @@ final class RegistrarSolicitudDepositoHandler
         }
 
         $id = $this->repo->nextIdentity();
+        $numero = $this->repo->nextNumero();
         $solicitud = SolicitudDeposito::crear(
             id: $id,
+            numero: $numero,
             investigadorId: $input->investigadorId,
             tipoTramite: $input->tipoTramite,
         );

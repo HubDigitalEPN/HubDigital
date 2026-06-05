@@ -22,6 +22,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Entities\SolicitudPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaDevueltaPorFirmaInvalida;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\ActaPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\AlcancePrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoActa;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ItemPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\NumeroPrestamo;
@@ -86,6 +87,8 @@ final class GestionActaPrestamoContext extends BaseContext
 
     public function __construct()
     {
+        self::bootApp();
+
         $this->solicitudRepo = new InMemorySolicitudPrestamoRepository;
         $this->actaRepo = new InMemoryActaPrestamoRepository;
         $this->fakePublisher = new FakeEventPublisherAdapter;
@@ -117,6 +120,7 @@ final class GestionActaPrestamoContext extends BaseContext
             id: $this->solicitudRepo->nextIdentity(),
             numeroSolicitud: NumeroSolicitud::generate(),
             investigadorId: $this->investigadorId,
+            alcancePrestamo: AlcancePrestamo::Nacional,
             tituloEstudio: $this->datosSolicitud['titulo_estudio'],
             institucionAdscripcion: $this->datosSolicitud['institucion_adscripcion'],
             lineaInvestigacion: $this->datosSolicitud['linea_investigacion'],
@@ -148,6 +152,7 @@ final class GestionActaPrestamoContext extends BaseContext
             numeroPrestamo: NumeroPrestamo::generate(),
             solicitudPrestamoId: $solicitud->id(),
             tipoPrestamo: TipoPrestamo::Temporal,
+            alcancePrestamo: AlcancePrestamo::Nacional,
             fechaInicio: $ahora,
             fechaFin: $fechaFin,
             pdfRuta: $pdfRuta,
@@ -158,7 +163,10 @@ final class GestionActaPrestamoContext extends BaseContext
         }
 
         if ($estado === EstadoActa::PendienteValidacion) {
-            $acta->subirFirma('actas/firmadas/'.(string) $solicitud->id().'-firmada.pdf');
+            $acta->subirFirma(
+                pdfFirmadoRuta: 'actas/firmadas/'.(string) $solicitud->id().'-firmada.pdf',
+                documentoIdentidadRuta: 'documentos-identidad/'.(string) $solicitud->id().'-id.pdf',
+            );
         }
 
         $acta->pullEvents();
@@ -172,7 +180,7 @@ final class GestionActaPrestamoContext extends BaseContext
     // ESCENARIO: Enviar el acta de préstamo al investigador para su firma
     // =========================================================================
 
-    #[Given('que existe un acta en estado pendiente de envío')]
+    #[Given('que el curador tiene un acta en estado pendiente de envío')]
     public function queExisteUnActaEnEstadoPendienteDeEnvio(): void
     {
         $acta = $this->sembrarActaEnEstado(EstadoActa::PendienteEnvio);
@@ -249,7 +257,7 @@ final class GestionActaPrestamoContext extends BaseContext
     // (Dado compartido — ambos parten de PendienteValidacion)
     // =========================================================================
 
-    #[Given('que existe un acta en estado pendiente de validación')]
+    #[Given('que el curador tiene un acta en estado pendiente de validación')]
     public function queExisteUnActaEnEstadoPendienteDeValidacion(): void
     {
         $acta = $this->sembrarActaEnEstado(EstadoActa::PendienteValidacion);
@@ -310,7 +318,7 @@ final class GestionActaPrestamoContext extends BaseContext
             'El estado persistido en el repositorio no es Validada'
         );
         Assert::assertNotNull($persistida->validadaEn(), "Se esperaba que 'validada_en' quedara registrado");
-        Assert::assertSame($this->curadorId, $persistida->validadaPor(), "Se esperaba que el curador validador quedara registrado");
+        Assert::assertSame($this->curadorId, $persistida->validadaPor(), 'Se esperaba que el curador validador quedara registrado');
     }
 
     #[Then('se crea un préstamo en estado activo')]

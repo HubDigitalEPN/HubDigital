@@ -1,0 +1,15 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\GestionPrestamosRecepciones\Application\UseCases\JustificarHallazgoTaxonomico;
+
+final readonly class JustificarHallazgoTaxonomicoInput
+{
+    public function __construct(
+        public string $solicitudId,
+        public string $matrizId,
+        public string $registroId,
+        public string $motivoJustificacion,
+    ) {}
+}

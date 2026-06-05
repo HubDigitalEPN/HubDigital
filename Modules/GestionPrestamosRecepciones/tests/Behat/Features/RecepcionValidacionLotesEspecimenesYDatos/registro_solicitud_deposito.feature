@@ -12,7 +12,7 @@ Característica: Registro de solicitud de depósito
     Esquema del escenario: Aplicación de límite anual por tipo de trámite
         Dado que el investigador tiene <solicitudes_previas> solicitudes de tipo "<tipo_tramite>" registradas este año
         Cuando el investigador intenta crear una nueva solicitud de tipo "<tipo_tramite>"
-        Entonces la solicitud queda en estado "<estado_solicitud>"
+        Entonces la nueva solicitud de depósito queda en estado "<estado_solicitud>"
         Y el investigador es notificado con el mensaje "<mensaje_alerta>"
 
         Ejemplos:
@@ -26,20 +26,21 @@ Característica: Registro de solicitud de depósito
     Esquema del escenario: Documentación legal requerida según el origen de los especímenes
         Dado que el investigador declara que el origen de los especímenes es "<origen_recoleccion>"
         Y su situación regulatoria actual es "<situacion_regulatoria>"
+        Cuando el investigador consulta la documentación requerida para su solicitud
         Entonces la solicitud exige adjuntar los siguientes documentos: "<documento_requerido>"
 
         Ejemplos:
-            | origen_recoleccion    | situacion_regulatoria           | documento_requerido                                                                           |
-            | Nacional (Ecuador)    | Posee permisos del MAATE        | Copia de la autorización de recolección (MAATE) y Copia del permiso de movilización           |
-            | Nacional (Ecuador)    | Sin permisos del MAATE          | Documento de explicación de motivos y/o carta de justificación (institucional o personal)     |
-            | Exterior (Extranjero) | Proviene de colección foránea   | Carta de Procedencia firmada por el responsable de la colección de origen                     |
+            | origen_recoleccion    | situacion_regulatoria           | documento_requerido                                                                                                        |
+            | Nacional (Ecuador)    | Posee permisos del MAE        | Formato solicitud depósito y Copia de la autorización de recolección (MAE) y Copia del permiso de movilización           |
+            | Nacional (Ecuador)    | Sin permisos del MAE          | Formato solicitud depósito y Documento de explicación de motivos y/o carta de justificación (institucional o personal)     |
+            | Exterior (Extranjero) | Proviene de colección foránea   | Formato solicitud depósito y Documento de procedencia de los especimenes                                                   |
 
     @deposito @excepcion
     Escenario: Escalabilidad de la solicitud por falta total de documentación
-        Dado que el investigador carece de los documentos del MAATE y de carta de justificación
+        Dado que el investigador carece de los documentos del MAE y de carta de justificación
         Cuando el investigador solicita la intervención directa de curaduría
         Entonces el proceso de carga documental se pausa
-        Y la solicitud pasa al estado "Retenida para Asesoría Curatorial"
+        Y la solicitud pasa al estado "Pausada para Asesoría"
         Y se notifica al curador para que inicie el contacto directo con el investigador
 
     Esquema del escenario: Validación de Permiso de Movilización por provincia de origen
@@ -60,11 +61,11 @@ Característica: Registro de solicitud de depósito
         Cuando el investigador carga los siguientes documentos:
             | Documento Oficial                               |
             | Formato solicitud depósito                      |
-            | Copia de la autorización de recolección (MAATE) |
+            | Copia de la autorización de recolección (MAE) |
             | Copia del permiso de movilización               |
         Entonces la solicitud incorpora automáticamente la siguiente información:
             | Información requerida    | Extraída de                                     |
-            | N.º Permiso Recolección  | Copia de la autorización de recolección (MAATE) |
+            | N.º Permiso Recolección  | Copia de la autorización de recolección (MAE) |
             | N.º Permiso Movilización | Copia del permiso de movilización               |
             | Grupo Animal             | Copia del permiso de movilización               |
             | Provincia                | Copia del permiso de movilización               |
@@ -78,11 +79,19 @@ Característica: Registro de solicitud de depósito
             | Formato solicitud donación                      |
             | Carta de cesión de derechos / origen lícito     |
         Entonces la solicitud registra el origen de la donación
-        Y pasa a estar "Pendiente de Revisión por Curaduría"
+
+    @donacion
+    Escenario: Donación con datos cuantitativos completos avanza a revisión por curaduría
+        Dado que el investigador seleccionó el trámite de "Donación"
+        Y ha cargado la documentación oficial de la donación
+        Y el investigador completa los datos cuantitativos de la colección
+        Cuando el investigador envía la solicitud
+        Entonces pasa a estar "Pendiente de Revisión por Curaduría"
 
     Escenario: Completitud de datos obligatorios faltantes en la documentación
         Dado que la documentación oficial no contiene el "Grupo Animal"
-        Cuando el investigador provee esta información faltante
+        Y el investigador provee esta información faltante
+        Cuando el investigador envía la solicitud
         Entonces la solicitud se registra exitosamente
         Y pasa a estar "Pendiente de Revisión por Curaduría"
 

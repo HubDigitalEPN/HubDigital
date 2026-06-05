@@ -36,8 +36,29 @@
                 @auth
                     @if(auth()->user()->rol === RolUsuario::PRESTAMISTA)
                         <flux:sidebar.group heading="Préstamos" class="grid">
-                            <flux:sidebar.item icon="document-text" :href="route('dashboard')" wire:navigate>
+                            <flux:sidebar.item
+                                icon="document-text"
+                                :href="route('prestamos.investigador.mis-solicitudes')"
+                                :current="request()->routeIs('prestamos.investigador.mis-solicitudes', 'prestamos.investigador.solicitud.*')"
+                                wire:navigate
+                            >
                                 Mis solicitudes
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="clipboard-document"
+                                :href="route('prestamos.investigador.mis-actas')"
+                                :current="request()->routeIs('prestamos.investigador.mis-actas')"
+                                wire:navigate
+                            >
+                                Mis actas
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="archive-box"
+                                :href="route('prestamos.investigador.mis-prestamos')"
+                                :current="request()->routeIs('prestamos.investigador.mis-prestamos', 'prestamos.investigador.prestamo.*')"
+                                wire:navigate
+                            >
+                                Mis préstamos
                             </flux:sidebar.item>
                         </flux:sidebar.group>
                     @elseif(auth()->user()->rol === RolUsuario::DEPOSITANTE)
@@ -50,32 +71,112 @@
                             </flux:sidebar.item>
                         </flux:sidebar.group>
                     @elseif(auth()->user()->rol === RolUsuario::CURADOR)
-                        <flux:sidebar.group heading="Gestión" class="grid">
+                        <flux:sidebar.group heading="Gestión de préstamos" class="grid">
                             <flux:sidebar.item
-                                icon="inbox"
-                                :href="route('prestamos.curador.panel')"
-                                :current="request()->routeIs('prestamos.curador.*')"
+                                icon="document-text"
+                                :href="route('prestamos.curador.solicitudes')"
+                                :current="request()->routeIs('prestamos.curador.solicitudes', 'prestamos.curador.solicitud.*')"
+                                wire:navigate
+                            >
+                                Solicitudes
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="clipboard-document"
+                                :href="route('prestamos.curador.actas')"
+                                :current="request()->routeIs('prestamos.curador.actas', 'prestamos.curador.acta.*')"
+                                wire:navigate
+                            >
+                                Actas
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="archive-box"
+                                :href="route('prestamos.curador.prestamos')"
+                                :current="request()->routeIs('prestamos.curador.prestamos', 'prestamos.curador.prestamo.*')"
                                 wire:navigate
                             >
                                 Préstamos
                             </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="cog-6-tooth"
+                                :href="route('prestamos.curador.configuracion')"
+                                :current="request()->routeIs('prestamos.curador.configuracion')"
+                                wire:navigate
+                            >
+                                Configuración
+                            </flux:sidebar.item>
                         </flux:sidebar.group>
                         <flux:sidebar.group heading="Inventario" class="grid">
                             <flux:sidebar.item
+                                icon="clipboard-document-check"
+                                :href="route('inventario.taxonomia.revision')"
+                                :current="request()->routeIs('inventario.taxonomia.revision')"
+                                wire:navigate
+                            >
+                                Centro de revisión
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
                                 icon="magnifying-glass"
                                 :href="route('inventario.taxonomia.especimenes')"
-                                :current="request()->routeIs('inventario.taxonomia.especimenes')"
+                                :current="request()->routeIs('inventario.taxonomia.especimenes') && !request()->routeIs('inventario.taxonomia.especimenes.duplicados')"
                                 wire:navigate
                             >
                                 Especímenes
                             </flux:sidebar.item>
                             <flux:sidebar.item
+                                icon="exclamation-triangle"
+                                :href="route('inventario.taxonomia.especimenes.duplicados')"
+                                :current="request()->routeIs('inventario.taxonomia.especimenes.duplicados')"
+                                wire:navigate
+                            >
+                                Duplicados catalog#
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="calendar-days"
+                                :href="route('inventario.taxonomia.fechas.revision')"
+                                :current="request()->routeIs('inventario.taxonomia.fechas.revision')"
+                                wire:navigate
+                            >
+                                Parseo de fechas
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="rectangle-stack"
+                                :href="route('inventario.taxonomia.muestras')"
+                                :current="request()->routeIs('inventario.taxonomia.muestras')"
+                                wire:navigate
+                            >
+                                Muestras de colecta
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
                                 icon="tag"
                                 :href="route('inventario.taxonomia.taxones')"
-                                :current="request()->routeIs('inventario.taxonomia.taxones')"
+                                :current="request()->routeIs('inventario.taxonomia.taxones') && !request()->routeIs('inventario.taxonomia.taxones.revision')"
                                 wire:navigate
                             >
                                 Taxones
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="exclamation-triangle"
+                                :href="route('inventario.taxonomia.taxones.revision')"
+                                :current="request()->routeIs('inventario.taxonomia.taxones.revision')"
+                                wire:navigate
+                            >
+                                Revisión taxa
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="map-pin"
+                                :href="route('inventario.taxonomia.localidades')"
+                                :current="request()->routeIs('inventario.taxonomia.localidades') && !request()->routeIs('inventario.taxonomia.localidades.revision')"
+                                wire:navigate
+                            >
+                                Localidades
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="exclamation-triangle"
+                                :href="route('inventario.taxonomia.localidades.revision')"
+                                :current="request()->routeIs('inventario.taxonomia.localidades.revision')"
+                                wire:navigate
+                            >
+                                Revisión localidades
                             </flux:sidebar.item>
                             <flux:sidebar.item
                                 icon="building-library"
@@ -84,6 +185,22 @@
                                 wire:navigate
                             >
                                 Entidades depositantes
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="globe-alt"
+                                :href="route('inventario.taxonomia.dataset.config')"
+                                :current="request()->routeIs('inventario.taxonomia.dataset.config')"
+                                wire:navigate
+                            >
+                                Dataset GBIF
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="swatch"
+                                :href="route('inventario.taxonomia.columnas.config')"
+                                :current="request()->routeIs('inventario.taxonomia.columnas.config')"
+                                wire:navigate
+                            >
+                                Prioridad columnas
                             </flux:sidebar.item>
                         </flux:sidebar.group>
                         <flux:sidebar.group heading="Seguimiento físico" class="grid">
@@ -112,12 +229,28 @@
                                 Cajas
                             </flux:sidebar.item>
                             <flux:sidebar.item
+                                icon="squares-2x2"
+                                :href="route('inventario.unit-trays')"
+                                :current="request()->routeIs('inventario.unit-trays')"
+                                wire:navigate
+                            >
+                                Unit trays
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
                                 icon="bell-alert"
                                 :href="route('inventario.alertas')"
                                 :current="request()->routeIs('inventario.alertas')"
                                 wire:navigate
                             >
                                 Alertas
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="bars-arrow-down"
+                                :href="route('inventario.orden-familias')"
+                                :current="request()->routeIs('inventario.orden-familias')"
+                                wire:navigate
+                            >
+                                Orden de familias
                             </flux:sidebar.item>
                             <flux:sidebar.item
                                 icon="clock"

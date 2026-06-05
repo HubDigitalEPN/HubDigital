@@ -7,6 +7,7 @@ namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Inve
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
 
 #[Layout('layouts.app', params: ['title' => 'Detalle de Depósito'])]
@@ -25,10 +26,11 @@ final class DetalleDeposito extends Component
         }
     }
 
-    public function render(): View
+    public function render(MatrizEspeciesRepositoryInterface $matrizRepo): View
     {
         $deposito = SolicitudDepositoEloquentModel::find($this->id);
+        $matriz = $deposito ? $matrizRepo->buscarPorSolicitudId($this->id) : null;
 
-        return view('gestionprestamosrecepciones::investigador.detalle-deposito', compact('deposito'));
+        return view('gestionprestamosrecepciones::investigador.detalle-deposito', compact('deposito', 'matriz'));
     }
 }

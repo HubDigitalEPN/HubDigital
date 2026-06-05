@@ -5,21 +5,14 @@ declare(strict_types=1);
 namespace Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts;
 
 use Behat\Behat\Context\Context;
-use Behat\Hook\AfterScenario;
-use Behat\Hook\BeforeScenario;
 use Illuminate\Contracts\Console\Kernel as ConsoleKernel;
-use Modules\GestionPrestamosRecepciones\Application\Ports\ExtraccionDatosDocumentoPort;
-use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionCuratoriaPort;
-use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\Fakes\FakeExtraccionDatosDocumentoAdapter;
-use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\Fakes\FakeNotificacionCuratoriaAdapter;
+use PHPUnit\TextUI\Configuration\Builder as PHPUnitConfigurationBuilder;
 
 abstract class BaseContext implements Context
 {
-    private static mixed $app = null;
+    protected static mixed $app = null;
 
-    private static bool $resetDone = false;
-
-    private static function bootApp(): void
+    protected static function bootApp(): void
     {
         if (self::$app !== null) {
             return;
@@ -29,28 +22,28 @@ abstract class BaseContext implements Context
         self::$app = require dirname(__DIR__, 5).'/bootstrap/app.php';
         self::$app->make(ConsoleKernel::class)->bootstrap();
 
-        self::$app->bind(ExtraccionDatosDocumentoPort::class, FakeExtraccionDatosDocumentoAdapter::class);
-        self::$app->bind(NotificacionCuratoriaPort::class, FakeNotificacionCuratoriaAdapter::class);
+        self::inicializarConfiguracionPHPUnit();
     }
 
-    #[BeforeScenario]
-    public function resetDatabase(): void
+    /**
+     * Las aserciones de PHPUnit\Framework\Assert (usadas en los Contexts) exportan
+     * el valor real al fallar, lo que invoca su Registry de configuración. Bajo Behat
+     * ese Registry nunca se inicializa y el fallo de aserción se convierte en un
+     * "Fatal error: assert(self::$instance instanceof Configuration)" que oculta el
+     * mensaje real. Inicializarlo con la configuración por defecto restaura los
+     * mensajes legibles ("se esperaba X, se obtuvo Y").
+     */
+    private static function inicializarConfiguracionPHPUnit(): void
     {
-        self::bootApp();
-
-        if (self::$resetDone) {
+        if (! class_exists(PHPUnitConfigurationBuilder::class)) {
             return;
         }
 
-        self::$resetDone = true;
-        self::$app->make(ConsoleKernel::class)->call('migrate:reset', ['--force' => true]);
-        self::$app->make(ConsoleKernel::class)->call('migrate', ['--force' => true]);
-    }
-
-    #[AfterScenario]
-    public function clearResetFlag(): void
-    {
-        self::$resetDone = false;
+        try {
+            (new PHPUnitConfigurationBuilder)->build(['--no-configuration']);
+        } catch (\Throwable) {
+            // Si la inicialización falla, no debe romper la suite de Behat.
+        }
     }
 
     /** @template T @param class-string<T> $abstract @return T */
@@ -59,10 +52,5 @@ abstract class BaseContext implements Context
         self::bootApp();
 
         return self::$app->make($abstract);
-    }
-
-    protected function make(string $abstract): mixed
-    {
-        return static::$app->make($abstract);
     }
 }

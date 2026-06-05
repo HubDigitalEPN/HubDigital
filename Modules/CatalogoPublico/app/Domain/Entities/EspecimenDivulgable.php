@@ -17,28 +17,28 @@ final class EspecimenDivulgable
 
     private function __construct(
         private readonly EspecimenDivulgableId $id,
-        private readonly string $occurrenceID,
+        private readonly string $especimenId,
         private ConfiguracionVisibilidad $configuracion,
     ) {}
 
     public static function sincronizar(
         EspecimenDivulgableId $id,
-        string $occurrenceID,
+        string $especimenId,
         ConfiguracionVisibilidad $configuracion,
     ): self {
-        if ($occurrenceID === '') {
-            throw new \InvalidArgumentException('El occurrenceID no puede ser vacío');
+        if ($especimenId === '') {
+            throw new \InvalidArgumentException('El especimenId no puede ser vacío');
         }
 
         $divulgable = new self(
             id: $id,
-            occurrenceID: $occurrenceID,
+            especimenId: $especimenId,
             configuracion: $configuracion,
         );
 
         $divulgable->events[] = new EspecimenSincronizado(
             id: $id,
-            occurrenceID: $occurrenceID,
+            especimenId: $especimenId,
             configuracion: $configuracion,
         );
 
@@ -52,83 +52,10 @@ final class EspecimenDivulgable
 
         $this->events[] = new ConfiguracionDivulgacionModificada(
             id: $this->id,
-            occurrenceID: $this->occurrenceID,
+            especimenId: $this->especimenId,
             configuracionAnterior: $anterior,
             configuracionNueva: $nueva,
         );
-    }
-
-    /**
-     * Retorna solo los campos del espécimen cuyo flag de visibilidad está habilitado.
-     * Campos opcionales con valor null pero flag true se incluyen con valor null.
-     *
-     * @return array<string, scalar|null>
-     */
-    public function obtenerDatosVisibles(Especimen $especimen): array
-    {
-        $datos = [];
-
-        if ($this->configuracion->occurrenceIDVisible()) {
-            $datos['occurrenceID'] = $especimen->occurrenceID();
-        }
-
-        if ($this->configuracion->scientificNameVisible()) {
-            $datos['scientificName'] = $especimen->scientificName();
-        }
-
-        if ($this->configuracion->individualCountVisible()) {
-            $datos['individualCount'] = $especimen->individualCount();
-        }
-
-        if ($this->configuracion->typeStatusVisible()) {
-            $datos['typeStatus'] = $especimen->typeStatus();
-        }
-
-        if ($this->configuracion->typeNotesVisible()) {
-            $datos['typeNotes'] = $especimen->typeNotes();
-        }
-
-        if ($this->configuracion->specimenNotesVisible()) {
-            $datos['specimenNotes'] = $especimen->specimenNotes();
-        }
-
-        if ($this->configuracion->samplingProtocolVisible()) {
-            $datos['samplingProtocol'] = $especimen->samplingProtocol();
-        }
-
-        if ($this->configuracion->recordedByVisible()) {
-            $datos['recordedBy'] = $especimen->recordedBy();
-        }
-
-        if ($this->configuracion->occurrenceStatusVisible()) {
-            $datos['occurrenceStatus'] = $especimen->occurrenceStatus();
-        }
-
-        if ($this->configuracion->familyVisible()) {
-            $datos['family'] = $especimen->family();
-        }
-
-        if ($this->configuracion->genusVisible()) {
-            $datos['genus'] = $especimen->genus();
-        }
-
-        if ($this->configuracion->countryVisible()) {
-            $datos['country'] = $especimen->country();
-        }
-
-        if ($this->configuracion->localityNameVisible()) {
-            $datos['localityName'] = $especimen->localityName();
-        }
-
-        if ($this->configuracion->decimalLatitudeVisible()) {
-            $datos['decimalLatitude'] = $especimen->decimalLatitude();
-        }
-
-        if ($this->configuracion->decimalLongitudeVisible()) {
-            $datos['decimalLongitude'] = $especimen->decimalLongitude();
-        }
-
-        return $datos;
     }
 
     /** @return list<DomainEvent> */
@@ -145,9 +72,9 @@ final class EspecimenDivulgable
         return $this->id;
     }
 
-    public function occurrenceID(): string
+    public function especimenId(): string
     {
-        return $this->occurrenceID;
+        return $this->especimenId;
     }
 
     public function occurrenceIDVisible(): bool
@@ -232,12 +159,12 @@ final class EspecimenDivulgable
 
     public static function reconstituir(
         EspecimenDivulgableId $id,
-        string $occurrenceID,
+        string $especimenId,
         ConfiguracionVisibilidad $configuracion,
     ): self {
         return new self(
             id: $id,
-            occurrenceID: $occurrenceID,
+            especimenId: $especimenId,
             configuracion: $configuracion,
         );
     }

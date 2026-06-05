@@ -33,7 +33,7 @@ final readonly class RegistrarEspecimenOutput
         public ?float $decimalLatitude = null,
         public ?float $decimalLongitude = null,
         public ?string $geodeticDatum = null,
-        public ?float $elevationInMeters = null,
+        public ?float $elevationMinM = null,
         public ?string $biome = null,
         public ?string $habitat = null,
         public array $identificadores = [],

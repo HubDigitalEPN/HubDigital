@@ -53,11 +53,14 @@ final class AprobarSolicitudPrestamoHandler
             numeroPrestamo: NumeroPrestamo::generate(),
             solicitudPrestamoId: $solicitudId,
             tipoPrestamo: $tipoPrestamo,
+            alcancePrestamo: $solicitud->alcancePrestamo(),
             fechaInicio: $ahora,
             fechaFin: $fechaFin,
             pdfRuta: $pdfRuta,
             condicionesGenerales: $input->condicionesGenerales,
         );
+
+        $acta->marcarEnviada($solicitud->investigadorId());
 
         $this->transactionManager->executeTransactional(function () use ($solicitud, $acta): void {
             $this->solicitudRepo->guardar($solicitud);

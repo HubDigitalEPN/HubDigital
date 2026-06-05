@@ -29,7 +29,7 @@
                 </p>
                 <div class="flex gap-2">
                     <flux:button
-                        wire:click="seleccionarTodos({{ json_encode($especimenes->pluck('occurrence_id')->all()) }})"
+                        wire:click="seleccionarTodos"
                         variant="ghost"
                         size="sm"
                     >
@@ -115,6 +115,36 @@
                     </tbody>
                 </table>
             </div>
+
+            {{-- Paginación --}}
+            @if($totalPaginas > 1)
+                <div class="flex items-center justify-between">
+                    <span class="text-xs text-text-secondary">
+                        Página <strong class="text-text-primary">{{ $pagina }}</strong> de <strong class="text-text-primary">{{ $totalPaginas }}</strong>
+                        · <strong class="text-text-primary tabular-nums">{{ $totalPendientes }}</strong> especímenes pendientes
+                    </span>
+                    <div class="flex items-center gap-1">
+                        <flux:button
+                            wire:click="irAPagina({{ $pagina - 1 }})"
+                            :disabled="$pagina === 1"
+                            variant="ghost"
+                            size="sm"
+                            icon="chevron-left"
+                        >
+                            Anterior
+                        </flux:button>
+                        <flux:button
+                            wire:click="irAPagina({{ $pagina + 1 }})"
+                            :disabled="$pagina === $totalPaginas"
+                            variant="ghost"
+                            size="sm"
+                            icon-trailing="chevron-right"
+                        >
+                            Siguiente
+                        </flux:button>
+                    </div>
+                </div>
+            @endif
 
             <div class="flex justify-end">
                 <flux:button

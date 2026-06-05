@@ -26,6 +26,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Entities\SolicitudPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaDevueltaPorFirmaInvalida;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\ActaPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\AlcancePrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitud;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ItemPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\NumeroPrestamo;
@@ -74,6 +75,8 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
 
     private string $investigadorId = 'inv-001';
 
+    private string $curadorId = 'cur-001';
+
     private array $datosSolicitudCompleta = [
         'titulo_estudio' => 'Revisión taxonómica del género Morpho en Ecuador',
         'institucion_adscripcion' => 'Universidad Central del Ecuador',
@@ -90,16 +93,18 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
 
     public function __construct()
     {
+        self::bootApp();
+
         // 1. Crear instancias in-memory fresh para este escenario
         $this->solicitudRepo = new InMemorySolicitudPrestamoRepository;
-        $this->actaRepo      = new InMemoryActaPrestamoRepository;
+        $this->actaRepo = new InMemoryActaPrestamoRepository;
         $this->fakePublisher = new FakeEventPublisherAdapter;
 
         // 2. Interceptar el container para que los Handlers reciban estas instancias
-        static::$app->instance(SolicitudPrestamoRepositoryInterface::class, $this->solicitudRepo);
-        static::$app->instance(ActaPrestamoRepositoryInterface::class, $this->actaRepo);
-        static::$app->instance(TransactionManagerPort::class, new PassThroughTransactionManagerAdapter);
-        static::$app->instance(EventPublisherPort::class, $this->fakePublisher);
+        self::$app->instance(SolicitudPrestamoRepositoryInterface::class, $this->solicitudRepo);
+        self::$app->instance(ActaPrestamoRepositoryInterface::class, $this->actaRepo);
+        self::$app->instance(TransactionManagerPort::class, new PassThroughTransactionManagerAdapter);
+        self::$app->instance(EventPublisherPort::class, $this->fakePublisher);
 
         // 3. Resolver Handlers — ya usan las instancias in-memory
         $this->registrarHandler = $this->make(RegistrarSolicitudPrestamoHandler::class);
@@ -126,6 +131,7 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
             id: $this->solicitudRepo->nextIdentity(),
             numeroSolicitud: NumeroSolicitud::generate(),
             investigadorId: $this->investigadorId,
+            alcancePrestamo: AlcancePrestamo::Nacional,
             tituloEstudio: $this->datosSolicitudCompleta['titulo_estudio'],
             institucionAdscripcion: $this->datosSolicitudCompleta['institucion_adscripcion'],
             lineaInvestigacion: $this->datosSolicitudCompleta['linea_investigacion'],
@@ -146,6 +152,7 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
             id: $this->solicitudRepo->nextIdentity(),
             numeroSolicitud: NumeroSolicitud::generate(),
             investigadorId: $this->investigadorId,
+            alcancePrestamo: AlcancePrestamo::Nacional,
         );
 
         $this->solicitudRepo->guardar($solicitud);
@@ -213,7 +220,7 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
     #[Given('que el investigador tiene una solicitud en estado borrador')]
     public function queExisteUnaSolicitudEnEstadoBorrador(): void
     {
-        $solicitud  = $this->sembrarSolicitudBase();
+        $solicitud = $this->sembrarSolicitudBase();
         $persistida = $this->solicitudRepo->buscarPorId($solicitud->id());
 
         Assert::assertNotNull($persistida);
@@ -232,11 +239,11 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
     {
         Assert::assertNotNull($this->solicitudExistente);
 
-        $tituloNuevo      = 'Morfología comparada de Lepidoptera neotropicales';
+        $tituloNuevo = 'Morfología comparada de Lepidoptera neotropicales';
         $institucionNueva = 'Escuela Politécnica Nacional';
-        $lineaNueva       = 'Biología evolutiva';
-        $propositoNuevo   = 'Análisis filogenético de caracteres morfológicos';
-        $duracionNueva    = 6;
+        $lineaNueva = 'Biología evolutiva';
+        $propositoNuevo = 'Análisis filogenético de caracteres morfológicos';
+        $duracionNueva = 6;
 
         Assert::assertNotSame($tituloNuevo, $this->solicitudExistente->tituloEstudio());
         Assert::assertNotSame($institucionNueva, $this->solicitudExistente->institucionAdscripcion());
@@ -296,7 +303,7 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
         if ($estado_previo === 'observada') {
             $solicitud->enviar();
             $solicitud->observar(
-                curadorId:   'cur-001',
+                curadorId: $this->curadorId,
                 observacion: 'Requiere información adicional sobre el período de estudio',
             );
             $this->solicitudRepo->guardar($solicitud);
@@ -324,7 +331,7 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
         try {
             $this->ultimaRespuesta = $this->enviarHandler->handle(
                 new EnviarSolicitudPrestamoInput(
-                    solicitudId:    (string) $this->solicitudExistente->id(),
+                    solicitudId: (string) $this->solicitudExistente->id(),
                     investigadorId: $this->investigadorId,
                 )
             );
@@ -365,6 +372,7 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
                 id: $this->solicitudRepo->nextIdentity(),
                 numeroSolicitud: NumeroSolicitud::generate(),
                 investigadorId: $this->investigadorId,
+                alcancePrestamo: AlcancePrestamo::Nacional,
                 estado: EstadoSolicitud::Observada,
                 tituloEstudio: null,
                 institucionAdscripcion: null,
@@ -417,7 +425,7 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
     {
         $solicitud = $this->sembrarSolicitudBase();
         $solicitud->enviar();
-        $solicitud->aprobar(curadorId: 'cur-001');
+        $solicitud->aprobar(curadorId: $this->curadorId);
         $this->solicitudRepo->guardar($solicitud);
     }
 
@@ -430,6 +438,7 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
             $this->ultimaRespuesta = $this->generarActaHandler->handle(
                 new GenerarActaPrestamoInput(
                     solicitudId: (string) $this->solicitudExistente->id(),
+                    curadorId: $this->curadorId,
                 )
             );
         } catch (\Throwable $e) {
@@ -465,14 +474,14 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
     {
         $solicitud = $this->sembrarSolicitudBase();
         $solicitud->enviar();
-        $solicitud->aprobar(curadorId: 'cur-001');
+        $solicitud->aprobar(curadorId: $this->curadorId);
         $this->solicitudRepo->guardar($solicitud);
 
-        $pdfRuta  = 'actas/'.(string) $solicitud->id().'.pdf';
+        $pdfRuta = 'actas/'.(string) $solicitud->id().'.pdf';
         $solicitud->emitirActa($pdfRuta);
 
-        $ahora    = new DateTimeImmutable;
-        $meses    = $solicitud->duracionPropuestaMeses() ?? 3;
+        $ahora = new DateTimeImmutable;
+        $meses = $solicitud->duracionPropuestaMeses() ?? 3;
         $fechaFin = $ahora->modify("+{$meses} months");
 
         $acta = ActaPrestamo::emitir(
@@ -480,6 +489,7 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
             numeroPrestamo: NumeroPrestamo::generate(),
             solicitudPrestamoId: $solicitud->id(),
             tipoPrestamo: TipoPrestamo::Temporal,
+            alcancePrestamo: AlcancePrestamo::Nacional,
             fechaInicio: $ahora,
             fechaFin: $fechaFin,
             pdfRuta: $pdfRuta,
@@ -499,7 +509,7 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
         try {
             $this->ultimaRespuesta = $this->subirActaHandler->handle(
                 new SubirActaFirmadaInput(
-                    solicitudId:    (string) $this->solicitudExistente->id(),
+                    solicitudId: (string) $this->solicitudExistente->id(),
                     investigadorId: $this->investigadorId,
                     pdfFirmadoRuta: 'actas/firmadas/MEPN-INV-001-2026-firmada.pdf',
                 )
@@ -535,14 +545,14 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
     {
         $solicitud = $this->sembrarSolicitudBase();
         $solicitud->enviar();
-        $solicitud->aprobar(curadorId: 'cur-001');
+        $solicitud->aprobar(curadorId: $this->curadorId);
         $this->solicitudRepo->guardar($solicitud);
 
-        $pdfRuta  = 'actas/'.(string) $solicitud->id().'.pdf';
+        $pdfRuta = 'actas/'.(string) $solicitud->id().'.pdf';
         $solicitud->emitirActa($pdfRuta);
 
-        $ahora    = new DateTimeImmutable;
-        $meses    = $solicitud->duracionPropuestaMeses() ?? 3;
+        $ahora = new DateTimeImmutable;
+        $meses = $solicitud->duracionPropuestaMeses() ?? 3;
         $fechaFin = $ahora->modify("+{$meses} months");
 
         $acta = ActaPrestamo::emitir(
@@ -550,6 +560,7 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
             numeroPrestamo: NumeroPrestamo::generate(),
             solicitudPrestamoId: $solicitud->id(),
             tipoPrestamo: TipoPrestamo::Temporal,
+            alcancePrestamo: AlcancePrestamo::Nacional,
             fechaInicio: $ahora,
             fechaFin: $fechaFin,
             pdfRuta: $pdfRuta,

@@ -8,12 +8,18 @@ use Behat\Gherkin\Node\TableNode;
 use Behat\Step\Given;
 use Behat\Step\Then;
 use Behat\Step\When;
+use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\ExtraccionDatosDocumentoPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionCuratoriaPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\CargarDocumentacionOficial\CargarDocumentacionOficialHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\CargarDocumentacionOficial\CargarDocumentacionOficialInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\CompletarDatosManualmente\CompletarDatosManualesHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\CompletarDatosManualmente\CompletarDatosManualesInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\DeterminarDocumentacionRequerida\DeterminarDocumentacionRequeridaHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\DeterminarDocumentacionRequerida\DeterminarDocumentacionRequeridaInput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarSolicitudDeposito\EnviarSolicitudDepositoHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarSolicitudDeposito\EnviarSolicitudDepositoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarSolicitudDeposito\RegistrarSolicitudDepositoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarSolicitudDeposito\RegistrarSolicitudDepositoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\SolicitarIntervencionCuratoria\SolicitarIntervencionCuratoriaHandler;
@@ -28,14 +34,27 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoDocumental;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoValidacionIdentidad;
 use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\BaseContext;
+use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\Fakes\FakeExtraccionDatosDocumentoAdapter;
+use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\Fakes\FakeNotificacionCuratoriaAdapter;
+use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\FakeEventPublisherAdapter;
+use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\PassThroughTransactionManagerAdapter;
+use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Persistence\InMemorySolicitudDepositoRepository;
 use PHPUnit\Framework\Assert;
 
 /**
  * Contexto para: registro_solicitud_deposito.feature
  * Capability: RecepcionValidacionLotesEspecimenesYDatos
+ *
+ * Estrategia: 100% In-Memory. Cero persistencia real.
  */
 final class RegistroSolicitudDepositoContext extends BaseContext
 {
+    // ── Repositorios In-Memory (acceso directo para @Given y @Then) ──────────
+
+    private InMemorySolicitudDepositoRepository $repo;
+
+    private FakeEventPublisherAdapter $fakePublisher;
+
     // ── Handlers ─────────────────────────────────────────────────────────────
 
     private RegistrarSolicitudDepositoHandler $registrarHandler;
@@ -52,6 +71,8 @@ final class RegistroSolicitudDepositoContext extends BaseContext
 
     private SolicitarIntervencionCuratoriaHandler $solicitarIntervencionHandler;
 
+    private EnviarSolicitudDepositoHandler $enviarSolicitudHandler;
+
     // ── Estado del escenario ─────────────────────────────────────────────────
 
     private ?SolicitudDeposito $solicitudEnCurso = null;
@@ -60,10 +81,8 @@ final class RegistroSolicitudDepositoContext extends BaseContext
 
     private ?\Throwable $excepcionCapturada = null;
 
-    // ID fijo del investigador actor en todos los escenarios de esta feature
     private string $investigadorId = 'inv-rec-001';
 
-    // Estado acumulado entre pasos @Given del mismo escenario
     private string $provinciaDeclarada = '';
 
     private string $origenRecoleccion = '';
@@ -76,10 +95,25 @@ final class RegistroSolicitudDepositoContext extends BaseContext
 
     private array $documentosCargados = [];
 
-    // ── Constructor ──────────────────────────────────────────────────────────
+    // ── Constructor — inyecta In-Memory antes de resolver Handlers ───────────
 
     public function __construct()
     {
+        // 0. Asegurar que Laravel está booteado antes de usar el container
+        self::bootApp();
+
+        // 1. Crear instancias In-Memory fresh para este escenario
+        $this->repo = new InMemorySolicitudDepositoRepository;
+        $this->fakePublisher = new FakeEventPublisherAdapter;
+
+        // 2. Interceptar el container para que los Handlers reciban estas instancias
+        self::$app->instance(SolicitudDepositoRepositoryInterface::class, $this->repo);
+        self::$app->instance(TransactionManagerPort::class, new PassThroughTransactionManagerAdapter);
+        self::$app->instance(EventPublisherPort::class, $this->fakePublisher);
+        self::$app->instance(ExtraccionDatosDocumentoPort::class, new FakeExtraccionDatosDocumentoAdapter);
+        self::$app->instance(NotificacionCuratoriaPort::class, new FakeNotificacionCuratoriaAdapter);
+
+        // 3. Resolver Handlers — ya usan las instancias In-Memory
         $this->registrarHandler = $this->make(RegistrarSolicitudDepositoHandler::class);
         $this->cargarDocumentacionHandler = $this->make(CargarDocumentacionOficialHandler::class);
         $this->completarDatosHandler = $this->make(CompletarDatosManualesHandler::class);
@@ -87,50 +121,60 @@ final class RegistroSolicitudDepositoContext extends BaseContext
         $this->validarIdentidadHandler = $this->make(ValidarIdentidadSolicitudHandler::class);
         $this->determinarDocumentacionHandler = $this->make(DeterminarDocumentacionRequeridaHandler::class);
         $this->solicitarIntervencionHandler = $this->make(SolicitarIntervencionCuratoriaHandler::class);
+        $this->enviarSolicitudHandler = $this->make(EnviarSolicitudDepositoHandler::class);
     }
 
     // ── Helpers de fixture ───────────────────────────────────────────────────
 
     /**
-     * Crea, persiste y asigna una SolicitudDeposito en estado borrador para el investigador actor.
-     * Las mutaciones de estado posteriores deben realizarse en el paso @Given que llame a este helper.
+     * Crea, persiste y asigna una SolicitudDeposito en estado borrador.
+     * Usa directamente el repositorio In-Memory.
      */
     private function sembrarSolicitudDepositoBase(string $tipoTramite = 'Depósito'): SolicitudDeposito
     {
-        $repo = $this->make(SolicitudDepositoRepositoryInterface::class);
-
         $solicitud = SolicitudDeposito::crear(
-            id: $repo->nextIdentity(),
+            id: $this->repo->nextIdentity(),
+            numero: $this->repo->nextNumero(),
             investigadorId: $this->investigadorId,
             tipoTramite: $tipoTramite,
         );
 
-        $repo->guardar($solicitud);
+        $this->repo->guardar($solicitud);
+
+        // Aserción de integridad: verificar que la entidad fue persistida correctamente
+        $persistida = $this->repo->buscarPorId($solicitud->id());
+        Assert::assertNotNull($persistida, 'La solicitud base no fue persistida en el repositorio In-Memory');
+        Assert::assertSame($this->investigadorId, $persistida->investigadorId());
+        Assert::assertSame($tipoTramite, $persistida->tipoTramite());
+        Assert::assertTrue(
+            $persistida->estado()->equals(EstadoSolicitudDeposito::EnBorrador),
+            'La solicitud base debería estar en estado En Borrador tras ser creada'
+        );
+
         $this->solicitudEnCurso = $solicitud;
 
         return $solicitud;
     }
 
     /**
-     * Siembra N solicitudes previas del tipo dado para simular el historial anual del investigador.
+     * Siembra N solicitudes previas del tipo dado para simular el historial anual.
      */
     private function sembrarSolicitudesPrevias(int $cantidad, string $tipoTramite): void
     {
-        $repo = $this->make(SolicitudDepositoRepositoryInterface::class);
-
         for ($i = 0; $i < $cantidad; $i++) {
             $solicitud = SolicitudDeposito::crear(
-                id: $repo->nextIdentity(),
+                id: $this->repo->nextIdentity(),
+                numero: $this->repo->nextNumero(),
                 investigadorId: $this->investigadorId,
                 tipoTramite: $tipoTramite,
             );
-            $repo->guardar($solicitud);
+            // Avanzar a un estado no-borrador para que `eliminarBorradoresDe()`
+            // del handler no las elimine antes de contar el límite anual.
+            $solicitud->avanzarARevisionCuraduria();
+            $this->repo->guardar($solicitud);
         }
     }
 
-    /**
-     * Convierte un nombre de documento en un slug apto para rutas de prueba.
-     */
     private function slugify(string $texto): string
     {
         return strtolower(preg_replace('/[^a-zA-Z0-9]+/', '-', $texto) ?? '');
@@ -145,19 +189,15 @@ final class RegistroSolicitudDepositoContext extends BaseContext
     {
         Assert::assertNotEmpty(
             $this->investigadorId,
-            'investigador_id no puede estar vacío — se requiere un actor válido para todos los escenarios'
+            'investigador_id no puede estar vacío — se requiere un actor válido'
         );
     }
 
     #[Given('ha iniciado una nueva solicitud de depósito')]
     public function haIniciadoUnaNuevaSolicitudDeDeposito(): void
     {
-        // El investigador ha accedido al formulario de nueva solicitud.
-        // Cada escenario siembra su propia solicitud según sus precondiciones específicas.
-        Assert::assertNotEmpty(
-            $this->investigadorId,
-            'Se requiere un investigador_id válido para iniciar la solicitud'
-        );
+        // Cada escenario siembra su propia solicitud según sus precondiciones.
+        Assert::assertNotEmpty($this->investigadorId, 'Se requiere un investigador_id válido');
     }
 
     // =========================================================================
@@ -169,18 +209,13 @@ final class RegistroSolicitudDepositoContext extends BaseContext
         int $solicitudesPrevias,
         string $tipoTramite
     ): void {
-        Assert::assertGreaterThanOrEqual(
-            0,
-            $solicitudesPrevias,
-            'El número de solicitudes previas no puede ser negativo'
-        );
+        Assert::assertGreaterThanOrEqual(0, $solicitudesPrevias, 'El número de solicitudes previas no puede ser negativo');
         Assert::assertNotEmpty($tipoTramite, 'El tipo de trámite no puede estar vacío');
 
         $this->sembrarSolicitudesPrevias($solicitudesPrevias, $tipoTramite);
 
-        $repo = $this->make(SolicitudDepositoRepositoryInterface::class);
-        $conteo = $repo->contarPorInvestigadorYTipoEnAnioActual($this->investigadorId, $tipoTramite);
-
+        // Aserción de precondición: verificar que el conteo refleja lo sembrado
+        $conteo = $this->repo->contarPorInvestigadorYTipoEnAnioActual($this->investigadorId, $tipoTramite);
         Assert::assertSame(
             $solicitudesPrevias,
             $conteo,
@@ -205,7 +240,7 @@ final class RegistroSolicitudDepositoContext extends BaseContext
         }
     }
 
-    #[Then('la solicitud queda en estado :estadoSolicitud')]
+    #[Then('la nueva solicitud de depósito queda en estado :estadoSolicitud')]
     public function laSolicitudQuedaEnEstado(string $estadoSolicitud): void
     {
         if ($estadoSolicitud === 'Rechazada') {
@@ -242,17 +277,17 @@ final class RegistroSolicitudDepositoContext extends BaseContext
 
         Assert::assertNotNull(
             $this->excepcionCapturada,
-            "Se esperaba que el investigador recibiera el mensaje '{$mensajeAlerta}' pero no hubo error ni notificación"
+            "Se esperaba que el investigador recibiera el mensaje '{$mensajeAlerta}' pero no hubo error"
         );
         Assert::assertStringContainsString(
             $mensajeAlerta,
             $this->excepcionCapturada->getMessage(),
-            "El mensaje de alerta esperado '{$mensajeAlerta}' no está presente en la excepción capturada"
+            "El mensaje esperado '{$mensajeAlerta}' no está presente en la excepción capturada"
         );
     }
 
     // =========================================================================
-    // ESQUEMA DE ESCENARIO: Documentación legal requerida según el origen de los especímenes
+    // ESQUEMA DE ESCENARIO: Documentación legal requerida según el origen
     // =========================================================================
 
     #[Given('que el investigador declara que el origen de los especímenes es :origenRecoleccion')]
@@ -264,37 +299,32 @@ final class RegistroSolicitudDepositoContext extends BaseContext
 
         $solicitud = $this->sembrarSolicitudDepositoBase();
         $solicitud->declararOrigenRecoleccion($origenRecoleccion);
+        $this->repo->guardar($solicitud);
 
-        $repo = $this->make(SolicitudDepositoRepositoryInterface::class);
-        $repo->guardar($solicitud);
-
-        $persistida = $repo->buscarPorId($solicitud->id());
-        Assert::assertNotNull($persistida, 'La solicitud no fue encontrada en el repositorio tras declarar el origen');
+        // Aserción de precondición: el origen quedó persistido en memoria
+        $persistida = $this->repo->buscarPorId($solicitud->id());
+        Assert::assertNotNull($persistida, 'La solicitud no fue encontrada tras declarar el origen');
         Assert::assertSame(
             $origenRecoleccion,
             $persistida->origenRecoleccion(),
-            "El origen de recolección persistido no coincide: esperado '{$origenRecoleccion}', obtenido '{$persistida->origenRecoleccion()}'"
+            "El origen persistido no coincide: esperado '{$origenRecoleccion}', obtenido '{$persistida->origenRecoleccion()}'"
         );
     }
 
     #[Given('su situación regulatoria actual es :situacionRegulatoria')]
     public function suSituacionRegulatoriaActualEs(string $situacionRegulatoria): void
     {
-        Assert::assertNotNull(
-            $this->solicitudEnCurso,
-            'Se requiere una solicitud en curso del paso Dado anterior'
-        );
+        Assert::assertNotNull($this->solicitudEnCurso, 'Se requiere una solicitud en curso del paso Dado anterior');
         Assert::assertNotEmpty($situacionRegulatoria, 'La situación regulatoria no puede estar vacía');
 
         $this->situacionRegulatoria = $situacionRegulatoria;
 
         $this->solicitudEnCurso->declararSituacionRegulatoria($situacionRegulatoria);
+        $this->repo->guardar($this->solicitudEnCurso);
 
-        $repo = $this->make(SolicitudDepositoRepositoryInterface::class);
-        $repo->guardar($this->solicitudEnCurso);
-
-        $persistida = $repo->buscarPorId($this->solicitudEnCurso->id());
-        Assert::assertNotNull($persistida, 'La solicitud no fue encontrada en el repositorio tras declarar la situación regulatoria');
+        // Aserción de precondición
+        $persistida = $this->repo->buscarPorId($this->solicitudEnCurso->id());
+        Assert::assertNotNull($persistida);
         Assert::assertSame(
             $situacionRegulatoria,
             $persistida->situacionRegulatoria(),
@@ -302,15 +332,12 @@ final class RegistroSolicitudDepositoContext extends BaseContext
         );
     }
 
-    #[Then('la solicitud exige adjuntar los siguientes documentos: :documentoRequerido')]
-    public function laSolicitudExigeAdjuntarLosSiguientesDocumentos(string $documentoRequerido): void
+    #[When('el investigador consulta la documentación requerida para su solicitud')]
+    public function elInvestigadorConsultaLaDocumentacionRequeridaParaSuSolicitud(): void
     {
-        Assert::assertNotNull(
-            $this->solicitudEnCurso,
-            'Se requiere una solicitud en curso del paso Dado anterior'
-        );
-        Assert::assertNotEmpty($this->origenRecoleccion, 'Se requiere el origen de recolección del paso Dado anterior');
-        Assert::assertNotEmpty($this->situacionRegulatoria, 'Se requiere la situación regulatoria del paso Dado anterior');
+        Assert::assertNotNull($this->solicitudEnCurso, 'Se requiere una solicitud en curso');
+        Assert::assertNotEmpty($this->origenRecoleccion, 'Se requiere el origen de recolección');
+        Assert::assertNotEmpty($this->situacionRegulatoria, 'Se requiere la situación regulatoria');
 
         try {
             $this->ultimaRespuesta = ($this->determinarDocumentacionHandler)(
@@ -321,12 +348,17 @@ final class RegistroSolicitudDepositoContext extends BaseContext
         } catch (\Throwable $e) {
             $this->excepcionCapturada = $e;
         }
+    }
 
+    #[Then('la solicitud exige adjuntar los siguientes documentos: :documentoRequerido')]
+    public function laSolicitudExigeAdjuntarLosSiguientesDocumentos(string $documentoRequerido): void
+    {
         Assert::assertNull(
             $this->excepcionCapturada,
             'El handler lanzó una excepción inesperada: '.$this->excepcionCapturada?->getMessage()
         );
         Assert::assertNotNull($this->ultimaRespuesta, 'El handler no retornó ninguna respuesta');
+
         $combinado = implode(' y ', $this->ultimaRespuesta->documentosRequeridos);
         Assert::assertSame(
             $documentoRequerido,
@@ -336,20 +368,19 @@ final class RegistroSolicitudDepositoContext extends BaseContext
     }
 
     // =========================================================================
-    // ESCENARIO: Escalabilidad de la solicitud por falta total de documentación
+    // ESCENARIO: Escalabilidad por falta total de documentación
     // =========================================================================
 
-    #[Given('que el investigador carece de los documentos del MAATE y de carta de justificación')]
-    public function queElInvestigadorCareceDeLosDocumentosDelMAATEYDeJustificacionesFormales(): void
+    #[Given('que el investigador carece de los documentos del MAE y de carta de justificación')]
+    public function queElInvestigadorCareceDeLosDocumentosDelMAEYDeJustificacionesFormales(): void
     {
         $solicitud = $this->sembrarSolicitudDepositoBase();
         $solicitud->marcarSinDocumentacionDisponible();
+        $this->repo->guardar($solicitud);
 
-        $repo = $this->make(SolicitudDepositoRepositoryInterface::class);
-        $repo->guardar($solicitud);
-
-        $persistida = $repo->buscarPorId($solicitud->id());
-        Assert::assertNotNull($persistida, 'La solicitud no fue encontrada en el repositorio tras marcarla sin documentación');
+        // Aserción de precondición
+        $persistida = $this->repo->buscarPorId($solicitud->id());
+        Assert::assertNotNull($persistida, 'La solicitud no fue encontrada tras marcarla sin documentación');
         Assert::assertTrue(
             $persistida->sinDocumentacionDisponible(),
             'Se esperaba que la solicitud estuviera marcada sin documentación disponible'
@@ -359,10 +390,7 @@ final class RegistroSolicitudDepositoContext extends BaseContext
     #[When('el investigador solicita la intervención directa de curaduría')]
     public function elInvestigadorSolicitaLaIntervencionDirectaDeCuraduria(): void
     {
-        Assert::assertNotNull(
-            $this->solicitudEnCurso,
-            'Se requiere una solicitud en curso del paso Dado anterior'
-        );
+        Assert::assertNotNull($this->solicitudEnCurso, 'Se requiere una solicitud en curso');
         Assert::assertTrue(
             $this->solicitudEnCurso->sinDocumentacionDisponible(),
             'La solicitud debe estar sin documentación disponible para escalar a curaduría'
@@ -403,9 +431,8 @@ final class RegistroSolicitudDepositoContext extends BaseContext
         );
         Assert::assertNotNull($this->ultimaRespuesta, 'El handler no retornó ninguna respuesta');
 
-        $repo = $this->make(SolicitudDepositoRepositoryInterface::class);
-        $solicitud = $repo->buscarPorId($this->solicitudEnCurso->id());
-
+        // Verificar el estado directamente en el repositorio In-Memory
+        $solicitud = $this->repo->buscarPorId($this->solicitudEnCurso->id());
         Assert::assertNotNull($solicitud, 'La solicitud no fue encontrada en el repositorio');
         Assert::assertTrue(
             $solicitud->estado()->equals(EstadoSolicitudDeposito::from($estadoEsperado)),
@@ -423,7 +450,7 @@ final class RegistroSolicitudDepositoContext extends BaseContext
         );
         Assert::assertNotEmpty(
             $this->ultimaRespuesta->curadorNotificadoId,
-            'Se esperaba que el ID del curador notificado quedara registrado en la respuesta'
+            'Se esperaba que el ID del curador notificado quedara registrado'
         );
     }
 
@@ -440,12 +467,11 @@ final class RegistroSolicitudDepositoContext extends BaseContext
 
         $solicitud = $this->sembrarSolicitudDepositoBase();
         $solicitud->declararProvincia($provincia);
+        $this->repo->guardar($solicitud);
 
-        $repo = $this->make(SolicitudDepositoRepositoryInterface::class);
-        $repo->guardar($solicitud);
-
-        $persistida = $repo->buscarPorId($solicitud->id());
-        Assert::assertNotNull($persistida, 'La solicitud no fue encontrada en el repositorio tras declarar la provincia');
+        // Aserción de precondición
+        $persistida = $this->repo->buscarPorId($solicitud->id());
+        Assert::assertNotNull($persistida, 'La solicitud no fue encontrada tras declarar la provincia');
         Assert::assertSame(
             $provincia,
             $persistida->provinciaOrigen(),
@@ -456,10 +482,7 @@ final class RegistroSolicitudDepositoContext extends BaseContext
     #[Given('el documento :nombreDocumento se encuentra :estadoAdjunto')]
     public function elDocumentoSeEncuentra(string $nombreDocumento, string $estadoAdjunto): void
     {
-        Assert::assertNotNull(
-            $this->solicitudEnCurso,
-            'Se requiere una solicitud en curso del paso Dado anterior'
-        );
+        Assert::assertNotNull($this->solicitudEnCurso, 'Se requiere una solicitud en curso');
         Assert::assertContains(
             $estadoAdjunto,
             ['Adjuntado', 'No Adjuntado'],
@@ -474,14 +497,8 @@ final class RegistroSolicitudDepositoContext extends BaseContext
     #[When('el investigador envía la documentación inicial')]
     public function elInvestigadorEnviaLaDocumentacionInicial(): void
     {
-        Assert::assertNotNull(
-            $this->solicitudEnCurso,
-            'Se requiere una solicitud en curso del paso Dado anterior'
-        );
-        Assert::assertNotEmpty(
-            $this->provinciaDeclarada,
-            'Se requiere una provincia declarada del paso Dado anterior'
-        );
+        Assert::assertNotNull($this->solicitudEnCurso, 'Se requiere una solicitud en curso');
+        Assert::assertNotEmpty($this->provinciaDeclarada, 'Se requiere una provincia declarada');
 
         try {
             $this->ultimaRespuesta = ($this->validarDocumentacionHandler)(
@@ -511,7 +528,7 @@ final class RegistroSolicitudDepositoContext extends BaseContext
     }
 
     // =========================================================================
-    // ESCENARIO: Integración de datos (Depósito) / Carga de documentación (Donación)
+    // ESCENARIO: Integración de datos (Depósito) / Carga documentación (Donación)
     // =========================================================================
 
     #[Given('que el investigador seleccionó el trámite de :tipoTramite')]
@@ -525,32 +542,27 @@ final class RegistroSolicitudDepositoContext extends BaseContext
 
         $solicitud = $this->sembrarSolicitudDepositoBase($tipoTramite);
 
-        $repo = $this->make(SolicitudDepositoRepositoryInterface::class);
-        $persistida = $repo->buscarPorId($solicitud->id());
-
-        Assert::assertNotNull($persistida, 'La solicitud no fue encontrada en el repositorio tras crearla');
+        // Aserción de precondición
+        $persistida = $this->repo->buscarPorId($solicitud->id());
+        Assert::assertNotNull($persistida, 'La solicitud no fue encontrada tras crearla');
         Assert::assertSame(
             $tipoTramite,
             $persistida->tipoTramite(),
-            "El tipo de trámite persistido '{$persistida->tipoTramite()}' no coincide con '{$tipoTramite}'"
+            "El tipo de trámite persistido no coincide: '{$persistida->tipoTramite()}' vs '{$tipoTramite}'"
         );
     }
 
     #[When('el investigador carga los siguientes documentos:')]
     public function elInvestigadorCargaLosSiguientesDocumentos(TableNode $tabla): void
     {
-        Assert::assertNotNull(
-            $this->solicitudEnCurso,
-            'Se requiere una solicitud en curso del paso Dado anterior'
-        );
+        Assert::assertNotNull($this->solicitudEnCurso, 'Se requiere una solicitud en curso');
 
         $documentos = [];
 
         foreach ($tabla->getRows() as $indice => $fila) {
             if ($indice === 0) {
-                continue; // Saltar la cabecera
+                continue;
             }
-
             $nombreDocumento = $fila[0];
             $documentos[$nombreDocumento] = "documentos/{$this->slugify($nombreDocumento)}-test.pdf";
         }
@@ -578,12 +590,11 @@ final class RegistroSolicitudDepositoContext extends BaseContext
         );
         Assert::assertNotNull($this->ultimaRespuesta, 'El handler no retornó ninguna respuesta');
 
-        $repo = $this->make(SolicitudDepositoRepositoryInterface::class);
-        $solicitud = $repo->buscarPorId($this->solicitudEnCurso->id());
+        // Verificar en el repositorio In-Memory
+        $solicitud = $this->repo->buscarPorId($this->solicitudEnCurso->id());
+        Assert::assertNotNull($solicitud, 'La solicitud no fue encontrada tras cargar la documentación');
 
-        Assert::assertNotNull($solicitud, 'La solicitud no fue encontrada en el repositorio tras cargar la documentación');
-
-        /** @var array<string, string> Mapea el nombre del campo en el .feature al getter de la entidad */
+        /** @var array<string, string> Mapea nombre del campo en .feature al getter de la entidad */
         $getterPorCampo = [
             'N.º Permiso Recolección' => 'nroPermisoRecoleccion',
             'N.º Permiso Movilización' => 'nroPermisoMovilizacion',
@@ -594,7 +605,7 @@ final class RegistroSolicitudDepositoContext extends BaseContext
 
         foreach ($tabla->getRows() as $indice => $fila) {
             if ($indice === 0) {
-                continue; // Saltar cabecera
+                continue;
             }
 
             $informacionRequerida = $fila[0];
@@ -602,14 +613,14 @@ final class RegistroSolicitudDepositoContext extends BaseContext
             Assert::assertArrayHasKey(
                 $informacionRequerida,
                 $getterPorCampo,
-                "El campo '{$informacionRequerida}' no está mapeado a ningún getter de la entidad"
+                "El campo '{$informacionRequerida}' no está mapeado a ningún getter"
             );
 
             $getter = $getterPorCampo[$informacionRequerida];
 
             Assert::assertNotNull(
                 $solicitud->$getter(),
-                "Se esperaba que '{$informacionRequerida}' fuera extraído automáticamente de la documentación pero está vacío"
+                "Se esperaba que '{$informacionRequerida}' fuera extraído automáticamente pero está vacío"
             );
         }
     }
@@ -621,23 +632,19 @@ final class RegistroSolicitudDepositoContext extends BaseContext
     #[When('el investigador carga los siguientes documentos obligatorios:')]
     public function elInvestigadorCargaLosSiguientesDocumentosObligatorios(TableNode $tabla): void
     {
-        Assert::assertNotNull(
-            $this->solicitudEnCurso,
-            'Se requiere una solicitud en curso del paso Dado anterior'
-        );
+        Assert::assertNotNull($this->solicitudEnCurso, 'Se requiere una solicitud en curso');
 
         $documentos = [];
 
         foreach ($tabla->getRows() as $indice => $fila) {
             if ($indice === 0) {
-                continue; // Saltar la cabecera
+                continue;
             }
-
             $nombreDocumento = $fila[0];
             $documentos[$nombreDocumento] = "documentos/{$this->slugify($nombreDocumento)}-test.pdf";
         }
 
-        Assert::assertNotEmpty($documentos, 'La lista de documentos obligatorios a cargar no puede estar vacía');
+        Assert::assertNotEmpty($documentos, 'La lista de documentos obligatorios no puede estar vacía');
 
         try {
             $this->ultimaRespuesta = ($this->cargarDocumentacionHandler)(
@@ -651,6 +658,52 @@ final class RegistroSolicitudDepositoContext extends BaseContext
         }
     }
 
+    #[Given('ha cargado la documentación oficial de la donación')]
+    public function haCargadoLaDocumentacionOficialDeLaDonacion(): void
+    {
+        Assert::assertNotNull($this->solicitudEnCurso, 'Se requiere una solicitud en curso');
+
+        $documentos = [
+            'Formato solicitud donación' => 'documentos/formato-solicitud-donacion-test.pdf',
+            'Carta de cesión de derechos / origen lícito' => 'documentos/carta-de-cesion-de-derechos-origen-licito-test.pdf',
+        ];
+
+        try {
+            ($this->cargarDocumentacionHandler)(
+                new CargarDocumentacionOficialInput(
+                    solicitudId: (string) $this->solicitudEnCurso->id(),
+                    documentos: $documentos,
+                )
+            );
+        } catch (\Throwable $e) {
+            $this->excepcionCapturada = $e;
+        }
+    }
+
+    #[When('el investigador completa los datos cuantitativos de la colección')]
+    public function elInvestigadorCompletaLosDatosCuantitativosDelaColeccion(): void
+    {
+        Assert::assertNotNull($this->solicitudEnCurso, 'Se requiere una solicitud en curso');
+
+        $campos = ['N.º Individuos' => '10', 'N.º Morfoespecies' => '5', 'N.º Lotes' => '2'];
+
+        foreach ($campos as $campo => $valor) {
+            try {
+                $this->ultimaRespuesta = ($this->completarDatosHandler)(
+                    new CompletarDatosManualesInput(
+                        solicitudId: (string) $this->solicitudEnCurso->id(),
+                        campo: $campo,
+                        valor: $valor,
+                    )
+                );
+            } catch (\Throwable $e) {
+                $this->excepcionCapturada = $e;
+
+                return;
+            }
+        }
+    }
+
     #[Then('la solicitud registra el origen de la donación')]
     public function laSolicitudRegistraElOrigenDeLaDonacion(): void
     {
@@ -660,14 +713,29 @@ final class RegistroSolicitudDepositoContext extends BaseContext
         );
         Assert::assertNotNull($this->ultimaRespuesta, 'El handler no retornó ninguna respuesta');
 
-        $repo = $this->make(SolicitudDepositoRepositoryInterface::class);
-        $solicitud = $repo->buscarPorId($this->solicitudEnCurso->id());
-
+        // Verificar en el repositorio In-Memory
+        $solicitud = $this->repo->buscarPorId($this->solicitudEnCurso->id());
         Assert::assertNotNull($solicitud, 'La solicitud no fue encontrada en el repositorio');
         Assert::assertNotNull(
             $solicitud->origenDonacion(),
-            'Se esperaba que el origen de la donación quedara registrado en la solicitud'
+            'Se esperaba que el origen de la donación quedara registrado'
         );
+    }
+
+    #[When('el investigador envía la solicitud')]
+    public function elInvestigadorEnviaLaSolicitud(): void
+    {
+        Assert::assertNotNull($this->solicitudEnCurso, 'Se requiere una solicitud en curso');
+
+        try {
+            $this->ultimaRespuesta = ($this->enviarSolicitudHandler)(
+                new EnviarSolicitudDepositoInput(
+                    solicitudId: (string) $this->solicitudEnCurso->id(),
+                )
+            );
+        } catch (\Throwable $e) {
+            $this->excepcionCapturada = $e;
+        }
     }
 
     #[Then('pasa a estar :estadoEsperado')]
@@ -685,7 +753,7 @@ final class RegistroSolicitudDepositoContext extends BaseContext
     }
 
     // =========================================================================
-    // ESCENARIO: Completitud de datos obligatorios faltantes en la documentación
+    // ESCENARIO: Completitud de datos obligatorios faltantes
     // =========================================================================
 
     #[Given('que la documentación oficial no contiene el :campoDatoFaltante')]
@@ -697,30 +765,22 @@ final class RegistroSolicitudDepositoContext extends BaseContext
 
         $solicitud = $this->sembrarSolicitudDepositoBase();
         $solicitud->marcarDatoComoFaltante($campoDatoFaltante);
+        $this->repo->guardar($solicitud);
 
-        $repo = $this->make(SolicitudDepositoRepositoryInterface::class);
-        $repo->guardar($solicitud);
-
-        $persistida = $repo->buscarPorId($solicitud->id());
-
-        Assert::assertNotNull($persistida, 'La solicitud no fue encontrada en el repositorio tras marcar el dato faltante');
+        // Aserción de precondición
+        $persistida = $this->repo->buscarPorId($solicitud->id());
+        Assert::assertNotNull($persistida, 'La solicitud no fue encontrada tras marcar el dato faltante');
         Assert::assertTrue(
             $persistida->tieneDatoFaltante($campoDatoFaltante),
-            "Se esperaba que '{$campoDatoFaltante}' estuviera marcado como faltante en la solicitud pero no lo está"
+            "Se esperaba que '{$campoDatoFaltante}' estuviera marcado como faltante"
         );
     }
 
     #[When('el investigador provee esta información faltante')]
     public function elInvestigadorProveeEstaInformacionFaltante(): void
     {
-        Assert::assertNotNull(
-            $this->solicitudEnCurso,
-            'Se requiere una solicitud en curso del paso Dado anterior'
-        );
-        Assert::assertNotNull(
-            $this->campoDatoFaltante,
-            'Se requiere un campo faltante definido del paso Dado anterior'
-        );
+        Assert::assertNotNull($this->solicitudEnCurso, 'Se requiere una solicitud en curso');
+        Assert::assertNotNull($this->campoDatoFaltante, 'Se requiere un campo faltante definido');
 
         /** @var array<string, string> Valores canónicos de prueba por campo faltante */
         $valoresPorCampo = [
@@ -730,10 +790,7 @@ final class RegistroSolicitudDepositoContext extends BaseContext
         $valorProveido = $valoresPorCampo[$this->campoDatoFaltante]
             ?? "Valor de prueba para {$this->campoDatoFaltante}";
 
-        Assert::assertNotEmpty(
-            $valorProveido,
-            "El valor a proveer para '{$this->campoDatoFaltante}' no puede estar vacío"
-        );
+        Assert::assertNotEmpty($valorProveido, 'El valor a proveer no puede estar vacío');
 
         try {
             $this->ultimaRespuesta = ($this->completarDatosHandler)(
@@ -757,10 +814,9 @@ final class RegistroSolicitudDepositoContext extends BaseContext
         );
         Assert::assertNotNull($this->ultimaRespuesta, 'El handler no retornó ninguna respuesta');
 
-        $repo = $this->make(SolicitudDepositoRepositoryInterface::class);
-        $solicitud = $repo->buscarPorId($this->solicitudEnCurso->id());
-
-        Assert::assertNotNull($solicitud, 'La solicitud no fue encontrada en el repositorio tras completar los datos');
+        // Verificar en el repositorio In-Memory
+        $solicitud = $this->repo->buscarPorId($this->solicitudEnCurso->id());
+        Assert::assertNotNull($solicitud, 'La solicitud no fue encontrada tras completar los datos');
         Assert::assertFalse(
             $solicitud->tieneDatosFaltantes(),
             'Se esperaba que la solicitud no tuviera datos faltantes tras completarlos manualmente'
@@ -768,7 +824,7 @@ final class RegistroSolicitudDepositoContext extends BaseContext
     }
 
     // =========================================================================
-    // ESQUEMA DE ESCENARIO: Validación de identidad mediante el Formato de Solicitud
+    // ESQUEMA DE ESCENARIO: Validación de identidad mediante Formato de Solicitud
     // =========================================================================
 
     #[Given('que el investigador ha cargado el :nombreFormulario')]
@@ -781,16 +837,14 @@ final class RegistroSolicitudDepositoContext extends BaseContext
             nombre: $nombreFormulario,
             ruta: "documentos/{$this->slugify($nombreFormulario)}-test.pdf",
         );
+        $this->repo->guardar($solicitud);
 
-        $repo = $this->make(SolicitudDepositoRepositoryInterface::class);
-        $repo->guardar($solicitud);
-
-        $persistida = $repo->buscarPorId($solicitud->id());
-
-        Assert::assertNotNull($persistida, 'La solicitud no fue encontrada en el repositorio tras adjuntar el formulario');
+        // Aserción de precondición
+        $persistida = $this->repo->buscarPorId($solicitud->id());
+        Assert::assertNotNull($persistida, 'La solicitud no fue encontrada tras adjuntar el formulario');
         Assert::assertTrue(
             $persistida->tieneDocumentoAdjunto($nombreFormulario),
-            "Se esperaba que '{$nombreFormulario}' estuviera adjunto en la solicitud pero no lo está"
+            "Se esperaba que '{$nombreFormulario}' estuviera adjunto"
         );
     }
 
@@ -804,14 +858,8 @@ final class RegistroSolicitudDepositoContext extends BaseContext
     #[When('se compara el perfil del investigador con el nombre :nombreEnDocumento del formulario')]
     public function seComparaElPerfilDelInvestigadorConElNombreDelFormulario(string $nombreEnDocumento): void
     {
-        Assert::assertNotNull(
-            $this->solicitudEnCurso,
-            'Se requiere una solicitud en curso del paso Dado anterior'
-        );
-        Assert::assertNotEmpty(
-            $this->nombrePerfil,
-            'Se requiere el nombre de perfil del paso Dado anterior'
-        );
+        Assert::assertNotNull($this->solicitudEnCurso, 'Se requiere una solicitud en curso');
+        Assert::assertNotEmpty($this->nombrePerfil, 'Se requiere el nombre de perfil');
         Assert::assertNotEmpty($nombreEnDocumento, 'El nombre en el documento no puede estar vacío');
 
         try {
@@ -848,7 +896,7 @@ final class RegistroSolicitudDepositoContext extends BaseContext
         Assert::assertContains(
             $accionPermitida,
             $this->ultimaRespuesta->accionesPermitidas,
-            "Se esperaba que la acción '{$accionPermitida}' estuviera habilitada, pero no está en las acciones disponibles"
+            "Se esperaba que la acción '{$accionPermitida}' estuviera habilitada"
         );
     }
 }

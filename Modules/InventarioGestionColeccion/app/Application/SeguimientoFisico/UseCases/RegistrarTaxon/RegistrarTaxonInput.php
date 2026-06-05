@@ -9,8 +9,9 @@ final readonly class RegistrarTaxonInput
     public function __construct(
         public string $nombreCientifico,
         public string $rango,
-        public string $autor,
-        public int $anioDescripcion,
+        public ?string $autor = null,
+        public ?int $anioDescripcion = null,
         public ?string $padreId = null,
+        public ?string $epitetoInfraespecifico = null,
     ) {}
 }

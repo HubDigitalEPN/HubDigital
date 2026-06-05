@@ -32,7 +32,7 @@ final class ActualizarEntidadDepositanteHandler
         return new ActualizarEntidadDepositanteOutput(
             id: (string) $entidad->id(),
             nombre: $entidad->nombre(),
-            tipo: $entidad->tipo()->value,
+            tipo: $entidad->tipo()?->value,
             contacto: $entidad->contacto(),
         );
     }

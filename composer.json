@@ -10,6 +10,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.3",
+        "barryvdh/laravel-dompdf": "^3.1",
         "laravel/ai": "^0.6.0",
         "laravel/fortify": "^1.34",
         "laravel/framework": "^13.0",
@@ -18,6 +19,8 @@
         "livewire/flux": "^2.12.0",
         "livewire/livewire": "^4.1",
         "nwidart/laravel-modules": "^13.0",
+        "phpoffice/phpspreadsheet": "^5.7",
+        "resend/resend-php": "^1.3",
         "smalot/pdfparser": "^2.12"
     },
     "require-dev": {
@@ -74,6 +77,10 @@
             "@php artisan config:clear --ansi",
             "@lint:check",
             "@php artisan test"
+        ],
+        "behat:recepcion": [
+            "vendor/bin/behat --profile=recepcion --suite=RegistroSolicitudDeposito",
+            "vendor/bin/behat --profile=recepcion --suite=RevisionMatrizEspecies"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",

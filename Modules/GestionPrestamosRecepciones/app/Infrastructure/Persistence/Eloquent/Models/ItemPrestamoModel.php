@@ -27,7 +27,8 @@ final class ItemPrestamoModel extends Model
     ];
 
     protected $casts = [
-        'especimen_snapshot' => 'array',
+        'cantidad_solicitada' => 'integer',
+        'especimen_snapshot'  => 'array',
     ];
 
     public function solicitud(): BelongsTo

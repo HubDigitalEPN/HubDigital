@@ -47,6 +47,7 @@ final class GenerarActaPrestamoHandler
             numeroPrestamo: NumeroPrestamo::generate(),
             solicitudPrestamoId: $solicitudId,
             tipoPrestamo: TipoPrestamo::Temporal,
+            alcancePrestamo: $solicitud->alcancePrestamo(),
             fechaInicio: $ahora,
             fechaFin: $fechaFin,
             pdfRuta: $pdfRuta,

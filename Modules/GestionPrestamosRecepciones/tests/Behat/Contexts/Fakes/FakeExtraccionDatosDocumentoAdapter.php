@@ -10,7 +10,7 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\DatosIntegradosDocum
 final class FakeExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocumentoPort
 {
     private const EXTRACCIONES = [
-        'Copia de la autorización de recolección (MAATE)' => [
+        'Copia de la autorización de recolección (MAE)' => [
             'nroPermisoRecoleccion' => 'REC-2024-001',
         ],
         'Copia del permiso de movilización' => [

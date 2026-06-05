@@ -13,6 +13,10 @@ return new class extends Migration
     {
         DB::statement('CREATE SCHEMA IF NOT EXISTS recepciones');
 
+        if (Schema::hasTable('recepciones.solicitudes_deposito')) {
+            return;
+        }
+
         Schema::create('recepciones.solicitudes_deposito', function (Blueprint $table): void {
             $table->uuid('id')->primary();
             $table->string('numero', 10)->unique();

@@ -11,7 +11,7 @@ final class ConfiguracionDivulgacionModificada extends DomainEvent
 {
     public function __construct(
         public readonly EspecimenDivulgableId $id,
-        public readonly string $occurrenceID,
+        public readonly string $especimenId,
         public readonly ConfiguracionVisibilidad $configuracionAnterior,
         public readonly ConfiguracionVisibilidad $configuracionNueva,
     ) {

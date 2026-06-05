@@ -19,6 +19,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Entities\ItemPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\SolicitudPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\ActaPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\AlcancePrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitud;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ItemPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\NumeroSolicitud;
@@ -80,6 +81,8 @@ final class ResolucionSolicitudesPrestamoContext extends BaseContext
 
     public function __construct()
     {
+        self::bootApp();
+
         $this->solicitudRepo = new InMemorySolicitudPrestamoRepository;
         $this->actaRepo = new InMemoryActaPrestamoRepository;
         $this->fakePublisher = new FakeEventPublisherAdapter;
@@ -111,6 +114,7 @@ final class ResolucionSolicitudesPrestamoContext extends BaseContext
             id: $this->solicitudRepo->nextIdentity(),
             numeroSolicitud: NumeroSolicitud::generate(),
             investigadorId: 'inv-001',
+            alcancePrestamo: AlcancePrestamo::Nacional,
             tituloEstudio: $this->datosSolicitud['titulo_estudio'],
             institucionAdscripcion: $this->datosSolicitud['institucion_adscripcion'],
             lineaInvestigacion: $this->datosSolicitud['linea_investigacion'],
