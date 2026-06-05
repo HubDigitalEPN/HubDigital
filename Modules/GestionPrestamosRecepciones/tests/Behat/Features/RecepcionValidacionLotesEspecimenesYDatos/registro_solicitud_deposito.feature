@@ -33,7 +33,7 @@ Característica: Registro de solicitud de depósito
             | origen_recoleccion    | situacion_regulatoria           | documento_requerido                                                                                                        |
             | Nacional (Ecuador)    | Posee permisos del MAE        | Formato solicitud depósito y Copia de la autorización de recolección (MAE) y Copia del permiso de movilización           |
             | Nacional (Ecuador)    | Sin permisos del MAE          | Formato solicitud depósito y Documento de explicación de motivos y/o carta de justificación (institucional o personal)     |
-            | Exterior (Extranjero) | Proviene de colección foránea   | Formato solicitud depósito y Carta de procedencia firmada por el responsable de la colección de origen                     |
+            | Exterior (Extranjero) | Proviene de colección foránea   | Formato solicitud depósito y Documento de procedencia de los especimenes                                                   |
 
     @deposito @excepcion
     Escenario: Escalabilidad de la solicitud por falta total de documentación
@@ -84,12 +84,14 @@ Característica: Registro de solicitud de depósito
     Escenario: Donación con datos cuantitativos completos avanza a revisión por curaduría
         Dado que el investigador seleccionó el trámite de "Donación"
         Y ha cargado la documentación oficial de la donación
-        Cuando el investigador completa los datos cuantitativos de la colección
+        Y el investigador completa los datos cuantitativos de la colección
+        Cuando el investigador envía la solicitud
         Entonces pasa a estar "Pendiente de Revisión por Curaduría"
 
     Escenario: Completitud de datos obligatorios faltantes en la documentación
         Dado que la documentación oficial no contiene el "Grupo Animal"
-        Cuando el investigador provee esta información faltante
+        Y el investigador provee esta información faltante
+        Cuando el investigador envía la solicitud
         Entonces la solicitud se registra exitosamente
         Y pasa a estar "Pendiente de Revisión por Curaduría"
 
