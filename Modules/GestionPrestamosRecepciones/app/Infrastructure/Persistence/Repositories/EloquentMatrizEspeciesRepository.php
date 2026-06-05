@@ -28,33 +28,35 @@ final class EloquentMatrizEspeciesRepository implements MatrizEspeciesRepository
 
         MatrizEspeciesEloquentModel::upsert(
             [[
-                'id'                               => (string) $matriz->id(),
-                'solicitud_id'                     => $matriz->solicitudId(),
-                'tipo_tramite'                     => $matriz->tipoTramite(),
-                'estado'                           => $matriz->estado()->value,
-                'campos_dwc_presentes'             => json_encode($matriz->camposDwCPresentes()),
+                'id' => (string) $matriz->id(),
+                'solicitud_id' => $matriz->solicitudId(),
+                'tipo_tramite' => $matriz->tipoTramite(),
+                'estado' => $matriz->estado()->value,
+                'campos_dwc_presentes' => json_encode($matriz->camposDwCPresentes()),
                 'identificacion_original_conservada' => $matriz->identificacionOriginalConservada(),
-                'updated_at'                       => $now,
-                'created_at'                       => $now,
+                'updated_at' => $now,
+                'created_at' => $now,
             ]],
             ['id'],
             ['solicitud_id', 'tipo_tramite', 'estado', 'campos_dwc_presentes', 'identificacion_original_conservada', 'updated_at'],
         );
 
-        $rows       = [];
+        $rows = [];
         $idsActuales = [];
 
         foreach ($matriz->registros() as $registroId => $registro) {
             $rows[] = [
-                'id'                  => $registroId,
-                'matriz_id'           => (string) $matriz->id(),
-                'nombre_cientifico'   => $registro->nombreCientifico(),
-                'nombre_corregido'    => $registro->nombreCorregido(),
-                'estado'              => $registro->estado()->value,
-                'no_catalogado'       => $registro->esNoCatalogado(),
+                'id' => $registroId,
+                'matriz_id' => (string) $matriz->id(),
+                'nombre_cientifico' => $registro->nombreCientifico(),
+                'nombre_corregido' => $registro->nombreCorregido(),
+                'estado' => $registro->estado()->value,
+                'no_catalogado' => $registro->esNoCatalogado(),
                 'motivo_justificacion' => $registro->motivoJustificacion(),
-                'updated_at'          => $now,
-                'created_at'          => $now,
+                'datos_dwc' => json_encode($registro->datosDwC()) ?: null,
+                'normalizaciones' => json_encode($registro->normalizaciones()) ?: null,
+                'updated_at' => $now,
+                'created_at' => $now,
             ];
             $idsActuales[] = $registroId;
         }
@@ -63,7 +65,7 @@ final class EloquentMatrizEspeciesRepository implements MatrizEspeciesRepository
             RegistroEspecimenEloquentModel::upsert(
                 $rows,
                 ['id'],
-                ['nombre_cientifico', 'nombre_corregido', 'estado', 'no_catalogado', 'motivo_justificacion', 'updated_at'],
+                ['nombre_cientifico', 'nombre_corregido', 'estado', 'no_catalogado', 'motivo_justificacion', 'datos_dwc', 'normalizaciones', 'updated_at'],
             );
         }
 
@@ -108,6 +110,8 @@ final class EloquentMatrizEspeciesRepository implements MatrizEspeciesRepository
                 estado: EstadoRegistroEspecimen::from($regModel->estado),
                 noCatalogado: (bool) $regModel->no_catalogado,
                 motivoJustificacion: $regModel->motivo_justificacion,
+                datosDwC: $regModel->datos_dwc ?? [],
+                normalizaciones: $regModel->normalizaciones ?? [],
             );
         }
 

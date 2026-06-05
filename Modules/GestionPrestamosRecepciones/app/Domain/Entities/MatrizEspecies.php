@@ -130,8 +130,11 @@ final class MatrizEspecies
      * Agrega un registro de espécimen a la matriz.
      * Para Donaciones, los registros inician como ValidadoTecnicamente.
      * Para Depósitos, los registros inician como Pendiente.
+     *
+     * @param  array<string, mixed>  $datosDwC  Registro DwC completo normalizado
+     * @param  list<array{campo: string, original: mixed, normalizado: mixed}>  $normalizaciones
      */
-    public function agregarRegistroEspecimen(string $nombreCientifico, bool $noCatalogado = false): string
+    public function agregarRegistroEspecimen(string $nombreCientifico, bool $noCatalogado = false, array $datosDwC = [], array $normalizaciones = []): string
     {
         $estadoInicial = $this->tipoTramite->equals(TipoTramite::Donacion)
             ? EstadoRegistroEspecimen::ValidadoTecnicamente
@@ -144,6 +147,8 @@ final class MatrizEspecies
             nombreCientifico: $nombreCientifico,
             noCatalogado: $noCatalogado,
             estadoInicial: $estadoInicial,
+            datosDwC: $datosDwC,
+            normalizaciones: $normalizaciones,
         );
 
         $this->registros[(string) $registroId] = $registro;
