@@ -42,6 +42,10 @@ final class SincronizarEspecimenes extends Component
 
     public bool $sincronizando = false;
 
+    public int $pagina = 1;
+
+    private const int POR_PAGINA = 20;
+
     /** @var array<string, array<string, bool>> */
     private array $cacheConfiguracionesExistentes = [];
 
@@ -92,21 +96,32 @@ final class SincronizarEspecimenes extends Component
         }
     }
 
-    public function seleccionarTodos(array $todosIds): void
+    public function seleccionarTodos(): void
     {
-        $nuevosIds = array_filter(
-            $todosIds,
-            fn ($id) => ! in_array($id, $this->seleccionados, true)
+        $todosIds = array_map(
+            fn (DatosEspecimenProveedor $d) => $d->occurrenceId,
+            $this->todosPendientes()
         );
 
+        $nuevosIds = array_values(array_filter(
+            $todosIds,
+            fn ($id) => ! in_array($id, $this->seleccionados, true)
+        ));
+
         if (count($nuevosIds) > 0) {
-            $this->seleccionados = array_merge($this->seleccionados, array_values($nuevosIds));
+            $this->seleccionados = array_merge($this->seleccionados, $nuevosIds);
             $this->inicializarConfiguracionLote($nuevosIds);
         }
 
         if ($this->especimenActivoId === null && count($this->seleccionados) > 0) {
             $this->especimenActivoId = $this->seleccionados[0];
         }
+    }
+
+    public function irAPagina(int $pagina): void
+    {
+        $total = max(1, (int) ceil(count($this->todosPendientes()) / self::POR_PAGINA));
+        $this->pagina = max(1, min($pagina, $total));
     }
 
     public function deseleccionarTodos(): void
@@ -216,28 +231,39 @@ final class SincronizarEspecimenes extends Component
     }
 
     /**
-     * Caché computado de especímenes — se carga UNA SOLA VEZ y se reutiliza en ambos pasos.
-     * Se invalida automáticamente cuando $paso o $seleccionados cambian.
+     * Todos los especímenes pendientes de sincronización, ordenados por occurrence_id.
+     * Cacheado por Livewire — no vuelve a llamar al puerto si se accede múltiples veces en el mismo request.
      *
-     * Paso 1: lee desde el Supplier (taxonomia.especimenes) vía ACL — no desde divulgacion.especimenes,
-     * que solo existe después de sincronizar. Filtra los ya sincronizados.
-     * Paso 2: igual pero solo los seleccionados.
+     * @return list<DatosEspecimenProveedor>
+     */
+    #[Computed]
+    public function todosPendientes(): array
+    {
+        $sincronizados = $this->sincronizadosIds();
+
+        return collect($this->proveedorEspecimenes->obtenerTodos())
+            ->filter(fn (DatosEspecimenProveedor $d) => ! in_array($d->especimenId, $sincronizados, true))
+            ->sortBy(fn (DatosEspecimenProveedor $d) => $d->occurrenceId)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Página actual de especímenes (paso 1) o los seleccionados (paso 2).
+     * Depende de $pagina — Livewire invalida el cache cuando cambia.
      */
     #[Computed]
     public function especimenesEnCache()
     {
-        $sincronizados = $this->sincronizadosIds();
-
         if ($this->paso === 1) {
-            $todos = $this->proveedorEspecimenes->obtenerTodos();
-            $pendientes = array_filter(
-                $todos,
-                fn (DatosEspecimenProveedor $d) => ! in_array($d->especimenId, $sincronizados, true)
+            $slice = array_slice(
+                $this->todosPendientes(),
+                ($this->pagina - 1) * self::POR_PAGINA,
+                self::POR_PAGINA
             );
 
-            return collect(array_slice(array_values($pendientes), 0, 100))
+            return collect($slice)
                 ->map(fn (DatosEspecimenProveedor $d) => $this->dtoParaVista($d))
-                ->sortBy('occurrence_id')
                 ->values();
         }
 
@@ -337,11 +363,14 @@ final class SincronizarEspecimenes extends Component
 
     public function render(): View
     {
-        // Usa el caché computado que carga especímenes UNA SOLA VEZ
-        // No hace queries adicionales al cambiar entre pasos
+        $totalPendientes = count($this->todosPendientes());
+        $totalPaginas = max(1, (int) ceil($totalPendientes / self::POR_PAGINA));
+
         return view('catalogopublico::livewire.sincronizar-especimenes', [
             'especimenes' => $this->especimenesEnCache(),
             'grupos' => self::GRUPOS,
+            'totalPendientes' => $totalPendientes,
+            'totalPaginas' => $totalPaginas,
         ]);
     }
 }
