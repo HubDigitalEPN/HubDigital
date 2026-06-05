@@ -193,21 +193,23 @@
 
         </div>
 
-        {{-- Acciones rápidas --}}
+        {{-- Acciones + toggle --}}
         <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
-            <div class="flex items-center gap-2">
+            <div x-show="!ampliada" class="flex items-center gap-2">
                 <flux:button variant="primary">
                     <flux:icon name="magnifying-glass" class="size-4" />
                     Buscar
                 </flux:button>
-                <flux:button variant="ghost" class="text-white">Limpiar</flux:button>
+                <button type="button" class="rounded-lg px-3 py-2 text-sm font-medium text-white/80 transition-colors hover:text-white">
+                    Limpiar
+                </button>
             </div>
             <button
                 type="button"
                 x-on:click="ampliada = !ampliada"
                 class="flex items-center gap-1.5 text-sm font-medium text-white/80 transition-colors hover:text-white"
             >
-                <span x-text="ampliada ? 'Ocultar búsqueda ampliada' : 'Búsqueda ampliada'">Búsqueda ampliada</span>
+                <span x-text="ampliada ? 'Ocultar búsqueda avanzada' : 'Búsqueda avanzada'">Búsqueda avanzada</span>
                 <span :class="ampliada ? 'rotate-180' : ''" class="inline-flex transition-transform duration-200">
                     <flux:icon name="chevron-down" class="size-4" />
                 </span>
@@ -215,7 +217,7 @@
         </div>
 
         {{-- ═══════════════════════════════════════════════════════
-             BÚSQUEDA AMPLIADA
+             BÚSQUEDA AVANZADA
              ═══════════════════════════════════════════════════════ --}}
         <div
             x-show="ampliada"
@@ -228,7 +230,7 @@
             class="mt-5 border-t border-white/10 pt-5"
         >
             <p class="mb-4 text-xs font-semibold uppercase tracking-wider text-white/60">
-                Búsqueda ampliada
+                Búsqueda avanzada
             </p>
 
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -270,7 +272,7 @@
 
                 {{-- Método de recolección (multiselect dinámico) --}}
                 <div>
-                    <div class="mb-1 flex items-center gap-1">
+                    <div class="mb-1 flex h-5 items-center gap-1">
                         <span class="text-xs font-medium text-white">
                             Método de recolección
                             <span class="font-normal text-white/50">(samplingProtocol)</span>
@@ -323,7 +325,7 @@
 
                 {{-- Bioma (multiselect dinámico) --}}
                 <div>
-                    <div class="mb-1 flex items-center gap-1">
+                    <div class="mb-1 flex h-5 items-center gap-1">
                         <span class="text-xs font-medium text-white">
                             Bioma
                             <span class="font-normal text-white/50">(biome)</span>
@@ -350,7 +352,9 @@
                     <flux:icon name="magnifying-glass" class="size-4" />
                     Buscar
                 </flux:button>
-                <flux:button variant="ghost" class="text-white">Limpiar filtros</flux:button>
+                <button type="button" class="rounded-lg px-3 py-2 text-sm font-medium text-white/80 transition-colors hover:text-white">
+                    Limpiar filtros
+                </button>
             </div>
 
         </div>
