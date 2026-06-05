@@ -21,8 +21,6 @@ final class ActualizarRanuraHandler
             throw new \DomainException('Ranura no encontrada.');
         }
 
-        $ranura->actualizarFamiliaTaxonomicaEsperada($input->familiaTaxonomicaEsperadaId);
-
         if ($input->activa) {
             $ranura->activar();
         } else {

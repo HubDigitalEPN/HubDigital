@@ -40,6 +40,16 @@ class EloquentUbicacionCajaRepository implements UbicacionCajaRepository
         return $model ? $this->toDomain($model) : null;
     }
 
+    public function buscarUltimaRetiradaPorCaja(CajaId $cajaId): ?UbicacionCaja
+    {
+        $model = UbicacionCajaEloquentModel::where('caja_id', (string) $cajaId)
+            ->whereNotNull('retirada_en')
+            ->orderByDesc('retirada_en')
+            ->first();
+
+        return $model ? $this->toDomain($model) : null;
+    }
+
     private function toDomain(UbicacionCajaEloquentModel $model): UbicacionCaja
     {
         return UbicacionCaja::reconstituir(

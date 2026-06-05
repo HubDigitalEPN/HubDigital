@@ -1,4 +1,4 @@
-<div class="space-y-6 p-6">
+<div class="space-y-6 p-4 sm:p-6">
     <flux:heading size="xl" level="1" class="font-display text-blue-navy font-bold">Alertas de ubicación</flux:heading>
 
     @if($successMessage)
@@ -13,7 +13,6 @@
     <div class="flex gap-2 flex-wrap">
         @foreach(['activa' => 'Activas', 'resuelta' => 'Resueltas', 'ignorada' => 'Ignoradas', 'todas' => 'Todas'] as $valor => $etiqueta)
             <flux:button
-                size="sm"
                 :variant="$filtroEstado === $valor ? 'primary' : 'ghost'"
                 wire:click="$set('filtroEstado', '{{ $valor }}')"
             >
@@ -22,100 +21,170 @@
         @endforeach
     </div>
 
-    <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
-        <table class="w-full text-sm">
-            <thead class="bg-blue-navy border-b border-border">
-                <tr>
-                    <th class="px-4 py-3 text-left font-medium text-white">Tipo de alerta</th>
-                    <th class="px-4 py-3 text-left font-medium text-white">Caja</th>
-                    <th class="px-4 py-3 text-left font-medium text-white">Estado actual</th>
-                    <th class="px-4 py-3 text-left font-medium text-white">Estado alerta</th>
-                    <th class="px-4 py-3 text-left font-medium text-white">Contexto</th>
-                    <th class="px-4 py-3 text-left font-medium text-white">Fecha</th>
-                    <th class="px-4 py-3 text-left font-medium text-white">Acciones</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-border">
-                @forelse($alertas as $alerta)
-                    <tr class="hover:bg-bg-main transition-colors {{ $alerta['estado'] === 'activa' ? 'bg-error/5' : '' }}">
-                        <td class="px-4 py-3">
-                            <x-inventariogestioncoleccion::seguimiento-fisico.alerta-badge
-                                :tipo="$alerta['tipo']"
-                            />
-                        </td>
-                        <td class="px-4 py-3 font-medium text-text-primary">
-                            {{ $alerta['cajaCodigo'] }}
-                        </td>
-                        <td class="px-4 py-3">
-                            @if($alerta['cajaEstado'])
-                                <x-inventariogestioncoleccion::seguimiento-fisico.caja-estado-badge
-                                    :estado="$alerta['cajaEstado']"
+    @php
+        $estadoAlertaCfg = fn ($estado) => match($estado) {
+            'activa'   => ['bg-error',   'text-white',        'Activa'],
+            'resuelta' => ['bg-success', 'text-white',        'Resuelta'],
+            'ignorada' => ['bg-border',  'text-text-primary', 'Ignorada'],
+            default    => ['bg-border',  'text-text-primary', $estado],
+        };
+    @endphp
+
+    {{-- Tabla (desktop) --}}
+    <div class="hidden md:block rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-blue-navy border-b border-border">
+                    <tr>
+                        <th class="px-4 py-3 text-left font-medium text-white">Tipo de alerta</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">Caja</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">Estado actual</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">Estado alerta</th>
+                        <th class="hidden lg:table-cell px-4 py-3 text-left font-medium text-white">Contexto</th>
+                        <th class="hidden lg:table-cell px-4 py-3 text-left font-medium text-white">Fecha</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-border">
+                    @forelse($alertas as $alerta)
+                        <tr class="hover:bg-bg-main transition-colors {{ $alerta['estado'] === 'activa' ? 'bg-error/5' : '' }}">
+                            <td class="px-4 py-3">
+                                <x-inventariogestioncoleccion::seguimiento-fisico.alerta-badge
+                                    :tipo="$alerta['tipo']"
                                 />
-                            @else
-                                <span class="text-text-secondary text-xs">—</span>
-                            @endif
-                        </td>
-                        <td class="px-4 py-3">
-                            @php
-                                [$estadoBg, $estadoText, $estadoLabel] = match($alerta['estado']) {
-                                    'activa'   => ['bg-error',   'text-white',        'Activa'],
-                                    'resuelta' => ['bg-success', 'text-white',        'Resuelta'],
-                                    'ignorada' => ['bg-border',  'text-text-primary', 'Ignorada'],
-                                    default    => ['bg-border',  'text-text-primary', $alerta['estado']],
-                                };
-                            @endphp
-                            <span class="inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold {{ $estadoBg }} {{ $estadoText }}">
-                                {{ $estadoLabel }}
-                            </span>
-                        </td>
-                        <td class="px-4 py-3 text-xs text-text-secondary max-w-xs">
-                            @if(count($alerta['datosContexto']) > 0)
-                                <ul class="space-y-0.5">
-                                    @foreach($alerta['datosContexto'] as $k => $v)
-                                        <li><span class="font-medium text-text-primary">{{ ucfirst($k) }}:</span> {{ ucfirst($v) }}</li>
-                                    @endforeach
-                                </ul>
-                            @else
-                                —
-                            @endif
-                        </td>
-                        <td class="px-4 py-3 text-xs text-text-secondary whitespace-nowrap">
-                            {{ $alerta['generadaEn'] }}
-                        </td>
-                        <td class="px-4 py-3">
-                            @if($alerta['estado'] === 'activa')
-                                <div class="flex items-center gap-2">
-                                    <flux:button
-                                        size="sm"
-                                        variant="primary"
-                                        wire:click="abrirResolverModal('{{ $alerta['id'] }}')"
-                                    >
-                                        Resolver
-                                    </flux:button>
-                                    <flux:tooltip content="Ignorar sin resolver">
+                            </td>
+                            <td class="px-4 py-3 font-medium text-text-primary">
+                                {{ $alerta['cajaCodigo'] }}
+                            </td>
+                            <td class="px-4 py-3">
+                                @if($alerta['cajaEstado'])
+                                    <x-inventariogestioncoleccion::seguimiento-fisico.caja-estado-badge
+                                        :estado="$alerta['cajaEstado']"
+                                    />
+                                @else
+                                    <span class="text-text-secondary text-xs">—</span>
+                                @endif
+                            </td>
+                            <td class="px-4 py-3">
+                                @php [$estadoBg, $estadoText, $estadoLabel] = $estadoAlertaCfg($alerta['estado']); @endphp
+                                <span class="inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold {{ $estadoBg }} {{ $estadoText }}">
+                                    {{ $estadoLabel }}
+                                </span>
+                            </td>
+                            <td class="hidden lg:table-cell px-4 py-3 text-xs text-text-secondary max-w-xs">
+                                @if(count($alerta['datosContexto']) > 0)
+                                    <ul class="space-y-0.5">
+                                        @foreach($alerta['datosContexto'] as $k => $v)
+                                            <li><span class="font-medium text-text-primary">{{ ucfirst($k) }}:</span> {{ ucfirst($v) }}</li>
+                                        @endforeach
+                                    </ul>
+                                @else
+                                    —
+                                @endif
+                            </td>
+                            <td class="hidden lg:table-cell px-4 py-3 text-xs text-text-secondary whitespace-nowrap">
+                                {{ $alerta['generadaEn'] }}
+                            </td>
+                            <td class="px-4 py-3">
+                                @if($alerta['estado'] === 'activa')
+                                    <div class="flex items-center gap-2">
                                         <flux:button
                                             size="sm"
-                                            variant="ghost"
-                                            wire:click="ignorar('{{ $alerta['id'] }}')"
-                                            wire:loading.attr="disabled"
-                                            wire:target="ignorar('{{ $alerta['id'] }}')"
+                                            variant="primary"
+                                            wire:click="abrirResolverModal('{{ $alerta['id'] }}')"
                                         >
-                                            Ignorar
+                                            Resolver
                                         </flux:button>
-                                    </flux:tooltip>
-                                </div>
-                            @endif
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="7" class="px-4 py-8 text-center text-text-primary">
-                            No hay alertas en este estado.
-                        </td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
+                                        <flux:tooltip content="Ignorar sin resolver">
+                                            <flux:button
+                                                size="sm"
+                                                variant="ghost"
+                                                wire:click="ignorar('{{ $alerta['id'] }}')"
+                                                wire:loading.attr="disabled"
+                                                wire:target="ignorar('{{ $alerta['id'] }}')"
+                                            >
+                                                Ignorar
+                                            </flux:button>
+                                        </flux:tooltip>
+                                    </div>
+                                @endif
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="7" class="px-4 py-8 text-center text-text-primary">
+                                No hay alertas en este estado.
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {{-- Tarjetas (móvil) --}}
+    <div class="md:hidden space-y-3">
+        @forelse($alertas as $alerta)
+            @php [$estadoBg, $estadoText, $estadoLabel] = $estadoAlertaCfg($alerta['estado']); @endphp
+            <div class="rounded-lg border border-border bg-surface p-4 shadow-sm space-y-3 {{ $alerta['estado'] === 'activa' ? 'bg-error/5' : '' }}">
+                <div class="flex items-start justify-between gap-2">
+                    <x-inventariogestioncoleccion::seguimiento-fisico.alerta-badge
+                        :tipo="$alerta['tipo']"
+                    />
+                    <span class="inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold {{ $estadoBg }} {{ $estadoText }}">
+                        {{ $estadoLabel }}
+                    </span>
+                </div>
+                <dl class="space-y-1.5 text-sm">
+                    <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="Caja">
+                        <span class="font-medium">{{ $alerta['cajaCodigo'] }}</span>
+                    </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
+                    <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="Estado actual">
+                        @if($alerta['cajaEstado'])
+                            <x-inventariogestioncoleccion::seguimiento-fisico.caja-estado-badge
+                                :estado="$alerta['cajaEstado']"
+                            />
+                        @else
+                            —
+                        @endif
+                    </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
+                    @if(count($alerta['datosContexto']) > 0)
+                        <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="Contexto">
+                            <ul class="space-y-0.5">
+                                @foreach($alerta['datosContexto'] as $k => $v)
+                                    <li><span class="font-medium">{{ ucfirst($k) }}:</span> {{ ucfirst($v) }}</li>
+                                @endforeach
+                            </ul>
+                        </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
+                    @endif
+                    <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="Fecha">
+                        <span class="text-xs text-text-secondary">{{ $alerta['generadaEn'] }}</span>
+                    </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
+                </dl>
+                @if($alerta['estado'] === 'activa')
+                    <div class="flex flex-wrap gap-2 pt-1">
+                        <flux:button
+                            variant="primary"
+                            wire:click="abrirResolverModal('{{ $alerta['id'] }}')"
+                        >
+                            Resolver
+                        </flux:button>
+                        <flux:button
+                            variant="ghost"
+                            wire:click="ignorar('{{ $alerta['id'] }}')"
+                            wire:loading.attr="disabled"
+                            wire:target="ignorar('{{ $alerta['id'] }}')"
+                        >
+                            Ignorar
+                        </flux:button>
+                    </div>
+                @endif
+            </div>
+        @empty
+            <div class="rounded-lg border border-dashed border-border p-8 text-center text-text-primary">
+                No hay alertas en este estado.
+            </div>
+        @endforelse
     </div>
 
     {{-- Modal: Resolver alerta --}}

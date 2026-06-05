@@ -22,9 +22,10 @@ final class RegistrarTaxonRequest extends FormRequest
         return [
             'nombre_cientifico' => ['required', 'string', 'max:255'],
             'rango' => ['required', 'string', "in:{$rangos}"],
-            'autor' => ['required', 'string', 'max:255'],
-            'anio_descripcion' => ['required', 'integer', 'min:1700', 'max:2100'],
+            'autor' => ['nullable', 'string', 'max:255'],
+            'anio_descripcion' => ['nullable', 'integer', 'min:1700', 'max:2100'],
             'padre_id' => ['nullable', 'string', 'uuid'],
+            'epiteto_infraespecifico' => ['nullable', 'string', 'max:120'],
         ];
     }
 }

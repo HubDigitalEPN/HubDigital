@@ -47,7 +47,7 @@ final class EspecimenController extends Controller
             decimalLatitude: $request->validated('decimal_latitude') !== null ? (float) $request->validated('decimal_latitude') : null,
             decimalLongitude: $request->validated('decimal_longitude') !== null ? (float) $request->validated('decimal_longitude') : null,
             geodeticDatum: $request->validated('geodetic_datum'),
-            elevationInMeters: $request->validated('elevation_in_meters') !== null ? (float) $request->validated('elevation_in_meters') : null,
+            elevationMinM: $request->validated('elevation_min_m') !== null ? (float) $request->validated('elevation_min_m') : null,
             biome: $request->validated('biome'),
             habitat: $request->validated('habitat'),
             identificadores: $request->validated('identificadores') ?? [],

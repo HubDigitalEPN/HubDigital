@@ -19,7 +19,7 @@ final readonly class ActualizarEspecimenInput
         public ?float $decimalLatitude = null,
         public ?float $decimalLongitude = null,
         public ?string $geodeticDatum = null,
-        public ?float $elevationInMeters = null,
+        public ?float $elevationMinM = null,
         public ?string $biome = null,
         public ?string $habitat = null,
         public ?string $preparations = null,

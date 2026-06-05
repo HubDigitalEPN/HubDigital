@@ -115,7 +115,7 @@ erDiagram
   alertas_inventario {
     uuid id PK
     uuid caja_id FK "nullable"
-    varchar tipo "incongruencia_taxonomica movimiento_no_autorizado extraccion_prolongada familia_no_asignada"
+    varchar tipo "orden_taxonomico_fuera_de_secuencia movimiento_no_autorizado extraccion_prolongada familia_no_asignada"
     varchar estado "activa resuelta"
     jsonb datos
     timestamptz generada_en

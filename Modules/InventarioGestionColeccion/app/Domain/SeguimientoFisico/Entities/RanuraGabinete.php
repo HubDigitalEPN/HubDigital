@@ -15,7 +15,6 @@ class RanuraGabinete
         private readonly RanuraId $id,
         private readonly GabineteId $gabineteId,
         private readonly int $numeroRanura,
-        private ?string $familiaTaxonomicaEsperadaId,
         private ?CajaId $cajaActualId,
         private bool $activa,
     ) {}
@@ -24,17 +23,15 @@ class RanuraGabinete
         RanuraId $id,
         GabineteId $gabineteId,
         int $numeroRanura,
-        ?string $familiaTaxonomicaEsperadaId = null,
     ): self {
         if ($numeroRanura < 1) {
-            throw new \InvalidArgumentException("El número de ranura debe ser mayor a 0.");
+            throw new \InvalidArgumentException('El número de ranura debe ser mayor a 0.');
         }
 
         return new self(
             id: $id,
             gabineteId: $gabineteId,
             numeroRanura: $numeroRanura,
-            familiaTaxonomicaEsperadaId: $familiaTaxonomicaEsperadaId,
             cajaActualId: null,
             activa: true,
         );
@@ -44,7 +41,6 @@ class RanuraGabinete
         RanuraId $id,
         GabineteId $gabineteId,
         int $numeroRanura,
-        ?string $familiaTaxonomicaEsperadaId,
         ?CajaId $cajaActualId,
         bool $activa,
     ): self {
@@ -52,7 +48,6 @@ class RanuraGabinete
             id: $id,
             gabineteId: $gabineteId,
             numeroRanura: $numeroRanura,
-            familiaTaxonomicaEsperadaId: $familiaTaxonomicaEsperadaId,
             cajaActualId: $cajaActualId,
             activa: $activa,
         );
@@ -70,11 +65,6 @@ class RanuraGabinete
     public function liberarCaja(): void
     {
         $this->cajaActualId = null;
-    }
-
-    public function actualizarFamiliaTaxonomicaEsperada(?string $familiaTaxonomicaId): void
-    {
-        $this->familiaTaxonomicaEsperadaId = $familiaTaxonomicaId;
     }
 
     public function desactivar(): void
@@ -105,11 +95,6 @@ class RanuraGabinete
     public function numeroRanura(): int
     {
         return $this->numeroRanura;
-    }
-
-    public function familiaTaxonomicaEsperadaId(): ?string
-    {
-        return $this->familiaTaxonomicaEsperadaId;
     }
 
     public function cajaActualId(): ?CajaId

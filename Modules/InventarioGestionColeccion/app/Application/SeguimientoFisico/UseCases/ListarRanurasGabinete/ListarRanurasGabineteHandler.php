@@ -24,7 +24,6 @@ final class ListarRanurasGabineteHandler
                 id: (string) $r->id(),
                 gabineteId: (string) $r->gabineteId(),
                 numeroRanura: $r->numeroRanura(),
-                familiaTaxonomicaEsperadaId: $r->familiaTaxonomicaEsperadaId(),
                 activa: $r->activa(),
                 cajaActualId: $r->cajaActualId() ? (string) $r->cajaActualId() : null,
             ),

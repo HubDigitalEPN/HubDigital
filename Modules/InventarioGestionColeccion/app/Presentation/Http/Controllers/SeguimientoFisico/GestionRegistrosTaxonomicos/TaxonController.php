@@ -29,6 +29,7 @@ final class TaxonController extends Controller
             autor: $request->validated('autor'),
             anioDescripcion: $request->validated('anio_descripcion'),
             padreId: $request->validated('padre_id'),
+            epitetoInfraespecifico: $request->validated('epiteto_infraespecifico'),
         ));
 
         return (new TaxonResource($output))
@@ -43,6 +44,7 @@ final class TaxonController extends Controller
             nombreCientifico: $request->validated('nombre_cientifico'),
             autor: $request->validated('autor'),
             anioDescripcion: $request->validated('anio_descripcion'),
+            epitetoInfraespecifico: $request->validated('epiteto_infraespecifico'),
         ));
 
         return (new TaxonResource($output))

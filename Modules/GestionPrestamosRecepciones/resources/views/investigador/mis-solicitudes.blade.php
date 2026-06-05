@@ -1,74 +1,99 @@
-<div class="p-6 space-y-6">
+<div class="space-y-6">
 
-    <div class="flex items-center justify-between">
-        <flux:heading size="xl" level="1" class="font-display">Mis solicitudes</flux:heading>
-        <flux:button variant="primary" icon="plus" wire:navigate href="{{ route('prestamos.investigador.solicitud.crear') }}">
+    {{-- Encabezado --}}
+    <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <flux:heading size="xl" level="1" class="font-display">Mis solicitudes</flux:heading>
+            <flux:text class="text-text-secondary text-sm mt-1">
+                Gestiona tus solicitudes de préstamo de especímenes entomológicos.
+            </flux:text>
+        </div>
+        <flux:button variant="primary" icon="plus"
+            wire:navigate href="{{ route('prestamos.investigador.solicitud.crear') }}"
+            class="shrink-0 self-start sm:self-auto">
             Nueva solicitud
         </flux:button>
     </div>
 
-    {{-- Barra de filtros --}}
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div class="flex-1">
-            <flux:input
-                wire:model.live.debounce.300ms="busqueda"
-                placeholder="Buscar por título o N.º solicitud..."
-                icon="magnifying-glass"
-                clearable />
-        </div>
-        <div class="flex items-center gap-2">
-            <flux:select wire:model.live="estado" class="w-48">
-                <flux:select.option value="">Todos los estados</flux:select.option>
-                <flux:select.option value="borrador">Borrador</flux:select.option>
-                <flux:select.option value="enviada">Enviada</flux:select.option>
-                <flux:select.option value="observada">Observada</flux:select.option>
-                <flux:select.option value="aprobada">Aprobada</flux:select.option>
-                <flux:select.option value="rechazada">Rechazada</flux:select.option>
-            </flux:select>
-            <flux:select wire:model.live="ordenCampo" class="w-44">
-                <flux:select.option value="fecha">Ordenar por fecha</flux:select.option>
-                <flux:select.option value="titulo">Ordenar por título</flux:select.option>
-            </flux:select>
-            <flux:button
-                wire:click="toggleOrden"
-                variant="ghost"
-                icon="{{ $ordenDireccion === 'asc' ? 'bars-arrow-up' : 'bars-arrow-down' }}"
-                title="{{ $ordenDireccion === 'asc' ? 'Ascendente' : 'Descendente' }}" />
+    {{-- Panel de filtros --}}
+    <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
+        <div class="flex items-center gap-2 px-4 py-2.5 bg-bg-main border-b border-border">
+            <flux:icon name="funnel" class="size-3.5 text-text-secondary" />
+            <span class="text-xs font-semibold uppercase tracking-wide text-text-secondary">Filtros</span>
             @if($busqueda !== '' || $estado !== '')
-                <flux:button wire:click="limpiarFiltros" variant="ghost" icon="x-mark" title="Limpiar filtros" />
+                <button wire:click="limpiarFiltros" class="ml-auto text-xs font-medium text-science-blue hover:underline transition-colors">
+                    Limpiar todo
+                </button>
             @endif
+        </div>
+        <div class="px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div class="flex-1">
+                <flux:input
+                    wire:model.live.debounce.300ms="busqueda"
+                    placeholder="Buscar por título o N.º solicitud..."
+                    icon="magnifying-glass"
+                    clearable />
+            </div>
+            <div class="flex items-center gap-2 flex-wrap">
+                <flux:select wire:model.live="estado" class="w-48">
+                    <flux:select.option value="">Todos los estados</flux:select.option>
+                    <flux:select.option value="borrador">Borrador</flux:select.option>
+                    <flux:select.option value="enviada">Enviada</flux:select.option>
+                    <flux:select.option value="observada">Observada</flux:select.option>
+                    <flux:select.option value="aprobada">Aprobada</flux:select.option>
+                    <flux:select.option value="rechazada">Rechazada</flux:select.option>
+                </flux:select>
+                <flux:select wire:model.live="ordenCampo" class="w-44">
+                    <flux:select.option value="fecha">Por fecha</flux:select.option>
+                    <flux:select.option value="titulo">Por título</flux:select.option>
+                </flux:select>
+                <flux:button
+                    wire:click="toggleOrden"
+                    variant="ghost"
+                    icon="{{ $ordenDireccion === 'asc' ? 'bars-arrow-up' : 'bars-arrow-down' }}"
+                    title="{{ $ordenDireccion === 'asc' ? 'Ascendente' : 'Descendente' }}" />
+            </div>
         </div>
     </div>
 
     @php $filtroActivo = $busqueda !== '' || $estado !== ''; @endphp
 
     @if($solicitudes->isEmpty() && !$filtroActivo)
-        <div class="flex flex-col items-center justify-center rounded-lg border border-border bg-surface py-[60px] text-center">
-            <flux:icon name="document-text" class="size-12 text-text-secondary mb-3" />
-            <flux:heading size="lg" level="2">Aún no tienes solicitudes</flux:heading>
-            <flux:text class="text-text-secondary mt-1">Crea tu primera solicitud de préstamo para comenzar.</flux:text>
-            <flux:button variant="primary" class="mt-4" wire:navigate href="{{ route('prestamos.investigador.solicitud.crear') }}">
+        <div class="flex flex-col items-center justify-center rounded-lg border border-border bg-surface py-16 text-center px-8 gap-4">
+            <div class="flex h-16 w-16 items-center justify-center rounded-full bg-bg-main border border-border">
+                <flux:icon name="document-text" class="size-8 text-text-secondary/50" />
+            </div>
+            <div>
+                <flux:heading size="lg" level="2">Aún no tienes solicitudes</flux:heading>
+                <flux:text class="text-text-secondary mt-1 text-sm">Crea tu primera solicitud de préstamo para comenzar.</flux:text>
+            </div>
+            <flux:button variant="primary" wire:navigate href="{{ route('prestamos.investigador.solicitud.crear') }}">
                 Crear solicitud
             </flux:button>
         </div>
+
     @elseif($solicitudes->isEmpty())
-        <div class="flex flex-col items-center justify-center rounded-lg border border-border bg-surface py-[60px] text-center">
-            <flux:icon name="magnifying-glass" class="size-12 text-text-secondary mb-3" />
-            <flux:heading size="lg" level="2">Sin resultados</flux:heading>
-            <flux:text class="text-text-secondary mt-1">No se encontraron solicitudes con los filtros aplicados.</flux:text>
-            <flux:button variant="ghost" class="mt-4" wire:click="limpiarFiltros">
-                Limpiar filtros
-            </flux:button>
+        <div class="flex flex-col items-center justify-center rounded-lg border border-border bg-surface py-16 text-center px-8 gap-4">
+            <div class="flex h-16 w-16 items-center justify-center rounded-full bg-bg-main border border-border">
+                <flux:icon name="magnifying-glass" class="size-8 text-text-secondary/50" />
+            </div>
+            <div>
+                <flux:heading size="lg" level="2">Sin resultados</flux:heading>
+                <flux:text class="text-text-secondary mt-1 text-sm">No se encontraron solicitudes con los filtros aplicados.</flux:text>
+            </div>
+            <flux:button variant="ghost" wire:click="limpiarFiltros">Limpiar filtros</flux:button>
         </div>
+
     @else
         <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
-            <table class="w-full text-sm">
+            <div class="overflow-x-auto">
+            <table class="w-full text-sm min-w-[640px]">
                 <thead class="bg-blue-navy border-b border-border">
                     <tr>
                         <th class="px-4 py-3 text-left font-medium text-white">N.º solicitud</th>
                         <th class="px-4 py-3 text-left font-medium text-white w-72">Título del estudio</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Estado</th>
-                        <th class="px-4 py-3 text-left font-medium text-white">Fecha de solicitud</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">Fecha</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Acciones</th>
                     </tr>
                 </thead>
@@ -143,6 +168,7 @@
                     @endforeach
                 </tbody>
             </table>
+            </div>
         </div>
     @endif
 

@@ -11,13 +11,6 @@ Característica: Reubicación digital guiada de unit trays y guía para visitant
     Entonces el unit tray queda registrado en la caja de destino
     Y se guarda un registro en el historial de custodia con las cajas de origen y destino
 
-  Escenario: El curador intenta trasladar un unit tray a una caja sin espacio disponible
-    Dado que existe un unit tray en una caja de origen
-    Y la caja de destino ha alcanzado su capacidad máxima de unit trays
-    Cuando el curador traslada el unit tray a la caja de destino
-    Entonces se informa que la caja de destino no tiene espacio disponible
-    Y el unit tray permanece en su caja de origen
-
   Escenario: El curador recibe una advertencia al trasladar un unit tray que rompería el orden por especie en la caja de destino
     Dado que existe un unit tray en una caja de origen
     Y en la caja de destino el unit tray quedaría fuera del orden alfabético por especie

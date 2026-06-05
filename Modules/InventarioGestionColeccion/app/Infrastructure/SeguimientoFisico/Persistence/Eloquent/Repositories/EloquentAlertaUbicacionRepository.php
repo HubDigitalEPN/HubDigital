@@ -28,6 +28,7 @@ class EloquentAlertaUbicacionRepository implements AlertaUbicacionRepository
                 'tipo' => $alerta->tipo()->valor(),
                 'estado' => $alerta->estado()->valor(),
                 'datos_contexto' => $alerta->datosContexto(),
+                'motivo_resolucion' => $alerta->motivoResolucion(),
             ]
         );
     }
@@ -70,6 +71,7 @@ class EloquentAlertaUbicacionRepository implements AlertaUbicacionRepository
             estado: EstadoAlerta::from($model->estado),
             datosContexto: $model->datos_contexto ?? [],
             generadaEn: $model->created_at->toDateTimeImmutable(),
+            motivoResolucion: $model->motivo_resolucion,
         );
     }
 }

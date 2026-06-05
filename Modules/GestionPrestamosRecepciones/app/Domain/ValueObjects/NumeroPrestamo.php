@@ -8,13 +8,13 @@ use InvalidArgumentException;
 
 final readonly class NumeroPrestamo
 {
-    private const PREFIX = 'act_';
+    private const PREFIX = 'ACT_';
 
     private const CHARSET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
     private const SUFFIX_LENGTH = 6;
 
-    private const PATTERN = '/^act_[A-Z0-9]{6}$/';
+    private const PATTERN = '/^ACT_[A-Z0-9]{6}$/';
 
     private function __construct(private string $value) {}
 
@@ -35,7 +35,7 @@ final readonly class NumeroPrestamo
     {
         if (! preg_match(self::PATTERN, $value)) {
             throw new InvalidArgumentException(
-                "Formato inválido para NumeroPrestamo: '{$value}'. Se esperaba 'act_' seguido de 6 caracteres alfanuméricos en mayúsculas."
+                "Formato inválido para NumeroPrestamo: '{$value}'. Se esperaba 'ACT_' seguido de 6 caracteres alfanuméricos en mayúsculas."
             );
         }
 

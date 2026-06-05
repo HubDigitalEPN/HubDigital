@@ -15,4 +15,10 @@ interface UbicacionCajaRepository
     public function guardar(UbicacionCaja $ubicacion): void;
 
     public function buscarActivaPorCaja(CajaId $cajaId): ?UbicacionCaja;
+
+    /**
+     * Retorna la ubicación cerrada (con retiradaEn) más reciente de la caja,
+     * es decir, el último retiro registrado. Null si nunca ha sido retirada.
+     */
+    public function buscarUltimaRetiradaPorCaja(CajaId $cajaId): ?UbicacionCaja;
 }

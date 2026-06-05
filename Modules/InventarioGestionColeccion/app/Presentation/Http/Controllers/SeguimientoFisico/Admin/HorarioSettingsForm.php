@@ -11,10 +11,13 @@ use Livewire\Component;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarHorario\ActualizarHorarioHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarHorario\ActualizarHorarioInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ObtenerHorario\ObtenerHorarioHandler;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
 
 #[Layout('layouts.app', params: ['title' => 'Horario'])]
 final class HorarioSettingsForm extends Component
 {
+    use TraduceErroresPersistencia;
+
     #[Rule('required|integer|min:0|max:23')]
     public ?int $horaInicio = null;
 
@@ -49,8 +52,8 @@ final class HorarioSettingsForm extends Component
 
             $this->successMessage = 'Horario actualizado correctamente.';
             $this->errorMessage = null;
-        } catch (\Exception $e) {
-            $this->errorMessage = 'Error al actualizar horario: '.$e->getMessage();
+        } catch (\Throwable $e) {
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
             $this->successMessage = null;
         }
     }
@@ -61,8 +64,8 @@ final class HorarioSettingsForm extends Component
             $output = $handler->handle();
             $this->horaInicio = $output->horaInicio;
             $this->horaFin = $output->horaFin;
-        } catch (\Exception $e) {
-            $this->errorMessage = 'Error al cargar horario: '.$e->getMessage();
+        } catch (\Throwable $e) {
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 

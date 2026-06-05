@@ -12,15 +12,20 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Li
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarGabinetes\ListarGabineteHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarRanurasGabinete\ListarRanurasGabineteHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarRanurasGabinete\ListarRanurasGabineteInput;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
 
 #[Layout('layouts.app', params: ['title' => 'Monitoreo IoT'])]
 final class Dashboard extends Component
 {
+    use TraduceErroresPersistencia;
+
     public array $gabinetes = [];
 
     public array $cajasPorId = [];
 
     public array $resumenEstados = [];
+
+    public ?string $errorMessage = null;
 
     public function mount(
         ListarGabineteHandler $gabineteHandler,
@@ -36,42 +41,47 @@ final class Dashboard extends Component
         ListarCajasHandler $cajasHandler,
         ListarRanurasGabineteHandler $ranurasHandler,
     ): void {
-        $cajasOutput = $cajasHandler->handle();
+        $this->cargarProtegido(function () use ($gabineteHandler, $cajasHandler, $ranurasHandler) {
+            $cajasOutput = $cajasHandler->handle();
 
-        $cajasPorId = [];
-        $resumen = [];
-        foreach ($cajasOutput->items as $c) {
-            $cajasPorId[$c->id] = ['id' => $c->id, 'codigo' => $c->codigo, 'estado' => $c->estado];
-            $resumen[$c->estado] = ($resumen[$c->estado] ?? 0) + 1;
-        }
-        $this->cajasPorId = $cajasPorId;
-        $this->resumenEstados = $resumen;
+            $cajasPorId = [];
+            $resumen = [];
+            foreach ($cajasOutput->items as $c) {
+                $cajasPorId[$c->id] = ['id' => $c->id, 'codigo' => $c->codigo, 'estado' => $c->estado];
+                $resumen[$c->estado] = ($resumen[$c->estado] ?? 0) + 1;
+            }
 
-        $gabinetes = [];
-        foreach ($gabineteHandler->handle()->items as $g) {
-            $ranurasOutput = $ranurasHandler->handle(new ListarRanurasGabineteInput($g->id));
+            $gabinetes = [];
+            foreach ($gabineteHandler->handle()->items as $g) {
+                $ranurasOutput = $ranurasHandler->handle(new ListarRanurasGabineteInput($g->id));
 
-            $ranuras = array_map(
-                fn ($r) => [
-                    'id' => $r->id,
-                    'numeroRanura' => $r->numeroRanura,
-                    'cajaActual' => $r->cajaActualId ? ($cajasPorId[$r->cajaActualId] ?? null) : null,
-                ],
-                $ranurasOutput->items,
-            );
+                $ranuras = array_map(
+                    fn ($r) => [
+                        'id' => $r->id,
+                        'numeroRanura' => $r->numeroRanura,
+                        'cajaActual' => $r->cajaActualId ? ($cajasPorId[$r->cajaActualId] ?? null) : null,
+                    ],
+                    $ranurasOutput->items,
+                );
 
-            usort($ranuras, fn ($a, $b) => $a['numeroRanura'] <=> $b['numeroRanura']);
+                usort($ranuras, fn ($a, $b) => $a['numeroRanura'] <=> $b['numeroRanura']);
 
-            $gabinetes[] = [
-                'id' => $g->id,
-                'codigo' => $g->codigo,
-                'nombre' => $g->nombre,
-                'totalRanuras' => $g->totalRanuras,
-                'ranuras' => $ranuras,
-            ];
-        }
+                $gabinetes[] = [
+                    'id' => $g->id,
+                    'codigo' => $g->codigo,
+                    'nombre' => $g->nombre,
+                    'totalRanuras' => $g->totalRanuras,
+                    'ranuras' => $ranuras,
+                ];
+            }
 
-        $this->gabinetes = $gabinetes;
+            // Solo se publica el estado completo si toda la carga tuvo éxito, para no
+            // dejar el tablero con datos a medias durante un fallo de conexión.
+            $this->cajasPorId = $cajasPorId;
+            $this->resumenEstados = $resumen;
+            $this->gabinetes = $gabinetes;
+            $this->errorMessage = null;
+        });
     }
 
     public function render(): View

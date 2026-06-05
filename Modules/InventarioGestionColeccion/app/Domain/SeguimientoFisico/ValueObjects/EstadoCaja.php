@@ -22,4 +22,18 @@ enum EstadoCaja: string
     {
         return $this === $other;
     }
+
+    /**
+     * Estados en los que la caja está físicamente alojada en una ranura del gabinete.
+     * EnGabinete es el estado normal; UbicacionIncorrecta y PendienteClasificacion son
+     * banderas de negocio sobre una caja que sigue presente en su ranura. Desde cualquiera
+     * de los tres, un retiro físico detectado por el ESP32 es válido.
+     */
+    public function estaAlojadaEnRanura(): bool
+    {
+        return match ($this) {
+            self::EnGabinete, self::UbicacionIncorrecta, self::PendienteClasificacion => true,
+            default => false,
+        };
+    }
 }

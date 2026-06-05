@@ -19,10 +19,13 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\De
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarGabinetes\ListarGabineteHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarRanurasGabinete\ListarRanurasGabineteHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarRanurasGabinete\ListarRanurasGabineteInput;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
 
 #[Layout('layouts.app', params: ['title' => 'Gabinetes'])]
 final class GabineteIndex extends Component
 {
+    use TraduceErroresPersistencia;
+
     public array $gabinetes = [];
 
     public bool $showModal = false;
@@ -54,7 +57,7 @@ final class GabineteIndex extends Component
 
     public function mount(ListarGabineteHandler $handler): void
     {
-        $this->cargarGabinetes($handler);
+        $this->cargarProtegido(fn () => $this->cargarGabinetes($handler));
     }
 
     public function abrirModal(): void
@@ -65,26 +68,24 @@ final class GabineteIndex extends Component
         $this->showModal = true;
     }
 
-    public function crearGabinete(
-        CrearGabineteHandler $crearHandler,
-        ListarGabineteHandler $listarHandler,
-    ): void {
+    public function crearGabinete(CrearGabineteHandler $crearHandler)
+    {
         $this->validateOnly('codigo');
         $this->validateOnly('nombre');
         $this->validateOnly('totalRanuras');
 
         try {
-            $crearHandler->handle(new CrearGabineteInput(
+            $output = $crearHandler->handle(new CrearGabineteInput(
                 codigo: $this->codigo,
                 nombre: $this->nombre,
                 totalRanuras: $this->totalRanuras,
             ));
 
-            $this->cargarGabinetes($listarHandler);
-            $this->showModal = false;
-            $this->successMessage = 'Gabinete creado correctamente.';
+            session()->flash('successMessage', 'Gabinete creado. Configura el ESP32 con su ID y token de API.');
+
+            return $this->redirectRoute('inventario.gabinetes.show', ['id' => $output->id], navigate: true);
         } catch (\Throwable $e) {
-            $this->errorMessage = $e->getMessage();
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 
@@ -107,7 +108,6 @@ final class GabineteIndex extends Component
             fn ($r) => [
                 'id' => $r->id,
                 'numeroRanura' => $r->numeroRanura,
-                'familiaTaxonomicaEsperadaId' => $r->familiaTaxonomicaEsperadaId,
                 'activa' => $r->activa,
             ],
             $ranuras->items,
@@ -130,13 +130,12 @@ final class GabineteIndex extends Component
             $handler = app(ActualizarRanuraHandler::class);
             $handler->handle(new ActualizarRanuraInput(
                 ranuraId: $ranuraId,
-                familiaTaxonomicaEsperadaId: $this->editRanuras[$idx]['familiaTaxonomicaEsperadaId'] ?? null,
                 activa: $nuevaActiva,
             ));
 
             $this->editRanuras[$idx]['activa'] = $nuevaActiva;
         } catch (\Throwable $e) {
-            $this->errorMessage = $e->getMessage();
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 
@@ -159,7 +158,7 @@ final class GabineteIndex extends Component
             $this->successMessage = 'Gabinete actualizado correctamente.';
             $this->errorMessage = null;
         } catch (\Throwable $e) {
-            $this->errorMessage = $e->getMessage();
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 
@@ -174,7 +173,7 @@ final class GabineteIndex extends Component
             $this->successMessage = 'Gabinete desactivado.';
             $this->errorMessage = null;
         } catch (\Throwable $e) {
-            $this->errorMessage = $e->getMessage();
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 

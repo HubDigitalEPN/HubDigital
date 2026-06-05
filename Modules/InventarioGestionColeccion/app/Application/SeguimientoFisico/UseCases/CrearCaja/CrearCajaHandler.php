@@ -22,9 +22,9 @@ final class CrearCajaHandler
         $caja = Caja::crear(
             id: $id,
             codigo: CodigoCaja::desde($input->codigo),
-            familiaTaxonomicaId: $input->familiaTaxonomicaId,
+            esEspecial: $input->esEspecial,
+            observacion: $input->observacion,
             nombre: $input->nombre,
-            capacidadMaxima: $input->capacidadMaxima,
         );
 
         $caja->asignarRfid(CodigoRfid::desde($input->codigoRfid));
@@ -35,9 +35,9 @@ final class CrearCajaHandler
             id: (string) $caja->id(),
             codigo: (string) $caja->codigo(),
             codigoRfid: (string) $caja->codigoRfid(),
+            esEspecial: $caja->esEspecial(),
+            observacion: $caja->observacion(),
             nombre: $caja->nombre(),
-            familiaTaxonomicaId: $caja->familiaTaxonomicaId(),
-            capacidadMaxima: $caja->capacidadMaxima(),
             estado: $caja->estadoActual()->valor(),
         );
     }

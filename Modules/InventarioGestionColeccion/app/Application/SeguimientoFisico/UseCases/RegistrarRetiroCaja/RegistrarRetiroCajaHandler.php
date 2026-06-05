@@ -136,6 +136,7 @@ final class RegistrarRetiroCajaHandler
             'estadoCaja' => $caja->estadoActual()->valor(),
             'alertaGenerada' => $alertaGenerada,
             'notificacionEnviada' => $notificacionEnviada,
+            'ranuraId' => (string) $ranura->id(),
         ]);
     }
 }

@@ -7,40 +7,29 @@ namespace Modules\InventarioGestionColeccion\Presentation\Http\Controllers\Segui
 use Illuminate\View\View;
 use Laravel\Sanctum\PersonalAccessToken;
 use Livewire\Attributes\Layout;
-use Livewire\Attributes\Rule;
 use Livewire\Component;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarRanura\ActualizarRanuraHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarRanura\ActualizarRanuraInput;
-use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\CrearRanuraGabinete\CrearRanuraGabineteHandler;
-use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\CrearRanuraGabinete\CrearRanuraGabineteInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarCajas\ListarCajasHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarGabinetes\ListarGabineteHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarRanurasGabinete\ListarRanurasGabineteHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarRanurasGabinete\ListarRanurasGabineteInput;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
 
 #[Layout('layouts.app', params: ['title' => 'Gabinete'])]
 final class GabineteShow extends Component
 {
+    use TraduceErroresPersistencia;
+
     public string $gabineteId = '';
 
     public array $gabinete = [];
 
     public array $ranuras = [];
 
-    public bool $showAgregarRanura = false;
-
-    #[Rule('required|integer|min:1|max:25')]
-    public int $numeroRanura = 1;
-
-    #[Rule('nullable|string|max:255')]
-    public ?string $familiaTaxonomicaEsperadaId = null;
-
     public bool $showEditRanura = false;
 
     public string $editandoRanuraId = '';
-
-    #[Rule('nullable|string|max:255')]
-    public ?string $editFamiliaTaxonomica = null;
 
     public int $editActiva = 1;
 
@@ -59,34 +48,13 @@ final class GabineteShow extends Component
         ListarCajasHandler $listarCajas,
     ): void {
         $this->gabineteId = $id;
-        $this->cargarGabinete($listarGabinetes);
-        $cajasPorId = $this->buildCajasPorId($listarCajas);
-        $this->cargarRanuras($listarRanuras, $cajasPorId);
-        $this->tieneToken = PersonalAccessToken::where('name', "esp32-{$id}")->exists();
-    }
-
-    public function agregarRanura(
-        CrearRanuraGabineteHandler $crearHandler,
-        ListarRanurasGabineteHandler $listarHandler,
-        ListarCajasHandler $cajasHandler,
-    ): void {
-        $this->validate();
-
-        try {
-            $crearHandler->handle(new CrearRanuraGabineteInput(
-                gabineteId: $this->gabineteId,
-                numeroRanura: $this->numeroRanura,
-                familiaTaxonomicaEsperadaId: $this->familiaTaxonomicaEsperadaId ?: null,
-            ));
-
-            $this->cargarRanuras($listarHandler, $this->buildCajasPorId($cajasHandler));
-            $this->showAgregarRanura = false;
-            $this->reset('numeroRanura', 'familiaTaxonomicaEsperadaId');
-            $this->resetValidation();
-            $this->successMessage = 'Ranura agregada correctamente.';
-        } catch (\Throwable $e) {
-            $this->errorMessage = $e->getMessage();
-        }
+        $this->successMessage = session('successMessage');
+        $this->cargarProtegido(function () use ($id, $listarGabinetes, $listarRanuras, $listarCajas) {
+            $this->cargarGabinete($listarGabinetes);
+            $cajasPorId = $this->buildCajasPorId($listarCajas);
+            $this->cargarRanuras($listarRanuras, $cajasPorId);
+            $this->tieneToken = PersonalAccessToken::where('name', "esp32-{$id}")->exists();
+        });
     }
 
     public function abrirEditRanura(string $ranuraId): void
@@ -98,7 +66,6 @@ final class GabineteShow extends Component
         }
 
         $this->editandoRanuraId = $ranuraId;
-        $this->editFamiliaTaxonomica = $ranura['familiaTaxonomicaEsperadaId'];
         $this->editActiva = $ranura['activa'] ? 1 : 0;
         $this->errorMessage = null;
         $this->showEditRanura = true;
@@ -112,7 +79,6 @@ final class GabineteShow extends Component
         try {
             $actualizarHandler->handle(new ActualizarRanuraInput(
                 ranuraId: $this->editandoRanuraId,
-                familiaTaxonomicaEsperadaId: $this->editFamiliaTaxonomica ?: null,
                 activa: (bool) $this->editActiva,
             ));
 
@@ -121,7 +87,7 @@ final class GabineteShow extends Component
             $this->successMessage = 'Ranura actualizada correctamente.';
             $this->errorMessage = null;
         } catch (\Throwable $e) {
-            $this->errorMessage = $e->getMessage();
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 
@@ -171,7 +137,6 @@ final class GabineteShow extends Component
                 'id' => $r->id,
                 'gabineteId' => $r->gabineteId,
                 'numeroRanura' => $r->numeroRanura,
-                'familiaTaxonomicaEsperadaId' => $r->familiaTaxonomicaEsperadaId,
                 'activa' => $r->activa,
                 'cajaActual' => $r->cajaActualId ? ($cajasPorId[$r->cajaActualId] ?? null) : null,
             ],

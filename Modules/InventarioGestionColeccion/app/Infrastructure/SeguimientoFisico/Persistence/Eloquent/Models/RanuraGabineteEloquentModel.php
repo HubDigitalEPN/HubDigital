@@ -19,7 +19,6 @@ class RanuraGabineteEloquentModel extends Model
         'id',
         'gabinete_id',
         'numero_ranura',
-        'familia_taxonomica_esperada_id',
         'caja_actual_id',
         'activa',
     ];

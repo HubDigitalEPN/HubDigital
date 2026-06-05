@@ -46,6 +46,7 @@ return (new Config)
                         'Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\TramitacionSolicitudesInvestigador\RecordatoriosDevolucionPrestamosContext',
                         'Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\TramitacionSolicitudesInvestigador\CierrePrestamoDevolucionContext',
                         'Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\TramitacionSolicitudesInvestigador\SolicitudProrrogaPrestamoContext',
+                        'Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\TramitacionSolicitudesInvestigador\FirmaDigitalCanvasContext',
                         // AdministracionCuratorialSolicitudesPrestamos
                         'Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\AdministracionCuratorialSolicitudesPrestamos\ResolucionSolicitudesPrestamoContext',
                         'Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\AdministracionCuratorialSolicitudesPrestamos\GestionActaPrestamoContext',
@@ -53,6 +54,7 @@ return (new Config)
                         'Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\AdministracionCuratorialSolicitudesPrestamos\DefinicionRecordatoriosDevolucionContext',
                         'Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\AdministracionCuratorialSolicitudesPrestamos\CierrePrestamosContext',
                         'Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\AdministracionCuratorialSolicitudesPrestamos\GestionProrrogasPrestamoContext',
+                        'Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\AdministracionCuratorialSolicitudesPrestamos\HabilitacionEnvioInternacionalContext',
                         // RecepcionValidacionLotesEspecimenesYDatos
                         'Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\RecepcionValidacionLotesEspecimenesYDatos\RecepcionMuestrasBiologicasContext',
                         'Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\RecepcionValidacionLotesEspecimenesYDatos\RegistroSolicitudDepositoContext',
@@ -66,6 +68,8 @@ return (new Config)
                         // GestionAutonomaSeguridadFisicaInventario
                         'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\GestionAutonomaSeguridadFisicaInventario\AlertaIncongruenciaTaxonomicaContext',
                         'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\GestionAutonomaSeguridadFisicaInventario\RegistroUbicacionCajasContext',
+                        // TrazabilidadOperativaMovimientosCirculacion
+                        'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\TrazabilidadOperativaMovimientosCirculacion\MonitoreoTiempoExtraccionContext',
                         // GestionRegistrosTaxonomicos
                         'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\GestionRegistrosTaxonomicos\RegistroTaxonContext',
                         'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\GestionRegistrosTaxonomicos\RegistroEspecimenContext',
@@ -75,6 +79,8 @@ return (new Config)
                         'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\GestionRegistrosTaxonomicos\BusquedaArbolTaxonomicoContext',
                         'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\GestionRegistrosTaxonomicos\GestionEntidadesDepositantesContext',
                         'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\GestionRegistrosTaxonomicos\GeneracionActaEntregaContext',
+                        'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\GestionRegistrosTaxonomicos\RegistroLocalidadesContext',
+                        'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\GestionRegistrosTaxonomicos\RegistroMuestrasColectaContext',
                     )
             )
     );

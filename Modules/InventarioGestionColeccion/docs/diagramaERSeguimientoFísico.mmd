@@ -14,7 +14,6 @@ erDiagram
     uuid id PK
     uuid gabinete_id FK
     smallint numero_ranura
-    varchar familia_taxonomica_esperada_id "nullable - ref. externa módulo taxonómico"
     uuid caja_actual_id "nullable - desnorm. hacia cajas activa en esta ranura"
     boolean activa
     timestamptz creada_en
@@ -26,7 +25,6 @@ erDiagram
     varchar codigo UK
     varchar nombre "nullable"
     varchar familia_taxonomica_id "ref. externa módulo taxonómico"
-    smallint capacidad_maxima "nullable"
     varchar estado_actual "en_gabinete en_transito ubicacion_incorrecta pendiente_clasificacion extraccion_prolongada extraviada"
     uuid ubicacion_actual_id "nullable - desnorm. hacia ranuras_gabinete activa"
     timestamptz creada_en
@@ -77,7 +75,7 @@ erDiagram
   alertas_ubicacion {
     uuid id PK
     uuid caja_id FK
-    varchar tipo "incongruencia_taxonomica movimiento_no_autorizado extraccion_prolongada familia_no_asignada"
+    varchar tipo "orden_taxonomico_fuera_de_secuencia movimiento_no_autorizado extraccion_prolongada familia_no_asignada"
     varchar estado "activa resuelta ignorada"
     jsonb datos_contexto
     uuid resuelta_por "nullable"

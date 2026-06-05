@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories;
 
+use Illuminate\Support\Facades\DB;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Taxon;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\TaxonRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoTaxon;
@@ -27,6 +28,7 @@ class EloquentTaxonRepository implements TaxonRepositoryInterface
                 'rango' => $taxon->rango()->value,
                 'autor' => $taxon->autor(),
                 'anio_descripcion' => $taxon->anioDescripcion(),
+                'epiteto_infraespecifico' => $taxon->epitetoInfraespecifico(),
                 'estado' => $taxon->estado()->value,
                 'padre_id' => $taxon->padreId() ? (string) $taxon->padreId() : null,
             ]
@@ -78,6 +80,23 @@ class EloquentTaxonRepository implements TaxonRepositoryInterface
             ->all();
     }
 
+    /** @return string[] */
+    public function listarDescendientesIds(string $taxonId): array
+    {
+        // CTE recursivo: incluye el taxón raíz + todos sus descendientes.
+        $sql = 'WITH RECURSIVE descendientes(id) AS (
+                    SELECT id FROM taxonomia.taxones WHERE id = ?
+                    UNION ALL
+                    SELECT t.id FROM taxonomia.taxones t
+                    INNER JOIN descendientes d ON t.padre_id = d.id
+                )
+                SELECT id FROM descendientes';
+
+        $rows = DB::select($sql, [$taxonId]);
+
+        return array_map(fn ($r) => (string) $r->id, $rows);
+    }
+
     private function toDomain(TaxonEloquentModel $model): Taxon
     {
         return Taxon::reconstituir(
@@ -85,9 +104,10 @@ class EloquentTaxonRepository implements TaxonRepositoryInterface
             nombreCientifico: $model->nombre_cientifico,
             rango: RangoTaxonomico::from($model->rango),
             autor: $model->autor,
-            anioDescripcion: (int) $model->anio_descripcion,
+            anioDescripcion: $model->anio_descripcion !== null ? (int) $model->anio_descripcion : null,
             estado: EstadoTaxon::from($model->estado),
             padreId: $model->padre_id ? TaxonId::desde($model->padre_id) : null,
+            epitetoInfraespecifico: $model->epiteto_infraespecifico,
         );
     }
 }

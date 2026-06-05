@@ -23,7 +23,7 @@ class EloquentEntidadDepositanteRepository implements EntidadDepositanteReposito
             ['id' => (string) $entidad->id()],
             [
                 'nombre' => $entidad->nombre(),
-                'tipo' => $entidad->tipo()->value,
+                'tipo' => $entidad->tipo()?->value,
                 'contacto' => $entidad->contacto(),
             ]
         );
@@ -56,7 +56,7 @@ class EloquentEntidadDepositanteRepository implements EntidadDepositanteReposito
         return EntidadDepositante::reconstituir(
             id: EntidadDepositanteId::desde($model->id),
             nombre: $model->nombre,
-            tipo: TipoEntidadDepositante::from($model->tipo),
+            tipo: $model->tipo !== null ? TipoEntidadDepositante::from($model->tipo) : null,
             contacto: $model->contacto,
         );
     }

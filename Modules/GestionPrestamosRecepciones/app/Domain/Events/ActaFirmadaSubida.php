@@ -14,6 +14,7 @@ final readonly class ActaFirmadaSubida
         public ActaPrestamoId $actaId,
         public SolicitudPrestamoId $solicitudId,
         public string $pdfFirmadoRuta,
+        public string $documentoIdentidadRuta,
         public DateTimeImmutable $ocurridoEn,
     ) {}
 }

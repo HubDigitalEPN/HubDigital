@@ -24,11 +24,22 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+        $this->configureTranslations();
     }
 
     /**
      * Configure default behaviors for production-ready applications.
      */
+    protected function configureTranslations(): void
+    {
+        $this->app['translator']->addLines([
+            'validation.uploaded' => 'El archivo :attribute no pudo cargarse. Verifica que sea un PDF de máximo 10 MB.',
+            'validation.attributes.pdfFirmado' => 'acta firmada',
+            'validation.attributes.documentoIdentidad' => 'documento de identidad',
+            'validation.attributes.documentoIdentidadSolo' => 'documento de identidad',
+        ], 'en');
+    }
+
     protected function configureDefaults(): void
     {
         Date::use(CarbonImmutable::class);

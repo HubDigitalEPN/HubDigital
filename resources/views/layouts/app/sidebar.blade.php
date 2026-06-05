@@ -107,20 +107,76 @@
                         </flux:sidebar.group>
                         <flux:sidebar.group heading="Inventario" class="grid">
                             <flux:sidebar.item
+                                icon="clipboard-document-check"
+                                :href="route('inventario.taxonomia.revision')"
+                                :current="request()->routeIs('inventario.taxonomia.revision')"
+                                wire:navigate
+                            >
+                                Centro de revisión
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
                                 icon="magnifying-glass"
                                 :href="route('inventario.taxonomia.especimenes')"
-                                :current="request()->routeIs('inventario.taxonomia.especimenes')"
+                                :current="request()->routeIs('inventario.taxonomia.especimenes') && !request()->routeIs('inventario.taxonomia.especimenes.duplicados')"
                                 wire:navigate
                             >
                                 Especímenes
                             </flux:sidebar.item>
                             <flux:sidebar.item
+                                icon="exclamation-triangle"
+                                :href="route('inventario.taxonomia.especimenes.duplicados')"
+                                :current="request()->routeIs('inventario.taxonomia.especimenes.duplicados')"
+                                wire:navigate
+                            >
+                                Duplicados catalog#
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="calendar-days"
+                                :href="route('inventario.taxonomia.fechas.revision')"
+                                :current="request()->routeIs('inventario.taxonomia.fechas.revision')"
+                                wire:navigate
+                            >
+                                Parseo de fechas
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="rectangle-stack"
+                                :href="route('inventario.taxonomia.muestras')"
+                                :current="request()->routeIs('inventario.taxonomia.muestras')"
+                                wire:navigate
+                            >
+                                Muestras de colecta
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
                                 icon="tag"
                                 :href="route('inventario.taxonomia.taxones')"
-                                :current="request()->routeIs('inventario.taxonomia.taxones')"
+                                :current="request()->routeIs('inventario.taxonomia.taxones') && !request()->routeIs('inventario.taxonomia.taxones.revision')"
                                 wire:navigate
                             >
                                 Taxones
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="exclamation-triangle"
+                                :href="route('inventario.taxonomia.taxones.revision')"
+                                :current="request()->routeIs('inventario.taxonomia.taxones.revision')"
+                                wire:navigate
+                            >
+                                Revisión taxa
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="map-pin"
+                                :href="route('inventario.taxonomia.localidades')"
+                                :current="request()->routeIs('inventario.taxonomia.localidades') && !request()->routeIs('inventario.taxonomia.localidades.revision')"
+                                wire:navigate
+                            >
+                                Localidades
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="exclamation-triangle"
+                                :href="route('inventario.taxonomia.localidades.revision')"
+                                :current="request()->routeIs('inventario.taxonomia.localidades.revision')"
+                                wire:navigate
+                            >
+                                Revisión localidades
                             </flux:sidebar.item>
                             <flux:sidebar.item
                                 icon="building-library"
@@ -129,6 +185,22 @@
                                 wire:navigate
                             >
                                 Entidades depositantes
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="globe-alt"
+                                :href="route('inventario.taxonomia.dataset.config')"
+                                :current="request()->routeIs('inventario.taxonomia.dataset.config')"
+                                wire:navigate
+                            >
+                                Dataset GBIF
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="swatch"
+                                :href="route('inventario.taxonomia.columnas.config')"
+                                :current="request()->routeIs('inventario.taxonomia.columnas.config')"
+                                wire:navigate
+                            >
+                                Prioridad columnas
                             </flux:sidebar.item>
                         </flux:sidebar.group>
                         <flux:sidebar.group heading="Seguimiento físico" class="grid">
@@ -157,12 +229,28 @@
                                 Cajas
                             </flux:sidebar.item>
                             <flux:sidebar.item
+                                icon="squares-2x2"
+                                :href="route('inventario.unit-trays')"
+                                :current="request()->routeIs('inventario.unit-trays')"
+                                wire:navigate
+                            >
+                                Unit trays
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
                                 icon="bell-alert"
                                 :href="route('inventario.alertas')"
                                 :current="request()->routeIs('inventario.alertas')"
                                 wire:navigate
                             >
                                 Alertas
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="bars-arrow-down"
+                                :href="route('inventario.orden-familias')"
+                                :current="request()->routeIs('inventario.orden-familias')"
+                                wire:navigate
+                            >
+                                Orden de familias
                             </flux:sidebar.item>
                             <flux:sidebar.item
                                 icon="clock"
