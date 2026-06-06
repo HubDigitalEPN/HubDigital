@@ -18,6 +18,7 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <Preferences.h>
+#include <esp_wpa2.h>
 
 // ── Pines ────────────────────────────────────────────────
 constexpr uint8_t PIN_RST   = 22;          // compartido por los lectores
@@ -253,15 +254,25 @@ void setup() {
     Serial.begin(115200);
 
     Preferences p; p.begin("hub-digital", true);
-    char ssid[64], pass[64];
-    p.getString("wifi_ssid",   ssid,       sizeof(ssid));
-    p.getString("wifi_pass",   pass,       sizeof(pass));
-    p.getString("api_url",     apiUrl,     sizeof(apiUrl));
-    p.getString("api_token",   apiToken,   sizeof(apiToken));
-    p.getString("gabinete_id", gabineteId, sizeof(gabineteId));
+    char ssid[64], eapIdentity[64], eapUser[64], eapPass[64];
+    p.getString("wifi_ssid",    ssid,        sizeof(ssid));
+    p.getString("eap_identity", eapIdentity, sizeof(eapIdentity));
+    p.getString("eap_user",     eapUser,     sizeof(eapUser));
+    p.getString("eap_pass",     eapPass,     sizeof(eapPass));
+    p.getString("api_url",      apiUrl,      sizeof(apiUrl));
+    p.getString("api_token",    apiToken,    sizeof(apiToken));
+    p.getString("gabinete_id",  gabineteId,  sizeof(gabineteId));
     p.end();
 
-    WiFi.begin(ssid, pass);
+    // Red WPA2-Enterprise (PEAP-MSCHAPv2) — provisioning_prod guarda claves EAP,
+    // no una PSK, por eso WiFi.begin(ssid, pass) nunca conectaba.
+    WiFi.disconnect(true);
+    WiFi.mode(WIFI_STA);
+    esp_wifi_sta_wpa2_ent_set_identity((uint8_t*)eapIdentity, strlen(eapIdentity));
+    esp_wifi_sta_wpa2_ent_set_username((uint8_t*)eapUser,     strlen(eapUser));
+    esp_wifi_sta_wpa2_ent_set_password((uint8_t*)eapPass,     strlen(eapPass));
+    esp_wifi_sta_wpa2_ent_enable();
+    WiFi.begin(ssid);
     Serial.print("WiFi...");
     while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print("."); }
     Serial.println(" OK");
