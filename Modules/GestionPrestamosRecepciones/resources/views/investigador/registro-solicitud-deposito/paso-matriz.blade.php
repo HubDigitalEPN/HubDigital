@@ -31,17 +31,6 @@
         </span>
     </div>
 
-    {{-- Banner: matriz obligatoria (sin cargar) --}}
-    @if(!$matrizCargada)
-        <flux:callout variant="warning" icon="exclamation-triangle">
-            <flux:heading>La matriz de especímenes es obligatoria</flux:heading>
-            <flux:text class="text-sm">
-                No es posible finalizar el envío sin una matriz asociada. Carga el archivo Darwin Core
-                para habilitar la validación técnica y taxonómica.
-            </flux:text>
-        </flux:callout>
-    @endif
-
     {{-- Banner: rechazo por campo DwC faltante --}}
     @if($matrizCargada && !empty($errorMatriz))
         <flux:callout variant="danger" icon="x-circle">

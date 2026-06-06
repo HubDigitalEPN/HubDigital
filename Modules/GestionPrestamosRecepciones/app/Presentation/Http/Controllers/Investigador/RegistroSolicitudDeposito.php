@@ -508,6 +508,19 @@ final class RegistroSolicitudDeposito extends Component
 
                 return;
             }
+        } else {
+            // El usuario regresó al paso 1 y puede haber cambiado el tipo: sincronizar en BD.
+            SolicitudDepositoEloquentModel::where('id', $this->solicitudId)
+                ->update(['tipo_tramite' => $this->tipoTramite]);
+
+            // Al cambiar a Depósito, deshacer el salto automático de Donación:
+            // el paso 2 ya no puede darse por completado y los docs deben redeterminarse.
+            if ($this->tipoTramite === TipoTramite::Deposito->value) {
+                $this->pasosCompletados = array_values(
+                    array_filter($this->pasosCompletados, fn ($p) => $p !== 2)
+                );
+                $this->documentosRequeridos = [];
+            }
         }
 
         $this->pasosCompletados = array_values(array_unique([...$this->pasosCompletados, 1]));
