@@ -96,6 +96,15 @@ final class AsignacionUnitTrayIndex extends Component
         $this->cargarProtegido(fn () => $this->cargarEspecimenes());
     }
 
+    public function cancelarSeleccion(): void
+    {
+        $this->unitTraySeleccionado = '';
+        $this->especimenesSeleccionados = [];
+        $this->especimenes = [];
+        $this->busquedaEspecimen = '';
+        $this->limpiarMensajes();
+    }
+
     public function asignarEspecimenes(ActualizarEspecimenesUnitTrayHandler $handler): void
     {
         $this->validate(['unitTraySeleccionado' => 'required|string']);
