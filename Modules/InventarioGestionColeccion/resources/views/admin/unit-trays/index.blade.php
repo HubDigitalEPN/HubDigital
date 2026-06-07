@@ -188,13 +188,15 @@
                         class="flex items-center gap-3 px-4 py-3 hover:bg-bg-main cursor-pointer min-h-[44px]"
                     >
                         <flux:checkbox
-                            wire:model="especimenesSeleccionados"
+                            wire:model.live="especimenesSeleccionados"
                             value="{{ $especimen['id'] }}"
                         />
                         <span class="shrink-0 font-medium text-text-primary">{{ $especimen['codigoCatalogo'] }}</span>
                         <span class="font-serif italic text-text-secondary">{{ $especimen['taxonNombre'] }}</span>
-                        @if($especimen['unitTrayId'] && $especimen['unitTrayId'] !== $unitTraySeleccionado)
-                            <span class="ml-auto shrink-0 text-xs text-warning">en otro unit tray</span>
+                        @if($especimen['unitTrayId'] === $unitTraySeleccionado)
+                            <flux:badge size="sm" color="green" icon="check" class="ml-auto shrink-0">Ya en este tray</flux:badge>
+                        @elseif($especimen['unitTrayId'])
+                            <flux:badge size="sm" color="amber" class="ml-auto shrink-0">En otro unit tray</flux:badge>
                         @endif
                     </label>
                 @empty
@@ -208,10 +210,40 @@
                 @endforelse
             </div>
 
-            <div class="flex justify-end">
-                <flux:button variant="primary" icon="check" wire:click="asignarEspecimenes" class="min-h-[44px]">
-                    Guardar asignación
-                </flux:button>
+            {{-- Confirmación inline, junto a la acción: el callout superior queda fuera de
+                 vista tras desplazar la lista, así que el feedback se repite aquí. --}}
+            @if($successMessage)
+                <div class="flex items-center gap-2 rounded-lg bg-success/10 px-3 py-2 text-sm font-medium text-bio-green">
+                    <flux:icon name="check-circle" class="size-5" />
+                    <span>{{ $successMessage }}</span>
+                </div>
+            @endif
+
+            <div class="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
+                <p class="text-sm text-text-secondary">
+                    <span class="font-medium text-text-primary">{{ count($especimenesSeleccionados) }}</span>
+                    {{ count($especimenesSeleccionados) === 1 ? 'espécimen seleccionado' : 'especímenes seleccionados' }}
+                </p>
+                <div class="flex flex-col gap-2 sm:flex-row">
+                    <flux:button
+                        variant="ghost"
+                        wire:click="cancelarSeleccion"
+                        class="w-full min-h-[44px] sm:w-auto"
+                    >
+                        Cancelar
+                    </flux:button>
+                    <flux:button
+                        variant="primary"
+                        icon="check"
+                        wire:click="asignarEspecimenes"
+                        wire:loading.attr="disabled"
+                        wire:target="asignarEspecimenes"
+                        class="w-full min-h-[44px] sm:w-auto"
+                    >
+                        <span wire:loading.remove wire:target="asignarEspecimenes">Guardar asignación</span>
+                        <span wire:loading wire:target="asignarEspecimenes">Guardando…</span>
+                    </flux:button>
+                </div>
             </div>
         </div>
     @endif
