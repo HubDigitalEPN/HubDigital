@@ -6,8 +6,6 @@ namespace Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters;
 
 use Modules\GestionPrestamosRecepciones\Application\Ports\ValidacionTaxonomicaPort;
 
-// TODO: Reemplazar por adapter real cuando InventarioGestionColeccion
-//       implemente el catálogo de referencia taxonómico.
 final class InMemoryValidacionTaxonomicaAdapter implements ValidacionTaxonomicaPort
 {
     /** @var array<string, array{estado: string, sugerencia: ?string}> */

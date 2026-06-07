@@ -177,7 +177,13 @@ final class RegistroSolicitudDeposito extends Component
     public array $camposDwCPresentes = [];
 
     /** @var string[] */
-    public array $camposDwCRequeridos = [];
+    public array $camposDwCCriticos = [];
+
+    /** @var string[] */
+    public array $camposDwCRecomendados = [];
+
+    /** @var string[] Recomendados ausentes en el Excel — advertencia, no bloqueo */
+    public array $camposDwCRecomendadosFaltantes = [];
 
     /** @var array<int, array<string, mixed>> */
     public array $registrosMatriz = [];
@@ -350,7 +356,12 @@ final class RegistroSolicitudDeposito extends Component
                 $this->archivoMatrizNombre = 'Matriz cargada';
 
                 $catalogo = app(CatalogoCuraduriaPort::class);
-                $this->camposDwCRequeridos = $catalogo->camposRequeridos($this->solicitudId ?? '');
+                $this->camposDwCCriticos = $catalogo->camposCriticos($this->solicitudId ?? '');
+                $this->camposDwCRecomendados = $catalogo->camposRecomendados($this->solicitudId ?? '');
+                $this->camposDwCRecomendadosFaltantes = array_values(array_filter(
+                    $this->camposDwCRecomendados,
+                    fn (string $campo) => ! in_array($campo, $this->camposDwCPresentes, true)
+                ));
 
                 $this->poblarEstadosRegistros($matriz);
             }
@@ -496,6 +507,19 @@ final class RegistroSolicitudDeposito extends Component
                 $this->mensajeLimite = $e->getMessage();
 
                 return;
+            }
+        } else {
+            // El usuario regresó al paso 1 y puede haber cambiado el tipo: sincronizar en BD.
+            SolicitudDepositoEloquentModel::where('id', $this->solicitudId)
+                ->update(['tipo_tramite' => $this->tipoTramite]);
+
+            // Al cambiar a Depósito, deshacer el salto automático de Donación:
+            // el paso 2 ya no puede darse por completado y los docs deben redeterminarse.
+            if ($this->tipoTramite === TipoTramite::Deposito->value) {
+                $this->pasosCompletados = array_values(
+                    array_filter($this->pasosCompletados, fn ($p) => $p !== 2)
+                );
+                $this->documentosRequeridos = [];
             }
         }
 
@@ -970,7 +994,8 @@ final class RegistroSolicitudDeposito extends Component
         $this->camposDwCPresentes = $campos;
 
         $catalogo = app(CatalogoCuraduriaPort::class);
-        $this->camposDwCRequeridos = $catalogo->camposRequeridos($this->solicitudId ?? '');
+        $this->camposDwCCriticos = $catalogo->camposCriticos($this->solicitudId ?? '');
+        $this->camposDwCRecomendados = $catalogo->camposRecomendados($this->solicitudId ?? '');
 
         $cargar = app(CargarMatrizEspeciesHandler::class);
 
@@ -978,11 +1003,16 @@ final class RegistroSolicitudDeposito extends Component
             $output = ($cargar)(new CargarMatrizEspeciesInput(
                 solicitudId: $this->solicitudId,
                 camposDwCPresentes: array_fill_keys($campos, true),
-                camposDwCExigidosPorCatalogo: $this->camposDwCRequeridos,
+                camposCriticos: $this->camposDwCCriticos,
+                camposRecomendados: $this->camposDwCRecomendados,
                 registros: $registros,
             ));
         } catch (CamposDwCFaltantesException $e) {
             $this->errorMatriz = $e->getMessage();
+            $this->camposDwCRecomendadosFaltantes = array_values(array_filter(
+                $this->camposDwCRecomendados,
+                fn (string $campo) => ! in_array($campo, $this->camposDwCPresentes, true)
+            ));
             $this->matrizCargada = true;
 
             return;
@@ -992,6 +1022,7 @@ final class RegistroSolicitudDeposito extends Component
         $this->estadoMatriz = $output->estadoMatriz->value;
         $this->validacionTipograficaAplicada = $output->validacionTipograficaAplicada;
         $this->totalRegistros = $output->totalRegistros;
+        $this->camposDwCRecomendadosFaltantes = $output->camposRecomendadosFaltantes;
         $this->matrizCargada = true;
         $this->registrosMatriz = $registros;
 
@@ -1024,6 +1055,10 @@ final class RegistroSolicitudDeposito extends Component
                     'especieCorregida' => null,
                     'noCatalogado' => false,
                     'motivoJustificacion' => null,
+                    'advertencias' => array_values(array_filter(
+                        $registro->normalizaciones(),
+                        fn (array $n) => ! empty($n['invalido'])
+                    )),
                 ];
                 $i++;
             }
@@ -1054,6 +1089,10 @@ final class RegistroSolicitudDeposito extends Component
                     'especieCorregida' => $registro->nombreCorregido(),
                     'noCatalogado' => $registro->esNoCatalogado(),
                     'motivoJustificacion' => $registro->motivoJustificacion(),
+                    'advertencias' => array_values(array_filter(
+                        $registro->normalizaciones(),
+                        fn (array $n) => ! empty($n['invalido'])
+                    )),
                 ];
             } else {
                 $estado = match ($validacion['estado']) {
@@ -1081,6 +1120,10 @@ final class RegistroSolicitudDeposito extends Component
                     'especieCorregida' => null,
                     'noCatalogado' => $esNoCatalogado,
                     'motivoJustificacion' => null,
+                    'advertencias' => array_values(array_filter(
+                        $registro->normalizaciones(),
+                        fn (array $n) => ! empty($n['invalido'])
+                    )),
                 ];
             }
 
@@ -1163,6 +1206,9 @@ final class RegistroSolicitudDeposito extends Component
         $this->errorMatriz = '';
         $this->totalRegistros = 0;
         $this->camposDwCPresentes = [];
+        $this->camposDwCCriticos = [];
+        $this->camposDwCRecomendados = [];
+        $this->camposDwCRecomendadosFaltantes = [];
         $this->registrosMatriz = [];
         $this->estadosRegistros = [];
         $this->validacionTipograficaAplicada = false;

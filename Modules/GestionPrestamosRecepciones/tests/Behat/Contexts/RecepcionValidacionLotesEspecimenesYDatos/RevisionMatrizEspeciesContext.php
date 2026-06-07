@@ -322,7 +322,8 @@ final class RevisionMatrizEspeciesContext extends BaseContext
                 new CargarMatrizEspeciesInput(
                     solicitudId: (string) $this->solicitudEnCurso->id(),
                     camposDwCPresentes: $camposPresentes,
-                    camposDwCExigidosPorCatalogo: $this->camposExigidosPorCatalogo,
+                    camposCriticos: $this->camposExigidosPorCatalogo,
+                    camposRecomendados: [],
                     registros: [['scientificName' => 'Apis mellifera']],
                 )
             );
@@ -658,7 +659,8 @@ final class RevisionMatrizEspeciesContext extends BaseContext
                 new CargarMatrizEspeciesInput(
                     solicitudId: (string) $this->solicitudEnCurso->id(),
                     camposDwCPresentes: $camposPresentes,
-                    camposDwCExigidosPorCatalogo: [],
+                    camposCriticos: [],
+                    camposRecomendados: [],
                     registros: $registrosCanonicos,
                 )
             );

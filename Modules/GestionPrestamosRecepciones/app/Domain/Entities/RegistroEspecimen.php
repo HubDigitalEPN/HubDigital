@@ -21,13 +21,25 @@ final class RegistroEspecimen
 
     private ?string $motivoJustificacion;
 
+    /** @var array<string, mixed> Registro DwC completo normalizado desde el Excel */
+    private array $datosDwC = [];
+
+    /** @var list<array{campo: string, original: mixed, normalizado: mixed}> Campos que fueron normalizados */
+    private array $normalizaciones = [];
+
     private function __construct() {}
 
+    /**
+     * @param  array<string, mixed>  $datosDwC  Registro DwC completo normalizado
+     * @param  list<array{campo: string, original: mixed, normalizado: mixed}>  $normalizaciones
+     */
     public static function crear(
         RegistroEspecimenId $id,
         string $nombreCientifico,
         bool $noCatalogado = false,
         EstadoRegistroEspecimen $estadoInicial = EstadoRegistroEspecimen::Pendiente,
+        array $datosDwC = [],
+        array $normalizaciones = [],
     ): self {
         if (trim($nombreCientifico) === '') {
             throw new \DomainException('El nombre científico del espécimen no puede estar vacío');
@@ -40,6 +52,8 @@ final class RegistroEspecimen
         $registro->estado = $estadoInicial;
         $registro->noCatalogado = $noCatalogado;
         $registro->motivoJustificacion = null;
+        $registro->datosDwC = $datosDwC;
+        $registro->normalizaciones = $normalizaciones;
 
         return $registro;
     }
@@ -144,8 +158,24 @@ final class RegistroEspecimen
         return $this->motivoJustificacion;
     }
 
+    /** @return array<string, mixed> */
+    public function datosDwC(): array
+    {
+        return $this->datosDwC;
+    }
+
+    /** @return list<array{campo: string, original: mixed, normalizado: mixed}> */
+    public function normalizaciones(): array
+    {
+        return $this->normalizaciones;
+    }
+
     // ── Reconstitución desde persistencia ────────────────────────
 
+    /**
+     * @param  array<string, mixed>  $datosDwC
+     * @param  list<array{campo: string, original: mixed, normalizado: mixed}>  $normalizaciones
+     */
     public static function reconstituir(
         RegistroEspecimenId $id,
         string $nombreCientifico,
@@ -153,6 +183,8 @@ final class RegistroEspecimen
         EstadoRegistroEspecimen $estado,
         bool $noCatalogado,
         ?string $motivoJustificacion,
+        array $datosDwC = [],
+        array $normalizaciones = [],
     ): self {
         $registro = new self;
         $registro->id = $id;
@@ -161,6 +193,8 @@ final class RegistroEspecimen
         $registro->estado = $estado;
         $registro->noCatalogado = $noCatalogado;
         $registro->motivoJustificacion = $motivoJustificacion;
+        $registro->datosDwC = $datosDwC;
+        $registro->normalizaciones = $normalizaciones;
 
         return $registro;
     }

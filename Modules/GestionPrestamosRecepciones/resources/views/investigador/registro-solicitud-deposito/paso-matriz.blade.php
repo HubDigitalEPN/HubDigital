@@ -31,17 +31,6 @@
         </span>
     </div>
 
-    {{-- Banner: matriz obligatoria (sin cargar) --}}
-    @if(!$matrizCargada)
-        <flux:callout variant="warning" icon="exclamation-triangle">
-            <flux:heading>La matriz de especímenes es obligatoria</flux:heading>
-            <flux:text class="text-sm">
-                No es posible finalizar el envío sin una matriz asociada. Carga el archivo Darwin Core
-                para habilitar la validación técnica y taxonómica.
-            </flux:text>
-        </flux:callout>
-    @endif
-
     {{-- Banner: rechazo por campo DwC faltante --}}
     @if($matrizCargada && !empty($errorMatriz))
         <flux:callout variant="danger" icon="x-circle">
@@ -74,29 +63,66 @@
 
     {{-- Integridad de campos Darwin Core --}}
     @if($matrizCargada && !empty($camposDwCPresentes))
+        @php
+            $camposClasificados = array_merge($camposDwCCriticos, $camposDwCRecomendados);
+            $camposExtra = array_values(array_filter(
+                $camposDwCPresentes,
+                fn($c) => !in_array($c, $camposClasificados)
+            ));
+        @endphp
         <div class="space-y-3">
             <div class="flex items-center gap-2">
                 <flux:icon name="document-text" class="size-4 text-text-secondary" />
                 <flux:heading size="sm" level="3">Integridad de campos Darwin Core</flux:heading>
             </div>
-            <div class="flex flex-wrap gap-2">
-                @foreach($camposDwCRequeridos as $campo)
-                    <x-gestionprestamosrecepciones::dwc-chip
-                        :campo="$campo"
-                        :presente="in_array($campo, $camposDwCPresentes)"
-                        :requerido="true"
-                    />
-                @endforeach
-                @foreach($camposDwCPresentes as $campo)
-                    @if(!in_array($campo, $camposDwCRequeridos))
-                        <x-gestionprestamosrecepciones::dwc-chip
-                            :campo="$campo"
-                            :presente="true"
-                            :requerido="false"
-                        />
-                    @endif
-                @endforeach
-            </div>
+
+            {{-- Críticos --}}
+            @if(!empty($camposDwCCriticos))
+                <div>
+                    <p class="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1.5">Críticos</p>
+                    <div class="flex flex-wrap gap-2">
+                        @foreach($camposDwCCriticos as $campo)
+                            <x-gestionprestamosrecepciones::dwc-chip
+                                :campo="$campo"
+                                :presente="in_array($campo, $camposDwCPresentes)"
+                                prioridad="critica"
+                            />
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
+            {{-- Recomendados --}}
+            @if(!empty($camposDwCRecomendados))
+                <div>
+                    <p class="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1.5">Recomendados</p>
+                    <div class="flex flex-wrap gap-2">
+                        @foreach($camposDwCRecomendados as $campo)
+                            <x-gestionprestamosrecepciones::dwc-chip
+                                :campo="$campo"
+                                :presente="!in_array($campo, $camposDwCRecomendadosFaltantes)"
+                                prioridad="recomendada"
+                            />
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
+            {{-- Extras presentes en el Excel --}}
+            @if(!empty($camposExtra))
+                <div>
+                    <p class="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1.5">Otros campos incluidos</p>
+                    <div class="flex flex-wrap gap-2">
+                        @foreach($camposExtra as $campo)
+                            <x-gestionprestamosrecepciones::dwc-chip
+                                :campo="$campo"
+                                :presente="true"
+                                prioridad="opcional"
+                            />
+                        @endforeach
+                    </div>
+                </div>
+            @endif
         </div>
     @endif
 
@@ -310,6 +336,7 @@
                                 :noCatalogado="$registro['noCatalogado']"
                                 :motivoJustificacion="$registro['motivoJustificacion']"
                                 :esDonacion="$esDonacion"
+                                :advertencias="$registro['advertencias'] ?? []"
                             />
                         </div>
                     @endif
