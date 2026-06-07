@@ -2810,7 +2810,7 @@
             "type": "library",
             "autoload": {
                 "psr-4": {
-                    "ZipStream\": "src/"
+                    "ZipStream\\": "src/"
                 }
             },
             "notification-url": "https://packagist.org/downloads/",
