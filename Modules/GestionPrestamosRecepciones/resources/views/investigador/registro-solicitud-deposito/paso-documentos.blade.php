@@ -85,7 +85,7 @@
 
     @else
 
-    <div wire:key="formulario-documentos">
+    <div wire:key="formulario-documentos" class="space-y-4">
 
         {{-- Error de documentos faltantes --}}
         <flux:error name="documentos" />
