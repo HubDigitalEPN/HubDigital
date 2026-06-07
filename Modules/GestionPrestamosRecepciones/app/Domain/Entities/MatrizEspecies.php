@@ -111,6 +111,11 @@ final class MatrizEspecies
      */
     public function validarCamposDwC(array $camposCriticos, array $camposRecomendados): void
     {
+        $this->camposRecomendadosFaltantes = array_values(array_filter(
+            $camposRecomendados,
+            fn (string $campo) => ! array_key_exists($campo, $this->camposDwCPresentes)
+        ));
+
         $criticosFaltantes = array_values(array_filter(
             $camposCriticos,
             fn (string $campo) => ! array_key_exists($campo, $this->camposDwCPresentes)
@@ -119,11 +124,6 @@ final class MatrizEspecies
         if (! empty($criticosFaltantes)) {
             throw CamposDwCFaltantesException::porCamposFaltantes($criticosFaltantes);
         }
-
-        $this->camposRecomendadosFaltantes = array_values(array_filter(
-            $camposRecomendados,
-            fn (string $campo) => ! array_key_exists($campo, $this->camposDwCPresentes)
-        ));
     }
 
     /**

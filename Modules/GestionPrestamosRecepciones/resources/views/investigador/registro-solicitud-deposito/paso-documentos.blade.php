@@ -77,6 +77,10 @@
                 </ul>
             </div>
 
+            <flux:button icon="arrow-left" href="{{ route('prestamos.investigador.mis-depositos') }}" wire:navigate>
+                Ver mis depósitos
+            </flux:button>
+
         </div>
 
     @else

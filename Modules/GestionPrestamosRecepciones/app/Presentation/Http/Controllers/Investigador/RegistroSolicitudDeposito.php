@@ -1009,6 +1009,10 @@ final class RegistroSolicitudDeposito extends Component
             ));
         } catch (CamposDwCFaltantesException $e) {
             $this->errorMatriz = $e->getMessage();
+            $this->camposDwCRecomendadosFaltantes = array_values(array_filter(
+                $this->camposDwCRecomendados,
+                fn (string $campo) => ! in_array($campo, $this->camposDwCPresentes, true)
+            ));
             $this->matrizCargada = true;
 
             return;
@@ -1051,6 +1055,10 @@ final class RegistroSolicitudDeposito extends Component
                     'especieCorregida' => null,
                     'noCatalogado' => false,
                     'motivoJustificacion' => null,
+                    'advertencias' => array_values(array_filter(
+                        $registro->normalizaciones(),
+                        fn (array $n) => ! empty($n['invalido'])
+                    )),
                 ];
                 $i++;
             }
@@ -1081,6 +1089,10 @@ final class RegistroSolicitudDeposito extends Component
                     'especieCorregida' => $registro->nombreCorregido(),
                     'noCatalogado' => $registro->esNoCatalogado(),
                     'motivoJustificacion' => $registro->motivoJustificacion(),
+                    'advertencias' => array_values(array_filter(
+                        $registro->normalizaciones(),
+                        fn (array $n) => ! empty($n['invalido'])
+                    )),
                 ];
             } else {
                 $estado = match ($validacion['estado']) {
@@ -1108,6 +1120,10 @@ final class RegistroSolicitudDeposito extends Component
                     'especieCorregida' => null,
                     'noCatalogado' => $esNoCatalogado,
                     'motivoJustificacion' => null,
+                    'advertencias' => array_values(array_filter(
+                        $registro->normalizaciones(),
+                        fn (array $n) => ! empty($n['invalido'])
+                    )),
                 ];
             }
 

@@ -336,6 +336,7 @@
                                 :noCatalogado="$registro['noCatalogado']"
                                 :motivoJustificacion="$registro['motivoJustificacion']"
                                 :esDonacion="$esDonacion"
+                                :advertencias="$registro['advertencias'] ?? []"
                             />
                         </div>
                     @endif
