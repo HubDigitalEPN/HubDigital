@@ -18,7 +18,7 @@
 
     $motivosDisponibles = ['Es una especie nueva', 'No listada en catálogo'];
 
-    $gridClasses = 'grid grid-cols-1 md:grid-cols-[140px_1.1fr_1.6fr] gap-3 md:gap-3.5 items-start md:items-center px-4 py-4 md:py-3.5';
+    $gridClasses = 'grid grid-cols-1 md:grid-cols-[1fr_1.5fr] gap-3 md:gap-3.5 items-start md:items-center px-4 py-4 md:py-3.5';
 
     $bgFila = match(true) {
         $esDonacion => '',
@@ -36,8 +36,12 @@
     {{-- Donacion: todas las filas validadas automaticamente --}}
     @if($esDonacion)
         <div class="{{ $gridClasses }}">
-            <span class="font-mono text-xs text-text-secondary"><span class="md:hidden font-sans font-semibold uppercase tracking-wide text-[10px]">Catálogo: </span>{{ $catalogoId }}</span>
-            <span class="text-sm font-serif italic text-text-primary">{{ $especieIngresada }}</span>
+            <div class="flex flex-col gap-0.5">
+                <span class="text-sm font-serif italic text-text-primary">{{ $especieIngresada }}</span>
+                @if($catalogoId)
+                    <span class="font-mono text-xs text-text-secondary/70">{{ $catalogoId }}</span>
+                @endif
+            </div>
             <div class="flex flex-col gap-1 items-start">
                 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border bg-blue-navy/5 border-blue-navy/20 text-blue-navy">
                     <flux:icon name="check" class="size-3" />
@@ -56,8 +60,12 @@
     {{-- Validado Técnicamente (catalogado correctamente) --}}
     @elseif($estadoValor === 'Validado Técnicamente' && !$especieCorregida)
         <div class="{{ $gridClasses }}">
-            <span class="font-mono text-xs text-text-secondary"><span class="md:hidden font-sans font-semibold uppercase tracking-wide text-[10px]">Catálogo: </span>{{ $catalogoId }}</span>
-            <span class="text-sm font-serif italic text-text-primary">{{ $especieIngresada }}</span>
+            <div class="flex flex-col gap-0.5">
+                <span class="text-sm font-serif italic text-text-primary">{{ $especieIngresada }}</span>
+                @if($catalogoId)
+                    <span class="font-mono text-xs text-text-secondary/70">{{ $catalogoId }}</span>
+                @endif
+            </div>
             <div class="flex flex-col gap-1 items-start">
                 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border bg-success/10 border-success/30 text-success">
                     <flux:icon name="check" class="size-3" />
@@ -76,8 +84,12 @@
     {{-- Corregido por Sugerencia (ya acepto la correccion) --}}
     @elseif(($estadoValor === 'Validado Técnicamente' || $estadoValor === 'Corregido por Sugerencia') && $especieCorregida)
         <div class="{{ $gridClasses }}">
-            <span class="font-mono text-xs text-text-secondary"><span class="md:hidden font-sans font-semibold uppercase tracking-wide text-[10px]">Catálogo: </span>{{ $catalogoId }}</span>
-            <span class="text-sm font-serif italic text-bio-green font-medium">{{ $especieCorregida }}</span>
+            <div class="flex flex-col gap-0.5">
+                <span class="text-sm font-serif italic text-bio-green font-medium">{{ $especieCorregida }}</span>
+                @if($catalogoId)
+                    <span class="font-mono text-xs text-text-secondary/70">{{ $catalogoId }}</span>
+                @endif
+            </div>
             <div class="flex flex-col gap-1 items-start">
                 <div class="flex items-center gap-2">
                     <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border bg-success/10 border-success/30 text-success">
@@ -111,8 +123,12 @@
          investigador confirma que su nombre original es el correcto. --}}
     @elseif($estadoValor === 'Pendiente' && $especieSugerida)
         <div class="{{ $gridClasses }}">
-            <span class="font-mono text-xs text-text-secondary"><span class="md:hidden font-sans font-semibold uppercase tracking-wide text-[10px]">Catálogo: </span>{{ $catalogoId }}</span>
-            <span class="text-sm font-serif italic text-text-secondary line-through">{{ $especieIngresada }}</span>
+            <div class="flex flex-col gap-0.5">
+                <span class="text-sm font-serif italic text-text-secondary line-through">{{ $especieIngresada }}</span>
+                @if($catalogoId)
+                    <span class="font-mono text-xs text-text-secondary/70">{{ $catalogoId }}</span>
+                @endif
+            </div>
             <div class="flex flex-col gap-2 items-start w-full">
                 <div class="flex items-start gap-1.5 text-xs text-text-primary leading-snug">
                     <flux:icon name="sparkles" class="size-3.5 text-warning shrink-0 mt-0.5" />
@@ -142,8 +158,12 @@
     {{-- Pendiente: no catalogado, sin justificacion --}}
     @elseif($estadoValor === 'Pendiente' && $noCatalogado)
         <div class="{{ $gridClasses }}">
-            <span class="font-mono text-xs text-text-secondary"><span class="md:hidden font-sans font-semibold uppercase tracking-wide text-[10px]">Catálogo: </span>{{ $catalogoId }}</span>
-            <span class="text-sm font-serif italic text-text-primary">{{ $especieIngresada }}</span>
+            <div class="flex flex-col gap-0.5">
+                <span class="text-sm font-serif italic text-text-primary">{{ $especieIngresada }}</span>
+                @if($catalogoId)
+                    <span class="font-mono text-xs text-text-secondary/70">{{ $catalogoId }}</span>
+                @endif
+            </div>
             <div class="flex flex-col gap-2 items-start w-full">
                 <div class="flex items-start gap-1.5 text-xs text-text-primary leading-snug">
                     <flux:icon name="exclamation-triangle" class="size-3.5 text-error shrink-0 mt-0.5" />
@@ -167,8 +187,12 @@
     {{-- Validacion Manual por Curaduria (justificado) --}}
     @elseif($estadoValor === 'Validación Manual por Curaduría')
         <div class="{{ $gridClasses }}">
-            <span class="font-mono text-xs text-text-secondary"><span class="md:hidden font-sans font-semibold uppercase tracking-wide text-[10px]">Catálogo: </span>{{ $catalogoId }}</span>
-            <span class="text-sm font-serif italic text-text-primary">{{ $especieIngresada }}</span>
+            <div class="flex flex-col gap-0.5">
+                <span class="text-sm font-serif italic text-text-primary">{{ $especieIngresada }}</span>
+                @if($catalogoId)
+                    <span class="font-mono text-xs text-text-secondary/70">{{ $catalogoId }}</span>
+                @endif
+            </div>
             <div class="flex flex-col gap-1.5 items-start">
                 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border bg-warning/10 border-warning/30 text-warning">
                     <flux:icon name="exclamation-triangle" class="size-3" />
@@ -194,8 +218,12 @@
     {{-- No Verificado: GBIF no respondió, no bloquea al usuario --}}
     @elseif($estadoValor === 'No Verificado')
         <div class="{{ $gridClasses }}">
-            <span class="font-mono text-xs text-text-secondary"><span class="md:hidden font-sans font-semibold uppercase tracking-wide text-[10px]">Catálogo: </span>{{ $catalogoId }}</span>
-            <span class="text-sm font-serif italic text-text-primary">{{ $especieIngresada }}</span>
+            <div class="flex flex-col gap-0.5">
+                <span class="text-sm font-serif italic text-text-primary">{{ $especieIngresada }}</span>
+                @if($catalogoId)
+                    <span class="font-mono text-xs text-text-secondary/70">{{ $catalogoId }}</span>
+                @endif
+            </div>
             <div class="flex flex-col gap-1 items-start">
                 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border bg-info/10 border-info/30 text-info">
                     <flux:icon name="exclamation-circle" class="size-3" />
@@ -214,8 +242,12 @@
     {{-- Fallback: Pendiente genérico --}}
     @else
         <div class="{{ $gridClasses }}">
-            <span class="font-mono text-xs text-text-secondary"><span class="md:hidden font-sans font-semibold uppercase tracking-wide text-[10px]">Catálogo: </span>{{ $catalogoId }}</span>
-            <span class="text-sm font-serif italic text-text-primary">{{ $especieIngresada }}</span>
+            <div class="flex flex-col gap-0.5">
+                <span class="text-sm font-serif italic text-text-primary">{{ $especieIngresada }}</span>
+                @if($catalogoId)
+                    <span class="font-mono text-xs text-text-secondary/70">{{ $catalogoId }}</span>
+                @endif
+            </div>
             <div class="flex flex-col gap-1 items-start">
                 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border border-border bg-bg-main text-text-secondary">
                     Pendiente

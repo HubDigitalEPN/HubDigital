@@ -307,8 +307,7 @@
 
             <div class="rounded-lg border border-border overflow-hidden">
                 {{-- Header de tabla (oculto en movil) --}}
-                <div class="hidden md:grid grid-cols-[140px_1.1fr_1.6fr] gap-3.5 px-4 py-3 bg-bg-main border-b border-border text-[11px] uppercase tracking-wide font-semibold text-text-secondary">
-                    <span>Catálogo</span>
+                <div class="hidden md:grid grid-cols-[1fr_1.5fr] gap-3.5 px-4 py-3 bg-bg-main border-b border-border text-[11px] uppercase tracking-wide font-semibold text-text-secondary">
                     <span>Especie ingresada</span>
                     <span>Estado / Acción</span>
                 </div>
@@ -325,20 +324,19 @@
                         $filaVisible = $filtroTabla === 'todos' || $filtroTabla === $categoriaFila;
                     @endphp
                     @if($filaVisible)
-                        <div wire:key="tax-row-{{ $id }}">
-                            <x-gestionprestamosrecepciones::tax-row
-                                :registroId="$id"
-                                :catalogoId="$registro['catalogoId']"
-                                :especieIngresada="$registro['especieIngresada']"
-                                :estado="$registro['estado']"
-                                :especieSugerida="$registro['especieSugerida']"
-                                :especieCorregida="$registro['especieCorregida']"
-                                :noCatalogado="$registro['noCatalogado']"
-                                :motivoJustificacion="$registro['motivoJustificacion']"
-                                :esDonacion="$esDonacion"
-                                :advertencias="$registro['advertencias'] ?? []"
-                            />
-                        </div>
+                        <x-gestionprestamosrecepciones::tax-row
+                            wire:key="tax-row-{{ $id }}"
+                            :registroId="$id"
+                            :catalogoId="$registro['catalogoId']"
+                            :especieIngresada="$registro['especieIngresada']"
+                            :estado="$registro['estado']"
+                            :especieSugerida="$registro['especieSugerida']"
+                            :especieCorregida="$registro['especieCorregida']"
+                            :noCatalogado="$registro['noCatalogado']"
+                            :motivoJustificacion="$registro['motivoJustificacion']"
+                            :esDonacion="$esDonacion"
+                            :advertencias="$registro['advertencias'] ?? []"
+                        />
                     @endif
                 @endforeach
             </div>
