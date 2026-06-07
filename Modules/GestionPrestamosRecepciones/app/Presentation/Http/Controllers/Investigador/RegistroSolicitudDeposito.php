@@ -285,6 +285,10 @@ final class RegistroSolicitudDeposito extends Component
             $this->documentosCargados
         );
 
+        if ($model->sin_documentacion) {
+            $this->intervencionCuratoriaActiva = true;
+        }
+
         // Solo reactivar polling si estaba en paso 3 (extracción en curso).
         // En paso 4+ la extracción ya fue procesada, no necesita polling.
         if ($pasoGuardado === 3 && $model->extraccion_estado !== null) {

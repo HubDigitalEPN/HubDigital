@@ -40,7 +40,7 @@
     {{-- Intervención curatorial activa --}}
     @if($intervencionCuratoriaActiva)
 
-        <div class="rounded-xl border border-warning/40 bg-warning/5 p-6 space-y-5">
+        <div wire:key="card-intervencion" class="rounded-xl border border-warning/40 bg-warning/5 p-6 space-y-5">
 
             {{-- Estado --}}
             <div class="flex items-center gap-3">
@@ -84,6 +84,8 @@
         </div>
 
     @else
+
+    <div wire:key="formulario-documentos">
 
         {{-- Error de documentos faltantes --}}
         <flux:error name="documentos" />
@@ -169,6 +171,8 @@
                 Solicitar asistencia
             </flux:button>
         </div>
+
+    </div>{{-- fin wire:key="formulario-documentos" --}}
 
     @endif
 
