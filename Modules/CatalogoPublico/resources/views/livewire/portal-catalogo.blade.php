@@ -4,17 +4,22 @@
          ===================================================================== --}}
     <div class="border-b border-border bg-surface">
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <nav class="flex items-center gap-1 overflow-x-auto py-2 scrollbar-hide" aria-label="Explorar por nivel taxonómico">
-                <span class="shrink-0 text-xs font-medium text-text-secondary pr-2 border-r border-border mr-1">
-                    Explorar
-                </span>
+            <nav class="flex items-end gap-1 overflow-x-auto scrollbar-hide" aria-label="Catálogo por nivel taxonómico">
+                <a
+                    href="/portal"
+                    wire:navigate
+                    class="shrink-0 px-3 py-2 -mb-px text-xs font-medium transition-colors border-b-2 border-transparent text-text-secondary hover:text-text-primary hover:border-border"
+                >
+                    Catálogo
+                </a>
+                <span class="shrink-0 self-end h-4 w-px bg-border mb-2 mx-1"></span>
                 @foreach(array_filter($nivelesNavegacion, fn ($k) => $k !== '', ARRAY_FILTER_USE_KEY) as $nivelNav => $etiquetaNav)
                     <button
                         wire:click="explorarNivel('{{ $nivelNav }}')"
                         @class([
-                            'shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors',
-                            'bg-blue-navy text-white' => $nivelExplorar === $nivelNav,
-                            'text-text-secondary hover:text-text-primary hover:bg-bg-main' => $nivelExplorar !== $nivelNav,
+                            'shrink-0 px-3 py-2 -mb-px text-xs font-medium transition-colors border-b-2',
+                            'border-science-blue text-science-blue' => $nivelExplorar === $nivelNav,
+                            'border-transparent text-text-secondary hover:text-text-primary hover:border-border' => $nivelExplorar !== $nivelNav,
                         ])
                     >
                         {{ $etiquetaNav }}
@@ -98,7 +103,13 @@
             </div>
         </div>
 
-        <x-catalogopublico::filtro-catalogo />
+        <x-catalogopublico::filtro-catalogo
+            :preparaciones="$preparacionesDisponibles"
+            :biomas="$biomasDisponibles"
+            :metodos-recoleccion="$metodosRecoleccionDisponibles"
+            :colectores="$colectoresDisponibles"
+            :filtros-activos="$filtrosActivos"
+        />
 
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -5,14 +5,17 @@ declare(strict_types=1);
 namespace Modules\CatalogoPublico\Presentation\Http\Controllers;
 
 use Illuminate\View\View;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Modules\CatalogoPublico\Application\Ports\DatosEspecimenProveedor;
 use Modules\CatalogoPublico\Application\Ports\ProveedorEspecimenesPort;
+use Modules\CatalogoPublico\Application\Ports\ProveedorOpcionesFiltroPort;
 use Modules\CatalogoPublico\Application\UseCases\ConstruirArbolTaxonomico\ConstruirArbolTaxonomicoHandler;
 use Modules\CatalogoPublico\Application\UseCases\ConstruirArbolTaxonomico\ConstruirArbolTaxonomicoInput;
 use Modules\CatalogoPublico\Application\UseCases\ConstruirArbolTaxonomico\ConstruirArbolTaxonomicoOutput;
+use Modules\CatalogoPublico\Domain\ValueObjects\FiltrosBusqueda;
 
 #[Layout('layouts.portal', params: ['title' => 'Catálogo taxonómico · Departamento de Biología — EPN'])]
 final class PortalCatalogo extends Component
@@ -53,7 +56,6 @@ final class PortalCatalogo extends Component
         'species' => 'especies',
     ];
 
-    /** Etiqueta plural usada en el encabezado del modo explorar */
     private const array NIVEL_PLURAL = [
         'phylum' => 'filos',
         'class' => 'clases',
@@ -63,15 +65,100 @@ final class PortalCatalogo extends Component
         'species' => 'especies',
     ];
 
+    // ─── Navegación ──────────────────────────────────────────────────────────
+
     #[Url(as: 'nivel')]
     public string $nivel = '';
 
     #[Url(as: 'taxon')]
     public string $taxon = '';
 
-    /** Cuando está definido, muestra todos los taxones de ese nivel (modo explorar) */
     #[Url(as: 'explorar')]
     public string $explorar = '';
+
+    // ─── Filtros (URL-persistidos) ────────────────────────────────────────────
+
+    #[Url(as: 'fc')]
+    public string $filtroCatalogo = '';
+
+    #[Url(as: 'fp')]
+    public array $filtroPreparaciones = [];
+
+    #[Url(as: 'ft')]
+    public string $filtroTaxon = '';
+
+    #[Url(as: 'fg')]
+    public array $filtroGeografias = [];
+
+    #[Url(as: 'fco')]
+    public string $filtroColector = '';
+
+    #[Url(as: 'ffd')]
+    public string $filtroFechaDesde = '';
+
+    #[Url(as: 'ffh')]
+    public string $filtroFechaHasta = '';
+
+    #[Url(as: 'fm')]
+    public array $filtroMetodos = [];
+
+    #[Url(as: 'flat')]
+    public string $filtroLatMin = '';
+
+    #[Url(as: 'flax')]
+    public string $filtroLatMax = '';
+
+    #[Url(as: 'flon')]
+    public string $filtroLonMin = '';
+
+    #[Url(as: 'flox')]
+    public string $filtroLonMax = '';
+
+    #[Url(as: 'fed')]
+    public string $filtroElevDesde = '';
+
+    #[Url(as: 'feh')]
+    public string $filtroElevHasta = '';
+
+    #[Url(as: 'fb')]
+    public array $filtroBiomas = [];
+
+    // ─── Servicio de opciones (no serializado entre requests) ─────────────────
+
+    private ProveedorOpcionesFiltroPort $opcionesFiltro;
+
+    public function boot(ProveedorOpcionesFiltroPort $opcionesFiltro): void
+    {
+        $this->opcionesFiltro = $opcionesFiltro;
+    }
+
+    // ─── Opciones dinámicas ───────────────────────────────────────────────────
+
+    #[Computed]
+    public function preparacionesDisponibles(): array
+    {
+        return $this->opcionesFiltro->obtenerPreparaciones();
+    }
+
+    #[Computed]
+    public function biomasDisponibles(): array
+    {
+        return $this->opcionesFiltro->obtenerBiomas();
+    }
+
+    #[Computed]
+    public function metodosRecoleccionDisponibles(): array
+    {
+        return $this->opcionesFiltro->obtenerMetodosRecoleccion();
+    }
+
+    #[Computed]
+    public function colectoresDisponibles(): array
+    {
+        return $this->opcionesFiltro->obtenerColectores();
+    }
+
+    // ─── Acciones de navegación ───────────────────────────────────────────────
 
     public function navegar(string $nivel, string $taxon): void
     {
@@ -92,9 +179,69 @@ final class PortalCatalogo extends Component
         $this->explorar = '';
     }
 
+    // ─── Acciones de filtrado ─────────────────────────────────────────────────
+
+    public function aplicarFiltros(array $datos): void
+    {
+        $this->filtroCatalogo = (string) ($datos['filtroCatalogo'] ?? '');
+        $this->filtroPreparaciones = (array) ($datos['filtroPreparaciones'] ?? []);
+        $this->filtroTaxon = (string) ($datos['filtroTaxon'] ?? '');
+        $this->filtroGeografias = (array) ($datos['filtroGeografias'] ?? []);
+        $this->filtroColector = (string) ($datos['filtroColector'] ?? '');
+        $this->filtroFechaDesde = (string) ($datos['filtroFechaDesde'] ?? '');
+        $this->filtroFechaHasta = (string) ($datos['filtroFechaHasta'] ?? '');
+        $this->filtroMetodos = (array) ($datos['filtroMetodos'] ?? []);
+        $this->filtroLatMin = (string) ($datos['filtroLatMin'] ?? '');
+        $this->filtroLatMax = (string) ($datos['filtroLatMax'] ?? '');
+        $this->filtroLonMin = (string) ($datos['filtroLonMin'] ?? '');
+        $this->filtroLonMax = (string) ($datos['filtroLonMax'] ?? '');
+        $this->filtroElevDesde = (string) ($datos['filtroElevDesde'] ?? '');
+        $this->filtroElevHasta = (string) ($datos['filtroElevHasta'] ?? '');
+        $this->filtroBiomas = (array) ($datos['filtroBiomas'] ?? []);
+    }
+
+    public function limpiarFiltros(): void
+    {
+        $this->filtroCatalogo = '';
+        $this->filtroPreparaciones = [];
+        $this->filtroTaxon = '';
+        $this->filtroGeografias = [];
+        $this->filtroColector = '';
+        $this->filtroFechaDesde = '';
+        $this->filtroFechaHasta = '';
+        $this->filtroMetodos = [];
+        $this->filtroLatMin = '';
+        $this->filtroLatMax = '';
+        $this->filtroLonMin = '';
+        $this->filtroLonMax = '';
+        $this->filtroElevDesde = '';
+        $this->filtroElevHasta = '';
+        $this->filtroBiomas = [];
+    }
+
+    // ─── Render ───────────────────────────────────────────────────────────────
+
     public function render(ConstruirArbolTaxonomicoHandler $handler, ProveedorEspecimenesPort $proveedor): View
     {
-        $output = ($handler)(new ConstruirArbolTaxonomicoInput);
+        $filtros = FiltrosBusqueda::desde([
+            'filtroCatalogo' => $this->filtroCatalogo,
+            'filtroPreparaciones' => $this->filtroPreparaciones,
+            'filtroTaxon' => $this->filtroTaxon,
+            'filtroGeografias' => $this->filtroGeografias,
+            'filtroColector' => $this->filtroColector,
+            'filtroFechaDesde' => $this->filtroFechaDesde,
+            'filtroFechaHasta' => $this->filtroFechaHasta,
+            'filtroMetodos' => $this->filtroMetodos,
+            'filtroLatMin' => $this->filtroLatMin,
+            'filtroLatMax' => $this->filtroLatMax,
+            'filtroLonMin' => $this->filtroLonMin,
+            'filtroLonMax' => $this->filtroLonMax,
+            'filtroElevDesde' => $this->filtroElevDesde,
+            'filtroElevHasta' => $this->filtroElevHasta,
+            'filtroBiomas' => $this->filtroBiomas,
+        ]);
+
+        $output = ($handler)(new ConstruirArbolTaxonomicoInput($filtros->estaVacio() ? null : $filtros));
 
         $totalGlobal = (int) array_sum(array_map('count', $output->especimenesPorEspecie));
         $conteos = $this->calcularConteos($output);
@@ -107,6 +254,24 @@ final class PortalCatalogo extends Component
             : [];
 
         $descendientes = $this->calcularDescendientes($output);
+
+        $filtrosActivos = [
+            'filtroCatalogo' => $this->filtroCatalogo,
+            'filtroPreparaciones' => $this->filtroPreparaciones,
+            'filtroTaxon' => $this->filtroTaxon,
+            'filtroGeografias' => $this->filtroGeografias,
+            'filtroColector' => $this->filtroColector,
+            'filtroFechaDesde' => $this->filtroFechaDesde,
+            'filtroFechaHasta' => $this->filtroFechaHasta,
+            'filtroMetodos' => $this->filtroMetodos,
+            'filtroLatMin' => $this->filtroLatMin,
+            'filtroLatMax' => $this->filtroLatMax,
+            'filtroLonMin' => $this->filtroLonMin,
+            'filtroLonMax' => $this->filtroLonMax,
+            'filtroElevDesde' => $this->filtroElevDesde,
+            'filtroElevHasta' => $this->filtroElevHasta,
+            'filtroBiomas' => $this->filtroBiomas,
+        ];
 
         return view('catalogopublico::livewire.portal-catalogo', [
             'ruta' => $ruta,
@@ -128,6 +293,12 @@ final class PortalCatalogo extends Component
             'etiquetasDescendientes' => self::DESCENDANT_LABELS,
             'nivelesNavegacion' => self::NIVEL_ETIQUETA,
             'nivelesPluralNavegacion' => self::NIVEL_PLURAL,
+            'filtrosActivos' => $filtrosActivos,
+            'hayFiltrosActivos' => ! $filtros->estaVacio(),
+            'preparacionesDisponibles' => $this->preparacionesDisponibles,
+            'biomasDisponibles' => $this->biomasDisponibles,
+            'metodosRecoleccionDisponibles' => $this->metodosRecoleccionDisponibles,
+            'colectoresDisponibles' => $this->colectoresDisponibles,
         ]);
     }
 
@@ -203,11 +374,7 @@ final class PortalCatalogo extends Component
             ->all();
     }
 
-    /**
-     * Hermanos normalizados: siempre [{nivel, taxon, esEspecie}].
-     *
-     * @return list<array{nivel: string, taxon: string, esEspecie: bool}>
-     */
+    /** @return list<array{nivel: string, taxon: string, esEspecie: bool}> */
     private function resolverHermanos(ConstruirArbolTaxonomicoOutput $output): array
     {
         if ($this->nivel === 'species') {
@@ -269,13 +436,7 @@ final class PortalCatalogo extends Component
         );
     }
 
-    /**
-     * Todos los taxones de un nivel dado, ordenados alfabéticamente.
-     * Normaliza filos/clases/órdenes/familias/géneros desde nodosJerarquicos
-     * y especies desde la lista de especies.
-     *
-     * @return list<array{nivel: string, taxon: string, padre: string}>
-     */
+    /** @return list<array{nivel: string, taxon: string, padre: string}> */
     private function resolverTaxonesParaExplorar(ConstruirArbolTaxonomicoOutput $output, string $nivel): array
     {
         if ($nivel === 'species') {
@@ -293,12 +454,7 @@ final class PortalCatalogo extends Component
             ->all();
     }
 
-    /**
-     * Cantidad de taxones descendientes por nivel, para cada nodo del árbol.
-     * Permite mostrar en cada tarjeta cuántas clases, órdenes, familias, géneros y especies contiene.
-     *
-     * @return array<string, array<string, int>> clave: "nivel:taxon" → [nivel_desc => cantidad]
-     */
+    /** @return array<string, array<string, int>> */
     private function calcularDescendientes(ConstruirArbolTaxonomicoOutput $output): array
     {
         $niveles = ['phylum', 'class', 'order', 'family', 'genus', 'species'];
@@ -346,11 +502,7 @@ final class PortalCatalogo extends Component
         return $resultado;
     }
 
-    /**
-     * Total de especímenes por nodo, propagado desde especie hacia arriba.
-     *
-     * @return array<string, int> clave: "nivel:taxon"
-     */
+    /** @return array<string, int> */
     private function calcularConteos(ConstruirArbolTaxonomicoOutput $output): array
     {
         $conteos = [];

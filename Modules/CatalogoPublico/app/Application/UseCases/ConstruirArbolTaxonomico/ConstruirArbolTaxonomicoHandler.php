@@ -16,7 +16,7 @@ final class ConstruirArbolTaxonomicoHandler
 
     public function __invoke(ConstruirArbolTaxonomicoInput $input): ConstruirArbolTaxonomicoOutput
     {
-        $especimenes = $this->proveedor->obtenerTodos();
+        $especimenes = $this->proveedor->obtenerTodos($input->filtros);
 
         $arbol = $this->builder->construir($especimenes);
 
