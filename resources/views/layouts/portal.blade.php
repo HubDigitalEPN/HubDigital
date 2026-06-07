@@ -13,10 +13,6 @@
             </a>
 
             <nav class="hidden items-center gap-6 md:flex">
-                <a href="{{ route('portal.catalogo') }}"
-                   class="text-sm transition-colors {{ request()->routeIs('portal.catalogo') ? 'font-medium text-blue-navy' : 'text-text-secondary hover:text-text-primary' }}">
-                    Catálogo
-                </a>
                 <a href="#" class="text-sm text-text-secondary transition-colors hover:text-text-primary">Acerca de</a>
             </nav>
         </div>
