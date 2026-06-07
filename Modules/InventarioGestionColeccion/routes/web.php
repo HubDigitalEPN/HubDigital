@@ -10,6 +10,7 @@ use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\Seguimiento
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Admin\GabineteIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Admin\GabineteShow;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Admin\HorarioSettingsForm;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Admin\MapaColeccion;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Admin\OrdenFamiliasIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\CentroRevisionIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\ConfiguracionColumnasIndex;
@@ -30,6 +31,7 @@ Route::middleware(['web', 'auth', 'verified', 'role:curador'])
     ->name('inventario.')
     ->group(function () {
         Route::get('/dashboard', Dashboard::class)->name('dashboard');
+        Route::get('/mapa', MapaColeccion::class)->name('mapa');
         Route::get('/gabinetes', GabineteIndex::class)->name('gabinetes');
         Route::get('/gabinetes/{id}', GabineteShow::class)->name('gabinetes.show');
         Route::get('/cajas', CajaIndex::class)->name('cajas');

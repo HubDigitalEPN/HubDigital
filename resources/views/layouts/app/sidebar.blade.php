@@ -213,6 +213,14 @@
                                 Monitoreo
                             </flux:sidebar.item>
                             <flux:sidebar.item
+                                icon="map"
+                                :href="route('inventario.mapa')"
+                                :current="request()->routeIs('inventario.mapa')"
+                                wire:navigate
+                            >
+                                Mapa de la colección
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
                                 icon="archive-box"
                                 :href="route('inventario.gabinetes')"
                                 :current="request()->routeIs('inventario.gabinetes*')"

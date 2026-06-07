@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Providers;
 
+use Livewire\Livewire;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\ClasificacionTaxonomicaPort;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\ContextoEjecucionPort;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\EventPublisherPort;
@@ -60,6 +61,7 @@ use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persiste
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentUbicacionCajaRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentUnitTrayEspecimenRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentUnitTrayRepository;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Mapa\MapaInteractivo;
 use Nwidart\Modules\Support\ModuleServiceProvider;
 
 class InventarioGestionColeccionServiceProvider extends ModuleServiceProvider
@@ -118,5 +120,10 @@ class InventarioGestionColeccionServiceProvider extends ModuleServiceProvider
     {
         parent::boot();
         $this->loadMigrationsFrom(module_path($this->name, 'database/migrations'));
+
+        // El mapa interactivo es un componente Livewire anidado y reutilizable: se
+        // registra con alias para que distintas páginas-host (curador hoy, portal
+        // público del visitante más adelante) puedan montarlo con su propio modo.
+        Livewire::component('inventario-mapa-interactivo', MapaInteractivo::class);
     }
 }
