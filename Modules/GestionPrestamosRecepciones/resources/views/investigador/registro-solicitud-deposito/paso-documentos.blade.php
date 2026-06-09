@@ -40,7 +40,7 @@
     {{-- Intervención curatorial activa --}}
     @if($intervencionCuratoriaActiva)
 
-        <div class="rounded-xl border border-warning/40 bg-warning/5 p-6 space-y-5">
+        <div wire:key="card-intervencion" class="rounded-xl border border-warning/40 bg-warning/5 p-6 space-y-5">
 
             {{-- Estado --}}
             <div class="flex items-center gap-3">
@@ -77,9 +77,15 @@
                 </ul>
             </div>
 
+            <flux:button icon="arrow-left" href="{{ route('prestamos.investigador.mis-depositos') }}" wire:navigate>
+                Ver mis depósitos
+            </flux:button>
+
         </div>
 
     @else
+
+    <div wire:key="formulario-documentos" class="space-y-4">
 
         {{-- Error de documentos faltantes --}}
         <flux:error name="documentos" />
@@ -165,6 +171,8 @@
                 Solicitar asistencia
             </flux:button>
         </div>
+
+    </div>{{-- fin wire:key="formulario-documentos" --}}
 
     @endif
 

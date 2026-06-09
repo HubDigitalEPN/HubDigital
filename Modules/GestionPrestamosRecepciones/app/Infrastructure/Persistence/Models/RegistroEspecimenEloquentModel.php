@@ -25,10 +25,14 @@ final class RegistroEspecimenEloquentModel extends Model
         'estado',
         'no_catalogado',
         'motivo_justificacion',
+        'datos_dwc',
+        'normalizaciones',
     ];
 
     protected $casts = [
         'no_catalogado' => 'boolean',
+        'datos_dwc' => 'array',
+        'normalizaciones' => 'array',
     ];
 
     public function matriz(): BelongsTo

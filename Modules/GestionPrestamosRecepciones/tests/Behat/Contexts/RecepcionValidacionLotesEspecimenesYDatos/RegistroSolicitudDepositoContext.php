@@ -18,6 +18,8 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\CompletarDatosManua
 use Modules\GestionPrestamosRecepciones\Application\UseCases\CompletarDatosManualmente\CompletarDatosManualesInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\DeterminarDocumentacionRequerida\DeterminarDocumentacionRequeridaHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\DeterminarDocumentacionRequerida\DeterminarDocumentacionRequeridaInput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarSolicitudDeposito\EnviarSolicitudDepositoHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarSolicitudDeposito\EnviarSolicitudDepositoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarSolicitudDeposito\RegistrarSolicitudDepositoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarSolicitudDeposito\RegistrarSolicitudDepositoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\SolicitarIntervencionCuratoria\SolicitarIntervencionCuratoriaHandler;
@@ -69,6 +71,8 @@ final class RegistroSolicitudDepositoContext extends BaseContext
 
     private SolicitarIntervencionCuratoriaHandler $solicitarIntervencionHandler;
 
+    private EnviarSolicitudDepositoHandler $enviarSolicitudHandler;
+
     // ── Estado del escenario ─────────────────────────────────────────────────
 
     private ?SolicitudDeposito $solicitudEnCurso = null;
@@ -117,6 +121,7 @@ final class RegistroSolicitudDepositoContext extends BaseContext
         $this->validarIdentidadHandler = $this->make(ValidarIdentidadSolicitudHandler::class);
         $this->determinarDocumentacionHandler = $this->make(DeterminarDocumentacionRequeridaHandler::class);
         $this->solicitarIntervencionHandler = $this->make(SolicitarIntervencionCuratoriaHandler::class);
+        $this->enviarSolicitudHandler = $this->make(EnviarSolicitudDepositoHandler::class);
     }
 
     // ── Helpers de fixture ───────────────────────────────────────────────────
@@ -715,6 +720,22 @@ final class RegistroSolicitudDepositoContext extends BaseContext
             $solicitud->origenDonacion(),
             'Se esperaba que el origen de la donación quedara registrado'
         );
+    }
+
+    #[When('el investigador envía la solicitud')]
+    public function elInvestigadorEnviaLaSolicitud(): void
+    {
+        Assert::assertNotNull($this->solicitudEnCurso, 'Se requiere una solicitud en curso');
+
+        try {
+            $this->ultimaRespuesta = ($this->enviarSolicitudHandler)(
+                new EnviarSolicitudDepositoInput(
+                    solicitudId: (string) $this->solicitudEnCurso->id(),
+                )
+            );
+        } catch (\Throwable $e) {
+            $this->excepcionCapturada = $e;
+        }
     }
 
     #[Then('pasa a estar :estadoEsperado')]

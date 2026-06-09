@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Application\Ports;
 
-// TODO: Implementar adapter real cuando InventarioGestionColeccion exponga
-//       el catálogo de referencia taxonómico para validar nombres científicos.
 interface ValidacionTaxonomicaPort
 {
     /**

@@ -9,6 +9,7 @@ use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort
 use Modules\GestionPrestamosRecepciones\Domain\Entities\MatrizEspecies;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\Services\NormalizadorCamposDwC;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
 
 final class CargarMatrizEspeciesHandler
@@ -18,6 +19,7 @@ final class CargarMatrizEspeciesHandler
         private MatrizEspeciesRepositoryInterface $matrizRepo,
         private TransactionManagerPort $transactionManager,
         private EventPublisherPort $eventPublisher,
+        private NormalizadorCamposDwC $normalizador,
     ) {}
 
     public function __invoke(CargarMatrizEspeciesInput $input): CargarMatrizEspeciesOutput
@@ -40,29 +42,16 @@ final class CargarMatrizEspeciesHandler
             tipoTramite: $solicitud->tipoTramite(),
         );
 
-        $matriz->validarCamposDwC($input->camposDwCExigidosPorCatalogo);
+        $matriz->validarCamposDwC($input->camposCriticos, $input->camposRecomendados);
 
-        // TODO: Normalización de datos antes de la ingesta (data cleansing)
-        // Antes de persistir cada registro, normalizar los campos que tienen
-        // un dominio cerrado conocido para garantizar data limpia desde el origen.
-        //
-        // IMPORTANTE: los campos concretos aún no están definidos — dependen de
-        // qué columnas DwC exija el catálogo de curaduría (InventarioGestionColeccion),
-        // que todavía no está implementado. Los ejemplos de abajo son orientativos.
-        //
-        // Criterio para decidir si un campo es normalizable:
-        //   - ¿Existe un catálogo cerrado o estándar externo que lo defina?
-        //     → Normalizable (ej. provincias INEC, enums DwC, códigos ISO).
-        //   - ¿Es descripción libre del colector?
-        //     → No normalizable (ej. locality, habitat, fieldNotes).
-        //
-        // Estrategia de corrección:
-        //   - Diferencia solo de mayúsculas/tildes → corregir silenciosamente.
-        //   - Typo con alta similitud → sugerir sin bloquear.
-        //   - Sin coincidencia → marcar para revisión, nunca rechazar el envío.
         foreach ($input->registros as $datosRegistro) {
-            $nombreCientifico = $datosRegistro['scientificName'] ?? '';
-            $matriz->agregarRegistroEspecimen($nombreCientifico);
+            $resultado = $this->normalizador->normalizar($datosRegistro);
+            $nombreCientifico = $resultado->registro['scientificName'] ?? '';
+            $matriz->agregarRegistroEspecimen(
+                $nombreCientifico,
+                datosDwC: $resultado->registro,
+                normalizaciones: $resultado->cambios,
+            );
         }
 
         $validacionTipograficaAplicada = $solicitud->tipoTramite() !== 'Donación';
@@ -80,6 +69,7 @@ final class CargarMatrizEspeciesHandler
             estadoMatriz: $matriz->estado(),
             validacionTipograficaAplicada: $validacionTipograficaAplicada,
             totalRegistros: count($input->registros),
+            camposRecomendadosFaltantes: $matriz->camposRecomendadosFaltantes(),
         );
     }
 }

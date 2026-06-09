@@ -20,7 +20,22 @@ jobs:
     environment: Testing
     strategy:
       matrix:
-        php-version: ['8.3', '8.4', '8.5']
+        php-version: ['8.4', '8.5']
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: hubdigital_testing
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - name: Checkout code
@@ -32,6 +47,7 @@ jobs:
           php-version: ${{ matrix.php-version }}
           tools: composer:v2
           coverage: xdebug
+          extensions: pdo_pgsql
 
       - name: Setup Node
         uses: actions/setup-node@v6
@@ -57,4 +73,16 @@ jobs:
         run: npm run build
 
       - name: Run Tests
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: hubdigital_testing
+          DB_USERNAME: postgres
+          DB_PASSWORD: postgres
+          TEST_DB_HOST: 127.0.0.1
+          TEST_DB_PORT: 5432
+          TEST_DB_DATABASE: hubdigital_testing
+          TEST_DB_USERNAME: postgres
+          TEST_DB_PASSWORD: postgres
         run: ./vendor/bin/pest

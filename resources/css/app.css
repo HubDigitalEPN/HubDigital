@@ -5,6 +5,7 @@
 @source '../../Modules/**/resources/views/**/*.blade.php';
 @source '../../Modules/**/app/Presentation/**/*.php';
 @source inline("border-science-blue bg-science-blue/5 bg-science-blue/15 text-science-blue border-border bg-surface hover:border-science-blue/40 text-text-secondary text-text-primary bg-bg-main bg-success bg-warning bg-error bg-info bg-bio-green border-success border-warning border-error border-info border-bio-green text-white animate-pulse aspect-square");
+@source inline("grid-cols-[1fr_1.5fr] md:grid-cols-[1fr_1.5fr] md:grid md:gap-3.5 md:items-center md:py-3.5 md:hidden");
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../vendor/livewire/flux-pro/stubs/**/*.blade.php';
 @source '../../vendor/livewire/flux/stubs/**/*.blade.php';
@@ -201,4 +202,13 @@ input:focus[data-flux-control],
 textarea:focus[data-flux-control],
 select:focus[data-flux-control] {
     @apply outline-hidden ring-2 ring-science-blue ring-offset-2 ring-offset-white;
+}
+
+
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
 }

@@ -7,6 +7,7 @@ namespace Modules\GestionPrestamosRecepciones\Infrastructure\Adapters;
 use Illuminate\Support\Facades\Log;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ValidacionFirmaElectronicaPort;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoValidacionFirma;
+use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Process\Process;
 
 final class PdfsigValidacionFirmaElectronicaAdapter implements ValidacionFirmaElectronicaPort
@@ -20,8 +21,17 @@ final class PdfsigValidacionFirmaElectronicaAdapter implements ValidacionFirmaEl
         }
 
         try {
-            $process = new Process(['pdfsig', $rutaAbsoluta]);
-            $process->setEnv(['LANG' => 'C']);
+            // En Linux (producción) pdfsig vive en /usr/bin/pdfsig.
+            // En macOS (desarrollo, Homebrew) puede estar en /opt/homebrew/bin o
+            // /usr/local/bin. ExecutableFinder busca en PATH cuando está disponible
+            // y cae al default de Linux cuando el worker de Supervisor no hereda PATH.
+            $binary = (new ExecutableFinder)->find('pdfsig', '/usr/bin/pdfsig');
+
+            $process = new Process([$binary, $rutaAbsoluta]);
+            // HOME debe pasarse explícitamente: Supervisor no hereda variables de
+            // entorno al worker. Sin HOME, pdfsig no localiza el NSS DB en
+            // $HOME/.pki/nssdb y termina con SIGABRT.
+            $process->setEnv(['LANG' => 'C', 'HOME' => posix_getpwuid(posix_getuid())['dir']]);
             $process->setTimeout(15);
             $process->run();
 

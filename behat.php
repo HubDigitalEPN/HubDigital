@@ -34,6 +34,8 @@ return (new Config)
                     ->withContexts(
                         // AdministracionCambiosInformacionLaboratorio
                         'Modules\CatalogoPublico\Tests\Behat\Contexts\AdministracionCambiosInformacionLaboratorio\SincronizacionInformacionEspecimenesContext',
+                        // GestionContenidoTaxonomico
+                        'Modules\CatalogoPublico\Tests\Behat\Contexts\GestionContenidoTaxonomico\PresentacionArbolTaxonomicoContext',
                     )
             )
             ->withSuite(

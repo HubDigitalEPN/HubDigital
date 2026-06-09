@@ -41,7 +41,7 @@
     x-on:dragover.prevent="if (!cargado) arrastrando = true"
     x-on:dragleave.prevent="arrastrando = false"
     x-on:drop.prevent="soltar($event)"
-    {{ $attributes->merge(['class' => 'flex flex-col items-center gap-3 text-center sm:flex-row sm:items-center sm:gap-4 sm:text-left rounded-lg border-2 p-4 transition-all']) }}
+    {{ $attributes->merge(['class' => 'flex flex-col items-center gap-3 text-center sm:flex-row sm:items-center sm:gap-3 sm:text-left rounded-lg border-2 p-3 transition-all']) }}
     x-bind:class="cargado
         ? '{{ $error ? 'border-error/40 bg-error/5 cursor-default' : 'border-success/40 bg-success/5 cursor-default' }}'
         : arrastrando
@@ -60,9 +60,61 @@
 
     {{-- Body --}}
     <div class="flex-1 min-w-0">
-        <p class="text-sm font-semibold text-text-primary leading-snug">
-            Matriz de especímenes · Darwin Core
-        </p>
+        <div class="flex items-center gap-1.5">
+            <p class="text-sm font-semibold text-text-primary leading-snug">
+                Matriz de especímenes · Darwin Core
+            </p>
+            <div
+                x-data="{
+                    infoAbierta: false,
+                    x: 0,
+                    y: 0,
+                    abrir() {
+                        const r = this.$el.getBoundingClientRect();
+                        this.x = Math.max(8, r.right - 256);
+                        this.y = r.bottom + 6;
+                        this.infoAbierta = true;
+                    }
+                }"
+                x-on:mouseenter="abrir()"
+                x-on:mouseleave="infoAbierta = false"
+                class="shrink-0"
+            >
+                <span
+                    x-on:click.stop="infoAbierta ? infoAbierta = false : abrir()"
+                    :class="infoAbierta ? 'text-science-blue' : 'text-text-secondary'"
+                    class="-m-2 flex cursor-help p-2 transition-colors duration-200"
+                    aria-label="Más información sobre este archivo"
+                >
+                    <flux:icon name="information-circle" class="size-4" />
+                </span>
+
+                <template x-teleport="body">
+                    <div
+                        x-show="infoAbierta"
+                        x-cloak
+                        x-transition:enter="transition ease-out duration-200"
+                        x-transition:enter-start="opacity-0 -translate-y-1 scale-[0.97]"
+                        x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                        x-transition:leave="transition ease-in duration-150"
+                        x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+                        x-transition:leave-end="opacity-0 -translate-y-1 scale-[0.97]"
+                        :style="'position:fixed;left:'+x+'px;top:'+y+'px;z-index:9999'"
+                        class="w-64 max-w-[calc(100vw-2rem)] origin-top-right overflow-hidden rounded-lg bg-surface shadow-lg ring-1 ring-science-blue/30 sm:w-72"
+                    >
+                        <div class="flex gap-2.5 p-3">
+                            <div class="flex size-7 shrink-0 items-center justify-center rounded-full bg-science-blue/15 ring-1 ring-science-blue/20">
+                                <flux:icon name="light-bulb" class="size-4 text-science-blue" />
+                            </div>
+                            <div class="space-y-0.5">
+                                <p class="text-xs font-semibold uppercase tracking-wide text-science-blue">¿Qué subo aquí?</p>
+                                <p class="text-xs text-text-secondary leading-relaxed">Hoja de cálculo con una fila por espécimen y columnas en formato Darwin Core (scientificName, kingdom, phylum, class, etc.). Descarga la plantilla para ver el formato exacto esperado.</p>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
 
         <div class="flex items-center gap-2 mt-1 flex-wrap">
             @if($error)
@@ -90,13 +142,9 @@
             @endif
 
             <span x-show="!cargado && !subiendo && !nombreArchivo" class="text-xs text-text-secondary">
-                Excel (.xlsx) · Hasta 10 MB
+                Excel (.xlsx) · Hasta 10 MB · Una fila por espécimen
             </span>
         </div>
-
-        <p x-show="!cargado && !subiendo && !nombreArchivo" class="text-xs text-text-secondary mt-1.5">
-            Archivo .xlsx con una fila por espécimen y columnas Darwin Core.
-        </p>
 
         <div x-show="!cargado && !subiendo && !nombreArchivo" class="flex items-center gap-3 flex-wrap mt-1" x-on:click.stop>
             <a href="{{ asset('templates/formato_matriz_invertebrados.xlsx') }}"

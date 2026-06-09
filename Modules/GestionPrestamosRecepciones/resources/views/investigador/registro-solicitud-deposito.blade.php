@@ -102,7 +102,7 @@
     <div class="rounded-lg border border-border bg-surface shadow-sm">
 
         {{-- Step content --}}
-        <div class="p-4 sm:p-6">
+        <div class="p-4 sm:p-6" wire:key="paso-{{ $paso }}">
             @if($paso === 1)
                 @include('gestionprestamosrecepciones::investigador.registro-solicitud-deposito.paso-tramite')
             @elseif($paso === 2)
