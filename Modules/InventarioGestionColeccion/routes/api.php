@@ -19,7 +19,10 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function (): void {
         });
 
     // --- Gestión de registros taxonómicos ---
-    Route::prefix('taxonomia')
+    // 'ability:taxonomia' impide que tokens de dispositivo (solo 'esp32') escriban taxonomía;
+    // los tokens de usuario emitidos en login tienen ['*'] y las sesiones web usan TransientToken.
+    Route::middleware('ability:taxonomia')
+        ->prefix('taxonomia')
         ->name('api.v1.taxonomia.')
         ->group(function (): void {
             // Taxones
