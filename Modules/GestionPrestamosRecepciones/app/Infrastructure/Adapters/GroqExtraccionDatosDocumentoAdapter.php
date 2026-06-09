@@ -87,7 +87,10 @@ final class GroqExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocume
 
     private function leerPdf(Parser $parser, string $nombre, string $ruta): ?string
     {
-        $rutaAbsoluta = Storage::disk('public')->path($ruta);
+        // Disco por defecto (privado); 'public' solo como respaldo de archivos legados.
+        $rutaAbsoluta = Storage::exists($ruta)
+            ? Storage::path($ruta)
+            : Storage::disk('public')->path($ruta);
 
         if (! file_exists($rutaAbsoluta)) {
             Log::warning('GroqExtraccion: archivo no encontrado', [

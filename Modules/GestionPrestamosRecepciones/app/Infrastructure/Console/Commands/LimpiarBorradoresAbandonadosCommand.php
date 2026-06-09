@@ -34,6 +34,8 @@ final class LimpiarBorradoresAbandonadosCommand extends Command
         foreach ($borradores as $borrador) {
             $documentos = $borrador->documentos_cargados ?? [];
             foreach ($documentos as $ruta) {
+                // Ambos discos: los borradores antiguos guardaban en 'public'.
+                Storage::delete($ruta);
                 Storage::disk('public')->delete($ruta);
             }
 

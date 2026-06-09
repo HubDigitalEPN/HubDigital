@@ -133,7 +133,8 @@ final class AuditarPrestamo extends Component
         $this->validate(['documentoExportacion' => 'required|file|mimes:pdf|max:10240']);
 
         $prestamoModel = PrestamoEloquentModel::findOrFail($this->prestamoId);
-        $ruta = $this->documentoExportacion->store('exportaciones', 'public');
+        // Disco privado: el documento se sirve solo vía ServirDocumentoExportacion (curador/dueño).
+        $ruta = $this->documentoExportacion->store('exportaciones');
 
         $handler->handle(new HabilitarEnvioInternacionalInput(
             actaId: $prestamoModel->acta_prestamo_id,

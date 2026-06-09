@@ -10,8 +10,6 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
 use Livewire\WithFileUploads;
-use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarVerificacionEntrega\AprobarVerificacionEntregaHandler;
-use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarVerificacionEntrega\AprobarVerificacionEntregaInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialPrestamo\ConsultarHistorialPrestamoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialPrestamo\ConsultarHistorialPrestamoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarPrestamo\ConsultarPrestamoHandler;
@@ -56,7 +54,8 @@ final class DetallePrestamo extends Component
         $this->validate(['documentoExportacion' => 'required|file|mimes:pdf|max:10240']);
 
         $prestamoModel = PrestamoEloquentModel::findOrFail($this->id);
-        $ruta = $this->documentoExportacion->store('exportaciones', 'public');
+        // Disco privado: el documento se sirve solo vía ServirDocumentoExportacion (curador/dueño).
+        $ruta = $this->documentoExportacion->store('exportaciones');
 
         $handler->handle(new HabilitarEnvioInternacionalInput(
             actaId: $prestamoModel->acta_prestamo_id,
@@ -67,8 +66,6 @@ final class DetallePrestamo extends Component
         $this->successMessage = 'Documento de exportación registrado. El préstamo pasa a en tránsito.';
         $this->documentoExportacion = null;
     }
-
-
 
     public function render(
         ConsultarPrestamoHandler $prestamoHandler,

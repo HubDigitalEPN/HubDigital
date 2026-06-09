@@ -89,7 +89,10 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
             // Validar firmas electrónicas de cada documento.
             $firmas = [];
             foreach ($this->documentos as $nombre => $ruta) {
-                $rutaAbsoluta = Storage::disk('public')->path($ruta);
+                // Disco por defecto (privado); 'public' solo como respaldo de archivos legados.
+                $rutaAbsoluta = Storage::exists($ruta)
+                    ? Storage::path($ruta)
+                    : Storage::disk('public')->path($ruta);
                 $firmas[$nombre] = $validadorFirma->verificarFirma($rutaAbsoluta)->value;
             }
 

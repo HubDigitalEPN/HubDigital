@@ -274,9 +274,10 @@ final class RegistroSolicitudDeposito extends Component
         $this->nombresArchivosOriginales = $model->nombres_archivos_originales ?? [];
 
         // Si hay archivos cargados, verificar que aún existen en storage
+        // (disco privado por defecto; 'public' como respaldo de archivos legados)
         $this->documentosCargados = array_filter(
             $this->documentosCargados,
-            fn (string $ruta) => Storage::disk('public')->exists($ruta)
+            fn (string $ruta) => Storage::exists($ruta) || Storage::disk('public')->exists($ruta)
         );
 
         // Limpiar originales de documentos cuyo archivo ya no existe
@@ -452,8 +453,9 @@ final class RegistroSolicitudDeposito extends Component
     public function descartarBorrador(): void
     {
         if ($this->solicitudId !== null) {
-            // Eliminar archivos cargados del storage
+            // Eliminar archivos cargados del storage (ambos discos por archivos legados)
             foreach ($this->documentosCargados as $ruta) {
+                Storage::delete($ruta);
                 Storage::disk('public')->delete($ruta);
             }
 
@@ -652,7 +654,8 @@ final class RegistroSolicitudDeposito extends Component
             ]
         );
 
-        $ruta = $archivo->store('depositos', 'public');
+        // Disco privado: contiene permisos y documentos regulatorios, no debe ser público.
+        $ruta = $archivo->store('depositos');
         $this->documentosCargados[$nombre] = $ruta;
         $this->nombresArchivosOriginales[$nombre] = $archivo->getClientOriginalName();
 
@@ -662,6 +665,7 @@ final class RegistroSolicitudDeposito extends Component
     public function eliminarDocumento(string $nombre): void
     {
         if (isset($this->documentosCargados[$nombre])) {
+            Storage::delete($this->documentosCargados[$nombre]);
             Storage::disk('public')->delete($this->documentosCargados[$nombre]);
             unset($this->documentosCargados[$nombre]);
             unset($this->nombresArchivosOriginales[$nombre]);

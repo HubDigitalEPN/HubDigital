@@ -25,11 +25,20 @@ final class ServirDocumentoExportacion
             abort(403);
         }
 
-        if (! $acta->documento_exportacion_ruta || ! Storage::disk('public')->exists($acta->documento_exportacion_ruta)) {
+        $ruta = $acta->documento_exportacion_ruta;
+
+        if (! $ruta) {
             abort(404);
         }
 
-        return response(Storage::disk('public')->get($acta->documento_exportacion_ruta), 200, [
+        // Disco por defecto (privado); 'public' solo como respaldo de archivos legados.
+        $disk = Storage::exists($ruta) ? Storage::disk() : Storage::disk('public');
+
+        if (! $disk->exists($ruta)) {
+            abort(404);
+        }
+
+        return response($disk->get($ruta), 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="documento-exportacion.pdf"',
         ]);
