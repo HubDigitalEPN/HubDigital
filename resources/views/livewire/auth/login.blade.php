@@ -41,7 +41,13 @@
             <flux:error name="password" />
         </flux:field>
 
-        <flux:checkbox wire:model="remember" label="Recordarme en este dispositivo" />
+        <div class="flex flex-col gap-1.5">
+            <flux:checkbox wire:model="remember" label="Recordarme en este dispositivo" />
+            <p class="flex items-start gap-1 text-xs text-text-secondary">
+                <flux:icon name="shield-check" variant="outline" class="mt-px size-3.5 shrink-0" />
+                Mantiene tu sesión iniciada en este dispositivo. Úsalo solo en equipos personales y de confianza.
+            </p>
+        </div>
 
         <flux:button
             type="submit"

@@ -1,6 +1,25 @@
 <x-layouts::app :title="__('Dashboard')">
     <div class="flex h-full w-full flex-1 flex-col gap-4 p-6">
 
+        {{-- Confirmación de verificación de correo (criterio 3) --}}
+        @if (request()->boolean('verified'))
+            <div
+                x-data="{ show: true }"
+                x-show="show"
+                x-init="setTimeout(() => show = false, 6000)"
+                class="flex items-start gap-2 rounded-lg border border-success/30 bg-success/5 p-3"
+            >
+                <flux:icon name="check-circle" variant="outline" class="mt-px size-5 shrink-0 text-success" />
+                <div class="flex-1">
+                    <p class="text-sm font-medium text-text-primary">¡Tu cuenta fue verificada correctamente!</p>
+                    <p class="text-xs text-text-secondary">Ya puedes acceder a todas las funcionalidades de la plataforma.</p>
+                </div>
+                <button type="button" x-on:click="show = false" class="text-text-secondary hover:text-text-primary">
+                    <flux:icon name="x-mark" variant="outline" class="size-4" />
+                </button>
+            </div>
+        @endif
+
         {{-- Page heading --}}
         <div class="flex flex-col gap-1">
             <h1 class="font-display text-2xl font-bold text-blue-navy">Dashboard</h1>
