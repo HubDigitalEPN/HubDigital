@@ -6,6 +6,11 @@ namespace Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquen
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Modelo Eloquent para la tabla 'prestamos.configuracion_global_recordatorios'.
+ *
+ * Almacena la cadencia de días configurada por el curador para el envío de recordatorios automáticos.
+ */
 final class ConfiguracionGlobalRecordatoriosEloquentModel extends Model
 {
     protected $table = 'prestamos.configuracion_global_recordatorios';

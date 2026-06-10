@@ -12,8 +12,20 @@ use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRep
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoMatrizEspecies;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
 
+/**
+ * Manejador del caso de uso para finalizar el envío de una solicitud de depósito.
+ * 
+ * {@see FinalizarEnvioSolicitudDepositoInput}
+ * {@see FinalizarEnvioSolicitudDepositoOutput}
+ */
 final class FinalizarEnvioSolicitudDepositoHandler
 {
+    /**
+     * @param SolicitudDepositoRepositoryInterface $solicitudRepo Repositorio de solicitudes de depósito.
+     * @param MatrizEspeciesRepositoryInterface $matrizRepo Repositorio de matrices de especies.
+     * @param TransactionManagerPort $transactionManager Gestor de transacciones.
+     * @param EventPublisherPort $eventPublisher Publicador de eventos.
+     */
     public function __construct(
         private SolicitudDepositoRepositoryInterface $solicitudRepo,
         private MatrizEspeciesRepositoryInterface $matrizRepo,
@@ -21,6 +33,14 @@ final class FinalizarEnvioSolicitudDepositoHandler
         private EventPublisherPort $eventPublisher,
     ) {}
 
+    /**
+     * Ejecuta el caso de uso.
+     *
+     * @param FinalizarEnvioSolicitudDepositoInput $input Datos de entrada.
+     * @return FinalizarEnvioSolicitudDepositoOutput Resultado de la finalización del envío.
+     * @throws \DomainException Si la solicitud no es encontrada.
+     * @throws MatrizEspeciesRequeridaException Si la matriz de especies es requerida pero no se encontró.
+     */
     public function __invoke(FinalizarEnvioSolicitudDepositoInput $input): FinalizarEnvioSolicitudDepositoOutput
     {
         $solicitudId = SolicitudDepositoId::from($input->solicitudId);

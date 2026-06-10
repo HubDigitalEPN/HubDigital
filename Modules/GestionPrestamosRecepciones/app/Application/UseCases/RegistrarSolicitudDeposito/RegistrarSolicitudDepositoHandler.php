@@ -11,6 +11,12 @@ use Modules\GestionPrestamosRecepciones\Domain\Exceptions\LimiteAnualDepositosAl
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoTramite;
 
+/**
+ * Registra una nueva solicitud de depósito.
+ *
+ * {@see RegistrarSolicitudDepositoInput}
+ * {@see RegistrarSolicitudDepositoOutput}
+ */
 final class RegistrarSolicitudDepositoHandler
 {
     public function __construct(
@@ -19,6 +25,11 @@ final class RegistrarSolicitudDepositoHandler
         private EventPublisherPort $eventPublisher,
     ) {}
 
+    /**
+     * @param RegistrarSolicitudDepositoInput $input
+     * @return RegistrarSolicitudDepositoOutput
+     * @throws LimiteAnualDepositosAlcanzado
+     */
     public function __invoke(RegistrarSolicitudDepositoInput $input): RegistrarSolicitudDepositoOutput
     {
         $this->repo->eliminarBorradoresDe($input->investigadorId);

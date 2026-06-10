@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Application\UseCases\SubirActaFirmada;
 
+/**
+ * Datos de entrada para subir el acta firmada.
+ */
 final readonly class SubirActaFirmadaInput
 {
     public function __construct(

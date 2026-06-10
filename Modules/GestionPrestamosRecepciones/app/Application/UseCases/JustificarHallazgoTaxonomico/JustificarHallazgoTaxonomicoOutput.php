@@ -7,6 +7,9 @@ namespace Modules\GestionPrestamosRecepciones\Application\UseCases\JustificarHal
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoMatrizEspecies;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoRegistroEspecimen;
 
+/**
+ * Datos de salida tras justificar un hallazgo taxonómico.
+ */
 final readonly class JustificarHallazgoTaxonomicoOutput
 {
     public function __construct(

@@ -19,6 +19,13 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Exceptions\ModeloIANoDisponibleException;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
 
+/**
+ * Trabajo en segundo plano para la extracción y validación de datos de documentos.
+ *
+ * Procesa de forma asíncrona una lista de documentos PDF cargados por el investigador,
+ * extrayendo información mediante IA, verificando firmas electrónicas y finalmente
+ * integrando estos datos en la solicitud de depósito correspondiente.
+ */
 final class ExtraccionDatosDocumentoJob implements ShouldQueue
 {
     use Queueable;
@@ -28,13 +35,17 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
     public int $timeout = 600;
 
     /**
-     * @param  array<string, string>  $documentos  [nombre => ruta_storage]
+     * @param  string  $solicitudId  ID de la solicitud de depósito.
+     * @param  array<string, string>  $documentos  Mapeo de [nombre_documento => ruta_storage].
      */
     public function __construct(
         private readonly string $solicitudId,
         private readonly array $documentos,
     ) {}
 
+    /**
+     * Ejecuta el procesamiento de los documentos.
+     */
     public function handle(
         ExtraccionDatosDocumentoPort $extraccion,
         ValidacionFirmaElectronicaPort $validadorFirma,

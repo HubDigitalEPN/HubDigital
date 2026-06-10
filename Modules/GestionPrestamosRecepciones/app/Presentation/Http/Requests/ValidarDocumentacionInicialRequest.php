@@ -6,6 +6,7 @@ namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
+/** Valida la provincia de origen y los documentos adjuntos necesarios para la validación documental inicial de una SolicitudDeposito. */
 final class ValidarDocumentacionInicialRequest extends FormRequest
 {
     public function authorize(): bool

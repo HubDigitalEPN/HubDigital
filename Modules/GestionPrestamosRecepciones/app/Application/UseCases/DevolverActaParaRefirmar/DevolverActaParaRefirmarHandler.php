@@ -12,8 +12,20 @@ use Modules\GestionPrestamosRecepciones\Domain\Repositories\ActaPrestamoReposito
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
 
+/**
+ * Manejador del caso de uso para devolver un acta para ser refirmada.
+ * 
+ * {@see DevolverActaParaRefirmarInput}
+ * {@see DevolverActaParaRefirmarOutput}
+ */
 final class DevolverActaParaRefirmarHandler
 {
+    /**
+     * @param ActaPrestamoRepositoryInterface $actaRepo Repositorio de actas.
+     * @param SolicitudPrestamoRepositoryInterface $solicitudRepo Repositorio de solicitudes.
+     * @param EventPublisherPort $publisher Publicador de eventos.
+     * @param TransactionManagerPort $transactionManager Gestor de transacciones.
+     */
     public function __construct(
         private readonly ActaPrestamoRepositoryInterface $actaRepo,
         private readonly SolicitudPrestamoRepositoryInterface $solicitudRepo,
@@ -21,6 +33,14 @@ final class DevolverActaParaRefirmarHandler
         private readonly TransactionManagerPort $transactionManager,
     ) {}
 
+    /**
+     * Ejecuta el caso de uso.
+     *
+     * @param DevolverActaParaRefirmarInput $input Datos de entrada.
+     * @return DevolverActaParaRefirmarOutput Datos actualizados del acta.
+     * @throws ActaPrestamoNoEncontradaException Si el acta no existe.
+     * @throws SolicitudPrestamoNoEncontradaException Si la solicitud asociada no existe.
+     */
     public function handle(DevolverActaParaRefirmarInput $input): DevolverActaParaRefirmarOutput
     {
         $actaId = ActaPrestamoId::fromString($input->actaId);

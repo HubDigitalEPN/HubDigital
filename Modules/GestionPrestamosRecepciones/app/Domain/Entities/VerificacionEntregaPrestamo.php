@@ -10,6 +10,16 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ObservacionEspecimen
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\VerificacionEntregaId;
 
+/**
+ * Entidad que registra la verificación de entrega de un préstamo realizada por el
+ * investigador al recibir los especímenes.
+ *
+ * Captura el estado del envío (conforme / con novedades) y la lista de
+ * observaciones por espécimen. Invariante: si el envío llega con novedades debe
+ * registrarse al menos una observación.
+ *
+ * Construir vía {@see self::registrar()}; rehidratar vía {@see self::reconstituir()}.
+ */
 final class VerificacionEntregaPrestamo
 {
     /** @param list<ObservacionEspecimen> $observaciones */
@@ -21,7 +31,11 @@ final class VerificacionEntregaPrestamo
     ) {}
 
     /**
+     * Registra la verificación de entrega.
+     *
      * @param  list<ObservacionEspecimen>  $observaciones
+     *
+     * @throws InvalidArgumentException Si el envío llega con novedades sin observaciones.
      */
     public static function registrar(
         VerificacionEntregaId $id,

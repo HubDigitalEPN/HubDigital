@@ -18,6 +18,9 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\ObservarSolicitudPr
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ObservarSolicitudPrestamo\ObservarSolicitudPrestamoInput;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\SolicitudPrestamoModel;
 
+/**
+ * Componente Livewire para la revisión, aprobación o devolución de una solicitud de préstamo.
+ */
 #[Layout('layouts.app', params: ['title' => 'Revisar solicitud'])]
 final class RevisarSolicitud extends Component
 {
@@ -53,6 +56,10 @@ final class RevisarSolicitud extends Component
     /** @var array<string, string> itemId => condicion */
     public array $condicionesPorItem = [];
 
+    /**
+     * @param string $id
+     * @return void
+     */
     public function mount(string $id): void
     {
         $this->id = $id;
@@ -67,6 +74,10 @@ final class RevisarSolicitud extends Component
         $this->duracionPersonalizadaMeses = $this->solicitud->duracion_propuesta_meses ?? 3;
     }
 
+    /**
+     * @param AprobarSolicitudPrestamoHandler $handler
+     * @return void
+     */
     public function aprobar(AprobarSolicitudPrestamoHandler $handler): void
     {
         $this->validate([
@@ -97,6 +108,10 @@ final class RevisarSolicitud extends Component
         $this->redirectRoute('prestamos.curador.actas', navigate: true);
     }
 
+    /**
+     * @param ObservarSolicitudPrestamoHandler $handler
+     * @return void
+     */
     public function devolver(ObservarSolicitudPrestamoHandler $handler): void
     {
         $this->validateOnly('motivoObservacion');
@@ -113,6 +128,10 @@ final class RevisarSolicitud extends Component
         $this->redirectRoute('prestamos.curador.solicitudes', navigate: true);
     }
 
+    /**
+     * @param ConsultarHistorialSolicitudHandler $historialHandler
+     * @return View
+     */
     public function render(ConsultarHistorialSolicitudHandler $historialHandler): View
     {
         $historial = $historialHandler->handle(new ConsultarHistorialSolicitudInput(

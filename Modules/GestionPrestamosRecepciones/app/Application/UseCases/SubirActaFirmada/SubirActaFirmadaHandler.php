@@ -10,6 +10,12 @@ use Modules\GestionPrestamosRecepciones\Domain\Exceptions\ActaPrestamoNoEncontra
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\ActaPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudPrestamoId;
 
+/**
+ * Sube el documento PDF del acta firmada por el investigador.
+ *
+ * {@see SubirActaFirmadaInput}
+ * {@see SubirActaFirmadaOutput}
+ */
 final class SubirActaFirmadaHandler
 {
     public function __construct(
@@ -18,6 +24,11 @@ final class SubirActaFirmadaHandler
         private readonly TransactionManagerPort $transactionManager,
     ) {}
 
+    /**
+     * @param SubirActaFirmadaInput $input
+     * @return SubirActaFirmadaOutput
+     * @throws ActaPrestamoNoEncontradaException
+     */
     public function handle(SubirActaFirmadaInput $input): SubirActaFirmadaOutput
     {
         $solicitudId = SolicitudPrestamoId::fromString($input->solicitudId);

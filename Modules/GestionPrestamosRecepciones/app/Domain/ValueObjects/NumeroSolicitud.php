@@ -6,6 +6,13 @@ namespace Modules\GestionPrestamosRecepciones\Domain\ValueObjects;
 
 use InvalidArgumentException;
 
+/**
+ * Value object inmutable que representa el número legible de una solicitud de
+ * préstamo, con formato `MEPN-INV-XXXXXX`.
+ *
+ * Genera nuevos números con {@see generate()} y acepta tanto el formato actual como
+ * el legado (`sol_XXXXXX`) al reconstruir desde BD con {@see fromString()}.
+ */
 final readonly class NumeroSolicitud
 {
     private const PREFIX = 'MEPN-INV-';
@@ -32,6 +39,11 @@ final readonly class NumeroSolicitud
         return new self(self::PREFIX.$suffix);
     }
 
+    /**
+     * Reconstruye el número desde su representación textual.
+     *
+     * @throws InvalidArgumentException Si el valor no coincide con el formato esperado.
+     */
     public static function fromString(string $value): self
     {
         if (! preg_match(self::PATTERN, $value)) {

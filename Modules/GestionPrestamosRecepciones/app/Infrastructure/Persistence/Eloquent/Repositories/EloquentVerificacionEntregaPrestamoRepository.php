@@ -12,8 +12,17 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\VerificacionEntregaId;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\VerificacionEntregaPrestamoEloquentModel;
 
+/**
+ * Implementación Eloquent del repositorio de verificaciones de entrega.
+ *
+ * Persiste y recupera el agregado {@see VerificacionEntregaPrestamo} que detalla
+ * el estado de los especímenes recibidos por el investigador.
+ */
 final class EloquentVerificacionEntregaPrestamoRepository implements VerificacionEntregaPrestamoRepositoryInterface
 {
+    /**
+     * Persiste una verificación de entrega.
+     */
     public function guardar(VerificacionEntregaPrestamo $verificacion): void
     {
         $observaciones = array_map(
@@ -34,6 +43,9 @@ final class EloquentVerificacionEntregaPrestamoRepository implements Verificacio
         );
     }
 
+    /**
+     * Busca la verificación de entrega asociada a un préstamo.
+     */
     public function buscarPorPrestamoId(PrestamoId $prestamoId): ?VerificacionEntregaPrestamo
     {
         $model = VerificacionEntregaPrestamoEloquentModel::where('prestamo_id', (string) $prestamoId)->first();
@@ -41,11 +53,17 @@ final class EloquentVerificacionEntregaPrestamoRepository implements Verificacio
         return $model !== null ? $this->toDomain($model) : null;
     }
 
+    /**
+     * Genera un nuevo identificador para una verificación.
+     */
     public function nextIdentity(): VerificacionEntregaId
     {
         return VerificacionEntregaId::generate();
     }
 
+    /**
+     * Mapea el modelo Eloquent a la entidad de dominio.
+     */
     private function toDomain(VerificacionEntregaPrestamoEloquentModel $model): VerificacionEntregaPrestamo
     {
         $observaciones = array_map(

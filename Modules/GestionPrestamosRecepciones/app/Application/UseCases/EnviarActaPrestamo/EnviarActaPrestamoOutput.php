@@ -6,8 +6,18 @@ namespace Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarActaPre
 
 use Modules\GestionPrestamosRecepciones\Domain\Entities\ActaPrestamo;
 
+/**
+ * Output DTO para el caso de uso de enviar un acta de préstamo.
+ */
 final readonly class EnviarActaPrestamoOutput
 {
+    /**
+     * @param string $actaId ID del acta de préstamo enviada.
+     * @param string $numeroPrestamo Número de préstamo asignado.
+     * @param string $estadoActa Estado actual del acta tras el envío.
+     * @param string $pdfRuta Ruta del archivo PDF del acta.
+     * @param bool $notificacionEnviada Indica si la notificación fue enviada exitosamente.
+     */
     public function __construct(
         public string $actaId,
         public string $numeroPrestamo,
@@ -16,6 +26,13 @@ final readonly class EnviarActaPrestamoOutput
         public bool $notificacionEnviada,
     ) {}
 
+    /**
+     * Crea una instancia a partir de la entidad ActaPrestamo y el estado de la notificación.
+     *
+     * @param ActaPrestamo $acta Entidad ActaPrestamo.
+     * @param bool $notificacionEnviada Estado de la notificación.
+     * @return self
+     */
     public static function fromPrimitives(ActaPrestamo $acta, bool $notificacionEnviada): self
     {
         return new self(

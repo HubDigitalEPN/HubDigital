@@ -10,9 +10,19 @@ use Modules\GestionPrestamosRecepciones\Domain\Events\ConfiguracionGlobalRecorda
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\CadenciaRecordatoriosInvalidaException;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ConfiguracionGlobalRecordatoriosId;
 
+/**
+ * Agregado raíz que guarda la configuración global de recordatorios de devolución
+ * que define el curador.
+ *
+ * Almacena la cadencia (lista de días antes del vencimiento en los que se notifica
+ * al investigador) y valida que dicha cadencia no esté vacía ni contenga días
+ * inválidos. Emite eventos al definirse y actualizarse.
+ *
+ * Construir vía {@see self::definir()}; rehidratar vía {@see self::reconstituir()}.
+ */
 final class ConfiguracionGlobalRecordatorios
 {
-    /** @var list<object> */
+    /** @var list<object> Eventos de dominio acumulados, drenados con {@see pullEvents()}. */
     private array $events = [];
 
     /**
@@ -27,7 +37,11 @@ final class ConfiguracionGlobalRecordatorios
     // ── Named constructors ────────────────────────────────────────────────────
 
     /**
-     * @param  list<int>  $diasAntes
+     * Define la configuración global validando la cadencia.
+     *
+     * @param  list<int>  $diasAntes  Días antes del vencimiento en que se notifica.
+     *
+     * @throws CadenciaRecordatoriosInvalidaException Si la lista está vacía o contiene días < 1.
      */
     public static function definir(
         ConfiguracionGlobalRecordatoriosId $id,
@@ -70,7 +84,11 @@ final class ConfiguracionGlobalRecordatorios
     // ── Business methods ──────────────────────────────────────────────────────
 
     /**
+     * Actualiza el curador responsable y la cadencia de recordatorios.
+     *
      * @param  list<int>  $diasAntes
+     *
+     * @throws CadenciaRecordatoriosInvalidaException Si la lista está vacía o contiene días < 1.
      */
     public function actualizar(string $curadorId, array $diasAntes): void
     {

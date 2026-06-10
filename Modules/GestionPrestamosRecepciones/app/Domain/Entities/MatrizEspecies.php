@@ -19,6 +19,19 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\MatrizEspeciesId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\RegistroEspecimenId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoTramite;
 
+/**
+ * Agregado raíz que representa la matriz de especies de un trámite de depósito o
+ * donación: el conjunto de registros de especímenes cargados desde el Excel junto
+ * con sus campos Darwin Core (DwC).
+ *
+ * Orquesta la validación técnica de la matriz y de cada {@see RegistroEspecimen}:
+ * valida los campos DwC críticos/recomendados, gestiona las sugerencias de
+ * corrección taxonómica (solo en Depósitos), la justificación de hallazgos no
+ * catalogados y recalcula su propio estado según el de sus registros. Las
+ * donaciones se consideran validadas técnicamente desde su creación.
+ *
+ * Construir vía {@see self::crear()}; rehidratar vía {@see self::reconstituir()}.
+ */
 final class MatrizEspecies
 {
     // ── Identidad ──────────────────────────────────���─────────────
@@ -64,7 +77,13 @@ final class MatrizEspecies
     // ── Factory Method ───────────────────────────────────────────
 
     /**
-     * @param  array<string, mixed>  $camposDwCPresentes
+     * Crea una matriz nueva para una solicitud. Las donaciones nacen
+     * ValidadasTecnicamente (con identificación original conservada); los depósitos
+     * nacen Pendientes.
+     *
+     * @param  array<string, mixed>  $camposDwCPresentes  Cabeceras DwC detectadas en el Excel.
+     *
+     * @throws \DomainException Si el ID de la solicitud está vacío.
      */
     public static function crear(
         MatrizEspeciesId $id,

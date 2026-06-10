@@ -4,6 +4,15 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Domain\Services;
 
+/**
+ * Servicio de dominio puro que determina qué documentos son obligatorios para un
+ * trámite de depósito o donación de especímenes.
+ *
+ * Combina un documento base según el tipo de trámite con documentos suplementarios
+ * que dependen del origen de recolección y la situación regulatoria. Aplica además
+ * la excepción de Pichincha (no requiere permiso de movilización). Sin estado ni
+ * dependencias externas.
+ */
 final class ReglaDocumentacionRequerida
 {
     /** Documento base obligatorio según el tipo de trámite */
@@ -30,7 +39,17 @@ final class ReglaDocumentacionRequerida
         ],
     ];
 
-    /** @return string[] */
+    /**
+     * Calcula la lista de documentos requeridos para el trámite indicado.
+     *
+     * @param  string  $tipoTramite  'Depósito' o 'Donación'.
+     * @param  string  $origenRecoleccion  Origen de los especímenes (Nacional / Exterior).
+     * @param  string  $situacionRegulatoria  Estado de permisos (con/sin MAE, colección foránea…).
+     * @param  string|null  $provinciaOrigen  Provincia; si es Pichincha se omite el permiso de movilización.
+     * @return string[] Nombres de los documentos requeridos, sin duplicados.
+     *
+     * @throws \DomainException Si no existe regla para la combinación origen/situación regulatoria.
+     */
     public function determinar(string $tipoTramite, string $origenRecoleccion, string $situacionRegulatoria, ?string $provinciaOrigen = null): array
     {
         $base = self::FORMATO_BASE[$tipoTramite] ?? [];

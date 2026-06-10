@@ -19,6 +19,20 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\NumeroSolicitudDepos
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoTramite;
 
+/**
+ * Agregado raíz que representa la solicitud de depósito o donación de especímenes
+ * que inicia el investigador.
+ *
+ * Acumula la información declarada por el investigador (origen de recolección,
+ * situación regulatoria, provincia), la documentación oficial adjunta y los datos
+ * extraídos automáticamente de ella ({@see integrarDatosDeDocumentos()}). Lleva la
+ * cuenta de los datos faltantes obligatorios que deben completarse manualmente
+ * antes de avanzar a revisión por curaduría, o escalarse a intervención curatorial
+ * cuando no hay documentación disponible. Su ciclo de vida se modela con
+ * {@see EstadoSolicitudDeposito}.
+ *
+ * Construir vía {@see self::crear()}; rehidratar vía {@see self::reconstituir()}.
+ */
 final class SolicitudDeposito
 {
     // ── Identidad ────────────────────────────────────────────────
@@ -87,6 +101,11 @@ final class SolicitudDeposito
 
     // ── Factory Method ───────────────────────────────────────────
 
+    /**
+     * Crea una solicitud nueva en estado EnBorrador.
+     *
+     * @throws \DomainException Si el investigadorId está vacío.
+     */
     public static function crear(
         SolicitudDepositoId $id,
         NumeroSolicitudDeposito $numero,
@@ -166,6 +185,9 @@ final class SolicitudDeposito
     /**
      * Integra los datos extraídos de la documentación oficial en la solicitud.
      * Marca automáticamente como faltante cualquier campo obligatorio que no pudo ser extraído.
+     */
+    /**
+     * @param  string[]  $nombresDocumentos  Nombres de los documentos de los que se extrajeron los datos.
      */
     public function integrarDatosDeDocumentos(DatosIntegradosDocumento $datos, array $nombresDocumentos): void
     {
@@ -272,6 +294,13 @@ final class SolicitudDeposito
         );
     }
 
+    /**
+     * Escala la solicitud a asesoría curatorial cuando el investigador no dispone
+     * de documentación. Solo permitido desde EnBorrador y tras marcarla sin documentación.
+     *
+     * @throws DocumentacionInsuficiente Si no se marcó como sin documentación.
+     * @throws TransicionEstadoInvalida Si no está en estado EnBorrador.
+     */
     public function escalarAIntervencionCuratoria(): void
     {
         if (! $this->sinDocumentacion) {
@@ -290,6 +319,13 @@ final class SolicitudDeposito
         );
     }
 
+    /**
+     * Avanza la solicitud a revisión por curaduría. Requiere que no queden datos
+     * faltantes y que esté en estado EnBorrador.
+     *
+     * @throws \DomainException Si existen datos faltantes.
+     * @throws TransicionEstadoInvalida Si no está en estado EnBorrador.
+     */
     public function avanzarARevisionCuraduria(): void
     {
         if ($this->tieneDatosFaltantes()) {

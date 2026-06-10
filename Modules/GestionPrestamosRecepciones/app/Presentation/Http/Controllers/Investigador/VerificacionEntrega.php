@@ -11,6 +11,9 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarVerificaci
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarVerificacionEntrega\RegistrarVerificacionEntregaInput;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\PrestamoEloquentModel;
 
+/**
+ * Componente Livewire para la verificación de entrega de especímenes.
+ */
 #[Layout('layouts.app', params: ['title' => 'Reportar recepción de especímenes'])]
 final class VerificacionEntrega extends Component
 {
@@ -21,6 +24,12 @@ final class VerificacionEntrega extends Component
     /** @var array<int, array{itemPrestamoId: string, descripcion: string}> */
     public array $observaciones = [];
 
+    /**
+     * Inicializa el componente.
+     *
+     * @param string $id
+     * @return void
+     */
     public function mount(string $id): void
     {
         $this->id = $id;
@@ -48,6 +57,12 @@ final class VerificacionEntrega extends Component
         ])->values()->toArray();
     }
 
+    /**
+     * Registra la verificación de entrega.
+     *
+     * @param \Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarVerificacionEntrega\RegistrarVerificacionEntregaHandler $handler
+     * @return void
+     */
     public function registrar(RegistrarVerificacionEntregaHandler $handler): void
     {
         $this->validate([
@@ -76,6 +91,11 @@ final class VerificacionEntrega extends Component
         $this->redirect(route('prestamos.investigador.prestamo.detalle', $this->id), navigate: true);
     }
 
+    /**
+     * Renderiza el componente.
+     *
+     * @return \Illuminate\View\View
+     */
     public function render(): View
     {
         $prestamo = PrestamoEloquentModel::query()

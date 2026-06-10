@@ -13,6 +13,12 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\AlcancePrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ItemPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\NumeroSolicitud;
 
+/**
+ * Registra una nueva solicitud de préstamo de especímenes.
+ *
+ * {@see RegistrarSolicitudPrestamoInput}
+ * {@see RegistrarSolicitudPrestamoOutput}
+ */
 final class RegistrarSolicitudPrestamoHandler
 {
     public function __construct(
@@ -21,6 +27,10 @@ final class RegistrarSolicitudPrestamoHandler
         private readonly TransactionManagerPort $transactionManager,
     ) {}
 
+    /**
+     * @param RegistrarSolicitudPrestamoInput $input
+     * @return RegistrarSolicitudPrestamoOutput
+     */
     public function handle(RegistrarSolicitudPrestamoInput $input): RegistrarSolicitudPrestamoOutput
     {
         $id = $this->repo->nextIdentity();

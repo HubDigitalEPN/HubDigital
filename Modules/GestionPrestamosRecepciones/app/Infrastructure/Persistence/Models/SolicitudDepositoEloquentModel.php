@@ -6,6 +6,11 @@ namespace Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Modelo Eloquent para la tabla 'recepciones.solicitudes_deposito'.
+ *
+ * Representa la persistencia de una solicitud de depósito de especímenes.
+ */
 final class SolicitudDepositoEloquentModel extends Model
 {
     protected $table = 'recepciones.solicitudes_deposito';

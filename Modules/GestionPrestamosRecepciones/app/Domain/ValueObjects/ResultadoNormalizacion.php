@@ -21,6 +21,7 @@ final readonly class ResultadoNormalizacion
         public array $cambios,
     ) {}
 
+    /** Indica si la normalización modificó al menos un campo del registro. */
     public function tuvoCambios(): bool
     {
         return $this->cambios !== [];

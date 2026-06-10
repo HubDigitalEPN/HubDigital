@@ -7,6 +7,11 @@ namespace Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquen
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * Modelo Eloquent para la tabla 'prestamos.recordatorios_devolucion'.
+ *
+ * Representa un recordatorio individual programado para ser enviado a un investigador.
+ */
 final class RecordatorioDevolucionEloquentModel extends Model
 {
     protected $table = 'prestamos.recordatorios_devolucion';
@@ -28,6 +33,9 @@ final class RecordatorioDevolucionEloquentModel extends Model
         'fecha_programada' => 'datetime',
     ];
 
+    /**
+     * Relación con el préstamo al que pertenece este recordatorio.
+     */
     public function prestamo(): BelongsTo
     {
         return $this->belongsTo(PrestamoEloquentModel::class, 'prestamo_id');

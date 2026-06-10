@@ -15,6 +15,12 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\NumeroPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoPrestamo;
 
+/**
+ * Caso de uso: Aprueba una solicitud de préstamo y emite el acta correspondiente.
+ *
+ * El curador valida la solicitud, establece las condiciones finales (generales y por ítem)
+ * y el sistema genera automáticamente un acta de préstamo en estado pendiente de firma.
+ */
 final class AprobarSolicitudPrestamoHandler
 {
     public function __construct(
@@ -24,6 +30,14 @@ final class AprobarSolicitudPrestamoHandler
         private readonly TransactionManagerPort $transactionManager,
     ) {}
 
+    /**
+     * Ejecuta el caso de uso.
+     *
+     * @param  AprobarSolicitudPrestamoInput  $input
+     * @return AprobarSolicitudPrestamoOutput
+     *
+     * @throws SolicitudPrestamoNoEncontradaException Si la solicitud no existe.
+     */
     public function handle(AprobarSolicitudPrestamoInput $input): AprobarSolicitudPrestamoOutput
     {
         $tipoPrestamo = TipoPrestamo::from($input->tipoPrestamo);

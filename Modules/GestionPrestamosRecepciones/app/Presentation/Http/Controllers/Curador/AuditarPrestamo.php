@@ -25,6 +25,9 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrestamoId;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\PrestamoEloquentModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\SolicitudPrestamoModel;
 
+/**
+ * Componente Livewire para la auditoría y gestión de detalles de un préstamo.
+ */
 #[Layout('layouts.app', params: ['title' => 'Auditoría de préstamo'])]
 final class AuditarPrestamo extends Component
 {
@@ -48,6 +51,11 @@ final class AuditarPrestamo extends Component
 
     public string $nuevoDiaModal = '';
 
+    /**
+     * @param string $id
+     * @param RecordatorioDevolucionRepositoryInterface $repo
+     * @return void
+     */
     public function mount(string $id, RecordatorioDevolucionRepositoryInterface $repo): void
     {
         $this->prestamoId = $id;
@@ -61,6 +69,9 @@ final class AuditarPrestamo extends Component
         $this->cargarRecordatorios($repo);
     }
 
+    /**
+     * @return void
+     */
     public function abrirModalRecordatorios(): void
     {
         $this->diasAntesModal = count($this->recordatoriosPersonalizados) > 0
@@ -71,6 +82,10 @@ final class AuditarPrestamo extends Component
         $this->mostrarModalRecordatorios = true;
     }
 
+    /**
+     * @param int $dia
+     * @return void
+     */
     public function toggleDiaModal(int $dia): void
     {
         if (in_array($dia, array_map('intval', $this->diasAntesModal), true)) {
@@ -83,6 +98,9 @@ final class AuditarPrestamo extends Component
         }
     }
 
+    /**
+     * @return void
+     */
     public function agregarDiaModal(): void
     {
         $dia = (int) $this->nuevoDiaModal;
@@ -98,6 +116,10 @@ final class AuditarPrestamo extends Component
         $this->nuevoDiaModal = '';
     }
 
+    /**
+     * @param int $dia
+     * @return void
+     */
     public function quitarDiaModal(int $dia): void
     {
         $this->diasAntesModal = array_values(
@@ -105,6 +127,11 @@ final class AuditarPrestamo extends Component
         );
     }
 
+    /**
+     * @param ActualizarRecordatoriosPrestamoEspecificoHandler $handler
+     * @param RecordatorioDevolucionRepositoryInterface $repo
+     * @return void
+     */
     public function actualizarRecordatorios(
         ActualizarRecordatoriosPrestamoEspecificoHandler $handler,
         RecordatorioDevolucionRepositoryInterface $repo,
@@ -128,6 +155,10 @@ final class AuditarPrestamo extends Component
         }
     }
 
+    /**
+     * @param HabilitarEnvioInternacionalHandler $handler
+     * @return void
+     */
     public function habilitarEnvio(HabilitarEnvioInternacionalHandler $handler): void
     {
         $this->validate(['documentoExportacion' => 'required|file|mimes:pdf|max:10240']);
@@ -158,6 +189,12 @@ final class AuditarPrestamo extends Component
         );
     }
 
+    /**
+     * @param ConsultarHistorialSolicitudHandler $historialSolicitudHandler
+     * @param ConsultarHistorialPrestamoHandler $historialPrestamoHandler
+     * @param VerificacionEntregaPrestamoRepositoryInterface $verificacionRepo
+     * @return View
+     */
     public function render(
         ConsultarHistorialSolicitudHandler $historialSolicitudHandler,
         ConsultarHistorialPrestamoHandler $historialPrestamoHandler,

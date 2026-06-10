@@ -10,14 +10,32 @@ use Modules\GestionPrestamosRecepciones\Domain\Exceptions\SolicitudPrestamoNoEnc
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudPrestamoId;
 
+/**
+ * Manejador del caso de uso para enviar una solicitud de préstamo.
+ * 
+ * {@see EnviarSolicitudPrestamoInput}
+ * {@see EnviarSolicitudPrestamoOutput}
+ */
 final class EnviarSolicitudPrestamoHandler
 {
+    /**
+     * @param SolicitudPrestamoRepositoryInterface $repo Repositorio de solicitudes de préstamo.
+     * @param EventPublisherPort $publisher Publicador de eventos.
+     * @param TransactionManagerPort $transactionManager Gestor de transacciones.
+     */
     public function __construct(
         private readonly SolicitudPrestamoRepositoryInterface $repo,
         private readonly EventPublisherPort $publisher,
         private readonly TransactionManagerPort $transactionManager,
     ) {}
 
+    /**
+     * Ejecuta el caso de uso.
+     *
+     * @param EnviarSolicitudPrestamoInput $input Datos de entrada.
+     * @return EnviarSolicitudPrestamoOutput Resultado del envío.
+     * @throws SolicitudPrestamoNoEncontradaException Si la solicitud no existe.
+     */
     public function handle(EnviarSolicitudPrestamoInput $input): EnviarSolicitudPrestamoOutput
     {
         $id        = SolicitudPrestamoId::fromString($input->solicitudId);

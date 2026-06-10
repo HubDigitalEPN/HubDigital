@@ -6,6 +6,9 @@ namespace Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarDocume
 
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoDocumental;
 
+/**
+ * Datos de salida tras validar la documentación inicial.
+ */
 final readonly class ValidarDocumentacionInicialOutput
 {
     public function __construct(

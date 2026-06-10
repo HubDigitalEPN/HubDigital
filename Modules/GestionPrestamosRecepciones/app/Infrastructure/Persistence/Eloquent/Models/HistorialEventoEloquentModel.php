@@ -6,6 +6,11 @@ namespace Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquen
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Modelo Eloquent para la tabla 'prestamos.historial_eventos'.
+ *
+ * Registra todos los eventos de dominio ocurridos en el módulo para auditoría y trazabilidad.
+ */
 final class HistorialEventoEloquentModel extends Model
 {
     protected $table = 'prestamos.historial_eventos';

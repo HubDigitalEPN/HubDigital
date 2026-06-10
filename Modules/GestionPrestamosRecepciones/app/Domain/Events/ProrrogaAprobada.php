@@ -7,6 +7,9 @@ namespace Modules\GestionPrestamosRecepciones\Domain\Events;
 use DateTimeImmutable;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrestamoId;
 
+/**
+ * Evento de dominio emitido cuando el curador aprueba una prórroga y extiende la fecha de fin del préstamo.
+ */
 final readonly class ProrrogaAprobada
 {
     public function __construct(

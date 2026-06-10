@@ -7,6 +7,9 @@ namespace Modules\GestionPrestamosRecepciones\Application\UseCases\RevertirSuger
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoMatrizEspecies;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoRegistroEspecimen;
 
+/**
+ * Datos de salida tras revertir una sugerencia taxonómica.
+ */
 final readonly class RevertirSugerenciaTaxonomicaOutput
 {
     public function __construct(

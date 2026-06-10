@@ -9,6 +9,12 @@ use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRep
 use Modules\GestionPrestamosRecepciones\Domain\Services\ReglaValidacionIdentidad;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
 
+/**
+ * Valida la identidad del solicitante contra sus documentos en una solicitud de depósito.
+ *
+ * {@see ValidarIdentidadSolicitudInput}
+ * {@see ValidarIdentidadSolicitudOutput}
+ */
 final class ValidarIdentidadSolicitudHandler
 {
     public function __construct(
@@ -16,6 +22,11 @@ final class ValidarIdentidadSolicitudHandler
         private ReglaValidacionIdentidad $regla,
     ) {}
 
+    /**
+     * @param ValidarIdentidadSolicitudInput $input
+     * @return ValidarIdentidadSolicitudOutput
+     * @throws SolicitudNoEncontradaException
+     */
     public function __invoke(ValidarIdentidadSolicitudInput $input): ValidarIdentidadSolicitudOutput
     {
         $id = SolicitudDepositoId::from($input->solicitudId);

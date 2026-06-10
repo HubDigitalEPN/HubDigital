@@ -54,6 +54,9 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\Matriz
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
+/**
+ * Componente Livewire para el registro de una solicitud de depósito o donación.
+ */
 #[Layout('layouts.app', params: ['title' => 'Nueva Solicitud de Depósito'])]
 final class RegistroSolicitudDeposito extends Component
 {
@@ -242,6 +245,12 @@ final class RegistroSolicitudDeposito extends Component
             ->count();
     }
 
+    /**
+     * Hook que se ejecuta al actualizar la propiedad origenRecoleccion.
+     * Ajusta la situación regulatoria en base al origen.
+     *
+     * @return void
+     */
     public function updatedOrigenRecoleccion(): void
     {
         if ($this->origenRecoleccion === 'Exterior (Extranjero)') {
@@ -544,6 +553,13 @@ final class RegistroSolicitudDeposito extends Component
 
     // ── Paso 2 ────────────────────────────────────────────────────────────────────
 
+    /**
+     * Valida y guarda la información del paso 2.
+     *
+     * @param \Modules\GestionPrestamosRecepciones\Application\UseCases\DeterminarDocumentacionRequerida\DeterminarDocumentacionRequeridaHandler $determinar
+     * @param \Modules\GestionPrestamosRecepciones\Application\UseCases\ActualizarOrigenSolicitudDeposito\ActualizarOrigenSolicitudDepositoHandler $actualizar
+     * @return void
+     */
     public function guardarPasoDos(
         DeterminarDocumentacionRequeridaHandler $determinar,
         ActualizarOrigenSolicitudDepositoHandler $actualizar,
@@ -600,6 +616,11 @@ final class RegistroSolicitudDeposito extends Component
         $this->registrarDocumentoCargado('archivoFormatoDonacion', 'Formato solicitud donación', $this->archivoFormatoDonacion);
     }
 
+    /**
+     * Hook que se ejecuta al cargar la autorización del MAE.
+     *
+     * @return void
+     */
     public function updatedArchivoAutorizacionMae(): void
     {
         $this->registrarDocumentoCargado('archivoAutorizacionMae', 'Copia de la autorización de recolección (MAE)', $this->archivoAutorizacionMae);
@@ -633,6 +654,11 @@ final class RegistroSolicitudDeposito extends Component
         $this->registrarDocumentoCargado('archivoCartaCesion', 'Carta de cesión de derechos / origen lícito', $this->archivoCartaCesion);
     }
 
+    /**
+     * Hook que se ejecuta al cargar la carta de delegación.
+     *
+     * @return void
+     */
     public function updatedArchivoCartaDelegacion(): void
     {
         $this->registrarDocumentoCargado('archivoCartaDelegacion', 'Carta de delegación / justificación de tercero', $this->archivoCartaDelegacion);
@@ -659,6 +685,12 @@ final class RegistroSolicitudDeposito extends Component
         $this->persistirEstadoWizard();
     }
 
+    /**
+     * Elimina un documento previamente cargado.
+     *
+     * @param string $nombre
+     * @return void
+     */
     public function eliminarDocumento(string $nombre): void
     {
         if (isset($this->documentosCargados[$nombre])) {
@@ -673,6 +705,13 @@ final class RegistroSolicitudDeposito extends Component
         $this->persistirEstadoWizard();
     }
 
+    /**
+     * Solicita intervención curatorial.
+     *
+     * @param \Modules\GestionPrestamosRecepciones\Application\UseCases\DeclararSinDocumentacion\DeclararSinDocumentacionHandler $declarar
+     * @param \Modules\GestionPrestamosRecepciones\Application\UseCases\SolicitarIntervencionCuratoria\SolicitarIntervencionCuratoriaHandler $escalar
+     * @return void
+     */
     public function solicitarIntervencion(
         DeclararSinDocumentacionHandler $declarar,
         SolicitarIntervencionCuratoriaHandler $escalar,
@@ -685,6 +724,11 @@ final class RegistroSolicitudDeposito extends Component
         $this->intervencionCuratoriaActiva = true;
     }
 
+    /**
+     * Verifica y avanza en el paso 3.
+     *
+     * @return void
+     */
     public function guardarPasoTres(): void
     {
         foreach ($this->documentosRequeridos as $doc) {
@@ -706,6 +750,13 @@ final class RegistroSolicitudDeposito extends Component
         }
     }
 
+    /**
+     * Verifica el estado de la extracción asíncrona.
+     *
+     * @param \Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarDocumentacionInicial\ValidarDocumentacionInicialHandler $validar
+     * @param \Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarIdentidadSolicitud\ValidarIdentidadSolicitudHandler $validarIdentidad
+     * @return void
+     */
     public function verificarExtraccion(
         ValidarDocumentacionInicialHandler $validar,
         ValidarIdentidadSolicitudHandler $validarIdentidad,
@@ -875,6 +926,12 @@ final class RegistroSolicitudDeposito extends Component
         $this->datosEnEdicion[$this->claveSegura($campo)] = $this->datosExtraidos[$campo] ?? '';
     }
 
+    /**
+     * Cancela la edición de un dato faltante.
+     *
+     * @param string $campo El nombre del campo.
+     * @return void
+     */
     public function cancelarEdicionDato(string $campo): void
     {
         unset($this->datosEnEdicion[$this->claveSegura($campo)]);
@@ -1196,6 +1253,11 @@ final class RegistroSolicitudDeposito extends Component
         ];
     }
 
+    /**
+     * Elimina la matriz de especies cargada actualmente.
+     *
+     * @return void
+     */
     public function eliminarMatriz(): void
     {
         if ($this->matrizId) {
@@ -1272,6 +1334,13 @@ final class RegistroSolicitudDeposito extends Component
         $this->estadoMatriz = $output->estadoMatriz->value;
     }
 
+    /**
+     * Cambia la justificación existente para un registro.
+     *
+     * @param string $registroId
+     * @param string $nuevoMotivo
+     * @return void
+     */
     public function cambiarJustificacion(string $registroId, string $nuevoMotivo): void
     {
         if (empty($nuevoMotivo)) {
@@ -1374,6 +1443,11 @@ final class RegistroSolicitudDeposito extends Component
 
     // ── Navegación ────────────────────────────────────────────────────────────────
 
+    /**
+     * Retrocede al paso anterior en el wizard.
+     *
+     * @return void
+     */
     public function retroceder(): void
     {
         if ($this->paso > 1) {
@@ -1426,6 +1500,13 @@ final class RegistroSolicitudDeposito extends Component
         return preg_replace('/[^a-zA-Z0-9]/', '_', $campo);
     }
 
+    /**
+     * Mapea el nombre de un documento a su correspondiente propiedad en la clase.
+     *
+     * @param string $nombre El nombre del documento.
+     * @return string
+     * @throws \InvalidArgumentException Si el nombre del documento es desconocido.
+     */
     public function propiedadParaDocumento(string $nombre): string
     {
         return match ($nombre) {
@@ -1442,6 +1523,11 @@ final class RegistroSolicitudDeposito extends Component
         };
     }
 
+    /**
+     * Renderiza el componente.
+     *
+     * @return View
+     */
     public function render(): View
     {
         return view('gestionprestamosrecepciones::investigador.registro-solicitud-deposito');

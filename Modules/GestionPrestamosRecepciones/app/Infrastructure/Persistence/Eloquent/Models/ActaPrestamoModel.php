@@ -7,6 +7,11 @@ namespace Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquen
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * Modelo Eloquent para la tabla 'prestamos.actas_prestamo'.
+ *
+ * Representa la persistencia del acta formal de un préstamo.
+ */
 final class ActaPrestamoModel extends Model
 {
     protected $table = 'prestamos.actas_prestamo';
@@ -44,6 +49,9 @@ final class ActaPrestamoModel extends Model
         'validada_en' => 'datetime',
     ];
 
+    /**
+     * Relación con la solicitud de préstamo que originó esta acta.
+     */
     public function solicitud(): BelongsTo
     {
         return $this->belongsTo(SolicitudPrestamoModel::class, 'solicitud_prestamo_id');

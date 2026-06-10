@@ -6,6 +6,9 @@ namespace Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarIdenti
 
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoValidacionIdentidad;
 
+/**
+ * Datos de salida tras validar la identidad en la solicitud.
+ */
 final readonly class ValidarIdentidadSolicitudOutput
 {
     public function __construct(

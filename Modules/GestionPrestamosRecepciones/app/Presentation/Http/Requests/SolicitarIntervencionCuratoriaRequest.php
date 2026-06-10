@@ -6,6 +6,7 @@ namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
+/** Request para escalar una SolicitudDeposito a intervención curatoria; no requiere payload adicional. */
 final class SolicitarIntervencionCuratoriaRequest extends FormRequest
 {
     public function authorize(): bool

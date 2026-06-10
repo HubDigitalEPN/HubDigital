@@ -10,10 +10,18 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\DeterminarDocumenta
 use Modules\GestionPrestamosRecepciones\Application\UseCases\DeterminarDocumentacionRequerida\DeterminarDocumentacionRequeridaInput;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Resources\DocumentacionRequeridaResource;
 
+/**
+ * Controlador para determinar la documentación requerida de una solicitud.
+ */
 final class DeterminarDocumentacionRequeridaController
 {
     public function __construct(private readonly DeterminarDocumentacionRequeridaHandler $handler) {}
 
+    /**
+     * @param Request $request
+     * @param string $id
+     * @return JsonResponse
+     */
     public function __invoke(Request $request, string $id): JsonResponse
     {
         $output = ($this->handler)(

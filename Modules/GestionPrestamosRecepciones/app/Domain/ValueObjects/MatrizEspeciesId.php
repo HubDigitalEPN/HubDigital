@@ -6,6 +6,10 @@ namespace Modules\GestionPrestamosRecepciones\Domain\ValueObjects;
 
 use Ramsey\Uuid\Uuid;
 
+/**
+ * Identificador de valor (UUID) de una {@see \Modules\GestionPrestamosRecepciones\Domain\Entities\MatrizEspecies}.
+ * Inmutable; crear con {@see generate()} o reconstruir con {@see from()}.
+ */
 final readonly class MatrizEspeciesId
 {
     private function __construct(private string $value) {}

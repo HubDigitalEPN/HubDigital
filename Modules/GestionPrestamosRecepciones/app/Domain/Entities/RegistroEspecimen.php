@@ -7,6 +7,16 @@ namespace Modules\GestionPrestamosRecepciones\Domain\Entities;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoRegistroEspecimen;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\RegistroEspecimenId;
 
+/**
+ * Entidad que representa un registro individual de espécimen dentro de una
+ * {@see MatrizEspecies}.
+ *
+ * Conserva el nombre científico declarado, una posible corrección taxonómica, su
+ * registro Darwin Core completo (normalizado) y su estado de validación
+ * ({@see EstadoRegistroEspecimen}). Soporta aceptar/revertir correcciones
+ * tipográficas y justificar hallazgos no catalogados. Los cambios de estado se
+ * validan en cada método de negocio.
+ */
 final class RegistroEspecimen
 {
     private RegistroEspecimenId $id;
@@ -58,6 +68,12 @@ final class RegistroEspecimen
         return $registro;
     }
 
+    /**
+     * Acepta una corrección tipográfica del nombre científico, marcándolo como
+     * catalogado y validado. Solo permitido en estado Pendiente.
+     *
+     * @throws \DomainException Si la especie corregida está vacía o el estado no es Pendiente.
+     */
     public function aceptarCorreccion(string $especieCorregida): void
     {
         if (trim($especieCorregida) === '') {
@@ -78,6 +94,12 @@ final class RegistroEspecimen
         $this->estado = EstadoRegistroEspecimen::ValidadoTecnicamente;
     }
 
+    /**
+     * Justifica un hallazgo no catalogado, transicionándolo a validación manual por
+     * curaduría. Solo permitido en registros marcados como no catalogados.
+     *
+     * @throws \DomainException Si el motivo está vacío o el registro no es no catalogado.
+     */
     public function justificar(string $motivo): void
     {
         if (trim($motivo) === '') {
@@ -99,6 +121,11 @@ final class RegistroEspecimen
         $this->noCatalogado = true;
     }
 
+    /**
+     * Revierte una corrección previamente aceptada, devolviendo el registro a Pendiente.
+     *
+     * @throws \DomainException Si el registro no había sido corregido por sugerencia.
+     */
     public function revertirCorreccion(): void
     {
         if (! $this->estado->equals(EstadoRegistroEspecimen::ValidadoTecnicamente) || $this->nombreCorregido === null) {
@@ -111,6 +138,11 @@ final class RegistroEspecimen
         $this->estado = EstadoRegistroEspecimen::Pendiente;
     }
 
+    /**
+     * Cambia el motivo de justificación de un registro ya justificado.
+     *
+     * @throws \DomainException Si el motivo está vacío o el estado no es ValidacionManualPorCuraduria.
+     */
     public function cambiarJustificacion(string $nuevoMotivo): void
     {
         if (trim($nuevoMotivo) === '') {

@@ -13,6 +13,12 @@ use Modules\GestionPrestamosRecepciones\Domain\Repositories\PrestamoRepositoryIn
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\RecordatorioDevolucionRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrestamoId;
 
+/**
+ * Caso de uso: Aprueba una solicitud de prórroga para un préstamo.
+ *
+ * El curador extiende la fecha de fin de un préstamo activo a petición del investigador.
+ * También reprograma los recordatorios de devolución según la nueva fecha.
+ */
 final class AprobarProrrogaPrestamoHandler
 {
     public function __construct(
@@ -22,6 +28,15 @@ final class AprobarProrrogaPrestamoHandler
         private readonly TransactionManagerPort $transactionManager,
     ) {}
 
+    /**
+     * Ejecuta el caso de uso.
+     *
+     * @param  AprobarProrrogaPrestamoInput  $input
+     * @return AprobarProrrogaPrestamoOutput
+     *
+     * @throws PrestamoNoEncontradoException Si el préstamo no existe.
+     * @throws \Modules\GestionPrestamosRecepciones\Domain\Exceptions\TransicionDeEstadoInvalidaException Si la nueva fecha no es válida.
+     */
     public function handle(AprobarProrrogaPrestamoInput $input): AprobarProrrogaPrestamoOutput
     {
         $prestamoId = PrestamoId::fromString($input->prestamoId);

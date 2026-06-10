@@ -7,6 +7,9 @@ namespace Modules\GestionPrestamosRecepciones\Application\UseCases\ActualizarSol
 use Modules\GestionPrestamosRecepciones\Domain\Entities\SolicitudPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitud;
 
+/**
+ * Output DTO para la actualización de una solicitud de préstamo.
+ */
 final readonly class ActualizarSolicitudPrestamoOutput
 {
     /**
@@ -24,6 +27,12 @@ final readonly class ActualizarSolicitudPrestamoOutput
         public array $items,
     ) {}
 
+    /**
+     * Crea una instancia a partir de la entidad SolicitudPrestamo.
+     * 
+     * @param SolicitudPrestamo $solicitud
+     * @return self
+     */
     public static function fromPrimitives(SolicitudPrestamo $solicitud): self
     {
         $items = array_map(

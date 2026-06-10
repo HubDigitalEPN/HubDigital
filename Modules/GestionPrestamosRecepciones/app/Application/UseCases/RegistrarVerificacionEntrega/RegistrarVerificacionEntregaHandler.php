@@ -15,6 +15,12 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoEnvio;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ObservacionEspecimen;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrestamoId;
 
+/**
+ * Registra la verificación de la entrega de un préstamo.
+ *
+ * {@see RegistrarVerificacionEntregaInput}
+ * {@see RegistrarVerificacionEntregaOutput}
+ */
 final class RegistrarVerificacionEntregaHandler
 {
     public function __construct(
@@ -24,6 +30,11 @@ final class RegistrarVerificacionEntregaHandler
         private readonly TransactionManagerPort $transactionManager,
     ) {}
 
+    /**
+     * @param RegistrarVerificacionEntregaInput $input
+     * @return RegistrarVerificacionEntregaOutput
+     * @throws PrestamoNoEncontradoException
+     */
     public function handle(RegistrarVerificacionEntregaInput $input): RegistrarVerificacionEntregaOutput
     {
         $prestamoId = PrestamoId::fromString($input->prestamoId);

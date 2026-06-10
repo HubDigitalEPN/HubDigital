@@ -7,6 +7,11 @@ namespace Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * Modelo Eloquent para la tabla 'recepciones.registros_especimen'.
+ *
+ * Almacena los datos de un espécimen individual dentro de una matriz DwC.
+ */
 final class RegistroEspecimenEloquentModel extends Model
 {
     protected $table = 'recepciones.registros_especimen';
@@ -35,6 +40,9 @@ final class RegistroEspecimenEloquentModel extends Model
         'normalizaciones' => 'array',
     ];
 
+    /**
+     * Relación con la matriz de especies a la que pertenece este registro.
+     */
     public function matriz(): BelongsTo
     {
         return $this->belongsTo(MatrizEspeciesEloquentModel::class, 'matriz_id');

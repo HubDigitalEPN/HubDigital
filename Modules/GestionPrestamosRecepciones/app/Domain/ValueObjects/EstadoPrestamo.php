@@ -4,6 +4,14 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Domain\ValueObjects;
 
+/**
+ * Estados del ciclo de vida de un préstamo
+ * ({@see \Modules\GestionPrestamosRecepciones\Domain\Entities\Prestamo}).
+ *
+ * Flujo principal: pendiente del documento del ministerio (internacional) o en
+ * tránsito (nacional) → pendiente de aprobación de verificación → activo → vencido
+ * o cerrado. Incluye además estados de prórroga y revisión.
+ */
 enum EstadoPrestamo: string
 {
     case PendienteDocumentoMinisterio = 'pendiente_documento_ministerio';

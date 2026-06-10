@@ -6,6 +6,9 @@ namespace Modules\GestionPrestamosRecepciones\Domain\Events;
 
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
 
+/**
+ * Evento de dominio emitido cuando se carga e integra la documentación oficial de una solicitud de depósito.
+ */
 final class DocumentacionOficialCargada extends DomainEvent
 {
     /**

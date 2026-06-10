@@ -20,9 +20,23 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\NumeroPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoPrestamo;
 
+/**
+ * Agregado raíz que representa el acta de préstamo: el documento formal que el
+ * investigador debe firmar y el curador validar antes de activar el préstamo.
+ *
+ * Gestiona el ciclo de vida del acta mediante una máquina de estados (ver
+ * {@see EstadoActa}): PendienteEnvio → PendienteFirma → PendienteValidacion →
+ * Validada, con posibilidad de devolución por firma inválida. Soporta tanto la
+ * firma por subida de PDF ({@see subirFirma()}) como la firma digital en canvas
+ * ({@see firmarDigitalmente()} + {@see completarFirmaDigitalConIdentidad()}). Las
+ * actas internacionales requieren además el documento de exportación del MAE.
+ *
+ * Construir vía {@see self::emitir()}; rehidratar desde persistencia vía
+ * {@see self::reconstituir()} (sin emitir eventos).
+ */
 final class ActaPrestamo
 {
-    /** @var list<object> */
+    /** @var list<object> Eventos de dominio acumulados, drenados con {@see pullEvents()}. */
     private array $events = [];
 
     private function __construct(
@@ -47,6 +61,11 @@ final class ActaPrestamo
 
     // ── Named constructors ────────────────────────────────────────────────────
 
+    /**
+     * Emite un acta nueva en estado PendienteEnvio a partir de una solicitud aprobada.
+     *
+     * @throws InvalidArgumentException Si la ruta del PDF está vacía o la fecha de fin no es posterior a la de inicio.
+     */
     public static function emitir(
         ActaPrestamoId $id,
         NumeroPrestamo $numeroPrestamo,
@@ -197,12 +216,9 @@ final class ActaPrestamo
 
     /**
      * El investigador firma el acta digitalmente mediante canvas.
-     * Solo permitido desde PendienteFirma.
-     */
-    /**
-     * El investigador firma el acta digitalmente mediante canvas.
      * Solo guarda la imagen de la firma; el estado permanece en PendienteFirma
-     * hasta que el investigador suba su documento de identidad.
+     * hasta que el investigador suba su documento de identidad. Solo permitido
+     * desde PendienteFirma.
      */
     public function firmarDigitalmente(string $firmaImagenRuta): void
     {

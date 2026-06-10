@@ -14,6 +14,9 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarSolicitudPres
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\ActaPrestamoModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\SolicitudPrestamoModel;
 
+/**
+ * Componente Livewire para listar las solicitudes de préstamo del investigador.
+ */
 #[Layout('layouts.app', params: ['title' => 'Mis solicitudes de préstamo'])]
 final class MisSolicitudes extends Component
 {
@@ -31,11 +34,21 @@ final class MisSolicitudes extends Component
     #[Url]
     public string $ordenDireccion = 'desc';
 
+    /**
+     * Alterna la dirección del ordenamiento.
+     *
+     * @return void
+     */
     public function toggleOrden(): void
     {
         $this->ordenDireccion = $this->ordenDireccion === 'asc' ? 'desc' : 'asc';
     }
 
+    /**
+     * Limpia los filtros de búsqueda y ordenamiento.
+     *
+     * @return void
+     */
     public function limpiarFiltros(): void
     {
         $this->busqueda = '';
@@ -44,6 +57,13 @@ final class MisSolicitudes extends Component
         $this->ordenDireccion = 'desc';
     }
 
+    /**
+     * Envía una solicitud de préstamo.
+     *
+     * @param string $id
+     * @param \Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarSolicitudPrestamo\EnviarSolicitudPrestamoHandler $handler
+     * @return void
+     */
     public function enviarSolicitud(string $id, EnviarSolicitudPrestamoHandler $handler): void
     {
         $handler->handle(new EnviarSolicitudPrestamoInput(
@@ -54,6 +74,11 @@ final class MisSolicitudes extends Component
         $this->redirectRoute('prestamos.investigador.solicitud.detalle', ['id' => $id], navigate: true);
     }
 
+    /**
+     * Renderiza el componente.
+     *
+     * @return \Illuminate\View\View
+     */
     public function render(): View
     {
         $query = SolicitudPrestamoModel::query()
