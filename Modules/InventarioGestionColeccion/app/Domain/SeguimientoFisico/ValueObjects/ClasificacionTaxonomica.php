@@ -23,6 +23,11 @@ final readonly class ClasificacionTaxonomica
         private ?string $especie,
     ) {}
 
+    /**
+     * Construye la clasificación a partir de los niveles taxonómicos disponibles,
+     * normalizando cada uno (cadenas vacías se vuelven null). Todos los argumentos son
+     * opcionales porque un espécimen puede estar solo parcialmente clasificado.
+     */
     public static function desde(
         ?string $orden = null,
         ?string $suborden = null,
@@ -107,6 +112,7 @@ final readonly class ClasificacionTaxonomica
         return $this->especie;
     }
 
+    /** Recorta el valor y lo convierte a null cuando queda vacío, unificando "ausente". */
     private static function normalizar(?string $valor): ?string
     {
         if ($valor === null) {

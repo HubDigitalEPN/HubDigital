@@ -8,8 +8,14 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\UnitTra
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\CajaId;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\UnitTrayId;
 
+/**
+ * Contrato de persistencia para los UnitTrays, las bandejas internas que subdividen
+ * una caja. Ofrece el cálculo del siguiente número correlativo dentro de la caja y el
+ * acceso a los trays de una caja para componer su contenido.
+ */
 interface UnitTrayRepository
 {
+    /** Genera el siguiente identificador único para un UnitTray nuevo. */
     public function nextIdentity(): UnitTrayId;
 
     /**
@@ -19,8 +25,10 @@ interface UnitTrayRepository
      */
     public function siguienteNumero(CajaId $cajaId): int;
 
+    /** Inserta o actualiza el UnitTray dado. */
     public function guardar(UnitTray $unitTray): void;
 
+    /** Recupera un UnitTray por su identificador, o null si no existe. */
     public function buscarPorId(UnitTrayId $id): ?UnitTray;
 
     /**
@@ -31,5 +39,6 @@ interface UnitTrayRepository
      */
     public function buscarPorCaja(CajaId $cajaId): array;
 
+    /** Elimina el UnitTray indicado de forma permanente. */
     public function eliminar(UnitTrayId $id): void;
 }

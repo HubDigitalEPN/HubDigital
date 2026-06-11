@@ -27,6 +27,13 @@ class UnitTray
         private ?ClasificacionTaxonomica $clasificacionDominante,
     ) {}
 
+    /**
+     * Crea un UnitTray nuevo dentro de una caja, validando que su número de posición
+     * sea positivo. La clasificación dominante es opcional y normalmente arranca nula
+     * hasta que se le asignan especímenes.
+     *
+     * @throws \InvalidArgumentException Si el número es menor a 1.
+     */
     public static function crear(
         UnitTrayId $id,
         CajaId $cajaId,
@@ -45,6 +52,10 @@ class UnitTray
         );
     }
 
+    /**
+     * Rehidrata un UnitTray desde persistencia conservando su clasificación dominante
+     * cacheada, sin revalidar el número.
+     */
     public static function reconstituir(
         UnitTrayId $id,
         CajaId $cajaId,

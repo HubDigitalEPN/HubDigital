@@ -14,6 +14,10 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\Cla
 final class CalculadorClasificacionDominante
 {
     /**
+     * Calcula la clasificación dominante del conjunto agrupando por subfamilia+género,
+     * eligiendo la combinación más frecuente y desempatando de forma determinista por
+     * orden alfabético insensible a mayúsculas. Devuelve null si el conjunto está vacío.
+     *
      * @param  ClasificacionTaxonomica[]  $clasificaciones
      */
     public function calcular(array $clasificaciones): ?ClasificacionTaxonomica

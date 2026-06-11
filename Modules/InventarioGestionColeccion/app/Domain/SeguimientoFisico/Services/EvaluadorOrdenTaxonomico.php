@@ -29,6 +29,12 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\Tip
  */
 final class EvaluadorOrdenTaxonomico
 {
+    /**
+     * Evalúa la caja a insertar contra sus vecinas inmediatas y devuelve el tipo de
+     * alerta que corresponde, o null si todo está en orden. Las cajas especiales y las
+     * sin clasificación se manejan según las reglas descritas en la clase. El ingreso
+     * físico nunca se bloquea: el resultado es solo informativo (soft alert).
+     */
     public function evaluar(
         Caja $cajaAInsertar,
         ?Caja $cajaAnterior,
@@ -76,6 +82,11 @@ final class EvaluadorOrdenTaxonomico
         return $this->clasificacionEsMayor($clsA, $clsB, $ordenFamilias);
     }
 
+    /**
+     * Decide si la clasificación $a es "mayor" que $b en el orden esperado: primero por
+     * la secuencia de familias del curador (no alfabética) y, dentro de la misma familia,
+     * alfabéticamente por subfamilia → género → especie, omitiendo dimensiones nulas.
+     */
     private function clasificacionEsMayor(
         ClasificacionTaxonomica $a,
         ClasificacionTaxonomica $b,
