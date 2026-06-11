@@ -18,6 +18,9 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarActaFirmada\
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\ActaPrestamoModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\PrestamoEloquentModel;
 
+/**
+ * Componente Livewire para la validación de actas firmadas por el investigador.
+ */
 #[Layout('layouts.app', params: ['title' => 'Validar acta firmada'])]
 final class ValidarActa extends Component
 {
@@ -34,12 +37,20 @@ final class ValidarActa extends Component
     #[Validate('required|string|min:10')]
     public string $motivoDevolucion = '';
 
+    /**
+     * @param string $id
+     * @return void
+     */
     public function mount(string $id): void
     {
         $this->id = $id;
         $this->acta = ActaPrestamoModel::query()->with('solicitud')->findOrFail($id);
     }
 
+    /**
+     * @param ValidarActaFirmadaHandler $handler
+     * @return void
+     */
     public function validar(ValidarActaFirmadaHandler $handler): void
     {
         $handler->handle(new ValidarActaFirmadaInput(
@@ -51,6 +62,10 @@ final class ValidarActa extends Component
         $this->acta = ActaPrestamoModel::query()->with('solicitud')->find($this->id);
     }
 
+    /**
+     * @param DevolverActaParaRefirmarHandler $handler
+     * @return void
+     */
     public function devolverParaRefirmar(DevolverActaParaRefirmarHandler $handler): void
     {
         $this->validate(['motivoDevolucion' => 'required|string|min:10']);
@@ -72,6 +87,10 @@ final class ValidarActa extends Component
         'ActaValidada',
     ];
 
+    /**
+     * @param ConsultarHistorialSolicitudHandler $historialHandler
+     * @return View
+     */
     public function render(ConsultarHistorialSolicitudHandler $historialHandler): View
     {
         $prestamo = PrestamoEloquentModel::where('acta_prestamo_id', $this->id)->first();

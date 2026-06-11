@@ -14,6 +14,12 @@ use Modules\GestionPrestamosRecepciones\Domain\Repositories\ActaPrestamoReposito
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
 
+/**
+ * Firma digitalmente un acta de préstamo.
+ *
+ * {@see FirmarActaDigitalmenteInput}
+ * {@see FirmarActaDigitalmenteOutput}
+ */
 final class FirmarActaDigitalmenteHandler
 {
     public function __construct(
@@ -24,6 +30,13 @@ final class FirmarActaDigitalmenteHandler
         private readonly TransactionManagerPort $transactionManager,
     ) {}
 
+    /**
+     * @param FirmarActaDigitalmenteInput $input
+     * @return FirmarActaDigitalmenteOutput
+     * @throws ActaPrestamoNoEncontradaException
+     * @throws ActaNoPerteneceAlInvestigador
+     * @throws FirmaBase64Invalida
+     */
     public function handle(FirmarActaDigitalmenteInput $input): FirmarActaDigitalmenteOutput
     {
         $actaId = ActaPrestamoId::fromString($input->actaId);

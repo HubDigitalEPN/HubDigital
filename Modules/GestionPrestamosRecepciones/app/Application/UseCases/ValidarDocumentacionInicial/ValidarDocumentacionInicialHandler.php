@@ -9,6 +9,12 @@ use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRep
 use Modules\GestionPrestamosRecepciones\Domain\Services\ReglaPermisoMovilizacion;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
 
+/**
+ * Valida la documentación inicial de una solicitud de depósito.
+ *
+ * {@see ValidarDocumentacionInicialInput}
+ * {@see ValidarDocumentacionInicialOutput}
+ */
 final class ValidarDocumentacionInicialHandler
 {
     public function __construct(
@@ -16,6 +22,11 @@ final class ValidarDocumentacionInicialHandler
         private ReglaPermisoMovilizacion $regla,
     ) {}
 
+    /**
+     * @param ValidarDocumentacionInicialInput $input
+     * @return ValidarDocumentacionInicialOutput
+     * @throws SolicitudNoEncontradaException
+     */
     public function __invoke(ValidarDocumentacionInicialInput $input): ValidarDocumentacionInicialOutput
     {
         $id = SolicitudDepositoId::from($input->solicitudId);

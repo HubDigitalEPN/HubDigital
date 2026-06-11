@@ -7,6 +7,12 @@ namespace Modules\GestionPrestamosRecepciones\Infrastructure\Adapters;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ExtraccionDatosDocumentoPort;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\DatosIntegradosDocumento;
 
+/**
+ * Adaptador de prueba para la extracción de datos de documentos.
+ *
+ * Simula la extracción de información devolviendo valores predefinidos basados
+ * en el nombre del documento. Útil para entornos de desarrollo y pruebas.
+ */
 final class FakeExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocumentoPort
 {
     private const EXTRACCIONES = [
@@ -24,7 +30,12 @@ final class FakeExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocume
         ],
     ];
 
-    /** @param array<string, string> $documentos [nombre => ruta] */
+    /**
+     * Simula la extracción de datos de una lista de documentos.
+     *
+     * @param  array<string, string>  $documentos  [nombre => ruta]
+     * @return DatosIntegradosDocumento
+     */
     public function extraerDatos(array $documentos): DatosIntegradosDocumento
     {
         $merged = [

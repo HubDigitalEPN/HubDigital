@@ -9,6 +9,12 @@ use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\MatrizEspeciesId;
 
+/**
+ * Revierte una sugerencia taxonómica previamente aplicada en una matriz de especies.
+ *
+ * {@see RevertirSugerenciaTaxonomicaInput}
+ * {@see RevertirSugerenciaTaxonomicaOutput}
+ */
 final class RevertirSugerenciaTaxonomicaHandler
 {
     public function __construct(
@@ -17,6 +23,11 @@ final class RevertirSugerenciaTaxonomicaHandler
         private EventPublisherPort $eventPublisher,
     ) {}
 
+    /**
+     * @param RevertirSugerenciaTaxonomicaInput $input
+     * @return RevertirSugerenciaTaxonomicaOutput
+     * @throws \DomainException
+     */
     public function __invoke(RevertirSugerenciaTaxonomicaInput $input): RevertirSugerenciaTaxonomicaOutput
     {
         $matrizId = MatrizEspeciesId::from($input->matrizId);

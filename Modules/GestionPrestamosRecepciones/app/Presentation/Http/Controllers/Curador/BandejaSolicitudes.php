@@ -12,6 +12,9 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\SolicitudPrestamoModel;
 
+/**
+ * Componente Livewire para la gestión y listado de solicitudes de préstamo.
+ */
 #[Layout('layouts.app', params: ['title' => 'Bandeja de solicitudes'])]
 final class BandejaSolicitudes extends Component
 {
@@ -32,11 +35,17 @@ final class BandejaSolicitudes extends Component
     #[Url]
     public string $ordenDireccion = 'desc';
 
+    /**
+     * @return void
+     */
     public function toggleOrden(): void
     {
         $this->ordenDireccion = $this->ordenDireccion === 'asc' ? 'desc' : 'asc';
     }
 
+    /**
+     * @return void
+     */
     public function limpiarFiltros(): void
     {
         $this->busqueda = '';
@@ -46,6 +55,9 @@ final class BandejaSolicitudes extends Component
         $this->ordenDireccion = 'desc';
     }
 
+    /**
+     * @return View
+     */
     public function render(): View
     {
         $query = SolicitudPrestamoModel::query()

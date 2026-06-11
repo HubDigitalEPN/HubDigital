@@ -20,9 +20,23 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoRecordatorio;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrestamoId;
 
+/**
+ * Agregado raíz que representa un préstamo activo de especímenes, una vez que el
+ * acta ha sido validada.
+ *
+ * Modela el ciclo de vida posterior a la emisión del acta mediante una máquina de
+ * estados (ver {@see EstadoPrestamo}): el flujo nacional arranca En tránsito,
+ * mientras que el internacional arranca pendiente del documento del Ministerio.
+ * Tras la verificación de entrega pasa a Activo, y vence al superarse la fecha de
+ * fin. También calcula y registra los recordatorios de devolución. Cada transición
+ * de negocio emite eventos de dominio.
+ *
+ * Construir vía {@see self::iniciar()}; rehidratar desde persistencia vía
+ * {@see self::reconstituir()} (sin emitir eventos).
+ */
 final class Prestamo
 {
-    /** @var list<object> */
+    /** @var list<object> Eventos de dominio acumulados, drenados con {@see pullEvents()}. */
     private array $events = [];
 
     private function __construct(
@@ -36,6 +50,15 @@ final class Prestamo
 
     // ── Named constructors ────────────────────────────────────────────────────
 
+    /**
+     * Inicia un préstamo a partir de un acta validada.
+     *
+     * El estado inicial depende del alcance: los préstamos internacionales arrancan
+     * en PendienteDocumentoMinisterio (a la espera del documento del MAE) y los
+     * nacionales directamente En tránsito.
+     *
+     * @throws InvalidArgumentException Si la fecha de fin no es posterior a la de inicio.
+     */
     public static function iniciar(
         PrestamoId $id,
         ActaPrestamoId $actaPrestamoId,
@@ -94,6 +117,10 @@ final class Prestamo
 
     // ── Business methods ──────────────────────────────────────────────────────
 
+    /**
+     * El curador habilita el envío tras recibir el documento del Ministerio.
+     * Solo permitido cuando el préstamo está en PendienteDocumentoMinisterio (flujo internacional).
+     */
     public function habilitarEnvio(string $curadorId): void
     {
         if (! $this->estado->equals(EstadoPrestamo::PendienteDocumentoMinisterio)) {
@@ -113,6 +140,10 @@ final class Prestamo
         );
     }
 
+    /**
+     * El investigador registra la verificación de entrega de los especímenes recibidos.
+     * Transiciona de EnTransito a PendienteAprobacionVerificacion.
+     */
     public function registrarVerificacion(DateTimeImmutable $ahora): void
     {
         if (! $this->estado->equals(EstadoPrestamo::EnTransito)) {
@@ -132,6 +163,11 @@ final class Prestamo
         );
     }
 
+    /**
+     * El curador aprueba la verificación de entrega y activa el préstamo.
+     * Emite tanto VerificacionEntregaAprobada como PrestamoActivado.
+     * Solo permitido desde PendienteAprobacionVerificacion.
+     */
     public function aprobarVerificacion(string $curadorId, DateTimeImmutable $ahora): void
     {
         if (! $this->estado->equals(EstadoPrestamo::PendienteAprobacionVerificacion)) {
@@ -157,6 +193,11 @@ final class Prestamo
         );
     }
 
+    /**
+     * El curador prorroga el préstamo extendiendo su fecha de fin.
+     *
+     * @throws TransicionDeEstadoInvalidaException Si la nueva fecha de fin no es posterior a la actual.
+     */
     public function prorrogar(string $curadorId, DateTimeImmutable $nuevaFechaFin): void
     {
         if ($nuevaFechaFin <= $this->fechaFin) {

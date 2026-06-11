@@ -9,12 +9,21 @@ use Illuminate\Support\Facades\Storage;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
 
+/**
+ * Comando Artisan para limpiar borradores de solicitudes de depósito antiguos.
+ *
+ * Elimina las solicitudes que han permanecido en estado 'EnBorrador' por más
+ * de un número determinado de días, borrando también sus archivos asociados en storage.
+ */
 final class LimpiarBorradoresAbandonadosCommand extends Command
 {
     protected $signature = 'solicitudes:limpiar-borradores {--dias=30 : Días de inactividad para considerar un borrador como abandonado}';
 
     protected $description = 'Elimina borradores de solicitudes de depósito abandonados y sus archivos asociados';
 
+    /**
+     * Ejecuta el comando.
+     */
     public function handle(): int
     {
         $dias = (int) $this->option('dias');

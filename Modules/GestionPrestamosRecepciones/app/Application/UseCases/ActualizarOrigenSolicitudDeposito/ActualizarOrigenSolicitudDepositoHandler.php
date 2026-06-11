@@ -10,14 +10,32 @@ use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
 
+/**
+ * Caso de uso: Actualiza la información de origen de una solicitud de depósito.
+ * 
+ * {@see ActualizarOrigenSolicitudDepositoInput}
+ * {@see ActualizarOrigenSolicitudDepositoOutput}
+ */
 final class ActualizarOrigenSolicitudDepositoHandler
 {
+    /**
+     * Crea una nueva instancia de ActualizarOrigenSolicitudDepositoHandler.
+     * @param SolicitudDepositoRepositoryInterface $repo Repositorio de solicitudes de depósito.
+     * @param TransactionManagerPort $transactionManager Puerto para la gestión de transacciones.
+     * @param EventPublisherPort $eventPublisher Puerto para la publicación de eventos.
+     */
     public function __construct(
         private SolicitudDepositoRepositoryInterface $repo,
         private TransactionManagerPort $transactionManager,
         private EventPublisherPort $eventPublisher,
     ) {}
 
+    /**
+     * Ejecuta el caso de uso.
+     * @param ActualizarOrigenSolicitudDepositoInput $input
+     * @return ActualizarOrigenSolicitudDepositoOutput
+     * @throws SolicitudNoEncontradaException Si no se encuentra la solicitud de depósito.
+     */
     public function __invoke(ActualizarOrigenSolicitudDepositoInput $input): ActualizarOrigenSolicitudDepositoOutput
     {
         $id = SolicitudDepositoId::from($input->solicitudId);

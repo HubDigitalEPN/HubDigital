@@ -8,6 +8,9 @@ use DateTimeImmutable;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrestamoId;
 
+/**
+ * Evento de dominio emitido cuando se inicia un préstamo a partir de un acta validada.
+ */
 final readonly class PrestamoIniciado
 {
     public function __construct(

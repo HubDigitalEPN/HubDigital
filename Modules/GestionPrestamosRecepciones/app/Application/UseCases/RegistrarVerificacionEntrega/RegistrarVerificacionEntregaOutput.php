@@ -6,6 +6,9 @@ namespace Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarVeri
 
 use Modules\GestionPrestamosRecepciones\Domain\Entities\VerificacionEntregaPrestamo;
 
+/**
+ * Datos de salida tras registrar la verificación de entrega.
+ */
 final readonly class RegistrarVerificacionEntregaOutput
 {
     public function __construct(
@@ -14,6 +17,10 @@ final readonly class RegistrarVerificacionEntregaOutput
         public string $estadoEnvio,
     ) {}
 
+    /**
+     * @param VerificacionEntregaPrestamo $verificacion
+     * @return self
+     */
     public static function fromVerificacion(VerificacionEntregaPrestamo $verificacion): self
     {
         return new self(

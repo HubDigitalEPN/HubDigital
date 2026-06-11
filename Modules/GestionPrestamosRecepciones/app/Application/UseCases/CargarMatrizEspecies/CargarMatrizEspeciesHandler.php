@@ -12,6 +12,12 @@ use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRep
 use Modules\GestionPrestamosRecepciones\Domain\Services\NormalizadorCamposDwC;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
 
+/**
+ * Caso de uso: Carga y valida la matriz de especies (DwC) asociada a una solicitud.
+ *
+ * Procesa los registros de especímenes, aplica normalizaciones de campos y valida
+ * que la estructura DwC cumpla con los requisitos mínimos según el tipo de trámite.
+ */
 final class CargarMatrizEspeciesHandler
 {
     public function __construct(
@@ -22,6 +28,15 @@ final class CargarMatrizEspeciesHandler
         private NormalizadorCamposDwC $normalizador,
     ) {}
 
+    /**
+     * Ejecuta el caso de uso.
+     *
+     * @param  CargarMatrizEspeciesInput  $input
+     * @return CargarMatrizEspeciesOutput
+     *
+     * @throws \DomainException Si la solicitud no existe.
+     * @throws \Modules\GestionPrestamosRecepciones\Domain\Exceptions\CamposDwCFaltantesException Si faltan campos críticos.
+     */
     public function __invoke(CargarMatrizEspeciesInput $input): CargarMatrizEspeciesOutput
     {
         $solicitud = $this->solicitudRepo->buscarPorId(SolicitudDepositoId::from($input->solicitudId));

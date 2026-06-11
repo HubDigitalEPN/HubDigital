@@ -6,6 +6,11 @@ namespace Modules\GestionPrestamosRecepciones\Application\Ports;
 
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoValidacionFirma;
 
+/**
+ * Puerto de la capa de aplicación para verificar la firma electrónica de un PDF.
+ *
+ * Lo implementa un adaptador en Infrastructure (p. ej. basado en pdfsig).
+ */
 interface ValidacionFirmaElectronicaPort
 {
     /**

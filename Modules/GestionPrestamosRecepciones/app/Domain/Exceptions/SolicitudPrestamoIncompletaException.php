@@ -6,6 +6,10 @@ namespace Modules\GestionPrestamosRecepciones\Domain\Exceptions;
 
 use DomainException;
 
+/**
+ * Excepción de dominio lanzada al intentar enviar una solicitud de préstamo a la que
+ * le falta información requerida. Construir con {@see paraEnvio()}.
+ */
 final class SolicitudPrestamoIncompletaException extends DomainException
 {
     public static function paraEnvio(): self

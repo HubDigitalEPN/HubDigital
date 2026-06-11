@@ -17,9 +17,21 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitud;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\NumeroSolicitud;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudPrestamoId;
 
+/**
+ * Agregado raíz que representa la solicitud de préstamo de especímenes que
+ * presenta el investigador y que el curador revisa.
+ *
+ * Gestiona el ciclo de vida de la solicitud mediante una máquina de estados
+ * (Borrador → Enviada → Observada/Aprobada/Rechazada, ver {@see EstadoSolicitud})
+ * y emite eventos de dominio en cada transición de negocio. Las invariantes de
+ * transición se validan en los métodos de negocio, nunca en los accessors.
+ *
+ * Construir vía {@see self::crear()} o {@see self::crearIncompleta()}; rehidratar
+ * desde persistencia vía {@see self::reconstituir()} (sin emitir eventos).
+ */
 final class SolicitudPrestamo
 {
-    /** @var list<object> */
+    /** @var list<object> Eventos de dominio acumulados, drenados con {@see pullEvents()}. */
     private array $events = [];
 
     private function __construct(

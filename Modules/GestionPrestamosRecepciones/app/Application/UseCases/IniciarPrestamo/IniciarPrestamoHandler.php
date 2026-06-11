@@ -18,6 +18,12 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudPrestamoId;
 use RuntimeException;
 
+/**
+ * Inicia el proceso de préstamo luego de completar los pasos previos.
+ *
+ * {@see IniciarPrestamoInput}
+ * {@see IniciarPrestamoOutput}
+ */
 final class IniciarPrestamoHandler
 {
     public function __construct(
@@ -30,6 +36,12 @@ final class IniciarPrestamoHandler
         private readonly TransactionManagerPort $transactionManager,
     ) {}
 
+    /**
+     * @param IniciarPrestamoInput $input
+     * @return IniciarPrestamoOutput
+     * @throws ActaPrestamoNoEncontradaException
+     * @throws RuntimeException
+     */
     public function handle(IniciarPrestamoInput $input): IniciarPrestamoOutput
     {
         $actaId = ActaPrestamoId::fromString($input->actaPrestamoId);

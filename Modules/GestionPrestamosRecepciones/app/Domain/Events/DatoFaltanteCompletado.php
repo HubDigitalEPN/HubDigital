@@ -6,6 +6,9 @@ namespace Modules\GestionPrestamosRecepciones\Domain\Events;
 
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
 
+/**
+ * Evento de dominio emitido cuando el investigador completa manualmente un dato faltante de la solicitud de depósito.
+ */
 final class DatoFaltanteCompletado extends DomainEvent
 {
     public function __construct(

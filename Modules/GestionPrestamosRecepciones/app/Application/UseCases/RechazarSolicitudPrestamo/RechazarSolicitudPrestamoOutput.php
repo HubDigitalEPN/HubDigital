@@ -6,6 +6,9 @@ namespace Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarSolic
 
 use Modules\GestionPrestamosRecepciones\Domain\Entities\SolicitudPrestamo;
 
+/**
+ * Datos de salida tras rechazar una solicitud de préstamo.
+ */
 final readonly class RechazarSolicitudPrestamoOutput
 {
     public function __construct(
@@ -14,6 +17,10 @@ final readonly class RechazarSolicitudPrestamoOutput
         public ?string $comentarioCurador,
     ) {}
 
+    /**
+     * @param SolicitudPrestamo $solicitud
+     * @return self
+     */
     public static function fromPrimitives(SolicitudPrestamo $solicitud): self
     {
         return new self(

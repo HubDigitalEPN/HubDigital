@@ -15,13 +15,24 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoTramite;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\MatrizEspeciesEloquentModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\RegistroEspecimenEloquentModel;
 
+/**
+ * Implementación Eloquent del repositorio de matrices de especies.
+ *
+ * Persiste y recupera el agregado {@see MatrizEspecies} y sus registros de especímenes individuales.
+ */
 final class EloquentMatrizEspeciesRepository implements MatrizEspeciesRepositoryInterface
 {
+    /**
+     * Genera un nuevo identificador único para una matriz.
+     */
     public function nextIdentity(): MatrizEspeciesId
     {
         return MatrizEspeciesId::generate();
     }
 
+    /**
+     * Persiste la matriz de especies y sus registros en la base de datos.
+     */
     public function guardar(MatrizEspecies $matriz): void
     {
         $now = now()->toDateTimeString();
@@ -74,6 +85,9 @@ final class EloquentMatrizEspeciesRepository implements MatrizEspeciesRepository
             ->delete();
     }
 
+    /**
+     * Busca una matriz de especies por su identificador único.
+     */
     public function buscarPorId(MatrizEspeciesId $matrizId): ?MatrizEspecies
     {
         $model = MatrizEspeciesEloquentModel::with('registros')->find((string) $matrizId);
@@ -85,6 +99,9 @@ final class EloquentMatrizEspeciesRepository implements MatrizEspeciesRepository
         return $this->reconstituir($model);
     }
 
+    /**
+     * Busca la matriz de especies asociada a una solicitud (préstamo o depósito).
+     */
     public function buscarPorSolicitudId(string $solicitudId): ?MatrizEspecies
     {
         $model = MatrizEspeciesEloquentModel::with('registros')
@@ -98,6 +115,9 @@ final class EloquentMatrizEspeciesRepository implements MatrizEspeciesRepository
         return $this->reconstituir($model);
     }
 
+    /**
+     * Reconstituye la entidad de dominio a partir del modelo Eloquent.
+     */
     private function reconstituir(MatrizEspeciesEloquentModel $model): MatrizEspecies
     {
         $registros = [];

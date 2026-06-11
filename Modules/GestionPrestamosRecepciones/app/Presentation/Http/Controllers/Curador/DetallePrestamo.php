@@ -24,6 +24,9 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrestamoId;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\ActaPrestamoModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\PrestamoEloquentModel;
 
+/**
+ * Componente Livewire para la visualización de los detalles de un préstamo.
+ */
 #[Layout('layouts.app', params: ['title' => 'Detalle del Préstamo'])]
 final class DetallePrestamo extends Component
 {
@@ -37,6 +40,11 @@ final class DetallePrestamo extends Component
     #[Validate('required|file|mimes:pdf|max:10240')]
     public $documentoExportacion = null;
 
+    /**
+     * @param string $id
+     * @param ConsultarPrestamoHandler $handler
+     * @return void
+     */
     public function mount(string $id, ConsultarPrestamoHandler $handler): void
     {
         $this->id = $id;
@@ -51,6 +59,10 @@ final class DetallePrestamo extends Component
         }
     }
 
+    /**
+     * @param HabilitarEnvioInternacionalHandler $handler
+     * @return void
+     */
     public function habilitarEnvio(HabilitarEnvioInternacionalHandler $handler): void
     {
         $this->validate(['documentoExportacion' => 'required|file|mimes:pdf|max:10240']);
@@ -70,6 +82,12 @@ final class DetallePrestamo extends Component
 
 
 
+    /**
+     * @param ConsultarPrestamoHandler $prestamoHandler
+     * @param ConsultarHistorialPrestamoHandler $historialHandler
+     * @param VerificacionEntregaPrestamoRepositoryInterface $verificacionRepo
+     * @return View
+     */
     public function render(
         ConsultarPrestamoHandler $prestamoHandler,
         ConsultarHistorialPrestamoHandler $historialHandler,

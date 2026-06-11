@@ -6,6 +6,9 @@ namespace Modules\GestionPrestamosRecepciones\Domain\Events;
 
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\MatrizEspeciesId;
 
+/**
+ * Evento de dominio emitido cuando se acepta una sugerencia de corrección taxonómica en un registro de la matriz.
+ */
 final class SugerenciaTaxonomicaAceptada extends DomainEvent
 {
     public function __construct(

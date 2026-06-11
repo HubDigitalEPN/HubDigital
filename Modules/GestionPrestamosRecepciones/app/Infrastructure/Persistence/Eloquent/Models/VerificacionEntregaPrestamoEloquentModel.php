@@ -7,6 +7,11 @@ namespace Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquen
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * Modelo Eloquent para la tabla 'prestamos.verificaciones_entrega_prestamo'.
+ *
+ * Registra la inspección física realizada por el investigador al recibir los especímenes.
+ */
 final class VerificacionEntregaPrestamoEloquentModel extends Model
 {
     protected $table = 'prestamos.verificaciones_entrega_prestamo';
@@ -28,6 +33,9 @@ final class VerificacionEntregaPrestamoEloquentModel extends Model
         'observaciones' => 'array',
     ];
 
+    /**
+     * Relación con el préstamo que se está verificando.
+     */
     public function prestamo(): BelongsTo
     {
         return $this->belongsTo(PrestamoEloquentModel::class, 'prestamo_id');

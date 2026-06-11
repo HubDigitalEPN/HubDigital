@@ -7,6 +7,9 @@ namespace Modules\GestionPrestamosRecepciones\Domain\Events;
 use DateTimeImmutable;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudPrestamoId;
 
+/**
+ * Evento de dominio emitido cuando el curador devuelve la solicitud con una observación.
+ */
 final readonly class SolicitudPrestamoObservada
 {
     public function __construct(

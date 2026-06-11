@@ -6,6 +6,9 @@ namespace Modules\GestionPrestamosRecepciones\Application\UseCases\IniciarPresta
 
 use Modules\GestionPrestamosRecepciones\Domain\Entities\Prestamo;
 
+/**
+ * Datos de salida tras iniciar un préstamo.
+ */
 final readonly class IniciarPrestamoOutput
 {
     public function __construct(
@@ -13,6 +16,10 @@ final readonly class IniciarPrestamoOutput
         public string $estado,
     ) {}
 
+    /**
+     * @param Prestamo $prestamo
+     * @return self
+     */
     public static function fromPrestamo(Prestamo $prestamo): self
     {
         return new self(

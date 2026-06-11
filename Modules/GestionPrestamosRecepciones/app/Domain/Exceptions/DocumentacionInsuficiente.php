@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Domain\Exceptions;
 
+/**
+ * Excepción de dominio lanzada al intentar escalar a intervención curatorial una
+ * solicitud que no fue marcada como sin documentación. Construir con {@see paraEscalada()}.
+ */
 final class DocumentacionInsuficiente extends \DomainException
 {
     public static function paraEscalada(): self

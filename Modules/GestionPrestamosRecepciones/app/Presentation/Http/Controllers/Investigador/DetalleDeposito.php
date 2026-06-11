@@ -10,11 +10,20 @@ use Livewire\Component;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
 
+/**
+ * Componente Livewire para el detalle de un depósito.
+ */
 #[Layout('layouts.app', params: ['title' => 'Detalle de Depósito'])]
 final class DetalleDeposito extends Component
 {
     public string $id;
 
+    /**
+     * Inicializa el componente.
+     *
+     * @param string $id
+     * @return void
+     */
     public function mount(string $id): void
     {
         $this->id = $id;
@@ -26,6 +35,12 @@ final class DetalleDeposito extends Component
         }
     }
 
+    /**
+     * Renderiza el componente.
+     *
+     * @param \Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface $matrizRepo
+     * @return \Illuminate\View\View
+     */
     public function render(MatrizEspeciesRepositoryInterface $matrizRepo): View
     {
         $deposito = SolicitudDepositoEloquentModel::find($this->id);

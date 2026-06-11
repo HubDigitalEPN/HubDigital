@@ -14,13 +14,25 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoTramite;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
 
+/**
+ * Implementación Eloquent del repositorio de solicitudes de depósito.
+ *
+ * Persiste y recupera el agregado {@see SolicitudDeposito} utilizando el modelo
+ * Eloquent {@see SolicitudDepositoEloquentModel}.
+ */
 final class EloquentSolicitudDepositoRepository implements SolicitudDepositoRepositoryInterface
 {
+    /**
+     * Genera un nuevo identificador único para una solicitud de depósito.
+     */
     public function nextIdentity(): SolicitudDepositoId
     {
         return SolicitudDepositoId::generate();
     }
 
+    /**
+     * Genera el siguiente número secuencial para una solicitud de depósito.
+     */
     public function nextNumero(): NumeroSolicitudDeposito
     {
         $maxSeq = DB::selectOne(
@@ -32,6 +44,9 @@ final class EloquentSolicitudDepositoRepository implements SolicitudDepositoRepo
         return NumeroSolicitudDeposito::fromSecuencia(($maxSeq->max_seq ?? 0) + 1);
     }
 
+    /**
+     * Persiste la solicitud de depósito en la base de datos.
+     */
     public function guardar(SolicitudDeposito $solicitud): void
     {
         $documentosAdjuntos = array_map(
@@ -66,6 +81,9 @@ final class EloquentSolicitudDepositoRepository implements SolicitudDepositoRepo
         );
     }
 
+    /**
+     * Busca una solicitud de depósito por su identificador único.
+     */
     public function buscarPorId(SolicitudDepositoId $id): ?SolicitudDeposito
     {
         $model = SolicitudDepositoEloquentModel::find((string) $id);
@@ -77,6 +95,9 @@ final class EloquentSolicitudDepositoRepository implements SolicitudDepositoRepo
         return $this->reconstituir($model);
     }
 
+    /**
+     * Cuenta cuántas solicitudes ha realizado un investigador de un tipo específico en el año actual.
+     */
     public function contarPorInvestigadorYTipoEnAnioActual(string $investigadorId, string $tipoTramite): int
     {
         return SolicitudDepositoEloquentModel::where('investigador_id', $investigadorId)
@@ -86,6 +107,9 @@ final class EloquentSolicitudDepositoRepository implements SolicitudDepositoRepo
             ->count();
     }
 
+    /**
+     * Elimina todas las solicitudes en estado borrador de un investigador.
+     */
     public function eliminarBorradoresDe(string $investigadorId): void
     {
         SolicitudDepositoEloquentModel::where('investigador_id', $investigadorId)
@@ -93,6 +117,9 @@ final class EloquentSolicitudDepositoRepository implements SolicitudDepositoRepo
             ->delete();
     }
 
+    /**
+     * Reconstituye la entidad de dominio a partir del modelo Eloquent.
+     */
     private function reconstituir(SolicitudDepositoEloquentModel $model): SolicitudDeposito
     {
         $documentosAdjuntos = [];

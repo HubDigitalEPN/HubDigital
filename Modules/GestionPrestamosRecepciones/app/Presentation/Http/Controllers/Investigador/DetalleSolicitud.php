@@ -11,6 +11,9 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialS
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudInput;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\SolicitudPrestamoModel;
 
+/**
+ * Componente Livewire para el detalle de una solicitud.
+ */
 #[Layout('layouts.app', params: ['title' => 'Detalle de Solicitud'])]
 final class DetalleSolicitud extends Component
 {
@@ -18,6 +21,12 @@ final class DetalleSolicitud extends Component
 
     public ?SolicitudPrestamoModel $solicitud = null;
 
+    /**
+     * Inicializa el componente.
+     *
+     * @param string $id
+     * @return void
+     */
     public function mount(string $id): void
     {
         $this->id = $id;
@@ -32,6 +41,12 @@ final class DetalleSolicitud extends Component
         }
     }
 
+    /**
+     * Renderiza el componente.
+     *
+     * @param \Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudHandler $historialHandler
+     * @return \Illuminate\View\View
+     */
     public function render(ConsultarHistorialSolicitudHandler $historialHandler): View
     {
         $historial = $historialHandler->handle(new ConsultarHistorialSolicitudInput(

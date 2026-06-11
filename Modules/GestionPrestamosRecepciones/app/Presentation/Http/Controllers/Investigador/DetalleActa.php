@@ -22,6 +22,9 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\SubirActaFirmada\Su
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\ActaPrestamoModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\PrestamoEloquentModel;
 
+/**
+ * Componente Livewire para el detalle de un acta.
+ */
 #[Layout('layouts.app', params: ['title' => 'Detalle de Acta'])]
 final class DetalleActa extends Component
 {
@@ -61,6 +64,12 @@ final class DetalleActa extends Component
         'ActaValidada',
     ];
 
+    /**
+     * Inicializa el componente.
+     *
+     * @param string $id
+     * @return void
+     */
     public function mount(string $id): void
     {
         $this->actaId = $id;
@@ -75,6 +84,12 @@ final class DetalleActa extends Component
         }
     }
 
+    /**
+     * Sube un acta firmada.
+     *
+     * @param \Modules\GestionPrestamosRecepciones\Application\UseCases\SubirActaFirmada\SubirActaFirmadaHandler $handler
+     * @return void
+     */
     public function subirActa(SubirActaFirmadaHandler $handler): void
     {
         $this->validate([
@@ -99,6 +114,12 @@ final class DetalleActa extends Component
         $this->cargarDatos();
     }
 
+    /**
+     * Firma el acta digitalmente.
+     *
+     * @param \Modules\GestionPrestamosRecepciones\Application\UseCases\FirmarActaDigitalmente\FirmarActaDigitalmenteHandler $handler
+     * @return void
+     */
     public function firmarDigitalmente(FirmarActaDigitalmenteHandler $handler): void
     {
         $this->validate(['firmaBase64' => 'required|string']);
@@ -115,6 +136,12 @@ final class DetalleActa extends Component
         $this->cargarDatos();
     }
 
+    /**
+     * Sube el documento de identidad.
+     *
+     * @param \Modules\GestionPrestamosRecepciones\Application\UseCases\CompletarFirmaDigitalConIdentidad\CompletarFirmaDigitalConIdentidadHandler $handler
+     * @return void
+     */
     public function subirDocumentoIdentidad(CompletarFirmaDigitalConIdentidadHandler $handler): void
     {
         $this->validate([
@@ -146,6 +173,12 @@ final class DetalleActa extends Component
             : null;
     }
 
+    /**
+     * Renderiza el componente.
+     *
+     * @param \Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudHandler $historialHandler
+     * @return \Illuminate\View\View
+     */
     public function render(ConsultarHistorialSolicitudHandler $historialHandler): View
     {
         $historialActa = [];

@@ -9,6 +9,12 @@ use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\MatrizEspeciesId;
 
+/**
+ * Justifica un hallazgo taxonómico en una matriz de especies.
+ *
+ * {@see JustificarHallazgoTaxonomicoInput}
+ * {@see JustificarHallazgoTaxonomicoOutput}
+ */
 final class JustificarHallazgoTaxonomicoHandler
 {
     public function __construct(
@@ -17,6 +23,11 @@ final class JustificarHallazgoTaxonomicoHandler
         private EventPublisherPort $eventPublisher,
     ) {}
 
+    /**
+     * @param JustificarHallazgoTaxonomicoInput $input
+     * @return JustificarHallazgoTaxonomicoOutput
+     * @throws \DomainException
+     */
     public function __invoke(JustificarHallazgoTaxonomicoInput $input): JustificarHallazgoTaxonomicoOutput
     {
         $matrizId = MatrizEspeciesId::from($input->matrizId);

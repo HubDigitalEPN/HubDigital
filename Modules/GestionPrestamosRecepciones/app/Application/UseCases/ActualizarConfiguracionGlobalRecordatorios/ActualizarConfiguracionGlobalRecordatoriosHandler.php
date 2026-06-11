@@ -9,14 +9,32 @@ use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\ConfiguracionGlobalRecordatoriosRepositoryInterface;
 use RuntimeException;
 
+/**
+ * Caso de uso: Actualiza la configuración global de recordatorios para préstamos.
+ * 
+ * {@see ActualizarConfiguracionGlobalRecordatoriosInput}
+ * {@see ActualizarConfiguracionGlobalRecordatoriosOutput}
+ */
 final class ActualizarConfiguracionGlobalRecordatoriosHandler
 {
+    /**
+     * Crea una nueva instancia de ActualizarConfiguracionGlobalRecordatoriosHandler.
+     * @param ConfiguracionGlobalRecordatoriosRepositoryInterface $configRepo Repositorio de configuración de recordatorios.
+     * @param EventPublisherPort $publisher Puerto para la publicación de eventos.
+     * @param TransactionManagerPort $transactionManager Puerto para la gestión de transacciones.
+     */
     public function __construct(
         private readonly ConfiguracionGlobalRecordatoriosRepositoryInterface $configRepo,
         private readonly EventPublisherPort $publisher,
         private readonly TransactionManagerPort $transactionManager,
     ) {}
 
+    /**
+     * Ejecuta el caso de uso.
+     * @param ActualizarConfiguracionGlobalRecordatoriosInput $input
+     * @return ActualizarConfiguracionGlobalRecordatoriosOutput
+     * @throws RuntimeException Si no existe una configuración global definida.
+     */
     public function handle(ActualizarConfiguracionGlobalRecordatoriosInput $input): ActualizarConfiguracionGlobalRecordatoriosOutput
     {
         $configuracion = $this->configRepo->obtenerUnica();

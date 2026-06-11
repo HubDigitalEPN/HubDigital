@@ -6,6 +6,9 @@ namespace Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarVerifi
 
 use Modules\GestionPrestamosRecepciones\Domain\Entities\Prestamo;
 
+/**
+ * Datos de salida del caso de uso de aprobación de verificación de entrega.
+ */
 final readonly class AprobarVerificacionEntregaOutput
 {
     public function __construct(
@@ -13,6 +16,9 @@ final readonly class AprobarVerificacionEntregaOutput
         public string $estado,
     ) {}
 
+    /**
+     * Crea un objeto de salida a partir de la entidad Prestamo.
+     */
     public static function fromPrestamo(Prestamo $prestamo): self
     {
         return new self(

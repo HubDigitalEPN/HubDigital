@@ -17,11 +17,20 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrestamoId;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\PrestamoEloquentModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\SolicitudPrestamoModel;
 
+/**
+ * Componente Livewire para el detalle de un préstamo.
+ */
 #[Layout('layouts.app', params: ['title' => 'Detalle del Préstamo'])]
 final class DetallePrestamo extends Component
 {
     public string $id;
 
+    /**
+     * Inicializa el componente.
+     *
+     * @param string $id
+     * @return void
+     */
     public function mount(string $id): void
     {
         $this->id = $id;
@@ -37,6 +46,15 @@ final class DetallePrestamo extends Component
         }
     }
 
+    /**
+     * Renderiza el componente.
+     *
+     * @param \Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudHandler $historialSolicitudHandler
+     * @param \Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialPrestamo\ConsultarHistorialPrestamoHandler $historialPrestamoHandler
+     * @param \Modules\GestionPrestamosRecepciones\Domain\Repositories\RecordatorioDevolucionRepositoryInterface $recordatorioRepo
+     * @param \Modules\GestionPrestamosRecepciones\Domain\Repositories\VerificacionEntregaPrestamoRepositoryInterface $verificacionRepo
+     * @return \Illuminate\View\View
+     */
     public function render(
         ConsultarHistorialSolicitudHandler $historialSolicitudHandler,
         ConsultarHistorialPrestamoHandler $historialPrestamoHandler,

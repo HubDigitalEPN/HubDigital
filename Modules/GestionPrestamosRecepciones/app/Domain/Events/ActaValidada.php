@@ -8,6 +8,9 @@ use DateTimeImmutable;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudPrestamoId;
 
+/**
+ * Evento de dominio emitido cuando el curador valida el acta firmada.
+ */
 final readonly class ActaValidada
 {
     public function __construct(

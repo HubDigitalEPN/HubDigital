@@ -60,6 +60,13 @@ use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigad
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\SolicitudForm;
 use Nwidart\Modules\Support\ModuleServiceProvider;
 
+/**
+ * Proveedor principal de servicios del módulo.
+ *
+ * Registra los enlaces (bindings) de las interfaces de dominio con sus
+ * implementaciones en la capa de infraestructura. También arranca componentes
+ * de Livewire, comandos Artisan, excepciones personalizadas y tareas programadas.
+ */
 class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
 {
     protected string $name = 'GestionPrestamosRecepciones';
@@ -71,6 +78,9 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
         RouteServiceProvider::class,
     ];
 
+    /**
+     * Mapeo de interfaces (Ports) a sus implementaciones (Adapters).
+     */
     public array $bindings = [
         SolicitudPrestamoRepositoryInterface::class => EloquentSolicitudPrestamoRepository::class,
         ActaPrestamoRepositoryInterface::class => EloquentActaPrestamoRepository::class,
@@ -91,6 +101,9 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
         VerificacionEntregaPrestamoRepositoryInterface::class => EloquentVerificacionEntregaPrestamoRepository::class,
     ];
 
+    /**
+     * Registra servicios en el contenedor de dependencias.
+     */
     public function register(): void
     {
         parent::register();
@@ -105,12 +118,18 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
         ));
     }
 
+    /**
+     * Configura las tareas programadas (CRON) del módulo.
+     */
     protected function configureSchedules(Schedule $schedule): void
     {
         $schedule->command(LimpiarBorradoresAbandonadosCommand::class)->daily();
         $schedule->command(EvaluarPlazosDevolucionTodosLosPrestamosCommand::class)->daily();
     }
 
+    /**
+     * Arranca servicios y configuraciones de componentes tras el registro.
+     */
     public function boot(): void
     {
         parent::boot();

@@ -10,13 +10,30 @@ use Modules\GestionPrestamosRecepciones\Domain\Repositories\PrestamoRepositoryIn
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrestamoId;
 
+/**
+ * Manejador del caso de uso para consultar un préstamo.
+ * 
+ * {@see ConsultarPrestamoInput}
+ * {@see ConsultarPrestamoOutput}
+ */
 final class ConsultarPrestamoHandler
 {
+    /**
+     * @param PrestamoRepositoryInterface $repo Repositorio de préstamos.
+     * @param ActaPrestamoRepositoryInterface $actaRepo Repositorio de actas de préstamo.
+     */
     public function __construct(
         private readonly PrestamoRepositoryInterface $repo,
         private readonly ActaPrestamoRepositoryInterface $actaRepo,
     ) {}
 
+    /**
+     * Ejecuta el caso de uso.
+     *
+     * @param ConsultarPrestamoInput $input Datos de entrada.
+     * @return ConsultarPrestamoOutput Datos del préstamo consultado.
+     * @throws PrestamoNoEncontradoException Si el préstamo no existe.
+     */
     public function handle(ConsultarPrestamoInput $input): ConsultarPrestamoOutput
     {
         $id = PrestamoId::fromString($input->prestamoId);

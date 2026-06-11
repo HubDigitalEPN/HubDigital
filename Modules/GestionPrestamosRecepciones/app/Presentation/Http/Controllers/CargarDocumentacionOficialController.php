@@ -10,11 +10,17 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\CargarDocumentacion
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Requests\CargarDocumentacionOficialRequest;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Resources\CargarDocumentacionOficialResource;
 
+/**
+ * Controlador para cargar la documentación oficial de una solicitud de depósito.
+ */
 final class CargarDocumentacionOficialController
 {
     public function __construct(private readonly CargarDocumentacionOficialHandler $handler) {}
 
-    public function __invoke(CargarDocumentacionOficialRequest $request, string $id): JsonResponse
+    /**
+     * Maneja la petición HTTP para cargar documentos oficiales.
+     */
+    public function __invoke(CargarDocumentacionOficialRequest $request): JsonResponse
     {
         $output = ($this->handler)(
             new CargarDocumentacionOficialInput(

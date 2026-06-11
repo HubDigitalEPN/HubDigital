@@ -6,6 +6,9 @@ namespace Modules\GestionPrestamosRecepciones\Domain\Events;
 
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\MatrizEspeciesId;
 
+/**
+ * Evento de dominio emitido cuando se carga la matriz de especies de un trámite desde el Excel.
+ */
 final class MatrizEspeciesCargada extends DomainEvent
 {
     public function __construct(

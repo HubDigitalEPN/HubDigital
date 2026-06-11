@@ -10,8 +10,17 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoValidacionF
 use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Process\Process;
 
+/**
+ * Adaptador para validar firmas electrónicas en archivos PDF utilizando la herramienta 'pdfsig'.
+ *
+ * Implementa {@see ValidacionFirmaElectronicaPort}. Ejecuta el binario pdfsig del paquete
+ * poppler-utils para detectar si un PDF contiene firmas válidas.
+ */
 final class PdfsigValidacionFirmaElectronicaAdapter implements ValidacionFirmaElectronicaPort
 {
+    /**
+     * Verifica la presencia de firmas electrónicas en el archivo PDF especificado.
+     */
     public function verificarFirma(string $rutaAbsoluta): ResultadoValidacionFirma
     {
         if (! file_exists($rutaAbsoluta)) {

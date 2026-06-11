@@ -6,6 +6,9 @@ namespace Modules\GestionPrestamosRecepciones\Application\UseCases\ObservarSolic
 
 use Modules\GestionPrestamosRecepciones\Domain\Entities\SolicitudPrestamo;
 
+/**
+ * Datos de salida tras observar una solicitud de préstamo.
+ */
 final readonly class ObservarSolicitudPrestamoOutput
 {
     public function __construct(
@@ -15,6 +18,10 @@ final readonly class ObservarSolicitudPrestamoOutput
         public ?string $comentarioCurador,
     ) {}
 
+    /**
+     * @param SolicitudPrestamo $solicitud
+     * @return self
+     */
     public static function fromPrimitives(SolicitudPrestamo $solicitud): self
     {
         return new self(

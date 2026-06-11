@@ -6,6 +6,9 @@ namespace Modules\GestionPrestamosRecepciones\Application\UseCases\GenerarActaPr
 
 use Modules\GestionPrestamosRecepciones\Domain\Entities\ActaPrestamo;
 
+/**
+ * Datos de salida tras generar un acta de préstamo.
+ */
 final readonly class GenerarActaPrestamoOutput
 {
     public function __construct(
@@ -15,6 +18,12 @@ final readonly class GenerarActaPrestamoOutput
         public ?string $pdfFirmadoRuta,
     ) {}
 
+    /**
+     * @param string $solicitudId
+     * @param ActaPrestamo $acta
+     * @param bool $notificacionEnviada
+     * @return self
+     */
     public static function fromPrimitives(
         string $solicitudId,
         ActaPrestamo $acta,

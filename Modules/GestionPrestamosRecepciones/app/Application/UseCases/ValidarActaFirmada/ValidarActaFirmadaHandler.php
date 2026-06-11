@@ -10,6 +10,12 @@ use Modules\GestionPrestamosRecepciones\Domain\Exceptions\ActaPrestamoNoEncontra
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\ActaPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
 
+/**
+ * Valida un acta firmada por parte del curador.
+ *
+ * {@see ValidarActaFirmadaInput}
+ * {@see ValidarActaFirmadaOutput}
+ */
 final class ValidarActaFirmadaHandler
 {
     public function __construct(
@@ -18,6 +24,11 @@ final class ValidarActaFirmadaHandler
         private readonly TransactionManagerPort $transactionManager,
     ) {}
 
+    /**
+     * @param ValidarActaFirmadaInput $input
+     * @return ValidarActaFirmadaOutput
+     * @throws ActaPrestamoNoEncontradaException
+     */
     public function handle(ValidarActaFirmadaInput $input): ValidarActaFirmadaOutput
     {
         $actaId = ActaPrestamoId::fromString($input->actaId);

@@ -12,8 +12,20 @@ use Modules\GestionPrestamosRecepciones\Domain\Repositories\ActaPrestamoReposito
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
 
+/**
+ * Manejador del caso de uso para enviar un acta de préstamo al investigador.
+ * 
+ * {@see EnviarActaPrestamoInput}
+ * {@see EnviarActaPrestamoOutput}
+ */
 final class EnviarActaPrestamoHandler
 {
+    /**
+     * @param ActaPrestamoRepositoryInterface $actaRepo Repositorio de actas.
+     * @param SolicitudPrestamoRepositoryInterface $solicitudRepo Repositorio de solicitudes.
+     * @param EventPublisherPort $publisher Publicador de eventos.
+     * @param TransactionManagerPort $transactionManager Gestor de transacciones.
+     */
     public function __construct(
         private readonly ActaPrestamoRepositoryInterface $actaRepo,
         private readonly SolicitudPrestamoRepositoryInterface $solicitudRepo,
@@ -21,6 +33,14 @@ final class EnviarActaPrestamoHandler
         private readonly TransactionManagerPort $transactionManager,
     ) {}
 
+    /**
+     * Ejecuta el caso de uso.
+     *
+     * @param EnviarActaPrestamoInput $input Datos de entrada.
+     * @return EnviarActaPrestamoOutput Resultado del envío.
+     * @throws ActaPrestamoNoEncontradaException Si el acta no existe.
+     * @throws SolicitudPrestamoNoEncontradaException Si la solicitud asociada no existe.
+     */
     public function handle(EnviarActaPrestamoInput $input): EnviarActaPrestamoOutput
     {
         $actaId = ActaPrestamoId::fromString($input->actaId);

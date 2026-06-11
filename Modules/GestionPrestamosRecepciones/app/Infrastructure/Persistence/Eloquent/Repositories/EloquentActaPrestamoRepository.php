@@ -15,8 +15,17 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoPrestamo;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\ActaPrestamoModel;
 
+/**
+ * Implementación Eloquent del repositorio de actas de préstamo.
+ *
+ * Persiste y recupera agregados {@see ActaPrestamo} utilizando el modelo
+ * Eloquent {@see ActaPrestamoModel}.
+ */
 final class EloquentActaPrestamoRepository implements ActaPrestamoRepositoryInterface
 {
+    /**
+     * Persiste un acta de préstamo.
+     */
     public function guardar(ActaPrestamo $acta): void
     {
         ActaPrestamoModel::updateOrCreate(
@@ -42,6 +51,9 @@ final class EloquentActaPrestamoRepository implements ActaPrestamoRepositoryInte
         );
     }
 
+    /**
+     * Busca un acta por su identificador único.
+     */
     public function buscarPorId(ActaPrestamoId $id): ?ActaPrestamo
     {
         $model = ActaPrestamoModel::find((string) $id);
@@ -49,6 +61,9 @@ final class EloquentActaPrestamoRepository implements ActaPrestamoRepositoryInte
         return $model !== null ? $this->toDomain($model) : null;
     }
 
+    /**
+     * Busca el acta asociada a una solicitud de préstamo específica.
+     */
     public function buscarPorSolicitudId(SolicitudPrestamoId $solicitudId): ?ActaPrestamo
     {
         $model = ActaPrestamoModel::where('solicitud_prestamo_id', (string) $solicitudId)->first();
@@ -56,11 +71,17 @@ final class EloquentActaPrestamoRepository implements ActaPrestamoRepositoryInte
         return $model !== null ? $this->toDomain($model) : null;
     }
 
+    /**
+     * Genera un nuevo identificador para un acta.
+     */
     public function nextIdentity(): ActaPrestamoId
     {
         return ActaPrestamoId::generate();
     }
 
+    /**
+     * Mapea el modelo Eloquent a la entidad de dominio.
+     */
     private function toDomain(ActaPrestamoModel $model): ActaPrestamo
     {
         return ActaPrestamo::reconstituir(

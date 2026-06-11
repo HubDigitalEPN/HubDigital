@@ -10,10 +10,18 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\CompletarDatosManua
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Requests\CompletarDatosManualesRequest;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Resources\CompletarDatosManualesResource;
 
+/**
+ * Controlador para completar datos de forma manual en una solicitud.
+ */
 final class CompletarDatosManualesController
 {
     public function __construct(private readonly CompletarDatosManualesHandler $handler) {}
 
+    /**
+     * @param CompletarDatosManualesRequest $request
+     * @param string $id
+     * @return JsonResponse
+     */
     public function __invoke(CompletarDatosManualesRequest $request, string $id): JsonResponse
     {
         $output = ($this->handler)(

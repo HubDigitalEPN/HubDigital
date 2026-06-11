@@ -14,6 +14,9 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\DefinirConfiguracio
 use Modules\GestionPrestamosRecepciones\Application\UseCases\DefinirConfiguracionGlobalRecordatorios\DefinirConfiguracionGlobalRecordatoriosInput;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\ConfiguracionGlobalRecordatoriosRepositoryInterface;
 
+/**
+ * Componente Livewire para la configuración global de recordatorios de préstamo.
+ */
 #[Layout('layouts.app', params: ['title' => 'Configuración de recordatorios'])]
 final class ConfiguracionRecordatorios extends Component
 {
@@ -29,6 +32,10 @@ final class ConfiguracionRecordatorios extends Component
 
     public ?string $mensajeExito = null;
 
+    /**
+     * @param ConfiguracionGlobalRecordatoriosRepositoryInterface $repo
+     * @return void
+     */
     public function mount(ConfiguracionGlobalRecordatoriosRepositoryInterface $repo): void
     {
         $configuracion = $repo->obtenerUnica();
@@ -39,12 +46,19 @@ final class ConfiguracionRecordatorios extends Component
         }
     }
 
+    /**
+     * @return void
+     */
     public function habilitarEdicion(): void
     {
         $this->modoEdicion = true;
         $this->mensajeExito = null;
     }
 
+    /**
+     * @param ConfiguracionGlobalRecordatoriosRepositoryInterface $repo
+     * @return void
+     */
     public function cancelarEdicion(ConfiguracionGlobalRecordatoriosRepositoryInterface $repo): void
     {
         $configuracion = $repo->obtenerUnica();
@@ -53,6 +67,10 @@ final class ConfiguracionRecordatorios extends Component
         $this->nuevoDia = '';
     }
 
+    /**
+     * @param int $dia
+     * @return void
+     */
     public function toggleDia(int $dia): void
     {
         if (in_array($dia, array_map('intval', $this->diasAntes), true)) {
@@ -65,6 +83,9 @@ final class ConfiguracionRecordatorios extends Component
         }
     }
 
+    /**
+     * @return void
+     */
     public function agregarDia(): void
     {
         $dia = (int) $this->nuevoDia;
@@ -80,6 +101,10 @@ final class ConfiguracionRecordatorios extends Component
         $this->nuevoDia = '';
     }
 
+    /**
+     * @param int $dia
+     * @return void
+     */
     public function quitarDia(int $dia): void
     {
         $this->diasAntes = array_values(
@@ -87,6 +112,11 @@ final class ConfiguracionRecordatorios extends Component
         );
     }
 
+    /**
+     * @param DefinirConfiguracionGlobalRecordatoriosHandler $definirHandler
+     * @param ActualizarConfiguracionGlobalRecordatoriosHandler $actualizarHandler
+     * @return void
+     */
     public function guardar(
         DefinirConfiguracionGlobalRecordatoriosHandler $definirHandler,
         ActualizarConfiguracionGlobalRecordatoriosHandler $actualizarHandler,
@@ -122,6 +152,9 @@ final class ConfiguracionRecordatorios extends Component
         }
     }
 
+    /**
+     * @return View
+     */
     public function render(): View
     {
         return view('gestionprestamosrecepciones::curador.configuracion-recordatorios');

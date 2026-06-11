@@ -10,10 +10,18 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarDocumentacio
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Requests\ValidarDocumentacionInicialRequest;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Resources\ValidarDocumentacionInicialResource;
 
+/**
+ * Controlador para validar la documentación inicial adjunta a una solicitud.
+ */
 final class ValidarDocumentacionInicialController
 {
     public function __construct(private readonly ValidarDocumentacionInicialHandler $handler) {}
 
+    /**
+     * @param ValidarDocumentacionInicialRequest $request
+     * @param string $id
+     * @return JsonResponse
+     */
     public function __invoke(ValidarDocumentacionInicialRequest $request, string $id): JsonResponse
     {
         $output = ($this->handler)(

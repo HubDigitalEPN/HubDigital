@@ -11,6 +11,12 @@ use Modules\GestionPrestamosRecepciones\Domain\Exceptions\SolicitudPrestamoNoEnc
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudPrestamoId;
 
+/**
+ * Observa una solicitud de préstamo indicando las correcciones necesarias.
+ *
+ * {@see ObservarSolicitudPrestamoInput}
+ * {@see ObservarSolicitudPrestamoOutput}
+ */
 final class ObservarSolicitudPrestamoHandler
 {
     public function __construct(
@@ -19,6 +25,12 @@ final class ObservarSolicitudPrestamoHandler
         private readonly TransactionManagerPort $transactionManager,
     ) {}
 
+    /**
+     * @param ObservarSolicitudPrestamoInput $input
+     * @return ObservarSolicitudPrestamoOutput
+     * @throws InvalidArgumentException
+     * @throws SolicitudPrestamoNoEncontradaException
+     */
     public function handle(ObservarSolicitudPrestamoInput $input): ObservarSolicitudPrestamoOutput
     {
         if (trim($input->observacion) === '') {

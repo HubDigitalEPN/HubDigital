@@ -11,6 +11,12 @@ use Modules\GestionPrestamosRecepciones\Domain\Repositories\PrestamoRepositoryIn
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\RecordatorioDevolucionRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrestamoId;
 
+/**
+ * Manejador para actualizar los recordatorios de un préstamo específico.
+ * 
+ * {@see ActualizarRecordatoriosPrestamoEspecificoInput}
+ * {@see ActualizarRecordatoriosPrestamoEspecificoOutput}
+ */
 final class ActualizarRecordatoriosPrestamoEspecificoHandler
 {
     public function __construct(
@@ -19,6 +25,13 @@ final class ActualizarRecordatoriosPrestamoEspecificoHandler
         private readonly TransactionManagerPort $transactionManager,
     ) {}
 
+    /**
+     * Ejecuta la actualización de los recordatorios para un préstamo.
+     * 
+     * @param ActualizarRecordatoriosPrestamoEspecificoInput $input
+     * @return ActualizarRecordatoriosPrestamoEspecificoOutput
+     * @throws PrestamoNoEncontradoException
+     */
     public function handle(ActualizarRecordatoriosPrestamoEspecificoInput $input): ActualizarRecordatoriosPrestamoEspecificoOutput
     {
         $prestamoId = PrestamoId::fromString($input->prestamoId);

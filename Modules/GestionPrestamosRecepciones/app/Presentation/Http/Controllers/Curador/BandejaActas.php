@@ -14,6 +14,9 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarActaPrestamo\
 use Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarActaPrestamo\EnviarActaPrestamoInput;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\ActaPrestamoModel;
 
+/**
+ * Componente Livewire para la visualización y gestión de la bandeja de actas de préstamo.
+ */
 #[Layout('layouts.app', params: ['title' => 'Bandeja de actas'])]
 final class BandejaActas extends Component
 {
@@ -36,11 +39,17 @@ final class BandejaActas extends Component
 
     public string $successMessage = '';
 
+    /**
+     * @return void
+     */
     public function toggleOrden(): void
     {
         $this->ordenDireccion = $this->ordenDireccion === 'asc' ? 'desc' : 'asc';
     }
 
+    /**
+     * @return void
+     */
     public function limpiarFiltros(): void
     {
         $this->busqueda = '';
@@ -50,6 +59,11 @@ final class BandejaActas extends Component
         $this->ordenDireccion = 'desc';
     }
 
+    /**
+     * @param string $actaId
+     * @param EnviarActaPrestamoHandler $handler
+     * @return void
+     */
     public function enviarActa(string $actaId, EnviarActaPrestamoHandler $handler): void
     {
         $handler->handle(new EnviarActaPrestamoInput(
@@ -60,6 +74,9 @@ final class BandejaActas extends Component
         $this->successMessage = 'Acta enviada al investigador correctamente.';
     }
 
+    /**
+     * @return View
+     */
     public function render(): View
     {
         $query = ActaPrestamoModel::query()

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarSolicitudPrestamo;
 
+/**
+ * Datos de entrada para registrar una solicitud de préstamo.
+ */
 final readonly class RegistrarSolicitudPrestamoInput
 {
     /**

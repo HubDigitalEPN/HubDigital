@@ -4,6 +4,13 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Application\Ports;
 
+/**
+ * Puerto de la capa de aplicación para consultar la configuración de campos Darwin
+ * Core (DwC) que exige una colección del módulo de inventario.
+ *
+ * Lo implementa un adaptador en Infrastructure que consulta el módulo de gestión de
+ * colecciones, respetando el aislamiento entre bounded contexts.
+ */
 interface CatalogoCuraduriaPort
 {
     /**
