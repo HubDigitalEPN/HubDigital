@@ -6,6 +6,11 @@ namespace Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Pe
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Modelo Eloquent que mapea la bitácora de eventos de dominio del componente (event store
+ * append-only): cada fila guarda el tipo de agregado, el evento, su versión, el actor que
+ * lo originó y el momento de ocurrencia. Sirve como historial auditable del ciclo IoT.
+ */
 class EventoCicloIotEloquentModel extends Model
 {
     protected $table = 'iot.eventos_ciclo_iot';

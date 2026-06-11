@@ -14,13 +14,20 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\Est
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\RanuraId;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Models\CajaEloquentModel;
 
+/**
+ * Implementación Eloquent del repositorio de cajas: traduce entre la entidad Caja y su modelo
+ * persistido, incluyendo el aplanado de la clasificación taxonómica a JSON y su rehidratación.
+ * Resuelve las búsquedas clave del componente (por id, por código y por código RFID).
+ */
 class EloquentCajaRepository implements CajaRepository
 {
+    /** Genera un nuevo identificador de caja antes de persistirla. */
     public function nextIdentity(): CajaId
     {
         return CajaId::generar();
     }
 
+    /** Inserta o actualiza la caja según su id, serializando su clasificación taxonómica. */
     public function guardar(Caja $caja): void
     {
         CajaEloquentModel::updateOrCreate(
@@ -38,6 +45,7 @@ class EloquentCajaRepository implements CajaRepository
         );
     }
 
+    /** Recupera una caja por su identificador. */
     public function buscarPorId(CajaId $id): ?Caja
     {
         $model = CajaEloquentModel::find((string) $id);
@@ -45,6 +53,7 @@ class EloquentCajaRepository implements CajaRepository
         return $model ? $this->toDomain($model) : null;
     }
 
+    /** Recupera una caja por su código legible (etiqueta del curador). */
     public function buscarPorCodigo(CodigoCaja $codigo): ?Caja
     {
         $model = CajaEloquentModel::where('codigo', (string) $codigo)->first();
@@ -52,6 +61,7 @@ class EloquentCajaRepository implements CajaRepository
         return $model ? $this->toDomain($model) : null;
     }
 
+    /** Recupera una caja por su código RFID, usado al procesar un evento del ESP32. */
     public function buscarPorCodigoRfid(CodigoRfid $rfid): ?Caja
     {
         $model = CajaEloquentModel::where('codigo_rfid', (string) $rfid)->first();
@@ -59,7 +69,11 @@ class EloquentCajaRepository implements CajaRepository
         return $model ? $this->toDomain($model) : null;
     }
 
-    /** @return Caja[] */
+    /**
+     * Lista todas las cajas registradas.
+     *
+     * @return Caja[]
+     */
     public function buscarTodas(): array
     {
         return CajaEloquentModel::all()
@@ -67,11 +81,13 @@ class EloquentCajaRepository implements CajaRepository
             ->all();
     }
 
+    /** Elimina la caja indicada de la persistencia. */
     public function eliminar(CajaId $id): void
     {
         CajaEloquentModel::destroy((string) $id);
     }
 
+    /** Reconstituye la entidad Caja a partir de la fila persistida. */
     private function toDomain(CajaEloquentModel $model): Caja
     {
         return Caja::reconstituir(
@@ -87,6 +103,7 @@ class EloquentCajaRepository implements CajaRepository
         );
     }
 
+    /** Aplana la clasificación taxonómica a un array asociativo para guardarla como JSON, o null si está vacía. */
     private function clasificacionToArray(?ClasificacionTaxonomica $clasificacion): ?array
     {
         if ($clasificacion === null || $clasificacion->estaVacia()) {
@@ -104,6 +121,7 @@ class EloquentCajaRepository implements CajaRepository
         ];
     }
 
+    /** Rehidrata la clasificación taxonómica desde el array persistido, o null si no hay datos. */
     private function arrayToClasificacion(?array $data): ?ClasificacionTaxonomica
     {
         if ($data === null) {

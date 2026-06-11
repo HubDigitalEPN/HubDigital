@@ -6,6 +6,10 @@ namespace Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Pe
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Modelo Eloquent que mapea la tabla pivote entre unit trays y especímenes, registrando qué
+ * espécimen está asignado a qué bandeja. Es el puente de persistencia de esa relación del dominio.
+ */
 class UnitTrayEspecimenEloquentModel extends Model
 {
     protected $table = 'iot.unit_tray_especimenes';

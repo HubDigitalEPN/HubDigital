@@ -64,6 +64,13 @@ use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persiste
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Mapa\MapaInteractivo;
 use Nwidart\Modules\Support\ModuleServiceProvider;
 
+/**
+ * Proveedor de servicios del módulo: cablea cada interfaz de dominio (repositorios) y cada
+ * Port de aplicación con su implementación concreta de infraestructura mediante el array
+ * $bindings, registra los comandos de consola y arranca las migraciones y el componente
+ * Livewire del mapa interactivo. Es el punto único donde se resuelven las dependencias del
+ * componente de seguimiento físico, conforme a la regla del proyecto.
+ */
 class InventarioGestionColeccionServiceProvider extends ModuleServiceProvider
 {
     protected string $name = 'InventarioGestionColeccion';
@@ -104,6 +111,10 @@ class InventarioGestionColeccionServiceProvider extends ModuleServiceProvider
         ClasificacionTaxonomicaPort::class => TaxonArbolClasificacionTaxonomicaAdapter::class,
     ];
 
+    /**
+     * Registra los servicios del módulo: aplica el cableado base del proveedor y, solo cuando
+     * la aplicación corre en consola, da de alta los comandos de importación y exportación.
+     */
     public function register(): void
     {
         parent::register();
@@ -116,6 +127,10 @@ class InventarioGestionColeccionServiceProvider extends ModuleServiceProvider
         }
     }
 
+    /**
+     * Arranca el módulo: carga sus migraciones y registra el mapa interactivo como componente
+     * Livewire con alias, de modo que distintas páginas-host puedan montarlo de forma reutilizable.
+     */
     public function boot(): void
     {
         parent::boot();

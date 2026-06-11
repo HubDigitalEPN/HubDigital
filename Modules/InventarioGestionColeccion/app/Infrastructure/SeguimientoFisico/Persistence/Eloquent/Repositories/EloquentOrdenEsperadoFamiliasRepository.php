@@ -8,6 +8,11 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\Ord
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\OrdenEsperadoFamilias;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Models\OrdenEsperadoFamiliasEloquentModel;
 
+/**
+ * Implementación Eloquent del repositorio del orden esperado de familias: persiste la
+ * secuencia única de la colección en una sola fila (singleton) y la devuelve, entregando una
+ * secuencia vacía cuando aún no se ha configurado.
+ */
 class EloquentOrdenEsperadoFamiliasRepository implements OrdenEsperadoFamiliasRepository
 {
     /**
@@ -15,6 +20,7 @@ class EloquentOrdenEsperadoFamiliasRepository implements OrdenEsperadoFamiliasRe
      */
     private const SINGLETON_ID = 'singleton';
 
+    /** Devuelve la secuencia esperada persistida, o una secuencia vacía si todavía no existe. */
     public function obtener(): OrdenEsperadoFamilias
     {
         $model = OrdenEsperadoFamiliasEloquentModel::find(self::SINGLETON_ID);
@@ -26,6 +32,7 @@ class EloquentOrdenEsperadoFamiliasRepository implements OrdenEsperadoFamiliasRe
         return OrdenEsperadoFamilias::desde($model->familias ?? []);
     }
 
+    /** Persiste la secuencia esperada sobre la fila singleton, creándola si no existía. */
     public function guardar(OrdenEsperadoFamilias $orden): void
     {
         OrdenEsperadoFamiliasEloquentModel::updateOrCreate(

@@ -7,6 +7,11 @@ namespace Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Pe
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * Modelo Eloquent que mapea cada ranura de un gabinete (la posición física con un lector
+ * RC522), su número y la caja que aloja actualmente. Es el puente de persistencia de la
+ * entidad RanuraGabinete del dominio.
+ */
 class RanuraGabineteEloquentModel extends Model
 {
     protected $table = 'iot.ranuras_gabinete';
@@ -28,11 +33,13 @@ class RanuraGabineteEloquentModel extends Model
         'activa' => 'boolean',
     ];
 
+    /** Gabinete al que pertenece la ranura. */
     public function gabinete(): BelongsTo
     {
         return $this->belongsTo(GabineteEloquentModel::class, 'gabinete_id');
     }
 
+    /** Caja alojada actualmente en la ranura (null si está vacía). */
     public function cajaActual(): BelongsTo
     {
         return $this->belongsTo(CajaEloquentModel::class, 'caja_actual_id');

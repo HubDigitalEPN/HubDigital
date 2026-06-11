@@ -11,13 +11,20 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\Cla
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\UnitTrayId;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Models\UnitTrayEloquentModel;
 
+/**
+ * Implementación Eloquent del repositorio de unit trays: traduce entre la entidad UnitTray y
+ * su modelo persistido (incluyendo el aplanado de la clasificación dominante a JSON) y resuelve
+ * la numeración correlativa de bandejas dentro de cada caja.
+ */
 class EloquentUnitTrayRepository implements UnitTrayRepository
 {
+    /** Genera un nuevo identificador de unit tray antes de persistirlo. */
     public function nextIdentity(): UnitTrayId
     {
         return UnitTrayId::generar();
     }
 
+    /** Calcula el siguiente número correlativo de bandeja dentro de una caja (máximo actual + 1). */
     public function siguienteNumero(CajaId $cajaId): int
     {
         $maximo = UnitTrayEloquentModel::where('caja_id', (string) $cajaId)->max('numero');
@@ -25,6 +32,7 @@ class EloquentUnitTrayRepository implements UnitTrayRepository
         return ((int) $maximo) + 1;
     }
 
+    /** Inserta o actualiza el unit tray según su id, serializando su clasificación dominante. */
     public function guardar(UnitTray $unitTray): void
     {
         UnitTrayEloquentModel::updateOrCreate(
@@ -37,6 +45,7 @@ class EloquentUnitTrayRepository implements UnitTrayRepository
         );
     }
 
+    /** Recupera un unit tray por su identificador. */
     public function buscarPorId(UnitTrayId $id): ?UnitTray
     {
         $model = UnitTrayEloquentModel::find((string) $id);
@@ -44,7 +53,11 @@ class EloquentUnitTrayRepository implements UnitTrayRepository
         return $model ? $this->toDomain($model) : null;
     }
 
-    /** @return UnitTray[] */
+    /**
+     * Lista los unit trays de una caja ordenados por su número.
+     *
+     * @return UnitTray[]
+     */
     public function buscarPorCaja(CajaId $cajaId): array
     {
         return UnitTrayEloquentModel::where('caja_id', (string) $cajaId)
@@ -54,11 +67,13 @@ class EloquentUnitTrayRepository implements UnitTrayRepository
             ->all();
     }
 
+    /** Elimina el unit tray indicado de la persistencia. */
     public function eliminar(UnitTrayId $id): void
     {
         UnitTrayEloquentModel::destroy((string) $id);
     }
 
+    /** Reconstituye la entidad UnitTray a partir de la fila persistida. */
     private function toDomain(UnitTrayEloquentModel $model): UnitTray
     {
         return UnitTray::reconstituir(
@@ -69,6 +84,7 @@ class EloquentUnitTrayRepository implements UnitTrayRepository
         );
     }
 
+    /** Aplana la clasificación dominante a un array asociativo para guardarla como JSON, o null si está vacía. */
     private function clasificacionToArray(?ClasificacionTaxonomica $clasificacion): ?array
     {
         if ($clasificacion === null || $clasificacion->estaVacia()) {
@@ -86,6 +102,7 @@ class EloquentUnitTrayRepository implements UnitTrayRepository
         ];
     }
 
+    /** Rehidrata la clasificación dominante desde el array persistido, o null si no hay datos. */
     private function arrayToClasificacion(?array $data): ?ClasificacionTaxonomica
     {
         if ($data === null) {

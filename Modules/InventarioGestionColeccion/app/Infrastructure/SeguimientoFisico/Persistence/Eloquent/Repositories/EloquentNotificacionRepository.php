@@ -11,13 +11,20 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\Not
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TipoNotificacion;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Models\NotificacionEloquentModel;
 
+/**
+ * Implementación Eloquent del repositorio de notificaciones: traduce entre la entidad
+ * Notificacion y su modelo persistido y permite consultar la última notificación de una caja
+ * (para evitar repetir avisos en periodos cortos).
+ */
 class EloquentNotificacionRepository implements NotificacionRepository
 {
+    /** Genera un nuevo identificador de notificación antes de persistirla. */
     public function nextIdentity(): NotificacionId
     {
         return NotificacionId::generar();
     }
 
+    /** Inserta o actualiza la notificación según su id. */
     public function guardar(Notificacion $notificacion): void
     {
         NotificacionEloquentModel::updateOrCreate(
@@ -30,6 +37,7 @@ class EloquentNotificacionRepository implements NotificacionRepository
         );
     }
 
+    /** Devuelve la notificación más reciente emitida para una caja, o null si no hay ninguna. */
     public function buscarUltimaNotificacionPorCaja(CajaId $cajaId): ?Notificacion
     {
         $model = NotificacionEloquentModel::where('caja_id', (string) $cajaId)
@@ -39,6 +47,7 @@ class EloquentNotificacionRepository implements NotificacionRepository
         return $model ? $this->toDomain($model) : null;
     }
 
+    /** Reconstituye la entidad Notificacion a partir de la fila persistida. */
     private function toDomain(NotificacionEloquentModel $model): Notificacion
     {
         return Notificacion::crear(

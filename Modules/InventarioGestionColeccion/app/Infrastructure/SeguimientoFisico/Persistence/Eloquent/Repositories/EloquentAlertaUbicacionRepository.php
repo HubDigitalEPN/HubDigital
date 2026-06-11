@@ -12,13 +12,20 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\Est
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TipoAlerta;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Models\AlertaUbicacionEloquentModel;
 
+/**
+ * Implementación Eloquent del repositorio de alertas de ubicación: traduce entre la entidad
+ * de dominio AlertaUbicacion y su modelo persistido, y resuelve las consultas que el
+ * componente necesita (alerta activa por caja, listado por estado).
+ */
 class EloquentAlertaUbicacionRepository implements AlertaUbicacionRepository
 {
+    /** Genera un nuevo identificador de alerta antes de persistirla. */
     public function nextIdentity(): AlertaUbicacionId
     {
         return AlertaUbicacionId::generar();
     }
 
+    /** Inserta o actualiza la alerta según su id, reflejando su estado y datos de contexto. */
     public function guardar(AlertaUbicacion $alerta): void
     {
         AlertaUbicacionEloquentModel::updateOrCreate(
@@ -33,6 +40,7 @@ class EloquentAlertaUbicacionRepository implements AlertaUbicacionRepository
         );
     }
 
+    /** Devuelve la alerta activa de una caja, si existe, para evitar duplicar alertas abiertas. */
     public function buscarActivaPorCaja(CajaId $cajaId): ?AlertaUbicacion
     {
         $model = AlertaUbicacionEloquentModel::where('caja_id', (string) $cajaId)
@@ -42,6 +50,7 @@ class EloquentAlertaUbicacionRepository implements AlertaUbicacionRepository
         return $model ? $this->toDomain($model) : null;
     }
 
+    /** Recupera una alerta por su identificador. */
     public function buscarPorId(AlertaUbicacionId $id): ?AlertaUbicacion
     {
         $model = AlertaUbicacionEloquentModel::find((string) $id);
@@ -49,6 +58,12 @@ class EloquentAlertaUbicacionRepository implements AlertaUbicacionRepository
         return $model ? $this->toDomain($model) : null;
     }
 
+    /**
+     * Lista las alertas ordenadas de más reciente a más antigua, filtrando por estado
+     * cuando se indica uno.
+     *
+     * @return AlertaUbicacion[]
+     */
     public function buscarTodas(?EstadoAlerta $estado = null): array
     {
         $query = AlertaUbicacionEloquentModel::orderByDesc('created_at');
@@ -62,6 +77,7 @@ class EloquentAlertaUbicacionRepository implements AlertaUbicacionRepository
             ->all();
     }
 
+    /** Reconstituye la entidad de dominio a partir de la fila persistida. */
     private function toDomain(AlertaUbicacionEloquentModel $model): AlertaUbicacion
     {
         return AlertaUbicacion::reconstituir(

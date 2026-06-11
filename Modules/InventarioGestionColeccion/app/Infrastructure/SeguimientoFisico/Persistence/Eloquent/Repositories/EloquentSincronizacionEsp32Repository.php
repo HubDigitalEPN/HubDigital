@@ -13,13 +13,23 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\Sin
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Models\LecturaRanuraEloquentModel;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Models\SincronizacionEsp32EloquentModel;
 
+/**
+ * Implementación Eloquent del repositorio de sincronizaciones del ESP32: persiste cada barrido
+ * junto con sus lecturas de ranura (que reemplaza por completo en cada guardado) y recupera el
+ * último barrido de un gabinete con sus lecturas cargadas.
+ */
 class EloquentSincronizacionEsp32Repository implements SincronizacionEsp32Repository
 {
+    /** Genera un nuevo identificador de sincronización antes de persistirla. */
     public function nextIdentity(): SincronizacionEsp32Id
     {
         return SincronizacionEsp32Id::generar();
     }
 
+    /**
+     * Inserta o actualiza el barrido y reescribe sus lecturas de ranura: borra las lecturas
+     * previas y vuelve a insertarlas, de modo que la fila refleje exactamente el ciclo actual.
+     */
     public function guardar(SincronizacionEsp32 $sincronizacion): void
     {
         $model = SincronizacionEsp32EloquentModel::updateOrCreate(
@@ -43,6 +53,7 @@ class EloquentSincronizacionEsp32Repository implements SincronizacionEsp32Reposi
         }
     }
 
+    /** Devuelve el barrido más reciente de un gabinete con sus lecturas precargadas, o null si no hay ninguno. */
     public function buscarUltimaPorGabinete(GabineteId $gabineteId): ?SincronizacionEsp32
     {
         $model = SincronizacionEsp32EloquentModel::with('lecturas')
@@ -53,6 +64,7 @@ class EloquentSincronizacionEsp32Repository implements SincronizacionEsp32Reposi
         return $model ? $this->toDomain($model) : null;
     }
 
+    /** Reconstituye la entidad SincronizacionEsp32 y sus lecturas a partir de las filas persistidas. */
     private function toDomain(SincronizacionEsp32EloquentModel $model): SincronizacionEsp32
     {
         $lecturas = $model->lecturas
