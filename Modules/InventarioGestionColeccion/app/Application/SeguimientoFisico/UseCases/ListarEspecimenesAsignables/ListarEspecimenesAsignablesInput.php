@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarEspecimenesAsignables;
 
+/**
+ * DTO de entrada con el filtro de búsqueda, el tray en contexto y el tope de resultados.
+ */
 final readonly class ListarEspecimenesAsignablesInput
 {
     /**

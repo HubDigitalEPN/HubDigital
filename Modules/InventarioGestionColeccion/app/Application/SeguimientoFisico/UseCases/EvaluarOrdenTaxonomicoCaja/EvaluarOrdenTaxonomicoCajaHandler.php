@@ -21,8 +21,27 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\Caj
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\RanuraId;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TipoAlerta;
 
+/**
+ * Caso de uso: evaluar si una caja recién ubicada respeta el orden taxonómico esperado dentro
+ * de su gabinete, comparándola con sus cajas vecinas. Si detecta una incongruencia taxonómica
+ * o una familia sin asignar, genera la alerta correspondiente, registra el evento del ciclo
+ * IoT y publica el evento de dominio.
+ *
+ * @see EvaluarOrdenTaxonomicoCajaInput
+ * @see EvaluarOrdenTaxonomicoCajaOutput
+ */
 final class EvaluarOrdenTaxonomicoCajaHandler
 {
+    /**
+     * @param  CajaRepository  $cajaRepo  Recupera la caja evaluada y sus vecinas.
+     * @param  RanuraGabineteRepository  $ranuraRepo  Recupera la ranura y localiza las ranuras vecinas ocupadas.
+     * @param  AlertaUbicacionRepository  $alertaRepo  Genera y persiste la alerta de ubicación.
+     * @param  EventoCicloIotRepository  $eventoRepo  Registra el evento del ciclo IoT generado por la evaluación.
+     * @param  TransactionManagerPort  $transactionManager  Envuelve la generación de la alerta en una transacción.
+     * @param  EventPublisherPort  $eventPublisher  Publica el evento de dominio resultante.
+     * @param  EvaluadorOrdenTaxonomico  $evaluador  Servicio de dominio que decide el tipo de alerta según las vecinas.
+     * @param  OrdenEsperadoFamiliasRepository  $ordenFamiliasRepo  Aporta el orden de familias esperado por el curador.
+     */
     public function __construct(
         private readonly CajaRepository $cajaRepo,
         private readonly RanuraGabineteRepository $ranuraRepo,
@@ -34,6 +53,14 @@ final class EvaluarOrdenTaxonomicoCajaHandler
         private readonly OrdenEsperadoFamiliasRepository $ordenFamiliasRepo,
     ) {}
 
+    /**
+     * Localiza las cajas vecinas (anterior y siguiente) de la ranura, delega en el evaluador la
+     * decisión sobre el tipo de alerta y, si procede, genera la alerta, marca la caja como
+     * pendiente de clasificación cuando la familia no está asignada, registra el evento IoT y
+     * publica el evento de dominio. Devuelve si se generó alerta y de qué tipo.
+     *
+     * @throws \DomainException si la caja o la ranura indicadas no existen.
+     */
     public function handle(EvaluarOrdenTaxonomicoCajaInput $input): EvaluarOrdenTaxonomicoCajaOutput
     {
         $cajaId = CajaId::desde($input->cajaId);

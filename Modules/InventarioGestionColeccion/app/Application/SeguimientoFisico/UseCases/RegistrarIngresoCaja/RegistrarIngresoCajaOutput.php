@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarIngresoCaja;
 
+/**
+ * DTO de salida con el resultado del ingreso: caja, ranura, estado, ubicación abierta y si generó alerta.
+ */
 final readonly class RegistrarIngresoCajaOutput
 {
     public function __construct(

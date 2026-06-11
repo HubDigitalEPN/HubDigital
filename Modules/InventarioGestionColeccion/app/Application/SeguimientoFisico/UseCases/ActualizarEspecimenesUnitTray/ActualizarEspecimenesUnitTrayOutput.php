@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarEspecimenesUnitTray;
 
+/**
+ * DTO de salida con la clasificación resultante del tray y los especímenes detectados fuera de lugar.
+ */
 final readonly class ActualizarEspecimenesUnitTrayOutput
 {
     /**

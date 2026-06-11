@@ -13,14 +13,25 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\Gab
  * Resuelve qué subfamilias y géneros están presentes en un gabinete, agregando
  * la clasificación taxonómica cacheada en las cajas que ocupan sus ranuras.
  * Es la lectura que alimenta el resumen del nivel "gabinete" del mapa.
+ *
+ * @see ConsultarComposicionGabineteInput
+ * @see ConsultarComposicionGabineteOutput
  */
 final class ConsultarComposicionGabineteHandler
 {
+    /**
+     * @param  RanuraGabineteRepository  $ranuraRepo  Lista las ranuras del gabinete.
+     * @param  CajaRepository  $cajaRepo  Recupera la caja que ocupa cada ranura para leer su clasificación.
+     */
     public function __construct(
         private readonly RanuraGabineteRepository $ranuraRepo,
         private readonly CajaRepository $cajaRepo,
     ) {}
 
+    /**
+     * Recorre las ranuras del gabinete, agrega las subfamilias y géneros distintos de las
+     * cajas que las ocupan y los devuelve ordenados alfabéticamente.
+     */
     public function handle(ConsultarComposicionGabineteInput $input): ConsultarComposicionGabineteOutput
     {
         $gabineteId = GabineteId::desde($input->gabineteId);

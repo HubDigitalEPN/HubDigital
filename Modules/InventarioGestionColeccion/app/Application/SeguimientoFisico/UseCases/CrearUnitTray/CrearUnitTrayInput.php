@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\CrearUnitTray;
 
+/**
+ * DTO de entrada con la caja destino y los especímenes a asignar al nuevo unit tray.
+ */
 final readonly class CrearUnitTrayInput
 {
     /**

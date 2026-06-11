@@ -15,8 +15,25 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\Ubi
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\CajaId;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\RanuraId;
 
+/**
+ * Caso de uso: reubicar en lote varias cajas dentro de un gabinete para reordenar sus familias.
+ * Cada movimiento (caja → ranura destino) se aplica en su propia transacción cerrando la
+ * ubicación de origen y abriendo la de destino; al terminar, reevalúa el orden taxonómico de
+ * cada caja movida.
+ *
+ * @see ReordenarFamiliasEnGabineteInput
+ * @see ReordenarFamiliasEnGabineteOutput
+ */
 final class ReordenarFamiliasEnGabineteHandler
 {
+    /**
+     * @param  CajaRepository  $cajaRepo  Recupera y persiste cada caja movida.
+     * @param  RanuraGabineteRepository  $ranuraRepo  Libera la ranura de origen y ocupa la de destino.
+     * @param  UbicacionCajaRepository  $ubicacionRepo  Cierra la ubicación de origen y abre la de destino.
+     * @param  TransactionManagerPort  $transactionManager  Envuelve cada movimiento en una transacción atómica.
+     * @param  EventPublisherPort  $eventPublisher  Publica los eventos de dominio de cada caja reubicada.
+     * @param  EvaluarOrdenTaxonomicoCajaHandler  $evaluarOrdenHandler  Reevalúa el orden taxonómico de cada caja movida.
+     */
     public function __construct(
         private readonly CajaRepository $cajaRepo,
         private readonly RanuraGabineteRepository $ranuraRepo,
@@ -26,6 +43,12 @@ final class ReordenarFamiliasEnGabineteHandler
         private readonly EvaluarOrdenTaxonomicoCajaHandler $evaluarOrdenHandler,
     ) {}
 
+    /**
+     * Aplica cada movimiento del lote (cerrando la ubicación de origen, liberando su ranura y
+     * abriendo la ubicación destino) en una transacción independiente, omitiendo en silencio los
+     * movimientos cuya caja o ranura no existan, y luego reevalúa el orden taxonómico de las
+     * cajas reubicadas. Devuelve cuántas cajas se movieron.
+     */
     public function handle(ReordenarFamiliasEnGabineteInput $input): ReordenarFamiliasEnGabineteOutput
     {
         $cajasMovidas = 0;

@@ -6,6 +6,9 @@ namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCa
 
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\CrearRanuraGabinete\CrearRanuraGabineteOutput;
 
+/**
+ * DTO de salida con la lista de ranuras del gabinete.
+ */
 final readonly class ListarRanurasGabineteOutput
 {
     /** @param CrearRanuraGabineteOutput[] $items */

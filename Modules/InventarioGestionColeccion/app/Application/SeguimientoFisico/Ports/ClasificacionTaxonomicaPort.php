@@ -15,5 +15,6 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\Cla
  */
 interface ClasificacionTaxonomicaPort
 {
+    /** Devuelve la clasificación taxonómica completa del taxón indicado, o null si no se puede resolver. */
     public function resolverParaTaxon(string $taxonId): ?ClasificacionTaxonomica;
 }

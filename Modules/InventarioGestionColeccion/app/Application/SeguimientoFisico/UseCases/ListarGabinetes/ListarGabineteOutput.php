@@ -6,6 +6,9 @@ namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCa
 
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\CrearGabinete\CrearGabineteOutput;
 
+/**
+ * DTO de salida con la lista de gabinetes activos.
+ */
 final readonly class ListarGabineteOutput
 {
     /** @param CrearGabineteOutput[] $items */

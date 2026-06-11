@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarRetiroCaja;
 
+/**
+ * DTO de salida con el resultado del retiro: caja, estado y si generó alerta/notificación.
+ */
 final readonly class RegistrarRetiroCajaOutput
 {
     public function __construct(

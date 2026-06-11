@@ -14,15 +14,28 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\Uni
 /**
  * Resuelve los especímenes asignados a un unit tray con su nombre científico.
  * Alimenta el nivel más profundo del mapa (lista de especímenes del unit tray).
+ *
+ * @see ConsultarContenidoUnitTrayInput
+ * @see ConsultarContenidoUnitTrayOutput
  */
 final class ConsultarContenidoUnitTrayHandler
 {
+    /**
+     * @param  UnitTrayEspecimenRepository  $asignacionRepo  Resuelve los especímenes asignados al unit tray.
+     * @param  EspecimenRepositoryInterface  $especimenRepo  Recupera cada espécimen por su identificador.
+     * @param  TaxonRepositoryInterface  $taxonRepo  Resuelve el nombre científico de los taxones en un solo lote.
+     */
     public function __construct(
         private readonly UnitTrayEspecimenRepository $asignacionRepo,
         private readonly EspecimenRepositoryInterface $especimenRepo,
         private readonly TaxonRepositoryInterface $taxonRepo,
     ) {}
 
+    /**
+     * Recupera los especímenes asignados al unit tray y resuelve su nombre científico en un
+     * único lote (para no golpear la base de datos remota por cada espécimen), devolviendo
+     * cada uno con su código de catálogo y nombre científico.
+     */
     public function handle(ConsultarContenidoUnitTrayInput $input): ConsultarContenidoUnitTrayOutput
     {
         $unitTrayId = UnitTrayId::desde($input->unitTrayId);

@@ -12,14 +12,25 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\Gab
 /**
  * Resuelve, para cada ranura del gabinete, la caja que la ocupa y su clasificación.
  * Alimenta el nivel "gabinete" del mapa (ranuras como rectángulos coloreados por taxonomía).
+ *
+ * @see ConsultarOcupacionGabineteInput
+ * @see ConsultarOcupacionGabineteOutput
  */
 final class ConsultarOcupacionGabineteHandler
 {
+    /**
+     * @param  RanuraGabineteRepository  $ranuraRepo  Lista las ranuras del gabinete.
+     * @param  CajaRepository  $cajaRepo  Recupera la caja que ocupa cada ranura.
+     */
     public function __construct(
         private readonly RanuraGabineteRepository $ranuraRepo,
         private readonly CajaRepository $cajaRepo,
     ) {}
 
+    /**
+     * Devuelve, para cada ranura del gabinete ordenada por su número físico, si está ocupada y
+     * los datos de la caja que la ocupa (código, estado, marca de especial y clasificación).
+     */
     public function handle(ConsultarOcupacionGabineteInput $input): ConsultarOcupacionGabineteOutput
     {
         $gabineteId = GabineteId::desde($input->gabineteId);

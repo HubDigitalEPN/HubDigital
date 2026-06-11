@@ -14,10 +14,25 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\Uni
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UnitTrayRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\CajaId;
 
+/**
+ * Caso de uso: crear un nuevo unit tray dentro de una caja, asignándole opcionalmente
+ * especímenes y calculando su clasificación taxonómica dominante, que luego se propaga a la caja.
+ *
+ * @see CrearUnitTrayInput
+ * @see CrearUnitTrayOutput
+ */
 final class CrearUnitTrayHandler
 {
     use PropagaClasificacionTaxonomica;
 
+    /**
+     * @param  UnitTrayRepository  $unitTrayRepo  Genera identidad/número de tray y lo persiste.
+     * @param  CajaRepository  $cajaRepo  Verifica la caja contenedora y recalcula su clasificación.
+     * @param  EspecimenRepositoryInterface  $especimenRepo  Resuelve cada espécimen para leer su taxón.
+     * @param  UnitTrayEspecimenRepository  $asignacionRepo  Sincroniza la relación tray↔especímenes.
+     * @param  ClasificacionTaxonomicaPort  $clasificacionPort  Resuelve la clasificación completa de cada taxón.
+     * @param  TransactionManagerPort  $transactionManager  Envuelve la creación en una transacción atómica.
+     */
     public function __construct(
         private readonly UnitTrayRepository $unitTrayRepo,
         private readonly CajaRepository $cajaRepo,
@@ -27,6 +42,13 @@ final class CrearUnitTrayHandler
         private readonly TransactionManagerPort $transactionManager,
     ) {}
 
+    /**
+     * Crea el unit tray en la caja indicada con el siguiente número disponible, le asigna los
+     * especímenes del input, calcula su clasificación dominante y la propaga a la caja, todo
+     * dentro de una transacción.
+     *
+     * @throws \DomainException si la caja contenedora no existe.
+     */
     public function handle(CrearUnitTrayInput $input): CrearUnitTrayOutput
     {
         $cajaId = CajaId::desde($input->cajaId);

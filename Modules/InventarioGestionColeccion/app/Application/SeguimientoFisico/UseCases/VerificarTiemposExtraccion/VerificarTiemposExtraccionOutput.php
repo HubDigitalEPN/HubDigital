@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\VerificarTiemposExtraccion;
 
+/**
+ * DTO de salida con el resultado de la verificación: estado de la caja, si generó alerta o
+ * notificación preventiva y el tipo de alerta cuando aplica.
+ */
 final readonly class VerificarTiemposExtraccionOutput
 {
     public function __construct(

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\CrearGabinete;
 
+/**
+ * DTO de salida con los datos del gabinete recién creado.
+ */
 final readonly class CrearGabineteOutput
 {
     public function __construct(

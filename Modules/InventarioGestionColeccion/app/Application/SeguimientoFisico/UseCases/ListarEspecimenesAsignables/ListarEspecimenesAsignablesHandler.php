@@ -9,14 +9,32 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\Tax
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UnitTrayEspecimenRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\UnitTrayId;
 
+/**
+ * Caso de uso: listar especímenes candidatos a asignarse a un unit tray, mediante una búsqueda
+ * acotada (nunca hidrata el catálogo completo). Devuelve cada espécimen con su nombre científico
+ * y el unit tray al que ya está asignado, e incluye siempre los del tray en contexto.
+ *
+ * @see ListarEspecimenesAsignablesInput
+ * @see ListarEspecimenesAsignablesOutput
+ */
 final class ListarEspecimenesAsignablesHandler
 {
+    /**
+     * @param  EspecimenRepositoryInterface  $especimenRepo  Busca los especímenes candidatos acotados por la consulta.
+     * @param  TaxonRepositoryInterface  $taxonRepo  Resuelve el nombre científico de los taxones en un solo lote.
+     * @param  UnitTrayEspecimenRepository  $asignacionRepo  Resuelve qué unit tray ocupa cada espécimen.
+     */
     public function __construct(
         private readonly EspecimenRepositoryInterface $especimenRepo,
         private readonly TaxonRepositoryInterface $taxonRepo,
         private readonly UnitTrayEspecimenRepository $asignacionRepo,
     ) {}
 
+    /**
+     * Busca los especímenes que coinciden con el filtro (más los ya asignados al tray en
+     * contexto), resuelve su nombre científico en un único lote y anexa el unit tray actual de
+     * cada uno, devolviendo una proyección lista para la UI de asignación.
+     */
     public function handle(ListarEspecimenesAsignablesInput $input): ListarEspecimenesAsignablesOutput
     {
         // Los especímenes ya asignados al tray en contexto se incluyen siempre,

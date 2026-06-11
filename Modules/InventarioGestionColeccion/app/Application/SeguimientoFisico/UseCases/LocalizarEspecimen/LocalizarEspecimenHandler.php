@@ -19,9 +19,21 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\Tax
  * para que el mapa del curador navegue y haga zoom hasta su ubicación. No aplica
  * regla de visibilidad pública: el curador ve toda la colección. La variante para
  * visitantes (con visibilidad) se construye aparte.
+ *
+ * @see LocalizarEspecimenInput
+ * @see LocalizarEspecimenOutput
  */
 final class LocalizarEspecimenHandler
 {
+    /**
+     * @param  EspecimenRepositoryInterface  $especimenRepo  Recupera el espécimen a localizar.
+     * @param  TaxonRepositoryInterface  $taxonRepo  Resuelve su nombre científico.
+     * @param  UnitTrayEspecimenRepository  $asignacionRepo  Resuelve el unit tray que contiene al espécimen.
+     * @param  UnitTrayRepository  $unitTrayRepo  Recupera el unit tray y su caja contenedora.
+     * @param  CajaRepository  $cajaRepo  Recupera la caja y su ranura actual.
+     * @param  RanuraGabineteRepository  $ranuraRepo  Recupera la ranura y su gabinete.
+     * @param  GabineteRepository  $gabineteRepo  Recupera el gabinete que cierra la ruta física.
+     */
     public function __construct(
         private readonly EspecimenRepositoryInterface $especimenRepo,
         private readonly TaxonRepositoryInterface $taxonRepo,
@@ -32,6 +44,12 @@ final class LocalizarEspecimenHandler
         private readonly GabineteRepository $gabineteRepo,
     ) {}
 
+    /**
+     * Resuelve la cadena física del espécimen (unit tray → caja → ranura → gabinete) para que el
+     * mapa navegue hasta él. Distingue tres casos: no encontrado, encontrado pero sin ubicar (sin
+     * tray asignado) y ubicado, devolviendo en este último la ruta tan lejos como sea rastreable
+     * (los niveles pueden quedar en null si la caja está fuera de su ranura).
+     */
     public function handle(LocalizarEspecimenInput $input): LocalizarEspecimenOutput
     {
         $especimen = $this->especimenRepo->buscarPorId(EspecimenId::desde($input->especimenId));

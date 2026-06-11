@@ -11,13 +11,23 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\Cla
 /**
  * Resuelve los unit trays de una caja con la clasificación dominante de cada uno.
  * Alimenta el nivel "caja" del mapa (grilla de unit trays).
+ *
+ * @see ConsultarContenidoCajaInput
+ * @see ConsultarContenidoCajaOutput
  */
 final class ConsultarContenidoCajaHandler
 {
+    /**
+     * @param  UnitTrayRepository  $unitTrayRepo  Lista los unit trays de la caja consultada.
+     */
     public function __construct(
         private readonly UnitTrayRepository $unitTrayRepo,
     ) {}
 
+    /**
+     * Recupera los unit trays de la caja, los ordena por su número y devuelve cada uno con su
+     * clasificación taxonómica dominante (o null si está sin clasificar).
+     */
     public function handle(ConsultarContenidoCajaInput $input): ConsultarContenidoCajaOutput
     {
         $cajaId = CajaId::desde($input->cajaId);

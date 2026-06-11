@@ -7,12 +7,24 @@ namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCa
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\AlertaUbicacionRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoAlerta;
 
+/**
+ * Caso de uso: listar las alertas de ubicación, opcionalmente filtradas por su estado.
+ *
+ * @see ListarAlertasInput
+ * @see ListarAlertasOutput
+ */
 final class ListarAlertasHandler
 {
+    /**
+     * @param  AlertaUbicacionRepository  $alertaRepo  Recupera las alertas de ubicación.
+     */
     public function __construct(
         private readonly AlertaUbicacionRepository $alertaRepo,
     ) {}
 
+    /**
+     * Recupera las alertas (filtrando por estado si se indica) y las proyecta a items de salida.
+     */
     public function handle(ListarAlertasInput $input): ListarAlertasOutput
     {
         $estado = $input->estado !== null ? EstadoAlerta::from($input->estado) : null;

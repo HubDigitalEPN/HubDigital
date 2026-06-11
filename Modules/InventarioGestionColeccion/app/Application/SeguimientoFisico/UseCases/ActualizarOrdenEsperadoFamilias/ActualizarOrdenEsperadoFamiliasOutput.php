@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarOrdenEsperadoFamilias;
 
+/**
+ * DTO de salida con la secuencia de familias finalmente persistida.
+ */
 final readonly class ActualizarOrdenEsperadoFamiliasOutput
 {
     /**

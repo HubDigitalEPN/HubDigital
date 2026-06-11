@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\EliminarUnitTray;
 
+/**
+ * DTO de salida que confirma la eliminación e informa si la caja quedó con clasificación.
+ */
 final readonly class EliminarUnitTrayOutput
 {
     private function __construct(
