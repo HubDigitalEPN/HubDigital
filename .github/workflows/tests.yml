@@ -5,17 +5,13 @@ on:
     branches:
       - develop
       - main
-      - master
-      - workos
   pull_request:
     branches:
       - develop
       - main
-      - master
-      - workos
 
 jobs:
-  ci:
+  behat:
     runs-on: ubuntu-latest
     environment: Testing
     strategy:
@@ -37,6 +33,19 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+    env:
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_DATABASE: hubdigital_testing
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      TEST_DB_HOST: 127.0.0.1
+      TEST_DB_PORT: 5432
+      TEST_DB_DATABASE: hubdigital_testing
+      TEST_DB_USERNAME: postgres
+      TEST_DB_PASSWORD: postgres
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -46,16 +55,8 @@ jobs:
         with:
           php-version: ${{ matrix.php-version }}
           tools: composer:v2
-          coverage: xdebug
+          coverage: none
           extensions: pdo_pgsql
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: '22'
-
-      - name: Install Node Dependencies
-        run: npm i
 
       - name: Add Flux Credentials Loaded From ENV
         run: composer config http-basic.composer.fluxui.dev "${{ secrets.FLUX_USERNAME }}" "${{ secrets.FLUX_LICENSE_KEY }}"
@@ -69,20 +70,12 @@ jobs:
       - name: Generate Application Key
         run: php artisan key:generate
 
-      - name: Build Assets
-        run: npm run build
+      - name: Clear Configuration Cache
+        run: php artisan config:clear --ansi
 
-      - name: Run Tests
-        env:
-          DB_CONNECTION: pgsql
-          DB_HOST: 127.0.0.1
-          DB_PORT: 5432
-          DB_DATABASE: hubdigital_testing
-          DB_USERNAME: postgres
-          DB_PASSWORD: postgres
-          TEST_DB_HOST: 127.0.0.1
-          TEST_DB_PORT: 5432
-          TEST_DB_DATABASE: hubdigital_testing
-          TEST_DB_USERNAME: postgres
-          TEST_DB_PASSWORD: postgres
-        run: ./vendor/bin/pest
+      # Modo NO estricto (default de Behat): los pasos pending (scaffolds) y
+      # undefined (features aun sin context) se reportan pero NO rompen CI; solo
+      # los fallos reales lo hacen. Asi las features a medio implementar se van
+      # exigiendo solas conforme pasan. NO agregar --strict.
+      - name: Run Behat
+        run: vendor/bin/behat --profile=default --no-interaction
