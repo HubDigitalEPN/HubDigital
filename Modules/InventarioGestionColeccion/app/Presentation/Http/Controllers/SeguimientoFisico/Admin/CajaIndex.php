@@ -24,6 +24,13 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Re
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarRetiroCaja\RegistrarRetiroCajaInput;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
 
+/**
+ * Pantalla del curador para gestionar las cajas entomológicas: crear, editar y
+ * eliminar cajas, registrar su ingreso a una ranura (eligiendo gabinete → ranura
+ * libre) o su retiro, y buscar por código o RFID. Concentra el ciclo de vida físico
+ * de la caja en la colección. Es presentación pura: arma el Input de cada caso de uso,
+ * lo ejecuta y traduce los errores a mensajes legibles.
+ */
 #[Layout('layouts.app', params: ['title' => 'Cajas'])]
 final class CajaIndex extends Component
 {
@@ -86,6 +93,7 @@ final class CajaIndex extends Component
         ];
     }
 
+    /** Carga la lista de cajas y el catálogo de gabinetes (para el selector del modal de ingreso). */
     public function mount(
         ListarCajasHandler $cajasHandler,
         ListarGabineteHandler $gabineteHandler,
@@ -100,6 +108,11 @@ final class CajaIndex extends Component
         });
     }
 
+    /**
+     * Reacciona al elegir gabinete en el modal de ingreso: carga sus ranuras y deja
+     * disponibles solo las activas y aún libres, para que la caja no pueda asignarse a
+     * una ranura ocupada o inactiva.
+     */
     public function updatedGabineteIdSeleccionado(string $value): void
     {
         if ($value === '') {
@@ -120,6 +133,11 @@ final class CajaIndex extends Component
         });
     }
 
+    /**
+     * Crea una caja con los datos del modal (código, RFID en mayúsculas, nombre,
+     * observación, marca de especial), recarga la lista, limpia el formulario y
+     * confirma. Los fallos —p. ej. código o RFID duplicado— se muestran traducidos.
+     */
     public function crearCaja(
         CrearCajaHandler $crearHandler,
         ListarCajasHandler $listarHandler,
@@ -146,6 +164,7 @@ final class CajaIndex extends Component
         }
     }
 
+    /** Precarga el modal de edición con los datos de la caja seleccionada (de la lista ya en memoria). */
     public function abrirEditCajaModal(string $id): void
     {
         $caja = collect($this->cajas)->firstWhere('id', $id);
@@ -162,6 +181,10 @@ final class CajaIndex extends Component
         $this->showEditCajaModal = true;
     }
 
+    /**
+     * Guarda los cambios de la caja en edición (nombre, observación, marca de especial)
+     * sin tocar código ni RFID, recarga la lista y confirma.
+     */
     public function actualizarCaja(
         ActualizarCajaHandler $actualizarHandler,
         ListarCajasHandler $listarHandler,
@@ -188,6 +211,7 @@ final class CajaIndex extends Component
         }
     }
 
+    /** Elimina la caja indicada, recarga la lista y confirma; los conflictos de integridad se muestran traducidos. */
     public function eliminarCaja(
         string $id,
         EliminarCajaHandler $eliminarHandler,
@@ -203,6 +227,7 @@ final class CajaIndex extends Component
         }
     }
 
+    /** Registra el retiro de la caja de su ranura (queda fuera del gabinete), recarga la lista y confirma. */
     public function registrarRetiro(
         string $id,
         RegistrarRetiroCajaHandler $retiroHandler,
@@ -218,6 +243,7 @@ final class CajaIndex extends Component
         }
     }
 
+    /** Abre el modal de ingreso para la caja indicada, reseteando la selección de gabinete y ranura. */
     public function abrirIngresoModal(string $cajaId): void
     {
         $this->cajaIdParaIngreso = $cajaId;
@@ -227,6 +253,11 @@ final class CajaIndex extends Component
         $this->showIngresoModal = true;
     }
 
+    /**
+     * Registra el ingreso de la caja en la ranura elegida, recarga la lista y confirma.
+     * Si el ingreso disparó una alerta (p. ej. desorden taxonómico), lo indica en el
+     * mensaje para que el curador la revise en el panel de alertas.
+     */
     public function registrarIngreso(
         RegistrarIngresoCajaHandler $handler,
         ListarCajasHandler $listarHandler,
@@ -250,6 +281,7 @@ final class CajaIndex extends Component
         }
     }
 
+    /** Filtra en memoria la lista de cajas por coincidencia de código o RFID con el término de búsqueda. */
     public function getCajasFiltradas(): array
     {
         if ($this->busqueda === '') {
@@ -265,6 +297,7 @@ final class CajaIndex extends Component
         ));
     }
 
+    /** Ejecuta el caso de uso de listado y mapea cada caja a una estructura plana para la vista (incluye su clasificación taxonómica). */
     private function cargarCajas(ListarCajasHandler $handler): void
     {
         $this->cajas = array_map(

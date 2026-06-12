@@ -77,6 +77,12 @@ final class MapaInteractivo extends Component
 
     public ?string $errorMessage = null;
 
+    /**
+     * Arma la vista general del mapa: lista los gabinetes con la ocupación de sus
+     * ranuras a nivel caja (ligera). Recibe el modo de uso ('curador' por defecto), la
+     * costura con la que el portal público puede reutilizar el componente. Los
+     * especímenes nunca se cargan aquí, solo al abrir un unit tray.
+     */
     public function mount(string $modo = 'curador'): void
     {
         $this->modo = $modo;
@@ -98,6 +104,11 @@ final class MapaInteractivo extends Component
         });
     }
 
+    /**
+     * Entra al detalle de un gabinete: reaprovecha sus ranuras ya cargadas en la vista
+     * general y solo resuelve su composición taxonómica (subfamilias y géneros) para el
+     * encabezado, sin recargar el nivel de caja.
+     */
     public function abrirGabinete(string $gabineteId): void
     {
         $this->volverAGeneral();
@@ -127,6 +138,9 @@ final class MapaInteractivo extends Component
     }
 
     /**
+     * Mapea la ocupación de las ranuras de un gabinete a una estructura plana para la
+     * vista (número, si está ocupada, caja que ocupa, estado y clasificación).
+     *
      * @param  array<int, object>  $items
      * @return array<int, array<string, mixed>>
      */
@@ -144,6 +158,11 @@ final class MapaInteractivo extends Component
         ], $items);
     }
 
+    /**
+     * Baja al nivel de caja: carga sus unit trays (con su clasificación dominante) de
+     * forma perezosa y deja la caja como seleccionada. Cierra cualquier unit tray
+     * abierto y quita el resaltado previo.
+     */
     public function abrirCaja(string $cajaId, string $codigoCaja): void
     {
         $this->cerrarUnitTray();
@@ -163,6 +182,10 @@ final class MapaInteractivo extends Component
         });
     }
 
+    /**
+     * Baja al último nivel: carga de forma perezosa los especímenes del unit tray
+     * (código de catálogo y nombre científico) y lo deja como seleccionado.
+     */
     public function abrirUnitTray(string $unitTrayId, int $numero): void
     {
         $this->cargarProtegido(function () use ($unitTrayId, $numero): void {
@@ -179,6 +202,7 @@ final class MapaInteractivo extends Component
         });
     }
 
+    /** Vuelve a la vista general del mapa, cerrando gabinete, caja y unit tray abiertos. */
     public function volverAGeneral(): void
     {
         $this->gabineteSeleccionado = null;
@@ -187,6 +211,7 @@ final class MapaInteractivo extends Component
         $this->cerrarCaja();
     }
 
+    /** Cierra el detalle de caja (y el unit tray que tuviera abierto), volviendo al nivel de gabinete. */
     public function cerrarCaja(): void
     {
         $this->cajaSeleccionada = null;
@@ -194,12 +219,18 @@ final class MapaInteractivo extends Component
         $this->cerrarUnitTray();
     }
 
+    /** Cierra el detalle de unit tray, volviendo al nivel de caja. */
     public function cerrarUnitTray(): void
     {
         $this->unitTraySeleccionado = null;
         $this->especimenes = [];
     }
 
+    /**
+     * Actualiza las sugerencias de búsqueda mientras el usuario escribe: con texto vacío
+     * las limpia; si no, consulta de forma acotada (hasta 20) los especímenes que
+     * coinciden, sin tocar la navegación del mapa.
+     */
     public function updatedBusquedaEspecimen(): void
     {
         $this->mensajeBusqueda = null;
@@ -218,6 +249,12 @@ final class MapaInteractivo extends Component
         });
     }
 
+    /**
+     * Localiza un espécimen y navega automáticamente hasta él: resuelve su ruta física
+     * (gabinete → caja → unit tray), abre cada nivel en cascada y lo deja resaltado. Si
+     * no se encuentra o aún no tiene ubicación física asignada, muestra el mensaje
+     * correspondiente sin navegar.
+     */
     public function localizar(string $especimenId): void
     {
         $this->sugerencias = [];
@@ -254,7 +291,12 @@ final class MapaInteractivo extends Component
         return view('inventariogestioncoleccion::seguimiento-fisico.mapa.interactivo');
     }
 
-    /** @return ?array<string, mixed> */
+    /**
+     * Busca un gabinete ya cargado en la vista general por su id, para reaprovechar sus
+     * ranuras sin volver a consultarlas.
+     *
+     * @return ?array<string, mixed>
+     */
     private function buscarGabinete(string $gabineteId): ?array
     {
         foreach ($this->gabinetes as $g) {

@@ -18,6 +18,14 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Li
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarUnitTraysPorCaja\ListarUnitTraysPorCajaInput;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
 
+/**
+ * Pantalla del curador para organizar los especímenes en unit trays (bandejas) dentro de
+ * cada caja: elige una caja, crea o selecciona un unit tray y le asigna especímenes
+ * buscándolos de forma acotada. El catálogo de especímenes (48k+) nunca se carga de
+ * golpe; solo se consulta al elegir un tray. Al asignar avisa, sin bloquear, qué
+ * especímenes parecen fuera de lugar según su taxonomía. Es presentación pura: delega
+ * cada acción en su caso de uso.
+ */
 #[Layout('layouts.app', params: ['title' => 'Asignación de unit trays'])]
 final class AsignacionUnitTrayIndex extends Component
 {
@@ -45,6 +53,7 @@ final class AsignacionUnitTrayIndex extends Component
 
     public ?string $errorMessage = null;
 
+    /** Carga solo las cajas disponibles; los especímenes se buscan después de forma acotada. */
     public function mount(ListarCajasHandler $cajasHandler): void
     {
         // Solo se cargan las cajas al montar. Los especímenes (catálogo de 48k+)
@@ -57,6 +66,7 @@ final class AsignacionUnitTrayIndex extends Component
         });
     }
 
+    /** Al cambiar de caja reinicia la selección de tray/especímenes y carga los unit trays de esa caja. */
     public function updatedCajaSeleccionada(string $value): void
     {
         $this->unitTraySeleccionado = '';
@@ -66,6 +76,7 @@ final class AsignacionUnitTrayIndex extends Component
         $this->cargarProtegido(fn () => $this->cargarUnitTrays($value));
     }
 
+    /** Crea un unit tray en la caja seleccionada (el caso de uso lo numera automáticamente) y recarga la lista. */
     public function crearUnitTray(CrearUnitTrayHandler $handler): void
     {
         $this->validate(['cajaSeleccionada' => 'required|string']);
@@ -79,6 +90,11 @@ final class AsignacionUnitTrayIndex extends Component
         }
     }
 
+    /**
+     * Selecciona un unit tray y carga los especímenes asignables, marcando como
+     * preseleccionados los que ya pertenecen a ese tray para que el curador edite su
+     * composición.
+     */
     public function seleccionarUnitTray(string $unitTrayId): void
     {
         $this->unitTraySeleccionado = $unitTrayId;
@@ -91,11 +107,13 @@ final class AsignacionUnitTrayIndex extends Component
         ));
     }
 
+    /** Reejecuta la búsqueda acotada de especímenes cada vez que cambia el texto de búsqueda. */
     public function updatedBusquedaEspecimen(): void
     {
         $this->cargarProtegido(fn () => $this->cargarEspecimenes());
     }
 
+    /** Descarta la selección actual de tray y especímenes, volviendo al estado inicial de la caja. */
     public function cancelarSeleccion(): void
     {
         $this->unitTraySeleccionado = '';
@@ -105,6 +123,11 @@ final class AsignacionUnitTrayIndex extends Component
         $this->limpiarMensajes();
     }
 
+    /**
+     * Guarda la composición del unit tray con los especímenes seleccionados, recarga
+     * lista y trays, confirma y, si el caso de uso detectó especímenes que no parecen
+     * pertenecer al tray según su taxonomía, lo advierte sin bloquear la operación.
+     */
     public function asignarEspecimenes(ActualizarEspecimenesUnitTrayHandler $handler): void
     {
         $this->validate(['unitTraySeleccionado' => 'required|string']);
@@ -128,6 +151,7 @@ final class AsignacionUnitTrayIndex extends Component
         return view('inventariogestioncoleccion::admin.unit-trays.index');
     }
 
+    /** Carga los unit trays de la caja indicada (lista vacía si no hay caja seleccionada). */
     private function cargarUnitTrays(string $cajaId): void
     {
         $this->unitTrays = $cajaId === ''
@@ -136,6 +160,10 @@ final class AsignacionUnitTrayIndex extends Component
                 ->handle(new ListarUnitTraysPorCajaInput($cajaId))->items;
     }
 
+    /**
+     * Busca los especímenes asignables al tray seleccionado de forma acotada por el texto
+     * de búsqueda (nunca trae el catálogo completo). Sin tray seleccionado deja la lista vacía.
+     */
     private function cargarEspecimenes(): void
     {
         if ($this->unitTraySeleccionado === '') {

@@ -8,7 +8,14 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ProcesarEventoEsp32\ProcesarEventoEsp32Output;
 
-/** @property ProcesarEventoEsp32Output $resource */
+/**
+ * Serializa a JSON la respuesta que la API devuelve al ESP32 tras procesar un evento
+ * de barrido: confirma cómo quedó la caja (ranura asignada, estado) e informa si el
+ * evento disparó una alerta o una notificación, para que el firmware no tenga que
+ * inferirlo.
+ *
+ * @property ProcesarEventoEsp32Output $resource
+ */
 final class ProcesarEventoEsp32Resource extends JsonResource
 {
     /** @return array<string, mixed> */

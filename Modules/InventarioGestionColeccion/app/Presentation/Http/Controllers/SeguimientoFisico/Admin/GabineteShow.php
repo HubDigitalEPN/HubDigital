@@ -16,6 +16,13 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Li
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarRanurasGabinete\ListarRanurasGabineteInput;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
 
+/**
+ * Detalle de un gabinete para el curador: muestra sus ranuras con la caja que ocupa
+ * cada una, permite activar o desactivar ranuras individuales y generar el token de
+ * API (Sanctum, ability «esp32») con el que el ESP32 autentica sus eventos. Es
+ * presentación pura: delega las acciones de ranura en su caso de uso y enriquece cada
+ * ranura con el código de su caja para no mostrar UUIDs crudos.
+ */
 #[Layout('layouts.app', params: ['title' => 'Gabinete'])]
 final class GabineteShow extends Component
 {
@@ -41,6 +48,11 @@ final class GabineteShow extends Component
 
     public bool $tieneToken = false;
 
+    /**
+     * Carga el gabinete, sus ranuras (con la caja que ocupa cada una) y comprueba si ya
+     * existe un token de API para su ESP32, a partir del id recibido en la ruta. Recoge
+     * además el mensaje flash que deja la pantalla de creación.
+     */
     public function mount(
         string $id,
         ListarGabineteHandler $listarGabinetes,
@@ -57,6 +69,7 @@ final class GabineteShow extends Component
         });
     }
 
+    /** Abre el modal de edición de una ranura precargando su estado activa/inactiva. */
     public function abrirEditRanura(string $ranuraId): void
     {
         $ranura = collect($this->ranuras)->firstWhere('id', $ranuraId);
@@ -71,6 +84,11 @@ final class GabineteShow extends Component
         $this->showEditRanura = true;
     }
 
+    /**
+     * Guarda el estado activa/inactiva de la ranura en edición, recarga las ranuras
+     * (con su caja), cierra el modal y confirma. Cualquier fallo se traduce a un mensaje
+     * legible sin romper la vista.
+     */
     public function actualizarRanura(
         ActualizarRanuraHandler $actualizarHandler,
         ListarRanurasGabineteHandler $listarHandler,
@@ -91,6 +109,12 @@ final class GabineteShow extends Component
         }
     }
 
+    /**
+     * Genera (o regenera) el token de API personal del ESP32 de este gabinete: revoca
+     * el anterior con el mismo nombre, crea uno nuevo con la ability «esp32» y lo expone
+     * una sola vez en pantalla para que el curador lo copie a la configuración del
+     * dispositivo. Por seguridad el token en claro no se vuelve a mostrar.
+     */
     public function generarToken(): void
     {
         PersonalAccessToken::where('name', "esp32-{$this->gabineteId}")->delete();
@@ -103,6 +127,7 @@ final class GabineteShow extends Component
         $this->successMessage = 'Token generado. Cópialo ahora — no se volverá a mostrar.';
     }
 
+    /** Localiza el gabinete por su id dentro del listado y lo mapea a una estructura plana para la vista. */
     private function cargarGabinete(ListarGabineteHandler $handler): void
     {
         foreach ($handler->handle()->items as $g) {
@@ -119,6 +144,7 @@ final class GabineteShow extends Component
         }
     }
 
+    /** Indexa las cajas por id (código y estado) para resolver la caja que ocupa cada ranura. */
     private function buildCajasPorId(ListarCajasHandler $handler): array
     {
         $map = [];
@@ -129,6 +155,10 @@ final class GabineteShow extends Component
         return $map;
     }
 
+    /**
+     * Ejecuta el caso de uso de listado de ranuras del gabinete y mapea cada una a una
+     * estructura plana para la vista, adjuntando la caja que ocupa a partir del índice recibido.
+     */
     private function cargarRanuras(ListarRanurasGabineteHandler $handler, array $cajasPorId = []): void
     {
         $output = $handler->handle(new ListarRanurasGabineteInput($this->gabineteId));

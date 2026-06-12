@@ -21,6 +21,13 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Re
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TipoAlerta;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
 
+/**
+ * Bandeja de alertas de ubicación para el curador: lista las alertas generadas por el
+ * componente IoT (desorden taxonómico, tiempo de extracción excedido, etc.), filtra
+ * por estado y permite resolverlas (con motivo) o ignorarlas. Enriquece cada alerta
+ * con datos legibles —código de caja, etiqueta de ranura— para no mostrar UUIDs
+ * crudos. Es presentación pura: delega cada acción en su caso de uso.
+ */
 #[Layout('layouts.app', params: ['title' => 'Alertas'])]
 final class AlertaIndex extends Component
 {
@@ -45,6 +52,11 @@ final class AlertaIndex extends Component
 
     private array $ranurasInfo = [];
 
+    /**
+     * Prepara los índices auxiliares (cajas por id, etiquetas de ranura) que sirven
+     * para traducir los UUIDs de cada alerta a texto legible, y carga la lista inicial
+     * de alertas según el filtro por defecto.
+     */
     public function mount(
         ListarAlertasHandler $alertasHandler,
         ListarCajasHandler $cajasHandler,
@@ -58,11 +70,13 @@ final class AlertaIndex extends Component
         });
     }
 
+    /** Recarga la lista cuando el curador cambia el filtro de estado (activa, todas, etc.). */
     public function updatedFiltroEstado(): void
     {
         $this->cargarProtegido(fn () => $this->cargarAlertas(app(ListarAlertasHandler::class)));
     }
 
+    /** Abre el modal de resolución para una alerta, dejando el motivo en blanco y sin errores previos. */
     public function abrirResolverModal(string $alertaId): void
     {
         $this->alertaIdParaResolver = $alertaId;
@@ -71,6 +85,11 @@ final class AlertaIndex extends Component
         $this->showResolverModal = true;
     }
 
+    /**
+     * Resuelve la alerta abierta en el modal: valida el motivo obligatorio, ejecuta el
+     * caso de uso, recarga la lista y confirma. Cualquier fallo se traduce a un mensaje
+     * legible en lugar de romper la vista.
+     */
     public function resolver(
         ResolverAlertaHandler $handler,
         ListarAlertasHandler $listarHandler,
@@ -92,6 +111,10 @@ final class AlertaIndex extends Component
         }
     }
 
+    /**
+     * Marca una alerta como ignorada (descartada sin resolución formal), recarga la
+     * lista y confirma. Útil para falsos positivos que no requieren acción.
+     */
     public function ignorar(
         string $alertaId,
         IgnorarAlertaHandler $handler,
@@ -108,6 +131,7 @@ final class AlertaIndex extends Component
         }
     }
 
+    /** Indexa las cajas por id (código y estado) para resolver rápidamente el código mostrado en cada alerta. */
     private function buildCajasPorId(ListarCajasHandler $handler): void
     {
         $this->cajasPorId = [];
@@ -116,6 +140,11 @@ final class AlertaIndex extends Component
         }
     }
 
+    /**
+     * Recorre todos los gabinetes y sus ranuras para construir un índice ranura_id →
+     * etiqueta legible («Ranura 3 — GAB-A»), usado al enriquecer el contexto de las
+     * alertas de orden taxonómico.
+     */
     private function buildRanurasInfo(
         ListarGabineteHandler $gabineteHandler,
         ListarRanurasGabineteHandler $ranurasHandler,
@@ -129,6 +158,11 @@ final class AlertaIndex extends Component
         }
     }
 
+    /**
+     * Ejecuta el caso de uso de listado con el filtro actual (o sin filtro si es
+     * «todas») y mapea cada alerta a una estructura plana para la vista, resolviendo el
+     * código de caja, su estado y un contexto legible a partir de los índices auxiliares.
+     */
     private function cargarAlertas(ListarAlertasHandler $handler): void
     {
         $estado = $this->filtroEstado !== 'todas' ? $this->filtroEstado : null;
@@ -149,6 +183,11 @@ final class AlertaIndex extends Component
         );
     }
 
+    /**
+     * Para las alertas ligadas a una ranura (orden taxonómico fuera de secuencia,
+     * familia no asignada) reemplaza el ranura_id crudo por su etiqueta legible; para
+     * el resto devuelve el contexto sin tocar.
+     */
     private function enriquecerContexto(string $tipo, array $datosContexto): array
     {
         if (in_array($tipo, [
