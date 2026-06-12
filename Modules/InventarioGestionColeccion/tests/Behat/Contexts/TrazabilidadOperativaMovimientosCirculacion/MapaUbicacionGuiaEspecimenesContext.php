@@ -28,6 +28,7 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\Ran
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\TaxonRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UnitTrayEspecimenRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UnitTrayRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\CalculadorClasificacionDominante;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\ClasificacionTaxonomica;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\CodigoCaja;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\CodigoGabinete;
@@ -193,6 +194,74 @@ final class MapaUbicacionGuiaEspecimenesContext extends BaseContext
             Assert::assertNotNull($item->clasificacion, 'Debe resolverse la clasificación de la caja');
             Assert::assertSame('Formicidae', $item->clasificacion['familia']);
         }
+    }
+
+    // ==========================================
+    // Caja que alberga varias subfamilias y géneros (clasificación agregada)
+    // ==========================================
+
+    #[Given('que existe un gabinete con una caja que alberga varias subfamilias y géneros')]
+    public function queExisteUnGabineteConUnaCajaQueAlbergaVariasSubfamiliasYGeneros(): void
+    {
+        $gabinete = Gabinete::crear(
+            id: $this->gabineteRepo->nextIdentity(),
+            codigo: CodigoGabinete::desde('GAB-MULTI-001'),
+            nombre: 'Gabinete Multi-Subfamilia',
+            totalRanuras: 1,
+        );
+        $this->gabineteRepo->guardar($gabinete);
+        $this->gabineteId = (string) $gabinete->id();
+
+        // Clasificaciones de los unit trays que conviven en la misma caja: el grupo dominante
+        // (Myrmicinae/Atta) aparece dos veces y un segundo grupo (Ponerinae/Paraponera) una vez.
+        $clasificacionesTrays = [
+            ClasificacionTaxonomica::desde(familia: 'Formicidae', subfamilia: 'Myrmicinae', genero: 'Atta'),
+            ClasificacionTaxonomica::desde(familia: 'Formicidae', subfamilia: 'Myrmicinae', genero: 'Atta'),
+            ClasificacionTaxonomica::desde(familia: 'Formicidae', subfamilia: 'Ponerinae', genero: 'Paraponera'),
+        ];
+        $agregada = (new CalculadorClasificacionDominante)->calcularAgregado($clasificacionesTrays);
+
+        $ranura = RanuraGabinete::crear(
+            id: $this->ranuraRepo->nextIdentity(),
+            gabineteId: $gabinete->id(),
+            numeroRanura: 1,
+        );
+
+        $caja = Caja::crear(
+            id: $this->cajaRepo->nextIdentity(),
+            codigo: CodigoCaja::desde('CAJA-MULTI-001'),
+            clasificacionTaxonomica: $agregada,
+        );
+        $caja->ingresarEnRanura($ranura->id());
+        $caja->pullEvents();
+        $this->cajaRepo->guardar($caja);
+
+        $ranura->asignarCaja($caja->id());
+        $this->ranuraRepo->guardar($ranura);
+    }
+
+    #[Then('la caja muestra su subfamilia y género dominantes junto con todas las subfamilias y géneros que alberga')]
+    public function laCajaMuestraSubfamiliaYGeneroDominantesYTodas(): void
+    {
+        Assert::assertNull($this->excepcionCapturada, 'No se esperaba excepción al consultar la ocupación');
+        Assert::assertNotNull($this->ultimaRespuesta, 'El handler debe retornar una respuesta');
+        Assert::assertCount(1, $this->ultimaRespuesta->items, 'El gabinete sembrado tiene una sola ranura ocupada');
+
+        $clasificacion = $this->ultimaRespuesta->items[0]->clasificacion;
+        Assert::assertNotNull($clasificacion, 'La caja debe traer su clasificación agregada');
+
+        Assert::assertSame('Myrmicinae', $clasificacion['subfamilia'], 'La subfamilia dominante es la más frecuente');
+        Assert::assertSame('Atta', $clasificacion['genero'], 'El género dominante es el más frecuente');
+        Assert::assertEqualsCanonicalizing(
+            ['Myrmicinae', 'Ponerinae'],
+            $clasificacion['subfamilias'],
+            'Deben listarse todas las subfamilias presentes en la caja'
+        );
+        Assert::assertEqualsCanonicalizing(
+            ['Atta', 'Paraponera'],
+            $clasificacion['generos'],
+            'Deben listarse todos los géneros presentes en la caja'
+        );
     }
 
     // ==========================================

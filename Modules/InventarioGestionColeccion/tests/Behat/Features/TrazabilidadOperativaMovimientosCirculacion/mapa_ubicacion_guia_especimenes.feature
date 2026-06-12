@@ -19,16 +19,24 @@ Característica: Localización y guía de ubicación de especímenes en la colec
     Cuando el curador consulta el contenido de la caja
     Entonces se obtienen sus unit trays con la clasificación dominante de cada uno
 
+  Escenario: El curador ve una caja que alberga varias subfamilias y géneros en la ocupación del gabinete
+    Dado que existe un gabinete con una caja que alberga varias subfamilias y géneros
+    Cuando el curador consulta la ocupación del gabinete
+    Entonces la caja muestra su subfamilia y género dominantes junto con todas las subfamilias y géneros que alberga
+
   Escenario: El curador consulta el contenido de un unit tray
     Dado que existe un unit tray con especímenes asignados
     Cuando el curador consulta el contenido del unit tray
     Entonces se obtienen los especímenes con su nombre científico
 
+  # Guía pública para visitantes — pendiente de implementar (su Context aún no está cableado).
+  @pendiente
   Escenario: El visitante localiza un espécimen habilitado por su nombre científico
     Dado que existe un espécimen divulgado con su ubicación física habilitada para visitantes
     Cuando el visitante localiza el espécimen por su nombre científico
     Entonces se obtiene la ruta física hasta el espécimen: el gabinete, la caja y el unit tray donde se encuentra
 
+  @pendiente
   Escenario: El visitante no obtiene la ubicación de un espécimen no habilitado
     Dado que existe un espécimen divulgado sin su ubicación física habilitada para visitantes
     Cuando el visitante localiza el espécimen por su nombre científico

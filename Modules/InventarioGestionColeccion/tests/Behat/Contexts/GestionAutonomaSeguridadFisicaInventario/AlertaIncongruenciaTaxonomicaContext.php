@@ -37,6 +37,7 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\Est
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoCaja;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\GabineteId;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\HorarioId;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\OrdenEsperadoFamilias;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\RanuraId;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TipoAlerta;
 use Modules\InventarioGestionColeccion\Tests\Behat\Contexts\BaseContext;
@@ -228,6 +229,103 @@ final class AlertaIncongruenciaTaxonomicaContext extends BaseContext
     }
 
     // ==========================================
+    // ESQUEMA DEL ESCENARIO: El sistema evalúa el orden por familia (secuencia del curador)
+    // ==========================================
+
+    #[Given('/^que el curador definió la secuencia de familias "([^"]+)"$/u')]
+    public function queElCuradorDefinioLaSecuenciaDeFamilias(string $secuencia): void
+    {
+        $familias = array_map('trim', explode(',', $secuencia));
+        $this->ordenFamiliasRepo->guardar(OrdenEsperadoFamilias::desde($familias));
+
+        $guardado = $this->ordenFamiliasRepo->obtener();
+        Assert::assertSame(
+            $familias,
+            $guardado->familias(),
+            'La secuencia de familias del curador debe quedar persistida en el orden indicado'
+        );
+    }
+
+    #[Given('el gabinete tiene cajas vecinas que siguen esa secuencia de familias')]
+    public function elGabineteTieneCajasVecinasQueSiguenEsaSecuenciaDeFamilias(): void
+    {
+        $gabinete = Gabinete::crear(
+            id: $this->gabineteRepo->nextIdentity(),
+            codigo: CodigoGabinete::desde('GAB-FAM-001'),
+            nombre: 'Gabinete Secuencia de Familias',
+            totalRanuras: 10,
+        );
+        $this->gabineteRepo->guardar($gabinete);
+        $this->gabineteActual = $gabinete->id();
+
+        // Vecinas con SOLO familia (sin subfamilia/género): así la comparación depende
+        // exclusivamente de la secuencia de familias del curador.
+        // Ranura 1 (anterior): Formicidae — primera en la secuencia.
+        $this->sembrarCajaVecinaEnGabinete(
+            gabineteId: $gabinete->id(),
+            numeroRanura: 1,
+            clasificacion: ClasificacionTaxonomica::desde(familia: 'Formicidae'),
+            codigoCaja: 'CAJA-FAM-ANT-001',
+        );
+
+        // Ranura 5 (siguiente): Coleoptera — segunda en la secuencia.
+        $this->sembrarCajaVecinaEnGabinete(
+            gabineteId: $gabinete->id(),
+            numeroRanura: 5,
+            clasificacion: ClasificacionTaxonomica::desde(familia: 'Coleoptera'),
+            codigoCaja: 'CAJA-FAM-SIG-001',
+        );
+
+        // Ranura 3 (destino): libre.
+        $ranuraDestino = RanuraGabinete::crear(
+            id: $this->ranuraRepo->nextIdentity(),
+            gabineteId: $gabinete->id(),
+            numeroRanura: 3,
+        );
+        $this->ranuraRepo->guardar($ranuraDestino);
+        $this->ranuraDestino = $ranuraDestino->id();
+
+        Assert::assertFalse(
+            $this->ranuraRepo->buscarPorId($ranuraDestino->id())->estaOcupada(),
+            'La ranura destino debe estar libre antes del ingreso'
+        );
+    }
+
+    /**
+     * Posicion_familia de la tabla (secuencia: Formicidae < Coleoptera < Hemiptera;
+     * vecinas anterior=Formicidae, siguiente=Coleoptera):
+     *   "que respeta la secuencia del curador" → Coleoptera (queda en orden con ambas vecinas)
+     *   "que rompe la secuencia del curador"   → Hemiptera  (va después de Coleoptera, pero se inserta antes)
+     *   "ausente de la secuencia del curador"  → Mantidae   (no está en la secuencia → ese nivel se omite, sin alerta)
+     */
+    #[Given('/^la caja a insertar tiene una familia (.+) respecto a las cajas adyacentes$/u')]
+    public function laCajaAInsertarTieneUnaFamilia(string $posicionFamilia): void
+    {
+        Assert::assertNotNull($this->gabineteActual, 'Se requiere gabinete sembrado (@Given anterior)');
+        Assert::assertNotNull($this->ranuraDestino, 'Se requiere ranura destino sembrada (@Given anterior)');
+
+        $familia = match ($posicionFamilia) {
+            'que respeta la secuencia del curador' => 'Coleoptera',
+            'que rompe la secuencia del curador' => 'Hemiptera',
+            'ausente de la secuencia del curador' => 'Mantidae',
+            default => throw new \InvalidArgumentException("Posición de familia no reconocida: '{$posicionFamilia}'"),
+        };
+
+        $caja = Caja::crear(
+            id: $this->cajaRepo->nextIdentity(),
+            codigo: CodigoCaja::desde('CAJA-FAM-TARGET-001'),
+            clasificacionTaxonomica: ClasificacionTaxonomica::desde(familia: $familia),
+        );
+        $this->cajaRepo->guardar($caja);
+        $this->cajaAInsertar = $caja->id();
+
+        Assert::assertTrue(
+            $caja->estadoActual()->equals(EstadoCaja::EnTransito),
+            'La caja debe estar en EnTransito antes del ingreso'
+        );
+    }
+
+    // ==========================================
     // ESCENARIO: El sistema registra con alerta el ingreso de una caja sin unit trays
     // ==========================================
 
@@ -292,7 +390,7 @@ final class AlertaIncongruenciaTaxonomicaContext extends BaseContext
     // CUANDO — compartido entre los tres escenarios / esquema
     // ==========================================
 
-    #[When('el sistema detecta que la caja fue insertada en el gabinete')]
+    #[When('el sistema detecta que la caja fue insertada en una ranura del gabinete')]
     public function elSistemaDetectaQueLaCajaFueInsertadaEnElGabinete(): void
     {
         Assert::assertNotNull($this->cajaAInsertar, 'Se requiere una caja sembrada en el paso @Given');
