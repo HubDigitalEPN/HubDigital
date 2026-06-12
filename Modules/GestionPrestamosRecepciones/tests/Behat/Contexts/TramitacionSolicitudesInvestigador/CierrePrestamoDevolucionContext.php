@@ -19,6 +19,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoCerrado;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\PrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoPrestamo;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoVerificacionDevolucion;
 use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\BaseContext;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\FakeEventPublisherAdapter;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\PassThroughTransactionManagerAdapter;
@@ -249,9 +250,12 @@ final class CierrePrestamoDevolucionContext extends BaseContext
             $evento,
             'Se esperaba que el evento PrestamoCerrado fuera publicado para notificar al investigador'
         );
-        Assert::assertSame(
-            $resultado,
-            $evento->resultado,
+        $resultadoVO = match ($resultado) {
+            'sin novedades'   => ResultadoVerificacionDevolucion::SinNovedades,
+            'con observación' => ResultadoVerificacionDevolucion::ConObservacion,
+        };
+        Assert::assertTrue(
+            $evento->resultado->equals($resultadoVO),
             "El evento debe contener el resultado '{$resultado}' de la verificación"
         );
         Assert::assertSame(
