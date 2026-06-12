@@ -109,7 +109,9 @@ trait PropagaClasificacionTaxonomica
             }
         }
 
-        $dominante = $this->clasificacionMasFrecuente($clasificaciones);
+        // Agregado: la caja conserva su combinación dominante pero acumula todas las
+        // subfamilias y géneros distintos de sus trays (una caja puede albergar varios).
+        $dominante = (new CalculadorClasificacionDominante)->calcularAgregado($clasificaciones);
 
         $dominante !== null
             ? $caja->actualizarClasificacion($dominante)

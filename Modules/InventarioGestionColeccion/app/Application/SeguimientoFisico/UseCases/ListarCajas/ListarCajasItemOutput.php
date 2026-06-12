@@ -10,6 +10,10 @@ namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCa
  */
 final readonly class ListarCajasItemOutput
 {
+    /**
+     * @param  string[]  $subfamilias  Subfamilias distintas presentes en la caja (dominante primero).
+     * @param  string[]  $generos  Géneros distintos presentes en la caja (dominante primero).
+     */
     public function __construct(
         public string $id,
         public string $codigo,
@@ -21,5 +25,7 @@ final readonly class ListarCajasItemOutput
         public ?string $subfamilia = null,
         public ?string $genero = null,
         public ?string $especie = null,
+        public array $subfamilias = [],
+        public array $generos = [],
     ) {}
 }

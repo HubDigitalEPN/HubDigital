@@ -312,6 +312,8 @@ final class CajaIndex extends Component
                 'subfamilia' => $c->subfamilia,
                 'genero' => $c->genero,
                 'especie' => $c->especie,
+                'subfamilias' => $c->subfamilias,
+                'generos' => $c->generos,
             ],
             $handler->handle()->items,
         );

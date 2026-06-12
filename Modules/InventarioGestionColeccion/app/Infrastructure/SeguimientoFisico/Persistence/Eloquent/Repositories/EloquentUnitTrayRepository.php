@@ -91,14 +91,16 @@ class EloquentUnitTrayRepository implements UnitTrayRepository
             return null;
         }
 
+        // La clasificación dominante del tray es de un solo taxón; aun así se serializa como
+        // conjunto para mantener el mismo formato que la caja y no duplicar el escalar.
         return [
             'orden' => $clasificacion->orden(),
             'suborden' => $clasificacion->suborden(),
             'superfamilia' => $clasificacion->superfamilia(),
             'familia' => $clasificacion->familia(),
-            'subfamilia' => $clasificacion->subfamilia(),
-            'genero' => $clasificacion->genero(),
             'especie' => $clasificacion->especie(),
+            'subfamilias' => $clasificacion->subfamilias(),
+            'generos' => $clasificacion->generos(),
         ];
     }
 
@@ -114,9 +116,10 @@ class EloquentUnitTrayRepository implements UnitTrayRepository
             suborden: $data['suborden'] ?? null,
             superfamilia: $data['superfamilia'] ?? null,
             familia: $data['familia'] ?? null,
-            subfamilia: $data['subfamilia'] ?? null,
-            genero: $data['genero'] ?? null,
             especie: $data['especie'] ?? null,
+        )->conSubfamiliasYGeneros(
+            $data['subfamilias'] ?? [],
+            $data['generos'] ?? [],
         );
 
         return $clasificacion->estaVacia() ? null : $clasificacion;

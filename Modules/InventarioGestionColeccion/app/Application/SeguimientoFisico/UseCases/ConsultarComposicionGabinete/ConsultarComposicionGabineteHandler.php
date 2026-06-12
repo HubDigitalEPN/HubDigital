@@ -51,11 +51,12 @@ final class ConsultarComposicionGabineteHandler
                 continue;
             }
 
-            if ($clasificacion->subfamilia() !== null) {
-                $subfamilias[$clasificacion->subfamilia()] = true;
+            // Una caja puede albergar varias subfamilias y géneros: se agregan todos.
+            foreach ($clasificacion->subfamilias() as $subfamilia) {
+                $subfamilias[$subfamilia] = true;
             }
-            if ($clasificacion->genero() !== null) {
-                $generos[$clasificacion->genero()] = true;
+            foreach ($clasificacion->generos() as $genero) {
+                $generos[$genero] = true;
             }
         }
 

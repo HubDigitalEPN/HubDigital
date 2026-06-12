@@ -48,6 +48,8 @@
                                     :subfamilia="$caja['subfamilia']"
                                     :genero="$caja['genero']"
                                     :especie="$caja['especie']"
+                                    :subfamilias="$caja['subfamilias']"
+                                    :generos="$caja['generos']"
                                 />
                             </td>
                             <td class="px-4 py-3 font-mono text-xs text-text-secondary">{{ $caja['codigoRfid'] }}</td>
@@ -151,6 +153,8 @@
                     :subfamilia="$caja['subfamilia']"
                     :genero="$caja['genero']"
                     :especie="$caja['especie']"
+                    :subfamilias="$caja['subfamilias']"
+                    :generos="$caja['generos']"
                 />
                 <dl class="space-y-1.5 text-sm">
                     <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="RFID">

@@ -93,12 +93,17 @@ final class ActualizarEspecimenesUnitTrayHandler
 
         $cls = $unitTray->clasificacionDominante();
 
-        $fueraDeLugar = $this->detectarEspecimenesFueraDeLugar(
-            $input->especimenIds,
-            $cls,
-            $this->especimenRepo,
-            $this->clasificacionPort,
-        );
+        // Una caja especial está exenta de toda verificación taxonómica (igual que en el orden
+        // entre cajas vecinas): sus trays no albergan una expectativa taxonómica, así que no
+        // tiene sentido marcar especímenes como "fuera de lugar".
+        $fueraDeLugar = $caja->esEspecial()
+            ? []
+            : $this->detectarEspecimenesFueraDeLugar(
+                $input->especimenIds,
+                $cls,
+                $this->especimenRepo,
+                $this->clasificacionPort,
+            );
 
         return ActualizarEspecimenesUnitTrayOutput::fromPrimitives([
             'unitTrayId' => (string) $unitTrayId,

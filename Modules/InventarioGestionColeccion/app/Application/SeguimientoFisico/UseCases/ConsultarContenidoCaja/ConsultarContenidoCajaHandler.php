@@ -44,7 +44,7 @@ final class ConsultarContenidoCajaHandler
         return new ConsultarContenidoCajaOutput(items: $items);
     }
 
-    /** @return ?array<string, ?string> */
+    /** @return ?array<string, mixed> */
     private function clasificacionAArray(?ClasificacionTaxonomica $clasificacion): ?array
     {
         if ($clasificacion === null || $clasificacion->estaVacia()) {
@@ -59,6 +59,8 @@ final class ConsultarContenidoCajaHandler
             'subfamilia' => $clasificacion->subfamilia(),
             'genero' => $clasificacion->genero(),
             'especie' => $clasificacion->especie(),
+            'subfamilias' => $clasificacion->subfamilias(),
+            'generos' => $clasificacion->generos(),
         ];
     }
 }

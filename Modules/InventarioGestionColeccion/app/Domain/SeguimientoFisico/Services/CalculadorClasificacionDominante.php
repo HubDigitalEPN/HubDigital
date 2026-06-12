@@ -18,6 +18,9 @@ final class CalculadorClasificacionDominante
      * eligiendo la combinación más frecuente y desempatando de forma determinista por
      * orden alfabético insensible a mayúsculas. Devuelve null si el conjunto está vacío.
      *
+     * Conserva el nivel de UnitTray cohesivo: un tray expone su combinación dominante y los
+     * especímenes que discrepan se reportan como "fuera de lugar" (alerta suave).
+     *
      * @param  ClasificacionTaxonomica[]  $clasificaciones
      */
     public function calcular(array $clasificaciones): ?ClasificacionTaxonomica
@@ -47,5 +50,32 @@ final class CalculadorClasificacionDominante
         });
 
         return $frecuencias[0]['cls'];
+    }
+
+    /**
+     * Calcula la clasificación AGREGADA de una Caja: conserva la combinación dominante
+     * (vía {@see calcular()}) pero amplía los conjuntos de subfamilias y géneros con todos
+     * los valores distintos presentes en sus UnitTrays. Así una caja que alberga varias
+     * subfamilias o géneros los muestra todos sin perder cuál es el dominante. Devuelve null
+     * si el conjunto está vacío.
+     *
+     * @param  ClasificacionTaxonomica[]  $clasificaciones
+     */
+    public function calcularAgregado(array $clasificaciones): ?ClasificacionTaxonomica
+    {
+        $dominante = $this->calcular($clasificaciones);
+
+        if ($dominante === null) {
+            return null;
+        }
+
+        $subfamilias = [];
+        $generos = [];
+        foreach ($clasificaciones as $cls) {
+            array_push($subfamilias, ...$cls->subfamilias());
+            array_push($generos, ...$cls->generos());
+        }
+
+        return $dominante->conSubfamiliasYGeneros($subfamilias, $generos);
     }
 }

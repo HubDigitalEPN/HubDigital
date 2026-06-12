@@ -44,6 +44,8 @@ final class ListarCajasHandler
                 subfamilia: $clasificacion?->subfamilia(),
                 genero: $clasificacion?->genero(),
                 especie: $clasificacion?->especie(),
+                subfamilias: $clasificacion?->subfamilias() ?? [],
+                generos: $clasificacion?->generos() ?? [],
             );
         }, $cajas);
 

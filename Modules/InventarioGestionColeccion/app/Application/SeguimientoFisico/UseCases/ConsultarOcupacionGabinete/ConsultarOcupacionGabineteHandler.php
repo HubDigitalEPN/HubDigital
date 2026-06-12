@@ -59,7 +59,7 @@ final class ConsultarOcupacionGabineteHandler
         return new ConsultarOcupacionGabineteOutput(items: $items);
     }
 
-    /** @return ?array<string, ?string> */
+    /** @return ?array<string, mixed> */
     private function clasificacionAArray(?ClasificacionTaxonomica $clasificacion): ?array
     {
         if ($clasificacion === null || $clasificacion->estaVacia()) {
@@ -74,6 +74,8 @@ final class ConsultarOcupacionGabineteHandler
             'subfamilia' => $clasificacion->subfamilia(),
             'genero' => $clasificacion->genero(),
             'especie' => $clasificacion->especie(),
+            'subfamilias' => $clasificacion->subfamilias(),
+            'generos' => $clasificacion->generos(),
         ];
     }
 }

@@ -110,14 +110,16 @@ class EloquentCajaRepository implements CajaRepository
             return null;
         }
 
+        // subfamilia y género se persisten solo como conjuntos; el valor dominante es su
+        // primer elemento, así que no se duplica el escalar.
         return [
             'orden' => $clasificacion->orden(),
             'suborden' => $clasificacion->suborden(),
             'superfamilia' => $clasificacion->superfamilia(),
             'familia' => $clasificacion->familia(),
-            'subfamilia' => $clasificacion->subfamilia(),
-            'genero' => $clasificacion->genero(),
             'especie' => $clasificacion->especie(),
+            'subfamilias' => $clasificacion->subfamilias(),
+            'generos' => $clasificacion->generos(),
         ];
     }
 
@@ -133,9 +135,10 @@ class EloquentCajaRepository implements CajaRepository
             suborden: $data['suborden'] ?? null,
             superfamilia: $data['superfamilia'] ?? null,
             familia: $data['familia'] ?? null,
-            subfamilia: $data['subfamilia'] ?? null,
-            genero: $data['genero'] ?? null,
             especie: $data['especie'] ?? null,
+        )->conSubfamiliasYGeneros(
+            $data['subfamilias'] ?? [],
+            $data['generos'] ?? [],
         );
 
         return $clasificacion->estaVacia() ? null : $clasificacion;
