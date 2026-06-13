@@ -54,6 +54,10 @@ final class ListarUnitTraysPorCajaHandler
             return [
                 'unitTrayId' => (string) $tray->id(),
                 'numero' => $tray->numero(),
+                'orden' => $clasificacion?->orden(),
+                'suborden' => $clasificacion?->suborden(),
+                'superfamilia' => $clasificacion?->superfamilia(),
+                'familia' => $clasificacion?->familia(),
                 'subfamilia' => $clasificacion?->subfamilia(),
                 'genero' => $clasificacion?->genero(),
                 'especie' => $clasificacion?->especie(),

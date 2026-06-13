@@ -69,6 +69,8 @@
                 Los unit trays se numeran solos y se ordenan por su taxonomía (subfamilia → género → especie).
             </p>
 
+            <x-inventariogestioncoleccion::seguimiento-fisico.taxonomia-leyenda />
+
             {{-- Tabla (desktop) --}}
             <div class="hidden md:block rounded-lg border border-border overflow-hidden">
                 <div class="overflow-x-auto">
@@ -86,6 +88,10 @@
                                 <tr class="hover:bg-bg-main transition-colors {{ $unitTraySeleccionado === $tray['unitTrayId'] ? 'bg-bg-main' : '' }}">
                                     <td class="px-4 py-3">
                                         <x-inventariogestioncoleccion::seguimiento-fisico.taxonomia-resumen
+                                            :orden="$tray['orden']"
+                                            :suborden="$tray['suborden']"
+                                            :superfamilia="$tray['superfamilia']"
+                                            :familia="$tray['familia']"
                                             :subfamilia="$tray['subfamilia']"
                                             :genero="$tray['genero']"
                                             :especie="$tray['especie']"
@@ -122,6 +128,10 @@
                     <div class="rounded-lg border border-border bg-surface p-4 shadow-sm space-y-3 {{ $unitTraySeleccionado === $tray['unitTrayId'] ? 'ring-1 ring-blue-navy' : '' }}">
                         <div class="flex items-start justify-between gap-2">
                             <x-inventariogestioncoleccion::seguimiento-fisico.taxonomia-resumen
+                                :orden="$tray['orden']"
+                                :suborden="$tray['suborden']"
+                                :superfamilia="$tray['superfamilia']"
+                                :familia="$tray['familia']"
                                 :subfamilia="$tray['subfamilia']"
                                 :genero="$tray['genero']"
                                 :especie="$tray['especie']"
