@@ -52,6 +52,12 @@ final class LocalizarEspecimenHandler
      */
     public function handle(LocalizarEspecimenInput $input): LocalizarEspecimenOutput
     {
+        // Un identificador con formato inválido se trata como "no encontrado" (alerta suave),
+        // no como un error: la búsqueda del mapa nunca debe romperse por una entrada mal formada.
+        if (! EspecimenId::esValido($input->especimenId)) {
+            return new LocalizarEspecimenOutput(encontrado: false, ubicado: false);
+        }
+
         $especimen = $this->especimenRepo->buscarPorId(EspecimenId::desde($input->especimenId));
         if ($especimen === null) {
             return new LocalizarEspecimenOutput(encontrado: false, ubicado: false);

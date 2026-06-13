@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Mapa;
 
 use Illuminate\View\View;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConsultarComposicionGabinete\ConsultarComposicionGabineteHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConsultarComposicionGabinete\ConsultarComposicionGabineteInput;
@@ -27,6 +28,12 @@ use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\Seguimiento
  * (nunca se carga el catálogo completo en memoria) y una búsqueda que navega y
  * resalta el espécimen localizado.
  *
+ * La ruta de zoom (gabinete → caja → unit tray) se refleja en la URL con history,
+ * de modo que el botón «atrás» del navegador retrocede un nivel de zoom en lugar de
+ * abandonar el mapa, y un enlace directo a un nivel abre el mapa ya posicionado. La
+ * vista mostrada se deriva siempre de esos identificadores en cada render, por lo que
+ * navegar por clic o por historial produce exactamente el mismo estado.
+ *
  * Es presentación pura, sin control de acceso propio: la página que lo monta
  * decide quién entra. El prop $modo es la costura para que el portal público del
  * visitante reutilice el componente con sus propias reglas de visibilidad.
@@ -36,6 +43,18 @@ final class MapaInteractivo extends Component
     use TraduceErroresPersistencia;
 
     public string $modo = 'curador';
+
+    /** Identificador del gabinete con zoom abierto; vacío = vista general. */
+    #[Url(as: 'gab', history: true)]
+    public string $gabineteAbierto = '';
+
+    /** Identificador de la caja con zoom abierto dentro del gabinete; vacío = nivel gabinete. */
+    #[Url(as: 'caja', history: true)]
+    public string $cajaAbierta = '';
+
+    /** Identificador del unit tray con zoom abierto dentro de la caja; vacío = nivel caja. */
+    #[Url(as: 'tray', history: true)]
+    public string $trayAbierto = '';
 
     /**
      * Vista general: gabinetes con la ocupación de sus ranuras a nivel caja (ligera).
@@ -81,7 +100,8 @@ final class MapaInteractivo extends Component
      * Arma la vista general del mapa: lista los gabinetes con la ocupación de sus
      * ranuras a nivel caja (ligera). Recibe el modo de uso ('curador' por defecto), la
      * costura con la que el portal público puede reutilizar el componente. Los
-     * especímenes nunca se cargan aquí, solo al abrir un unit tray.
+     * especímenes nunca se cargan aquí, solo al abrir un unit tray. El nivel de zoom
+     * mostrado lo deriva render() a partir de los identificadores de la URL.
      */
     public function mount(string $modo = 'curador'): void
     {
@@ -104,126 +124,52 @@ final class MapaInteractivo extends Component
         });
     }
 
-    /**
-     * Entra al detalle de un gabinete: reaprovecha sus ranuras ya cargadas en la vista
-     * general y solo resuelve su composición taxonómica (subfamilias y géneros) para el
-     * encabezado, sin recargar el nivel de caja.
-     */
+    /** Entra al detalle de un gabinete fijando la ruta de zoom en la URL. */
     public function abrirGabinete(string $gabineteId): void
     {
-        $this->volverAGeneral();
-
-        $gabinete = $this->buscarGabinete($gabineteId);
-        if ($gabinete === null) {
-            return;
-        }
-
-        // Las ranuras ya están en memoria desde la vista general; solo se resuelve la
-        // composición (subfamilias/géneros) del gabinete para su encabezado.
-        $this->cargarProtegido(function () use ($gabinete, $gabineteId): void {
-            $composicion = app(ConsultarComposicionGabineteHandler::class)
-                ->handle(new ConsultarComposicionGabineteInput($gabineteId));
-
-            $this->ranuras = $gabinete['ranuras'];
-            $this->composicion = [
-                'subfamilias' => $composicion->subfamilias,
-                'generos' => $composicion->generos,
-            ];
-            $this->gabineteSeleccionado = [
-                'id' => $gabinete['id'],
-                'codigo' => $gabinete['codigo'],
-                'nombre' => $gabinete['nombre'],
-            ];
-        });
-    }
-
-    /**
-     * Mapea la ocupación de las ranuras de un gabinete a una estructura plana para la
-     * vista (número, si está ocupada, caja que ocupa, estado y clasificación).
-     *
-     * @param  array<int, object>  $items
-     * @return array<int, array<string, mixed>>
-     */
-    private function mapearRanuras(array $items): array
-    {
-        return array_map(fn ($r) => [
-            'ranuraId' => $r->ranuraId,
-            'numeroRanura' => $r->numeroRanura,
-            'ocupada' => $r->ocupada,
-            'cajaId' => $r->cajaId,
-            'codigoCaja' => $r->codigoCaja,
-            'estado' => $r->estado,
-            'esEspecial' => $r->esEspecial,
-            'clasificacion' => $r->clasificacion,
-        ], $items);
-    }
-
-    /**
-     * Baja al nivel de caja: carga sus unit trays (con su clasificación dominante) de
-     * forma perezosa y deja la caja como seleccionada. Cierra cualquier unit tray
-     * abierto y quita el resaltado previo.
-     */
-    public function abrirCaja(string $cajaId, string $codigoCaja): void
-    {
-        $this->cerrarUnitTray();
+        $this->gabineteAbierto = $gabineteId;
+        $this->cajaAbierta = '';
+        $this->trayAbierto = '';
         $this->especimenResaltadoId = null;
-
-        $this->cargarProtegido(function () use ($cajaId, $codigoCaja): void {
-            $contenido = app(ConsultarContenidoCajaHandler::class)
-                ->handle(new ConsultarContenidoCajaInput($cajaId));
-
-            $this->unitTrays = array_map(fn ($t) => [
-                'unitTrayId' => $t->unitTrayId,
-                'numero' => $t->numero,
-                'clasificacionDominante' => $t->clasificacionDominante,
-            ], $contenido->items);
-
-            $this->cajaSeleccionada = ['id' => $cajaId, 'codigo' => $codigoCaja];
-        });
     }
 
     /**
-     * Baja al último nivel: carga de forma perezosa los especímenes del unit tray
-     * (código de catálogo y nombre científico) y lo deja como seleccionado.
+     * Baja al nivel de caja fijando la ruta de zoom en la URL. El código de la caja se
+     * reaprovecha del clic, pero la vista se reconstruye siempre desde el identificador.
      */
-    public function abrirUnitTray(string $unitTrayId, int $numero): void
+    public function abrirCaja(string $cajaId, string $codigoCaja = ''): void
     {
-        $this->cargarProtegido(function () use ($unitTrayId, $numero): void {
-            $contenido = app(ConsultarContenidoUnitTrayHandler::class)
-                ->handle(new ConsultarContenidoUnitTrayInput($unitTrayId));
-
-            $this->especimenes = array_map(fn ($e) => [
-                'especimenId' => $e->especimenId,
-                'codigoCatalogo' => $e->codigoCatalogo,
-                'nombreCientifico' => $e->nombreCientifico,
-            ], $contenido->items);
-
-            $this->unitTraySeleccionado = ['id' => $unitTrayId, 'numero' => $numero];
-        });
+        $this->cajaAbierta = $cajaId;
+        $this->trayAbierto = '';
+        $this->especimenResaltadoId = null;
     }
 
-    /** Vuelve a la vista general del mapa, cerrando gabinete, caja y unit tray abiertos. */
+    /** Baja al último nivel (especímenes del unit tray) fijando la ruta de zoom en la URL. */
+    public function abrirUnitTray(string $unitTrayId, int $numero = 0): void
+    {
+        $this->trayAbierto = $unitTrayId;
+    }
+
+    /** Vuelve a la vista general del mapa, limpiando toda la ruta de zoom. */
     public function volverAGeneral(): void
     {
-        $this->gabineteSeleccionado = null;
-        $this->composicion = ['subfamilias' => [], 'generos' => []];
-        $this->ranuras = [];
-        $this->cerrarCaja();
+        $this->gabineteAbierto = '';
+        $this->cajaAbierta = '';
+        $this->trayAbierto = '';
+        $this->especimenResaltadoId = null;
     }
 
     /** Cierra el detalle de caja (y el unit tray que tuviera abierto), volviendo al nivel de gabinete. */
     public function cerrarCaja(): void
     {
-        $this->cajaSeleccionada = null;
-        $this->unitTrays = [];
-        $this->cerrarUnitTray();
+        $this->cajaAbierta = '';
+        $this->trayAbierto = '';
     }
 
     /** Cierra el detalle de unit tray, volviendo al nivel de caja. */
     public function cerrarUnitTray(): void
     {
-        $this->unitTraySeleccionado = null;
-        $this->especimenes = [];
+        $this->trayAbierto = '';
     }
 
     /**
@@ -251,9 +197,9 @@ final class MapaInteractivo extends Component
 
     /**
      * Localiza un espécimen y navega automáticamente hasta él: resuelve su ruta física
-     * (gabinete → caja → unit tray), abre cada nivel en cascada y lo deja resaltado. Si
-     * no se encuentra o aún no tiene ubicación física asignada, muestra el mensaje
-     * correspondiente sin navegar.
+     * (gabinete → caja → unit tray) y fija la ruta de zoom en la URL para que el render
+     * abra cada nivel y lo deje resaltado. Si no se encuentra o aún no tiene ubicación
+     * física asignada, muestra el mensaje correspondiente sin navegar.
      */
     public function localizar(string $especimenId): void
     {
@@ -273,22 +219,118 @@ final class MapaInteractivo extends Component
                 return;
             }
 
-            $this->abrirGabinete($ruta->gabineteId);
-
-            if ($ruta->cajaId !== null && $ruta->codigoCaja !== null) {
-                $this->abrirCaja($ruta->cajaId, $ruta->codigoCaja);
-            }
-            if ($ruta->unitTrayId !== null && $ruta->numeroUnitTray !== null) {
-                $this->abrirUnitTray($ruta->unitTrayId, $ruta->numeroUnitTray);
-            }
-
+            $this->gabineteAbierto = $ruta->gabineteId;
+            $this->cajaAbierta = $ruta->cajaId ?? '';
+            $this->trayAbierto = $ruta->unitTrayId ?? '';
             $this->especimenResaltadoId = $ruta->especimenId;
         });
     }
 
     public function render(): View
     {
+        $this->sincronizarVistaConRuta();
+
         return view('inventariogestioncoleccion::seguimiento-fisico.mapa.interactivo');
+    }
+
+    /**
+     * Reconstruye la vista (gabinete → caja → unit tray) a partir de los identificadores
+     * de zoom de la URL. Es la única fuente de verdad de la navegación: tanto un clic como
+     * el botón «atrás» del navegador solo cambian esos identificadores, y aquí se deriva el
+     * mismo estado de forma perezosa por nivel.
+     */
+    private function sincronizarVistaConRuta(): void
+    {
+        $this->gabineteSeleccionado = null;
+        $this->composicion = ['subfamilias' => [], 'generos' => []];
+        $this->ranuras = [];
+        $this->cajaSeleccionada = null;
+        $this->unitTrays = [];
+        $this->unitTraySeleccionado = null;
+        $this->especimenes = [];
+
+        if ($this->gabineteAbierto === '') {
+            return;
+        }
+
+        $gabinete = $this->buscarGabinete($this->gabineteAbierto);
+        if ($gabinete === null) {
+            // La URL apunta a un gabinete que no está en la vista general: se ignora.
+            return;
+        }
+
+        $this->cargarProtegido(function () use ($gabinete): void {
+            $composicion = app(ConsultarComposicionGabineteHandler::class)
+                ->handle(new ConsultarComposicionGabineteInput($this->gabineteAbierto));
+
+            $this->ranuras = $gabinete['ranuras'];
+            $this->composicion = [
+                'subfamilias' => $composicion->subfamilias,
+                'generos' => $composicion->generos,
+            ];
+            $this->gabineteSeleccionado = [
+                'id' => $gabinete['id'],
+                'codigo' => $gabinete['codigo'],
+                'nombre' => $gabinete['nombre'],
+            ];
+
+            if ($this->cajaAbierta === '') {
+                return;
+            }
+
+            $contenido = app(ConsultarContenidoCajaHandler::class)
+                ->handle(new ConsultarContenidoCajaInput($this->cajaAbierta));
+
+            $this->unitTrays = array_map(fn ($t) => [
+                'unitTrayId' => $t->unitTrayId,
+                'numero' => $t->numero,
+                'clasificacionDominante' => $t->clasificacionDominante,
+            ], $contenido->items);
+
+            $this->cajaSeleccionada = [
+                'id' => $this->cajaAbierta,
+                'codigo' => $this->codigoDeCajaEnRanuras($this->cajaAbierta),
+            ];
+
+            if ($this->trayAbierto === '') {
+                return;
+            }
+
+            $contenidoTray = app(ConsultarContenidoUnitTrayHandler::class)
+                ->handle(new ConsultarContenidoUnitTrayInput($this->trayAbierto));
+
+            $this->especimenes = array_map(fn ($e) => [
+                'especimenId' => $e->especimenId,
+                'codigoCatalogo' => $e->codigoCatalogo,
+                'nombreCientifico' => $e->nombreCientifico,
+            ], $contenidoTray->items);
+
+            $this->unitTraySeleccionado = [
+                'id' => $this->trayAbierto,
+                'numero' => $this->numeroDeTray($this->trayAbierto),
+            ];
+        });
+    }
+
+    /**
+     * Mapea la ocupación de las ranuras de un gabinete a una estructura plana para la
+     * vista (número, si está ocupada, caja que ocupa, estado y clasificación).
+     *
+     * @param  array<int, object>  $items
+     * @return array<int, array<string, mixed>>
+     */
+    private function mapearRanuras(array $items): array
+    {
+        return array_map(fn ($r) => [
+            'ranuraId' => $r->ranuraId,
+            'numeroRanura' => $r->numeroRanura,
+            'ocupada' => $r->ocupada,
+            'cajaId' => $r->cajaId,
+            'codigoCaja' => $r->codigoCaja,
+            'estado' => $r->estado,
+            'esEspecial' => $r->esEspecial,
+            'clasificacion' => $r->clasificacion,
+        ], $items);
     }
 
     /**
@@ -306,5 +348,29 @@ final class MapaInteractivo extends Component
         }
 
         return null;
+    }
+
+    /** Resuelve el código legible de una caja a partir de las ranuras ya cargadas del gabinete. */
+    private function codigoDeCajaEnRanuras(string $cajaId): string
+    {
+        foreach ($this->ranuras as $r) {
+            if (($r['cajaId'] ?? null) === $cajaId) {
+                return (string) ($r['codigoCaja'] ?? '');
+            }
+        }
+
+        return '';
+    }
+
+    /** Resuelve el número de un unit tray a partir de los trays ya cargados de la caja. */
+    private function numeroDeTray(string $unitTrayId): int
+    {
+        foreach ($this->unitTrays as $t) {
+            if ($t['unitTrayId'] === $unitTrayId) {
+                return (int) $t['numero'];
+            }
+        }
+
+        return 0;
     }
 }
