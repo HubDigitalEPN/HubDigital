@@ -20,6 +20,7 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Li
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarGabinetes\ListarGabineteHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\LocalizarEspecimen\LocalizarEspecimenHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\LocalizarEspecimen\LocalizarEspecimenInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ObtenerOrdenFamiliasColeccion\ObtenerOrdenFamiliasColeccionHandler;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
 
 /**
@@ -63,6 +64,15 @@ final class MapaInteractivo extends Component
      * @var array<int, array<string, mixed>>
      */
     public array $gabinetes = [];
+
+    /**
+     * Familias presentes en la colección en su orden canónico (secuencia del curador, luego
+     * alfabético). Define el índice de color de cada familia para que el coloreado por familia
+     * sea estable y consistente entre gabinetes (misma familia → mismo color en todo el mapa).
+     *
+     * @var string[]
+     */
+    public array $ordenFamilias = [];
 
     /** @var ?array{id: string, codigo: string, nombre: string} */
     public ?array $gabineteSeleccionado = null;
@@ -121,6 +131,14 @@ final class MapaInteractivo extends Component
                     'ranuras' => $this->mapearRanuras($ocupacion->items),
                 ];
             }, app(ListarGabineteHandler::class)->handle()->items);
+
+            // Orden canónico de familias presentes: fija el índice de color por familia para que
+            // el coloreado sea estable y global. Acotado por el número de cajas, no de especímenes.
+            $orden = app(ObtenerOrdenFamiliasColeccionHandler::class)->handle();
+            $this->ordenFamilias = array_values(array_map(
+                fn ($f) => $f->familia,
+                array_filter($orden->familias, fn ($f) => $f->presente),
+            ));
         });
     }
 
