@@ -22,12 +22,17 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\Esp
 trait PropagaClasificacionTaxonomica
 {
     /**
-     * Dado un array de especimenIds, resuelve la clasificación dominante
-     * (subfamilia más frecuente; desempate por género más frecuente).
+     * Dado un array de especimenIds, resuelve la clasificación AGREGADA del tray: conserva la
+     * combinación dominante (subfamilia+género más frecuentes; desempate determinista) como valor
+     * representativo, pero amplía los conjuntos de subfamilias y géneros con todos los taxones
+     * distintos presentes. Así un tray que alberga varios taxones (p. ej. por error o por
+     * restricción de espacio) los muestra todos —sin perder cuál es el dominante— y los propaga
+     * tal cual hacia la Caja y el mapa. La detección de "fuera de lugar" sigue usando el valor
+     * dominante (accesores escalares), no el agregado.
      *
      * @param  string[]  $especimenIds
      */
-    private function resolverDominantePorEspecimenes(
+    private function resolverClasificacionAgregadaPorEspecimenes(
         array $especimenIds,
         EspecimenRepositoryInterface $especimenRepo,
         ClasificacionTaxonomicaPort $clasificacionPort,
@@ -46,7 +51,7 @@ trait PropagaClasificacionTaxonomica
             }
         }
 
-        return $this->clasificacionMasFrecuente($clasificaciones);
+        return (new CalculadorClasificacionDominante)->calcularAgregado($clasificaciones);
     }
 
     /**
@@ -118,13 +123,5 @@ trait PropagaClasificacionTaxonomica
             : $caja->limpiarClasificacion();
 
         $cajaRepo->guardar($caja);
-    }
-
-    /**
-     * @param  ClasificacionTaxonomica[]  $clasificaciones
-     */
-    private function clasificacionMasFrecuente(array $clasificaciones): ?ClasificacionTaxonomica
-    {
-        return (new CalculadorClasificacionDominante)->calcular($clasificaciones);
     }
 }

@@ -130,6 +130,21 @@
                             >
                                 <span class="font-serif italic text-text-primary">{{ $sugerencia['taxonNombre'] }}</span>
                                 <span class="text-xs text-text-secondary">{{ $sugerencia['codigoCatalogo'] }}</span>
+                                @php
+                                    $us = $sugerencia['ubicacion'] ?? null;
+                                    $partesUbic = $us === null ? [] : array_filter([
+                                        $us['gabineteCodigo'] ? 'Gab. '.$us['gabineteCodigo'] : null,
+                                        $us['ranuraNumero'] ? 'Ranura '.$us['ranuraNumero'] : null,
+                                        $us['cajaCodigo'] ?: null,
+                                        $us['trayNumero'] ? 'Tray '.$us['trayNumero'] : null,
+                                    ]);
+                                @endphp
+                                @if($partesUbic !== [])
+                                    <span class="flex items-center gap-1 text-xs text-text-secondary">
+                                        <flux:icon name="map-pin" class="size-3.5 shrink-0 text-blue-navy" />
+                                        {{ implode(' · ', $partesUbic) }}
+                                    </span>
+                                @endif
                             </button>
                         </li>
                     @endforeach
@@ -287,6 +302,14 @@
                         >
                             <span class="text-sm font-bold">Tray {{ $tray['numero'] }}</span>
                             <span class="font-serif text-xs italic">{{ $etiquetaTaxon($tray['clasificacionDominante'] ?? null) }}</span>
+                            @php
+                                $cTray = $tray['clasificacionDominante'] ?? null;
+                                $variosTaxonesTray = $cTray !== null
+                                    && (count($cTray['subfamilias'] ?? []) > 1 || count($cTray['generos'] ?? []) > 1);
+                            @endphp
+                            @if($variosTaxonesTray)
+                                <span class="text-[0.65rem] not-italic text-text-secondary">+ varios taxones</span>
+                            @endif
                         </button>
                     @endforeach
                 </div>

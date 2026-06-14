@@ -68,7 +68,7 @@ final class ActualizarEspecimenesUnitTrayHandler
                 if ($input->especimenIds === []) {
                     $unitTray->limpiarClasificacion();
                 } else {
-                    $clasificacion = $this->resolverDominantePorEspecimenes(
+                    $clasificacion = $this->resolverClasificacionAgregadaPorEspecimenes(
                         $input->especimenIds,
                         $this->especimenRepo,
                         $this->clasificacionPort,

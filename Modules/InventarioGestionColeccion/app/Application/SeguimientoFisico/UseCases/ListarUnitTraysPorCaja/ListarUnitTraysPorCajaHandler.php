@@ -61,6 +61,9 @@ final class ListarUnitTraysPorCajaHandler
                 'subfamilia' => $clasificacion?->subfamilia(),
                 'genero' => $clasificacion?->genero(),
                 'especie' => $clasificacion?->especie(),
+                // Conjuntos completos (dominante primero): un tray puede albergar varios taxones.
+                'subfamilias' => $clasificacion?->subfamilias() ?? [],
+                'generos' => $clasificacion?->generos() ?? [],
                 'totalEspecimenes' => count($this->asignacionRepo->especimenIdsPorUnitTray($tray->id())),
             ];
         }, $trays);

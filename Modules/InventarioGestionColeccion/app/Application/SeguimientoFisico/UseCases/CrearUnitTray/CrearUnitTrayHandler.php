@@ -67,7 +67,7 @@ final class CrearUnitTrayHandler
                 );
 
                 if ($input->especimenIds !== []) {
-                    $clasificacion = $this->resolverDominantePorEspecimenes(
+                    $clasificacion = $this->resolverClasificacionAgregadaPorEspecimenes(
                         $input->especimenIds,
                         $this->especimenRepo,
                         $this->clasificacionPort,

@@ -11,6 +11,7 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\Event
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\GeneradorActaPdfPort;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\HorarioValidadorPort;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\TransactionManagerPort;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\UbicacionEspecimenPort;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\AlertaUbicacionRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\CajaRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\ConfiguracionColumnaRepositoryInterface;
@@ -34,6 +35,7 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\Uni
 use Modules\InventarioGestionColeccion\Infrastructure\Providers\EventServiceProvider;
 use Modules\InventarioGestionColeccion\Infrastructure\Providers\RouteServiceProvider;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\DatabaseHorarioValidadorAdapter;
+use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\EloquentUbicacionEspecimenAdapter;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\HttpSeguridadContextoAdapter;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\LaravelEventPublisherAdapter;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\LaravelTransactionManagerAdapter;
@@ -109,6 +111,7 @@ class InventarioGestionColeccionServiceProvider extends ModuleServiceProvider
         IdentificacionRepositoryInterface::class => EloquentIdentificacionRepository::class,
         GeneradorActaPdfPort::class => SimplePdfActaAdapter::class,
         ClasificacionTaxonomicaPort::class => TaxonArbolClasificacionTaxonomicaAdapter::class,
+        UbicacionEspecimenPort::class => EloquentUbicacionEspecimenAdapter::class,
     ];
 
     /**
