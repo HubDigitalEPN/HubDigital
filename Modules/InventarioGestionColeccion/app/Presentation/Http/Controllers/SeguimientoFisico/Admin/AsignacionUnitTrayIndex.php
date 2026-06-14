@@ -9,11 +9,14 @@ use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarEspecimenesUnitTray\ActualizarEspecimenesUnitTrayHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarEspecimenesUnitTray\ActualizarEspecimenesUnitTrayInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConsultarOcupacionGabinete\ConsultarOcupacionGabineteHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConsultarOcupacionGabinete\ConsultarOcupacionGabineteInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\CrearUnitTray\CrearUnitTrayHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\CrearUnitTray\CrearUnitTrayInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarCajas\ListarCajasHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarEspecimenesAsignables\ListarEspecimenesAsignablesHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarEspecimenesAsignables\ListarEspecimenesAsignablesInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarGabinetes\ListarGabineteHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarUnitTraysPorCaja\ListarUnitTraysPorCajaHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarUnitTraysPorCaja\ListarUnitTraysPorCajaInput;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
@@ -31,7 +34,16 @@ final class AsignacionUnitTrayIndex extends Component
 {
     use TraduceErroresPersistencia;
 
+    /** Valor del read-model `estado` para una caja en tránsito (contrato de ListarCajas). */
+    private const ESTADO_TRANSITO = 'en_transito';
+
     public array $cajas = [];
+
+    /** Gabinetes para el filtro del selector de cajas: [['id','codigo','nombre'], ...]. */
+    public array $gabinetes = [];
+
+    /** Filtro del selector de cajas: '' = todos, un id de gabinete, o 'transito'. */
+    public string $filtroGabinete = '';
 
     public string $cajaSeleccionada = '';
 
@@ -59,11 +71,30 @@ final class AsignacionUnitTrayIndex extends Component
         // Solo se cargan las cajas al montar. Los especímenes (catálogo de 48k+)
         // jamás se cargan de golpe: se buscan de forma acotada al elegir un tray.
         $this->cargarProtegido(function () use ($cajasHandler) {
+            // Mapa caja → gabinete a partir de la ocupación de cada gabinete: permite filtrar el
+            // selector de cajas por gabinete sin que el read-model de cajas conozca su ubicación.
+            $gabineteDeCaja = $this->mapearCajasAGabinetes();
+
             $this->cajas = array_map(
-                fn ($c) => ['id' => $c->id, 'label' => "{$c->codigo}".($c->nombre ? " — {$c->nombre}" : '')],
+                fn ($c) => [
+                    'id' => $c->id,
+                    'label' => "{$c->codigo}".($c->nombre ? " — {$c->nombre}" : ''),
+                    'gabineteId' => $gabineteDeCaja[$c->id] ?? null,
+                    'estado' => $c->estado,
+                ],
                 $cajasHandler->handle()->items,
             );
         });
+    }
+
+    /** Al cambiar el filtro de gabinete, si la caja seleccionada deja de ser visible, se descarta. */
+    public function updatedFiltroGabinete(): void
+    {
+        $idsVisibles = array_column($this->cajasFiltradas(), 'id');
+        if ($this->cajaSeleccionada !== '' && ! in_array($this->cajaSeleccionada, $idsVisibles, true)) {
+            $this->cajaSeleccionada = '';
+            $this->updatedCajaSeleccionada('');
+        }
     }
 
     /** Al cambiar de caja reinicia la selección de tray/especímenes y carga los unit trays de esa caja. */
@@ -148,7 +179,67 @@ final class AsignacionUnitTrayIndex extends Component
 
     public function render(): View
     {
-        return view('inventariogestioncoleccion::admin.unit-trays.index');
+        return view('inventariogestioncoleccion::admin.unit-trays.index', [
+            'cajasFiltradas' => $this->cajasFiltradas(),
+            'hayTransito' => $this->hayCajasEnTransito(),
+        ]);
+    }
+
+    /**
+     * Construye el mapa cajaId → gabineteId recorriendo la ocupación de cada gabinete. De paso
+     * llena $this->gabinetes con las opciones del filtro. Las cajas que no aparecen en ninguna
+     * ranura (p. ej. en tránsito) quedan fuera del mapa (gabineteId null).
+     *
+     * @return array<string, string>
+     */
+    private function mapearCajasAGabinetes(): array
+    {
+        $ocupacionHandler = app(ConsultarOcupacionGabineteHandler::class);
+        $gabineteDeCaja = [];
+        $this->gabinetes = [];
+
+        foreach (app(ListarGabineteHandler::class)->handle()->items as $g) {
+            $this->gabinetes[] = ['id' => $g->id, 'codigo' => $g->codigo, 'nombre' => $g->nombre];
+
+            foreach ($ocupacionHandler->handle(new ConsultarOcupacionGabineteInput($g->id))->items as $ranura) {
+                if ($ranura->ocupada && $ranura->cajaId) {
+                    $gabineteDeCaja[$ranura->cajaId] = $g->id;
+                }
+            }
+        }
+
+        return $gabineteDeCaja;
+    }
+
+    /**
+     * Cajas visibles según el filtro: '' = todas; 'transito' = solo las en tránsito; cualquier
+     * otro valor = las alojadas en ese gabinete.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function cajasFiltradas(): array
+    {
+        if ($this->filtroGabinete === '') {
+            return $this->cajas;
+        }
+
+        if ($this->filtroGabinete === 'transito') {
+            return array_values(array_filter($this->cajas, fn ($c) => $c['estado'] === self::ESTADO_TRANSITO));
+        }
+
+        return array_values(array_filter($this->cajas, fn ($c) => $c['gabineteId'] === $this->filtroGabinete));
+    }
+
+    /** ¿Hay alguna caja en tránsito? La opción del filtro solo se muestra si existen. */
+    private function hayCajasEnTransito(): bool
+    {
+        foreach ($this->cajas as $c) {
+            if ($c['estado'] === self::ESTADO_TRANSITO) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** Carga los unit trays de la caja indicada (lista vacía si no hay caja seleccionada). */

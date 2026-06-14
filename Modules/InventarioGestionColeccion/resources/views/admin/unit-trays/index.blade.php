@@ -44,19 +44,40 @@
     <div class="rounded-lg border border-border bg-surface shadow-sm p-4 space-y-4">
         <flux:heading size="lg" class="text-blue-navy">1. Unit trays en una caja</flux:heading>
 
-        <flux:field>
-            <flux:label>Caja disponible</flux:label>
-            <flux:select
-                wire:model.live="cajaSeleccionada"
-                wire:loading.attr="disabled"
-                wire:target="cajaSeleccionada"
-                placeholder="Selecciona una caja..."
-            >
-                @foreach($cajas as $caja)
-                    <flux:select.option value="{{ $caja['id'] }}">{{ $caja['label'] }}</flux:select.option>
-                @endforeach
-            </flux:select>
-        </flux:field>
+        <div class="grid gap-4 sm:grid-cols-2">
+            {{-- Filtro por gabinete (y opción «en tránsito» si hay cajas en ese estado): acota el
+                 selector de cajas cuando hay muchísimas. --}}
+            <flux:field>
+                <flux:label>Gabinete</flux:label>
+                <flux:select wire:model.live="filtroGabinete">
+                    <flux:select.option value="">Todos los gabinetes</flux:select.option>
+                    @foreach($gabinetes as $gabinete)
+                        <flux:select.option value="{{ $gabinete['id'] }}">
+                            {{ $gabinete['codigo'] }}{{ $gabinete['nombre'] ? ' — '.$gabinete['nombre'] : '' }}
+                        </flux:select.option>
+                    @endforeach
+                    @if($hayTransito)
+                        <flux:select.option value="transito">En tránsito</flux:select.option>
+                    @endif
+                </flux:select>
+            </flux:field>
+
+            <flux:field>
+                <flux:label>Caja disponible</flux:label>
+                <flux:select
+                    wire:model.live="cajaSeleccionada"
+                    wire:loading.attr="disabled"
+                    wire:target="cajaSeleccionada"
+                    placeholder="Selecciona una caja..."
+                >
+                    @forelse($cajasFiltradas as $caja)
+                        <flux:select.option value="{{ $caja['id'] }}">{{ $caja['label'] }}</flux:select.option>
+                    @empty
+                        <flux:select.option value="" disabled>No hay cajas en este filtro</flux:select.option>
+                    @endforelse
+                </flux:select>
+            </flux:field>
+        </div>
 
         @if($cajaSeleccionada !== '')
             {{-- Contexto de la caja seleccionada + acción de crear --}}
