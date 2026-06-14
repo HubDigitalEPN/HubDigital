@@ -5,6 +5,10 @@
     'clase' => '',
     // Etiqueta de taxón ya resuelta por el padre (con fallback por rango).
     'etiqueta' => 'Sin clasificar',
+    // Hint legible para cajas de transición (p. ej. "4 taxones"); null = caja de un solo taxón.
+    'extra' => null,
+    // Detalle completo (lista de taxones) para el tooltip de una caja de transición; null = sin detalle.
+    'detalle' => null,
     // Variante reducida y NO interactiva para la vista general de gabinetes.
     'compacto' => false,
 ])
@@ -13,7 +17,9 @@
     $ocupada = $ranura['ocupada'] ?? false;
     $numero = $ranura['numeroRanura'] ?? '';
     $codigo = $ranura['codigoCaja'] ?? '';
-    $tooltip = $ocupada ? $codigo.' · '.$etiqueta : 'Ranura '.$numero.' — vacía';
+    // El tooltip mantiene el formato «código · taxón»: en transición usa el detalle (lista de
+    // taxones) tras el código; si no, el taxón dominante.
+    $tooltip = $ocupada ? $codigo.' · '.($detalle ?? $etiqueta) : 'Ranura '.$numero.' — vacía';
 @endphp
 
 @if($compacto)
@@ -31,17 +37,26 @@
         </div>
     </flux:tooltip>
 @elseif($ocupada)
-    {{-- Cajón ocupado: barra horizontal clicable (el padre aporta el wire:click). --}}
-    <button
-        type="button"
-        {{ $attributes->merge(['class' => 'flex min-h-[44px] w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left shadow-sm transition-colors hover:ring-2 hover:ring-science-blue '.$clase]) }}
-    >
-        <span class="grid size-7 shrink-0 place-items-center rounded bg-black/15 text-xs font-bold">{{ $numero }}</span>
-        <span class="flex min-w-0 flex-col leading-tight">
-            <span class="truncate text-sm font-bold">{{ $codigo }}</span>
-            <span class="truncate font-serif text-xs italic opacity-90">{{ $etiqueta }}</span>
-        </span>
-    </button>
+    {{-- Cajón ocupado: barra horizontal clicable (el padre aporta el wire:click). El tooltip
+         lista los taxones de una caja de transición; si no, el código · taxón dominante. --}}
+    <flux:tooltip :content="$tooltip">
+        <button
+            type="button"
+            {{ $attributes->merge(['class' => 'flex min-h-[44px] w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left shadow-sm transition-colors hover:ring-2 hover:ring-science-blue '.$clase]) }}
+        >
+            <span class="grid size-7 shrink-0 place-items-center rounded bg-black/15 text-xs font-bold">{{ $numero }}</span>
+            <span class="flex min-w-0 flex-col leading-tight">
+                <span class="truncate text-sm font-bold">{{ $codigo }}</span>
+                <span class="truncate font-serif text-xs italic opacity-90">{{ $etiqueta }}</span>
+                @if($extra)
+                    <span class="mt-0.5 inline-flex items-center gap-1 text-xs font-medium not-italic opacity-90">
+                        <flux:icon name="rectangle-stack" class="size-3.5 shrink-0" />
+                        {{ $extra }}
+                    </span>
+                @endif
+            </span>
+        </button>
+    </flux:tooltip>
 @else
     {{-- Cajón vacío: barra discontinua, mismo alto que un cajón ocupado. --}}
     <div class="flex min-h-[44px] w-full items-center gap-2.5 rounded-md border border-dashed border-border bg-bg-main px-2.5 py-1.5 text-text-secondary">
