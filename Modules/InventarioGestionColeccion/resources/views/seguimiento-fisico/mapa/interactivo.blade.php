@@ -68,6 +68,35 @@
         return $partes !== [] ? implode(' · ', $partes) : ($c['familia'] ?? 'Sin clasificar');
     };
 
+    // Clave de coloreado por subfamilia·género de una CAJA dentro de un gabinete. A diferencia de
+    // claveTray, combina TODAS las subfamilias y géneros presentes (ordenados): así una caja de
+    // transición (varios taxones, p. ej. para aprovechar el espacio sobrante) recibe una clave —y
+    // por tanto un color— distinta a una caja de una sola subfamilia. Fallback a familia.
+    $claveCaja = function (?array $c) use ($norm): ?string {
+        if ($c === null) {
+            return null;
+        }
+        $subs = array_values(array_unique(array_map($norm, $c['subfamilias'] ?? [])));
+        $gens = array_values(array_unique(array_map($norm, $c['generos'] ?? [])));
+        sort($subs);
+        sort($gens);
+        $clave = trim(implode(',', $subs).'|'.implode(',', $gens), '|');
+
+        return $clave !== '' ? $clave : ($norm($c['familia'] ?? '') ?: null);
+    };
+
+    // Etiqueta de la leyenda de color del nivel gabinete: enumera subfamilias y géneros presentes
+    // (mostrando ambos para desambiguar cajas de igual subfamilia pero distinto género), con
+    // fallback a familia. Una caja de transición lista todos sus taxones.
+    $etiquetaCaja = function (?array $c): string {
+        if ($c === null) {
+            return 'Sin clasificar';
+        }
+        $partes = array_merge($c['subfamilias'] ?? [], $c['generos'] ?? []);
+
+        return $partes !== [] ? implode(' · ', $partes) : ($c['familia'] ?? 'Sin clasificar');
+    };
+
     // Recolecta valores distintos (escalar o lista) de un campo a lo largo de varias
     // clasificaciones, ordenados natural-case. Trabaja solo a nivel caja/tray (sin especímenes).
     $recolectar = function (array $clasificaciones, string $clave) use ($norm): array {
@@ -326,7 +355,24 @@
             $clasifRanuras = array_map(fn ($r) => $r['clasificacion'] ?? null, $ranuras);
             $familiasGab = $recolectar($clasifRanuras, 'familia');
             usort($familiasGab, fn ($a, $b) => ($indiceFamilia[$norm($a)] ?? PHP_INT_MAX) <=> ($indiceFamilia[$norm($b)] ?? PHP_INT_MAX));
-            $leyendaFamGab = array_map(fn ($f) => ['label' => $f, 'clase' => $familiaClase($f)], $familiasGab);
+
+            // Coloreado por subfamilia·género (fallback a familia): dentro de un gabinete la familia
+            // suele ser única (p. ej. todo Formicidae), así que colorear por familia pintaría todo
+            // igual. El color que distingue cajones es el de subfamilia/género; una caja de
+            // transición (varios taxones) recibe su propio color. Leyenda por orden de aparición.
+            $leyendaCaja = [];
+            foreach ($ranuras as $r) {
+                $c = $r['clasificacion'] ?? null;
+                $k = $claveCaja($c);
+                if ($k === null || isset($leyendaCaja[$k])) {
+                    continue;
+                }
+                $leyendaCaja[$k] = [
+                    'label' => $etiquetaCaja($c),
+                    'clase' => $paletaTaxon[count($leyendaCaja) % count($paletaTaxon)],
+                ];
+            }
+            $claseCaja = fn (?array $c) => $leyendaCaja[$claveCaja($c)]['clase'] ?? $claseNeutra;
         @endphp
 
         <div wire:key="nivel-gabinete" wire:transition class="space-y-4">
@@ -345,8 +391,8 @@
                 />
             </div>
 
-            @if(count($leyendaFamGab) > 1)
-                <x-inventariogestioncoleccion::seguimiento-fisico.mapa-leyenda-color :items="$leyendaFamGab" />
+            @if(count($leyendaCaja) > 1)
+                <x-inventariogestioncoleccion::seguimiento-fisico.mapa-leyenda-color :items="array_values($leyendaCaja)" />
             @endif
 
             {{-- Vitrina: cajones (ranuras) apilados verticalmente. --}}
@@ -355,7 +401,7 @@
                     {{-- wire:click solo surte efecto en cajones ocupados; el cajón vacío no emite atributos. --}}
                     <x-inventariogestioncoleccion::seguimiento-fisico.ranura-cajon
                         :ranura="$ranura"
-                        :clase="$familiaClase(data_get($ranura, 'clasificacion.familia'))"
+                        :clase="$claseCaja($ranura['clasificacion'] ?? null)"
                         :etiqueta="$etiquetaTaxon($ranura['clasificacion'] ?? null)"
                         wire:click="abrirCaja('{{ $ranura['cajaId'] }}', '{{ $ranura['codigoCaja'] }}')"
                     />
