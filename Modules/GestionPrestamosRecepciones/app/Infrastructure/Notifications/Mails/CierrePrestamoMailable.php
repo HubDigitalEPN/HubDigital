@@ -11,15 +11,19 @@ use Illuminate\Mail\Mailables\Envelope;
 final class CierrePrestamoMailable extends Mailable
 {
     public function __construct(
-        public readonly string $prestamoId,
+        public readonly string $numeroPrestamo,
+        public readonly string $investigadorNombre,
         public readonly string $resultado,
         public readonly string $condicion,
+        public readonly bool $esConObservacion,
+        public readonly ?string $observacion,
+        public readonly string $prestamoUrl,
     ) {}
 
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: "Préstamo {$this->prestamoId} cerrado — Resultado: {$this->resultado}",
+            subject: "Préstamo {$this->numeroPrestamo} cerrado — {$this->resultado}",
         );
     }
 

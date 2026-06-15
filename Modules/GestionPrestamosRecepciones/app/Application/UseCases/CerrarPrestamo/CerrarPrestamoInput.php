@@ -13,5 +13,6 @@ final readonly class CerrarPrestamoInput
         public string $prestamoId,
         public string $curadorId,
         public string $resultado,
+        public ?string $observacion = null,
     ) {}
 }

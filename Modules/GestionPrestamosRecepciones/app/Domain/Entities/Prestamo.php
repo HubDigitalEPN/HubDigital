@@ -283,6 +283,7 @@ final class Prestamo
         string $curadorId,
         ResultadoVerificacionDevolucion $resultado,
         DateTimeImmutable $ahora,
+        ?string $observacion = null,
     ): void {
         if (! $this->estado->equals(EstadoPrestamo::EnRevision)) {
             throw TransicionDeEstadoInvalidaException::para(
@@ -301,6 +302,7 @@ final class Prestamo
             resultado: $resultado,
             condicionEspecimen: $resultado->condicionResultante(),
             ocurridoEn: $ahora,
+            observacion: $observacion,
         );
     }
 

@@ -54,6 +54,7 @@ final class CerrarPrestamoHandler
             curadorId: $input->curadorId,
             resultado: $resultado,
             ahora: new DateTimeImmutable,
+            observacion: $input->observacion,
         );
 
         $this->transactionManager->executeTransactional(function () use ($prestamo): void {

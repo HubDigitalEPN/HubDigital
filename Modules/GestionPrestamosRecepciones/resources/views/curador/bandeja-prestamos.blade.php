@@ -125,6 +125,11 @@
                                             wire:navigate href="{{ route('prestamos.curador.prestamo.auditar', $prestamo->id) }}">
                                             Subir documento
                                         </flux:button>
+                                    @elseif($prestamo->estado === 'en_revision')
+                                        <flux:button size="sm" variant="primary" icon="archive-box-arrow-down"
+                                            wire:navigate href="{{ route('prestamos.curador.prestamo.cerrar', $prestamo->id) }}">
+                                            Cerrar préstamo
+                                        </flux:button>
                                     @endif
                                     <flux:button size="sm" variant="ghost" icon="magnifying-glass"
                                         wire:navigate href="{{ route('prestamos.curador.prestamo.auditar', $prestamo->id) }}">

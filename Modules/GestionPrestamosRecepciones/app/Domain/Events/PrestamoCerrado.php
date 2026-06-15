@@ -22,5 +22,6 @@ final readonly class PrestamoCerrado
         public ResultadoVerificacionDevolucion $resultado,
         public CondicionEspecimen $condicionEspecimen,
         public DateTimeImmutable $ocurridoEn,
+        public ?string $observacion = null,
     ) {}
 }

@@ -8,6 +8,8 @@ use DateTimeImmutable;
 use Illuminate\Support\Str;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaDevueltaPorFirmaInvalida;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaEnviada;
+use Modules\GestionPrestamosRecepciones\Domain\Events\DevolucionRegistrada;
+use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoCerrado;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaFirmadaSubida;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaValidada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\DocumentoExportacionSubido;
@@ -69,7 +71,9 @@ final class RegistrarEventoHistorialListener
             $event instanceof RecordatorioDevolucionEnviado,
             $event instanceof VerificacionEntregaRegistrada,
             $event instanceof VerificacionEntregaAprobada,
-            $event instanceof PrestamoActivado => 'prestamo',
+            $event instanceof PrestamoActivado,
+            $event instanceof DevolucionRegistrada,
+            $event instanceof PrestamoCerrado => 'prestamo',
             $event instanceof DocumentoExportacionSubido => 'prestamo',
         };
     }
@@ -101,7 +105,9 @@ final class RegistrarEventoHistorialListener
             $event instanceof RecordatorioDevolucionEnviado,
             $event instanceof VerificacionEntregaRegistrada,
             $event instanceof VerificacionEntregaAprobada,
-            $event instanceof PrestamoActivado => (string) $event->prestamoId,
+            $event instanceof PrestamoActivado,
+            $event instanceof DevolucionRegistrada,
+            $event instanceof PrestamoCerrado => (string) $event->prestamoId,
         };
     }
 
