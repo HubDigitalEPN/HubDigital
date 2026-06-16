@@ -15,7 +15,10 @@ use Modules\CatalogoPublico\Application\Ports\ProveedorOpcionesFiltroPort;
 use Modules\CatalogoPublico\Application\UseCases\ConstruirArbolTaxonomico\ConstruirArbolTaxonomicoHandler;
 use Modules\CatalogoPublico\Application\UseCases\ConstruirArbolTaxonomico\ConstruirArbolTaxonomicoInput;
 use Modules\CatalogoPublico\Application\UseCases\ConstruirArbolTaxonomico\ConstruirArbolTaxonomicoOutput;
+use Modules\CatalogoPublico\Application\UseCases\ExportarRegistrosEspecimenes\ExportarRegistrosEspecimenesHandler;
+use Modules\CatalogoPublico\Application\UseCases\ExportarRegistrosEspecimenes\ExportarRegistrosEspecimenesInput;
 use Modules\CatalogoPublico\Domain\ValueObjects\FiltrosBusqueda;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 #[Layout('layouts.portal', params: ['title' => 'Catálogo taxonómico · Departamento de Biología — EPN'])]
 final class PortalCatalogo extends Component
@@ -127,9 +130,14 @@ final class PortalCatalogo extends Component
 
     private ProveedorOpcionesFiltroPort $opcionesFiltro;
 
-    public function boot(ProveedorOpcionesFiltroPort $opcionesFiltro): void
-    {
+    private ExportarRegistrosEspecimenesHandler $exportarHandler;
+
+    public function boot(
+        ProveedorOpcionesFiltroPort $opcionesFiltro,
+        ExportarRegistrosEspecimenesHandler $exportarHandler,
+    ): void {
         $this->opcionesFiltro = $opcionesFiltro;
+        $this->exportarHandler = $exportarHandler;
     }
 
     // ─── Opciones dinámicas ───────────────────────────────────────────────────
@@ -217,6 +225,21 @@ final class PortalCatalogo extends Component
         $this->filtroElevDesde = '';
         $this->filtroElevHasta = '';
         $this->filtroBiomas = [];
+    }
+
+    // ─── Exportación ─────────────────────────────────────────────────────────
+
+    public function descargarDatos(): StreamedResponse
+    {
+        $output = $this->exportarHandler->handle(
+            new ExportarRegistrosEspecimenesInput($this->taxon)
+        );
+
+        return response()->streamDownload(
+            fn () => print ($output->contenidoXlsx),
+            $output->nombreArchivo,
+            ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+        );
     }
 
     // ─── Render ───────────────────────────────────────────────────────────────

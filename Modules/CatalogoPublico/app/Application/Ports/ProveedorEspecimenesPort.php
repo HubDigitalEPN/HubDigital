@@ -16,4 +16,7 @@ interface ProveedorEspecimenesPort
      * @return DatosEspecimenProveedor[]
      */
     public function buscarPorOccurrenceIds(array $occurrenceIds): array;
+
+    /** @return DatosEspecimenProveedor[] */
+    public function buscarPorNombreCientifico(string $scientificName): array;
 }
