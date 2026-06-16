@@ -6,23 +6,23 @@
         Leyenda taxonómica
     </span>
     <span class="inline-flex items-center gap-1.5">
-        <span class="font-serif italic text-text-primary">Aa bb</span>
+        <x-inventariogestioncoleccion::seguimiento-fisico.taxon-tipografico estilo="especie" texto="Aa bb" class="text-text-primary" />
         Especie
     </span>
     <span class="inline-flex items-center gap-1.5">
-        <span class="font-serif text-text-primary"><span class="italic">Aa</span> sp.</span>
+        <x-inventariogestioncoleccion::seguimiento-fisico.taxon-tipografico estilo="genero" texto="Aa" class="text-text-primary" />
         Género
     </span>
     <span class="inline-flex items-center gap-1.5">
-        <span class="font-serif text-text-primary">Aa</span>
+        <x-inventariogestioncoleccion::seguimiento-fisico.taxon-tipografico estilo="subfamilia" texto="Aa" class="text-text-primary" />
         Subfamilia
     </span>
     <span class="inline-flex items-center gap-1.5">
-        <span class="font-sans font-semibold text-text-primary">Aa</span>
+        <x-inventariogestioncoleccion::seguimiento-fisico.taxon-tipografico estilo="familia" texto="Aa" class="text-text-primary" />
         Familia
     </span>
     <span class="inline-flex items-center gap-1.5">
-        <span class="font-sans uppercase tracking-wide text-text-primary">Aa</span>
+        <x-inventariogestioncoleccion::seguimiento-fisico.taxon-tipografico estilo="superior" texto="Aa" class="text-text-primary" />
         Orden / rango superior
     </span>
 </div>

@@ -45,16 +45,16 @@
             {{-- Especie: binomio completo en cursiva serif (ya incluye el género). --}}
             {{-- Género solo: cursiva + "sp." en redonda (notación de género sin especie). --}}
             @if($variosGeneros)
-                <span class="font-serif italic text-text-primary">{{ implode(', ', $listaGeneros) }}</span>
+                <x-inventariogestioncoleccion::seguimiento-fisico.taxon-tipografico estilo="especie" :texto="implode(', ', $listaGeneros)" class="text-text-primary" />
             @elseif(! empty($especie))
-                <span class="font-serif italic text-text-primary">{{ $especie }}</span>
+                <x-inventariogestioncoleccion::seguimiento-fisico.taxon-tipografico estilo="especie" :texto="$especie" class="text-text-primary" />
             @elseif(! empty($listaGeneros))
-                <span class="font-serif text-text-primary"><span class="italic">{{ $listaGeneros[0] }}</span> sp.</span>
+                <x-inventariogestioncoleccion::seguimiento-fisico.taxon-tipografico estilo="genero" :texto="$listaGeneros[0]" class="text-text-primary" />
             @endif
 
             {{-- Subfamilia: serif redonda (rango sobre el género) --}}
             @if(! empty($listaSubfamilias))
-                <span class="font-serif text-xs text-text-secondary">{{ implode(', ', $listaSubfamilias) }}</span>
+                <x-inventariogestioncoleccion::seguimiento-fisico.taxon-tipografico estilo="subfamilia" :texto="implode(', ', $listaSubfamilias)" class="text-xs text-text-secondary" />
             @endif
 
             @if($variasSubfamilias || $variosGeneros)
@@ -62,10 +62,10 @@
             @endif
         @elseif($respaldoEsFamilia)
             {{-- Familia: sans seminegrita --}}
-            <span class="font-sans font-semibold text-text-primary">{{ $respaldoValor }}</span>
+            <x-inventariogestioncoleccion::seguimiento-fisico.taxon-tipografico estilo="familia" :texto="$respaldoValor" class="text-text-primary" />
         @else
             {{-- Orden / suborden / superfamilia: sans en mayúsculas --}}
-            <span class="font-sans uppercase tracking-wide text-xs text-text-primary">{{ $respaldoValor }}</span>
+            <x-inventariogestioncoleccion::seguimiento-fisico.taxon-tipografico estilo="superior" :texto="$respaldoValor" class="text-xs text-text-primary" />
         @endif
     </span>
 @else
