@@ -51,7 +51,7 @@ class Login extends Component
         $destination = match ($user->rol) {
             RolUsuario::DEPOSITANTE => route('prestamos.investigador.deposito.crear'),
             RolUsuario::PRESTAMISTA => route('prestamos.investigador.mis-solicitudes'),
-            RolUsuario::CURADOR => route('prestamos.curador.solicitudes'),
+            RolUsuario::CURADOR => route('dashboard'),
             default => route('dashboard'),
         };
 

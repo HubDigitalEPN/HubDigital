@@ -32,6 +32,7 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\Tax
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UbicacionCajaRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UnitTrayEspecimenRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UnitTrayRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\VisitanteRepositoryInterface;
 use Modules\InventarioGestionColeccion\Infrastructure\Providers\EventServiceProvider;
 use Modules\InventarioGestionColeccion\Infrastructure\Providers\RouteServiceProvider;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\DatabaseHorarioValidadorAdapter;
@@ -63,7 +64,9 @@ use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persiste
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentUbicacionCajaRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentUnitTrayEspecimenRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentUnitTrayRepository;
+use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentVisitanteRepository;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Mapa\MapaInteractivo;
+use Modules\InventarioGestionColeccion\Presentation\Http\Middleware\VisitanteSesionMiddleware;
 use Nwidart\Modules\Support\ModuleServiceProvider;
 
 /**
@@ -104,6 +107,7 @@ class InventarioGestionColeccionServiceProvider extends ModuleServiceProvider
         TaxonRepositoryInterface::class => EloquentTaxonRepository::class,
         EspecimenRepositoryInterface::class => EloquentEspecimenRepository::class,
         EntidadDepositanteRepositoryInterface::class => EloquentEntidadDepositanteRepository::class,
+        VisitanteRepositoryInterface::class => EloquentVisitanteRepository::class,
         DatasetConfigRepositoryInterface::class => EloquentDatasetConfigRepository::class,
         ConfiguracionColumnaRepositoryInterface::class => EloquentConfiguracionColumnaRepository::class,
         LocalidadRepositoryInterface::class => EloquentLocalidadRepository::class,
@@ -140,8 +144,12 @@ class InventarioGestionColeccionServiceProvider extends ModuleServiceProvider
         $this->loadMigrationsFrom(module_path($this->name, 'database/migrations'));
 
         // El mapa interactivo es un componente Livewire anidado y reutilizable: se
-        // registra con alias para que distintas páginas-host (curador hoy, portal
-        // público del visitante más adelante) puedan montarlo con su propio modo.
+        // registra con alias para que distintas páginas-host (curador y portal del
+        // visitante) puedan montarlo con su propio modo.
         Livewire::component('inventario-mapa-interactivo', MapaInteractivo::class);
+
+        // Guarda de la sesión efímera del visitante: protege el mapa del visitante para
+        // que solo entre quien llegó por un QR válido y vigente, y nada más.
+        $this->app['router']->aliasMiddleware('visitante', VisitanteSesionMiddleware::class);
     }
 }

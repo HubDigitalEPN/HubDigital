@@ -20,6 +20,8 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Li
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarGabinetes\ListarGabineteHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\LocalizarEspecimen\LocalizarEspecimenHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\LocalizarEspecimen\LocalizarEspecimenInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\LocalizarEspecimenParaVisitante\LocalizarEspecimenParaVisitanteHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\LocalizarEspecimenParaVisitante\LocalizarEspecimenParaVisitanteInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ObtenerOrdenFamiliasColeccion\ObtenerOrdenFamiliasColeccionHandler;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
 
@@ -233,6 +235,36 @@ final class MapaInteractivo extends Component
                 $this->mensajeBusqueda = $ruta->encontrado
                     ? 'El espécimen aún no tiene una ubicación física asignada en un gabinete.'
                     : 'No se encontró el espécimen indicado.';
+
+                return;
+            }
+
+            $this->gabineteAbierto = $ruta->gabineteId;
+            $this->cajaAbierta = $ruta->cajaId ?? '';
+            $this->trayAbierto = $ruta->unitTrayId ?? '';
+            $this->especimenResaltadoId = $ruta->especimenId;
+        });
+    }
+
+    /**
+     * Localiza por nombre científico para el visitante y navega hasta el espécimen.
+     * Aplica la guía pública: la ubicación se entrega siempre que el espécimen esté
+     * colocado en un unit tray; si no, informa que no está disponible públicamente sin
+     * navegar. No expone identificadores: el visitante busca solo por nombre.
+     */
+    public function localizarPorNombre(string $nombre): void
+    {
+        $this->sugerencias = [];
+        $this->mensajeBusqueda = null;
+
+        $this->cargarProtegido(function () use ($nombre): void {
+            $ruta = app(LocalizarEspecimenParaVisitanteHandler::class)
+                ->handle(new LocalizarEspecimenParaVisitanteInput($nombre));
+
+            if (! $ruta->disponiblePublicamente || $ruta->gabineteId === null) {
+                $this->mensajeBusqueda = $ruta->encontrado
+                    ? 'La ubicación de ese espécimen no está disponible públicamente.'
+                    : 'No se encontró ningún espécimen con ese nombre científico.';
 
                 return;
             }

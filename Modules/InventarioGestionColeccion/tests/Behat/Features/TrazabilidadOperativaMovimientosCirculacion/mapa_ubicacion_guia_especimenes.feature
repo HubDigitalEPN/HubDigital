@@ -29,15 +29,14 @@ Característica: Localización y guía de ubicación de especímenes en la colec
     Cuando el curador consulta el contenido del unit tray
     Entonces se obtienen los especímenes con su nombre científico
 
-  # Guía pública para visitantes — pendiente de implementar (su Context aún no está cableado).
-  @pendiente
-  Escenario: El visitante localiza un espécimen habilitado por su nombre científico
-    Dado que existe un espécimen divulgado con su ubicación física habilitada para visitantes
+  # Guía pública para visitantes. La ubicación es siempre compartible: lo único que la hace
+  # "no disponible" es que el espécimen aún no esté colocado en un unit tray.
+  Escenario: El visitante localiza un espécimen colocado en la colección por su nombre científico
+    Dado que existe un espécimen colocado en un unit tray de la colección
     Cuando el visitante localiza el espécimen por su nombre científico
     Entonces se obtiene la ruta física hasta el espécimen: el gabinete, la caja y el unit tray donde se encuentra
 
-  @pendiente
-  Escenario: El visitante no obtiene la ubicación de un espécimen no habilitado
-    Dado que existe un espécimen divulgado sin su ubicación física habilitada para visitantes
+  Escenario: El visitante no obtiene la ubicación de un espécimen que aún no está colocado en un unit tray
+    Dado que existe un espécimen que aún no está colocado en ningún unit tray
     Cuando el visitante localiza el espécimen por su nombre científico
     Entonces la ubicación física no se entrega y se informa que no está disponible públicamente

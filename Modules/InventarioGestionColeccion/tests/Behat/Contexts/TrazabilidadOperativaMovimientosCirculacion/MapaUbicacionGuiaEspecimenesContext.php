@@ -15,6 +15,8 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Co
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConsultarContenidoUnitTray\ConsultarContenidoUnitTrayInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConsultarOcupacionGabinete\ConsultarOcupacionGabineteHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConsultarOcupacionGabinete\ConsultarOcupacionGabineteInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\LocalizarEspecimenParaVisitante\LocalizarEspecimenParaVisitanteHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\LocalizarEspecimenParaVisitante\LocalizarEspecimenParaVisitanteInput;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Caja;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especimen;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Gabinete;
@@ -72,11 +74,15 @@ final class MapaUbicacionGuiaEspecimenesContext extends BaseContext
 
     private ConsultarContenidoUnitTrayHandler $contenidoUnitTrayHandler;
 
+    private LocalizarEspecimenParaVisitanteHandler $localizarVisitanteHandler;
+
     private ?string $gabineteId = null;
 
     private ?string $cajaId = null;
 
     private ?string $unitTrayId = null;
+
+    private ?string $nombreCientificoBuscado = null;
 
     private mixed $ultimaRespuesta = null;
 
@@ -104,6 +110,7 @@ final class MapaUbicacionGuiaEspecimenesContext extends BaseContext
         $this->ocupacionHandler = $this->make(ConsultarOcupacionGabineteHandler::class);
         $this->contenidoCajaHandler = $this->make(ConsultarContenidoCajaHandler::class);
         $this->contenidoUnitTrayHandler = $this->make(ConsultarContenidoUnitTrayHandler::class);
+        $this->localizarVisitanteHandler = $this->make(LocalizarEspecimenParaVisitanteHandler::class);
     }
 
     // ==========================================
@@ -362,6 +369,100 @@ final class MapaUbicacionGuiaEspecimenesContext extends BaseContext
 
         $nombres = array_map(fn ($item) => $item->nombreCientifico, $this->ultimaRespuesta->items);
         Assert::assertEqualsCanonicalizing(['Atta cephalotes', 'Paraponera clavata'], $nombres);
+    }
+
+    // ==========================================
+    // Guía pública de ubicación para el visitante
+    // ==========================================
+
+    #[Given('que existe un espécimen colocado en un unit tray de la colección')]
+    public function queExisteUnEspecimenColocadoEnUnUnitTrayDeLaColeccion(): void
+    {
+        $gabinete = Gabinete::crear(
+            id: $this->gabineteRepo->nextIdentity(),
+            codigo: CodigoGabinete::desde('GAB-VIS-001'),
+            nombre: 'Gabinete Visitante',
+            totalRanuras: 1,
+        );
+        $this->gabineteRepo->guardar($gabinete);
+
+        $ranura = RanuraGabinete::crear(
+            id: $this->ranuraRepo->nextIdentity(),
+            gabineteId: $gabinete->id(),
+            numeroRanura: 1,
+        );
+
+        $caja = Caja::crear(
+            id: $this->cajaRepo->nextIdentity(),
+            codigo: CodigoCaja::desde('CAJA-VIS-001'),
+        );
+        $caja->ingresarEnRanura($ranura->id());
+        $caja->pullEvents();
+        $this->cajaRepo->guardar($caja);
+
+        $ranura->asignarCaja($caja->id());
+        $this->ranuraRepo->guardar($ranura);
+
+        $unitTray = UnitTray::crear(
+            id: $this->unitTrayRepo->nextIdentity(),
+            cajaId: $caja->id(),
+            numero: 1,
+        );
+        $this->unitTrayRepo->guardar($unitTray);
+
+        $especimenId = $this->sembrarEspecimen('MEPN-VIS-001', 'Atta cephalotes');
+        $this->asignacionRepo->sincronizar($unitTray->id(), [$especimenId]);
+
+        $this->nombreCientificoBuscado = 'Atta cephalotes';
+    }
+
+    #[Given('que existe un espécimen que aún no está colocado en ningún unit tray')]
+    public function queExisteUnEspecimenQueAunNoEstaColocadoEnNingunUnitTray(): void
+    {
+        // Se siembra el espécimen y su taxón, pero NO se asigna a ningún unit tray:
+        // sin custodia física resolvable, la ubicación no está disponible públicamente.
+        $this->sembrarEspecimen('MEPN-VIS-002', 'Paraponera clavata');
+
+        $this->nombreCientificoBuscado = 'Paraponera clavata';
+    }
+
+    #[When('el visitante localiza el espécimen por su nombre científico')]
+    public function elVisitanteLocalizaElEspecimenPorSuNombreCientifico(): void
+    {
+        Assert::assertNotNull($this->nombreCientificoBuscado, 'Se requiere un espécimen sembrado (@Given)');
+
+        try {
+            $this->ultimaRespuesta = $this->localizarVisitanteHandler->handle(
+                new LocalizarEspecimenParaVisitanteInput(nombreCientifico: $this->nombreCientificoBuscado)
+            );
+        } catch (\Throwable $e) {
+            $this->excepcionCapturada = $e;
+        }
+    }
+
+    #[Then('se obtiene la ruta física hasta el espécimen: el gabinete, la caja y el unit tray donde se encuentra')]
+    public function seObtieneLaRutaFisicaHastaElEspecimen(): void
+    {
+        Assert::assertNull($this->excepcionCapturada, 'No se esperaba excepción al localizar para el visitante');
+        Assert::assertNotNull($this->ultimaRespuesta, 'El handler debe retornar una respuesta');
+
+        Assert::assertTrue($this->ultimaRespuesta->encontrado, 'El espécimen debe encontrarse por su nombre científico');
+        Assert::assertTrue($this->ultimaRespuesta->disponiblePublicamente, 'La ubicación debe estar disponible públicamente');
+        Assert::assertNotNull($this->ultimaRespuesta->gabineteId, 'Debe resolverse el gabinete');
+        Assert::assertNotNull($this->ultimaRespuesta->cajaId, 'Debe resolverse la caja');
+        Assert::assertNotNull($this->ultimaRespuesta->unitTrayId, 'Debe resolverse el unit tray');
+    }
+
+    #[Then('la ubicación física no se entrega y se informa que no está disponible públicamente')]
+    public function laUbicacionFisicaNoSeEntregaYSeInformaQueNoEstaDisponiblePublicamente(): void
+    {
+        Assert::assertNull($this->excepcionCapturada, 'No se esperaba excepción al localizar para el visitante');
+        Assert::assertNotNull($this->ultimaRespuesta, 'El handler debe retornar una respuesta');
+
+        Assert::assertFalse($this->ultimaRespuesta->disponiblePublicamente, 'La ubicación no debe estar disponible públicamente');
+        Assert::assertNull($this->ultimaRespuesta->gabineteId, 'No debe entregarse el gabinete');
+        Assert::assertNull($this->ultimaRespuesta->cajaId, 'No debe entregarse la caja');
+        Assert::assertNull($this->ultimaRespuesta->unitTrayId, 'No debe entregarse el unit tray');
     }
 
     // ==========================================

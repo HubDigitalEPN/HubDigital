@@ -268,6 +268,14 @@
                             >
                                 Horario
                             </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="qr-code"
+                                :href="route('inventario.visitantes')"
+                                :current="request()->routeIs('inventario.visitantes')"
+                                wire:navigate
+                            >
+                                Acceso de visitantes
+                            </flux:sidebar.item>
                         </flux:sidebar.group>
                         <flux:sidebar.group heading="Divulgación" class="grid">
                             <flux:sidebar.item

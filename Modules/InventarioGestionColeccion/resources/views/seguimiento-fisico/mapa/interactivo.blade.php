@@ -178,8 +178,9 @@
         <div class="relative w-full sm:w-80">
             <flux:input
                 wire:model.live.debounce.350ms="busquedaEspecimen"
+                @if($modo === 'visitante') wire:keydown.enter="localizarPorNombre(busquedaEspecimen)" @endif
                 icon="magnifying-glass"
-                placeholder="Buscar espécimen por nombre o código"
+                placeholder="{{ $modo === 'visitante' ? 'Buscar por nombre científico' : 'Buscar espécimen por nombre o código' }}"
                 class="w-full"
             />
 
@@ -193,7 +194,11 @@
                         <li>
                             <button
                                 type="button"
-                                wire:click="localizar('{{ $sugerencia['id'] }}')"
+                                @if($modo === 'visitante')
+                                    wire:click="localizarPorNombre(@js($sugerencia['taxonNombre']))"
+                                @else
+                                    wire:click="localizar('{{ $sugerencia['id'] }}')"
+                                @endif
                                 class="flex w-full min-h-[44px] flex-col items-start gap-0.5 px-3 py-2 text-left hover:bg-bg-main"
                             >
                                 <span class="font-serif italic text-text-primary">{{ $sugerencia['taxonNombre'] }}</span>
