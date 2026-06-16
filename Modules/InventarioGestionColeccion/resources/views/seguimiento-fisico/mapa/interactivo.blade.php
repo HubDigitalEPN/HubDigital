@@ -58,16 +58,6 @@
             ?? 'Sin clasificar';
     };
 
-    // Etiqueta corta subfamilia·género para la leyenda de color del nivel caja.
-    $etiquetaTray = function (?array $c): string {
-        if ($c === null) {
-            return 'Sin clasificar';
-        }
-        $partes = array_filter([$c['subfamilia'] ?? null, $c['genero'] ?? null]);
-
-        return $partes !== [] ? implode(' · ', $partes) : ($c['familia'] ?? 'Sin clasificar');
-    };
-
     // Clave de coloreado por subfamilia·género de una CAJA dentro de un gabinete. A diferencia de
     // claveTray, combina TODAS las subfamilias y géneros presentes (ordenados): así una caja de
     // transición (varios taxones, p. ej. para aprovechar el espacio sobrante) recibe una clave —y
@@ -100,18 +90,6 @@
         return array_merge($subs, $gens);
     };
 
-    // Etiqueta de la leyenda de color del nivel gabinete: enumera subfamilias y géneros presentes
-    // (mostrando ambos para desambiguar cajas de igual subfamilia pero distinto género), con
-    // fallback a familia. Una caja de transición lista todos sus taxones.
-    $etiquetaCaja = function (?array $c) use ($albergados): string {
-        if ($c === null) {
-            return 'Sin clasificar';
-        }
-        $partes = $albergados($c);
-
-        return $partes !== [] ? implode(' · ', $partes) : ($c['familia'] ?? 'Sin clasificar');
-    };
-
     // Etiqueta dominante por subfamilia·género: alinea el texto del cajón con lo que codifica su
     // color. Si no hay subfamilia/género, sube por la cadena (familia → rangos superiores).
     $etiquetaDominante = function (?array $c): string {
@@ -134,6 +112,77 @@
         }
 
         return count($c['subfamilias'] ?? []) > 1 || count($c['generos'] ?? []) > 1;
+    };
+
+    // ===== Tokens tipados (texto + estilo) para renderizar cada taxón con la tipografía de la
+    // leyenda (taxon-tipografico): subfamilia serif · género cursiva "sp." · familia sans, etc. =====
+
+    // Token dominante único, con fallback por rango (fino → general). Espejo de etiquetaTaxon.
+    $tokenDominante = function (?array $c): array {
+        if ($c === null) {
+            return ['texto' => 'Sin clasificar', 'estilo' => 'superior'];
+        }
+        foreach ([['especie', 'especie'], ['genero', 'genero'], ['subfamilia', 'subfamilia'], ['familia', 'familia'], ['superfamilia', 'superior'], ['suborden', 'superior'], ['orden', 'superior']] as [$campo, $estilo]) {
+            if (($c[$campo] ?? null) !== null && trim((string) $c[$campo]) !== '') {
+                return ['texto' => $c[$campo], 'estilo' => $estilo];
+            }
+        }
+
+        return ['texto' => 'Sin clasificar', 'estilo' => 'superior'];
+    };
+
+    // Tokens dominantes subfamilia·género (lo que codifica el color del cajón); si faltan ambos,
+    // cae al token dominante por rango. Espejo de etiquetaDominante.
+    $tokensDominantes = function (?array $c) use ($tokenDominante): array {
+        if ($c === null) {
+            return [$tokenDominante(null)];
+        }
+        $tokens = [];
+        if (($c['subfamilia'] ?? null) !== null && trim((string) $c['subfamilia']) !== '') {
+            $tokens[] = ['texto' => $c['subfamilia'], 'estilo' => 'subfamilia'];
+        }
+        if (($c['genero'] ?? null) !== null && trim((string) $c['genero']) !== '') {
+            $tokens[] = ['texto' => $c['genero'], 'estilo' => 'genero'];
+        }
+
+        return $tokens !== [] ? $tokens : [$tokenDominante($c)];
+    };
+
+    // Listas separadas y ordenadas de subfamilias y géneros albergados (para el detalle agrupado
+    // de una caja de transición). Cada grupo en orden natural-case.
+    $taxonesAgrupados = function (?array $c): array {
+        if ($c === null) {
+            return ['subfamilias' => [], 'generos' => []];
+        }
+        $subs = array_values(array_filter($c['subfamilias'] ?? []));
+        $gens = array_values(array_filter($c['generos'] ?? []));
+        sort($subs, SORT_NATURAL | SORT_FLAG_CASE);
+        sort($gens, SORT_NATURAL | SORT_FLAG_CASE);
+
+        return ['subfamilias' => $subs, 'generos' => $gens];
+    };
+
+    // Tokens tipados de TODOS los taxones albergados (subfamilias y luego géneros) para la leyenda
+    // de color del nivel gabinete; fallback a un token de familia.
+    $tokensAlbergados = function (?array $c) use ($taxonesAgrupados, $tokenDominante): array {
+        if ($c === null) {
+            return [$tokenDominante(null)];
+        }
+        $grupos = $taxonesAgrupados($c);
+        $tokens = [];
+        foreach ($grupos['subfamilias'] as $s) {
+            $tokens[] = ['texto' => $s, 'estilo' => 'subfamilia'];
+        }
+        foreach ($grupos['generos'] as $g) {
+            $tokens[] = ['texto' => $g, 'estilo' => 'genero'];
+        }
+        if ($tokens !== []) {
+            return $tokens;
+        }
+
+        return [($c['familia'] ?? null) !== null
+            ? ['texto' => $c['familia'], 'estilo' => 'familia']
+            : ['texto' => 'Sin clasificar', 'estilo' => 'superior']];
     };
 
     // Recolecta valores distintos (escalar o lista) de un campo a lo largo de varias
@@ -341,7 +390,7 @@
                     continue;
                 }
                 $leyendaTray[$k] = [
-                    'label' => $etiquetaTray($c),
+                    'tokens' => $tokensDominantes($c),
                     'clase' => $paletaTaxon[count($leyendaTray) % count($paletaTaxon)],
                 ];
             }
@@ -389,7 +438,10 @@
                                 class="flex min-h-[44px] w-full flex-col gap-1 rounded-lg border border-border p-3 text-left shadow-sm transition-colors hover:ring-2 hover:ring-science-blue {{ $claseTray($cTray) }}"
                             >
                                 <span class="text-sm font-bold">Tray {{ $tray['numero'] }}</span>
-                                <span class="font-serif text-xs italic">{{ $etiquetaTaxon($cTray) }}</span>
+                                @php $tokTray = $tokenDominante($cTray); @endphp
+                                <span class="text-xs">
+                                    <x-inventariogestioncoleccion::seguimiento-fisico.taxon-tipografico :texto="$tokTray['texto']" :estilo="$tokTray['estilo']" />
+                                </span>
                                 @if($variosTray)
                                     <span class="inline-flex items-center gap-1 text-xs font-medium not-italic">
                                         <flux:icon name="rectangle-stack" class="size-3.5 shrink-0" />
@@ -426,7 +478,7 @@
                     continue;
                 }
                 $leyendaCaja[$k] = [
-                    'label' => $etiquetaCaja($c),
+                    'tokens' => $tokensAlbergados($c),
                     'clase' => $paletaTaxon[count($leyendaCaja) % count($paletaTaxon)],
                 ];
             }
@@ -456,20 +508,25 @@
             {{-- Vitrina: cajones (ranuras) apilados verticalmente, con aire entre colores. Se usa
                  flex+gap (no space-y) porque el tooltip envuelve cada cajón ocupado en un
                  <ui-tooltip display:contents>, sobre el que el margen de space-y no se renderiza. --}}
-            <div class="flex max-w-2xl flex-col gap-3 rounded-lg border-2 border-border bg-surface p-3 shadow-sm">
+            <div class="flex w-full flex-col gap-3 rounded-lg border-2 border-border bg-surface p-3 shadow-sm">
                 @foreach($ranuras as $ranura)
                     @php
                         $cRanura = $ranura['clasificacion'] ?? null;
                         $variosRanura = $variosTaxones($cRanura);
                         $taxonesRanura = $albergados($cRanura);
+                        $gruposRanura = $taxonesAgrupados($cRanura);
                     @endphp
                     {{-- wire:click solo surte efecto en cajones ocupados; el cajón vacío no emite atributos.
-                         La etiqueta usa subfamilia·género (lo que codifica el color); una caja de transición
-                         añade el conteo de taxones y lista el detalle en el tooltip. --}}
+                         La etiqueta dominante usa subfamilia·género (lo que codifica el color); una caja de
+                         transición muestra el detalle agrupado por rango en ancho y el conteo de taxones en
+                         angosto, y lista el detalle plano en el tooltip. --}}
                     <x-inventariogestioncoleccion::seguimiento-fisico.ranura-cajon
                         :ranura="$ranura"
                         :clase="$claseCaja($cRanura)"
                         :etiqueta="$etiquetaDominante($cRanura)"
+                        :tokens="$tokensDominantes($cRanura)"
+                        :subfamilias="$variosRanura ? $gruposRanura['subfamilias'] : []"
+                        :generos="$variosRanura ? $gruposRanura['generos'] : []"
                         :extra="$variosRanura ? count($taxonesRanura).' taxones' : null"
                         :detalle="$variosRanura && $taxonesRanura !== [] ? implode(' · ', $taxonesRanura) : null"
                         wire:click="abrirCaja('{{ $ranura['cajaId'] }}', '{{ $ranura['codigoCaja'] }}')"

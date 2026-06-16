@@ -64,17 +64,7 @@
     <div {{ $attributes->merge(['class' => 'flex flex-wrap gap-1.5']) }}>
         @foreach($chips as $chip)
             <span class="inline-flex items-center rounded-full border border-border bg-surface px-2 py-0.5 text-xs text-text-primary">
-                @if($chip['estilo'] === 'especie')
-                    <span class="font-serif italic">{{ $chip['texto'] }}</span>
-                @elseif($chip['estilo'] === 'genero')
-                    <span class="font-serif"><span class="italic">{{ $chip['texto'] }}</span> sp.</span>
-                @elseif($chip['estilo'] === 'subfamilia')
-                    <span class="font-serif">{{ $chip['texto'] }}</span>
-                @elseif($chip['estilo'] === 'familia')
-                    <span class="font-sans font-semibold">{{ $chip['texto'] }}</span>
-                @else
-                    <span class="font-sans uppercase tracking-wide">{{ $chip['texto'] }}</span>
-                @endif
+                <x-inventariogestioncoleccion::seguimiento-fisico.taxon-tipografico :texto="$chip['texto']" :estilo="$chip['estilo']" />
             </span>
         @endforeach
     </div>
