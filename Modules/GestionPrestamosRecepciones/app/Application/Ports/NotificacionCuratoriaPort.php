@@ -18,4 +18,11 @@ interface NotificacionCuratoriaPort
      * @return string Referencia/identificador de la notificación generada.
      */
     public function notificarIntervencionRequerida(string $solicitudId, string $investigadorId): string;
+
+    /**
+     * Notifica a la curaduría que hay una nueva solicitud por revisar.
+     *
+     * @return string Referencia/identificador del curador notificado.
+     */
+    public function notificarNuevaSolicitudPorRevisar(string $solicitudId): string;
 }
