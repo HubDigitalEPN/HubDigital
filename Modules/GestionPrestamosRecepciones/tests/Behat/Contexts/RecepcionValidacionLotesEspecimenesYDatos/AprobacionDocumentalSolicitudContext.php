@@ -7,8 +7,10 @@ namespace Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\RecepcionVali
 use Behat\Step\Given;
 use Behat\Step\Then;
 use Behat\Step\When;
+use Modules\GestionPrestamosRecepciones\Application\Ports\ColaRevisionCuratorialPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionCuratoriaPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionInvestigadorPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AceptarJustificacionesAlertas\AceptarJustificacionesAlertasHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AceptarJustificacionesAlertas\AceptarJustificacionesAlertasInput;
@@ -27,8 +29,11 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarJustificaci
 use Modules\GestionPrestamosRecepciones\Domain\Entities\SolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoAlerta;
 use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\BaseContext;
+use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\Fakes\FakeColaRevisionCuratorialAdapter;
 use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\Fakes\FakeNotificacionCuratoriaAdapter;
+use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\Fakes\FakeNotificacionInvestigadorAdapter;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\FakeEventPublisherAdapter;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\PassThroughTransactionManagerAdapter;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Persistence\InMemorySolicitudDepositoRepository;
@@ -102,6 +107,8 @@ final class AprobacionDocumentalSolicitudContext extends BaseContext
         self::$app->instance(TransactionManagerPort::class, new PassThroughTransactionManagerAdapter);
         self::$app->instance(EventPublisherPort::class, $this->fakePublisher);
         self::$app->instance(NotificacionCuratoriaPort::class, $this->fakeNotificacionCuratoria);
+        self::$app->instance(NotificacionInvestigadorPort::class, new FakeNotificacionInvestigadorAdapter);
+        self::$app->instance(ColaRevisionCuratorialPort::class, new FakeColaRevisionCuratorialAdapter);
 
         // 3. Resolver Handlers — ya usan las instancias In-Memory
         $this->enviarSolicitudHandler = $this->make(EnviarSolicitudDepositoHandler::class);
@@ -182,7 +189,7 @@ final class AprobacionDocumentalSolicitudContext extends BaseContext
     private function sembrarSolicitudConAlertaJustificada(string $tipoAlerta, string $tipoTramite = 'Depósito'): SolicitudDeposito
     {
         $solicitud = $this->sembrarSolicitudEnRevision($tipoTramite);
-        $solicitud->justificarAlerta($tipoAlerta, "Justificación del investigador para: {$tipoAlerta}");
+        $solicitud->registrarAlertaJustificada(TipoAlerta::from($tipoAlerta), "Justificación del investigador para: {$tipoAlerta}");
         $this->repo->guardar($solicitud);
 
         $this->tipoAlertaJustificada = $tipoAlerta;
@@ -192,7 +199,7 @@ final class AprobacionDocumentalSolicitudContext extends BaseContext
         $persistida = $this->repo->buscarPorId($solicitud->id());
         Assert::assertNotNull($persistida);
         Assert::assertTrue(
-            $persistida->tieneAlertaJustificada($tipoAlerta),
+            $persistida->tieneAlertaJustificada(TipoAlerta::from($tipoAlerta)),
             "Se esperaba que la alerta '{$tipoAlerta}' quedara justificada"
         );
 
@@ -212,7 +219,7 @@ final class AprobacionDocumentalSolicitudContext extends BaseContext
 
         // Aserción del antecedente: documentos oficiales y matriz presentes (no vacíos).
         Assert::assertNotEmpty(
-            $solicitud->documentosAdjuntos(),
+            $solicitud->documentosAdjuntosParaPersistir(),
             'Se esperaba que la solicitud tuviera documentos oficiales adjuntos'
         );
         Assert::assertTrue(
@@ -379,7 +386,7 @@ final class AprobacionDocumentalSolicitudContext extends BaseContext
         Assert::assertNotNull($this->solicitudEnCurso, 'Se requiere una solicitud en curso');
         Assert::assertNotEmpty($tipoAlerta, 'El tipo de alerta no puede estar vacío');
 
-        $this->solicitudEnCurso->justificarAlerta($tipoAlerta, "Justificación del investigador para: {$tipoAlerta}");
+        $this->solicitudEnCurso->registrarAlertaJustificada(TipoAlerta::from($tipoAlerta), "Justificación del investigador para: {$tipoAlerta}");
         $this->repo->guardar($this->solicitudEnCurso);
 
         $this->tipoAlertaJustificada = $tipoAlerta;
@@ -389,7 +396,7 @@ final class AprobacionDocumentalSolicitudContext extends BaseContext
         $persistida = $this->repo->buscarPorId($this->solicitudEnCurso->id());
         Assert::assertNotNull($persistida);
         Assert::assertTrue(
-            $persistida->tieneAlertaJustificada($tipoAlerta),
+            $persistida->tieneAlertaJustificada(TipoAlerta::from($tipoAlerta)),
             "Se esperaba que la alerta '{$tipoAlerta}' quedara justificada"
         );
     }
@@ -430,7 +437,7 @@ final class AprobacionDocumentalSolicitudContext extends BaseContext
         ];
 
         foreach ($alertas as $alerta) {
-            $this->solicitudEnCurso->justificarAlerta($alerta, "Justificación del investigador para: {$alerta}");
+            $this->solicitudEnCurso->registrarAlertaJustificada(TipoAlerta::from($alerta), "Justificación del investigador para: {$alerta}");
             $this->justificacionesPresentes[] = $alerta;
         }
 
@@ -446,7 +453,7 @@ final class AprobacionDocumentalSolicitudContext extends BaseContext
         Assert::assertNotNull($persistida);
         foreach ($alertas as $alerta) {
             Assert::assertTrue(
-                $persistida->tieneAlertaJustificada($alerta),
+                $persistida->tieneAlertaJustificada(TipoAlerta::from($alerta)),
                 "Se esperaba que la alerta '{$alerta}' quedara justificada"
             );
         }

@@ -4,14 +4,22 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Repositories;
 
+use DateTimeImmutable;
 use Illuminate\Support\Facades\DB;
+use Modules\GestionPrestamosRecepciones\Domain\Entities\AlertaSolicitud;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\SolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\AlertaSolicitudId;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\CodigoQRLote;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\DocumentoAdjunto;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoRevisionAlerta;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\NumeroSolicitudDeposito;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrioridadSolicitud;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoAlerta;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoTramite;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\AlertaSolicitudEloquentModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
 
 /**
@@ -77,8 +85,39 @@ final class EloquentSolicitudDepositoRepository implements SolicitudDepositoRepo
                 'nro_individuos' => $solicitud->nroIndividuos() !== null ? (int) $solicitud->nroIndividuos() : null,
                 'nro_morfoespecies' => $solicitud->nroMorfoespecies() !== null ? (int) $solicitud->nroMorfoespecies() : null,
                 'nro_lotes' => $solicitud->nroLotes() !== null ? (int) $solicitud->nroLotes() : null,
+                'curador_responsable' => $solicitud->curadorResponsable(),
+                'aprobada_en' => $solicitud->aprobadaEn(),
+                'rechazada_en' => $solicitud->rechazadaEn(),
+                'codigo_qr' => $solicitud->codigoQR() !== null ? (string) $solicitud->codigoQR() : null,
+                'comentario_curador' => $solicitud->comentarioCurador(),
+                'prioridad' => $solicitud->prioridad()->value,
+                'acta_transferencia_dominio' => $solicitud->actaTransferenciaDominio() !== null
+                    ? [
+                        'nombre' => $solicitud->actaTransferenciaDominio()->nombre(),
+                        'ruta' => $solicitud->actaTransferenciaDominio()->ruta(),
+                    ]
+                    : null,
             ]
         );
+
+        // Sincronizar la colección de alertas (eliminar las que ya no están, upsert vigentes).
+        $idsVigentes = [];
+        foreach ($solicitud->alertasParaPersistir() as $alerta) {
+            $idsVigentes[] = (string) $alerta->id();
+            AlertaSolicitudEloquentModel::updateOrCreate(
+                ['id' => (string) $alerta->id()],
+                [
+                    'solicitud_deposito_id' => (string) $solicitud->id(),
+                    'tipo' => $alerta->tipo()->value,
+                    'justificacion_investigador' => $alerta->justificacionInvestigador(),
+                    'estado_revision' => $alerta->estadoRevision()->value,
+                ]
+            );
+        }
+
+        AlertaSolicitudEloquentModel::where('solicitud_deposito_id', (string) $solicitud->id())
+            ->whereNotIn('id', $idsVigentes)
+            ->delete();
     }
 
     /**
@@ -127,6 +166,24 @@ final class EloquentSolicitudDepositoRepository implements SolicitudDepositoRepo
             $documentosAdjuntos[$item['nombre']] = DocumentoAdjunto::of($item['nombre'], $item['ruta']);
         }
 
+        $model->loadMissing('alertas');
+        $alertas = [];
+        foreach ($model->alertas as $alertaModel) {
+            $alertas[] = AlertaSolicitud::reconstituir(
+                id: AlertaSolicitudId::from($alertaModel->id),
+                tipo: TipoAlerta::from($alertaModel->tipo),
+                justificacionInvestigador: $alertaModel->justificacion_investigador,
+                estadoRevision: EstadoRevisionAlerta::from($alertaModel->estado_revision),
+            );
+        }
+
+        $actaTransferenciaDominio = $model->acta_transferencia_dominio !== null
+            ? DocumentoAdjunto::of(
+                $model->acta_transferencia_dominio['nombre'],
+                $model->acta_transferencia_dominio['ruta'],
+            )
+            : null;
+
         return SolicitudDeposito::reconstituir(
             id: SolicitudDepositoId::from($model->id),
             numero: NumeroSolicitudDeposito::from($model->numero),
@@ -149,6 +206,14 @@ final class EloquentSolicitudDepositoRepository implements SolicitudDepositoRepo
             nroIndividuos: $model->nro_individuos !== null ? (string) $model->nro_individuos : null,
             nroMorfoespecies: $model->nro_morfoespecies !== null ? (string) $model->nro_morfoespecies : null,
             nroLotes: $model->nro_lotes !== null ? (string) $model->nro_lotes : null,
+            curadorResponsable: $model->curador_responsable,
+            aprobadaEn: $model->aprobada_en !== null ? DateTimeImmutable::createFromInterface($model->aprobada_en) : null,
+            rechazadaEn: $model->rechazada_en !== null ? DateTimeImmutable::createFromInterface($model->rechazada_en) : null,
+            codigoQR: $model->codigo_qr !== null ? CodigoQRLote::from($model->codigo_qr) : null,
+            comentarioCurador: $model->comentario_curador,
+            prioridad: PrioridadSolicitud::from($model->prioridad ?? 'Normal'),
+            actaTransferenciaDominio: $actaTransferenciaDominio,
+            alertas: $alertas,
         );
     }
 }

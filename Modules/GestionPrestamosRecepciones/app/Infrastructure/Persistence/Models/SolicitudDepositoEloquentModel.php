@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Modelo Eloquent para la tabla 'recepciones.solicitudes_deposito'.
@@ -51,6 +52,13 @@ final class SolicitudDepositoEloquentModel extends Model
         'nombres_archivos_originales',
         'documentos_requeridos',
         'matriz_id',
+        'curador_responsable',
+        'aprobada_en',
+        'rechazada_en',
+        'codigo_qr',
+        'comentario_curador',
+        'prioridad',
+        'acta_transferencia_dominio',
     ];
 
     protected $casts = [
@@ -67,5 +75,13 @@ final class SolicitudDepositoEloquentModel extends Model
         'documentos_cargados' => 'array',
         'nombres_archivos_originales' => 'array',
         'documentos_requeridos' => 'array',
+        'aprobada_en' => 'datetime',
+        'rechazada_en' => 'datetime',
+        'acta_transferencia_dominio' => 'array',
     ];
+
+    public function alertas(): HasMany
+    {
+        return $this->hasMany(AlertaSolicitudEloquentModel::class, 'solicitud_deposito_id');
+    }
 }

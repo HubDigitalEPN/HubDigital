@@ -10,14 +10,16 @@ use Illuminate\Http\Request;
 use Livewire\Livewire;
 use Modules\GestionPrestamosRecepciones\Application\Exceptions\SolicitudNoEncontradaException;
 use Modules\GestionPrestamosRecepciones\Application\Ports\CatalogoCuraduriaPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\ColaRevisionCuratorialPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ExtraccionDatosDocumentoPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\HistorialPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\InvestigadorEmailPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionCuratoriaPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionInvestigadorPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\PdfGeneratorPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ValidacionFirmaElectronicaPort;
-use Modules\GestionPrestamosRecepciones\Application\Ports\PdfGeneratorPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ValidacionTaxonomicaPort;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\DocumentacionInsuficiente;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\LimiteAnualDepositosAlcanzado;
@@ -30,6 +32,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Repositories\RecordatorioDevoluci
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\VerificacionEntregaPrestamoRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\EloquentColaRevisionCuratorialAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\EloquentHistorialAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\FakeNotificacionCuratoriaAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\GbifValidacionTaxonomicaAdapter;
@@ -37,6 +40,7 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\GroqExtraccionDa
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\InventarioGestionColeccionCatalogoCuraduriaAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\LaravelEventPublisherAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\LaravelTransactionManagerAdapter;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\NotificacionInvestigadorAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\PdfsigValidacionFirmaElectronicaAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Console\Commands\EvaluarPlazosDevolucionTodosLosPrestamosCommand;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Console\Commands\LimpiarBorradoresAbandonadosCommand;
@@ -90,6 +94,8 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
         EventPublisherPort::class => LaravelEventPublisherAdapter::class,
         TransactionManagerPort::class => LaravelTransactionManagerAdapter::class,
         NotificacionCuratoriaPort::class => FakeNotificacionCuratoriaAdapter::class,
+        NotificacionInvestigadorPort::class => NotificacionInvestigadorAdapter::class,
+        ColaRevisionCuratorialPort::class => EloquentColaRevisionCuratorialAdapter::class,
         ValidacionFirmaElectronicaPort::class => PdfsigValidacionFirmaElectronicaAdapter::class,
         HistorialPort::class => EloquentHistorialAdapter::class,
         RecordatorioDevolucionRepositoryInterface::class => EloquentRecordatorioDevolucionRepository::class,

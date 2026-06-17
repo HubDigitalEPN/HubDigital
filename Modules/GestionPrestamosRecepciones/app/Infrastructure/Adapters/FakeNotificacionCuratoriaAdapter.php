@@ -23,4 +23,12 @@ final class FakeNotificacionCuratoriaAdapter implements NotificacionCuratoriaPor
     {
         return self::CURADOR_ID;
     }
+
+    /**
+     * Simula la notificación de una nueva solicitud por revisar.
+     */
+    public function notificarNuevaSolicitudPorRevisar(string $solicitudId): string
+    {
+        return self::CURADOR_ID;
+    }
 }
