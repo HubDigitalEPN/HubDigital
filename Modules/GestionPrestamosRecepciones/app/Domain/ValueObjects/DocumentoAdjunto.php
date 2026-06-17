@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Domain\ValueObjects;
 
+/**
+ * Value object inmutable que representa un documento adjunto a una solicitud
+ * (nombre lógico + ruta de almacenamiento).
+ *
+ * Construir vía {@see of()}, que garantiza que nombre y ruta no estén vacíos.
+ */
 final readonly class DocumentoAdjunto
 {
     private function __construct(
@@ -11,6 +17,11 @@ final readonly class DocumentoAdjunto
         private string $ruta,
     ) {}
 
+    /**
+     * Crea un documento adjunto validando que nombre y ruta no estén vacíos.
+     *
+     * @throws \DomainException Si el nombre o la ruta están vacíos.
+     */
     public static function of(string $nombre, string $ruta): self
     {
         if (trim($nombre) === '') {

@@ -7,6 +7,9 @@ namespace Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarSoli
 use Modules\GestionPrestamosRecepciones\Domain\Entities\SolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito;
 
+/**
+ * Datos de salida tras registrar una solicitud de depósito.
+ */
 final readonly class RegistrarSolicitudDepositoOutput
 {
     public function __construct(
@@ -15,6 +18,10 @@ final readonly class RegistrarSolicitudDepositoOutput
         public string $numero,
     ) {}
 
+    /**
+     * @param SolicitudDeposito $solicitud
+     * @return self
+     */
     public static function fromEntity(SolicitudDeposito $solicitud): self
     {
         return new self(

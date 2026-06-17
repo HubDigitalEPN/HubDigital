@@ -4,6 +4,13 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Domain\ValueObjects;
 
+/**
+ * Value object inmutable que representa el número legible de una solicitud de
+ * depósito, con formato secuencial `MEPN-INV-00001`.
+ *
+ * Reconstruir desde texto con {@see from()} o derivar desde una secuencia numérica
+ * con {@see fromSecuencia()}.
+ */
 final readonly class NumeroSolicitudDeposito
 {
     private const PREFIJO = 'MEPN-INV-';
@@ -12,6 +19,11 @@ final readonly class NumeroSolicitudDeposito
 
     private function __construct(private string $value) {}
 
+    /**
+     * Reconstruye el número desde su representación textual.
+     *
+     * @throws \DomainException Si el valor no coincide con el formato `MEPN-INV-00001`.
+     */
     public static function from(string $numero): self
     {
         if (! preg_match('/^MEPN-INV-\d{5}$/', $numero)) {
@@ -23,6 +35,11 @@ final readonly class NumeroSolicitudDeposito
         return new self($numero);
     }
 
+    /**
+     * Construye el número rellenando con ceros la secuencia indicada.
+     *
+     * @throws \DomainException Si la secuencia es menor que 1.
+     */
     public static function fromSecuencia(int $secuencia): self
     {
         if ($secuencia < 1) {

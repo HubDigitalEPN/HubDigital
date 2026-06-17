@@ -9,13 +9,30 @@ use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRep
 use Modules\GestionPrestamosRecepciones\Domain\Services\ReglaDocumentacionRequerida;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
 
+/**
+ * Manejador del caso de uso para determinar la documentación requerida para una solicitud.
+ * 
+ * {@see DeterminarDocumentacionRequeridaInput}
+ * {@see DeterminarDocumentacionRequeridaOutput}
+ */
 final class DeterminarDocumentacionRequeridaHandler
 {
+    /**
+     * @param SolicitudDepositoRepositoryInterface $repo Repositorio de solicitudes de depósito.
+     * @param ReglaDocumentacionRequerida $regla Servicio de dominio con las reglas de documentación.
+     */
     public function __construct(
         private SolicitudDepositoRepositoryInterface $repo,
         private ReglaDocumentacionRequerida $regla,
     ) {}
 
+    /**
+     * Ejecuta el caso de uso.
+     *
+     * @param DeterminarDocumentacionRequeridaInput $input Datos de entrada.
+     * @return DeterminarDocumentacionRequeridaOutput Documentos requeridos.
+     * @throws \DomainException Si faltan datos o la solicitud no tiene la información necesaria.
+     */
     public function __invoke(DeterminarDocumentacionRequeridaInput $input): DeterminarDocumentacionRequeridaOutput
     {
         if ($input->solicitudId !== null) {

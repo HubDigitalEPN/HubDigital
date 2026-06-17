@@ -6,6 +6,9 @@ namespace Modules\GestionPrestamosRecepciones\Domain\Events;
 
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
 
+/**
+ * Evento de dominio emitido cuando una solicitud sin documentación se escala a intervención curatorial.
+ */
 final class IntervencionCuratoriaSolicitada extends DomainEvent
 {
     public function __construct(

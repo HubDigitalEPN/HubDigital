@@ -15,6 +15,12 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\NumeroPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoPrestamo;
 
+/**
+ * Genera el acta para un préstamo.
+ *
+ * {@see GenerarActaPrestamoInput}
+ * {@see GenerarActaPrestamoOutput}
+ */
 final class GenerarActaPrestamoHandler
 {
     public function __construct(
@@ -24,6 +30,11 @@ final class GenerarActaPrestamoHandler
         private readonly TransactionManagerPort $transactionManager,
     ) {}
 
+    /**
+     * @param GenerarActaPrestamoInput $input
+     * @return GenerarActaPrestamoOutput
+     * @throws SolicitudPrestamoNoEncontradaException
+     */
     public function handle(GenerarActaPrestamoInput $input): GenerarActaPrestamoOutput
     {
         $solicitudId = SolicitudPrestamoId::fromString($input->solicitudId);

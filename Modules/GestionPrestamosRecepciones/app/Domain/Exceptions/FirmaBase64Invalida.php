@@ -6,6 +6,10 @@ namespace Modules\GestionPrestamosRecepciones\Domain\Exceptions;
 
 use DomainException;
 
+/**
+ * Excepción de dominio lanzada cuando la firma digital en base64 tiene un formato
+ * incorrecto ({@see formatoInvalido()}) o no puede decodificarse ({@see decodificacionFallida()}).
+ */
 final class FirmaBase64Invalida extends DomainException
 {
     public static function formatoInvalido(): self

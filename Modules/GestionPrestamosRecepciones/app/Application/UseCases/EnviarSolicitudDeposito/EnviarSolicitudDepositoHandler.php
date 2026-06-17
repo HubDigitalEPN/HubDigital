@@ -10,14 +10,32 @@ use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
 
+/**
+ * Manejador del caso de uso para enviar una solicitud de depósito a revisión por curaduría.
+ * 
+ * {@see EnviarSolicitudDepositoInput}
+ * {@see EnviarSolicitudDepositoOutput}
+ */
 final class EnviarSolicitudDepositoHandler
 {
+    /**
+     * @param SolicitudDepositoRepositoryInterface $repo Repositorio de solicitudes de depósito.
+     * @param TransactionManagerPort $transactionManager Gestor de transacciones.
+     * @param EventPublisherPort $eventPublisher Publicador de eventos.
+     */
     public function __construct(
         private SolicitudDepositoRepositoryInterface $repo,
         private TransactionManagerPort $transactionManager,
         private EventPublisherPort $eventPublisher,
     ) {}
 
+    /**
+     * Ejecuta el caso de uso.
+     *
+     * @param EnviarSolicitudDepositoInput $input Datos de entrada.
+     * @return EnviarSolicitudDepositoOutput Estado de la solicitud enviada.
+     * @throws SolicitudNoEncontradaException Si la solicitud no existe.
+     */
     public function __invoke(EnviarSolicitudDepositoInput $input): EnviarSolicitudDepositoOutput
     {
         $id = SolicitudDepositoId::from($input->solicitudId);

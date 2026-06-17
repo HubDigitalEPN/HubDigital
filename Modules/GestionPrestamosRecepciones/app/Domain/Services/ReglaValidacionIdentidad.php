@@ -6,6 +6,16 @@ namespace Modules\GestionPrestamosRecepciones\Domain\Services;
 
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoValidacionIdentidad;
 
+/**
+ * Servicio de dominio puro que compara el nombre del perfil del investigador con el
+ * nombre que figura en el documento de identidad para validar coincidencia.
+ *
+ * Aplica una heurística en dos niveles: distancia de Levenshtein para errores
+ * tipográficos menores y similitud de tokens (índice de Jaccard) para nombres con
+ * partes faltantes o adicionales. Devuelve un {@see ResultadoValidacionIdentidad}
+ * (Conforme, discrepancia tipográfica o discrepancia de tercero) y las acciones
+ * permitidas para cada resultado.
+ */
 final class ReglaValidacionIdentidad
 {
     private const UMBRAL_DISCREPANCIA_TIPOGRAFICA = 3;
@@ -16,6 +26,10 @@ final class ReglaValidacionIdentidad
         ResultadoValidacionIdentidad::DiscrepanciaTercero->value => ['Adjuntar Justificación / Carta de Delegación'],
     ];
 
+    /**
+     * Compara dos nombres (normalizando tildes, ñ y mayúsculas) y clasifica el
+     * grado de coincidencia.
+     */
     public function comparar(string $nombrePerfil, string $nombreEnDocumento): ResultadoValidacionIdentidad
     {
         $normalPerfil = $this->normalizar($nombrePerfil);
@@ -45,7 +59,11 @@ final class ReglaValidacionIdentidad
         return ResultadoValidacionIdentidad::DiscrepanciaTercero;
     }
 
-    /** @return string[] */
+    /**
+     * Retorna las acciones sugeridas al usuario según el resultado de la comparación.
+     *
+     * @return string[]
+     */
     public function accionesPermitidas(ResultadoValidacionIdentidad $resultado): array
     {
         return self::ACCIONES[$resultado->value] ?? [];

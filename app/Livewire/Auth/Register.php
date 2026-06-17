@@ -4,6 +4,7 @@ namespace App\Livewire\Auth;
 
 use App\Enums\RolUsuario;
 use App\Models\User;
+use Illuminate\Auth\Events\Registered;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
@@ -49,9 +50,14 @@ class Register extends Component
             return;
         }
 
+        // Dispara el envío automático del correo de verificación (criterio 1).
+        event(new Registered($user));
+
         Auth::login($user);
 
-        $this->redirect(route('dashboard'), navigate: true);
+        // La cuenta nace pendiente de verificación: enviamos al usuario al aviso
+        // de "revisa tu correo" en lugar del dashboard protegido (criterios 2, 10).
+        $this->redirect(route('verification.notice'), navigate: false);
     }
 
     public function render(): View

@@ -11,6 +11,12 @@ use Modules\GestionPrestamosRecepciones\Domain\Exceptions\SolicitudPrestamoNoEnc
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudPrestamoId;
 
+/**
+ * Rechaza una solicitud de préstamo por un motivo específico.
+ *
+ * {@see RechazarSolicitudPrestamoInput}
+ * {@see RechazarSolicitudPrestamoOutput}
+ */
 final class RechazarSolicitudPrestamoHandler
 {
     public function __construct(
@@ -19,6 +25,12 @@ final class RechazarSolicitudPrestamoHandler
         private readonly TransactionManagerPort $transactionManager,
     ) {}
 
+    /**
+     * @param RechazarSolicitudPrestamoInput $input
+     * @return RechazarSolicitudPrestamoOutput
+     * @throws InvalidArgumentException
+     * @throws SolicitudPrestamoNoEncontradaException
+     */
     public function handle(RechazarSolicitudPrestamoInput $input): RechazarSolicitudPrestamoOutput
     {
         if (trim($input->motivo) === '') {

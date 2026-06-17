@@ -6,6 +6,9 @@ namespace Modules\GestionPrestamosRecepciones\Domain\Events;
 
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
 
+/**
+ * Evento de dominio emitido cuando un investigador crea una solicitud de depósito o donación.
+ */
 final class SolicitudDepositoCreada extends DomainEvent
 {
     public function __construct(

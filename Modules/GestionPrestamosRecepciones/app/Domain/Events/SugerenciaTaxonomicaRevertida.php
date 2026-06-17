@@ -6,6 +6,9 @@ namespace Modules\GestionPrestamosRecepciones\Domain\Events;
 
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\MatrizEspeciesId;
 
+/**
+ * Evento de dominio emitido cuando se revierte una corrección taxonómica previamente aceptada.
+ */
 final class SugerenciaTaxonomicaRevertida extends DomainEvent
 {
     public function __construct(

@@ -8,6 +8,9 @@ use DateTimeImmutable;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudPrestamoId;
 
+/**
+ * Evento de dominio emitido cuando se adjunta el documento de exportación del MAE a un acta internacional.
+ */
 final readonly class DocumentoExportacionSubido
 {
     public function __construct(

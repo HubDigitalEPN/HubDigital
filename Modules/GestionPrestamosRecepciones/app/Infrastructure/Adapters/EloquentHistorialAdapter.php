@@ -10,8 +10,19 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudPrestamoId;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\HistorialEventoEloquentModel;
 
+/**
+ * Adaptador para el acceso al historial de eventos utilizando Eloquent.
+ *
+ * Implementa {@see HistorialPort} para recuperar los eventos registrados en el historial
+ * filtrados por el tipo de agregado e identificador.
+ */
 final class EloquentHistorialAdapter implements HistorialPort
 {
+    /**
+     * Obtiene todos los eventos asociados a una solicitud de préstamo.
+     *
+     * @return list<EventoHistorialDto>
+     */
     public function obtenerEventosDeSolicitud(SolicitudPrestamoId $id): array
     {
         return HistorialEventoEloquentModel::where('tipo_agregado', 'solicitud_prestamo')
@@ -26,6 +37,11 @@ final class EloquentHistorialAdapter implements HistorialPort
             ->all();
     }
 
+    /**
+     * Obtiene todos los eventos asociados a un préstamo.
+     *
+     * @return list<EventoHistorialDto>
+     */
     public function obtenerEventosDePrestamo(PrestamoId $id): array
     {
         return HistorialEventoEloquentModel::where('tipo_agregado', 'prestamo')

@@ -6,6 +6,9 @@ namespace Modules\GestionPrestamosRecepciones\Domain\Events;
 
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\MatrizEspeciesId;
 
+/**
+ * Evento de dominio emitido cuando se justifica un hallazgo taxonómico no catalogado en la matriz de especies.
+ */
 final class HallazgoTaxonomicoJustificado extends DomainEvent
 {
     public function __construct(

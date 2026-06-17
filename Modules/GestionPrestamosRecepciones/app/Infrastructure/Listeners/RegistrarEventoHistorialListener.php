@@ -26,8 +26,17 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Mode
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\HistorialEventoEloquentModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\PrestamoEloquentModel;
 
+/**
+ * Suscriptor que registra eventos de dominio en el historial persistente.
+ *
+ * Escucha eventos del módulo y crea una entrada en la tabla de historial, resolviendo
+ * el agregado relacionado y mapeando los datos del evento.
+ */
 final class RegistrarEventoHistorialListener
 {
+    /**
+     * Maneja el evento de dominio.
+     */
     public function handle(object $event): void
     {
         HistorialEventoEloquentModel::create([
@@ -40,6 +49,9 @@ final class RegistrarEventoHistorialListener
         ]);
     }
 
+    /**
+     * Determina el tipo de agregado al que pertenece el evento.
+     */
     private function resolverTipoAgregado(object $event): string
     {
         return match (true) {
@@ -62,6 +74,9 @@ final class RegistrarEventoHistorialListener
         };
     }
 
+    /**
+     * Determina el identificador del agregado raíz asociado al evento.
+     */
     private function resolverAgregadoId(object $event): string
     {
         return match (true) {
@@ -90,6 +105,9 @@ final class RegistrarEventoHistorialListener
         };
     }
 
+    /**
+     * Obtiene la fecha en que ocurrió el evento.
+     */
     private function resolverOcurridoEn(object $event): DateTimeImmutable
     {
         return match (true) {
@@ -98,6 +116,9 @@ final class RegistrarEventoHistorialListener
         };
     }
 
+    /**
+     * Mapea las propiedades del evento a un array asociativo para su almacenamiento.
+     */
     private function resolverDatos(object $event): array
     {
         $datos = [];

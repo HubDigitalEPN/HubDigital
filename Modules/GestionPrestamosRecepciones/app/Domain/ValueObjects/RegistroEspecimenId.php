@@ -6,6 +6,10 @@ namespace Modules\GestionPrestamosRecepciones\Domain\ValueObjects;
 
 use Ramsey\Uuid\Uuid;
 
+/**
+ * Identificador de valor (UUID) de un {@see \Modules\GestionPrestamosRecepciones\Domain\Entities\RegistroEspecimen}.
+ * Inmutable; crear con {@see generate()} o reconstruir con {@see from()}.
+ */
 final readonly class RegistroEspecimenId
 {
     private function __construct(private string $value) {}

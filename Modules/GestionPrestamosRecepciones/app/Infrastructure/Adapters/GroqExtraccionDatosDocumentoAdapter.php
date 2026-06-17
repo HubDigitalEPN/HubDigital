@@ -13,6 +13,13 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\DatosIntegradosDocum
 use Modules\GestionPrestamosRecepciones\Infrastructure\Exceptions\ModeloIANoDisponibleException;
 use Smalot\PdfParser\Parser;
 
+/**
+ * Adaptador para la extracción de datos de documentos utilizando el modelo de IA Groq.
+ *
+ * Implementa {@see ExtraccionDatosDocumentoPort}. Utiliza un motor de IA para analizar
+ * el texto de los PDFs y extraer campos estructurados como números de permiso,
+ * procedencia y grupos animales.
+ */
 final class GroqExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocumentoPort
 {
     private const TIPO_SOLICITUD = 'solicitud';
@@ -34,11 +41,21 @@ final class GroqExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocume
         'Sucumbíos', 'Tungurahua', 'Zamora Chinchipe',
     ];
 
+    /**
+     * Crea una nueva instancia del adaptador de extracción de datos con Groq.
+     *
+     * @param string $modelo El modelo de IA a utilizar.
+     */
     public function __construct(
         private readonly string $modelo,
     ) {}
 
-    /** @param array<string, string> $documentos [nombre => ruta] */
+    /**
+     * Extrae datos estructurados de una lista de documentos PDF.
+     *
+     * @param array<string, string> $documentos [nombre => ruta]
+     * @return DatosIntegradosDocumento
+     */
     public function extraerDatos(array $documentos): DatosIntegradosDocumento
     {
         $parser = new Parser;

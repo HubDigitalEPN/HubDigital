@@ -12,6 +12,9 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\PrestamoEloquentModel;
 
+/**
+ * Componente Livewire para la visualización de la bandeja de préstamos activos.
+ */
 #[Layout('layouts.app', params: ['title' => 'Bandeja de préstamos'])]
 final class BandejaPrestamos extends Component
 {
@@ -32,11 +35,17 @@ final class BandejaPrestamos extends Component
     #[Url]
     public string $ordenDireccion = 'desc';
 
+    /**
+     * @return void
+     */
     public function toggleOrden(): void
     {
         $this->ordenDireccion = $this->ordenDireccion === 'asc' ? 'desc' : 'asc';
     }
 
+    /**
+     * @return void
+     */
     public function limpiarFiltros(): void
     {
         $this->busqueda = '';
@@ -46,6 +55,9 @@ final class BandejaPrestamos extends Component
         $this->ordenDireccion = 'desc';
     }
 
+    /**
+     * @return View
+     */
     public function render(): View
     {
         $query = PrestamoEloquentModel::query()

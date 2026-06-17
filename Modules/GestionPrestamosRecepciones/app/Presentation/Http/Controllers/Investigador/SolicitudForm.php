@@ -18,6 +18,9 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarSolicitudP
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarSolicitudPrestamo\RegistrarSolicitudPrestamoInput;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\SolicitudPrestamoModel;
 
+/**
+ * Componente Livewire para el formulario de solicitud de préstamo.
+ */
 #[Layout('layouts.app', params: ['title' => 'Solicitud de préstamo'])]
 final class SolicitudForm extends Component
 {
@@ -56,6 +59,12 @@ final class SolicitudForm extends Component
 
     public string $lastAutoSavedAt = '';
 
+    /**
+     * Inicializa el componente.
+     *
+     * @param string|null $id
+     * @return void
+     */
     public function mount(?string $id = null): void
     {
         $this->solicitudId = $id;
@@ -86,6 +95,12 @@ final class SolicitudForm extends Component
         }
     }
 
+    /**
+     * Autoguarda el borrador de la solicitud.
+     *
+     * @param \Modules\GestionPrestamosRecepciones\Application\UseCases\ActualizarSolicitudPrestamo\ActualizarSolicitudPrestamoHandler $actualizar
+     * @return void
+     */
     public function autoGuardar(ActualizarSolicitudPrestamoHandler $actualizar): void
     {
         if ($this->solicitudId === null) {
@@ -129,6 +144,11 @@ final class SolicitudForm extends Component
         }
     }
 
+    /**
+     * Agrega un nuevo ítem a la solicitud.
+     *
+     * @return void
+     */
     public function addItem(): void
     {
         $this->items[] = ['especimen_codigo_externo' => '', 'cantidad_solicitada' => 1];
@@ -142,12 +162,25 @@ final class SolicitudForm extends Component
         ], $this->items));
     }
 
+    /**
+     * Elimina un ítem de la solicitud.
+     *
+     * @param int $index
+     * @return void
+     */
     public function removeItem(int $index): void
     {
         array_splice($this->items, $index, 1);
         $this->items = array_values($this->items);
     }
 
+    /**
+     * Guarda la solicitud como borrador.
+     *
+     * @param \Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarSolicitudPrestamo\RegistrarSolicitudPrestamoHandler $registrar
+     * @param \Modules\GestionPrestamosRecepciones\Application\UseCases\ActualizarSolicitudPrestamo\ActualizarSolicitudPrestamoHandler $actualizar
+     * @return void
+     */
     public function guardarBorrador(
         RegistrarSolicitudPrestamoHandler $registrar,
         ActualizarSolicitudPrestamoHandler $actualizar,

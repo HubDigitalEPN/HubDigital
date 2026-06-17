@@ -12,6 +12,12 @@ use Modules\GestionPrestamosRecepciones\Domain\Repositories\PrestamoRepositoryIn
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
 use RuntimeException;
 
+/**
+ * Habilita el envío internacional de un préstamo tras la verificación.
+ *
+ * {@see HabilitarEnvioInternacionalInput}
+ * {@see HabilitarEnvioInternacionalOutput}
+ */
 final class HabilitarEnvioInternacionalHandler
 {
     public function __construct(
@@ -21,6 +27,12 @@ final class HabilitarEnvioInternacionalHandler
         private readonly TransactionManagerPort $transactionManager,
     ) {}
 
+    /**
+     * @param HabilitarEnvioInternacionalInput $input
+     * @return HabilitarEnvioInternacionalOutput
+     * @throws ActaPrestamoNoEncontradaException
+     * @throws RuntimeException
+     */
     public function handle(HabilitarEnvioInternacionalInput $input): HabilitarEnvioInternacionalOutput
     {
         $actaId = ActaPrestamoId::fromString($input->actaId);

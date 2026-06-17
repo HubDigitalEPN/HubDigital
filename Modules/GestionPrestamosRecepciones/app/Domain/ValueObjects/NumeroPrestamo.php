@@ -6,6 +6,13 @@ namespace Modules\GestionPrestamosRecepciones\Domain\ValueObjects;
 
 use InvalidArgumentException;
 
+/**
+ * Value object inmutable que representa el número legible de un acta/préstamo, con
+ * formato `ACT_XXXXXX`.
+ *
+ * Genera nuevos números con {@see generate()} y los reconstruye desde texto con
+ * {@see fromString()}.
+ */
 final readonly class NumeroPrestamo
 {
     private const PREFIX = 'ACT_';
@@ -31,6 +38,11 @@ final readonly class NumeroPrestamo
         return new self(self::PREFIX.$suffix);
     }
 
+    /**
+     * Reconstruye el número desde su representación textual.
+     *
+     * @throws InvalidArgumentException Si el valor no coincide con el formato `ACT_XXXXXX`.
+     */
     public static function fromString(string $value): self
     {
         if (! preg_match(self::PATTERN, $value)) {

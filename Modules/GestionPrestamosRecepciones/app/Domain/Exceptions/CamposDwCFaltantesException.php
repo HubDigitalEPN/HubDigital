@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Domain\Exceptions;
 
+/**
+ * Excepción de dominio lanzada cuando la matriz de especies no contiene campos DwC
+ * críticos requeridos por la colección. Construir con {@see porCamposFaltantes()}.
+ */
 final class CamposDwCFaltantesException extends \DomainException
 {
     /**

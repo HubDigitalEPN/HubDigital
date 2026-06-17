@@ -6,6 +6,10 @@ namespace Modules\GestionPrestamosRecepciones\Domain\ValueObjects;
 
 use InvalidArgumentException;
 
+/**
+ * Identificador de valor (UUID v4) de una {@see \Modules\GestionPrestamosRecepciones\Domain\Entities\ConfiguracionGlobalRecordatorios}.
+ * Inmutable; crear con {@see generate()} o reconstruir con {@see fromString()}.
+ */
 final readonly class ConfiguracionGlobalRecordatoriosId
 {
     private function __construct(private string $value) {}

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Application\UseCases\ActualizarSolicitudPrestamo;
 
+/**
+ * Input DTO para actualizar una solicitud de préstamo.
+ */
 final readonly class ActualizarSolicitudPrestamoInput
 {
     /**

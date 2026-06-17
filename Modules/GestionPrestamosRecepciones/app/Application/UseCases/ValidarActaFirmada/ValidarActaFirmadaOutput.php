@@ -7,6 +7,9 @@ namespace Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarActaFi
 use DateTimeImmutable;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\ActaPrestamo;
 
+/**
+ * Datos de salida tras validar un acta firmada.
+ */
 final readonly class ValidarActaFirmadaOutput
 {
     public function __construct(
@@ -19,6 +22,10 @@ final readonly class ValidarActaFirmadaOutput
         public string $prestamoId,
     ) {}
 
+    /**
+     * @param ActaPrestamo $acta
+     * @return self
+     */
     public static function fromPrimitives(ActaPrestamo $acta): self
     {
         return new self(

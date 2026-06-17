@@ -6,6 +6,9 @@ namespace Modules\GestionPrestamosRecepciones\Domain\Events;
 
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\MatrizEspeciesId;
 
+/**
+ * Evento de dominio emitido cuando se cambia el motivo de justificación de un hallazgo taxonómico.
+ */
 final class JustificacionTaxonomicaCambiada extends DomainEvent
 {
     public function __construct(

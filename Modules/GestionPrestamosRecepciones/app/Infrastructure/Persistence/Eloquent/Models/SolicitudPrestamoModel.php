@@ -10,6 +10,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
+/**
+ * Modelo Eloquent para la tabla 'prestamos.solicitudes_prestamo'.
+ *
+ * Representa la persistencia de una solicitud de préstamo de especímenes realizada por un investigador.
+ */
 final class SolicitudPrestamoModel extends Model
 {
     protected $table = 'prestamos.solicitudes_prestamo';
@@ -43,16 +48,25 @@ final class SolicitudPrestamoModel extends Model
         'resuelta_en' => 'datetime',
     ];
 
+    /**
+     * Relación con el usuario investigador que realiza la solicitud.
+     */
     public function investigador(): BelongsTo
     {
         return $this->belongsTo(User::class, 'investigador_id');
     }
 
+    /**
+     * Relación con los ítems (especímenes) solicitados.
+     */
     public function items(): HasMany
     {
         return $this->hasMany(ItemPrestamoModel::class, 'solicitud_prestamo_id');
     }
 
+    /**
+     * Relación con el acta de préstamo generada tras la aprobación.
+     */
     public function acta(): HasOne
     {
         return $this->hasOne(ActaPrestamoModel::class, 'solicitud_prestamo_id');

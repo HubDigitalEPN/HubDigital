@@ -10,6 +10,9 @@ use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\ActaPrestamoModel;
 
+/**
+ * Componente Livewire (Controlador) para visualizar el acta de préstamo de forma embebida.
+ */
 #[Layout('layouts.print')]
 final class VerActaEmbed extends Component
 {
@@ -19,6 +22,10 @@ final class VerActaEmbed extends Component
 
     public bool $isEmbed = true;
 
+    /**
+     * @param string $id
+     * @return void
+     */
     public function mount(string $id): void
     {
         $this->acta = ActaPrestamoModel::query()
@@ -34,6 +41,9 @@ final class VerActaEmbed extends Component
         }
     }
 
+    /**
+     * @return View
+     */
     public function render(): View
     {
         return view('gestionprestamosrecepciones::ver-acta');

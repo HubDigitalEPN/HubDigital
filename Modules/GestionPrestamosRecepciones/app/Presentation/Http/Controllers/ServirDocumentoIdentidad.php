@@ -9,8 +9,15 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\ActaPrestamoModel;
 
+/**
+ * Controlador para servir el documento de identidad asociado a un acta de préstamo.
+ */
 final class ServirDocumentoIdentidad
 {
+    /**
+     * @param string $id
+     * @return Response
+     */
     public function __invoke(string $id): Response
     {
         $acta = ActaPrestamoModel::query()

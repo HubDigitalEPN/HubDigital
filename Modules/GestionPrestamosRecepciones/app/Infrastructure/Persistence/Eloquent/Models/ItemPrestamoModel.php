@@ -7,6 +7,11 @@ namespace Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquen
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * Modelo Eloquent para la tabla 'prestamos.items_prestamo'.
+ *
+ * Representa un espécimen o lote individual dentro de una solicitud de préstamo.
+ */
 final class ItemPrestamoModel extends Model
 {
     protected $table = 'prestamos.items_prestamo';
@@ -31,6 +36,9 @@ final class ItemPrestamoModel extends Model
         'especimen_snapshot'  => 'array',
     ];
 
+    /**
+     * Relación con la solicitud de préstamo a la que pertenece este ítem.
+     */
     public function solicitud(): BelongsTo
     {
         return $this->belongsTo(SolicitudPrestamoModel::class, 'solicitud_prestamo_id');

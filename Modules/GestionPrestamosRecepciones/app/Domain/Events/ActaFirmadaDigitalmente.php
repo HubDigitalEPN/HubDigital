@@ -8,6 +8,9 @@ use DateTimeImmutable;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudPrestamoId;
 
+/**
+ * Evento de dominio emitido cuando el investigador firma el acta digitalmente (canvas).
+ */
 final readonly class ActaFirmadaDigitalmente
 {
     public function __construct(

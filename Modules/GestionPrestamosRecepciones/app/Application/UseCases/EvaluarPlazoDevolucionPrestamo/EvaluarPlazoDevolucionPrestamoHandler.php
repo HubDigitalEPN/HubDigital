@@ -13,8 +13,20 @@ use Modules\GestionPrestamosRecepciones\Domain\Repositories\PrestamoRepositoryIn
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoRecordatorio;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrestamoId;
 
+/**
+ * Manejador del caso de uso para evaluar el plazo de devolución de un préstamo y generar recordatorios.
+ * 
+ * {@see EvaluarPlazoDevolucionPrestamoInput}
+ * {@see EvaluarPlazoDevolucionPrestamoOutput}
+ */
 final class EvaluarPlazoDevolucionPrestamoHandler
 {
+    /**
+     * @param PrestamoRepositoryInterface $prestamoRepo Repositorio de préstamos.
+     * @param ConfiguracionGlobalRecordatoriosRepositoryInterface $configRepo Repositorio de configuración de recordatorios.
+     * @param TransactionManagerPort $transactionManager Gestor de transacciones.
+     * @param EventPublisherPort $publisher Publicador de eventos.
+     */
     public function __construct(
         private readonly PrestamoRepositoryInterface $prestamoRepo,
         private readonly ConfiguracionGlobalRecordatoriosRepositoryInterface $configRepo,
@@ -22,6 +34,13 @@ final class EvaluarPlazoDevolucionPrestamoHandler
         private readonly EventPublisherPort $publisher,
     ) {}
 
+    /**
+     * Ejecuta el caso de uso.
+     *
+     * @param EvaluarPlazoDevolucionPrestamoInput $input Datos de entrada.
+     * @return EvaluarPlazoDevolucionPrestamoOutput Resultado de la evaluación.
+     * @throws PrestamoNoEncontradoException Si el préstamo no existe.
+     */
     public function handle(EvaluarPlazoDevolucionPrestamoInput $input): EvaluarPlazoDevolucionPrestamoOutput
     {
         $prestamoId = PrestamoId::fromString($input->prestamoId);

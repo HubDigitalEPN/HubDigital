@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Log;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ValidacionTaxonomicaPort;
 
 /**
- * Adapter que consulta la API Species Match de GBIF para validar
+ * Adaptador que consulta la API Species Match de GBIF para validar
  * nombres científicos contra la taxonomía backbone mundial.
  *
  * Optimizaciones:
@@ -21,6 +21,8 @@ use Modules\GestionPrestamosRecepciones\Application\Ports\ValidacionTaxonomicaPo
  * - Solicitudes concurrentes en batches de 10 vía Http::pool()
  * - Umbral de confianza >= 85 % para sugerencias tipográficas
  * - Transparencia en fallos: retorna 'no_verificado' en vez de simular 'catalogado'
+ *
+ * Implementa {@see ValidacionTaxonomicaPort}.
  *
  * @see https://techdocs.gbif.org/en/openapi/v1/species
  */
@@ -36,6 +38,12 @@ final class GbifValidacionTaxonomicaAdapter implements ValidacionTaxonomicaPort
 
     private const CACHE_PREFIX = 'gbif_species:';
 
+    /**
+     * Valida una lista de nombres científicos contra la API de GBIF.
+     *
+     * @param  string[]  $nombresCientificos
+     * @return array<int, array{nombreCientifico: string, estado: string, sugerencia: ?string}>
+     */
     public function validarEspecies(array $nombresCientificos): array
     {
         $nombresUnicos = array_values(array_unique($nombresCientificos));

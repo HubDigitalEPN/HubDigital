@@ -5,6 +5,11 @@ namespace Modules\GestionPrestamosRecepciones\Infrastructure\Providers;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Route;
 
+/**
+ * Proveedor de servicios de rutas.
+ *
+ * Registra y agrupa las rutas web y de API del módulo bajo sus respectivos middlewares.
+ */
 class RouteServiceProvider extends ServiceProvider
 {
     protected string $name = 'GestionPrestamosRecepciones';

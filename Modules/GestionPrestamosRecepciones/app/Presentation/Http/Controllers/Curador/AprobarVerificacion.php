@@ -16,6 +16,9 @@ use Modules\GestionPrestamosRecepciones\Domain\Exceptions\PrestamoNoEncontradoEx
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\VerificacionEntregaPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrestamoId;
 
+/**
+ * Componente Livewire para la aprobación de la verificación de entrega de préstamos.
+ */
 #[Layout('layouts.app', params: ['title' => 'Aprobar verificación de entrega'])]
 final class AprobarVerificacion extends Component
 {
@@ -23,6 +26,11 @@ final class AprobarVerificacion extends Component
 
     public string $id;
 
+    /**
+     * @param string $id
+     * @param ConsultarPrestamoHandler $handler
+     * @return void
+     */
     public function mount(string $id, ConsultarPrestamoHandler $handler): void
     {
         $this->id = $id;
@@ -37,6 +45,10 @@ final class AprobarVerificacion extends Component
         }
     }
 
+    /**
+     * @param AprobarVerificacionEntregaHandler $handler
+     * @return void
+     */
     public function aprobar(AprobarVerificacionEntregaHandler $handler): void
     {
         $handler->handle(new AprobarVerificacionEntregaInput(
@@ -47,6 +59,11 @@ final class AprobarVerificacion extends Component
         $this->redirect(route('prestamos.curador.prestamo.detalle', $this->id), navigate: true);
     }
 
+    /**
+     * @param ConsultarPrestamoHandler $prestamoHandler
+     * @param VerificacionEntregaPrestamoRepositoryInterface $verificacionRepo
+     * @return View
+     */
     public function render(
         ConsultarPrestamoHandler $prestamoHandler,
         VerificacionEntregaPrestamoRepositoryInterface $verificacionRepo,

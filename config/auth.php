@@ -114,4 +114,35 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Verificación de Correo Electrónico
+    |--------------------------------------------------------------------------
+    |
+    | Minutos que el enlace firmado de verificación permanece válido. Pasado
+    | este tiempo el enlace expira y el usuario deberá solicitar uno nuevo.
+    | Mantenerlo corto refuerza la seguridad. Por defecto: 60 minutos.
+    |
+    */
+
+    'verification' => [
+        'expire' => (int) env('AUTH_VERIFICATION_EXPIRE', 60),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Duración de "Recordarme en este dispositivo"
+    |--------------------------------------------------------------------------
+    |
+    | Minutos que la cookie de "recordarme" permanece válida en el dispositivo
+    | y navegador donde el usuario activó la opción. Sustituye el valor
+    | permanente (5 años) que Laravel aplica por defecto, reduciendo la
+    | superficie de riesgo. Disminuir el valor refuerza la seguridad; ampliarlo
+    | da más comodidad en equipos personales. Un valor <= 0 conserva el
+    | comportamiento permanente de Laravel. Por defecto: 30 días.
+    |
+    */
+
+    'remember_lifetime' => (int) env('AUTH_REMEMBER_LIFETIME', 60 * 24 * 30),
+
 ];

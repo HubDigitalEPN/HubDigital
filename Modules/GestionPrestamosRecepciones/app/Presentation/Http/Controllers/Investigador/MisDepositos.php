@@ -10,6 +10,9 @@ use Livewire\Component;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
 
+/**
+ * Componente Livewire para listar los depósitos del investigador.
+ */
 #[Layout('layouts.app', params: ['title' => 'Mis Depósitos'])]
 final class MisDepositos extends Component
 {
@@ -21,6 +24,11 @@ final class MisDepositos extends Component
 
     public string $filtroHasta = '';
 
+    /**
+     * Limpia los filtros de búsqueda.
+     *
+     * @return void
+     */
     public function limpiarFiltros(): void
     {
         $this->filtroTipo = '';
@@ -29,6 +37,11 @@ final class MisDepositos extends Component
         $this->filtroHasta = '';
     }
 
+    /**
+     * Renderiza el componente.
+     *
+     * @return \Illuminate\View\View
+     */
     public function render(): View
     {
         $query = SolicitudDepositoEloquentModel::where('investigador_id', (string) auth()->id())

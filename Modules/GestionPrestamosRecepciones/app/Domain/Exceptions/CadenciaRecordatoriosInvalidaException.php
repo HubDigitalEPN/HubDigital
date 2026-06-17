@@ -6,6 +6,10 @@ namespace Modules\GestionPrestamosRecepciones\Domain\Exceptions;
 
 use DomainException;
 
+/**
+ * Excepción de dominio lanzada cuando la cadencia de recordatorios es inválida: lista
+ * vacía ({@see paraListaVacia()}) o con días menores que 1 ({@see paraDiasInvalidos()}).
+ */
 final class CadenciaRecordatoriosInvalidaException extends DomainException
 {
     public static function paraListaVacia(): self

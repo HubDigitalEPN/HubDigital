@@ -25,6 +25,10 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\EnviarNotificac
 use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\IniciarPrestamoAlValidarActaListener;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\RegistrarEventoHistorialListener;
 
+/**
+ * Proveedor de servicios que registra los suscriptores (listeners) para los eventos
+ * de dominio emitidos por el módulo de Préstamos y Recepciones.
+ */
 class EventServiceProvider extends ServiceProvider
 {
     /** @var array<string, array<int, string>> */

@@ -16,8 +16,16 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudPrestamoId;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\ItemPrestamoModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\SolicitudPrestamoModel;
 
+/**
+ * Implementación Eloquent del repositorio de solicitudes de préstamo.
+ *
+ * Persiste y recupera el agregado {@see SolicitudPrestamo} y sus ítems relacionados.
+ */
 final class EloquentSolicitudPrestamoRepository implements SolicitudPrestamoRepositoryInterface
 {
+    /**
+     * Persiste una solicitud de préstamo y sincroniza sus ítems.
+     */
     public function guardar(SolicitudPrestamo $solicitud): void
     {
         $model = SolicitudPrestamoModel::updateOrCreate(
@@ -43,6 +51,9 @@ final class EloquentSolicitudPrestamoRepository implements SolicitudPrestamoRepo
         $this->sincronizarItems($model, $solicitud->items());
     }
 
+    /**
+     * Busca una solicitud por su identificador único.
+     */
     public function buscarPorId(SolicitudPrestamoId $id): ?SolicitudPrestamo
     {
         $model = SolicitudPrestamoModel::with('items')->find((string) $id);
@@ -54,12 +65,20 @@ final class EloquentSolicitudPrestamoRepository implements SolicitudPrestamoRepo
         return $this->toDomain($model);
     }
 
+    /**
+     * Genera un nuevo identificador para una solicitud.
+     */
     public function nextIdentity(): SolicitudPrestamoId
     {
         return SolicitudPrestamoId::generate();
     }
 
-    /** @param list<ItemPrestamo> $items */
+    /**
+     * Sincroniza los ítems de la solicitud en la base de datos.
+     *
+     * @param SolicitudPrestamoModel $model
+     * @param list<ItemPrestamo> $items
+     */
     private function sincronizarItems(SolicitudPrestamoModel $model, array $items): void
     {
         $newIds = array_map(fn (ItemPrestamo $item) => (string) $item->id(), $items);
@@ -82,6 +101,9 @@ final class EloquentSolicitudPrestamoRepository implements SolicitudPrestamoRepo
             ->delete();
     }
 
+    /**
+     * Mapea el modelo Eloquent y sus relaciones a la entidad de dominio.
+     */
     private function toDomain(SolicitudPrestamoModel $model): SolicitudPrestamo
     {
         $items = $model->items->map(fn (ItemPrestamoModel $row) => ItemPrestamo::reconstituir(

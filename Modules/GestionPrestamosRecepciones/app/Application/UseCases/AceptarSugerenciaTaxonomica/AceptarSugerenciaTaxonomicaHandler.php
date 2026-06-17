@@ -10,14 +10,32 @@ use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesReposi
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoRegistroEspecimen;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\MatrizEspeciesId;
 
+/**
+ * Caso de uso: Acepta una sugerencia taxonómica realizada sobre un registro de la matriz de especies.
+ * 
+ * {@see AceptarSugerenciaTaxonomicaInput}
+ * {@see AceptarSugerenciaTaxonomicaOutput}
+ */
 final class AceptarSugerenciaTaxonomicaHandler
 {
+    /**
+     * Crea una nueva instancia de AceptarSugerenciaTaxonomicaHandler.
+     * @param MatrizEspeciesRepositoryInterface $matrizRepo Repositorio de matrices de especies.
+     * @param TransactionManagerPort $transactionManager Puerto para la gestión de transacciones.
+     * @param EventPublisherPort $eventPublisher Puerto para la publicación de eventos.
+     */
     public function __construct(
         private MatrizEspeciesRepositoryInterface $matrizRepo,
         private TransactionManagerPort $transactionManager,
         private EventPublisherPort $eventPublisher,
     ) {}
 
+    /**
+     * Ejecuta el caso de uso.
+     * @param AceptarSugerenciaTaxonomicaInput $input
+     * @return AceptarSugerenciaTaxonomicaOutput
+     * @throws \DomainException Si no se encuentra la matriz de especies.
+     */
     public function __invoke(AceptarSugerenciaTaxonomicaInput $input): AceptarSugerenciaTaxonomicaOutput
     {
         $matrizId = MatrizEspeciesId::from($input->matrizId);

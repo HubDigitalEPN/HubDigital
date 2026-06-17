@@ -6,6 +6,7 @@ namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
+/** Valida que se reciba el campo y valor para completar manualmente un dato de un RegistroEspecimen. */
 final class CompletarDatosManualesRequest extends FormRequest
 {
     public function authorize(): bool

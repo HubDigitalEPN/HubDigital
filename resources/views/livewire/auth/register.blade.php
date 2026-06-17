@@ -35,7 +35,7 @@
                 <div class="text-center">
                     <p class="text-sm font-semibold leading-tight"
                        x-bind:class="role === 'prestamista' ? 'text-science-blue' : 'text-text-primary'">
-                        Prestamista
+                        Solicitante
                     </p>
                     <p class="mt-0.5 text-xs leading-snug text-text-secondary">
                         Solicito préstamos de especímenes

@@ -7,6 +7,9 @@ namespace Modules\GestionPrestamosRecepciones\Domain\Events;
 use DateTimeImmutable;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ConfiguracionGlobalRecordatoriosId;
 
+/**
+ * Evento de dominio emitido cuando el curador actualiza la configuración global de recordatorios.
+ */
 final readonly class ConfiguracionGlobalRecordatoriosActualizada
 {
     /**

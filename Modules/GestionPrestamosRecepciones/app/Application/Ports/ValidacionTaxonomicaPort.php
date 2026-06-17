@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Application\Ports;
 
+/**
+ * Puerto de la capa de aplicación para validar nombres científicos contra un catálogo
+ * taxonómico de referencia.
+ *
+ * Lo implementa un adaptador en Infrastructure (p. ej. basado en GBIF).
+ */
 interface ValidacionTaxonomicaPort
 {
     /**

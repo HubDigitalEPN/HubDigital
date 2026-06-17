@@ -7,6 +7,11 @@ namespace Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * Modelo Eloquent para la tabla 'recepciones.matrices_especies'.
+ *
+ * Almacena el encabezado y estado de una matriz de especies (DwC) cargada mediante Excel.
+ */
 final class MatrizEspeciesEloquentModel extends Model
 {
     protected $table = 'recepciones.matrices_especies';
@@ -31,6 +36,9 @@ final class MatrizEspeciesEloquentModel extends Model
         'identificacion_original_conservada' => 'boolean',
     ];
 
+    /**
+     * Relación con los registros de especímenes individuales que componen la matriz.
+     */
     public function registros(): HasMany
     {
         return $this->hasMany(RegistroEspecimenEloquentModel::class, 'matriz_id');

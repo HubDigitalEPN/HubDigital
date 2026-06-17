@@ -7,6 +7,9 @@ namespace Modules\GestionPrestamosRecepciones\Application\UseCases\SubirActaFirm
 use DateTimeImmutable;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\ActaPrestamo;
 
+/**
+ * Datos de salida tras subir el acta firmada.
+ */
 final readonly class SubirActaFirmadaOutput
 {
     public function __construct(
@@ -18,6 +21,10 @@ final readonly class SubirActaFirmadaOutput
         public ?DateTimeImmutable $firmadaSubidaEn,
     ) {}
 
+    /**
+     * @param ActaPrestamo $acta
+     * @return self
+     */
     public static function fromPrimitives(ActaPrestamo $acta): self
     {
         return new self(

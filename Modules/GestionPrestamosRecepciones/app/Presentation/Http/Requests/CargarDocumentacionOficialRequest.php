@@ -7,6 +7,7 @@ namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
+/** Valida que se reciban documentos adjuntos (array<nombre, ruta>) para cargar documentación oficial de una SolicitudDeposito. */
 final class CargarDocumentacionOficialRequest extends FormRequest
 {
     public function authorize(): bool

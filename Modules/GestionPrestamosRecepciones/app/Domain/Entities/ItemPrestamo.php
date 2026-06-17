@@ -7,8 +7,19 @@ namespace Modules\GestionPrestamosRecepciones\Domain\Entities;
 use InvalidArgumentException;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ItemPrestamoId;
 
+/**
+ * Entidad que representa un ítem (espécimen y cantidad) dentro de una
+ * {@see SolicitudPrestamo}.
+ *
+ * Referencia al espécimen por su código externo del módulo de inventario y puede
+ * conservar un snapshot inmutable de sus datos al momento de la solicitud. El
+ * curador puede fijar condiciones específicas al aprobar.
+ */
 final class ItemPrestamo
 {
+    /**
+     * @param  array<string, mixed>|null  $especimenSnapshot  Copia de los datos del espécimen al solicitarlo.
+     */
     private function __construct(
         private readonly ItemPrestamoId $id,
         private readonly string $especimenCodigoExterno,
@@ -19,6 +30,13 @@ final class ItemPrestamo
 
     // ── Named constructors ────────────────────────────────────────────────────
 
+    /**
+     * Crea un ítem nuevo validando el código externo y la cantidad.
+     *
+     * @param  array<string, mixed>|null  $especimenSnapshot
+     *
+     * @throws InvalidArgumentException Si el código externo está vacío o la cantidad es menor que 1.
+     */
     public static function crear(
         ItemPrestamoId $id,
         string $especimenCodigoExterno,

@@ -8,6 +8,10 @@ use DomainException;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudPrestamoId;
 
+/**
+ * Excepción de dominio lanzada cuando no se encuentra un acta de préstamo, ya sea por
+ * su identificador ({@see conId()}) o por la solicitud asociada ({@see paraSolicitud()}).
+ */
 final class ActaPrestamoNoEncontradaException extends DomainException
 {
     public static function conId(ActaPrestamoId $id): self

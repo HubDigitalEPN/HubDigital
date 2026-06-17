@@ -9,6 +9,14 @@ use InvalidArgumentException;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\RecordatorioDevolucionId;
 
+/**
+ * Entidad que representa un recordatorio de devolución programado para un préstamo.
+ *
+ * Captura la fecha en que debe dispararse la notificación y a cuántos días del
+ * vencimiento corresponde. Es inmutable una vez programada.
+ *
+ * Construir vía {@see self::programar()}; rehidratar vía {@see self::reconstituir()}.
+ */
 final class RecordatorioDevolucion
 {
     private function __construct(
@@ -18,6 +26,11 @@ final class RecordatorioDevolucion
         private readonly int $diasAntesVencimiento,
     ) {}
 
+    /**
+     * Programa un recordatorio nuevo.
+     *
+     * @throws InvalidArgumentException Si los días antes del vencimiento son menores que 1.
+     */
     public static function programar(
         RecordatorioDevolucionId $id,
         PrestamoId $prestamoId,

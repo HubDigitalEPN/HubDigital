@@ -11,6 +11,12 @@ use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
 
+/**
+ * Escala una solicitud a intervención curatoria por problemas en el proceso.
+ *
+ * {@see SolicitarIntervencionCuratoriaInput}
+ * {@see SolicitarIntervencionCuratoriaOutput}
+ */
 final class SolicitarIntervencionCuratoriaHandler
 {
     public function __construct(
@@ -20,6 +26,11 @@ final class SolicitarIntervencionCuratoriaHandler
         private NotificacionCuratoriaPort $notificacionCuratoria,
     ) {}
 
+    /**
+     * @param SolicitarIntervencionCuratoriaInput $input
+     * @return SolicitarIntervencionCuratoriaOutput
+     * @throws SolicitudNoEncontradaException
+     */
     public function __invoke(SolicitarIntervencionCuratoriaInput $input): SolicitarIntervencionCuratoriaOutput
     {
         $id = SolicitudDepositoId::from($input->solicitudId);

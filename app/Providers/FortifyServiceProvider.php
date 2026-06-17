@@ -4,8 +4,10 @@ namespace App\Providers;
 
 use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
+use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
@@ -28,7 +30,29 @@ class FortifyServiceProvider extends ServiceProvider
     {
         $this->configureActions();
         $this->configureViews();
+        $this->configureEmailVerification();
         $this->configureRateLimiting();
+    }
+
+    /**
+     * Personaliza el correo de verificación con asunto en español y una
+     * plantilla alineada a la identidad visual de Hub Digital (en lugar de
+     * la plantilla genérica en inglés de Laravel).
+     */
+    private function configureEmailVerification(): void
+    {
+        VerifyEmail::toMailUsing(function (object $notifiable, string $url): MailMessage {
+            $data = [
+                'user' => $notifiable,
+                'url' => $url,
+                'expireMinutes' => (int) config('auth.verification.expire', 60),
+            ];
+
+            return (new MailMessage)
+                ->subject('Verifica tu correo para activar tu cuenta')
+                ->view('emails.auth.verify-email', $data)
+                ->text('emails.auth.verify-email-text', $data);
+        });
     }
 
     /**

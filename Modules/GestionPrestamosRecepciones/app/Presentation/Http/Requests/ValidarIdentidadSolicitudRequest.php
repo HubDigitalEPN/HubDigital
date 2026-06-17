@@ -6,6 +6,7 @@ namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
+/** Valida los nombres (perfil vs. documento oficial) para la verificación de identidad del investigador en una SolicitudDeposito. */
 final class ValidarIdentidadSolicitudRequest extends FormRequest
 {
     public function authorize(): bool

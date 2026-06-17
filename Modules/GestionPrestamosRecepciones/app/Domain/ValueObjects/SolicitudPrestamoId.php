@@ -6,15 +6,27 @@ namespace Modules\GestionPrestamosRecepciones\Domain\ValueObjects;
 
 use InvalidArgumentException;
 
+/**
+ * Identificador de valor (UUID v4) de una {@see \Modules\GestionPrestamosRecepciones\Domain\Entities\SolicitudPrestamo}.
+ *
+ * Inmutable. Crear uno nuevo con {@see generate()} o reconstruir desde su
+ * representación textual con {@see fromString()}.
+ */
 final readonly class SolicitudPrestamoId
 {
     private function __construct(private string $value) {}
 
+    /** Genera un identificador nuevo con un UUID v4 aleatorio. */
     public static function generate(): self
     {
         return new self(self::uuid4());
     }
 
+    /**
+     * Reconstruye el identificador desde su representación textual.
+     *
+     * @throws InvalidArgumentException Si el valor no es un UUID v4 válido.
+     */
     public static function fromString(string $value): self
     {
         if (! preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i', $value)) {

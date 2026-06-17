@@ -9,8 +9,15 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\ActaPrestamoModel;
 
+/**
+ * Controlador para servir el PDF o imagen del acta de préstamo firmada.
+ */
 final class ServirPdfFirmado
 {
+    /**
+     * @param string $id
+     * @return Response
+     */
     public function __invoke(string $id): Response
     {
         $acta = ActaPrestamoModel::query()

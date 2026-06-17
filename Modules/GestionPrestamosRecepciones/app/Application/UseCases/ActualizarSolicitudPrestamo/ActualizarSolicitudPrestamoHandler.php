@@ -12,6 +12,12 @@ use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRep
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ItemPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudPrestamoId;
 
+/**
+ * Manejador para actualizar una solicitud de préstamo.
+ * 
+ * {@see ActualizarSolicitudPrestamoInput}
+ * {@see ActualizarSolicitudPrestamoOutput}
+ */
 final class ActualizarSolicitudPrestamoHandler
 {
     public function __construct(
@@ -22,6 +28,13 @@ final class ActualizarSolicitudPrestamoHandler
     {
     }
 
+    /**
+     * Ejecuta la actualización de la solicitud de préstamo.
+     * 
+     * @param ActualizarSolicitudPrestamoInput $input
+     * @return ActualizarSolicitudPrestamoOutput
+     * @throws SolicitudPrestamoNoEncontradaException
+     */
     public function handle(ActualizarSolicitudPrestamoInput $input): ActualizarSolicitudPrestamoOutput
     {
         $id = SolicitudPrestamoId::fromString($input->solicitudId);
