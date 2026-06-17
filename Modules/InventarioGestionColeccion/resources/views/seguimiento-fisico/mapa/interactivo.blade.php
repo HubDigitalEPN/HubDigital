@@ -224,21 +224,33 @@
             <p class="text-xs text-text-secondary">Recorre la colección: gabinete, ranura, caja, unit tray y espécimen.</p>
         </div>
 
-        <div class="relative w-full sm:w-80">
-            <flux:input
-                wire:model.live.debounce.350ms="busquedaEspecimen"
-                @if($modo === 'visitante') wire:keydown.enter="localizarPorNombre(busquedaEspecimen)" @endif
-                icon="magnifying-glass"
-                placeholder="{{ $modo === 'visitante' ? 'Buscar por nombre científico' : 'Buscar espécimen por nombre o código' }}"
-                class="w-full"
-            />
+        <div class="relative z-30 w-full sm:w-80">
+            {{-- Un @if dentro de la etiqueta del componente rompe el compilador de componentes
+                 de Blade y deja <flux:input> como texto literal (invisible). Por eso el
+                 condicional de modo se resuelve partiendo en dos invocaciones completas. --}}
+            @if($modo === 'visitante')
+                <flux:input
+                    wire:model.live.debounce.350ms="busquedaEspecimen"
+                    wire:keydown.enter="localizarPorNombre(busquedaEspecimen)"
+                    icon="magnifying-glass"
+                    placeholder="Buscar por nombre científico"
+                    class="w-full"
+                />
+            @else
+                <flux:input
+                    wire:model.live.debounce.350ms="busquedaEspecimen"
+                    icon="magnifying-glass"
+                    placeholder="Buscar espécimen por nombre o código"
+                    class="w-full"
+                />
+            @endif
 
             <div wire:loading.flex wire:target="busquedaEspecimen" class="absolute right-3 top-1/2 -translate-y-1/2 items-center">
                 <flux:icon name="arrow-path" class="size-4 animate-spin text-text-secondary" />
             </div>
 
             @if(count($sugerencias) > 0)
-                <ul class="absolute z-20 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border border-border bg-surface shadow-sm">
+                <ul class="absolute z-50 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border border-border bg-surface shadow-sm">
                     @foreach($sugerencias as $sugerencia)
                         <li>
                             <button

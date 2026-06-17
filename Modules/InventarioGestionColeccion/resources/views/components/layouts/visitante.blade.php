@@ -38,21 +38,50 @@
 
             <flux:spacer />
 
-            {{-- En lugar del menú de usuario del admin: nombre del visitante y salida al portal. --}}
-            <div class="hidden border-t border-border px-3 py-3 lg:block">
-                @if(session('visitante_nombre'))
-                    <div class="mb-2 flex items-center gap-2 px-1">
-                        <flux:icon name="user" class="size-4 shrink-0 text-text-secondary" />
-                        <span class="truncate text-sm font-medium text-text-primary">{{ session('visitante_nombre') }}</span>
+            {{-- Mismo menú de perfil que el curador (flux:sidebar.profile + dropdown), pero con los
+                 datos del visitante y una única acción: salir. No hay entidad User ni perfil editable. --}}
+            @php
+                $nombreVisitante = session('visitante_nombre', 'Visitante');
+                $inicialesVisitante = collect(explode(' ', (string) $nombreVisitante))
+                    ->filter()
+                    ->take(2)
+                    ->map(fn ($p) => mb_strtoupper(mb_substr($p, 0, 1)))
+                    ->implode('') ?: 'V';
+            @endphp
+            <flux:dropdown position="bottom" align="start" class="hidden lg:block">
+                <flux:sidebar.profile
+                    :name="$nombreVisitante"
+                    :initials="$inicialesVisitante"
+                    icon:trailing="chevrons-up-down"
+                />
+
+                <flux:menu>
+                    <div class="flex items-center gap-2 px-1 py-1.5 text-start text-sm">
+                        <flux:avatar
+                            :name="$nombreVisitante"
+                            :initials="$inicialesVisitante"
+                        />
+                        <div class="grid flex-1 text-start text-sm leading-tight">
+                            <flux:heading class="truncate">{{ $nombreVisitante }}</flux:heading>
+                            <flux:text class="truncate text-text-secondary">Acceso de visitante</flux:text>
+                        </div>
                     </div>
-                @endif
-                <form method="POST" action="{{ route('inventario.visitante.salir') }}" class="w-full">
-                    @csrf
-                    <flux:button type="submit" variant="ghost" icon="arrow-right-start-on-rectangle" class="w-full justify-start">
-                        Salir
-                    </flux:button>
-                </form>
-            </div>
+                    <flux:menu.separator />
+                    <flux:menu.radio.group>
+                        <form method="POST" action="{{ route('inventario.visitante.salir') }}" class="w-full">
+                            @csrf
+                            <flux:menu.item
+                                as="button"
+                                type="submit"
+                                icon="arrow-right-start-on-rectangle"
+                                class="w-full cursor-pointer"
+                            >
+                                Salir
+                            </flux:menu.item>
+                        </form>
+                    </flux:menu.radio.group>
+                </flux:menu>
+            </flux:dropdown>
         </flux:sidebar>
 
         {{-- Mobile top bar --}}
@@ -74,7 +103,11 @@
             </form>
         </flux:header>
 
-        {{ $slot }}
+        {{-- flux:main establece el layout horizontal junto al sidebar: sin él, el sidebar se
+             apila verticalmente y se sobrepone al mapa. Es exactamente el wrapper de layouts.app. --}}
+        <flux:main>
+            {{ $slot }}
+        </flux:main>
 
         {{-- Domain exception toast: la búsqueda del visitante puede emitir errores de dominio. --}}
         <div
