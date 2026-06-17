@@ -23,21 +23,29 @@ Característica: Aprobación documental de la solicitud
         Y el Código QR queda disponible para el investigador
         Y se notifica al investigador que ya puede descargar el Código QR para la entrega física
 
-    Esquema del escenario: El curador aprueba por excepción una solicitud con una alerta sin resolver
+    Esquema del escenario: El curador aprueba una solicitud validando las alertas ya justificadas
         Dado que la solicitud está "Pendiente de Revisión por Curaduría"
-        Y mantiene la alerta "<tipo_alerta>" sin resolver
-        Cuando el curador decide aprobarla pese a la alerta
-        Entonces el sistema le advierte que la aprobación queda bajo su responsabilidad
-        Y al confirmar la advertencia, la solicitud pasa a estado "Aprobada Documentalmente"
-        Y la aprobación por excepción, con la alerta asumida, queda registrada en la auditoría a nombre del curador responsable
+        Y llega con la alerta "<tipo_alerta>" justificada por el investigador
+        Cuando el curador acepta todas las justificaciones pendientes
+        Entonces la solicitud pasa a estado "Aprobada Documentalmente"
+        Y la aprobación queda registrada en la auditoría con el curador responsable
         Y se asigna un Código QR único para identificar el lote de muestras
         Y el Código QR queda disponible para el investigador
         Y se notifica al investigador que ya puede descargar el Código QR para la entrega física
 
         Ejemplos:
-            | tipo_alerta                    |
-            | Discrepancia de Identidad      |
-            | Especie no listada en catálogo |
+            | tipo_alerta                         |
+            | Discrepancia de Identidad (Tercero) |
+            | Especie no listada en catálogo      |
+            | Hallazgo Taxonómico no Catalogado   |
+
+    Escenario: El curador rechaza una solicitud porque no acepta una de sus justificaciones
+        Dado que la solicitud está "Pendiente de Revisión por Curaduría"
+        Y llega con varias alertas justificadas por el investigador
+        Cuando el curador no acepta al menos una de las justificaciones
+        Entonces la solicitud pasa a estado "Requiere Corrección"
+        Y el comentario para el investigador indica cuáles justificaciones no fueron aceptadas
+        Y se notifica al investigador el rechazo de su solicitud
 
     Esquema del escenario: El curador rechaza una solicitud justificando el motivo al investigador
         Dado que la solicitud está "Pendiente de Revisión por Curaduría"
