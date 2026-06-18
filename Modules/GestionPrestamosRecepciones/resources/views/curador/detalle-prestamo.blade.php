@@ -18,32 +18,20 @@
 
             {{-- Préstamo cerrado con observación --}}
             @php
-                $observacionCierre = null;
+                $observacionCierreLegacy = null;
                 foreach ($historial->eventos as $evtCierre) {
                     if (in_array($evtCierre->tipo, ['PrestamoCerrado', 'PrestamoCerradoConObservacion'], true)) {
-                        $observacionCierre = $evtCierre->datos['observacion'] ?? null;
-                        if ($observacionCierre !== null) {
+                        $observacionCierreLegacy = $evtCierre->datos['observacion'] ?? null;
+                        if ($observacionCierreLegacy !== null) {
                             break;
                         }
                     }
                 }
             @endphp
-            @if($prestamo->estado->value === 'cerrado_con_observacion' && $observacionCierre)
-                <div class="rounded-lg border border-warning/40 bg-warning/5 overflow-hidden">
-                    <div class="px-5 py-4 border-b border-warning/20 flex items-center gap-3">
-                        <div class="flex h-7 w-7 items-center justify-center rounded-full bg-warning/15 shrink-0">
-                            <flux:icon name="exclamation-triangle" class="size-3.5 text-warning" />
-                        </div>
-                        <flux:heading size="base" level="2" class="font-display text-warning">Préstamo cerrado con observación</flux:heading>
-                    </div>
-                    <div class="p-5 space-y-2">
-                        <p class="text-xs text-text-secondary">Anomalías que detectaste al verificar los especímenes devueltos:</p>
-                        <div class="rounded-lg bg-warning/10 border border-warning/20 px-4 py-3">
-                            <p class="text-sm text-text-primary leading-relaxed">{{ $observacionCierre }}</p>
-                        </div>
-                    </div>
-                </div>
-            @endif
+            <x-gestionprestamosrecepciones::cierre-observacion-banner
+                :estado="$prestamo->estado->value"
+                :verificacion="$verificacionCierre"
+                :observacion-legacy="$observacionCierreLegacy" />
 
             {{-- Préstamo --}}
             <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
@@ -156,7 +144,7 @@
                     </div>
                     <div class="p-5 space-y-3">
                         <div class="flex items-center gap-2">
-                            @if($verificacion->estadoEnvio()->value === 'sin_novedades')
+                            @if($verificacion->resultado()->value === 'sin_novedades')
                                 <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold bg-bio-green/10 text-bio-green border border-bio-green/20">
                                     <span class="size-1.5 rounded-full bg-bio-green"></span>
                                     Sin novedades

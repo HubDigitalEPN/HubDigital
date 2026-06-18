@@ -29,7 +29,7 @@
             </div>
             <div class="p-5 space-y-4">
                 <div class="flex items-center gap-2">
-                    @if($verificacion->estadoEnvio()->value === 'sin_novedades')
+                    @if($verificacion->resultado()->value === 'sin_novedades')
                         <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold bg-bio-green/10 text-bio-green border border-bio-green/20">
                             <span class="size-1.5 rounded-full bg-bio-green"></span>
                             Sin novedades

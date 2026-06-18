@@ -29,7 +29,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Repositories\PrestamoRepositoryIn
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\RecordatorioDevolucionRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
-use Modules\GestionPrestamosRecepciones\Domain\Repositories\VerificacionEntregaPrestamoRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\Repositories\VerificacionEspecimenesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\EloquentHistorialAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\FakeNotificacionCuratoriaAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\GbifValidacionTaxonomicaAdapter;
@@ -47,7 +47,7 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repo
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentPrestamoRepository;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentRecordatorioDevolucionRepository;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentSolicitudPrestamoRepository;
-use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentVerificacionEntregaPrestamoRepository;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentVerificacionEspecimenesRepository;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Repositories\EloquentMatrizEspeciesRepository;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Repositories\EloquentSolicitudDepositoRepository;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\BandejaActas;
@@ -98,7 +98,7 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
         CatalogoCuraduriaPort::class => InventarioGestionColeccionCatalogoCuraduriaAdapter::class,
         ValidacionTaxonomicaPort::class => GbifValidacionTaxonomicaAdapter::class,
         PdfGeneratorPort::class => DomPdfGeneratorAdapter::class,
-        VerificacionEntregaPrestamoRepositoryInterface::class => EloquentVerificacionEntregaPrestamoRepository::class,
+        VerificacionEspecimenesRepositoryInterface::class => EloquentVerificacionEspecimenesRepository::class,
     ];
 
     /**

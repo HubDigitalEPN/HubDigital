@@ -9,10 +9,14 @@ namespace Modules\GestionPrestamosRecepciones\Application\UseCases\CerrarPrestam
  */
 final readonly class CerrarPrestamoInput
 {
+    /**
+     * @param  array<array{itemPrestamoId: string, descripcion: string}>  $observaciones  Novedades por espécimen.
+     */
     public function __construct(
         public string $prestamoId,
         public string $curadorId,
         public string $resultado,
-        public ?string $observacion = null,
+        public array $observaciones = [],
+        public ?string $observacionGeneral = null,
     ) {}
 }

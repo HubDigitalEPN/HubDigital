@@ -14,6 +14,7 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\CerrarPrestamo\Cerr
 use Modules\GestionPrestamosRecepciones\Application\UseCases\CerrarPrestamo\CerrarPrestamoInput;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\Prestamo;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\PrestamoRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\Repositories\VerificacionEspecimenesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\CondicionEspecimen;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoPrestamo;
@@ -21,6 +22,7 @@ use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\BaseContext;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\FakeEventPublisherAdapter;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\PassThroughTransactionManagerAdapter;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Persistence\InMemoryPrestamoRepository;
+use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Persistence\InMemoryVerificacionEspecimenesRepository;
 use PHPUnit\Framework\Assert;
 
 /**
@@ -32,6 +34,8 @@ final class CierrePrestamosContext extends BaseContext
     // ── Repositorios in-memory ────────────────────────────────────────────────
 
     private InMemoryPrestamoRepository $prestamoRepo;
+
+    private InMemoryVerificacionEspecimenesRepository $verificacionRepo;
 
     private FakeEventPublisherAdapter $fakePublisher;
 
@@ -58,9 +62,11 @@ final class CierrePrestamosContext extends BaseContext
         self::bootApp();
 
         $this->prestamoRepo = new InMemoryPrestamoRepository;
+        $this->verificacionRepo = new InMemoryVerificacionEspecimenesRepository;
         $this->fakePublisher = new FakeEventPublisherAdapter;
 
         self::$app->instance(PrestamoRepositoryInterface::class, $this->prestamoRepo);
+        self::$app->instance(VerificacionEspecimenesRepositoryInterface::class, $this->verificacionRepo);
         self::$app->instance(TransactionManagerPort::class, new PassThroughTransactionManagerAdapter);
         self::$app->instance(EventPublisherPort::class, $this->fakePublisher);
 
@@ -131,6 +137,9 @@ final class CierrePrestamosContext extends BaseContext
                     prestamoId: (string) $this->prestamoExistente->id(),
                     curadorId: $this->curadorId,
                     resultado: $resultado,
+                    observacionGeneral: $resultado === 'con observación'
+                        ? 'Novedad detectada en la verificación de la devolución'
+                        : null,
                 )
             );
         } catch (\Throwable $e) {

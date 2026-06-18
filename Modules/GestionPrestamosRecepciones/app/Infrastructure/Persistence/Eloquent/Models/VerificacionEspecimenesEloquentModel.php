@@ -8,13 +8,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Modelo Eloquent para la tabla 'prestamos.verificaciones_entrega_prestamo'.
+ * Modelo Eloquent para la tabla 'prestamos.verificaciones_especimenes'.
  *
- * Registra la inspección física realizada por el investigador al recibir los especímenes.
+ * Registra las verificaciones físicas de especímenes de un préstamo en sus distintos
+ * momentos (recepción por el investigador, devolución verificada por el curador).
  */
-final class VerificacionEntregaPrestamoEloquentModel extends Model
+final class VerificacionEspecimenesEloquentModel extends Model
 {
-    protected $table = 'prestamos.verificaciones_entrega_prestamo';
+    protected $table = 'prestamos.verificaciones_especimenes';
 
     protected $primaryKey = 'id';
 
@@ -25,8 +26,10 @@ final class VerificacionEntregaPrestamoEloquentModel extends Model
     protected $fillable = [
         'id',
         'prestamo_id',
-        'estado_envio',
+        'tipo',
+        'resultado',
         'observaciones',
+        'observacion_general',
     ];
 
     protected $casts = [

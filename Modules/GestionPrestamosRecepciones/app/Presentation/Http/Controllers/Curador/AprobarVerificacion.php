@@ -13,8 +13,9 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarVerificacion
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarPrestamo\ConsultarPrestamoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarPrestamo\ConsultarPrestamoInput;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\PrestamoNoEncontradoException;
-use Modules\GestionPrestamosRecepciones\Domain\Repositories\VerificacionEntregaPrestamoRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\Repositories\VerificacionEspecimenesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrestamoId;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoVerificacion;
 
 /**
  * Componente Livewire para la aprobación de la verificación de entrega de préstamos.
@@ -61,19 +62,19 @@ final class AprobarVerificacion extends Component
 
     /**
      * @param ConsultarPrestamoHandler $prestamoHandler
-     * @param VerificacionEntregaPrestamoRepositoryInterface $verificacionRepo
+     * @param VerificacionEspecimenesRepositoryInterface $verificacionRepo
      * @return View
      */
     public function render(
         ConsultarPrestamoHandler $prestamoHandler,
-        VerificacionEntregaPrestamoRepositoryInterface $verificacionRepo,
+        VerificacionEspecimenesRepositoryInterface $verificacionRepo,
     ): View {
         $prestamo = $prestamoHandler->handle(new ConsultarPrestamoInput(
             prestamoId: $this->id,
             usuarioId: (string) auth()->id(),
         ));
 
-        $verificacion = $verificacionRepo->buscarPorPrestamoId(PrestamoId::fromString($this->id));
+        $verificacion = $verificacionRepo->buscarPorPrestamoYTipo(PrestamoId::fromString($this->id), TipoVerificacion::Recepcion);
 
         return view('gestionprestamosrecepciones::curador.aprobar-verificacion', compact('prestamo', 'verificacion'));
     }

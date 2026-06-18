@@ -93,16 +93,59 @@
                 <p class="text-xs text-error mt-2">{{ $message }}</p>
             @enderror
 
-            {{-- Comentario obligatorio cuando hay observaciones --}}
+            {{-- Novedades por espécimen + nota general (solo si hay observación) --}}
             @if($resultado === 'con observación')
-                <div class="mt-4">
+                <div class="mt-5 space-y-4">
+                    <div>
+                        <p class="text-sm font-semibold text-text-primary">Novedades por espécimen</p>
+                        <p class="text-xs text-text-secondary mt-0.5">Describe el estado de cada espécimen que presente alguna anomalía. Deja en blanco los que estén correctos.</p>
+                    </div>
+
+                    @error('observaciones')
+                        <p class="text-xs text-error">{{ $message }}</p>
+                    @enderror
+
+                    @php $items = collect($items); @endphp
+                    @if($items->isEmpty())
+                        <flux:text class="text-xs text-text-secondary">No hay especímenes registrados en este préstamo.</flux:text>
+                    @else
+                        <div class="space-y-3">
+                            @foreach($observaciones as $i => $obs)
+                                @php $item = $items->get($i); @endphp
+                                <div class="rounded-lg border border-border bg-bg-main overflow-hidden">
+                                    <div class="flex items-center gap-3 px-4 py-2.5 border-b border-border">
+                                        <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-science-blue/10">
+                                            <flux:icon name="beaker" class="size-4 text-science-blue" />
+                                        </div>
+                                        <p class="text-sm font-mono font-medium text-text-primary">
+                                            {{ $item?->especimen_codigo_externo ?? 'Espécimen ' . ($i + 1) }}
+                                        </p>
+                                        @if($item?->especimen_snapshot)
+                                            <span class="text-xs text-text-secondary">— {{ $item->especimen_snapshot['nombre'] ?? '' }}</span>
+                                        @endif
+                                    </div>
+                                    <div class="p-3">
+                                        <flux:field>
+                                            <flux:label class="sr-only">Novedad del espécimen</flux:label>
+                                            <flux:textarea
+                                                wire:model="observaciones.{{ $i }}.descripcion"
+                                                placeholder="Describe la anomalía o daño detectado (opcional)."
+                                                rows="2" />
+                                            <flux:error name="observaciones.{{ $i }}.descripcion" />
+                                        </flux:field>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+
                     <flux:field>
-                        <flux:label>Descripción de las observaciones <span class="text-error">*</span></flux:label>
+                        <flux:label>Nota general (opcional)</flux:label>
                         <flux:textarea
-                            wire:model.live="observacion"
-                            placeholder="Describe las anomalías o daños detectados en los especímenes devueltos…"
-                            rows="4" />
-                        <flux:error name="observacion" />
+                            wire:model="observacionGeneral"
+                            placeholder="Observaciones no atadas a un espécimen concreto (ej. la caja llegó abierta)…"
+                            rows="3" />
+                        <flux:error name="observacionGeneral" />
                     </flux:field>
                 </div>
             @endif

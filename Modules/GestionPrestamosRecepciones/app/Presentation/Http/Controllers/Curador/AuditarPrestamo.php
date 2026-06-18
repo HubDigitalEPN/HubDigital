@@ -20,8 +20,9 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialS
 use Modules\GestionPrestamosRecepciones\Application\UseCases\HabilitarEnvioInternacional\HabilitarEnvioInternacionalHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\HabilitarEnvioInternacional\HabilitarEnvioInternacionalInput;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\RecordatorioDevolucionRepositoryInterface;
-use Modules\GestionPrestamosRecepciones\Domain\Repositories\VerificacionEntregaPrestamoRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\Repositories\VerificacionEspecimenesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrestamoId;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoVerificacion;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\PrestamoEloquentModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\SolicitudPrestamoModel;
 
@@ -192,13 +193,13 @@ final class AuditarPrestamo extends Component
     /**
      * @param ConsultarHistorialSolicitudHandler $historialSolicitudHandler
      * @param ConsultarHistorialPrestamoHandler $historialPrestamoHandler
-     * @param VerificacionEntregaPrestamoRepositoryInterface $verificacionRepo
+     * @param VerificacionEspecimenesRepositoryInterface $verificacionRepo
      * @return View
      */
     public function render(
         ConsultarHistorialSolicitudHandler $historialSolicitudHandler,
         ConsultarHistorialPrestamoHandler $historialPrestamoHandler,
-        VerificacionEntregaPrestamoRepositoryInterface $verificacionRepo,
+        VerificacionEspecimenesRepositoryInterface $verificacionRepo,
     ): View {
         $prestamo = PrestamoEloquentModel::query()->with('acta')->findOrFail($this->prestamoId);
         $acta = $prestamo->acta;
@@ -235,12 +236,16 @@ final class AuditarPrestamo extends Component
             ->values()
             ->all();
 
-        $verificacion = $verificacionRepo->buscarPorPrestamoId(PrestamoId::fromString($this->prestamoId));
+        $prestamoIdVo = PrestamoId::fromString($this->prestamoId);
+        $verificacion = $verificacionRepo->buscarPorPrestamoYTipo($prestamoIdVo, TipoVerificacion::Recepcion);
+        $verificacionCierre = in_array($prestamo->estado, ['cerrado', 'cerrado_con_observacion'], true)
+            ? $verificacionRepo->buscarPorPrestamoYTipo($prestamoIdVo, TipoVerificacion::Devolucion)
+            : null;
 
         $nombreValidador = $acta?->validada_por
             ? (User::find($acta->validada_por)?->name ?? $acta->validada_por)
             : null;
 
-        return view('gestionprestamosrecepciones::curador.auditar-prestamo', compact('prestamo', 'acta', 'solicitud', 'timeline', 'verificacion', 'nombreValidador'));
+        return view('gestionprestamosrecepciones::curador.auditar-prestamo', compact('prestamo', 'acta', 'solicitud', 'timeline', 'verificacion', 'verificacionCierre', 'nombreValidador'));
     }
 }

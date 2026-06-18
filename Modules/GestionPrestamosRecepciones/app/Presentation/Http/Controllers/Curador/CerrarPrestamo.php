@@ -13,6 +13,7 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\CerrarPrestamo\Cerr
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarPrestamo\ConsultarPrestamoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarPrestamo\ConsultarPrestamoInput;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\PrestamoNoEncontradoException;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\PrestamoEloquentModel;
 
 #[Layout('layouts.app', params: ['title' => 'Cerrar préstamo'])]
 final class CerrarPrestamo extends Component
@@ -23,7 +24,10 @@ final class CerrarPrestamo extends Component
 
     public string $resultado = '';
 
-    public string $observacion = '';
+    public string $observacionGeneral = '';
+
+    /** @var array<int, array{itemPrestamoId: string, descripcion: string}> */
+    public array $observaciones = [];
 
     public function mount(string $id, ConsultarPrestamoHandler $handler): void
     {
@@ -41,23 +45,45 @@ final class CerrarPrestamo extends Component
         if ($prestamo->estado->value !== 'en_revision') {
             abort(403);
         }
+
+        // Pre-populamos para que itemPrestamoId esté disponible (wire:model en inputs ocultos no empuja valores).
+        $this->observaciones = $this->itemsDelPrestamo()
+            ->map(fn ($item) => [
+                'itemPrestamoId' => (string) $item->id,
+                'descripcion' => '',
+            ])
+            ->values()
+            ->toArray();
     }
 
     public function cerrar(CerrarPrestamoHandler $handler): void
     {
-        $rules = ['resultado' => 'required|in:sin novedades,con observación'];
+        $this->validate([
+            'resultado' => 'required|in:sin novedades,con observación',
+            'observaciones.*.descripcion' => 'nullable|string|max:500',
+            'observacionGeneral' => 'nullable|string|max:500',
+        ]);
 
-        if ($this->resultado === 'con observación') {
-            $rules['observacion'] = 'required|string|min:10|max:500';
+        // Solo enviamos las novedades por espécimen que tengan descripción.
+        $conObservacion = array_values(array_filter(
+            $this->observaciones,
+            fn (array $obs) => trim($obs['descripcion'] ?? '') !== '',
+        ));
+
+        $notaGeneral = trim($this->observacionGeneral);
+
+        if ($this->resultado === 'con observación' && count($conObservacion) === 0 && $notaGeneral === '') {
+            $this->addError('observaciones', 'Debes registrar al menos una novedad (por espécimen o en la nota general).');
+
+            return;
         }
-
-        $this->validate($rules);
 
         $handler->handle(new CerrarPrestamoInput(
             prestamoId: $this->id,
             curadorId: (string) auth()->id(),
             resultado: $this->resultado,
-            observacion: $this->resultado === 'con observación' ? trim($this->observacion) : null,
+            observaciones: $this->resultado === 'con observación' ? $conObservacion : [],
+            observacionGeneral: $this->resultado === 'con observación' && $notaGeneral !== '' ? $notaGeneral : null,
         ));
 
         $this->redirect(route('prestamos.curador.prestamo.detalle', $this->id), navigate: true);
@@ -70,6 +96,18 @@ final class CerrarPrestamo extends Component
             usuarioId: (string) auth()->id(),
         ));
 
-        return view('gestionprestamosrecepciones::curador.cerrar-prestamo', compact('prestamo'));
+        $items = $this->itemsDelPrestamo();
+
+        return view('gestionprestamosrecepciones::curador.cerrar-prestamo', compact('prestamo', 'items'));
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, \Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\ItemPrestamoModel>
+     */
+    private function itemsDelPrestamo(): \Illuminate\Support\Collection
+    {
+        $prestamo = PrestamoEloquentModel::query()->with('acta.solicitud.items')->find($this->id);
+
+        return collect($prestamo?->acta?->solicitud?->items ?? []);
     }
 }

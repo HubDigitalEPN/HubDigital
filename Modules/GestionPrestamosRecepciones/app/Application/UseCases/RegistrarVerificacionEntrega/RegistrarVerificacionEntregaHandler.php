@@ -7,16 +7,18 @@ namespace Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarVeri
 use DateTimeImmutable;
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
-use Modules\GestionPrestamosRecepciones\Domain\Entities\VerificacionEntregaPrestamo;
+use Modules\GestionPrestamosRecepciones\Domain\Entities\VerificacionEspecimenes;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\PrestamoNoEncontradoException;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\PrestamoRepositoryInterface;
-use Modules\GestionPrestamosRecepciones\Domain\Repositories\VerificacionEntregaPrestamoRepositoryInterface;
-use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoEnvio;
+use Modules\GestionPrestamosRecepciones\Domain\Repositories\VerificacionEspecimenesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ObservacionEspecimen;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrestamoId;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoVerificacion;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoVerificacion;
 
 /**
- * Registra la verificación de la entrega de un préstamo.
+ * Registra la verificación de la entrega de un préstamo (verificación de tipo
+ * Recepción realizada por el investigador al recibir los especímenes).
  *
  * {@see RegistrarVerificacionEntregaInput}
  * {@see RegistrarVerificacionEntregaOutput}
@@ -25,14 +27,12 @@ final class RegistrarVerificacionEntregaHandler
 {
     public function __construct(
         private readonly PrestamoRepositoryInterface $prestamoRepo,
-        private readonly VerificacionEntregaPrestamoRepositoryInterface $verificacionRepo,
+        private readonly VerificacionEspecimenesRepositoryInterface $verificacionRepo,
         private readonly EventPublisherPort $publisher,
         private readonly TransactionManagerPort $transactionManager,
     ) {}
 
     /**
-     * @param RegistrarVerificacionEntregaInput $input
-     * @return RegistrarVerificacionEntregaOutput
      * @throws PrestamoNoEncontradoException
      */
     public function handle(RegistrarVerificacionEntregaInput $input): RegistrarVerificacionEntregaOutput
@@ -44,7 +44,7 @@ final class RegistrarVerificacionEntregaHandler
             throw PrestamoNoEncontradoException::conId($prestamoId);
         }
 
-        $estadoEnvio = EstadoEnvio::from($input->estadoEnvio);
+        $resultado = ResultadoVerificacion::from($input->estadoEnvio);
 
         $observaciones = array_map(
             fn (array $obs): ObservacionEspecimen => new ObservacionEspecimen(
@@ -58,10 +58,11 @@ final class RegistrarVerificacionEntregaHandler
 
         $prestamo->registrarVerificacion($ahora);
 
-        $verificacion = VerificacionEntregaPrestamo::registrar(
+        $verificacion = VerificacionEspecimenes::registrar(
             id: $this->verificacionRepo->nextIdentity(),
             prestamoId: $prestamoId,
-            estadoEnvio: $estadoEnvio,
+            tipo: TipoVerificacion::Recepcion,
+            resultado: $resultado,
             observaciones: $observaciones,
         );
 

@@ -7,15 +7,14 @@ namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Inve
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
-use Modules\GestionPrestamosRecepciones\Application\UseCases\CerrarPrestamo\CerrarPrestamoHandler;
-use Modules\GestionPrestamosRecepciones\Application\UseCases\CerrarPrestamo\CerrarPrestamoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialPrestamo\ConsultarHistorialPrestamoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialPrestamo\ConsultarHistorialPrestamoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudInput;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\RecordatorioDevolucionRepositoryInterface;
-use Modules\GestionPrestamosRecepciones\Domain\Repositories\VerificacionEntregaPrestamoRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\Repositories\VerificacionEspecimenesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrestamoId;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoVerificacion;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\PrestamoEloquentModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\SolicitudPrestamoModel;
 
@@ -50,36 +49,20 @@ final class DetallePrestamo extends Component
 
     public string $successMessage = '';
 
-    public bool $showSolicitarCierreModal = false;
-
-    /**
-     * El investigador cierra el préstamo confirmando la devolución de los especímenes.
-     */
-    public function solicitarCierre(CerrarPrestamoHandler $handler): void
-    {
-        $handler->handle(new CerrarPrestamoInput(
-            prestamoId: $this->id,
-            investigadorId: (string) auth()->id(),
-        ));
-
-        $this->showSolicitarCierreModal = false;
-        $this->successMessage = 'Solicitud de cierre enviada. El curador revisará la devolución y aprobará el cierre.';
-    }
-
     /**
      * Renderiza el componente.
      *
      * @param \Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudHandler $historialSolicitudHandler
      * @param \Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialPrestamo\ConsultarHistorialPrestamoHandler $historialPrestamoHandler
      * @param \Modules\GestionPrestamosRecepciones\Domain\Repositories\RecordatorioDevolucionRepositoryInterface $recordatorioRepo
-     * @param \Modules\GestionPrestamosRecepciones\Domain\Repositories\VerificacionEntregaPrestamoRepositoryInterface $verificacionRepo
+     * @param \Modules\GestionPrestamosRecepciones\Domain\Repositories\VerificacionEspecimenesRepositoryInterface $verificacionRepo
      * @return \Illuminate\View\View
      */
     public function render(
         ConsultarHistorialSolicitudHandler $historialSolicitudHandler,
         ConsultarHistorialPrestamoHandler $historialPrestamoHandler,
         RecordatorioDevolucionRepositoryInterface $recordatorioRepo,
-        VerificacionEntregaPrestamoRepositoryInterface $verificacionRepo,
+        VerificacionEspecimenesRepositoryInterface $verificacionRepo,
     ): View {
         $prestamo = PrestamoEloquentModel::query()->with('acta')->findOrFail($this->id);
         $acta = $prestamo->acta;
@@ -123,8 +106,12 @@ final class DetallePrestamo extends Component
             $recordatorioRepo->listarPorPrestamo(PrestamoId::fromString($this->id)),
         );
 
-        $verificacion = $verificacionRepo->buscarPorPrestamoId(PrestamoId::fromString($this->id));
+        $prestamoId = PrestamoId::fromString($this->id);
+        $verificacion = $verificacionRepo->buscarPorPrestamoYTipo($prestamoId, TipoVerificacion::Recepcion);
+        $verificacionCierre = in_array($prestamo->estado, ['cerrado', 'cerrado_con_observacion'], true)
+            ? $verificacionRepo->buscarPorPrestamoYTipo($prestamoId, TipoVerificacion::Devolucion)
+            : null;
 
-        return view('gestionprestamosrecepciones::investigador.detalle-prestamo', compact('prestamo', 'acta', 'solicitud', 'timeline', 'recordatorios', 'verificacion'));
+        return view('gestionprestamosrecepciones::investigador.detalle-prestamo', compact('prestamo', 'acta', 'solicitud', 'timeline', 'recordatorios', 'verificacion', 'verificacionCierre'));
     }
 }
