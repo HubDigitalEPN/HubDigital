@@ -8,6 +8,7 @@ use Behat\Behat\Context\Context;
 use Behat\Hook\BeforeScenario;
 use Behat\Hook\BeforeSuite;
 use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Support\Facades\DB;
 
 abstract class BaseContext implements Context
 {
@@ -23,12 +24,16 @@ abstract class BaseContext implements Context
         // dirname 5: Contexts/ -> Behat/ -> tests/ -> CatalogoPublico/ -> Modules/ -> [raiz]
         self::$app = require dirname(__DIR__, 5).'/bootstrap/app.php';
         self::$app->make(Kernel::class)->bootstrap();
+        self::$app->make(Kernel::class)->call('migrate');
     }
 
     #[BeforeScenario]
     public function resetDatabase(): void
     {
-        static::$app->make(Kernel::class)->call('migrate:fresh');
+        // migrate:fresh sólo borra el schema 'public'; los schemas custom (taxonomia, divulgacion)
+        // no se dropean, por lo que los datos filtran entre escenarios y las migraciones no-idempotentes revientan.
+        // TRUNCATE CASCADE es atómico y propaga por FKs: taxones → especimenes → especimenes_divulgables.
+        DB::statement('TRUNCATE TABLE taxonomia.taxones, divulgacion.especimenes CASCADE');
     }
 
     /**

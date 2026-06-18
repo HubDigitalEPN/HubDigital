@@ -75,6 +75,7 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
                 WHERE t.id IN (
                     SELECT DISTINCT taxon_id FROM taxonomia.especimenes WHERE occurrence_id IS NOT NULL
                 )
+                AND t.rango = \'especie\'
                 UNION ALL
                 SELECT t.id, t.nombre_cientifico, t.rango, t.padre_id, a.origin_id
                 FROM taxonomia.taxones t
@@ -107,6 +108,7 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
             INNER JOIN taxonomia.taxones t ON t.id = e.taxon_id
             LEFT JOIN taxon_resumen tr ON tr.origin_id = e.taxon_id
             WHERE e.occurrence_id IS NOT NULL
+            AND t.rango = \'especie\'
         ');
 
         return array_map(fn ($fila) => $this->traducir($fila), $filas);
@@ -142,6 +144,45 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
                 DB::raw('NULL as genus'),
             ])
             ->orderByRaw('e.disposition IS NULL')
+            ->orderBy('e.occurrence_id')
+            ->get();
+
+        return $filas->map(fn ($fila) => $this->traducir($fila))->all();
+    }
+
+    /** @return DatosEspecimenProveedor[] */
+    public function buscarPorNombreCientifico(string $scientificName): array
+    {
+        // El árbol construye el nombre con: si taxon ya empieza con el género → usarlo tal cual,
+        // si no → genus + ' ' + taxon. Replicamos esa misma lógica en SQL para que el nombre
+        // pasado desde $this->taxon (Livewire) coincida con lo que devuelve el arbol builder.
+        $filas = DB::table('taxonomia.especimenes as e')
+            ->join('taxonomia.taxones as t', 't.id', '=', 'e.taxon_id')
+            ->join('taxonomia.taxones as tx_genus', 'tx_genus.id', '=', 't.padre_id')
+            ->whereNotNull('e.occurrence_id')
+            ->whereRaw(
+                "CASE WHEN t.nombre_cientifico LIKE (tx_genus.nombre_cientifico || ' %')
+                      THEN t.nombre_cientifico
+                      ELSE tx_genus.nombre_cientifico || ' ' || t.nombre_cientifico
+                 END = ?",
+                [$scientificName]
+            )
+            ->select([
+                'e.id',
+                'e.occurrence_id',
+                'e.colector',
+                'e.individual_count',
+                'e.disposition',
+                'e.occurrence_status',
+                'e.specimen_notes',
+                'e.country',
+                'e.locality_name',
+                'e.decimal_latitude',
+                'e.decimal_longitude',
+                't.nombre_cientifico',
+                DB::raw('NULL as family'),
+                DB::raw('NULL as genus'),
+            ])
             ->orderBy('e.occurrence_id')
             ->get();
 
