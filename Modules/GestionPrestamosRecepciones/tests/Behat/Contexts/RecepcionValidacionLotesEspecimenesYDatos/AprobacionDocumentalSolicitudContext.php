@@ -27,6 +27,13 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarDocumentalm
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarJustificacionesAlertas\RechazarJustificacionesAlertasHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarJustificacionesAlertas\RechazarJustificacionesAlertasInput;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\SolicitudDeposito;
+use Modules\GestionPrestamosRecepciones\Domain\Events\ActaTransferenciaDominioGenerada;
+use Modules\GestionPrestamosRecepciones\Domain\Events\CodigoQRAsignado;
+use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudAprobadaDocumentalmente;
+use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudDepositoPendienteDeRevision;
+use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPriorizada;
+use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudRechazadaDocumentalmente;
+use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudRequiereCorreccion;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoAlerta;
@@ -208,6 +215,22 @@ final class AprobacionDocumentalSolicitudContext extends BaseContext
         return $solicitud;
     }
 
+    /**
+     * Indica si el FakeEventPublisher recibió al menos un evento de dominio del tipo dado.
+     *
+     * @param  class-string  $fqcnEvento
+     */
+    private function huboEventoDeTipo(string $fqcnEvento): bool
+    {
+        foreach ($this->fakePublisher->publishedEvents() as $evento) {
+            if ($evento instanceof $fqcnEvento) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     // =========================================================================
     // ANTECEDENTES (Background)
     // =========================================================================
@@ -273,6 +296,12 @@ final class AprobacionDocumentalSolicitudContext extends BaseContext
         Assert::assertTrue(
             $this->ultimaRespuesta->notificacionCuradorEnviada,
             'Se esperaba que el curador fuera notificado de la nueva solicitud por revisar'
+        );
+
+        // El envío a revisión debe haber publicado el evento de dominio correspondiente.
+        Assert::assertTrue(
+            $this->huboEventoDeTipo(SolicitudDepositoPendienteDeRevision::class),
+            'Se esperaba que se publicara el evento SolicitudDepositoPendienteDeRevision'
         );
     }
 
@@ -343,6 +372,25 @@ final class AprobacionDocumentalSolicitudContext extends BaseContext
             $this->ultimaRespuesta->curadorResponsable,
             'La auditoría debe registrar al curador responsable de la aprobación'
         );
+
+        // Verificar que la auditoría quedó persistida en la entidad, no solo en el Output.
+        $solicitud = $this->repo->buscarPorId($this->solicitudEnCurso->id());
+        Assert::assertNotNull($solicitud, 'La solicitud no fue encontrada en el repositorio');
+        Assert::assertSame(
+            $this->curadorId,
+            $solicitud->curadorResponsable(),
+            'La entidad debe registrar al curador responsable de la aprobación'
+        );
+        Assert::assertNotNull(
+            $solicitud->aprobadaEn(),
+            'La entidad debe registrar la fecha de aprobación documental'
+        );
+
+        // La aprobación documental debe haber publicado su evento de dominio.
+        Assert::assertTrue(
+            $this->huboEventoDeTipo(SolicitudAprobadaDocumentalmente::class),
+            'Se esperaba que se publicara el evento SolicitudAprobadaDocumentalmente'
+        );
     }
 
     #[Then('se asigna un Código QR único para identificar el lote de muestras')]
@@ -352,6 +400,20 @@ final class AprobacionDocumentalSolicitudContext extends BaseContext
         Assert::assertNotEmpty(
             $this->ultimaRespuesta->codigoQR,
             'Se esperaba que se asignara un Código QR único al lote de muestras'
+        );
+
+        // El Código QR debe quedar persistido en la entidad.
+        $solicitud = $this->repo->buscarPorId($this->solicitudEnCurso->id());
+        Assert::assertNotNull($solicitud, 'La solicitud no fue encontrada en el repositorio');
+        Assert::assertNotNull(
+            $solicitud->codigoQR(),
+            'Se esperaba que el Código QR quedara asignado en la solicitud'
+        );
+
+        // La asignación del Código QR debe haber publicado su evento de dominio.
+        Assert::assertTrue(
+            $this->huboEventoDeTipo(CodigoQRAsignado::class),
+            'Se esperaba que se publicara el evento CodigoQRAsignado'
         );
     }
 
@@ -494,6 +556,12 @@ final class AprobacionDocumentalSolicitudContext extends BaseContext
             $this->ultimaRespuesta->comentarioInvestigador,
             'El comentario debe mencionar la justificación que no fue aceptada'
         );
+
+        // El rechazo de justificaciones debe llevar la solicitud a requerir corrección.
+        Assert::assertTrue(
+            $this->huboEventoDeTipo(SolicitudRequiereCorreccion::class),
+            'Se esperaba que se publicara el evento SolicitudRequiereCorreccion'
+        );
     }
 
     #[Then('se notifica al investigador el rechazo de su solicitud')]
@@ -556,6 +624,12 @@ final class AprobacionDocumentalSolicitudContext extends BaseContext
             $solicitud->comentarioCurador(),
             'Se esperaba que el comentario del curador quedara persistido en la solicitud'
         );
+
+        // El rechazo documental debe haber publicado su evento de dominio.
+        Assert::assertTrue(
+            $this->huboEventoDeTipo(SolicitudRechazadaDocumentalmente::class),
+            'Se esperaba que se publicara el evento SolicitudRechazadaDocumentalmente'
+        );
     }
 
     // =========================================================================
@@ -592,6 +666,12 @@ final class AprobacionDocumentalSolicitudContext extends BaseContext
             1,
             $this->ultimaRespuesta->posicionEnCola,
             'Se esperaba que la solicitud prioritaria quedara en la posición 1 de la cola'
+        );
+
+        // La priorización debe haber publicado su evento de dominio.
+        Assert::assertTrue(
+            $this->huboEventoDeTipo(SolicitudPriorizada::class),
+            'Se esperaba que se publicara el evento SolicitudPriorizada'
         );
     }
 
@@ -658,6 +738,20 @@ final class AprobacionDocumentalSolicitudContext extends BaseContext
         Assert::assertNotEmpty(
             $this->ultimaRespuesta->actaTransferenciaDominioRuta,
             'Se esperaba que se generara el Acta de Transferencia de Dominio'
+        );
+
+        // El acta debe quedar persistida en la entidad.
+        $solicitud = $this->repo->buscarPorId($this->solicitudEnCurso->id());
+        Assert::assertNotNull($solicitud, 'La solicitud no fue encontrada en el repositorio');
+        Assert::assertNotNull(
+            $solicitud->actaTransferenciaDominio(),
+            'Se esperaba que el Acta de Transferencia de Dominio quedara registrada en la solicitud'
+        );
+
+        // La generación del acta debe haber publicado su evento de dominio.
+        Assert::assertTrue(
+            $this->huboEventoDeTipo(ActaTransferenciaDominioGenerada::class),
+            'Se esperaba que se publicara el evento ActaTransferenciaDominioGenerada'
         );
     }
 

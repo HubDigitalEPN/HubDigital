@@ -284,7 +284,7 @@ final class HabilitacionEnvioInternacionalContext extends BaseContext
         }
     }
 
-    #[When('el curador valida el acta firmada')]
+    #[When('el curador valida el acta firmada e inicia el préstamo')]
     public function elCuradorValidaElActaFirmada(): void
     {
         try {
