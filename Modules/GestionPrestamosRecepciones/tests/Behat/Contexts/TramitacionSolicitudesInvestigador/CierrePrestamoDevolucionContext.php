@@ -21,6 +21,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Repositories\VerificacionEspecime
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoVerificacionDevolucion;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoVerificacion;
 use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\BaseContext;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\FakeEventPublisherAdapter;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\PassThroughTransactionManagerAdapter;
@@ -163,7 +164,7 @@ final class CierrePrestamoDevolucionContext extends BaseContext
         }
     }
 
-    #[Then('el préstamo queda en estado en revisión')]
+    #[Then('el préstamo pasa a estado en revisión')]
     public function elPrestamoQuedaEnEstadoEnRevision(): void
     {
         Assert::assertNull(
@@ -262,6 +263,7 @@ final class CierrePrestamoDevolucionContext extends BaseContext
         $resultadoVO = match ($resultado) {
             'sin novedades'   => ResultadoVerificacionDevolucion::SinNovedades,
             'con observación' => ResultadoVerificacionDevolucion::ConObservacion,
+            default           => throw new \InvalidArgumentException("Resultado no reconocido en el escenario: '{$resultado}'"),
         };
         Assert::assertTrue(
             $evento->resultado->equals($resultadoVO),
@@ -271,6 +273,15 @@ final class CierrePrestamoDevolucionContext extends BaseContext
             $this->investigadorId,
             $evento->investigadorId,
             'El evento debe referenciar al investigador correcto para la notificación'
+        );
+
+        $verificacion = $this->verificacionRepo->buscarPorPrestamoYTipo(
+            $this->prestamoExistente->id(),
+            TipoVerificacion::Devolucion
+        );
+        Assert::assertNotNull(
+            $verificacion,
+            'Se esperaba que la VerificacionEspecimenes de tipo Devolucion fuera persistida en el repositorio'
         );
     }
 }

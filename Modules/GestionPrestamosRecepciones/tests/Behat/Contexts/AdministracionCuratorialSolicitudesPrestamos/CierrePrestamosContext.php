@@ -17,6 +17,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Repositories\PrestamoRepositoryIn
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\VerificacionEspecimenesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\CondicionEspecimen;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoVerificacion;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoPrestamo;
 use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\BaseContext;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\FakeEventPublisherAdapter;
@@ -189,6 +190,15 @@ final class CierrePrestamosContext extends BaseContext
         Assert::assertTrue(
             $this->ultimaRespuesta->condicionEspecimen->equals($condicionEsperada),
             "Se esperaba condición '{$condicionEsperada->value}', se obtuvo: {$this->ultimaRespuesta->condicionEspecimen->value}"
+        );
+
+        $verificacion = $this->verificacionRepo->buscarPorPrestamoYTipo(
+            $this->prestamoExistente->id(),
+            TipoVerificacion::Devolucion
+        );
+        Assert::assertNotNull(
+            $verificacion,
+            'Se esperaba que la VerificacionEspecimenes de tipo Devolucion fuera persistida en el repositorio'
         );
     }
 }
