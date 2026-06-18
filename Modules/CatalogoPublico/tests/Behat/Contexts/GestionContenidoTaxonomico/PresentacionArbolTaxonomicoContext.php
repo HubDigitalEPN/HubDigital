@@ -9,8 +9,9 @@ use Behat\Hook\BeforeScenario;
 use Behat\Step\Given;
 use Behat\Step\Then;
 use Behat\Step\When;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Modules\CatalogoPublico\Application\Ports\ProveedorEspecimenesParaArbolPort;
+use Modules\CatalogoPublico\Application\Ports\TransactionManagerPort;
 use Modules\CatalogoPublico\Application\UseCases\ConstruirArbolTaxonomico\ConstruirArbolTaxonomicoHandler;
 use Modules\CatalogoPublico\Application\UseCases\ConstruirArbolTaxonomico\ConstruirArbolTaxonomicoInput;
 use Modules\CatalogoPublico\Application\UseCases\ModificarConfiguracionDivulgacion\ModificarConfiguracionDivulgacionHandler;
@@ -18,7 +19,11 @@ use Modules\CatalogoPublico\Application\UseCases\ModificarConfiguracionDivulgaci
 use Modules\CatalogoPublico\Domain\Entities\EspecimenDivulgable;
 use Modules\CatalogoPublico\Domain\Repositories\EspecimenDivulgableRepositoryInterface;
 use Modules\CatalogoPublico\Domain\ValueObjects\ConfiguracionVisibilidad;
+use Modules\CatalogoPublico\Domain\ValueObjects\JerarquiaTaxonomica;
 use Modules\CatalogoPublico\Tests\Behat\Contexts\BaseContext;
+use Modules\CatalogoPublico\Tests\Support\FakeTransactionManager;
+use Modules\CatalogoPublico\Tests\Support\InMemoryEspecimenDivulgableRepository;
+use Modules\CatalogoPublico\Tests\Support\InMemoryProveedorEspecimenesParaArbol;
 use PHPUnit\Framework\Assert;
 
 final class PresentacionArbolTaxonomicoContext extends BaseContext
@@ -53,11 +58,23 @@ final class PresentacionArbolTaxonomicoContext extends BaseContext
 
     private ?\Throwable $excepcionCapturada = null;
 
+    private InMemoryEspecimenDivulgableRepository $repoDivulgable;
+
+    private InMemoryProveedorEspecimenesParaArbol $fakeArbolProveedor;
+
     // ── Inicialización por escenario ─────────────────────────────────────────
 
     #[BeforeScenario]
     public function initializeHandlers(): void
     {
+        $this->repoDivulgable = new InMemoryEspecimenDivulgableRepository;
+        self::$app->instance(EspecimenDivulgableRepositoryInterface::class, $this->repoDivulgable);
+
+        $this->fakeArbolProveedor = new InMemoryProveedorEspecimenesParaArbol($this->repoDivulgable);
+        self::$app->instance(ProveedorEspecimenesParaArbolPort::class, $this->fakeArbolProveedor);
+
+        self::$app->instance(TransactionManagerPort::class, new FakeTransactionManager);
+
         $this->construirArbolHandler = $this->make(ConstruirArbolTaxonomicoHandler::class);
         $this->modificarConfiguracionHandler = $this->make(ModificarConfiguracionDivulgacionHandler::class);
         $this->especimenesSembrados = [];
@@ -89,48 +106,23 @@ final class PresentacionArbolTaxonomicoContext extends BaseContext
                 "scientificName de '{$fila['occurrenceID']}' debe ser la combinación de genus + specificEpithet"
             );
 
-            // Sembrar en taxonomia.taxones (FK requerido por taxonomia.especimenes)
             $taxonId = (string) Str::uuid();
-            DB::table('taxonomia.taxones')->insert([
-                'id' => $taxonId,
-                'nombre_cientifico' => $fila['scientificName'],
-                'rango' => 'especie',
-                'padre_id' => null,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-
-            // Sembrar en taxonomia.especimenes (FK requerido por divulgacion.especimenes_divulgables)
             $taxonomiaEspecimenId = (string) Str::uuid();
-            DB::table('taxonomia.especimenes')->insert([
-                'id' => $taxonomiaEspecimenId,
-                'codigo_catalogo' => 'EPN-'.strtoupper(substr($taxonomiaEspecimenId, 0, 6)),
-                'taxon_id' => $taxonId,
-                'occurrence_id' => $fila['occurrenceID'],
-                'localidad' => 'Ecuador',
-                'fecha_colecta' => '2024-01-01',
-                'colector' => 'Test',
-                'estado' => 'disponible',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
 
-            // Sembrar en divulgacion.especimenes (modelo de lectura plano con jerarquía taxonómica)
-            DB::table('divulgacion.especimenes')->insert([
-                'id' => (string) Str::uuid(),
-                'occurrence_id' => $fila['occurrenceID'],
-                'scientific_name' => $fila['scientificName'],
-                'phylum' => $fila['phylum'],
-                'class' => $fila['class'],
-                'order' => $fila['order'],
-                'family' => $fila['family'],
-                'genus' => $fila['genus'],
-                'specific_epithet' => $fila['specificEpithet'],
-                'individual_count' => 1,
-                'occurrence_status' => 'present',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            // La jerarquía se siembra en el proveedor del árbol; la visibilidad
+            // se resolverá dinámicamente contra el repositorio de divulgables.
+            $jerarquia = JerarquiaTaxonomica::desde(
+                phylum: $fila['phylum'],
+                class: $fila['class'],
+                order: $fila['order'],
+                family: $fila['family'],
+                genus: $fila['genus'],
+                specificEpithet: $fila['specificEpithet'],
+                scientificName: $fila['scientificName'],
+            );
+
+            $this->fakeArbolProveedor->agregar($fila['occurrenceID'], $jerarquia);
+            $this->repoDivulgable->registrarOccurrence($fila['occurrenceID'], $taxonomiaEspecimenId);
 
             $this->especimenesSembrados[$fila['occurrenceID']] = [
                 'taxonomiaTaxonId' => $taxonId,
@@ -161,7 +153,7 @@ final class PresentacionArbolTaxonomicoContext extends BaseContext
             'No hay especímenes sembrados — el paso anterior debe ejecutarse primero'
         );
 
-        $repo = $this->make(EspecimenDivulgableRepositoryInterface::class);
+        $repo = $this->repoDivulgable;
 
         foreach ($this->especimenesSembrados as $occurrenceID => $datos) {
             $divulgable = EspecimenDivulgable::sincronizar(
@@ -381,7 +373,7 @@ final class PresentacionArbolTaxonomicoContext extends BaseContext
             "El espécimen '{$occurrenceID}' no está en los antecedentes — no se puede modificar su visibilidad"
         );
 
-        $repo = $this->make(EspecimenDivulgableRepositoryInterface::class);
+        $repo = $this->repoDivulgable;
         $divulgableActual = $repo->buscarPorOccurrenceID($occurrenceID);
 
         Assert::assertNotNull(
@@ -408,7 +400,7 @@ final class PresentacionArbolTaxonomicoContext extends BaseContext
         $excepcionModificacion = null;
 
         try {
-            ($this->modificarConfiguracionHandler)(
+            $this->modificarConfiguracionHandler->handle(
                 new ModificarConfiguracionDivulgacionInput(
                     especimenes: [[
                         'occurrenceID' => $occurrenceID,

@@ -9,10 +9,10 @@ use Behat\Hook\BeforeScenario;
 use Behat\Step\Given;
 use Behat\Step\Then;
 use Behat\Step\When;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Modules\CatalogoPublico\Application\Ports\DatosEspecimenProveedor;
 use Modules\CatalogoPublico\Application\Ports\ProveedorEspecimenesPort;
+use Modules\CatalogoPublico\Application\Ports\TransactionManagerPort;
 use Modules\CatalogoPublico\Application\UseCases\ConsultarInformacionDivulgada\ConsultarInformacionDivulgadaHandler;
 use Modules\CatalogoPublico\Application\UseCases\ConsultarInformacionDivulgada\ConsultarInformacionDivulgadaInput;
 use Modules\CatalogoPublico\Application\UseCases\ModificarConfiguracionDivulgacion\ModificarConfiguracionDivulgacionHandler;
@@ -24,6 +24,8 @@ use Modules\CatalogoPublico\Domain\Repositories\EspecimenDivulgableRepositoryInt
 use Modules\CatalogoPublico\Domain\ValueObjects\ConfiguracionVisibilidad;
 use Modules\CatalogoPublico\Tests\Behat\Contexts\BaseContext;
 use Modules\CatalogoPublico\Tests\Support\FakeProveedorEspecimenesPort;
+use Modules\CatalogoPublico\Tests\Support\FakeTransactionManager;
+use Modules\CatalogoPublico\Tests\Support\InMemoryEspecimenDivulgableRepository;
 use PHPUnit\Framework\Assert;
 
 final class SincronizacionInformacionEspecimenesContext extends BaseContext
@@ -47,13 +49,20 @@ final class SincronizacionInformacionEspecimenesContext extends BaseContext
 
     private FakeProveedorEspecimenesPort $fakeProveedor;
 
+    private InMemoryEspecimenDivulgableRepository $repoDivulgable;
+
     // ── Inicialización por escenario ─────────────────────────────────────────
 
     #[BeforeScenario]
     public function initializeHandlers(): void
     {
+        $this->repoDivulgable = new InMemoryEspecimenDivulgableRepository;
+        self::$app->instance(EspecimenDivulgableRepositoryInterface::class, $this->repoDivulgable);
+
         $this->fakeProveedor = new FakeProveedorEspecimenesPort;
         self::$app->instance(ProveedorEspecimenesPort::class, $this->fakeProveedor);
+
+        self::$app->instance(TransactionManagerPort::class, new FakeTransactionManager);
 
         $this->sincronizarHandler = $this->make(SincronizarEspecimenesHandler::class);
         $this->modificarConfiguracionHandler = $this->make(ModificarConfiguracionDivulgacionHandler::class);
@@ -75,30 +84,10 @@ final class SincronizacionInformacionEspecimenesContext extends BaseContext
             Assert::assertNotEmpty($fila['scientificName'], 'scientificName es requerido en los antecedentes');
             Assert::assertNotEmpty($fila['occurrenceStatus'], 'occurrenceStatus es requerido en los antecedentes');
 
-            // Sembramos en taxonomia para satisfacer el FK especimen_id → taxonomia.especimenes.id
-            $taxonId = (string) Str::uuid();
-            DB::table('taxonomia.taxones')->insert([
-                'id' => $taxonId,
-                'nombre_cientifico' => $fila['scientificName'],
-                'rango' => 'especie',
-                'padre_id' => null,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-
+            // El especimenId identifica al espécimen interno; el repositorio InMemory
+            // resuelve occurrenceID → especimenId con este mapeo registrado aquí.
             $especimenId = (string) Str::uuid();
-            DB::table('taxonomia.especimenes')->insert([
-                'id' => $especimenId,
-                'codigo_catalogo' => 'BHT-'.strtoupper(substr($especimenId, 0, 8)),
-                'taxon_id' => $taxonId,
-                'occurrence_id' => $fila['occurrenceID'],
-                'localidad' => 'Test',
-                'fecha_colecta' => '2024-01-01',
-                'colector' => $fila['recordedBy'] !== '' ? $fila['recordedBy'] : 'Test',
-                'estado' => 'disponible',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            $this->repoDivulgable->registrarOccurrence($fila['occurrenceID'], $especimenId);
 
             $datos = new DatosEspecimenProveedor(
                 especimenId: $especimenId,
@@ -137,7 +126,7 @@ final class SincronizacionInformacionEspecimenesContext extends BaseContext
     #[Given('que los siguientes especímenes no existen en la tabla de divulgación:')]
     public function queLosEspecimenesNoExistenEnLaTablaDeDivulgacion(TableNode $tabla): void
     {
-        $repo = $this->make(EspecimenDivulgableRepositoryInterface::class);
+        $repo = $this->repoDivulgable;
 
         foreach ($tabla->getHash() as $fila) {
             $occurrenceID = $fila['occurrenceID'];
@@ -194,7 +183,7 @@ final class SincronizacionInformacionEspecimenesContext extends BaseContext
         );
         Assert::assertNotNull($this->ultimaRespuesta, 'El handler de sincronización no retornó ninguna respuesta');
 
-        $repo = $this->make(EspecimenDivulgableRepositoryInterface::class);
+        $repo = $this->repoDivulgable;
 
         foreach ($tabla->getHash() as $fila) {
             $occurrenceID = $fila['occurrenceID'];
@@ -210,7 +199,7 @@ final class SincronizacionInformacionEspecimenesContext extends BaseContext
     #[Then('los datos divulgables de los especímenes deben quedar habilitados:')]
     public function losDatosDivulgablesDebenQuedarHabilitados(TableNode $tabla): void
     {
-        $repo = $this->make(EspecimenDivulgableRepositoryInterface::class);
+        $repo = $this->repoDivulgable;
 
         $camposVisibilidad = [
             'occurrenceIDVisible', 'scientificNameVisible', 'individualCountVisible',
@@ -281,7 +270,7 @@ final class SincronizacionInformacionEspecimenesContext extends BaseContext
         );
         Assert::assertNotNull($this->ultimaRespuesta, 'El handler no retornó ninguna respuesta');
 
-        $repo = $this->make(EspecimenDivulgableRepositoryInterface::class);
+        $repo = $this->repoDivulgable;
 
         foreach ($tabla->getHash() as $fila) {
             $occurrenceID = $fila['occurrenceID'];
@@ -313,7 +302,7 @@ final class SincronizacionInformacionEspecimenesContext extends BaseContext
     #[Given('que los siguientes especímenes existen en la tabla de divulgación:')]
     public function queLosEspecimenesExistenEnLaTablaDeDivulgacion(TableNode $tabla): void
     {
-        $repoDivulgable = $this->make(EspecimenDivulgableRepositoryInterface::class);
+        $repoDivulgable = $this->repoDivulgable;
 
         foreach ($tabla->getHash() as $fila) {
             $occurrenceID = $fila['occurrenceID'];
@@ -349,7 +338,7 @@ final class SincronizacionInformacionEspecimenesContext extends BaseContext
     #[When('el curador modifica la configuración de divulgación de los siguientes especímenes:')]
     public function elCuradorModificaLaConfiguracionDeDivulgacion(TableNode $tabla): void
     {
-        $repoDivulgable = $this->make(EspecimenDivulgableRepositoryInterface::class);
+        $repoDivulgable = $this->repoDivulgable;
         $especimenesInput = [];
 
         foreach ($tabla->getHash() as $fila) {

@@ -27,4 +27,27 @@ final class FakeProveedorEspecimenesPort implements ProveedorEspecimenesPort
     {
         return array_values($this->especimenes);
     }
+
+    /**
+     * @param  list<string>  $occurrenceIds
+     * @return DatosEspecimenProveedor[]
+     */
+    public function buscarPorOccurrenceIds(array $occurrenceIds): array
+    {
+        return array_values(array_filter(
+            array_map(
+                fn (string $id): ?DatosEspecimenProveedor => $this->especimenes[$id] ?? null,
+                $occurrenceIds
+            )
+        ));
+    }
+
+    /** @return DatosEspecimenProveedor[] */
+    public function buscarPorNombreCientifico(string $scientificName): array
+    {
+        return array_values(array_filter(
+            $this->especimenes,
+            fn (DatosEspecimenProveedor $datos): bool => $datos->scientificName === $scientificName
+        ));
+    }
 }
