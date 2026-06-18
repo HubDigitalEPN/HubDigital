@@ -570,7 +570,7 @@
                                 <flux:heading size="lg" level="2" class="font-display text-blue-navy font-semibold">
                                     {{ $gabinete['codigo'] }} — {{ $gabinete['nombre'] }}
                                 </flux:heading>
-                                <p class="text-xs text-text-secondary">{{ count($gabinete['ranuras']) }} ranuras de {{ $gabinete['totalRanuras'] }}</p>
+                                <p class="text-xs text-text-secondary">{{ $gabinete['totalRanuras'] }} ranuras</p>
                                 <x-inventariogestioncoleccion::seguimiento-fisico.firma-taxonomica
                                     enfasis="familia"
                                     :familias="$recolectar($clasifGab, 'familia')"
