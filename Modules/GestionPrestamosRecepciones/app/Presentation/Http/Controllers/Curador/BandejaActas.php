@@ -39,6 +39,10 @@ final class BandejaActas extends Component
 
     public string $successMessage = '';
 
+    public ?string $pendingActaId = null;
+
+    public bool $showEnviarActaModal = false;
+
     /**
      * @return void
      */
@@ -61,16 +65,27 @@ final class BandejaActas extends Component
 
     /**
      * @param string $actaId
+     * @return void
+     */
+    public function prepararEnvioActa(string $actaId): void
+    {
+        $this->pendingActaId = $actaId;
+        $this->showEnviarActaModal = true;
+    }
+
+    /**
      * @param EnviarActaPrestamoHandler $handler
      * @return void
      */
-    public function enviarActa(string $actaId, EnviarActaPrestamoHandler $handler): void
+    public function enviarActa(EnviarActaPrestamoHandler $handler): void
     {
         $handler->handle(new EnviarActaPrestamoInput(
-            actaId: $actaId,
+            actaId: (string) $this->pendingActaId,
             curadorId: (string) auth()->id(),
         ));
 
+        $this->pendingActaId = null;
+        $this->showEnviarActaModal = false;
         $this->successMessage = 'Acta enviada al investigador correctamente.';
     }
 

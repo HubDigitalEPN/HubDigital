@@ -122,11 +122,7 @@
                                             Vista previa
                                         </flux:button>
                                         <flux:button size="sm" variant="primary" icon="paper-airplane"
-                                            wire:click="enviarActa('{{ $acta->id }}')"
-                                            wire:loading.attr="disabled"
-                                            wire:target="enviarActa('{{ $acta->id }}')"
-                                            wire:confirm="¿Confirmas que deseas enviar el acta al investigador para su firma?">
-                                            <flux:icon wire:loading wire:target="enviarActa('{{ $acta->id }}')" name="arrow-path" class="animate-spin" />
+                                            wire:click="prepararEnvioActa('{{ $acta->id }}')">
                                             Enviar
                                         </flux:button>
                                     @elseif($acta->estado === 'pendiente_firma')
@@ -154,5 +150,32 @@
             </div>
         </div>
     @endif
+
+    {{-- Modal: confirmar envío de acta al investigador --}}
+    <flux:modal wire:model="showEnviarActaModal" class="max-w-md">
+        <div class="space-y-4 p-2">
+            <div class="flex items-center gap-3">
+                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-science-blue/15 shrink-0">
+                    <flux:icon name="paper-airplane" class="size-5 text-science-blue" />
+                </div>
+                <flux:heading size="lg">Enviar acta al investigador</flux:heading>
+            </div>
+            <flux:text class="text-text-secondary text-sm">
+                El acta será enviada al investigador para su firma digital. Esta acción no se puede deshacer.
+            </flux:text>
+            <div class="flex justify-end gap-2 pt-2">
+                <flux:modal.close>
+                    <flux:button variant="ghost">Cancelar</flux:button>
+                </flux:modal.close>
+                <flux:button variant="primary" icon="paper-airplane"
+                    wire:click="enviarActa"
+                    wire:loading.attr="disabled"
+                    wire:target="enviarActa">
+                    <flux:icon wire:loading wire:target="enviarActa" name="arrow-path" class="animate-spin" />
+                    Sí, enviar
+                </flux:button>
+            </div>
+        </div>
+    </flux:modal>
 
 </div>

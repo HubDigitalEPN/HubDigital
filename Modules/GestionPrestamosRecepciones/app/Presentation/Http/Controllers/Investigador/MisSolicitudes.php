@@ -34,6 +34,10 @@ final class MisSolicitudes extends Component
     #[Url]
     public string $ordenDireccion = 'desc';
 
+    public ?string $pendingSolicitudId = null;
+
+    public bool $showEnviarSolicitudModal = false;
+
     /**
      * Alterna la dirección del ordenamiento.
      *
@@ -58,14 +62,27 @@ final class MisSolicitudes extends Component
     }
 
     /**
-     * Envía una solicitud de préstamo.
+     * Prepara el envío de una solicitud mostrando el modal de confirmación.
      *
      * @param string $id
+     * @return void
+     */
+    public function prepararEnvioSolicitud(string $id): void
+    {
+        $this->pendingSolicitudId = $id;
+        $this->showEnviarSolicitudModal = true;
+    }
+
+    /**
+     * Envía una solicitud de préstamo.
+     *
      * @param \Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarSolicitudPrestamo\EnviarSolicitudPrestamoHandler $handler
      * @return void
      */
-    public function enviarSolicitud(string $id, EnviarSolicitudPrestamoHandler $handler): void
+    public function enviarSolicitud(EnviarSolicitudPrestamoHandler $handler): void
     {
+        $id = (string) $this->pendingSolicitudId;
+
         $handler->handle(new EnviarSolicitudPrestamoInput(
             solicitudId: $id,
             investigadorId: (string) auth()->id(),

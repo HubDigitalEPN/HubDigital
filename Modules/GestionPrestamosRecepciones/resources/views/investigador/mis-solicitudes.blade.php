@@ -156,9 +156,7 @@
                                     @endif
                                     @if($solicitud->estado === 'borrador')
                                         <flux:button size="sm" variant="primary" icon="paper-airplane"
-                                            wire:click="enviarSolicitud('{{ $solicitud->id }}')"
-                                            wire:confirm="¿Enviar esta solicitud para revisión del funcionario responsable?"
-                                            wire:loading.attr="disabled">
+                                            wire:click="prepararEnvioSolicitud('{{ $solicitud->id }}')">
                                             Enviar
                                         </flux:button>
                                     @endif
@@ -171,5 +169,32 @@
             </div>
         </div>
     @endif
+
+    {{-- Modal: confirmar envío de solicitud para revisión --}}
+    <flux:modal wire:model="showEnviarSolicitudModal" class="max-w-md">
+        <div class="space-y-4 p-2">
+            <div class="flex items-center gap-3">
+                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-science-blue/15 shrink-0">
+                    <flux:icon name="paper-airplane" class="size-5 text-science-blue" />
+                </div>
+                <flux:heading size="lg">Enviar solicitud para revisión</flux:heading>
+            </div>
+            <flux:text class="text-text-secondary text-sm">
+                La solicitud será enviada al curador responsable para su revisión. Ya no podrás editarla hasta recibir una respuesta.
+            </flux:text>
+            <div class="flex justify-end gap-2 pt-2">
+                <flux:modal.close>
+                    <flux:button variant="ghost">Cancelar</flux:button>
+                </flux:modal.close>
+                <flux:button variant="primary" icon="paper-airplane"
+                    wire:click="enviarSolicitud"
+                    wire:loading.attr="disabled"
+                    wire:target="enviarSolicitud">
+                    <flux:icon wire:loading wire:target="enviarSolicitud" name="arrow-path" class="animate-spin" />
+                    Sí, enviar
+                </flux:button>
+            </div>
+        </div>
+    </flux:modal>
 
 </div>

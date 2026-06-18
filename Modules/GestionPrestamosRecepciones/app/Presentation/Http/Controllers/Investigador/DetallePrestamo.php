@@ -7,6 +7,8 @@ namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Inve
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\CerrarPrestamo\CerrarPrestamoHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\CerrarPrestamo\CerrarPrestamoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialPrestamo\ConsultarHistorialPrestamoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialPrestamo\ConsultarHistorialPrestamoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudHandler;
@@ -44,6 +46,24 @@ final class DetallePrestamo extends Component
         if ($prestamo->acta?->solicitud?->investigador_id !== (string) auth()->id()) {
             abort(403);
         }
+    }
+
+    public string $successMessage = '';
+
+    public bool $showSolicitarCierreModal = false;
+
+    /**
+     * El investigador cierra el préstamo confirmando la devolución de los especímenes.
+     */
+    public function solicitarCierre(CerrarPrestamoHandler $handler): void
+    {
+        $handler->handle(new CerrarPrestamoInput(
+            prestamoId: $this->id,
+            investigadorId: (string) auth()->id(),
+        ));
+
+        $this->showSolicitarCierreModal = false;
+        $this->successMessage = 'Solicitud de cierre enviada. El curador revisará la devolución y aprobará el cierre.';
     }
 
     /**

@@ -115,7 +115,8 @@
                                     Adjuntar documentos
                                 </flux:button>
                                 <flux:button variant="outline" icon="pencil" size="sm"
-                                    wire:click="$set('showFirmaCanvasModal', true)">
+                                    wire:click="$set('showFirmaCanvasModal', true)"
+                                    :disabled="$pdfFirmado !== null">
                                     Firmar digitalmente
                                 </flux:button>
                             @endif
@@ -462,8 +463,21 @@
             <flux:text class="text-text-secondary text-sm">Debes adjuntar dos documentos en PDF (máximo 10 MB cada uno).</flux:text>
             <flux:field>
                 <flux:label>Acta firmada (PDF)</flux:label>
-                <input type="file" wire:model="pdfFirmado" accept=".pdf"
-                    class="block w-full text-sm text-text-secondary file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-science-blue file:text-white hover:file:bg-blue-700" />
+                @if($pdfFirmado)
+                    <div class="flex items-center justify-between rounded-lg border border-success/30 bg-success/5 px-3 py-2">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <flux:icon name="document-check" class="size-4 text-success shrink-0" />
+                            <span class="text-sm text-text-primary truncate">{{ $pdfFirmado->getClientOriginalName() }}</span>
+                        </div>
+                        <flux:button size="sm" variant="ghost" icon="x-mark" wire:click="limpiarPdfFirmado" />
+                    </div>
+                @else
+                    <label class="flex items-center gap-2 cursor-pointer rounded-lg border border-dashed border-border px-3 py-2.5 hover:border-science-blue hover:bg-science-blue/5 transition-colors">
+                        <flux:icon name="arrow-up-tray" class="size-4 text-text-secondary" />
+                        <span class="text-sm text-text-secondary">Seleccionar archivo PDF</span>
+                        <input type="file" wire:model="pdfFirmado" accept=".pdf" class="hidden" />
+                    </label>
+                @endif
                 <div wire:loading wire:target="pdfFirmado" class="flex items-center gap-1.5 mt-1 text-xs text-text-secondary">
                     <flux:icon name="arrow-path" class="animate-spin size-3" /> Subiendo archivo...
                 </div>
@@ -471,15 +485,28 @@
             </flux:field>
             <flux:field>
                 <flux:label>Documento de identidad — cédula o pasaporte (PDF)</flux:label>
-                <input type="file" wire:model="documentoIdentidad" accept=".pdf"
-                    class="block w-full text-sm text-text-secondary file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-science-blue file:text-white hover:file:bg-blue-700" />
+                @if($documentoIdentidad)
+                    <div class="flex items-center justify-between rounded-lg border border-success/30 bg-success/5 px-3 py-2">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <flux:icon name="document-check" class="size-4 text-success shrink-0" />
+                            <span class="text-sm text-text-primary truncate">{{ $documentoIdentidad->getClientOriginalName() }}</span>
+                        </div>
+                        <flux:button size="sm" variant="ghost" icon="x-mark" wire:click="limpiarDocumentoIdentidad" />
+                    </div>
+                @else
+                    <label class="flex items-center gap-2 cursor-pointer rounded-lg border border-dashed border-border px-3 py-2.5 hover:border-science-blue hover:bg-science-blue/5 transition-colors">
+                        <flux:icon name="arrow-up-tray" class="size-4 text-text-secondary" />
+                        <span class="text-sm text-text-secondary">Seleccionar archivo PDF</span>
+                        <input type="file" wire:model="documentoIdentidad" accept=".pdf" class="hidden" />
+                    </label>
+                @endif
                 <div wire:loading wire:target="documentoIdentidad" class="flex items-center gap-1.5 mt-1 text-xs text-text-secondary">
                     <flux:icon name="arrow-path" class="animate-spin size-3" /> Subiendo archivo...
                 </div>
                 <flux:error name="documentoIdentidad" />
             </flux:field>
             <div class="flex justify-end gap-2 pt-2">
-                <flux:button variant="ghost" wire:click="$set('showUploadModal', false)">Cancelar</flux:button>
+                <flux:button variant="ghost" wire:click="cancelarUploadActa">Cancelar</flux:button>
                 <flux:button variant="primary" wire:click="subirActa"
                     wire:loading.attr="disabled" wire:target="subirActa,pdfFirmado,documentoIdentidad">
                     <flux:icon wire:loading wire:target="subirActa" name="arrow-path" class="animate-spin" />
@@ -497,15 +524,28 @@
             </flux:text>
             <flux:field>
                 <flux:label>Documento de identidad — cédula o pasaporte (PDF)</flux:label>
-                <input type="file" wire:model="documentoIdentidadSolo" accept=".pdf"
-                    class="block w-full text-sm text-text-secondary file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-science-blue file:text-white hover:file:bg-blue-700" />
+                @if($documentoIdentidadSolo)
+                    <div class="flex items-center justify-between rounded-lg border border-success/30 bg-success/5 px-3 py-2">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <flux:icon name="document-check" class="size-4 text-success shrink-0" />
+                            <span class="text-sm text-text-primary truncate">{{ $documentoIdentidadSolo->getClientOriginalName() }}</span>
+                        </div>
+                        <flux:button size="sm" variant="ghost" icon="x-mark" wire:click="limpiarDocumentoIdentidadSolo" />
+                    </div>
+                @else
+                    <label class="flex items-center gap-2 cursor-pointer rounded-lg border border-dashed border-border px-3 py-2.5 hover:border-science-blue hover:bg-science-blue/5 transition-colors">
+                        <flux:icon name="arrow-up-tray" class="size-4 text-text-secondary" />
+                        <span class="text-sm text-text-secondary">Seleccionar archivo PDF</span>
+                        <input type="file" wire:model="documentoIdentidadSolo" accept=".pdf" class="hidden" />
+                    </label>
+                @endif
                 <div wire:loading wire:target="documentoIdentidadSolo" class="flex items-center gap-1.5 mt-1 text-xs text-text-secondary">
                     <flux:icon name="arrow-path" class="animate-spin size-3" /> Subiendo archivo...
                 </div>
                 <flux:error name="documentoIdentidadSolo" />
             </flux:field>
             <div class="flex justify-end gap-2 pt-2">
-                <flux:button variant="ghost" wire:click="$set('showIdentidadModal', false)">Cancelar</flux:button>
+                <flux:button variant="ghost" wire:click="cancelarUploadIdentidad">Cancelar</flux:button>
                 <flux:button variant="primary" wire:click="subirDocumentoIdentidad"
                     wire:loading.attr="disabled" wire:target="subirDocumentoIdentidad,documentoIdentidadSolo">
                     <flux:icon wire:loading wire:target="subirDocumentoIdentidad" name="arrow-path" class="animate-spin" />

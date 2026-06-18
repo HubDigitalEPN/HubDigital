@@ -22,12 +22,15 @@ final class VerActaEmbed extends Component
 
     public bool $isEmbed = true;
 
+    public bool $sinFirma = false;
+
     /**
      * @param string $id
      * @return void
      */
     public function mount(string $id): void
     {
+        $this->sinFirma = request()->boolean('sin_firma');
         $this->acta = ActaPrestamoModel::query()
             ->with(['solicitud.items'])
             ->findOrFail($id);

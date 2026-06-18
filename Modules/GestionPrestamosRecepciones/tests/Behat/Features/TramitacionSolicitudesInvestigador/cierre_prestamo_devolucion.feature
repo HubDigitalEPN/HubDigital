@@ -18,3 +18,4 @@ Característica: Cierre de préstamo por devolución
             | resultado       |
             | sin novedades   |
             | con observación |
+

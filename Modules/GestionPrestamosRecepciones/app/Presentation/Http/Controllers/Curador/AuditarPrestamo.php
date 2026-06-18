@@ -13,6 +13,8 @@ use Livewire\Component;
 use Livewire\WithFileUploads;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ActualizarRecordatoriosPrestamoEspecifico\ActualizarRecordatoriosPrestamoEspecificoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ActualizarRecordatoriosPrestamoEspecifico\ActualizarRecordatoriosPrestamoEspecificoInput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarCierrePrestamo\AprobarCierrePrestamoHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarCierrePrestamo\AprobarCierrePrestamoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialPrestamo\ConsultarHistorialPrestamoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialPrestamo\ConsultarHistorialPrestamoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudHandler;
@@ -40,6 +42,13 @@ final class AuditarPrestamo extends Component
 
     #[Validate('required|file|mimes:pdf|max:10240')]
     public $documentoExportacion = null;
+
+    public bool $showObservacionModal = false;
+
+    public bool $showAprobarCierreModal = false;
+
+    #[Validate('required|string|min:10')]
+    public string $observacionCierre = '';
 
     /** @var list<array{diasAntes: int, fecha: string}> */
     public array $recordatoriosPersonalizados = [];
@@ -174,6 +183,32 @@ final class AuditarPrestamo extends Component
 
         $this->successMessage = 'Documento registrado. El préstamo pasa a en tránsito.';
         $this->documentoExportacion = null;
+    }
+
+    public function aprobarCierre(AprobarCierrePrestamoHandler $handler): void
+    {
+        $handler->handle(new AprobarCierrePrestamoInput(
+            prestamoId: $this->prestamoId,
+            curadorId: (string) auth()->id(),
+        ));
+
+        $this->showAprobarCierreModal = false;
+        $this->successMessage = 'Préstamo cerrado correctamente.';
+    }
+
+    public function aprobarCierreConObservacion(AprobarCierrePrestamoHandler $handler): void
+    {
+        $this->validate(['observacionCierre' => 'required|string|min:10']);
+
+        $handler->handle(new AprobarCierrePrestamoInput(
+            prestamoId: $this->prestamoId,
+            curadorId: (string) auth()->id(),
+            observacion: $this->observacionCierre,
+        ));
+
+        $this->showObservacionModal = false;
+        $this->observacionCierre = '';
+        $this->successMessage = 'Préstamo cerrado con observaciones registradas.';
     }
 
     private function cargarRecordatorios(RecordatorioDevolucionRepositoryInterface $repo): void

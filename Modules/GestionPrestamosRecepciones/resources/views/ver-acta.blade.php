@@ -217,7 +217,8 @@
                 <div>
                     @php
                         $firmaPath = 'firmas-investigador/' . $acta->id . '.png';
-                        $firmaBase64 = \Illuminate\Support\Facades\Storage::exists($firmaPath)
+                        $mostrarFirma = !($sinFirma ?? false);
+                        $firmaBase64 = ($mostrarFirma && \Illuminate\Support\Facades\Storage::exists($firmaPath))
                             ? 'data:image/png;base64,' . base64_encode(\Illuminate\Support\Facades\Storage::get($firmaPath))
                             : null;
                     @endphp

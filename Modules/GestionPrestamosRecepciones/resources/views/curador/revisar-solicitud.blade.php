@@ -250,8 +250,7 @@
             <div class="flex justify-end gap-2 pt-2">
                 <flux:button variant="ghost" wire:click="$set('showAprobacionModal', false)">Cancelar</flux:button>
                 <flux:button variant="primary" icon="check-circle" wire:click="aprobar"
-                    wire:loading.attr="disabled" wire:target="aprobar"
-                    wire:confirm="¿Confirmas la aprobación? Se generará el acta de préstamo.">
+                    wire:loading.attr="disabled" wire:target="aprobar">
                     <flux:icon wire:loading wire:target="aprobar" name="arrow-path" class="animate-spin" />
                     Confirmar aprobación
                 </flux:button>

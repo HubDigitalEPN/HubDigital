@@ -114,6 +114,34 @@ final class DetalleActa extends Component
         $this->cargarDatos();
     }
 
+    public function cancelarUploadActa(): void
+    {
+        $this->pdfFirmado = null;
+        $this->documentoIdentidad = null;
+        $this->showUploadModal = false;
+    }
+
+    public function limpiarPdfFirmado(): void
+    {
+        $this->pdfFirmado = null;
+    }
+
+    public function limpiarDocumentoIdentidad(): void
+    {
+        $this->documentoIdentidad = null;
+    }
+
+    public function cancelarUploadIdentidad(): void
+    {
+        $this->documentoIdentidadSolo = null;
+        $this->showIdentidadModal = false;
+    }
+
+    public function limpiarDocumentoIdentidadSolo(): void
+    {
+        $this->documentoIdentidadSolo = null;
+    }
+
     /**
      * Firma el acta digitalmente.
      *

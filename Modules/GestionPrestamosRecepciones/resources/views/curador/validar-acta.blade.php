@@ -156,7 +156,7 @@
 
                     @php $esFirmaDigital = str_starts_with($acta->pdf_firmado_ruta ?? '', 'firmas-investigador/'); @endphp
                     <div x-show="tab === 'firmada'" x-cloak class="flex items-center gap-1">
-                        <a href="{{ route('prestamos.acta.ver', $acta->id) }}" target="_blank"
+                        <a href="{{ $esFirmaDigital ? route('prestamos.acta.ver', $acta->id) : route('prestamos.acta.pdf-firmado', $acta->id) }}" target="_blank"
                             class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded transition-colors">
                             <flux:icon name="arrow-top-right-on-square" class="size-3.5" /> Abrir
                         </a>
@@ -204,16 +204,22 @@
             </div>
 
             <div x-show="tab === 'original'">
-                <iframe src="{{ route('prestamos.acta.embed', $acta->id) }}"
+                <iframe src="{{ route('prestamos.acta.embed', $acta->id) }}?sin_firma=1"
                     class="w-full" style="height: calc(100vh - 310px); min-height: 520px;"
                     title="Acta original"></iframe>
             </div>
 
             <div x-show="tab === 'firmada'" x-cloak>
                 @if($acta->pdf_firmado_ruta)
-                    <iframe src="{{ route('prestamos.acta.embed', $acta->id) }}"
-                        class="w-full" style="height: calc(100vh - 310px); min-height: 520px;"
-                        title="Acta firmada"></iframe>
+                    @if($esFirmaDigital)
+                        <iframe src="{{ route('prestamos.acta.embed', $acta->id) }}"
+                            class="w-full" style="height: calc(100vh - 310px); min-height: 520px;"
+                            title="Acta firmada digitalmente"></iframe>
+                    @else
+                        <iframe src="{{ route('prestamos.acta.pdf-firmado', $acta->id) }}"
+                            class="w-full" style="height: calc(100vh - 310px); min-height: 520px;"
+                            title="Acta firmada subida"></iframe>
+                    @endif
                 @else
                     <div class="flex flex-col items-center justify-center text-text-secondary text-sm gap-2" style="height: 300px;">
                         <flux:icon name="clock" class="size-8 opacity-40" />
@@ -246,10 +252,8 @@
                     wire:click="$set('showMotivoModal', true)">
                     Devolver para refirmar
                 </flux:button>
-                <flux:button variant="primary" icon="check-circle" wire:click="validar"
-                    wire:loading.attr="disabled" wire:target="validar"
-                    wire:confirm="¿Confirmas que la firma es válida y el acta puede cerrarse?">
-                    <flux:icon wire:loading wire:target="validar" name="arrow-path" class="animate-spin" />
+                <flux:button variant="primary" icon="check-circle"
+                    wire:click="$set('showValidarFirmaModal', true)">
                     Validar firma
                 </flux:button>
             </div>
@@ -275,6 +279,33 @@
                     wire:loading.attr="disabled" wire:target="devolverParaRefirmar">
                     <flux:icon wire:loading wire:target="devolverParaRefirmar" name="arrow-path" class="animate-spin" />
                     Devolver acta
+                </flux:button>
+            </div>
+        </div>
+    </flux:modal>
+
+    {{-- Modal: confirmar validación de firma --}}
+    <flux:modal wire:model="showValidarFirmaModal" class="max-w-md">
+        <div class="space-y-4 p-2">
+            <div class="flex items-center gap-3">
+                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-bio-green/15 shrink-0">
+                    <flux:icon name="check-badge" class="size-5 text-bio-green" />
+                </div>
+                <flux:heading size="lg">Validar firma del acta</flux:heading>
+            </div>
+            <flux:text class="text-text-secondary text-sm">
+                Confirma que la firma digital es válida. El acta quedará cerrada y el proceso de préstamo concluirá.
+            </flux:text>
+            <div class="flex justify-end gap-2 pt-2">
+                <flux:modal.close>
+                    <flux:button variant="ghost">Cancelar</flux:button>
+                </flux:modal.close>
+                <flux:button variant="primary" icon="check-circle"
+                    wire:click="validar"
+                    wire:loading.attr="disabled"
+                    wire:target="validar">
+                    <flux:icon wire:loading wire:target="validar" name="arrow-path" class="animate-spin" />
+                    Sí, validar firma
                 </flux:button>
             </div>
         </div>

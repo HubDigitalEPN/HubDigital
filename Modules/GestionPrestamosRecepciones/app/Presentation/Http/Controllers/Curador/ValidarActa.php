@@ -34,6 +34,8 @@ final class ValidarActa extends Component
 
     public bool $showMotivoModal = false;
 
+    public bool $showValidarFirmaModal = false;
+
     #[Validate('required|string|min:10')]
     public string $motivoDevolucion = '';
 
@@ -58,6 +60,7 @@ final class ValidarActa extends Component
             curadorId: (string) auth()->id(),
         ));
 
+        $this->showValidarFirmaModal = false;
         $this->successMessage = 'Acta validada. Los especímenes están siendo coordinados para el despacho al investigador. El préstamo se activará una vez que el investigador confirme la recepción.';
         $this->acta = ActaPrestamoModel::query()->with('solicitud')->find($this->id);
     }
