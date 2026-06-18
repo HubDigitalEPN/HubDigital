@@ -14,4 +14,10 @@ interface EspecimenDivulgableRepositoryInterface
     public function guardar(EspecimenDivulgable $divulgable): void;
 
     public function buscarPorOccurrenceID(string $occurrenceID): ?EspecimenDivulgable;
+
+    /**
+     * @param  list<string>  $occurrenceIDs
+     * @return list<EspecimenDivulgable>
+     */
+    public function buscarPorOccurrenceIDs(array $occurrenceIDs): array;
 }
