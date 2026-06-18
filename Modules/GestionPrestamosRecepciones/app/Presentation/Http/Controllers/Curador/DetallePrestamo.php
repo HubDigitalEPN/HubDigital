@@ -10,8 +10,6 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
 use Livewire\WithFileUploads;
-use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarCierrePrestamo\AprobarCierrePrestamoHandler;
-use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarCierrePrestamo\AprobarCierrePrestamoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarVerificacionEntrega\AprobarVerificacionEntregaHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarVerificacionEntrega\AprobarVerificacionEntregaInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialPrestamo\ConsultarHistorialPrestamoHandler;
@@ -41,13 +39,6 @@ final class DetallePrestamo extends Component
 
     #[Validate('required|file|mimes:pdf|max:10240')]
     public $documentoExportacion = null;
-
-    public bool $showObservacionModal = false;
-
-    public bool $showAprobarCierreModal = false;
-
-    #[Validate('required|string|min:10')]
-    public string $observacionCierre = '';
 
     /**
      * @param string $id
@@ -90,32 +81,6 @@ final class DetallePrestamo extends Component
     }
 
 
-
-    public function aprobarCierre(AprobarCierrePrestamoHandler $handler): void
-    {
-        $handler->handle(new AprobarCierrePrestamoInput(
-            prestamoId: $this->id,
-            curadorId: (string) auth()->id(),
-        ));
-
-        $this->showAprobarCierreModal = false;
-        $this->successMessage = 'Préstamo cerrado correctamente.';
-    }
-
-    public function aprobarCierreConObservacion(AprobarCierrePrestamoHandler $handler): void
-    {
-        $this->validate(['observacionCierre' => 'required|string|min:10']);
-
-        $handler->handle(new AprobarCierrePrestamoInput(
-            prestamoId: $this->id,
-            curadorId: (string) auth()->id(),
-            observacion: $this->observacionCierre,
-        ));
-
-        $this->showObservacionModal = false;
-        $this->observacionCierre = '';
-        $this->successMessage = 'Préstamo cerrado con observaciones registradas.';
-    }
 
     /**
      * @param ConsultarPrestamoHandler $prestamoHandler

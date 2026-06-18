@@ -11,6 +11,35 @@
         {{-- Columna principal --}}
         <div class="lg:col-span-2 space-y-5">
 
+            {{-- Cierre con observación --}}
+            @php
+                $observacionCierre = null;
+                foreach ($timeline as $tlItem) {
+                    if (in_array($tlItem['evento']->tipo, ['PrestamoCerrado', 'PrestamoCerradoConObservacion'], true)) {
+                        $observacionCierre = $tlItem['evento']->datos['observacion'] ?? null;
+                        if ($observacionCierre !== null) {
+                            break;
+                        }
+                    }
+                }
+            @endphp
+            @if($prestamo->estado === 'cerrado_con_observacion' && $observacionCierre)
+                <div class="rounded-lg border border-warning/40 bg-warning/5 overflow-hidden">
+                    <div class="px-5 py-4 border-b border-warning/20 flex items-center gap-3">
+                        <div class="flex h-7 w-7 items-center justify-center rounded-full bg-warning/15 shrink-0">
+                            <flux:icon name="exclamation-triangle" class="size-3.5 text-warning" />
+                        </div>
+                        <flux:heading size="base" level="2" class="font-display text-warning">Cerrado con observación</flux:heading>
+                    </div>
+                    <div class="p-5 space-y-2">
+                        <p class="text-xs text-text-secondary">Observaciones registradas al cierre del préstamo:</p>
+                        <div class="rounded-lg bg-warning/10 border border-warning/20 px-4 py-3">
+                            <p class="text-sm text-text-primary leading-relaxed">{{ $observacionCierre }}</p>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
             {{-- Solicitud --}}
             @if($solicitud)
                 <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
@@ -169,33 +198,6 @@
                     @endif
                 </div>
             </div>
-
-            {{-- Cierre con observación --}}
-            @php
-                $observacionCierre = null;
-                foreach ($timeline as $tlItem) {
-                    if ($tlItem['evento']->tipo === 'PrestamoCerrado') {
-                        $observacionCierre = $tlItem['evento']->datos['observacion'] ?? null;
-                        break;
-                    }
-                }
-            @endphp
-            @if($prestamo->estado === 'cerrado_con_observacion' && $observacionCierre)
-                <div class="rounded-lg border border-warning/40 bg-warning/5 overflow-hidden">
-                    <div class="px-5 py-4 border-b border-warning/20 flex items-center gap-3">
-                        <div class="flex h-7 w-7 items-center justify-center rounded-full bg-warning/15 shrink-0">
-                            <flux:icon name="exclamation-triangle" class="size-3.5 text-warning" />
-                        </div>
-                        <flux:heading size="base" level="2" class="font-display text-warning">Cerrado con observación</flux:heading>
-                    </div>
-                    <div class="p-5 space-y-2">
-                        <p class="text-xs text-text-secondary">Observaciones registradas al cierre del préstamo:</p>
-                        <div class="rounded-lg bg-warning/10 border border-warning/20 px-4 py-3">
-                            <p class="text-sm text-text-primary leading-relaxed">{{ $observacionCierre }}</p>
-                        </div>
-                    </div>
-                </div>
-            @endif
 
             {{-- Devolución registrada — pendiente de cierre --}}
             @if($prestamo->estado === 'en_revision')

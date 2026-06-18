@@ -51,9 +51,11 @@
     @php
         $observacionCierre = null;
         foreach ($timeline as $tlItem) {
-            if ($tlItem['evento']->tipo === 'PrestamoCerrado') {
+            if (in_array($tlItem['evento']->tipo, ['PrestamoCerrado', 'PrestamoCerradoConObservacion'], true)) {
                 $observacionCierre = $tlItem['evento']->datos['observacion'] ?? null;
-                break;
+                if ($observacionCierre !== null) {
+                    break;
+                }
             }
         }
     @endphp
