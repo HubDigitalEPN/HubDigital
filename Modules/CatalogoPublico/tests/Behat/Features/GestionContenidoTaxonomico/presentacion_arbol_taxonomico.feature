@@ -1,5 +1,6 @@
 #language: es
 
+@listo
 Característica: Presentación de árbol taxonómico en la página de divulgación
     Como usuario visitante de la plataforma de divulgación
     Quiero ver los especímenes organizados en un árbol taxonómico de 6 niveles

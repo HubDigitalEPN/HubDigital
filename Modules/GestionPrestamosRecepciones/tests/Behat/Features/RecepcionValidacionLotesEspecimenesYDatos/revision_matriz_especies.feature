@@ -1,5 +1,6 @@
 # language: es
 # Feature: 2
+@listo
 Característica: Revisión de la matriz de especies
     Como investigador
     Quiero validar la integridad técnica y taxonómica de la matriz Darwin Core

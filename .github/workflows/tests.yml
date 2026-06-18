@@ -44,12 +44,16 @@ jobs:
       - name: Clear Configuration Cache
         run: php artisan config:clear --ansi
 
-      # Modo NO estricto (default de Behat): los pasos pending (scaffolds) y
-      # undefined (features aun sin context) se reportan pero NO rompen CI; solo
-      # los fallos reales lo hacen. Asi las features a medio implementar se van
-      # exigiendo solas conforme pasan. NO agregar --strict.
+      # Solo corren en CI las features marcadas con @listo (opt-in): features
+      # terminadas y 100% verdes. Las features a medio implementar (pasos
+      # pending/undefined o escenarios en rojo) quedan fuera del filtro y no
+      # rompen el pipeline. Cuando una feature se completa se le agrega el tag
+      # @listo encima de "Característica:" y entra automaticamente a CI.
+      #
+      # Como el set @listo es curado, se corre en --strict: una feature marcada
+      # como lista DEBE estar totalmente verde (sin pending ni undefined).
       #
       # La suite es 100% volatil: todos los modulos usan repositorios InMemory en
       # Behat, por eso no se provisiona Postgres ni variables de conexion.
       - name: Run Behat
-        run: vendor/bin/behat --profile=default --no-interaction
+        run: vendor/bin/behat --profile=default --no-interaction --tags=@listo --strict

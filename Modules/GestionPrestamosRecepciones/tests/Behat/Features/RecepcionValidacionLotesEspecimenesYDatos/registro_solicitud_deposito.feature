@@ -1,5 +1,6 @@
 # language: es
 # Feature: 1
+@listo
 Característica: Registro de solicitud de depósito
     Como investigador
     Quiero registrar una nueva solicitud de depósito con la documentación oficial

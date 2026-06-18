@@ -1,4 +1,5 @@
 # language: es
+@listo
 Característica: Habilitación del envío de especímenes en préstamos internacionales
 
   Escenario: El curador sube el documento del Ministerio y habilita el envío
