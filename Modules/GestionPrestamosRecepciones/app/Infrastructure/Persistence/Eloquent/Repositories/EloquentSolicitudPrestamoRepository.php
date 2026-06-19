@@ -74,6 +74,24 @@ final class EloquentSolicitudPrestamoRepository implements SolicitudPrestamoRepo
     }
 
     /**
+     * Resuelve el código externo legible de cada ítem de préstamo.
+     *
+     * @param  list<string>  $itemPrestamoIds
+     * @return array<string, string>  Mapa [itemPrestamoId => códigoExterno].
+     */
+    public function mapaCodigosExternos(array $itemPrestamoIds): array
+    {
+        if ($itemPrestamoIds === []) {
+            return [];
+        }
+
+        return ItemPrestamoModel::query()
+            ->whereIn('id', $itemPrestamoIds)
+            ->pluck('especimen_codigo_externo', 'id')
+            ->all();
+    }
+
+    /**
      * Sincroniza los ítems de la solicitud en la base de datos.
      *
      * @param SolicitudPrestamoModel $model

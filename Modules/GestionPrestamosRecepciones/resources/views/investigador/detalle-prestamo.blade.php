@@ -4,11 +4,11 @@
         <flux:breadcrumbs.item wire:navigate href="{{ route('prestamos.investigador.mis-prestamos') }}">
             Mis préstamos
         </flux:breadcrumbs.item>
-        <flux:breadcrumbs.item>{{ $acta?->numero_prestamo ?? 'Detalle' }}</flux:breadcrumbs.item>
+        <flux:breadcrumbs.item>{{ $detalle->numeroPrestamo ?? 'Detalle' }}</flux:breadcrumbs.item>
     </flux:breadcrumbs>
 
     {{-- Alerta: préstamo activo, listo para registrar devolución --}}
-    @if($prestamo->estado === 'activo')
+    @if($detalle->estadoPrestamo->value === 'activo')
         <div class="rounded-lg border border-science-blue/40 bg-science-blue/5 p-5 flex flex-col sm:flex-row items-center sm:items-start gap-4">
             <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-science-blue/15">
                 <flux:icon name="arrow-uturn-left" class="size-6 text-science-blue" />
@@ -20,7 +20,7 @@
                 </p>
             </div>
             <flux:button variant="primary" wire:navigate
-                href="{{ route('prestamos.investigador.prestamo.registrar-devolucion', $prestamo->id) }}"
+                href="{{ route('prestamos.investigador.prestamo.registrar-devolucion', $detalle->prestamoId) }}"
                 class="shrink-0">
                 Registrar devolución
             </flux:button>
@@ -28,7 +28,7 @@
     @endif
 
     {{-- Alerta: especímenes en camino --}}
-    @if($prestamo->estado === 'en_transito')
+    @if($detalle->estadoPrestamo->value === 'en_transito')
         <div class="rounded-lg border border-warning/40 bg-warning/5 p-5 flex flex-col sm:flex-row items-center sm:items-start gap-4">
             <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-warning/15">
                 <flux:icon name="truck" class="size-6 text-warning" />
@@ -40,7 +40,7 @@
                 </p>
             </div>
             <flux:button variant="primary" wire:navigate
-                href="{{ route('prestamos.investigador.prestamo.verificacion-entrega', $prestamo->id) }}"
+                href="{{ route('prestamos.investigador.prestamo.verificacion-entrega', $detalle->prestamoId) }}"
                 class="shrink-0">
                 Reportar recepción
             </flux:button>
@@ -60,7 +60,7 @@
         }
     @endphp
     <x-gestionprestamosrecepciones::cierre-observacion-banner
-        :estado="$prestamo->estado"
+        :estado="$detalle->estadoPrestamo->value"
         :verificacion="$verificacionCierre"
         :observacion-legacy="$observacionCierreLegacy" />
 
@@ -70,32 +70,32 @@
         <div class="lg:col-span-2 space-y-5">
 
             {{-- Solicitud --}}
-            @if($solicitud)
+            @if($detalle->solicitudId)
                 <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
                     <div class="px-5 py-4 border-b border-border flex items-center gap-3">
                         <div class="flex h-7 w-7 items-center justify-center rounded-full bg-blue-navy text-white shrink-0">
                             <flux:icon name="document-text" class="size-3.5" />
                         </div>
                         <flux:heading size="base" level="2" class="font-display flex-1">Solicitud</flux:heading>
-                        <x-gestionprestamosrecepciones::solicitud-status-badge :estado="$solicitud->estado" />
+                        <x-gestionprestamosrecepciones::solicitud-status-badge :estado="$detalle->solicitudEstado" />
                     </div>
                     <div class="p-5">
                         <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                             <div>
                                 <dt class="text-xs text-text-secondary uppercase tracking-wide">N.º solicitud</dt>
-                                <dd class="font-mono font-medium text-text-primary mt-1">{{ $solicitud->numero_solicitud }}</dd>
+                                <dd class="font-mono font-medium text-text-primary mt-1">{{ $detalle->numeroSolicitud }}</dd>
                             </div>
                             <div>
                                 <dt class="text-xs text-text-secondary uppercase tracking-wide">Institución</dt>
-                                <dd class="font-medium text-text-primary mt-1">{{ $solicitud->institucion_adscripcion }}</dd>
+                                <dd class="font-medium text-text-primary mt-1">{{ $detalle->institucionAdscripcion }}</dd>
                             </div>
                             <div class="sm:col-span-2">
                                 <dt class="text-xs text-text-secondary uppercase tracking-wide">Título del estudio</dt>
-                                <dd class="font-medium text-text-primary mt-1">{{ $solicitud->titulo_estudio }}</dd>
+                                <dd class="font-medium text-text-primary mt-1">{{ $detalle->tituloEstudio }}</dd>
                             </div>
                             <div>
                                 <dt class="text-xs text-text-secondary uppercase tracking-wide">Duración propuesta</dt>
-                                <dd class="font-medium text-text-primary mt-1">{{ $solicitud->duracion_propuesta_meses }} meses</dd>
+                                <dd class="font-medium text-text-primary mt-1">{{ $detalle->duracionPropuestaMeses }} meses</dd>
                             </div>
                         </dl>
                     </div>
@@ -103,43 +103,43 @@
             @endif
 
             {{-- Acta --}}
-            @if($acta)
+            @if($detalle->actaId)
                 <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
                     <div class="px-5 py-4 border-b border-border flex items-center gap-3">
                         <div class="flex h-7 w-7 items-center justify-center rounded-full bg-blue-navy text-white shrink-0">
                             <flux:icon name="clipboard-document" class="size-3.5" />
                         </div>
                         <flux:heading size="base" level="2" class="font-display flex-1">Acta de préstamo</flux:heading>
-                        <x-gestionprestamosrecepciones::acta-status-badge :estado="$acta->estado" />
+                        <x-gestionprestamosrecepciones::acta-status-badge :estado="$detalle->actaEstado" />
                     </div>
                     <div class="p-5">
                         <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                             <div>
                                 <dt class="text-xs text-text-secondary uppercase tracking-wide">N.º préstamo</dt>
-                                <dd class="font-mono font-medium text-text-primary mt-1">{{ $acta->numero_prestamo }}</dd>
+                                <dd class="font-mono font-medium text-text-primary mt-1">{{ $detalle->numeroPrestamo }}</dd>
                             </div>
                             <div>
                                 <dt class="text-xs text-text-secondary uppercase tracking-wide">Tipo</dt>
-                                <dd class="font-medium text-text-primary mt-1 capitalize">{{ str_replace('_', ' ', $acta->tipo_prestamo) }}</dd>
+                                <dd class="font-medium text-text-primary mt-1 capitalize">{{ str_replace('_', ' ', $detalle->tipoPrestamo) }}</dd>
                             </div>
                             <div>
                                 <dt class="text-xs text-text-secondary uppercase tracking-wide">Fecha inicio</dt>
-                                <dd class="font-medium text-text-primary mt-1">{{ $acta->fecha_inicio?->format('d/m/Y') ?? '—' }}</dd>
+                                <dd class="font-medium text-text-primary mt-1">{{ $detalle->fechaInicioActa?->format('d/m/Y') ?? '—' }}</dd>
                             </div>
                             <div>
                                 <dt class="text-xs text-text-secondary uppercase tracking-wide">Fecha fin</dt>
-                                <dd class="font-medium text-text-primary mt-1">{{ $acta->fecha_fin?->format('d/m/Y') ?? '—' }}</dd>
+                                <dd class="font-medium text-text-primary mt-1">{{ $detalle->fechaFinActa?->format('d/m/Y') ?? '—' }}</dd>
                             </div>
-                            @if($acta->condiciones_generales)
+                            @if($detalle->condicionesGenerales)
                                 <div class="sm:col-span-2">
                                     <dt class="text-xs text-text-secondary uppercase tracking-wide">Condiciones generales</dt>
-                                    <dd class="text-text-primary mt-1 leading-relaxed">{{ $acta->condiciones_generales }}</dd>
+                                    <dd class="text-text-primary mt-1 leading-relaxed">{{ $detalle->condicionesGenerales }}</dd>
                                 </div>
                             @endif
                         </dl>
                         <div class="mt-4">
                             <flux:button variant="ghost" icon="document-text" size="sm" wire:navigate
-                                href="{{ route('prestamos.investigador.acta.detalle', $acta->id) }}">
+                                href="{{ route('prestamos.investigador.acta.detalle', $detalle->actaId) }}">
                                 Ver acta y documentos
                             </flux:button>
                         </div>
@@ -154,23 +154,23 @@
                         <flux:icon name="archive-box" class="size-3.5" />
                     </div>
                     <flux:heading size="base" level="2" class="font-display flex-1">Préstamo</flux:heading>
-                    <x-gestionprestamosrecepciones::prestamo-status-badge :estado="$prestamo->estado" />
+                    <x-gestionprestamosrecepciones::prestamo-status-badge :estado="$detalle->estadoPrestamo->value" />
                 </div>
                 <div class="p-5">
                     @php
-                        $fin = $prestamo->fecha_fin;
-                        $vencido = $fin && $fin->isPast();
+                        $fin = $detalle->fechaFin;
+                        $vencido = $fin && $fin < now();
                         $diasRestantes = $fin ? (int) abs(now()->startOfDay()->diffInDays($fin)) : null;
                     @endphp
 
                     <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                         <div>
                             <dt class="text-xs text-text-secondary uppercase tracking-wide">Inicio</dt>
-                            <dd class="font-medium text-text-primary mt-1">{{ $prestamo->iniciado_en?->format('d/m/Y') ?? '—' }}</dd>
+                            <dd class="font-medium text-text-primary mt-1">{{ $detalle->iniciadoEn?->format('d/m/Y') ?? '—' }}</dd>
                         </div>
                         <div>
                             <dt class="text-xs text-text-secondary uppercase tracking-wide">Vencimiento</dt>
-                            <dd class="font-medium text-text-primary mt-1">{{ $prestamo->fecha_fin?->format('d/m/Y') ?? '—' }}</dd>
+                            <dd class="font-medium text-text-primary mt-1">{{ $detalle->fechaFin?->format('d/m/Y') ?? '—' }}</dd>
                         </div>
                         @if($diasRestantes !== null)
                             <div class="sm:col-span-2">
@@ -182,12 +182,12 @@
                         @endif
                     </dl>
 
-                    @if($verificacion)
+                    @if($verificacion->existe)
                         <flux:separator class="my-4" />
                         <div class="space-y-2">
                             <p class="text-xs font-semibold text-text-secondary uppercase tracking-wide">Verificación de entrega</p>
                             <div class="flex items-center gap-2">
-                                @if($verificacion->resultado()->value === 'sin_novedades')
+                                @if($verificacion->resultado->value === 'sin_novedades')
                                     <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold bg-bio-green/10 text-bio-green border border-bio-green/20">
                                         <span class="size-1.5 rounded-full bg-bio-green"></span>
                                         Sin novedades
@@ -200,14 +200,9 @@
                                     </span>
                                 @endif
                             </div>
-                            @foreach($verificacion->observaciones() as $obs)
-                                @php
-                                    $codigoEspecimen = \Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\ItemPrestamoModel::query()
-                                        ->where('id', $obs->itemPrestamoId)
-                                        ->value('especimen_codigo_externo') ?? $obs->itemPrestamoId;
-                                @endphp
+                            @foreach($verificacion->observaciones as $obs)
                                 <div class="rounded-lg border border-border bg-bg-main px-3 py-2 mt-2">
-                                    <p class="text-xs text-text-secondary font-mono">{{ $codigoEspecimen }}</p>
+                                    <p class="text-xs text-text-secondary font-mono">{{ $obs->codigoEspecimen }}</p>
                                     <p class="text-sm text-text-primary mt-0.5">{{ $obs->descripcion }}</p>
                                 </div>
                             @endforeach

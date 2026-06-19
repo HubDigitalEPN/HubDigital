@@ -39,14 +39,14 @@
     <div class="flex items-center justify-between print:hidden {{ ($isEmbed ?? false) ? 'hidden' : '' }}">
         <flux:breadcrumbs>
             <flux:breadcrumbs.item>Acta de préstamo</flux:breadcrumbs.item>
-            <flux:breadcrumbs.item>{{ $acta?->numero_prestamo ?? '—' }}</flux:breadcrumbs.item>
+            <flux:breadcrumbs.item>{{ $acta?->numeroPrestamo ?? '—' }}</flux:breadcrumbs.item>
         </flux:breadcrumbs>
         <div class="flex items-center gap-3">
             <flux:text class="text-xs text-text-secondary text-right leading-tight max-w-48">
                 En el diálogo, desactiva<br><span class="font-medium">"Encabezados y pies de página"</span>
             </flux:text>
             <flux:button icon="printer"
-                onclick="let t=document.title; document.title='Acta{{ $acta?->solicitud?->numero_solicitud ?? $acta?->numero_prestamo }}'; window.print(); setTimeout(()=>document.title=t, 500)">
+                onclick="let t=document.title; document.title='Acta{{ $acta?->numeroSolicitud ?? $acta?->numeroPrestamo }}'; window.print(); setTimeout(()=>document.title=t, 500)">
                 Imprimir / Descargar PDF
             </flux:button>
         </div>
@@ -62,7 +62,7 @@
             <div class="text-center space-y-1">
                 <p class="text-xs text-text-secondary uppercase tracking-widest">Laboratorio de Invertebrados de la Escuela Politécnica Nacional</p>
                 <h1 class="text-2xl font-bold text-text-primary font-serif mt-2">ACTA DE PRÉSTAMO DE ESPECÍMENES</h1>
-                <p class="font-mono text-sm text-text-secondary mt-1">{{ $acta->numero_prestamo }}</p>
+                <p class="font-mono text-sm text-text-secondary mt-1">{{ $acta->numeroPrestamo }}</p>
             </div>
 
             <hr class="border-border" />
@@ -73,26 +73,26 @@
                 <dl class="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
                     <div>
                         <dt class="text-text-secondary">Tipo de préstamo</dt>
-                        <dd class="font-medium text-text-primary capitalize">{{ $acta->tipo_prestamo }}</dd>
+                        <dd class="font-medium text-text-primary capitalize">{{ $acta->tipoPrestamo }}</dd>
                     </div>
                     <div>
                         <dt class="text-text-secondary">Alcance</dt>
-                        <dd class="font-medium text-text-primary">{{ ($acta->alcance_prestamo ?? 'nacional') === 'internacional' ? 'Internacional' : 'Nacional' }}</dd>
+                        <dd class="font-medium text-text-primary">{{ ($acta->alcancePrestamo ?? 'nacional') === 'internacional' ? 'Internacional' : 'Nacional' }}</dd>
                     </div>
                     <div>
                         <dt class="text-text-secondary">N.º solicitud</dt>
-                        <dd class="font-mono font-medium text-text-primary">{{ $acta->solicitud?->numero_solicitud }}</dd>
+                        <dd class="font-mono font-medium text-text-primary">{{ $acta->numeroSolicitud }}</dd>
                     </div>
                     <div>
                         <dt class="text-text-secondary">Fecha de inicio</dt>
                         <dd class="font-medium text-text-primary">
-                            {{ ($acta->fecha_inicio instanceof \DateTimeInterface ? $acta->fecha_inicio : \Carbon\Carbon::parse($acta->fecha_inicio))->format('d/m/Y') }}
+                            {{ ($acta->fechaInicio instanceof \DateTimeInterface ? $acta->fechaInicio : \Carbon\Carbon::parse($acta->fechaInicio))->format('d/m/Y') }}
                         </dd>
                     </div>
                     <div>
                         <dt class="text-text-secondary">Fecha de vencimiento</dt>
                         <dd class="font-medium text-text-primary">
-                            {{ ($acta->fecha_fin instanceof \DateTimeInterface ? $acta->fecha_fin : \Carbon\Carbon::parse($acta->fecha_fin))->format('d/m/Y') }}
+                            {{ ($acta->fechaFin instanceof \DateTimeInterface ? $acta->fechaFin : \Carbon\Carbon::parse($acta->fechaFin))->format('d/m/Y') }}
                         </dd>
                     </div>
                 </dl>
@@ -104,25 +104,25 @@
                 <dl class="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
                     <div class="col-span-2">
                         <dt class="text-text-secondary">Título del estudio</dt>
-                        <dd class="font-medium text-text-primary mt-0.5">{{ $acta->solicitud?->titulo_estudio }}</dd>
+                        <dd class="font-medium text-text-primary mt-0.5">{{ $acta->tituloEstudio }}</dd>
                     </div>
                     <div>
                         <dt class="text-text-secondary">Institución de adscripción</dt>
-                        <dd class="font-medium text-text-primary">{{ $acta->solicitud?->institucion_adscripcion }}</dd>
+                        <dd class="font-medium text-text-primary">{{ $acta->institucionAdscripcion }}</dd>
                     </div>
                     <div>
                         <dt class="text-text-secondary">Línea de investigación</dt>
-                        <dd class="font-medium text-text-primary">{{ $acta->solicitud?->linea_investigacion }}</dd>
+                        <dd class="font-medium text-text-primary">{{ $acta->lineaInvestigacion }}</dd>
                     </div>
                     <div class="col-span-2">
                         <dt class="text-text-secondary">Propósito del préstamo</dt>
-                        <dd class="text-text-primary mt-0.5">{{ $acta->solicitud?->proposito_prestamo }}</dd>
+                        <dd class="text-text-primary mt-0.5">{{ $acta->propositoPrestamo }}</dd>
                     </div>
                 </dl>
             </div>
 
             {{-- Especímenes --}}
-            @if($acta->solicitud?->items && $acta->solicitud->items->count())
+            @if(count($acta->items))
                 <div class="space-y-3">
                     <h2 class="text-sm font-semibold text-text-primary uppercase tracking-widest">Especímenes en préstamo</h2>
                     <table class="w-full text-sm border border-border rounded">
@@ -135,12 +135,12 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($acta->solicitud->items as $i => $item)
+                            @foreach($acta->items as $i => $item)
                                 <tr class="{{ $loop->even ? 'bg-bg-main' : 'bg-white' }}">
                                     <td class="px-3 py-2 border-b border-border text-text-secondary">{{ $i + 1 }}</td>
-                                    <td class="px-3 py-2 border-b border-border font-mono text-text-primary">{{ $item->especimen_codigo_externo }}</td>
-                                    <td class="px-3 py-2 border-b border-border text-text-primary">{{ $item->cantidad_solicitada }}</td>
-                                    <td class="px-3 py-2 border-b border-border text-text-secondary text-xs">{{ $item->condiciones_especificas ?? '—' }}</td>
+                                    <td class="px-3 py-2 border-b border-border font-mono text-text-primary">{{ $item->codigoExterno }}</td>
+                                    <td class="px-3 py-2 border-b border-border text-text-primary">{{ $item->cantidadSolicitada }}</td>
+                                    <td class="px-3 py-2 border-b border-border text-text-secondary text-xs">{{ $item->condicionesEspecificas ?? '—' }}</td>
                                 </tr>
                             @endforeach
                         </tbody>
@@ -183,10 +183,10 @@
                         <p>En caso de requerir extensión del presente préstamo, favor notificarlo con al menos un mes de anticipación al vencimiento de la fecha establecida <span class="italic">(Return due date)</span>.</p>
                     </li>
 
-                    @if($acta->condiciones_generales)
+                    @if($acta->condicionesGenerales)
                         <li class="flex gap-3">
                             <span class="flex-shrink-0 mt-1.5 w-2 h-2 rounded-full bg-blue-navy"></span>
-                            <p>{{ $acta->condiciones_generales }}</p>
+                            <p>{{ $acta->condicionesGenerales }}</p>
                         </li>
                     @endif
 
@@ -229,7 +229,7 @@
                     @endif
                     <div class="border-t-2 border-text-primary pt-3 space-y-1">
                         <p class="text-sm font-semibold text-text-primary">Investigador solicitante</p>
-                        <p class="text-xs text-text-secondary">{{ $acta->solicitud?->institucion_adscripcion }}</p>
+                        <p class="text-xs text-text-secondary">{{ $acta->institucionAdscripcion }}</p>
                         <p class="text-xs text-text-secondary">
                             @if($firmaBase64)
                                 Firmado digitalmente
@@ -250,7 +250,7 @@
 <script>
     document.addEventListener("DOMContentLoaded", () => {
         let originalTitle = document.title;
-        document.title = 'Acta-{{ $acta?->numero_prestamo ?? 'firmada' }}';
+        document.title = 'Acta-{{ $acta?->numeroPrestamo ?? 'firmada' }}';
         window.print();
         setTimeout(() => document.title = originalTitle, 500);
     });

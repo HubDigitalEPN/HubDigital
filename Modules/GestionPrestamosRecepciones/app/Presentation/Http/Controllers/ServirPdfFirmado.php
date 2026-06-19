@@ -7,7 +7,8 @@ namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers;
 use App\Enums\RolUsuario;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
-use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\ActaPrestamoModel;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDocumentoActa\ConsultarDocumentoActaHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDocumentoActa\ConsultarDocumentoActaInput;
 
 /**
  * Controlador para servir el PDF o imagen del acta de préstamo firmada.
@@ -16,31 +17,36 @@ final class ServirPdfFirmado
 {
     /**
      * @param string $id
+     * @param ConsultarDocumentoActaHandler $handler
      * @return Response
      */
-    public function __invoke(string $id): Response
+    public function __invoke(string $id, ConsultarDocumentoActaHandler $handler): Response
     {
-        $acta = ActaPrestamoModel::query()
-            ->with('solicitud')
-            ->findOrFail($id);
-
         $user = auth()->user();
-        $isCurador = $user?->rol === RolUsuario::CURADOR;
-        $isOwner = $acta->solicitud?->investigador_id === (string) $user?->id;
 
-        if (! $isCurador && ! $isOwner) {
-            abort(403);
-        }
+        $documento = $handler->handle(new ConsultarDocumentoActaInput(
+            actaId: $id,
+            usuarioId: (string) $user?->id,
+            esCurador: $user?->rol === RolUsuario::CURADOR,
+        ));
 
-        if (! $acta->pdf_firmado_ruta || ! Storage::exists($acta->pdf_firmado_ruta)) {
+        if (! $documento->existe) {
             abort(404);
         }
 
-        $isFirmaDigital = str_starts_with($acta->pdf_firmado_ruta, 'firmas-investigador/');
+        if (! $documento->autorizado) {
+            abort(403);
+        }
+
+        if (! $documento->pdfFirmadoRuta || ! Storage::exists($documento->pdfFirmadoRuta)) {
+            abort(404);
+        }
+
+        $isFirmaDigital = str_starts_with($documento->pdfFirmadoRuta, 'firmas-investigador/');
         $contentType = $isFirmaDigital ? 'image/png' : 'application/pdf';
         $filename = $isFirmaDigital ? 'acta-firma.png' : 'acta-firmada.pdf';
 
-        return response(Storage::get($acta->pdf_firmado_ruta), 200, [
+        return response(Storage::get($documento->pdfFirmadoRuta), 200, [
             'Content-Type' => $contentType,
             'Content-Disposition' => 'inline; filename="' . $filename . '"',
         ]);

@@ -6,8 +6,8 @@
 
 @php
     // Novedades por espécimen (datos nuevos) + nota general; con fallback al texto antiguo del evento.
-    $observacionesEspecimen = $verificacion?->observaciones() ?? [];
-    $notaGeneral = $verificacion?->observacionGeneral() ?? $observacionLegacy;
+    $observacionesEspecimen = $verificacion?->observaciones ?? [];
+    $notaGeneral = $verificacion?->observacionGeneral ?? $observacionLegacy;
     $tieneContenido = count($observacionesEspecimen) > 0 || ! empty($notaGeneral);
 @endphp
 
@@ -23,13 +23,8 @@
             <p class="text-xs text-text-secondary">El curador detectó anomalías al verificar los especímenes devueltos:</p>
 
             @foreach($observacionesEspecimen as $obs)
-                @php
-                    $codigoEspecimen = \Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\ItemPrestamoModel::query()
-                        ->where('id', $obs->itemPrestamoId)
-                        ->value('especimen_codigo_externo') ?? $obs->itemPrestamoId;
-                @endphp
                 <div class="rounded-lg bg-warning/10 border border-warning/20 px-4 py-3">
-                    <p class="text-xs text-text-secondary font-mono">{{ $codigoEspecimen }}</p>
+                    <p class="text-xs text-text-secondary font-mono">{{ $obs->codigoEspecimen }}</p>
                     <p class="text-sm text-text-primary mt-0.5 leading-relaxed">{{ $obs->descripcion }}</p>
                 </div>
             @endforeach

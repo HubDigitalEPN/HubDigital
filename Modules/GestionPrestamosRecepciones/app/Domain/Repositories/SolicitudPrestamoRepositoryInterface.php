@@ -24,4 +24,12 @@ interface SolicitudPrestamoRepositoryInterface
 
     /** Genera un identificador nuevo para una solicitud aún no persistida. */
     public function nextIdentity(): SolicitudPrestamoId;
+
+    /**
+     * Proyección de lectura: resuelve el código externo legible de cada ítem.
+     *
+     * @param  list<string>  $itemPrestamoIds  Identificadores de ítems de préstamo.
+     * @return array<string, string>  Mapa [itemPrestamoId => códigoExterno] (omite ítems inexistentes).
+     */
+    public function mapaCodigosExternos(array $itemPrestamoIds): array;
 }

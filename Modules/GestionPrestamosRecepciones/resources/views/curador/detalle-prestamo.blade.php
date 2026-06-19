@@ -4,7 +4,7 @@
         <flux:breadcrumbs.item wire:navigate href="{{ route('prestamos.curador.panel') }}">
             Panel
         </flux:breadcrumbs.item>
-        <flux:breadcrumbs.item>Préstamo {{ $prestamo->numeroPrestamo }}</flux:breadcrumbs.item>
+        <flux:breadcrumbs.item>Préstamo {{ $detalle->numeroPrestamo }}</flux:breadcrumbs.item>
     </flux:breadcrumbs>
 
     @if($successMessage)
@@ -29,7 +29,7 @@
                 }
             @endphp
             <x-gestionprestamosrecepciones::cierre-observacion-banner
-                :estado="$prestamo->estado->value"
+                :estado="$detalle->estadoPrestamo->value"
                 :verificacion="$verificacionCierre"
                 :observacion-legacy="$observacionCierreLegacy" />
 
@@ -40,24 +40,24 @@
                         <flux:icon name="archive-box" class="size-3.5" />
                     </div>
                     <flux:heading size="base" level="2" class="font-display flex-1">
-                        Préstamo {{ $prestamo->numeroPrestamo }}
+                        Préstamo {{ $detalle->numeroPrestamo }}
                     </flux:heading>
-                    <x-gestionprestamosrecepciones::prestamo-status-badge :estado="$prestamo->estado" />
+                    <x-gestionprestamosrecepciones::prestamo-status-badge :estado="$detalle->estadoPrestamo" />
                 </div>
                 <div class="p-5">
                     @php
                         $hoy = new \DateTimeImmutable('today');
-                        $diasRestantes = (int) $hoy->diff($prestamo->fechaFin)->days;
-                        $vencido = $prestamo->fechaFin < $hoy;
+                        $diasRestantes = (int) $hoy->diff($detalle->fechaFin)->days;
+                        $vencido = $detalle->fechaFin < $hoy;
                     @endphp
                     <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                         <div>
                             <dt class="text-xs text-text-secondary uppercase tracking-wide">Fecha de inicio</dt>
-                            <dd class="font-medium text-text-primary mt-1">{{ $prestamo->iniciadoEn->format('d/m/Y') }}</dd>
+                            <dd class="font-medium text-text-primary mt-1">{{ $detalle->iniciadoEn->format('d/m/Y') }}</dd>
                         </div>
                         <div>
                             <dt class="text-xs text-text-secondary uppercase tracking-wide">Fecha de vencimiento</dt>
-                            <dd class="font-medium text-text-primary mt-1">{{ $prestamo->fechaFin->format('d/m/Y') }}</dd>
+                            <dd class="font-medium text-text-primary mt-1">{{ $detalle->fechaFin->format('d/m/Y') }}</dd>
                         </div>
                         <div class="sm:col-span-2">
                             <dt class="text-xs text-text-secondary uppercase tracking-wide">Días restantes</dt>
@@ -70,7 +70,7 @@
             </div>
 
             {{-- Devolución registrada — pendiente de cierre --}}
-            @if($prestamo->estado->value === 'en_revision')
+            @if($detalle->estadoPrestamo->value === 'en_revision')
                 <div class="rounded-lg border border-science-blue/30 bg-science-blue/5 overflow-hidden">
                     <div class="px-5 py-4 border-b border-science-blue/20 flex items-center gap-3">
                         <div class="flex h-7 w-7 items-center justify-center rounded-full bg-science-blue/15 shrink-0">
@@ -83,7 +83,7 @@
                             El investigador ha declarado que los especímenes fueron enviados de vuelta. Registra el resultado de la inspección para cerrar el préstamo.
                         </p>
                         <div class="pt-1">
-                            <flux:button variant="primary" wire:navigate href="{{ route('prestamos.curador.prestamo.cerrar', $prestamo->prestamoId) }}">
+                            <flux:button variant="primary" wire:navigate href="{{ route('prestamos.curador.prestamo.cerrar', $detalle->prestamoId) }}">
                                 Registrar resultado y cerrar
                             </flux:button>
                         </div>
@@ -92,7 +92,7 @@
             @endif
 
             {{-- Trámite de exportación --}}
-            @if($prestamo->estado->value === 'pendiente_documento_ministerio')
+            @if($detalle->estadoPrestamo->value === 'pendiente_documento_ministerio')
                 <div class="rounded-lg border border-warning/40 bg-warning/5 overflow-hidden">
                     <div class="px-5 py-4 border-b border-warning/20 flex items-center gap-3">
                         <div class="flex h-7 w-7 items-center justify-center rounded-full bg-warning/20 shrink-0">
@@ -134,7 +134,7 @@
             @endif
 
             {{-- Verificación pendiente de aprobación --}}
-            @if($prestamo->estado->value === 'pendiente_aprobacion_verificacion' && $verificacion)
+            @if($detalle->estadoPrestamo->value === 'pendiente_aprobacion_verificacion' && $verificacion?->existe)
                 <div class="rounded-lg border border-science-blue/30 bg-science-blue/5 overflow-hidden">
                     <div class="px-5 py-4 border-b border-science-blue/20 flex items-center gap-3">
                         <div class="flex h-7 w-7 items-center justify-center rounded-full bg-science-blue/15 shrink-0">
@@ -144,7 +144,7 @@
                     </div>
                     <div class="p-5 space-y-3">
                         <div class="flex items-center gap-2">
-                            @if($verificacion->resultado()->value === 'sin_novedades')
+                            @if($verificacion->resultado->value === 'sin_novedades')
                                 <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold bg-bio-green/10 text-bio-green border border-bio-green/20">
                                     <span class="size-1.5 rounded-full bg-bio-green"></span>
                                     Sin novedades
@@ -157,24 +157,19 @@
                                 </span>
                             @endif
                         </div>
-                        @if(count($verificacion->observaciones()) > 0)
+                        @if(count($verificacion->observaciones) > 0)
                             <div class="space-y-2">
                                 <p class="text-xs font-semibold text-text-secondary uppercase tracking-wide">Observaciones reportadas</p>
-                                @foreach($verificacion->observaciones() as $obs)
-                                    @php
-                                        $codigoEspecimen = \Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\ItemPrestamoModel::query()
-                                            ->where('id', $obs->itemPrestamoId)
-                                            ->value('especimen_codigo_externo') ?? $obs->itemPrestamoId;
-                                    @endphp
+                                @foreach($verificacion->observaciones as $obs)
                                     <div class="rounded-lg border border-border bg-surface px-3 py-2">
-                                        <p class="text-xs text-text-secondary font-mono">{{ $codigoEspecimen }}</p>
+                                        <p class="text-xs text-text-secondary font-mono">{{ $obs->codigoEspecimen }}</p>
                                         <p class="text-sm text-text-primary mt-0.5">{{ $obs->descripcion }}</p>
                                     </div>
                                 @endforeach
                             </div>
                         @endif
                         <div class="pt-1">
-                            <flux:button variant="primary" wire:navigate href="{{ route('prestamos.curador.prestamo.aprobar-verificacion', $prestamo->id) }}">
+                            <flux:button variant="primary" wire:navigate href="{{ route('prestamos.curador.prestamo.aprobar-verificacion', $detalle->prestamoId) }}">
                                 Revisar verificación
                             </flux:button>
                         </div>
@@ -183,33 +178,33 @@
             @endif
 
             {{-- Solicitud --}}
-            @if($acta?->solicitud)
+            @if($detalle->solicitudId)
                 <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
                     <div class="px-5 py-4 border-b border-border flex items-center gap-3">
                         <div class="flex h-7 w-7 items-center justify-center rounded-full bg-blue-navy text-white shrink-0">
                             <flux:icon name="document-text" class="size-3.5" />
                         </div>
                         <flux:heading size="base" level="2" class="font-display flex-1">Solicitud</flux:heading>
-                        <x-gestionprestamosrecepciones::solicitud-status-badge :estado="$acta->solicitud->estado" />
+                        <x-gestionprestamosrecepciones::solicitud-status-badge :estado="$detalle->solicitudEstado" />
                     </div>
                     <div class="p-5">
                         <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                             <div>
                                 <dt class="text-xs text-text-secondary uppercase tracking-wide">N.º solicitud</dt>
-                                <dd class="font-mono font-medium text-text-primary mt-1">{{ $acta->solicitud->numero_solicitud }}</dd>
+                                <dd class="font-mono font-medium text-text-primary mt-1">{{ $detalle->numeroSolicitud }}</dd>
                             </div>
                             <div>
                                 <dt class="text-xs text-text-secondary uppercase tracking-wide">Institución</dt>
-                                <dd class="font-medium text-text-primary mt-1">{{ $acta->solicitud->institucion_adscripcion }}</dd>
+                                <dd class="font-medium text-text-primary mt-1">{{ $detalle->institucionAdscripcion }}</dd>
                             </div>
                             <div class="sm:col-span-2">
                                 <dt class="text-xs text-text-secondary uppercase tracking-wide">Título del estudio</dt>
-                                <dd class="font-medium text-text-primary mt-1">{{ $acta->solicitud->titulo_estudio }}</dd>
+                                <dd class="font-medium text-text-primary mt-1">{{ $detalle->tituloEstudio }}</dd>
                             </div>
                         </dl>
                         <div class="mt-4">
                             <flux:button variant="ghost" icon="document-magnifying-glass" size="sm" wire:navigate
-                                href="{{ route('prestamos.curador.solicitud.revisar', $acta->solicitud_prestamo_id) }}">
+                                href="{{ route('prestamos.curador.solicitud.revisar', $detalle->solicitudId) }}">
                                 Ver solicitud
                             </flux:button>
                         </div>
@@ -218,37 +213,37 @@
             @endif
 
             {{-- Acta --}}
-            @if($acta)
+            @if($detalle->actaId)
                 <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
                     <div class="px-5 py-4 border-b border-border flex items-center gap-3">
                         <div class="flex h-7 w-7 items-center justify-center rounded-full bg-blue-navy text-white shrink-0">
                             <flux:icon name="clipboard-document" class="size-3.5" />
                         </div>
                         <flux:heading size="base" level="2" class="font-display flex-1">Acta de préstamo</flux:heading>
-                        <x-gestionprestamosrecepciones::acta-status-badge :estado="$acta->estado" />
+                        <x-gestionprestamosrecepciones::acta-status-badge :estado="$detalle->actaEstado" />
                     </div>
                     <div class="p-5">
                         <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                             <div>
                                 <dt class="text-xs text-text-secondary uppercase tracking-wide">N.º acta</dt>
-                                <dd class="font-mono font-medium text-text-primary mt-1">{{ $acta->numero_prestamo }}</dd>
+                                <dd class="font-mono font-medium text-text-primary mt-1">{{ $detalle->numeroPrestamo }}</dd>
                             </div>
                             <div>
                                 <dt class="text-xs text-text-secondary uppercase tracking-wide">Tipo</dt>
-                                <dd class="font-medium text-text-primary mt-1 capitalize">{{ str_replace('_', ' ', $acta->tipo_prestamo) }}</dd>
+                                <dd class="font-medium text-text-primary mt-1 capitalize">{{ str_replace('_', ' ', $detalle->tipoPrestamo) }}</dd>
                             </div>
                             <div>
                                 <dt class="text-xs text-text-secondary uppercase tracking-wide">Fecha inicio</dt>
-                                <dd class="font-medium text-text-primary mt-1">{{ $acta->fecha_inicio?->format('d/m/Y') ?? '—' }}</dd>
+                                <dd class="font-medium text-text-primary mt-1">{{ $detalle->fechaInicioActa?->format('d/m/Y') ?? '—' }}</dd>
                             </div>
                             <div>
                                 <dt class="text-xs text-text-secondary uppercase tracking-wide">Fecha fin</dt>
-                                <dd class="font-medium text-text-primary mt-1">{{ $acta->fecha_fin?->format('d/m/Y') ?? '—' }}</dd>
+                                <dd class="font-medium text-text-primary mt-1">{{ $detalle->fechaFinActa?->format('d/m/Y') ?? '—' }}</dd>
                             </div>
                         </dl>
                         <div class="mt-4">
                             <flux:button variant="ghost" icon="document-text" size="sm" wire:navigate
-                                href="{{ route('prestamos.curador.acta.validar', $acta->id) }}">
+                                href="{{ route('prestamos.curador.acta.validar', $detalle->actaId) }}">
                                 Ver acta y documentos
                             </flux:button>
                         </div>

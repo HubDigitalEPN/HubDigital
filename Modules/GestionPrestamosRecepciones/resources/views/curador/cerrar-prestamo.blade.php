@@ -118,10 +118,10 @@
                                             <flux:icon name="beaker" class="size-4 text-science-blue" />
                                         </div>
                                         <p class="text-sm font-mono font-medium text-text-primary">
-                                            {{ $item?->especimen_codigo_externo ?? 'Espécimen ' . ($i + 1) }}
+                                            {{ $item?->codigoExterno ?? 'Espécimen ' . ($i + 1) }}
                                         </p>
-                                        @if($item?->especimen_snapshot)
-                                            <span class="text-xs text-text-secondary">— {{ $item->especimen_snapshot['nombre'] ?? '' }}</span>
+                                        @if($item?->nombre)
+                                            <span class="text-xs text-text-secondary">— {{ $item->nombre }}</span>
                                         @endif
                                     </div>
                                     <div class="p-3">

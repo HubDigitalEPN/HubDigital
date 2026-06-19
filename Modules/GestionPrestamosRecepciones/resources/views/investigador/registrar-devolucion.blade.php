@@ -5,8 +5,8 @@
         <flux:breadcrumbs.item wire:navigate href="{{ route('prestamos.investigador.mis-prestamos') }}">
             Mis préstamos
         </flux:breadcrumbs.item>
-        <flux:breadcrumbs.item wire:navigate href="{{ route('prestamos.investigador.prestamo.detalle', $prestamo->id) }}">
-            {{ $prestamo->acta?->numero_prestamo ?? 'Préstamo' }}
+        <flux:breadcrumbs.item wire:navigate href="{{ route('prestamos.investigador.prestamo.detalle', $prestamo->prestamoId) }}">
+            {{ $prestamo->numeroPrestamo }}
         </flux:breadcrumbs.item>
         <flux:breadcrumbs.item>Registrar devolución</flux:breadcrumbs.item>
     </flux:breadcrumbs>
@@ -45,16 +45,15 @@
                 <div>
                     <dt class="text-xs text-text-secondary uppercase tracking-wide">N.º préstamo</dt>
                     <dd class="font-mono font-medium text-text-primary mt-1">
-                        {{ $prestamo->acta?->numero_prestamo ?? '—' }}
+                        {{ $prestamo->numeroPrestamo }}
                     </dd>
                 </div>
                 <div>
                     <dt class="text-xs text-text-secondary uppercase tracking-wide">Fecha límite de devolución</dt>
                     <dd class="font-medium text-text-primary mt-1">
-                        {{ $prestamo->fecha_fin?->format('d/m/Y') ?? '—' }}
+                        {{ $prestamo->fechaFin?->format('d/m/Y') ?? '—' }}
                     </dd>
                 </div>
-                @php $totalItems = $prestamo->acta?->solicitud?->items?->count() ?? 0; @endphp
                 @if($totalItems > 0)
                     <div>
                         <dt class="text-xs text-text-secondary uppercase tracking-wide">Especímenes prestados</dt>
@@ -71,7 +70,7 @@
 <div class="fixed bottom-0 inset-x-0 z-20 bg-surface border-t border-border shadow-lg">
     <div class="px-6 py-3 flex items-center gap-3 justify-end">
         <flux:button variant="ghost" wire:navigate
-            href="{{ route('prestamos.investigador.prestamo.detalle', $prestamo->id) }}">
+            href="{{ route('prestamos.investigador.prestamo.detalle', $prestamo->prestamoId) }}">
             Cancelar
         </flux:button>
         <flux:button variant="primary" wire:click="registrar" wire:loading.attr="disabled">

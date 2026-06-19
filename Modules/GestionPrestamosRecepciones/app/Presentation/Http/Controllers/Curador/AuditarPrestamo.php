@@ -17,10 +17,11 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialP
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialPrestamo\ConsultarHistorialPrestamoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudInput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarVerificacionEspecimenes\ConsultarVerificacionEspecimenesHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarVerificacionEspecimenes\ConsultarVerificacionEspecimenesInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\HabilitarEnvioInternacional\HabilitarEnvioInternacionalHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\HabilitarEnvioInternacional\HabilitarEnvioInternacionalInput;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\RecordatorioDevolucionRepositoryInterface;
-use Modules\GestionPrestamosRecepciones\Domain\Repositories\VerificacionEspecimenesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoVerificacion;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\PrestamoEloquentModel;
@@ -193,13 +194,13 @@ final class AuditarPrestamo extends Component
     /**
      * @param ConsultarHistorialSolicitudHandler $historialSolicitudHandler
      * @param ConsultarHistorialPrestamoHandler $historialPrestamoHandler
-     * @param VerificacionEspecimenesRepositoryInterface $verificacionRepo
+     * @param ConsultarVerificacionEspecimenesHandler $verificacionHandler
      * @return View
      */
     public function render(
         ConsultarHistorialSolicitudHandler $historialSolicitudHandler,
         ConsultarHistorialPrestamoHandler $historialPrestamoHandler,
-        VerificacionEspecimenesRepositoryInterface $verificacionRepo,
+        ConsultarVerificacionEspecimenesHandler $verificacionHandler,
     ): View {
         $prestamo = PrestamoEloquentModel::query()->with('acta')->findOrFail($this->prestamoId);
         $acta = $prestamo->acta;
@@ -236,10 +237,15 @@ final class AuditarPrestamo extends Component
             ->values()
             ->all();
 
-        $prestamoIdVo = PrestamoId::fromString($this->prestamoId);
-        $verificacion = $verificacionRepo->buscarPorPrestamoYTipo($prestamoIdVo, TipoVerificacion::Recepcion);
+        $verificacion = $verificacionHandler->handle(new ConsultarVerificacionEspecimenesInput(
+            prestamoId: $this->prestamoId,
+            tipo: TipoVerificacion::Recepcion,
+        ));
         $verificacionCierre = in_array($prestamo->estado, ['cerrado', 'cerrado_con_observacion'], true)
-            ? $verificacionRepo->buscarPorPrestamoYTipo($prestamoIdVo, TipoVerificacion::Devolucion)
+            ? $verificacionHandler->handle(new ConsultarVerificacionEspecimenesInput(
+                prestamoId: $this->prestamoId,
+                tipo: TipoVerificacion::Devolucion,
+            ))
             : null;
 
         $nombreValidador = $acta?->validada_por

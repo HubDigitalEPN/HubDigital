@@ -10,10 +10,11 @@ use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\CerrarPrestamo\CerrarPrestamoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\CerrarPrestamo\CerrarPrestamoInput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarItemsPrestamo\ConsultarItemsPrestamoHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarItemsPrestamo\ConsultarItemsPrestamoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarPrestamo\ConsultarPrestamoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarPrestamo\ConsultarPrestamoInput;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\PrestamoNoEncontradoException;
-use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\PrestamoEloquentModel;
 
 #[Layout('layouts.app', params: ['title' => 'Cerrar préstamo'])]
 final class CerrarPrestamo extends Component
@@ -29,8 +30,11 @@ final class CerrarPrestamo extends Component
     /** @var array<int, array{itemPrestamoId: string, descripcion: string}> */
     public array $observaciones = [];
 
-    public function mount(string $id, ConsultarPrestamoHandler $handler): void
-    {
+    public function mount(
+        string $id,
+        ConsultarPrestamoHandler $handler,
+        ConsultarItemsPrestamoHandler $itemsHandler,
+    ): void {
         $this->id = $id;
 
         try {
@@ -47,13 +51,15 @@ final class CerrarPrestamo extends Component
         }
 
         // Pre-populamos para que itemPrestamoId esté disponible (wire:model en inputs ocultos no empuja valores).
-        $this->observaciones = $this->itemsDelPrestamo()
-            ->map(fn ($item) => [
-                'itemPrestamoId' => (string) $item->id,
+        $items = $itemsHandler->handle(new ConsultarItemsPrestamoInput(prestamoId: $id))->items;
+
+        $this->observaciones = array_map(
+            fn ($item) => [
+                'itemPrestamoId' => $item->itemPrestamoId,
                 'descripcion' => '',
-            ])
-            ->values()
-            ->toArray();
+            ],
+            $items,
+        );
     }
 
     public function cerrar(CerrarPrestamoHandler $handler): void
@@ -89,25 +95,17 @@ final class CerrarPrestamo extends Component
         $this->redirect(route('prestamos.curador.prestamo.detalle', $this->id), navigate: true);
     }
 
-    public function render(ConsultarPrestamoHandler $handler): View
-    {
+    public function render(
+        ConsultarPrestamoHandler $handler,
+        ConsultarItemsPrestamoHandler $itemsHandler,
+    ): View {
         $prestamo = $handler->handle(new ConsultarPrestamoInput(
             prestamoId: $this->id,
             usuarioId: (string) auth()->id(),
         ));
 
-        $items = $this->itemsDelPrestamo();
+        $items = $itemsHandler->handle(new ConsultarItemsPrestamoInput(prestamoId: $this->id))->items;
 
         return view('gestionprestamosrecepciones::curador.cerrar-prestamo', compact('prestamo', 'items'));
-    }
-
-    /**
-     * @return \Illuminate\Support\Collection<int, \Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\ItemPrestamoModel>
-     */
-    private function itemsDelPrestamo(): \Illuminate\Support\Collection
-    {
-        $prestamo = PrestamoEloquentModel::query()->with('acta.solicitud.items')->find($this->id);
-
-        return collect($prestamo?->acta?->solicitud?->items ?? []);
     }
 }

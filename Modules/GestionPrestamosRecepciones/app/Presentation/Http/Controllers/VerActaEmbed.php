@@ -8,7 +8,8 @@ use App\Enums\RolUsuario;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
-use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\ActaPrestamoModel;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarActaDocumento\ConsultarActaDocumentoHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarActaDocumento\ConsultarActaDocumentoInput;
 
 /**
  * Componente Livewire (Controlador) para visualizar el acta de préstamo de forma embebida.
@@ -18,37 +19,47 @@ final class VerActaEmbed extends Component
 {
     public string $id;
 
-    public ?ActaPrestamoModel $acta = null;
-
     public bool $isEmbed = true;
 
     public bool $sinFirma = false;
 
     /**
      * @param string $id
+     * @param ConsultarActaDocumentoHandler $handler
      * @return void
      */
-    public function mount(string $id): void
+    public function mount(string $id, ConsultarActaDocumentoHandler $handler): void
     {
+        $this->id = $id;
         $this->sinFirma = request()->boolean('sin_firma');
-        $this->acta = ActaPrestamoModel::query()
-            ->with(['solicitud.items'])
-            ->findOrFail($id);
+
+        $acta = $handler->handle(new ConsultarActaDocumentoInput(actaId: $id));
+
+        if ($acta === null) {
+            abort(404);
+        }
 
         $user = auth()->user();
-        $isCurador = $user?->rol === RolUsuario::CURADOR;
-        $isOwner = $this->acta->solicitud?->investigador_id === (string) $user?->id;
+        $esCurador = $user?->rol === RolUsuario::CURADOR;
+        $esDueno = $acta->investigadorId === (string) $user?->id;
 
-        if (! $isCurador && ! $isOwner) {
+        if (! $esCurador && ! $esDueno) {
             abort(403);
         }
     }
 
     /**
+     * @param ConsultarActaDocumentoHandler $handler
      * @return View
      */
-    public function render(): View
+    public function render(ConsultarActaDocumentoHandler $handler): View
     {
-        return view('gestionprestamosrecepciones::ver-acta');
+        $acta = $handler->handle(new ConsultarActaDocumentoInput(actaId: $this->id));
+
+        if ($acta === null) {
+            abort(404);
+        }
+
+        return view('gestionprestamosrecepciones::ver-acta', compact('acta'));
     }
 }

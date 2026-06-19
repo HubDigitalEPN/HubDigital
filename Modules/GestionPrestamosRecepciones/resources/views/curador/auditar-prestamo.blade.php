@@ -145,12 +145,12 @@
                         </div>
                     </dl>
 
-                    @if($verificacion)
+                    @if($verificacion->existe)
                         <flux:separator class="my-4" />
                         <div class="space-y-2">
                             <p class="text-xs font-semibold text-text-secondary uppercase tracking-wide">Verificación de entrega</p>
                             <div class="flex items-center gap-2">
-                                @if($verificacion->resultado()->value === 'sin_novedades')
+                                @if($verificacion->resultado->value === 'sin_novedades')
                                     <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold bg-bio-green/10 text-bio-green border border-bio-green/20">
                                         <span class="size-1.5 rounded-full bg-bio-green"></span>
                                         Sin novedades
@@ -163,14 +163,9 @@
                                     </span>
                                 @endif
                             </div>
-                            @foreach($verificacion->observaciones() as $obs)
-                                @php
-                                    $codigoEspecimen = \Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\ItemPrestamoModel::query()
-                                        ->where('id', $obs->itemPrestamoId)
-                                        ->value('especimen_codigo_externo') ?? $obs->itemPrestamoId;
-                                @endphp
+                            @foreach($verificacion->observaciones as $obs)
                                 <div class="rounded-lg border border-border bg-bg-main px-3 py-2 mt-2">
-                                    <p class="text-xs text-text-secondary font-mono">{{ $codigoEspecimen }}</p>
+                                    <p class="text-xs text-text-secondary font-mono">{{ $obs->codigoEspecimen }}</p>
                                     <p class="text-sm text-text-primary mt-0.5">{{ $obs->descripcion }}</p>
                                 </div>
                             @endforeach

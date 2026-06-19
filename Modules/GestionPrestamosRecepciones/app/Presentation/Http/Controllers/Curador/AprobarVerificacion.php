@@ -12,9 +12,9 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarVerificacion
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarVerificacionEntrega\AprobarVerificacionEntregaInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarPrestamo\ConsultarPrestamoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarPrestamo\ConsultarPrestamoInput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarVerificacionEspecimenes\ConsultarVerificacionEspecimenesHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarVerificacionEspecimenes\ConsultarVerificacionEspecimenesInput;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\PrestamoNoEncontradoException;
-use Modules\GestionPrestamosRecepciones\Domain\Repositories\VerificacionEspecimenesRepositoryInterface;
-use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoVerificacion;
 
 /**
@@ -62,19 +62,22 @@ final class AprobarVerificacion extends Component
 
     /**
      * @param ConsultarPrestamoHandler $prestamoHandler
-     * @param VerificacionEspecimenesRepositoryInterface $verificacionRepo
+     * @param ConsultarVerificacionEspecimenesHandler $verificacionHandler
      * @return View
      */
     public function render(
         ConsultarPrestamoHandler $prestamoHandler,
-        VerificacionEspecimenesRepositoryInterface $verificacionRepo,
+        ConsultarVerificacionEspecimenesHandler $verificacionHandler,
     ): View {
         $prestamo = $prestamoHandler->handle(new ConsultarPrestamoInput(
             prestamoId: $this->id,
             usuarioId: (string) auth()->id(),
         ));
 
-        $verificacion = $verificacionRepo->buscarPorPrestamoYTipo(PrestamoId::fromString($this->id), TipoVerificacion::Recepcion);
+        $verificacion = $verificacionHandler->handle(new ConsultarVerificacionEspecimenesInput(
+            prestamoId: $this->id,
+            tipo: TipoVerificacion::Recepcion,
+        ));
 
         return view('gestionprestamosrecepciones::curador.aprobar-verificacion', compact('prestamo', 'verificacion'));
     }

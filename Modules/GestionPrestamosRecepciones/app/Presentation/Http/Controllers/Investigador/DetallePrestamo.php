@@ -7,16 +7,17 @@ namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Inve
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDetallePrestamo\ConsultarDetallePrestamoHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDetallePrestamo\ConsultarDetallePrestamoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialPrestamo\ConsultarHistorialPrestamoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialPrestamo\ConsultarHistorialPrestamoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudInput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarVerificacionEspecimenes\ConsultarVerificacionEspecimenesHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarVerificacionEspecimenes\ConsultarVerificacionEspecimenesInput;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\RecordatorioDevolucionRepositoryInterface;
-use Modules\GestionPrestamosRecepciones\Domain\Repositories\VerificacionEspecimenesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoVerificacion;
-use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\PrestamoEloquentModel;
-use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\SolicitudPrestamoModel;
 
 /**
  * Componente Livewire para el detalle de un préstamo.
@@ -26,56 +27,59 @@ final class DetallePrestamo extends Component
 {
     public string $id;
 
+    public string $successMessage = '';
+
     /**
      * Inicializa el componente.
      *
      * @param string $id
+     * @param ConsultarDetallePrestamoHandler $handler
      * @return void
      */
-    public function mount(string $id): void
+    public function mount(string $id, ConsultarDetallePrestamoHandler $handler): void
     {
         $this->id = $id;
 
-        $prestamo = PrestamoEloquentModel::query()->with('acta.solicitud')->find($id);
+        $detalle = $handler->handle(new ConsultarDetallePrestamoInput(prestamoId: $id));
 
-        if ($prestamo === null) {
+        if ($detalle === null) {
             abort(404);
         }
 
-        if ($prestamo->acta?->solicitud?->investigador_id !== (string) auth()->id()) {
+        if ($detalle->investigadorId !== (string) auth()->id()) {
             abort(403);
         }
     }
 
-    public string $successMessage = '';
-
     /**
      * Renderiza el componente.
      *
-     * @param \Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudHandler $historialSolicitudHandler
-     * @param \Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialPrestamo\ConsultarHistorialPrestamoHandler $historialPrestamoHandler
-     * @param \Modules\GestionPrestamosRecepciones\Domain\Repositories\RecordatorioDevolucionRepositoryInterface $recordatorioRepo
-     * @param \Modules\GestionPrestamosRecepciones\Domain\Repositories\VerificacionEspecimenesRepositoryInterface $verificacionRepo
-     * @return \Illuminate\View\View
+     * @param ConsultarDetallePrestamoHandler $detalleHandler
+     * @param ConsultarHistorialSolicitudHandler $historialSolicitudHandler
+     * @param ConsultarHistorialPrestamoHandler $historialPrestamoHandler
+     * @param RecordatorioDevolucionRepositoryInterface $recordatorioRepo
+     * @param ConsultarVerificacionEspecimenesHandler $verificacionHandler
+     * @return View
      */
     public function render(
+        ConsultarDetallePrestamoHandler $detalleHandler,
         ConsultarHistorialSolicitudHandler $historialSolicitudHandler,
         ConsultarHistorialPrestamoHandler $historialPrestamoHandler,
         RecordatorioDevolucionRepositoryInterface $recordatorioRepo,
-        VerificacionEspecimenesRepositoryInterface $verificacionRepo,
+        ConsultarVerificacionEspecimenesHandler $verificacionHandler,
     ): View {
-        $prestamo = PrestamoEloquentModel::query()->with('acta')->findOrFail($this->id);
-        $acta = $prestamo->acta;
-        $solicitud = $acta
-            ? SolicitudPrestamoModel::query()->with('items')->find($acta->solicitud_prestamo_id)
-            : null;
+        $detalle = $detalleHandler->handle(new ConsultarDetallePrestamoInput(prestamoId: $this->id));
+
+        if ($detalle === null) {
+            abort(404);
+        }
 
         $tiposActa = ['ActaEnviada', 'ActaFirmadaSubida', 'ActaDevueltaPorFirmaInvalida', 'ActaValidada'];
 
         $eventosSolicitud = [];
-        if ($solicitud !== null) {
+        if ($detalle->solicitudId !== null) {
             $historialSolicitud = $historialSolicitudHandler->handle(new ConsultarHistorialSolicitudInput(
-                solicitudId: $solicitud->id,
+                solicitudId: $detalle->solicitudId,
                 usuarioId: (string) auth()->id(),
             ));
             $eventosSolicitud = array_map(
@@ -106,12 +110,17 @@ final class DetallePrestamo extends Component
             $recordatorioRepo->listarPorPrestamo(PrestamoId::fromString($this->id)),
         );
 
-        $prestamoId = PrestamoId::fromString($this->id);
-        $verificacion = $verificacionRepo->buscarPorPrestamoYTipo($prestamoId, TipoVerificacion::Recepcion);
-        $verificacionCierre = in_array($prestamo->estado, ['cerrado', 'cerrado_con_observacion'], true)
-            ? $verificacionRepo->buscarPorPrestamoYTipo($prestamoId, TipoVerificacion::Devolucion)
+        $verificacion = $verificacionHandler->handle(new ConsultarVerificacionEspecimenesInput(
+            prestamoId: $this->id,
+            tipo: TipoVerificacion::Recepcion,
+        ));
+        $verificacionCierre = in_array($detalle->estadoPrestamo->value, ['cerrado', 'cerrado_con_observacion'], true)
+            ? $verificacionHandler->handle(new ConsultarVerificacionEspecimenesInput(
+                prestamoId: $this->id,
+                tipo: TipoVerificacion::Devolucion,
+            ))
             : null;
 
-        return view('gestionprestamosrecepciones::investigador.detalle-prestamo', compact('prestamo', 'acta', 'solicitud', 'timeline', 'recordatorios', 'verificacion', 'verificacionCierre'));
+        return view('gestionprestamosrecepciones::investigador.detalle-prestamo', compact('detalle', 'timeline', 'recordatorios', 'verificacion', 'verificacionCierre'));
     }
 }
