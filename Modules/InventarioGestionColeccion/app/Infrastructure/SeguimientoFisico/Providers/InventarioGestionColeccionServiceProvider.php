@@ -9,7 +9,9 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\Clasi
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\ContextoEjecucionPort;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\EventPublisherPort;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\GeneradorActaPdfPort;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\GestorTokenEsp32Port;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\HorarioValidadorPort;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\TraductorErroresPersistenciaPort;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\TransactionManagerPort;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\UbicacionEspecimenPort;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\AlertaUbicacionRepository;
@@ -40,6 +42,8 @@ use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\HttpSeguridadContextoAdapter;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\LaravelEventPublisherAdapter;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\LaravelTransactionManagerAdapter;
+use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\PostgresTraductorErroresPersistenciaAdapter;
+use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\SanctumTokenEsp32Adapter;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\SimplePdfActaAdapter;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\TaxonArbolClasificacionTaxonomicaAdapter;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Console\ExportarGbifCommand;
@@ -116,6 +120,8 @@ class InventarioGestionColeccionServiceProvider extends ModuleServiceProvider
         GeneradorActaPdfPort::class => SimplePdfActaAdapter::class,
         ClasificacionTaxonomicaPort::class => TaxonArbolClasificacionTaxonomicaAdapter::class,
         UbicacionEspecimenPort::class => EloquentUbicacionEspecimenAdapter::class,
+        GestorTokenEsp32Port::class => SanctumTokenEsp32Adapter::class,
+        TraductorErroresPersistenciaPort::class => PostgresTraductorErroresPersistenciaAdapter::class,
     ];
 
     /**

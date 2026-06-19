@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Admin;
 
 use Illuminate\View\View;
-use Laravel\Sanctum\PersonalAccessToken;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\GestorTokenEsp32Port;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarRanura\ActualizarRanuraHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarRanura\ActualizarRanuraInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarCajas\ListarCajasHandler;
@@ -58,14 +58,15 @@ final class GabineteShow extends Component
         ListarGabineteHandler $listarGabinetes,
         ListarRanurasGabineteHandler $listarRanuras,
         ListarCajasHandler $listarCajas,
+        GestorTokenEsp32Port $tokenEsp32,
     ): void {
         $this->gabineteId = $id;
         $this->successMessage = session('successMessage');
-        $this->cargarProtegido(function () use ($id, $listarGabinetes, $listarRanuras, $listarCajas) {
+        $this->cargarProtegido(function () use ($id, $listarGabinetes, $listarRanuras, $listarCajas, $tokenEsp32) {
             $this->cargarGabinete($listarGabinetes);
             $cajasPorId = $this->buildCajasPorId($listarCajas);
             $this->cargarRanuras($listarRanuras, $cajasPorId);
-            $this->tieneToken = PersonalAccessToken::where('name', "esp32-{$id}")->exists();
+            $this->tieneToken = $tokenEsp32->existeToken($id);
         });
     }
 
@@ -115,14 +116,9 @@ final class GabineteShow extends Component
      * una sola vez en pantalla para que el curador lo copie a la configuración del
      * dispositivo. Por seguridad el token en claro no se vuelve a mostrar.
      */
-    public function generarToken(): void
+    public function generarToken(GestorTokenEsp32Port $tokenEsp32): void
     {
-        PersonalAccessToken::where('name', "esp32-{$this->gabineteId}")->delete();
-
-        $user = auth()->user();
-        $newToken = $user->createToken("esp32-{$this->gabineteId}", ['esp32']);
-
-        $this->tokenGenerado = $newToken->plainTextToken;
+        $this->tokenGenerado = $tokenEsp32->regenerarToken($this->gabineteId);
         $this->tieneToken = true;
         $this->successMessage = 'Token generado. Cópialo ahora — no se volverá a mostrar.';
     }
