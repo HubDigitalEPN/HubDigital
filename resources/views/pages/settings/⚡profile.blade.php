@@ -11,7 +11,8 @@ use Livewire\Component;
 new #[Title('Configuración de perfil')] class extends Component {
     use ProfileValidationRules;
 
-    public string $name = '';
+    public string $first_name = '';
+    public string $last_name = '';
     public string $email = '';
 
     /**
@@ -19,7 +20,8 @@ new #[Title('Configuración de perfil')] class extends Component {
      */
     public function mount(): void
     {
-        $this->name = Auth::user()->name;
+        $this->first_name = Auth::user()->first_name;
+        $this->last_name = Auth::user()->last_name;
         $this->email = Auth::user()->email;
     }
 
@@ -40,7 +42,7 @@ new #[Title('Configuración de perfil')] class extends Component {
 
         $user->save();
 
-        $this->dispatch('profile-updated', name: $user->name);
+        $this->dispatch('profile-updated', name: $user->name);  // accessor returns full name
     }
 
     /**
@@ -82,7 +84,10 @@ new #[Title('Configuración de perfil')] class extends Component {
 
     <x-pages::settings.layout :heading="__('Perfil')" :subheading="__('Actualiza tu nombre y correo electrónico')">
         <form wire:submit="updateProfileInformation" class="my-6 w-full space-y-6">
-            <flux:input wire:model="name" :label="__('Nombre')" type="text" required autofocus autocomplete="name" />
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <flux:input wire:model="first_name" :label="__('Nombre')" type="text" required autofocus autocomplete="given-name" />
+                <flux:input wire:model="last_name" :label="__('Apellido')" type="text" required autocomplete="family-name" />
+            </div>
 
             <div>
                 <flux:input wire:model="email" :label="__('Correo electrónico')" type="email" required autocomplete="email" />

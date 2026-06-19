@@ -16,7 +16,10 @@ class Register extends Component
     public string $role = 'prestamista';
 
     #[Validate('required|string|max:255')]
-    public string $name = '';
+    public string $first_name = '';
+
+    #[Validate('required|string|max:255')]
+    public string $last_name = '';
 
     #[Validate('required|email|max:255')]
     public string $email = '';
@@ -39,7 +42,8 @@ class Register extends Component
 
         try {
             $user = User::create([
-                'name' => $this->name,
+                'first_name' => $this->first_name,
+                'last_name' => $this->last_name,
                 'email' => $this->email,
                 'password' => $this->password,
                 'rol' => RolUsuario::from(strtoupper($this->role)),
