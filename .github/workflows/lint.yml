@@ -37,18 +37,15 @@ jobs:
           composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
           npm install
 
-      # Modo --test: detecta archivos sin formatear y devuelve !=0 (a diferencia
-      # de "composer lint", que arregla y siempre sale 0). continue-on-error lo
-      # deja como aviso (paso con ⚠️) sin romper el pipeline.
+      # Aviso real, no bloqueo: lint:check (--test) detecta archivos sin formatear
+      # y devuelve !=0; el "|| echo ::warning::" lo convierte en una anotacion ⚠️
+      # visible en el resumen del run y deja el paso en verde (no rompe el job).
       - name: Check formatting (warn only)
-        run: composer lint:check
-        continue-on-error: true
+        run: composer lint:check || echo "::warning title=Pint::Hay archivos sin formatear. Corré 'composer lint' localmente."
 
-      # Aviso, no bloqueo: los CVE casi siempre estan en deps transitivas y se
-      # resuelven con bumps. Marca el paso con ⚠️ sin tumbar el job.
+      # Idem: los CVE suelen estar en deps transitivas y se resuelven con bumps.
       - name: Audit Dependencies (CVEs, warn only)
-        run: composer audit
-        continue-on-error: true
+        run: composer audit || echo "::warning title=composer audit::Hay advisories de seguridad en dependencias."
 
       # - name: Commit Changes
       #   uses: stefanzweifel/git-auto-commit-action@v7
