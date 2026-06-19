@@ -1,46 +1,13 @@
 @php
-    // Paleta taxonómica determinista. Clases LITERALES para que el JIT de Tailwind las incluya.
-    // Se evita `error` (rojo) porque connota alerta, no un taxón.
-    $paletaTaxon = [
-        'bg-blue-navy/80 text-white',
-        'bg-bio-green/80 text-white',
-        'bg-science-blue/80 text-white',
-        'bg-warning/80 text-text-primary',
-        'bg-info/80 text-white',
-        'bg-success/80 text-white',
-        'bg-blue-navy/55 text-text-primary',
-        'bg-bio-green/55 text-text-primary',
-        'bg-science-blue/55 text-text-primary',
-        'bg-info/55 text-text-primary',
-        'bg-success/55 text-text-primary',
-        'bg-warning/55 text-text-primary',
-    ];
-    $claseNeutra = 'bg-bg-main text-text-secondary border border-dashed border-border';
+    // Sin color por taxón (confundía: el mismo color cambiaba de significado entre niveles de zoom).
+    // Las cajas ocupadas usan un tono neutro de énfasis y el taxón lo porta el TEXTO; la caja vacía
+    // (trazo discontinuo) la resuelve el propio componente ranura-cajon.
+    $claseOcupada = 'bg-surface text-text-primary border border-border';
 
     $norm = fn (?string $v): string => mb_strtolower(trim((string) $v));
 
-    // Índice global de familias → posición: fija un color estable por familia en todo el mapa.
+    // Índice global de familias en su orden canónico: ordena las familias de la ruta taxonómica.
     $indiceFamilia = array_flip(array_map($norm, $ordenFamilias));
-
-    // Color por familia (estable y global). null/desconocida → clase neutra.
-    $familiaClase = function (?string $familia) use ($paletaTaxon, $claseNeutra, $indiceFamilia, $norm): string {
-        if ($familia === null || trim($familia) === '') {
-            return $claseNeutra;
-        }
-        $i = $indiceFamilia[$norm($familia)] ?? null;
-
-        return $i === null ? $claseNeutra : $paletaTaxon[$i % count($paletaTaxon)];
-    };
-
-    // Clave de coloreado por subfamilia·género dentro de una caja (nivel unit trays).
-    $claveTray = function (?array $c) use ($norm): ?string {
-        if ($c === null) {
-            return null;
-        }
-        $clave = trim($norm($c['subfamilia'] ?? '').'|'.$norm($c['genero'] ?? ''), '|');
-
-        return $clave !== '' ? $clave : ($norm($c['familia'] ?? '') ?: null);
-    };
 
     // Etiqueta legible con fallback por TODOS los rangos (de fino a general).
     $etiquetaTaxon = function (?array $c): string {
@@ -56,23 +23,6 @@
             ?? $c['suborden']
             ?? $c['orden']
             ?? 'Sin clasificar';
-    };
-
-    // Clave de coloreado por subfamilia·género de una CAJA dentro de un gabinete. A diferencia de
-    // claveTray, combina TODAS las subfamilias y géneros presentes (ordenados): así una caja de
-    // transición (varios taxones, p. ej. para aprovechar el espacio sobrante) recibe una clave —y
-    // por tanto un color— distinta a una caja de una sola subfamilia. Fallback a familia.
-    $claveCaja = function (?array $c) use ($norm): ?string {
-        if ($c === null) {
-            return null;
-        }
-        $subs = array_values(array_unique(array_map($norm, $c['subfamilias'] ?? [])));
-        $gens = array_values(array_unique(array_map($norm, $c['generos'] ?? [])));
-        sort($subs);
-        sort($gens);
-        $clave = trim(implode(',', $subs).'|'.implode(',', $gens), '|');
-
-        return $clave !== '' ? $clave : ($norm($c['familia'] ?? '') ?: null);
     };
 
     // Todas las subfamilias y géneros que alberga una clasificación, en una lista plana: primero
@@ -162,29 +112,6 @@
         return ['subfamilias' => $subs, 'generos' => $gens];
     };
 
-    // Tokens tipados de TODOS los taxones albergados (subfamilias y luego géneros) para la leyenda
-    // de color del nivel gabinete; fallback a un token de familia.
-    $tokensAlbergados = function (?array $c) use ($taxonesAgrupados, $tokenDominante): array {
-        if ($c === null) {
-            return [$tokenDominante(null)];
-        }
-        $grupos = $taxonesAgrupados($c);
-        $tokens = [];
-        foreach ($grupos['subfamilias'] as $s) {
-            $tokens[] = ['texto' => $s, 'estilo' => 'subfamilia'];
-        }
-        foreach ($grupos['generos'] as $g) {
-            $tokens[] = ['texto' => $g, 'estilo' => 'genero'];
-        }
-        if ($tokens !== []) {
-            return $tokens;
-        }
-
-        return [($c['familia'] ?? null) !== null
-            ? ['texto' => $c['familia'], 'estilo' => 'familia']
-            : ['texto' => 'Sin clasificar', 'estilo' => 'superior']];
-    };
-
     // Recolecta valores distintos (escalar o lista) de un campo a lo largo de varias
     // clasificaciones, ordenados natural-case. Trabaja solo a nivel caja/tray (sin especímenes).
     $recolectar = function (array $clasificaciones, string $clave) use ($norm): array {
@@ -251,6 +178,11 @@
 
             @if(count($sugerencias) > 0)
                 <ul class="absolute z-50 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border border-border bg-surface shadow-sm">
+                    {{-- Al clicar una sugerencia, feedback inmediato mientras se resuelve la ubicación. --}}
+                    <li wire:loading.flex wire:target="localizar,localizarPorNombre" class="items-center gap-2 border-b border-border px-3 py-2 text-xs text-text-secondary">
+                        <flux:icon name="arrow-path" class="size-4 animate-spin" />
+                        Localizando…
+                    </li>
                     @foreach($sugerencias as $sugerencia)
                         <li>
                             <button
@@ -295,21 +227,25 @@
         <flux:callout variant="warning" icon="information-circle">{{ $mensajeBusqueda }}</flux:callout>
     @endif
 
-    {{-- Breadcrumb de navegación --}}
+    {{-- Breadcrumb físico (gabinete · ranura/caja · unit tray). Cada migaja muestra un spinner al
+         clicarla para que el cambio de nivel tenga feedback inmediato. --}}
     <nav class="flex flex-wrap items-center gap-x-1 gap-y-1 text-sm" aria-label="Ruta del mapa">
-        <button type="button" wire:click="volverAGeneral" class="text-science-blue hover:underline @if(! $gabineteSeleccionado) font-semibold text-text-primary @endif">
+        <button type="button" wire:click="volverAGeneral" class="inline-flex items-center gap-1 text-science-blue hover:underline @if(! $gabineteSeleccionado) font-semibold text-text-primary @endif">
+            <flux:icon wire:loading wire:target="volverAGeneral" name="arrow-path" class="size-3.5 animate-spin" />
             Colección
         </button>
         @if($gabineteSeleccionado)
             <flux:icon name="chevron-right" class="size-4 text-text-secondary" />
-            <button type="button" wire:click="cerrarCaja" class="text-science-blue hover:underline @if(! $cajaSeleccionada) font-semibold text-text-primary @endif">
+            <button type="button" wire:click="cerrarCaja" class="inline-flex items-center gap-1 text-science-blue hover:underline @if(! $cajaSeleccionada) font-semibold text-text-primary @endif">
+                <flux:icon wire:loading wire:target="cerrarCaja" name="arrow-path" class="size-3.5 animate-spin" />
                 {{ $gabineteSeleccionado['codigo'] }}
             </button>
         @endif
         @if($cajaSeleccionada)
             <flux:icon name="chevron-right" class="size-4 text-text-secondary" />
-            <button type="button" wire:click="cerrarUnitTray" class="text-science-blue hover:underline @if(! $unitTraySeleccionado) font-semibold text-text-primary @endif">
-                Caja {{ $cajaSeleccionada['codigo'] }}
+            <button type="button" wire:click="cerrarUnitTray" class="inline-flex items-center gap-1 text-science-blue hover:underline @if(! $unitTraySeleccionado) font-semibold text-text-primary @endif">
+                <flux:icon wire:loading wire:target="cerrarUnitTray" name="arrow-path" class="size-3.5 animate-spin" />
+                @if(($cajaSeleccionada['numeroRanura'] ?? 0) > 0)Ranura {{ $cajaSeleccionada['numeroRanura'] }} · @endif Caja {{ $cajaSeleccionada['codigo'] }}
             </button>
         @endif
         @if($unitTraySeleccionado)
@@ -318,8 +254,8 @@
         @endif
     </nav>
 
-    {{-- Indicador de carga al cambiar de nivel --}}
-    <div wire:loading.flex wire:target="abrirGabinete,abrirCaja,abrirUnitTray,localizar" class="items-center gap-2 text-sm text-text-secondary">
+    {{-- Indicador de carga al cambiar de nivel (cubre toda navegación: zoom, migajas y búsqueda) --}}
+    <div wire:loading.flex wire:target="abrirGabinete,abrirCaja,abrirCajaDirecto,abrirUnitTray,volverAGeneral,cerrarCaja,cerrarUnitTray,localizar,localizarPorNombre" class="items-center gap-2 text-sm text-text-secondary">
         <flux:icon name="arrow-path" class="size-4 animate-spin" />
         Cargando…
     </div>
@@ -329,12 +265,33 @@
 
     {{-- ============ NIVEL 4: especímenes de un unit tray ============ --}}
     @if($unitTraySeleccionado)
+        @php
+            // Clasificación del tray abierto (de los trays ya cargados de la caja) para su ruta taxonómica.
+            $cTrayAbierto = null;
+            foreach ($unitTrays as $t) {
+                if (($t['unitTrayId'] ?? null) === $trayAbierto) {
+                    $cTrayAbierto = $t['clasificacionDominante'] ?? null;
+                    break;
+                }
+            }
+        @endphp
         <div wire:key="nivel-unittray" wire:transition class="rounded-lg border border-border bg-surface shadow-sm">
             <div class="border-b border-border p-4">
                 <flux:heading size="lg" level="2" class="font-display text-blue-navy font-semibold">
                     Unit tray {{ $unitTraySeleccionado['numero'] }}
                 </flux:heading>
                 <p class="text-xs text-text-secondary">{{ count($especimenes) }} especímenes</p>
+                {{-- Ruta taxonómica completa del unit tray: contexto de dónde estás hasta especie. --}}
+                <x-inventariogestioncoleccion::seguimiento-fisico.taxonomia-ruta
+                    class="mt-2"
+                    :orden="data_get($cTrayAbierto, 'orden')"
+                    :subordenes="data_get($cTrayAbierto, 'suborden')"
+                    :superfamilias="data_get($cTrayAbierto, 'superfamilia')"
+                    :familias="data_get($cTrayAbierto, 'familia')"
+                    :subfamilias="data_get($cTrayAbierto, 'subfamilias', [])"
+                    :generos="data_get($cTrayAbierto, 'generos', [])"
+                    :especies="data_get($cTrayAbierto, 'especie')"
+                />
             </div>
 
             @if(count($especimenes) > 0)
@@ -344,7 +301,11 @@
                         <thead>
                             <tr class="bg-blue-navy text-left text-white">
                                 <th class="px-4 py-2 font-semibold">Código de catálogo</th>
-                                <th class="px-4 py-2 font-semibold">Nombre científico</th>
+                                <th class="px-4 py-2 font-semibold">Género</th>
+                                <th class="px-4 py-2 font-semibold">Especie</th>
+                                <th class="px-4 py-2 font-semibold">N.º individuos</th>
+                                <th class="px-4 py-2 font-semibold">Provincia</th>
+                                <th class="px-4 py-2 font-semibold">Localidad</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -354,13 +315,21 @@
                                     'bg-info/10' => $especimen['especimenId'] === $especimenResaltadoId,
                                     'hover:bg-bg-main' => $especimen['especimenId'] !== $especimenResaltadoId,
                                 ])>
-                                    <td class="px-4 py-2 text-text-primary">{{ $especimen['codigoCatalogo'] }}</td>
-                                    <td class="px-4 py-2">
-                                        <span class="font-serif italic text-text-primary">{{ $especimen['nombreCientifico'] ?? '—' }}</span>
+                                    <td class="px-4 py-2 text-text-primary">
+                                        {{ $especimen['codigoCatalogo'] }}
                                         @if($especimen['especimenId'] === $especimenResaltadoId)
                                             <flux:badge size="sm" color="sky" class="ml-2">Buscado</flux:badge>
                                         @endif
                                     </td>
+                                    <td class="px-4 py-2 text-text-primary">
+                                        @if($especimen['genero'])<x-inventariogestioncoleccion::seguimiento-fisico.taxon-tipografico :texto="$especimen['genero']" estilo="genero" />@else—@endif
+                                    </td>
+                                    <td class="px-4 py-2 text-text-primary">
+                                        @if($especimen['especie'])<x-inventariogestioncoleccion::seguimiento-fisico.taxon-tipografico :texto="$especimen['especie']" estilo="especie" />@else—@endif
+                                    </td>
+                                    <td class="px-4 py-2 text-text-primary">{{ $especimen['individualCount'] ?? '—' }}</td>
+                                    <td class="px-4 py-2 text-text-primary">{{ $especimen['provincia'] ?? '—' }}</td>
+                                    <td class="px-4 py-2 text-text-primary">{{ $especimen['localidad'] ?? '—' }}</td>
                                 </tr>
                             @endforeach
                         </tbody>
@@ -376,9 +345,24 @@
                         ])>
                             <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="Código">
                                 {{ $especimen['codigoCatalogo'] }}
+                                @if($especimen['especimenId'] === $especimenResaltadoId)
+                                    <flux:badge size="sm" color="sky" class="ml-2">Buscado</flux:badge>
+                                @endif
                             </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
-                            <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="Nombre científico">
-                                <span class="font-serif italic">{{ $especimen['nombreCientifico'] ?? '—' }}</span>
+                            <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="Género">
+                                @if($especimen['genero'])<x-inventariogestioncoleccion::seguimiento-fisico.taxon-tipografico :texto="$especimen['genero']" estilo="genero" />@else—@endif
+                            </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
+                            <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="Especie">
+                                @if($especimen['especie'])<x-inventariogestioncoleccion::seguimiento-fisico.taxon-tipografico :texto="$especimen['especie']" estilo="especie" />@else—@endif
+                            </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
+                            <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="N.º individuos">
+                                {{ $especimen['individualCount'] ?? '—' }}
+                            </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
+                            <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="Provincia">
+                                {{ $especimen['provincia'] ?? '—' }}
+                            </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
+                            <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="Localidad">
+                                {{ $especimen['localidad'] ?? '—' }}
                             </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
                         </div>
                     @endforeach
@@ -392,21 +376,6 @@
     @elseif($cajaSeleccionada)
         @php
             $clasifTrays = array_map(fn ($t) => $t['clasificacionDominante'] ?? null, $unitTrays);
-
-            // Leyenda y color por subfamilia·género, por orden de aparición en la caja.
-            $leyendaTray = [];
-            foreach ($unitTrays as $t) {
-                $c = $t['clasificacionDominante'] ?? null;
-                $k = $claveTray($c);
-                if ($k === null || isset($leyendaTray[$k])) {
-                    continue;
-                }
-                $leyendaTray[$k] = [
-                    'tokens' => $tokensDominantes($c),
-                    'clase' => $paletaTaxon[count($leyendaTray) % count($paletaTaxon)],
-                ];
-            }
-            $claseTray = fn (?array $c) => $leyendaTray[$claveTray($c)]['clase'] ?? $claseNeutra;
         @endphp
 
         <div wire:key="nivel-caja" wire:transition class="space-y-3">
@@ -414,10 +383,16 @@
                 Caja {{ $cajaSeleccionada['codigo'] }}
             </flux:heading>
 
-            {{-- La leyenda de color va antes que las firmas: con muchos trays no se pierde de vista. --}}
-            @if(count($leyendaTray) > 1)
-                <x-inventariogestioncoleccion::seguimiento-fisico.mapa-leyenda-color :items="array_values($leyendaTray)" />
-            @endif
+            {{-- Ruta taxonómica completa de la caja: para saber siempre en qué familia/subfamilia/género estás. --}}
+            <x-inventariogestioncoleccion::seguimiento-fisico.taxonomia-ruta
+                :orden="$recolectar($clasifTrays, 'orden')"
+                :subordenes="$recolectar($clasifTrays, 'suborden')"
+                :superfamilias="$recolectar($clasifTrays, 'superfamilia')"
+                :familias="$recolectar($clasifTrays, 'familia')"
+                :subfamilias="$recolectar($clasifTrays, 'subfamilias')"
+                :generos="$recolectar($clasifTrays, 'generos')"
+                :especies="$recolectar($clasifTrays, 'especie')"
+            />
 
             {{-- Firma de especie/s de la caja (rango), con fallback por rango. --}}
             <x-inventariogestioncoleccion::seguimiento-fisico.firma-taxonomica
@@ -447,15 +422,15 @@
                             <button
                                 type="button"
                                 wire:click="abrirUnitTray('{{ $tray['unitTrayId'] }}', {{ $tray['numero'] }})"
-                                class="flex min-h-[44px] w-full flex-col gap-1 rounded-lg border border-border p-3 text-left shadow-sm transition-colors hover:ring-2 hover:ring-science-blue {{ $claseTray($cTray) }}"
+                                class="flex min-h-[44px] w-full cursor-pointer flex-col gap-1 rounded-lg p-3 text-left shadow-sm transition-colors hover:ring-2 hover:ring-science-blue {{ $claseOcupada }}"
                             >
                                 <span class="text-sm font-bold">Tray {{ $tray['numero'] }}</span>
                                 @php $tokTray = $tokenDominante($cTray); @endphp
-                                <span class="text-xs">
+                                <span class="text-xs text-text-secondary">
                                     <x-inventariogestioncoleccion::seguimiento-fisico.taxon-tipografico :texto="$tokTray['texto']" :estilo="$tokTray['estilo']" />
                                 </span>
                                 @if($variosTray)
-                                    <span class="inline-flex items-center gap-1 text-xs font-medium not-italic">
+                                    <span class="inline-flex items-center gap-1 text-xs font-medium not-italic text-text-secondary">
                                         <flux:icon name="rectangle-stack" class="size-3.5 shrink-0" />
                                         {{ count($taxonesTray) }} taxones
                                     </span>
@@ -477,24 +452,6 @@
             $clasifRanuras = array_map(fn ($r) => $r['clasificacion'] ?? null, $ranuras);
             $familiasGab = $recolectar($clasifRanuras, 'familia');
             usort($familiasGab, fn ($a, $b) => ($indiceFamilia[$norm($a)] ?? PHP_INT_MAX) <=> ($indiceFamilia[$norm($b)] ?? PHP_INT_MAX));
-
-            // Coloreado por subfamilia·género (fallback a familia): dentro de un gabinete la familia
-            // suele ser única (p. ej. todo Formicidae), así que colorear por familia pintaría todo
-            // igual. El color que distingue cajones es el de subfamilia/género; una caja de
-            // transición (varios taxones) recibe su propio color. Leyenda por orden de aparición.
-            $leyendaCaja = [];
-            foreach ($ranuras as $r) {
-                $c = $r['clasificacion'] ?? null;
-                $k = $claveCaja($c);
-                if ($k === null || isset($leyendaCaja[$k])) {
-                    continue;
-                }
-                $leyendaCaja[$k] = [
-                    'tokens' => $tokensAlbergados($c),
-                    'clase' => $paletaTaxon[count($leyendaCaja) % count($paletaTaxon)],
-                ];
-            }
-            $claseCaja = fn (?array $c) => $leyendaCaja[$claveCaja($c)]['clase'] ?? $claseNeutra;
         @endphp
 
         <div wire:key="nivel-gabinete" wire:transition class="space-y-4">
@@ -502,10 +459,8 @@
                 {{ $gabineteSeleccionado['codigo'] }} — {{ $gabineteSeleccionado['nombre'] }}
             </flux:heading>
 
-            {{-- La leyenda de color va antes que las firmas: con muchas ranuras no se pierde de vista. --}}
-            @if(count($leyendaCaja) > 1)
-                <x-inventariogestioncoleccion::seguimiento-fisico.mapa-leyenda-color :items="array_values($leyendaCaja)" />
-            @endif
+            {{-- La ruta taxonómica no se repite aquí: cada label de caja ya muestra su familia y
+                 subfamilia/género, así que en el nivel de gabinete sería redundante. --}}
 
             {{-- Firma de subfamilia/s y especie/s del gabinete, con fallback por rango. --}}
             <x-inventariogestioncoleccion::seguimiento-fisico.firma-taxonomica
@@ -529,12 +484,13 @@
                         $gruposRanura = $taxonesAgrupados($cRanura);
                     @endphp
                     {{-- wire:click solo surte efecto en cajones ocupados; el cajón vacío no emite atributos.
-                         La etiqueta dominante usa subfamilia·género (lo que codifica el color); una caja de
-                         transición muestra el detalle agrupado por rango en ancho y el conteo de taxones en
-                         angosto, y lista el detalle plano en el tooltip. --}}
+                         La etiqueta dominante usa subfamilia·género; la familia se muestra aparte como
+                         contexto. Una caja de transición lista el detalle agrupado por rango en ancho y el
+                         conteo de taxones en angosto, y el detalle plano en el tooltip. --}}
                     <x-inventariogestioncoleccion::seguimiento-fisico.ranura-cajon
                         :ranura="$ranura"
-                        :clase="$claseCaja($cRanura)"
+                        :clase="$claseOcupada"
+                        :familia="data_get($cRanura, 'familia')"
                         :etiqueta="$etiquetaDominante($cRanura)"
                         :tokens="$tokensDominantes($cRanura)"
                         :subfamilias="$variosRanura ? $gruposRanura['subfamilias'] : []"
@@ -545,65 +501,213 @@
                     />
                 @endforeach
             </div>
+
+            {{-- Vista de tabla de las cajas (aprovecha el ancho): ranura, caja y taxonomía por columnas.
+                 Cada fila abre la caja. Solo cajas ocupadas. --}}
+            @php $ranurasOcupadas = array_values(array_filter($ranuras, fn ($r) => $r['ocupada'] ?? false)); @endphp
+            @if(count($ranurasOcupadas) > 0)
+                <details class="rounded-lg border border-border bg-surface text-sm shadow-sm">
+                    <summary class="cursor-pointer px-4 py-2 font-medium text-science-blue hover:underline">Ver como tabla</summary>
+                    <div class="overflow-x-auto border-t border-border">
+                        <table class="w-full text-left">
+                            <thead class="bg-blue-navy text-white">
+                                <tr>
+                                    <th class="px-3 py-2 font-medium">Ranura</th>
+                                    <th class="px-3 py-2 font-medium">Caja</th>
+                                    <th class="px-3 py-2 font-medium">Familia</th>
+                                    <th class="px-3 py-2 font-medium">Subfamilia</th>
+                                    <th class="px-3 py-2 font-medium">Género</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-border">
+                                @foreach($ranurasOcupadas as $r)
+                                    @php
+                                        $cr = $r['clasificacion'] ?? null;
+                                        $subsR = array_values(array_filter($cr['subfamilias'] ?? []));
+                                        $gensR = array_values(array_filter($cr['generos'] ?? []));
+                                    @endphp
+                                    <tr class="cursor-pointer hover:bg-bg-main" wire:click="abrirCaja('{{ $r['cajaId'] }}', '{{ $r['codigoCaja'] }}')">
+                                        <td class="px-3 py-2 text-text-secondary">{{ $r['numeroRanura'] }}</td>
+                                        <td class="px-3 py-2 font-medium text-text-primary">{{ $r['codigoCaja'] }}</td>
+                                        <td class="px-3 py-2 align-top">
+                                            @if(trim((string) data_get($cr, 'familia')) !== '')<x-inventariogestioncoleccion::seguimiento-fisico.taxon-tipografico :texto="data_get($cr, 'familia')" estilo="familia" />@else<span class="text-text-secondary">—</span>@endif
+                                        </td>
+                                        <td class="px-3 py-2 align-top">
+                                            @forelse($subsR as $i => $s)@if($i > 0)<span class="text-text-secondary"> · </span>@endif<x-inventariogestioncoleccion::seguimiento-fisico.taxon-tipografico :texto="$s" estilo="subfamilia" />@empty<span class="text-text-secondary">—</span>@endforelse
+                                        </td>
+                                        <td class="px-3 py-2 align-top">
+                                            @forelse($gensR as $i => $g)@if($i > 0)<span class="text-text-secondary"> · </span>@endif<x-inventariogestioncoleccion::seguimiento-fisico.taxon-tipografico :texto="$g" estilo="genero" />@empty<span class="text-text-secondary">—</span>@endforelse
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </details>
+            @endif
         </div>
 
     {{-- ============ NIVEL 1: vista general de gabinetes (vitrinas lado a lado) ============ --}}
     @else
-        @php
-            $leyendaFamiliasGlobal = array_map(fn ($f) => ['label' => $f, 'clase' => $familiaClase($f)], $ordenFamilias);
-        @endphp
-
         <div wire:key="nivel-general" wire:transition class="space-y-4">
-            @if(count($leyendaFamiliasGlobal) > 1)
-                <x-inventariogestioncoleccion::seguimiento-fisico.mapa-leyenda-color :items="$leyendaFamiliasGlobal" />
+            @if(count($gabinetes) > 0)
+                {{-- Alternar vista compacta: minimiza las cajas para abarcar muchos gabinetes a la vez. --}}
+                <div class="flex justify-end">
+                    <flux:button
+                        size="sm"
+                        variant="ghost"
+                        :icon="$vistaCompacta ? 'arrows-pointing-out' : 'arrows-pointing-in'"
+                        wire:click="alternarVistaCompacta"
+                    >
+                        {{ $vistaCompacta ? 'Vista normal' : 'Minimizar vista' }}
+                    </flux:button>
+                </div>
             @endif
 
             @if(count($gabinetes) > 0)
-                {{-- Gabinetes como vitrinas verticales: apiladas en móvil, lado a lado en escritorio. --}}
-                <div class="flex flex-col gap-4 sm:flex-row sm:flex-nowrap sm:overflow-x-auto sm:pb-2">
-                    @foreach($gabinetes as $gabinete)
-                        @php
-                            $clasifGab = array_map(fn ($r) => $r['clasificacion'] ?? null, $gabinete['ranuras']);
-                        @endphp
-                        <div class="flex shrink-0 flex-col gap-3 rounded-lg border-2 border-border bg-surface p-4 shadow-sm sm:w-72">
-                            <div class="space-y-2">
-                                <flux:heading size="lg" level="2" class="font-display text-blue-navy font-semibold">
-                                    {{ $gabinete['codigo'] }} — {{ $gabinete['nombre'] }}
-                                </flux:heading>
-                                <p class="text-xs text-text-secondary">{{ $gabinete['totalRanuras'] }} ranuras</p>
+                @if($vistaCompacta)
+                    {{-- Vista compacta: grilla densa de gabinetes. Solo familias visibles; el desplegable
+                         muestra una tabla Familia · Subfamilia · Género con las combinaciones presentes. --}}
+                    <div class="grid gap-3" style="grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr))">
+                        @foreach($gabinetes as $gabinete)
+                            @php
+                                $clasifGab = array_map(fn ($r) => $r['clasificacion'] ?? null, $gabinete['ranuras']);
+
+                                // Combinaciones (familia, subfamilia, género) presentes en el gabinete, sin
+                                // duplicados y ordenadas: una fila por cada terna distinta de sus cajas.
+                                $filasTaxon = [];
+                                foreach ($gabinete['ranuras'] as $r) {
+                                    $c = $r['clasificacion'] ?? null;
+                                    if ($c === null) {
+                                        continue;
+                                    }
+                                    $fam = $c['familia'] ?? null;
+                                    $sub = $c['subfamilia'] ?? null;
+                                    $gen = $c['genero'] ?? null;
+                                    if (trim((string) $fam) === '' && trim((string) $sub) === '' && trim((string) $gen) === '') {
+                                        continue;
+                                    }
+                                    $clave = mb_strtolower(trim((string) $fam).'|'.trim((string) $sub).'|'.trim((string) $gen));
+                                    $filasTaxon[$clave] = ['familia' => $fam, 'subfamilia' => $sub, 'genero' => $gen];
+                                }
+                                $filasTaxon = array_values($filasTaxon);
+                                usort($filasTaxon, fn ($a, $b) => [mb_strtolower((string) $a['familia']), mb_strtolower((string) $a['subfamilia']), mb_strtolower((string) $a['genero'])]
+                                    <=> [mb_strtolower((string) $b['familia']), mb_strtolower((string) $b['subfamilia']), mb_strtolower((string) $b['genero'])]);
+                            @endphp
+                            <div class="flex flex-col gap-2 rounded-lg border border-border bg-surface p-3 shadow-sm">
+                                <button
+                                    type="button"
+                                    wire:click="abrirGabinete('{{ $gabinete['id'] }}')"
+                                    class="group cursor-pointer text-left"
+                                >
+                                    <span class="font-display font-semibold text-blue-navy group-hover:underline">{{ $gabinete['codigo'] }}</span>
+                                    <span class="block truncate text-xs text-text-secondary">{{ $gabinete['nombre'] }}</span>
+                                </button>
                                 <x-inventariogestioncoleccion::seguimiento-fisico.firma-taxonomica
                                     enfasis="familia"
                                     :familias="$recolectar($clasifGab, 'familia')"
                                     :superiores="$superiores($clasifGab)"
                                 />
-                                <flux:button
-                                    variant="primary"
-                                    icon="magnifying-glass-plus"
-                                    style="color: white;"
-                                    class="w-full"
-                                    wire:click="abrirGabinete('{{ $gabinete['id'] }}')"
-                                >
-                                    Abrir
-                                </flux:button>
+                                @if($filasTaxon !== [])
+                                    <details class="text-xs">
+                                        <summary class="cursor-pointer text-science-blue hover:underline">Ver subfamilias y géneros</summary>
+                                        <div class="mt-1.5 overflow-x-auto">
+                                            <table class="w-full text-left">
+                                                <thead>
+                                                    <tr class="text-text-secondary">
+                                                        <th class="py-1 pr-3 font-medium">Familia</th>
+                                                        <th class="py-1 pr-3 font-medium">Subfamilia</th>
+                                                        <th class="py-1 font-medium">Género</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody class="divide-y divide-border">
+                                                    @foreach($filasTaxon as $fila)
+                                                        <tr>
+                                                            <td class="py-1 pr-3 align-top">
+                                                                @if(trim((string) $fila['familia']) !== '')<x-inventariogestioncoleccion::seguimiento-fisico.taxon-tipografico :texto="$fila['familia']" estilo="familia" />@else<span class="text-text-secondary">—</span>@endif
+                                                            </td>
+                                                            <td class="py-1 pr-3 align-top">
+                                                                @if(trim((string) $fila['subfamilia']) !== '')<x-inventariogestioncoleccion::seguimiento-fisico.taxon-tipografico :texto="$fila['subfamilia']" estilo="subfamilia" />@else<span class="text-text-secondary">—</span>@endif
+                                                            </td>
+                                                            <td class="py-1 align-top">
+                                                                @if(trim((string) $fila['genero']) !== '')<x-inventariogestioncoleccion::seguimiento-fisico.taxon-tipografico :texto="$fila['genero']" estilo="genero" />@else<span class="text-text-secondary">—</span>@endif
+                                                            </td>
+                                                        </tr>
+                                                    @endforeach
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </details>
+                                @endif
                             </div>
-
-                            @if(count($gabinete['ranuras']) > 0)
-                                <div class="flex flex-col gap-1">
-                                    @foreach($gabinete['ranuras'] as $ranura)
-                                        <x-inventariogestioncoleccion::seguimiento-fisico.ranura-cajon
-                                            compacto
-                                            :ranura="$ranura"
-                                            :clase="$familiaClase(data_get($ranura, 'clasificacion.familia'))"
-                                            :etiqueta="$etiquetaTaxon($ranura['clasificacion'] ?? null)"
+                        @endforeach
+                    </div>
+                @else
+                    {{-- Gabinetes como vitrinas: grilla responsiva que llena el ancho y envuelve (sin
+                         tira con scroll, que dejaba espacio horizontal sin usar). Cada mini-caja ocupada
+                         es clicable para saltar directo a la caja. --}}
+                    <div class="grid gap-4" style="grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr))">
+                        @foreach($gabinetes as $gabinete)
+                            @php
+                                $clasifGab = array_map(fn ($r) => $r['clasificacion'] ?? null, $gabinete['ranuras']);
+                            @endphp
+                            <div class="flex flex-col gap-3 rounded-lg border-2 border-border bg-surface p-4 shadow-sm">
+                                <div class="space-y-2">
+                                    {{-- Familias junto al título (no debajo): se reparten en línea y envuelven
+                                         dinámicamente cuando hay más de una. --}}
+                                    <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                                        <flux:heading size="lg" level="2" class="font-display text-blue-navy font-semibold">
+                                            {{ $gabinete['codigo'] }} — {{ $gabinete['nombre'] }}
+                                        </flux:heading>
+                                        <x-inventariogestioncoleccion::seguimiento-fisico.firma-taxonomica
+                                            enfasis="familia"
+                                            :familias="$recolectar($clasifGab, 'familia')"
+                                            :superiores="$superiores($clasifGab)"
                                         />
-                                    @endforeach
+                                    </div>
+                                    <p class="text-xs text-text-secondary">{{ $gabinete['totalRanuras'] }} ranuras</p>
+                                    <flux:button
+                                        variant="primary"
+                                        icon="magnifying-glass-plus"
+                                        style="color: white;"
+                                        class="w-full"
+                                        wire:click="abrirGabinete('{{ $gabinete['id'] }}')"
+                                    >
+                                        Abrir
+                                    </flux:button>
                                 </div>
-                            @else
-                                <p class="text-sm text-text-secondary">Sin ranuras configuradas.</p>
-                            @endif
-                        </div>
-                    @endforeach
-                </div>
+
+                                @if(count($gabinete['ranuras']) > 0)
+                                    <div class="flex flex-col gap-1">
+                                        @foreach($gabinete['ranuras'] as $ranura)
+                                            @php
+                                                // Sneak peek al nivel de cajas: si la caja alberga varios taxones,
+                                                // el tooltip los lista todos (igual que en el nivel de gabinete);
+                                                // si no, el taxón dominante.
+                                                $cMini = $ranura['clasificacion'] ?? null;
+                                                $taxonesMini = $albergados($cMini);
+                                                $detalleMini = count($taxonesMini) > 1 ? implode(' · ', $taxonesMini) : null;
+                                            @endphp
+                                            {{-- wire:click va siempre: la rama del mini-cajón vacío no consume
+                                                 $attributes, así que solo surte efecto en cajones ocupados. --}}
+                                            <x-inventariogestioncoleccion::seguimiento-fisico.ranura-cajon
+                                                compacto
+                                                :ranura="$ranura"
+                                                :clase="$claseOcupada"
+                                                :familia="data_get($ranura, 'clasificacion.familia')"
+                                                :etiqueta="$etiquetaTaxon($cMini)"
+                                                :detalle="$detalleMini"
+                                                wire:click="abrirCajaDirecto('{{ $gabinete['id'] }}', '{{ $ranura['cajaId'] }}')"
+                                            />
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <p class="text-sm text-text-secondary">Sin ranuras configuradas.</p>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
             @else
                 <div class="rounded-lg border border-dashed border-border p-12 text-center">
                     <flux:icon name="archive-box" class="mx-auto mb-3 size-12 text-text-secondary" />

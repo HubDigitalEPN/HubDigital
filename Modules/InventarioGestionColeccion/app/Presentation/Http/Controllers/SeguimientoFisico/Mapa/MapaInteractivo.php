@@ -60,6 +60,13 @@ final class MapaInteractivo extends Component
     public string $trayAbierto = '';
 
     /**
+     * Vista compacta de la general: minimiza las cajas para mostrar muchos gabinetes a la vez,
+     * listando solo familias (con detalle de subfamilias/géneros desplegable). Reflejada en la URL.
+     */
+    #[Url(as: 'compacto', history: true)]
+    public bool $vistaCompacta = false;
+
+    /**
      * Vista general: gabinetes con la ocupación de sus ranuras a nivel caja (ligera).
      * Los especímenes nunca se cargan aquí; solo al abrir un unit tray.
      *
@@ -85,7 +92,7 @@ final class MapaInteractivo extends Component
     /** @var array<int, array<string, mixed>> */
     public array $ranuras = [];
 
-    /** @var ?array{id: string, codigo: string} */
+    /** @var ?array{id: string, codigo: string, numeroRanura: int} */
     public ?array $cajaSeleccionada = null;
 
     /** @var array<int, array<string, mixed>> */
@@ -162,6 +169,25 @@ final class MapaInteractivo extends Component
         $this->cajaAbierta = $cajaId;
         $this->trayAbierto = '';
         $this->especimenResaltadoId = null;
+    }
+
+    /**
+     * Salta directo al nivel de caja desde la vista general (sin pasar por el detalle del
+     * gabinete): fija a la vez el gabinete y la caja en la ruta de zoom. La vista se reconstruye
+     * desde esos identificadores igual que con cualquier otra navegación.
+     */
+    public function abrirCajaDirecto(string $gabineteId, string $cajaId): void
+    {
+        $this->gabineteAbierto = $gabineteId;
+        $this->cajaAbierta = $cajaId;
+        $this->trayAbierto = '';
+        $this->especimenResaltadoId = null;
+    }
+
+    /** Alterna la vista compacta (minimizada) de la general para ver muchos gabinetes a la vez. */
+    public function alternarVistaCompacta(): void
+    {
+        $this->vistaCompacta = ! $this->vistaCompacta;
     }
 
     /** Baja al último nivel (especímenes del unit tray) fijando la ruta de zoom en la URL. */
@@ -340,6 +366,7 @@ final class MapaInteractivo extends Component
             $this->cajaSeleccionada = [
                 'id' => $this->cajaAbierta,
                 'codigo' => $this->codigoDeCajaEnRanuras($this->cajaAbierta),
+                'numeroRanura' => $this->numeroRanuraDeCaja($this->cajaAbierta),
             ];
 
             if ($this->trayAbierto === '') {
@@ -353,6 +380,11 @@ final class MapaInteractivo extends Component
                 'especimenId' => $e->especimenId,
                 'codigoCatalogo' => $e->codigoCatalogo,
                 'nombreCientifico' => $e->nombreCientifico,
+                'genero' => $e->genero,
+                'especie' => $e->especie,
+                'individualCount' => $e->individualCount,
+                'provincia' => $e->provincia,
+                'localidad' => $e->localidad,
             ], $contenidoTray->items);
 
             $this->unitTraySeleccionado = [
@@ -410,6 +442,18 @@ final class MapaInteractivo extends Component
         }
 
         return '';
+    }
+
+    /** Resuelve el número de ranura física que ocupa una caja a partir de las ranuras ya cargadas del gabinete. */
+    private function numeroRanuraDeCaja(string $cajaId): int
+    {
+        foreach ($this->ranuras as $r) {
+            if (($r['cajaId'] ?? null) === $cajaId) {
+                return (int) ($r['numeroRanura'] ?? 0);
+            }
+        }
+
+        return 0;
     }
 
     /** Resuelve el número de un unit tray a partir de los trays ya cargados de la caja. */

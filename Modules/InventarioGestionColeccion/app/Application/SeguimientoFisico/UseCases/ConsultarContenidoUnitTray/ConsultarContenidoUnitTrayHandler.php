@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConsultarContenidoUnitTray;
 
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\ClasificacionTaxonomicaPort;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especimen;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\TaxonRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UnitTrayEspecimenRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\ClasificacionTaxonomica;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EspecimenId;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\UnitTrayId;
 
@@ -24,11 +26,13 @@ final class ConsultarContenidoUnitTrayHandler
      * @param  UnitTrayEspecimenRepository  $asignacionRepo  Resuelve los especímenes asignados al unit tray.
      * @param  EspecimenRepositoryInterface  $especimenRepo  Recupera cada espécimen por su identificador.
      * @param  TaxonRepositoryInterface  $taxonRepo  Resuelve el nombre científico de los taxones en un solo lote.
+     * @param  ClasificacionTaxonomicaPort  $clasificacionPort  Resuelve género y especie recorriendo el árbol taxonómico.
      */
     public function __construct(
         private readonly UnitTrayEspecimenRepository $asignacionRepo,
         private readonly EspecimenRepositoryInterface $especimenRepo,
         private readonly TaxonRepositoryInterface $taxonRepo,
+        private readonly ClasificacionTaxonomicaPort $clasificacionPort,
     ) {}
 
     /**
@@ -63,15 +67,27 @@ final class ConsultarContenidoUnitTrayHandler
             }
         }
 
-        $items = array_map(function (Especimen $e) use ($nombresPorTaxon): ConsultarContenidoUnitTrayItemOutput {
+        // Género y especie se resuelven recorriendo el árbol taxonómico una sola vez por taxón
+        // distinto (cacheado), para no repetir el ascenso por cada espécimen del unit tray.
+        $clasificacionPorTaxon = [];
+        foreach ($taxonIds as $taxonId) {
+            $clasificacionPorTaxon[$taxonId] = $this->clasificacionPort->resolverParaTaxon($taxonId);
+        }
+
+        $items = array_map(function (Especimen $e) use ($nombresPorTaxon, $clasificacionPorTaxon): ConsultarContenidoUnitTrayItemOutput {
             $taxonId = $e->taxonId();
+            $tieneTaxon = $taxonId !== null && $taxonId !== '';
+            $clasificacion = $tieneTaxon ? ($clasificacionPorTaxon[$taxonId] ?? null) : null;
 
             return new ConsultarContenidoUnitTrayItemOutput(
                 especimenId: (string) $e->id(),
                 codigoCatalogo: $e->codigoCatalogo(),
-                nombreCientifico: $taxonId !== null && $taxonId !== ''
-                    ? ($nombresPorTaxon[$taxonId] ?? null)
-                    : null,
+                nombreCientifico: $tieneTaxon ? ($nombresPorTaxon[$taxonId] ?? null) : null,
+                genero: $clasificacion instanceof ClasificacionTaxonomica ? $clasificacion->genero() : null,
+                especie: $clasificacion instanceof ClasificacionTaxonomica ? $clasificacion->especie() : null,
+                individualCount: $e->individualCount(),
+                provincia: $e->stateProvince(),
+                localidad: $e->localityName() ?? $e->localidad(),
             );
         }, $especimenes);
 
