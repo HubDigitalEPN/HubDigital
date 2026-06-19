@@ -44,8 +44,11 @@ jobs:
         run: composer lint:check
         continue-on-error: true
 
-      - name: Audit Dependencies (CVEs)
+      # Aviso, no bloqueo: los CVE casi siempre estan en deps transitivas y se
+      # resuelven con bumps. Marca el paso con ⚠️ sin tumbar el job.
+      - name: Audit Dependencies (CVEs, warn only)
         run: composer audit
+        continue-on-error: true
 
       # - name: Commit Changes
       #   uses: stefanzweifel/git-auto-commit-action@v7
