@@ -4,19 +4,31 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Domain\Entities;
 
+use DateTimeImmutable;
+use Modules\GestionPrestamosRecepciones\Domain\Events\ActaTransferenciaDominioGenerada;
+use Modules\GestionPrestamosRecepciones\Domain\Events\CodigoQRAsignado;
 use Modules\GestionPrestamosRecepciones\Domain\Events\DatoFaltanteCompletado;
 use Modules\GestionPrestamosRecepciones\Domain\Events\DocumentacionOficialCargada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\DomainEvent;
 use Modules\GestionPrestamosRecepciones\Domain\Events\IntervencionCuratoriaSolicitada;
+use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudAprobadaDocumentalmente;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudDepositoCreada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudDepositoPendienteDeRevision;
+use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPriorizada;
+use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudRechazadaDocumentalmente;
+use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudRequiereCorreccion;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\DocumentacionInsuficiente;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\TransicionEstadoInvalida;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\AlertaSolicitudId;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\CodigoQRLote;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\DatosIntegradosDocumento;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\DocumentoAdjunto;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\NumeroSolicitudDeposito;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrioridadSolicitud;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoAlerta;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoRechazoDocumental;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoTramite;
 
 /**
@@ -89,6 +101,25 @@ final class SolicitudDeposito
     private ?string $nroMorfoespecies = null;
 
     private ?string $nroLotes = null;
+
+    // ── Decisión curatorial (aprobación documental) ──────────────
+
+    private ?string $curadorResponsable = null;
+
+    private ?DateTimeImmutable $aprobadaEn = null;
+
+    private ?DateTimeImmutable $rechazadaEn = null;
+
+    private ?CodigoQRLote $codigoQR = null;
+
+    private ?string $comentarioCurador = null;
+
+    private PrioridadSolicitud $prioridad = PrioridadSolicitud::Normal;
+
+    private ?DocumentoAdjunto $actaTransferenciaDominio = null;
+
+    /** @var AlertaSolicitud[] Alertas justificadas que el curador revisa */
+    private array $alertas = [];
 
     // ── Cola interna de eventos de dominio ───────────────────────
 
@@ -345,6 +376,193 @@ final class SolicitudDeposito
         );
     }
 
+    // ── Decisión curatorial (aprobación documental) ──────────────
+
+    /**
+     * Registra una alerta que llega con la solicitud justificada por el investigador,
+     * para que el curador la revise. Solo permitido en revisión por curaduría.
+     *
+     * @throws TransicionEstadoInvalida Si la solicitud no está en revisión.
+     */
+    public function registrarAlertaJustificada(TipoAlerta $tipo, string $justificacion): void
+    {
+        $this->garantizarEnRevision('registrarAlertaJustificada');
+
+        $this->alertas[] = AlertaSolicitud::registrar(
+            id: AlertaSolicitudId::generate(),
+            tipo: $tipo,
+            justificacionInvestigador: $justificacion,
+        );
+    }
+
+    /**
+     * El curador aprueba documentalmente la solicitud. Requiere que no queden alertas
+     * pendientes de revisión. Asigna el Código QR del lote y, si es una donación,
+     * genera el Acta de Transferencia de Dominio.
+     *
+     * @throws TransicionEstadoInvalida Si no está en revisión por curaduría.
+     * @throws \DomainException Si quedan alertas pendientes o el curadorId está vacío.
+     */
+    public function aprobarDocumentalmente(string $curadorId): void
+    {
+        $this->garantizarEnRevision('aprobarDocumentalmente');
+        $this->garantizarCuradorId($curadorId);
+
+        if ($this->tieneAlertasPendientes()) {
+            throw new \DomainException(
+                'No es posible aprobar documentalmente mientras existan alertas pendientes de revisión'
+            );
+        }
+
+        $ahora = new DateTimeImmutable;
+
+        $this->estado = EstadoSolicitudDeposito::AprobadaDocumentalmente;
+        $this->curadorResponsable = $curadorId;
+        $this->aprobadaEn = $ahora;
+        $this->codigoQR = CodigoQRLote::generar();
+
+        $this->events[] = new SolicitudAprobadaDocumentalmente(
+            solicitudId: $this->id,
+            curadorId: $curadorId,
+            ocurridoEn: $ahora,
+        );
+
+        $this->events[] = new CodigoQRAsignado(
+            solicitudId: $this->id,
+            codigoQR: (string) $this->codigoQR,
+            ocurridoEn: $ahora,
+        );
+
+        if ($this->tipoTramite->equals(TipoTramite::Donacion)) {
+            $ruta = 'actas/transferencia-dominio/'.((string) $this->id).'.pdf';
+            $this->actaTransferenciaDominio = DocumentoAdjunto::of('Acta de Transferencia de Dominio', $ruta);
+
+            $this->events[] = new ActaTransferenciaDominioGenerada(
+                solicitudId: $this->id,
+                ruta: $ruta,
+                ocurridoEn: $ahora,
+            );
+        }
+    }
+
+    /**
+     * El curador acepta todas las justificaciones pendientes y aprueba la solicitud.
+     *
+     * @throws TransicionEstadoInvalida Si no está en revisión por curaduría.
+     */
+    public function aceptarTodasLasJustificaciones(string $curadorId): void
+    {
+        $this->garantizarEnRevision('aceptarTodasLasJustificaciones');
+
+        foreach ($this->alertas as $alerta) {
+            if ($alerta->estaPendiente()) {
+                $alerta->aceptar();
+            }
+        }
+
+        $this->aprobarDocumentalmente($curadorId);
+    }
+
+    /**
+     * El curador no acepta una o más justificaciones; la solicitud pasa a requerir
+     * corrección con un comentario que indica cuáles no fueron aceptadas.
+     *
+     * @param  TipoAlerta[]  $rechazadas  Tipos de alerta cuya justificación se rechaza.
+     *
+     * @throws TransicionEstadoInvalida Si no está en revisión por curaduría.
+     * @throws \DomainException Si no se indica ninguna justificación a rechazar.
+     */
+    public function rechazarJustificaciones(string $curadorId, array $rechazadas): void
+    {
+        $this->garantizarEnRevision('rechazarJustificaciones');
+        $this->garantizarCuradorId($curadorId);
+
+        if ($rechazadas === []) {
+            throw new \DomainException('Debe indicarse al menos una justificación rechazada');
+        }
+
+        $nombresRechazadas = [];
+
+        foreach ($rechazadas as $tipo) {
+            foreach ($this->alertas as $alerta) {
+                if ($alerta->tipo()->equals($tipo) && $alerta->estaPendiente()) {
+                    $alerta->rechazar();
+                    $nombresRechazadas[] = $tipo->value;
+                }
+            }
+        }
+
+        $ahora = new DateTimeImmutable;
+
+        $comentario = 'Justificaciones no aceptadas: '.implode(', ', $nombresRechazadas);
+
+        $this->estado = EstadoSolicitudDeposito::RequiereCorreccion;
+        $this->curadorResponsable = $curadorId;
+        $this->rechazadaEn = $ahora;
+        $this->comentarioCurador = $comentario;
+
+        $this->events[] = new SolicitudRequiereCorreccion(
+            solicitudId: $this->id,
+            curadorId: $curadorId,
+            comentario: $comentario,
+            ocurridoEn: $ahora,
+        );
+    }
+
+    /**
+     * El curador rechaza documentalmente la solicitud indicando el motivo. El tipo de
+     * rechazo determina el estado resultante (subsanable → requiere corrección;
+     * definitivo → rechazo permanente).
+     *
+     * @throws TransicionEstadoInvalida Si no está en revisión por curaduría.
+     * @throws \DomainException Si el curadorId o el motivo están vacíos.
+     */
+    public function rechazarDocumentalmente(string $curadorId, TipoRechazoDocumental $tipo, string $motivo): void
+    {
+        $this->garantizarEnRevision('rechazarDocumentalmente');
+        $this->garantizarCuradorId($curadorId);
+
+        if (trim($motivo) === '') {
+            throw new \DomainException('El motivo del rechazo no puede estar vacío');
+        }
+
+        $ahora = new DateTimeImmutable;
+        $estadoResultante = $tipo->estadoResultante();
+
+        $this->estado = $estadoResultante;
+        $this->curadorResponsable = $curadorId;
+        $this->rechazadaEn = $ahora;
+        $this->comentarioCurador = $motivo;
+
+        $this->events[] = new SolicitudRechazadaDocumentalmente(
+            solicitudId: $this->id,
+            curadorId: $curadorId,
+            tipoRechazo: $tipo,
+            estadoResultante: $estadoResultante,
+            motivo: $motivo,
+            ocurridoEn: $ahora,
+        );
+    }
+
+    /**
+     * El curador clasifica la prioridad de la solicitud en la cola de revisión.
+     * Solo permitido mientras está en revisión por curaduría.
+     *
+     * @throws TransicionEstadoInvalida Si no está en revisión por curaduría.
+     */
+    public function priorizar(PrioridadSolicitud $prioridad): void
+    {
+        $this->garantizarEnRevision('priorizar');
+
+        $this->prioridad = $prioridad;
+
+        $this->events[] = new SolicitudPriorizada(
+            solicitudId: $this->id,
+            prioridad: $prioridad,
+            ocurridoEn: new DateTimeImmutable,
+        );
+    }
+
     // ── Queries ──────────────────────────────────────────────────
 
     public function id(): SolicitudDepositoId
@@ -457,12 +675,81 @@ final class SolicitudDeposito
         return $this->nroLotes;
     }
 
+    public function curadorResponsable(): ?string
+    {
+        return $this->curadorResponsable;
+    }
+
+    public function aprobadaEn(): ?DateTimeImmutable
+    {
+        return $this->aprobadaEn;
+    }
+
+    public function rechazadaEn(): ?DateTimeImmutable
+    {
+        return $this->rechazadaEn;
+    }
+
+    public function codigoQR(): ?CodigoQRLote
+    {
+        return $this->codigoQR;
+    }
+
+    public function comentarioCurador(): ?string
+    {
+        return $this->comentarioCurador;
+    }
+
+    public function prioridad(): PrioridadSolicitud
+    {
+        return $this->prioridad;
+    }
+
+    public function actaTransferenciaDominio(): ?DocumentoAdjunto
+    {
+        return $this->actaTransferenciaDominio;
+    }
+
+    /** @return AlertaSolicitud[] */
+    public function alertas(): array
+    {
+        return $this->alertas;
+    }
+
+    public function tieneAlertasPendientes(): bool
+    {
+        foreach ($this->alertas as $alerta) {
+            if ($alerta->estaPendiente()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function tieneAlertaJustificada(TipoAlerta $tipo): bool
+    {
+        foreach ($this->alertas as $alerta) {
+            if ($alerta->tipo()->equals($tipo)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /**
      * @return array<string, DocumentoAdjunto>
      */
     public function documentosAdjuntosParaPersistir(): array
     {
         return $this->documentosAdjuntos;
+    }
+
+    /** @return AlertaSolicitud[] */
+    public function alertasParaPersistir(): array
+    {
+        return $this->alertas;
     }
 
     /** @return string[] */
@@ -519,6 +806,14 @@ final class SolicitudDeposito
         ?string $nroIndividuos = null,
         ?string $nroMorfoespecies = null,
         ?string $nroLotes = null,
+        ?string $curadorResponsable = null,
+        ?DateTimeImmutable $aprobadaEn = null,
+        ?DateTimeImmutable $rechazadaEn = null,
+        ?CodigoQRLote $codigoQR = null,
+        ?string $comentarioCurador = null,
+        PrioridadSolicitud $prioridad = PrioridadSolicitud::Normal,
+        ?DocumentoAdjunto $actaTransferenciaDominio = null,
+        array $alertas = [],
     ): self {
         $solicitud = new self;
 
@@ -543,11 +838,39 @@ final class SolicitudDeposito
         $solicitud->nroIndividuos = $nroIndividuos;
         $solicitud->nroMorfoespecies = $nroMorfoespecies;
         $solicitud->nroLotes = $nroLotes;
+        $solicitud->curadorResponsable = $curadorResponsable;
+        $solicitud->aprobadaEn = $aprobadaEn;
+        $solicitud->rechazadaEn = $rechazadaEn;
+        $solicitud->codigoQR = $codigoQR;
+        $solicitud->comentarioCurador = $comentarioCurador;
+        $solicitud->prioridad = $prioridad;
+        $solicitud->actaTransferenciaDominio = $actaTransferenciaDominio;
+        $solicitud->alertas = $alertas;
 
         return $solicitud;
     }
 
     // ── Helpers privados ─────────────────────────────────────────
+
+    /**
+     * Garantiza que la solicitud esté en revisión por curaduría antes de aplicar una
+     * decisión curatorial.
+     *
+     * @throws TransicionEstadoInvalida Si la solicitud no está en revisión.
+     */
+    private function garantizarEnRevision(string $accion): void
+    {
+        if (! $this->estado->equals(EstadoSolicitudDeposito::PendienteDeRevisionPorCuraduria)) {
+            throw TransicionEstadoInvalida::de($this->estado->value, $accion);
+        }
+    }
+
+    private function garantizarCuradorId(string $curadorId): void
+    {
+        if (trim($curadorId) === '') {
+            throw new \DomainException('El curadorId no puede estar vacío');
+        }
+    }
 
     private function asignarCampoPorNombre(string $campo, string $valor): void
     {

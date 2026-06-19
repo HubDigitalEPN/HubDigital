@@ -19,5 +19,5 @@ Característica: Habilitación del envío de especímenes en préstamos internac
 
   Escenario: Un préstamo nacional se activa directamente en tránsito al validar el acta
     Dado que existe una solicitud de alcance nacional aprobada con su acta en estado pendiente de validación
-    Cuando el curador valida el acta firmada
+    Cuando el curador valida el acta firmada e inicia el préstamo
     Entonces el préstamo queda en estado en tránsito

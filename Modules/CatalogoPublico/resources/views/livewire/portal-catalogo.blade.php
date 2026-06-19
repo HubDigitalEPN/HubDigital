@@ -356,6 +356,10 @@
          ESPECIE — tabla de especímenes divulgados
          ===================================================================== --}}
     @elseif($nivelActual === 'species')
+        @assets
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        @endassets
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
             <div class="flex gap-8">
 
@@ -385,15 +389,142 @@
 
                 {{-- Registros de especímenes --}}
                 <div class="flex-1 min-w-0">
-                    <div class="mb-4 flex items-center justify-between">
+                    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <h2 class="font-display text-xl font-semibold text-blue-navy">
                             <span class="font-serif italic">{{ $taxonActual }}</span>
                             <span class="text-base font-normal text-text-secondary">· Especie</span>
                         </h2>
-                        <span class="text-xs text-text-secondary tabular-nums">
-                            {{ count($especimenes) }} {{ count($especimenes) === 1 ? 'espécimen' : 'especímenes' }}
-                        </span>
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs text-text-secondary tabular-nums">
+                                {{ count($especimenes) }} {{ count($especimenes) === 1 ? 'espécimen' : 'especímenes' }}
+                            </span>
+                            @if(count($especimenes) > 0)
+                                <button
+                                    wire:click="descargarDatos"
+                                    wire:loading.attr="disabled"
+                                    wire:target="descargarDatos"
+                                    class="flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-xs font-medium text-text-secondary shadow-sm transition-colors hover:border-science-blue/50 hover:text-science-blue disabled:opacity-50 w-full sm:w-auto"
+                                >
+                                    <span wire:loading.remove wire:target="descargarDatos" class="flex items-center gap-1.5">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-3.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                                        </svg>
+                                        Descargar datos
+                                    </span>
+                                    <span wire:loading wire:target="descargarDatos" class="flex items-center gap-1.5">
+                                        <span class="inline-block size-3 rounded-full border-2 border-current border-t-transparent animate-spin"></span>
+                                        Generando…
+                                    </span>
+                                </button>
+                            @endif
+                        </div>
                     </div>
+
+                    {{-- ══════════════════════════════════
+                         IMÁGENES
+                         ══════════════════════════════════ --}}
+                    <section class="mb-6">
+                        <div class="mb-3 flex items-center justify-between">
+                            <h3 class="text-sm font-semibold text-text-primary flex items-center gap-2">
+                                <flux:icon name="photo" class="size-4 text-text-secondary" />
+                                Imágenes
+                            </h3>
+                            <button
+                                disabled
+                                class="flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-xs font-medium text-text-secondary shadow-sm opacity-40 cursor-not-allowed"
+                                title="Exportación de imágenes no disponible aún"
+                            >
+                                <flux:icon name="arrow-down-tray" class="size-3.5" />
+                                Exportar imágenes
+                            </button>
+                        </div>
+                        <div class="flex items-center justify-center rounded-lg border border-dashed border-border bg-bg-main py-10 text-sm text-text-secondary gap-2">
+                            <flux:icon name="photo" class="size-5 text-border" />
+                            Especie sin imágenes · 0 imágenes disponibles
+                        </div>
+                    </section>
+
+                    {{-- ══════════════════════════════════
+                         MAPA DE DISTRIBUCIÓN
+                         ══════════════════════════════════ --}}
+                    @php
+                        $puntosGeo = collect($especimenes)
+                            ->filter(fn($e) => $e->decimal_latitude !== null && $e->decimal_longitude !== null)
+                            ->map(fn($e) => [
+                                'lat'             => (float) $e->decimal_latitude,
+                                'lon'             => (float) $e->decimal_longitude,
+                                'occurrence_id'   => $e->occurrence_id,
+                                'scientific_name' => $e->scientific_name,
+                                'locality'        => collect([$e->locality_name, $e->country])->filter()->implode(' · '),
+                            ])
+                            ->values();
+                    @endphp
+
+                    <section class="mb-6">
+                        <div class="mb-3 flex items-center gap-2">
+                            <h3 class="text-sm font-semibold text-text-primary flex items-center gap-2">
+                                <flux:icon name="map-pin" class="size-4 text-text-secondary" />
+                                Mapa de distribución
+                            </h3>
+                            @if($puntosGeo->count() > 0)
+                                <span class="text-xs text-text-secondary tabular-nums">
+                                    {{ $puntosGeo->count() }} {{ $puntosGeo->count() === 1 ? 'localidad' : 'localidades' }}
+                                </span>
+                            @endif
+                        </div>
+
+                        @if($puntosGeo->isEmpty())
+                            <div class="flex items-center justify-center rounded-lg border border-dashed border-border bg-bg-main py-10 text-sm text-text-secondary gap-2">
+                                <flux:icon name="map-pin" class="size-5 text-border" />
+                                Sin datos geográficos disponibles
+                            </div>
+                        @else
+                            <div
+                                x-data="{
+                                    puntos: {{ Js::from($puntosGeo) }},
+                                    mapa: null,
+                                    init() {
+                                        this.mapa = L.map(this.$refs.mapaContainer, {
+                                            scrollWheelZoom: false,
+                                        });
+                                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                                            attribution: '&copy; <a href=\'https://www.openstreetmap.org/copyright\'>OpenStreetMap</a>',
+                                            maxZoom: 18,
+                                        }).addTo(this.mapa);
+
+                                        const marcadores = this.puntos.map(p => {
+                                            const m = L.marker([p.lat, p.lon]).addTo(this.mapa);
+                                            m.bindPopup(
+                                                '<div style=\'font-family:sans-serif;font-size:13px;min-width:160px\'>' +
+                                                '<p style=\'font-style:italic;font-weight:600;margin:0 0 4px\'>' + p.scientific_name + '</p>' +
+                                                '<p style=\'font-family:monospace;font-size:11px;margin:0 0 2px\'>' + p.occurrence_id + '</p>' +
+                                                (p.locality ? '<p style=\'color:#666;font-size:11px;margin:0\'>' + p.locality + '</p>' : '') +
+                                                '</div>'
+                                            );
+                                            return m;
+                                        });
+
+                                        if (marcadores.length === 1) {
+                                            this.mapa.setView([this.puntos[0].lat, this.puntos[0].lon], 10);
+                                        } else {
+                                            const grupo = L.featureGroup(marcadores);
+                                            this.mapa.fitBounds(grupo.getBounds().pad(0.2));
+                                        }
+
+                                        this.$cleanup(() => {
+                                            if (this.mapa) {
+                                                this.mapa.remove();
+                                                this.mapa = null;
+                                            }
+                                        });
+                                    }
+                                }"
+                                class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden"
+                            >
+                                <div x-ref="mapaContainer" class="h-72 sm:h-96 w-full"></div>
+                            </div>
+                        @endif
+                    </section>
 
                     @if(count($especimenes) === 0)
                         <div class="flex items-center justify-center rounded-lg border border-dashed border-border bg-surface py-12 text-sm text-text-secondary">

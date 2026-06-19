@@ -85,13 +85,13 @@ Característica: Registro de solicitud de depósito
         Dado que el investigador seleccionó el trámite de "Donación"
         Y ha cargado la documentación oficial de la donación
         Y el investigador completa los datos cuantitativos de la colección
-        Cuando el investigador envía la solicitud
+        Cuando el investigador envía la solicitud de depósito
         Entonces pasa a estar "Pendiente de Revisión por Curaduría"
 
     Escenario: Completitud de datos obligatorios faltantes en la documentación
         Dado que la documentación oficial no contiene el "Grupo Animal"
         Y el investigador provee esta información faltante
-        Cuando el investigador envía la solicitud
+        Cuando el investigador envía la solicitud de depósito
         Entonces la solicitud se registra exitosamente
         Y pasa a estar "Pendiente de Revisión por Curaduría"
 

@@ -722,7 +722,7 @@ final class RegistroSolicitudDepositoContext extends BaseContext
         );
     }
 
-    #[When('el investigador envía la solicitud')]
+    #[When('el investigador envía la solicitud de depósito')]
     public function elInvestigadorEnviaLaSolicitud(): void
     {
         Assert::assertNotNull($this->solicitudEnCurso, 'Se requiere una solicitud en curso');
