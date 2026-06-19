@@ -1,4 +1,5 @@
 # language: es
+@listo
 Característica: Localización y guía de ubicación de especímenes en la colección
   Como curador o visitante de la colección,
   quiero consultar la disposición física de la colección y localizar un espécimen por su nombre científico,
