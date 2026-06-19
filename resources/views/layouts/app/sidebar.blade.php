@@ -285,7 +285,9 @@
 
             <flux:spacer />
 
-            <x-desktop-user-menu class="hidden lg:block" :name="auth()->user()->name" />
+            <div class="sticky bottom-0 z-10 -mx-4 -mb-4 border-t border-border bg-surface p-4 hidden lg:block" style="box-shadow: 0 16px 0 0 var(--color-surface);">
+                <x-desktop-user-menu :name="auth()->user()->name" />
+            </div>
         </flux:sidebar>
 
         {{-- Mobile top bar --}}

@@ -164,23 +164,20 @@ body {
     100% { transform: translateX(300%); width: 40%; }
 }
 
-/* Hub Digital Sidebar — Blue Navy Navigation */
-[data-flux-sidebar].bg-blue-navy {
-    background-color: var(--color-blue-navy);
+/* Hub Digital Sidebar — Active item highlight (science-blue) */
+[data-flux-sidebar] [data-flux-sidebar-item][data-current] {
+    background-color: color-mix(in srgb, var(--color-science-blue) 10%, transparent);
+    color: var(--color-science-blue) !important;
+    border-color: transparent;
+    border-left: 3px solid var(--color-science-blue);
 }
 
-[data-flux-sidebar].bg-blue-navy [data-flux-sidebar-item],
-[data-flux-sidebar].bg-blue-navy [data-flux-sidebar-group-heading] {
-    color: white;
+[data-flux-sidebar] [data-flux-sidebar-item][data-current] [data-flux-icon] {
+    color: var(--color-science-blue) !important;
 }
 
-[data-flux-sidebar].bg-blue-navy [data-flux-sidebar-item]:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-}
-
-[data-flux-sidebar].bg-blue-navy [data-flux-sidebar-item][aria-current="page"] {
-    background-color: var(--color-science-blue);
-    color: white;
+[data-flux-sidebar] [data-flux-sidebar-item][data-current]:hover {
+    background-color: color-mix(in srgb, var(--color-science-blue) 15%, transparent);
 }
 
 /* Hub Digital Secondary Links — Science Blue */
