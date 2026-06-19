@@ -37,8 +37,12 @@ jobs:
           composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
           npm install
 
-      - name: Run Pint
-        run: composer lint
+      # Modo --test: detecta archivos sin formatear y devuelve !=0 (a diferencia
+      # de "composer lint", que arregla y siempre sale 0). continue-on-error lo
+      # deja como aviso (paso con ⚠️) sin romper el pipeline.
+      - name: Check formatting (warn only)
+        run: composer lint:check
+        continue-on-error: true
 
       - name: Audit Dependencies (CVEs)
         run: composer audit
