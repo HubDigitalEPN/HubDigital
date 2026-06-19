@@ -9,7 +9,7 @@ final readonly class CodigoRfid
     /** Formato RC-522: 8 caracteres hexadecimales (ej. A3F7B2C1) */
     private function __construct(private string $value)
     {
-        if (!preg_match('/^[0-9A-Fa-f]{8}$/', $value)) {
+        if (! preg_match('/^[0-9A-Fa-f]{8}$/', $value)) {
             throw new \InvalidArgumentException("CodigoRfid inválido: '{$value}'. Se esperan 8 caracteres hexadecimales.");
         }
     }

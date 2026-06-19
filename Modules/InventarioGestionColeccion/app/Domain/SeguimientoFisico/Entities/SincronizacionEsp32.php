@@ -22,7 +22,7 @@ class SincronizacionEsp32
     ) {}
 
     /**
-     * @param LecturaRanura[] $lecturas
+     * @param  LecturaRanura[]  $lecturas
      */
     public static function registrar(
         SincronizacionEsp32Id $id,

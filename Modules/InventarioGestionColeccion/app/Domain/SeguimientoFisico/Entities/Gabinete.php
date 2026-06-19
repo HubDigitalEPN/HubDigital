@@ -24,7 +24,7 @@ class Gabinete
         int $totalRanuras,
     ): self {
         if ($totalRanuras < 1) {
-            throw new \InvalidArgumentException("Un gabinete debe tener al menos 1 ranura.");
+            throw new \InvalidArgumentException('Un gabinete debe tener al menos 1 ranura.');
         }
 
         return new self(

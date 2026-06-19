@@ -9,7 +9,7 @@ final readonly class CodigoCaja
     private function __construct(private string $value)
     {
         if (trim($value) === '' || mb_strlen($value) > 100) {
-            throw new \InvalidArgumentException("CodigoCaja inválido: debe ser no vacío y máximo 100 caracteres.");
+            throw new \InvalidArgumentException('CodigoCaja inválido: debe ser no vacío y máximo 100 caracteres.');
         }
     }
 

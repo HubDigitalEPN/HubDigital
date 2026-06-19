@@ -12,7 +12,7 @@ final readonly class LecturaRanura
         private bool $esIncongruente,
     ) {
         if ($numeroRanura < 1) {
-            throw new \InvalidArgumentException("El número de ranura debe ser mayor a 0.");
+            throw new \InvalidArgumentException('El número de ranura debe ser mayor a 0.');
         }
     }
 
