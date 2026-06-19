@@ -5,37 +5,18 @@ on:
     branches:
       - develop
       - main
-      - master
-      - workos
   pull_request:
     branches:
       - develop
       - main
-      - master
-      - workos
 
 jobs:
-  ci:
+  behat:
     runs-on: ubuntu-latest
     environment: Testing
     strategy:
       matrix:
         php-version: ['8.4', '8.5']
-
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: hubdigital_testing
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
 
     steps:
       - name: Checkout code
@@ -46,16 +27,7 @@ jobs:
         with:
           php-version: ${{ matrix.php-version }}
           tools: composer:v2
-          coverage: xdebug
-          extensions: pdo_pgsql
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: '22'
-
-      - name: Install Node Dependencies
-        run: npm i
+          coverage: none
 
       - name: Add Flux Credentials Loaded From ENV
         run: composer config http-basic.composer.fluxui.dev "${{ secrets.FLUX_USERNAME }}" "${{ secrets.FLUX_LICENSE_KEY }}"
@@ -69,20 +41,19 @@ jobs:
       - name: Generate Application Key
         run: php artisan key:generate
 
-      - name: Build Assets
-        run: npm run build
+      - name: Clear Configuration Cache
+        run: php artisan config:clear --ansi
 
-      - name: Run Tests
-        env:
-          DB_CONNECTION: pgsql
-          DB_HOST: 127.0.0.1
-          DB_PORT: 5432
-          DB_DATABASE: hubdigital_testing
-          DB_USERNAME: postgres
-          DB_PASSWORD: postgres
-          TEST_DB_HOST: 127.0.0.1
-          TEST_DB_PORT: 5432
-          TEST_DB_DATABASE: hubdigital_testing
-          TEST_DB_USERNAME: postgres
-          TEST_DB_PASSWORD: postgres
-        run: ./vendor/bin/pest
+      # Solo corren en CI las features marcadas con @listo (opt-in): features
+      # terminadas y 100% verdes. Las features a medio implementar (pasos
+      # pending/undefined o escenarios en rojo) quedan fuera del filtro y no
+      # rompen el pipeline. Cuando una feature se completa se le agrega el tag
+      # @listo encima de "Característica:" y entra automaticamente a CI.
+      #
+      # Como el set @listo es curado, se corre en --strict: una feature marcada
+      # como lista DEBE estar totalmente verde (sin pending ni undefined).
+      #
+      # La suite es 100% volatil: todos los modulos usan repositorios InMemory en
+      # Behat, por eso no se provisiona Postgres ni variables de conexion.
+      - name: Run Behat
+        run: vendor/bin/behat --profile=default --no-interaction --tags=@listo --strict

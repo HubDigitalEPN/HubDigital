@@ -1,4 +1,5 @@
 # language: es
+@listo
 Característica: Registro y listado de localidades canónicas
   Como curador responsable de la colección,
   quiero registrar y listar localidades canónicas con su jerarquía,

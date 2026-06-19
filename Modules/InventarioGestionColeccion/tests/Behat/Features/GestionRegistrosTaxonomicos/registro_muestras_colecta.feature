@@ -1,4 +1,5 @@
 # language: es
+@listo
 Característica: Registro y confirmación de muestras de colecta
   Como curador responsable de la colección,
   quiero registrar muestras de colecta con código tentativo y confirmar su validez,

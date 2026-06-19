@@ -1,4 +1,5 @@
 # language: es
+@listo
 Característica: Alerta de orden taxonómico en la disposición de cajas
   Como curador responsable de la colección,
   quiero que el sistema me alerte si una caja queda fuera del orden taxonómico esperado en el gabinete,

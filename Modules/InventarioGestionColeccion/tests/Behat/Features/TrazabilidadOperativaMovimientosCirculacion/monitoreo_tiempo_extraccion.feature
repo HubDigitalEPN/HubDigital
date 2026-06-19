@@ -1,4 +1,5 @@
 # language: es
+@listo
 Característica: Monitoreo de tiempo de extracción de cajas
   Como curador responsable de la colección,
   quiero recibir alertas cuando una caja lleva demasiado tiempo fuera de su posición,

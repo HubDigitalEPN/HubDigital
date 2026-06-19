@@ -84,17 +84,30 @@
     {{-- Form --}}
     <form wire:submit="submit" class="flex flex-col gap-4" novalidate>
 
-        <flux:field>
-            <flux:label class="font-medium text-text-primary">Nombre completo</flux:label>
-            <flux:input
-                wire:model="name"
-                type="text"
-                placeholder="Nombre y apellido"
-                autocomplete="name"
-                autofocus
-            />
-            <flux:error name="name" />
-        </flux:field>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <flux:field>
+                <flux:label class="font-medium text-text-primary">Nombre</flux:label>
+                <flux:input
+                    wire:model="first_name"
+                    type="text"
+                    placeholder="Tu nombre"
+                    autocomplete="given-name"
+                    autofocus
+                />
+                <flux:error name="first_name" />
+            </flux:field>
+
+            <flux:field>
+                <flux:label class="font-medium text-text-primary">Apellido</flux:label>
+                <flux:input
+                    wire:model="last_name"
+                    type="text"
+                    placeholder="Tu apellido"
+                    autocomplete="family-name"
+                />
+                <flux:error name="last_name" />
+            </flux:field>
+        </div>
 
         <flux:field>
             <flux:label class="font-medium text-text-primary">Correo electrónico</flux:label>

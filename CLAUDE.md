@@ -81,7 +81,14 @@ Pest/Unit (Reglas dominio aisladas sin DB)
 ## 4. Comandos de Verificación Rápidos
 
 * **Formateador:** vendor/bin/pint --dirty --format agent (Obligatorio antes de confirmar cambios).
-* **Ejecutar Behat:** vendor/bin/behat --suite=
+* **Ejecutar Behat (todo, local):** vendor/bin/behat --suite=
+* **Ejecutar Behat como el pipeline:** vendor/bin/behat --profile=default --tags=@listo --strict
+
+### Tag @listo (features que corren en CI)
+
+* El pipeline (.github/workflows/tests.yml) **solo corre las features etiquetadas con `@listo`** (`--tags=@listo --strict`). Es opt-in: una feature sin el tag no rompe CI aunque esté a medias (pasos pending/undefined o escenarios en rojo).
+* **Cuando una feature queda terminada y 100% verde**, agrega `@listo` en la línea inmediatamente encima de `Característica:` (después del `# language: es`). A partir de ahí entra sola al pipeline.
+* Por ser un set curado se corre en `--strict`: una feature `@listo` **debe** estar totalmente verde, sin pasos pending ni undefined. No marques una feature como `@listo` si no pasa local con `--tags=@listo --strict`.
 
 See local notes: @claude.local.md
 
