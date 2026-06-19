@@ -1,5 +1,6 @@
 #language: es
 
+@listo
 Característica: Sincronización de información divulgable de especímenes
     Como curador de la colección entomológica
     Quiero sincronizar especímenes desde la base de información interna hacia la tabla de divulgación

@@ -1,5 +1,6 @@
 # language: es
 # Feature: 3
+@listo
 Característica: Aprobación documental de la solicitud
     Como curador
     Quiero revisar y decidir sobre las solicitudes de depósito y donación

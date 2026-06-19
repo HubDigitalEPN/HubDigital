@@ -1,4 +1,5 @@
 # language: es
+@listo
 Característica: Localización de cajas y alertas por movimiento no autorizado
   Como curador de la colección,
   quiero saber en qué ranura se encuentra cada caja

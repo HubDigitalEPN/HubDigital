@@ -1,4 +1,5 @@
 #language: es
+@listo
 Característica: Resolución de solicitud de préstamo
     Como curador responsable de evaluar solicitudes
     Quiero registrar mi decisión sobre una solicitud

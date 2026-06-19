@@ -1,4 +1,5 @@
 #language: es
+@listo
 Característica: Gestión del acta de préstamo
     Como curador responsable del proceso de préstamo
     Quiero gestionar el ciclo del acta de préstamo
