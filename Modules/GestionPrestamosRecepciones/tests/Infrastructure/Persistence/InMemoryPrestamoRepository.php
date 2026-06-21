@@ -48,4 +48,57 @@ final class InMemoryPrestamoRepository implements PrestamoRepositoryInterface
     {
         return PrestamoId::generate();
     }
+
+    /**
+     * @param array<int, string>|null $investigadorIds
+     * @return array<int, array{prestamoId: string, numeroPrestamo: string|null, investigadorId: string|null, estado: string, iniciadoEn: \DateTimeImmutable|null, fechaFin: \DateTimeImmutable|null}>
+     */
+    public function listarParaBandeja(
+        ?string $investigadorId,
+        ?array $investigadorIds,
+        string $estado,
+        string $busquedaTexto,
+        string $ordenCampo,
+        string $ordenDireccion,
+    ): array {
+        $prestamos = array_filter(
+            $this->store,
+            function (Prestamo $prestamo) use ($investigadorId, $investigadorIds, $estado): bool {
+                if ($investigadorId !== null && $prestamo->investigadorId() !== $investigadorId) {
+                    return false;
+                }
+
+                if ($investigadorIds !== null && ! in_array($prestamo->investigadorId(), $investigadorIds, true)) {
+                    return false;
+                }
+
+                if ($estado !== '' && $prestamo->estado()->value !== $estado) {
+                    return false;
+                }
+
+                return true;
+            },
+        );
+
+        $prestamos = array_values($prestamos);
+
+        usort($prestamos, function (Prestamo $a, Prestamo $b) use ($ordenCampo): int {
+            return $ordenCampo === 'fechaFin'
+                ? $a->fechaFin() <=> $b->fechaFin()
+                : $a->iniciadoEn() <=> $b->iniciadoEn();
+        });
+
+        if (strtolower($ordenDireccion) === 'desc') {
+            $prestamos = array_reverse($prestamos);
+        }
+
+        return array_map(fn (Prestamo $prestamo): array => [
+            'prestamoId' => (string) $prestamo->id(),
+            'numeroPrestamo' => null,
+            'investigadorId' => $prestamo->investigadorId(),
+            'estado' => $prestamo->estado()->value,
+            'iniciadoEn' => $prestamo->iniciadoEn(),
+            'fechaFin' => $prestamo->fechaFin(),
+        ], $prestamos);
+    }
 }

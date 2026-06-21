@@ -12,7 +12,7 @@ use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\BaseContext;
 
 final class SolicitudProrrogaPrestamoContext extends BaseContext
 {
-    #[Given('que existe un préstamo activo asociado al investigador')]
+    #[Given('que existe un préstamo activo del investigador para prórroga')]
     public function queExisteUnPréstamoActivoAsociadoAlInvestigador(): void
     {
         throw new PendingException;
