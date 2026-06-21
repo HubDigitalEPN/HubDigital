@@ -12,11 +12,12 @@ use Livewire\Attributes\Validate;
 use Livewire\Component;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ActualizarSolicitudPrestamo\ActualizarSolicitudPrestamoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ActualizarSolicitudPrestamo\ActualizarSolicitudPrestamoInput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDetalleSolicitud\ConsultarDetalleSolicitudHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDetalleSolicitud\ConsultarDetalleSolicitudInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarSolicitudPrestamo\EnviarSolicitudPrestamoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarSolicitudPrestamo\EnviarSolicitudPrestamoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarSolicitudPrestamo\RegistrarSolicitudPrestamoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarSolicitudPrestamo\RegistrarSolicitudPrestamoInput;
-use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\SolicitudPrestamoModel;
 
 /**
  * Componente Livewire para el formulario de solicitud de préstamo.
@@ -62,37 +63,35 @@ final class SolicitudForm extends Component
     /**
      * Inicializa el componente.
      *
+     * @param ConsultarDetalleSolicitudHandler $detalleHandler
      * @param string|null $id
      * @return void
      */
-    public function mount(?string $id = null): void
+    public function mount(ConsultarDetalleSolicitudHandler $detalleHandler, ?string $id = null): void
     {
         $this->solicitudId = $id;
 
-        if ($id !== null) {
-            $solicitud = SolicitudPrestamoModel::query()->with('items')->findOrFail($id);
-
-            if ($solicitud->investigador_id !== (string) auth()->id()) {
-                abort(403);
-            }
-
-            $this->alcancePrestamo = $solicitud->alcance_prestamo ?? 'nacional';
-            $this->tituloEstudio = $solicitud->titulo_estudio ?? '';
-            $this->institucionAdscripcion = $solicitud->institucion_adscripcion ?? '';
-            $this->lineaInvestigacion = $solicitud->linea_investigacion ?? '';
-            $this->propositoPrestamo = $solicitud->proposito_prestamo ?? '';
-            $this->duracionPropuestaMeses = $solicitud->duracion_propuesta_meses ?? 1;
-            $this->justificacionExtendida = $solicitud->justificacion_extendida ?? '';
-            $this->estadoSolicitud = $solicitud->estado ?? '';
-            $this->comentarioCurador = $solicitud->comentario_curador ?? '';
-            $this->items = $solicitud->items
-                ->map(fn ($item) => [
-                    'especimen_codigo_externo' => (string) $item->especimen_codigo_externo,
-                    'cantidad_solicitada' => (int) $item->cantidad_solicitada,
-                ])
-                ->values()
-                ->toArray();
+        if ($id === null) {
+            return;
         }
+
+        $solicitud = $detalleHandler->handle(new ConsultarDetalleSolicitudInput($id));
+        abort_if($solicitud === null, 404);
+        abort_if($solicitud->investigadorId !== (string) auth()->id(), 403);
+
+        $this->alcancePrestamo = $solicitud->alcancePrestamo ?? 'nacional';
+        $this->tituloEstudio = $solicitud->tituloEstudio ?? '';
+        $this->institucionAdscripcion = $solicitud->institucionAdscripcion ?? '';
+        $this->lineaInvestigacion = $solicitud->lineaInvestigacion ?? '';
+        $this->propositoPrestamo = $solicitud->propositoPrestamo ?? '';
+        $this->duracionPropuestaMeses = $solicitud->duracionPropuestaMeses ?? 1;
+        $this->justificacionExtendida = $solicitud->justificacionExtendida ?? '';
+        $this->estadoSolicitud = $solicitud->estado;
+        $this->comentarioCurador = $solicitud->comentarioCurador ?? '';
+        $this->items = array_map(fn ($item) => [
+            'especimen_codigo_externo' => (string) $item->codigoExterno,
+            'cantidad_solicitada' => (int) $item->cantidadSolicitada,
+        ], $solicitud->items);
     }
 
     /**

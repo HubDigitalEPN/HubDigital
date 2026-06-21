@@ -5,8 +5,8 @@
         <flux:breadcrumbs.item wire:navigate href="{{ route('prestamos.investigador.mis-prestamos') }}">
             Mis préstamos
         </flux:breadcrumbs.item>
-        <flux:breadcrumbs.item wire:navigate href="{{ route('prestamos.investigador.prestamo.detalle', $prestamo->id) }}">
-            {{ $prestamo->acta?->numero_prestamo ?? 'Préstamo' }}
+        <flux:breadcrumbs.item wire:navigate href="{{ route('prestamos.investigador.prestamo.detalle', $prestamo->prestamoId) }}">
+            {{ $prestamo->numeroPrestamo }}
         </flux:breadcrumbs.item>
         <flux:breadcrumbs.item>Reportar recepción</flux:breadcrumbs.item>
     </flux:breadcrumbs>
@@ -72,7 +72,7 @@
             </div>
             <div class="p-5 space-y-3">
 
-                @php $items = collect($prestamo->acta?->solicitud?->items ?? []); @endphp
+                @php $items = collect($items); @endphp
 
                 @if($items->isEmpty())
                     <flux:text class="text-xs text-text-secondary">No hay especímenes registrados en esta solicitud.</flux:text>
@@ -89,10 +89,10 @@
                                     <flux:icon name="beaker" class="size-4 text-science-blue" />
                                 </div>
                                 <p class="text-sm font-mono font-medium text-text-primary">
-                                    {{ $item?->especimen_codigo_externo ?? 'Espécimen ' . ($i + 1) }}
+                                    {{ $item?->codigoExterno ?? 'Espécimen ' . ($i + 1) }}
                                 </p>
-                                @if($item?->especimen_snapshot)
-                                    <span class="text-xs text-text-secondary">— {{ $item->especimen_snapshot['nombre'] ?? '' }}</span>
+                                @if($item?->nombre)
+                                    <span class="text-xs text-text-secondary">— {{ $item->nombre }}</span>
                                 @endif
                             </div>
                             <div class="p-3">
@@ -118,7 +118,7 @@
 <div class="fixed bottom-0 inset-x-0 z-20 bg-surface border-t border-border shadow-lg">
     <div class="px-6 py-3 flex items-center gap-3 justify-end">
         <flux:button variant="ghost" wire:navigate
-            href="{{ route('prestamos.investigador.prestamo.detalle', $prestamo->id) }}">
+            href="{{ route('prestamos.investigador.prestamo.detalle', $prestamo->prestamoId) }}">
             Cancelar
         </flux:button>
         <flux:button variant="primary" wire:click="registrar" wire:loading.attr="disabled">

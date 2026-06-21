@@ -5,14 +5,14 @@ declare(strict_types=1);
 namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador;
 
 use App\Concerns\HandlesDomainExceptions;
-use App\Models\User;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarBandejaActas\ConsultarBandejaActasHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarBandejaActas\ConsultarBandejaActasInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarActaPrestamo\EnviarActaPrestamoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarActaPrestamo\EnviarActaPrestamoInput;
-use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\ActaPrestamoModel;
 
 /**
  * Componente Livewire para la visualización y gestión de la bandeja de actas de préstamo.
@@ -39,6 +39,10 @@ final class BandejaActas extends Component
 
     public string $successMessage = '';
 
+    public ?string $pendingActaId = null;
+
+    public bool $showEnviarActaModal = false;
+
     /**
      * @return void
      */
@@ -61,60 +65,44 @@ final class BandejaActas extends Component
 
     /**
      * @param string $actaId
+     * @return void
+     */
+    public function prepararEnvioActa(string $actaId): void
+    {
+        $this->pendingActaId = $actaId;
+        $this->showEnviarActaModal = true;
+    }
+
+    /**
      * @param EnviarActaPrestamoHandler $handler
      * @return void
      */
-    public function enviarActa(string $actaId, EnviarActaPrestamoHandler $handler): void
+    public function enviarActa(EnviarActaPrestamoHandler $handler): void
     {
         $handler->handle(new EnviarActaPrestamoInput(
-            actaId: $actaId,
+            actaId: (string) $this->pendingActaId,
             curadorId: (string) auth()->id(),
         ));
 
+        $this->pendingActaId = null;
+        $this->showEnviarActaModal = false;
         $this->successMessage = 'Acta enviada al investigador correctamente.';
     }
 
     /**
+     * @param ConsultarBandejaActasHandler $handler
      * @return View
      */
-    public function render(): View
+    public function render(ConsultarBandejaActasHandler $handler): View
     {
-        $query = ActaPrestamoModel::query()
-            ->with('solicitud');
+        $output = $handler->handle(new ConsultarBandejaActasInput(
+            busqueda: $this->busqueda,
+            estado: $this->estado,
+            busquedaInvestigador: $this->busquedaInvestigador,
+            ordenCampo: $this->ordenCampo,
+            ordenDireccion: $this->ordenDireccion,
+        ));
 
-        if ($this->busqueda !== '') {
-            $term = $this->busqueda;
-            $query->where(fn ($q) => $q
-                ->where('numero_prestamo', 'ilike', "%{$term}%")
-                ->orWhereHas('solicitud', fn ($sq) => $sq
-                    ->where('numero_solicitud', 'ilike', "%{$term}%")
-                    ->orWhere('titulo_estudio', 'ilike', "%{$term}%")
-                )
-            );
-        }
-
-        if ($this->estado !== '') {
-            $query->where('estado', $this->estado);
-        }
-
-        if ($this->busquedaInvestigador !== '') {
-            $term = $this->busquedaInvestigador;
-            $ids = User::where('name', 'ilike', "%{$term}%")->pluck('id');
-            $query->whereHas('solicitud', fn ($q) => $q->whereIn('investigador_id', $ids));
-        }
-
-        if ($this->ordenCampo === 'numero_solicitud') {
-            $actas = $query->get();
-            $actas = $this->ordenDireccion === 'asc'
-                ? $actas->sortBy('solicitud.numero_solicitud')
-                : $actas->sortByDesc('solicitud.numero_solicitud');
-        } else {
-            $actas = $query->orderBy('created_at', $this->ordenDireccion)->get();
-        }
-
-        $investigadorIds = $actas->pluck('solicitud.investigador_id')->filter()->unique();
-        $investigadores = User::whereIn('id', $investigadorIds)->get()->keyBy('id');
-
-        return view('gestionprestamosrecepciones::curador.bandeja-actas', compact('actas', 'investigadores'));
+        return view('gestionprestamosrecepciones::curador.bandeja-actas', ['actas' => $output->filas]);
     }
 }

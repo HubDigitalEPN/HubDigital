@@ -7,7 +7,7 @@ Característica: Cierre de préstamo por devolución
     Escenario: Declarar la devolución de un préstamo
         Dado que existe un préstamo activo asociado al investigador
         Cuando el investigador registra el envío de devolución del préstamo
-        Entonces el préstamo queda en estado en revisión
+        Entonces el préstamo pasa a estado en revisión
 
     Esquema del escenario: Recibir notificación del resultado de la verificación
         Dado que existe un préstamo del investigador en estado en revisión
@@ -18,3 +18,4 @@ Característica: Cierre de préstamo por devolución
             | resultado       |
             | sin novedades   |
             | con observación |
+

@@ -13,6 +13,8 @@ use Modules\GestionPrestamosRecepciones\Domain\Events\DocumentoExportacionSubido
 use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoActivado;
 use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoHabilitadoParaEnvio;
 use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoIniciado;
+use Modules\GestionPrestamosRecepciones\Domain\Events\DevolucionRegistrada;
+use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoCerrado;
 use Modules\GestionPrestamosRecepciones\Domain\Events\RecordatorioDevolucionEnviado;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoAprobada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoEnviada;
@@ -21,6 +23,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoRechazada
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoRegistrada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\VerificacionEntregaAprobada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\VerificacionEntregaRegistrada;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\EnviarNotificacionCierrePrestamoListener;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\EnviarNotificacionRecordatorioListener;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\IniciarPrestamoAlValidarActaListener;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\RegistrarEventoHistorialListener;
@@ -55,6 +58,11 @@ class EventServiceProvider extends ServiceProvider
         PrestamoActivado::class => [RegistrarEventoHistorialListener::class],
         DocumentoExportacionSubido::class => [RegistrarEventoHistorialListener::class],
         PrestamoHabilitadoParaEnvio::class => [RegistrarEventoHistorialListener::class],
+        DevolucionRegistrada::class => [RegistrarEventoHistorialListener::class],
+        PrestamoCerrado::class => [
+            RegistrarEventoHistorialListener::class,
+            EnviarNotificacionCierrePrestamoListener::class,
+        ],
     ];
 
     protected static $shouldDiscoverEvents = true;

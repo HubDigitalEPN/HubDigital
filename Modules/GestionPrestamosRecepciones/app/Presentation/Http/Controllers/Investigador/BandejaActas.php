@@ -9,7 +9,8 @@ use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
-use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\ActaPrestamoModel;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarBandejaActas\ConsultarBandejaActasHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarBandejaActas\ConsultarBandejaActasInput;
 
 /**
  * Componente Livewire para la bandeja de actas del investigador.
@@ -59,33 +60,16 @@ final class BandejaActas extends Component
      *
      * @return \Illuminate\View\View
      */
-    public function render(): View
+    public function render(ConsultarBandejaActasHandler $handler): View
     {
-        $query = ActaPrestamoModel::query()
-            ->whereHas('solicitud', fn ($q) => $q->where('investigador_id', (string) auth()->id()))
-            ->with('solicitud');
+        $output = $handler->handle(new ConsultarBandejaActasInput(
+            busqueda: $this->busqueda,
+            estado: $this->estado,
+            investigadorPropio: (string) auth()->id(),
+            ordenCampo: $this->ordenCampo,
+            ordenDireccion: $this->ordenDireccion,
+        ));
 
-        if ($this->busqueda !== '') {
-            $term = $this->busqueda;
-            $query->where(fn ($q) => $q
-                ->where('numero_prestamo', 'ilike', "%{$term}%")
-                ->orWhereHas('solicitud', fn ($sq) => $sq->where('numero_solicitud', 'ilike', "%{$term}%"))
-            );
-        }
-
-        if ($this->estado !== '') {
-            $query->where('estado', $this->estado);
-        }
-
-        if ($this->ordenCampo === 'numero_solicitud') {
-            $actas = $query->get();
-            $actas = $this->ordenDireccion === 'asc'
-                ? $actas->sortBy('solicitud.numero_solicitud')
-                : $actas->sortByDesc('solicitud.numero_solicitud');
-        } else {
-            $actas = $query->orderBy('created_at', $this->ordenDireccion)->get();
-        }
-
-        return view('gestionprestamosrecepciones::investigador.bandeja-actas', compact('actas'));
+        return view('gestionprestamosrecepciones::investigador.bandeja-actas', ['actas' => $output->filas]);
     }
 }

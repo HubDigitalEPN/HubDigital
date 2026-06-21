@@ -6,7 +6,9 @@ namespace Modules\GestionPrestamosRecepciones\Domain\Entities;
 
 use DateTimeImmutable;
 use InvalidArgumentException;
+use Modules\GestionPrestamosRecepciones\Domain\Events\DevolucionRegistrada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoActivado;
+use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoCerrado;
 use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoHabilitadoParaEnvio;
 use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoIniciado;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ProrrogaAprobada;
@@ -16,9 +18,11 @@ use Modules\GestionPrestamosRecepciones\Domain\Events\VerificacionEntregaRegistr
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\TransicionDeEstadoInvalidaException;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\AlcancePrestamo;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\CondicionEspecimen;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoRecordatorio;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrestamoId;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoVerificacionDevolucion;
 
 /**
  * Agregado raíz que representa un préstamo activo de especímenes, una vez que el
@@ -246,6 +250,60 @@ final class Prestamo
         }
 
         return null;
+    }
+
+    /**
+     * El investigador notifica que ha enviado los especímenes de vuelta.
+     * Transiciona de Activo a EnRevision para que el curador proceda con la verificación.
+     */
+    public function registrarDevolucion(string $investigadorId, DateTimeImmutable $ahora): void
+    {
+        if (! $this->estado->equals(EstadoPrestamo::Activo)) {
+            throw TransicionDeEstadoInvalidaException::para(
+                'Prestamo',
+                $this->estado->name,
+                'registrarDevolucion — el préstamo debe estar activo'
+            );
+        }
+
+        $this->estado = EstadoPrestamo::EnRevision;
+
+        $this->events[] = new DevolucionRegistrada(
+            prestamoId: $this->id,
+            investigadorId: $investigadorId,
+            ocurridoEn: $ahora,
+        );
+    }
+
+    /**
+     * El curador registra el resultado de la verificación de los especímenes devueltos.
+     * Cierra formalmente el préstamo: sin novedades → Cerrado; con observación → CerradoConObservacion.
+     */
+    public function cerrar(
+        string $curadorId,
+        ResultadoVerificacionDevolucion $resultado,
+        DateTimeImmutable $ahora,
+        ?string $observacion = null,
+    ): void {
+        if (! $this->estado->equals(EstadoPrestamo::EnRevision)) {
+            throw TransicionDeEstadoInvalidaException::para(
+                'Prestamo',
+                $this->estado->name,
+                'cerrar — el préstamo debe estar en revisión'
+            );
+        }
+
+        $this->estado = $resultado->estadoResultante();
+
+        $this->events[] = new PrestamoCerrado(
+            prestamoId: $this->id,
+            investigadorId: $this->investigadorId,
+            curadorId: $curadorId,
+            resultado: $resultado,
+            condicionEspecimen: $resultado->condicionResultante(),
+            ocurridoEn: $ahora,
+            observacion: $observacion,
+        );
     }
 
     /**

@@ -9,7 +9,8 @@ use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
-use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\PrestamoEloquentModel;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarBandejaPrestamos\ConsultarBandejaPrestamosHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarBandejaPrestamos\ConsultarBandejaPrestamosInput;
 
 /**
  * Componente Livewire para la bandeja de préstamos del investigador.
@@ -59,24 +60,16 @@ final class BandejaPrestamos extends Component
      *
      * @return \Illuminate\View\View
      */
-    public function render(): View
+    public function render(ConsultarBandejaPrestamosHandler $handler): View
     {
-        $query = PrestamoEloquentModel::query()
-            ->where('investigador_id', (string) auth()->id())
-            ->with('acta');
+        $output = $handler->handle(new ConsultarBandejaPrestamosInput(
+            busqueda: $this->busqueda,
+            estado: $this->estado,
+            investigadorPropio: (string) auth()->id(),
+            ordenCampo: $this->ordenCampo,
+            ordenDireccion: $this->ordenDireccion,
+        ));
 
-        if ($this->busqueda !== '') {
-            $term = $this->busqueda;
-            $query->whereHas('acta', fn ($q) => $q->where('numero_prestamo', 'ilike', "%{$term}%"));
-        }
-
-        if ($this->estado !== '') {
-            $query->where('estado', $this->estado);
-        }
-
-        $campo = $this->ordenCampo === 'fecha_vencimiento' ? 'fecha_fin' : 'iniciado_en';
-        $prestamos = $query->orderBy($campo, $this->ordenDireccion)->get();
-
-        return view('gestionprestamosrecepciones::investigador.bandeja-prestamos', compact('prestamos'));
+        return view('gestionprestamosrecepciones::investigador.bandeja-prestamos', ['prestamos' => $output->filas]);
     }
 }

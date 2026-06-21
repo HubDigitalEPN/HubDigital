@@ -74,6 +74,110 @@ final class EloquentSolicitudPrestamoRepository implements SolicitudPrestamoRepo
     }
 
     /**
+     * Resuelve el código externo legible de cada ítem de préstamo.
+     *
+     * @param  list<string>  $itemPrestamoIds
+     * @return array<string, string>  Mapa [itemPrestamoId => códigoExterno].
+     */
+    public function mapaCodigosExternos(array $itemPrestamoIds): array
+    {
+        if ($itemPrestamoIds === []) {
+            return [];
+        }
+
+        return ItemPrestamoModel::query()
+            ->whereIn('id', $itemPrestamoIds)
+            ->pluck('especimen_codigo_externo', 'id')
+            ->all();
+    }
+
+    /**
+     * Lista solicitudes para la bandeja del curador, aplicando filtros y orden.
+     *
+     * @param array<int, string>|null $investigadorIds
+     * @return array<int, array{solicitudId: string, numeroSolicitud: string|null, tituloEstudio: string|null, investigadorId: string|null, estado: string, fecha: DateTimeImmutable}>
+     */
+    public function listarParaBandeja(
+        ?array $investigadorIds,
+        string $estado,
+        string $busquedaTexto,
+        string $ordenCampo,
+        string $ordenDireccion,
+    ): array {
+        $query = SolicitudPrestamoModel::query()
+            ->whereNotIn('estado', ['borrador']);
+
+        if ($busquedaTexto !== '') {
+            $query->where(fn ($q) => $q
+                ->where('titulo_estudio', 'ilike', "%{$busquedaTexto}%")
+                ->orWhere('numero_solicitud', 'ilike', "%{$busquedaTexto}%")
+            );
+        }
+
+        if ($estado !== '') {
+            $query->where('estado', $estado);
+        }
+
+        if ($investigadorIds !== null) {
+            $query->whereIn('investigador_id', $investigadorIds);
+        }
+
+        $campo = $ordenCampo === 'titulo' ? 'titulo_estudio' : 'created_at';
+        $solicitudes = $query->orderBy($campo, $ordenDireccion)->get();
+
+        return $solicitudes->map(fn (SolicitudPrestamoModel $solicitud): array => [
+            'solicitudId' => (string) $solicitud->id,
+            'numeroSolicitud' => $solicitud->numero_solicitud,
+            'tituloEstudio' => $solicitud->titulo_estudio,
+            'investigadorId' => $solicitud->investigador_id,
+            'estado' => (string) $solicitud->estado,
+            'fecha' => DateTimeImmutable::createFromInterface($solicitud->created_at),
+        ])->values()->all();
+    }
+
+    /**
+     * Lista las solicitudes de un investigador (incluye borradores) con el estado
+     * del acta asociada si existe.
+     *
+     * @return array<int, array{solicitudId: string, numeroSolicitud: string|null, tituloEstudio: string|null, estado: string, fecha: DateTimeImmutable, actaId: string|null, actaEstado: string|null}>
+     */
+    public function listarPorInvestigador(
+        string $investigadorId,
+        string $estado,
+        string $busquedaTexto,
+        string $ordenCampo,
+        string $ordenDireccion,
+    ): array {
+        $query = SolicitudPrestamoModel::query()
+            ->with('acta')
+            ->where('investigador_id', $investigadorId);
+
+        if ($busquedaTexto !== '') {
+            $query->where(fn ($q) => $q
+                ->where('titulo_estudio', 'ilike', "%{$busquedaTexto}%")
+                ->orWhere('numero_solicitud', 'ilike', "%{$busquedaTexto}%")
+            );
+        }
+
+        if ($estado !== '') {
+            $query->where('estado', $estado);
+        }
+
+        $campo = $ordenCampo === 'titulo' ? 'titulo_estudio' : 'created_at';
+        $solicitudes = $query->orderBy($campo, $ordenDireccion)->get();
+
+        return $solicitudes->map(fn (SolicitudPrestamoModel $solicitud): array => [
+            'solicitudId' => (string) $solicitud->id,
+            'numeroSolicitud' => $solicitud->numero_solicitud,
+            'tituloEstudio' => $solicitud->titulo_estudio,
+            'estado' => (string) $solicitud->estado,
+            'fecha' => DateTimeImmutable::createFromInterface($solicitud->created_at),
+            'actaId' => $solicitud->acta?->id !== null ? (string) $solicitud->acta->id : null,
+            'actaEstado' => $solicitud->acta?->estado,
+        ])->values()->all();
+    }
+
+    /**
      * Sincroniza los ítems de la solicitud en la base de datos.
      *
      * @param SolicitudPrestamoModel $model

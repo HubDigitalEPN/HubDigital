@@ -10,9 +10,10 @@ use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ActualizarConfiguracionGlobalRecordatorios\ActualizarConfiguracionGlobalRecordatoriosHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ActualizarConfiguracionGlobalRecordatorios\ActualizarConfiguracionGlobalRecordatoriosInput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarConfiguracionGlobalRecordatorios\ConsultarConfiguracionGlobalRecordatoriosHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarConfiguracionGlobalRecordatorios\ConsultarConfiguracionGlobalRecordatoriosInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\DefinirConfiguracionGlobalRecordatorios\DefinirConfiguracionGlobalRecordatoriosHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\DefinirConfiguracionGlobalRecordatorios\DefinirConfiguracionGlobalRecordatoriosInput;
-use Modules\GestionPrestamosRecepciones\Domain\Repositories\ConfiguracionGlobalRecordatoriosRepositoryInterface;
 
 /**
  * Componente Livewire para la configuración global de recordatorios de préstamo.
@@ -33,16 +34,16 @@ final class ConfiguracionRecordatorios extends Component
     public ?string $mensajeExito = null;
 
     /**
-     * @param ConfiguracionGlobalRecordatoriosRepositoryInterface $repo
+     * @param ConsultarConfiguracionGlobalRecordatoriosHandler $handler
      * @return void
      */
-    public function mount(ConfiguracionGlobalRecordatoriosRepositoryInterface $repo): void
+    public function mount(ConsultarConfiguracionGlobalRecordatoriosHandler $handler): void
     {
-        $configuracion = $repo->obtenerUnica();
+        $configuracion = $handler->handle(new ConsultarConfiguracionGlobalRecordatoriosInput());
 
-        if ($configuracion !== null) {
-            $this->configuracionId = (string) $configuracion->id();
-            $this->diasAntes = $configuracion->diasAntes();
+        if ($configuracion->configuracionId !== null) {
+            $this->configuracionId = $configuracion->configuracionId;
+            $this->diasAntes = $configuracion->diasAntes ?? $this->diasAntes;
         }
     }
 
@@ -56,13 +57,13 @@ final class ConfiguracionRecordatorios extends Component
     }
 
     /**
-     * @param ConfiguracionGlobalRecordatoriosRepositoryInterface $repo
+     * @param ConsultarConfiguracionGlobalRecordatoriosHandler $handler
      * @return void
      */
-    public function cancelarEdicion(ConfiguracionGlobalRecordatoriosRepositoryInterface $repo): void
+    public function cancelarEdicion(ConsultarConfiguracionGlobalRecordatoriosHandler $handler): void
     {
-        $configuracion = $repo->obtenerUnica();
-        $this->diasAntes = $configuracion !== null ? $configuracion->diasAntes() : [30, 15, 7, 1];
+        $configuracion = $handler->handle(new ConsultarConfiguracionGlobalRecordatoriosInput());
+        $this->diasAntes = $configuracion->diasAntes ?? [30, 15, 7, 1];
         $this->modoEdicion = false;
         $this->nuevoDia = '';
     }

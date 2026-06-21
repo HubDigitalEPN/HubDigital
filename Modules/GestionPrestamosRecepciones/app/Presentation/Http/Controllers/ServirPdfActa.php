@@ -7,7 +7,8 @@ namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers;
 use App\Enums\RolUsuario;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
-use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\ActaPrestamoModel;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDocumentoActa\ConsultarDocumentoActaHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDocumentoActa\ConsultarDocumentoActaInput;
 
 /**
  * Controlador para servir el PDF del acta de préstamo.
@@ -16,27 +17,32 @@ final class ServirPdfActa
 {
     /**
      * @param string $id
+     * @param ConsultarDocumentoActaHandler $handler
      * @return Response
      */
-    public function __invoke(string $id): Response
+    public function __invoke(string $id, ConsultarDocumentoActaHandler $handler): Response
     {
-        $acta = ActaPrestamoModel::query()
-            ->with('solicitud')
-            ->findOrFail($id);
-
         $user = auth()->user();
-        $isCurador = $user?->rol === RolUsuario::CURADOR;
-        $isOwner = $acta->solicitud?->investigador_id === (string) $user?->id;
 
-        if (! $isCurador && ! $isOwner) {
-            abort(403);
-        }
+        $documento = $handler->handle(new ConsultarDocumentoActaInput(
+            actaId: $id,
+            usuarioId: (string) $user?->id,
+            esCurador: $user?->rol === RolUsuario::CURADOR,
+        ));
 
-        if (! $acta->pdf_ruta || ! Storage::exists($acta->pdf_ruta)) {
+        if (! $documento->existe) {
             abort(404);
         }
 
-        return response(Storage::get($acta->pdf_ruta), 200, [
+        if (! $documento->autorizado) {
+            abort(403);
+        }
+
+        if (! $documento->pdfRuta || ! Storage::exists($documento->pdfRuta)) {
+            abort(404);
+        }
+
+        return response(Storage::get($documento->pdfRuta), 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="acta-prestamo.pdf"',
         ]);

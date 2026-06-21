@@ -54,7 +54,7 @@
 
     @php $filtroActivo = $busqueda !== '' || $estado !== '' || $busquedaInvestigador !== ''; @endphp
 
-    @if($solicitudes->isEmpty() && !$filtroActivo)
+    @if(count($solicitudes) === 0 && !$filtroActivo)
         <div class="flex flex-col items-center justify-center rounded-lg border border-border bg-surface py-16 text-center px-8 gap-4">
             <div class="flex h-16 w-16 items-center justify-center rounded-full bg-bg-main border border-border">
                 <flux:icon name="inbox" class="size-8 text-text-secondary/50" />
@@ -65,7 +65,7 @@
             </div>
         </div>
 
-    @elseif($solicitudes->isEmpty())
+    @elseif(count($solicitudes) === 0)
         <div class="flex flex-col items-center justify-center rounded-lg border border-border bg-surface py-16 text-center px-8 gap-4">
             <div class="flex h-16 w-16 items-center justify-center rounded-full bg-bg-main border border-border">
                 <flux:icon name="magnifying-glass" class="size-8 text-text-secondary/50" />
@@ -95,31 +95,31 @@
                     @foreach($solicitudes as $solicitud)
                         <tr class="hover:bg-bg-main transition-colors">
                             <td class="px-4 py-3 font-mono text-xs text-text-secondary whitespace-nowrap">
-                                {{ $solicitud->numero_solicitud }}
+                                {{ $solicitud->numeroSolicitud }}
                             </td>
                             <td class="px-4 py-3 font-medium text-text-primary w-64">
-                                <flux:tooltip content="{{ $solicitud->titulo_estudio }}">
-                                    <span class="block truncate max-w-xs cursor-default">{{ $solicitud->titulo_estudio }}</span>
+                                <flux:tooltip content="{{ $solicitud->tituloEstudio }}">
+                                    <span class="block truncate max-w-xs cursor-default">{{ $solicitud->tituloEstudio }}</span>
                                 </flux:tooltip>
                             </td>
                             <td class="px-4 py-3 text-sm text-text-secondary">
-                                {{ $investigadores->get($solicitud->investigador_id)?->name ?? $solicitud->investigador_id }}
+                                {{ $solicitud->solicitanteNombre ?? $solicitud->investigadorId }}
                             </td>
                             <td class="px-4 py-3">
                                 <x-gestionprestamosrecepciones::solicitud-status-badge :estado="$solicitud->estado" />
                             </td>
                             <td class="px-4 py-3 text-xs text-text-secondary whitespace-nowrap">
-                                {{ $solicitud->created_at->format('d/m/Y') }}
+                                {{ $solicitud->fecha->format('d/m/Y') }}
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap">
                                 @if($solicitud->estado === 'enviada')
                                     <flux:button size="sm" variant="primary" icon="check-circle"
-                                        wire:navigate href="{{ route('prestamos.curador.solicitud.revisar', $solicitud->id) }}">
+                                        wire:navigate href="{{ route('prestamos.curador.solicitud.revisar', $solicitud->solicitudId) }}">
                                         Decidir
                                     </flux:button>
                                 @else
                                     <flux:button size="sm" variant="ghost" icon="eye"
-                                        wire:navigate href="{{ route('prestamos.curador.solicitud.revisar', $solicitud->id) }}">
+                                        wire:navigate href="{{ route('prestamos.curador.solicitud.revisar', $solicitud->solicitudId) }}">
                                         Revisar
                                     </flux:button>
                                 @endif

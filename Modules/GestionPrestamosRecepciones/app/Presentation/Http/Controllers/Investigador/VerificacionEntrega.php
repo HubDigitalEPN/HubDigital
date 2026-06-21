@@ -7,9 +7,13 @@ namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Inve
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarItemsPrestamo\ConsultarItemsPrestamoHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarItemsPrestamo\ConsultarItemsPrestamoInput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarPrestamo\ConsultarPrestamoHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarPrestamo\ConsultarPrestamoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarVerificacionEntrega\RegistrarVerificacionEntregaHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarVerificacionEntrega\RegistrarVerificacionEntregaInput;
-use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\PrestamoEloquentModel;
+use Modules\GestionPrestamosRecepciones\Domain\Exceptions\PrestamoNoEncontradoException;
 
 /**
  * Componente Livewire para la verificación de entrega de especímenes.
@@ -28,33 +32,45 @@ final class VerificacionEntrega extends Component
      * Inicializa el componente.
      *
      * @param string $id
+     * @param ConsultarPrestamoHandler $handler
+     * @param ConsultarItemsPrestamoHandler $itemsHandler
      * @return void
      */
-    public function mount(string $id): void
-    {
+    public function mount(
+        string $id,
+        ConsultarPrestamoHandler $handler,
+        ConsultarItemsPrestamoHandler $itemsHandler,
+    ): void {
         $this->id = $id;
 
-        $prestamo = PrestamoEloquentModel::query()->with('acta.solicitud.items')->find($id);
-
-        if ($prestamo === null) {
+        try {
+            $prestamo = $handler->handle(new ConsultarPrestamoInput(
+                prestamoId: $id,
+                usuarioId: (string) auth()->id(),
+            ));
+        } catch (PrestamoNoEncontradoException) {
             abort(404);
         }
 
-        if ($prestamo->acta?->solicitud?->investigador_id !== (string) auth()->id()) {
+        if ($prestamo->investigadorId !== (string) auth()->id()) {
             abort(403);
         }
 
-        if ($prestamo->estado !== 'en_transito') {
+        if ($prestamo->estado->value !== 'en_transito') {
             abort(403);
         }
 
         // Pre-populate so itemPrestamoId is always available — wire:model on hidden inputs
         // does not push values into the component.
-        $items = $prestamo->acta?->solicitud?->items ?? collect();
-        $this->observaciones = $items->map(fn ($item) => [
-            'itemPrestamoId' => (string) $item->id,
-            'descripcion' => '',
-        ])->values()->toArray();
+        $items = $itemsHandler->handle(new ConsultarItemsPrestamoInput(prestamoId: $id))->items;
+
+        $this->observaciones = array_map(
+            fn ($item) => [
+                'itemPrestamoId' => $item->itemPrestamoId,
+                'descripcion' => '',
+            ],
+            $items,
+        );
     }
 
     /**
@@ -94,14 +110,21 @@ final class VerificacionEntrega extends Component
     /**
      * Renderiza el componente.
      *
+     * @param ConsultarPrestamoHandler $handler
+     * @param ConsultarItemsPrestamoHandler $itemsHandler
      * @return \Illuminate\View\View
      */
-    public function render(): View
-    {
-        $prestamo = PrestamoEloquentModel::query()
-            ->with('acta.solicitud.items')
-            ->findOrFail($this->id);
+    public function render(
+        ConsultarPrestamoHandler $handler,
+        ConsultarItemsPrestamoHandler $itemsHandler,
+    ): View {
+        $prestamo = $handler->handle(new ConsultarPrestamoInput(
+            prestamoId: $this->id,
+            usuarioId: (string) auth()->id(),
+        ));
 
-        return view('gestionprestamosrecepciones::investigador.verificacion-entrega', compact('prestamo'));
+        $items = $itemsHandler->handle(new ConsultarItemsPrestamoInput(prestamoId: $this->id))->items;
+
+        return view('gestionprestamosrecepciones::investigador.verificacion-entrega', compact('prestamo', 'items'));
     }
 }

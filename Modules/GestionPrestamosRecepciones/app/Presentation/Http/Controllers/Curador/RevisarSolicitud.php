@@ -5,18 +5,19 @@ declare(strict_types=1);
 namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador;
 
 use App\Concerns\HandlesDomainExceptions;
-use App\Models\User;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
+use Modules\GestionPrestamosRecepciones\Application\Ports\UsuarioNombrePort;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarSolicitudPrestamo\AprobarSolicitudPrestamoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarSolicitudPrestamo\AprobarSolicitudPrestamoInput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDetalleSolicitud\ConsultarDetalleSolicitudHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDetalleSolicitud\ConsultarDetalleSolicitudInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ObservarSolicitudPrestamo\ObservarSolicitudPrestamoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ObservarSolicitudPrestamo\ObservarSolicitudPrestamoInput;
-use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\SolicitudPrestamoModel;
 
 /**
  * Componente Livewire para la revisión, aprobación o devolución de una solicitud de préstamo.
@@ -28,9 +29,10 @@ final class RevisarSolicitud extends Component
 
     public string $id;
 
-    public ?SolicitudPrestamoModel $solicitud = null;
-
     public string $nombreInvestigador = '';
+
+    /** Duración propuesta por el investigador (meses), capturada en mount para la aprobación. */
+    public ?int $duracionPropuesta = null;
 
     // ── Modal: devolver con observación ──────────────────────────────────────
 
@@ -58,20 +60,20 @@ final class RevisarSolicitud extends Component
 
     /**
      * @param string $id
+     * @param ConsultarDetalleSolicitudHandler $detalleHandler
+     * @param UsuarioNombrePort $usuarios
      * @return void
      */
-    public function mount(string $id): void
+    public function mount(string $id, ConsultarDetalleSolicitudHandler $detalleHandler, UsuarioNombrePort $usuarios): void
     {
         $this->id = $id;
-        $this->solicitud = SolicitudPrestamoModel::query()->with('items')->findOrFail($id);
 
-        $uuidRegex = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i';
-        $invId = $this->solicitud->investigador_id;
-        $this->nombreInvestigador = preg_match($uuidRegex, $invId)
-            ? (User::find($invId)?->name ?? $invId)
-            : $invId;
+        $detalle = $detalleHandler->handle(new ConsultarDetalleSolicitudInput($id));
+        abort_if($detalle === null, 404);
 
-        $this->duracionPersonalizadaMeses = $this->solicitud->duracion_propuesta_meses ?? 3;
+        $this->nombreInvestigador = $usuarios->obtenerNombre($detalle->investigadorId) ?? $detalle->investigadorId;
+        $this->duracionPropuesta = $detalle->duracionPropuestaMeses;
+        $this->duracionPersonalizadaMeses = $detalle->duracionPropuestaMeses ?? 3;
     }
 
     /**
@@ -86,7 +88,7 @@ final class RevisarSolicitud extends Component
         ]);
 
         $duracion = $this->usarDuracionPropuesta
-            ? ($this->solicitud?->duracion_propuesta_meses ?? $this->duracionPersonalizadaMeses)
+            ? ($this->duracionPropuesta ?? $this->duracionPersonalizadaMeses)
             : $this->duracionPersonalizadaMeses;
 
         $condicionesPorItem = array_filter(
@@ -130,15 +132,20 @@ final class RevisarSolicitud extends Component
 
     /**
      * @param ConsultarHistorialSolicitudHandler $historialHandler
+     * @param ConsultarDetalleSolicitudHandler $detalleHandler
      * @return View
      */
-    public function render(ConsultarHistorialSolicitudHandler $historialHandler): View
-    {
+    public function render(
+        ConsultarHistorialSolicitudHandler $historialHandler,
+        ConsultarDetalleSolicitudHandler $detalleHandler,
+    ): View {
+        $solicitud = $detalleHandler->handle(new ConsultarDetalleSolicitudInput($this->id));
+
         $historial = $historialHandler->handle(new ConsultarHistorialSolicitudInput(
             solicitudId: $this->id,
             usuarioId: (string) auth()->id(),
         ));
 
-        return view('gestionprestamosrecepciones::curador.revisar-solicitud', compact('historial'));
+        return view('gestionprestamosrecepciones::curador.revisar-solicitud', compact('solicitud', 'historial'));
     }
 }

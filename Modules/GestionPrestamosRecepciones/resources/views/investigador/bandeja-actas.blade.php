@@ -51,7 +51,7 @@
 
     @php $filtroActivo = $busqueda !== '' || $estado !== ''; @endphp
 
-    @if($actas->isEmpty() && !$filtroActivo)
+    @if(count($actas) === 0 && !$filtroActivo)
         <div class="flex flex-col items-center justify-center rounded-lg border border-border bg-surface py-16 text-center px-8 gap-4">
             <div class="flex h-16 w-16 items-center justify-center rounded-full bg-bg-main border border-border">
                 <flux:icon name="clipboard-document" class="size-8 text-text-secondary/50" />
@@ -64,7 +64,7 @@
             </div>
         </div>
 
-    @elseif($actas->isEmpty())
+    @elseif(count($actas) === 0)
         <div class="flex flex-col items-center justify-center rounded-lg border border-border bg-surface py-16 text-center px-8 gap-4">
             <div class="flex h-16 w-16 items-center justify-center rounded-full bg-bg-main border border-border">
                 <flux:icon name="magnifying-glass" class="size-8 text-text-secondary/50" />
@@ -93,26 +93,26 @@
                     @foreach($actas as $acta)
                         <tr class="hover:bg-bg-main transition-colors">
                             <td class="px-4 py-3 font-mono text-xs text-text-secondary whitespace-nowrap">
-                                {{ $acta->numero_prestamo }}
+                                {{ $acta->numeroPrestamo }}
                             </td>
                             <td class="px-4 py-3 font-mono text-xs text-text-secondary whitespace-nowrap">
-                                {{ $acta->solicitud?->numero_solicitud ?? '—' }}
+                                {{ $acta->numeroSolicitud ?? '—' }}
                             </td>
                             <td class="px-4 py-3">
                                 <x-gestionprestamosrecepciones::acta-status-badge :estado="$acta->estado" />
                             </td>
                             <td class="px-4 py-3 text-xs text-text-secondary whitespace-nowrap">
-                                {{ $acta->created_at->format('d/m/Y') }}
+                                {{ $acta->fecha->format('d/m/Y') }}
                             </td>
                             <td class="px-4 py-3">
                                 @if($acta->estado === 'pendiente_firma')
                                     <flux:button size="sm" variant="primary" icon="arrow-up-tray"
-                                        wire:navigate href="{{ route('prestamos.investigador.acta.detalle', $acta->id) }}">
+                                        wire:navigate href="{{ route('prestamos.investigador.acta.detalle', $acta->actaId) }}">
                                         Adjuntar documentos
                                     </flux:button>
                                 @else
                                     <flux:button size="sm" variant="ghost" icon="eye"
-                                        wire:navigate href="{{ route('prestamos.investigador.acta.detalle', $acta->id) }}">
+                                        wire:navigate href="{{ route('prestamos.investigador.acta.detalle', $acta->actaId) }}">
                                         Ver detalle
                                     </flux:button>
                                 @endif

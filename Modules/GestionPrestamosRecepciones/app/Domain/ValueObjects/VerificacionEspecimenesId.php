@@ -7,10 +7,10 @@ namespace Modules\GestionPrestamosRecepciones\Domain\ValueObjects;
 use InvalidArgumentException;
 
 /**
- * Identificador de valor (UUID v4) de una {@see \Modules\GestionPrestamosRecepciones\Domain\Entities\VerificacionEntregaPrestamo}.
+ * Identificador de valor (UUID v4) de una {@see \Modules\GestionPrestamosRecepciones\Domain\Entities\VerificacionEspecimenes}.
  * Inmutable; crear con {@see generate()} o reconstruir con {@see fromString()}.
  */
-final readonly class VerificacionEntregaId
+final readonly class VerificacionEspecimenesId
 {
     private function __construct(private string $value) {}
 
@@ -22,7 +22,7 @@ final readonly class VerificacionEntregaId
     public static function fromString(string $value): self
     {
         if (! preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i', $value)) {
-            throw new InvalidArgumentException("Valor inválido para VerificacionEntregaId: '{$value}'");
+            throw new InvalidArgumentException("Valor inválido para VerificacionEspecimenesId: '{$value}'");
         }
 
         return new self($value);

@@ -80,6 +80,58 @@ final class EloquentActaPrestamoRepository implements ActaPrestamoRepositoryInte
     }
 
     /**
+     * Lista actas para la bandeja del curador, aplicando filtros y orden.
+     *
+     * @param array<int, string>|null $investigadorIds
+     * @return array<int, array{actaId: string, numeroPrestamo: string, numeroSolicitud: string|null, investigadorId: string|null, estado: string, fecha: DateTimeImmutable}>
+     */
+    public function listarParaBandeja(
+        ?array $investigadorIds,
+        string $estado,
+        string $busquedaTexto,
+        string $ordenCampo,
+        string $ordenDireccion,
+    ): array {
+        $query = ActaPrestamoModel::query()->with('solicitud');
+
+        if ($busquedaTexto !== '') {
+            $query->where(fn ($q) => $q
+                ->where('numero_prestamo', 'ilike', "%{$busquedaTexto}%")
+                ->orWhereHas('solicitud', fn ($sq) => $sq
+                    ->where('numero_solicitud', 'ilike', "%{$busquedaTexto}%")
+                    ->orWhere('titulo_estudio', 'ilike', "%{$busquedaTexto}%")
+                )
+            );
+        }
+
+        if ($estado !== '') {
+            $query->where('estado', $estado);
+        }
+
+        if ($investigadorIds !== null) {
+            $query->whereHas('solicitud', fn ($q) => $q->whereIn('investigador_id', $investigadorIds));
+        }
+
+        if ($ordenCampo === 'numero_solicitud') {
+            $actas = $query->get();
+            $actas = $ordenDireccion === 'asc'
+                ? $actas->sortBy('solicitud.numero_solicitud')
+                : $actas->sortByDesc('solicitud.numero_solicitud');
+        } else {
+            $actas = $query->orderBy('created_at', $ordenDireccion)->get();
+        }
+
+        return $actas->map(fn (ActaPrestamoModel $acta): array => [
+            'actaId' => (string) $acta->id,
+            'numeroPrestamo' => (string) $acta->numero_prestamo,
+            'numeroSolicitud' => $acta->solicitud?->numero_solicitud,
+            'investigadorId' => $acta->solicitud?->investigador_id,
+            'estado' => (string) $acta->estado,
+            'fecha' => DateTimeImmutable::createFromInterface($acta->created_at),
+        ])->values()->all();
+    }
+
+    /**
      * Mapea el modelo Eloquent a la entidad de dominio.
      */
     private function toDomain(ActaPrestamoModel $model): ActaPrestamo
