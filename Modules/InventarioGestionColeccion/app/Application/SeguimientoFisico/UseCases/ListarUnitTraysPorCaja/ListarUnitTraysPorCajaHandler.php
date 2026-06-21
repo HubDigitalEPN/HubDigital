@@ -10,13 +10,29 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\Uni
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\ComparadorTaxonomicoUnitTray;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\CajaId;
 
+/**
+ * Caso de uso: listar los unit trays de una caja ordenados por su taxonomía (subfamilia →
+ * género → especie), con su clasificación dominante y su total de especímenes.
+ *
+ * @see ListarUnitTraysPorCajaInput
+ * @see ListarUnitTraysPorCajaOutput
+ */
 final class ListarUnitTraysPorCajaHandler
 {
+    /**
+     * @param  UnitTrayRepository  $unitTrayRepo  Recupera los unit trays de la caja.
+     * @param  UnitTrayEspecimenRepository  $asignacionRepo  Cuenta los especímenes asignados a cada tray.
+     */
     public function __construct(
         private readonly UnitTrayRepository $unitTrayRepo,
         private readonly UnitTrayEspecimenRepository $asignacionRepo,
     ) {}
 
+    /**
+     * Recupera los unit trays de la caja, los ordena por su clasificación taxonómica
+     * (desempatando por número) y los proyecta con su subfamilia/género/especie y el total de
+     * especímenes que contienen.
+     */
     public function handle(ListarUnitTraysPorCajaInput $input): ListarUnitTraysPorCajaOutput
     {
         $cajaId = CajaId::desde($input->cajaId);
@@ -38,9 +54,16 @@ final class ListarUnitTraysPorCajaHandler
             return [
                 'unitTrayId' => (string) $tray->id(),
                 'numero' => $tray->numero(),
+                'orden' => $clasificacion?->orden(),
+                'suborden' => $clasificacion?->suborden(),
+                'superfamilia' => $clasificacion?->superfamilia(),
+                'familia' => $clasificacion?->familia(),
                 'subfamilia' => $clasificacion?->subfamilia(),
                 'genero' => $clasificacion?->genero(),
                 'especie' => $clasificacion?->especie(),
+                // Conjuntos completos (dominante primero): un tray puede albergar varios taxones.
+                'subfamilias' => $clasificacion?->subfamilias() ?? [],
+                'generos' => $clasificacion?->generos() ?? [],
                 'totalEspecimenes' => count($this->asignacionRepo->especimenIdsPorUnitTray($tray->id())),
             ];
         }, $trays);

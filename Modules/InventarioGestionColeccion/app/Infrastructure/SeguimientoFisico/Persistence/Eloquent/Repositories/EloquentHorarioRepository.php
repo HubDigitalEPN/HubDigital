@@ -9,8 +9,16 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\Hor
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\HorarioId;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Models\HorarioEloquentModel;
 
+/**
+ * Implementación Eloquent del repositorio del horario laboral: gestiona el horario único del
+ * componente, creando uno por defecto (8 a 18) la primera vez si todavía no existe.
+ */
 class EloquentHorarioRepository implements HorarioRepository
 {
+    /**
+     * Devuelve el horario único configurado; si aún no hay ninguno, crea y persiste uno por
+     * defecto (jornada de 8 a 18) para que el componente siempre disponga de un horario válido.
+     */
     public function obtenerUnico(): Horario
     {
         $model = HorarioEloquentModel::first();
@@ -30,6 +38,7 @@ class EloquentHorarioRepository implements HorarioRepository
         return $this->toDomain($model);
     }
 
+    /** Inserta o actualiza el horario según su id. */
     public function guardar(Horario $horario): void
     {
         HorarioEloquentModel::updateOrCreate(
@@ -42,6 +51,7 @@ class EloquentHorarioRepository implements HorarioRepository
         );
     }
 
+    /** Reconstituye la entidad Horario a partir de la fila persistida. */
     private function toDomain(HorarioEloquentModel $model): Horario
     {
         return Horario::reconstituir(

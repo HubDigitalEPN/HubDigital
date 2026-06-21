@@ -12,14 +12,25 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\Ord
  * primero las familias en la secuencia esperada del curador (en su orden), luego las
  * familias presentes en cajas pero aún no secuenciadas (alfabético). Para cada familia
  * lista las subfamilias presentes como referencia visual (orden alfabético dentro del bloque).
+ *
+ * @see ObtenerOrdenFamiliasColeccionOutput
  */
 final class ObtenerOrdenFamiliasColeccionHandler
 {
+    /**
+     * @param  OrdenEsperadoFamiliasRepository  $ordenFamiliasRepo  Aporta la secuencia esperada de familias.
+     * @param  CajaRepository  $cajaRepo  Recorre las cajas para descubrir las familias realmente presentes.
+     */
     public function __construct(
         private readonly OrdenEsperadoFamiliasRepository $ordenFamiliasRepo,
         private readonly CajaRepository $cajaRepo,
     ) {}
 
+    /**
+     * Combina la secuencia esperada del curador con las familias realmente presentes en las
+     * cajas: primero las familias secuenciadas (en su orden) y después las presentes pero no
+     * secuenciadas (alfabético), anexando a cada una sus subfamilias presentes.
+     */
     public function handle(): ObtenerOrdenFamiliasColeccionOutput
     {
         $orden = $this->ordenFamiliasRepo->obtener();
@@ -83,6 +94,9 @@ final class ObtenerOrdenFamiliasColeccionHandler
     }
 
     /**
+     * Construye el item de salida de una familia, ordenando sus subfamilias presentes y
+     * marcando si está en la secuencia esperada y si aparece en alguna caja.
+     *
      * @param  array{familia: string, subfamilias: array<string, string>}|null  $datosPresente
      */
     private function construirItem(string $familia, ?array $datosPresente, bool $enSecuencia): FamiliaColeccionOutput

@@ -11,13 +11,20 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\Ran
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\UbicacionCajaId;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Models\UbicacionCajaEloquentModel;
 
+/**
+ * Implementación Eloquent del repositorio de ubicaciones de caja: traduce entre la entidad
+ * UbicacionCaja y su modelo persistido y resuelve las consultas del historial (la estadía
+ * activa de una caja y la última retirada), base para localizar cajas y medir extracciones.
+ */
 class EloquentUbicacionCajaRepository implements UbicacionCajaRepository
 {
+    /** Genera un nuevo identificador de ubicación antes de persistirla. */
     public function nextIdentity(): UbicacionCajaId
     {
         return UbicacionCajaId::generar();
     }
 
+    /** Inserta o actualiza la ubicación según su id, registrando ingreso y, si aplica, retiro. */
     public function guardar(UbicacionCaja $ubicacion): void
     {
         UbicacionCajaEloquentModel::updateOrCreate(
@@ -31,6 +38,7 @@ class EloquentUbicacionCajaRepository implements UbicacionCajaRepository
         );
     }
 
+    /** Devuelve la estadía vigente de una caja (sin fecha de retiro), o null si no está ubicada. */
     public function buscarActivaPorCaja(CajaId $cajaId): ?UbicacionCaja
     {
         $model = UbicacionCajaEloquentModel::where('caja_id', (string) $cajaId)
@@ -40,6 +48,7 @@ class EloquentUbicacionCajaRepository implements UbicacionCajaRepository
         return $model ? $this->toDomain($model) : null;
     }
 
+    /** Devuelve la última estadía ya retirada de una caja, usada para calcular el tiempo de extracción. */
     public function buscarUltimaRetiradaPorCaja(CajaId $cajaId): ?UbicacionCaja
     {
         $model = UbicacionCajaEloquentModel::where('caja_id', (string) $cajaId)
@@ -50,6 +59,7 @@ class EloquentUbicacionCajaRepository implements UbicacionCajaRepository
         return $model ? $this->toDomain($model) : null;
     }
 
+    /** Reconstituye la entidad UbicacionCaja a partir de la fila persistida. */
     private function toDomain(UbicacionCajaEloquentModel $model): UbicacionCaja
     {
         return UbicacionCaja::reconstituir(

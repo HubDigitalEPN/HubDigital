@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\EvaluarOrdenTaxonomicoCaja;
 
+/**
+ * DTO de salida que indica si la evaluación generó una alerta y, en su caso, su tipo e identificador.
+ */
 final readonly class EvaluarOrdenTaxonomicoCajaOutput
 {
     private function __construct(

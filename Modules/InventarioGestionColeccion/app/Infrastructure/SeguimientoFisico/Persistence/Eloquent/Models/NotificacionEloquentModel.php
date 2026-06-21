@@ -7,6 +7,11 @@ namespace Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Pe
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * Modelo Eloquent que mapea la tabla de notificaciones del componente, dirigidas al curador
+ * a partir de los eventos de seguimiento (con sus datos de contexto). Es el puente de
+ * persistencia de la entidad Notificacion del dominio.
+ */
 class NotificacionEloquentModel extends Model
 {
     protected $table = 'iot.notificaciones';
@@ -26,6 +31,7 @@ class NotificacionEloquentModel extends Model
         'datos_contexto' => 'array',
     ];
 
+    /** Caja a la que se refiere la notificación. */
     public function caja(): BelongsTo
     {
         return $this->belongsTo(CajaEloquentModel::class, 'caja_id');

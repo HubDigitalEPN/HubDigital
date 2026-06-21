@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects;
 
+/**
+ * Value Object que identifica de forma única a un {@see Horario}. Envuelve un UUID v4
+ * y valida su formato al construirse, garantizando que un identificador nunca exista
+ * en estado inválido.
+ */
 final readonly class HorarioId
 {
     private function __construct(private string $value)
@@ -13,6 +18,7 @@ final readonly class HorarioId
         }
     }
 
+    /** Genera un identificador nuevo con un UUID v4 aleatorio. */
     public static function generar(): self
     {
         $data = random_bytes(16);
@@ -22,16 +28,19 @@ final readonly class HorarioId
         return new self(vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4)));
     }
 
+    /** Reconstruye el identificador a partir de un UUID existente (p. ej. desde persistencia). */
     public static function desde(string $value): self
     {
         return new self($value);
     }
 
+    /** Compara por valor: dos identificadores son iguales si encierran el mismo UUID. */
     public function equals(self $other): bool
     {
         return $this->value === $other->value;
     }
 
+    /** Devuelve la representación textual (UUID) del identificador. */
     public function __toString(): string
     {
         return $this->value;

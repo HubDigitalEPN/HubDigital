@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarEspecimenesUnitTray;
 
+/**
+ * DTO de entrada con el unit tray y la lista completa de especímenes que debe contener.
+ */
 final readonly class ActualizarEspecimenesUnitTrayInput
 {
     /**

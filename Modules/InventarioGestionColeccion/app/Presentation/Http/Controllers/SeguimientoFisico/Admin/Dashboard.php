@@ -14,6 +14,13 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Li
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarRanurasGabinete\ListarRanurasGabineteInput;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
 
+/**
+ * Tablero de monitoreo IoT del curador: muestra, casi en tiempo real, qué caja ocupa
+ * cada ranura de cada gabinete y un resumen agregado de estados de las cajas. Se
+ * autorefresca por polling para reflejar el último barrido del ESP32 sin recargar la
+ * página. Es presentación pura: solo orquesta los casos de uso de listado y mapea sus
+ * salidas a estructuras simples para la vista.
+ */
 #[Layout('layouts.app', params: ['title' => 'Monitoreo IoT'])]
 final class Dashboard extends Component
 {
@@ -35,6 +42,13 @@ final class Dashboard extends Component
         $this->refrescar($gabineteHandler, $cajasHandler, $ranurasHandler);
     }
 
+    /**
+     * Reconstruye todo el estado del tablero: indexa las cajas por id, cuenta cuántas
+     * hay en cada estado y, para cada gabinete, ordena sus ranuras por número y les
+     * adjunta la caja que ocupan. El componente se autorefresca cada 5 s (Poll). Para
+     * no dejar el tablero a medias durante un fallo de conexión, solo publica el estado
+     * completo si toda la carga tuvo éxito.
+     */
     #[Poll(5000)]
     public function refrescar(
         ListarGabineteHandler $gabineteHandler,

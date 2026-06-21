@@ -22,6 +22,9 @@ final readonly class OrdenEsperadoFamilias
     private function __construct(private array $familias) {}
 
     /**
+     * Construye la secuencia normalizando cada nombre (trim) y deduplicando de forma
+     * case-insensitive, preservando el orden de inserción dado por el curador.
+     *
      * @param  string[]  $familias
      */
     public static function desde(array $familias): self
@@ -51,6 +54,7 @@ final readonly class OrdenEsperadoFamilias
         return new self(array_values($normalizadas));
     }
 
+    /** Crea una secuencia vacía, útil cuando el curador aún no ha definido un orden. */
     public static function vacio(): self
     {
         return new self([]);
@@ -85,11 +89,13 @@ final readonly class OrdenEsperadoFamilias
         return $this->familias;
     }
 
+    /** Indica si la secuencia no contiene ninguna familia. */
     public function estaVacio(): bool
     {
         return $this->familias === [];
     }
 
+    /** Recorta el valor y lo convierte a null cuando queda vacío. */
     private static function normalizar(?string $valor): ?string
     {
         if ($valor === null) {

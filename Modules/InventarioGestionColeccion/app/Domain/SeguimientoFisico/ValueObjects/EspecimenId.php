@@ -6,11 +6,19 @@ namespace Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjec
 
 final readonly class EspecimenId
 {
+    private const PATRON = '/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i';
+
     private function __construct(private string $value)
     {
-        if (! preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i', $value)) {
+        if (! preg_match(self::PATRON, $value)) {
             throw new \InvalidArgumentException("EspecimenId inválido: '{$value}'");
         }
+    }
+
+    /** Indica si una cadena tiene el formato de un EspecimenId válido, sin construirlo ni lanzar. */
+    public static function esValido(string $value): bool
+    {
+        return preg_match(self::PATRON, $value) === 1;
     }
 
     public static function generar(): self

@@ -6,6 +6,11 @@ namespace Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Pe
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Modelo Eloquent que mapea la tabla del horario laboral del componente (hora de inicio y
+ * fin de la jornada), usado para decidir si un evento ocurre fuera de horario. Es el puente
+ * de persistencia de la entidad Horario del dominio.
+ */
 class HorarioEloquentModel extends Model
 {
     protected $table = 'iot.horarios';

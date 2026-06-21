@@ -213,6 +213,14 @@
                                 Monitoreo
                             </flux:sidebar.item>
                             <flux:sidebar.item
+                                icon="map"
+                                :href="route('inventario.mapa')"
+                                :current="request()->routeIs('inventario.mapa')"
+                                wire:navigate
+                            >
+                                Mapa de la colección
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
                                 icon="archive-box"
                                 :href="route('inventario.gabinetes')"
                                 :current="request()->routeIs('inventario.gabinetes*')"
@@ -259,6 +267,14 @@
                                 wire:navigate
                             >
                                 Horario
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="qr-code"
+                                :href="route('inventario.visitantes')"
+                                :current="request()->routeIs('inventario.visitantes')"
+                                wire:navigate
+                            >
+                                Acceso de visitantes
                             </flux:sidebar.item>
                         </flux:sidebar.group>
                         <flux:sidebar.group heading="Divulgación" class="grid">

@@ -29,8 +29,32 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\Ran
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TipoAlerta;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TipoNotificacion;
 
+/**
+ * Caso de uso: registrar el ingreso de una caja en una ranura. Mueve la caja a la ranura, abre
+ * su ubicación activa, registra el evento del ciclo IoT y evalúa dos preocupaciones ortogonales:
+ * movimiento fuera de horario (alerta + notificación) y orden taxonómico respecto a las cajas
+ * vecinas. Es tolerante a reinicios del ESP32: reconcilia cajas que ya figuran como ubicadas y
+ * resuelve la alerta de extracción prolongada cuando la caja regresa a su ranura.
+ *
+ * @see RegistrarIngresoCajaInput
+ * @see RegistrarIngresoCajaOutput
+ */
 final class RegistrarIngresoCajaHandler
 {
+    /**
+     * @param  CajaRepository  $cajaRepo  Recupera y persiste la caja que ingresa.
+     * @param  RanuraGabineteRepository  $ranuraRepo  Recupera la ranura destino y sus vecinas, y las persiste.
+     * @param  UbicacionCajaRepository  $ubicacionRepo  Abre, cierra y consulta la ubicación activa de la caja.
+     * @param  EventoCicloIotRepository  $eventoRepo  Registra el evento del ciclo IoT del ingreso.
+     * @param  AlertaUbicacionRepository  $alertaRepo  Genera y resuelve alertas de ubicación.
+     * @param  NotificacionRepository  $notificacionRepo  Crea la notificación de movimiento fuera de horario.
+     * @param  TransactionManagerPort  $transactionManager  Envuelve las escrituras en transacciones atómicas.
+     * @param  HorarioValidadorPort  $horarioValidador  Determina si el ingreso ocurre fuera de horario hábil.
+     * @param  ContextoEjecucionPort  $contextoEjecucion  Aporta el actor (rol e id) que origina el ingreso.
+     * @param  EventPublisherPort  $eventPublisher  Publica los eventos de dominio acumulados por la caja.
+     * @param  EvaluadorOrdenTaxonomico  $evaluadorTaxonomico  Decide si la posición rompe el orden taxonómico.
+     * @param  OrdenEsperadoFamiliasRepository  $ordenFamiliasRepo  Aporta el orden de familias esperado.
+     */
     public function __construct(
         private readonly CajaRepository $cajaRepo,
         private readonly RanuraGabineteRepository $ranuraRepo,
@@ -46,6 +70,15 @@ final class RegistrarIngresoCajaHandler
         private readonly OrdenEsperadoFamiliasRepository $ordenFamiliasRepo,
     ) {}
 
+    /**
+     * Registra el ingreso de la caja en la ranura. Si la caja ya figura como ubicada delega en
+     * la reconciliación (recuperación de reinicio del ESP32); en el flujo normal mueve la caja,
+     * abre la ubicación, resuelve la alerta de extracción prolongada si la caja regresaba,
+     * genera la alerta/notificación por movimiento fuera de horario y, siempre, evalúa el orden
+     * taxonómico (ambas alertas pueden coexistir).
+     *
+     * @throws \DomainException si la caja o la ranura no existen.
+     */
     public function handle(RegistrarIngresoCajaInput $input): RegistrarIngresoCajaOutput
     {
         $cajaId = CajaId::desde($input->cajaId);
@@ -157,6 +190,11 @@ final class RegistrarIngresoCajaHandler
         ]);
     }
 
+    /**
+     * Evalúa el orden taxonómico de la caja respecto a sus vecinas ocupadas; si rompe la
+     * secuencia esperada, genera la alerta correspondiente (marcando la caja como pendiente de
+     * clasificación cuando la familia no está asignada) y devuelve si generó alerta.
+     */
     private function evaluarOrdenTaxonomico(
         Caja $caja,
         RanuraGabinete $ranura,
@@ -204,6 +242,12 @@ final class RegistrarIngresoCajaHandler
         return true;
     }
 
+    /**
+     * Reconcilia el estado tras un reinicio del ESP32 cuando la caja ya figura como ubicada: si
+     * el sensor la redescubre en la misma ranura la operación es idempotente; si aparece en otra
+     * ranura, cierra la ubicación anterior, libera la ranura previa y abre una nueva (reubicación
+     * ocurrida mientras el sensor estaba offline).
+     */
     private function reconciliar(
         Caja $caja,
         RanuraGabinete $ranura,

@@ -13,6 +13,12 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Ac
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ObtenerHorario\ObtenerHorarioHandler;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
 
+/**
+ * Formulario del curador para definir el horario hábil de la colección (hora de inicio
+ * y de fin de la jornada). Ese horario es el que usa el componente IoT para decidir si
+ * la ausencia prolongada de una caja cuenta como tiempo de extracción excedido. Es
+ * presentación pura: delega la lectura y la actualización en sus casos de uso.
+ */
 #[Layout('layouts.app', params: ['title' => 'Horario'])]
 final class HorarioSettingsForm extends Component
 {
@@ -28,11 +34,17 @@ final class HorarioSettingsForm extends Component
 
     public ?string $errorMessage = null;
 
+    /** Carga el horario vigente para precargar el formulario. */
     public function mount(ObtenerHorarioHandler $handler): void
     {
         $this->cargarHorario($handler);
     }
 
+    /**
+     * Valida y guarda el nuevo horario hábil. Antes de delegar comprueba que la hora de
+     * inicio sea menor que la de fin (invariante de rango) y, si no, muestra el error sin
+     * llamar al caso de uso. Cualquier fallo de persistencia se traduce a un mensaje legible.
+     */
     public function actualizar(ActualizarHorarioHandler $handler): void
     {
         $this->validate();
@@ -58,6 +70,7 @@ final class HorarioSettingsForm extends Component
         }
     }
 
+    /** Lee el horario vigente del caso de uso y vuelca sus horas en el formulario. */
     private function cargarHorario(ObtenerHorarioHandler $handler): void
     {
         try {

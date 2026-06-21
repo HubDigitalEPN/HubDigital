@@ -23,6 +23,8 @@
         />
     </flux:field>
 
+    <x-inventariogestioncoleccion::seguimiento-fisico.taxonomia-leyenda />
+
     {{-- Tabla (desktop) --}}
     <div class="hidden md:block rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
@@ -45,9 +47,15 @@
                             <td class="px-4 py-3 font-medium text-text-primary">{{ $caja['codigo'] }}</td>
                             <td class="px-4 py-3">
                                 <x-inventariogestioncoleccion::seguimiento-fisico.taxonomia-resumen
+                                    :orden="$caja['orden']"
+                                    :suborden="$caja['suborden']"
+                                    :superfamilia="$caja['superfamilia']"
+                                    :familia="$caja['familia']"
                                     :subfamilia="$caja['subfamilia']"
                                     :genero="$caja['genero']"
                                     :especie="$caja['especie']"
+                                    :subfamilias="$caja['subfamilias']"
+                                    :generos="$caja['generos']"
                                 />
                             </td>
                             <td class="px-4 py-3 font-mono text-xs text-text-secondary">{{ $caja['codigoRfid'] }}</td>
@@ -148,9 +156,15 @@
                     />
                 </div>
                 <x-inventariogestioncoleccion::seguimiento-fisico.taxonomia-resumen
+                    :orden="$caja['orden']"
+                    :suborden="$caja['suborden']"
+                    :superfamilia="$caja['superfamilia']"
+                    :familia="$caja['familia']"
                     :subfamilia="$caja['subfamilia']"
                     :genero="$caja['genero']"
                     :especie="$caja['especie']"
+                    :subfamilias="$caja['subfamilias']"
+                    :generos="$caja['generos']"
                 />
                 <dl class="space-y-1.5 text-sm">
                     <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="RFID">

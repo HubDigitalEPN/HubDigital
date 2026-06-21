@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\CrearCaja;
 
+/**
+ * DTO de salida con los datos de la caja recién creada, incluido su estado físico inicial.
+ */
 final readonly class CrearCajaOutput
 {
     public function __construct(

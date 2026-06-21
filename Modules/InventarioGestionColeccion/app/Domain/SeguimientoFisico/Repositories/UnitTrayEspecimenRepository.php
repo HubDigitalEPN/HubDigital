@@ -26,6 +26,7 @@ interface UnitTrayEspecimenRepository
      */
     public function especimenIdsPorUnitTray(UnitTrayId $unitTrayId): array;
 
+    /** Devuelve el UnitTray al que está asignado un espécimen, o null si no está en ninguno. */
     public function unitTrayDeEspecimen(string $especimenId): ?UnitTrayId;
 
     /**
@@ -37,5 +38,6 @@ interface UnitTrayEspecimenRepository
      */
     public function unitTraysDeEspecimenes(array $especimenIds): array;
 
+    /** Desvincula todos los especímenes de un UnitTray (p. ej. al eliminarlo). */
     public function eliminarPorUnitTray(UnitTrayId $unitTrayId): void;
 }

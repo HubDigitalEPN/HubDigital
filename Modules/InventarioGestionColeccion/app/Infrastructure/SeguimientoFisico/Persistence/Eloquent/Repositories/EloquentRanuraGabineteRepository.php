@@ -11,13 +11,20 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\Gab
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\RanuraId;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Models\RanuraGabineteEloquentModel;
 
+/**
+ * Implementación Eloquent del repositorio de ranuras: traduce entre la entidad RanuraGabinete
+ * y su modelo persistido y resuelve las consultas del barrido (por número en un gabinete y las
+ * ranuras vecinas ocupadas, clave para validar el orden taxonómico entre cajas contiguas).
+ */
 class EloquentRanuraGabineteRepository implements RanuraGabineteRepository
 {
+    /** Genera un nuevo identificador de ranura antes de persistirla. */
     public function nextIdentity(): RanuraId
     {
         return RanuraId::generar();
     }
 
+    /** Inserta o actualiza la ranura según su id, incluyendo la caja que aloja actualmente. */
     public function guardar(RanuraGabinete $ranura): void
     {
         RanuraGabineteEloquentModel::updateOrCreate(
@@ -31,11 +38,13 @@ class EloquentRanuraGabineteRepository implements RanuraGabineteRepository
         );
     }
 
+    /** Elimina la ranura indicada de la persistencia. */
     public function eliminar(RanuraId $id): void
     {
         RanuraGabineteEloquentModel::where('id', (string) $id)->delete();
     }
 
+    /** Recupera una ranura por su identificador. */
     public function buscarPorId(RanuraId $id): ?RanuraGabinete
     {
         $model = RanuraGabineteEloquentModel::find((string) $id);
@@ -43,6 +52,11 @@ class EloquentRanuraGabineteRepository implements RanuraGabineteRepository
         return $model ? $this->toDomain($model) : null;
     }
 
+    /**
+     * Lista las ranuras de un gabinete ordenadas por su número.
+     *
+     * @return RanuraGabinete[]
+     */
     public function buscarPorGabinete(GabineteId $gabineteId): array
     {
         return RanuraGabineteEloquentModel::where('gabinete_id', (string) $gabineteId)
@@ -52,6 +66,7 @@ class EloquentRanuraGabineteRepository implements RanuraGabineteRepository
             ->all();
     }
 
+    /** Busca la ranura con un número concreto dentro de un gabinete (la posición del lector que reporta el ESP32). */
     public function buscarPorNumeroEnGabinete(GabineteId $gabineteId, int $numeroRanura): ?RanuraGabinete
     {
         $model = RanuraGabineteEloquentModel::where('gabinete_id', (string) $gabineteId)
@@ -61,6 +76,12 @@ class EloquentRanuraGabineteRepository implements RanuraGabineteRepository
         return $model ? $this->toDomain($model) : null;
     }
 
+    /**
+     * Devuelve las ranuras ocupadas inmediatamente anterior y siguiente a una posición dada,
+     * que son las cajas contiguas contra las que se evalúa el orden taxonómico de la colección.
+     *
+     * @return RanuraGabinete[]
+     */
     public function buscarVecinasOcupadas(GabineteId $gabineteId, int $numeroRanura): array
     {
         $resultado = [];
@@ -88,6 +109,7 @@ class EloquentRanuraGabineteRepository implements RanuraGabineteRepository
         return $resultado;
     }
 
+    /** Reconstituye la entidad RanuraGabinete a partir de la fila persistida. */
     private function toDomain(RanuraGabineteEloquentModel $model): RanuraGabinete
     {
         return RanuraGabinete::reconstituir(

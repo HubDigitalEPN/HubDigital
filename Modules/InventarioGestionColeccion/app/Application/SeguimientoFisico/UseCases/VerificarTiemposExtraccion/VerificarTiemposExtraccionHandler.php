@@ -19,8 +19,25 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\Res
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TipoAlerta;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TipoNotificacion;
 
+/**
+ * Caso de uso: verificar cuánto tiempo lleva una caja fuera de su ranura y reaccionar según el
+ * resultado: ninguna acción si está dentro del límite, una notificación preventiva si se acerca,
+ * o una alerta de extracción prolongada (marcando la caja) si lo excede. Solo evalúa cajas en
+ * tránsito o ya prolongadas y evita duplicar alertas activas.
+ *
+ * @see VerificarTiemposExtraccionInput
+ * @see VerificarTiemposExtraccionOutput
+ */
 final class VerificarTiemposExtraccionHandler
 {
+    /**
+     * @param  CajaRepository  $cajaRepo  Recupera la caja y persiste su transición a extracción prolongada.
+     * @param  UbicacionCajaRepository  $ubicacionRepo  Aporta la última retirada para medir el tiempo fuera.
+     * @param  AlertaUbicacionRepository  $alertaRepo  Genera y consulta la alerta de extracción prolongada.
+     * @param  NotificacionRepository  $notificacionRepo  Crea la notificación preventiva al acercarse al límite.
+     * @param  TransactionManagerPort  $transactionManager  Envuelve la generación de alertas/notificaciones en transacciones.
+     * @param  EvaluadorTiempoExtraccion  $evaluador  Servicio de dominio que clasifica el tiempo transcurrido.
+     */
     public function __construct(
         private readonly CajaRepository $cajaRepo,
         private readonly UbicacionCajaRepository $ubicacionRepo,
@@ -30,6 +47,13 @@ final class VerificarTiemposExtraccionHandler
         private readonly EvaluadorTiempoExtraccion $evaluador,
     ) {}
 
+    /**
+     * Mide el tiempo que la caja lleva fuera desde su última retirada y, según el veredicto del
+     * evaluador, no hace nada, emite una notificación preventiva o genera la alerta de extracción
+     * prolongada. Devuelve temprano si la caja no está fuera de su posición o no tiene retirada registrada.
+     *
+     * @throws \DomainException si la caja no existe.
+     */
     public function handle(VerificarTiemposExtraccionInput $input): VerificarTiemposExtraccionOutput
     {
         $cajaId = CajaId::desde($input->cajaId);
@@ -63,6 +87,7 @@ final class VerificarTiemposExtraccionHandler
         };
     }
 
+    /** Construye la salida de "ninguna acción": la caja está dentro del límite o no es evaluable. */
     private function sinAccion(CajaId $cajaId, EstadoCaja $estado): VerificarTiemposExtraccionOutput
     {
         return VerificarTiemposExtraccionOutput::fromPrimitives([
@@ -74,6 +99,7 @@ final class VerificarTiemposExtraccionHandler
         ]);
     }
 
+    /** Emite una notificación preventiva (sin alerta) cuando la caja se acerca al límite de tiempo fuera. */
     private function notificarPreventivamente(CajaId $cajaId, EstadoCaja $estado): VerificarTiemposExtraccionOutput
     {
         $this->transactionManager->executeTransactional(function () use ($cajaId): void {
@@ -95,6 +121,11 @@ final class VerificarTiemposExtraccionHandler
         ]);
     }
 
+    /**
+     * Genera la alerta de extracción prolongada cuando el tiempo fuera excede el límite,
+     * marcando además la caja como prolongada si venía en tránsito; no duplica si la caja ya
+     * está prolongada con una alerta activa.
+     */
     private function generarAlertaProlongada(Caja $caja, CajaId $cajaId): VerificarTiemposExtraccionOutput
     {
         // Si la caja ya está prolongada y tiene una alerta activa, no duplicar.

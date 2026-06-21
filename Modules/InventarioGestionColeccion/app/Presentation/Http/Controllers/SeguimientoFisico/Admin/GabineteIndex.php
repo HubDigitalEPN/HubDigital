@@ -21,6 +21,13 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Li
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarRanurasGabinete\ListarRanurasGabineteInput;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
 
+/**
+ * Pantalla del curador para administrar los gabinetes metálicos: crearlos (con su
+ * número de ranuras, hasta 25), editarlos, activar o desactivar ranuras individuales y
+ * desactivar el gabinete completo. Tras crear un gabinete redirige a su detalle para
+ * configurar el token del ESP32. Es presentación pura: delega cada acción en su caso
+ * de uso y traduce los errores a mensajes legibles.
+ */
 #[Layout('layouts.app', params: ['title' => 'Gabinetes'])]
 final class GabineteIndex extends Component
 {
@@ -55,11 +62,13 @@ final class GabineteIndex extends Component
 
     public ?string $errorMessage = null;
 
+    /** Carga la lista inicial de gabinetes. */
     public function mount(ListarGabineteHandler $handler): void
     {
         $this->cargarProtegido(fn () => $this->cargarGabinetes($handler));
     }
 
+    /** Abre el modal de creación limpiando el formulario y dejando una ranura por defecto. */
     public function abrirModal(): void
     {
         $this->reset('codigo', 'nombre', 'successMessage', 'errorMessage');
@@ -68,6 +77,11 @@ final class GabineteIndex extends Component
         $this->showModal = true;
     }
 
+    /**
+     * Crea el gabinete con su código, nombre y número de ranuras (el caso de uso genera
+     * las ranuras) y redirige a su detalle, donde el curador configura el ESP32 con el
+     * id y el token de API. Deja un mensaje flash con esa instrucción.
+     */
     public function crearGabinete(CrearGabineteHandler $crearHandler)
     {
         $this->validateOnly('codigo');
@@ -89,6 +103,10 @@ final class GabineteIndex extends Component
         }
     }
 
+    /**
+     * Precarga el modal de edición con los datos del gabinete y carga sus ranuras (con
+     * su estado activa/inactiva) para poder alternarlas individualmente.
+     */
     public function abrirEditModal(string $id): void
     {
         $gabinete = collect($this->gabinetes)->firstWhere('id', $id);
@@ -116,6 +134,12 @@ final class GabineteIndex extends Component
         $this->showEditModal = true;
     }
 
+    /**
+     * Alterna el estado activa/inactiva de una sola ranura del gabinete en edición. Una
+     * ranura inactiva queda fuera del barrido del ESP32 y deja de generar lecturas; se
+     * usa para slots dañados o sin lector. Persiste el cambio en el caso de uso y solo
+     * refleja el nuevo estado en pantalla si la operación tuvo éxito.
+     */
     public function toggleRanuraActiva(string $ranuraId): void
     {
         $idx = collect($this->editRanuras)->search(fn ($r) => $r['id'] === $ranuraId);
@@ -139,6 +163,11 @@ final class GabineteIndex extends Component
         }
     }
 
+    /**
+     * Guarda los cambios de nombre y número de ranuras del gabinete en edición, recarga
+     * la lista para reflejarlos, cierra el modal y confirma. Cualquier fallo se traduce
+     * a un mensaje legible sin romper la vista.
+     */
     public function actualizarGabinete(
         ActualizarGabineteHandler $actualizarHandler,
         ListarGabineteHandler $listarHandler,
@@ -162,6 +191,10 @@ final class GabineteIndex extends Component
         }
     }
 
+    /**
+     * Desactiva el gabinete completo (lo retira del monitoreo IoT sin borrarlo),
+     * recarga la lista y confirma. Cualquier fallo se traduce a un mensaje legible.
+     */
     public function desactivarGabinete(
         string $id,
         DesactivarGabineteHandler $desactivarHandler,
@@ -177,6 +210,7 @@ final class GabineteIndex extends Component
         }
     }
 
+    /** Ejecuta el caso de uso de listado y mapea cada gabinete a una estructura plana para la vista. */
     private function cargarGabinetes(ListarGabineteHandler $handler): void
     {
         $output = $handler->handle();

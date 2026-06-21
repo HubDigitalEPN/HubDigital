@@ -1,39 +1,38 @@
 # language: es
-Característica: Reubicación digital guiada de unit trays y guía para visitantes
-  Como curador o visitante autorizado de la colección,
-  quiero moverme dentro de la colección siguiendo una guía digital que respete la jerarquía Gabinete → Ranura → Caja → Unit Tray y el orden taxonómico,
-  para mantener el inventario digital alineado con la realidad física y que cualquier persona encuentre un espécimen de forma autónoma.
+# Pendiente de implementar: el Context de esta feature aún no está registrado en behat.php.
+@pendiente
+Característica: Reubicación digital guiada de especímenes por escaneo de QR
+  Como curador de la colección,
+  quiero reasignar especímenes a otro unit tray escaneando el código QR del unit tray de destino y el de cada espécimen,
+  para actualizar el inventario digital desde el laboratorio sin capturar datos a mano y conservando el orden taxonómico.
 
-  Escenario: El curador traslada un unit tray a una caja de destino respetando el orden por especie
-    Dado que existe un unit tray en una caja de origen
-    Y existe una caja de destino con espacio disponible donde el unit tray respetaría el orden alfabético por especie
-    Cuando el curador traslada el unit tray a la caja de destino
-    Entonces el unit tray queda registrado en la caja de destino
-    Y se guarda un registro en el historial de custodia con las cajas de origen y destino
+  Escenario: El curador reasigna un espécimen a otro unit tray escaneando los códigos QR
+    Dado que existe un espécimen asignado a un unit tray de origen
+    Y existe un unit tray de destino donde el espécimen respeta el orden alfabético por especie
+    Cuando el curador escanea el código QR del unit tray de destino y el del espécimen
+    Entonces el espécimen queda asignado al unit tray de destino
+    Y se guarda un registro en el historial de custodia con los unit trays de origen y destino
 
-  Escenario: El curador recibe una advertencia al trasladar un unit tray que rompería el orden por especie en la caja de destino
-    Dado que existe un unit tray en una caja de origen
-    Y en la caja de destino el unit tray quedaría fuera del orden alfabético por especie
-    Cuando el curador traslada el unit tray a la caja de destino
-    Entonces se muestra una advertencia de "Orden Taxonómico Fuera de Secuencia"
+  Escenario: El curador reasigna varios especímenes a un unit tray en una sola operación
+    Dado que existen varios especímenes asignados a unit trays de origen
+    Y existe un unit tray de destino con espacio disponible
+    Cuando el curador escanea el código QR del unit tray de destino y el de cada espécimen
+    Entonces todos los especímenes quedan asignados al unit tray de destino
+    Y se guarda un registro en el historial de custodia por cada espécimen reubicado
+
+  Escenario: El curador recibe una advertencia al reasignar un espécimen que no pertenece al unit tray de destino
+    Dado que existe un espécimen asignado a un unit tray de origen
+    Y en el unit tray de destino el espécimen quedaría fuera del orden alfabético por especie
+    Cuando el curador escanea el código QR del unit tray de destino y el del espécimen
+    Entonces se advierte que el espécimen no pertenece taxonómicamente al unit tray de destino
     Y el curador puede confirmar la reubicación o cancelarla
 
-  Esquema del escenario: El curador consulta el historial de custodia de un unit tray
-    Dado que existe un unit tray con <condicion>
-    Cuando el curador solicita el historial de custodia del unit tray
+  Esquema del escenario: El curador consulta el historial de custodia de un espécimen
+    Dado que existe un espécimen con <condicion>
+    Cuando el curador solicita el historial de custodia del espécimen
     Entonces el historial es retornado <resultado>
 
     Ejemplos:
       | condicion             | resultado                                |
       | reubicaciones previas | con los movimientos en orden cronológico |
       | sin reubicaciones     | vacío                                    |
-
-  Escenario: El visitante escanea el código QR de un gabinete y ve su contenido taxonómico
-    Dado que existe un gabinete con cajas registradas y acceso público habilitado
-    Cuando el visitante escanea el código QR del gabinete con su dispositivo móvil
-    Entonces se muestra el contenido del gabinete organizado por subfamilia, género y especie
-
-  Escenario: El visitante sigue la guía hasta el unit tray de un espécimen buscado
-    Dado que existe un espécimen con su ubicación física habilitada para visitantes
-    Cuando el visitante busca el espécimen por su nombre científico
-    Entonces se muestra la ruta completa: gabinete, caja y unit tray donde se encuentra el espécimen

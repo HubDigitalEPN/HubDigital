@@ -8,12 +8,20 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Ubicaci
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\CajaId;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\UbicacionCajaId;
 
+/**
+ * Contrato de persistencia para las ubicaciones de caja, el historial de estancias
+ * de una caja en una ranura. Una ubicación "activa" (sin fecha de retirada) representa
+ * la presencia vigente; las cerradas conforman el rastro histórico de movimientos.
+ */
 interface UbicacionCajaRepository
 {
+    /** Genera el siguiente identificador único para una ubicación nueva. */
     public function nextIdentity(): UbicacionCajaId;
 
+    /** Inserta o actualiza la ubicación dada. */
     public function guardar(UbicacionCaja $ubicacion): void;
 
+    /** Devuelve la ubicación activa (sin retirada) de una caja, o null si no está ubicada. */
     public function buscarActivaPorCaja(CajaId $cajaId): ?UbicacionCaja;
 
     /**

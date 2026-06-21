@@ -7,12 +7,27 @@ namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCa
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\AlertaUbicacionRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\AlertaUbicacionId;
 
+/**
+ * Caso de uso: resolver una alerta de ubicación registrando el motivo de su resolución.
+ *
+ * @see ResolverAlertaInput
+ * @see ResolverAlertaOutput
+ */
 final class ResolverAlertaHandler
 {
+    /**
+     * @param  AlertaUbicacionRepository  $alertaRepo  Recupera y persiste la alerta.
+     */
     public function __construct(
         private readonly AlertaUbicacionRepository $alertaRepo,
     ) {}
 
+    /**
+     * Recupera la alerta, la marca como resuelta con el motivo indicado y persiste el cambio,
+     * devolviendo su estado resultante.
+     *
+     * @throws \DomainException si la alerta no existe.
+     */
     public function handle(ResolverAlertaInput $input): ResolverAlertaOutput
     {
         $id = AlertaUbicacionId::desde($input->alertaId);

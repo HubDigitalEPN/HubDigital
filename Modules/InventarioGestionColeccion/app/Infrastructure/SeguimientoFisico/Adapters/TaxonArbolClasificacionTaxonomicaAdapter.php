@@ -25,6 +25,13 @@ final class TaxonArbolClasificacionTaxonomicaAdapter implements ClasificacionTax
         private readonly TaxonRepositoryInterface $taxonRepo,
     ) {}
 
+    /**
+     * Construye la clasificación taxonómica de un taxón subiendo por la cadena de padres
+     * hasta la raíz y quedándose con el primer nombre científico de cada rango encontrado.
+     * Está protegido contra ciclos (registro de visitados) y contra árboles muy profundos
+     * (límite de profundidad). Devuelve null si el id es inválido o si no se reúne ningún
+     * rango, evitando propagar clasificaciones vacías al resto del componente.
+     */
     public function resolverParaTaxon(string $taxonId): ?ClasificacionTaxonomica
     {
         try {

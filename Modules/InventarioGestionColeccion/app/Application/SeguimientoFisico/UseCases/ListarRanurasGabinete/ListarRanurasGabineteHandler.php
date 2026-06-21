@@ -8,12 +8,26 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Cr
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\RanuraGabineteRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\GabineteId;
 
+/**
+ * Caso de uso: listar las ranuras de un gabinete con su estado de activación y la caja que las
+ * ocupa, si la hay.
+ *
+ * @see ListarRanurasGabineteInput
+ * @see ListarRanurasGabineteOutput
+ */
 final class ListarRanurasGabineteHandler
 {
+    /**
+     * @param  RanuraGabineteRepository  $ranuraRepo  Recupera las ranuras del gabinete.
+     */
     public function __construct(
         private readonly RanuraGabineteRepository $ranuraRepo,
     ) {}
 
+    /**
+     * Recupera las ranuras del gabinete y las proyecta a items de salida (reutilizando el DTO
+     * de creación de ranura como read model).
+     */
     public function handle(ListarRanurasGabineteInput $input): ListarRanurasGabineteOutput
     {
         $gabineteId = GabineteId::desde($input->gabineteId);

@@ -19,6 +19,11 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\Res
  */
 final class EvaluadorTiempoExtraccion
 {
+    /**
+     * Clasifica el tiempo que una caja lleva fuera de su posición comparando las horas
+     * transcurridas desde su retiro contra el límite y un umbral preventivo (75 % por
+     * defecto): dentro del límite, próxima al límite o excedida.
+     */
     public function evaluar(
         \DateTimeImmutable $retiradaEn,
         \DateTimeImmutable $ahora,

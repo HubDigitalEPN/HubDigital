@@ -15,14 +15,16 @@
         <flux:callout variant="danger" dismissible>{{ $errorMessage }}</flux:callout>
     @endif
 
-    {{-- Contenido dependiente de la caja: se bloquea visualmente mientras cambia --}}
+    {{-- Contenido dependiente de la caja: se difumina mientras cambia --}}
     <div class="relative space-y-6">
-        {{-- Overlay de carga al cambiar de caja: evita ver datos de la caja anterior --}}
+        {{-- Spinner centrado: sin fondo ni backdrop-filter. El difuminado se aplica al
+             contenido mismo (más abajo), no a este overlay, para que siempre cubra toda la
+             tarjeta sin desajuste de altura. --}}
         <div
             wire:loading.flex
             wire:target="cajaSeleccionada"
             wire:key="overlay-cambio-caja"
-            class="absolute inset-0 z-20 hidden items-center justify-center rounded-lg bg-bg-main/70 backdrop-blur-sm"
+            class="pointer-events-none absolute inset-0 z-20 hidden items-center justify-center"
         >
             <div class="flex items-center gap-3 rounded-lg border border-border bg-surface px-4 py-3 shadow-sm">
                 <flux:icon name="arrow-path" class="size-5 animate-spin text-blue-navy" />
@@ -30,23 +32,52 @@
             </div>
         </div>
 
+    {{-- Contenido difuminable: filter blur sobre el elemento real garantiza cobertura
+         completa (a diferencia de un overlay backdrop-filter, que puede no calzar en altura). --}}
+    <div
+        wire:loading.class="pointer-events-none select-none opacity-50 blur-[2px]"
+        wire:target="cajaSeleccionada"
+        class="space-y-6 transition duration-200"
+    >
+
     {{-- Paso 1: Unit trays en una caja disponible --}}
     <div class="rounded-lg border border-border bg-surface shadow-sm p-4 space-y-4">
         <flux:heading size="lg" class="text-blue-navy">1. Unit trays en una caja</flux:heading>
 
-        <flux:field>
-            <flux:label>Caja disponible</flux:label>
-            <flux:select
-                wire:model.live="cajaSeleccionada"
-                wire:loading.attr="disabled"
-                wire:target="cajaSeleccionada"
-                placeholder="Selecciona una caja..."
-            >
-                @foreach($cajas as $caja)
-                    <flux:select.option value="{{ $caja['id'] }}">{{ $caja['label'] }}</flux:select.option>
-                @endforeach
-            </flux:select>
-        </flux:field>
+        <div class="grid gap-4 sm:grid-cols-2">
+            {{-- Filtro por gabinete (y opción «en tránsito» si hay cajas en ese estado): acota el
+                 selector de cajas cuando hay muchísimas. --}}
+            <flux:field>
+                <flux:label>Gabinete</flux:label>
+                <flux:select wire:model.live="filtroGabinete">
+                    <flux:select.option value="">Todos los gabinetes</flux:select.option>
+                    @foreach($gabinetes as $gabinete)
+                        <flux:select.option value="{{ $gabinete['id'] }}">
+                            {{ $gabinete['codigo'] }}{{ $gabinete['nombre'] ? ' — '.$gabinete['nombre'] : '' }}
+                        </flux:select.option>
+                    @endforeach
+                    @if($hayTransito)
+                        <flux:select.option value="transito">En tránsito</flux:select.option>
+                    @endif
+                </flux:select>
+            </flux:field>
+
+            <flux:field>
+                <flux:label>Caja disponible</flux:label>
+                <flux:select
+                    wire:model.live="cajaSeleccionada"
+                    wire:loading.attr="disabled"
+                    wire:target="cajaSeleccionada"
+                    placeholder="Selecciona una caja..."
+                >
+                    @forelse($cajasFiltradas as $caja)
+                        <flux:select.option value="{{ $caja['id'] }}">{{ $caja['label'] }}</flux:select.option>
+                    @empty
+                        <flux:select.option value="" disabled>No hay cajas en este filtro</flux:select.option>
+                    @endforelse
+                </flux:select>
+            </flux:field>
+        </div>
 
         @if($cajaSeleccionada !== '')
             {{-- Contexto de la caja seleccionada + acción de crear --}}
@@ -69,6 +100,8 @@
                 Los unit trays se numeran solos y se ordenan por su taxonomía (subfamilia → género → especie).
             </p>
 
+            <x-inventariogestioncoleccion::seguimiento-fisico.taxonomia-leyenda />
+
             {{-- Tabla (desktop) --}}
             <div class="hidden md:block rounded-lg border border-border overflow-hidden">
                 <div class="overflow-x-auto">
@@ -86,9 +119,15 @@
                                 <tr class="hover:bg-bg-main transition-colors {{ $unitTraySeleccionado === $tray['unitTrayId'] ? 'bg-bg-main' : '' }}">
                                     <td class="px-4 py-3">
                                         <x-inventariogestioncoleccion::seguimiento-fisico.taxonomia-resumen
+                                            :orden="$tray['orden']"
+                                            :suborden="$tray['suborden']"
+                                            :superfamilia="$tray['superfamilia']"
+                                            :familia="$tray['familia']"
                                             :subfamilia="$tray['subfamilia']"
                                             :genero="$tray['genero']"
                                             :especie="$tray['especie']"
+                                            :subfamilias="$tray['subfamilias'] ?? []"
+                                            :generos="$tray['generos'] ?? []"
                                         />
                                     </td>
                                     <td class="px-4 py-3 text-text-secondary">{{ $tray['numero'] }}</td>
@@ -122,9 +161,15 @@
                     <div class="rounded-lg border border-border bg-surface p-4 shadow-sm space-y-3 {{ $unitTraySeleccionado === $tray['unitTrayId'] ? 'ring-1 ring-blue-navy' : '' }}">
                         <div class="flex items-start justify-between gap-2">
                             <x-inventariogestioncoleccion::seguimiento-fisico.taxonomia-resumen
+                                :orden="$tray['orden']"
+                                :suborden="$tray['suborden']"
+                                :superfamilia="$tray['superfamilia']"
+                                :familia="$tray['familia']"
                                 :subfamilia="$tray['subfamilia']"
                                 :genero="$tray['genero']"
                                 :especie="$tray['especie']"
+                                :subfamilias="$tray['subfamilias'] ?? []"
+                                :generos="$tray['generos'] ?? []"
                             />
                             <span class="shrink-0 text-xs text-text-secondary">N.° {{ $tray['numero'] }}</span>
                         </div>
@@ -185,17 +230,43 @@
                 @forelse($especimenes as $especimen)
                     <label
                         wire:key="especimen-{{ $especimen['id'] }}"
-                        class="flex items-center gap-3 px-4 py-3 hover:bg-bg-main cursor-pointer min-h-[44px]"
+                        class="flex items-start gap-3 px-4 py-3 hover:bg-bg-main cursor-pointer min-h-[44px]"
                     >
                         <flux:checkbox
-                            wire:model="especimenesSeleccionados"
+                            wire:model.live="especimenesSeleccionados"
                             value="{{ $especimen['id'] }}"
+                            class="mt-0.5"
                         />
-                        <span class="shrink-0 font-medium text-text-primary">{{ $especimen['codigoCatalogo'] }}</span>
-                        <span class="font-serif italic text-text-secondary">{{ $especimen['taxonNombre'] }}</span>
-                        @if($especimen['unitTrayId'] && $especimen['unitTrayId'] !== $unitTraySeleccionado)
-                            <span class="ml-auto shrink-0 text-xs text-warning">en otro unit tray</span>
-                        @endif
+                        <div class="min-w-0 flex-1 space-y-0.5">
+                            <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                <span class="font-medium text-text-primary">{{ $especimen['codigoCatalogo'] }}</span>
+                                <span class="font-serif italic text-text-secondary">{{ $especimen['taxonNombre'] }}</span>
+                                @if($especimen['unitTrayId'] === $unitTraySeleccionado)
+                                    <flux:badge size="sm" color="green" icon="check" class="ml-auto shrink-0">Ya en este tray</flux:badge>
+                                @elseif($especimen['unitTrayId'])
+                                    <flux:badge size="sm" color="amber" class="ml-auto shrink-0">En otro unit tray</flux:badge>
+                                @endif
+                            </div>
+                            {{-- Resumen de ubicación física: distingue cuál de varios especímenes
+                                 con el mismo nombre científico es cuál, mostrando dónde está. --}}
+                            @php
+                                $u = $especimen['ubicacion'] ?? null;
+                                $partesUbicacion = $u === null ? [] : array_filter([
+                                    $u['gabineteCodigo'] ? 'Gab. '.$u['gabineteCodigo'] : null,
+                                    $u['ranuraNumero'] ? 'Ranura '.$u['ranuraNumero'] : null,
+                                    $u['cajaCodigo'] ?: null,
+                                    $u['trayNumero'] ? 'Tray '.$u['trayNumero'] : null,
+                                ]);
+                            @endphp
+                            @if($partesUbicacion !== [])
+                                <p class="flex items-center gap-1 text-xs text-text-secondary">
+                                    <flux:icon name="map-pin" class="size-3.5 shrink-0 text-blue-navy" />
+                                    <span>{{ implode(' · ', $partesUbicacion) }}</span>
+                                </p>
+                            @else
+                                <p class="text-xs italic text-text-secondary">Sin ubicación física asignada</p>
+                            @endif
+                        </div>
                     </label>
                 @empty
                     <div class="px-4 py-6 text-center text-text-secondary">
@@ -208,12 +279,43 @@
                 @endforelse
             </div>
 
-            <div class="flex justify-end">
-                <flux:button variant="primary" icon="check" wire:click="asignarEspecimenes" class="min-h-[44px]">
-                    Guardar asignación
-                </flux:button>
+            {{-- Confirmación inline, junto a la acción: el callout superior queda fuera de
+                 vista tras desplazar la lista, así que el feedback se repite aquí. --}}
+            @if($successMessage)
+                <div class="flex items-center gap-2 rounded-lg bg-success/10 px-3 py-2 text-sm font-medium text-bio-green">
+                    <flux:icon name="check-circle" class="size-5" />
+                    <span>{{ $successMessage }}</span>
+                </div>
+            @endif
+
+            <div class="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
+                <p class="text-sm text-text-secondary">
+                    <span class="font-medium text-text-primary">{{ count($especimenesSeleccionados) }}</span>
+                    {{ count($especimenesSeleccionados) === 1 ? 'espécimen seleccionado' : 'especímenes seleccionados' }}
+                </p>
+                <div class="flex flex-col gap-2 sm:flex-row">
+                    <flux:button
+                        variant="ghost"
+                        wire:click="cancelarSeleccion"
+                        class="w-full min-h-[44px] sm:w-auto"
+                    >
+                        Cancelar
+                    </flux:button>
+                    <flux:button
+                        variant="primary"
+                        icon="check"
+                        wire:click="asignarEspecimenes"
+                        wire:loading.attr="disabled"
+                        wire:target="asignarEspecimenes"
+                        class="w-full min-h-[44px] sm:w-auto"
+                    >
+                        <span wire:loading.remove wire:target="asignarEspecimenes">Guardar asignación</span>
+                        <span wire:loading wire:target="asignarEspecimenes">Guardando…</span>
+                    </flux:button>
+                </div>
             </div>
         </div>
     @endif
+    </div>{{-- fin contenido difuminable --}}
     </div>
 </div>

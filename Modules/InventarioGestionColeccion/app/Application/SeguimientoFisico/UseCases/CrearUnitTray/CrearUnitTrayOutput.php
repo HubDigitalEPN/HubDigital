@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\CrearUnitTray;
 
+/**
+ * DTO de salida con los datos del unit tray creado y su clasificación dominante resultante.
+ */
 final readonly class CrearUnitTrayOutput
 {
     private function __construct(
