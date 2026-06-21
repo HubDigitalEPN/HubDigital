@@ -78,6 +78,55 @@ final class EloquentPrestamoRepository implements PrestamoRepositoryInterface
     }
 
     /**
+     * Lista préstamos para una bandeja, aplicando filtros y orden.
+     *
+     * @param array<int, string>|null $investigadorIds
+     * @return array<int, array{prestamoId: string, numeroPrestamo: string|null, investigadorId: string|null, estado: string, iniciadoEn: DateTimeImmutable|null, fechaFin: DateTimeImmutable|null}>
+     */
+    public function listarParaBandeja(
+        ?string $investigadorId,
+        ?array $investigadorIds,
+        string $estado,
+        string $busquedaTexto,
+        string $ordenCampo,
+        string $ordenDireccion,
+    ): array {
+        $query = PrestamoEloquentModel::query()->with('acta');
+
+        if ($investigadorId !== null) {
+            $query->where('investigador_id', $investigadorId);
+        }
+
+        if ($busquedaTexto !== '') {
+            $query->whereHas('acta', fn ($q) => $q->where('numero_prestamo', 'ilike', "%{$busquedaTexto}%"));
+        }
+
+        if ($estado !== '') {
+            $query->where('estado', $estado);
+        }
+
+        if ($investigadorIds !== null) {
+            $query->whereIn('investigador_id', $investigadorIds);
+        }
+
+        $campo = $ordenCampo === 'fecha_vencimiento' ? 'fecha_fin' : 'iniciado_en';
+        $prestamos = $query->orderBy($campo, $ordenDireccion)->get();
+
+        return $prestamos->map(fn (PrestamoEloquentModel $prestamo): array => [
+            'prestamoId' => (string) $prestamo->id,
+            'numeroPrestamo' => $prestamo->acta?->numero_prestamo,
+            'investigadorId' => $prestamo->investigador_id,
+            'estado' => (string) $prestamo->estado,
+            'iniciadoEn' => $prestamo->iniciado_en !== null
+                ? DateTimeImmutable::createFromInterface($prestamo->iniciado_en)
+                : null,
+            'fechaFin' => $prestamo->fecha_fin !== null
+                ? DateTimeImmutable::createFromInterface($prestamo->fecha_fin)
+                : null,
+        ])->values()->all();
+    }
+
+    /**
      * Convierte el modelo Eloquent a la entidad de dominio Prestamo.
      */
     private function toDomain(PrestamoEloquentModel $model): Prestamo

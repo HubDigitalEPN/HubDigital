@@ -32,6 +32,26 @@ interface PrestamoRepositoryInterface
      */
     public function listarActivos(): array;
 
+    /**
+     * Lista préstamos para una bandeja, aplicando filtros y orden.
+     *
+     * Devuelve filas planas (lectura) con los datos del préstamo y el número de su
+     * acta. El parámetro $investigadorId restringe a un investigador concreto (su
+     * propia bandeja); $investigadorIds aplica el filtro por nombre ya resuelto del
+     * curador. Ambos son null cuando no aplican.
+     *
+     * @param array<int, string>|null $investigadorIds
+     * @return array<int, array{prestamoId: string, numeroPrestamo: string|null, investigadorId: string|null, estado: string, iniciadoEn: \DateTimeImmutable|null, fechaFin: \DateTimeImmutable|null}>
+     */
+    public function listarParaBandeja(
+        ?string $investigadorId,
+        ?array $investigadorIds,
+        string $estado,
+        string $busquedaTexto,
+        string $ordenCampo,
+        string $ordenDireccion,
+    ): array;
+
     /** Genera un identificador nuevo para un préstamo aún no persistido. */
     public function nextIdentity(): PrestamoId;
 }

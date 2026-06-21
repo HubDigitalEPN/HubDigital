@@ -32,6 +32,8 @@ final readonly class ConsultarDetallePrestamoOutput
         public ?DateTimeImmutable $fechaInicioActa,
         public ?DateTimeImmutable $fechaFinActa,
         public ?string $condicionesGenerales,
+        public ?string $motivoDevolucion,
+        public ?string $nombreValidador,
         // ── Solicitud ─────────────────────────────────────────────────────────
         public ?string $solicitudId,
         public ?string $solicitudEstado,
@@ -41,5 +43,6 @@ final readonly class ConsultarDetallePrestamoOutput
         public ?string $lineaInvestigacion,
         public ?string $propositoPrestamo,
         public ?int $duracionPropuestaMeses,
+        public ?string $comentarioCurador,
     ) {}
 }

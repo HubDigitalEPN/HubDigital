@@ -49,6 +49,9 @@
  4. **Integración Livewire - Backend:**
      >    * Diseña los Componentes Livewire (Full-page o anidados) que consumirán los endpoints o interactuarán con los Casos de Uso del backend.
      >    * Planifica el manejo de los estados (carga, éxito, errores). Para los errores de validación de backend (422), confía en el manejo nativo de `$errors` de Livewire/Blade.
+     >    * **PROHIBIDO (regla heredada de la capa de Presentación, válida también con Livewire):** acceso directo a Base de Datos / Eloquent / `Model::query()` en el componente, **incluido `render()` y `mount()`**. Tampoco inyectes interfaces de `Domain/Repositories/` en el componente. **Toda** lectura o escritura pasa por un **Handler** de Application que recibe un Input DTO y devuelve un Output DTO. Esto aplica a pantallas de **lectura/listado/detalle/formulario**, no solo a las acciones de escritura — "solo estoy trayendo datos para mostrar" **NO** es una excepción.
+     >    * **Pantallas de listado/detalle (bandejas, tablas filtrables):** el filtrado, orden y búsqueda van en un **query Handler** (Handler + Input + Output con DTOs-fila `final readonly`), no en `render()`. El componente solo arma el Input desde sus propiedades públicas y entrega el Output a la vista. Sigue el patrón read-side documentado en `.ai/skills/laravel-clean-arch/references/eloquent-as-infrastructure.md` (sección "Query interface") y la sección §7 de `.ai/guidelines/clean-architecture.md`.
+     >    * **Blade nunca toca Eloquent:** las plantillas solo iteran colecciones de DTOs ya resueltas por el Handler (propiedades camelCase del DTO), jamás ejecutan consultas ni acceden a modelos. Expón fechas como `DateTimeImmutable` en el DTO y compara con `$x < now()` en Blade (no uses `->isPast()` de Carbon).
 
 5. **Estructura de Componentes Blade/Livewire:**
      >    * Desglosa la interfaz en componentes lógicos (Páginas Livewire, Layouts Blade, Componentes anónimos Blade) inspirándote en la estructura del prototipo visual, pero adaptándola a nuestro stack.
@@ -56,6 +59,7 @@
 
 6. **Gestión del Estado:**
      >    * Define las propiedades públicas (`public properties`) de los componentes Livewire que representarán el estado local. Explica cómo se mantendrá la reactividad sin sobrecargar el servidor.
+     >    * **PROHIBIDO almacenar un modelo Eloquent en una propiedad pública** (ej. `public ?SolicitudPrestamoModel $solicitud`). Livewire **serializa** las propiedades públicas entre requests y un modelo Eloquent es frágil (se re-hidrata, pierde relaciones, expone columnas de BD). Guarda solo escalares o **DTOs de lectura** (`final readonly`); si la pantalla necesita el detalle completo, reconstrúyelo en `render()` invocando el query Handler.
 
 7. **Responsive Design Obligatorio:**
      >    * El diseño de esta pantalla y de **todas** las pantallas del módulo correspondiente debe planificarse como responsive desde el inicio.

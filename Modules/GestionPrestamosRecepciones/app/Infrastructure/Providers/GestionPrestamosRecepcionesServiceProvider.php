@@ -16,6 +16,7 @@ use Modules\GestionPrestamosRecepciones\Application\Ports\HistorialPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\InvestigadorEmailPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionCuratoriaPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\UsuarioNombrePort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ValidacionFirmaElectronicaPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\PdfGeneratorPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ValidacionTaxonomicaPort;
@@ -42,6 +43,7 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Console\Commands\EvaluarP
 use Modules\GestionPrestamosRecepciones\Infrastructure\Console\Commands\LimpiarBorradoresAbandonadosCommand;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Gateways\DomPdfGeneratorAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Gateways\LaravelUserInvestigadorEmailAdapter;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Gateways\LaravelUsuarioNombreAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentActaPrestamoRepository;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentConfiguracionGlobalRecordatoriosRepository;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentPrestamoRepository;
@@ -95,6 +97,7 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
         RecordatorioDevolucionRepositoryInterface::class => EloquentRecordatorioDevolucionRepository::class,
         ConfiguracionGlobalRecordatoriosRepositoryInterface::class => EloquentConfiguracionGlobalRecordatoriosRepository::class,
         InvestigadorEmailPort::class => LaravelUserInvestigadorEmailAdapter::class,
+        UsuarioNombrePort::class => LaravelUsuarioNombreAdapter::class,
         CatalogoCuraduriaPort::class => InventarioGestionColeccionCatalogoCuraduriaAdapter::class,
         ValidacionTaxonomicaPort::class => GbifValidacionTaxonomicaAdapter::class,
         PdfGeneratorPort::class => DomPdfGeneratorAdapter::class,

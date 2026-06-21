@@ -59,7 +59,7 @@
 
     @php $filtroActivo = $busqueda !== '' || $estado !== '' || $busquedaInvestigador !== ''; @endphp
 
-    @if($actas->isEmpty() && !$filtroActivo)
+    @if(count($actas) === 0 && !$filtroActivo)
         <div class="flex flex-col items-center justify-center rounded-lg border border-border bg-surface py-16 text-center px-8 gap-4">
             <div class="flex h-16 w-16 items-center justify-center rounded-full bg-bg-main border border-border">
                 <flux:icon name="clipboard-document" class="size-8 text-text-secondary/50" />
@@ -70,7 +70,7 @@
             </div>
         </div>
 
-    @elseif($actas->isEmpty())
+    @elseif(count($actas) === 0)
         <div class="flex flex-col items-center justify-center rounded-lg border border-border bg-surface py-16 text-center px-8 gap-4">
             <div class="flex h-16 w-16 items-center justify-center rounded-full bg-bg-main border border-border">
                 <flux:icon name="magnifying-glass" class="size-8 text-text-secondary/50" />
@@ -100,44 +100,44 @@
                     @foreach($actas as $acta)
                         <tr class="hover:bg-bg-main transition-colors">
                             <td class="px-4 py-3 font-mono text-xs text-text-secondary whitespace-nowrap">
-                                {{ $acta->numero_prestamo }}
+                                {{ $acta->numeroPrestamo }}
                             </td>
                             <td class="px-4 py-3 font-mono text-xs text-text-secondary whitespace-nowrap">
-                                {{ $acta->solicitud?->numero_solicitud ?? '—' }}
+                                {{ $acta->numeroSolicitud ?? '—' }}
                             </td>
                             <td class="px-4 py-3 text-sm text-text-secondary">
-                                {{ $investigadores->get($acta->solicitud?->investigador_id)?->name ?? '—' }}
+                                {{ $acta->solicitanteNombre ?? '—' }}
                             </td>
                             <td class="px-4 py-3">
                                 <x-gestionprestamosrecepciones::acta-status-badge :estado="$acta->estado" />
                             </td>
                             <td class="px-4 py-3 text-xs text-text-secondary whitespace-nowrap">
-                                {{ $acta->created_at->format('d/m/Y') }}
+                                {{ $acta->fecha->format('d/m/Y') }}
                             </td>
                             <td class="px-4 py-3">
                                 <div class="flex gap-2">
                                     @if($acta->estado === 'pendiente_envio')
                                         <flux:button size="sm" variant="ghost" icon="eye"
-                                            href="{{ route('prestamos.acta.ver', $acta->id) }}" target="_blank">
+                                            href="{{ route('prestamos.acta.ver', $acta->actaId) }}" target="_blank">
                                             Vista previa
                                         </flux:button>
                                         <flux:button size="sm" variant="primary" icon="paper-airplane"
-                                            wire:click="prepararEnvioActa('{{ $acta->id }}')">
+                                            wire:click="prepararEnvioActa('{{ $acta->actaId }}')">
                                             Enviar
                                         </flux:button>
                                     @elseif($acta->estado === 'pendiente_firma')
                                         <flux:button size="sm" variant="ghost" icon="document-text"
-                                            href="{{ route('prestamos.acta.ver', $acta->id) }}" target="_blank">
+                                            href="{{ route('prestamos.acta.ver', $acta->actaId) }}" target="_blank">
                                             Ver acta
                                         </flux:button>
                                     @elseif($acta->estado === 'pendiente_validacion')
                                         <flux:button size="sm" variant="primary" icon="magnifying-glass"
-                                            wire:navigate href="{{ route('prestamos.curador.acta.validar', $acta->id) }}">
+                                            wire:navigate href="{{ route('prestamos.curador.acta.validar', $acta->actaId) }}">
                                             Validar
                                         </flux:button>
                                     @else
                                         <flux:button size="sm" variant="ghost" icon="document-text"
-                                            wire:navigate href="{{ route('prestamos.curador.acta.validar', $acta->id) }}">
+                                            wire:navigate href="{{ route('prestamos.curador.acta.validar', $acta->actaId) }}">
                                             Ver documentos
                                         </flux:button>
                                     @endif

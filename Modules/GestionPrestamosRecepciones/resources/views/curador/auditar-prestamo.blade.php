@@ -3,7 +3,7 @@
     <flux:breadcrumbs>
         <flux:breadcrumbs.item wire:navigate href="{{ route('prestamos.curador.panel') }}">Panel</flux:breadcrumbs.item>
         <flux:breadcrumbs.item wire:navigate href="{{ route('prestamos.curador.prestamos') }}">Préstamos</flux:breadcrumbs.item>
-        <flux:breadcrumbs.item>Auditoría {{ $acta?->numero_prestamo ?? $prestamoId }}</flux:breadcrumbs.item>
+        <flux:breadcrumbs.item>Auditoría {{ $detalle->numeroPrestamo ?? $prestamoId }}</flux:breadcrumbs.item>
     </flux:breadcrumbs>
 
     <div class="grid gap-6 lg:grid-cols-3">
@@ -24,48 +24,48 @@
                 }
             @endphp
             <x-gestionprestamosrecepciones::cierre-observacion-banner
-                :estado="$prestamo->estado"
+                :estado="$detalle->estadoPrestamo->value"
                 :verificacion="$verificacionCierre"
                 :observacion-legacy="$observacionCierreLegacy" />
 
             {{-- Solicitud --}}
-            @if($solicitud)
+            @if($detalle->solicitudId)
                 <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
                     <div class="px-5 py-4 border-b border-border flex items-center gap-3">
                         <div class="flex h-7 w-7 items-center justify-center rounded-full bg-blue-navy text-white shrink-0">
                             <flux:icon name="document-text" class="size-3.5" />
                         </div>
                         <flux:heading size="base" level="2" class="font-display flex-1">Solicitud</flux:heading>
-                        <x-gestionprestamosrecepciones::solicitud-status-badge :estado="$solicitud->estado" />
+                        <x-gestionprestamosrecepciones::solicitud-status-badge :estado="$detalle->solicitudEstado" />
                     </div>
                     <div class="p-5">
                         <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                             <div>
                                 <dt class="text-xs text-text-secondary uppercase tracking-wide">N.º solicitud</dt>
-                                <dd class="font-mono font-medium text-text-primary mt-1">{{ $solicitud->numero_solicitud }}</dd>
+                                <dd class="font-mono font-medium text-text-primary mt-1">{{ $detalle->numeroSolicitud }}</dd>
                             </div>
                             <div>
                                 <dt class="text-xs text-text-secondary uppercase tracking-wide">Institución</dt>
-                                <dd class="font-medium text-text-primary mt-1">{{ $solicitud->institucion_adscripcion }}</dd>
+                                <dd class="font-medium text-text-primary mt-1">{{ $detalle->institucionAdscripcion }}</dd>
                             </div>
                             <div class="sm:col-span-2">
                                 <dt class="text-xs text-text-secondary uppercase tracking-wide">Título del estudio</dt>
-                                <dd class="font-medium text-text-primary mt-1">{{ $solicitud->titulo_estudio }}</dd>
+                                <dd class="font-medium text-text-primary mt-1">{{ $detalle->tituloEstudio }}</dd>
                             </div>
                             <div>
                                 <dt class="text-xs text-text-secondary uppercase tracking-wide">Duración propuesta</dt>
-                                <dd class="font-medium text-text-primary mt-1">{{ $solicitud->duracion_propuesta_meses }} meses</dd>
+                                <dd class="font-medium text-text-primary mt-1">{{ $detalle->duracionPropuestaMeses }} meses</dd>
                             </div>
-                            @if($solicitud->comentario_curador)
+                            @if($detalle->comentarioCurador)
                                 <div class="sm:col-span-2">
                                     <dt class="text-xs text-text-secondary uppercase tracking-wide">Comentario curador</dt>
-                                    <dd class="text-text-primary mt-1">{{ $solicitud->comentario_curador }}</dd>
+                                    <dd class="text-text-primary mt-1">{{ $detalle->comentarioCurador }}</dd>
                                 </div>
                             @endif
                         </dl>
                         <div class="mt-4">
                             <flux:button variant="ghost" icon="document-magnifying-glass" size="sm" wire:navigate
-                                href="{{ route('prestamos.curador.solicitud.revisar', $solicitud->id) }}">
+                                href="{{ route('prestamos.curador.solicitud.revisar', $detalle->solicitudId) }}">
                                 Ver solicitud
                             </flux:button>
                         </div>
@@ -74,49 +74,49 @@
             @endif
 
             {{-- Acta --}}
-            @if($acta)
+            @if($detalle->actaId)
                 <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
                     <div class="px-5 py-4 border-b border-border flex items-center gap-3">
                         <div class="flex h-7 w-7 items-center justify-center rounded-full bg-blue-navy text-white shrink-0">
                             <flux:icon name="clipboard-document" class="size-3.5" />
                         </div>
                         <flux:heading size="base" level="2" class="font-display flex-1">Acta de préstamo</flux:heading>
-                        <x-gestionprestamosrecepciones::acta-status-badge :estado="$acta->estado" />
+                        <x-gestionprestamosrecepciones::acta-status-badge :estado="$detalle->actaEstado" />
                     </div>
                     <div class="p-5">
                         <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                             <div>
                                 <dt class="text-xs text-text-secondary uppercase tracking-wide">N.º préstamo</dt>
-                                <dd class="font-mono font-medium text-text-primary mt-1">{{ $acta->numero_prestamo }}</dd>
+                                <dd class="font-mono font-medium text-text-primary mt-1">{{ $detalle->numeroPrestamo }}</dd>
                             </div>
                             <div>
                                 <dt class="text-xs text-text-secondary uppercase tracking-wide">Tipo</dt>
-                                <dd class="font-medium text-text-primary mt-1 capitalize">{{ str_replace('_', ' ', $acta->tipo_prestamo) }}</dd>
+                                <dd class="font-medium text-text-primary mt-1 capitalize">{{ str_replace('_', ' ', $detalle->tipoPrestamo) }}</dd>
                             </div>
                             <div>
                                 <dt class="text-xs text-text-secondary uppercase tracking-wide">Fecha inicio</dt>
-                                <dd class="font-medium text-text-primary mt-1">{{ $acta->fecha_inicio?->format('d/m/Y') ?? '—' }}</dd>
+                                <dd class="font-medium text-text-primary mt-1">{{ $detalle->fechaInicioActa?->format('d/m/Y') ?? '—' }}</dd>
                             </div>
                             <div>
                                 <dt class="text-xs text-text-secondary uppercase tracking-wide">Fecha fin</dt>
-                                <dd class="font-medium text-text-primary mt-1">{{ $acta->fecha_fin?->format('d/m/Y') ?? '—' }}</dd>
+                                <dd class="font-medium text-text-primary mt-1">{{ $detalle->fechaFinActa?->format('d/m/Y') ?? '—' }}</dd>
                             </div>
-                            @if($acta->motivo_devolucion)
+                            @if($detalle->motivoDevolucion)
                                 <div class="sm:col-span-2">
                                     <dt class="text-xs text-text-secondary uppercase tracking-wide">Motivo de devolución</dt>
-                                    <dd class="text-text-primary mt-1">{{ $acta->motivo_devolucion }}</dd>
+                                    <dd class="text-text-primary mt-1">{{ $detalle->motivoDevolucion }}</dd>
                                 </div>
                             @endif
-                            @if($nombreValidador)
+                            @if($detalle->nombreValidador)
                                 <div>
                                     <dt class="text-xs text-text-secondary uppercase tracking-wide">Validada por</dt>
-                                    <dd class="font-medium text-text-primary mt-1">{{ $nombreValidador }}</dd>
+                                    <dd class="font-medium text-text-primary mt-1">{{ $detalle->nombreValidador }}</dd>
                                 </div>
                             @endif
                         </dl>
                         <div class="mt-4">
                             <flux:button variant="ghost" icon="document-text" size="sm" wire:navigate
-                                href="{{ route('prestamos.curador.acta.validar', $acta->id) }}">
+                                href="{{ route('prestamos.curador.acta.validar', $detalle->actaId) }}">
                                 Ver acta y documentos
                             </flux:button>
                         </div>
@@ -131,17 +131,17 @@
                         <flux:icon name="archive-box" class="size-3.5" />
                     </div>
                     <flux:heading size="base" level="2" class="font-display flex-1">Préstamo</flux:heading>
-                    <x-gestionprestamosrecepciones::prestamo-status-badge :estado="$prestamo->estado" />
+                    <x-gestionprestamosrecepciones::prestamo-status-badge :estado="$detalle->estadoPrestamo->value" />
                 </div>
                 <div class="p-5">
                     <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                         <div>
                             <dt class="text-xs text-text-secondary uppercase tracking-wide">Inicio</dt>
-                            <dd class="font-medium text-text-primary mt-1">{{ $prestamo->iniciado_en?->format('d/m/Y') ?? '—' }}</dd>
+                            <dd class="font-medium text-text-primary mt-1">{{ $detalle->iniciadoEn?->format('d/m/Y') ?? '—' }}</dd>
                         </div>
                         <div>
                             <dt class="text-xs text-text-secondary uppercase tracking-wide">Vencimiento</dt>
-                            <dd class="font-medium text-text-primary mt-1">{{ $prestamo->fecha_fin?->format('d/m/Y') ?? '—' }}</dd>
+                            <dd class="font-medium text-text-primary mt-1">{{ $detalle->fechaFin?->format('d/m/Y') ?? '—' }}</dd>
                         </div>
                     </dl>
 
@@ -169,7 +169,7 @@
                                     <p class="text-sm text-text-primary mt-0.5">{{ $obs->descripcion }}</p>
                                 </div>
                             @endforeach
-                            @if($prestamo->estado === 'pendiente_aprobacion_verificacion')
+                            @if($detalle->estadoPrestamo->value === 'pendiente_aprobacion_verificacion')
                                 <div class="pt-2">
                                     <flux:button variant="primary" wire:navigate
                                         href="{{ route('prestamos.curador.prestamo.aprobar-verificacion', $prestamoId) }}" size="sm">
@@ -183,7 +183,7 @@
             </div>
 
             {{-- Devolución registrada — pendiente de cierre --}}
-            @if($prestamo->estado === 'en_revision')
+            @if($detalle->estadoPrestamo->value === 'en_revision')
                 <div class="rounded-lg border border-science-blue/30 bg-science-blue/5 overflow-hidden">
                     <div class="px-5 py-4 border-b border-science-blue/20 flex items-center gap-3">
                         <div class="flex h-7 w-7 items-center justify-center rounded-full bg-science-blue/15 shrink-0">
@@ -205,7 +205,7 @@
             @endif
 
             {{-- Trámite de exportación --}}
-            @if($prestamo->estado === 'pendiente_documento_ministerio')
+            @if($detalle->estadoPrestamo->value === 'pendiente_documento_ministerio')
                 <div class="rounded-lg border border-warning/40 bg-warning/5 overflow-hidden">
                     <div class="px-5 py-4 border-b border-warning/20 flex items-center gap-3">
                         <div class="flex h-7 w-7 items-center justify-center rounded-full bg-warning/20 shrink-0">
@@ -372,13 +372,13 @@
             <div class="flex items-center gap-6 rounded-lg bg-bg-main border border-border px-4 py-3">
                 <div>
                     <p class="text-xs text-text-secondary">Fecha de inicio</p>
-                    <p class="text-sm font-medium text-text-primary">{{ $prestamo->iniciado_en?->format('d/m/Y') ?? '—' }}</p>
+                    <p class="text-sm font-medium text-text-primary">{{ $detalle->iniciadoEn?->format('d/m/Y') ?? '—' }}</p>
                 </div>
                 <flux:separator vertical class="h-8" />
                 <div>
                     <p class="text-xs text-text-secondary">Fecha de vencimiento</p>
-                    <p class="text-sm font-medium {{ $prestamo->fecha_fin?->isPast() ? 'text-error' : 'text-text-primary' }}">
-                        {{ $prestamo->fecha_fin?->format('d/m/Y') ?? '—' }}
+                    <p class="text-sm font-medium {{ ($detalle->fechaFin && $detalle->fechaFin < now()) ? 'text-error' : 'text-text-primary' }}">
+                        {{ $detalle->fechaFin?->format('d/m/Y') ?? '—' }}
                     </p>
                 </div>
             </div>

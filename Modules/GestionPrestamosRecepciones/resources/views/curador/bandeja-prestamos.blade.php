@@ -58,7 +58,7 @@
 
     @php $filtroActivo = $busqueda !== '' || $estado !== '' || $busquedaInvestigador !== ''; @endphp
 
-    @if($prestamos->isEmpty() && !$filtroActivo)
+    @if(count($prestamos) === 0 && !$filtroActivo)
         <div class="flex flex-col items-center justify-center rounded-lg border border-border bg-surface py-16 text-center px-8 gap-4">
             <div class="flex h-16 w-16 items-center justify-center rounded-full bg-bg-main border border-border">
                 <flux:icon name="archive-box" class="size-8 text-text-secondary/50" />
@@ -69,7 +69,7 @@
             </div>
         </div>
 
-    @elseif($prestamos->isEmpty())
+    @elseif(count($prestamos) === 0)
         <div class="flex flex-col items-center justify-center rounded-lg border border-border bg-surface py-16 text-center px-8 gap-4">
             <div class="flex h-16 w-16 items-center justify-center rounded-full bg-bg-main border border-border">
                 <flux:icon name="magnifying-glass" class="size-8 text-text-secondary/50" />
@@ -99,40 +99,40 @@
                     @foreach($prestamos as $prestamo)
                         <tr class="hover:bg-bg-main transition-colors">
                             <td class="px-4 py-3 font-mono text-xs text-text-secondary whitespace-nowrap">
-                                {{ $prestamo->acta?->numero_prestamo ?? '—' }}
+                                {{ $prestamo->numeroPrestamo ?? '—' }}
                             </td>
                             <td class="px-4 py-3 text-sm text-text-secondary">
-                                {{ $investigadores->get($prestamo->investigador_id)?->name ?? $prestamo->investigador_id }}
+                                {{ $prestamo->solicitanteNombre ?? $prestamo->investigadorId }}
                             </td>
                             <td class="px-4 py-3">
                                 <x-gestionprestamosrecepciones::prestamo-status-badge :estado="$prestamo->estado" />
                             </td>
                             <td class="px-4 py-3 text-xs text-text-secondary whitespace-nowrap">
-                                {{ $prestamo->iniciado_en?->format('d/m/Y') ?? '—' }}
+                                {{ $prestamo->iniciadoEn?->format('d/m/Y') ?? '—' }}
                             </td>
                             <td class="px-4 py-3 text-xs text-text-secondary whitespace-nowrap">
-                                {{ $prestamo->fecha_fin?->format('d/m/Y') ?? '—' }}
+                                {{ $prestamo->fechaFin?->format('d/m/Y') ?? '—' }}
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap">
                                 <div class="flex items-center gap-2">
                                     @if($prestamo->estado === 'pendiente_aprobacion_verificacion')
                                         <flux:button size="sm" variant="primary" icon="clipboard-document-check"
-                                            wire:navigate href="{{ route('prestamos.curador.prestamo.aprobar-verificacion', $prestamo->id) }}">
+                                            wire:navigate href="{{ route('prestamos.curador.prestamo.aprobar-verificacion', $prestamo->prestamoId) }}">
                                             Aprobar verificación
                                         </flux:button>
                                     @elseif($prestamo->estado === 'pendiente_documento_ministerio')
                                         <flux:button size="sm" variant="primary" icon="document-arrow-up"
-                                            wire:navigate href="{{ route('prestamos.curador.prestamo.auditar', $prestamo->id) }}">
+                                            wire:navigate href="{{ route('prestamos.curador.prestamo.auditar', $prestamo->prestamoId) }}">
                                             Subir documento
                                         </flux:button>
                                     @elseif($prestamo->estado === 'en_revision')
                                         <flux:button size="sm" variant="primary" icon="archive-box-arrow-down"
-                                            wire:navigate href="{{ route('prestamos.curador.prestamo.cerrar', $prestamo->id) }}">
+                                            wire:navigate href="{{ route('prestamos.curador.prestamo.cerrar', $prestamo->prestamoId) }}">
                                             Cerrar préstamo
                                         </flux:button>
                                     @endif
                                     <flux:button size="sm" variant="ghost" icon="magnifying-glass"
-                                        wire:navigate href="{{ route('prestamos.curador.prestamo.auditar', $prestamo->id) }}">
+                                        wire:navigate href="{{ route('prestamos.curador.prestamo.auditar', $prestamo->prestamoId) }}">
                                         Auditar
                                     </flux:button>
                                 </div>

@@ -7,9 +7,10 @@ namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Inve
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDetalleSolicitud\ConsultarDetalleSolicitudHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDetalleSolicitud\ConsultarDetalleSolicitudInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudInput;
-use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\SolicitudPrestamoModel;
 
 /**
  * Componente Livewire para el detalle de una solicitud.
@@ -19,24 +20,24 @@ final class DetalleSolicitud extends Component
 {
     public string $id;
 
-    public ?SolicitudPrestamoModel $solicitud = null;
-
     /**
      * Inicializa el componente.
      *
      * @param string $id
+     * @param ConsultarDetalleSolicitudHandler $handler
      * @return void
      */
-    public function mount(string $id): void
+    public function mount(string $id, ConsultarDetalleSolicitudHandler $handler): void
     {
         $this->id = $id;
-        $this->solicitud = SolicitudPrestamoModel::query()->with('items')->find($id);
 
-        if (! $this->solicitud) {
+        $solicitud = $handler->handle(new ConsultarDetalleSolicitudInput(solicitudId: $id));
+
+        if ($solicitud === null) {
             return;
         }
 
-        if ($this->solicitud->investigador_id !== (string) auth()->id()) {
+        if ($solicitud->investigadorId !== (string) auth()->id()) {
             abort(403);
         }
     }
@@ -44,16 +45,21 @@ final class DetalleSolicitud extends Component
     /**
      * Renderiza el componente.
      *
-     * @param \Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudHandler $historialHandler
+     * @param ConsultarDetalleSolicitudHandler $detalleHandler
+     * @param ConsultarHistorialSolicitudHandler $historialHandler
      * @return \Illuminate\View\View
      */
-    public function render(ConsultarHistorialSolicitudHandler $historialHandler): View
-    {
+    public function render(
+        ConsultarDetalleSolicitudHandler $detalleHandler,
+        ConsultarHistorialSolicitudHandler $historialHandler,
+    ): View {
+        $solicitud = $detalleHandler->handle(new ConsultarDetalleSolicitudInput(solicitudId: $this->id));
+
         $historial = $historialHandler->handle(new ConsultarHistorialSolicitudInput(
             solicitudId: $this->id,
             usuarioId: (string) auth()->id(),
         ));
 
-        return view('gestionprestamosrecepciones::investigador.detalle-solicitud', compact('historial'));
+        return view('gestionprestamosrecepciones::investigador.detalle-solicitud', compact('solicitud', 'historial'));
     }
 }

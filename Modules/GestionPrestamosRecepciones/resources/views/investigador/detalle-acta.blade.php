@@ -4,7 +4,7 @@
         <flux:breadcrumbs.item wire:navigate href="{{ route('prestamos.investigador.mis-actas') }}">
             Mis actas
         </flux:breadcrumbs.item>
-        <flux:breadcrumbs.item>{{ $acta?->numero_prestamo ?? 'Detalle' }}</flux:breadcrumbs.item>
+        <flux:breadcrumbs.item>{{ $acta->numeroPrestamo ?? 'Detalle' }}</flux:breadcrumbs.item>
     </flux:breadcrumbs>
 
     @if($successMessage)
@@ -15,7 +15,7 @@
     <div class="flex flex-wrap items-start justify-between gap-4">
         <div>
             <flux:heading size="xl" level="1" class="font-display font-mono">
-                {{ $acta->numero_prestamo }}
+                {{ $acta->numeroPrestamo }}
             </flux:heading>
             <p class="text-xs text-text-secondary mt-1">Acta de préstamo</p>
         </div>
@@ -39,20 +39,20 @@
                     <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                         <div>
                             <dt class="text-xs text-text-secondary uppercase tracking-wide">Tipo de préstamo</dt>
-                            <dd class="font-medium text-text-primary mt-1 capitalize">{{ str_replace('_', ' ', $acta->tipo_prestamo) }}</dd>
+                            <dd class="font-medium text-text-primary mt-1 capitalize">{{ str_replace('_', ' ', $acta->tipoPrestamo) }}</dd>
                         </div>
                         <div>
                             <dt class="text-xs text-text-secondary uppercase tracking-wide">Fecha de inicio</dt>
-                            <dd class="font-medium text-text-primary mt-1">{{ $acta->fecha_inicio?->format('d/m/Y') ?? '—' }}</dd>
+                            <dd class="font-medium text-text-primary mt-1">{{ $acta->fechaInicio?->format('d/m/Y') ?? '—' }}</dd>
                         </div>
                         <div>
                             <dt class="text-xs text-text-secondary uppercase tracking-wide">Fecha de vencimiento</dt>
-                            <dd class="font-medium text-text-primary mt-1">{{ $acta->fecha_fin?->format('d/m/Y') ?? '—' }}</dd>
+                            <dd class="font-medium text-text-primary mt-1">{{ $acta->fechaFin?->format('d/m/Y') ?? '—' }}</dd>
                         </div>
-                        @if($acta->condiciones_generales)
+                        @if($acta->condicionesGenerales)
                             <div class="sm:col-span-2">
                                 <dt class="text-xs text-text-secondary uppercase tracking-wide">Condiciones generales</dt>
-                                <dd class="text-text-primary mt-1 leading-relaxed">{{ $acta->condiciones_generales }}</dd>
+                                <dd class="text-text-primary mt-1 leading-relaxed">{{ $acta->condicionesGenerales }}</dd>
                             </div>
                         @endif
                     </dl>
@@ -60,12 +60,12 @@
             </div>
 
             {{-- Callout contextual según estado --}}
-            @if($acta->estado === 'pendiente_firma' && $acta->motivo_devolucion)
+            @if($acta->estado === 'pendiente_firma' && $acta->motivoDevolucion)
                 <flux:callout variant="warning" icon="arrow-uturn-left">
                     <flux:heading size="sm">El acta fue devuelta para refirmar</flux:heading>
-                    <flux:text class="mt-1 text-sm">{{ $acta->motivo_devolucion }}</flux:text>
+                    <flux:text class="mt-1 text-sm">{{ $acta->motivoDevolucion }}</flux:text>
                 </flux:callout>
-            @elseif($acta->estado === 'pendiente_firma' && $acta->pdf_firmado_ruta && !$successMessage)
+            @elseif($acta->estado === 'pendiente_firma' && $acta->pdfFirmadoRuta && !$successMessage)
                 <flux:callout variant="success" icon="check-circle">
                     <flux:heading size="sm">Firma digital registrada</flux:heading>
                     <flux:text class="mt-1 text-sm">
@@ -82,11 +82,11 @@
                     Tus documentos están en revisión por el curador.
                 </flux:callout>
             @elseif($acta->estado === 'validada')
-                @if($prestamo?->estado === 'en_transito')
+                @if($acta->prestamoEstado === 'en_transito')
                     <flux:callout variant="success" icon="check-circle">
                         El acta ha sido validada. Los especímenes serán despachados a tu dirección. Cuando los recibas, deberás confirmar la recepción desde el detalle del préstamo.
                     </flux:callout>
-                @elseif($prestamo?->estado === 'pendiente_aprobacion_verificacion')
+                @elseif($acta->prestamoEstado === 'pendiente_aprobacion_verificacion')
                     <flux:callout variant="info" icon="clock">
                         Has reportado la recepción de los especímenes. El curador está revisando tu informe.
                     </flux:callout>
@@ -104,7 +104,7 @@
                     </div>
                     <div class="p-5">
                         <div class="flex flex-wrap gap-2">
-                            @if($acta->pdf_firmado_ruta)
+                            @if($acta->pdfFirmadoRuta)
                                 <flux:button variant="primary" icon="arrow-up-tray" size="sm"
                                     wire:click="$set('showIdentidadModal', true)">
                                     Subir documento de identidad
@@ -121,19 +121,19 @@
                                 </flux:button>
                             @endif
 
-                            @if($prestamo)
+                            @if($acta->prestamoId)
                                 <flux:button variant="ghost" icon="archive-box" size="sm" wire:navigate
-                                    href="{{ route('prestamos.investigador.prestamo.detalle', $prestamo->id) }}">
+                                    href="{{ route('prestamos.investigador.prestamo.detalle', $acta->prestamoId) }}">
                                     Ver préstamo
                                 </flux:button>
                             @endif
                         </div>
                     </div>
                 </div>
-            @elseif($prestamo)
+            @elseif($acta->prestamoId)
                 <div class="flex">
                     <flux:button variant="ghost" icon="archive-box" size="sm" wire:navigate
-                        href="{{ route('prestamos.investigador.prestamo.detalle', $prestamo->id) }}">
+                        href="{{ route('prestamos.investigador.prestamo.detalle', $acta->prestamoId) }}">
                         Ver préstamo
                     </flux:button>
                 </div>
@@ -181,7 +181,7 @@
         <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
             <div class="flex items-center justify-between bg-bg-main px-4 py-2 border-b border-border">
                 <flux:text class="text-sm font-medium text-text-primary">
-                    {{ $acta->pdf_firmado_ruta ? 'Acta firmada digitalmente' : 'Acta de préstamo' }}
+                    {{ $acta->pdfFirmadoRuta ? 'Acta firmada digitalmente' : 'Acta de préstamo' }}
                 </flux:text>
                 <div class="flex items-center gap-1">
                     <a href="{{ route('prestamos.acta.embed', $acta->id) }}" target="_blank"
@@ -189,9 +189,9 @@
                         <flux:icon name="arrow-top-right-on-square" class="size-3.5" />
                         Abrir
                     </a>
-                    @if($acta->pdf_ruta && !$acta->pdf_firmado_ruta)
+                    @if($acta->pdfRuta && !$acta->pdfFirmadoRuta)
                         <a href="{{ route('prestamos.acta.pdf-original', $acta->id) }}"
-                            download="acta-{{ $acta->numero_prestamo }}.pdf"
+                            download="acta-{{ $acta->numeroPrestamo }}.pdf"
                             class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded transition-colors">
                             <flux:icon name="arrow-down-tray" class="size-3.5" />
                             Descargar
@@ -204,10 +204,10 @@
                 title="Acta de préstamo"></iframe>
         </div>
 
-    @elseif(in_array($acta->estado, ['pendiente_validacion', 'validada']) && $acta->pdf_firmado_ruta)
+    @elseif(in_array($acta->estado, ['pendiente_validacion', 'validada']) && $acta->pdfFirmadoRuta)
 
         @php
-            $esFirmaDigital = str_starts_with($acta->pdf_firmado_ruta ?? '', 'firmas-investigador/');
+            $esFirmaDigital = str_starts_with($acta->pdfFirmadoRuta ?? '', 'firmas-investigador/');
         @endphp
 
         @if($esFirmaDigital)
@@ -218,7 +218,7 @@
                         class="px-3 py-2.5 text-sm font-medium transition-colors whitespace-nowrap">
                         Acta firmada
                     </button>
-                    @if($acta->documento_identidad_ruta)
+                    @if($acta->documentoIdentidadRuta)
                         <button @click="tab = 'identidad'"
                             :class="tab === 'identidad' ? 'border-b-2 border-science-blue text-science-blue' : 'text-text-secondary hover:text-text-primary'"
                             class="px-3 py-2.5 text-sm font-medium transition-colors whitespace-nowrap">
@@ -238,14 +238,14 @@
                                 Descargar
                             </a>
                         </div>
-                        @if($acta->documento_identidad_ruta)
+                        @if($acta->documentoIdentidadRuta)
                             <div x-show="tab === 'identidad'" x-cloak class="flex items-center gap-1">
                                 <a href="{{ route('prestamos.acta.documento-identidad', $acta->id) }}" target="_blank"
                                     class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded">
                                     <flux:icon name="arrow-top-right-on-square" class="size-3.5" />
                                     Abrir
                                 </a>
-                                <a href="{{ route('prestamos.acta.documento-identidad', $acta->id) }}" download="identidad-{{ $acta->numero_prestamo }}.pdf"
+                                <a href="{{ route('prestamos.acta.documento-identidad', $acta->id) }}" download="identidad-{{ $acta->numeroPrestamo }}.pdf"
                                     class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded">
                                     <flux:icon name="arrow-down-tray" class="size-3.5" />
                                     Descargar
@@ -259,7 +259,7 @@
                         class="w-full" style="height: calc(100vh - 310px); min-height: 520px;"
                         title="Acta firmada digitalmente"></iframe>
                 </div>
-                @if($acta->documento_identidad_ruta)
+                @if($acta->documentoIdentidadRuta)
                     <div x-show="tab === 'identidad'" x-cloak>
                         <iframe src="{{ route('prestamos.acta.documento-identidad', $acta->id) }}"
                             class="w-full" style="height: calc(100vh - 310px); min-height: 520px;"
@@ -281,7 +281,7 @@
                         class="px-3 py-2.5 text-sm font-medium transition-colors whitespace-nowrap">
                         Doc. de identidad
                     </button>
-                    @if($acta->documento_exportacion_ruta)
+                    @if($acta->documentoExportacionRuta)
                         <button @click="tab = 'exportacion'"
                             :class="tab === 'exportacion' ? 'border-b-2 border-science-blue text-science-blue' : 'text-text-secondary hover:text-text-primary'"
                             class="px-3 py-2.5 text-sm font-medium transition-colors whitespace-nowrap">
@@ -295,7 +295,7 @@
                                 <flux:icon name="arrow-top-right-on-square" class="size-3.5" />
                                 Abrir
                             </a>
-                            <a href="{{ route('prestamos.acta.pdf-firmado', $acta->id) }}" download="acta-firmada-{{ $acta->numero_prestamo }}.pdf"
+                            <a href="{{ route('prestamos.acta.pdf-firmado', $acta->id) }}" download="acta-firmada-{{ $acta->numeroPrestamo }}.pdf"
                                 class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded">
                                 <flux:icon name="arrow-down-tray" class="size-3.5" />
                                 Descargar
@@ -307,20 +307,20 @@
                                 <flux:icon name="arrow-top-right-on-square" class="size-3.5" />
                                 Abrir
                             </a>
-                            <a href="{{ route('prestamos.acta.documento-identidad', $acta->id) }}" download="identidad-{{ $acta->numero_prestamo }}.pdf"
+                            <a href="{{ route('prestamos.acta.documento-identidad', $acta->id) }}" download="identidad-{{ $acta->numeroPrestamo }}.pdf"
                                 class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded">
                                 <flux:icon name="arrow-down-tray" class="size-3.5" />
                                 Descargar
                             </a>
                         </div>
-                        @if($acta->documento_exportacion_ruta)
+                        @if($acta->documentoExportacionRuta)
                             <div x-show="tab === 'exportacion'" x-cloak class="flex items-center gap-1">
                                 <a href="{{ route('prestamos.acta.documento-exportacion', $acta->id) }}" target="_blank"
                                     class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded">
                                     <flux:icon name="arrow-top-right-on-square" class="size-3.5" />
                                     Abrir
                                 </a>
-                                <a href="{{ route('prestamos.acta.documento-exportacion', $acta->id) }}" download="exportacion-{{ $acta->numero_prestamo }}.pdf"
+                                <a href="{{ route('prestamos.acta.documento-exportacion', $acta->id) }}" download="exportacion-{{ $acta->numeroPrestamo }}.pdf"
                                     class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded">
                                     <flux:icon name="arrow-down-tray" class="size-3.5" />
                                     Descargar
@@ -339,7 +339,7 @@
                         class="w-full" style="height: calc(100vh - 310px); min-height: 520px;"
                         title="Documento de identidad"></iframe>
                 </div>
-                @if($acta->documento_exportacion_ruta)
+                @if($acta->documentoExportacionRuta)
                     <div x-show="tab === 'exportacion'" x-cloak>
                         <iframe src="{{ route('prestamos.acta.documento-exportacion', $acta->id) }}"
                             class="w-full" style="height: calc(100vh - 310px); min-height: 520px;"

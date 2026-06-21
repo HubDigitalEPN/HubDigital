@@ -13,10 +13,10 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialP
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialPrestamo\ConsultarHistorialPrestamoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudInput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarRecordatoriosPrestamo\ConsultarRecordatoriosPrestamoHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarRecordatoriosPrestamo\ConsultarRecordatoriosPrestamoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarVerificacionEspecimenes\ConsultarVerificacionEspecimenesHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarVerificacionEspecimenes\ConsultarVerificacionEspecimenesInput;
-use Modules\GestionPrestamosRecepciones\Domain\Repositories\RecordatorioDevolucionRepositoryInterface;
-use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoVerificacion;
 
 /**
@@ -57,7 +57,7 @@ final class DetallePrestamo extends Component
      * @param ConsultarDetallePrestamoHandler $detalleHandler
      * @param ConsultarHistorialSolicitudHandler $historialSolicitudHandler
      * @param ConsultarHistorialPrestamoHandler $historialPrestamoHandler
-     * @param RecordatorioDevolucionRepositoryInterface $recordatorioRepo
+     * @param ConsultarRecordatoriosPrestamoHandler $recordatoriosHandler
      * @param ConsultarVerificacionEspecimenesHandler $verificacionHandler
      * @return View
      */
@@ -65,7 +65,7 @@ final class DetallePrestamo extends Component
         ConsultarDetallePrestamoHandler $detalleHandler,
         ConsultarHistorialSolicitudHandler $historialSolicitudHandler,
         ConsultarHistorialPrestamoHandler $historialPrestamoHandler,
-        RecordatorioDevolucionRepositoryInterface $recordatorioRepo,
+        ConsultarRecordatoriosPrestamoHandler $recordatoriosHandler,
         ConsultarVerificacionEspecimenesHandler $verificacionHandler,
     ): View {
         $detalle = $detalleHandler->handle(new ConsultarDetallePrestamoInput(prestamoId: $this->id));
@@ -104,10 +104,10 @@ final class DetallePrestamo extends Component
 
         $recordatorios = array_map(
             fn ($r) => [
-                'diasAntes' => $r->diasAntesVencimiento(),
-                'fecha' => $r->fechaProgramada()->format('d/m/Y'),
+                'diasAntes' => $r->diasAntes,
+                'fecha' => $r->fechaProgramada->format('d/m/Y'),
             ],
-            $recordatorioRepo->listarPorPrestamo(PrestamoId::fromString($this->id)),
+            $recordatoriosHandler->handle(new ConsultarRecordatoriosPrestamoInput(prestamoId: $this->id))->recordatorios,
         );
 
         $verificacion = $verificacionHandler->handle(new ConsultarVerificacionEspecimenesInput(

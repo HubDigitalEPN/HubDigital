@@ -58,7 +58,7 @@
 
     @php $filtroActivo = $busqueda !== '' || $estado !== ''; @endphp
 
-    @if($solicitudes->isEmpty() && !$filtroActivo)
+    @if(count($solicitudes) === 0 && !$filtroActivo)
         <div class="flex flex-col items-center justify-center rounded-lg border border-border bg-surface py-16 text-center px-8 gap-4">
             <div class="flex h-16 w-16 items-center justify-center rounded-full bg-bg-main border border-border">
                 <flux:icon name="document-text" class="size-8 text-text-secondary/50" />
@@ -72,7 +72,7 @@
             </flux:button>
         </div>
 
-    @elseif($solicitudes->isEmpty())
+    @elseif(count($solicitudes) === 0)
         <div class="flex flex-col items-center justify-center rounded-lg border border-border bg-surface py-16 text-center px-8 gap-4">
             <div class="flex h-16 w-16 items-center justify-center rounded-full bg-bg-main border border-border">
                 <flux:icon name="magnifying-glass" class="size-8 text-text-secondary/50" />
@@ -101,35 +101,34 @@
                     @foreach($solicitudes as $solicitud)
                         <tr class="hover:bg-bg-main transition-colors">
                             <td class="px-4 py-3 font-mono text-xs text-text-secondary whitespace-nowrap">
-                                {{ $solicitud->numero_solicitud }}
+                                {{ $solicitud->numeroSolicitud }}
                             </td>
                             <td class="px-4 py-3 font-medium text-text-primary w-72">
-                                <flux:tooltip content="{{ $solicitud->titulo_estudio }}">
-                                    <span class="block truncate max-w-xs cursor-default">{{ $solicitud->titulo_estudio }}</span>
+                                <flux:tooltip content="{{ $solicitud->tituloEstudio }}">
+                                    <span class="block truncate max-w-xs cursor-default">{{ $solicitud->tituloEstudio }}</span>
                                 </flux:tooltip>
                             </td>
                             <td class="px-4 py-3">
-                                @php $actaSolicitud = $actasPorSolicitud[$solicitud->id] ?? null; @endphp
                                 <div class="flex flex-col gap-1.5">
                                     <x-gestionprestamosrecepciones::solicitud-status-badge :estado="$solicitud->estado" />
-                                    @if($actaSolicitud)
-                                        @if($actaSolicitud->estado === 'pendiente_firma')
-                                            <a wire:navigate href="{{ route('prestamos.investigador.acta.detalle', $actaSolicitud->id) }}"
+                                    @if($solicitud->actaEstado)
+                                        @if($solicitud->actaEstado === 'pendiente_firma')
+                                            <a wire:navigate href="{{ route('prestamos.investigador.acta.detalle', $solicitud->actaId) }}"
                                                class="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-0.5 w-fit hover:bg-amber-100 transition-colors">
                                                 <flux:icon name="exclamation-triangle" class="size-3" />
                                                 Requiere tu firma
                                             </a>
-                                        @elseif($actaSolicitud->estado === 'pendiente_validacion')
+                                        @elseif($solicitud->actaEstado === 'pendiente_validacion')
                                             <span class="inline-flex items-center gap-1 text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded px-2 py-0.5 w-fit">
                                                 <flux:icon name="clock" class="size-3" />
                                                 Acta en validación
                                             </span>
-                                        @elseif($actaSolicitud->estado === 'pendiente_envio')
+                                        @elseif($solicitud->actaEstado === 'pendiente_envio')
                                             <span class="inline-flex items-center gap-1 text-xs text-text-secondary bg-bg-main border border-border rounded px-2 py-0.5 w-fit">
                                                 <flux:icon name="document-text" class="size-3" />
                                                 Acta en preparación
                                             </span>
-                                        @elseif($actaSolicitud->estado === 'validada')
+                                        @elseif($solicitud->actaEstado === 'validada')
                                             <a wire:navigate href="{{ route('prestamos.investigador.mis-actas') }}"
                                                class="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded px-2 py-0.5 w-fit hover:bg-green-100 transition-colors">
                                                 <flux:icon name="check-circle" class="size-3" />
@@ -140,23 +139,23 @@
                                 </div>
                             </td>
                             <td class="px-4 py-3 text-xs text-text-secondary whitespace-nowrap">
-                                {{ $solicitud->created_at->format('d/m/Y') }}
+                                {{ $solicitud->fecha->format('d/m/Y') }}
                             </td>
                             <td class="px-4 py-3">
                                 <div class="flex gap-2">
                                     <flux:button size="sm" variant="ghost" icon="eye"
-                                        wire:navigate href="{{ route('prestamos.investigador.solicitud.detalle', $solicitud->id) }}">
+                                        wire:navigate href="{{ route('prestamos.investigador.solicitud.detalle', $solicitud->solicitudId) }}">
                                         Ver
                                     </flux:button>
                                     @if(in_array($solicitud->estado, ['borrador', 'observada']))
                                         <flux:button size="sm" variant="ghost" icon="pencil"
-                                            wire:navigate href="{{ route('prestamos.investigador.solicitud.editar', $solicitud->id) }}">
+                                            wire:navigate href="{{ route('prestamos.investigador.solicitud.editar', $solicitud->solicitudId) }}">
                                             Editar
                                         </flux:button>
                                     @endif
                                     @if($solicitud->estado === 'borrador')
                                         <flux:button size="sm" variant="primary" icon="paper-airplane"
-                                            wire:click="prepararEnvioSolicitud('{{ $solicitud->id }}')">
+                                            wire:click="prepararEnvioSolicitud('{{ $solicitud->solicitudId }}')">
                                             Enviar
                                         </flux:button>
                                     @endif

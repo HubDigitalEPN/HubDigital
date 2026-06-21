@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDetallePrestamo;
 
+use Modules\GestionPrestamosRecepciones\Application\Ports\UsuarioNombrePort;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\ActaPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\PrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
@@ -25,11 +26,13 @@ final class ConsultarDetallePrestamoHandler
      * @param PrestamoRepositoryInterface $prestamoRepo Repositorio de préstamos.
      * @param ActaPrestamoRepositoryInterface $actaRepo Repositorio de actas de préstamo.
      * @param SolicitudPrestamoRepositoryInterface $solicitudRepo Repositorio de solicitudes de préstamo.
+     * @param UsuarioNombrePort $usuarioNombre Resolución del nombre legible del validador.
      */
     public function __construct(
         private readonly PrestamoRepositoryInterface $prestamoRepo,
         private readonly ActaPrestamoRepositoryInterface $actaRepo,
         private readonly SolicitudPrestamoRepositoryInterface $solicitudRepo,
+        private readonly UsuarioNombrePort $usuarioNombre,
     ) {}
 
     /**
@@ -54,6 +57,11 @@ final class ConsultarDetallePrestamoHandler
             ? $this->solicitudRepo->buscarPorId($acta->solicitudPrestamoId())
             : null;
 
+        $validadaPor = $acta?->validadaPor();
+        $nombreValidador = $validadaPor !== null
+            ? ($this->usuarioNombre->obtenerNombre($validadaPor) ?? $validadaPor)
+            : null;
+
         return new ConsultarDetallePrestamoOutput(
             prestamoId: (string) $prestamo->id(),
             investigadorId: $prestamo->investigadorId(),
@@ -68,6 +76,8 @@ final class ConsultarDetallePrestamoHandler
             fechaInicioActa: $acta?->fechaInicio(),
             fechaFinActa: $acta?->fechaFin(),
             condicionesGenerales: $acta?->condicionesGenerales(),
+            motivoDevolucion: $acta?->motivoDevolucion(),
+            nombreValidador: $nombreValidador,
             solicitudId: $solicitud !== null ? (string) $solicitud->id() : null,
             solicitudEstado: $solicitud?->estado()->value,
             numeroSolicitud: $solicitud !== null ? (string) $solicitud->numeroSolicitud() : null,
@@ -76,6 +86,7 @@ final class ConsultarDetallePrestamoHandler
             lineaInvestigacion: $solicitud?->lineaInvestigacion(),
             propositoPrestamo: $solicitud?->propositoPrestamo(),
             duracionPropuestaMeses: $solicitud?->duracionPropuestaMeses(),
+            comentarioCurador: $solicitud?->comentarioCurador(),
         );
     }
 }

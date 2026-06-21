@@ -11,16 +11,16 @@ use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
-use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudHandler;
-use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\CompletarFirmaDigitalConIdentidad\CompletarFirmaDigitalConIdentidadHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\CompletarFirmaDigitalConIdentidad\CompletarFirmaDigitalConIdentidadInput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDetalleActa\ConsultarDetalleActaHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDetalleActa\ConsultarDetalleActaInput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\FirmarActaDigitalmente\FirmarActaDigitalmenteHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\FirmarActaDigitalmente\FirmarActaDigitalmenteInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\SubirActaFirmada\SubirActaFirmadaHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\SubirActaFirmada\SubirActaFirmadaInput;
-use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\ActaPrestamoModel;
-use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\PrestamoEloquentModel;
 
 /**
  * Componente Livewire para el detalle de un acta.
@@ -33,9 +33,7 @@ final class DetalleActa extends Component
 
     public string $actaId;
 
-    public ?ActaPrestamoModel $acta = null;
-
-    public ?PrestamoEloquentModel $prestamo = null;
+    public string $solicitudPrestamoId = '';
 
     public bool $showUploadModal = false;
 
@@ -70,18 +68,21 @@ final class DetalleActa extends Component
      * @param string $id
      * @return void
      */
-    public function mount(string $id): void
+    public function mount(string $id, ConsultarDetalleActaHandler $handler): void
     {
         $this->actaId = $id;
-        $this->cargarDatos();
 
-        if ($this->acta === null) {
+        $acta = $handler->handle(new ConsultarDetalleActaInput(actaId: $id));
+
+        if ($acta === null) {
             abort(404);
         }
 
-        if ($this->acta->solicitud?->investigador_id !== (string) auth()->id()) {
+        if ($acta->investigadorId !== (string) auth()->id()) {
             abort(403);
         }
+
+        $this->solicitudPrestamoId = $acta->solicitudPrestamoId;
     }
 
     /**
@@ -101,7 +102,7 @@ final class DetalleActa extends Component
         $rutaIdentidad = Storage::putFile('documentos-identidad', $this->documentoIdentidad);
 
         $handler->handle(new SubirActaFirmadaInput(
-            solicitudId: $this->acta->solicitud_prestamo_id,
+            solicitudId: $this->solicitudPrestamoId,
             investigadorId: (string) auth()->id(),
             pdfFirmadoRuta: $rutaActa,
             documentoIdentidadRuta: $rutaIdentidad,
@@ -111,7 +112,6 @@ final class DetalleActa extends Component
         $this->pdfFirmado = null;
         $this->documentoIdentidad = null;
         $this->successMessage = 'Documentos subidos correctamente. Espera la validación del curador.';
-        $this->cargarDatos();
     }
 
     public function cancelarUploadActa(): void
@@ -161,7 +161,6 @@ final class DetalleActa extends Component
         $this->showFirmaCanvasModal = false;
         $this->firmaBase64 = '';
         $this->successMessage = 'Firma registrada. Ahora sube tu documento de identidad (cédula o pasaporte) para completar el proceso.';
-        $this->cargarDatos();
     }
 
     /**
@@ -187,44 +186,37 @@ final class DetalleActa extends Component
         $this->showIdentidadModal = false;
         $this->documentoIdentidadSolo = null;
         $this->successMessage = 'Documento de identidad subido. Espera la validación del curador.';
-        $this->cargarDatos();
-    }
-
-    private function cargarDatos(): void
-    {
-        $this->acta = ActaPrestamoModel::query()
-            ->with('solicitud')
-            ->find($this->actaId);
-
-        $this->prestamo = $this->acta
-            ? PrestamoEloquentModel::query()->where('acta_prestamo_id', $this->actaId)->first()
-            : null;
     }
 
     /**
      * Renderiza el componente.
      *
-     * @param \Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarHistorialSolicitud\ConsultarHistorialSolicitudHandler $historialHandler
+     * @param ConsultarDetalleActaHandler $detalleHandler
+     * @param ConsultarHistorialSolicitudHandler $historialHandler
      * @return \Illuminate\View\View
      */
-    public function render(ConsultarHistorialSolicitudHandler $historialHandler): View
-    {
-        $historialActa = [];
+    public function render(
+        ConsultarDetalleActaHandler $detalleHandler,
+        ConsultarHistorialSolicitudHandler $historialHandler,
+    ): View {
+        $acta = $detalleHandler->handle(new ConsultarDetalleActaInput(actaId: $this->actaId));
 
-        if ($this->acta !== null) {
-            $historial = $historialHandler->handle(new ConsultarHistorialSolicitudInput(
-                solicitudId: $this->acta->solicitud_prestamo_id,
-                usuarioId: (string) auth()->id(),
-            ));
-
-            $historialActa = array_values(
-                array_filter(
-                    $historial->eventos,
-                    fn ($e) => in_array($e->tipo, self::$eventosActa, true),
-                )
-            );
+        if ($acta === null) {
+            abort(404);
         }
 
-        return view('gestionprestamosrecepciones::investigador.detalle-acta', compact('historialActa'));
+        $historial = $historialHandler->handle(new ConsultarHistorialSolicitudInput(
+            solicitudId: $acta->solicitudPrestamoId,
+            usuarioId: (string) auth()->id(),
+        ));
+
+        $historialActa = array_values(
+            array_filter(
+                $historial->eventos,
+                fn ($e) => in_array($e->tipo, self::$eventosActa, true),
+            )
+        );
+
+        return view('gestionprestamosrecepciones::investigador.detalle-acta', compact('acta', 'historialActa'));
     }
 }
