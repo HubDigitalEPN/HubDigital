@@ -23,7 +23,7 @@
             <div class="flex-1">
                 <flux:input
                     wire:model.live.debounce.300ms="busqueda"
-                    placeholder="Buscar por N.º acta o N.º solicitud..."
+                    placeholder="Buscar por código..."
                     icon="magnifying-glass"
                     clearable />
             </div>
@@ -38,7 +38,7 @@
                 </flux:select>
                 <flux:select wire:model.live="ordenCampo" class="w-48">
                     <flux:select.option value="fecha">Por fecha</flux:select.option>
-                    <flux:select.option value="numero_solicitud">Por N.º solicitud</flux:select.option>
+                    <flux:select.option value="codigo">Por código</flux:select.option>
                 </flux:select>
                 <flux:button
                     wire:click="toggleOrden"
@@ -82,8 +82,7 @@
             <table class="w-full text-sm min-w-[600px]">
                 <thead class="bg-blue-navy border-b border-border">
                     <tr>
-                        <th class="px-4 py-3 text-left font-medium text-white">N.º acta</th>
-                        <th class="px-4 py-3 text-left font-medium text-white">N.º solicitud</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">Código</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Estado</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Fecha</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Acciones</th>
@@ -94,9 +93,6 @@
                         <tr class="hover:bg-bg-main transition-colors">
                             <td class="px-4 py-3 font-mono text-xs text-text-secondary whitespace-nowrap">
                                 {{ $acta->numeroPrestamo }}
-                            </td>
-                            <td class="px-4 py-3 font-mono text-xs text-text-secondary whitespace-nowrap">
-                                {{ $acta->numeroSolicitud ?? '—' }}
                             </td>
                             <td class="px-4 py-3">
                                 <x-gestionprestamosrecepciones::acta-status-badge :estado="$acta->estado" />

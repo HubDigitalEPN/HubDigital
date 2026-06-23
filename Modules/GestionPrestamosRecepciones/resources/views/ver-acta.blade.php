@@ -80,7 +80,7 @@
                         <dd class="font-medium text-text-primary">{{ ($acta->alcancePrestamo ?? 'nacional') === 'internacional' ? 'Internacional' : 'Nacional' }}</dd>
                     </div>
                     <div>
-                        <dt class="text-text-secondary">N.º solicitud</dt>
+                        <dt class="text-text-secondary">Código</dt>
                         <dd class="font-mono font-medium text-text-primary">{{ $acta->numeroSolicitud }}</dd>
                     </div>
                     <div>

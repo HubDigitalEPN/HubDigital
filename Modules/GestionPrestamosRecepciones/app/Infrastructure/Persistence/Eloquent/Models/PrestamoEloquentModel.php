@@ -25,6 +25,7 @@ final class PrestamoEloquentModel extends Model
     protected $fillable = [
         'id',
         'acta_prestamo_id',
+        'codigo',
         'investigador_id',
         'estado',
         'iniciado_en',

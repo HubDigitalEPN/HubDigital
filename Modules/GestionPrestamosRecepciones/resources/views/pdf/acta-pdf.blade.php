@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Acta {{ (string) $acta->numeroPrestamo() }}</title>
+    <title>Acta {{ (string) $acta->codigoPrestamo() }}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -164,7 +164,7 @@
     <div class="doc-header">
         <p class="institution">Laboratorio de Invertebrados de la Escuela Politécnica Nacional</p>
         <h1>Acta de Préstamo de Especímenes</h1>
-        <p class="numero">{{ (string) $acta->numeroPrestamo() }}</p>
+        <p class="numero">{{ (string) $acta->codigoPrestamo() }}</p>
     </div>
 
     <hr />
@@ -186,7 +186,7 @@
             <tr>
                 <td>
                     <div class="label">N.º solicitud</div>
-                    <div class="value mono">{{ (string) $solicitud->numeroSolicitud() }}</div>
+                    <div class="value mono">{{ (string) $solicitud->codigoPrestamo() }}</div>
                 </td>
                 <td>
                     <div class="label">Fecha de inicio</div>
@@ -305,7 +305,7 @@
     {{-- Pie de página --}}
     <div class="footer">
         Documento generado automáticamente por Hub Digital — EPN Colecciones Biológicas &nbsp;|&nbsp;
-        Acta: {{ (string) $acta->numeroPrestamo() }}
+        Acta: {{ (string) $acta->codigoPrestamo() }}
     </div>
 
 </body>

@@ -28,7 +28,7 @@ final readonly class FirmarActaDigitalmenteOutput
     {
         return new self(
             actaId: (string) $acta->id(),
-            numeroPrestamo: (string) $acta->numeroPrestamo(),
+            numeroPrestamo: (string) $acta->codigoPrestamo(),
             estadoActa: $acta->estado()->value,
             pdfFirmadoRuta: $acta->pdfFirmadoRuta() ?? '',
             firmadaSubidaEn: $acta->firmadaSubidaEn(),

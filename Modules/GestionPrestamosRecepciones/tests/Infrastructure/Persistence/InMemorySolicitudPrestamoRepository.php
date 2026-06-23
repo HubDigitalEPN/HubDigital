@@ -89,7 +89,7 @@ final class InMemorySolicitudPrestamoRepository implements SolicitudPrestamoRepo
 
         return array_values(array_map(fn (SolicitudPrestamo $solicitud): array => [
             'solicitudId' => (string) $solicitud->id(),
-            'numeroSolicitud' => (string) $solicitud->numeroSolicitud(),
+            'numeroSolicitud' => (string) $solicitud->codigoPrestamo(),
             'tituloEstudio' => $solicitud->tituloEstudio(),
             'investigadorId' => $solicitud->investigadorId(),
             'estado' => $solicitud->estado()->value,
@@ -126,7 +126,7 @@ final class InMemorySolicitudPrestamoRepository implements SolicitudPrestamoRepo
 
         return array_values(array_map(fn (SolicitudPrestamo $solicitud): array => [
             'solicitudId' => (string) $solicitud->id(),
-            'numeroSolicitud' => (string) $solicitud->numeroSolicitud(),
+            'numeroSolicitud' => (string) $solicitud->codigoPrestamo(),
             'tituloEstudio' => $solicitud->tituloEstudio(),
             'estado' => $solicitud->estado()->value,
             'fecha' => $this->fecha($solicitud),
@@ -144,7 +144,7 @@ final class InMemorySolicitudPrestamoRepository implements SolicitudPrestamoRepo
         $aguja = mb_strtolower($busquedaTexto);
 
         return str_contains(mb_strtolower((string) $solicitud->tituloEstudio()), $aguja)
-            || str_contains(mb_strtolower((string) $solicitud->numeroSolicitud()), $aguja);
+            || str_contains(mb_strtolower((string) $solicitud->codigoPrestamo()), $aguja);
     }
 
     /**

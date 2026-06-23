@@ -61,6 +61,7 @@ final class IniciarPrestamoHandler
         $prestamo = Prestamo::iniciar(
             id: $this->prestamoRepo->nextIdentity(),
             actaPrestamoId: $actaId,
+            codigoPrestamo: $acta->codigoPrestamo(),
             investigadorId: $solicitud->investigadorId(),
             alcancePrestamo: $acta->alcancePrestamo(),
             iniciadoEn: $acta->fechaInicio(),

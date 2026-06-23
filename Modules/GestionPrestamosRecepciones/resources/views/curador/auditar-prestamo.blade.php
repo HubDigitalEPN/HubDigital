@@ -41,7 +41,7 @@
                     <div class="p-5">
                         <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                             <div>
-                                <dt class="text-xs text-text-secondary uppercase tracking-wide">N.º solicitud</dt>
+                                <dt class="text-xs text-text-secondary uppercase tracking-wide">Código</dt>
                                 <dd class="font-mono font-medium text-text-primary mt-1">{{ $detalle->numeroSolicitud }}</dd>
                             </div>
                             <div>
@@ -86,7 +86,7 @@
                     <div class="p-5">
                         <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                             <div>
-                                <dt class="text-xs text-text-secondary uppercase tracking-wide">N.º préstamo</dt>
+                                <dt class="text-xs text-text-secondary uppercase tracking-wide">Código</dt>
                                 <dd class="font-mono font-medium text-text-primary mt-1">{{ $detalle->numeroPrestamo }}</dd>
                             </div>
                             <div>

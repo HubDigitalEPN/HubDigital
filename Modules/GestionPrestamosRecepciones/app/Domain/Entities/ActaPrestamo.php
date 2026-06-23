@@ -15,8 +15,8 @@ use Modules\GestionPrestamosRecepciones\Domain\Events\DocumentoExportacionSubido
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\TransicionDeEstadoInvalidaException;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\AlcancePrestamo;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\CodigoPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoActa;
-use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\NumeroPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoPrestamo;
 
@@ -41,7 +41,7 @@ final class ActaPrestamo
 
     private function __construct(
         private readonly ActaPrestamoId $id,
-        private readonly NumeroPrestamo $numeroPrestamo,
+        private readonly CodigoPrestamo $codigoPrestamo,
         private readonly SolicitudPrestamoId $solicitudPrestamoId,
         private EstadoActa $estado,
         private readonly TipoPrestamo $tipoPrestamo,
@@ -68,7 +68,7 @@ final class ActaPrestamo
      */
     public static function emitir(
         ActaPrestamoId $id,
-        NumeroPrestamo $numeroPrestamo,
+        CodigoPrestamo $codigoPrestamo,
         SolicitudPrestamoId $solicitudPrestamoId,
         TipoPrestamo $tipoPrestamo,
         AlcancePrestamo $alcancePrestamo,
@@ -87,7 +87,7 @@ final class ActaPrestamo
 
         return new self(
             id: $id,
-            numeroPrestamo: $numeroPrestamo,
+            codigoPrestamo: $codigoPrestamo,
             solicitudPrestamoId: $solicitudPrestamoId,
             estado: EstadoActa::PendienteEnvio,
             tipoPrestamo: $tipoPrestamo,
@@ -111,7 +111,7 @@ final class ActaPrestamo
      */
     public static function reconstituir(
         ActaPrestamoId $id,
-        NumeroPrestamo $numeroPrestamo,
+        CodigoPrestamo $codigoPrestamo,
         SolicitudPrestamoId $solicitudPrestamoId,
         EstadoActa $estado,
         TipoPrestamo $tipoPrestamo,
@@ -130,7 +130,7 @@ final class ActaPrestamo
     ): self {
         return new self(
             id: $id,
-            numeroPrestamo: $numeroPrestamo,
+            codigoPrestamo: $codigoPrestamo,
             solicitudPrestamoId: $solicitudPrestamoId,
             estado: $estado,
             tipoPrestamo: $tipoPrestamo,
@@ -388,9 +388,9 @@ final class ActaPrestamo
         return $this->id;
     }
 
-    public function numeroPrestamo(): NumeroPrestamo
+    public function codigoPrestamo(): CodigoPrestamo
     {
-        return $this->numeroPrestamo;
+        return $this->codigoPrestamo;
     }
 
     public function solicitudPrestamoId(): SolicitudPrestamoId

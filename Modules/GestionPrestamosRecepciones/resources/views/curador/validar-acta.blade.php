@@ -40,12 +40,8 @@
                 <div class="p-5">
                     <dl class="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
                         <div>
-                            <dt class="text-xs text-text-secondary uppercase tracking-wide">N.º préstamo</dt>
+                            <dt class="text-xs text-text-secondary uppercase tracking-wide">Código</dt>
                             <dd class="font-mono font-medium text-text-primary mt-1">{{ $acta->numeroPrestamo }}</dd>
-                        </div>
-                        <div>
-                            <dt class="text-xs text-text-secondary uppercase tracking-wide">N.º solicitud</dt>
-                            <dd class="font-mono text-text-primary mt-1">{{ $acta->numeroSolicitud ?? '—' }}</dd>
                         </div>
                         <div>
                             <dt class="text-xs text-text-secondary uppercase tracking-wide">Fecha de inicio</dt>

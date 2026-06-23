@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarSolicitudPrestamo;
 
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\GeneradorCodigoPrestamo;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\ItemPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\SolicitudPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\AlcancePrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ItemPrestamoId;
-use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\NumeroSolicitud;
 
 /**
  * Registra una nueva solicitud de préstamo de especímenes.
@@ -23,6 +23,7 @@ final class RegistrarSolicitudPrestamoHandler
 {
     public function __construct(
         private readonly SolicitudPrestamoRepositoryInterface $repo,
+        private readonly GeneradorCodigoPrestamo $generadorCodigo,
         private readonly EventPublisherPort $publisher,
         private readonly TransactionManagerPort $transactionManager,
     ) {}
@@ -34,7 +35,7 @@ final class RegistrarSolicitudPrestamoHandler
     public function handle(RegistrarSolicitudPrestamoInput $input): RegistrarSolicitudPrestamoOutput
     {
         $id = $this->repo->nextIdentity();
-        $numeroSolicitud = NumeroSolicitud::generate();
+        $codigoPrestamo = $this->generadorCodigo->siguiente();
 
         $items = array_map(
             fn (array $item) => ItemPrestamo::crear(
@@ -47,7 +48,7 @@ final class RegistrarSolicitudPrestamoHandler
 
         $solicitud = SolicitudPrestamo::crear(
             id: $id,
-            numeroSolicitud: $numeroSolicitud,
+            codigoPrestamo: $codigoPrestamo,
             investigadorId: $input->investigadorId,
             alcancePrestamo: AlcancePrestamo::from($input->alcancePrestamo),
             tituloEstudio: $input->tituloEstudio,

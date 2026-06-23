@@ -43,7 +43,7 @@ final readonly class ConsultarActaPrestamoOutput
     {
         return new self(
             actaId: (string) $acta->id(),
-            numeroPrestamo: (string) $acta->numeroPrestamo(),
+            numeroPrestamo: (string) $acta->codigoPrestamo(),
             solicitudPrestamoId: (string) $acta->solicitudPrestamoId(),
             estado: $acta->estado(),
             tipoPrestamo: $acta->tipoPrestamo(),

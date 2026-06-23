@@ -53,7 +53,7 @@ final class ConsultarDetalleSolicitudHandler
         return new ConsultarDetalleSolicitudOutput(
             solicitudId: (string) $solicitud->id(),
             investigadorId: $solicitud->investigadorId(),
-            numeroSolicitud: (string) $solicitud->numeroSolicitud(),
+            numeroSolicitud: (string) $solicitud->codigoPrestamo(),
             estado: $solicitud->estado()->value,
             tituloEstudio: $solicitud->tituloEstudio(),
             institucionAdscripcion: $solicitud->institucionAdscripcion(),
