@@ -1,0 +1,60 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\GestionPrestamosRecepciones\Infrastructure\Adapters;
+
+use App\Enums\RolUsuario;
+use App\Models\User;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Str;
+use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionCuratoriaPort;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\NuevaSolicitudPorRevisarNotification;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
+
+/**
+ * Adaptador de notificaciones a la curaduría. Entrega por correo y por el portal
+ * (campana) a todos los usuarios con rol CURADOR.
+ */
+final class NotificacionCuratoriaAdapter implements NotificacionCuratoriaPort
+{
+    public function notificarIntervencionRequerida(string $solicitudId, string $investigadorId): string
+    {
+        return $this->notificarCuradores($solicitudId, 'Intervención requerida');
+    }
+
+    public function notificarNuevaSolicitudPorRevisar(string $solicitudId): string
+    {
+        return $this->notificarCuradores($solicitudId, 'Nueva solicitud por revisar');
+    }
+
+    /**
+     * Notifica a todos los curadores de forma defensiva: si no hay curadores,
+     * registra el evento y devuelve igualmente una referencia no vacía para
+     * preservar el contrato del puerto.
+     */
+    private function notificarCuradores(string $solicitudId, string $contexto): string
+    {
+        $referencia = (string) Str::uuid();
+
+        $deposito = SolicitudDepositoEloquentModel::find($solicitudId);
+        $curadores = User::where('rol', RolUsuario::CURADOR)->get();
+
+        if ($curadores->isEmpty()) {
+            Log::info('Notificación a curaduría omitida: no hay curadores', [
+                'referencia' => $referencia, 'contexto' => $contexto, 'solicitud_id' => $solicitudId,
+            ]);
+
+            return $referencia;
+        }
+
+        Notification::send($curadores, new NuevaSolicitudPorRevisarNotification(
+            solicitudId: $solicitudId,
+            numero: $deposito?->numero,
+            tipoTramite: $deposito?->tipo_tramite,
+        ));
+
+        return $referencia;
+    }
+}

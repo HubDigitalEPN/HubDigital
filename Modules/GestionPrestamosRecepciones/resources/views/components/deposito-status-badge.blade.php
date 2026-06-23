@@ -6,6 +6,9 @@ $config = [
     'Rechazada' => ['color' => 'red', 'label' => 'Rechazada'],
     'Pausada para Asesoría' => ['color' => 'orange', 'label' => 'Pausada'],
     'Pendiente de Revisión por Curaduría' => ['color' => 'blue', 'label' => 'Pendiente revisión'],
+    'Aprobada Documentalmente' => ['color' => 'green', 'label' => 'Aprobada documentalmente'],
+    'Requiere Corrección' => ['color' => 'amber', 'label' => 'Requiere corrección'],
+    'Rechazo Permanente' => ['color' => 'red', 'label' => 'Rechazo permanente'],
 ];
 
 $value = $estado instanceof \Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito

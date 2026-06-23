@@ -18,7 +18,12 @@
                         <span class="text-[10px] font-medium uppercase tracking-wider text-text-secondary">Colección Entomológica</span>
                     </div>
                 </a>
-                <flux:sidebar.collapse class="lg:hidden ml-auto text-text-secondary" />
+                <div class="ml-auto flex items-center text-text-secondary">
+                    <div class="hidden lg:block">
+                        <livewire:campana-notificaciones />
+                    </div>
+                    <flux:sidebar.collapse class="lg:hidden text-text-secondary" />
+                </div>
             </flux:sidebar.header>
 
             {{-- Navigation --}}
@@ -103,6 +108,16 @@
                                 wire:navigate
                             >
                                 Configuración
+                            </flux:sidebar.item>
+                        </flux:sidebar.group>
+                        <flux:sidebar.group heading="Gestión de depósitos" class="grid">
+                            <flux:sidebar.item
+                                icon="inbox-arrow-down"
+                                :href="route('prestamos.curador.depositos')"
+                                :current="request()->routeIs('prestamos.curador.depositos', 'prestamos.curador.deposito.*')"
+                                wire:navigate
+                            >
+                                Recepciones
                             </flux:sidebar.item>
                         </flux:sidebar.group>
                         <flux:sidebar.group heading="Inventario" class="grid">
@@ -315,6 +330,10 @@
                     <x-app-logo-icon class="size-4 fill-current text-white" />
                 </span>
                 <span class="font-display text-sm font-bold text-white">Hub Digital</span>
+            </div>
+
+            <div class="flex items-center gap-1 text-white">
+                <livewire:campana-notificaciones />
             </div>
 
             <flux:dropdown position="top" align="end">
