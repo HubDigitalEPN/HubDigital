@@ -60,7 +60,7 @@
                                 <dd class="font-medium text-text-primary mt-1">{{ $solicitud->lineaInvestigacion }}</dd>
                             </div>
                             <div>
-                                <dt class="text-xs text-text-secondary uppercase tracking-wide">Duración propuesta</dt>
+                                <dt class="text-xs text-text-secondary uppercase tracking-wide">Duración</dt>
                                 <dd class="font-medium text-text-primary mt-1">{{ $solicitud->duracionPropuestaMeses }} meses</dd>
                             </div>
                             <div>

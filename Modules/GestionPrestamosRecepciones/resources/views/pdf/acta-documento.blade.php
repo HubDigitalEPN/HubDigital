@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Acta {{ (string) $acta->codigoPrestamo() }}</title>
+    <title>Acta {{ $acta->numeroPrestamo }}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -152,12 +152,6 @@
             padding-right: 32px;
         }
         .firma-table td:last-child { padding-right: 0; }
-        .firma-img {
-            display: block;
-            max-width: 220px;
-            height: 60px;
-            margin-bottom: 6px;
-        }
         .firma-line {
             border-top: 2px solid #212121;
             padding-top: 6px;
@@ -195,7 +189,7 @@
             <td class="header-center doc-header">
                 <p class="institution">Laboratorio de Invertebrados</p>
                 <h1>Acta de Préstamo de Especímenes</h1>
-                <p class="numero">{{ (string) $acta->codigoPrestamo() }}</p>
+                <p class="numero">{{ $acta->numeroPrestamo }}</p>
             </td>
             <td class="logo-right">
                 <img src="{{ $logoBioBase64 }}" class="logo-img" alt="Logo Departamento de Biología" />
@@ -212,28 +206,28 @@
             <tr>
                 <td>
                     <div class="label">Tipo de préstamo</div>
-                    <div class="value capitalize">{{ str_replace('_', ' ', $acta->tipoPrestamo()->value) }}</div>
+                    <div class="value capitalize">{{ str_replace('_', ' ', $acta->tipoPrestamo) }}</div>
                 </td>
                 <td>
                     <div class="label">Alcance</div>
-                    <div class="value">{{ $acta->alcancePrestamo()->value === 'internacional' ? 'Internacional' : 'Nacional' }}</div>
+                    <div class="value">{{ $acta->alcancePrestamo === 'internacional' ? 'Internacional' : 'Nacional' }}</div>
                 </td>
             </tr>
             <tr>
                 <td>
                     <div class="label">N.º solicitud</div>
-                    <div class="value mono">{{ (string) $solicitud->codigoPrestamo() }}</div>
+                    <div class="value mono">{{ $acta->numeroSolicitud }}</div>
                 </td>
                 <td>
                     <div class="label">Fecha de inicio</div>
-                    <div class="value">{{ $acta->fechaInicio()->format('d/m/Y') }}</div>
+                    <div class="value">{{ $acta->fechaInicio->format('d/m/Y') }}</div>
                 </td>
             </tr>
             <tr>
                 <td></td>
                 <td>
                     <div class="label">Fecha de vencimiento</div>
-                    <div class="value">{{ $acta->fechaFin()->format('d/m/Y') }}</div>
+                    <div class="value">{{ $acta->fechaFin->format('d/m/Y') }}</div>
                 </td>
             </tr>
         </table>
@@ -246,27 +240,54 @@
             <tr>
                 <td colspan="2">
                     <div class="label">Título del estudio</div>
-                    <div class="value">{{ $solicitud->tituloEstudio() }}</div>
+                    <div class="value">{{ $acta->tituloEstudio }}</div>
                 </td>
             </tr>
             <tr>
                 <td>
                     <div class="label">Institución de adscripción</div>
-                    <div class="value">{{ $solicitud->institucionAdscripcion() }}</div>
+                    <div class="value">{{ $acta->institucionAdscripcion }}</div>
                 </td>
                 <td>
                     <div class="label">Línea de investigación</div>
-                    <div class="value">{{ $solicitud->lineaInvestigacion() }}</div>
+                    <div class="value">{{ $acta->lineaInvestigacion }}</div>
                 </td>
             </tr>
             <tr>
                 <td colspan="2">
                     <div class="label">Propósito del préstamo</div>
-                    <div class="value" style="font-weight: normal;">{{ $solicitud->propositoPrestamo() }}</div>
+                    <div class="value" style="font-weight: normal;">{{ $acta->propositoPrestamo }}</div>
                 </td>
             </tr>
         </table>
     </div>
+
+    {{-- Especímenes en préstamo --}}
+    @if(count($acta->items))
+        <div class="section">
+            <h2>Especímenes en préstamo</h2>
+            <table class="specimens-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Código de espécimen</th>
+                        <th>Cantidad</th>
+                        <th>Condiciones específicas</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($acta->items as $i => $item)
+                        <tr>
+                            <td>{{ $i + 1 }}</td>
+                            <td>{{ $item->codigoExterno }}</td>
+                            <td>{{ $item->cantidadSolicitada }}</td>
+                            <td>{{ $item->condicionesEspecificas ?? '—' }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
 
     {{-- Condiciones generales --}}
     <div class="section">
@@ -295,10 +316,10 @@
                 <div class="bullet"><span></span></div>
                 <div class="text">En caso de requerir extensión del presente préstamo, favor notificarlo con al menos un mes de anticipación al vencimiento de la fecha establecida <em>(Return due date)</em>.</div>
             </li>
-            @if($acta->condicionesGenerales())
+            @if($acta->condicionesGenerales)
                 <li>
                     <div class="bullet"><span></span></div>
-                    <div class="text">{{ $acta->condicionesGenerales() }}</div>
+                    <div class="text">{{ $acta->condicionesGenerales }}</div>
                 </li>
             @endif
         </ul>
@@ -329,11 +350,11 @@
                 </div>
             </td>
             <td>
-                <img src="{{ $firmaBase64 }}" class="firma-img" alt="Firma del investigador" />
+                <div style="height: 66px;"></div>
                 <div class="firma-line">
-                    <p class="firma-name">{{ $nombreInvestigador ?? 'Investigador solicitante' }}</p>
-                    <p class="firma-sub">{{ $solicitud->institucionAdscripcion() }}</p>
-                    <p class="firma-sub">Firmado digitalmente el {{ now()->format('d/m/Y H:i') }}</p>
+                    <p class="firma-name">{{ $acta->nombreInvestigador ?? 'Investigador solicitante' }}</p>
+                    <p class="firma-sub">{{ $acta->institucionAdscripcion }}</p>
+                    <p class="firma-sub">Fecha: ___________________</p>
                 </div>
             </td>
         </tr>
@@ -342,7 +363,7 @@
     {{-- Pie de página --}}
     <div class="footer">
         Documento generado automáticamente por Hub Digital — EPN Colecciones Biológicas &nbsp;|&nbsp;
-        Acta: {{ (string) $acta->codigoPrestamo() }}
+        Acta: {{ $acta->numeroPrestamo }}
     </div>
 
 </body>

@@ -16,6 +16,7 @@ final readonly class ConsultarActaDocumentoOutput
     /**
      * @param string $id Identificador del acta.
      * @param string $investigadorId ID del investigador dueño (para autorización).
+     * @param string|null $nombreInvestigador Nombre legible del investigador solicitante.
      * @param string $numeroPrestamo Número de préstamo asignado.
      * @param string $tipoPrestamo Tipo de préstamo.
      * @param string $alcancePrestamo Alcance (nacional/internacional).
@@ -32,6 +33,7 @@ final readonly class ConsultarActaDocumentoOutput
     public function __construct(
         public string $id,
         public string $investigadorId,
+        public ?string $nombreInvestigador,
         public string $numeroPrestamo,
         public string $tipoPrestamo,
         public string $alcancePrestamo,

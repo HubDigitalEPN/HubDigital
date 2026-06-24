@@ -7,6 +7,7 @@ namespace Modules\GestionPrestamosRecepciones\Application\UseCases\FirmarActaDig
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\PdfGeneratorPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\UsuarioNombrePort;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\ActaNoPerteneceAlInvestigador;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\ActaPrestamoNoEncontradaException;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\FirmaBase64Invalida;
@@ -28,6 +29,7 @@ final class FirmarActaDigitalmenteHandler
         private readonly PdfGeneratorPort $pdfGenerator,
         private readonly EventPublisherPort $publisher,
         private readonly TransactionManagerPort $transactionManager,
+        private readonly UsuarioNombrePort $usuarios,
     ) {}
 
     /**
@@ -66,6 +68,7 @@ final class FirmarActaDigitalmenteHandler
             datos: [
                 'acta' => $acta,
                 'solicitud' => $solicitud,
+                'nombreInvestigador' => $this->usuarios->obtenerNombre($solicitud->investigadorId()),
                 'firmaBase64' => $input->firmaBase64,
             ],
             rutaDestino: $acta->pdfRuta(),

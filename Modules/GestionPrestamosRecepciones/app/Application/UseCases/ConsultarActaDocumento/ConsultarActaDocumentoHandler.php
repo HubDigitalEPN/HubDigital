@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarActaDocumento;
 
+use Modules\GestionPrestamosRecepciones\Application\Ports\UsuarioNombrePort;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarItemsPrestamo\ItemPrestamoVista;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\ItemPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\ActaPrestamoRepositoryInterface;
@@ -26,6 +27,7 @@ final class ConsultarActaDocumentoHandler
     public function __construct(
         private readonly ActaPrestamoRepositoryInterface $actaRepo,
         private readonly SolicitudPrestamoRepositoryInterface $solicitudRepo,
+        private readonly UsuarioNombrePort $usuarios,
     ) {}
 
     /**
@@ -55,9 +57,12 @@ final class ConsultarActaDocumentoHandler
             $solicitud->items(),
         ));
 
+        $investigadorId = $solicitud?->investigadorId() ?? '';
+
         return new ConsultarActaDocumentoOutput(
             id: (string) $acta->id(),
-            investigadorId: $solicitud?->investigadorId() ?? '',
+            investigadorId: $investigadorId,
+            nombreInvestigador: $investigadorId === '' ? null : $this->usuarios->obtenerNombre($investigadorId),
             numeroPrestamo: (string) $acta->codigoPrestamo(),
             tipoPrestamo: $acta->tipoPrestamo()->value,
             alcancePrestamo: $acta->alcancePrestamo()->value,
