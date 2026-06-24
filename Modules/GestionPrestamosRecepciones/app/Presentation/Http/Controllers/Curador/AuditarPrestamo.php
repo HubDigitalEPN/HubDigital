@@ -24,6 +24,8 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarVerificaci
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarVerificacionEspecimenes\ConsultarVerificacionEspecimenesInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\HabilitarEnvioInternacional\HabilitarEnvioInternacionalHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\HabilitarEnvioInternacional\HabilitarEnvioInternacionalInput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ReiterarRecordatorioVencimiento\ReiterarRecordatorioVencimientoHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ReiterarRecordatorioVencimiento\ReiterarRecordatorioVencimientoInput;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoVerificacion;
 
 /**
@@ -38,6 +40,8 @@ final class AuditarPrestamo extends Component
     public string $prestamoId;
 
     public string $successMessage = '';
+
+    public int $reenvioContador = 0;
 
     #[Validate('required|file|mimes:pdf|max:10240')]
     public $documentoExportacion = null;
@@ -184,6 +188,22 @@ final class AuditarPrestamo extends Component
 
         $this->successMessage = 'Documento registrado. El préstamo pasa a en tránsito.';
         $this->documentoExportacion = null;
+    }
+
+    /**
+     * Reenvía el recordatorio de vencimiento al investigador de un préstamo vencido.
+     *
+     * @param ReiterarRecordatorioVencimientoHandler $handler
+     * @return void
+     */
+    public function notificarDevolucion(ReiterarRecordatorioVencimientoHandler $handler): void
+    {
+        $handler->handle(new ReiterarRecordatorioVencimientoInput(
+            prestamoId: $this->prestamoId,
+            curadorId: (string) auth()->id(),
+        ));
+
+        $this->reenvioContador++;
     }
 
     private function cargarRecordatorios(ConsultarRecordatoriosPrestamoHandler $handler): void

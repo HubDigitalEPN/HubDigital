@@ -324,14 +324,34 @@
 
             {{-- Recordatorios --}}
             <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
-                <div class="px-5 py-4 border-b border-border flex items-center gap-3">
-                    <div class="flex h-7 w-7 items-center justify-center rounded-full bg-blue-navy text-white shrink-0">
-                        <flux:icon name="bell" class="size-3.5" />
+                <div class="px-5 py-4 border-b border-border space-y-3">
+                    <div class="flex items-center gap-3">
+                        <div class="flex h-7 w-7 items-center justify-center rounded-full bg-blue-navy text-white shrink-0">
+                            <flux:icon name="bell" class="size-3.5" />
+                        </div>
+                        <flux:heading size="base" level="2" class="font-display">Recordatorios</flux:heading>
                     </div>
-                    <flux:heading size="base" level="2" class="font-display flex-1">Recordatorios</flux:heading>
-                    <flux:button wire:click="abrirModalRecordatorios" variant="ghost" icon="pencil-square" size="sm">
-                        Personalizar
-                    </flux:button>
+                    <div class="flex flex-wrap gap-2">
+                        @if($detalle->estadoPrestamo === \Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoPrestamo::Vencido)
+                            <flux:button wire:click="notificarDevolucion" wire:loading.attr="disabled" wire:target="notificarDevolucion" variant="primary" icon="bell-alert" class="flex-1 min-w-[10rem] whitespace-nowrap">
+                                <span wire:loading.remove wire:target="notificarDevolucion">Notificar devolución</span>
+                                <span wire:loading wire:target="notificarDevolucion">Enviando...</span>
+                            </flux:button>
+                        @endif
+                        <flux:button wire:click="abrirModalRecordatorios" variant="ghost" icon="pencil-square" class="flex-1 min-w-[8rem] whitespace-nowrap">
+                            Personalizar
+                        </flux:button>
+                    </div>
+                    @if($reenvioContador > 0)
+                        <div wire:key="reenvio-{{ $reenvioContador }}"
+                             x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 5000)"
+                             x-transition.opacity
+                             @click="show = false">
+                            <flux:callout variant="success" icon="check-circle" class="cursor-pointer">
+                                Recordatorio de vencimiento reenviado al investigador.
+                            </flux:callout>
+                        </div>
+                    @endif
                 </div>
                 <div class="p-5">
                     @if(count($recordatoriosPersonalizados) > 0)

@@ -333,6 +333,29 @@ final class Prestamo
     }
 
     /**
+     * El curador reitera manualmente el aviso de vencimiento de un préstamo ya vencido.
+     * No cambia el estado (ya es Vencido); solo vuelve a emitir el evento de recordatorio
+     * para que la notificación de vencido se reenvíe al investigador.
+     */
+    public function reiterarVencimiento(DateTimeImmutable $ahora): void
+    {
+        if (! $this->estado->equals(EstadoPrestamo::Vencido)) {
+            throw TransicionDeEstadoInvalidaException::para(
+                'Prestamo',
+                $this->estado->name,
+                'reiterarVencimiento — el préstamo debe estar vencido'
+            );
+        }
+
+        $this->events[] = new RecordatorioDevolucionEnviado(
+            prestamoId: $this->id,
+            investigadorId: $this->investigadorId,
+            estadoRecordatorio: EstadoRecordatorio::Vencido,
+            ocurridoEn: $ahora,
+        );
+    }
+
+    /**
      * Registra en el agregado que se envió un recordatorio de devolución.
      * Debe llamarse después de haber despachado la notificación vía Port.
      */
