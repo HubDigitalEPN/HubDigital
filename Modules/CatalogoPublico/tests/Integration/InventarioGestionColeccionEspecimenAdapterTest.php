@@ -139,6 +139,42 @@ test('obtenerTodos omite especímenes sin occurrence_id', function (): void {
     }
 });
 
+test('traduce los nuevos campos de divulgación y resuelve sampling_protocol vía muestra', function (): void {
+    [, , $speciesId] = crearJerarquiaTaxonomica('Formicidae', 'Camponotus', 'Camponotus femoratus');
+
+    $muestraId = (string) Str::uuid();
+    DB::table('taxonomia.muestras_colecta')->insert([
+        'id' => $muestraId,
+        'codigo_muestra' => 'M-TEST-001',
+        'sampling_protocol' => 'Trampa Winkler',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    crearEspecimenEnTaxonomia($speciesId, [
+        'occurrence_id' => 'EPN-NEWFIELDS',
+        'muestra_id' => $muestraId,
+        'state_province' => 'Napo',
+        'fecha_colecta' => '2024-03-20',
+        'caste' => 'obrera',
+        'life_stage' => 'adulto',
+        'elevation_min_m' => 1200,
+        'elevation_max_m' => 1500,
+    ]);
+
+    $adapter = app(InventarioGestionColeccionEspecimenAdapter::class);
+    $datos = $adapter->buscarPorOccurrenceId('EPN-NEWFIELDS');
+
+    expect($datos)->not->toBeNull()
+        ->and($datos->samplingProtocol)->toBe('Trampa Winkler')
+        ->and($datos->stateProvince)->toBe('Napo')
+        ->and($datos->eventDate)->toContain('2024-03-20')
+        ->and($datos->caste)->toBe('obrera')
+        ->and($datos->lifeStage)->toBe('adulto')
+        ->and($datos->elevationMinM)->toBeCloseTo(1200.0, 1)
+        ->and($datos->elevationMaxM)->toBeCloseTo(1500.0, 1);
+});
+
 test('usa present como occurrenceStatus por defecto cuando el Supplier no tiene valor', function (): void {
     [, , $speciesId] = crearJerarquiaTaxonomica('Formicidae', 'Solenopsis', 'Solenopsis invicta');
 

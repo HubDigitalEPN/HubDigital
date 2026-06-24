@@ -206,7 +206,9 @@ final class SincronizacionInformacionEspecimenesContext extends BaseContext
             'typeStatusVisible', 'typeNotesVisible', 'specimenNotesVisible',
             'samplingProtocolVisible', 'recordedByVisible', 'occurrenceStatusVisible',
             'familyVisible', 'genusVisible', 'countryVisible',
-            'localityNameVisible', 'decimalLatitudeVisible', 'decimalLongitudeVisible',
+            'stateProvinceVisible', 'localityNameVisible', 'decimalLatitudeVisible',
+            'decimalLongitudeVisible', 'elevationVisible', 'eventDateVisible',
+            'casteVisible', 'lifeStageVisible',
         ];
 
         foreach ($tabla->getHash() as $fila) {
@@ -439,7 +441,9 @@ final class SincronizacionInformacionEspecimenesContext extends BaseContext
      */
     private function extraerConfiguracionVisibilidad(array $fila): array
     {
-        $config = ['occurrenceIDVisible' => true];
+        // Parte de todos los flags habilitados para que ConfiguracionVisibilidad::desde()
+        // reciba el conjunto completo aunque la tabla del escenario solo declare un subconjunto.
+        $config = ConfiguracionVisibilidad::todosHabilitados()->toArray();
         foreach ($fila as $campo => $valorStr) {
             if ($campo === 'occurrenceID') {
                 continue;

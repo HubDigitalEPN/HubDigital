@@ -294,6 +294,14 @@
                             >
                                 Sincronización
                             </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="photo"
+                                :href="route('divulgacion.imagenes')"
+                                :current="request()->routeIs('divulgacion.imagenes')"
+                                wire:navigate
+                            >
+                                Imágenes
+                            </flux:sidebar.item>
                         </flux:sidebar.group>
                     @endif
                 @endauth

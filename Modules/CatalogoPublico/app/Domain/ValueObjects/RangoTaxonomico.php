@@ -35,6 +35,15 @@ enum RangoTaxonomico: string
         return $this->orden() < $otro->orden();
     }
 
+    /**
+     * Niveles que admiten imagen por defecto: únicamente género y especie.
+     * Filo/clase/orden/familia quedan excluidos por completo.
+     */
+    public function admiteImagen(): bool
+    {
+        return $this === self::Genus || $this === self::Species;
+    }
+
     public static function desde(string $valor): self
     {
         return self::from($valor);

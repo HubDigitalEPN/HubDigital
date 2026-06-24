@@ -13,7 +13,7 @@ Característica: Exportación de registros de especímenes en formato XLSX
         Cuando el investigador solicita exportar los especímenes de "Atta cephalotes"
         Entonces se descarga un archivo XLSX con el nombre "Atta_cephalotes_<fecha-actual>.xlsx"
         Y el archivo contiene una hoja con los encabezados en orden:
-            | occurrenceID | scientificName | typeStatus | occurrenceStatus | individualCount | localityName | country | decimalLatitude | decimalLongitude | recordedBy | samplingProtocol | typeNotes | specimenNotes |
+            | occurrenceID | scientificName | typeStatus | occurrenceStatus | individualCount | localityName | country | decimalLatitude | decimalLongitude | recordedBy | samplingProtocol | typeNotes | specimenNotes | stateProvince | minimumElevationInMeters | maximumElevationInMeters | eventDate | caste | lifeStage |
         Y el archivo contiene exactamente 2 filas de datos con la información de los especímenes divulgados
 
     Escenario: El investigador exporta especímenes con campos opcionales ausentes

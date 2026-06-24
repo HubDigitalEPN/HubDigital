@@ -61,17 +61,22 @@ final class SincronizarEspecimenes extends Component
         'Registro' => [
             ['key' => 'individualCountVisible', 'label' => 'Cantidad individuos', 'desc' => 'Número de individuos', 'sensible' => false],
             ['key' => 'typeStatusVisible', 'label' => 'Tipo de estatus', 'desc' => 'Estado del tipo nomenclatural', 'sensible' => false],
+            ['key' => 'casteVisible', 'label' => 'Casta', 'desc' => 'Casta del individuo', 'sensible' => false],
+            ['key' => 'lifeStageVisible', 'label' => 'Estadio de vida', 'desc' => 'Etapa del ciclo de vida', 'sensible' => false],
             ['key' => 'typeNotesVisible', 'label' => 'Notas de tipo', 'desc' => 'Anotaciones sobre el tipo', 'sensible' => true],
             ['key' => 'specimenNotesVisible', 'label' => 'Notas del espécimen', 'desc' => 'Observaciones del espécimen', 'sensible' => true],
             ['key' => 'occurrenceStatusVisible', 'label' => 'Estado de ocurrencia', 'desc' => 'Presente / Ausente', 'sensible' => false],
         ],
         'Recolección' => [
             ['key' => 'samplingProtocolVisible', 'label' => 'Protocolo de muestreo', 'desc' => 'Método de recolección', 'sensible' => false],
+            ['key' => 'eventDateVisible', 'label' => 'Fecha de recolección', 'desc' => 'Fecha de colecta', 'sensible' => false],
             ['key' => 'recordedByVisible', 'label' => 'Registrado por', 'desc' => 'Nombre del colector', 'sensible' => true],
         ],
         'Localización' => [
             ['key' => 'countryVisible', 'label' => 'País', 'desc' => 'País de origen', 'sensible' => false],
+            ['key' => 'stateProvinceVisible', 'label' => 'Provincia', 'desc' => 'Estado o provincia', 'sensible' => false],
             ['key' => 'localityNameVisible', 'label' => 'Localidad', 'desc' => 'Nombre del sitio de colecta', 'sensible' => true],
+            ['key' => 'elevationVisible', 'label' => 'Elevación', 'desc' => 'Rango altitudinal (m)', 'sensible' => false],
             ['key' => 'decimalLatitudeVisible', 'label' => 'Latitud', 'desc' => 'Coordenada decimal', 'sensible' => true],
             ['key' => 'decimalLongitudeVisible', 'label' => 'Longitud', 'desc' => 'Coordenada decimal', 'sensible' => true],
         ],
@@ -326,9 +331,14 @@ final class SincronizarEspecimenes extends Component
                 'divulgacion.especimenes_divulgables.family_visible',
                 'divulgacion.especimenes_divulgables.genus_visible',
                 'divulgacion.especimenes_divulgables.country_visible',
+                'divulgacion.especimenes_divulgables.state_province_visible',
                 'divulgacion.especimenes_divulgables.locality_name_visible',
                 'divulgacion.especimenes_divulgables.decimal_latitude_visible',
                 'divulgacion.especimenes_divulgables.decimal_longitude_visible',
+                'divulgacion.especimenes_divulgables.elevation_visible',
+                'divulgacion.especimenes_divulgables.event_date_visible',
+                'divulgacion.especimenes_divulgables.caste_visible',
+                'divulgacion.especimenes_divulgables.life_stage_visible',
             ])
             ->keyBy('occurrence_id');
 
@@ -351,9 +361,14 @@ final class SincronizarEspecimenes extends Component
                     'familyVisible' => (bool) $existente->family_visible,
                     'genusVisible' => (bool) $existente->genus_visible,
                     'countryVisible' => (bool) $existente->country_visible,
+                    'stateProvinceVisible' => (bool) $existente->state_province_visible,
                     'localityNameVisible' => (bool) $existente->locality_name_visible,
                     'decimalLatitudeVisible' => (bool) $existente->decimal_latitude_visible,
                     'decimalLongitudeVisible' => (bool) $existente->decimal_longitude_visible,
+                    'elevationVisible' => (bool) $existente->elevation_visible,
+                    'eventDateVisible' => (bool) $existente->event_date_visible,
+                    'casteVisible' => (bool) $existente->caste_visible,
+                    'lifeStageVisible' => (bool) $existente->life_stage_visible,
                 ];
             } else {
                 $this->configuracionPorEspecimen[$occurrenceID] = array_fill_keys($camposKeys, true);
