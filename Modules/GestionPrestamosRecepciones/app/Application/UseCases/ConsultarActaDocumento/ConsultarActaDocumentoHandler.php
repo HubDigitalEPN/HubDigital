@@ -8,6 +8,7 @@ use Modules\GestionPrestamosRecepciones\Application\Ports\UsuarioNombrePort;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarItemsPrestamo\ItemPrestamoVista;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\ItemPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\ActaPrestamoRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\Repositories\PatenteAnualRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
 
@@ -28,6 +29,7 @@ final class ConsultarActaDocumentoHandler
         private readonly ActaPrestamoRepositoryInterface $actaRepo,
         private readonly SolicitudPrestamoRepositoryInterface $solicitudRepo,
         private readonly UsuarioNombrePort $usuarios,
+        private readonly PatenteAnualRepositoryInterface $patentes,
     ) {}
 
     /**
@@ -59,6 +61,11 @@ final class ConsultarActaDocumentoHandler
 
         $investigadorId = $solicitud?->investigadorId() ?? '';
 
+        // Solo lectura para visualización: devuelve la patente del año o cadena vacía.
+        // El bloqueo por patente faltante vive en la generación (firma y descarga).
+        $anioPatente = (int) $acta->fechaInicio()->format('Y');
+        $patente = $this->patentes->buscarCodigoPorAnio($anioPatente) ?? '';
+
         return new ConsultarActaDocumentoOutput(
             id: (string) $acta->id(),
             investigadorId: $investigadorId,
@@ -74,6 +81,7 @@ final class ConsultarActaDocumentoHandler
             institucionAdscripcion: $solicitud?->institucionAdscripcion(),
             lineaInvestigacion: $solicitud?->lineaInvestigacion(),
             propositoPrestamo: $solicitud?->propositoPrestamo(),
+            patente: $patente,
             items: $items,
         );
     }

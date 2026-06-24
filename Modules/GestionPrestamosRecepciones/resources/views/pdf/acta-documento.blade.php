@@ -56,6 +56,11 @@
             font-family: 'Courier New', monospace;
             margin-top: 4px;
         }
+        .doc-header .patente {
+            font-size: 9px;
+            color: #757575;
+            margin-top: 3px;
+        }
 
         hr { border: none; border-top: 1px solid #E0E0E0; margin: 16px 0; }
 
@@ -190,6 +195,7 @@
                 <p class="institution">Laboratorio de Invertebrados</p>
                 <h1>Acta de Préstamo de Especímenes</h1>
                 <p class="numero">{{ $acta->numeroPrestamo }}</p>
+                <p class="patente">Patente MAATE: {{ $acta->patente }}</p>
             </td>
             <td class="logo-right">
                 <img src="{{ $logoBioBase64 }}" class="logo-img" alt="Logo Departamento de Biología" />

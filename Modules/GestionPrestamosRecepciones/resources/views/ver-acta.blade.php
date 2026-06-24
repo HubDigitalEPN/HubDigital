@@ -94,6 +94,9 @@
                     <p class="text-xs text-text-secondary uppercase tracking-widest">Laboratorio de Invertebrados</p>
                     <h1 class="text-2xl font-bold text-text-primary font-serif mt-2">ACTA DE PRÉSTAMO DE ESPECÍMENES</h1>
                     <p class="font-mono text-sm text-text-secondary mt-1">{{ $acta->numeroPrestamo }}</p>
+                    @if($acta->patente !== '')
+                        <p class="text-xs text-text-secondary mt-1">PATENTE: {{ $acta->patente }}</p>
+                    @endif
                 </div>
                 <img src="{{ $logoBioBase64 }}" alt="Logo Departamento de Biología" class="h-16 w-auto flex-shrink-0" />
             </div>

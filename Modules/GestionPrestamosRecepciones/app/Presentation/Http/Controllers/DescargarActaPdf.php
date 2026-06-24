@@ -9,6 +9,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Response;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarActaDocumento\ConsultarActaDocumentoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarActaDocumento\ConsultarActaDocumentoInput;
+use Modules\GestionPrestamosRecepciones\Domain\Exceptions\PatenteAnualNoConfigurada;
 
 /**
  * Controlador para descargar el acta de préstamo como PDF generado por DomPDF.
@@ -32,6 +33,11 @@ final class DescargarActaPdf
 
         if ($acta === null) {
             abort(404);
+        }
+
+        if ($acta->patente === '') {
+            $anio = (int) $acta->fechaInicio->format('Y');
+            abort(422, PatenteAnualNoConfigurada::paraAnio($anio)->getMessage());
         }
 
         $esCurador = $user?->rol === RolUsuario::CURADOR;

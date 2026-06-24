@@ -28,6 +28,7 @@ final readonly class ConsultarActaDocumentoOutput
      * @param string|null $institucionAdscripcion Institución de adscripción.
      * @param string|null $lineaInvestigacion Línea de investigación.
      * @param string|null $propositoPrestamo Propósito del préstamo.
+     * @param string $patente Patente del laboratorio vigente el año del acta.
      * @param list<ItemPrestamoVista> $items Ítems (especímenes) del préstamo.
      */
     public function __construct(
@@ -45,6 +46,7 @@ final readonly class ConsultarActaDocumentoOutput
         public ?string $institucionAdscripcion,
         public ?string $lineaInvestigacion,
         public ?string $propositoPrestamo,
+        public string $patente,
         public array $items,
     ) {}
 }

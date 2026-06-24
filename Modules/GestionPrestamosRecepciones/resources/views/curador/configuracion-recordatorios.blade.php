@@ -122,6 +122,40 @@
         </div>
     </div>
 
+    {{-- Card de patente del laboratorio --}}
+    <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
+        <div class="px-5 py-4 border-b border-border flex items-center gap-3">
+            <div class="flex h-7 w-7 items-center justify-center rounded-full bg-bio-green text-white shrink-0">
+                <flux:icon name="document-check" class="size-3.5" />
+            </div>
+            <flux:heading size="base" level="2" class="font-display flex-1">Patente del laboratorio (año {{ $anioPatente }})</flux:heading>
+        </div>
+        <div class="p-5 space-y-4">
+            <flux:text class="text-text-secondary text-sm">
+                Código de patente vigente ante el MAATE para el año en curso. Consta en cada acta de préstamo que se genere. Sin patente registrada para el año, no se podrá firmar ni descargar el acta.
+            </flux:text>
+
+            @if($mensajePatente)
+                <flux:callout variant="success" icon="check-circle">{{ $mensajePatente }}</flux:callout>
+            @endif
+
+            <div class="max-w-md">
+                <flux:input
+                    wire:model="patente"
+                    label="Patente {{ $anioPatente }}"
+                    placeholder="Ej: MAATE-MCMEVS-2023-276" />
+                <flux:error name="patente" />
+            </div>
+
+            <div class="flex flex-col gap-2 sm:flex-row pt-1">
+                <flux:button wire:click="guardarPatente" wire:loading.attr="disabled" variant="primary">
+                    <span wire:loading.remove wire:target="guardarPatente">Guardar patente</span>
+                    <span wire:loading wire:target="guardarPatente">Guardando...</span>
+                </flux:button>
+            </div>
+        </div>
+    </div>
+
     {{-- Nota informativa --}}
     <flux:callout variant="warning" icon="exclamation-triangle">
         <flux:heading size="sm">Alcance de la configuración global</flux:heading>
