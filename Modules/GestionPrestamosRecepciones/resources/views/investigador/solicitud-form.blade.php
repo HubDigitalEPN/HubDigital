@@ -406,7 +406,7 @@
                 @if($lastAutoSavedAt)
                     Guardado automáticamente a las {{ $lastAutoSavedAt }}
                 @else
-                    Los cambios no se guardan automáticamente.
+                    Si necesita más tiempo para llenar la solicitud, guarde sus cambios.
                 @endif
             </p>
 

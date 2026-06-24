@@ -261,8 +261,16 @@
         <div class="space-y-4 p-2">
             <flux:heading size="lg">Devolver para refirmar</flux:heading>
             <flux:text class="text-text-secondary text-sm">
-                Indica el motivo por el que el investigador debe volver a firmar el acta.
+                Selecciona qué documentos debe corregir el investigador e indica el motivo.
             </flux:text>
+            <flux:field>
+                <flux:label>Documentos a devolver</flux:label>
+                <div class="space-y-2">
+                    <flux:checkbox wire:model="devolverActa" label="Acta firmada" />
+                    <flux:checkbox wire:model="devolverIdentidad" label="Documento de identidad" />
+                </div>
+                <flux:error name="devolverActa" />
+            </flux:field>
             <flux:field>
                 <flux:label>Motivo de la devolución</flux:label>
                 <flux:textarea wire:model="motivoDevolucion" rows="4"

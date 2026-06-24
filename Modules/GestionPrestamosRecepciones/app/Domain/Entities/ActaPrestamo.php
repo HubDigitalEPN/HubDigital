@@ -179,8 +179,11 @@ final class ActaPrestamo
     /**
      * El investigador sube el acta firmada y su documento de identidad.
      * Solo permitido desde PendienteFirma.
+     *
+     * Si el curador devolvió solo el acta (la identidad sigue válida), se puede
+     * omitir el documento de identidad pasando null; se conserva el ya cargado.
      */
-    public function subirFirma(string $pdfFirmadoRuta, string $documentoIdentidadRuta): void
+    public function subirFirma(string $pdfFirmadoRuta, ?string $documentoIdentidadRuta = null): void
     {
         if (! $this->estado->equals(EstadoActa::PendienteFirma)) {
             throw TransicionDeEstadoInvalidaException::para(
@@ -194,7 +197,11 @@ final class ActaPrestamo
             throw new InvalidArgumentException('La ruta del PDF firmado no puede estar vacía.');
         }
 
-        if (trim($documentoIdentidadRuta) === '') {
+        if ($documentoIdentidadRuta !== null && trim($documentoIdentidadRuta) !== '') {
+            $this->documentoIdentidadRuta = trim($documentoIdentidadRuta);
+        }
+
+        if ($this->documentoIdentidadRuta === null) {
             throw new InvalidArgumentException('La ruta del documento de identidad no puede estar vacía.');
         }
 
@@ -202,7 +209,6 @@ final class ActaPrestamo
 
         $this->estado = EstadoActa::PendienteValidacion;
         $this->pdfFirmadoRuta = trim($pdfFirmadoRuta);
-        $this->documentoIdentidadRuta = trim($documentoIdentidadRuta);
         $this->firmadaSubidaEn = $ahora;
 
         $this->events[] = new ActaFirmadaSubida(
@@ -236,7 +242,6 @@ final class ActaPrestamo
 
         $ahora = new DateTimeImmutable;
 
-        // No se cambia el estado: sigue en PendienteFirma hasta subir documento de identidad.
         $this->pdfFirmadoRuta = trim($firmaImagenRuta);
 
         $this->events[] = new ActaFirmadaDigitalmente(
@@ -245,6 +250,21 @@ final class ActaPrestamo
             pdfFirmadoRuta: $this->pdfFirmadoRuta,
             ocurridoEn: $ahora,
         );
+
+        // Si la identidad ya estaba validada (devolución de solo el acta), la firma
+        // completa el acta. Si no, sigue en PendienteFirma hasta subir la identidad.
+        if ($this->documentoIdentidadRuta !== null) {
+            $this->estado = EstadoActa::PendienteValidacion;
+            $this->firmadaSubidaEn = $ahora;
+
+            $this->events[] = new ActaFirmadaSubida(
+                actaId: $this->id,
+                solicitudId: $this->solicitudPrestamoId,
+                pdfFirmadoRuta: $this->pdfFirmadoRuta,
+                documentoIdentidadRuta: $this->documentoIdentidadRuta,
+                ocurridoEn: $ahora,
+            );
+        }
     }
 
     /**
@@ -287,9 +307,18 @@ final class ActaPrestamo
     /**
      * El curador devuelve el acta por firma inválida.
      * Solo permitido desde PendienteValidacion.
+     *
+     * Puede devolver ambos documentos o solo uno: el acta firmada y/o el
+     * documento de identidad. El documento no devuelto se conserva válido y el
+     * investigador solo debe volver a cargar el devuelto. Cuál se devolvió se
+     * deriva de qué ruta queda en null (ver máquina de estados en la cabecera).
      */
-    public function devolver(string $investigadorId, string $motivo): void
-    {
+    public function devolver(
+        string $investigadorId,
+        string $motivo,
+        bool $devolverActa = true,
+        bool $devolverIdentidad = true,
+    ): void {
         if (! $this->estado->equals(EstadoActa::PendienteValidacion)) {
             throw TransicionDeEstadoInvalidaException::para(
                 'ActaPrestamo',
@@ -302,11 +331,19 @@ final class ActaPrestamo
             throw new InvalidArgumentException('El motivo de devolución no puede estar vacío.');
         }
 
+        if (! $devolverActa && ! $devolverIdentidad) {
+            throw new InvalidArgumentException('Debe devolver al menos un documento.');
+        }
+
         $ahora = new DateTimeImmutable;
 
         $this->estado = EstadoActa::PendienteFirma;
-        $this->pdfFirmadoRuta = null;
-        $this->documentoIdentidadRuta = null;
+        if ($devolverActa) {
+            $this->pdfFirmadoRuta = null;
+        }
+        if ($devolverIdentidad) {
+            $this->documentoIdentidadRuta = null;
+        }
         $this->motivoDevolucion = trim($motivo);
 
         $this->events[] = new ActaDevueltaPorFirmaInvalida(

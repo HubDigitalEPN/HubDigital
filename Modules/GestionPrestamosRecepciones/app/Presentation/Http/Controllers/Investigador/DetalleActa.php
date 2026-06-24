@@ -91,15 +91,23 @@ final class DetalleActa extends Component
      * @param \Modules\GestionPrestamosRecepciones\Application\UseCases\SubirActaFirmada\SubirActaFirmadaHandler $handler
      * @return void
      */
-    public function subirActa(SubirActaFirmadaHandler $handler): void
+    public function subirActa(SubirActaFirmadaHandler $handler, ConsultarDetalleActaHandler $detalleHandler): void
     {
-        $this->validate([
-            'pdfFirmado' => 'required|file|mimes:pdf|max:10240',
-            'documentoIdentidad' => 'required|file|mimes:pdf|max:10240',
-        ]);
+        $acta = $detalleHandler->handle(new ConsultarDetalleActaInput(actaId: $this->actaId));
+
+        // Si el curador devolvió solo el acta, la identidad sigue válida y no se recarga.
+        $necesitaIdentidad = $acta === null || $acta->documentoIdentidadRuta === null;
+
+        $reglas = ['pdfFirmado' => 'required|file|mimes:pdf|max:10240'];
+        if ($necesitaIdentidad) {
+            $reglas['documentoIdentidad'] = 'required|file|mimes:pdf|max:10240';
+        }
+        $this->validate($reglas);
 
         $rutaActa = Storage::putFile('actas-firmadas', $this->pdfFirmado);
-        $rutaIdentidad = Storage::putFile('documentos-identidad', $this->documentoIdentidad);
+        $rutaIdentidad = $necesitaIdentidad
+            ? Storage::putFile('documentos-identidad', $this->documentoIdentidad)
+            : null;
 
         $handler->handle(new SubirActaFirmadaInput(
             solicitudId: $this->solicitudPrestamoId,
@@ -111,7 +119,9 @@ final class DetalleActa extends Component
         $this->showUploadModal = false;
         $this->pdfFirmado = null;
         $this->documentoIdentidad = null;
-        $this->successMessage = 'Documentos subidos correctamente. Espera la validación del curador.';
+        $this->successMessage = $necesitaIdentidad
+            ? 'Documentos subidos correctamente. Espera la validación del curador.'
+            : 'Acta firmada subida correctamente. Espera la validación del curador.';
     }
 
     public function cancelarUploadActa(): void
@@ -152,7 +162,7 @@ final class DetalleActa extends Component
     {
         $this->validate(['firmaBase64' => 'required|string']);
 
-        $handler->handle(new FirmarActaDigitalmenteInput(
+        $output = $handler->handle(new FirmarActaDigitalmenteInput(
             actaId: $this->actaId,
             investigadorId: (string) auth()->id(),
             firmaBase64: $this->firmaBase64,
@@ -160,7 +170,12 @@ final class DetalleActa extends Component
 
         $this->showFirmaCanvasModal = false;
         $this->firmaBase64 = '';
-        $this->successMessage = 'Firma registrada. Ahora sube tu documento de identidad (cédula o pasaporte) para completar el proceso.';
+
+        // Si la identidad ya seguía válida (devolución de solo el acta), la firma
+        // completa el acta y pasa directo a validación; si no, falta la identidad.
+        $this->successMessage = $output->estadoActa === 'pendiente_validacion'
+            ? 'Acta firmada digitalmente. Espera la validación del curador.'
+            : 'Firma registrada. Ahora sube tu documento de identidad (cédula o pasaporte) para completar el proceso.';
     }
 
     /**
