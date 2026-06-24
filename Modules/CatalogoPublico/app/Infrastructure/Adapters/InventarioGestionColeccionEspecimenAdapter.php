@@ -46,15 +46,23 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
                 e.occurrence_status,
                 e.specimen_notes,
                 e.country,
+                e.state_province,
                 e.locality_name,
                 e.decimal_latitude,
                 e.decimal_longitude,
+                e.fecha_colecta,
+                e.caste,
+                e.life_stage,
+                e.elevation_min_m,
+                e.elevation_max_m,
+                mc.sampling_protocol,
                 t.nombre_cientifico,
                 tr.family,
                 tr.genus
             FROM taxonomia.especimenes e
             INNER JOIN taxonomia.taxones t ON t.id = e.taxon_id
             CROSS JOIN taxon_resumen tr
+            LEFT JOIN taxonomia.muestras_colecta mc ON mc.id = e.muestra_id
             WHERE e.occurrence_id = ?
         ', [$occurrenceId, $occurrenceId]);
 
@@ -98,15 +106,23 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
                 e.occurrence_status,
                 e.specimen_notes,
                 e.country,
+                e.state_province,
                 e.locality_name,
                 e.decimal_latitude,
                 e.decimal_longitude,
+                e.fecha_colecta,
+                e.caste,
+                e.life_stage,
+                e.elevation_min_m,
+                e.elevation_max_m,
+                mc.sampling_protocol,
                 t.nombre_cientifico,
                 tr.family,
                 tr.genus
             FROM taxonomia.especimenes e
             INNER JOIN taxonomia.taxones t ON t.id = e.taxon_id
             LEFT JOIN taxon_resumen tr ON tr.origin_id = e.taxon_id
+            LEFT JOIN taxonomia.muestras_colecta mc ON mc.id = e.muestra_id
             WHERE e.occurrence_id IS NOT NULL
             AND t.rango = \'especie\'
         ');
@@ -126,6 +142,7 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
 
         $filas = DB::table('taxonomia.especimenes as e')
             ->join('taxonomia.taxones as t', 't.id', '=', 'e.taxon_id')
+            ->leftJoin('taxonomia.muestras_colecta as mc', 'mc.id', '=', 'e.muestra_id')
             ->whereIn('e.occurrence_id', $occurrenceIds)
             ->select([
                 'e.id',
@@ -136,9 +153,16 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
                 'e.occurrence_status',
                 'e.specimen_notes',
                 'e.country',
+                'e.state_province',
                 'e.locality_name',
                 'e.decimal_latitude',
                 'e.decimal_longitude',
+                'e.fecha_colecta',
+                'e.caste',
+                'e.life_stage',
+                'e.elevation_min_m',
+                'e.elevation_max_m',
+                'mc.sampling_protocol',
                 't.nombre_cientifico',
                 DB::raw('NULL as family'),  // jerarquía completa no requerida en detalle de especie
                 DB::raw('NULL as genus'),
@@ -159,6 +183,7 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
         $filas = DB::table('taxonomia.especimenes as e')
             ->join('taxonomia.taxones as t', 't.id', '=', 'e.taxon_id')
             ->join('taxonomia.taxones as tx_genus', 'tx_genus.id', '=', 't.padre_id')
+            ->leftJoin('taxonomia.muestras_colecta as mc', 'mc.id', '=', 'e.muestra_id')
             ->whereNotNull('e.occurrence_id')
             ->whereRaw(
                 "CASE WHEN t.nombre_cientifico LIKE (tx_genus.nombre_cientifico || ' %')
@@ -176,9 +201,16 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
                 'e.occurrence_status',
                 'e.specimen_notes',
                 'e.country',
+                'e.state_province',
                 'e.locality_name',
                 'e.decimal_latitude',
                 'e.decimal_longitude',
+                'e.fecha_colecta',
+                'e.caste',
+                'e.life_stage',
+                'e.elevation_min_m',
+                'e.elevation_max_m',
+                'mc.sampling_protocol',
                 't.nombre_cientifico',
                 DB::raw('NULL as family'),
                 DB::raw('NULL as genus'),
@@ -199,7 +231,7 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
             typeStatus: $fila->disposition,      // ACL: disposition del Supplier → typeStatus del Customer
             typeNotes: null,                      // sin campo equivalente en el Supplier
             specimenNotes: $fila->specimen_notes,
-            samplingProtocol: null,               // sin campo equivalente en el Supplier
+            samplingProtocol: $fila->sampling_protocol ?? null, // ACL: muestras_colecta.sampling_protocol
             recordedBy: $fila->colector,          // ACL: colector del Supplier → recordedBy del Customer
             occurrenceStatus: $fila->occurrence_status ?? 'present',
             family: $fila->family,
@@ -208,6 +240,12 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
             localityName: $fila->locality_name,
             decimalLatitude: $fila->decimal_latitude !== null ? (float) $fila->decimal_latitude : null,
             decimalLongitude: $fila->decimal_longitude !== null ? (float) $fila->decimal_longitude : null,
+            stateProvince: $fila->state_province,
+            eventDate: $fila->fecha_colecta,      // ACL: fecha_colecta del Supplier → eventDate del Customer
+            caste: $fila->caste,
+            lifeStage: $fila->life_stage,
+            elevationMinM: $fila->elevation_min_m !== null ? (float) $fila->elevation_min_m : null,
+            elevationMaxM: $fila->elevation_max_m !== null ? (float) $fila->elevation_max_m : null,
         );
     }
 }

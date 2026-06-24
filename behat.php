@@ -43,6 +43,7 @@ return (new Config)
                         'Modules\CatalogoPublico\Tests\Behat\Contexts\AdministracionCambiosInformacionLaboratorio\SincronizacionInformacionEspecimenesContext',
                         // GestionContenidoTaxonomico
                         'Modules\CatalogoPublico\Tests\Behat\Contexts\GestionContenidoTaxonomico\PresentacionArbolTaxonomicoContext',
+                        'Modules\CatalogoPublico\Tests\Behat\Contexts\GestionContenidoTaxonomico\GestionImagenesNivelTaxonomicoContext',
                     )
             )
             ->withSuite(

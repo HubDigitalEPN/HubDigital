@@ -30,10 +30,10 @@ Característica: Sincronización de información divulgable de especímenes
             | EPN-002      |
             | EPN-005      |
         Y los datos divulgables de los especímenes deben quedar habilitados:
-            | occurrenceID | occurrenceIDVisible | scientificNameVisible | individualCountVisible | typeStatusVisible | typeNotesVisible | specimenNotesVisible | samplingProtocolVisible | recordedByVisible | occurrenceStatusVisible | familyVisible | genusVisible | countryVisible | localityNameVisible | decimalLatitudeVisible | decimalLongitudeVisible |
-            | EPN-0012     | true                | true                  | true                   | true              | true             | true                 | true                    | true              | true                    | true          | true         | true           | true                | true                   | true                    |
-            | EPN-002      | true                | true                  | true                   | true              | true             | true                 | true                    | true              | true                    | true          | true         | true           | true                | true                   | true                    |
-            | EPN-005      | true                | true                  | true                   | true              | true             | true                 | true                    | true              | true                    | true          | true         | true           | true                | true                   | true                    |
+            | occurrenceID | occurrenceIDVisible | scientificNameVisible | individualCountVisible | typeStatusVisible | typeNotesVisible | specimenNotesVisible | samplingProtocolVisible | recordedByVisible | occurrenceStatusVisible | familyVisible | genusVisible | countryVisible | stateProvinceVisible | localityNameVisible | decimalLatitudeVisible | decimalLongitudeVisible | elevationVisible | eventDateVisible | casteVisible | lifeStageVisible |
+            | EPN-0012     | true                | true                  | true                   | true              | true             | true                 | true                    | true              | true                    | true          | true         | true           | true                 | true                | true                   | true                    | true             | true             | true         | true             |
+            | EPN-002      | true                | true                  | true                   | true              | true             | true                 | true                    | true              | true                    | true          | true         | true           | true                 | true                | true                   | true                    | true             | true             | true         | true             |
+            | EPN-005      | true                | true                  | true                   | true              | true             | true                 | true                    | true              | true                    | true          | true         | true           | true                 | true                | true                   | true                    | true             | true             | true         | true             |
 
     Escenario: Sincronizar nuevos especímenes especificando datos divulgables
         Dado que los siguientes especímenes no existen en la tabla de divulgación:
@@ -42,20 +42,20 @@ Característica: Sincronización de información divulgable de especímenes
             | EPN-002      |
             | EPN-005      |
         Cuando el curador sincroniza los siguientes especímenes para divulgación con esta configuración:
-            | occurrenceID | scientificName | individualCount | typeStatus | typeNotes | specimenNotes | samplingProtocol | recordedBy | occurrenceStatus | family | genus | country | localityName | decimalLatitude | decimalLongitude |
-            | EPN-0012     | true           | true            | true       | false     | false         | true             | true       | true             | true   | true  | true    | true         | false           | false            |
-            | EPN-002      | true           | true            | true       | false     | false         | true             | true       | true             | true   | true  | true    | true         | false           | false            |
-            | EPN-005      | true           | true            | true       | false     | false         | true             | true       | true             | true   | true  | true    | true         | false           | false            |
+            | occurrenceID | scientificName | individualCount | typeStatus | typeNotes | specimenNotes | samplingProtocol | recordedBy | occurrenceStatus | family | genus | country | localityName | decimalLatitude | decimalLongitude | caste | elevation |
+            | EPN-0012     | true           | true            | true       | false     | false         | true             | true       | true             | true   | true  | true    | true         | false           | false            | false | false     |
+            | EPN-002      | true           | true            | true       | false     | false         | true             | true       | true             | true   | true  | true    | true         | false           | false            | false | false     |
+            | EPN-005      | true           | true            | true       | false     | false         | true             | true       | true             | true   | true  | true    | true         | false           | false            | false | false     |
         Entonces los siguientes especímenes deben existir en la tabla de divulgación:
             | occurrenceID |
             | EPN-0012     |
             | EPN-002      |
             | EPN-005      |
         Y los datos divulgables de los especímenes deben quedar configurados:
-            | occurrenceID | scientificName | individualCount | typeStatus | typeNotes | specimenNotes | samplingProtocol | recordedBy | occurrenceStatus | family | genus | country | localityName | decimalLatitude | decimalLongitude |
-            | EPN-0012     | true           | true            | true       | false     | false         | true             | true       | true             | true   | true  | true    | true         | false           | false            |
-            | EPN-002      | true           | true            | true       | false     | false         | true             | true       | true             | true   | true  | true    | true         | false           | false            |
-            | EPN-005      | true           | true            | true       | false     | false         | true             | true       | true             | true   | true  | true    | true         | false           | false            |
+            | occurrenceID | scientificName | individualCount | typeStatus | typeNotes | specimenNotes | samplingProtocol | recordedBy | occurrenceStatus | family | genus | country | localityName | decimalLatitude | decimalLongitude | caste | elevation |
+            | EPN-0012     | true           | true            | true       | false     | false         | true             | true       | true             | true   | true  | true    | true         | false           | false            | false | false     |
+            | EPN-002      | true           | true            | true       | false     | false         | true             | true       | true             | true   | true  | true    | true         | false           | false            | false | false     |
+            | EPN-005      | true           | true            | true       | false     | false         | true             | true       | true             | true   | true  | true    | true         | false           | false            | false | false     |
 
     Escenario: Modificar los datos divulgables de especímenes ya sincronizados
         Dado que los siguientes especímenes existen en la tabla de divulgación:

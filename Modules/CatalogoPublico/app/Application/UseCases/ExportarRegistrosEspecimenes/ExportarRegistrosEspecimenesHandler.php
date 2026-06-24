@@ -62,6 +62,12 @@ final class ExportarRegistrosEspecimenesHandler
                 samplingProtocol: $datoEspecimen->samplingProtocol,
                 typeNotes: $datoEspecimen->typeNotes,
                 specimenNotes: $datoEspecimen->specimenNotes,
+                stateProvince: $datoEspecimen->stateProvince,
+                elevationMinM: $datoEspecimen->elevationMinM,
+                elevationMaxM: $datoEspecimen->elevationMaxM,
+                eventDate: $datoEspecimen->eventDate,
+                caste: $datoEspecimen->caste,
+                lifeStage: $datoEspecimen->lifeStage,
                 visibilidad: $divulgable->configuracion(),
             );
         }

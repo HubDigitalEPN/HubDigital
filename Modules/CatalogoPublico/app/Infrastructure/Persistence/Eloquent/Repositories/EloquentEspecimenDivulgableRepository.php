@@ -37,9 +37,14 @@ final class EloquentEspecimenDivulgableRepository implements EspecimenDivulgable
                 'family_visible' => $flags['familyVisible'],
                 'genus_visible' => $flags['genusVisible'],
                 'country_visible' => $flags['countryVisible'],
+                'state_province_visible' => $flags['stateProvinceVisible'],
                 'locality_name_visible' => $flags['localityNameVisible'],
                 'decimal_latitude_visible' => $flags['decimalLatitudeVisible'],
                 'decimal_longitude_visible' => $flags['decimalLongitudeVisible'],
+                'elevation_visible' => $flags['elevationVisible'],
+                'event_date_visible' => $flags['eventDateVisible'],
+                'caste_visible' => $flags['casteVisible'],
+                'life_stage_visible' => $flags['lifeStageVisible'],
             ]
         );
     }
@@ -112,9 +117,14 @@ final class EloquentEspecimenDivulgableRepository implements EspecimenDivulgable
             'familyVisible' => (bool) $model->family_visible,
             'genusVisible' => (bool) $model->genus_visible,
             'countryVisible' => (bool) $model->country_visible,
+            'stateProvinceVisible' => (bool) $model->state_province_visible,
             'localityNameVisible' => (bool) $model->locality_name_visible,
             'decimalLatitudeVisible' => (bool) $model->decimal_latitude_visible,
             'decimalLongitudeVisible' => (bool) $model->decimal_longitude_visible,
+            'elevationVisible' => (bool) $model->elevation_visible,
+            'eventDateVisible' => (bool) $model->event_date_visible,
+            'casteVisible' => (bool) $model->caste_visible,
+            'lifeStageVisible' => (bool) $model->life_stage_visible,
         ]);
     }
 }

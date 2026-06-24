@@ -22,6 +22,12 @@ final readonly class RegistroExportable
         'samplingProtocol',
         'typeNotes',
         'specimenNotes',
+        'stateProvince',
+        'minimumElevationInMeters',
+        'maximumElevationInMeters',
+        'eventDate',
+        'caste',
+        'lifeStage',
     ];
 
     private function __construct(
@@ -38,6 +44,12 @@ final readonly class RegistroExportable
         public readonly ?string $samplingProtocol,
         public readonly ?string $typeNotes,
         public readonly ?string $specimenNotes,
+        public readonly ?string $stateProvince,
+        public readonly ?string $minimumElevationInMeters,
+        public readonly ?string $maximumElevationInMeters,
+        public readonly ?string $eventDate,
+        public readonly ?string $caste,
+        public readonly ?string $lifeStage,
     ) {}
 
     public static function desde(
@@ -54,6 +66,12 @@ final readonly class RegistroExportable
         ?string $samplingProtocol,
         ?string $typeNotes,
         ?string $specimenNotes,
+        ?string $stateProvince,
+        ?float $elevationMinM,
+        ?float $elevationMaxM,
+        ?string $eventDate,
+        ?string $caste,
+        ?string $lifeStage,
         ConfiguracionVisibilidad $visibilidad,
     ): self {
         if (trim($occurrenceID) === '') {
@@ -82,6 +100,12 @@ final readonly class RegistroExportable
             samplingProtocol: $aplicar($visibilidad->samplingProtocolVisible, $samplingProtocol),
             typeNotes: $aplicar($visibilidad->typeNotesVisible, $typeNotes),
             specimenNotes: $aplicar($visibilidad->specimenNotesVisible, $specimenNotes),
+            stateProvince: $aplicar($visibilidad->stateProvinceVisible, $stateProvince),
+            minimumElevationInMeters: $aplicar($visibilidad->elevationVisible, $elevationMinM),
+            maximumElevationInMeters: $aplicar($visibilidad->elevationVisible, $elevationMaxM),
+            eventDate: $aplicar($visibilidad->eventDateVisible, $eventDate),
+            caste: $aplicar($visibilidad->casteVisible, $caste),
+            lifeStage: $aplicar($visibilidad->lifeStageVisible, $lifeStage),
         );
     }
 
@@ -108,6 +132,12 @@ final readonly class RegistroExportable
             'samplingProtocol' => $this->samplingProtocol ?? '',
             'typeNotes' => $this->typeNotes ?? '',
             'specimenNotes' => $this->specimenNotes ?? '',
+            'stateProvince' => $this->stateProvince ?? '',
+            'minimumElevationInMeters' => $this->minimumElevationInMeters ?? '',
+            'maximumElevationInMeters' => $this->maximumElevationInMeters ?? '',
+            'eventDate' => $this->eventDate ?? '',
+            'caste' => $this->caste ?? '',
+            'lifeStage' => $this->lifeStage ?? '',
         ];
     }
 }

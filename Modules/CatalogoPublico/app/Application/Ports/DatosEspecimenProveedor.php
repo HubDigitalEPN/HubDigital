@@ -23,5 +23,11 @@ final readonly class DatosEspecimenProveedor
         public ?string $localityName,
         public ?float $decimalLatitude,
         public ?float $decimalLongitude,
+        public ?string $stateProvince = null,
+        public ?string $eventDate = null,
+        public ?string $caste = null,
+        public ?string $lifeStage = null,
+        public ?float $elevationMinM = null,
+        public ?float $elevationMaxM = null,
     ) {}
 }

@@ -68,11 +68,11 @@
 
                     @if($nivelActual === 'species' && $taxonActual !== '')
                         <span class="ml-auto text-xs text-text-secondary tabular-nums hidden sm:block">
-                            {{ $conteos['species:'.$taxonActual] ?? 0 }} especímenes
+                            {{ $conteos['species:'.$taxonActual] ?? 0 }} registros
                         </span>
                     @elseif($nivelActual !== '' && $taxonActual !== '')
                         <span class="ml-auto text-xs text-text-secondary tabular-nums hidden sm:block">
-                            {{ number_format($conteos[$nivelActual.':'.$taxonActual] ?? 0) }} especímenes
+                            {{ number_format($conteos[$nivelActual.':'.$taxonActual] ?? 0) }} registros
                         </span>
                     @endif
                 </nav>
@@ -95,7 +95,7 @@
                 @if($totalGlobal > 0)
                     <p class="mt-3 text-sm text-white/70">
                         <strong class="text-white tabular-nums">{{ number_format($totalGlobal) }}</strong>
-                        especímenes en
+                        registros en
                         <strong class="text-white tabular-nums">{{ count($hijos) }}</strong>
                         {{ count($hijos) === 1 ? 'filo' : 'filos' }}
                     </p>
@@ -123,11 +123,6 @@
                         wire:click="navegar('{{ $hijo['nivel'] }}', '{{ $hijo['taxon'] }}')"
                         class="group text-left rounded-lg border border-border bg-surface shadow-sm hover:border-science-blue/40 hover:shadow-md transition-all overflow-hidden"
                     >
-                        {{-- Imagen (placeholder hasta implementar el feature de imágenes) --}}
-                        <div class="h-28 bg-bg-main border-b border-border flex items-center justify-center">
-                            <flux:icon name="photo" class="size-9 text-border" />
-                        </div>
-
                         {{-- Cuerpo de la tarjeta --}}
                         <div class="p-4">
                             <div class="flex items-start justify-between gap-2">
@@ -156,7 +151,7 @@
                                     @if($numEspecimenes > 0)
                                         <span class="text-bio-green font-medium">
                                             <strong class="tabular-nums">{{ number_format($numEspecimenes) }}</strong>
-                                            {{ $numEspecimenes === 1 ? 'espécimen' : 'especímenes' }}
+                                            {{ $numEspecimenes === 1 ? 'registro' : 'registros' }}
                                         </span>
                                     @endif
                                 </div>
@@ -226,10 +221,17 @@
                                     wire:click="navegar('{{ $hijo['nivel'] }}', '{{ $hijo['taxon'] }}')"
                                     class="group text-left rounded-lg border border-border bg-surface shadow-sm hover:border-science-blue/40 hover:shadow-md transition-all overflow-hidden"
                                 >
-                                    {{-- Imagen (placeholder) --}}
-                                    <div class="h-20 bg-bg-main border-b border-border flex items-center justify-center">
-                                        <flux:icon name="photo" class="size-7 text-border" />
-                                    </div>
+                                    {{-- Imagen (solo para género; filo/clase/orden/familia son tarjetas simples) --}}
+                                    @if($hijo['nivel'] === 'genus')
+                                        @php $portadaUrl = $portadas['genus:'.$hijo['taxon']] ?? null; @endphp
+                                        <div class="h-20 bg-bg-main border-b border-border flex items-center justify-center overflow-hidden">
+                                            @if($portadaUrl)
+                                                <img src="{{ $portadaUrl }}" alt="{{ $hijo['taxon'] }}" class="h-full w-full object-cover" />
+                                            @else
+                                                <flux:icon name="photo" class="size-7 text-border" />
+                                            @endif
+                                        </div>
+                                    @endif
 
                                     {{-- Cuerpo --}}
                                     <div class="p-3.5">
@@ -258,7 +260,7 @@
                                                 @if($numEspecimenes > 0)
                                                     <span class="text-bio-green font-medium">
                                                         <strong class="tabular-nums">{{ number_format($numEspecimenes) }}</strong>
-                                                        {{ $numEspecimenes === 1 ? 'espécimen' : 'especímenes' }}
+                                                        {{ $numEspecimenes === 1 ? 'registro' : 'registros' }}
                                                     </span>
                                                 @endif
                                             </div>
@@ -322,12 +324,26 @@
                     @else
                         <div class="space-y-2">
                             @foreach($especiesActuales as $especie)
-                                @php $numEspecimenes = $conteos['species:'.$especie['especie']] ?? 0; @endphp
+                                @php
+                                    $numEspecimenes = $conteos['species:'.$especie['especie']] ?? 0;
+                                    $portadaEspecie = $portadas['species:'.$especie['especie']] ?? null;
+                                @endphp
                                 <button
                                     wire:click="navegar('species', '{{ $especie['especie'] }}')"
-                                    class="group w-full text-left rounded-lg border border-border bg-surface shadow-sm px-4 py-3.5 hover:border-science-blue/40 hover:shadow transition-all flex items-center justify-between gap-4"
+                                    class="group w-full text-left rounded-lg border border-border bg-surface shadow-sm px-4 py-3.5 hover:border-science-blue/40 hover:shadow transition-all flex items-center gap-4"
                                 >
-                                    <div class="min-w-0">
+                                    {{-- Imagen por defecto de la especie (si tiene) --}}
+                                    @if($portadaEspecie)
+                                        <div class="size-14 shrink-0 overflow-hidden rounded-lg border border-border bg-bg-main">
+                                            <img src="{{ $portadaEspecie }}" alt="{{ $especie['especie'] }}" class="h-full w-full object-cover" loading="lazy" />
+                                        </div>
+                                    @else
+                                        <div class="size-14 shrink-0 flex items-center justify-center rounded-lg border border-dashed border-border bg-bg-main">
+                                            <flux:icon name="photo" class="size-5 text-border" />
+                                        </div>
+                                    @endif
+
+                                    <div class="min-w-0 flex-1">
                                         <div class="font-serif italic text-base text-text-primary group-hover:text-science-blue transition-colors">
                                             {{ $especie['especie'] }}
                                         </div>
@@ -339,7 +355,7 @@
                                     <div class="flex items-center gap-3 shrink-0">
                                         @if($numEspecimenes > 0)
                                             <span class="text-xs text-bio-green font-medium tabular-nums">
-                                                {{ $numEspecimenes }} {{ $numEspecimenes === 1 ? 'espécimen' : 'especímenes' }}
+                                                {{ $numEspecimenes }} {{ $numEspecimenes === 1 ? 'registro' : 'registros' }}
                                             </span>
                                         @endif
                                         <flux:icon name="chevron-right" class="size-4 text-text-secondary group-hover:text-science-blue transition-colors" />
@@ -353,7 +369,7 @@
         </div>
 
     {{-- =====================================================================
-         ESPECIE — tabla de especímenes divulgados
+         ESPECIE — tabla de registros divulgados
          ===================================================================== --}}
     @elseif($nivelActual === 'species')
         @assets
@@ -387,7 +403,7 @@
                     </aside>
                 @endif
 
-                {{-- Registros de especímenes --}}
+                {{-- Registros de registros --}}
                 <div class="flex-1 min-w-0">
                     <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <h2 class="font-display text-xl font-semibold text-blue-navy">
@@ -396,7 +412,7 @@
                         </h2>
                         <div class="flex items-center gap-3">
                             <span class="text-xs text-text-secondary tabular-nums">
-                                {{ count($especimenes) }} {{ count($especimenes) === 1 ? 'espécimen' : 'especímenes' }}
+                                {{ count($especimenes) }} {{ count($especimenes) === 1 ? 'registro' : 'registros' }}
                             </span>
                             @if(count($especimenes) > 0)
                                 <button
@@ -421,27 +437,29 @@
                     </div>
 
                     {{-- ══════════════════════════════════
-                         IMÁGENES
+                         IMAGEN DESTACADA DE LA ESPECIE (portada por defecto)
                          ══════════════════════════════════ --}}
+                    @php $portadaEspecie = collect($galeriaEspecie)->firstWhere('esPortada', true); @endphp
                     <section class="mb-6">
-                        <div class="mb-3 flex items-center justify-between">
+                        <div class="mb-3 flex items-center gap-2">
                             <h3 class="text-sm font-semibold text-text-primary flex items-center gap-2">
                                 <flux:icon name="photo" class="size-4 text-text-secondary" />
-                                Imágenes
+                                Imagen de la especie
                             </h3>
-                            <button
-                                disabled
-                                class="flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-xs font-medium text-text-secondary shadow-sm opacity-40 cursor-not-allowed"
-                                title="Exportación de imágenes no disponible aún"
-                            >
-                                <flux:icon name="arrow-down-tray" class="size-3.5" />
-                                Exportar imágenes
-                            </button>
                         </div>
-                        <div class="flex items-center justify-center rounded-lg border border-dashed border-border bg-bg-main py-10 text-sm text-text-secondary gap-2">
-                            <flux:icon name="photo" class="size-5 text-border" />
-                            Especie sin imágenes · 0 imágenes disponibles
-                        </div>
+
+                        @if(! $portadaEspecie)
+                            <div class="flex items-center justify-center rounded-lg border border-dashed border-border bg-bg-main py-10 text-sm text-text-secondary gap-2">
+                                <flux:icon name="photo" class="size-5 text-border" />
+                                Especie sin imagen destacada
+                            </div>
+                        @else
+                            <div class="max-w-xs overflow-hidden rounded-lg border border-bio-green ring-2 ring-bio-green/30 bg-surface shadow-sm">
+                                <div class="aspect-square bg-bg-main">
+                                    <img src="{{ $portadaEspecie['url'] }}" alt="{{ $taxonActual }}" class="h-full w-full object-cover" loading="lazy" />
+                                </div>
+                            </div>
+                        @endif
                     </section>
 
                     {{-- ══════════════════════════════════
@@ -528,7 +546,7 @@
 
                     @if(count($especimenes) === 0)
                         <div class="flex items-center justify-center rounded-lg border border-dashed border-border bg-surface py-12 text-sm text-text-secondary">
-                            No hay especímenes registrados para esta especie.
+                            No hay registros registrados para esta especie.
                         </div>
                     @else
                         <div class="space-y-3">
@@ -547,18 +565,46 @@
                                         ? number_format(abs((float) $lat), 5).'°'.($lat >= 0 ? 'N' : 'S')
                                           .' · '.number_format(abs((float) $lon), 5).'°'.($lon >= 0 ? 'E' : 'O')
                                         : null;
-                                    $localidad = collect([$especimen->locality_name, $especimen->country])
-                                        ->filter()
-                                        ->implode(' · ');
+                                    $elevMin = $especimen->elevation_min_m ?? null;
+                                    $elevMax = $especimen->elevation_max_m ?? null;
+                                    $elevStr = match (true) {
+                                        $elevMin !== null && $elevMax !== null && (float) $elevMin !== (float) $elevMax
+                                            => number_format((float) $elevMin).'–'.number_format((float) $elevMax).' m',
+                                        $elevMin !== null => number_format((float) $elevMin).' m',
+                                        $elevMax !== null => number_format((float) $elevMax).' m',
+                                        default           => null,
+                                    };
+                                    $imagenesEspecimen = $imagenesPorEspecimen[$especimen->occurrence_id] ?? [];
+                                    $numImagenes = count($imagenesEspecimen);
                                 @endphp
-                                <article class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
+                                <article
+                                    x-data="{ abierto: false }"
+                                    class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden"
+                                >
                                     <div class="flex">
 
-                                        {{-- Miniatura de imagen (placeholder hasta implementar el feature de imágenes) --}}
-                                        <div class="hidden sm:flex w-28 shrink-0 flex-col items-center justify-center gap-1.5 bg-bg-main border-r border-border py-4">
-                                            <flux:icon name="photo" class="size-7 text-border" />
-                                            <span class="text-xs text-border leading-none">Sin imagen</span>
-                                        </div>
+                                        {{-- Miniatura: si hay imágenes, abre la galería del registro; si no, placeholder --}}
+                                        @if($numImagenes > 0)
+                                            <button
+                                                type="button"
+                                                @click="abierto = !abierto"
+                                                class="group/thumb relative hidden sm:block w-28 shrink-0 bg-bg-main border-r border-border overflow-hidden"
+                                                title="Ver {{ $numImagenes }} {{ $numImagenes === 1 ? 'imagen' : 'imágenes' }}"
+                                            >
+                                                <img src="{{ $imagenesEspecimen[0]['url'] }}" alt="{{ $especimen->occurrence_id }}" class="h-full w-full object-cover" loading="lazy" />
+                                                <span class="absolute inset-0 flex items-center justify-center bg-blue-navy/0 transition-colors group-hover/thumb:bg-blue-navy/30">
+                                                    <span class="flex items-center gap-1 rounded-full bg-blue-navy/80 px-2 py-0.5 text-xs font-medium text-white">
+                                                        <flux:icon name="photo" class="size-3.5" />
+                                                        {{ $numImagenes }}
+                                                    </span>
+                                                </span>
+                                            </button>
+                                        @else
+                                            <div class="hidden sm:flex w-28 shrink-0 flex-col items-center justify-center gap-1.5 bg-bg-main border-r border-border py-4">
+                                                <flux:icon name="photo" class="size-7 text-border" />
+                                                <span class="text-xs text-border leading-none">Sin imagen</span>
+                                            </div>
+                                        @endif
 
                                         {{-- Contenido del registro --}}
                                         <div class="flex-1 min-w-0 p-4">
@@ -583,6 +629,19 @@
                                                         {{ $especimen->individual_count }} individuos
                                                     </span>
                                                 @endif
+
+                                                {{-- Conteo de imágenes del registro: despliega la galería --}}
+                                                @if($numImagenes > 0)
+                                                    <button
+                                                        type="button"
+                                                        @click="abierto = !abierto"
+                                                        class="inline-flex items-center gap-1 rounded-full border border-science-blue/30 bg-science-blue/5 px-2 py-0.5 text-xs font-medium text-science-blue transition-colors hover:bg-science-blue/10"
+                                                    >
+                                                        <flux:icon name="photo" class="size-3.5" />
+                                                        {{ $numImagenes }} {{ $numImagenes === 1 ? 'imagen' : 'imágenes' }}
+                                                        <flux:icon name="chevron-down" class="size-3.5 transition-transform" x-bind:class="abierto ? 'rotate-180' : ''" />
+                                                    </button>
+                                                @endif
                                             </div>
 
                                             {{-- Nombre científico --}}
@@ -592,10 +651,28 @@
 
                                             {{-- Metadatos como lista de definición --}}
                                             <dl class="grid grid-cols-1 gap-x-8 gap-y-1.5 text-xs sm:grid-cols-2">
-                                                @if($localidad !== '')
+                                                @if($especimen->locality_name)
                                                     <div class="flex gap-2 sm:col-span-2">
                                                         <dt class="w-24 shrink-0 text-text-secondary">Localidad</dt>
-                                                        <dd class="text-text-primary">{{ $localidad }}</dd>
+                                                        <dd class="text-text-primary">{{ $especimen->locality_name }}</dd>
+                                                    </div>
+                                                @endif
+                                                @if($especimen->country)
+                                                    <div class="flex gap-2">
+                                                        <dt class="w-24 shrink-0 text-text-secondary">País</dt>
+                                                        <dd class="text-text-primary">{{ $especimen->country }}</dd>
+                                                    </div>
+                                                @endif
+                                                @if($especimen->state_province)
+                                                    <div class="flex gap-2">
+                                                        <dt class="w-24 shrink-0 text-text-secondary">Provincia</dt>
+                                                        <dd class="text-text-primary">{{ $especimen->state_province }}</dd>
+                                                    </div>
+                                                @endif
+                                                @if($elevStr)
+                                                    <div class="flex gap-2">
+                                                        <dt class="w-24 shrink-0 text-text-secondary">Elevación</dt>
+                                                        <dd class="text-text-primary tabular-nums">{{ $elevStr }}</dd>
                                                     </div>
                                                 @endif
                                                 @if($coordStr)
@@ -604,16 +681,34 @@
                                                         <dd class="font-mono text-text-primary">{{ $coordStr }}</dd>
                                                     </div>
                                                 @endif
-                                                @if($especimen->recorded_by)
+                                                @if($especimen->event_date)
                                                     <div class="flex gap-2">
-                                                        <dt class="w-24 shrink-0 text-text-secondary">Recolector</dt>
-                                                        <dd class="text-text-primary">{{ $especimen->recorded_by }}</dd>
+                                                        <dt class="w-24 shrink-0 text-text-secondary">Recolección</dt>
+                                                        <dd class="text-text-primary tabular-nums">{{ $especimen->event_date }}</dd>
                                                     </div>
                                                 @endif
                                                 @if($especimen->sampling_protocol)
                                                     <div class="flex gap-2">
                                                         <dt class="w-24 shrink-0 text-text-secondary">Método</dt>
                                                         <dd class="text-text-primary">{{ $especimen->sampling_protocol }}</dd>
+                                                    </div>
+                                                @endif
+                                                @if($especimen->recorded_by)
+                                                    <div class="flex gap-2">
+                                                        <dt class="w-24 shrink-0 text-text-secondary">Recolector</dt>
+                                                        <dd class="text-text-primary">{{ $especimen->recorded_by }}</dd>
+                                                    </div>
+                                                @endif
+                                                @if($especimen->caste)
+                                                    <div class="flex gap-2">
+                                                        <dt class="w-24 shrink-0 text-text-secondary">Casta</dt>
+                                                        <dd class="text-text-primary">{{ $especimen->caste }}</dd>
+                                                    </div>
+                                                @endif
+                                                @if($especimen->life_stage)
+                                                    <div class="flex gap-2">
+                                                        <dt class="w-24 shrink-0 text-text-secondary">Estadio</dt>
+                                                        <dd class="text-text-primary">{{ $especimen->life_stage }}</dd>
                                                     </div>
                                                 @endif
                                             </dl>
@@ -632,6 +727,21 @@
                                                             {{ $especimen->specimen_notes }}
                                                         </p>
                                                     @endif
+                                                </div>
+                                            @endif
+
+                                            {{-- Galería del registro: se despliega al pulsar la miniatura o el conteo --}}
+                                            @if($numImagenes > 0)
+                                                <div x-show="abierto" x-collapse x-cloak class="mt-3 border-t border-border pt-3">
+                                                    <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+                                                        @foreach($imagenesEspecimen as $img)
+                                                            <div class="overflow-hidden rounded-lg border border-border bg-bg-main">
+                                                                <div class="aspect-square">
+                                                                    <img src="{{ $img['url'] }}" alt="{{ $especimen->occurrence_id }}" class="h-full w-full object-cover" loading="lazy" />
+                                                                </div>
+                                                            </div>
+                                                        @endforeach
+                                                    </div>
                                                 </div>
                                             @endif
 
@@ -692,10 +802,17 @@
                         wire:click="navegar('{{ $nodo['nivel'] }}', '{{ $nodo['taxon'] }}')"
                         class="group text-left rounded-lg border border-border bg-surface shadow-sm hover:border-science-blue/40 hover:shadow-md transition-all overflow-hidden"
                     >
-                        {{-- Imagen (placeholder) --}}
-                        <div class="h-20 bg-bg-main border-b border-border flex items-center justify-center">
-                            <flux:icon name="photo" class="size-7 text-border" />
-                        </div>
+                        {{-- Imagen (solo para género; filo/clase/orden/familia son tarjetas simples) --}}
+                        @if($nodo['nivel'] === 'genus')
+                            @php $portadaUrl = $portadas['genus:'.$nodo['taxon']] ?? null; @endphp
+                            <div class="h-20 bg-bg-main border-b border-border flex items-center justify-center overflow-hidden">
+                                @if($portadaUrl)
+                                    <img src="{{ $portadaUrl }}" alt="{{ $nodo['taxon'] }}" class="h-full w-full object-cover" />
+                                @else
+                                    <flux:icon name="photo" class="size-7 text-border" />
+                                @endif
+                            </div>
+                        @endif
 
                         {{-- Cuerpo --}}
                         <div class="p-3.5">
@@ -727,7 +844,7 @@
                                     @if($numEspecimenes > 0)
                                         <span class="text-bio-green font-medium">
                                             <strong class="tabular-nums">{{ number_format($numEspecimenes) }}</strong>
-                                            {{ $numEspecimenes === 1 ? 'espécimen' : 'especímenes' }}
+                                            {{ $numEspecimenes === 1 ? 'registro' : 'registros' }}
                                         </span>
                                     @endif
                                 </div>
