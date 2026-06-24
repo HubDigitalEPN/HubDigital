@@ -113,10 +113,6 @@
                         <dd class="font-medium text-text-primary">{{ ($acta->alcancePrestamo ?? 'nacional') === 'internacional' ? 'Internacional' : 'Nacional' }}</dd>
                     </div>
                     <div>
-                        <dt class="text-text-secondary">Código</dt>
-                        <dd class="font-mono font-medium text-text-primary">{{ $acta->numeroSolicitud }}</dd>
-                    </div>
-                    <div>
                         <dt class="text-text-secondary">Fecha de inicio</dt>
                         <dd class="font-medium text-text-primary">
                             {{ ($acta->fechaInicio instanceof \DateTimeInterface ? $acta->fechaInicio : \Carbon\Carbon::parse($acta->fechaInicio))->format('d/m/Y') }}
