@@ -30,8 +30,6 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarSolicitudDepo
 use Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarSolicitudDeposito\EnviarSolicitudDepositoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\JustificarHallazgoTaxonomico\JustificarHallazgoTaxonomicoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\JustificarHallazgoTaxonomico\JustificarHallazgoTaxonomicoInput;
-use Modules\GestionPrestamosRecepciones\Application\UseCases\ReabrirSolicitudParaCorreccion\ReabrirSolicitudParaCorreccionHandler;
-use Modules\GestionPrestamosRecepciones\Application\UseCases\ReabrirSolicitudParaCorreccion\ReabrirSolicitudParaCorreccionInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarSolicitudDeposito\RegistrarSolicitudDepositoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarSolicitudDeposito\RegistrarSolicitudDepositoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RevertirSugerenciaTaxonomica\RevertirSugerenciaTaxonomicaHandler;
@@ -265,8 +263,10 @@ final class RegistroSolicitudDeposito extends Component
     }
 
     /**
-     * Reabre una solicitud rechazada (subsanable) para corregirla: la vuelve a
-     * "En Borrador" y rehidrata el wizard con su estado persistido.
+     * Abre una solicitud devuelta para corrección (subsanable) y rehidrata el wizard.
+     * La solicitud se edita EN SU SITIO, conservando su estado "Requiere Corrección"
+     * (no se convierte en borrador), para no perder trazabilidad en "Mis depósitos".
+     * Solo al reenviar pasa a "Pendiente de Revisión".
      */
     private function iniciarCorreccion(string $id): void
     {
@@ -281,16 +281,6 @@ final class RegistroSolicitudDeposito extends Component
             ], true),
             403,
         );
-
-        if ($model->estado === EstadoSolicitudDeposito::RequiereCorreccion->value) {
-            app(ReabrirSolicitudParaCorreccionHandler::class)(
-                new ReabrirSolicitudParaCorreccionInput(
-                    solicitudId: $id,
-                    investigadorId: (string) auth()->id(),
-                ),
-            );
-            $model->refresh();
-        }
 
         $this->modoCorreccion = true;
         $this->comentarioCurador = (string) ($model->comentario_curador ?? '');
