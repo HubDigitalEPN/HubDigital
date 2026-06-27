@@ -1,21 +1,20 @@
 <div wire:poll.30s
     x-data="{
         open: false,
+        coords: { left: 0, top: 0 },
         toggle() {
             this.open = ! this.open;
-            if (this.open) this.$nextTick(() => this.reposition());
+            if (this.open) this.reposition();
         },
         reposition() {
             const t = this.$refs.trigger.getBoundingClientRect();
-            const panel = this.$refs.panel;
             const margin = 8;
             const vw = window.innerWidth;
-            const pw = panel.offsetWidth;
+            const pw = (this.$refs.panel && this.$refs.panel.offsetWidth) || 320;
             let left = t.left;
             if (left + pw > vw - margin) left = vw - pw - margin;
             if (left < margin) left = margin;
-            panel.style.left = left + 'px';
-            panel.style.top = (t.bottom + margin) + 'px';
+            this.coords = { left, top: t.bottom + margin };
         },
     }"
     x-on:resize.window="open && reposition()"
@@ -37,7 +36,8 @@
 
     <div x-ref="panel" x-show="open" x-cloak x-transition.origin.top.left
         x-on:click.outside="open = false"
-        class="fixed left-0 top-0 w-80 max-w-[calc(100vw-1rem)] rounded-lg border border-border bg-surface shadow-lg z-50 overflow-hidden">
+        :style="`left: ${coords.left}px; top: ${coords.top}px`"
+        class="fixed w-80 max-w-[calc(100vw-1rem)] rounded-lg border border-border bg-surface shadow-lg z-50 overflow-hidden">
 
         <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-border">
             <span class="text-sm font-semibold text-text-primary">Notificaciones</span>
@@ -71,5 +71,16 @@
                 </div>
             @endforelse
         </div>
+
+        @if($notificaciones->isNotEmpty())
+            <div class="border-t border-border px-4 py-2.5">
+                <button type="button" wire:click="eliminarTodas"
+                    wire:confirm="¿Vaciar todas las notificaciones? Esta acción no se puede deshacer."
+                    class="flex w-full items-center justify-center gap-1.5 text-xs font-medium text-error hover:underline">
+                    <flux:icon name="trash" class="size-3.5" />
+                    Vaciar notificaciones
+                </button>
+            </div>
+        @endif
     </div>
 </div>

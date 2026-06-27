@@ -35,6 +35,14 @@ final class CampanaNotificaciones extends Component
         auth()->user()?->unreadNotifications->markAsRead();
     }
 
+    /**
+     * Elimina (vacía) todas las notificaciones del usuario.
+     */
+    public function eliminarTodas(): void
+    {
+        auth()->user()?->notifications()->delete();
+    }
+
     public function render(): View
     {
         $usuario = auth()->user();
