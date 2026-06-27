@@ -26,6 +26,48 @@
             {{-- Columna principal --}}
             <div class="lg:col-span-2 space-y-6">
 
+                {{-- Devolución para corrección (rechazo subsanable) --}}
+                @if($deposito->estado === 'Requiere Corrección')
+                    <div class="rounded-lg border border-warning/40 bg-warning/5 p-5 space-y-4">
+                        <div class="flex items-start gap-3">
+                            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-warning text-white">
+                                <flux:icon name="exclamation-triangle" class="size-4" />
+                            </div>
+                            <div class="min-w-0 space-y-1">
+                                <flux:heading size="base" level="2" class="font-display text-warning">La curaduría devolvió tu solicitud para corrección</flux:heading>
+                                @if($deposito->comentario_curador)
+                                    <p class="text-sm text-text-primary leading-relaxed">
+                                        <span class="font-medium">Observaciones del curador:</span> {{ $deposito->comentario_curador }}
+                                    </p>
+                                @else
+                                    <p class="text-sm text-text-secondary">Corrige lo indicado y reenvía tu solicitud.</p>
+                                @endif
+                            </div>
+                        </div>
+                        <flux:button wire:navigate href="{{ route('prestamos.investigador.deposito.corregir', $deposito->id) }}"
+                            variant="primary" icon="pencil-square" class="w-full sm:w-auto">
+                            Corregir y reenviar
+                        </flux:button>
+                    </div>
+                @elseif($deposito->estado === 'Rechazo Permanente')
+                    <div class="rounded-lg border border-error/40 bg-error/5 p-5">
+                        <div class="flex items-start gap-3">
+                            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-error text-white">
+                                <flux:icon name="x-circle" class="size-4" />
+                            </div>
+                            <div class="min-w-0 space-y-1">
+                                <flux:heading size="base" level="2" class="font-display text-error">Solicitud rechazada de forma definitiva</flux:heading>
+                                @if($deposito->comentario_curador)
+                                    <p class="text-sm text-text-primary leading-relaxed">
+                                        <span class="font-medium">Motivo:</span> {{ $deposito->comentario_curador }}
+                                    </p>
+                                @endif
+                                <p class="text-xs text-text-secondary">Esta decisión es final y la solicitud no admite corrección.</p>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
                 {{-- Código QR del lote (solicitud aprobada) --}}
                 @if($deposito->estado === 'Aprobada Documentalmente' && $deposito->codigo_qr)
                     <div class="rounded-lg border border-success/40 bg-success/5 shadow-sm overflow-hidden">

@@ -7,6 +7,7 @@ namespace Modules\GestionPrestamosRecepciones\Application\UseCases\CargarMatrizE
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\MatrizEspecies;
+use Modules\GestionPrestamosRecepciones\Domain\Exceptions\CamposDwCFaltantesException;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Services\NormalizadorCamposDwC;
@@ -31,11 +32,9 @@ final class CargarMatrizEspeciesHandler
     /**
      * Ejecuta el caso de uso.
      *
-     * @param  CargarMatrizEspeciesInput  $input
-     * @return CargarMatrizEspeciesOutput
      *
      * @throws \DomainException Si la solicitud no existe.
-     * @throws \Modules\GestionPrestamosRecepciones\Domain\Exceptions\CamposDwCFaltantesException Si faltan campos críticos.
+     * @throws CamposDwCFaltantesException Si faltan campos críticos.
      */
     public function __invoke(CargarMatrizEspeciesInput $input): CargarMatrizEspeciesOutput
     {
@@ -68,6 +67,9 @@ final class CargarMatrizEspeciesHandler
                 normalizaciones: $resultado->cambios,
             );
         }
+
+        // Bloquea la carga si alguna celda de un campo obligatorio (crítico) llega vacía.
+        $matriz->validarObligatoriosNoVacios($input->camposCriticos);
 
         $validacionTipograficaAplicada = $solicitud->tipoTramite() !== 'Donación';
 

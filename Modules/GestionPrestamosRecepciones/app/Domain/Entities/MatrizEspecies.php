@@ -12,6 +12,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Events\MatrizValidadaTecnicamente
 use Modules\GestionPrestamosRecepciones\Domain\Events\SugerenciaTaxonomicaAceptada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SugerenciaTaxonomicaRevertida;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\CamposDwCFaltantesException;
+use Modules\GestionPrestamosRecepciones\Domain\Exceptions\CamposObligatoriosVaciosException;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\RegistroEspecimenNoEncontradoException;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoMatrizEspecies;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoRegistroEspecimen;
@@ -142,6 +143,49 @@ final class MatrizEspecies
 
         if (! empty($criticosFaltantes)) {
             throw CamposDwCFaltantesException::porCamposFaltantes($criticosFaltantes);
+        }
+    }
+
+    /**
+     * Valida que los campos DwC obligatorios (críticos) presentes como columna no
+     * lleguen vacíos en ningún registro. Complementa a {@see validarCamposDwC()},
+     * que solo verifica la presencia de la columna, no el contenido de cada celda.
+     *
+     * Solo evalúa los campos críticos que existen como columna en la matriz; la
+     * ausencia total de una columna crítica ya la cubre validarCamposDwC().
+     *
+     * @param  string[]  $camposCriticos
+     *
+     * @throws CamposObligatoriosVaciosException Si algún registro tiene un crítico vacío.
+     */
+    public function validarObligatoriosNoVacios(array $camposCriticos): void
+    {
+        $criticosPresentes = array_values(array_filter(
+            $camposCriticos,
+            fn (string $campo) => array_key_exists($campo, $this->camposDwCPresentes)
+        ));
+
+        if ($criticosPresentes === []) {
+            return;
+        }
+
+        $violaciones = [];
+
+        foreach ($this->registros as $registro) {
+            $datos = $registro->datosDwC();
+            $fila = trim($registro->nombreCientifico()) !== ''
+                ? $registro->nombreCientifico()
+                : '(sin nombre científico)';
+
+            foreach ($criticosPresentes as $campo) {
+                if (trim((string) ($datos[$campo] ?? '')) === '') {
+                    $violaciones[] = ['fila' => $fila, 'campo' => $campo];
+                }
+            }
+        }
+
+        if ($violaciones !== []) {
+            throw CamposObligatoriosVaciosException::porRegistros($violaciones);
         }
     }
 

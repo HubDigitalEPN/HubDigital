@@ -74,6 +74,7 @@ Route::middleware(['auth', 'verified'])
         Route::middleware('role:depositante')->group(function () {
             Route::get('/mis-depositos', MisDepositos::class)->name('investigador.mis-depositos');
             Route::get('/deposito/nueva', RegistroSolicitudDeposito::class)->name('investigador.deposito.crear');
+            Route::get('/deposito/{id}/corregir', RegistroSolicitudDeposito::class)->name('investigador.deposito.corregir');
             Route::get('/deposito/{id}', DetalleDeposito::class)->name('investigador.deposito.detalle');
         });
 

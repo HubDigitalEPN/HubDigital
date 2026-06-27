@@ -14,6 +14,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Events\IntervencionCuratoriaSolic
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudAprobadaDocumentalmente;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudDepositoCreada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudDepositoPendienteDeRevision;
+use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudDepositoReabiertaParaCorreccion;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPriorizada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudRechazadaDocumentalmente;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudRequiereCorreccion;
@@ -541,6 +542,29 @@ final class SolicitudDeposito
             estadoResultante: $estadoResultante,
             motivo: $motivo,
             ocurridoEn: $ahora,
+        );
+    }
+
+    /**
+     * El depositante reabre la solicitud para corregirla tras un rechazo subsanable.
+     * Vuelve a "En Borrador" para que el wizard la pueda editar y reenviar. Conserva
+     * el comentario del curador para guiar la corrección.
+     *
+     * @throws TransicionEstadoInvalida Si no está en "Requiere Corrección".
+     */
+    public function reabrirParaCorreccion(): void
+    {
+        if (! $this->estado->equals(EstadoSolicitudDeposito::RequiereCorreccion)) {
+            throw TransicionEstadoInvalida::de(
+                $this->estado->value,
+                EstadoSolicitudDeposito::EnBorrador->value,
+            );
+        }
+
+        $this->estado = EstadoSolicitudDeposito::EnBorrador;
+
+        $this->events[] = new SolicitudDepositoReabiertaParaCorreccion(
+            solicitudId: $this->id,
         );
     }
 

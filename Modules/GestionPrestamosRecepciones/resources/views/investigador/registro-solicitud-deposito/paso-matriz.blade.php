@@ -31,13 +31,29 @@
         </span>
     </div>
 
-    {{-- Banner: rechazo por campo DwC faltante --}}
+    {{-- Banner: rechazo por campo DwC faltante / obligatorio vacío --}}
     @if($matrizCargada && !empty($errorMatriz))
         <flux:callout variant="danger" icon="x-circle">
             <flux:heading>Carga rechazada</flux:heading>
-            <flux:text class="text-sm">
-                {{ $errorMatriz }}. Corrige el archivo y vuelve a subirlo.
-            </flux:text>
+            @if(!empty($camposObligatoriosVacios))
+                <flux:text class="text-sm">
+                    Algunos campos obligatorios llegaron vacíos. Complétalos en el Excel y vuelve a subirlo:
+                </flux:text>
+                <div class="mt-2 flex flex-wrap gap-1.5">
+                    @foreach($camposObligatoriosVacios as $vacio)
+                        <span class="inline-flex items-center gap-1.5 rounded border border-error/40 bg-error/5 px-2 py-1 text-xs text-error">
+                            <flux:icon name="exclamation-triangle" variant="outline" class="size-3 shrink-0" />
+                            <span class="font-serif italic">{{ $vacio['fila'] }}</span>
+                            <span class="text-error/70">·</span>
+                            <span class="font-medium">{{ $vacio['campo'] }}</span>
+                        </span>
+                    @endforeach
+                </div>
+            @else
+                <flux:text class="text-sm">
+                    {{ $errorMatriz }}. Corrige el archivo y vuelve a subirlo.
+                </flux:text>
+            @endif
         </flux:callout>
     @endif
 

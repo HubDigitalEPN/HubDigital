@@ -17,6 +17,20 @@
         <p class="text-sm text-error font-medium" x-text="domainError"></p>
     </div>
 
+    {{-- Corrección de un rechazo subsanable: recordatorio de las observaciones --}}
+    @if($modoCorreccion && $paso < 7)
+        <div class="rounded-lg border border-warning/40 bg-warning/5 p-4 flex items-start gap-3">
+            <flux:icon name="exclamation-triangle" class="size-5 text-warning shrink-0 mt-0.5" />
+            <div class="min-w-0">
+                <p class="text-sm font-medium text-text-primary">Estás corrigiendo una solicitud devuelta por la curaduría</p>
+                @if($comentarioCurador)
+                    <p class="text-sm text-text-secondary mt-0.5"><span class="font-medium text-text-primary">Observaciones:</span> {{ $comentarioCurador }}</p>
+                @endif
+                <p class="text-xs text-text-secondary mt-1">Corrige lo indicado y vuelve a enviar la solicitud para revisión.</p>
+            </div>
+        </div>
+    @endif
+
     @if($paso < 7)
         {{-- Breadcrumbs --}}
         <flux:breadcrumbs>
@@ -27,7 +41,7 @@
         </flux:breadcrumbs>
 
         {{-- Borrador restaurado --}}
-        @if($borradorRestaurado && $paso < 6)
+        @if($borradorRestaurado && ! $modoCorreccion && $paso < 6)
             <div class="rounded-lg border border-science-blue/30 bg-science-blue/5 p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                 <div class="flex items-center gap-3">
                     <flux:icon name="bookmark" class="size-5 text-science-blue shrink-0" />

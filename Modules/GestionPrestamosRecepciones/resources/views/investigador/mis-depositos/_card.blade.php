@@ -24,6 +24,16 @@
         <span class="text-xs text-text-secondary hidden sm:block">
             {{ $deposito->created_at->format('d/m/Y') }}
         </span>
+        @if($deposito->estado === 'Requiere Corrección')
+            <flux:button
+                size="sm"
+                variant="primary"
+                icon="pencil-square"
+                wire:navigate href="{{ route('prestamos.investigador.deposito.corregir', $deposito->id) }}"
+            >
+                Corregir
+            </flux:button>
+        @endif
         <flux:button
             size="sm"
             variant="ghost"
