@@ -1,22 +1,48 @@
-<div wire:poll.30s x-data="{ open: false }" class="relative">
-    <button type="button" x-on:click="open = ! open"
-        class="relative inline-flex items-center justify-center size-9 rounded-lg text-current hover:bg-black/5 transition-colors" aria-label="Notificaciones">
-        <flux:icon name="bell" class="size-5" />
-        @if($noLeidas > 0)
-            <span class="absolute -top-0.5 -right-0.5 inline-flex items-center justify-center min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-error text-white text-[10px] font-bold tabular-nums">
-                {{ $noLeidas > 9 ? '9+' : $noLeidas }}
-            </span>
-        @endif
+<div wire:poll.30s
+    x-data="{
+        open: false,
+        toggle() {
+            this.open = ! this.open;
+            if (this.open) this.$nextTick(() => this.reposition());
+        },
+        reposition() {
+            const t = this.$refs.trigger.getBoundingClientRect();
+            const panel = this.$refs.panel;
+            const margin = 8;
+            const vw = window.innerWidth;
+            const pw = panel.offsetWidth;
+            let left = t.left;
+            if (left + pw > vw - margin) left = vw - pw - margin;
+            if (left < margin) left = margin;
+            panel.style.left = left + 'px';
+            panel.style.top = (t.bottom + margin) + 'px';
+        },
+    }"
+    x-on:resize.window="open && reposition()"
+    x-on:scroll.window.capture="open && reposition()"
+    x-on:keydown.escape.window="open = false"
+    class="relative">
+
+    <button type="button" x-ref="trigger" x-on:click="toggle()"
+        class="inline-flex items-center justify-center size-9 rounded-lg text-current hover:bg-black/5 transition-colors" aria-label="Notificaciones">
+        <span class="relative inline-flex">
+            <flux:icon name="bell" class="size-5" />
+            @if($noLeidas > 0)
+                <span class="pointer-events-none absolute -top-2 -right-2 inline-flex items-center justify-center min-w-[1rem] h-4 px-1 rounded-full bg-error text-white text-[10px] leading-none font-bold tabular-nums ring-2 ring-surface">
+                    {{ $noLeidas > 9 ? '9+' : $noLeidas }}
+                </span>
+            @endif
+        </span>
     </button>
 
-    <div x-show="open" x-cloak x-transition.origin.top.right
+    <div x-ref="panel" x-show="open" x-cloak x-transition.origin.top.left
         x-on:click.outside="open = false"
-        class="absolute right-0 mt-2 w-80 max-w-[90vw] rounded-lg border border-border bg-surface shadow-lg z-50 overflow-hidden">
+        class="fixed left-0 top-0 w-80 max-w-[calc(100vw-1rem)] rounded-lg border border-border bg-surface shadow-lg z-50 overflow-hidden">
 
-        <div class="flex items-center justify-between px-4 py-3 border-b border-border">
+        <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-border">
             <span class="text-sm font-semibold text-text-primary">Notificaciones</span>
             @if($noLeidas > 0)
-                <button wire:click="marcarTodasLeidas" class="text-xs font-medium text-science-blue hover:underline">
+                <button wire:click="marcarTodasLeidas" class="shrink-0 whitespace-nowrap text-xs font-medium text-science-blue hover:underline">
                     Marcar todas como leídas
                 </button>
             @endif
