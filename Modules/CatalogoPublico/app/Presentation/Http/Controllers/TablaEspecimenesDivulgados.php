@@ -45,9 +45,14 @@ final class TablaEspecimenesDivulgados extends Component
         'familyVisible' => 'family_visible',
         'genusVisible' => 'genus_visible',
         'countryVisible' => 'country_visible',
+        'stateProvinceVisible' => 'state_province_visible',
         'localityNameVisible' => 'locality_name_visible',
         'decimalLatitudeVisible' => 'decimal_latitude_visible',
         'decimalLongitudeVisible' => 'decimal_longitude_visible',
+        'elevationVisible' => 'elevation_visible',
+        'eventDateVisible' => 'event_date_visible',
+        'casteVisible' => 'caste_visible',
+        'lifeStageVisible' => 'life_stage_visible',
     ];
 
     #[Computed]
@@ -150,8 +155,10 @@ final class TablaEspecimenesDivulgados extends Component
                     (ed.occurrence_status_visible::int) + (ed.sampling_protocol_visible::int) +
                     (ed.recorded_by_visible::int) + (ed.family_visible::int) +
                     (ed.genus_visible::int) + (ed.country_visible::int) +
-                    (ed.locality_name_visible::int) + (ed.decimal_latitude_visible::int) +
-                    (ed.decimal_longitude_visible::int)
+                    (ed.state_province_visible::int) + (ed.locality_name_visible::int) +
+                    (ed.decimal_latitude_visible::int) + (ed.decimal_longitude_visible::int) +
+                    (ed.elevation_visible::int) + (ed.event_date_visible::int) +
+                    (ed.caste_visible::int) + (ed.life_stage_visible::int)
                 ) as campos_visibles'),
             ]);
 

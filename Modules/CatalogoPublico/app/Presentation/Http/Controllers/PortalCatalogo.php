@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Modules\CatalogoPublico\Presentation\Http\Controllers;
 
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -15,8 +17,12 @@ use Modules\CatalogoPublico\Application\Ports\ProveedorOpcionesFiltroPort;
 use Modules\CatalogoPublico\Application\UseCases\ConstruirArbolTaxonomico\ConstruirArbolTaxonomicoHandler;
 use Modules\CatalogoPublico\Application\UseCases\ConstruirArbolTaxonomico\ConstruirArbolTaxonomicoInput;
 use Modules\CatalogoPublico\Application\UseCases\ConstruirArbolTaxonomico\ConstruirArbolTaxonomicoOutput;
+use Modules\CatalogoPublico\Application\UseCases\ConsultarGaleriaTaxon\ConsultarGaleriaTaxonHandler;
+use Modules\CatalogoPublico\Application\UseCases\ConsultarGaleriaTaxon\ConsultarGaleriaTaxonInput;
 use Modules\CatalogoPublico\Application\UseCases\ExportarRegistrosEspecimenes\ExportarRegistrosEspecimenesHandler;
 use Modules\CatalogoPublico\Application\UseCases\ExportarRegistrosEspecimenes\ExportarRegistrosEspecimenesInput;
+use Modules\CatalogoPublico\Domain\Entities\EspecimenDivulgable;
+use Modules\CatalogoPublico\Domain\Repositories\EspecimenDivulgableRepositoryInterface;
 use Modules\CatalogoPublico\Domain\ValueObjects\FiltrosBusqueda;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -244,8 +250,12 @@ final class PortalCatalogo extends Component
 
     // ─── Render ───────────────────────────────────────────────────────────────
 
-    public function render(ConstruirArbolTaxonomicoHandler $handler, ProveedorEspecimenesPort $proveedor): View
-    {
+    public function render(
+        ConstruirArbolTaxonomicoHandler $handler,
+        ProveedorEspecimenesPort $proveedor,
+        EspecimenDivulgableRepositoryInterface $repoDivulgable,
+        ConsultarGaleriaTaxonHandler $galeriaHandler,
+    ): View {
         $filtros = FiltrosBusqueda::desde([
             'filtroCatalogo' => $this->filtroCatalogo,
             'filtroPreparaciones' => $this->filtroPreparaciones,
@@ -273,7 +283,7 @@ final class PortalCatalogo extends Component
         $especiesActuales = $this->nivel === 'genus' ? $this->resolverEspecies($output) : [];
         $hermanos = $this->nivel !== '' ? $this->resolverHermanos($output) : [];
         $especimenes = $this->nivel === 'species'
-            ? $this->cargarDetallesEspecimenes($output->especimenesPorEspecie[$this->taxon] ?? [], $proveedor)
+            ? $this->cargarDetallesEspecimenes($output->especimenesPorEspecie[$this->taxon] ?? [], $proveedor, $repoDivulgable)
             : [];
 
         $descendientes = $this->calcularDescendientes($output);
@@ -296,8 +306,19 @@ final class PortalCatalogo extends Component
             'filtroBiomas' => $this->filtroBiomas,
         ];
 
+        $galeriaEspecie = $this->nivel === 'species'
+            ? $galeriaHandler->handle(new ConsultarGaleriaTaxonInput('species', $this->taxon))->imagenes
+            : [];
+
+        $imagenesPorEspecimen = $this->nivel === 'species'
+            ? $this->cargarImagenesPorEspecimen(array_map(fn (object $e): string => $e->occurrence_id, $especimenes))
+            : [];
+
         return view('catalogopublico::livewire.portal-catalogo', [
             'ruta' => $ruta,
+            'portadas' => $this->cargarPortadas(),
+            'galeriaEspecie' => $galeriaEspecie,
+            'imagenesPorEspecimen' => $imagenesPorEspecimen,
             'hijos' => $hijos,
             'especiesActuales' => $especiesActuales,
             'hermanos' => $hermanos,
@@ -323,6 +344,47 @@ final class PortalCatalogo extends Component
             'metodosRecoleccionDisponibles' => $this->metodosRecoleccionDisponibles,
             'colectoresDisponibles' => $this->colectoresDisponibles,
         ]);
+    }
+
+    /**
+     * Portadas (imagen por defecto) de género y especie, indexadas por "nivel:valor".
+     *
+     * @return array<string, string>
+     */
+    private function cargarPortadas(): array
+    {
+        return DB::table('divulgacion.imagenes_por_defecto as d')
+            ->join('divulgacion.imagenes_taxonomicas as i', 'i.id', '=', 'd.imagen_id')
+            ->select('d.nivel', 'd.valor_taxon', 'i.ruta', 'i.disco')
+            ->get()
+            ->mapWithKeys(fn ($r): array => [
+                $r->nivel.':'.$r->valor_taxon => Storage::disk($r->disco)->url($r->ruta),
+            ])
+            ->all();
+    }
+
+    /**
+     * Imágenes agrupadas por occurrence_id para los especímenes visibles de la especie.
+     *
+     * @param  list<string>  $occurrenceIDs
+     * @return array<string, list<array{url: string, nombre: string}>>
+     */
+    private function cargarImagenesPorEspecimen(array $occurrenceIDs): array
+    {
+        if ($occurrenceIDs === []) {
+            return [];
+        }
+
+        return DB::table('divulgacion.imagenes_taxonomicas')
+            ->whereIn('occurrence_id', $occurrenceIDs)
+            ->orderBy('created_at')
+            ->get(['occurrence_id', 'ruta', 'disco', 'nombre_original'])
+            ->groupBy('occurrence_id')
+            ->map(fn ($grupo): array => $grupo->map(fn ($r): array => [
+                'url' => Storage::disk($r->disco)->url($r->ruta),
+                'nombre' => $r->nombre_original,
+            ])->values()->all())
+            ->all();
     }
 
     /** @return list<array{nivel: string, taxon: string, etiqueta: string}> */
@@ -430,31 +492,58 @@ final class PortalCatalogo extends Component
     }
 
     /**
+     * Carga los detalles de los especímenes aplicando la configuración de visibilidad
+     * de divulgación: cada campo se anula cuando su flag está desactivado, de modo que
+     * la tarjeta del portal solo muestra lo que el curador habilitó.
+     *
      * @param  list<string>  $occurrenceIDs
      * @return list<object>
      */
-    private function cargarDetallesEspecimenes(array $occurrenceIDs, ProveedorEspecimenesPort $proveedor): array
-    {
+    private function cargarDetallesEspecimenes(
+        array $occurrenceIDs,
+        ProveedorEspecimenesPort $proveedor,
+        EspecimenDivulgableRepositoryInterface $repoDivulgable,
+    ): array {
         if ($occurrenceIDs === []) {
             return [];
         }
 
+        // Config de visibilidad indexada por especimenId (FK estable compartida con el DTO).
+        $configPorEspecimen = [];
+        foreach ($repoDivulgable->buscarPorOccurrenceIDs($occurrenceIDs) as $divulgable) {
+            $configPorEspecimen[$divulgable->especimenId()] = $divulgable;
+        }
+
         return array_map(
-            fn (DatosEspecimenProveedor $dto): object => (object) [
-                'occurrence_id' => $dto->occurrenceId,
-                'scientific_name' => $dto->scientificName,
-                'individual_count' => $dto->individualCount,
-                'type_status' => $dto->typeStatus,
-                'type_notes' => $dto->typeNotes,
-                'specimen_notes' => $dto->specimenNotes,
-                'sampling_protocol' => $dto->samplingProtocol,
-                'recorded_by' => $dto->recordedBy,
-                'occurrence_status' => $dto->occurrenceStatus,
-                'country' => $dto->country,
-                'locality_name' => $dto->localityName,
-                'decimal_latitude' => $dto->decimalLatitude,
-                'decimal_longitude' => $dto->decimalLongitude,
-            ],
+            function (DatosEspecimenProveedor $dto) use ($configPorEspecimen): object {
+                // Si por algún motivo no hay registro de divulgación, el espécimen no
+                // llegaría al árbol; defensivamente lo tratamos como todo-visible.
+                $cfg = $configPorEspecimen[$dto->especimenId] ?? null;
+                $ver = fn (callable $flag): bool => $cfg === null || $flag($cfg);
+                $g = fn (bool $visible, mixed $valor): mixed => $visible ? $valor : null;
+
+                return (object) [
+                    'occurrence_id' => $dto->occurrenceId,
+                    'scientific_name' => $dto->scientificName,
+                    'individual_count' => $g($ver(fn (EspecimenDivulgable $d) => $d->individualCountVisible()), $dto->individualCount),
+                    'type_status' => $g($ver(fn (EspecimenDivulgable $d) => $d->typeStatusVisible()), $dto->typeStatus),
+                    'type_notes' => $g($ver(fn (EspecimenDivulgable $d) => $d->typeNotesVisible()), $dto->typeNotes),
+                    'specimen_notes' => $g($ver(fn (EspecimenDivulgable $d) => $d->specimenNotesVisible()), $dto->specimenNotes),
+                    'sampling_protocol' => $g($ver(fn (EspecimenDivulgable $d) => $d->samplingProtocolVisible()), $dto->samplingProtocol),
+                    'recorded_by' => $g($ver(fn (EspecimenDivulgable $d) => $d->recordedByVisible()), $dto->recordedBy),
+                    'occurrence_status' => $g($ver(fn (EspecimenDivulgable $d) => $d->occurrenceStatusVisible()), $dto->occurrenceStatus),
+                    'country' => $g($ver(fn (EspecimenDivulgable $d) => $d->countryVisible()), $dto->country),
+                    'state_province' => $g($ver(fn (EspecimenDivulgable $d) => $d->stateProvinceVisible()), $dto->stateProvince),
+                    'locality_name' => $g($ver(fn (EspecimenDivulgable $d) => $d->localityNameVisible()), $dto->localityName),
+                    'decimal_latitude' => $g($ver(fn (EspecimenDivulgable $d) => $d->decimalLatitudeVisible()), $dto->decimalLatitude),
+                    'decimal_longitude' => $g($ver(fn (EspecimenDivulgable $d) => $d->decimalLongitudeVisible()), $dto->decimalLongitude),
+                    'elevation_min_m' => $g($ver(fn (EspecimenDivulgable $d) => $d->elevationVisible()), $dto->elevationMinM),
+                    'elevation_max_m' => $g($ver(fn (EspecimenDivulgable $d) => $d->elevationVisible()), $dto->elevationMaxM),
+                    'event_date' => $g($ver(fn (EspecimenDivulgable $d) => $d->eventDateVisible()), $dto->eventDate),
+                    'caste' => $g($ver(fn (EspecimenDivulgable $d) => $d->casteVisible()), $dto->caste),
+                    'life_stage' => $g($ver(fn (EspecimenDivulgable $d) => $d->lifeStageVisible()), $dto->lifeStage),
+                ];
+            },
             $proveedor->buscarPorOccurrenceIds($occurrenceIDs)
         );
     }

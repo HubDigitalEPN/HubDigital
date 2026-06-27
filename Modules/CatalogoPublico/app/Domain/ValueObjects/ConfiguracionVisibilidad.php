@@ -19,9 +19,14 @@ final readonly class ConfiguracionVisibilidad
         'familyVisible',
         'genusVisible',
         'countryVisible',
+        'stateProvinceVisible',
         'localityNameVisible',
         'decimalLatitudeVisible',
         'decimalLongitudeVisible',
+        'elevationVisible',
+        'eventDateVisible',
+        'casteVisible',
+        'lifeStageVisible',
     ];
 
     private function __construct(
@@ -37,9 +42,14 @@ final readonly class ConfiguracionVisibilidad
         public bool $familyVisible,
         public bool $genusVisible,
         public bool $countryVisible,
+        public bool $stateProvinceVisible,
         public bool $localityNameVisible,
         public bool $decimalLatitudeVisible,
         public bool $decimalLongitudeVisible,
+        public bool $elevationVisible,
+        public bool $eventDateVisible,
+        public bool $casteVisible,
+        public bool $lifeStageVisible,
     ) {}
 
     public static function todosHabilitados(): self
@@ -57,9 +67,14 @@ final readonly class ConfiguracionVisibilidad
             familyVisible: true,
             genusVisible: true,
             countryVisible: true,
+            stateProvinceVisible: true,
             localityNameVisible: true,
             decimalLatitudeVisible: true,
             decimalLongitudeVisible: true,
+            elevationVisible: true,
+            eventDateVisible: true,
+            casteVisible: true,
+            lifeStageVisible: true,
         );
     }
 
@@ -95,9 +110,14 @@ final readonly class ConfiguracionVisibilidad
             familyVisible: $flags['familyVisible'],
             genusVisible: $flags['genusVisible'],
             countryVisible: $flags['countryVisible'],
+            stateProvinceVisible: $flags['stateProvinceVisible'],
             localityNameVisible: $flags['localityNameVisible'],
             decimalLatitudeVisible: $flags['decimalLatitudeVisible'],
             decimalLongitudeVisible: $flags['decimalLongitudeVisible'],
+            elevationVisible: $flags['elevationVisible'],
+            eventDateVisible: $flags['eventDateVisible'],
+            casteVisible: $flags['casteVisible'],
+            lifeStageVisible: $flags['lifeStageVisible'],
         );
     }
 
@@ -117,9 +137,14 @@ final readonly class ConfiguracionVisibilidad
             'familyVisible' => $this->familyVisible,
             'genusVisible' => $this->genusVisible,
             'countryVisible' => $this->countryVisible,
+            'stateProvinceVisible' => $this->stateProvinceVisible,
             'localityNameVisible' => $this->localityNameVisible,
             'decimalLatitudeVisible' => $this->decimalLatitudeVisible,
             'decimalLongitudeVisible' => $this->decimalLongitudeVisible,
+            'elevationVisible' => $this->elevationVisible,
+            'eventDateVisible' => $this->eventDateVisible,
+            'casteVisible' => $this->casteVisible,
+            'lifeStageVisible' => $this->lifeStageVisible,
         ];
     }
 
@@ -183,6 +208,11 @@ final readonly class ConfiguracionVisibilidad
         return $this->countryVisible;
     }
 
+    public function stateProvinceVisible(): bool
+    {
+        return $this->stateProvinceVisible;
+    }
+
     public function localityNameVisible(): bool
     {
         return $this->localityNameVisible;
@@ -196,5 +226,25 @@ final readonly class ConfiguracionVisibilidad
     public function decimalLongitudeVisible(): bool
     {
         return $this->decimalLongitudeVisible;
+    }
+
+    public function elevationVisible(): bool
+    {
+        return $this->elevationVisible;
+    }
+
+    public function eventDateVisible(): bool
+    {
+        return $this->eventDateVisible;
+    }
+
+    public function casteVisible(): bool
+    {
+        return $this->casteVisible;
+    }
+
+    public function lifeStageVisible(): bool
+    {
+        return $this->lifeStageVisible;
     }
 }

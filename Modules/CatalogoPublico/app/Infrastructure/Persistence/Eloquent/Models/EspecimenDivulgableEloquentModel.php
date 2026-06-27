@@ -31,8 +31,13 @@ final class EspecimenDivulgableEloquentModel extends Model
         'family_visible',
         'genus_visible',
         'country_visible',
+        'state_province_visible',
         'locality_name_visible',
         'decimal_latitude_visible',
         'decimal_longitude_visible',
+        'elevation_visible',
+        'event_date_visible',
+        'caste_visible',
+        'life_stage_visible',
     ];
 }

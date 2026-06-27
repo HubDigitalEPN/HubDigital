@@ -137,6 +137,11 @@ final class EspecimenDivulgable
         return $this->configuracion->countryVisible();
     }
 
+    public function stateProvinceVisible(): bool
+    {
+        return $this->configuracion->stateProvinceVisible();
+    }
+
     public function localityNameVisible(): bool
     {
         return $this->configuracion->localityNameVisible();
@@ -150,6 +155,26 @@ final class EspecimenDivulgable
     public function decimalLongitudeVisible(): bool
     {
         return $this->configuracion->decimalLongitudeVisible();
+    }
+
+    public function elevationVisible(): bool
+    {
+        return $this->configuracion->elevationVisible();
+    }
+
+    public function eventDateVisible(): bool
+    {
+        return $this->configuracion->eventDateVisible();
+    }
+
+    public function casteVisible(): bool
+    {
+        return $this->configuracion->casteVisible();
+    }
+
+    public function lifeStageVisible(): bool
+    {
+        return $this->configuracion->lifeStageVisible();
     }
 
     public function configuracion(): ConfiguracionVisibilidad

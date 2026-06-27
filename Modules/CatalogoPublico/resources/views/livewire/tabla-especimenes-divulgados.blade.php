@@ -150,17 +150,22 @@
                     'Registro' => [
                         ['key' => 'individualCountVisible', 'label' => 'Cantidad individuos', 'sensible' => false],
                         ['key' => 'typeStatusVisible', 'label' => 'Tipo de estatus', 'sensible' => false],
+                        ['key' => 'casteVisible', 'label' => 'Casta', 'sensible' => false],
+                        ['key' => 'lifeStageVisible', 'label' => 'Estadio de vida', 'sensible' => false],
                         ['key' => 'typeNotesVisible', 'label' => 'Notas de tipo', 'sensible' => true],
                         ['key' => 'specimenNotesVisible', 'label' => 'Notas del espécimen', 'sensible' => true],
                         ['key' => 'occurrenceStatusVisible', 'label' => 'Estado de ocurrencia', 'sensible' => false],
                     ],
                     'Recolección' => [
                         ['key' => 'samplingProtocolVisible', 'label' => 'Protocolo de muestreo', 'sensible' => false],
+                        ['key' => 'eventDateVisible', 'label' => 'Fecha de recolección', 'sensible' => false],
                         ['key' => 'recordedByVisible', 'label' => 'Registrado por', 'sensible' => true],
                     ],
                     'Localización' => [
                         ['key' => 'countryVisible', 'label' => 'País', 'sensible' => false],
+                        ['key' => 'stateProvinceVisible', 'label' => 'Provincia', 'sensible' => false],
                         ['key' => 'localityNameVisible', 'label' => 'Localidad', 'sensible' => true],
+                        ['key' => 'elevationVisible', 'label' => 'Elevación', 'sensible' => false],
                         ['key' => 'decimalLatitudeVisible', 'label' => 'Latitud decimal', 'sensible' => true],
                         ['key' => 'decimalLongitudeVisible', 'label' => 'Longitud decimal', 'sensible' => true],
                     ],
