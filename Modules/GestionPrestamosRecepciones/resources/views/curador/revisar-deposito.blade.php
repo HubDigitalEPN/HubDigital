@@ -765,7 +765,7 @@
                 @if($accionAprobar === 'justificaciones')
                     <li class="flex items-start gap-2"><flux:icon name="check" class="size-4 text-success shrink-0 mt-0.5" />Se aceptan todas las justificaciones de alertas pendientes.</li>
                 @endif
-                <li class="flex items-start gap-2"><flux:icon name="check" class="size-4 text-success shrink-0 mt-0.5" />La solicitud pasa a <span class="font-medium">Aprobada documentalmente</span> y queda registrada en la auditoría a tu nombre.</li>
+                <li class="flex items-start gap-2"><flux:icon name="check" class="size-4 text-success shrink-0 mt-0.5" /><span>La solicitud pasa a <span class="font-medium">Aprobada documentalmente</span> y queda registrada en la auditoría a tu nombre.</span></li>
                 <li class="flex items-start gap-2"><flux:icon name="check" class="size-4 text-success shrink-0 mt-0.5" />Se asigna un Código QR único de lote.</li>
                 @if($accionAprobar === 'donacion')
                     <li class="flex items-start gap-2"><flux:icon name="check" class="size-4 text-success shrink-0 mt-0.5" />Se genera el Acta de Transferencia de Dominio.</li>
