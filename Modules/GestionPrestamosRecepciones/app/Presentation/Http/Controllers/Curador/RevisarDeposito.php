@@ -9,6 +9,7 @@ use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
+use Modules\GestionPrestamosRecepciones\Application\Ports\CatalogoCuraduriaPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\UsuarioNombrePort;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AceptarJustificacionesAlertas\AceptarJustificacionesAlertasHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AceptarJustificacionesAlertas\AceptarJustificacionesAlertasInput;
@@ -60,6 +61,34 @@ final class RevisarDeposito extends Component
 
     /** @var string[] Tipos de alerta cuya justificación se rechaza. */
     public array $justificacionesRechazadas = [];
+
+    // ── Filtros de revisión de la matriz ─────────────────────────────────────
+
+    /** Prioridad de columna a mostrar: 'todas'|'critica'|'recomendada'|'opcional'|'personalizado'. */
+    public string $filtroPrioridadColumna = 'todas';
+
+    /** @var string[] Columnas DwC elegidas a mano (solo se usan en modo 'personalizado'). */
+    public array $columnasSeleccionadas = [];
+
+    /** Despliega el selector de columnas a la carta. */
+    public bool $mostrarSelectorColumnas = false;
+
+    /** Estado de registro a mostrar: 'todos'|'pendiente'|'validado'|'corregido'|'revision'. */
+    public string $filtroEstado = 'todos';
+
+    /** Mapa token ASCII → valor real de EstadoRegistroEspecimen (evita comillas/acentos en la vista). */
+    private const ESTADO_TOKENS = [
+        'pendiente' => 'Pendiente',
+        'validado' => 'Validado Técnicamente',
+        'corregido' => 'Corregido por Sugerencia',
+        'revision' => 'Validación Manual por Curaduría',
+    ];
+
+    /** Mostrar solo registros con advertencias de formato/completitud. */
+    public bool $soloConAdvertencias = false;
+
+    /** Búsqueda por nombre científico (original o corregido). */
+    public string $busquedaMatriz = '';
 
     /**
      * Carga la solicitud y resuelve el nombre del investigador.
@@ -192,9 +221,74 @@ final class RevisarDeposito extends Component
     }
 
     /**
+     * Aplica un preset de prioridad de columnas y cierra el selector a la carta.
+     */
+    public function seleccionarPrioridad(string $prioridad): void
+    {
+        $this->filtroPrioridadColumna = $prioridad;
+        $this->mostrarSelectorColumnas = false;
+    }
+
+    /**
+     * Abre el selector de columnas a la carta, pre-marcando las que se ven ahora
+     * para que el curador parta de la vista actual y solo ajuste lo que necesita.
+     */
+    public function personalizarColumnas(MatrizEspeciesRepositoryInterface $matrizRepo, CatalogoCuraduriaPort $catalogo): void
+    {
+        $datos = $this->datosMatrizFiltrada($matrizRepo->buscarPorSolicitudId($this->id), $catalogo);
+
+        $this->columnasSeleccionadas = array_values(array_filter(
+            $datos['columnasVisibles'],
+            fn (string $c) => $c !== 'scientificName',
+        ));
+        $this->filtroPrioridadColumna = 'personalizado';
+        $this->mostrarSelectorColumnas = true;
+    }
+
+    /**
+     * Cualquier cambio en la selección manual activa el modo personalizado.
+     */
+    public function updatedColumnasSeleccionadas(): void
+    {
+        $this->filtroPrioridadColumna = 'personalizado';
+    }
+
+    /**
+     * Marca todas las columnas disponibles en el selector a la carta.
+     */
+    public function seleccionarTodasColumnas(MatrizEspeciesRepositoryInterface $matrizRepo): void
+    {
+        $this->columnasSeleccionadas = $this->columnasDwCDisponibles($matrizRepo);
+        $this->filtroPrioridadColumna = 'personalizado';
+    }
+
+    /**
+     * Desmarca todas las columnas (queda solo el nombre científico).
+     */
+    public function deseleccionarTodasColumnas(): void
+    {
+        $this->columnasSeleccionadas = [];
+        $this->filtroPrioridadColumna = 'personalizado';
+    }
+
+    /**
+     * Lista de columnas DwC de la matriz, excluyendo scientificName (siempre visible).
+     *
+     * @return string[]
+     */
+    private function columnasDwCDisponibles(MatrizEspeciesRepositoryInterface $matrizRepo): array
+    {
+        $matriz = $matrizRepo->buscarPorSolicitudId($this->id);
+        $registros = $matriz !== null ? array_values($matriz->registros()) : [];
+        $columnas = $registros !== [] ? array_keys($registros[0]->datosDwC()) : [];
+
+        return array_values(array_filter($columnas, fn (string $c) => $c !== 'scientificName'));
+    }
+
+    /**
      * Recarga la solicitud, sus alertas y deriva el estado de la pantalla.
      */
-    public function render(MatrizEspeciesRepositoryInterface $matrizRepo): View
+    public function render(MatrizEspeciesRepositoryInterface $matrizRepo, CatalogoCuraduriaPort $catalogo): View
     {
         $deposito = SolicitudDepositoEloquentModel::with('alertas')->find($this->id);
         abort_if($deposito === null, 404);
@@ -216,8 +310,123 @@ final class RevisarDeposito extends Component
             }
         }
 
-        return view('gestionprestamosrecepciones::curador.revisar-deposito', compact(
-            'deposito', 'alertas', 'hayAlertasPendientes', 'esDonacion', 'esPendiente', 'matriz', 'hallazgosMatriz',
-        ));
+        $vista = [
+            'deposito' => $deposito,
+            'alertas' => $alertas,
+            'hayAlertasPendientes' => $hayAlertasPendientes,
+            'esDonacion' => $esDonacion,
+            'esPendiente' => $esPendiente,
+            'matriz' => $matriz,
+            'hallazgosMatriz' => $hallazgosMatriz,
+        ];
+
+        return view(
+            'gestionprestamosrecepciones::curador.revisar-deposito',
+            $vista + $this->datosMatrizFiltrada($matriz, $catalogo),
+        );
+    }
+
+    /**
+     * Aplica los filtros de revisión sobre la matriz y devuelve los datos que la
+     * vista necesita: columnas visibles, registros filtrados y conteos para los chips.
+     *
+     * @return array<string, mixed>
+     */
+    private function datosMatrizFiltrada(?object $matriz, CatalogoCuraduriaPort $catalogo): array
+    {
+        $registros = $matriz !== null ? array_values($matriz->registros()) : [];
+        $columnasDwC = $registros !== [] ? array_keys($registros[0]->datosDwC()) : [];
+
+        $prioridadesCampos = $catalogo->prioridadesPorCampo($this->id);
+        $prioridadDe = fn (string $col): string => $prioridadesCampos[$col] ?? 'opcional';
+
+        // Columnas visibles según prioridad o selección manual; scientificName siempre presente.
+        if ($this->filtroPrioridadColumna === 'personalizado') {
+            $columnasVisibles = array_values(array_filter(
+                $columnasDwC,
+                fn (string $col) => in_array($col, $this->columnasSeleccionadas, true)
+                    || $col === 'scientificName',
+            ));
+        } else {
+            $columnasVisibles = array_values(array_filter(
+                $columnasDwC,
+                fn (string $col) => $this->filtroPrioridadColumna === 'todas'
+                    || $prioridadDe($col) === $this->filtroPrioridadColumna
+                    || $col === 'scientificName',
+            ));
+        }
+
+        // scientificName va primero (identidad de la fila, queda fijo junto a Estado).
+        if (in_array('scientificName', $columnasVisibles, true)) {
+            $columnasVisibles = array_merge(
+                ['scientificName'],
+                array_values(array_filter($columnasVisibles, fn (string $c) => $c !== 'scientificName')),
+            );
+        }
+
+        // Conteos de columnas por prioridad (sobre las columnas presentes en la matriz).
+        $conteoPrioridades = ['critica' => 0, 'recomendada' => 0, 'opcional' => 0];
+        foreach ($columnasDwC as $col) {
+            $p = $prioridadDe($col);
+            $conteoPrioridades[$p] = ($conteoPrioridades[$p] ?? 0) + 1;
+        }
+
+        // Conteos de filas por estado y por advertencias (sobre el total, sin filtrar).
+        $conteoEstados = [];
+        $conteoConAdvertencias = 0;
+        foreach ($registros as $r) {
+            $estado = $r->estado()->value;
+            $conteoEstados[$estado] = ($conteoEstados[$estado] ?? 0) + 1;
+            if ($this->registroTieneAdvertencias($r)) {
+                $conteoConAdvertencias++;
+            }
+        }
+
+        $busqueda = trim(mb_strtolower($this->busquedaMatriz));
+
+        $estadoBuscado = self::ESTADO_TOKENS[$this->filtroEstado] ?? null;
+
+        $registrosFiltrados = array_values(array_filter($registros, function ($r) use ($busqueda, $estadoBuscado): bool {
+            if ($estadoBuscado !== null && $r->estado()->value !== $estadoBuscado) {
+                return false;
+            }
+            if ($this->soloConAdvertencias && ! $this->registroTieneAdvertencias($r)) {
+                return false;
+            }
+            if ($busqueda !== '') {
+                $nombre = mb_strtolower($r->nombreCientifico().' '.(string) $r->nombreCorregido());
+                if (! str_contains($nombre, $busqueda)) {
+                    return false;
+                }
+            }
+
+            return true;
+        }));
+
+        return [
+            'columnasDwC' => $columnasDwC,
+            'columnasVisibles' => $columnasVisibles,
+            'prioridadesCampos' => $prioridadesCampos,
+            'registrosFiltrados' => $registrosFiltrados,
+            'conteoPrioridades' => $conteoPrioridades,
+            'conteoEstados' => $conteoEstados,
+            'conteoConAdvertencias' => $conteoConAdvertencias,
+            'totalReg' => count($registros),
+            'totalFiltrado' => count($registrosFiltrados),
+        ];
+    }
+
+    /**
+     * Un registro tiene advertencias si alguna de sus normalizaciones está marcada como inválida.
+     */
+    private function registroTieneAdvertencias(object $registro): bool
+    {
+        foreach ($registro->normalizaciones() as $n) {
+            if (! empty($n['invalido'])) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

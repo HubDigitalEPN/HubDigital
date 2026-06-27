@@ -58,12 +58,9 @@
             {{-- Matriz de especímenes + alertas del sistema --}}
             @if($matriz)
                 @php
-                    $registros = array_values($matriz->registros());
-                    $totalReg = count($registros);
+                    // $columnasDwC, $columnasVisibles, $registrosFiltrados, $totalReg,
+                    // $conteoPrioridades, $conteoEstados y $conteoConAdvertencias los provee el componente.
                     $estadoMatriz = $matriz->estado()->value;
-
-                    // Columnas Darwin Core (todos los registros comparten las mismas claves).
-                    $columnasDwC = $totalReg > 0 ? array_keys($registros[0]->datosDwC()) : [];
 
                     // Etiquetas legibles en español para los términos Darwin Core.
                     $etiquetasDwC = [
@@ -88,20 +85,7 @@
                     ];
                     $dwcLabel = fn (string $col): string => $etiquetasDwC[$col] ?? \Illuminate\Support\Str::headline($col);
 
-                    // Columnas clave visibles en la tabla; el resto va al detalle por fila.
-                    $columnasClave = array_values(array_filter(
-                        ['scientificName', 'recordNumber', 'individualCount', 'eventDate', 'localityName', 'recordedBy'],
-                        fn ($c) => in_array($c, $columnasDwC, true),
-                    ));
-                    $colspanDetalle = count($columnasClave) + 2;
-
-                    $conteo = ['Validado Técnicamente' => 0, 'Corregido por Sugerencia' => 0, 'Validación Manual por Curaduría' => 0, 'Pendiente' => 0];
-                    foreach ($registros as $r) {
-                        $e = $r->estado()->value;
-                        $conteo[$e] = ($conteo[$e] ?? 0) + 1;
-                    }
-                    $nRevision = $conteo['Validación Manual por Curaduría'] ?? 0;
-                    $nCorregidos = $conteo['Corregido por Sugerencia'] ?? 0;
+                    $nRevision = $conteoEstados['Validación Manual por Curaduría'] ?? 0;
 
                     [$mzBg, $mzText, $mzIcon] = match($estadoMatriz) {
                         'Validada Técnicamente' => ['bg-success/10', 'text-success', 'check-circle'],
@@ -128,29 +112,15 @@
                         </span>
                     </div>
 
-                    {{-- Contadores --}}
-                    <div class="flex flex-wrap gap-2 px-5 pt-4">
-                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-bg-main border border-border text-text-secondary">
-                            <flux:icon name="table-cells" class="size-3.5" />
-                            {{ $totalReg }} {{ $totalReg === 1 ? 'espécimen' : 'especímenes' }}
-                        </span>
-                        @if($nCorregidos > 0)
-                            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-bio-green/10 border border-bio-green/20 text-bio-green">
-                                <flux:icon name="sparkles" class="size-3.5" />
-                                {{ $nCorregidos }} {{ $nCorregidos === 1 ? 'corrección' : 'correcciones' }}
-                            </span>
-                        @endif
-                        @if($nRevision > 0)
-                            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-warning/10 border border-warning/20 text-warning">
-                                <flux:icon name="exclamation-triangle" class="size-3.5" />
-                                {{ $nRevision }} para revisión curatorial
-                            </span>
-                        @endif
-                    </div>
+                    {{-- TODO (edición curatorial): permitir que el curador edite/sane anomalías menores
+                         de la matriz Darwin Core (p. ej. corregir un decimalLongitude o un formato) en
+                         lugar de forzar siempre el reenvío al investigador. Objetivo: evitar que el
+                         proceso se devuelva por pequeñeces. Requiere un caso de uso nuevo
+                         (ValidacionManualCuraduria) con registro de auditoría de quién editó qué. --}}
 
                     {{-- Recurso ante anomalías: devolver para corrección --}}
                     @if($nRevision > 0 && $esPendiente)
-                        <div class="mx-5 mt-3 flex items-start gap-2.5 rounded-lg border border-warning/30 bg-warning/5 px-4 py-3">
+                        <div class="mx-6 my-5 flex items-start gap-2.5 rounded-lg border border-warning/30 bg-warning/5 px-4 py-3.5">
                             <flux:icon name="information-circle" class="size-4 text-warning shrink-0 mt-0.5" />
                             <p class="text-xs text-text-secondary leading-relaxed">
                                 Las celdas resaltadas requieren atención. Si los datos deben corregirse, devuelve la solicitud
@@ -160,40 +130,171 @@
                         </div>
                     @endif
 
-                    {{-- Tabla Darwin Core (columnas clave + detalle por fila) — escritorio --}}
-                    <div class="hidden md:block p-5" x-data="{ abiertos: {} }">
+                    {{-- Barra de filtros de revisión --}}
+                    @php
+                        // Solo se muestran las opciones con resultados (o la actualmente activa),
+                        // para no llenar la barra de chips en (0).
+                        $estadoCounts = [
+                            'pendiente' => ['Pendiente', $conteoEstados['Pendiente'] ?? 0],
+                            'validado' => ['Validado', $conteoEstados['Validado Técnicamente'] ?? 0],
+                            'corregido' => ['Corregido', $conteoEstados['Corregido por Sugerencia'] ?? 0],
+                            'revision' => ['Revisión curatorial', $conteoEstados['Validación Manual por Curaduría'] ?? 0],
+                        ];
+                        $opcionesEstado = ['todos' => ['Todos', $totalReg]] + array_filter(
+                            $estadoCounts,
+                            fn ($o, $k) => $o[1] > 0 || $k === $filtroEstado,
+                            ARRAY_FILTER_USE_BOTH,
+                        );
+
+                        $prioridadCounts = [
+                            'critica' => ['Obligatorias', $conteoPrioridades['critica'] ?? 0],
+                            'recomendada' => ['Recomendadas', $conteoPrioridades['recomendada'] ?? 0],
+                            'opcional' => ['Opcionales', $conteoPrioridades['opcional'] ?? 0],
+                        ];
+                        $opcionesPrioridad = ['todas' => ['Todas', count($columnasDwC)]] + array_filter(
+                            $prioridadCounts,
+                            fn ($o, $k) => $o[1] > 0 || $k === $filtroPrioridadColumna,
+                            ARRAY_FILTER_USE_BOTH,
+                        );
+                    @endphp
+                    <div class="px-5 py-4 space-y-3">
+                        <div class="flex items-center gap-2">
+                            <flux:icon name="funnel" class="size-3.5 text-text-secondary" />
+                            <span class="text-xs font-semibold uppercase tracking-wide text-text-secondary">Filtros de revisión</span>
+                        </div>
+
+                        {{-- Columnas: presets de prioridad + selección a la carta --}}
+                        <div>
+                            <p class="text-[11px] text-text-secondary mb-1.5">Columnas a mostrar</p>
+                            <div class="flex flex-wrap gap-1.5">
+                                @foreach($opcionesPrioridad as $valor => [$etiqueta, $n])
+                                    <button type="button" wire:click="seleccionarPrioridad('{{ $valor }}')"
+                                        @class([
+                                            'px-3 py-1.5 text-xs rounded-md border transition-colors',
+                                            'bg-science-blue/10 text-science-blue border-science-blue/30 font-semibold' => $filtroPrioridadColumna === $valor,
+                                            'text-text-secondary hover:text-text-primary hover:bg-surface border-transparent' => $filtroPrioridadColumna !== $valor,
+                                        ])>
+                                        {{ $etiqueta }} <span class="tabular-nums opacity-70">({{ $n }})</span>
+                                    </button>
+                                @endforeach
+
+                                {{-- Selección a la carta --}}
+                                <button type="button" wire:click="personalizarColumnas"
+                                    @class([
+                                        'inline-flex items-center gap-1 px-3 py-1.5 text-xs rounded-md border transition-colors',
+                                        'bg-science-blue/10 text-science-blue border-science-blue/30 font-semibold' => $filtroPrioridadColumna === 'personalizado',
+                                        'text-text-secondary hover:text-text-primary hover:bg-surface border-border' => $filtroPrioridadColumna !== 'personalizado',
+                                    ])>
+                                    <flux:icon name="adjustments-horizontal" class="size-3.5" />
+                                    <span>Personalizar</span>
+                                    @if($filtroPrioridadColumna === 'personalizado')
+                                        <span class="tabular-nums opacity-70">({{ count($columnasSeleccionadas) }})</span>
+                                    @endif
+                                </button>
+                            </div>
+
+                            {{-- Selector de columnas a la carta --}}
+                            @if($mostrarSelectorColumnas)
+                                <div class="mt-2 rounded-lg border border-border bg-surface p-3">
+                                    <div class="flex flex-col gap-2 mb-2 sm:flex-row sm:items-center sm:justify-between">
+                                        <span class="text-[11px] text-text-secondary">Elige las columnas (el nombre científico siempre se muestra)</span>
+                                        <div class="flex items-center gap-3 shrink-0">
+                                            <button type="button" wire:click="seleccionarTodasColumnas" class="text-xs font-medium text-science-blue hover:underline">Seleccionar todo</button>
+                                            <button type="button" wire:click="deseleccionarTodasColumnas" class="text-xs font-medium text-text-secondary hover:underline">Quitar todo</button>
+                                            <button type="button" wire:click="$set('mostrarSelectorColumnas', false)" class="text-xs font-medium text-science-blue hover:underline">Listo</button>
+                                        </div>
+                                    </div>
+                                    <div class="max-h-56 overflow-y-auto grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1.5 pr-1">
+                                        @foreach($columnasDwC as $col)
+                                            @if($col !== 'scientificName')
+                                                <label class="flex items-center gap-2 text-xs text-text-primary cursor-pointer">
+                                                    <input type="checkbox" wire:model.live="columnasSeleccionadas" value="{{ $col }}"
+                                                        class="rounded border-border text-science-blue focus:ring-science-blue" />
+                                                    <span class="truncate">{{ $dwcLabel($col) }}</span>
+                                                </label>
+                                            @endif
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+
+                        {{-- Estado de fila --}}
+                        <div>
+                            <p class="text-[11px] text-text-secondary mb-1.5">Estado del espécimen</p>
+                            <div class="flex flex-wrap gap-1.5">
+                                @foreach($opcionesEstado as $valor => [$etiqueta, $n])
+                                    <button type="button" wire:click="$set('filtroEstado', '{{ $valor }}')"
+                                        @class([
+                                            'px-3 py-1.5 text-xs rounded-md border transition-colors',
+                                            'bg-science-blue/10 text-science-blue border-science-blue/30 font-semibold' => $filtroEstado === $valor,
+                                            'text-text-secondary hover:text-text-primary hover:bg-surface border-transparent' => $filtroEstado !== $valor,
+                                        ])>
+                                        {{ $etiqueta }} <span class="tabular-nums opacity-70">({{ $n }})</span>
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+
+                        {{-- Advertencias + búsqueda --}}
+                        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <button type="button" wire:click="$toggle('soloConAdvertencias')"
+                                @class([
+                                    'inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md border transition-colors',
+                                    'bg-warning/10 text-warning border-warning/30 font-semibold' => $soloConAdvertencias,
+                                    'text-text-secondary hover:text-text-primary hover:bg-surface border-border' => ! $soloConAdvertencias,
+                                ])>
+                                <flux:icon name="exclamation-triangle" class="size-3.5" />
+                                Solo con advertencias <span class="tabular-nums opacity-70">({{ $conteoConAdvertencias }})</span>
+                            </button>
+                            <div class="sm:w-64">
+                                <flux:input wire:model.live.debounce.300ms="busquedaMatriz" size="sm"
+                                    icon="magnifying-glass" placeholder="Buscar nombre científico…" clearable />
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Tabla Darwin Core completa (columnas por prioridad + advertencias) — escritorio --}}
+                    <div class="hidden md:block p-5">
                         <div class="overflow-x-auto rounded-lg border border-border">
                             <table class="w-full text-sm">
                                 <thead class="bg-blue-navy">
                                     <tr>
                                         <th class="sticky left-0 top-0 z-30 bg-blue-navy px-4 py-3 text-left font-medium text-white whitespace-nowrap">Estado</th>
-                                        @foreach($columnasClave as $col)
+                                        @foreach($columnasVisibles as $col)
                                             <th class="sticky top-0 z-20 bg-blue-navy px-4 py-3 text-left font-medium text-white whitespace-nowrap">{{ $dwcLabel($col) }}</th>
                                         @endforeach
-                                        <th class="sticky top-0 z-20 bg-blue-navy px-4 py-3 text-right font-medium text-white whitespace-nowrap">Detalle</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-border">
-                                    @foreach($registros as $i => $reg)
+                                    @forelse($registrosFiltrados as $i => $reg)
                                         @php
                                             [$bColor, $bLabel] = $regBadge($reg->estado()->value);
                                             $dwc = $reg->datosDwC();
                                             $noCat = $reg->esNoCatalogado();
                                             $corr = $reg->nombreCorregido();
+                                            // Advertencias de formato Darwin Core indexadas por campo.
+                                            $advPorCampo = [];
+                                            foreach ($reg->normalizaciones() as $n) {
+                                                if (! empty($n['invalido'])) {
+                                                    $advPorCampo[$n['campo']] = $n['mensaje'];
+                                                }
+                                            }
                                         @endphp
-                                        <tr class="hover:bg-bg-main transition-colors">
+                                        <tr class="align-top hover:bg-bg-main transition-colors">
                                             <td class="sticky left-0 z-10 bg-surface px-4 py-3 whitespace-nowrap">
                                                 <flux:badge size="sm" :color="$bColor">{{ $bLabel }}</flux:badge>
                                             </td>
-                                            @foreach($columnasClave as $col)
+                                            @foreach($columnasVisibles as $col)
+                                                @php $adv = $advPorCampo[$col] ?? null; @endphp
                                                 @if($col === 'scientificName')
                                                     <td @class([
                                                         'px-4 py-3 whitespace-nowrap',
-                                                        'bg-warning/10' => $noCat,
-                                                        'bg-bio-green/10' => $corr && ! $noCat,
+                                                        'bg-warning/10' => $noCat || $adv,
+                                                        'bg-bio-green/10' => $corr && ! $noCat && ! $adv,
                                                     ])>
                                                         <div class="flex items-center gap-1.5">
-                                                            @if($noCat)
+                                                            @if($noCat || $adv)
                                                                 <flux:icon name="exclamation-triangle" class="size-3.5 text-warning shrink-0" />
                                                             @endif
                                                             <span class="font-serif italic text-text-primary">{{ ($dwc[$col] ?? '') !== '' ? $dwc[$col] : '—' }}</span>
@@ -205,56 +306,62 @@
                                                         @if($noCat && $reg->motivoJustificacion())
                                                             <p class="text-[11px] text-warning mt-0.5">{{ $reg->motivoJustificacion() }}</p>
                                                         @endif
+                                                        @if($adv)
+                                                            <p class="text-[11px] text-warning mt-0.5">{{ $adv }}</p>
+                                                        @endif
                                                     </td>
                                                 @else
-                                                    <td class="px-4 py-3 whitespace-nowrap text-text-secondary">
-                                                        {{ ($dwc[$col] ?? '') !== '' ? $dwc[$col] : '—' }}
+                                                    <td @class([
+                                                        'px-4 py-3 whitespace-nowrap',
+                                                        'bg-warning/10' => $adv,
+                                                        'text-text-secondary' => ! $adv,
+                                                    ])>
+                                                        <div class="flex items-center gap-1.5">
+                                                            @if($adv)
+                                                                <flux:icon name="exclamation-triangle" class="size-3.5 text-warning shrink-0" />
+                                                            @endif
+                                                            <span class="{{ $adv ? 'text-warning font-medium' : '' }}">{{ ($dwc[$col] ?? '') !== '' ? $dwc[$col] : '—' }}</span>
+                                                        </div>
+                                                        @if($adv)
+                                                            <p class="text-[11px] text-warning mt-0.5">{{ $adv }}</p>
+                                                        @endif
                                                     </td>
                                                 @endif
                                             @endforeach
-                                            <td class="px-4 py-3 whitespace-nowrap text-right">
-                                                <button type="button" x-on:click="abiertos[{{ $i }}] = ! abiertos[{{ $i }}]"
-                                                    class="inline-flex items-center gap-1 text-xs font-medium text-science-blue hover:underline">
-                                                    <span x-show="! abiertos[{{ $i }}]">Ver campos</span>
-                                                    <span x-show="abiertos[{{ $i }}]" x-cloak>Ocultar</span>
-                                                    <flux:icon name="chevron-down" class="size-3 transition-transform" x-bind:class="abiertos[{{ $i }}] && 'rotate-180'" />
-                                                </button>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="{{ count($columnasVisibles) + 1 }}" class="px-4 py-10 text-center text-sm text-text-secondary">
+                                                Ningún espécimen coincide con los filtros seleccionados.
                                             </td>
                                         </tr>
-                                        <tr x-show="abiertos[{{ $i }}]" x-cloak>
-                                            <td colspan="{{ $colspanDetalle }}" class="bg-bg-main px-4 py-4">
-                                                <dl class="grid grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-3">
-                                                    @foreach($columnasDwC as $col)
-                                                        <div>
-                                                            <dt class="text-[11px] text-text-secondary uppercase tracking-wide">{{ $dwcLabel($col) }}</dt>
-                                                            <dd class="text-sm text-text-primary {{ $col === 'scientificName' ? 'font-serif italic' : '' }}">{{ ($dwc[$col] ?? '') !== '' ? $dwc[$col] : '—' }}</dd>
-                                                        </div>
-                                                    @endforeach
-                                                </dl>
-                                            </td>
-                                        </tr>
-                                    @endforeach
+                                    @endforelse
                                 </tbody>
                             </table>
                         </div>
-                        <p class="text-xs text-text-secondary mt-2">
-                            Se muestran los campos clave. Usa <span class="font-medium text-text-primary">Ver campos</span> para el detalle Darwin Core completo de cada espécimen.
+                        <p class="text-xs text-text-secondary mt-2 flex items-center gap-1.5">
+                            <flux:icon name="exclamation-triangle" class="size-3.5 text-warning shrink-0" />
+                            Las celdas en naranja tienen advertencias de formato o campos obligatorios vacíos. Desplázate horizontalmente para ver las columnas.
                         </p>
                     </div>
 
                     {{-- Tarjetas por espécimen — móvil --}}
                     <div class="md:hidden p-4 space-y-3">
-                        @foreach($registros as $reg)
+                        @forelse($registrosFiltrados as $reg)
                             @php
                                 [$bColor, $bLabel] = $regBadge($reg->estado()->value);
                                 $dwc = $reg->datosDwC();
                                 $noCat = $reg->esNoCatalogado();
                                 $corr = $reg->nombreCorregido();
+                                $advertencias = array_values(array_filter(
+                                    $reg->normalizaciones(),
+                                    fn ($n) => ! empty($n['invalido'])
+                                ));
                             @endphp
                             <div @class([
                                     'rounded-lg border bg-bg-main p-4 space-y-3',
-                                    'border-warning/40' => $noCat,
-                                    'border-border' => ! $noCat,
+                                    'border-warning/40' => $noCat || count($advertencias),
+                                    'border-border' => ! $noCat && ! count($advertencias),
                                 ])
                                 x-data="{ abierto: false }">
                                 <div class="flex items-start justify-between gap-3">
@@ -275,8 +382,18 @@
                                     </div>
                                     <flux:badge size="sm" :color="$bColor" class="shrink-0">{{ $bLabel }}</flux:badge>
                                 </div>
+                                @if(count($advertencias))
+                                    <div class="space-y-1.5">
+                                        @foreach($advertencias as $adv)
+                                            <div class="flex items-start gap-1.5 rounded border border-warning/40 bg-warning/5 px-2.5 py-1.5 text-xs text-warning">
+                                                <flux:icon name="exclamation-triangle" variant="outline" class="size-3.5 shrink-0 mt-0.5" />
+                                                <span><span class="font-medium">{{ $dwcLabel($adv['campo']) }}:</span> {{ $adv['mensaje'] }}</span>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @endif
                                 <dl class="space-y-2 text-sm" x-show="abierto" x-collapse>
-                                    @foreach($columnasDwC as $col)
+                                    @foreach($columnasVisibles as $col)
                                         <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil :etiqueta="$dwcLabel($col)">
                                             {{ ($dwc[$col] ?? '') !== '' ? $dwc[$col] : '—' }}
                                         </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
@@ -288,7 +405,11 @@
                                     <span x-show="abierto">Ocultar campos</span>
                                 </button>
                             </div>
-                        @endforeach
+                        @empty
+                            <div class="rounded-lg border border-border bg-bg-main px-4 py-8 text-center text-sm text-text-secondary">
+                                Ningún espécimen coincide con los filtros seleccionados.
+                            </div>
+                        @endforelse
                     </div>
                 </div>
             @endif

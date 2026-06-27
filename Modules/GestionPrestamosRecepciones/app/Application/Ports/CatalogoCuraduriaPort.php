@@ -26,4 +26,12 @@ interface CatalogoCuraduriaPort
      * @return string[]
      */
     public function camposRecomendados(string $coleccionId): array;
+
+    /**
+     * Mapa de prioridad efectiva por campo DwC (respeta los overrides de BD del
+     * curador). Útil para filtrar/agrupar columnas por prioridad en la revisión.
+     *
+     * @return array<string, string> dwcKey => 'critica'|'recomendada'|'opcional'
+     */
+    public function prioridadesPorCampo(string $coleccionId): array;
 }
