@@ -18,6 +18,10 @@
         <div class="flex items-center gap-3 mt-1.5 flex-wrap">
             <p class="font-mono text-xs text-text-secondary">{{ $deposito->numero }}</p>
             <x-gestionprestamosrecepciones::deposito-status-badge :estado="$deposito->estado" />
+            {{-- Trazabilidad: distingue un reenvío (ya fue devuelta antes) de un primer envío. --}}
+            @if($deposito->rechazada_en && $deposito->estado === 'Pendiente de Revisión por Curaduría')
+                <flux:badge size="sm" color="amber" icon="arrow-path">Reenviada tras corrección</flux:badge>
+            @endif
             @if($deposito->prioridad === 'Prioritaria')
                 <flux:badge size="sm" color="indigo" icon="flag">Prioritaria</flux:badge>
             @endif
@@ -574,11 +578,18 @@
                 </div>
             @endif
 
-            {{-- Comentario del curador (rechazo previo) --}}
+            {{-- Comentario del curador: contexto de la devolución anterior (si fue reenviada)
+                 o el comentario de la decisión actual. --}}
             @if($deposito->comentario_curador)
+                @php $esReenvioPendiente = $deposito->rechazada_en && $deposito->estado === 'Pendiente de Revisión por Curaduría'; @endphp
                 <flux:callout variant="warning" icon="chat-bubble-left-ellipsis">
-                    <flux:callout.heading>Comentario para el investigador</flux:callout.heading>
-                    <flux:callout.text>{{ $deposito->comentario_curador }}</flux:callout.text>
+                    <flux:callout.heading>{{ $esReenvioPendiente ? 'Observaciones de la devolución anterior' : 'Comentario para el investigador' }}</flux:callout.heading>
+                    <flux:callout.text>
+                        {{ $deposito->comentario_curador }}
+                        @if($esReenvioPendiente)
+                            <span class="block mt-1 text-xs text-text-secondary">Verifica que estas observaciones fueron atendidas en el reenvío.</span>
+                        @endif
+                    </flux:callout.text>
                 </flux:callout>
             @endif
 

@@ -49,10 +49,20 @@ final class NotificacionCuratoriaAdapter implements NotificacionCuratoriaPort
             return $referencia;
         }
 
+        $investigador = $deposito ? User::find($deposito->investigador_id) : null;
+        $nombreInvestigador = $investigador?->name
+            ?? $deposito?->nombre_investigador_documento;
+
+        // Es un reenvío tras corrección si la solicitud ya había sido devuelta antes.
+        $esReenvio = $deposito?->rechazada_en !== null;
+
         Notification::send($curadores, new NuevaSolicitudPorRevisarNotification(
             solicitudId: $solicitudId,
             numero: $deposito?->numero,
             tipoTramite: $deposito?->tipo_tramite,
+            nombreInvestigador: $nombreInvestigador,
+            fechaEnvio: $deposito?->updated_at?->format('d/m/Y H:i'),
+            esReenvio: $esReenvio,
         ));
 
         return $referencia;
