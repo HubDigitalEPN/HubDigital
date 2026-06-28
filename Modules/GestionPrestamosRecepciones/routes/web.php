@@ -16,6 +16,7 @@ use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\Pa
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\RevisarDeposito;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\RevisarSolicitud;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\ValidarActa;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\DescargarActaPdf;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ImprimirQrDeposito;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\BandejaActas as InvestigadorBandejaActas;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\BandejaPrestamos as InvestigadorBandejaPrestamos;
