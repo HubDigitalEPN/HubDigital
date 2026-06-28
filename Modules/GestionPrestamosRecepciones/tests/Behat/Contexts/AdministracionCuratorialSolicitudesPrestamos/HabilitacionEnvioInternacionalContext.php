@@ -158,6 +158,7 @@ final class HabilitacionEnvioInternacionalContext extends BaseContext
         $prestamo = Prestamo::iniciar(
             id: $this->prestamoRepo->nextIdentity(),
             actaPrestamoId: $acta->id(),
+            codigoPrestamo: $acta->codigoPrestamo(),
             investigadorId: $this->investigadorId,
             alcancePrestamo: AlcancePrestamo::Internacional,
             iniciadoEn: $ahora,
