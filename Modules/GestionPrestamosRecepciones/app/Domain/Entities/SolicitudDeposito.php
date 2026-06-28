@@ -365,7 +365,12 @@ final class SolicitudDeposito
             );
         }
 
-        if (! $this->estado->equals(EstadoSolicitudDeposito::EnBorrador)) {
+        // Se envía desde un borrador nuevo o desde una solicitud devuelta para
+        // corrección (subsanable), que se edita en su sitio sin perder trazabilidad.
+        $puedeEnviar = $this->estado->equals(EstadoSolicitudDeposito::EnBorrador)
+            || $this->estado->equals(EstadoSolicitudDeposito::RequiereCorreccion);
+
+        if (! $puedeEnviar) {
             throw TransicionEstadoInvalida::de($this->estado->value, EstadoSolicitudDeposito::PendienteDeRevisionPorCuraduria->value);
         }
 

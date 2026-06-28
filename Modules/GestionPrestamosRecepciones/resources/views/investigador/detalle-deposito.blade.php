@@ -14,7 +14,9 @@
             $badgeVariant = match($deposito->estado) {
                 'Pendiente de Revisión por Curaduría' => 'info',
                 'Pausada para Asesoría'   => 'warning',
-                'Rechazada'                           => 'danger',
+                'Aprobada Documentalmente'            => 'success',
+                'Requiere Corrección'                 => 'warning',
+                'Rechazada', 'Rechazo Permanente'     => 'danger',
                 default                               => 'ghost',
             };
         @endphp
@@ -23,6 +25,82 @@
 
             {{-- Columna principal --}}
             <div class="lg:col-span-2 space-y-6">
+
+                {{-- Devolución para corrección (rechazo subsanable) --}}
+                @if($deposito->estado === 'Requiere Corrección')
+                    <div class="rounded-lg border border-warning/40 bg-warning/5 p-5 space-y-4">
+                        <div class="flex items-start gap-3">
+                            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-warning text-white">
+                                <flux:icon name="exclamation-triangle" class="size-4" />
+                            </div>
+                            <div class="min-w-0 space-y-1">
+                                <flux:heading size="base" level="2" class="font-display text-warning">La curaduría devolvió tu solicitud para corrección</flux:heading>
+                                @if($deposito->comentario_curador)
+                                    <p class="text-sm text-text-primary leading-relaxed">
+                                        <span class="font-medium">Observaciones del curador:</span> {{ $deposito->comentario_curador }}
+                                    </p>
+                                @else
+                                    <p class="text-sm text-text-secondary">Corrige lo indicado y reenvía tu solicitud.</p>
+                                @endif
+                            </div>
+                        </div>
+                        <flux:button wire:navigate href="{{ route('prestamos.investigador.deposito.corregir', $deposito->id) }}"
+                            variant="primary" icon="pencil-square" class="w-full sm:w-auto">
+                            Corregir y reenviar
+                        </flux:button>
+                    </div>
+                @elseif($deposito->estado === 'Rechazo Permanente')
+                    <div class="rounded-lg border border-error/40 bg-error/5 p-5">
+                        <div class="flex items-start gap-3">
+                            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-error text-white">
+                                <flux:icon name="x-circle" class="size-4" />
+                            </div>
+                            <div class="min-w-0 space-y-1">
+                                <flux:heading size="base" level="2" class="font-display text-error">Solicitud rechazada de forma definitiva</flux:heading>
+                                @if($deposito->comentario_curador)
+                                    <p class="text-sm text-text-primary leading-relaxed">
+                                        <span class="font-medium">Motivo:</span> {{ $deposito->comentario_curador }}
+                                    </p>
+                                @endif
+                                <p class="text-xs text-text-secondary">Esta decisión es final y la solicitud no admite corrección.</p>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
+                {{-- Código QR del lote (solicitud aprobada) --}}
+                @if($deposito->estado === 'Aprobada Documentalmente' && $deposito->codigo_qr)
+                    <div class="rounded-lg border border-success/40 bg-success/5 shadow-sm overflow-hidden">
+                        <div class="px-5 py-4 border-b border-success/30 flex items-center gap-3">
+                            <div class="flex h-8 w-8 items-center justify-center rounded-full bg-success text-white shrink-0">
+                                <flux:icon name="qr-code" class="size-4" />
+                            </div>
+                            <div>
+                                <flux:heading size="base" level="2" class="font-display">¡Solicitud aprobada! Tu Código QR está listo</flux:heading>
+                                <flux:text class="text-text-secondary text-xs">Imprímelo y adjúntalo a la entrega física de las muestras.</flux:text>
+                            </div>
+                        </div>
+                        <div class="p-5 flex flex-col items-center gap-4 sm:flex-row sm:items-center sm:justify-between">
+                            <x-gestionprestamosrecepciones::codigo-qr :codigo="$deposito->codigo_qr" :tamanio="150" />
+                            <div class="flex w-full flex-col gap-2 sm:w-auto">
+                                <a href="{{ route('prestamos.deposito.qr-pdf', $deposito->id) }}" target="_blank" rel="noopener"
+                                    class="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-navy px-5 py-2.5 text-sm font-medium text-white hover:opacity-90 transition-opacity">
+                                    <flux:icon name="printer" class="size-4" />
+                                    Imprimir / Guardar QR (PDF)
+                                </a>
+                                @if($deposito->tipo_tramite === 'Donación' && $deposito->acta_transferencia_dominio
+                                    && \Illuminate\Support\Facades\Storage::disk('public')->exists($deposito->acta_transferencia_dominio['ruta'] ?? ''))
+                                    <a href="{{ route('prestamos.deposito.acta', $deposito->id) }}"
+                                        target="_blank" rel="noopener"
+                                        class="inline-flex items-center justify-center gap-2 rounded-lg border border-border px-5 py-2.5 text-sm font-medium text-text-secondary hover:border-science-blue hover:text-science-blue transition-colors">
+                                        <flux:icon name="document-check" class="size-4" />
+                                        Acta de transferencia
+                                    </a>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                @endif
 
                 {{-- Encabezado --}}
                 <div class="rounded-lg border border-border bg-surface shadow-sm p-5 space-y-4">

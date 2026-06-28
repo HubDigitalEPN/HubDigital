@@ -27,7 +27,7 @@ final class InventarioGestionColeccionCatalogoCuraduriaAdapter implements Catalo
     /**
      * Constructor del adaptador para consultar el catálogo de curaduría.
      *
-     * @param ResolverPrioridadColumnas $resolver Servicio de resolución de prioridades de columnas.
+     * @param  ResolverPrioridadColumnas  $resolver  Servicio de resolución de prioridades de columnas.
      */
     public function __construct(
         private ResolverPrioridadColumnas $resolver,
@@ -51,6 +51,27 @@ final class InventarioGestionColeccionCatalogoCuraduriaAdapter implements Catalo
     public function camposRecomendados(string $coleccionId): array
     {
         return $this->camposDwCPorPrioridad('recomendada');
+    }
+
+    /**
+     * Mapa de prioridad efectiva por campo DwC, respetando overrides de BD.
+     *
+     * @return array<string, string> dwcKey => 'critica'|'recomendada'|'opcional'
+     */
+    public function prioridadesPorCampo(string $coleccionId): array
+    {
+        $columnas = $this->resolver->aplicar('especimenes', RegistroColumnasEspecimen::todas());
+        $mapa = RegistroColumnasEspecimen::mapaClaveADwC();
+
+        $prioridades = [];
+        foreach ($columnas as $col) {
+            $dwc = $mapa[$col['clave']] ?? null;
+            if ($dwc !== null) {
+                $prioridades[$dwc] = $col['prioridad'];
+            }
+        }
+
+        return $prioridades;
     }
 
     /**

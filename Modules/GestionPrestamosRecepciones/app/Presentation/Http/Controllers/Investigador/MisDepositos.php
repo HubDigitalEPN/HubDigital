@@ -26,8 +26,6 @@ final class MisDepositos extends Component
 
     /**
      * Limpia los filtros de búsqueda.
-     *
-     * @return void
      */
     public function limpiarFiltros(): void
     {
@@ -39,8 +37,6 @@ final class MisDepositos extends Component
 
     /**
      * Renderiza el componente.
-     *
-     * @return \Illuminate\View\View
      */
     public function render(): View
     {
@@ -68,6 +64,8 @@ final class MisDepositos extends Component
         $estadosActivos = [
             EstadoSolicitudDeposito::PendienteDeRevisionPorCuraduria->value,
             EstadoSolicitudDeposito::RetenidaParaAsesoriaCuratorial->value,
+            // Requiere acción del depositante: debe verse entre las activas, no en el historial.
+            EstadoSolicitudDeposito::RequiereCorreccion->value,
         ];
 
         $activas = $depositos->whereIn('estado', $estadosActivos);

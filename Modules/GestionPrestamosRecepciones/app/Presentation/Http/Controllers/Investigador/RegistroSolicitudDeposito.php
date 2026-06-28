@@ -42,6 +42,7 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarIdentidadSol
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarIdentidadSolicitud\ValidarIdentidadSolicitudInput;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\MatrizEspecies;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\CamposDwCFaltantesException;
+use Modules\GestionPrestamosRecepciones\Domain\Exceptions\CamposObligatoriosVaciosException;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\LimiteAnualDepositosAlcanzado;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoRegistroEspecimen;
@@ -71,6 +72,12 @@ final class RegistroSolicitudDeposito extends Component
     public array $pasosCompletados = [];
 
     public bool $borradorRestaurado = false;
+
+    /** El wizard se abrió para corregir una solicitud rechazada (subsanable). */
+    public bool $modoCorreccion = false;
+
+    /** Comentario del curador a corregir (visible mientras se edita). */
+    public string $comentarioCurador = '';
 
     // ── Paso 1 – Trámite ──────────────────────────────────────────────────────────
 
@@ -204,6 +211,9 @@ final class RegistroSolicitudDeposito extends Component
 
     public string $errorMatriz = '';
 
+    /** @var list<array{fila: string, campo: string}> Campos obligatorios vacíos que bloquean la carga. */
+    public array $camposObligatoriosVacios = [];
+
     public string $filtroTabla = 'todos';
 
     // ── Paso 6 – Envío ────────────────────────────────────────────────────────────
@@ -214,8 +224,15 @@ final class RegistroSolicitudDeposito extends Component
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────────
 
-    public function mount(): void
+    public function mount(?string $id = null): void
     {
+        // Flujo de corrección: se abrió /deposito/{id}/corregir para subsanar un rechazo.
+        if ($id !== null) {
+            $this->iniciarCorreccion($id);
+
+            return;
+        }
+
         $borrador = SolicitudDepositoEloquentModel::where('investigador_id', (string) auth()->id())
             ->where('estado', EstadoSolicitudDeposito::EnBorrador->value)
             ->first();
@@ -246,10 +263,34 @@ final class RegistroSolicitudDeposito extends Component
     }
 
     /**
+     * Abre una solicitud devuelta para corrección (subsanable) y rehidrata el wizard.
+     * La solicitud se edita EN SU SITIO, conservando su estado "Requiere Corrección"
+     * (no se convierte en borrador), para no perder trazabilidad en "Mis depósitos".
+     * Solo al reenviar pasa a "Pendiente de Revisión".
+     */
+    private function iniciarCorreccion(string $id): void
+    {
+        $model = SolicitudDepositoEloquentModel::where('id', $id)
+            ->where('investigador_id', (string) auth()->id())
+            ->firstOrFail();
+
+        abort_unless(
+            in_array($model->estado, [
+                EstadoSolicitudDeposito::RequiereCorreccion->value,
+                EstadoSolicitudDeposito::EnBorrador->value,
+            ], true),
+            403,
+        );
+
+        $this->modoCorreccion = true;
+        $this->comentarioCurador = (string) ($model->comentario_curador ?? '');
+
+        $this->restaurarDesdeBorrador($model);
+    }
+
+    /**
      * Hook que se ejecuta al actualizar la propiedad origenRecoleccion.
      * Ajusta la situación regulatoria en base al origen.
-     *
-     * @return void
      */
     public function updatedOrigenRecoleccion(): void
     {
@@ -555,10 +596,6 @@ final class RegistroSolicitudDeposito extends Component
 
     /**
      * Valida y guarda la información del paso 2.
-     *
-     * @param \Modules\GestionPrestamosRecepciones\Application\UseCases\DeterminarDocumentacionRequerida\DeterminarDocumentacionRequeridaHandler $determinar
-     * @param \Modules\GestionPrestamosRecepciones\Application\UseCases\ActualizarOrigenSolicitudDeposito\ActualizarOrigenSolicitudDepositoHandler $actualizar
-     * @return void
      */
     public function guardarPasoDos(
         DeterminarDocumentacionRequeridaHandler $determinar,
@@ -618,8 +655,6 @@ final class RegistroSolicitudDeposito extends Component
 
     /**
      * Hook que se ejecuta al cargar la autorización del MAE.
-     *
-     * @return void
      */
     public function updatedArchivoAutorizacionMae(): void
     {
@@ -656,8 +691,6 @@ final class RegistroSolicitudDeposito extends Component
 
     /**
      * Hook que se ejecuta al cargar la carta de delegación.
-     *
-     * @return void
      */
     public function updatedArchivoCartaDelegacion(): void
     {
@@ -687,9 +720,6 @@ final class RegistroSolicitudDeposito extends Component
 
     /**
      * Elimina un documento previamente cargado.
-     *
-     * @param string $nombre
-     * @return void
      */
     public function eliminarDocumento(string $nombre): void
     {
@@ -707,10 +737,6 @@ final class RegistroSolicitudDeposito extends Component
 
     /**
      * Solicita intervención curatorial.
-     *
-     * @param \Modules\GestionPrestamosRecepciones\Application\UseCases\DeclararSinDocumentacion\DeclararSinDocumentacionHandler $declarar
-     * @param \Modules\GestionPrestamosRecepciones\Application\UseCases\SolicitarIntervencionCuratoria\SolicitarIntervencionCuratoriaHandler $escalar
-     * @return void
      */
     public function solicitarIntervencion(
         DeclararSinDocumentacionHandler $declarar,
@@ -726,8 +752,6 @@ final class RegistroSolicitudDeposito extends Component
 
     /**
      * Verifica y avanza en el paso 3.
-     *
-     * @return void
      */
     public function guardarPasoTres(): void
     {
@@ -752,10 +776,6 @@ final class RegistroSolicitudDeposito extends Component
 
     /**
      * Verifica el estado de la extracción asíncrona.
-     *
-     * @param \Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarDocumentacionInicial\ValidarDocumentacionInicialHandler $validar
-     * @param \Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarIdentidadSolicitud\ValidarIdentidadSolicitudHandler $validarIdentidad
-     * @return void
      */
     public function verificarExtraccion(
         ValidarDocumentacionInicialHandler $validar,
@@ -929,8 +949,7 @@ final class RegistroSolicitudDeposito extends Component
     /**
      * Cancela la edición de un dato faltante.
      *
-     * @param string $campo El nombre del campo.
-     * @return void
+     * @param  string  $campo  El nombre del campo.
      */
     public function cancelarEdicionDato(string $campo): void
     {
@@ -1040,6 +1059,7 @@ final class RegistroSolicitudDeposito extends Component
         );
 
         $this->errorMatriz = '';
+        $this->camposObligatoriosVacios = [];
         $this->archivoMatrizNombre = $this->archivoMatriz->getClientOriginalName();
 
         // Si ya existe una matriz para esta solicitud, eliminarla antes de crear la nueva
@@ -1074,6 +1094,14 @@ final class RegistroSolicitudDeposito extends Component
                 $this->camposDwCRecomendados,
                 fn (string $campo) => ! in_array($campo, $this->camposDwCPresentes, true)
             ));
+            $this->matrizCargada = true;
+
+            return;
+        } catch (CamposObligatoriosVaciosException $e) {
+            // Campos obligatorios (críticos) con celdas vacías: se bloquea la carga
+            // y se listan las filas/campos para que el depositante los complete.
+            $this->errorMatriz = $e->getMessage();
+            $this->camposObligatoriosVacios = $e->violaciones();
             $this->matrizCargada = true;
 
             return;
@@ -1255,8 +1283,6 @@ final class RegistroSolicitudDeposito extends Component
 
     /**
      * Elimina la matriz de especies cargada actualmente.
-     *
-     * @return void
      */
     public function eliminarMatriz(): void
     {
@@ -1336,10 +1362,6 @@ final class RegistroSolicitudDeposito extends Component
 
     /**
      * Cambia la justificación existente para un registro.
-     *
-     * @param string $registroId
-     * @param string $nuevoMotivo
-     * @return void
      */
     public function cambiarJustificacion(string $registroId, string $nuevoMotivo): void
     {
@@ -1445,8 +1467,6 @@ final class RegistroSolicitudDeposito extends Component
 
     /**
      * Retrocede al paso anterior en el wizard.
-     *
-     * @return void
      */
     public function retroceder(): void
     {
@@ -1503,8 +1523,8 @@ final class RegistroSolicitudDeposito extends Component
     /**
      * Mapea el nombre de un documento a su correspondiente propiedad en la clase.
      *
-     * @param string $nombre El nombre del documento.
-     * @return string
+     * @param  string  $nombre  El nombre del documento.
+     *
      * @throws \InvalidArgumentException Si el nombre del documento es desconocido.
      */
     public function propiedadParaDocumento(string $nombre): string
@@ -1525,8 +1545,6 @@ final class RegistroSolicitudDeposito extends Component
 
     /**
      * Renderiza el componente.
-     *
-     * @return View
      */
     public function render(): View
     {

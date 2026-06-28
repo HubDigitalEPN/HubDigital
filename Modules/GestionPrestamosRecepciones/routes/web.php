@@ -4,16 +4,19 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\AprobarVerificacion;
-use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\CerrarPrestamo;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\AuditarPrestamo;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\BandejaActas;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\BandejaDepositos;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\BandejaPrestamos as CuradorBandejaPrestamos;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\BandejaSolicitudes;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\CerrarPrestamo;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\ConfiguracionRecordatorios;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\DetallePrestamo as CuradorDetallePrestamo;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\PanelPrestamos;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\RevisarDeposito;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\RevisarSolicitud;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\ValidarActa;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ImprimirQrDeposito;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\BandejaActas as InvestigadorBandejaActas;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\BandejaPrestamos as InvestigadorBandejaPrestamos;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\DetalleActa;
@@ -22,11 +25,13 @@ use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigad
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\DetalleSolicitud;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\MisDepositos;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\MisSolicitudes;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\RegistrarDevolucionPrestamo;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\RegistroSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\SolicitudForm;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\RegistrarDevolucionPrestamo;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\VerificacionEntrega;
-use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\DescargarActaPdf;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ServirActaTransferenciaDeposito;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ServirDocumentoDeposito;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ServirDocumentoExportacion;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ServirDocumentoIdentidad;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ServirPdfActa;
@@ -47,6 +52,11 @@ Route::middleware(['auth', 'verified'])
         Route::get('/acta/{id}/descargar-pdf', DescargarActaPdf::class)->name('acta.descargar-pdf');
         Route::get('/acta/{id}/documento-identidad', ServirDocumentoIdentidad::class)->name('acta.documento-identidad');
         Route::get('/acta/{id}/documento-exportacion', ServirDocumentoExportacion::class)->name('acta.documento-exportacion');
+        Route::get('/deposito/{id}/documento/{indice}', ServirDocumentoDeposito::class)
+            ->where('indice', '[0-9]+')
+            ->name('deposito.documento');
+        Route::get('/deposito/{id}/qr.pdf', ImprimirQrDeposito::class)->name('deposito.qr-pdf');
+        Route::get('/deposito/{id}/acta-transferencia', ServirActaTransferenciaDeposito::class)->name('deposito.acta');
 
         // Investigador — solo usuarios con rol PRESTAMISTA
         Route::middleware('role:prestamista')->group(function () {
@@ -66,6 +76,7 @@ Route::middleware(['auth', 'verified'])
         Route::middleware('role:depositante')->group(function () {
             Route::get('/mis-depositos', MisDepositos::class)->name('investigador.mis-depositos');
             Route::get('/deposito/nueva', RegistroSolicitudDeposito::class)->name('investigador.deposito.crear');
+            Route::get('/deposito/{id}/corregir', RegistroSolicitudDeposito::class)->name('investigador.deposito.corregir');
             Route::get('/deposito/{id}', DetalleDeposito::class)->name('investigador.deposito.detalle');
         });
 
@@ -74,6 +85,8 @@ Route::middleware(['auth', 'verified'])
             Route::get('/curador/panel', PanelPrestamos::class)->name('curador.panel');
             Route::get('/curador/solicitudes', BandejaSolicitudes::class)->name('curador.solicitudes');
             Route::get('/curador/solicitud/{id}', RevisarSolicitud::class)->name('curador.solicitud.revisar');
+            Route::get('/curador/depositos', BandejaDepositos::class)->name('curador.depositos');
+            Route::get('/curador/deposito/{id}', RevisarDeposito::class)->name('curador.deposito.revisar');
             Route::get('/curador/actas', BandejaActas::class)->name('curador.actas');
             Route::get('/curador/acta/{id}/validar', ValidarActa::class)->name('curador.acta.validar');
             Route::get('/curador/prestamos', CuradorBandejaPrestamos::class)->name('curador.prestamos');
