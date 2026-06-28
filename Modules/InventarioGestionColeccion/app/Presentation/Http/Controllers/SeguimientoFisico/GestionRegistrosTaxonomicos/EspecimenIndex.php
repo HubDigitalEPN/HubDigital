@@ -14,8 +14,12 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Bu
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\BuscarEspecimenes\BuscarEspecimenesInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConfirmarRevisionEspecimen\ConfirmarRevisionEspecimenHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConfirmarRevisionEspecimen\ConfirmarRevisionEspecimenInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\GenerarCodigoQr\GenerarCodigoQrHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\GenerarCodigoQr\GenerarCodigoQrInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarEntidadesDepositantes\ListarEntidadesDepositantesHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarTaxones\ListarTaxonesHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ObtenerCodigoQr\ObtenerCodigoQrHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ObtenerCodigoQr\ObtenerCodigoQrInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarEspecimen\RegistrarEspecimenHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarEspecimen\RegistrarEspecimenInput;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\RegistroColumnasEspecimen;
@@ -204,6 +208,13 @@ final class EspecimenIndex extends Component
     public string $editBiome = '';
 
     public string $editHabitat = '';
+
+    // ── Código QR ───────────────────────────────────────────────────────────────
+
+    /** URL de resolución codificada en el QR mostrado (null = panel cerrado). */
+    public ?string $qrUrl = null;
+
+    public ?string $qrEspecimenCodigo = null;
 
     // ── Feedback ──────────────────────────────────────────────────────────────
 
@@ -397,6 +408,37 @@ final class EspecimenIndex extends Component
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
+    }
+
+    /**
+     * Muestra el QR del espécimen: reutiliza el existente o lo genera la primera vez.
+     * El QR codifica la URL de resolución (token opaco), que abre la ficha al escanear.
+     */
+    public function mostrarQr(
+        string $id,
+        ObtenerCodigoQrHandler $obtenerHandler,
+        GenerarCodigoQrHandler $generarHandler,
+    ): void {
+        try {
+            $existente = $obtenerHandler->handle(new ObtenerCodigoQrInput(especimenId: $id));
+
+            $payload = $existente->existe
+                ? $existente->payload
+                : $generarHandler->handle(new GenerarCodigoQrInput(especimenId: $id))->payload;
+
+            $this->qrUrl = route('inventario.qr.resolver', ['payload' => $payload]);
+            $row = collect($this->especimenes)->firstWhere('id', $id);
+            $this->qrEspecimenCodigo = $row['codigoCatalogo'] ?? $id;
+            $this->errorMessage = null;
+        } catch (\Throwable $e) {
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
+        }
+    }
+
+    public function cerrarQr(): void
+    {
+        $this->qrUrl = null;
+        $this->qrEspecimenCodigo = null;
     }
 
     public function nextPage(): void

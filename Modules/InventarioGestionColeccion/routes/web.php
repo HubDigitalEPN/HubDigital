@@ -24,6 +24,7 @@ use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\Seguimiento
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\LocalidadesRevisionIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\LocalidadIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\MuestrasColectaIndex;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\ResolverQrController;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\TaxaRevisionIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\TaxonIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Visitante\AccesoInvalido;
@@ -83,4 +84,14 @@ Route::middleware(['web'])
         Route::middleware('visitante')->group(function () {
             Route::get('/mapa', MapaVisitante::class)->name('mapa');
         });
+    });
+
+// Resolución del QR físico de un espécimen a su ficha digital. El `payload` es un
+// token opaco e inadivinable impreso en la etiqueta, así que funciona como capacidad
+// de acceso: el investigador en campo escanea y ve la ficha sin autenticarse.
+Route::middleware(['web'])
+    ->prefix('inventario')
+    ->name('inventario.')
+    ->group(function () {
+        Route::get('/qr/{payload}', ResolverQrController::class)->name('qr.resolver');
     });

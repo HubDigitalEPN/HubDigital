@@ -258,6 +258,46 @@
         @endif
     </div>
 
+    {{-- Panel del código QR del espécimen --}}
+    @if($qrUrl)
+        <div
+            wire:key="panel-qr-especimen"
+            class="relative rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-6"
+            x-data="{
+                render(url) {
+                    if (! url || ! window.QRCode) { return; }
+                    this.$refs.caja.innerHTML = '';
+                    new window.QRCode(this.$refs.caja, {
+                        text: url, width: 200, height: 200,
+                        correctLevel: window.QRCode.CorrectLevel.M,
+                    });
+                },
+            }"
+            x-effect="render($wire.qrUrl)"
+        >
+            <flux:button variant="subtle" icon="x-mark" wire:click="cerrarQr"
+                         class="absolute right-3 top-3" aria-label="Cerrar" />
+
+            <div class="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
+                <div x-ref="caja" class="shrink-0 rounded-lg bg-white p-3 shadow-sm"></div>
+
+                <div class="min-w-0 flex-1 space-y-2 pr-10">
+                    <flux:heading size="lg" class="text-text-primary">
+                        Código QR de {{ $qrEspecimenCodigo }}
+                    </flux:heading>
+                    <p class="text-sm text-text-secondary">
+                        Imprime este código y pégalo en el espécimen. Al escanearlo desde el móvil se abre su ficha digital.
+                    </p>
+
+                    <flux:field>
+                        <flux:label>Enlace de la ficha</flux:label>
+                        <flux:input readonly value="{{ $qrUrl }}" />
+                    </flux:field>
+                </div>
+            </div>
+        </div>
+    @endif
+
     {{-- Resultados --}}
     @if($buscado)
         <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
@@ -328,6 +368,10 @@
                                         Editar
                                     </flux:button>
                                 @endif
+                                <flux:button size="sm" variant="ghost" icon="qr-code"
+                                             wire:click="mostrarQr('{{ $especimen['id'] }}')">
+                                    QR
+                                </flux:button>
                             </div>
                         </div>
                     </div>
@@ -377,6 +421,10 @@
                                     Editar
                                 </flux:button>
                             @endif
+                            <flux:button variant="ghost" icon="qr-code"
+                                         wire:click="mostrarQr('{{ $especimen['id'] }}')">
+                                Código QR
+                            </flux:button>
                         </div>
                     </div>
                 @empty
@@ -556,6 +604,17 @@
                     return 'bg-text-secondary';
                 },
             };
+        }
+    </script>
+
+    {{-- Librería QR liviana y sin dependencias: codifica el enlace en el navegador
+         del curador, así el QR se genera del lado del cliente sin servicios externos. --}}
+    <script>
+        if (! window.QRCode && ! document.getElementById('qrcodejs-lib')) {
+            const s = document.createElement('script');
+            s.id = 'qrcodejs-lib';
+            s.src = 'https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js';
+            document.head.appendChild(s);
         }
     </script>
 </div>
