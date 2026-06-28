@@ -29,7 +29,7 @@ final readonly class SubirActaFirmadaOutput
     {
         return new self(
             actaId:                (string) $acta->id(),
-            numeroPrestamo:        (string) $acta->numeroPrestamo(),
+            numeroPrestamo:        (string) $acta->codigoPrestamo(),
             estadoActa:            $acta->estado()->value,
             pdfFirmadoRuta:        $acta->pdfFirmadoRuta() ?? '',
             documentoIdentidadRuta: $acta->documentoIdentidadRuta() ?? '',

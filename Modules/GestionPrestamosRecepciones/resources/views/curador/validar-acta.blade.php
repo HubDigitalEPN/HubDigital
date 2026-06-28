@@ -40,14 +40,6 @@
                 <div class="p-5">
                     <dl class="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
                         <div>
-                            <dt class="text-xs text-text-secondary uppercase tracking-wide">N.º préstamo</dt>
-                            <dd class="font-mono font-medium text-text-primary mt-1">{{ $acta->numeroPrestamo }}</dd>
-                        </div>
-                        <div>
-                            <dt class="text-xs text-text-secondary uppercase tracking-wide">N.º solicitud</dt>
-                            <dd class="font-mono text-text-primary mt-1">{{ $acta->numeroSolicitud ?? '—' }}</dd>
-                        </div>
-                        <div>
                             <dt class="text-xs text-text-secondary uppercase tracking-wide">Fecha de inicio</dt>
                             <dd class="font-medium text-text-primary mt-1">{{ $acta->fechaInicio?->format('d/m/Y') ?? '—' }}</dd>
                         </div>
@@ -265,8 +257,16 @@
         <div class="space-y-4 p-2">
             <flux:heading size="lg">Devolver para refirmar</flux:heading>
             <flux:text class="text-text-secondary text-sm">
-                Indica el motivo por el que el investigador debe volver a firmar el acta.
+                Selecciona qué documentos debe corregir el investigador e indica el motivo.
             </flux:text>
+            <flux:field>
+                <flux:label>Documentos a devolver</flux:label>
+                <div class="space-y-2">
+                    <flux:checkbox wire:model="devolverActa" label="Acta firmada" />
+                    <flux:checkbox wire:model="devolverIdentidad" label="Documento de identidad" />
+                </div>
+                <flux:error name="devolverActa" />
+            </flux:field>
             <flux:field>
                 <flux:label>Motivo de la devolución</flux:label>
                 <flux:textarea wire:model="motivoDevolucion" rows="4"

@@ -51,7 +51,7 @@ final readonly class RegistrarSolicitudPrestamoOutput
 
         return new self(
             solicitudId:            (string) $solicitud->id(),
-            numeroSolicitud:        (string) $solicitud->numeroSolicitud(),
+            numeroSolicitud:        (string) $solicitud->codigoPrestamo(),
             estado:                 $solicitud->estado(),
             tituloEstudio:          $solicitud->tituloEstudio() ?? '',
             institucionAdscripcion: $solicitud->institucionAdscripcion() ?? '',

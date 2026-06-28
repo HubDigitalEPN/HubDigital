@@ -9,9 +9,9 @@ use Modules\GestionPrestamosRecepciones\Domain\Entities\ItemPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\SolicitudPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\AlcancePrestamo;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\CodigoPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitud;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ItemPrestamoId;
-use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\NumeroSolicitud;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudPrestamoId;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\ItemPrestamoModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\SolicitudPrestamoModel;
@@ -31,7 +31,7 @@ final class EloquentSolicitudPrestamoRepository implements SolicitudPrestamoRepo
         $model = SolicitudPrestamoModel::updateOrCreate(
             ['id' => (string) $solicitud->id()],
             [
-                'numero_solicitud' => (string) $solicitud->numeroSolicitud(),
+                'codigo' => (string) $solicitud->codigoPrestamo(),
                 'investigador_id' => $solicitud->investigadorId(),
                 'alcance_prestamo' => $solicitud->alcancePrestamo()->value,
                 'estado' => $solicitud->estado()->value,
@@ -110,7 +110,7 @@ final class EloquentSolicitudPrestamoRepository implements SolicitudPrestamoRepo
         if ($busquedaTexto !== '') {
             $query->where(fn ($q) => $q
                 ->where('titulo_estudio', 'ilike', "%{$busquedaTexto}%")
-                ->orWhere('numero_solicitud', 'ilike', "%{$busquedaTexto}%")
+                ->orWhere('codigo', 'ilike', "%{$busquedaTexto}%")
             );
         }
 
@@ -127,7 +127,7 @@ final class EloquentSolicitudPrestamoRepository implements SolicitudPrestamoRepo
 
         return $solicitudes->map(fn (SolicitudPrestamoModel $solicitud): array => [
             'solicitudId' => (string) $solicitud->id,
-            'numeroSolicitud' => $solicitud->numero_solicitud,
+            'numeroSolicitud' => $solicitud->codigo,
             'tituloEstudio' => $solicitud->titulo_estudio,
             'investigadorId' => $solicitud->investigador_id,
             'estado' => (string) $solicitud->estado,
@@ -155,7 +155,7 @@ final class EloquentSolicitudPrestamoRepository implements SolicitudPrestamoRepo
         if ($busquedaTexto !== '') {
             $query->where(fn ($q) => $q
                 ->where('titulo_estudio', 'ilike', "%{$busquedaTexto}%")
-                ->orWhere('numero_solicitud', 'ilike', "%{$busquedaTexto}%")
+                ->orWhere('codigo', 'ilike', "%{$busquedaTexto}%")
             );
         }
 
@@ -168,7 +168,7 @@ final class EloquentSolicitudPrestamoRepository implements SolicitudPrestamoRepo
 
         return $solicitudes->map(fn (SolicitudPrestamoModel $solicitud): array => [
             'solicitudId' => (string) $solicitud->id,
-            'numeroSolicitud' => $solicitud->numero_solicitud,
+            'numeroSolicitud' => $solicitud->codigo,
             'tituloEstudio' => $solicitud->titulo_estudio,
             'estado' => (string) $solicitud->estado,
             'fecha' => DateTimeImmutable::createFromInterface($solicitud->created_at),
@@ -220,7 +220,7 @@ final class EloquentSolicitudPrestamoRepository implements SolicitudPrestamoRepo
 
         return SolicitudPrestamo::reconstituir(
             id: SolicitudPrestamoId::fromString($model->id),
-            numeroSolicitud: NumeroSolicitud::fromString($model->numero_solicitud),
+            codigoPrestamo: CodigoPrestamo::fromString($model->codigo),
             investigadorId: $model->investigador_id,
             alcancePrestamo: AlcancePrestamo::from($model->alcance_prestamo),
             estado: EstadoSolicitud::from($model->estado),

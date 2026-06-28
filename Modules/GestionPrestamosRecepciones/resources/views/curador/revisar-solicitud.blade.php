@@ -36,10 +36,6 @@
                     <div class="p-5">
                         <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                             <div>
-                                <dt class="text-xs text-text-secondary uppercase tracking-wide">N.º solicitud</dt>
-                                <dd class="font-mono font-medium text-text-primary mt-1">{{ $solicitud->numeroSolicitud }}</dd>
-                            </div>
-                            <div>
                                 <dt class="text-xs text-text-secondary uppercase tracking-wide">Investigador</dt>
                                 <dd class="font-medium text-text-primary mt-1">{{ $nombreInvestigador }}</dd>
                             </div>
@@ -52,7 +48,7 @@
                                 <dd class="font-medium text-text-primary mt-1">{{ $solicitud->lineaInvestigacion }}</dd>
                             </div>
                             <div>
-                                <dt class="text-xs text-text-secondary uppercase tracking-wide">Duración propuesta</dt>
+                                <dt class="text-xs text-text-secondary uppercase tracking-wide">Duración</dt>
                                 <dd class="font-medium text-text-primary mt-1">{{ $solicitud->duracionPropuestaMeses }} meses</dd>
                             </div>
                             <div>

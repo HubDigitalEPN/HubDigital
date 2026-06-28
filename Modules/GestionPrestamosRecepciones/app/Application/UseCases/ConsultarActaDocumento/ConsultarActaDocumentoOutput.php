@@ -16,6 +16,7 @@ final readonly class ConsultarActaDocumentoOutput
     /**
      * @param string $id Identificador del acta.
      * @param string $investigadorId ID del investigador dueño (para autorización).
+     * @param string|null $nombreInvestigador Nombre legible del investigador solicitante.
      * @param string $numeroPrestamo Número de préstamo asignado.
      * @param string $tipoPrestamo Tipo de préstamo.
      * @param string $alcancePrestamo Alcance (nacional/internacional).
@@ -27,11 +28,13 @@ final readonly class ConsultarActaDocumentoOutput
      * @param string|null $institucionAdscripcion Institución de adscripción.
      * @param string|null $lineaInvestigacion Línea de investigación.
      * @param string|null $propositoPrestamo Propósito del préstamo.
+     * @param string $patente Patente del laboratorio vigente el año del acta.
      * @param list<ItemPrestamoVista> $items Ítems (especímenes) del préstamo.
      */
     public function __construct(
         public string $id,
         public string $investigadorId,
+        public ?string $nombreInvestigador,
         public string $numeroPrestamo,
         public string $tipoPrestamo,
         public string $alcancePrestamo,
@@ -43,6 +46,7 @@ final readonly class ConsultarActaDocumentoOutput
         public ?string $institucionAdscripcion,
         public ?string $lineaInvestigacion,
         public ?string $propositoPrestamo,
+        public string $patente,
         public array $items,
     ) {}
 }

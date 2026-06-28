@@ -37,7 +37,7 @@ final readonly class EnviarActaPrestamoOutput
     {
         return new self(
             actaId: (string) $acta->id(),
-            numeroPrestamo: (string) $acta->numeroPrestamo(),
+            numeroPrestamo: (string) $acta->codigoPrestamo(),
             estadoActa: $acta->estado()->value,
             pdfRuta: $acta->pdfRuta(),
             notificacionEnviada: $notificacionEnviada,

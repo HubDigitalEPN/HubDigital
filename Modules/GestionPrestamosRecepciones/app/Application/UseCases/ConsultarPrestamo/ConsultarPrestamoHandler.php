@@ -55,7 +55,7 @@ final class ConsultarPrestamoHandler
             estado: $prestamo->estado(),
             iniciadoEn: $prestamo->iniciadoEn(),
             fechaFin: $prestamo->fechaFin(),
-            numeroPrestamo: $acta !== null ? (string) $acta->numeroPrestamo() : '—',
+            numeroPrestamo: $acta !== null ? (string) $acta->codigoPrestamo() : '—',
         );
     }
 }

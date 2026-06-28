@@ -30,7 +30,7 @@ final readonly class ValidarActaFirmadaOutput
     {
         return new self(
             actaId: (string) $acta->id(),
-            numeroPrestamo: (string) $acta->numeroPrestamo(),
+            numeroPrestamo: (string) $acta->codigoPrestamo(),
             estadoActa: $acta->estado()->value,
             validadaPor: $acta->validadaPor(),
             validadaEn: $acta->validadaEn(),

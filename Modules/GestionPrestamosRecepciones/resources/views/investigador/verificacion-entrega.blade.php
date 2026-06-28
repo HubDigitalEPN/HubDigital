@@ -51,7 +51,7 @@
                         class="mt-0.5 accent-error shrink-0" />
                     <div class="flex-1">
                         <p class="text-sm font-semibold text-text-primary">Con novedades</p>
-                        <p class="text-xs text-text-secondary mt-0.5">Uno o más especímenes presentan daños, faltan unidades o hay irregularidades.</p>
+                        <p class="text-xs text-text-secondary mt-0.5">Uno o más especímenes presentan daños, faltan individuos o hay irregularidades.</p>
                     </div>
                     @if($estadoEnvio === 'con_novedades')
                         <flux:icon name="exclamation-triangle" class="size-5 text-error shrink-0" />

@@ -26,7 +26,7 @@ final readonly class ObservarSolicitudPrestamoOutput
     {
         return new self(
             solicitudId: (string) $solicitud->id(),
-            numeroSolicitud: (string) $solicitud->numeroSolicitud(),
+            numeroSolicitud: (string) $solicitud->codigoPrestamo(),
             estadoSolicitud: $solicitud->estado()->value,
             comentarioCurador: $solicitud->comentarioCurador(),
         );

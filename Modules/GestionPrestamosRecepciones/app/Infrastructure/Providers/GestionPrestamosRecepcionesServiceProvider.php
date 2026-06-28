@@ -13,6 +13,7 @@ use Modules\GestionPrestamosRecepciones\Application\Ports\CatalogoCuraduriaPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ColaRevisionCuratorialPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ExtraccionDatosDocumentoPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\GeneradorCodigoPrestamo;
 use Modules\GestionPrestamosRecepciones\Application\Ports\HistorialPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\InvestigadorEmailPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionCuratoriaPort;
@@ -28,12 +29,14 @@ use Modules\GestionPrestamosRecepciones\Domain\Exceptions\TransicionEstadoInvali
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\ActaPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\ConfiguracionGlobalRecordatoriosRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\Repositories\PatenteAnualRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\PrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\RecordatorioDevolucionRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\VerificacionEspecimenesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\EloquentColaRevisionCuratorialAdapter;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\EloquentGeneradorCodigoPrestamoAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\EloquentHistorialAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\FakeNotificacionCuratoriaAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\GbifValidacionTaxonomicaAdapter;
@@ -50,6 +53,7 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Gateways\LaravelUserInves
 use Modules\GestionPrestamosRecepciones\Infrastructure\Gateways\LaravelUsuarioNombreAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentActaPrestamoRepository;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentConfiguracionGlobalRecordatoriosRepository;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentPatenteAnualRepository;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentPrestamoRepository;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentRecordatorioDevolucionRepository;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentSolicitudPrestamoRepository;
@@ -108,6 +112,8 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
         ValidacionTaxonomicaPort::class => GbifValidacionTaxonomicaAdapter::class,
         PdfGeneratorPort::class => DomPdfGeneratorAdapter::class,
         VerificacionEspecimenesRepositoryInterface::class => EloquentVerificacionEspecimenesRepository::class,
+        GeneradorCodigoPrestamo::class => EloquentGeneradorCodigoPrestamoAdapter::class,
+        PatenteAnualRepositoryInterface::class => EloquentPatenteAnualRepository::class,
     ];
 
     /**

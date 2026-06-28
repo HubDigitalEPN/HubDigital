@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Acta {{ (string) $acta->numeroPrestamo() }}</title>
+    <title>Acta {{ (string) $acta->codigoPrestamo() }}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -14,10 +14,28 @@
             padding: 32px 40px;
         }
 
-        /* Encabezado */
-        .doc-header {
-            text-align: center;
+        /* Encabezado con logos */
+        .header-table {
+            width: 100%;
             margin-bottom: 20px;
+        }
+        .header-table td {
+            vertical-align: middle;
+        }
+        .header-table .logo-left {
+            width: 80px;
+            text-align: left;
+        }
+        .header-table .logo-right {
+            width: 80px;
+            text-align: right;
+        }
+        .header-table .header-center {
+            text-align: center;
+        }
+        .header-table .logo-img {
+            height: 70px;
+            width: auto;
         }
         .doc-header .institution {
             font-size: 9px;
@@ -37,6 +55,11 @@
             color: #757575;
             font-family: 'Courier New', monospace;
             margin-top: 4px;
+        }
+        .doc-header .patente {
+            font-size: 9px;
+            color: #757575;
+            margin-top: 3px;
         }
 
         hr { border: none; border-top: 1px solid #E0E0E0; margin: 16px 0; }
@@ -160,12 +183,31 @@
 </head>
 <body>
 
-    {{-- Encabezado --}}
-    <div class="doc-header">
-        <p class="institution">Laboratorio de Invertebrados de la Escuela Politécnica Nacional</p>
-        <h1>Acta de Préstamo de Especímenes</h1>
-        <p class="numero">{{ (string) $acta->numeroPrestamo() }}</p>
-    </div>
+    {{-- Logos codificados en base64 para máxima compatibilidad con DomPDF --}}
+    @php
+        $logoEpnPath = resource_path('logos/logo-epn.jpeg');
+        $logoBioPath = resource_path('logos/logo-departamento-biologia-epn.jpeg');
+        $logoEpnBase64 = 'data:image/jpeg;base64,' . base64_encode(file_get_contents($logoEpnPath));
+        $logoBioBase64 = 'data:image/jpeg;base64,' . base64_encode(file_get_contents($logoBioPath));
+    @endphp
+
+    {{-- Encabezado con logos --}}
+    <table class="header-table">
+        <tr>
+            <td class="logo-left">
+                <img src="{{ $logoEpnBase64 }}" class="logo-img" alt="Logo EPN" />
+            </td>
+            <td class="header-center doc-header">
+                <p class="institution">Laboratorio de Invertebrados</p>
+                <h1>Acta de Préstamo de Especímenes</h1>
+                <p class="numero">{{ (string) $acta->codigoPrestamo() }}</p>
+                <p class="patente">Patente MAATE: {{ $patente }}</p>
+            </td>
+            <td class="logo-right">
+                <img src="{{ $logoBioBase64 }}" class="logo-img" alt="Logo Departamento de Biología" />
+            </td>
+        </tr>
+    </table>
 
     <hr />
 
@@ -186,7 +228,7 @@
             <tr>
                 <td>
                     <div class="label">N.º solicitud</div>
-                    <div class="value mono">{{ (string) $solicitud->numeroSolicitud() }}</div>
+                    <div class="value mono">{{ (string) $solicitud->codigoPrestamo() }}</div>
                 </td>
                 <td>
                     <div class="label">Fecha de inicio</div>
@@ -274,7 +316,7 @@
         <p class="commitment">
             El investigador solicitante se compromete a utilizar los especímenes en préstamo únicamente para los fines
             declarados en la presente solicitud, a mantenerlos en condiciones adecuadas de conservación, y a devolverlos
-            íntegros al Laboratorio de Invertebrados de la Escuela Politécnica Nacional en la fecha de vencimiento indicada
+            íntegros al Laboratorio de Invertebrados en la fecha de vencimiento indicada
             o antes si el estudio concluye. Cualquier daño, pérdida o uso indebido de los especímenes será responsabilidad
             del investigador y su institución.
         </p>
@@ -286,15 +328,16 @@
             <td>
                 <div style="height: 66px;"></div>
                 <div class="firma-line">
-                    <p class="firma-name">Curador responsable</p>
-                    <p class="firma-sub">Laboratorio de Invertebrados — EPN</p>
-                    <p class="firma-sub">Fecha: ___________________</p>
+                    <p class="firma-name">Adrian Troya</p>
+                    <p class="firma-sub">Biólogo</p>
+                    <p class="firma-sub">Curador</p>
+                    <p class="firma-sub">Laboratorio de Invertebrados</p>
                 </div>
             </td>
             <td>
                 <img src="{{ $firmaBase64 }}" class="firma-img" alt="Firma del investigador" />
                 <div class="firma-line">
-                    <p class="firma-name">Investigador solicitante</p>
+                    <p class="firma-name">{{ $nombreInvestigador ?? 'Investigador solicitante' }}</p>
                     <p class="firma-sub">{{ $solicitud->institucionAdscripcion() }}</p>
                     <p class="firma-sub">Firmado digitalmente el {{ now()->format('d/m/Y H:i') }}</p>
                 </div>
@@ -305,7 +348,7 @@
     {{-- Pie de página --}}
     <div class="footer">
         Documento generado automáticamente por Hub Digital — EPN Colecciones Biológicas &nbsp;|&nbsp;
-        Acta: {{ (string) $acta->numeroPrestamo() }}
+        Acta: {{ (string) $acta->codigoPrestamo() }}
     </div>
 
 </body>

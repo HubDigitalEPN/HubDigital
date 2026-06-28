@@ -24,7 +24,7 @@ final readonly class AprobarSolicitudPrestamoOutput
             solicitudId: (string) $solicitud->id(),
             estadoSolicitud: $solicitud->estado()->value,
             actaId: (string) $acta->id(),
-            numeroPrestamo: (string) $acta->numeroPrestamo(),
+            numeroPrestamo: (string) $acta->codigoPrestamo(),
             tipoPrestamo: $acta->tipoPrestamo()->value,
             condicionesGenerales: $acta->condicionesGenerales(),
         );

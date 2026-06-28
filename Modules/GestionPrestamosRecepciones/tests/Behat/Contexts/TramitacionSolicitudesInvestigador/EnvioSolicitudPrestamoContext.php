@@ -29,8 +29,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRep
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\AlcancePrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitud;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ItemPrestamoId;
-use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\NumeroPrestamo;
-use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\NumeroSolicitud;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\CodigoPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoPrestamo;
 use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\BaseContext;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\FakeEventPublisherAdapter;
@@ -129,7 +128,7 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
 
         $solicitud = SolicitudPrestamo::crear(
             id: $this->solicitudRepo->nextIdentity(),
-            numeroSolicitud: NumeroSolicitud::generate(),
+            codigoPrestamo: CodigoPrestamo::fromParts(2026, random_int(1, 99999)),
             investigadorId: $this->investigadorId,
             alcancePrestamo: AlcancePrestamo::Nacional,
             tituloEstudio: $this->datosSolicitudCompleta['titulo_estudio'],
@@ -150,7 +149,7 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
     {
         $solicitud = SolicitudPrestamo::crearIncompleta(
             id: $this->solicitudRepo->nextIdentity(),
-            numeroSolicitud: NumeroSolicitud::generate(),
+            codigoPrestamo: CodigoPrestamo::fromParts(2026, random_int(1, 99999)),
             investigadorId: $this->investigadorId,
             alcancePrestamo: AlcancePrestamo::Nacional,
         );
@@ -370,7 +369,7 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
             // (enviar() valida estaCompleta()). Se reconstituye directamente.
             $solicitud = SolicitudPrestamo::reconstituir(
                 id: $this->solicitudRepo->nextIdentity(),
-                numeroSolicitud: NumeroSolicitud::generate(),
+                codigoPrestamo: CodigoPrestamo::fromParts(2026, random_int(1, 99999)),
                 investigadorId: $this->investigadorId,
                 alcancePrestamo: AlcancePrestamo::Nacional,
                 estado: EstadoSolicitud::Observada,
@@ -486,7 +485,7 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
 
         $acta = ActaPrestamo::emitir(
             id: $this->actaRepo->nextIdentity(),
-            numeroPrestamo: NumeroPrestamo::generate(),
+            codigoPrestamo: CodigoPrestamo::fromParts(2026, random_int(1, 99999)),
             solicitudPrestamoId: $solicitud->id(),
             tipoPrestamo: TipoPrestamo::Temporal,
             alcancePrestamo: AlcancePrestamo::Nacional,
@@ -557,7 +556,7 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
 
         $acta = ActaPrestamo::emitir(
             id: $this->actaRepo->nextIdentity(),
-            numeroPrestamo: NumeroPrestamo::generate(),
+            codigoPrestamo: CodigoPrestamo::fromParts(2026, random_int(1, 99999)),
             solicitudPrestamoId: $solicitud->id(),
             tipoPrestamo: TipoPrestamo::Temporal,
             alcancePrestamo: AlcancePrestamo::Nacional,

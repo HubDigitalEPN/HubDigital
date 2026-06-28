@@ -13,8 +13,8 @@ use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoRegistrad
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\SolicitudPrestamoIncompletaException;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\TransicionDeEstadoInvalidaException;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\AlcancePrestamo;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\CodigoPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitud;
-use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\NumeroSolicitud;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudPrestamoId;
 
 /**
@@ -36,7 +36,7 @@ final class SolicitudPrestamo
 
     private function __construct(
         private readonly SolicitudPrestamoId $id,
-        private readonly NumeroSolicitud $numeroSolicitud,
+        private readonly CodigoPrestamo $codigoPrestamo,
         private readonly string $investigadorId,
         private readonly AlcancePrestamo $alcancePrestamo,
         private EstadoSolicitud $estado,
@@ -63,7 +63,7 @@ final class SolicitudPrestamo
      */
     public static function crear(
         SolicitudPrestamoId $id,
-        NumeroSolicitud $numeroSolicitud,
+        CodigoPrestamo $codigoPrestamo,
         string $investigadorId,
         AlcancePrestamo $alcancePrestamo,
         string $tituloEstudio,
@@ -78,7 +78,7 @@ final class SolicitudPrestamo
 
         $solicitud = new self(
             id: $id,
-            numeroSolicitud: $numeroSolicitud,
+            codigoPrestamo: $codigoPrestamo,
             investigadorId: $investigadorId,
             alcancePrestamo: $alcancePrestamo,
             estado: EstadoSolicitud::Borrador,
@@ -110,7 +110,7 @@ final class SolicitudPrestamo
      */
     public static function crearIncompleta(
         SolicitudPrestamoId $id,
-        NumeroSolicitud $numeroSolicitud,
+        CodigoPrestamo $codigoPrestamo,
         string $investigadorId,
         AlcancePrestamo $alcancePrestamo,
     ): self {
@@ -118,7 +118,7 @@ final class SolicitudPrestamo
 
         $solicitud = new self(
             id: $id,
-            numeroSolicitud: $numeroSolicitud,
+            codigoPrestamo: $codigoPrestamo,
             investigadorId: $investigadorId,
             alcancePrestamo: $alcancePrestamo,
             estado: EstadoSolicitud::Borrador,
@@ -151,7 +151,7 @@ final class SolicitudPrestamo
      */
     public static function reconstituir(
         SolicitudPrestamoId $id,
-        NumeroSolicitud $numeroSolicitud,
+        CodigoPrestamo $codigoPrestamo,
         string $investigadorId,
         AlcancePrestamo $alcancePrestamo,
         EstadoSolicitud $estado,
@@ -169,7 +169,7 @@ final class SolicitudPrestamo
     ): self {
         return new self(
             id: $id,
-            numeroSolicitud: $numeroSolicitud,
+            codigoPrestamo: $codigoPrestamo,
             investigadorId: $investigadorId,
             alcancePrestamo: $alcancePrestamo,
             estado: $estado,
@@ -370,9 +370,9 @@ final class SolicitudPrestamo
         return $this->id;
     }
 
-    public function numeroSolicitud(): NumeroSolicitud
+    public function codigoPrestamo(): CodigoPrestamo
     {
-        return $this->numeroSolicitud;
+        return $this->codigoPrestamo;
     }
 
     public function investigadorId(): string

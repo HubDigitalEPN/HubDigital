@@ -61,8 +61,14 @@
 
             {{-- Callout contextual según estado --}}
             @if($acta->estado === 'pendiente_firma' && $acta->motivoDevolucion)
+                @php
+                    $docsDevueltos = collect([
+                        $acta->pdfFirmadoRuta === null ? 'el acta firmada' : null,
+                        $acta->documentoIdentidadRuta === null ? 'el documento de identidad' : null,
+                    ])->filter()->implode(' y ');
+                @endphp
                 <flux:callout variant="warning" icon="arrow-uturn-left">
-                    <flux:heading size="sm">El acta fue devuelta para refirmar</flux:heading>
+                    <flux:heading size="sm">Debes volver a cargar {{ $docsDevueltos ?: 'los documentos' }}</flux:heading>
                     <flux:text class="mt-1 text-sm">{{ $acta->motivoDevolucion }}</flux:text>
                 </flux:callout>
             @elseif($acta->estado === 'pendiente_firma' && $acta->pdfFirmadoRuta && !$successMessage)
@@ -112,7 +118,7 @@
                             @else
                                 <flux:button variant="primary" icon="arrow-up-tray" size="sm"
                                     wire:click="$set('showUploadModal', true)">
-                                    Adjuntar documentos
+                                    {{ $acta->documentoIdentidadRuta ? 'Adjuntar acta firmada' : 'Adjuntar documentos' }}
                                 </flux:button>
                                 <flux:button variant="outline" icon="pencil" size="sm"
                                     wire:click="$set('showFirmaCanvasModal', true)"
@@ -459,8 +465,12 @@
 
     <flux:modal wire:model="showUploadModal" class="max-w-md">
         <div class="space-y-4 p-2">
-            <flux:heading size="lg">Subir documentos para validación</flux:heading>
-            <flux:text class="text-text-secondary text-sm">Debes adjuntar dos documentos en PDF (máximo 10 MB cada uno).</flux:text>
+            <flux:heading size="lg">{{ $acta->documentoIdentidadRuta ? 'Subir acta firmada' : 'Subir documentos para validación' }}</flux:heading>
+            <flux:text class="text-text-secondary text-sm">
+                {{ $acta->documentoIdentidadRuta
+                    ? 'Tu documento de identidad sigue válido. Adjunta solo el acta firmada en PDF (máximo 10 MB).'
+                    : 'Debes adjuntar dos documentos en PDF (máximo 10 MB cada uno).' }}
+            </flux:text>
             <flux:field>
                 <flux:label>Acta firmada (PDF)</flux:label>
                 @if($pdfFirmado)
@@ -483,28 +493,30 @@
                 </div>
                 <flux:error name="pdfFirmado" />
             </flux:field>
-            <flux:field>
-                <flux:label>Documento de identidad — cédula o pasaporte (PDF)</flux:label>
-                @if($documentoIdentidad)
-                    <div class="flex items-center justify-between rounded-lg border border-success/30 bg-success/5 px-3 py-2">
-                        <div class="flex items-center gap-2 min-w-0">
-                            <flux:icon name="document-check" class="size-4 text-success shrink-0" />
-                            <span class="text-sm text-text-primary truncate">{{ $documentoIdentidad->getClientOriginalName() }}</span>
+            @unless($acta->documentoIdentidadRuta)
+                <flux:field>
+                    <flux:label>Documento de identidad — cédula o pasaporte (PDF)</flux:label>
+                    @if($documentoIdentidad)
+                        <div class="flex items-center justify-between rounded-lg border border-success/30 bg-success/5 px-3 py-2">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <flux:icon name="document-check" class="size-4 text-success shrink-0" />
+                                <span class="text-sm text-text-primary truncate">{{ $documentoIdentidad->getClientOriginalName() }}</span>
+                            </div>
+                            <flux:button size="sm" variant="ghost" icon="x-mark" wire:click="limpiarDocumentoIdentidad" />
                         </div>
-                        <flux:button size="sm" variant="ghost" icon="x-mark" wire:click="limpiarDocumentoIdentidad" />
+                    @else
+                        <label class="flex items-center gap-2 cursor-pointer rounded-lg border border-dashed border-border px-3 py-2.5 hover:border-science-blue hover:bg-science-blue/5 transition-colors">
+                            <flux:icon name="arrow-up-tray" class="size-4 text-text-secondary" />
+                            <span class="text-sm text-text-secondary">Seleccionar archivo PDF</span>
+                            <input type="file" wire:model="documentoIdentidad" accept=".pdf" class="hidden" />
+                        </label>
+                    @endif
+                    <div wire:loading wire:target="documentoIdentidad" class="flex items-center gap-1.5 mt-1 text-xs text-text-secondary">
+                        <flux:icon name="arrow-path" class="animate-spin size-3" /> Subiendo archivo...
                     </div>
-                @else
-                    <label class="flex items-center gap-2 cursor-pointer rounded-lg border border-dashed border-border px-3 py-2.5 hover:border-science-blue hover:bg-science-blue/5 transition-colors">
-                        <flux:icon name="arrow-up-tray" class="size-4 text-text-secondary" />
-                        <span class="text-sm text-text-secondary">Seleccionar archivo PDF</span>
-                        <input type="file" wire:model="documentoIdentidad" accept=".pdf" class="hidden" />
-                    </label>
-                @endif
-                <div wire:loading wire:target="documentoIdentidad" class="flex items-center gap-1.5 mt-1 text-xs text-text-secondary">
-                    <flux:icon name="arrow-path" class="animate-spin size-3" /> Subiendo archivo...
-                </div>
-                <flux:error name="documentoIdentidad" />
-            </flux:field>
+                    <flux:error name="documentoIdentidad" />
+                </flux:field>
+            @endunless
             <div class="flex justify-end gap-2 pt-2">
                 <flux:button variant="ghost" wire:click="cancelarUploadActa">Cancelar</flux:button>
                 <flux:button variant="primary" wire:click="subirActa"

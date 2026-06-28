@@ -44,7 +44,7 @@ final class ConsultarActaHandler
 
         return new ConsultarActaOutput(
             id: (string) $acta->id(),
-            numeroPrestamo: (string) $acta->numeroPrestamo(),
+            numeroPrestamo: (string) $acta->codigoPrestamo(),
             estado: $acta->estado()->value,
             tipoPrestamo: $acta->tipoPrestamo()->value,
             alcancePrestamo: $acta->alcancePrestamo()->value,
@@ -54,7 +54,7 @@ final class ConsultarActaHandler
             documentoIdentidadRuta: $acta->documentoIdentidadRuta(),
             documentoExportacionRuta: $acta->documentoExportacionRuta(),
             solicitudPrestamoId: (string) $acta->solicitudPrestamoId(),
-            numeroSolicitud: $solicitud !== null ? (string) $solicitud->numeroSolicitud() : null,
+            numeroSolicitud: $solicitud !== null ? (string) $solicitud->codigoPrestamo() : null,
             tituloEstudio: $solicitud?->tituloEstudio(),
             institucionAdscripcion: $solicitud?->institucionAdscripcion(),
         );

@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarActaDocumento;
 
+use Modules\GestionPrestamosRecepciones\Application\Ports\UsuarioNombrePort;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarItemsPrestamo\ItemPrestamoVista;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\ItemPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\ActaPrestamoRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\Repositories\PatenteAnualRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
 
@@ -26,6 +28,8 @@ final class ConsultarActaDocumentoHandler
     public function __construct(
         private readonly ActaPrestamoRepositoryInterface $actaRepo,
         private readonly SolicitudPrestamoRepositoryInterface $solicitudRepo,
+        private readonly UsuarioNombrePort $usuarios,
+        private readonly PatenteAnualRepositoryInterface $patentes,
     ) {}
 
     /**
@@ -55,20 +59,29 @@ final class ConsultarActaDocumentoHandler
             $solicitud->items(),
         ));
 
+        $investigadorId = $solicitud?->investigadorId() ?? '';
+
+        // Solo lectura para visualización: devuelve la patente del año o cadena vacía.
+        // El bloqueo por patente faltante vive en la generación (firma y descarga).
+        $anioPatente = (int) $acta->fechaInicio()->format('Y');
+        $patente = $this->patentes->buscarCodigoPorAnio($anioPatente) ?? '';
+
         return new ConsultarActaDocumentoOutput(
             id: (string) $acta->id(),
-            investigadorId: $solicitud?->investigadorId() ?? '',
-            numeroPrestamo: (string) $acta->numeroPrestamo(),
+            investigadorId: $investigadorId,
+            nombreInvestigador: $investigadorId === '' ? null : $this->usuarios->obtenerNombre($investigadorId),
+            numeroPrestamo: (string) $acta->codigoPrestamo(),
             tipoPrestamo: $acta->tipoPrestamo()->value,
             alcancePrestamo: $acta->alcancePrestamo()->value,
             fechaInicio: $acta->fechaInicio(),
             fechaFin: $acta->fechaFin(),
             condicionesGenerales: $acta->condicionesGenerales(),
-            numeroSolicitud: $solicitud !== null ? (string) $solicitud->numeroSolicitud() : null,
+            numeroSolicitud: $solicitud !== null ? (string) $solicitud->codigoPrestamo() : null,
             tituloEstudio: $solicitud?->tituloEstudio(),
             institucionAdscripcion: $solicitud?->institucionAdscripcion(),
             lineaInvestigacion: $solicitud?->lineaInvestigacion(),
             propositoPrestamo: $solicitud?->propositoPrestamo(),
+            patente: $patente,
             items: $items,
         );
     }

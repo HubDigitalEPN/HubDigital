@@ -6,6 +6,15 @@
         margin: 1.8cm 2cm;
     }
 
+    /* Resetear html y body para evitar página en blanco */
+    html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+        height: auto !important;
+        min-height: 0 !important;
+    }
+
     /* Ocultar el layout de la app (sidebar, header de Flux UI) */
     [data-flux-sidebar],
     [data-flux-header],
@@ -13,6 +22,19 @@
     header,
     nav {
         display: none !important;
+        height: 0 !important;
+        overflow: hidden !important;
+    }
+
+    /* Colapsar todos los contenedores intermedios entre body y #acta-doc */
+    body > *:not(script):not(style),
+    body > * > *:not(script):not(style) {
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+        max-width: 100% !important;
+        height: auto !important;
+        min-height: 0 !important;
     }
 
     #acta-doc {
@@ -20,6 +42,7 @@
         border: none !important;
         border-radius: 0 !important;
         padding: 0 !important;
+        margin: 0 !important;
         max-width: 100% !important;
     }
 
@@ -33,7 +56,7 @@
 </style>
 @endonce
 
-<div class="p-6 space-y-4">
+<div class="p-6 space-y-4 print:!p-0 print:!m-0 print:!space-y-0">
 
     {{-- Toolbar (oculto en modo embed/iframe) --}}
     <div class="flex items-center justify-between print:hidden {{ ($isEmbed ?? false) ? 'hidden' : '' }}">
@@ -42,12 +65,12 @@
             <flux:breadcrumbs.item>{{ $acta?->numeroPrestamo ?? '—' }}</flux:breadcrumbs.item>
         </flux:breadcrumbs>
         <div class="flex items-center gap-3">
-            <flux:text class="text-xs text-text-secondary text-right leading-tight max-w-48">
-                En el diálogo, desactiva<br><span class="font-medium">"Encabezados y pies de página"</span>
-            </flux:text>
-            <flux:button icon="printer"
-                onclick="let t=document.title; document.title='Acta{{ $acta?->numeroSolicitud ?? $acta?->numeroPrestamo }}'; window.print(); setTimeout(()=>document.title=t, 500)">
-                Imprimir / Descargar PDF
+            <flux:button
+                icon="arrow-down-tray"
+                tag="a"
+                href="{{ route('prestamos.acta.descargar-pdf', $acta?->id) }}"
+                target="_blank">
+                Descargar PDF
             </flux:button>
         </div>
     </div>
@@ -58,11 +81,24 @@
         {{-- Document --}}
         <div id="acta-doc" class="bg-white rounded-lg border border-border shadow-sm mx-auto max-w-3xl p-10 space-y-8 print:shadow-none print:border-none print:max-w-full print:rounded-none print:p-0">
 
-            {{-- Header --}}
-            <div class="text-center space-y-1">
-                <p class="text-xs text-text-secondary uppercase tracking-widest">Laboratorio de Invertebrados de la Escuela Politécnica Nacional</p>
-                <h1 class="text-2xl font-bold text-text-primary font-serif mt-2">ACTA DE PRÉSTAMO DE ESPECÍMENES</h1>
-                <p class="font-mono text-sm text-text-secondary mt-1">{{ $acta->numeroPrestamo }}</p>
+            {{-- Header con logos --}}
+            @php
+                $logoEpnPath = resource_path('logos/logo-epn.jpeg');
+                $logoBioPath = resource_path('logos/logo-departamento-biologia-epn.jpeg');
+                $logoEpnBase64 = 'data:image/jpeg;base64,' . base64_encode(file_get_contents($logoEpnPath));
+                $logoBioBase64 = 'data:image/jpeg;base64,' . base64_encode(file_get_contents($logoBioPath));
+            @endphp
+            <div class="flex items-center justify-between">
+                <img src="{{ $logoEpnBase64 }}" alt="Logo EPN" class="h-16 w-auto flex-shrink-0" />
+                <div class="text-center space-y-1 flex-1 px-4">
+                    <p class="text-xs text-text-secondary uppercase tracking-widest">Laboratorio de Invertebrados</p>
+                    <h1 class="text-2xl font-bold text-text-primary font-serif mt-2">ACTA DE PRÉSTAMO DE ESPECÍMENES</h1>
+                    <p class="font-mono text-sm text-text-secondary mt-1">{{ $acta->numeroPrestamo }}</p>
+                    @if($acta->patente !== '')
+                        <p class="text-xs text-text-secondary mt-1">PATENTE: {{ $acta->patente }}</p>
+                    @endif
+                </div>
+                <img src="{{ $logoBioBase64 }}" alt="Logo Departamento de Biología" class="h-16 w-auto flex-shrink-0" />
             </div>
 
             <hr class="border-border" />
@@ -78,10 +114,6 @@
                     <div>
                         <dt class="text-text-secondary">Alcance</dt>
                         <dd class="font-medium text-text-primary">{{ ($acta->alcancePrestamo ?? 'nacional') === 'internacional' ? 'Internacional' : 'Nacional' }}</dd>
-                    </div>
-                    <div>
-                        <dt class="text-text-secondary">N.º solicitud</dt>
-                        <dd class="font-mono font-medium text-text-primary">{{ $acta->numeroSolicitud }}</dd>
                     </div>
                     <div>
                         <dt class="text-text-secondary">Fecha de inicio</dt>
@@ -199,7 +231,7 @@
                 <p class="text-sm text-text-primary leading-relaxed">
                     El investigador solicitante se compromete a utilizar los especímenes en préstamo únicamente para los fines
                     declarados en la presente solicitud, a mantenerlos en condiciones adecuadas de conservación, y a devolverlos
-                    íntegros al Laboratorio de Invertebrados de la Escuela Politécnica Nacional en la fecha de vencimiento indicada
+                    íntegros al Laboratorio de Invertebrados en la fecha de vencimiento indicada
                     o antes si el estudio concluye. Cualquier daño, pérdida o uso indebido de los especímenes será responsabilidad
                     del investigador y su institución.
                 </p>
@@ -209,9 +241,10 @@
             <div class="grid grid-cols-2 gap-16 pt-8">
                 <div>
                     <div class="border-t-2 border-text-primary pt-3 space-y-1">
-                        <p class="text-sm font-semibold text-text-primary">Funcionario responsable</p>
-                        <p class="text-xs text-text-secondary">Laboratorio de Invertebrados — EPN</p>
-                        <p class="text-xs text-text-secondary">Fecha: ___________________</p>
+                        <p class="text-sm font-semibold text-text-primary">Adrian Troya</p>
+                        <p class="text-xs text-text-secondary">Biólogo</p>
+                        <p class="text-xs text-text-secondary">Curador</p>
+                        <p class="text-xs text-text-secondary">Laboratorio de Invertebrados</p>
                     </div>
                 </div>
                 <div>
@@ -228,7 +261,7 @@
                         <div class="h-16"></div>
                     @endif
                     <div class="border-t-2 border-text-primary pt-3 space-y-1">
-                        <p class="text-sm font-semibold text-text-primary">Investigador solicitante</p>
+                        <p class="text-sm font-semibold text-text-primary">{{ $acta->nombreInvestigador ?? 'Investigador solicitante' }}</p>
                         <p class="text-xs text-text-secondary">{{ $acta->institucionAdscripcion }}</p>
                         <p class="text-xs text-text-secondary">
                             @if($firmaBase64)
@@ -249,10 +282,7 @@
 @if(request('download') == '1')
 <script>
     document.addEventListener("DOMContentLoaded", () => {
-        let originalTitle = document.title;
-        document.title = 'Acta-{{ $acta?->numeroPrestamo ?? 'firmada' }}';
-        window.print();
-        setTimeout(() => document.title = originalTitle, 500);
+        window.location.href = '{{ route('prestamos.acta.descargar-pdf', $acta?->id) }}';
     });
 </script>
 @endif

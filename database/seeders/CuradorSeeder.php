@@ -16,6 +16,10 @@ class CuradorSeeder extends Seeder
                 'name' => 'Curador Hub Digital',
                 'password' => env('CURADOR_PASSWORD', 'secret'),
                 'rol' => RolUsuario::CURADOR,
+                // El curador es una cuenta administrativa con correo institucional
+                // ficticio (sin buzón real): se siembra ya verificada para no
+                // quedar bloqueada por el muro de verificación de email.
+                'email_verified_at' => now(),
             ]
         );
     }

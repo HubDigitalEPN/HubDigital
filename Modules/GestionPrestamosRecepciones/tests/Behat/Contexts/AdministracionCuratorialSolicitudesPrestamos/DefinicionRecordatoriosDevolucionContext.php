@@ -34,8 +34,7 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\AlcancePrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitud;
-use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\NumeroPrestamo;
-use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\NumeroSolicitud;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\CodigoPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoPrestamo;
 use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\BaseContext;
@@ -402,7 +401,7 @@ final class DefinicionRecordatoriosDevolucionContext extends BaseContext
         // Sembramos ActaPrestamo + SolicitudPrestamo listos para IniciarPrestamoHandler
         $solicitud = SolicitudPrestamo::reconstituir(
             id: $this->solicitudRepo->nextIdentity(),
-            numeroSolicitud: NumeroSolicitud::generate(),
+            codigoPrestamo: CodigoPrestamo::fromParts(2026, random_int(1, 99999)),
             investigadorId: $this->investigadorId,
             alcancePrestamo: AlcancePrestamo::Nacional,
             estado: EstadoSolicitud::Aprobada,
@@ -425,7 +424,7 @@ final class DefinicionRecordatoriosDevolucionContext extends BaseContext
 
         $acta = ActaPrestamo::emitir(
             id: $this->actaRepo->nextIdentity(),
-            numeroPrestamo: NumeroPrestamo::generate(),
+            codigoPrestamo: CodigoPrestamo::fromParts(2026, random_int(1, 99999)),
             solicitudPrestamoId: $solicitud->id(),
             tipoPrestamo: TipoPrestamo::Temporal,
             alcancePrestamo: AlcancePrestamo::Nacional,

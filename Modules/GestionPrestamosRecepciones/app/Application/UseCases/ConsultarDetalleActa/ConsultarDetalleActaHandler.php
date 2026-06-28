@@ -52,7 +52,7 @@ final class ConsultarDetalleActaHandler
             id: (string) $acta->id(),
             investigadorId: $solicitud?->investigadorId() ?? '',
             solicitudPrestamoId: (string) $acta->solicitudPrestamoId(),
-            numeroPrestamo: (string) $acta->numeroPrestamo(),
+            numeroPrestamo: (string) $acta->codigoPrestamo(),
             estado: $acta->estado()->value,
             tipoPrestamo: $acta->tipoPrestamo()->value,
             fechaInicio: $acta->fechaInicio(),

@@ -87,7 +87,7 @@
                         <th class="px-4 py-3 text-left font-medium text-white w-64">Título</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Solicitante</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Estado</th>
-                        <th class="px-4 py-3 text-left font-medium text-white">Fecha</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">Fecha de envío</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Acciones</th>
                     </tr>
                 </thead>

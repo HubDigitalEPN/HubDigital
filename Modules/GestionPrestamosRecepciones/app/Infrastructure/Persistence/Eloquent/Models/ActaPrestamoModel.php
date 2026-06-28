@@ -24,7 +24,7 @@ final class ActaPrestamoModel extends Model
 
     protected $fillable = [
         'id',
-        'numero_prestamo',
+        'codigo',
         'solicitud_prestamo_id',
         'estado',
         'tipo_prestamo',

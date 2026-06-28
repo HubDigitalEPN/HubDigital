@@ -26,6 +26,7 @@ use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigad
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\SolicitudForm;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\RegistrarDevolucionPrestamo;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\VerificacionEntrega;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\DescargarActaPdf;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ServirDocumentoExportacion;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ServirDocumentoIdentidad;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ServirPdfActa;
@@ -43,6 +44,7 @@ Route::middleware(['auth', 'verified'])
         Route::get('/acta/{id}/embed', VerActaEmbed::class)->name('acta.embed');
         Route::get('/acta/{id}/pdf-original', ServirPdfActa::class)->name('acta.pdf-original');
         Route::get('/acta/{id}/pdf-firmado', ServirPdfFirmado::class)->name('acta.pdf-firmado');
+        Route::get('/acta/{id}/descargar-pdf', DescargarActaPdf::class)->name('acta.descargar-pdf');
         Route::get('/acta/{id}/documento-identidad', ServirDocumentoIdentidad::class)->name('acta.documento-identidad');
         Route::get('/acta/{id}/documento-exportacion', ServirDocumentoExportacion::class)->name('acta.documento-exportacion');
 

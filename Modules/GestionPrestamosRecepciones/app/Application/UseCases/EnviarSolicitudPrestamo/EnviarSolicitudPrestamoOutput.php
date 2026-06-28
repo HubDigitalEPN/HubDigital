@@ -36,7 +36,7 @@ final readonly class EnviarSolicitudPrestamoOutput
     {
         return new self(
             solicitudId:     (string) $solicitud->id(),
-            numeroSolicitud: (string) $solicitud->numeroSolicitud(),
+            numeroSolicitud: (string) $solicitud->codigoPrestamo(),
             estado:          $solicitud->estado(),
             enviadaEn:       $solicitud->enviadaEn(),
         );

@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\Prestamo;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\PrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\CodigoPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrestamoId;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\PrestamoEloquentModel;
@@ -28,6 +29,7 @@ final class EloquentPrestamoRepository implements PrestamoRepositoryInterface
             ['id' => (string) $prestamo->id()],
             [
                 'acta_prestamo_id' => (string) $prestamo->actaPrestamoId(),
+                'codigo' => (string) $prestamo->codigoPrestamo(),
                 'investigador_id' => $prestamo->investigadorId(),
                 'estado' => $prestamo->estado()->value,
                 'iniciado_en' => $prestamo->iniciadoEn()->format('Y-m-d H:i:s'),
@@ -98,7 +100,7 @@ final class EloquentPrestamoRepository implements PrestamoRepositoryInterface
         }
 
         if ($busquedaTexto !== '') {
-            $query->whereHas('acta', fn ($q) => $q->where('numero_prestamo', 'ilike', "%{$busquedaTexto}%"));
+            $query->whereHas('acta', fn ($q) => $q->where('codigo', 'ilike', "%{$busquedaTexto}%"));
         }
 
         if ($estado !== '') {
@@ -114,7 +116,7 @@ final class EloquentPrestamoRepository implements PrestamoRepositoryInterface
 
         return $prestamos->map(fn (PrestamoEloquentModel $prestamo): array => [
             'prestamoId' => (string) $prestamo->id,
-            'numeroPrestamo' => $prestamo->acta?->numero_prestamo,
+            'numeroPrestamo' => $prestamo->codigo ?? $prestamo->acta?->codigo,
             'investigadorId' => $prestamo->investigador_id,
             'estado' => (string) $prestamo->estado,
             'iniciadoEn' => $prestamo->iniciado_en !== null
@@ -134,6 +136,7 @@ final class EloquentPrestamoRepository implements PrestamoRepositoryInterface
         return Prestamo::reconstituir(
             id: PrestamoId::fromString($model->id),
             actaPrestamoId: ActaPrestamoId::fromString($model->acta_prestamo_id),
+            codigoPrestamo: CodigoPrestamo::fromString($model->codigo),
             investigadorId: $model->investigador_id,
             estado: EstadoPrestamo::from($model->estado),
             iniciadoEn: DateTimeImmutable::createFromInterface($model->iniciado_en),
