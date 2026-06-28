@@ -28,7 +28,6 @@ use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigad
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\RegistrarDevolucionPrestamo;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\RegistroSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\SolicitudForm;
-use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\RegistrarDevolucionPrestamo;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\VerificacionEntrega;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ServirActaTransferenciaDeposito;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ServirDocumentoDeposito;
