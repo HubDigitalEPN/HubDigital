@@ -1,4 +1,5 @@
 #language: es
+@listo
 Característica: Resolución del QR a la ficha digital del espécimen
   Como curador o investigador en campo,
   quiero escanear el código QR de un espécimen y obtener su ficha digital,

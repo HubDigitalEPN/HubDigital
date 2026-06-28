@@ -15,14 +15,13 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\Cod
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\TaxonRepositoryInterface;
 use Modules\InventarioGestionColeccion\Tests\Behat\Contexts\BaseContext;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryCodigoQrRepository;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryEspecimenRepository;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryTaxonRepository;
 use PHPUnit\Framework\Assert;
 
 final class GeneracionCodigoQrContext extends BaseContext
 {
-    // ── Handlers ─────────────────────────────────────────────────────────────
-
-    private GenerarCodigoQrHandler $generarQrHandler;
-
     // ── Estado del escenario ─────────────────────────────────────────────────
 
     private ?Especimen $especimenExistente = null;
@@ -35,7 +34,12 @@ final class GeneracionCodigoQrContext extends BaseContext
 
     public function __construct()
     {
-        $this->generarQrHandler = $this->make(GenerarCodigoQrHandler::class);
+        // Repositorios en memoria por escenario. Los handlers se resuelven dentro de
+        // cada paso (no en el constructor) para usar siempre estas mismas instancias,
+        // aun cuando otros contextos de la suite reescriban los bindings al construirse.
+        self::$app->instance(TaxonRepositoryInterface::class, new InMemoryTaxonRepository);
+        self::$app->instance(EspecimenRepositoryInterface::class, new InMemoryEspecimenRepository);
+        self::$app->instance(CodigoQrRepositoryInterface::class, new InMemoryCodigoQrRepository);
     }
 
     // ── Helpers de fixture ───────────────────────────────────────────────────
@@ -71,7 +75,7 @@ final class GeneracionCodigoQrContext extends BaseContext
     {
         $especimen = $this->sembrarEspecimenSinQr();
 
-        $this->generarQrHandler->handle(
+        $this->make(GenerarCodigoQrHandler::class)->handle(
             new GenerarCodigoQrInput(especimenId: (string) $especimen->id())
         );
 
@@ -98,7 +102,7 @@ final class GeneracionCodigoQrContext extends BaseContext
         Assert::assertNotNull($this->especimenExistente, 'Se esperaba un espécimen existente del step Dado anterior');
 
         try {
-            $this->ultimaRespuesta = $this->generarQrHandler->handle(
+            $this->ultimaRespuesta = $this->make(GenerarCodigoQrHandler::class)->handle(
                 new GenerarCodigoQrInput(
                     especimenId: (string) $this->especimenExistente->id(),
                 )
@@ -148,7 +152,7 @@ final class GeneracionCodigoQrContext extends BaseContext
         Assert::assertNotNull($this->especimenExistente, 'Se esperaba un espécimen existente del step Dado anterior');
 
         try {
-            $this->ultimaRespuesta = $this->generarQrHandler->handle(
+            $this->ultimaRespuesta = $this->make(GenerarCodigoQrHandler::class)->handle(
                 new GenerarCodigoQrInput(
                     especimenId: (string) $this->especimenExistente->id(),
                 )

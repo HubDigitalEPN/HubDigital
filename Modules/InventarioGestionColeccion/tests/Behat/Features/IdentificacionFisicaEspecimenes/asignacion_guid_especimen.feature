@@ -1,4 +1,5 @@
 #language: es
+@listo
 Característica: Asignación de GUID único al registrar un espécimen
   Como curador responsable de la colección,
   quiero que cada espécimen registrado reciba un GUID único automáticamente,
