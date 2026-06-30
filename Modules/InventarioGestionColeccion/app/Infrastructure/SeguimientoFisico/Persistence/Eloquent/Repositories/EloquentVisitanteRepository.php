@@ -24,6 +24,7 @@ class EloquentVisitanteRepository implements VisitanteRepositoryInterface
                 'nombre' => $visitante->nombre(),
                 'contacto' => $visitante->contacto(),
                 'version_acceso' => $visitante->versionAcceso(),
+                'puede_reubicar' => $visitante->puedeReubicar(),
                 'registrado_en' => $visitante->registradoEn()->format('Y-m-d H:i:s'),
             ]
         );
@@ -52,6 +53,7 @@ class EloquentVisitanteRepository implements VisitanteRepositoryInterface
             nombre: $model->nombre,
             contacto: $model->contacto,
             versionAcceso: (int) $model->version_acceso,
+            puedeReubicar: (bool) $model->puede_reubicar,
             registradoEn: \DateTimeImmutable::createFromInterface($model->registrado_en),
         );
     }
