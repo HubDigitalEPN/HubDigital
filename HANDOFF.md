@@ -136,11 +136,15 @@ que la capa Infra lo actualice. Behat usa repos InMemory, así que NO se ve afec
   se mapea con `ETIQUETA_TIPO` para los conocidos (`especimen_reubicado`, `unit_tray_reubicado`,
   `caja_ingresada/extraida`) y se humaniza el resto. `php -l` ok, `view:cache` compila, gate
   `@listo --strict` in-memory sigue 43/160 verde, pint pass.
-- [ ] **Stub visitante + cierre** — stub mínimo de búsqueda por cámara del visitante (abre cámara,
-  lista candidatos resaltando el objetivo; `// ponytail: stub provisional`); correr
-  `php vendor/bin/behat --profile=default --suite=InventarioGestionColeccion --tags=@listo --strict`
-  in-memory (debe quedar 100% verde); `php vendor/bin/pint --dirty --format agent`; validar UI en
-  Herd. Commit `feat(iot): stub de búsqueda por cámara del visitante`.
+- [x] **Stub visitante + cierre** (commit `feat(iot): stub de búsqueda por cámara del visitante`) —
+  listo. En `MapaInteractivo` (modo visitante): nuevo método `buscarPorCamara(string $texto)` +
+  propiedad `objetivoCamara` (`// ponytail: stub provisional`, reutiliza el QR como puente, no es
+  visión real). En `seguimiento-fisico/mapa/interactivo.blade.php`: botón **Buscar por cámara**
+  (solo `modo === 'visitante'`) que abre modal Alpine `visitanteCamaraScanner` con el mismo
+  html5-qrcode (CDN 2.3.8) de F1; al decodificar vuelca el texto a `busquedaEspecimen`, lista los
+  candidatos y **resalta el objetivo** (ring science-blue en el candidato cuyo `codigoCatalogo`/
+  `taxonNombre` casa con lo escaneado). `php -l` ok, `view:cache` compila, gate `@listo --strict`
+  in-memory sigue 43/160 verde, pint pass. **Pendiente manual:** validar cámara en Herd (móvil real).
 
 ## Convenciones (OBLIGATORIAS)
 

@@ -113,6 +113,9 @@ final class MapaInteractivo extends Component
 
     public ?string $mensajeBusqueda = null;
 
+    /** Código/nombre capturado por la búsqueda por cámara del visitante, para resaltar el candidato objetivo. */
+    public ?string $objetivoCamara = null;
+
     public ?string $errorMessage = null;
 
     /**
@@ -300,6 +303,21 @@ final class MapaInteractivo extends Component
             $this->trayAbierto = $ruta->unitTrayId ?? '';
             $this->especimenResaltadoId = $ruta->especimenId;
         });
+    }
+
+    /**
+     * Búsqueda por cámara del visitante. El escáner de la vista decodifica el código del
+     * espécimen y lo inyecta aquí: se vuelca al buscador, se listan los candidatos y se
+     * marca el objetivo para resaltarlo. El reconocimiento visual real (sin QR) queda
+     * pendiente.
+     *
+     * ponytail: stub provisional — reutiliza el QR como puente; no es visión por cámara.
+     */
+    public function buscarPorCamara(string $texto): void
+    {
+        $this->objetivoCamara = trim($texto);
+        $this->busquedaEspecimen = $this->objetivoCamara;
+        $this->updatedBusquedaEspecimen();
     }
 
     public function render(): View
