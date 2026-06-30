@@ -88,6 +88,7 @@ final class ConsultarContenidoUnitTrayHandler
                 individualCount: $e->individualCount(),
                 provincia: $e->stateProvince(),
                 localidad: $e->localityName() ?? $e->localidad(),
+                notas: $e->specimenNotes(),
             );
         }, $especimenes);
 

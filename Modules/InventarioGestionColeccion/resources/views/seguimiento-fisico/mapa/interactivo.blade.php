@@ -332,6 +332,7 @@
                                 <th class="px-4 py-2 font-semibold">N.º individuos</th>
                                 <th class="px-4 py-2 font-semibold">Provincia</th>
                                 <th class="px-4 py-2 font-semibold">Localidad</th>
+                                <th class="px-4 py-2 font-semibold">Notas</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -356,6 +357,7 @@
                                     <td class="px-4 py-2 text-text-primary">{{ $especimen['individualCount'] ?? '—' }}</td>
                                     <td class="px-4 py-2 text-text-primary">{{ $especimen['provincia'] ?? '—' }}</td>
                                     <td class="px-4 py-2 text-text-primary">{{ $especimen['localidad'] ?? '—' }}</td>
+                                    <td class="px-4 py-2 text-text-primary">{{ $especimen['notas'] ?? '—' }}</td>
                                 </tr>
                             @endforeach
                         </tbody>
@@ -389,6 +391,9 @@
                             </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
                             <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="Localidad">
                                 {{ $especimen['localidad'] ?? '—' }}
+                            </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
+                            <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="Notas">
+                                {{ $especimen['notas'] ?? '—' }}
                             </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
                         </div>
                     @endforeach

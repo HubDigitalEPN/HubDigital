@@ -403,6 +403,7 @@ final class MapaInteractivo extends Component
                 'individualCount' => $e->individualCount,
                 'provincia' => $e->provincia,
                 'localidad' => $e->localidad,
+                'notas' => $e->notas,
             ], $contenidoTray->items);
 
             $this->unitTraySeleccionado = [

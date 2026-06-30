@@ -20,5 +20,6 @@ final readonly class ConsultarContenidoUnitTrayItemOutput
         public ?int $individualCount,
         public ?string $provincia,
         public ?string $localidad,
+        public ?string $notas,
     ) {}
 }
