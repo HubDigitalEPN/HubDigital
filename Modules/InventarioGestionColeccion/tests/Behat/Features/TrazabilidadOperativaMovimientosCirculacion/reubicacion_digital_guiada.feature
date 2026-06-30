@@ -1,6 +1,5 @@
 # language: es
-# Pendiente de implementar: el Context de esta feature aún no está registrado en behat.php.
-@pendiente
+@listo
 Característica: Reubicación de especímenes y unit trays en la colección
   Como curador de la colección,
   quiero reasignar especímenes a otro unit tray y unit trays a otra caja,

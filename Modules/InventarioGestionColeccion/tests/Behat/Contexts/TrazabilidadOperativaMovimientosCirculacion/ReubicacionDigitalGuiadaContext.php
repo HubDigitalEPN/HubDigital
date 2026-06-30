@@ -7,341 +7,295 @@ namespace Modules\InventarioGestionColeccion\Tests\Behat\Contexts\TrazabilidadOp
 use Behat\Step\Given;
 use Behat\Step\Then;
 use Behat\Step\When;
-use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConsultarHistorialCustodiaEspecimen\ConsultarHistorialCustodiaEspecimenHandler;
-use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConsultarHistorialCustodiaEspecimen\ConsultarHistorialCustodiaEspecimenInput;
-use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConsultarHistorialCustodiaEspecimen\ConsultarHistorialCustodiaEspecimenOutput;
-use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\IniciarReubicacionEspecimen\IniciarReubicacionEspecimenHandler;
-use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\IniciarReubicacionEspecimen\IniciarReubicacionEspecimenInput;
-use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\IniciarReubicacionEspecimen\IniciarReubicacionEspecimenOutput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\ClasificacionTaxonomicaPort;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\ContextoEjecucionPort;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\TransactionManagerPort;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ReubicarEspecimenes\ReubicarEspecimenesHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ReubicarEspecimenes\ReubicarEspecimenesInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ReubicarUnitTray\ReubicarUnitTrayHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ReubicarUnitTray\ReubicarUnitTrayInput;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Caja;
-use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\EspecimenEnCaja;
-use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\TrasladoEspecimen;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especimen;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\UnitTray;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Visitante;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Exceptions\ReubicacionNoAutorizadaException;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\CajaRepository;
-use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenEnCajaRepository;
-use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\TrasladoEspecimenRepository;
-use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\CajaId;
-use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoTraslado;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EventoCicloIotRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UnitTrayEspecimenRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UnitTrayRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\VisitanteRepositoryInterface;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\ActorRol;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\ClasificacionTaxonomica;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\CodigoCaja;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\UnitTrayId;
 use Modules\InventarioGestionColeccion\Tests\Behat\Contexts\BaseContext;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\Fakes\FakeClasificacionTaxonomicaAdapter;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\Fakes\FakeContextoEjecucionAdapter;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\Fakes\PassThroughTransactionManagerAdapter;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryCajaRepository;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryEspecimenRepository;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryEventoCicloIotRepository;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryTaxonRepository;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryUnitTrayEspecimenRepository;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryUnitTrayRepository;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryVisitanteRepository;
 use PHPUnit\Framework\Assert;
 
+/**
+ * Cubre la feature reubicacion_digital_guiada contra el modelo real
+ * especimen → unitTray → caja: reubicación de especímenes a otro unit tray,
+ * de unit trays a otra caja, advertencia taxonómica suave (confirmar/cancelar)
+ * y la autorización del visitante (habilitado / no habilitado).
+ */
 final class ReubicacionDigitalGuiadaContext extends BaseContext
 {
-    // ── Handlers ─────────────────────────────────────────────────────────────
+    private InMemoryCajaRepository $cajaRepo;
 
-    private IniciarReubicacionEspecimenHandler $reubicacionHandler;
+    private InMemoryUnitTrayRepository $unitTrayRepo;
 
-    private ConsultarHistorialCustodiaEspecimenHandler $historialHandler;
+    private InMemoryUnitTrayEspecimenRepository $asignacionRepo;
 
-    // ── Repositories ─────────────────────────────────────────────────────────
+    private InMemoryEspecimenRepository $especimenRepo;
 
-    private CajaRepository $cajaRepo;
+    private InMemoryTaxonRepository $taxonRepo;
 
-    private EspecimenEnCajaRepository $especimenRepo;
+    private InMemoryEventoCicloIotRepository $eventoRepo;
 
-    private TrasladoEspecimenRepository $trasladoRepo;
+    private InMemoryVisitanteRepository $visitanteRepo;
 
-    // ── Estado del escenario ─────────────────────────────────────────────────
+    private FakeClasificacionTaxonomicaAdapter $clasificacionPort;
 
-    private ?string $especimenCodigo = null;
+    private FakeContextoEjecucionAdapter $contexto;
 
-    private ?CajaId $cajaOrigenId = null;
+    private ReubicarEspecimenesHandler $reubicarEspecimenesHandler;
 
-    private ?CajaId $cajaDestinoId = null;
+    private ReubicarUnitTrayHandler $reubicarUnitTrayHandler;
 
-    private ?IniciarReubicacionEspecimenOutput $ultimaReubicacionOutput = null;
+    /** @var string[] */
+    private array $especimenIds = [];
 
-    private ?ConsultarHistorialCustodiaEspecimenOutput $ultimoHistorialOutput = null;
+    private ?string $origenTrayId = null;
+
+    private ?string $destinoTrayId = null;
+
+    private ?string $trayReubicadoId = null;
+
+    private ?string $destinoCajaId = null;
+
+    private ?string $visitanteId = null;
+
+    private mixed $ultimaRespuesta = null;
 
     private ?\Throwable $excepcionCapturada = null;
 
-    // ── Constructor ──────────────────────────────────────────────────────────
-
     public function __construct()
     {
-        $this->reubicacionHandler = $this->make(IniciarReubicacionEspecimenHandler::class);
-        $this->historialHandler = $this->make(ConsultarHistorialCustodiaEspecimenHandler::class);
-        $this->cajaRepo = $this->make(CajaRepository::class);
-        $this->especimenRepo = $this->make(EspecimenEnCajaRepository::class);
-        $this->trasladoRepo = $this->make(TrasladoEspecimenRepository::class);
+        $this->cajaRepo = new InMemoryCajaRepository;
+        $this->unitTrayRepo = new InMemoryUnitTrayRepository;
+        $this->asignacionRepo = new InMemoryUnitTrayEspecimenRepository;
+        $this->especimenRepo = new InMemoryEspecimenRepository;
+        $this->taxonRepo = new InMemoryTaxonRepository;
+        $this->eventoRepo = new InMemoryEventoCicloIotRepository;
+        $this->visitanteRepo = new InMemoryVisitanteRepository;
+        $this->clasificacionPort = new FakeClasificacionTaxonomicaAdapter;
+        $this->contexto = new FakeContextoEjecucionAdapter;
+
+        self::$app->instance(CajaRepository::class, $this->cajaRepo);
+        self::$app->instance(UnitTrayRepository::class, $this->unitTrayRepo);
+        self::$app->instance(UnitTrayEspecimenRepository::class, $this->asignacionRepo);
+        self::$app->instance(EspecimenRepositoryInterface::class, $this->especimenRepo);
+        self::$app->instance(EventoCicloIotRepository::class, $this->eventoRepo);
+        self::$app->instance(VisitanteRepositoryInterface::class, $this->visitanteRepo);
+        self::$app->instance(ClasificacionTaxonomicaPort::class, $this->clasificacionPort);
+        self::$app->instance(ContextoEjecucionPort::class, $this->contexto);
+        self::$app->instance(TransactionManagerPort::class, new PassThroughTransactionManagerAdapter);
+
+        $this->reubicarEspecimenesHandler = $this->make(ReubicarEspecimenesHandler::class);
+        $this->reubicarUnitTrayHandler = $this->make(ReubicarUnitTrayHandler::class);
     }
 
     // ==========================================
-    // ESCENARIO: Traslado exitoso de un espécimen de una caja a otra
+    // Reubicación de especímenes a otro unit tray
     // ==========================================
 
-    #[Given('que existe un espécimen ubicado en una caja de origen')]
-    public function queExisteUnEspécimenUbicadoEnUnaCajaDeOrigen(): void
+    #[Given('que existe un espécimen asignado a un unit tray de origen')]
+    #[Given('existe un espécimen asignado a un unit tray de origen')]
+    public function queExisteUnEspecimenAsignadoAUnUnitTrayDeOrigen(): void
     {
-        $cajaOrigen = $this->sembrarCajaBase(
-            codigo: 'CAJA-ORIGEN-001',
-            familia: 'Nymphalidae',
-            especimenesActuales: 1,
-        );
-        $this->cajaOrigenId = $cajaOrigen->id();
+        [, $tray] = $this->sembrarCajaConTray('CAJA-ORIGEN-001');
+        $this->origenTrayId = (string) $tray->id();
 
-        $especimen = EspecimenEnCaja::asignar(
-            id: $this->especimenRepo->nextIdentity(),
-            especimenCodigoExterno: 'ESP-REUB-001',
-            cajaId: $cajaOrigen->id(),
-        );
-        $this->especimenRepo->guardar($especimen);
-        $this->especimenCodigo = 'ESP-REUB-001';
-
-        $especimenPersistido = $this->especimenRepo->buscarPorCodigoExterno('ESP-REUB-001');
-        Assert::assertNotNull($especimenPersistido, 'El espécimen debe estar persistido en la caja de origen');
-        Assert::assertTrue(
-            $especimenPersistido->cajaId()->equals($cajaOrigen->id()),
-            'El espécimen debe pertenecer a la caja de origen'
-        );
-        Assert::assertFalse($especimenPersistido->enPrestamo(), 'El espécimen no debe estar en préstamo');
+        $especimenId = $this->sembrarEspecimen('MEPN-REUB-001', $this->clasificacionNymphalidae());
+        $this->asignacionRepo->sincronizar($tray->id(), [$especimenId]);
+        $this->especimenIds = [$especimenId];
     }
 
-    #[Given('existe una caja de destino con espacio disponible y familia taxonómica compatible')]
-    public function existeUnaCajaDeDestinoConEspacioDisponibleYFamiliaTaxonómicaCompatible(): void
+    #[Given('existe un unit tray de destino donde el espécimen respeta el orden taxonómico')]
+    public function existeUnUnitTrayDeDestinoDondeElEspecimenRespetaElOrden(): void
     {
-        Assert::assertNotNull($this->cajaOrigenId, 'Se requiere una caja de origen como precondición');
-
-        $cajaOrigen = $this->cajaRepo->buscarPorId($this->cajaOrigenId);
-        Assert::assertNotNull($cajaOrigen, 'La caja de origen debe existir en el repositorio');
-
-        $cajaDestino = $this->sembrarCajaBase(
-            codigo: 'CAJA-DESTINO-001',
-            familia: $cajaOrigen->familiaTaxonomicaId(),
-            especimenesActuales: 3,
-        );
-        $this->cajaDestinoId = $cajaDestino->id();
-
-        Assert::assertSame(
-            $cajaOrigen->familiaTaxonomicaId(),
-            $cajaDestino->familiaTaxonomicaId(),
-            'La familia taxonómica de destino debe ser compatible con la de origen'
-        );
-        Assert::assertTrue(
-            $cajaDestino->tieneEspacioDisponible(),
-            'La caja de destino debe tener espacio disponible'
-        );
+        // Tray vacío: el espécimen movido fija la clasificación dominante, así que encaja.
+        [, $tray] = $this->sembrarCajaConTray('CAJA-DESTINO-001');
+        $this->destinoTrayId = (string) $tray->id();
     }
 
-    #[When('inicio el proceso de reubicación digital guiada para el espécimen')]
-    public function inicioElProcesoDeReubicaciónDigitalGuiadaParaElEspécimen(): void
+    #[Given('que existen varios especímenes asignados a unit trays de origen')]
+    public function queExistenVariosEspecimenesAsignadosAUnitTraysDeOrigen(): void
     {
-        // El proceso de reubicación es de dos pasos: este step guarda el espécimen seleccionado.
-        // El handler se ejecuta en el siguiente @When al confirmar la caja de destino.
-        Assert::assertNotNull($this->especimenCodigo, 'Se requiere un espécimen seleccionado');
-    }
-
-    #[When('selecciono la caja de destino')]
-    public function seleccionoLaCajaDeDestino(): void
-    {
-        Assert::assertNotNull($this->especimenCodigo, 'Se requiere un espécimen seleccionado antes de confirmar destino');
-        Assert::assertNotNull($this->cajaOrigenId, 'Se requiere la caja de origen');
-        Assert::assertNotNull($this->cajaDestinoId, 'Se requiere la caja de destino seleccionada');
-
-        try {
-            $this->ultimaReubicacionOutput = $this->reubicacionHandler->handle(
-                new IniciarReubicacionEspecimenInput(
-                    especimenCodigoExterno: $this->especimenCodigo,
-                    cajaOrigenId: (string) $this->cajaOrigenId,
-                    cajaDestinoId: (string) $this->cajaDestinoId,
-                    iniciadorId: 'curador-001',
-                    motivo: 'reubicacion',
-                )
-            );
-        } catch (\Throwable $e) {
-            $this->excepcionCapturada = $e;
+        $ids = [];
+        foreach (['MEPN-REUB-101', 'MEPN-REUB-102'] as $i => $codigo) {
+            [, $tray] = $this->sembrarCajaConTray('CAJA-ORIGEN-1'.$i);
+            $especimenId = $this->sembrarEspecimen($codigo, $this->clasificacionNymphalidae());
+            $this->asignacionRepo->sincronizar($tray->id(), [$especimenId]);
+            $ids[] = $especimenId;
         }
+        $this->especimenIds = $ids;
     }
 
-    #[Then('se debe actualizar la ubicación del espécimen a la caja de destino')]
-    public function seDebeActualizarLaUbicaciónDelEspécimenALaCajaDeDestino(): void
+    #[Given('existe un unit tray de destino con espacio disponible')]
+    public function existeUnUnitTrayDeDestinoConEspacioDisponible(): void
+    {
+        [, $tray] = $this->sembrarCajaConTray('CAJA-DESTINO-002');
+        $this->destinoTrayId = (string) $tray->id();
+    }
+
+    #[Given('en el unit tray de destino el espécimen quedaría fuera del orden taxonómico')]
+    public function enElUnitTrayDeDestinoElEspecimenQuedariaFueraDelOrden(): void
+    {
+        // El tray destino ya alberga una familia distinta dominante: el espécimen
+        // Nymphalidae movido queda fuera del orden (alerta suave).
+        [, $tray] = $this->sembrarCajaConTray('CAJA-DESTINO-FAM-001');
+        $this->destinoTrayId = (string) $tray->id();
+
+        $residentes = [
+            $this->sembrarEspecimen('MEPN-RES-001', $this->clasificacionPapilionidae()),
+            $this->sembrarEspecimen('MEPN-RES-002', $this->clasificacionPapilionidae()),
+        ];
+        $this->asignacionRepo->sincronizar($tray->id(), $residentes);
+    }
+
+    #[When('el curador reubica el espécimen al unit tray de destino')]
+    public function elCuradorReubicaElEspecimenAlUnitTrayDeDestino(): void
+    {
+        $this->contexto->setActor(ActorRol::Curador, 'curador-001');
+        $this->ejecutarReubicacionEspecimenes(confirmar: false);
+    }
+
+    #[When('el curador reubica los especímenes al unit tray de destino')]
+    public function elCuradorReubicaLosEspecimenesAlUnitTrayDeDestino(): void
+    {
+        $this->contexto->setActor(ActorRol::Curador, 'curador-001');
+        $this->ejecutarReubicacionEspecimenes(confirmar: false);
+    }
+
+    #[When('el visitante reubica el espécimen al unit tray de destino')]
+    public function elVisitanteReubicaElEspecimenAlUnitTrayDeDestino(): void
+    {
+        $this->prepararDestinoVacioSiHaceFalta();
+        $this->contexto->setActor(ActorRol::Visitante, $this->visitanteId);
+        $this->ejecutarReubicacionEspecimenes(confirmar: false);
+    }
+
+    #[When('el visitante intenta reubicar el espécimen a otro unit tray')]
+    public function elVisitanteIntentaReubicarElEspecimenAOtroUnitTray(): void
+    {
+        $this->prepararDestinoVacioSiHaceFalta();
+        $this->contexto->setActor(ActorRol::Visitante, $this->visitanteId);
+        $this->ejecutarReubicacionEspecimenes(confirmar: false);
+    }
+
+    #[Then('el espécimen queda asignado al unit tray de destino')]
+    public function elEspecimenQuedaAsignadoAlUnitTrayDeDestino(): void
     {
         Assert::assertNull(
             $this->excepcionCapturada,
             'No se esperaba excepción: '.($this->excepcionCapturada?->getMessage() ?? '')
         );
-        Assert::assertNotNull($this->ultimaReubicacionOutput, 'El handler debe retornar una respuesta');
-
-        $especimen = $this->especimenRepo->buscarPorCodigoExterno($this->especimenCodigo);
-        Assert::assertNotNull($especimen, 'El espécimen debe seguir existiendo');
-        Assert::assertTrue(
-            $especimen->cajaId()->equals($this->cajaDestinoId),
-            'La caja del espécimen debe ser ahora la caja de destino'
-        );
+        $this->assertEspecimenEnTray($this->especimenIds[0], $this->destinoTrayId);
     }
 
-    #[Then('se debe guardar un registro en el historial de custodia con los contenedores de origen y destino')]
-    public function seDebeGuardarUnRegistroEnElHistorialDeCustodiaConLosContenedoresDeOrigenYDestino(): void
+    #[Then('todos los especímenes quedan asignados al unit tray de destino')]
+    public function todosLosEspecimenesQuedanAsignadosAlUnitTrayDeDestino(): void
     {
-        Assert::assertNotNull($this->ultimaReubicacionOutput);
-
-        $traslado = $this->trasladoRepo->buscarPorEspecimenYCajas(
-            especimenCodigo: $this->especimenCodigo,
-            cajaOrigenId: $this->cajaOrigenId,
-            cajaDestinoId: $this->cajaDestinoId,
-        );
-        Assert::assertNotNull($traslado, 'Debe existir un registro de traslado en el historial de custodia');
-        Assert::assertTrue(
-            $traslado->cajaOrigenId()->equals($this->cajaOrigenId),
-            'El traslado debe registrar la caja de origen correcta'
-        );
-        Assert::assertTrue(
-            $traslado->cajaDestinoId()->equals($this->cajaDestinoId),
-            'El traslado debe registrar la caja de destino correcta'
-        );
-        Assert::assertTrue(
-            $traslado->estado()->equals(EstadoTraslado::Confirmado),
-            'El traslado debe estar en estado confirmado'
-        );
-    }
-
-    #[Then('el estado del espécimen debe reflejar "Reubicado"')]
-    public function elEstadoDelEspécimenDebeReflejarReubicado(): void
-    {
-        Assert::assertNotNull($this->ultimaReubicacionOutput);
-        Assert::assertSame(
-            'reubicado',
-            $this->ultimaReubicacionOutput->estadoEspecimen(),
-            'El output debe reportar el espécimen como "reubicado"'
-        );
-    }
-
-    // ==========================================
-    // ESCENARIO: Intento de traslado a contenedor con familia taxonómica incompatible
-    // ==========================================
-
-    #[Given('que existe un espécimen de una familia taxonómica específica en una caja de origen')]
-    public function queExisteUnEspécimenDeUnaFamiliaTaxonómicaEspecíficaEnUnaCajaDeOrigen(): void
-    {
-        $cajaOrigen = $this->sembrarCajaBase(
-            codigo: 'CAJA-FAM-ORIGEN-001',
-            familia: 'Nymphalidae',
-            especimenesActuales: 1,
-        );
-        $this->cajaOrigenId = $cajaOrigen->id();
-
-        $especimen = EspecimenEnCaja::asignar(
-            id: $this->especimenRepo->nextIdentity(),
-            especimenCodigoExterno: 'ESP-FAM-001',
-            cajaId: $cajaOrigen->id(),
-        );
-        $this->especimenRepo->guardar($especimen);
-        $this->especimenCodigo = 'ESP-FAM-001';
-
-        $especimenPersistido = $this->especimenRepo->buscarPorCodigoExterno('ESP-FAM-001');
-        Assert::assertNotNull($especimenPersistido, 'El espécimen debe estar persistido');
-        Assert::assertTrue(
-            $especimenPersistido->cajaId()->equals($cajaOrigen->id()),
-            'El espécimen debe pertenecer a la caja de origen'
-        );
-    }
-
-    #[Given('la caja de destino está configurada para una familia taxonómica diferente')]
-    public function laCajaDeDestinoEstáConfiguradaParaUnaFamiliaTaxonómicaDiferente(): void
-    {
-        Assert::assertNotNull($this->cajaOrigenId);
-
-        $cajaOrigen = $this->cajaRepo->buscarPorId($this->cajaOrigenId);
-        Assert::assertNotNull($cajaOrigen);
-
-        $familiaDestino = 'Papilionidae';
-        Assert::assertNotSame(
-            $cajaOrigen->familiaTaxonomicaId(),
-            $familiaDestino,
-            'La familia de destino debe ser diferente a la de origen para este escenario'
-        );
-
-        $cajaDestino = $this->sembrarCajaBase(
-            codigo: 'CAJA-FAM-DEST-001',
-            familia: $familiaDestino,
-            especimenesActuales: 0,
-        );
-        $this->cajaDestinoId = $cajaDestino->id();
-
-        Assert::assertNotSame(
-            $cajaOrigen->familiaTaxonomicaId(),
-            $cajaDestino->familiaTaxonomicaId(),
-            'Las familias taxonómicas de origen y destino deben ser diferentes'
-        );
-    }
-
-    #[Then('se debe mostrar un mensaje de error "Incompatibilidad Taxonómica"')]
-    public function seDebeMostrarUnMensajeDeErrorIncompatibilidadTaxonómica(): void
-    {
-        Assert::assertNotNull(
+        Assert::assertNull(
             $this->excepcionCapturada,
-            'Se esperaba una excepción de dominio por incompatibilidad taxonómica'
+            'No se esperaba excepción: '.($this->excepcionCapturada?->getMessage() ?? '')
         );
-        Assert::assertStringContainsString(
-            'Incompatibilidad Taxonómica',
-            $this->excepcionCapturada->getMessage(),
-            'El mensaje de error debe indicar incompatibilidad taxonómica'
-        );
-    }
-
-    // ==========================================
-    // ESQUEMA: Consulta del historial de custodia de un espécimen
-    // ==========================================
-
-    #[Given('/^que existe un espécimen con (.+)$/u')]
-    public function queExisteUnEspécimenCon(string $condicion): void
-    {
-        $cajaOrigen = $this->sembrarCajaBase(
-            codigo: 'CAJA-HIST-001',
-            familia: 'Nymphalidae',
-            especimenesActuales: 1,
-        );
-        $this->cajaOrigenId = $cajaOrigen->id();
-
-        $especimen = EspecimenEnCaja::asignar(
-            id: $this->especimenRepo->nextIdentity(),
-            especimenCodigoExterno: 'ESP-HIST-001',
-            cajaId: $cajaOrigen->id(),
-        );
-        $this->especimenRepo->guardar($especimen);
-        $this->especimenCodigo = 'ESP-HIST-001';
-
-        if (str_contains($condicion, 'reubicaciones previas')) {
-            // Sembrar traslados históricos confirmados para este espécimen
-            $cajaAnterior = $this->sembrarCajaBase(
-                codigo: 'CAJA-HIST-PREV-001',
-                familia: 'Nymphalidae',
-                especimenesActuales: 0,
-            );
-
-            $traslado = TrasladoEspecimen::registrar(
-                id: $this->trasladoRepo->nextIdentity(),
-                especimenCodigoExterno: 'ESP-HIST-001',
-                cajaOrigenId: $cajaAnterior->id(),
-                cajaDestinoId: $cajaOrigen->id(),
-                motivo: 'reubicacion',
-                iniciadorId: 'curador-001',
-            );
-            $traslado->confirmar();
-            $this->trasladoRepo->guardar($traslado);
-
-            $trasladoPersistido = $this->trasladoRepo->buscarPorEspecimenYCajas(
-                especimenCodigo: 'ESP-HIST-001',
-                cajaOrigenId: $cajaAnterior->id(),
-                cajaDestinoId: $cajaOrigen->id(),
-            );
-            Assert::assertNotNull($trasladoPersistido, 'El traslado histórico debe estar persistido');
-            Assert::assertTrue(
-                $trasladoPersistido->estado()->equals(EstadoTraslado::Confirmado),
-                'El traslado histórico debe estar confirmado'
-            );
+        foreach ($this->especimenIds as $especimenId) {
+            $this->assertEspecimenEnTray($especimenId, $this->destinoTrayId);
         }
-        // Si la condición es "sin reubicaciones", no se crean traslados — historial vacío
     }
 
-    #[When('el curador solicita el historial de custodia del espécimen')]
-    public function elCuradorSolicitaElHistorialDeCustodiaDelEspécimen(): void
+    #[Then('el movimiento queda registrado en la trazabilidad del espécimen')]
+    public function elMovimientoQuedaRegistradoEnLaTrazabilidadDelEspecimen(): void
     {
-        Assert::assertNotNull($this->especimenCodigo, 'Se requiere un espécimen en estado previo');
+        $eventos = $this->eventoRepo->buscarPorAgregado('especimen', $this->especimenIds[0]);
+        Assert::assertNotEmpty($eventos, 'Debe registrarse un movimiento de trazabilidad del espécimen');
+        Assert::assertSame('especimen_reubicado', $eventos[0]->tipoEvento());
+    }
+
+    #[Then('se registra un movimiento en la trazabilidad por cada espécimen reubicado')]
+    public function seRegistraUnMovimientoPorCadaEspecimenReubicado(): void
+    {
+        foreach ($this->especimenIds as $especimenId) {
+            $eventos = $this->eventoRepo->buscarPorAgregado('especimen', $especimenId);
+            Assert::assertNotEmpty($eventos, "Debe registrarse un movimiento para el espécimen {$especimenId}");
+        }
+    }
+
+    #[Then('se advierte que el espécimen no pertenece taxonómicamente al unit tray de destino')]
+    public function seAdvierteQueElEspecimenNoPerteneceTaxonomicamente(): void
+    {
+        Assert::assertNull($this->excepcionCapturada, 'La advertencia taxonómica no debe lanzar excepción');
+        Assert::assertNotNull($this->ultimaRespuesta);
+        Assert::assertTrue($this->ultimaRespuesta->requiereConfirmacion, 'Debe requerir confirmación');
+        Assert::assertFalse($this->ultimaRespuesta->reubicado, 'No debe persistirse sin confirmar');
+        Assert::assertContains('MEPN-REUB-001', $this->ultimaRespuesta->especimenesFueraDeLugar);
+    }
+
+    #[Then('el curador puede confirmar la reubicación o cancelarla')]
+    public function elCuradorPuedeConfirmarLaReubicacionOCancelarla(): void
+    {
+        // Confirmar: al reintentar con confirmar=true la reubicación se persiste.
+        $this->ejecutarReubicacionEspecimenes(confirmar: true);
+
+        Assert::assertNull($this->excepcionCapturada);
+        Assert::assertTrue($this->ultimaRespuesta->reubicado, 'Al confirmar, la reubicación debe persistirse');
+        $this->assertEspecimenEnTray($this->especimenIds[0], $this->destinoTrayId);
+    }
+
+    // ==========================================
+    // Reubicación de un unit tray a otra caja
+    // ==========================================
+
+    #[Given('que existe un unit tray asignado a una caja de origen')]
+    public function queExisteUnUnitTrayAsignadoAUnaCajaDeOrigen(): void
+    {
+        [, $tray] = $this->sembrarCajaConTray('CAJA-TRAY-ORIGEN-001');
+        $this->trayReubicadoId = (string) $tray->id();
+    }
+
+    #[Given('existe una caja de destino con espacio disponible')]
+    public function existeUnaCajaDeDestinoConEspacioDisponible(): void
+    {
+        $caja = Caja::crear(
+            id: $this->cajaRepo->nextIdentity(),
+            codigo: CodigoCaja::desde('CAJA-TRAY-DESTINO-001'),
+        );
+        $this->cajaRepo->guardar($caja);
+        $this->destinoCajaId = (string) $caja->id();
+    }
+
+    #[When('el curador reubica el unit tray a la caja de destino')]
+    public function elCuradorReubicaElUnitTrayALaCajaDeDestino(): void
+    {
+        $this->contexto->setActor(ActorRol::Curador, 'curador-001');
 
         try {
-            $this->ultimoHistorialOutput = $this->historialHandler->handle(
-                new ConsultarHistorialCustodiaEspecimenInput(
-                    especimenCodigoExterno: $this->especimenCodigo,
+            $this->ultimaRespuesta = $this->reubicarUnitTrayHandler->handle(
+                new ReubicarUnitTrayInput(
+                    unitTrayId: $this->trayReubicadoId,
+                    cajaDestinoId: $this->destinoCajaId,
                 )
             );
         } catch (\Throwable $e) {
@@ -349,60 +303,176 @@ final class ReubicacionDigitalGuiadaContext extends BaseContext
         }
     }
 
-    #[Then('/^el historial es retornado (.+)$/u')]
-    public function elHistorialEsRetornado(string $resultado): void
+    #[Then('el unit tray queda asignado a la caja de destino')]
+    public function elUnitTrayQuedaAsignadoALaCajaDeDestino(): void
     {
         Assert::assertNull(
             $this->excepcionCapturada,
-            'No se esperaba excepción al consultar el historial'
+            'No se esperaba excepción: '.($this->excepcionCapturada?->getMessage() ?? '')
         );
-        Assert::assertNotNull($this->ultimoHistorialOutput, 'El handler debe retornar una respuesta');
 
-        if (str_contains($resultado, 'movimientos en orden cronológico')) {
-            Assert::assertNotEmpty(
-                $this->ultimoHistorialOutput->traslados(),
-                'El historial debe contener al menos un movimiento'
-            );
+        $tray = $this->unitTrayRepo->buscarPorId(UnitTrayId::desde($this->trayReubicadoId));
+        Assert::assertNotNull($tray);
+        Assert::assertSame($this->destinoCajaId, (string) $tray->cajaId(), 'El unit tray debe apuntar a la caja de destino');
+    }
 
-            $traslados = $this->ultimoHistorialOutput->traslados();
-            for ($i = 1; $i < count($traslados); $i++) {
-                Assert::assertGreaterThanOrEqual(
-                    $traslados[$i - 1]->iniciadoEn()->timestamp,
-                    $traslados[$i]->iniciadoEn()->timestamp,
-                    'Los traslados deben estar ordenados cronológicamente (más antiguo primero)'
-                );
-            }
-        }
-
-        if (str_contains($resultado, 'vacío')) {
-            Assert::assertEmpty(
-                $this->ultimoHistorialOutput->traslados(),
-                'El historial debe estar vacío para un espécimen sin reubicaciones previas'
-            );
-        }
+    #[Then('el movimiento queda registrado en la trazabilidad del unit tray')]
+    public function elMovimientoQuedaRegistradoEnLaTrazabilidadDelUnitTray(): void
+    {
+        $eventos = $this->eventoRepo->buscarPorAgregado('unit_tray', $this->trayReubicadoId);
+        Assert::assertNotEmpty($eventos, 'Debe registrarse un movimiento de trazabilidad del unit tray');
+        Assert::assertSame('unit_tray_reubicado', $eventos[0]->tipoEvento());
     }
 
     // ==========================================
-    // Factory Methods
+    // Autorización del visitante
     // ==========================================
 
-    private function sembrarCajaBase(
-        string $codigo,
-        string $familia,
-        int $especimenesActuales,
-    ): Caja {
+    #[Given('que existe un visitante habilitado para reubicar')]
+    public function queExisteUnVisitanteHabilitadoParaReubicar(): void
+    {
+        $this->visitanteId = $this->sembrarVisitante(habilitado: true);
+    }
+
+    #[Given('que existe un visitante sin la habilitación para reubicar')]
+    public function queExisteUnVisitanteSinLaHabilitacionParaReubicar(): void
+    {
+        $this->visitanteId = $this->sembrarVisitante(habilitado: false);
+    }
+
+    #[Then('el movimiento queda registrado en la trazabilidad identificando al visitante como responsable')]
+    public function elMovimientoIdentificaAlVisitanteComoResponsable(): void
+    {
+        $eventos = $this->eventoRepo->buscarPorAgregado('especimen', $this->especimenIds[0]);
+        Assert::assertNotEmpty($eventos);
+        $evento = $eventos[0];
+        Assert::assertSame(ActorRol::Visitante, $evento->actorRol());
+        Assert::assertSame($this->visitanteId, $evento->actorId(), 'El responsable del movimiento debe ser el visitante');
+    }
+
+    #[Then('la reubicación es rechazada')]
+    public function laReubicacionEsRechazada(): void
+    {
+        Assert::assertInstanceOf(
+            ReubicacionNoAutorizadaException::class,
+            $this->excepcionCapturada,
+            'La reubicación de un visitante sin habilitación debe rechazarse'
+        );
+    }
+
+    #[Then('el espécimen permanece en su unit tray de origen')]
+    public function elEspecimenPermaneceEnSuUnitTrayDeOrigen(): void
+    {
+        $this->assertEspecimenEnTray($this->especimenIds[0], $this->origenTrayId);
+    }
+
+    // ==========================================
+    // Helpers
+    // ==========================================
+
+    private function ejecutarReubicacionEspecimenes(bool $confirmar): void
+    {
+        $this->excepcionCapturada = null;
+
+        try {
+            $this->ultimaRespuesta = $this->reubicarEspecimenesHandler->handle(
+                new ReubicarEspecimenesInput(
+                    destinoUnitTrayId: $this->destinoTrayId,
+                    especimenIds: $this->especimenIds,
+                    confirmar: $confirmar,
+                )
+            );
+        } catch (\Throwable $e) {
+            $this->excepcionCapturada = $e;
+        }
+    }
+
+    private function prepararDestinoVacioSiHaceFalta(): void
+    {
+        if ($this->destinoTrayId !== null) {
+            return;
+        }
+        [, $tray] = $this->sembrarCajaConTray('CAJA-DESTINO-VIS-001');
+        $this->destinoTrayId = (string) $tray->id();
+    }
+
+    /** @return array{0: Caja, 1: UnitTray} */
+    private function sembrarCajaConTray(string $codigoCaja): array
+    {
         $caja = Caja::crear(
             id: $this->cajaRepo->nextIdentity(),
-            codigo: $codigo,
-            familiaTaxonomicaId: $familia,
-            especimenesActuales: $especimenesActuales,
+            codigo: CodigoCaja::desde($codigoCaja),
         );
         $this->cajaRepo->guardar($caja);
 
-        $persistida = $this->cajaRepo->buscarPorId($caja->id());
-        Assert::assertNotNull($persistida, "La caja {$codigo} debe estar persistida");
-        Assert::assertSame($familia, $persistida->familiaTaxonomicaId(), 'La familia de la caja debe coincidir');
+        $unitTray = UnitTray::crear(
+            id: $this->unitTrayRepo->nextIdentity(),
+            cajaId: $caja->id(),
+            numero: $this->unitTrayRepo->siguienteNumero($caja->id()),
+        );
+        $this->unitTrayRepo->guardar($unitTray);
 
-        return $persistida;
+        return [$caja, $unitTray];
+    }
+
+    private function sembrarEspecimen(string $codigoCatalogo, ClasificacionTaxonomica $clasificacion): string
+    {
+        $taxonId = (string) $this->taxonRepo->nextIdentity();
+        $this->clasificacionPort->registrar($taxonId, $clasificacion);
+
+        $especimen = Especimen::crear(
+            id: $this->especimenRepo->nextIdentity(),
+            codigoCatalogo: $codigoCatalogo,
+            taxonId: $taxonId,
+            localidad: 'Napo, Ecuador',
+            fechaColecta: '2021-05-10',
+            colector: 'Equipo MEPN',
+        );
+        $this->especimenRepo->guardar($especimen);
+
+        return (string) $especimen->id();
+    }
+
+    private function sembrarVisitante(bool $habilitado): string
+    {
+        $visitante = Visitante::crear(
+            id: $this->visitanteRepo->nextIdentity(),
+            nombre: 'Visitante de prueba',
+            contacto: null,
+            registradoEn: new \DateTimeImmutable,
+        );
+        if ($habilitado) {
+            $visitante->definirReubicacion(true);
+        }
+        $this->visitanteRepo->guardar($visitante);
+
+        return (string) $visitante->id();
+    }
+
+    private function assertEspecimenEnTray(string $especimenId, ?string $trayId): void
+    {
+        $asignado = $this->asignacionRepo->unitTrayDeEspecimen($especimenId);
+        Assert::assertNotNull($asignado, 'El espécimen debe estar asignado a un unit tray');
+        Assert::assertSame($trayId, (string) $asignado, 'El espécimen debe estar en el unit tray esperado');
+    }
+
+    private function clasificacionNymphalidae(): ClasificacionTaxonomica
+    {
+        return ClasificacionTaxonomica::desde(
+            orden: 'Lepidoptera',
+            familia: 'Nymphalidae',
+            genero: 'Danaus',
+            especie: 'plexippus',
+        );
+    }
+
+    private function clasificacionPapilionidae(): ClasificacionTaxonomica
+    {
+        return ClasificacionTaxonomica::desde(
+            orden: 'Lepidoptera',
+            familia: 'Papilionidae',
+            genero: 'Papilio',
+            especie: 'machaon',
+        );
     }
 }
