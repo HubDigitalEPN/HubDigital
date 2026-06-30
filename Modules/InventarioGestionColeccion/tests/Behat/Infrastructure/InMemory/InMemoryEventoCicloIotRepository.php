@@ -27,4 +27,16 @@ final class InMemoryEventoCicloIotRepository implements EventoCicloIotRepository
 
         return null;
     }
+
+    public function buscarPorAgregado(string $tipoAgregado, string $agregadoId): array
+    {
+        $eventos = array_values(array_filter(
+            $this->store,
+            fn (EventoCicloIot $e): bool => $e->tipoAgregado() === $tipoAgregado && $e->agregadoId() === $agregadoId,
+        ));
+
+        usort($eventos, fn (EventoCicloIot $a, EventoCicloIot $b): int => $a->ocurridoEn() <=> $b->ocurridoEn());
+
+        return $eventos;
+    }
 }
