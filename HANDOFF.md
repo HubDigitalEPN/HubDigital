@@ -125,9 +125,17 @@ que la capa Infra lo actualice. Behat usa repos InMemory, así que NO se ve afec
   hubo que correr `composer install` (PowerShell; en Git Bash el prompt no devolvía salida). **OJO 2:**
   los flujos de cámara/NFC no tienen test automatizado — quedan para validación manual en Herd (paso de
   cierre). `php artisan view:cache` compila OK, gate `@listo --strict` in-memory sigue 43/160 verde, pint pass.
-- [ ] **F2 UI** — nuevo Livewire `TrazabilidadMovimientosIndex` + vista responsiva (timeline del
-  espécimen) + ruta en `Modules/InventarioGestionColeccion/routes/web.php` + entrada de navegación.
-  El curador busca un espécimen y ve su línea de tiempo. Commit `feat(iot): UI de trazabilidad de movimientos`.
+- [x] **F2 UI** (commit `feat(iot): UI de trazabilidad de movimientos`) — listo. Livewire
+  `TrazabilidadMovimientosIndex` + vista `admin/trazabilidad/index.blade.php` (buscador acotado vía
+  `ListarEspecimenesAsignablesHandler` → selección → `ConsultarTrazabilidadEspecimenHandler` →
+  timeline vertical `<ol>` con tipo/origen→destino/fecha/responsable). Ruta
+  `inventario.trazabilidad` (`/inventario/trazabilidad`, middleware `role:curador`) + item de
+  sidebar (icono `arrows-right-left`). **OJO 1:** `seleccionarEspecimen` recibe SOLO el `id` y
+  re-deriva el label desde `$candidatos` — pasar `@js(...)` dentro del `wire:click` (atributo de
+  comillas dobles) rompía el HTML. **OJO 2:** el `tipo` del movimiento es el `tipoEvento` crudo;
+  se mapea con `ETIQUETA_TIPO` para los conocidos (`especimen_reubicado`, `unit_tray_reubicado`,
+  `caja_ingresada/extraida`) y se humaniza el resto. `php -l` ok, `view:cache` compila, gate
+  `@listo --strict` in-memory sigue 43/160 verde, pint pass.
 - [ ] **Stub visitante + cierre** — stub mínimo de búsqueda por cámara del visitante (abre cámara,
   lista candidatos resaltando el objetivo; `// ponytail: stub provisional`); correr
   `php vendor/bin/behat --profile=default --suite=InventarioGestionColeccion --tags=@listo --strict`
