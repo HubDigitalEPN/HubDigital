@@ -11,6 +11,7 @@ final readonly class VisitanteResumen
         public string $nombre,
         public ?string $contacto,
         public int $versionAcceso,
+        public bool $puedeReubicar,
         public \DateTimeImmutable $registradoEn,
     ) {}
 }

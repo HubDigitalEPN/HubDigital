@@ -21,6 +21,7 @@ final class ListarVisitantesHandler
                 nombre: $v->nombre(),
                 contacto: $v->contacto(),
                 versionAcceso: $v->versionAcceso(),
+                puedeReubicar: $v->puedeReubicar(),
                 registradoEn: $v->registradoEn(),
             ),
             $this->visitanteRepo->buscarTodos(),
