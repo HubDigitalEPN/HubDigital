@@ -174,6 +174,21 @@ final class ReubicacionDigitalGuiadaContext extends BaseContext
         $this->asignacionRepo->sincronizar($tray->id(), $residentes);
     }
 
+    #[Given('existe un unit tray de destino en una caja especial donde el espécimen quedaría fuera del orden taxonómico')]
+    public function existeUnUnitTrayDeDestinoEnUnaCajaEspecialFueraDelOrden(): void
+    {
+        // Caja especial: exenta de la verificación taxonómica, pero la trazabilidad
+        // del movimiento debe registrarse igual.
+        [, $tray] = $this->sembrarCajaConTray('CAJA-DESTINO-ESP-001', esEspecial: true);
+        $this->destinoTrayId = (string) $tray->id();
+
+        $residentes = [
+            $this->sembrarEspecimen('MEPN-RES-ESP-001', $this->clasificacionPapilionidae()),
+            $this->sembrarEspecimen('MEPN-RES-ESP-002', $this->clasificacionPapilionidae()),
+        ];
+        $this->asignacionRepo->sincronizar($tray->id(), $residentes);
+    }
+
     #[When('el curador reubica el espécimen al unit tray de destino')]
     public function elCuradorReubicaElEspecimenAlUnitTrayDeDestino(): void
     {
@@ -253,8 +268,17 @@ final class ReubicacionDigitalGuiadaContext extends BaseContext
         Assert::assertContains('MEPN-REUB-001', $this->ultimaRespuesta->especimenesFueraDeLugar);
     }
 
-    #[Then('el curador puede confirmar la reubicación o cancelarla')]
-    public function elCuradorPuedeConfirmarLaReubicacionOCancelarla(): void
+    #[Then('si el curador cancela, el espécimen permanece en su unit tray de origen')]
+    public function siElCuradorCancelaElEspecimenPermaneceEnOrigen(): void
+    {
+        // Cancelar = no confirmar: la respuesta del When dejó reubicado=false sin persistir,
+        // así que el espécimen sigue en su unit tray de origen.
+        Assert::assertFalse($this->ultimaRespuesta->reubicado, 'Al cancelar no debe persistirse');
+        $this->assertEspecimenEnTray($this->especimenIds[0], $this->origenTrayId);
+    }
+
+    #[Then('si el curador confirma, el espécimen queda asignado al unit tray de destino')]
+    public function siElCuradorConfirmaElEspecimenQuedaEnDestino(): void
     {
         // Confirmar: al reintentar con confirmar=true la reubicación se persiste.
         $this->ejecutarReubicacionEspecimenes(confirmar: true);
@@ -397,11 +421,13 @@ final class ReubicacionDigitalGuiadaContext extends BaseContext
     }
 
     /** @return array{0: Caja, 1: UnitTray} */
-    private function sembrarCajaConTray(string $codigoCaja): array
+    private function sembrarCajaConTray(string $codigoCaja, bool $esEspecial = false): array
     {
         $caja = Caja::crear(
             id: $this->cajaRepo->nextIdentity(),
             codigo: CodigoCaja::desde($codigoCaja),
+            esEspecial: $esEspecial,
+            observacion: $esEspecial ? 'Caja especial de prueba' : null,
         );
         $this->cajaRepo->guardar($caja);
 
