@@ -107,17 +107,24 @@ que la capa Infra lo actualice. Behat usa repos InMemory, así que NO se ve afec
   matchean multi-palabra sin comillas). **OJO 2:** ids de espécimen son strings opacos
   (`especimen-N`), no entidades reales — el handler de consulta no carga `Especimen`. Gate
   `--tags=@listo --strict` in-memory: 43 escenarios / 160 pasos verdes. Pint pass.
-- [ ] **F1 UI** — `Presentation/Http/Controllers/SeguimientoFisico/Admin/AsignacionUnitTrayIndex.php`
-  + `resources/views/admin/unit-trays/index.blade.php`: botón **Eliminar** (usa el ya existente
-  `EliminarUnitTrayHandler`); botón **Generar QR** (modal con QR endroid del UnitTrayId, imprimible);
-  flujo **Reubicar especímenes** (escáner html5-qrcode lee QRs uno por uno con popup de confirmación
-  mostrando info resuelta por `buscarPorId`/`buscarParaAsignacion`; acumula; selecciona/escanea QR
-  del unit tray destino; llama `ReubicarEspecimenesHandler`; maneja `requiereConfirmacion`); flujo
-  **Reubicar unit tray → caja** (selecciona/escanea QR del tray; escanea NFC de la caja destino
-  reutilizando el bloque Alpine `NDEFReader` de `cajas/index.blade.php`; resuelve por
-  `buscarPorCodigoRfid`; llama `ReubicarUnitTrayHandler`). Toggle `puede_reubicar` en
-  `resources/views/admin/visitantes.blade.php` + `VisitanteAccesoPanel`. Mobile-first, toque ≥44px,
-  tabla/tarjetas responsivas con `seguimiento-fisico.campo-movil`. Commit `feat(iot): UI de reubicación guiada`.
+- [x] **F1 UI** (commit `feat(iot): "UI de reubicación guiada"`) — listo. En `AsignacionUnitTrayIndex`
+  + `unit-trays/index.blade.php`: por fila de tray se añadió **QR** (`mostrarQrTray` → endroid Builder
+  v6 `new Builder(data:UnitTrayId,size:320,margin:16)->build()->getDataUri()`, modal imprimible con
+  Imprimir/Descargar), **Mover de caja** (`abrirReubicarTray` → modal con NFC `NDEFReader` que llama
+  `reubicarTrayPorRfid`→`buscarPorCodigoRfid`, + select manual de caja `reubicarTrayACaja`), **Eliminar**
+  (`EliminarUnitTrayHandler` + `wire:confirm`). Botón global **Reubicar especímenes** abre modal con
+  escáner **html5-qrcode** (CDN 2.3.8, Alpine `reubicacionScanner` con toggle de modo espécimen/destino,
+  guarda anti-ráfaga de 2s); cada escaneo de espécimen se resuelve vía `ListarEspecimenesAsignablesHandler`
+  (busqueda=código, **el QR del espécimen codifica su `codigoCatalogo`**, match exacto), popup de
+  confirmación, acumula, destino por select o escaneo, llama `ReubicarEspecimenesHandler` y maneja
+  `requiereConfirmacion` (callout "Reubicar de todos modos"=confirmar:true). **Toggle `puede_reubicar`**:
+  nuevo caso de uso **`DefinirReubicacionVisitante/{Handler,Input,Output}`** (Application — era necesario,
+  no existía); `VisitanteResumen` y `ListarVisitantesHandler` ahora exponen `puedeReubicar`;
+  `VisitanteAccesoPanel::alternarReubicacion()` + `flux:switch` en `visitantes.blade.php` (desktop+móvil).
+  **OJO 1:** `endroid/qr-code ^6.1` estaba en composer.lock pero NO instalado físicamente en `vendor/`;
+  hubo que correr `composer install` (PowerShell; en Git Bash el prompt no devolvía salida). **OJO 2:**
+  los flujos de cámara/NFC no tienen test automatizado — quedan para validación manual en Herd (paso de
+  cierre). `php artisan view:cache` compila OK, gate `@listo --strict` in-memory sigue 43/160 verde, pint pass.
 - [ ] **F2 UI** — nuevo Livewire `TrazabilidadMovimientosIndex` + vista responsiva (timeline del
   espécimen) + ruta en `Modules/InventarioGestionColeccion/routes/web.php` + entrada de navegación.
   El curador busca un espécimen y ve su línea de tiempo. Commit `feat(iot): UI de trazabilidad de movimientos`.
