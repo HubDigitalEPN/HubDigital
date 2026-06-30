@@ -96,10 +96,17 @@ que la capa Infra lo actualice. Behat usa repos InMemory, así que NO se ve afec
   `#[Given]` sobre el mismo método. **OJO 2:** correr Behat con `--no-snippets`; si hay un paso
   undefined, Behat abre un prompt interactivo de snippets que parece un cuelgue (bloquea esperando
   stdin). Gate completo `--tags=@listo --strict` in-memory: 36 escenarios / 135 pasos verdes. Pint pass.
-- [ ] **F2 Behat** — crear `Contexts/TrazabilidadOperativaMovimientosCirculacion/TrazabilidadMovimientosContext.php`
-  (4 escenarios; el de "caja sin actor humano" siembra `EventoCicloIot` con `ActorRol::Sistema`/
-  `actorId=null`); registrar en `behat.php`; verde in-memory; `@pendiente`→`@listo`. Commit
-  `test(iot): behat de trazabilidad de movimientos`.
+- [x] **F2 Behat** (commit `test(iot): "behat de trazabilidad de movimientos"`) — listo. Creado
+  `TrazabilidadMovimientosContext` y registrado en `behat.php`. Siembra eventos directos vía
+  `eventoRepo->guardar(EventoCicloIot::registrar(...))` (no corre los handlers de reubicación). El de
+  "caja sin actor humano" usa `ActorRol::Sistema`/`actorId=null`. **OJO 1:** la feature venía con la
+  cola truncada (un fragmento suelto "los movimientos del unit tray y de la caja..."); se reescribió
+  limpia con los **4 escenarios** (2 outlines + 2 simples) y se reordenó scenario 1 a
+  `Dado que existe un espécimen <condicion>` con `condicion ∈ {con movimientos previos, sin
+  movimientos}` para que las expansiones casen con `#[Given]` literales (los placeholders turnip no
+  matchean multi-palabra sin comillas). **OJO 2:** ids de espécimen son strings opacos
+  (`especimen-N`), no entidades reales — el handler de consulta no carga `Especimen`. Gate
+  `--tags=@listo --strict` in-memory: 43 escenarios / 160 pasos verdes. Pint pass.
 - [ ] **F1 UI** — `Presentation/Http/Controllers/SeguimientoFisico/Admin/AsignacionUnitTrayIndex.php`
   + `resources/views/admin/unit-trays/index.blade.php`: botón **Eliminar** (usa el ya existente
   `EliminarUnitTrayHandler`); botón **Generar QR** (modal con QR endroid del UnitTrayId, imprimible);
