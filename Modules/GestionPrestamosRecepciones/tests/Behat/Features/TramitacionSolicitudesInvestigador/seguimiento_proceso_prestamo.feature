@@ -46,11 +46,8 @@ Característica: Consulta del estado del proceso de préstamo
         Ejemplos:
             | estado                  |
             | activo                  |
-            | prórroga solicitada     |
             | vencido                 |
-            | en revisión             |
             | cerrado                 |
-            | cerrado con observación |
 
     @investigador @curador
     Esquema del escenario: Consultar la trazabilidad de una solicitud

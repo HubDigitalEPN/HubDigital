@@ -19,11 +19,16 @@
                     Cuando hayas enviado los especímenes de vuelta, registra la devolución para notificar al curador.
                 </p>
             </div>
-            <flux:button variant="primary" wire:navigate
-                href="{{ route('prestamos.investigador.prestamo.registrar-devolucion', $detalle->prestamoId) }}"
-                class="shrink-0">
-                Registrar devolución
-            </flux:button>
+            <div class="flex flex-col gap-2 sm:flex-row shrink-0">
+                <flux:button variant="ghost" icon="calendar-days" wire:navigate
+                    href="{{ route('prestamos.investigador.prestamo.solicitar-prorroga', $detalle->prestamoId) }}">
+                    Solicitar prórroga
+                </flux:button>
+                <flux:button variant="primary" wire:navigate
+                    href="{{ route('prestamos.investigador.prestamo.registrar-devolucion', $detalle->prestamoId) }}">
+                    Registrar devolución
+                </flux:button>
+            </div>
         </div>
     @endif
 

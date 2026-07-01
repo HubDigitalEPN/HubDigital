@@ -188,7 +188,10 @@ final class SeguimientoProcesoPrestamoContext extends BaseContext
             $acta->marcarEnviada($this->investigadorId);
         }
         if ($estado === EstadoActa::PendienteValidacion || $estado === EstadoActa::Validada) {
-            $acta->subirFirma('actas/firmadas/'.(string) $solicitud->id().'-firmada.pdf');
+            $acta->subirFirma(
+                'actas/firmadas/'.(string) $solicitud->id().'-firmada.pdf',
+                'documentos-identidad/'.(string) $solicitud->id().'-id.pdf',
+            );
         }
         if ($estado === EstadoActa::Validada) {
             $acta->validar($this->curadorId);
@@ -207,6 +210,7 @@ final class SeguimientoProcesoPrestamoContext extends BaseContext
         $prestamo = Prestamo::reconstituir(
             id: $this->prestamoRepo->nextIdentity(),
             actaPrestamoId: ActaPrestamoId::generate(),
+            codigoPrestamo: CodigoPrestamo::fromParts(2026, random_int(1, 99999)),
             investigadorId: $this->investigadorId,
             estado: $estado,
             iniciadoEn: $ahora,
@@ -286,7 +290,7 @@ final class SeguimientoProcesoPrestamoContext extends BaseContext
     // ESQUEMA DE ESCENARIO: Conocer el estado de una solicitud (@investigador @curador)
     // =========================================================================
 
-    #[Given('/^que existe una solicitud en estado (.+)$/u')]
+    #[Given('/^que existe una solicitud en estado (?!.*con (?:su )?información)(.+)$/u')]
     public function queExisteUnaSolicitudEnEstado(string $estado): void
     {
         $solicitud = $this->sembrarSolicitudBase();
@@ -353,7 +357,7 @@ final class SeguimientoProcesoPrestamoContext extends BaseContext
     // ESQUEMA DE ESCENARIO: Conocer el estado del acta de préstamo
     // =========================================================================
 
-    #[Given('/^que existe un acta en estado (.+)$/u')]
+    #[Given('/^que existe un acta en estado (?!.*asignada al investigador)(.+)$/u')]
     public function queExisteUnActaEnEstado(string $estadoHumano): void
     {
         $estadoEnum = $this->mapearEstadoActa($estadoHumano);
@@ -550,6 +554,7 @@ final class SeguimientoProcesoPrestamoContext extends BaseContext
             $prestamo = Prestamo::iniciar(
                 id: $this->prestamoRepo->nextIdentity(),
                 actaPrestamoId: ActaPrestamoId::generate(),
+                codigoPrestamo: CodigoPrestamo::fromParts(2026, random_int(1, 99999)),
                 investigadorId: $this->investigadorId,
                 alcancePrestamo: AlcancePrestamo::Nacional,
                 iniciadoEn: $ahora,

@@ -24,7 +24,7 @@ Característica: Solicitud de prórroga de préstamo
         Esquema del escenario: Recibir notificación del resultado de la prórroga
             Dado que existe un préstamo en estado prórroga solicitada
             Cuando la prórroga es resuelta con resultado <resultado>
-            Entonces el investigador recibe una notificación por correo con el resultado <resultado>
+            Entonces el investigador recibe por correo la resolución de su prórroga <resultado>
 
             Ejemplos:
                 | resultado |

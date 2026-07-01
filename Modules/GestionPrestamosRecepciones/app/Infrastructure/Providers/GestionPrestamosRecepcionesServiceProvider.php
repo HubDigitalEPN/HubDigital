@@ -34,6 +34,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Repositories\PrestamoRepositoryIn
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\RecordatorioDevolucionRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudProrrogaRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\VerificacionEspecimenesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\EloquentColaRevisionCuratorialAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\EloquentGeneradorCodigoPrestamoAdapter;
@@ -57,6 +58,7 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repo
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentPrestamoRepository;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentRecordatorioDevolucionRepository;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentSolicitudPrestamoRepository;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentSolicitudProrrogaRepository;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentVerificacionEspecimenesRepository;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Repositories\EloquentMatrizEspeciesRepository;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Repositories\EloquentSolicitudDepositoRepository;
@@ -95,6 +97,7 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
         SolicitudPrestamoRepositoryInterface::class => EloquentSolicitudPrestamoRepository::class,
         ActaPrestamoRepositoryInterface::class => EloquentActaPrestamoRepository::class,
         PrestamoRepositoryInterface::class => EloquentPrestamoRepository::class,
+        SolicitudProrrogaRepositoryInterface::class => EloquentSolicitudProrrogaRepository::class,
         SolicitudDepositoRepositoryInterface::class => EloquentSolicitudDepositoRepository::class,
         MatrizEspeciesRepositoryInterface::class => EloquentMatrizEspeciesRepository::class,
         EventPublisherPort::class => LaravelEventPublisherAdapter::class,

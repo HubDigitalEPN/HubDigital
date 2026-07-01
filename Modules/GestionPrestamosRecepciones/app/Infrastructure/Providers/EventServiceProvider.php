@@ -15,6 +15,8 @@ use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoHabilitadoParaEnvi
 use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoIniciado;
 use Modules\GestionPrestamosRecepciones\Domain\Events\DevolucionRegistrada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoCerrado;
+use Modules\GestionPrestamosRecepciones\Domain\Events\ProrrogaAprobada;
+use Modules\GestionPrestamosRecepciones\Domain\Events\ProrrogaRechazada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\RecordatorioDevolucionEnviado;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoAprobada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoEnviada;
@@ -25,6 +27,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Events\VerificacionEntregaAprobad
 use Modules\GestionPrestamosRecepciones\Domain\Events\VerificacionEntregaRegistrada;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\EnviarNotificacionCierrePrestamoListener;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\EnviarNotificacionRecordatorioListener;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\EnviarNotificacionResultadoProrrogaListener;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\IniciarPrestamoAlValidarActaListener;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\RegistrarEventoHistorialListener;
 
@@ -63,6 +66,8 @@ class EventServiceProvider extends ServiceProvider
             RegistrarEventoHistorialListener::class,
             EnviarNotificacionCierrePrestamoListener::class,
         ],
+        ProrrogaAprobada::class => [EnviarNotificacionResultadoProrrogaListener::class],
+        ProrrogaRechazada::class => [EnviarNotificacionResultadoProrrogaListener::class],
     ];
 
     protected static $shouldDiscoverEvents = true;

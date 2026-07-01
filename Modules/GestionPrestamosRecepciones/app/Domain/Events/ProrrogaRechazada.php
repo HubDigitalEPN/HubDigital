@@ -8,16 +8,16 @@ use DateTimeImmutable;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrestamoId;
 
 /**
- * Evento de dominio emitido cuando el curador aprueba una prórroga y extiende la fecha de fin del préstamo.
+ * Evento de dominio emitido cuando el curador rechaza una solicitud de prórroga;
+ * el préstamo vuelve a estado activo conservando su fecha de fin original.
  */
-final readonly class ProrrogaAprobada
+final readonly class ProrrogaRechazada
 {
     public function __construct(
         public PrestamoId $prestamoId,
         public string $investigadorId,
         public string $curadorId,
-        public DateTimeImmutable $nuevaFechaFin,
-        public DateTimeImmutable $fechaAnterior,
+        public string $comentario,
         public DateTimeImmutable $ocurridoEn,
     ) {}
 }
