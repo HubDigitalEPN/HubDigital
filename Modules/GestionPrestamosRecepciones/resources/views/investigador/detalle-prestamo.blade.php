@@ -250,6 +250,9 @@
                             'PrestamoActivado'              => 'Préstamo activo',
                             'DevolucionRegistrada'          => 'Devolución registrada',
                             'PrestamoCerrado'               => 'Préstamo cerrado',
+                            'ProrrogaSolicitada'            => 'Prórroga solicitada',
+                            'ProrrogaAprobada'              => 'Prórroga aprobada',
+                            'ProrrogaRechazada'             => 'Prórroga rechazada',
                         ];
                         $colores = [
                             'solicitud' => '#1976D2',

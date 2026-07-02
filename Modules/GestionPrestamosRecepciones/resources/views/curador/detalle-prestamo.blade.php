@@ -266,6 +266,9 @@
                         'PrestamoActivado'              => 'Préstamo activo',
                         'DevolucionRegistrada'          => 'Devolución registrada por el investigador',
                         'PrestamoCerrado'               => 'Préstamo cerrado',
+                        'ProrrogaSolicitada'            => 'Prórroga solicitada',
+                        'ProrrogaAprobada'              => 'Prórroga aprobada',
+                        'ProrrogaRechazada'             => 'Prórroga rechazada',
                     ];
                 @endphp
                 @forelse($historial->eventos as $i => $evento)
