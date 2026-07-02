@@ -50,7 +50,7 @@
         <div>
             <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Muestras de colecta</flux:heading>
             <p class="text-sm text-text-secondary mt-1">
-                Bandeja de muestras agrupadas por <code class="text-xs">oldCode</code> del Excel, pendientes de revisión por el curador.
+                Muestras que el importador agrupó por su código de colecta original (oldCode del Excel), pendientes de que el curador las revise.
             </p>
         </div>
         <div class="flex flex-wrap gap-2">
@@ -69,7 +69,7 @@
             de colecta" (una salida de campo). Las creó como <strong>pendientes</strong> esperando tu confirmación.
         </p>
         <ol class="list-decimal pl-6 space-y-1 text-xs text-text-secondary">
-            <li>Mira cada fila: oldCode + colector + fecha + localidad. ¿Hacen sentido juntos como una sola muestra real?</li>
+            <li>Mira cada fila: código de colecta + colector + fecha + localidad. ¿Hacen sentido juntos como una sola muestra real?</li>
             <li>Si sí → <strong>Confirmar</strong>. Las muestras confirmadas desaparecen de esta bandeja.</li>
             <li>Si parece basura o duplicado → <strong>Descartar</strong>. Queda en BD marcada con motivo.</li>
         </ol>
