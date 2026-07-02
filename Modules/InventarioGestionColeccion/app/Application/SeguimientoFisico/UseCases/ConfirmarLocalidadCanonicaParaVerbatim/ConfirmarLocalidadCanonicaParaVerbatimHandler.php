@@ -34,7 +34,10 @@ final class ConfirmarLocalidadCanonicaParaVerbatimHandler
             throw new \InvalidArgumentException('El verbatim no puede estar vacío.');
         }
 
-        $contador = $this->especimenRepo->enlazarLocalidadPorVerbatim($verbatim, (string) $localidadId);
+        $ids = $input->especimenIds;
+        $contador = ($ids !== null && $ids !== [])
+            ? $this->especimenRepo->enlazarLocalidadPorIds($ids, (string) $localidadId)
+            : $this->especimenRepo->enlazarLocalidadPorVerbatim($verbatim, (string) $localidadId);
 
         return new ConfirmarLocalidadCanonicaParaVerbatimOutput(
             verbatim: $verbatim,

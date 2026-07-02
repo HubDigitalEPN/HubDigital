@@ -33,7 +33,10 @@ final class ConfirmarTaxonCanonicoParaVerbatimHandler
             throw new \InvalidArgumentException('El verbatim no puede estar vacío.');
         }
 
-        $contador = $this->especimenRepo->enlazarTaxonPorVerbatim($verbatim, (string) $taxonId);
+        $ids = $input->especimenIds;
+        $contador = ($ids !== null && $ids !== [])
+            ? $this->especimenRepo->enlazarTaxonPorIds($ids, (string) $taxonId)
+            : $this->especimenRepo->enlazarTaxonPorVerbatim($verbatim, (string) $taxonId);
 
         return new ConfirmarTaxonCanonicoParaVerbatimOutput(
             verbatim: $verbatim,

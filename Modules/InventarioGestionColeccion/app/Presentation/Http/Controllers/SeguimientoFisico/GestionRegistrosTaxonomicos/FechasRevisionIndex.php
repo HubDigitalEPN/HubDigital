@@ -9,11 +9,13 @@ use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConfirmarFechaParaVerbatim\ConfirmarFechaParaVerbatimHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConfirmarFechaParaVerbatim\ConfirmarFechaParaVerbatimInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarEspecimenesDeGrupo\ListarEspecimenesDeGrupoHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarEspecimenesDeGrupo\ListarEspecimenesDeGrupoInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarFechaVerbatimsPendientes\ListarFechaVerbatimsPendientesHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarFechaVerbatimsPendientes\ListarFechaVerbatimsPendientesInput;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
 
-#[Layout('layouts.app', params: ['title' => 'Parseo de fechas'])]
+#[Layout('layouts.app', params: ['title' => 'Fechas por normalizar'])]
 final class FechasRevisionIndex extends Component
 {
     use TraduceErroresPersistencia;
@@ -35,6 +37,15 @@ final class FechasRevisionIndex extends Component
     public int $pagina = 1;
 
     public int $porPagina = 20;
+
+    /** Grupos expandidos: idx => true. */
+    public array $expandido = [];
+
+    /** Especímenes cargados de cada grupo: idx => list<array{id,codigoCatalogo,colector,localidad}>. */
+    public array $miembros = [];
+
+    /** Ids seleccionados por grupo: idx => list<string>. */
+    public array $seleccion = [];
 
     public ?string $successMessage = null;
 
@@ -63,6 +74,10 @@ final class FechasRevisionIndex extends Component
                 'fechaInicio' => $item->sugerenciaInicio ?? '',
                 'fechaFin' => $item->sugerenciaFin ?? '',
             ], $output->items);
+            // El estado de expansión/selección se reinicia porque los índices cambian.
+            $this->expandido = [];
+            $this->miembros = [];
+            $this->seleccion = [];
             $this->errorMessage = null;
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);
@@ -86,8 +101,57 @@ final class FechasRevisionIndex extends Component
         }
     }
 
-    public function confirmar(ConfirmarFechaParaVerbatimHandler $handler, int $idx): void
+    /**
+     * Abre/cierra el detalle de un grupo. Al abrirlo por primera vez carga los
+     * especímenes concretos y los deja todos seleccionados por defecto.
+     */
+    public function verEspecimenes(ListarEspecimenesDeGrupoHandler $handler, int $idx): void
     {
+        if (! isset($this->items[$idx])) {
+            return;
+        }
+
+        if (! empty($this->expandido[$idx])) {
+            $this->expandido[$idx] = false;
+
+            return;
+        }
+
+        try {
+            $output = $handler->handle(new ListarEspecimenesDeGrupoInput(
+                tipo: ListarEspecimenesDeGrupoInput::TIPO_FECHA,
+                verbatim: $this->items[$idx]['verbatim'],
+            ));
+
+            $this->miembros[$idx] = array_map(fn ($m) => [
+                'id' => $m['id'],
+                'codigoCatalogo' => $m['codigoCatalogo'],
+                'colector' => $m['colector'],
+                'localidad' => $m['localidad'],
+            ], $output->items);
+            $this->seleccion[$idx] = array_map(fn ($m) => $m['id'], $output->items);
+            $this->expandido[$idx] = true;
+            $this->errorMessage = null;
+        } catch (\Throwable $e) {
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
+        }
+    }
+
+    public function seleccionarTodos(int $idx): void
+    {
+        $this->seleccion[$idx] = array_map(fn ($m) => $m['id'], $this->miembros[$idx] ?? []);
+    }
+
+    public function limpiarSeleccion(int $idx): void
+    {
+        $this->seleccion[$idx] = [];
+    }
+
+    public function confirmar(
+        ConfirmarFechaParaVerbatimHandler $handler,
+        ListarFechaVerbatimsPendientesHandler $listHandler,
+        int $idx,
+    ): void {
         if (! isset($this->items[$idx])) {
             return;
         }
@@ -101,18 +165,30 @@ final class FechasRevisionIndex extends Component
         $fechaFin = trim($row['fechaFin'] ?? '');
         $fechaFin = $fechaFin !== '' ? $fechaFin : null;
 
+        // Si el grupo está expandido, aplica solo a los especímenes marcados;
+        // si está colapsado, aplica a todo el grupo (camino rápido de siempre).
+        $ids = null;
+        if (! empty($this->expandido[$idx])) {
+            $ids = array_values($this->seleccion[$idx] ?? []);
+            if ($ids === []) {
+                $this->errorMessage = 'Selecciona al menos un espécimen, o cierra el detalle para aplicar a todo el grupo.';
+
+                return;
+            }
+        }
+
         try {
             $output = $handler->handle(new ConfirmarFechaParaVerbatimInput(
                 verbatim: $row['verbatim'],
                 fechaInicio: $fechaInicio,
                 fechaFin: $fechaFin,
+                especimenIds: $ids,
             ));
 
-            unset($this->items[$idx]);
-            $this->items = array_values($this->items);
-            $this->total = max(0, $this->total - 1);
             $this->successMessage = "Asignada fecha {$output->fechaInicio} a {$output->especimenesAfectados} espécimen(es).";
-            $this->errorMessage = null;
+            // Recarga real: refleja el estado verdadero (grupos parciales que siguen
+            // pendientes, backfill de páginas) en lugar de un borrado optimista.
+            $this->cargar($listHandler);
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }

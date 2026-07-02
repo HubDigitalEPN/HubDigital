@@ -544,4 +544,124 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
             $this->guardar($especimen);
         }
     }
+
+    /** @return Especimen[] */
+    public function buscarPorFechaVerbatimPendiente(string $verbatim, int $limit = 500): array
+    {
+        $out = [];
+        foreach ($this->store as $e) {
+            if ($e->fechaVerbatim() !== $verbatim) {
+                continue;
+            }
+            if ($e->fechaColecta() !== '' && $e->fechaColecta() !== null) {
+                continue;
+            }
+            $out[] = $e;
+            if (count($out) >= $limit) {
+                break;
+            }
+        }
+
+        return $out;
+    }
+
+    /** @return Especimen[] */
+    public function buscarPorTaxonVerbatimPendiente(string $verbatim, int $limit = 500): array
+    {
+        $out = [];
+        foreach ($this->store as $e) {
+            if ($e->taxonId() !== null) {
+                continue;
+            }
+            if ($e->taxonVerbatim() !== $verbatim) {
+                continue;
+            }
+            $out[] = $e;
+            if (count($out) >= $limit) {
+                break;
+            }
+        }
+
+        return $out;
+    }
+
+    /** @return Especimen[] */
+    public function buscarPorLocalidadVerbatimPendiente(string $verbatim, int $limit = 500): array
+    {
+        $out = [];
+        foreach ($this->store as $e) {
+            if ($e->localidadId() !== null) {
+                continue;
+            }
+            if ($e->localidadVerbatim() !== $verbatim) {
+                continue;
+            }
+            $out[] = $e;
+            if (count($out) >= $limit) {
+                break;
+            }
+        }
+
+        return $out;
+    }
+
+    /** @param  string[]  $ids */
+    public function enlazarFechaPorIds(array $ids, string $fechaInicio, ?string $fechaFin = null): int
+    {
+        // La entidad no expone setter de fecha_colecta; en InMemory este método es
+        // informativo (cuenta cuántos serían afectados). Eloquent hace el UPDATE real.
+        $set = array_flip($ids);
+        $contador = 0;
+        foreach ($this->store as $e) {
+            if (! isset($set[(string) $e->id()])) {
+                continue;
+            }
+            if ($e->fechaColecta() !== '' && $e->fechaColecta() !== null) {
+                continue;
+            }
+            $contador++;
+        }
+
+        return $contador;
+    }
+
+    /** @param  string[]  $ids */
+    public function enlazarTaxonPorIds(array $ids, string $taxonId): int
+    {
+        $set = array_flip($ids);
+        $taxon = TaxonId::desde($taxonId);
+        $contador = 0;
+        foreach ($this->store as $e) {
+            if (! isset($set[(string) $e->id()])) {
+                continue;
+            }
+            if ($e->taxonId() !== null) {
+                continue;
+            }
+            $e->enlazarTaxon($taxon);
+            $contador++;
+        }
+
+        return $contador;
+    }
+
+    /** @param  string[]  $ids */
+    public function enlazarLocalidadPorIds(array $ids, string $localidadId): int
+    {
+        $set = array_flip($ids);
+        $localidad = LocalidadId::desde($localidadId);
+        $contador = 0;
+        foreach ($this->store as $e) {
+            if (! isset($set[(string) $e->id()])) {
+                continue;
+            }
+            if ($e->localidadId() !== null) {
+                continue;
+            }
+            $e->enlazarLocalidad($localidad);
+            $contador++;
+        }
+
+        return $contador;
+    }
 }

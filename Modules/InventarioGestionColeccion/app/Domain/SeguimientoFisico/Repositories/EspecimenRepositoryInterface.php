@@ -220,4 +220,52 @@ interface EspecimenRepositoryInterface
      * @return int[]
      */
     public function filasOrigenExistentes(array $filasOrigen): array;
+
+    /**
+     * Lista los especímenes concretos que caen en un grupo `fecha_verbatim`
+     * pendiente (aún sin `fecha_colecta`). Permite que el curador vea y elija
+     * uno por uno en la bandeja de revisión, en vez de aplicar en bloque.
+     *
+     * @return Especimen[]
+     */
+    public function buscarPorFechaVerbatimPendiente(string $verbatim, int $limit = 500): array;
+
+    /**
+     * Lista los especímenes de un grupo `taxon_verbatim` pendiente (sin taxon_id).
+     *
+     * @return Especimen[]
+     */
+    public function buscarPorTaxonVerbatimPendiente(string $verbatim, int $limit = 500): array;
+
+    /**
+     * Lista los especímenes de un grupo `localidad_verbatim` pendiente (sin localidad_id).
+     *
+     * @return Especimen[]
+     */
+    public function buscarPorLocalidadVerbatimPendiente(string $verbatim, int $limit = 500): array;
+
+    /**
+     * Asigna `fecha_colecta` (y opcional `fecha_colecta_fin`) SOLO a los
+     * especímenes indicados por id que aún no tengan fecha. Devuelve el número
+     * de filas afectadas. Es la variante selectiva de `enlazarFechaPorVerbatim`.
+     *
+     * @param  string[]  $ids
+     */
+    public function enlazarFechaPorIds(array $ids, string $fechaInicio, ?string $fechaFin = null): int;
+
+    /**
+     * Enlaza al taxón canónico SOLO los especímenes indicados por id que aún no
+     * tengan taxón. Variante selectiva de `enlazarTaxonPorVerbatim`.
+     *
+     * @param  string[]  $ids
+     */
+    public function enlazarTaxonPorIds(array $ids, string $taxonId): int;
+
+    /**
+     * Enlaza a la localidad canónica SOLO los especímenes indicados por id que
+     * aún no tengan localidad. Variante selectiva de `enlazarLocalidadPorVerbatim`.
+     *
+     * @param  string[]  $ids
+     */
+    public function enlazarLocalidadPorIds(array $ids, string $localidadId): int;
 }

@@ -444,6 +444,91 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
             ]);
     }
 
+    /** @return Especimen[] */
+    public function buscarPorFechaVerbatimPendiente(string $verbatim, int $limit = 500): array
+    {
+        return EspecimenEloquentModel::with('identificadores')
+            ->where('fecha_verbatim', $verbatim)
+            ->whereNull('fecha_colecta')
+            ->orderBy('codigo_catalogo')
+            ->limit($limit)
+            ->get()
+            ->map(fn ($m) => $this->toDomain($m))
+            ->all();
+    }
+
+    /** @return Especimen[] */
+    public function buscarPorTaxonVerbatimPendiente(string $verbatim, int $limit = 500): array
+    {
+        return EspecimenEloquentModel::with('identificadores')
+            ->where('taxon_verbatim', $verbatim)
+            ->whereNull('taxon_id')
+            ->orderBy('codigo_catalogo')
+            ->limit($limit)
+            ->get()
+            ->map(fn ($m) => $this->toDomain($m))
+            ->all();
+    }
+
+    /** @return Especimen[] */
+    public function buscarPorLocalidadVerbatimPendiente(string $verbatim, int $limit = 500): array
+    {
+        return EspecimenEloquentModel::with('identificadores')
+            ->where('localidad_verbatim', $verbatim)
+            ->whereNull('localidad_id')
+            ->orderBy('codigo_catalogo')
+            ->limit($limit)
+            ->get()
+            ->map(fn ($m) => $this->toDomain($m))
+            ->all();
+    }
+
+    /** @param  string[]  $ids */
+    public function enlazarFechaPorIds(array $ids, string $fechaInicio, ?string $fechaFin = null): int
+    {
+        if ($ids === []) {
+            return 0;
+        }
+
+        return EspecimenEloquentModel::whereIn('id', $ids)
+            ->whereNull('fecha_colecta')
+            ->update([
+                'fecha_colecta' => $fechaInicio,
+                'fecha_colecta_fin' => $fechaFin,
+                'updated_at' => now(),
+            ]);
+    }
+
+    /** @param  string[]  $ids */
+    public function enlazarTaxonPorIds(array $ids, string $taxonId): int
+    {
+        if ($ids === []) {
+            return 0;
+        }
+
+        return EspecimenEloquentModel::whereIn('id', $ids)
+            ->whereNull('taxon_id')
+            ->update([
+                'taxon_id' => $taxonId,
+                'updated_at' => now(),
+            ]);
+    }
+
+    /** @param  string[]  $ids */
+    public function enlazarLocalidadPorIds(array $ids, string $localidadId): int
+    {
+        if ($ids === []) {
+            return 0;
+        }
+
+        return EspecimenEloquentModel::whereIn('id', $ids)
+            ->whereNull('localidad_id')
+            ->update([
+                'localidad_id' => $localidadId,
+                'updated_at' => now(),
+            ]);
+    }
+
     /** @param string[] $muestraIds
      *  @return array<string, int> */
     public function contarPorMuestraIds(array $muestraIds): array
