@@ -17,5 +17,6 @@ final readonly class ListarLocalidadesItemOutput
         public ?string $country,
         public ?string $stateProvince,
         public ?string $municipality,
+        public ?string $geodeticDatum = null,
     ) {}
 }

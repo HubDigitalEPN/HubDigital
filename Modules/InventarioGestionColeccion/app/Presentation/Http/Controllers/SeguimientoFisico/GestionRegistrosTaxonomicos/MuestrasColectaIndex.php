@@ -71,35 +71,35 @@ final class MuestrasColectaIndex extends Component
         }
     }
 
-    public function confirmar(ConfirmarMuestraHandler $handler, string $id): void
-    {
+    public function confirmar(
+        ConfirmarMuestraHandler $handler,
+        ListarMuestrasParaRevisionHandler $listHandler,
+        string $id,
+    ): void {
         try {
             $handler->handle(new ConfirmarMuestraInput(muestraId: $id));
-            foreach ($this->muestras as $i => $row) {
-                if (($row['id'] ?? null) === $id) {
-                    unset($this->muestras[$i]); // sale de la bandeja
-                    break;
-                }
-            }
-            $this->muestras = array_values($this->muestras);
-            $this->total = max(0, $this->total - 1);
             $this->successMessage = 'Muestra confirmada.';
-            $this->errorMessage = null;
+            // Recarga real: refleja el estado verdadero y hace backfill de páginas.
+            $this->cargar($listHandler);
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 
-    public function descartar(MarcarMuestraParaRevisionHandler $handler, string $id): void
-    {
+    public function descartar(
+        MarcarMuestraParaRevisionHandler $handler,
+        ListarMuestrasParaRevisionHandler $listHandler,
+        string $id,
+    ): void {
         try {
             // Reutilizamos marcarParaRevision con motivo "descartada por curador" como mecanismo de descarte suave.
             $handler->handle(new MarcarMuestraParaRevisionInput(
                 muestraId: $id,
                 motivo: 'descartada por el curador en bandeja de revisión',
             ));
-            $this->successMessage = 'Muestra marcada con motivo de descarte.';
-            $this->errorMessage = null;
+            $this->successMessage = 'Muestra descartada (marcada con motivo de descarte).';
+            // Antes esta acción no actualizaba la bandeja; ahora recarga como confirmar().
+            $this->cargar($listHandler);
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }

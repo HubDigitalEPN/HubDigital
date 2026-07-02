@@ -140,6 +140,7 @@ final class BuscarEspecimenesHandler
             'fechaColectaFin' => $e->fechaColectaFin(),
             'fechaVerbatim' => $e->fechaVerbatim(),
             'colector' => $e->colector(),
+            'entidadDepositanteId' => $e->entidadDepositanteId(),
             'estado' => $e->estado()->value,
             'occurrenceId' => $e->occurrenceId(),
             'catalogNumber' => $e->catalogNumber(),

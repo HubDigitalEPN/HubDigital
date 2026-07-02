@@ -15,10 +15,13 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Li
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarLocalidad\RegistrarLocalidadHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarLocalidad\RegistrarLocalidadInput;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\RangoLocalidad;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
 
 #[Layout('layouts.app', params: ['title' => 'Localidades'])]
 final class LocalidadIndex extends Component
 {
+    use TraduceErroresPersistencia;
+
     /** @var array<int, array<string, mixed>> */
     public array $localidades = [];
 
@@ -131,7 +134,7 @@ final class LocalidadIndex extends Component
             $this->successMessage = 'Localidad registrada correctamente.';
             $this->errorMessage = null;
         } catch (\Throwable $e) {
-            $this->errorMessage = $e->getMessage();
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 
@@ -149,7 +152,7 @@ final class LocalidadIndex extends Component
         $this->editPadreId = $localidad['padreId'] ?? '';
         $this->editLatitud = $localidad['latitud'];
         $this->editLongitud = $localidad['longitud'];
-        $this->editGeodeticDatum = null;
+        $this->editGeodeticDatum = $localidad['geodeticDatum'] ?? null;
         $this->editCountry = $localidad['country'];
         $this->editStateProvince = $localidad['stateProvince'];
         $this->errorMessage = null;
@@ -181,7 +184,7 @@ final class LocalidadIndex extends Component
             $this->successMessage = 'Localidad actualizada correctamente.';
             $this->errorMessage = null;
         } catch (\Throwable $e) {
-            $this->errorMessage = $e->getMessage();
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 
@@ -229,6 +232,7 @@ final class LocalidadIndex extends Component
                 'country' => $l->country,
                 'stateProvince' => $l->stateProvince,
                 'municipality' => $l->municipality,
+                'geodeticDatum' => $l->geodeticDatum,
             ],
             $output->items,
         );

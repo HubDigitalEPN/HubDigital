@@ -275,8 +275,10 @@ final class EspecimenIndex extends Component
         $this->showModal = true;
     }
 
-    public function registrarEspecimen(RegistrarEspecimenHandler $handler): void
-    {
+    public function registrarEspecimen(
+        RegistrarEspecimenHandler $handler,
+        BuscarEspecimenesHandler $buscarHandler,
+    ): void {
         $this->validateOnly('codigoCatalogo');
         $this->validateOnly('taxonId');
         $this->validateOnly('localidad');
@@ -315,6 +317,12 @@ final class EspecimenIndex extends Component
             $this->showModal = false;
             $this->successMessage = "Especímen '{$this->codigoCatalogo}' registrado correctamente.";
             $this->errorMessage = null;
+
+            // Refresca la tabla si ya había una búsqueda activa, para que el nuevo
+            // espécimen aparezca sin que el curador tenga que volver a buscar.
+            if ($this->buscado) {
+                $this->ejecutarBusqueda($buscarHandler);
+            }
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
@@ -332,7 +340,7 @@ final class EspecimenIndex extends Component
         $this->editLocalidad = $especimen['localidad'];
         $this->editFechaColecta = $especimen['fechaColecta'];
         $this->editColector = $especimen['colector'];
-        $this->editEntidadDepositanteId = '';
+        $this->editEntidadDepositanteId = (string) ($especimen['entidadDepositanteId'] ?? '');
         $this->editPreparations = (string) ($especimen['preparations'] ?? '');
         $this->editDisposition = (string) ($especimen['disposition'] ?? '');
         $this->editOccurrenceStatus = (string) ($especimen['occurrenceStatus'] ?? '');
@@ -351,8 +359,10 @@ final class EspecimenIndex extends Component
         $this->showEditModal = true;
     }
 
-    public function actualizarEspecimen(ActualizarEspecimenHandler $handler): void
-    {
+    public function actualizarEspecimen(
+        ActualizarEspecimenHandler $handler,
+        BuscarEspecimenesHandler $buscarHandler,
+    ): void {
         $this->validateOnly('editLocalidad');
         $this->validateOnly('editFechaColecta');
         $this->validateOnly('editColector');
@@ -383,8 +393,12 @@ final class EspecimenIndex extends Component
             $this->showEditModal = false;
             $this->successMessage = 'Especímen actualizado correctamente.';
             $this->errorMessage = null;
-            // Reaplicar la búsqueda actual sería ideal, pero requiere injection de handler.
-            // Por ahora marcamos los datos como sucios para que el curador re-busque.
+
+            // Refresca la tabla con la búsqueda actual para reflejar los cambios
+            // (antes quedaba desactualizada hasta re-buscar a mano).
+            if ($this->buscado) {
+                $this->ejecutarBusqueda($buscarHandler);
+            }
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
@@ -463,7 +477,17 @@ final class EspecimenIndex extends Component
     public function buscar(BuscarEspecimenesHandler $handler): void
     {
         $this->validate();
+        $this->page = 1;
+        $this->ejecutarBusqueda($handler);
+    }
 
+    /**
+     * Ejecuta la búsqueda con los filtros actuales SIN validar el formulario del
+     * modal. Sirve tanto para el botón "Buscar" como para refrescar la tabla tras
+     * registrar/editar un espécimen (así el curador ve el cambio sin re-buscar).
+     */
+    private function ejecutarBusqueda(BuscarEspecimenesHandler $handler): void
+    {
         try {
             $output = $handler->handle(new BuscarEspecimenesInput(
                 taxonNombre: $this->nullableString($this->fTaxon),
@@ -483,7 +507,6 @@ final class EspecimenIndex extends Component
 
             $this->especimenes = $output->items;
             $this->buscado = true;
-            $this->page = 1;
             $this->errorMessage = null;
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);

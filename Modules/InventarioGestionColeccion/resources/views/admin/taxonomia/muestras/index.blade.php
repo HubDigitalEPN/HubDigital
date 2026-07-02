@@ -169,7 +169,8 @@
                                 Confirmar
                             </flux:button>
                             <flux:button size="sm" variant="ghost" icon="x-mark"
-                                         wire:click="descartar('{{ $muestra['id'] }}')">
+                                         wire:click="descartar('{{ $muestra['id'] }}')"
+                                         wire:confirm="¿Descartar esta muestra? Quedará marcada con motivo de descarte para revisión.">
                                 Descartar
                             </flux:button>
                         </div>
@@ -216,7 +217,8 @@
                             Confirmar
                         </flux:button>
                         <flux:button variant="ghost" icon="x-mark"
-                                     wire:click="descartar('{{ $muestra['id'] }}')">
+                                     wire:click="descartar('{{ $muestra['id'] }}')"
+                                         wire:confirm="¿Descartar esta muestra? Quedará marcada con motivo de descarte para revisión.">
                             Descartar
                         </flux:button>
                     </div>
