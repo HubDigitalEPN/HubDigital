@@ -16,6 +16,9 @@ use Modules\GestionPrestamosRecepciones\Domain\Events\DocumentoExportacionSubido
 use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoActivado;
 use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoHabilitadoParaEnvio;
 use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoIniciado;
+use Modules\GestionPrestamosRecepciones\Domain\Events\ProrrogaAprobada;
+use Modules\GestionPrestamosRecepciones\Domain\Events\ProrrogaRechazada;
+use Modules\GestionPrestamosRecepciones\Domain\Events\ProrrogaSolicitada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\RecordatorioDevolucionEnviado;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoAprobada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoEnviada;
@@ -73,7 +76,10 @@ final class RegistrarEventoHistorialListener
             $event instanceof VerificacionEntregaAprobada,
             $event instanceof PrestamoActivado,
             $event instanceof DevolucionRegistrada,
-            $event instanceof PrestamoCerrado => 'prestamo',
+            $event instanceof PrestamoCerrado,
+            $event instanceof ProrrogaSolicitada,
+            $event instanceof ProrrogaAprobada,
+            $event instanceof ProrrogaRechazada => 'prestamo',
             $event instanceof DocumentoExportacionSubido => 'prestamo',
         };
     }
@@ -107,7 +113,10 @@ final class RegistrarEventoHistorialListener
             $event instanceof VerificacionEntregaAprobada,
             $event instanceof PrestamoActivado,
             $event instanceof DevolucionRegistrada,
-            $event instanceof PrestamoCerrado => (string) $event->prestamoId,
+            $event instanceof PrestamoCerrado,
+            $event instanceof ProrrogaSolicitada,
+            $event instanceof ProrrogaAprobada,
+            $event instanceof ProrrogaRechazada => (string) $event->prestamoId,
         };
     }
 

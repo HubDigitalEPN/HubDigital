@@ -17,6 +17,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Events\DevolucionRegistrada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoCerrado;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ProrrogaAprobada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ProrrogaRechazada;
+use Modules\GestionPrestamosRecepciones\Domain\Events\ProrrogaSolicitada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\RecordatorioDevolucionEnviado;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoAprobada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoEnviada;
@@ -66,8 +67,15 @@ class EventServiceProvider extends ServiceProvider
             RegistrarEventoHistorialListener::class,
             EnviarNotificacionCierrePrestamoListener::class,
         ],
-        ProrrogaAprobada::class => [EnviarNotificacionResultadoProrrogaListener::class],
-        ProrrogaRechazada::class => [EnviarNotificacionResultadoProrrogaListener::class],
+        ProrrogaSolicitada::class => [RegistrarEventoHistorialListener::class],
+        ProrrogaAprobada::class => [
+            RegistrarEventoHistorialListener::class,
+            EnviarNotificacionResultadoProrrogaListener::class,
+        ],
+        ProrrogaRechazada::class => [
+            RegistrarEventoHistorialListener::class,
+            EnviarNotificacionResultadoProrrogaListener::class,
+        ],
     ];
 
     protected static $shouldDiscoverEvents = true;
