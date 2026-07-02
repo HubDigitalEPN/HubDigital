@@ -76,7 +76,12 @@
                             </flux:sidebar.item>
                         </flux:sidebar.group>
                     @elseif(auth()->user()->rol === RolUsuario::CURADOR)
-                        <flux:sidebar.group heading="Gestión de préstamos" class="grid">
+                        <flux:sidebar.group
+                            heading="Gestión de préstamos"
+                            class="grid"
+                            expandable
+                            :expanded="request()->routeIs('prestamos.curador.solicitudes', 'prestamos.curador.solicitud.*', 'prestamos.curador.actas', 'prestamos.curador.acta.*', 'prestamos.curador.prestamos', 'prestamos.curador.prestamo.*', 'prestamos.curador.configuracion')"
+                        >
                             <flux:sidebar.item
                                 icon="document-text"
                                 :href="route('prestamos.curador.solicitudes')"
@@ -110,7 +115,12 @@
                                 Configuración
                             </flux:sidebar.item>
                         </flux:sidebar.group>
-                        <flux:sidebar.group heading="Gestión de depósitos" class="grid">
+                        <flux:sidebar.group
+                            heading="Gestión de depósitos"
+                            class="grid"
+                            expandable
+                            :expanded="request()->routeIs('prestamos.curador.depositos', 'prestamos.curador.deposito.*')"
+                        >
                             <flux:sidebar.item
                                 icon="inbox-arrow-down"
                                 :href="route('prestamos.curador.depositos')"
@@ -120,7 +130,12 @@
                                 Recepciones
                             </flux:sidebar.item>
                         </flux:sidebar.group>
-                        <flux:sidebar.group heading="Inventario" class="grid">
+                        <flux:sidebar.group
+                            heading="Inventario"
+                            class="grid"
+                            expandable
+                            :expanded="request()->routeIs('inventario.taxonomia.*')"
+                        >
                             <flux:sidebar.item
                                 icon="clipboard-document-check"
                                 :href="route('inventario.taxonomia.revision')"
@@ -218,7 +233,12 @@
                                 Prioridad columnas
                             </flux:sidebar.item>
                         </flux:sidebar.group>
-                        <flux:sidebar.group heading="Seguimiento físico" class="grid">
+                        <flux:sidebar.group
+                            heading="Seguimiento físico"
+                            class="grid"
+                            expandable
+                            :expanded="request()->routeIs('inventario.dashboard', 'inventario.mapa', 'inventario.gabinetes*', 'inventario.cajas', 'inventario.unit-trays', 'inventario.alertas', 'inventario.orden-familias', 'inventario.horario', 'inventario.visitantes')"
+                        >
                             <flux:sidebar.item
                                 icon="chart-bar"
                                 :href="route('inventario.dashboard')"
@@ -292,7 +312,12 @@
                                 Acceso de visitantes
                             </flux:sidebar.item>
                         </flux:sidebar.group>
-                        <flux:sidebar.group heading="Divulgación" class="grid">
+                        <flux:sidebar.group
+                            heading="Divulgación"
+                            class="grid"
+                            expandable
+                            :expanded="request()->routeIs('divulgacion.*')"
+                        >
                             <flux:sidebar.item
                                 icon="table-cells"
                                 :href="route('divulgacion.index')"
