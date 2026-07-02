@@ -76,6 +76,10 @@
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Especímenes</flux:heading>
         <div class="flex flex-wrap gap-2">
+            <flux:button icon="clipboard-document-check" variant="ghost"
+                         :href="route('inventario.taxonomia.revision')" wire:navigate>
+                Centro de revisión
+            </flux:button>
             <flux:button icon="adjustments-horizontal" variant="ghost" @click="panelColumnasAbierto = !panelColumnasAbierto">
                 Columnas (<span x-text="visibles.length"></span>)
             </flux:button>
@@ -143,7 +147,7 @@
                 ['label' => 'Para revisión', 'key' => 'para_revision'],
                 ['label' => 'Sin coordenadas', 'key' => 'sin_coords'],
                 ['label' => 'Fechas no parseables', 'key' => 'fechas_raras'],
-                ['label' => 'Sin occurrence_id', 'key' => 'sin_occurrence_id'],
+                ['label' => 'Sin ID de ocurrencia', 'key' => 'sin_occurrence_id'],
                 ['label' => 'Limpiar filtros', 'key' => 'todos'],
             ];
         @endphp
@@ -207,12 +211,12 @@
                 </flux:field>
 
                 <flux:field>
-                    <flux:label>occurrence_id</flux:label>
+                    <flux:label>ID de ocurrencia <span class="text-text-secondary font-normal">(occurrenceID)</span></flux:label>
                     <flux:input wire:model="fOccurrenceId" wire:keydown.enter="buscar" placeholder="MEPN:INV:..." />
                 </flux:field>
 
                 <flux:field>
-                    <flux:label>catalog_number</flux:label>
+                    <flux:label>Número de catálogo <span class="text-text-secondary font-normal">(catalogNumber)</span></flux:label>
                     <flux:input wire:model="fCatalogNumber" wire:keydown.enter="buscar" placeholder="50494" />
                 </flux:field>
 
@@ -243,7 +247,7 @@
                 <flux:field class="sm:col-span-2 lg:col-span-3">
                     <label class="flex items-center gap-2 cursor-pointer">
                         <input type="checkbox" wire:model="fParaRevision" class="size-4 rounded border-border" />
-                        <span class="text-sm text-text-primary">Solo marcados para revisión (estado_revision=pendiente con motivo)</span>
+                        <span class="text-sm text-text-primary">Solo los marcados para revisión (pendientes con un motivo)</span>
                     </label>
                 </flux:field>
             </div>
@@ -304,7 +308,7 @@
             <div class="px-4 py-3 bg-bg-main border-b border-border flex flex-wrap items-center justify-between gap-2">
                 <span class="text-sm font-medium text-text-primary">{{ $totalItems }} resultado(s)</span>
                 @if($fParaRevision)
-                    <span class="text-xs text-text-secondary">Filtrando por estado_revision=pendiente</span>
+                    <span class="text-xs text-text-secondary">Mostrando solo los pendientes de revisión</span>
                 @endif
             </div>
 
@@ -358,7 +362,8 @@
                             <div class="flex items-center gap-2">
                                 @if(($especimen['estadoRevision'] ?? '') === 'pendiente' && !empty($especimen['motivoRevision']))
                                     <flux:button size="sm" variant="primary" icon="check"
-                                                 wire:click="confirmarRevision('{{ $especimen['id'] }}')">
+                                                 wire:click="confirmarRevision('{{ $especimen['id'] }}')"
+                                                 wire:confirm="¿Confirmar la revisión de este espécimen? Se marcará como revisado y se limpiará su motivo.">
                                         Confirmar
                                     </flux:button>
                                 @endif
@@ -411,7 +416,8 @@
                         <div class="flex flex-wrap gap-2 pt-2" style="order: 99999;">
                             @if(($especimen['estadoRevision'] ?? '') === 'pendiente' && !empty($especimen['motivoRevision']))
                                 <flux:button variant="primary" icon="check"
-                                             wire:click="confirmarRevision('{{ $especimen['id'] }}')">
+                                             wire:click="confirmarRevision('{{ $especimen['id'] }}')"
+                                                 wire:confirm="¿Confirmar la revisión de este espécimen? Se marcará como revisado y se limpiará su motivo.">
                                     Confirmar revisión
                                 </flux:button>
                             @endif
@@ -489,7 +495,11 @@
             </flux:field>
             <div class="flex justify-end gap-3 pt-2">
                 <flux:button variant="ghost" wire:click="$set('showModal', false)">Cancelar</flux:button>
-                <flux:button variant="primary" wire:click="registrarEspecimen">Registrar</flux:button>
+                <flux:button variant="primary" wire:click="registrarEspecimen"
+                             wire:loading.attr="disabled" wire:target="registrarEspecimen">
+                    <span wire:loading.remove wire:target="registrarEspecimen">Registrar</span>
+                    <span wire:loading wire:target="registrarEspecimen">Registrando…</span>
+                </flux:button>
             </div>
         </div>
     </flux:modal>
@@ -529,7 +539,11 @@
             </flux:field>
             <div class="flex justify-end gap-3 pt-2">
                 <flux:button variant="ghost" wire:click="$set('showEditModal', false)">Cancelar</flux:button>
-                <flux:button variant="primary" wire:click="actualizarEspecimen">Guardar</flux:button>
+                <flux:button variant="primary" wire:click="actualizarEspecimen"
+                             wire:loading.attr="disabled" wire:target="actualizarEspecimen">
+                    <span wire:loading.remove wire:target="actualizarEspecimen">Guardar</span>
+                    <span wire:loading wire:target="actualizarEspecimen">Guardando…</span>
+                </flux:button>
             </div>
         </div>
     </flux:modal>
