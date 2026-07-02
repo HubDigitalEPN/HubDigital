@@ -1,9 +1,10 @@
 <div class="space-y-6 p-4 sm:p-6">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Duplicados de <code class="text-base">catalog_number</code></flux:heading>
+            <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Números de catálogo duplicados</flux:heading>
             <p class="text-sm text-text-secondary mt-1">
-                Grupos de especímenes que comparten el mismo <code class="text-xs">catalog_number</code>. Decide si son eventos legítimos distintos o un error de catalogación.
+                Grupos de especímenes que comparten el mismo número de catálogo. Decide si son eventos
+                legítimos distintos o un error de catalogación.
             </p>
         </div>
     </div>
@@ -95,6 +96,7 @@
                             variant="primary"
                             icon="check-circle"
                             wire:click="marcarEventosDistintos({{ $idx }})"
+                            wire:confirm="Vas a confirmar {{ $item['total'] }} espécimen(es) como eventos distintos (revisión confirmada). ¿Continuar?"
                             wire:loading.attr="disabled"
                             wire:target="marcarEventosDistintos"
                             class="lg:w-1/3">
@@ -110,6 +112,7 @@
                                 variant="ghost"
                                 icon="exclamation-triangle"
                                 wire:click="marcarErrorCatalogacion({{ $idx }})"
+                                wire:confirm="Vas a marcar {{ $item['total'] }} espécimen(es) para revisión por error de catalogación. ¿Continuar?"
                                 wire:loading.attr="disabled"
                                 wire:target="marcarErrorCatalogacion">
                                 Marcar error de catalogación

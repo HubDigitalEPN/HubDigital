@@ -13,7 +13,7 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Re
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ResolverDuplicadoDeCatalogNumber\ResolverDuplicadoDeCatalogNumberInput;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
 
-#[Layout('layouts.app', params: ['title' => 'Duplicados de catalog_number'])]
+#[Layout('layouts.app', params: ['title' => 'Números de catálogo duplicados'])]
 final class DuplicadosCatalogNumberIndex extends Component
 {
     use TraduceErroresPersistencia;
@@ -92,8 +92,11 @@ final class DuplicadosCatalogNumberIndex extends Component
         }
     }
 
-    public function marcarEventosDistintos(ResolverDuplicadoDeCatalogNumberHandler $handler, int $idx): void
-    {
+    public function marcarEventosDistintos(
+        ResolverDuplicadoDeCatalogNumberHandler $handler,
+        ListarCatalogNumberDuplicadosHandler $listHandler,
+        int $idx,
+    ): void {
         if (! isset($this->items[$idx])) {
             return;
         }
@@ -105,14 +108,18 @@ final class DuplicadosCatalogNumberIndex extends Component
                 motivo: '',
             ));
             $this->successMessage = "Confirmados como eventos distintos: {$output->especimenesAfectados} espécimen(es).";
-            $this->removerDelListado($idx);
+            // Recarga real: refleja el estado verdadero y hace backfill de páginas.
+            $this->cargar($listHandler);
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 
-    public function marcarErrorCatalogacion(ResolverDuplicadoDeCatalogNumberHandler $handler, int $idx): void
-    {
+    public function marcarErrorCatalogacion(
+        ResolverDuplicadoDeCatalogNumberHandler $handler,
+        ListarCatalogNumberDuplicadosHandler $listHandler,
+        int $idx,
+    ): void {
         if (! isset($this->items[$idx])) {
             return;
         }
@@ -130,18 +137,10 @@ final class DuplicadosCatalogNumberIndex extends Component
                 motivo: $motivo,
             ));
             $this->successMessage = "Marcados con motivo para revisión: {$output->especimenesAfectados} espécimen(es).";
-            $this->removerDelListado($idx);
+            $this->cargar($listHandler);
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
-    }
-
-    private function removerDelListado(int $idx): void
-    {
-        unset($this->items[$idx]);
-        $this->items = array_values($this->items);
-        $this->total = max(0, $this->total - 1);
-        $this->errorMessage = null;
     }
 
     public function render(): View

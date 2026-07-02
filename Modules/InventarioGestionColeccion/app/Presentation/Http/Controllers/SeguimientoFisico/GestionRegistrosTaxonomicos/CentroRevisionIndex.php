@@ -37,6 +37,17 @@ final class CentroRevisionIndex extends Component
 
     public function mount(ResumirEstadoRevisionHandler $handler): void
     {
+        $this->cargar($handler);
+    }
+
+    /** Vuelve a leer los conteos: el tablero es una foto, y esto la refresca a demanda. */
+    public function actualizar(ResumirEstadoRevisionHandler $handler): void
+    {
+        $this->cargar($handler);
+    }
+
+    private function cargar(ResumirEstadoRevisionHandler $handler): void
+    {
         $this->cargarProtegido(function () use ($handler) {
             $out = $handler->handle();
             $this->totalEspecimenes = $out->totalEspecimenes;

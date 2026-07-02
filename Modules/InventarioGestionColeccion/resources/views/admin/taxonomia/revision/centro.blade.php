@@ -49,12 +49,21 @@
 @endphp
 
 <div class="space-y-6 p-4 sm:p-6 max-w-6xl">
-    <div>
-        <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Centro de revisión del catálogo</flux:heading>
-        <p class="text-sm text-text-secondary mt-1">
-            Punto de partida para corregir lo que el importador no pudo resolver automáticamente.
-            Sigue el orden sugerido para máxima eficiencia: las primeras bandejas desbloquean a las siguientes.
-        </p>
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+            <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Centro de revisión del catálogo</flux:heading>
+            <p class="text-sm text-text-secondary mt-1">
+                Punto de partida para corregir lo que el importador no pudo resolver automáticamente.
+                Empieza por el orden sugerido para máxima eficiencia.
+            </p>
+        </div>
+        <flux:button variant="ghost" icon="arrow-path"
+                     wire:click="actualizar"
+                     wire:loading.attr="disabled" wire:target="actualizar"
+                     class="w-full sm:w-auto">
+            <span wire:loading.remove wire:target="actualizar">Actualizar conteos</span>
+            <span wire:loading wire:target="actualizar">Actualizando…</span>
+        </flux:button>
     </div>
 
     @if($errorMessage)<flux:callout variant="danger" dismissible>{{ $errorMessage }}</flux:callout>@endif
