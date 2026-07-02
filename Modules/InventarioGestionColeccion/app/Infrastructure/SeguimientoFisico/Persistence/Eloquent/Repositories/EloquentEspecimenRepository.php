@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especimen;
@@ -570,8 +571,39 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
     /** @return Especimen[] */
     public function buscarConFiltros(array $filtros): array
     {
-        $query = EspecimenEloquentModel::with('identificadores');
+        $query = EspecimenEloquentModel::query()->with('identificadores');
+        $this->aplicarFiltrosBusqueda($query, $filtros);
 
+        $limit = (int) ($filtros['limit'] ?? 200);
+        $offset = (int) ($filtros['offset'] ?? 0);
+
+        // Orden determinista: sin él, OFFSET/LIMIT puede repetir/saltarse filas
+        // entre páginas (Postgres no garantiza orden sin ORDER BY).
+        return $query->orderBy('codigo_catalogo')
+            ->orderBy('id')
+            ->offset(max(0, $offset))
+            ->limit($limit)
+            ->get()
+            ->map(fn ($m) => $this->toDomain($m))
+            ->all();
+    }
+
+    public function contarConFiltros(array $filtros): int
+    {
+        $query = EspecimenEloquentModel::query();
+        $this->aplicarFiltrosBusqueda($query, $filtros);
+
+        return $query->count();
+    }
+
+    /**
+     * Cláusulas WHERE compartidas por buscarConFiltros y contarConFiltros
+     * (no aplica limit/offset/order: eso es responsabilidad de cada llamador).
+     *
+     * @param  array<string, mixed>  $filtros
+     */
+    private function aplicarFiltrosBusqueda(Builder $query, array $filtros): void
+    {
         if (! empty($filtros['taxonIds'])) {
             $query->whereIn('taxon_id', $filtros['taxonIds']);
         }
@@ -615,13 +647,6 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
         if (! empty($filtros['paraRevision'])) {
             $query->where('estado_revision', 'pendiente')->whereNotNull('motivo_revision');
         }
-
-        $limit = (int) ($filtros['limit'] ?? 200);
-
-        return $query->limit($limit)
-            ->get()
-            ->map(fn ($m) => $this->toDomain($m))
-            ->all();
     }
 
     /** @param int[] $filasOrigen

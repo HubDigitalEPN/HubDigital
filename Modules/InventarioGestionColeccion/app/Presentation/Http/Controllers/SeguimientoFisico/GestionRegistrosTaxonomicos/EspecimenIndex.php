@@ -41,6 +41,11 @@ final class EspecimenIndex extends Component
 
     public int $perPage = 25;
 
+    /** Total de coincidencias en BD (no solo la página actual): paginación server-side. */
+    public int $total = 0;
+
+    public int $totalPaginas = 1;
+
     public bool $filtrosAbiertos = true;
 
     // Filtros combinables (todos opcionales, AND lógico)
@@ -455,23 +460,29 @@ final class EspecimenIndex extends Component
         $this->qrEspecimenCodigo = null;
     }
 
-    public function nextPage(): void
+    public function nextPage(BuscarEspecimenesHandler $handler): void
     {
-        if ($this->page < (int) ceil(count($this->especimenes) / $this->perPage)) {
+        if ($this->page < $this->totalPaginas) {
             $this->page++;
+            $this->ejecutarBusqueda($handler);
         }
     }
 
-    public function prevPage(): void
+    public function prevPage(BuscarEspecimenesHandler $handler): void
     {
         if ($this->page > 1) {
             $this->page--;
+            $this->ejecutarBusqueda($handler);
         }
     }
 
-    public function goToPage(int $p): void
+    public function goToPage(BuscarEspecimenesHandler $handler, int $p): void
     {
-        $this->page = max(1, min($p, (int) ceil(count($this->especimenes) / $this->perPage)));
+        $destino = max(1, min($p, $this->totalPaginas));
+        if ($destino !== $this->page) {
+            $this->page = $destino;
+            $this->ejecutarBusqueda($handler);
+        }
     }
 
     public function buscar(BuscarEspecimenesHandler $handler): void
@@ -503,9 +514,17 @@ final class EspecimenIndex extends Component
                 estadoRevision: $this->nullableString($this->fEstadoRevision),
                 motivoRevision: $this->nullableString($this->fMotivoRevision),
                 paraRevision: $this->fParaRevision,
+                page: $this->page,
+                perPage: $this->perPage,
             ));
 
             $this->especimenes = $output->items;
+            $this->total = $output->total;
+            $this->totalPaginas = $output->totalPaginas;
+            // Si la página quedó fuera de rango (p. ej. tras filtrar), reencájala.
+            if ($this->page > $this->totalPaginas) {
+                $this->page = $this->totalPaginas;
+            }
             $this->buscado = true;
             $this->errorMessage = null;
         } catch (\Throwable $e) {
@@ -537,6 +556,7 @@ final class EspecimenIndex extends Component
     {
         $this->reset(
             'especimenes', 'buscado', 'errorMessage', 'successMessage', 'page',
+            'total', 'totalPaginas',
             'fTaxon', 'fFamilia', 'fCodigoCatalogo', 'fOccurrenceId', 'fCatalogNumber',
             'fLocalidad', 'fColector', 'fFechaDesde', 'fFechaHasta',
             'fEstado', 'fEstadoRevision', 'fMotivoRevision',
@@ -547,16 +567,18 @@ final class EspecimenIndex extends Component
 
     public function render(): View
     {
-        $total = count($this->especimenes);
-        $totalPaginas = $total > 0 ? (int) ceil($total / $this->perPage) : 1;
+        // Paginación server-side: $this->especimenes ya es SOLO la página actual y
+        // $this->total es el total real en BD (no se corta nada en cliente).
+        $total = $this->total;
+        $totalPaginas = max(1, $this->totalPaginas);
         $offset = ($this->page - 1) * $this->perPage;
 
         return view('inventariogestioncoleccion::admin.taxonomia.especimenes.index', [
-            'especimenesPaginados' => array_slice($this->especimenes, $offset, $this->perPage),
+            'especimenesPaginados' => $this->especimenes,
             'totalPaginas' => $totalPaginas,
             'totalItems' => $total,
             'inicio' => $total > 0 ? $offset + 1 : 0,
-            'fin' => min($offset + $this->perPage, $total),
+            'fin' => min($offset + count($this->especimenes), $total),
             'columnasRegistro' => app(ResolverPrioridadColumnas::class)
                 ->aplicar('especimenes', RegistroColumnasEspecimen::todas()),
             'columnasVisiblesPorDefecto' => RegistroColumnasEspecimen::clavesVisiblesPorDefecto(),

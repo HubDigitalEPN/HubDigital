@@ -469,6 +469,29 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
     /** @return Especimen[] */
     public function buscarConFiltros(array $filtros): array
     {
+        $items = $this->filtrarEnMemoria($filtros);
+
+        $limit = (int) ($filtros['limit'] ?? 200);
+        $offset = max(0, (int) ($filtros['offset'] ?? 0));
+
+        return array_slice($items, $offset, $limit);
+    }
+
+    public function contarConFiltros(array $filtros): int
+    {
+        return count($this->filtrarEnMemoria($filtros));
+    }
+
+    /**
+     * Aplica los filtros (sin limit/offset) y devuelve la lista ordenada de forma
+     * determinista (por código de catálogo, luego id) para que la paginación sea
+     * estable, igual que la rama Eloquent.
+     *
+     * @param  array<string, mixed>  $filtros
+     * @return Especimen[]
+     */
+    private function filtrarEnMemoria(array $filtros): array
+    {
         $items = array_values($this->store);
 
         if (! empty($filtros['taxonIds'])) {
@@ -517,9 +540,12 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
             $items = array_filter($items, fn (Especimen $e) => $e->estadoRevision()->value === 'pendiente' && $e->motivoRevision() !== null);
         }
 
-        $limit = (int) ($filtros['limit'] ?? 200);
+        $items = array_values($items);
+        usort($items, function (Especimen $a, Especimen $b): int {
+            return [$a->codigoCatalogo(), (string) $a->id()] <=> [$b->codigoCatalogo(), (string) $b->id()];
+        });
 
-        return array_slice(array_values($items), 0, $limit);
+        return $items;
     }
 
     /** @param int[] $filasOrigen

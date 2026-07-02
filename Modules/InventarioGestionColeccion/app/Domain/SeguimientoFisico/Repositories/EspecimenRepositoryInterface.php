@@ -106,10 +106,20 @@ interface EspecimenRepositoryInterface
      *   motivoRevision?: string,
      *   paraRevision?: bool,
      *   limit?: int,
+     *   offset?: int,
      * }  $filtros
      * @return Especimen[]
      */
     public function buscarConFiltros(array $filtros): array;
+
+    /**
+     * Cuenta cuántos especímenes cumplen los mismos filtros que `buscarConFiltros`
+     * (ignorando `limit`/`offset`). Permite paginación server-side: se cuenta el
+     * total real y se traen solo las filas de la página pedida.
+     *
+     * @param  array<string, mixed>  $filtros  Mismos filtros que buscarConFiltros.
+     */
+    public function contarConFiltros(array $filtros): int;
 
     /**
      * Cuenta cuántos especímenes están enganchados a cada `muestra_id` del
