@@ -46,6 +46,21 @@ final class MuestrasColectaIndex extends Component
                 pagina: $this->pagina,
                 porPagina: $this->porPagina,
             ));
+
+            // Reencaje: si la página quedó fuera de rango tras confirmar/descartar
+            // la última muestra, vuelve al último válido y reconsulta (evita la
+            // bandeja vacía con un total que dice que aún hay muestras).
+            $maxPaginas = $output->total === 0
+                ? 1
+                : (int) ceil($output->total / max(1, $this->porPagina));
+            if ($this->pagina > $maxPaginas) {
+                $this->pagina = $maxPaginas;
+                $output = $handler->handle(new ListarMuestrasParaRevisionInput(
+                    pagina: $this->pagina,
+                    porPagina: $this->porPagina,
+                ));
+            }
+
             $this->muestras = $output->items;
             $this->total = $output->total;
             $this->errorMessage = null;
@@ -58,6 +73,7 @@ final class MuestrasColectaIndex extends Component
     {
         $maxPaginas = (int) ceil($this->total / max(1, $this->porPagina));
         if ($this->pagina < $maxPaginas) {
+            $this->successMessage = null;
             $this->pagina++;
             $this->cargar($handler);
         }
@@ -66,6 +82,7 @@ final class MuestrasColectaIndex extends Component
     public function paginaAnterior(ListarMuestrasParaRevisionHandler $handler): void
     {
         if ($this->pagina > 1) {
+            $this->successMessage = null;
             $this->pagina--;
             $this->cargar($handler);
         }
@@ -79,7 +96,8 @@ final class MuestrasColectaIndex extends Component
         try {
             $handler->handle(new ConfirmarMuestraInput(muestraId: $id));
             $this->successMessage = 'Muestra confirmada.';
-            // Recarga real: refleja el estado verdadero y hace backfill de páginas.
+            // Recarga real: refleja el estado verdadero y reencaja la página si la
+            // muestra resuelta era la última de la última página.
             $this->cargar($listHandler);
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);

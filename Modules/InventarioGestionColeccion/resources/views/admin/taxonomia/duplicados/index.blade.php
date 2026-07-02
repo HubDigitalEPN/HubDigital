@@ -36,7 +36,7 @@
     </div>
 
     @forelse($items as $idx => $item)
-        <div class="rounded-lg border border-border bg-surface shadow-sm border-l-4 {{ $item['fechasDistintas'] ? 'border-l-info' : 'border-l-warning' }} overflow-hidden">
+        <div wire:key="dup-{{ md5($item['catalogNumber']) }}" class="rounded-lg border border-border bg-surface shadow-sm border-l-4 {{ $item['fechasDistintas'] ? 'border-l-info' : 'border-l-warning' }} overflow-hidden">
             {{-- Cabecera del grupo --}}
             <div class="px-5 py-4 bg-bg-main border-b border-border flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div class="min-w-0 space-y-1">
@@ -125,7 +125,7 @@
     @empty
         <div class="rounded-lg border border-border bg-surface p-8 text-center">
             <flux:icon name="check-circle" class="mx-auto size-12 text-success mb-2" />
-            <p class="text-text-primary font-medium">No hay duplicados de catalog_number sin resolver</p>
+            <p class="text-text-primary font-medium">No hay duplicados de número de catálogo sin resolver</p>
             <p class="text-sm text-text-secondary mt-1">Todos los grupos fueron evaluados o no superan el mínimo de {{ $minimoDuplicados }}.</p>
         </div>
     @endforelse

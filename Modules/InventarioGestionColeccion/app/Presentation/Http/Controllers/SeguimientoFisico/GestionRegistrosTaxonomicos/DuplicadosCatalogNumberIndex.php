@@ -61,6 +61,21 @@ final class DuplicadosCatalogNumberIndex extends Component
                 porPagina: $this->porPagina,
             ));
 
+            // Reencaje: si la página quedó fuera de rango tras resolver el último
+            // grupo, vuelve al último válido y reconsulta (evita la lista vacía
+            // con un total que dice que aún hay grupos).
+            $maxPaginas = $output->totalGrupos === 0
+                ? 1
+                : (int) ceil($output->totalGrupos / $this->porPagina);
+            if ($this->pagina > $maxPaginas) {
+                $this->pagina = $maxPaginas;
+                $output = $handler->handle(new ListarCatalogNumberDuplicadosInput(
+                    minimoDuplicados: $this->minimoDuplicados,
+                    pagina: $this->pagina,
+                    porPagina: $this->porPagina,
+                ));
+            }
+
             $this->total = $output->totalGrupos;
             $this->items = array_map(fn ($item) => [
                 'catalogNumber' => $item->catalogNumber,
@@ -79,6 +94,7 @@ final class DuplicadosCatalogNumberIndex extends Component
     {
         $maxPaginas = $this->total === 0 ? 1 : (int) ceil($this->total / $this->porPagina);
         if ($this->pagina < $maxPaginas) {
+            $this->successMessage = null;
             $this->pagina++;
             $this->cargar($handler);
         }
@@ -87,6 +103,7 @@ final class DuplicadosCatalogNumberIndex extends Component
     public function paginaAnterior(ListarCatalogNumberDuplicadosHandler $handler): void
     {
         if ($this->pagina > 1) {
+            $this->successMessage = null;
             $this->pagina--;
             $this->cargar($handler);
         }
@@ -108,7 +125,8 @@ final class DuplicadosCatalogNumberIndex extends Component
                 motivo: '',
             ));
             $this->successMessage = "Confirmados como eventos distintos: {$output->especimenesAfectados} espécimen(es).";
-            // Recarga real: refleja el estado verdadero y hace backfill de páginas.
+            // Recarga real: refleja el estado verdadero y reencaja la página si el
+            // grupo resuelto era el último de la última página.
             $this->cargar($listHandler);
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);

@@ -64,6 +64,21 @@ final class FechasRevisionIndex extends Component
                 porPagina: $this->porPagina,
             ));
 
+            // Si la página quedó fuera de rango (el conjunto encogió tras
+            // confirmar el último grupo) reencájala al último válido y vuelve a
+            // consultar: reajustar solo el número dejaría la lista vacía aunque
+            // el total siga indicando que quedan grupos.
+            $maxPaginas = $output->totalVerbatimsDistintos === 0
+                ? 1
+                : (int) ceil($output->totalVerbatimsDistintos / $this->porPagina);
+            if ($this->pagina > $maxPaginas) {
+                $this->pagina = $maxPaginas;
+                $output = $handler->handle(new ListarFechaVerbatimsPendientesInput(
+                    pagina: $this->pagina,
+                    porPagina: $this->porPagina,
+                ));
+            }
+
             $this->total = $output->totalVerbatimsDistintos;
             $this->items = array_map(fn ($item) => [
                 'verbatim' => $item->verbatim,
@@ -88,6 +103,7 @@ final class FechasRevisionIndex extends Component
     {
         $maxPaginas = $this->total === 0 ? 1 : (int) ceil($this->total / $this->porPagina);
         if ($this->pagina < $maxPaginas) {
+            $this->successMessage = null;
             $this->pagina++;
             $this->cargar($handler);
         }
@@ -96,6 +112,7 @@ final class FechasRevisionIndex extends Component
     public function paginaAnterior(ListarFechaVerbatimsPendientesHandler $handler): void
     {
         if ($this->pagina > 1) {
+            $this->successMessage = null;
             $this->pagina--;
             $this->cargar($handler);
         }

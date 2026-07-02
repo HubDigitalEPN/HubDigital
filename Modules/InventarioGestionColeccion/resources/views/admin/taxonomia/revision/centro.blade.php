@@ -38,7 +38,7 @@
         ],
         [
             'titulo' => 'Muestras de colecta',
-            'descripcion' => 'Confirma o descarta las muestras agrupadas por oldCode del importador.',
+            'descripcion' => 'Confirma o descarta las muestras que el importador agrupó por su código de colecta original.',
             'count' => $muestrasPendientes,
             'unit' => 'muestras',
             'ruta' => 'inventario.taxonomia.muestras',
@@ -140,7 +140,11 @@
                         <div class="text-3xl font-bold {{ $colorTexto }}">{{ number_format($t['count']) }}</div>
                         <div class="text-xs text-text-secondary">{{ $t['unit'] }} pendiente(s)</div>
                     </div>
-                    <flux:icon name="arrow-right" class="size-5 text-text-secondary group-hover:{{ $colorTexto }} group-hover:translate-x-1 transition" />
+                    <flux:icon name="arrow-right" @class([
+                        'size-5 text-text-secondary group-hover:translate-x-1 transition',
+                        'group-hover:text-success' => $esCero,
+                        'group-hover:text-warning' => ! $esCero,
+                    ]) />
                 </div>
             </a>
         @endforeach

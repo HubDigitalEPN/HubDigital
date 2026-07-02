@@ -47,8 +47,11 @@
         @php
             $abierto = ! empty($expandido[$idx]);
             $seleccionados = count($seleccion[$idx] ?? []);
+            $mensajeConfirmar = $abierto
+                ? "Vas a enlazar {$seleccionados} espécimen(es) seleccionado(s) a «{$item['taxonSeleccionadoNombre']}». ¿Continuar?"
+                : "Vas a enlazar los {$item['totalEspecimenes']} espécimen(es) del grupo a «{$item['taxonSeleccionadoNombre']}». ¿Continuar?";
         @endphp
-        <div class="rounded-lg border border-border bg-surface shadow-sm border-l-4 border-l-warning overflow-hidden">
+        <div wire:key="taxon-{{ md5($item['verbatim']) }}" class="rounded-lg border border-border bg-surface shadow-sm border-l-4 border-l-warning overflow-hidden">
             <div class="px-5 py-4 bg-bg-main border-b border-border flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div class="min-w-0 space-y-1">
                     <div class="flex items-center gap-2 flex-wrap">
@@ -179,6 +182,7 @@
                     </span>
                     <flux:button variant="primary" icon="check"
                                  wire:click="confirmar({{ $idx }})"
+                                 wire:confirm="{{ $mensajeConfirmar }}"
                                  wire:loading.attr="disabled"
                                  wire:target="confirmar">
                         @if($abierto)

@@ -129,7 +129,7 @@ final class LocalidadIndex extends Component
                 stateProvince: $this->stateProvince,
             ));
 
-            $this->cargarLocalidades($listarHandler);
+            $this->cargarLocalidades($listarHandler, $this->page);
             $this->showModal = false;
             $this->successMessage = 'Localidad registrada correctamente.';
             $this->errorMessage = null;
@@ -179,7 +179,7 @@ final class LocalidadIndex extends Component
                 stateProvince: $this->editStateProvince,
             ));
 
-            $this->cargarLocalidades($listarHandler);
+            $this->cargarLocalidades($listarHandler, $this->page);
             $this->showEditModal = false;
             $this->successMessage = 'Localidad actualizada correctamente.';
             $this->errorMessage = null;

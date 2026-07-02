@@ -74,6 +74,21 @@ final class LocalidadesRevisionIndex extends Component
                 porPagina: $this->porPagina,
             ));
 
+            // Reencaje: si la página quedó fuera de rango tras confirmar el
+            // último grupo, vuelve al último válido y reconsulta (evita la lista
+            // vacía con un total que dice que aún hay grupos).
+            $maxPaginas = $output->totalVerbatimsDistintos === 0
+                ? 1
+                : (int) ceil($output->totalVerbatimsDistintos / $this->porPagina);
+            if ($this->pagina > $maxPaginas) {
+                $this->pagina = $maxPaginas;
+                $output = $handler->handle(new ListarLocalidadVerbatimsPendientesInput(
+                    limiteCandidatosPorVerbatim: $this->limiteCandidatos,
+                    pagina: $this->pagina,
+                    porPagina: $this->porPagina,
+                ));
+            }
+
             $this->total = $output->totalVerbatimsDistintos;
             $this->items = array_map(fn ($item) => [
                 'verbatim' => $item->verbatim,
@@ -102,6 +117,7 @@ final class LocalidadesRevisionIndex extends Component
     {
         $maxPaginas = $this->total === 0 ? 1 : (int) ceil($this->total / $this->porPagina);
         if ($this->pagina < $maxPaginas) {
+            $this->successMessage = null;
             $this->pagina++;
             $this->cargar($handler);
         }
@@ -110,6 +126,7 @@ final class LocalidadesRevisionIndex extends Component
     public function paginaAnterior(ListarLocalidadVerbatimsPendientesHandler $handler): void
     {
         if ($this->pagina > 1) {
+            $this->successMessage = null;
             $this->pagina--;
             $this->cargar($handler);
         }

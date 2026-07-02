@@ -50,7 +50,7 @@
         <div>
             <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Muestras de colecta</flux:heading>
             <p class="text-sm text-text-secondary mt-1">
-                Muestras que el importador agrupó por su código de colecta original (oldCode del Excel), pendientes de que el curador las revise.
+                Muestras que el importador agrupó por su código de colecta original del Excel, pendientes de que el curador las revise.
             </p>
         </div>
         <div class="flex flex-wrap gap-2">
@@ -152,6 +152,7 @@
 
             @forelse($muestras as $muestra)
                 <div role="row"
+                     wire:key="muestra-fila-{{ $muestra['id'] }}"
                      class="grid border-t border-border hover:bg-bg-main transition-colors text-sm border-l-4 border-l-warning"
                      :style="`grid-template-columns: repeat(${visibles.length + 1}, minmax(140px, auto));`">
                     @foreach($columnasRegistro as $col)
@@ -165,12 +166,16 @@
                     <div role="cell" class="px-4 py-3 whitespace-nowrap" style="order: 99999;">
                         <div class="flex items-center gap-2">
                             <flux:button size="sm" variant="primary" icon="check"
-                                         wire:click="confirmar('{{ $muestra['id'] }}')">
+                                         wire:click="confirmar('{{ $muestra['id'] }}')"
+                                         wire:loading.attr="disabled"
+                                         wire:target="confirmar('{{ $muestra['id'] }}')">
                                 Confirmar
                             </flux:button>
                             <flux:button size="sm" variant="ghost" icon="x-mark"
                                          wire:click="descartar('{{ $muestra['id'] }}')"
-                                         wire:confirm="¿Descartar esta muestra? Quedará marcada con motivo de descarte para revisión.">
+                                         wire:confirm="¿Descartar esta muestra? Quedará marcada con motivo de descarte para revisión."
+                                         wire:loading.attr="disabled"
+                                         wire:target="descartar('{{ $muestra['id'] }}')">
                                 Descartar
                             </flux:button>
                         </div>
@@ -186,7 +191,7 @@
         {{-- Móvil --}}
         <div class="md:hidden divide-y divide-border">
             @forelse($muestras as $muestra)
-                <div class="p-4 flex flex-col gap-2 border-l-4 border-l-warning">
+                <div wire:key="muestra-tarjeta-{{ $muestra['id'] }}" class="p-4 flex flex-col gap-2 border-l-4 border-l-warning">
                     <div class="flex items-start justify-between gap-2" style="order: -1;">
                         <div class="font-mono text-sm text-text-primary break-all">
                             {{ $muestra['codigoMuestra'] ?? '—' }}
@@ -213,12 +218,16 @@
                     @endforeach
                     <div class="flex flex-wrap gap-2 pt-2" style="order: 99999;">
                         <flux:button variant="primary" icon="check"
-                                     wire:click="confirmar('{{ $muestra['id'] }}')">
+                                     wire:click="confirmar('{{ $muestra['id'] }}')"
+                                     wire:loading.attr="disabled"
+                                     wire:target="confirmar('{{ $muestra['id'] }}')">
                             Confirmar
                         </flux:button>
                         <flux:button variant="ghost" icon="x-mark"
                                      wire:click="descartar('{{ $muestra['id'] }}')"
-                                         wire:confirm="¿Descartar esta muestra? Quedará marcada con motivo de descarte para revisión.">
+                                     wire:confirm="¿Descartar esta muestra? Quedará marcada con motivo de descarte para revisión."
+                                     wire:loading.attr="disabled"
+                                     wire:target="descartar('{{ $muestra['id'] }}')">
                             Descartar
                         </flux:button>
                     </div>

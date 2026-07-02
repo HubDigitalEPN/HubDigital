@@ -410,21 +410,32 @@ final class EspecimenIndex extends Component
         }
     }
 
-    public function confirmarRevision(ConfirmarRevisionEspecimenHandler $handler, string $id): void
-    {
+    public function confirmarRevision(
+        ConfirmarRevisionEspecimenHandler $handler,
+        BuscarEspecimenesHandler $buscarHandler,
+        string $id,
+    ): void {
         try {
             $handler->handle(new ConfirmarRevisionEspecimenInput(especimenId: $id));
 
-            // Actualizar la copia local del row para feedback inmediato.
-            foreach ($this->especimenes as $i => $row) {
-                if (($row['id'] ?? null) === $id) {
-                    $this->especimenes[$i]['estadoRevision'] = 'confirmada';
-                    $this->especimenes[$i]['motivoRevision'] = null;
-                    break;
-                }
-            }
             $this->successMessage = 'Revisión confirmada.';
             $this->errorMessage = null;
+
+            // Recarga real: con el filtro por defecto "solo pendientes" el
+            // espécimen ya confirmado sale del conjunto, así que reconsultamos en
+            // vez de parchear la fila en memoria (que lo dejaba visible y con el
+            // contador desfasado hasta re-buscar a mano).
+            if ($this->buscado) {
+                $this->ejecutarBusqueda($buscarHandler);
+            } else {
+                foreach ($this->especimenes as $i => $row) {
+                    if (($row['id'] ?? null) === $id) {
+                        $this->especimenes[$i]['estadoRevision'] = 'confirmada';
+                        $this->especimenes[$i]['motivoRevision'] = null;
+                        break;
+                    }
+                }
+            }
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
