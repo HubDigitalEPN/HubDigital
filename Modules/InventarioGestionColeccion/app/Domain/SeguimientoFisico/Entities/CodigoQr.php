@@ -29,7 +29,17 @@ class CodigoQr
         string $payload,
         \DateTimeImmutable $generadoEn,
     ): self {
-        return new self($id, $especimenId, trim($payload), $generadoEn);
+        $especimenId = trim($especimenId);
+        $payload = trim($payload);
+
+        if ($especimenId === '') {
+            throw new \InvalidArgumentException('El especimenId del código QR no puede estar vacío.');
+        }
+        if ($payload === '') {
+            throw new \InvalidArgumentException('El payload del código QR no puede estar vacío.');
+        }
+
+        return new self($id, $especimenId, $payload, $generadoEn);
     }
 
     public static function reconstituir(

@@ -15,6 +15,9 @@
                     El código QR escaneado no corresponde a ningún espécimen registrado en la colección.
                     Verifica que la etiqueta sea legible o solicita su regeneración al curador.
                 </p>
+                <flux:button href="{{ url('/') }}" variant="primary" icon="home" class="mt-4 w-full">
+                    Ir al inicio
+                </flux:button>
             </div>
         </main>
 

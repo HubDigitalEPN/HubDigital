@@ -264,22 +264,28 @@
 
     {{-- Panel del código QR del espécimen --}}
     @if($qrUrl)
+        {{-- wire:key dinámico: al cambiar de espécimen, Alpine reinicia x-data y
+             `codigo` deja de apuntar al espécimen anterior (evita imprimir una
+             etiqueta con el código de uno y el QR de otro). --}}
         <div
-            wire:key="panel-qr-especimen"
+            wire:key="panel-qr-{{ md5($qrUrl) }}"
             class="relative rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-6"
             x-data="{
+                codigo: @js($qrEspecimenCodigo),
                 imprimir() {
-                    const svg = this.$refs.caja.innerHTML;
                     const w = window.open('', '_blank', 'width=400,height=520');
-                    if (! w) { return; }
-                    w.document.write(
-                        '<html><head><title>QR {{ $qrEspecimenCodigo }}</title></head>' +
-                        '<body style=\'margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif\'>' +
-                        '<div style=\'width:220px\'>' + svg + '</div>' +
-                        '<p style=\'font-weight:600;margin-top:8px\'>{{ $qrEspecimenCodigo }}</p>' +
-                        '</body></html>'
-                    );
-                    w.document.close();
+                    if (! w) { window.alert('Habilita las ventanas emergentes para imprimir la etiqueta.'); return; }
+                    const d = w.document;
+                    d.title = 'QR ' + this.codigo;
+                    d.body.style.cssText = 'margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif';
+                    const caja = d.createElement('div');
+                    caja.style.width = '220px';
+                    caja.innerHTML = this.$refs.caja.innerHTML;
+                    const label = d.createElement('p');
+                    label.style.cssText = 'font-weight:600;margin-top:8px';
+                    label.textContent = this.codigo;
+                    d.body.appendChild(caja);
+                    d.body.appendChild(label);
                     w.focus();
                     w.print();
                 },
@@ -394,7 +400,9 @@
                                     </flux:button>
                                 @endif
                                 <flux:button size="sm" variant="ghost" icon="qr-code"
-                                             wire:click="mostrarQr('{{ $especimen['id'] }}')">
+                                             wire:click="mostrarQr('{{ $especimen['id'] }}')"
+                                             wire:loading.attr="disabled"
+                                             wire:target="mostrarQr('{{ $especimen['id'] }}')">
                                     QR
                                 </flux:button>
                             </div>
@@ -448,7 +456,9 @@
                                 </flux:button>
                             @endif
                             <flux:button variant="ghost" icon="qr-code"
-                                         wire:click="mostrarQr('{{ $especimen['id'] }}')">
+                                         wire:click="mostrarQr('{{ $especimen['id'] }}')"
+                                         wire:loading.attr="disabled"
+                                         wire:target="mostrarQr('{{ $especimen['id'] }}')">
                                 Código QR
                             </flux:button>
                         </div>
