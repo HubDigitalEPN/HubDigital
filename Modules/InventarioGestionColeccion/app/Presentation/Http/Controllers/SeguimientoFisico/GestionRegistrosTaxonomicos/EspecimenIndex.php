@@ -12,6 +12,7 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Ac
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarEspecimen\ActualizarEspecimenInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\BuscarEspecimenes\BuscarEspecimenesHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\BuscarEspecimenes\BuscarEspecimenesInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\BuscarEspecimenes\BuscarEspecimenesOutput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConfirmarRevisionEspecimen\ConfirmarRevisionEspecimenHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConfirmarRevisionEspecimen\ConfirmarRevisionEspecimenInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\GenerarCodigoQr\GenerarCodigoQrHandler;
@@ -500,36 +501,46 @@ final class EspecimenIndex extends Component
     private function ejecutarBusqueda(BuscarEspecimenesHandler $handler): void
     {
         try {
-            $output = $handler->handle(new BuscarEspecimenesInput(
-                taxonNombre: $this->nullableString($this->fTaxon),
-                codigoCatalogo: $this->nullableString($this->fCodigoCatalogo),
-                occurrenceId: $this->nullableString($this->fOccurrenceId),
-                catalogNumber: $this->nullableString($this->fCatalogNumber),
-                localidad: $this->nullableString($this->fLocalidad),
-                colector: $this->nullableString($this->fColector),
-                familia: $this->nullableString($this->fFamilia),
-                fechaDesde: $this->nullableString($this->fFechaDesde),
-                fechaHasta: $this->nullableString($this->fFechaHasta),
-                estado: $this->nullableString($this->fEstado),
-                estadoRevision: $this->nullableString($this->fEstadoRevision),
-                motivoRevision: $this->nullableString($this->fMotivoRevision),
-                paraRevision: $this->fParaRevision,
-                page: $this->page,
-                perPage: $this->perPage,
-            ));
+            $output = $this->consultarPagina($handler, $this->page);
+
+            // Si la página pedida quedó fuera de rango (el conjunto encogió tras
+            // editar/registrar/filtrar), reencaja Y vuelve a consultar la página
+            // corregida: si solo reencajáramos, la tabla quedaría con los items
+            // vacíos de la página inexistente aunque el total diga que hay filas.
+            if ($this->page > $output->totalPaginas) {
+                $this->page = max(1, $output->totalPaginas);
+                $output = $this->consultarPagina($handler, $this->page);
+            }
 
             $this->especimenes = $output->items;
             $this->total = $output->total;
             $this->totalPaginas = $output->totalPaginas;
-            // Si la página quedó fuera de rango (p. ej. tras filtrar), reencájala.
-            if ($this->page > $this->totalPaginas) {
-                $this->page = $this->totalPaginas;
-            }
             $this->buscado = true;
             $this->errorMessage = null;
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
+    }
+
+    private function consultarPagina(BuscarEspecimenesHandler $handler, int $page): BuscarEspecimenesOutput
+    {
+        return $handler->handle(new BuscarEspecimenesInput(
+            taxonNombre: $this->nullableString($this->fTaxon),
+            codigoCatalogo: $this->nullableString($this->fCodigoCatalogo),
+            occurrenceId: $this->nullableString($this->fOccurrenceId),
+            catalogNumber: $this->nullableString($this->fCatalogNumber),
+            localidad: $this->nullableString($this->fLocalidad),
+            colector: $this->nullableString($this->fColector),
+            familia: $this->nullableString($this->fFamilia),
+            fechaDesde: $this->nullableString($this->fFechaDesde),
+            fechaHasta: $this->nullableString($this->fFechaHasta),
+            estado: $this->nullableString($this->fEstado),
+            estadoRevision: $this->nullableString($this->fEstadoRevision),
+            motivoRevision: $this->nullableString($this->fMotivoRevision),
+            paraRevision: $this->fParaRevision,
+            page: $page,
+            perPage: $this->perPage,
+        ));
     }
 
     public function preset(string $nombre): void
