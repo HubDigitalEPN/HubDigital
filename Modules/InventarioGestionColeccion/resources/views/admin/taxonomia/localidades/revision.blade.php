@@ -47,6 +47,9 @@
             $mensajeConfirmar = $abierto
                 ? "Vas a enlazar {$seleccionados} espécimen(es) seleccionado(s) a «{$item['localidadSeleccionadaNombre']}». ¿Continuar?"
                 : "Vas a enlazar los {$item['totalEspecimenes']} espécimen(es) del grupo a «{$item['localidadSeleccionadaNombre']}». ¿Continuar?";
+            $mensajeCrear = $abierto
+                ? "Vas a crear una localidad nueva y enlazar {$seleccionados} espécimen(es) seleccionado(s). ¿Continuar?"
+                : "Vas a crear una localidad nueva y enlazar los {$item['totalEspecimenes']} espécimen(es) del grupo. ¿Continuar?";
         @endphp
         <div wire:key="localidad-{{ md5($item['verbatim']) }}" class="rounded-lg border border-border bg-surface shadow-sm border-l-4 border-l-warning overflow-hidden">
             <div class="px-5 py-4 bg-bg-main border-b border-border flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -169,6 +172,33 @@
                     @elseif(isset($busquedaResultados[$idx]))
                         <p class="text-xs text-text-secondary italic">Sin coincidencias para esa búsqueda.</p>
                     @endif
+                </div>
+
+                {{-- ¿No existe? Crear la localidad canónica nueva y enlazar en el acto --}}
+                <div class="rounded-lg border border-dashed border-science-blue/40 bg-science-blue/5 p-3 space-y-2">
+                    <p class="text-xs font-semibold text-science-blue uppercase tracking-wide">¿No está en la lista? Créala y enlaza</p>
+                    <div class="flex flex-col gap-2 sm:flex-row">
+                        <flux:input wire:model="nuevaLocalidadNombre.{{ $idx }}"
+                                    placeholder="Nombre de la nueva localidad…"
+                                    class="flex-1" />
+                        <flux:select wire:model="nuevaLocalidadRango.{{ $idx }}" class="sm:w-44">
+                            @foreach($rangosLocalidad as $r)
+                                <option value="{{ $r }}" @selected(($nuevaLocalidadRango[$idx] ?? 'sitio') === $r)>
+                                    {{ ucfirst(str_replace('_', ' ', $r)) }}
+                                </option>
+                            @endforeach
+                        </flux:select>
+                        <flux:button variant="primary" icon="plus"
+                                     wire:click="crearYEnlazar({{ $idx }})"
+                                     wire:confirm="{{ $mensajeCrear }}"
+                                     wire:loading.attr="disabled"
+                                     wire:target="crearYEnlazar">
+                            Crear y enlazar
+                        </flux:button>
+                    </div>
+                    <p class="text-xs text-text-secondary">
+                        Crea una localidad canónica con ese nombre y {{ $abierto ? 'la aplica a los especímenes seleccionados' : 'la aplica a todo el grupo' }}.
+                    </p>
                 </div>
 
                 <div class="border-t border-border pt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

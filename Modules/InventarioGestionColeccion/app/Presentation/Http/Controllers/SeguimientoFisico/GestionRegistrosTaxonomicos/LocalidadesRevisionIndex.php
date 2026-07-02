@@ -11,10 +11,13 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Bu
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\BuscarLocalidadesPorNombre\BuscarLocalidadesPorNombreInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConfirmarLocalidadCanonicaParaVerbatim\ConfirmarLocalidadCanonicaParaVerbatimHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConfirmarLocalidadCanonicaParaVerbatim\ConfirmarLocalidadCanonicaParaVerbatimInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\CrearLocalidadYEnlazarVerbatim\CrearLocalidadYEnlazarVerbatimHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\CrearLocalidadYEnlazarVerbatim\CrearLocalidadYEnlazarVerbatimInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarEspecimenesDeGrupo\ListarEspecimenesDeGrupoHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarEspecimenesDeGrupo\ListarEspecimenesDeGrupoInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarLocalidadVerbatimsPendientes\ListarLocalidadVerbatimsPendientesHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarLocalidadVerbatimsPendientes\ListarLocalidadVerbatimsPendientesInput;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\RangoLocalidad;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
 
 #[Layout('layouts.app', params: ['title' => 'Localidades por confirmar'])]
@@ -55,6 +58,12 @@ final class LocalidadesRevisionIndex extends Component
 
     /** Resultados del buscador: idx => list<array{localidadId,nombreCanonico,rango}>. */
     public array $busquedaResultados = [];
+
+    /** Nombre de la localidad nueva a crear por grupo: idx => string. */
+    public array $nuevaLocalidadNombre = [];
+
+    /** Rango de la localidad nueva a crear por grupo: idx => string. */
+    public array $nuevaLocalidadRango = [];
 
     public ?string $successMessage = null;
 
@@ -107,6 +116,8 @@ final class LocalidadesRevisionIndex extends Component
             $this->seleccion = [];
             $this->busquedaTexto = [];
             $this->busquedaResultados = [];
+            $this->nuevaLocalidadNombre = [];
+            $this->nuevaLocalidadRango = [];
             $this->errorMessage = null;
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);
@@ -258,6 +269,52 @@ final class LocalidadesRevisionIndex extends Component
         }
     }
 
+    /**
+     * Crea una localidad canónica NUEVA a partir del nombre tecleado y enlaza
+     * en el acto los especímenes del grupo (todo o solo lo seleccionado). Evita
+     * tener que salir a la pantalla de Localidades a registrarla primero.
+     */
+    public function crearYEnlazar(
+        CrearLocalidadYEnlazarVerbatimHandler $handler,
+        ListarLocalidadVerbatimsPendientesHandler $listHandler,
+        int $idx,
+    ): void {
+        if (! isset($this->items[$idx])) {
+            return;
+        }
+        $nombre = trim($this->nuevaLocalidadNombre[$idx] ?? '');
+        if ($nombre === '') {
+            $this->errorMessage = 'Escribe el nombre de la nueva localidad antes de crearla.';
+
+            return;
+        }
+        $rango = trim($this->nuevaLocalidadRango[$idx] ?? '') ?: RangoLocalidad::Sitio->value;
+
+        $ids = null;
+        if (! empty($this->expandido[$idx])) {
+            $ids = array_values($this->seleccion[$idx] ?? []);
+            if ($ids === []) {
+                $this->errorMessage = 'Selecciona al menos un espécimen, o cierra el detalle para aplicar a todo el grupo.';
+
+                return;
+            }
+        }
+
+        try {
+            $output = $handler->handle(new CrearLocalidadYEnlazarVerbatimInput(
+                verbatim: $this->items[$idx]['verbatim'],
+                nombreCanonico: $nombre,
+                rango: $rango,
+                especimenIds: $ids,
+            ));
+
+            $this->successMessage = "Creada «{$output->nombreCanonico}» y enlazados {$output->especimenesEnlazados} espécimen(es).";
+            $this->cargar($listHandler);
+        } catch (\Throwable $e) {
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
+        }
+    }
+
     public function render(): View
     {
         $totalPaginas = $this->total === 0 ? 1 : (int) ceil($this->total / $this->porPagina);
@@ -266,6 +323,7 @@ final class LocalidadesRevisionIndex extends Component
             'totalPaginas' => $totalPaginas,
             'inicio' => $this->total > 0 ? ($this->pagina - 1) * $this->porPagina + 1 : 0,
             'fin' => min($this->pagina * $this->porPagina, $this->total),
+            'rangosLocalidad' => RangoLocalidad::valoresAceptados(),
         ]);
     }
 }
