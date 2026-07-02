@@ -42,8 +42,10 @@
     </div>
 
     @forelse($items as $idx => $item)
-        @php($abierto = ! empty($expandido[$idx]))
-        @php($seleccionados = count($seleccion[$idx] ?? []))
+        @php
+            $abierto = ! empty($expandido[$idx]);
+            $seleccionados = count($seleccion[$idx] ?? []);
+        @endphp
         <div class="rounded-lg border border-border bg-surface shadow-sm border-l-4 {{ $item['sugerenciaInicio'] ? 'border-l-info' : 'border-l-warning' }} overflow-hidden">
             <div class="px-5 py-4 bg-bg-main border-b border-border flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div class="min-w-0 space-y-1">

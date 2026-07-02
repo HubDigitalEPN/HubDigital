@@ -1,9 +1,9 @@
 <div class="space-y-6 p-4 sm:p-6 max-w-5xl">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Configuración Dataset GBIF</flux:heading>
+            <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Publicación GBIF</flux:heading>
             <p class="text-sm text-text-secondary mt-1">
-                Metadatos institucionales requeridos por el exportador Darwin Core Archive.
+                Datos de tu museo/colección que se necesitan una sola vez para poder publicar en GBIF.
                 @if($existeConfig)
                     <span class="inline-flex items-center gap-1 text-success">
                         <flux:icon name="check-circle" class="size-3.5" />
@@ -37,32 +37,32 @@
             </div>
             <div class="p-5 grid grid-cols-1 gap-4 md:grid-cols-2">
                 <flux:field>
-                    <flux:label>institutionCode <span class="text-error">*</span></flux:label>
+                    <flux:label>Código de la institución <span class="text-text-secondary font-normal">(institutionCode)</span> <span class="text-error">*</span></flux:label>
                     <flux:input wire:model="institutionCode" placeholder="MEPN" />
                     <flux:description>Código corto del museo. Ej: <code>MEPN</code>.</flux:description>
                     <flux:error name="institutionCode" />
                 </flux:field>
 
                 <flux:field>
-                    <flux:label>collectionCode <span class="text-error">*</span></flux:label>
+                    <flux:label>Código de la colección <span class="text-text-secondary font-normal">(collectionCode)</span> <span class="text-error">*</span></flux:label>
                     <flux:input wire:model="collectionCode" placeholder="INV" />
                     <flux:description>Código de la colección. Ej: <code>INV</code> para invertebrados.</flux:description>
                     <flux:error name="collectionCode" />
                 </flux:field>
 
                 <flux:field>
-                    <flux:label>institutionID</flux:label>
+                    <flux:label>Identificador global de la institución <span class="text-text-secondary font-normal">(institutionID)</span></flux:label>
                     <flux:input wire:model="institutionId" placeholder="ROR / GRBio / GBIF Org ID" />
                     <flux:description>Identificador global del museo (opcional).</flux:description>
                 </flux:field>
 
                 <flux:field>
-                    <flux:label>collectionID</flux:label>
+                    <flux:label>Identificador global de la colección <span class="text-text-secondary font-normal">(collectionID)</span></flux:label>
                     <flux:input wire:model="collectionId" placeholder="GBIF Collection ID" />
                 </flux:field>
 
                 <flux:field class="md:col-span-2">
-                    <flux:label>ownerInstitutionCode</flux:label>
+                    <flux:label>Institución propietaria (si difiere) <span class="text-text-secondary font-normal">(ownerInstitutionCode)</span></flux:label>
                     <flux:input wire:model="ownerInstitutionCode" placeholder="Código de la institución propietaria si difiere de institutionCode" />
                 </flux:field>
             </div>
@@ -80,10 +80,19 @@
             </div>
             <div class="p-5">
                 <flux:field>
-                    <flux:label>basisOfRecord</flux:label>
+                    <flux:label>Tipo de registro <span class="text-text-secondary font-normal">(basisOfRecord)</span></flux:label>
                     <flux:select wire:model="basisOfRecord">
                         @foreach($basisOfRecords as $br)
-                            <option value="{{ $br->value }}">{{ $br->value }}</option>
+                            @php($legible = match($br->value) {
+                                'PreservedSpecimen' => 'Espécimen preservado',
+                                'LivingSpecimen' => 'Espécimen vivo',
+                                'FossilSpecimen' => 'Espécimen fósil',
+                                'MaterialSample' => 'Muestra de material',
+                                'HumanObservation' => 'Observación humana',
+                                'MachineObservation' => 'Observación por instrumento',
+                                default => $br->value,
+                            })
+                            <option value="{{ $br->value }}">{{ $legible }} ({{ $br->value }})</option>
                         @endforeach
                     </flux:select>
                     <flux:description>
@@ -106,7 +115,7 @@
             </div>
             <div class="p-5 space-y-4">
                 <flux:field>
-                    <flux:label>License (URL)</flux:label>
+                    <flux:label>Licencia de uso (URL) <span class="text-text-secondary font-normal">(license)</span></flux:label>
                     <flux:input wire:model="license" placeholder="https://creativecommons.org/licenses/by-nc/4.0/" />
                     <flux:description>
                         Licencias frecuentes:
@@ -121,18 +130,18 @@
 
                 <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <flux:field>
-                        <flux:label>rightsHolder</flux:label>
+                        <flux:label>Titular de los derechos <span class="text-text-secondary font-normal">(rightsHolder)</span></flux:label>
                         <flux:input wire:model="rightsHolder" placeholder='Museo de Historia Natural "Gustavo Orces V"' />
                     </flux:field>
 
                     <flux:field>
-                        <flux:label>accessRights</flux:label>
+                        <flux:label>Derechos de acceso <span class="text-text-secondary font-normal">(accessRights)</span></flux:label>
                         <flux:input wire:model="accessRights" placeholder="Términos adicionales de acceso (opcional)" />
                     </flux:field>
                 </div>
 
                 <flux:field>
-                    <flux:label>informationWithheld</flux:label>
+                    <flux:label>Información omitida a propósito <span class="text-text-secondary font-normal">(informationWithheld)</span></flux:label>
                     <flux:textarea wire:model="informationWithheld"
                                    rows="2"
                                    placeholder="Información sensible omitida intencionalmente (e.g. coordenadas exactas de especies amenazadas)" />
@@ -153,17 +162,17 @@
             </div>
             <div class="p-5 space-y-4">
                 <flux:field>
-                    <flux:label>datasetName</flux:label>
+                    <flux:label>Nombre del conjunto de datos <span class="text-text-secondary font-normal">(datasetName)</span></flux:label>
                     <flux:input wire:model="datasetName" placeholder="Catálogo de invertebrados — Museo de Historia Natural Gustavo Orces V" />
                 </flux:field>
 
                 <flux:field>
-                    <flux:label>EML — Título</flux:label>
+                    <flux:label>Título descriptivo del conjunto <span class="text-text-secondary font-normal">(EML)</span></flux:label>
                     <flux:input wire:model="emlTitulo" placeholder="Título descriptivo del dataset" />
                 </flux:field>
 
                 <flux:field>
-                    <flux:label>EML — Contacto</flux:label>
+                    <flux:label>Contacto responsable del conjunto <span class="text-text-secondary font-normal">(EML)</span></flux:label>
                     <flux:textarea wire:model="emlContacto"
                                    rows="3"
                                    placeholder="Nombre, email y filiación del responsable del dataset" />
