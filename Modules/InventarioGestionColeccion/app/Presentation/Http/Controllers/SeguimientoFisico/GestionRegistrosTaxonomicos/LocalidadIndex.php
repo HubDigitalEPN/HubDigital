@@ -12,6 +12,8 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Ac
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarLocalidad\ActualizarLocalidadInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarLocalidades\ListarLocalidadesHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarLocalidades\ListarLocalidadesInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarLocalidadesParaSelector\ListarLocalidadesParaSelectorHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarLocalidadesParaSelector\ListarLocalidadesParaSelectorInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarLocalidad\RegistrarLocalidadHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarLocalidad\RegistrarLocalidadInput;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\RangoLocalidad;
@@ -24,6 +26,15 @@ final class LocalidadIndex extends Component
 
     /** @var array<int, array<string, mixed>> */
     public array $localidades = [];
+
+    /**
+     * Todas las localidades canónicas (id, nombre, rango) para el selector
+     * "Localidad padre" de los modales. Es la lista COMPLETA, no la página
+     * visible: sin esto solo se podían elegir padres de la página actual.
+     *
+     * @var array<int, array{id: string, nombreCanonico: string, rango: string}>
+     */
+    public array $localidadesParaPadre = [];
 
     /** @var string[] */
     public array $rangos = [];
@@ -96,6 +107,14 @@ final class LocalidadIndex extends Component
     {
         $this->rangos = RangoLocalidad::valoresAceptados();
         $this->cargarLocalidades($handler);
+        $this->cargarSelectorPadres();
+    }
+
+    private function cargarSelectorPadres(): void
+    {
+        $this->localidadesParaPadre = app(ListarLocalidadesParaSelectorHandler::class)
+            ->handle(new ListarLocalidadesParaSelectorInput)
+            ->items;
     }
 
     public function abrirModal(): void
@@ -130,6 +149,7 @@ final class LocalidadIndex extends Component
             ));
 
             $this->cargarLocalidades($listarHandler, $this->page);
+            $this->cargarSelectorPadres();
             $this->showModal = false;
             $this->successMessage = 'Localidad registrada correctamente.';
             $this->errorMessage = null;
@@ -180,6 +200,7 @@ final class LocalidadIndex extends Component
             ));
 
             $this->cargarLocalidades($listarHandler, $this->page);
+            $this->cargarSelectorPadres();
             $this->showEditModal = false;
             $this->successMessage = 'Localidad actualizada correctamente.';
             $this->errorMessage = null;
