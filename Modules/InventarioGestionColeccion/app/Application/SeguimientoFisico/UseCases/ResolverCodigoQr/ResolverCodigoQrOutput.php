@@ -15,6 +15,7 @@ final readonly class ResolverCodigoQrOutput
         public string $id,
         public string $codigoCatalogo,
         public ?string $taxonId,
+        public ?string $taxonNombre,
         public string $localidad,
         public string $fechaColecta,
         public string $colector,

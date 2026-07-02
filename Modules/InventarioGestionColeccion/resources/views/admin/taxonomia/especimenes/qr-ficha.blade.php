@@ -35,18 +35,28 @@
                     </span>
                 </div>
 
+                {{-- Nombre científico: el dato más importante de la etiqueta. --}}
+                <div class="mb-4 border-t border-border pt-3">
+                    <p class="text-xs font-medium uppercase tracking-wider text-text-secondary">Determinación</p>
+                    @if($ficha->taxonNombre)
+                        <p class="font-serif text-lg italic text-text-primary">{{ $ficha->taxonNombre }}</p>
+                    @else
+                        <p class="text-sm text-text-secondary italic">Sin determinar</p>
+                    @endif
+                </div>
+
                 <dl class="space-y-3 text-sm">
                     <div class="flex justify-between gap-3">
                         <dt class="shrink-0 text-text-secondary">Localidad</dt>
-                        <dd class="text-right text-text-primary">{{ $ficha->localidad }}</dd>
+                        <dd class="text-right text-text-primary">{{ $ficha->localidad ?: '—' }}</dd>
                     </div>
                     <div class="flex justify-between gap-3">
                         <dt class="shrink-0 text-text-secondary">Fecha de colecta</dt>
-                        <dd class="text-right text-text-primary">{{ $ficha->fechaColecta }}</dd>
+                        <dd class="text-right text-text-primary">{{ $ficha->fechaColecta ?: '—' }}</dd>
                     </div>
                     <div class="flex justify-between gap-3">
                         <dt class="shrink-0 text-text-secondary">Colector</dt>
-                        <dd class="text-right text-text-primary">{{ $ficha->colector }}</dd>
+                        <dd class="text-right text-text-primary">{{ $ficha->colector ?: '—' }}</dd>
                     </div>
                     <div class="flex flex-col gap-1 border-t border-border pt-3">
                         <dt class="text-text-secondary">GUID</dt>

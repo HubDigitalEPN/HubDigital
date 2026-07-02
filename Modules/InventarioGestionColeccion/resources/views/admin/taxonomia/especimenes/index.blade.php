@@ -268,30 +268,50 @@
             wire:key="panel-qr-especimen"
             class="relative rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-6"
             x-data="{
-                render(url) {
-                    if (! url || ! window.QRCode) { return; }
-                    this.$refs.caja.innerHTML = '';
-                    new window.QRCode(this.$refs.caja, {
-                        text: url, width: 200, height: 200,
-                        correctLevel: window.QRCode.CorrectLevel.M,
-                    });
+                imprimir() {
+                    const svg = this.$refs.caja.innerHTML;
+                    const w = window.open('', '_blank', 'width=400,height=520');
+                    if (! w) { return; }
+                    w.document.write(
+                        '<html><head><title>QR {{ $qrEspecimenCodigo }}</title></head>' +
+                        '<body style=\'margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif\'>' +
+                        '<div style=\'width:220px\'>' + svg + '</div>' +
+                        '<p style=\'font-weight:600;margin-top:8px\'>{{ $qrEspecimenCodigo }}</p>' +
+                        '</body></html>'
+                    );
+                    w.document.close();
+                    w.focus();
+                    w.print();
                 },
             }"
-            x-effect="render($wire.qrUrl)"
         >
             <flux:button variant="subtle" icon="x-mark" wire:click="cerrarQr"
                          class="absolute right-3 top-3" aria-label="Cerrar" />
 
             <div class="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
-                <div x-ref="caja" class="shrink-0 rounded-lg bg-white p-3 shadow-sm"></div>
+                {{-- SVG generado en el servidor: se dibuja sin JS ni CDN, funciona offline. --}}
+                <div x-ref="caja" class="w-[220px] shrink-0 rounded-lg bg-white p-3 shadow-sm">
+                    {!! $qrSvg !!}
+                </div>
 
-                <div class="min-w-0 flex-1 space-y-2 pr-10">
+                <div class="min-w-0 flex-1 space-y-3 pr-10">
                     <flux:heading size="lg" class="text-text-primary">
                         Código QR de {{ $qrEspecimenCodigo }}
                     </flux:heading>
                     <p class="text-sm text-text-secondary">
                         Imprime este código y pégalo en el espécimen. Al escanearlo desde el móvil se abre su ficha digital.
                     </p>
+
+                    <div class="flex flex-wrap gap-2">
+                        <flux:button variant="primary" icon="printer" @click="imprimir()">
+                            Imprimir
+                        </flux:button>
+                        <flux:button variant="ghost" icon="arrow-down-tray"
+                                     href="data:image/svg+xml;charset=utf-8,{{ rawurlencode($qrSvg) }}"
+                                     download="qr-{{ $qrEspecimenCodigo }}.svg">
+                            Descargar SVG
+                        </flux:button>
+                    </div>
 
                     <flux:field>
                         <flux:label>Enlace de la ficha</flux:label>
@@ -618,17 +638,6 @@
                     return 'bg-text-secondary';
                 },
             };
-        }
-    </script>
-
-    {{-- Librería QR liviana y sin dependencias: codifica el enlace en el navegador
-         del curador, así el QR se genera del lado del cliente sin servicios externos. --}}
-    <script>
-        if (! window.QRCode && ! document.getElementById('qrcodejs-lib')) {
-            const s = document.createElement('script');
-            s.id = 'qrcodejs-lib';
-            s.src = 'https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js';
-            document.head.appendChild(s);
         }
     </script>
 </div>

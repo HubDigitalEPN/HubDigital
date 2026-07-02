@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos;
 
+use BaconQrCode\Renderer\Image\SvgImageBackEnd;
+use BaconQrCode\Renderer\ImageRenderer;
+use BaconQrCode\Renderer\RendererStyle\RendererStyle;
+use BaconQrCode\Writer;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Rule;
@@ -221,6 +225,13 @@ final class EspecimenIndex extends Component
     public ?string $qrUrl = null;
 
     public ?string $qrEspecimenCodigo = null;
+
+    /**
+     * SVG del QR generado en el servidor (BaconQrCode). Se renderiza inline: no
+     * depende de ninguna librería JS externa ni de un CDN, así el QR se dibuja
+     * aunque el laboratorio esté sin internet.
+     */
+    public ?string $qrSvg = null;
 
     // ── Feedback ──────────────────────────────────────────────────────────────
 
@@ -458,6 +469,7 @@ final class EspecimenIndex extends Component
                 : $generarHandler->handle(new GenerarCodigoQrInput(especimenId: $id))->payload;
 
             $this->qrUrl = route('inventario.qr.resolver', ['payload' => $payload]);
+            $this->qrSvg = $this->generarSvgQr($this->qrUrl);
             $row = collect($this->especimenes)->firstWhere('id', $id);
             $this->qrEspecimenCodigo = $row['codigoCatalogo'] ?? $id;
             $this->errorMessage = null;
@@ -466,9 +478,28 @@ final class EspecimenIndex extends Component
         }
     }
 
+    /**
+     * Renderiza el QR como SVG en el servidor con BaconQrCode (ya presente en el
+     * proyecto para el 2FA). Sin librería JS ni CDN: el SVG viaja en la respuesta
+     * y se puede imprimir/descargar tal cual.
+     */
+    private function generarSvgQr(string $url): string
+    {
+        $renderer = new ImageRenderer(
+            new RendererStyle(220, 1),
+            new SvgImageBackEnd,
+        );
+
+        $svg = (new Writer($renderer))->writeString($url);
+
+        // Quita el prólogo XML inicial para poder incrustar el SVG inline en HTML.
+        return preg_replace('/^<\?xml[^>]*\?>\s*/', '', $svg);
+    }
+
     public function cerrarQr(): void
     {
         $this->qrUrl = null;
+        $this->qrSvg = null;
         $this->qrEspecimenCodigo = null;
     }
 

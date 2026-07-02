@@ -7,13 +7,16 @@ namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCa
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Exceptions\EspecimenNoEncontradoException;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\CodigoQrRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\TaxonRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EspecimenId;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TaxonId;
 
 final class ResolverCodigoQrHandler
 {
     public function __construct(
         private readonly CodigoQrRepositoryInterface $codigoQrRepo,
         private readonly EspecimenRepositoryInterface $especimenRepo,
+        private readonly TaxonRepositoryInterface $taxonRepo,
     ) {}
 
     public function handle(ResolverCodigoQrInput $input): ResolverCodigoQrOutput
@@ -30,10 +33,20 @@ final class ResolverCodigoQrHandler
             throw new EspecimenNoEncontradoException($codigoQr->especimenId());
         }
 
+        // Resuelve el nombre científico legible (heurística de usabilidad: nunca
+        // mostrar solo el id crudo del taxón). Null si el espécimen aún no está
+        // determinado.
+        $taxonNombre = null;
+        if ($especimen->taxonId() !== null) {
+            $taxon = $this->taxonRepo->buscarPorId(TaxonId::desde($especimen->taxonId()));
+            $taxonNombre = $taxon?->nombreCientifico();
+        }
+
         return new ResolverCodigoQrOutput(
             id: (string) $especimen->id(),
             codigoCatalogo: $especimen->codigoCatalogo(),
             taxonId: $especimen->taxonId(),
+            taxonNombre: $taxonNombre,
             localidad: $especimen->localidad(),
             fechaColecta: $especimen->fechaColecta(),
             colector: $especimen->colector(),
