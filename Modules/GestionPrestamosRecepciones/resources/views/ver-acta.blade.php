@@ -242,7 +242,6 @@
                 <div>
                     <div class="border-t-2 border-text-primary pt-3 space-y-1">
                         <p class="text-sm font-semibold text-text-primary">Adrian Troya</p>
-                        <p class="text-xs text-text-secondary">Biólogo</p>
                         <p class="text-xs text-text-secondary">Curador</p>
                         <p class="text-xs text-text-secondary">Laboratorio de Invertebrados</p>
                     </div>
@@ -263,13 +262,9 @@
                     <div class="border-t-2 border-text-primary pt-3 space-y-1">
                         <p class="text-sm font-semibold text-text-primary">{{ $acta->nombreInvestigador ?? 'Investigador solicitante' }}</p>
                         <p class="text-xs text-text-secondary">{{ $acta->institucionAdscripcion }}</p>
-                        <p class="text-xs text-text-secondary">
-                            @if($firmaBase64)
-                                Firmado digitalmente
-                            @else
-                                Fecha: ___________________
-                            @endif
-                        </p>
+                        @if($firmaBase64)
+                            <p class="text-xs text-text-secondary">Firmado digitalmente</p>
+                        @endif
                     </div>
                 </div>
             </div>
