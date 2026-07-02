@@ -27,6 +27,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoRegistrad
 use Modules\GestionPrestamosRecepciones\Domain\Events\VerificacionEntregaAprobada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\VerificacionEntregaRegistrada;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\EnviarNotificacionCierrePrestamoListener;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\EnviarNotificacionDevolucionRegistradaListener;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\EnviarNotificacionRecordatorioListener;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\EnviarNotificacionResultadoProrrogaListener;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\IniciarPrestamoAlValidarActaListener;
@@ -62,7 +63,10 @@ class EventServiceProvider extends ServiceProvider
         PrestamoActivado::class => [RegistrarEventoHistorialListener::class],
         DocumentoExportacionSubido::class => [RegistrarEventoHistorialListener::class],
         PrestamoHabilitadoParaEnvio::class => [RegistrarEventoHistorialListener::class],
-        DevolucionRegistrada::class => [RegistrarEventoHistorialListener::class],
+        DevolucionRegistrada::class => [
+            RegistrarEventoHistorialListener::class,
+            EnviarNotificacionDevolucionRegistradaListener::class,
+        ],
         PrestamoCerrado::class => [
             RegistrarEventoHistorialListener::class,
             EnviarNotificacionCierrePrestamoListener::class,
