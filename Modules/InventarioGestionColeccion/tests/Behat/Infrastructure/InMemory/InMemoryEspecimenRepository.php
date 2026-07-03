@@ -8,6 +8,7 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especim
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EspecimenId;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\LocalidadId;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\MuestraColectaId;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TaxonId;
 
 final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
@@ -766,6 +767,22 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
                 continue;
             }
             $e->enlazarLocalidad($localidad);
+            $contador++;
+        }
+
+        return $contador;
+    }
+
+    public function reasignarMuestraPorIds(array $ids, string $muestraId): int
+    {
+        $set = array_flip($ids);
+        $muestra = MuestraColectaId::desde($muestraId);
+        $contador = 0;
+        foreach ($this->store as $e) {
+            if (! isset($set[(string) $e->id()])) {
+                continue;
+            }
+            $e->enlazarMuestra($muestra);
             $contador++;
         }
 

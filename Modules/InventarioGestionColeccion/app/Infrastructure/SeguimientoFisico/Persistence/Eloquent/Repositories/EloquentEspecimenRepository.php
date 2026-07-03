@@ -579,6 +579,20 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
             ]);
     }
 
+    /** @param  string[]  $ids */
+    public function reasignarMuestraPorIds(array $ids, string $muestraId): int
+    {
+        if ($ids === []) {
+            return 0;
+        }
+
+        return EspecimenEloquentModel::whereIn('id', $ids)
+            ->update([
+                'muestra_id' => $muestraId,
+                'updated_at' => now(),
+            ]);
+    }
+
     /** @param string[] $muestraIds
      *  @return array<string, int> */
     public function contarPorMuestraIds(array $muestraIds): array

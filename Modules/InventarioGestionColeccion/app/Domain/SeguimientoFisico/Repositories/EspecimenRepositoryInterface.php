@@ -317,4 +317,14 @@ interface EspecimenRepositoryInterface
      * @param  string[]  $ids
      */
     public function enlazarLocalidadPorIds(array $ids, string $localidadId): int;
+
+    /**
+     * Reasigna SOLO los especímenes indicados por id a otra muestra de colecta
+     * (separar una agrupación por oldCode reusado). A diferencia de los `enlazar*`,
+     * no exige que el campo esté vacío: los especímenes ya cuelgan de la muestra
+     * de origen y se mueven a `$muestraId`. Devuelve el número de filas movidas.
+     *
+     * @param  string[]  $ids
+     */
+    public function reasignarMuestraPorIds(array $ids, string $muestraId): int;
 }

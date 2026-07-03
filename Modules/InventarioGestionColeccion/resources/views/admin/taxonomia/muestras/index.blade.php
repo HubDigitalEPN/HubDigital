@@ -69,8 +69,10 @@
             de colecta" (una salida de campo). Las creó como <strong>pendientes</strong> esperando tu confirmación.
         </p>
         <ol class="list-decimal pl-6 space-y-1 text-xs text-text-secondary">
-            <li>Mira cada fila: código de colecta + colector + fecha + localidad. ¿Hacen sentido juntos como una sola muestra real?</li>
-            <li>Si sí → <strong>Confirmar</strong>. Las muestras confirmadas desaparecen de esta bandeja.</li>
+            <li>Pulsa <strong>Ver</strong> para revisar los especímenes concretos del grupo (taxón, localidad, fecha, colector).</li>
+            <li>Si todos son del mismo evento de colecta → <strong>Confirmar</strong>. Las muestras confirmadas desaparecen de esta bandeja.</li>
+            <li>Si el <code>oldCode</code> mezcló ejemplares de eventos distintos → abre el grupo, <strong>marca los que no encajan</strong> y pulsa
+                <strong>Separar</strong>: se mueven a una muestra nueva y el resto queda en la original.</li>
             <li>Si parece basura o duplicado → <strong>Descartar</strong>. Queda en BD marcada con motivo.</li>
         </ol>
     </x-inventariogestioncoleccion::bandeja-ayuda>
@@ -189,27 +191,56 @@
                     </div>
                 </div>
                 @if(! empty($expandido[$muestra['id']]))
+                    @php($marcados = count($seleccion[$muestra['id']] ?? []))
                     <div class="border-t border-border bg-bg-main px-4 py-3" wire:key="muestra-det-{{ $muestra['id'] }}">
-                        <div class="mb-2 text-xs font-semibold text-text-secondary uppercase tracking-wide">Especímenes de la muestra</div>
+                        <div class="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <div class="text-xs font-semibold text-text-secondary uppercase tracking-wide">
+                                Especímenes de la muestra
+                                <span class="ml-1 normal-case font-normal">— marca los que <strong>no</strong> pertenecen a este evento para separarlos</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-text-secondary">{{ $marcados }} marcado(s)</span>
+                                <flux:button size="sm" variant="ghost" wire:click="seleccionarTodos('{{ $muestra['id'] }}')">Todos</flux:button>
+                                <flux:button size="sm" variant="ghost" wire:click="limpiarSeleccion('{{ $muestra['id'] }}')">Ninguno</flux:button>
+                            </div>
+                        </div>
                         <div class="max-h-72 overflow-y-auto divide-y divide-border rounded-lg border border-border bg-surface">
                             @forelse($miembros[$muestra['id']] ?? [] as $m)
-                                <div class="px-3 py-2">
-                                    <div class="flex flex-wrap items-center gap-2">
-                                        <span class="font-mono text-sm text-text-primary">{{ $m['codigoCatalogo'] }}</span>
-                                        @if(! empty($m['taxonNombre']))
-                                            <span class="font-serif text-sm italic text-text-primary">{{ $m['taxonNombre'] }}</span>
-                                        @else
-                                            <span class="text-xs italic text-text-secondary">sin determinar</span>
-                                        @endif
+                                <label wire:key="muestra-esp-{{ $muestra['id'] }}-{{ $m['id'] }}"
+                                       class="flex items-start gap-3 px-3 py-2 hover:bg-bg-main cursor-pointer">
+                                    <input type="checkbox"
+                                           wire:model.live="seleccion.{{ $muestra['id'] }}"
+                                           value="{{ $m['id'] }}"
+                                           class="mt-1 size-4 rounded border-border text-science-blue" />
+                                    <div class="min-w-0 flex-1">
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <span class="font-mono text-sm text-text-primary">{{ $m['codigoCatalogo'] }}</span>
+                                            @if(! empty($m['taxonNombre']))
+                                                <span class="font-serif text-sm italic text-text-primary">{{ $m['taxonNombre'] }}</span>
+                                            @else
+                                                <span class="text-xs italic text-text-secondary">sin determinar</span>
+                                            @endif
+                                        </div>
+                                        <div class="mt-0.5 text-xs text-text-secondary">
+                                            {{ $m['localidad'] ?: '—' }} · {{ $m['fechaColecta'] ?: '—' }} · {{ $m['colector'] ?: '—' }}
+                                        </div>
                                     </div>
-                                    <div class="mt-0.5 text-xs text-text-secondary">
-                                        {{ $m['localidad'] ?: '—' }} · {{ $m['fechaColecta'] ?: '—' }} · {{ $m['colector'] ?: '—' }}
-                                    </div>
-                                </div>
+                                </label>
                             @empty
                                 <div class="px-3 py-4 text-center text-xs text-text-secondary">Esta muestra no tiene especímenes enganchados.</div>
                             @endforelse
                         </div>
+                        @if($marcados > 0)
+                            <div class="mt-2 flex justify-end">
+                                <flux:button size="sm" variant="primary" icon="scissors"
+                                             wire:click="separar('{{ $muestra['id'] }}')"
+                                             wire:confirm="Vas a separar {{ $marcados }} espécimen(es) en una muestra nueva. ¿Continuar?"
+                                             wire:loading.attr="disabled"
+                                             wire:target="separar('{{ $muestra['id'] }}')">
+                                    Separar {{ $marcados }} en muestra nueva
+                                </flux:button>
+                            </div>
+                        @endif
                     </div>
                 @endif
             @empty
@@ -271,27 +302,54 @@
                     </div>
 
                     @if(! empty($expandido[$muestra['id']]))
+                        @php($marcadosM = count($seleccion[$muestra['id']] ?? []))
                         <div class="mt-1 rounded-lg border border-border bg-bg-main p-2" wire:key="muestra-detm-{{ $muestra['id'] }}">
-                            <div class="mb-1 px-1 text-xs font-semibold text-text-secondary uppercase tracking-wide">Especímenes de la muestra</div>
+                            <div class="mb-1 px-1 text-xs font-semibold text-text-secondary uppercase tracking-wide">
+                                Especímenes de la muestra
+                                <span class="block normal-case font-normal">Marca los que no pertenecen a este evento para separarlos.</span>
+                            </div>
+                            <div class="mb-2 flex items-center justify-between px-1">
+                                <span class="text-xs text-text-secondary">{{ $marcadosM }} marcado(s)</span>
+                                <div class="flex gap-2">
+                                    <flux:button size="sm" variant="ghost" wire:click="seleccionarTodos('{{ $muestra['id'] }}')">Todos</flux:button>
+                                    <flux:button size="sm" variant="ghost" wire:click="limpiarSeleccion('{{ $muestra['id'] }}')">Ninguno</flux:button>
+                                </div>
+                            </div>
                             <div class="max-h-64 space-y-2 overflow-y-auto">
                                 @forelse($miembros[$muestra['id']] ?? [] as $m)
-                                    <div class="rounded-lg border border-border bg-surface p-2">
-                                        <div class="flex flex-wrap items-center gap-2">
-                                            <span class="font-mono text-sm text-text-primary">{{ $m['codigoCatalogo'] }}</span>
-                                            @if(! empty($m['taxonNombre']))
-                                                <span class="font-serif text-sm italic text-text-primary">{{ $m['taxonNombre'] }}</span>
-                                            @else
-                                                <span class="text-xs italic text-text-secondary">sin determinar</span>
-                                            @endif
+                                    <label wire:key="muestra-espm-{{ $muestra['id'] }}-{{ $m['id'] }}"
+                                           class="flex items-start gap-3 rounded-lg border border-border bg-surface p-2">
+                                        <input type="checkbox"
+                                               wire:model.live="seleccion.{{ $muestra['id'] }}"
+                                               value="{{ $m['id'] }}"
+                                               class="mt-1 size-5 rounded border-border text-science-blue" />
+                                        <div class="min-w-0 flex-1">
+                                            <div class="flex flex-wrap items-center gap-2">
+                                                <span class="font-mono text-sm text-text-primary">{{ $m['codigoCatalogo'] }}</span>
+                                                @if(! empty($m['taxonNombre']))
+                                                    <span class="font-serif text-sm italic text-text-primary">{{ $m['taxonNombre'] }}</span>
+                                                @else
+                                                    <span class="text-xs italic text-text-secondary">sin determinar</span>
+                                                @endif
+                                            </div>
+                                            <div class="mt-0.5 text-xs text-text-secondary">
+                                                {{ $m['localidad'] ?: '—' }} · {{ $m['fechaColecta'] ?: '—' }} · {{ $m['colector'] ?: '—' }}
+                                            </div>
                                         </div>
-                                        <div class="mt-0.5 text-xs text-text-secondary">
-                                            {{ $m['localidad'] ?: '—' }} · {{ $m['fechaColecta'] ?: '—' }} · {{ $m['colector'] ?: '—' }}
-                                        </div>
-                                    </div>
+                                    </label>
                                 @empty
                                     <div class="px-1 py-3 text-center text-xs text-text-secondary">Esta muestra no tiene especímenes enganchados.</div>
                                 @endforelse
                             </div>
+                            @if($marcadosM > 0)
+                                <flux:button class="mt-2 w-full" variant="primary" icon="scissors"
+                                             wire:click="separar('{{ $muestra['id'] }}')"
+                                             wire:confirm="Vas a separar {{ $marcadosM }} espécimen(es) en una muestra nueva. ¿Continuar?"
+                                             wire:loading.attr="disabled"
+                                             wire:target="separar('{{ $muestra['id'] }}')">
+                                    Separar {{ $marcadosM }} en muestra nueva
+                                </flux:button>
+                            @endif
                         </div>
                     @endif
                 </div>

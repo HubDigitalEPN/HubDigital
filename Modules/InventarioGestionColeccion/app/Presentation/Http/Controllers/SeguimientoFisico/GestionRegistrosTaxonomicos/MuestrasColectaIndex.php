@@ -15,6 +15,8 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Li
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarMuestrasParaRevision\ListarMuestrasParaRevisionInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\MarcarMuestraParaRevision\MarcarMuestraParaRevisionHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\MarcarMuestraParaRevision\MarcarMuestraParaRevisionInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\SepararEspecimenesEnNuevaMuestra\SepararEspecimenesEnNuevaMuestraHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\SepararEspecimenesEnNuevaMuestra\SepararEspecimenesEnNuevaMuestraInput;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\RegistroColumnasMuestra;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\ResolverPrioridadColumnas;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
@@ -37,6 +39,9 @@ final class MuestrasColectaIndex extends Component
 
     /** Especímenes cargados por muestra: muestraId => list<array>. */
     public array $miembros = [];
+
+    /** Ids de especímenes marcados para separar, por muestra: muestraId => list<string>. */
+    public array $seleccion = [];
 
     public ?string $successMessage = null;
 
@@ -74,6 +79,7 @@ final class MuestrasColectaIndex extends Component
             // Los índices cambian al recargar; cierra los drill-downs abiertos.
             $this->expandido = [];
             $this->miembros = [];
+            $this->seleccion = [];
             $this->errorMessage = null;
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);
@@ -85,14 +91,61 @@ final class MuestrasColectaIndex extends Component
     {
         if (! empty($this->expandido[$id])) {
             $this->expandido[$id] = false;
+            // Al cerrar, descarta la selección parcial para que no quede colgada.
+            unset($this->seleccion[$id]);
 
             return;
         }
 
         try {
             $this->miembros[$id] = $handler->handle(new ListarEspecimenesDeMuestraInput(muestraId: $id))->items;
+            // Sembrar como array (no null) es lo que permite que el primer clic
+            // manual de un checkbox agregue el id en vez de guardar un booleano.
+            // Por defecto, ninguno marcado: separar = elegir los ejemplares que
+            // NO pertenecen a este evento de colecta.
+            $this->seleccion[$id] = [];
             $this->expandido[$id] = true;
             $this->errorMessage = null;
+        } catch (\Throwable $e) {
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
+        }
+    }
+
+    public function seleccionarTodos(string $id): void
+    {
+        $this->seleccion[$id] = array_map(fn ($m) => $m['id'], $this->miembros[$id] ?? []);
+    }
+
+    public function limpiarSeleccion(string $id): void
+    {
+        $this->seleccion[$id] = [];
+    }
+
+    /**
+     * Separa los especímenes marcados de una muestra hacia una muestra nueva
+     * (cuando el oldCode agrupó ejemplares que no son del mismo evento). Confirmar
+     * la muestra tal cual ("son del mismo grupo") sigue siendo el botón Confirmar.
+     */
+    public function separar(
+        SepararEspecimenesEnNuevaMuestraHandler $handler,
+        ListarMuestrasParaRevisionHandler $listHandler,
+        string $id,
+    ): void {
+        $ids = array_values($this->seleccion[$id] ?? []);
+        if ($ids === []) {
+            $this->errorMessage = 'Marca al menos un espécimen para separarlo en una muestra nueva.';
+
+            return;
+        }
+
+        try {
+            $output = $handler->handle(new SepararEspecimenesEnNuevaMuestraInput(
+                muestraOrigenId: $id,
+                especimenIds: $ids,
+            ));
+
+            $this->successMessage = "Separados {$output->especimenesSeparados} espécimen(es) en una muestra nueva.";
+            $this->cargar($listHandler);
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
