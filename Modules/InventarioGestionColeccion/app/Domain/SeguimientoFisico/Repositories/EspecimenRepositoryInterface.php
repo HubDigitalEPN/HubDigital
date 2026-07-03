@@ -201,6 +201,22 @@ interface EspecimenRepositoryInterface
     public function marcarRevisionPorCatalogNumber(string $catalogNumber, string $motivo): int;
 
     /**
+     * Variante selectiva de `confirmarRevisionPorCatalogNumber`: confirma la
+     * revisión SOLO de los especímenes indicados por id. Devuelve filas afectadas.
+     *
+     * @param  string[]  $ids
+     */
+    public function confirmarRevisionPorIds(array $ids): int;
+
+    /**
+     * Variante selectiva de `marcarRevisionPorCatalogNumber`: marca para revisión
+     * SOLO los especímenes indicados por id, con el motivo dado.
+     *
+     * @param  string[]  $ids
+     */
+    public function marcarRevisionPorIds(array $ids, string $motivo): int;
+
+    /**
      * Agrupa los `fecha_verbatim` cuyo `fecha_colecta` es null/vacío.
      * Pares verbatim => conteo, ordenados por conteo desc, paginado.
      *

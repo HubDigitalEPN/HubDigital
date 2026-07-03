@@ -368,6 +368,36 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
         return $contador;
     }
 
+    public function confirmarRevisionPorIds(array $ids): int
+    {
+        $contador = 0;
+        foreach ($this->store as $e) {
+            if (! in_array((string) $e->id(), $ids, true)) {
+                continue;
+            }
+            if ($e->estadoRevision()->puedeConfirmarse()) {
+                $e->confirmarRevision();
+            }
+            $contador++;
+        }
+
+        return $contador;
+    }
+
+    public function marcarRevisionPorIds(array $ids, string $motivo): int
+    {
+        $contador = 0;
+        foreach ($this->store as $e) {
+            if (! in_array((string) $e->id(), $ids, true)) {
+                continue;
+            }
+            $e->marcarParaRevision($motivo);
+            $contador++;
+        }
+
+        return $contador;
+    }
+
     /** @return array<string, int> */
     public function agruparFechaVerbatimsPendientes(int $limit, int $offset): array
     {

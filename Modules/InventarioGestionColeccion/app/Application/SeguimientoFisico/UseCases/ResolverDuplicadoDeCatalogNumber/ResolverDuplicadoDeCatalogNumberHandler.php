@@ -38,14 +38,22 @@ final class ResolverDuplicadoDeCatalogNumberHandler
             throw new \InvalidArgumentException("Decisión inválida: '{$decision}'.");
         }
 
+        // Selectivo si se pasan ids concretos; si no, sobre todo el grupo.
+        $ids = $input->especimenIds !== null ? array_values(array_filter($input->especimenIds)) : null;
+        $selectivo = $ids !== null && $ids !== [];
+
         if ($decision === ResolverDuplicadoDeCatalogNumberInput::DECISION_EVENTOS_DISTINTOS) {
-            $afectados = $this->especimenRepo->confirmarRevisionPorCatalogNumber($catalogNumber);
+            $afectados = $selectivo
+                ? $this->especimenRepo->confirmarRevisionPorIds($ids)
+                : $this->especimenRepo->confirmarRevisionPorCatalogNumber($catalogNumber);
         } else {
             $motivo = trim($input->motivo);
             if ($motivo === '') {
                 throw new \InvalidArgumentException('Para error_catalogacion el motivo no puede estar vacío.');
             }
-            $afectados = $this->especimenRepo->marcarRevisionPorCatalogNumber($catalogNumber, $motivo);
+            $afectados = $selectivo
+                ? $this->especimenRepo->marcarRevisionPorIds($ids, $motivo)
+                : $this->especimenRepo->marcarRevisionPorCatalogNumber($catalogNumber, $motivo);
         }
 
         return new ResolverDuplicadoDeCatalogNumberOutput(

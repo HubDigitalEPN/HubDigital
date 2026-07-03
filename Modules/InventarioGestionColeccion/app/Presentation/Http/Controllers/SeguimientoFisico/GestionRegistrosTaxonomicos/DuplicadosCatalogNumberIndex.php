@@ -43,6 +43,9 @@ final class DuplicadosCatalogNumberIndex extends Component
 
     public int $minimoDuplicados = 2;
 
+    /** Ids seleccionados por grupo: idx => list<string>. Vacío = aplicar a todo el grupo. */
+    public array $seleccion = [];
+
     public ?string $successMessage = null;
 
     public ?string $errorMessage = null;
@@ -84,6 +87,8 @@ final class DuplicadosCatalogNumberIndex extends Component
                 'fechasDistintas' => $item->fechasDistintas,
                 'motivoInput' => '',
             ], $output->items);
+            // Los índices cambian al recargar; reinicia la selección.
+            $this->seleccion = [];
             $this->errorMessage = null;
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);
@@ -109,6 +114,31 @@ final class DuplicadosCatalogNumberIndex extends Component
         }
     }
 
+    public function seleccionarTodos(int $idx): void
+    {
+        $this->seleccion[$idx] = array_map(
+            fn ($e) => $e['id'],
+            $this->items[$idx]['especimenes'] ?? [],
+        );
+    }
+
+    public function limpiarSeleccion(int $idx): void
+    {
+        $this->seleccion[$idx] = [];
+    }
+
+    /**
+     * Ids seleccionados del grupo, o null si no hay selección (aplica a todo).
+     *
+     * @return string[]|null
+     */
+    private function idsSeleccionados(int $idx): ?array
+    {
+        $ids = array_values($this->seleccion[$idx] ?? []);
+
+        return $ids === [] ? null : $ids;
+    }
+
     public function marcarEventosDistintos(
         ResolverDuplicadoDeCatalogNumberHandler $handler,
         ListarCatalogNumberDuplicadosHandler $listHandler,
@@ -123,6 +153,7 @@ final class DuplicadosCatalogNumberIndex extends Component
                 catalogNumber: $this->items[$idx]['catalogNumber'],
                 decision: ResolverDuplicadoDeCatalogNumberInput::DECISION_EVENTOS_DISTINTOS,
                 motivo: '',
+                especimenIds: $this->idsSeleccionados($idx),
             ));
             $this->successMessage = "Confirmados como eventos distintos: {$output->especimenesAfectados} espécimen(es).";
             // Recarga real: refleja el estado verdadero y reencaja la página si el
@@ -153,6 +184,7 @@ final class DuplicadosCatalogNumberIndex extends Component
                 catalogNumber: $this->items[$idx]['catalogNumber'],
                 decision: ResolverDuplicadoDeCatalogNumberInput::DECISION_ERROR_CATALOGACION,
                 motivo: $motivo,
+                especimenIds: $this->idsSeleccionados($idx),
             ));
             $this->successMessage = "Marcados con motivo para revisión: {$output->especimenesAfectados} espécimen(es).";
             $this->cargar($listHandler);
