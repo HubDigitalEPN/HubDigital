@@ -10,8 +10,10 @@ final readonly class ListarEspecimenesDeGrupoOutput
      * @param  array<int, array{
      *   id: string,
      *   codigoCatalogo: string,
+     *   taxonNombre: ?string,
      *   colector: string,
      *   localidad: string,
+     *   fechaColecta: string,
      *   fechaVerbatim: ?string,
      *   taxonVerbatim: ?string,
      *   localidadVerbatim: ?string

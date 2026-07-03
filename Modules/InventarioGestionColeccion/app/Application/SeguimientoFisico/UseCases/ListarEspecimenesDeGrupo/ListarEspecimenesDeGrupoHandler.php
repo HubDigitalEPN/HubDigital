@@ -6,16 +6,19 @@ namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCa
 
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especimen;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\TaxonRepositoryInterface;
 
 /**
  * Lista los especímenes concretos que caen en un grupo pendiente de una bandeja
  * de revisión (fecha / taxón / localidad verbatim). Permite que el curador
- * inspeccione el grupo y elija cuáles aprobar, en vez de aplicar a ciegas.
+ * inspeccione el grupo con los datos relevantes (nombre científico, localidad,
+ * fecha, colector) y elija cuáles aprobar, en vez de aplicar a ciegas.
  */
 final class ListarEspecimenesDeGrupoHandler
 {
     public function __construct(
         private readonly EspecimenRepositoryInterface $especimenRepo,
+        private readonly TaxonRepositoryInterface $taxonRepo,
     ) {}
 
     public function handle(ListarEspecimenesDeGrupoInput $input): ListarEspecimenesDeGrupoOutput
@@ -32,12 +35,26 @@ final class ListarEspecimenesDeGrupoHandler
             default => throw new \InvalidArgumentException("Tipo de grupo inválido: '{$input->tipo}'."),
         };
 
+        // Resuelve el nombre científico de una sola pasada (los del grupo suelen
+        // repetir taxón). Null cuando el espécimen aún no está determinado.
+        $taxonIds = array_values(array_unique(array_filter(
+            array_map(fn (Especimen $e) => $e->taxonId(), $especimenes)
+        )));
+        $nombresTaxon = [];
+        if ($taxonIds !== []) {
+            foreach ($this->taxonRepo->buscarPorIds($taxonIds) as $taxon) {
+                $nombresTaxon[(string) $taxon->id()] = $taxon->nombreCientifico();
+            }
+        }
+
         $items = array_map(
             fn (Especimen $e): array => [
                 'id' => (string) $e->id(),
                 'codigoCatalogo' => $e->codigoCatalogo(),
+                'taxonNombre' => $e->taxonId() !== null ? ($nombresTaxon[$e->taxonId()] ?? null) : null,
                 'colector' => $e->colector(),
                 'localidad' => $e->localidad(),
+                'fechaColecta' => $e->fechaColecta(),
                 'fechaVerbatim' => $e->fechaVerbatim(),
                 'taxonVerbatim' => $e->taxonVerbatim(),
                 'localidadVerbatim' => $e->localidadVerbatim(),

@@ -84,14 +84,19 @@
                     </div>
                     <div class="max-h-72 overflow-y-auto divide-y divide-border rounded-lg border border-border">
                         @foreach($miembros[$idx] ?? [] as $m)
-                            <label class="flex items-center gap-3 px-3 py-2 hover:bg-bg-main cursor-pointer">
+                            <label class="flex items-start gap-3 px-3 py-2 hover:bg-bg-main cursor-pointer">
                                 <input type="checkbox"
                                        wire:model.live="seleccion.{{ $idx }}"
                                        value="{{ $m['id'] }}"
-                                       class="size-4 rounded border-border text-science-blue" />
-                                <span class="font-medium text-sm text-text-primary shrink-0">{{ $m['codigoCatalogo'] }}</span>
-                                <span class="text-xs text-text-secondary truncate">{{ $m['colector'] ?: '—' }}</span>
-                                <span class="text-xs text-text-secondary truncate ml-auto">{{ $m['localidad'] ?: '' }}</span>
+                                       class="mt-1 size-4 rounded border-border text-science-blue" />
+                                <div class="min-w-0 flex-1">
+                                    <span class="font-mono text-sm text-text-primary">{{ $m['codigoCatalogo'] }}</span>
+                                    <div class="mt-0.5 text-xs text-text-secondary">
+                                        <span class="text-text-primary">{{ $m['localidad'] ?: '—' }}</span>
+                                        · {{ $m['fechaColecta'] ?: '—' }}
+                                        · {{ $m['colector'] ?: '—' }}
+                                    </div>
+                                </div>
                             </label>
                         @endforeach
                     </div>
