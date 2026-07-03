@@ -11,10 +11,13 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Bu
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\BuscarTaxonesPorNombre\BuscarTaxonesPorNombreInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConfirmarTaxonCanonicoParaVerbatim\ConfirmarTaxonCanonicoParaVerbatimHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConfirmarTaxonCanonicoParaVerbatim\ConfirmarTaxonCanonicoParaVerbatimInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\CrearTaxonYEnlazarVerbatim\CrearTaxonYEnlazarVerbatimHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\CrearTaxonYEnlazarVerbatim\CrearTaxonYEnlazarVerbatimInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarEspecimenesDeGrupo\ListarEspecimenesDeGrupoHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarEspecimenesDeGrupo\ListarEspecimenesDeGrupoInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarTaxonVerbatimsPendientes\ListarTaxonVerbatimsPendientesHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarTaxonVerbatimsPendientes\ListarTaxonVerbatimsPendientesInput;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\RangoTaxonomico;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
 
 #[Layout('layouts.app', params: ['title' => 'Taxones por confirmar'])]
@@ -55,6 +58,12 @@ final class TaxaRevisionIndex extends Component
 
     /** Resultados del buscador: idx => list<array{taxonId,nombreCientifico,rango}>. */
     public array $busquedaResultados = [];
+
+    /** Nombre del taxón nuevo a crear por grupo: idx => string. */
+    public array $nuevoTaxonNombre = [];
+
+    /** Rango del taxón nuevo a crear por grupo: idx => string. */
+    public array $nuevoTaxonRango = [];
 
     public ?string $successMessage = null;
 
@@ -107,6 +116,8 @@ final class TaxaRevisionIndex extends Component
             $this->seleccion = [];
             $this->busquedaTexto = [];
             $this->busquedaResultados = [];
+            $this->nuevoTaxonNombre = [];
+            $this->nuevoTaxonRango = [];
             $this->errorMessage = null;
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);
@@ -258,6 +269,52 @@ final class TaxaRevisionIndex extends Component
         }
     }
 
+    /**
+     * Crea un taxón canónico NUEVO con el nombre tecleado y enlaza en el acto los
+     * especímenes del grupo (todo o solo lo seleccionado). Evita tener que salir a
+     * "Gestionar taxones" a registrarlo primero.
+     */
+    public function crearYEnlazar(
+        CrearTaxonYEnlazarVerbatimHandler $handler,
+        ListarTaxonVerbatimsPendientesHandler $listHandler,
+        int $idx,
+    ): void {
+        if (! isset($this->items[$idx])) {
+            return;
+        }
+        $nombre = trim($this->nuevoTaxonNombre[$idx] ?? '');
+        if ($nombre === '') {
+            $this->errorMessage = 'Escribe el nombre científico del nuevo taxón antes de crearlo.';
+
+            return;
+        }
+        $rango = trim($this->nuevoTaxonRango[$idx] ?? '') ?: RangoTaxonomico::Morfoespecie->value;
+
+        $ids = null;
+        if (! empty($this->expandido[$idx])) {
+            $ids = array_values($this->seleccion[$idx] ?? []);
+            if ($ids === []) {
+                $this->errorMessage = 'Selecciona al menos un espécimen, o cierra el detalle para aplicar a todo el grupo.';
+
+                return;
+            }
+        }
+
+        try {
+            $output = $handler->handle(new CrearTaxonYEnlazarVerbatimInput(
+                verbatim: $this->items[$idx]['verbatim'],
+                nombreCientifico: $nombre,
+                rango: $rango,
+                especimenIds: $ids,
+            ));
+
+            $this->successMessage = "Creado «{$output->nombreCientifico}» y enlazados {$output->especimenesEnlazados} espécimen(es).";
+            $this->cargar($listHandler);
+        } catch (\Throwable $e) {
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
+        }
+    }
+
     public function render(): View
     {
         $totalPaginas = $this->total === 0 ? 1 : (int) ceil($this->total / $this->porPagina);
@@ -266,6 +323,7 @@ final class TaxaRevisionIndex extends Component
             'totalPaginas' => $totalPaginas,
             'inicio' => $this->total > 0 ? ($this->pagina - 1) * $this->porPagina + 1 : 0,
             'fin' => min($this->pagina * $this->porPagina, $this->total),
+            'rangosTaxon' => RangoTaxonomico::valoresAceptados(),
         ]);
     }
 }

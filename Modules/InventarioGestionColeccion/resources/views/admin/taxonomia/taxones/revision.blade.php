@@ -50,6 +50,9 @@
             $mensajeConfirmar = $abierto
                 ? "Vas a enlazar {$seleccionados} espécimen(es) seleccionado(s) a «{$item['taxonSeleccionadoNombre']}». ¿Continuar?"
                 : "Vas a enlazar los {$item['totalEspecimenes']} espécimen(es) del grupo a «{$item['taxonSeleccionadoNombre']}». ¿Continuar?";
+            $mensajeCrear = $abierto
+                ? "Vas a crear un taxón nuevo y enlazar {$seleccionados} espécimen(es) seleccionado(s). ¿Continuar?"
+                : "Vas a crear un taxón nuevo y enlazar los {$item['totalEspecimenes']} espécimen(es) del grupo. ¿Continuar?";
         @endphp
         <div wire:key="taxon-{{ md5($item['verbatim']) }}" class="rounded-lg border border-border bg-surface shadow-sm border-l-4 border-l-warning overflow-hidden">
             <div class="px-5 py-4 bg-bg-main border-b border-border flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -178,6 +181,33 @@
                     @elseif(isset($busquedaResultados[$idx]))
                         <p class="text-xs text-text-secondary italic">Sin coincidencias para esa búsqueda.</p>
                     @endif
+                </div>
+
+                {{-- ¿No existe? Crear el taxón canónico nuevo y enlazar en el acto --}}
+                <div class="rounded-lg border border-dashed border-science-blue/40 bg-science-blue/5 p-3 space-y-2">
+                    <p class="text-xs font-semibold text-science-blue uppercase tracking-wide">¿No está en la lista? Créalo y enlaza</p>
+                    <div class="flex flex-col gap-2 sm:flex-row">
+                        <flux:input wire:model="nuevoTaxonNombre.{{ $idx }}"
+                                    placeholder="Nombre científico del nuevo taxón…"
+                                    class="flex-1 font-serif italic" />
+                        <flux:select wire:model="nuevoTaxonRango.{{ $idx }}" class="sm:w-48">
+                            @foreach($rangosTaxon as $r)
+                                <option value="{{ $r }}" @selected(($nuevoTaxonRango[$idx] ?? 'morfoespecie') === $r)>
+                                    {{ ucfirst(str_replace('_', ' ', $r)) }}
+                                </option>
+                            @endforeach
+                        </flux:select>
+                        <flux:button variant="primary" icon="plus"
+                                     wire:click="crearYEnlazar({{ $idx }})"
+                                     wire:confirm="{{ $mensajeCrear }}"
+                                     wire:loading.attr="disabled"
+                                     wire:target="crearYEnlazar">
+                            Crear y enlazar
+                        </flux:button>
+                    </div>
+                    <p class="text-xs text-text-secondary">
+                        Crea un taxón con ese nombre (por defecto morfoespecie) y {{ $abierto ? 'lo aplica a los especímenes seleccionados' : 'lo aplica a todo el grupo' }}.
+                    </p>
                 </div>
 
                 <div class="border-t border-border pt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
