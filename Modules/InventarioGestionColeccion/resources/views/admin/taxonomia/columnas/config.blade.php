@@ -6,13 +6,26 @@
             default => 'bg-text-secondary',
         };
     };
+    $grupoLegible = function (string $grupo): string {
+        return match ($grupo) {
+            'identificacion' => 'Identificación',
+            'taxonomia' => 'Taxonomía',
+            'localidad' => 'Localidad',
+            'fecha' => 'Fecha',
+            'registro' => 'Registro',
+            'atributos' => 'Atributos',
+            'revision' => 'Revisión',
+            default => ucfirst($grupo),
+        };
+    };
 @endphp
 
 <div class="space-y-6 p-4 sm:p-6 max-w-5xl">
     <div>
-        <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Configuración de columnas</flux:heading>
+        <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Columnas de la tabla</flux:heading>
         <p class="text-sm text-text-secondary mt-1">
-            Cambia la prioridad de cada columna por pantalla. Los cambios son globales: cualquier curador autorizado puede modificarlos, y todos los usuarios verán la nueva clasificación.
+            Cambia la importancia (color) de cada columna por pantalla. Los cambios son globales: cualquier
+            curador autorizado puede modificarlos y todos verán la nueva clasificación.
         </p>
     </div>
 
@@ -25,7 +38,7 @@
         <div class="grid gap-2 text-sm">
             <div class="flex items-start gap-3">
                 <span class="inline-block size-3 rounded-full bg-error mt-1.5 shrink-0"></span>
-                <div><span class="font-medium text-text-primary">Crítica</span> — requerida para que el espécimen sea publicable a GBIF. Mostrada por defecto en las listas y resaltada en rojo.</div>
+                <div><span class="font-medium text-text-primary">Crítica</span> — sin este dato el espécimen no es publicable a GBIF. Se resalta en rojo para que no se pase por alto.</div>
             </div>
             <div class="flex items-start gap-3">
                 <span class="inline-block size-3 rounded-full bg-warning mt-1.5 shrink-0"></span>
@@ -37,7 +50,9 @@
             </div>
         </div>
         <p class="text-xs text-text-secondary mt-3 italic">
-            La prioridad solo afecta el color y la visibilidad por defecto en la UI. El exportador a Darwin Core Archive sigue su lista fija de columnas independientemente.
+            La prioridad solo cambia el <strong>color y el énfasis</strong> de la columna. Qué columnas se ven se
+            controla directamente en la tabla de <strong>Especímenes</strong> (con su botón de columnas), y esa
+            elección se recuerda por usuario. El exportador a Darwin Core Archive usa su propia lista fija de columnas.
         </p>
     </div>
 
@@ -54,9 +69,9 @@
                 <table class="w-full text-sm">
                     <thead class="bg-blue-navy text-white">
                         <tr>
-                            <th class="px-4 py-3 text-left font-medium">Etiqueta</th>
-                            <th class="px-4 py-3 text-left font-medium">Clave</th>
+                            <th class="px-4 py-3 text-left font-medium">Columna</th>
                             <th class="px-4 py-3 text-left font-medium">Grupo</th>
+                            <th class="px-4 py-3 text-left font-medium">Clave interna</th>
                             <th class="px-4 py-3 text-left font-medium">Prioridad actual</th>
                             <th class="px-4 py-3 text-left font-medium">Cambiar</th>
                         </tr>
@@ -65,8 +80,8 @@
                         @foreach($pantallas[$pantallaKey] ?? [] as $col)
                             <tr class="hover:bg-bg-main transition-colors align-top">
                                 <td class="px-4 py-3 text-text-primary">{{ $col['etiqueta'] }}</td>
+                                <td class="px-4 py-3 text-text-secondary text-xs">{{ $grupoLegible($col['grupo']) }}</td>
                                 <td class="px-4 py-3 font-mono text-xs text-text-secondary">{{ $col['clave'] }}</td>
-                                <td class="px-4 py-3 text-text-secondary text-xs">{{ $col['grupo'] }}</td>
                                 <td class="px-4 py-3">
                                     <span class="inline-flex items-center gap-1.5">
                                         <span class="inline-block size-2.5 rounded-full {{ $colorPrioridad($col['prioridad']) }}"></span>

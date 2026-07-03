@@ -1,4 +1,5 @@
 #language: es
+@listo
 Característica: Generación de código QR vinculado al espécimen
   Como curador responsable de la colección,
   quiero generar un código QR vinculado al GUID de cada espécimen,

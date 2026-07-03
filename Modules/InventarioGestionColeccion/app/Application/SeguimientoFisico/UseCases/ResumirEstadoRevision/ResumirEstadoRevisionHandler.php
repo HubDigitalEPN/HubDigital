@@ -31,6 +31,9 @@ final class ResumirEstadoRevisionHandler
             duplicadosCatalogNumberGrupos: $this->especimenes->contarGruposCatalogNumberDuplicados(2),
             fechaVerbatimPendientes: $this->especimenes->contarFechaVerbatimsPendientes(),
             muestrasPendientes: $this->muestras->contarParaRevision(),
+            taxonSinDatoOrigen: $this->especimenes->contarTaxonSinDatoOrigen(),
+            fechaSinDatoOrigen: $this->especimenes->contarFechaSinDatoOrigen(),
+            localidadSinDatoOrigen: $this->especimenes->contarLocalidadSinDatoOrigen(),
         );
     }
 }

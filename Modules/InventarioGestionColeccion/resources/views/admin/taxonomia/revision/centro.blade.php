@@ -38,7 +38,7 @@
         ],
         [
             'titulo' => 'Muestras de colecta',
-            'descripcion' => 'Confirma o descarta las muestras agrupadas por oldCode del importador.',
+            'descripcion' => 'Confirma o descarta las muestras que el importador agrupó por su código de colecta original.',
             'count' => $muestrasPendientes,
             'unit' => 'muestras',
             'ruta' => 'inventario.taxonomia.muestras',
@@ -49,12 +49,21 @@
 @endphp
 
 <div class="space-y-6 p-4 sm:p-6 max-w-6xl">
-    <div>
-        <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Centro de revisión del catálogo</flux:heading>
-        <p class="text-sm text-text-secondary mt-1">
-            Punto de partida para corregir lo que el importador no pudo resolver automáticamente.
-            Sigue el orden sugerido para máxima eficiencia: las primeras bandejas desbloquean a las siguientes.
-        </p>
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+            <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Centro de revisión del catálogo</flux:heading>
+            <p class="text-sm text-text-secondary mt-1">
+                Punto de partida para corregir lo que el importador no pudo resolver automáticamente.
+                Empieza por el orden sugerido para máxima eficiencia.
+            </p>
+        </div>
+        <flux:button variant="ghost" icon="arrow-path"
+                     wire:click="actualizar"
+                     wire:loading.attr="disabled" wire:target="actualizar"
+                     class="w-full sm:w-auto">
+            <span wire:loading.remove wire:target="actualizar">Actualizar conteos</span>
+            <span wire:loading wire:target="actualizar">Actualizando…</span>
+        </flux:button>
     </div>
 
     @if($errorMessage)<flux:callout variant="danger" dismissible>{{ $errorMessage }}</flux:callout>@endif
@@ -131,10 +140,46 @@
                         <div class="text-3xl font-bold {{ $colorTexto }}">{{ number_format($t['count']) }}</div>
                         <div class="text-xs text-text-secondary">{{ $t['unit'] }} pendiente(s)</div>
                     </div>
-                    <flux:icon name="arrow-right" class="size-5 text-text-secondary group-hover:{{ $colorTexto }} group-hover:translate-x-1 transition" />
+                    <flux:icon name="arrow-right" @class([
+                        'size-5 text-text-secondary group-hover:translate-x-1 transition',
+                        'group-hover:text-success' => $esCero,
+                        'group-hover:text-warning' => ! $esCero,
+                    ]) />
                 </div>
             </a>
         @endforeach
+    </div>
+
+    {{-- Falta de información: no resoluble por revisión (depende del Excel de origen) --}}
+    @php $totalSinDato = $taxonSinDatoOrigen + $fechaSinDatoOrigen + $localidadSinDatoOrigen; @endphp
+    <div class="rounded-lg border border-border bg-surface shadow-sm p-5">
+        <div class="mb-1 flex items-center gap-2">
+            <flux:icon name="information-circle" class="size-5 text-text-secondary" />
+            <div class="text-sm font-semibold text-text-primary">Falta de información en el origen</div>
+        </div>
+        <p class="mb-4 text-xs text-text-secondary">
+            Estos especímenes <strong>no</strong> aparecen en las bandejas de arriba: el Excel no trae ningún
+            texto que enlazar (ni nombre de taxón, ni fecha, ni localidad), así que no se pueden resolver
+            asignando un valor —no hay de dónde partir—. Quedan registrados como <strong>falta de información</strong>
+            de la fuente; depende del dato original y se corrige re-importando un Excel más completo.
+        </p>
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div class="rounded-lg border border-border bg-bg-main p-3">
+                <div class="text-xs text-text-secondary">Sin taxón de origen</div>
+                <div class="text-2xl font-bold text-text-primary">{{ number_format($taxonSinDatoOrigen) }}</div>
+            </div>
+            <div class="rounded-lg border border-border bg-bg-main p-3">
+                <div class="text-xs text-text-secondary">Sin fecha de origen</div>
+                <div class="text-2xl font-bold text-text-primary">{{ number_format($fechaSinDatoOrigen) }}</div>
+            </div>
+            <div class="rounded-lg border border-border bg-bg-main p-3">
+                <div class="text-xs text-text-secondary">Sin localidad de origen</div>
+                <div class="text-2xl font-bold text-text-primary">{{ number_format($localidadSinDatoOrigen) }}</div>
+            </div>
+        </div>
+        @if($totalSinDato === 0)
+            <p class="mt-3 text-xs text-success">Todos los especímenes traen al menos un dato de origen para revisar. 👍</p>
+        @endif
     </div>
 
     {{-- Atajos auxiliares --}}

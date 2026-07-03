@@ -16,6 +16,7 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\Trans
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\UbicacionEspecimenPort;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\AlertaUbicacionRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\CajaRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\CodigoQrRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\ConfiguracionColumnaRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\DatasetConfigRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EntidadDepositanteRepositoryInterface;
@@ -50,6 +51,7 @@ use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Console\
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Console\ImportarCatalogoInvertebradosCommand;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentAlertaUbicacionRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentCajaRepository;
+use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentCodigoQrRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentConfiguracionColumnaRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentDatasetConfigRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentEntidadDepositanteRepository;
@@ -110,6 +112,7 @@ class InventarioGestionColeccionServiceProvider extends ModuleServiceProvider
         ContextoEjecucionPort::class => HttpSeguridadContextoAdapter::class,
         TaxonRepositoryInterface::class => EloquentTaxonRepository::class,
         EspecimenRepositoryInterface::class => EloquentEspecimenRepository::class,
+        CodigoQrRepositoryInterface::class => EloquentCodigoQrRepository::class,
         EntidadDepositanteRepositoryInterface::class => EloquentEntidadDepositanteRepository::class,
         VisitanteRepositoryInterface::class => EloquentVisitanteRepository::class,
         DatasetConfigRepositoryInterface::class => EloquentDatasetConfigRepository::class,

@@ -14,7 +14,7 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\Dat
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\BasisOfRecord;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
 
-#[Layout('layouts.app', params: ['title' => 'Dataset GBIF'])]
+#[Layout('layouts.app', params: ['title' => 'Publicación GBIF'])]
 final class DatasetConfigForm extends Component
 {
     use TraduceErroresPersistencia;

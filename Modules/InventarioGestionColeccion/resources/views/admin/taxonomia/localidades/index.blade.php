@@ -124,7 +124,7 @@
                 <flux:label>Localidad padre (opcional)</flux:label>
                 <flux:select wire:model="padreId">
                     <option value="">Sin padre (raíz)</option>
-                    @foreach($localidades as $cand)
+                    @foreach($localidadesParaPadre as $cand)
                         <option value="{{ $cand['id'] }}">{{ $cand['nombreCanonico'] }} ({{ $cand['rango'] }})</option>
                     @endforeach
                 </flux:select>
@@ -198,7 +198,7 @@
                 <flux:label>Localidad padre (opcional)</flux:label>
                 <flux:select wire:model="editPadreId">
                     <option value="">Sin padre</option>
-                    @foreach($localidades as $cand)
+                    @foreach($localidadesParaPadre as $cand)
                         @if($cand['id'] !== $editandoId)
                             <option value="{{ $cand['id'] }}">{{ $cand['nombreCanonico'] }} ({{ $cand['rango'] }})</option>
                         @endif

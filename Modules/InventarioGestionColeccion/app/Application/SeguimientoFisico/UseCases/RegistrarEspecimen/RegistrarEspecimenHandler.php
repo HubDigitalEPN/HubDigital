@@ -6,10 +6,12 @@ namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCa
 
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especimen;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Exceptions\CodigoCatalogoDuplicadoException;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Exceptions\GuidEspecimenDuplicadoException;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EntidadDepositanteRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\TaxonRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EntidadDepositanteId;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EspecimenId;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TaxonId;
 
 final class RegistrarEspecimenHandler
@@ -42,8 +44,21 @@ final class RegistrarEspecimenHandler
             throw new CodigoCatalogoDuplicadoException($input->codigoCatalogo);
         }
 
+        // Cada espécimen recibe un GUID único que lo identifica unívocamente. En el
+        // alta normal lo genera el repositorio; si se fuerza un GUID (migraciones),
+        // se rechaza cuando ya pertenece a otro espécimen para preservar la unicidad.
+        if ($input->guidForzado !== null) {
+            $id = EspecimenId::desde($input->guidForzado);
+
+            if ($this->especimenRepo->buscarPorId($id) !== null) {
+                throw new GuidEspecimenDuplicadoException($input->guidForzado);
+            }
+        } else {
+            $id = $this->especimenRepo->nextIdentity();
+        }
+
         $especimen = Especimen::crear(
-            id: $this->especimenRepo->nextIdentity(),
+            id: $id,
             codigoCatalogo: $input->codigoCatalogo,
             taxonId: $input->taxonId,
             localidad: $input->localidad,

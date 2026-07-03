@@ -35,6 +35,14 @@ final readonly class BuscarEspecimenesInput
         public ?string $motivoRevision = null,
         public bool $paraRevision = false,
         public int $limit = 200,
+        /**
+         * Paginación server-side (opt-in). Si `page` es null se mantiene el
+         * comportamiento anterior (una sola tanda de hasta `limit` filas). Con
+         * `page` definido, el repositorio aplica LIMIT/OFFSET y se devuelve el
+         * total real para escalar a catálogos de decenas de miles de filas.
+         */
+        public ?int $page = null,
+        public int $perPage = 25,
     ) {}
 
     public function tieneFiltros(): bool
