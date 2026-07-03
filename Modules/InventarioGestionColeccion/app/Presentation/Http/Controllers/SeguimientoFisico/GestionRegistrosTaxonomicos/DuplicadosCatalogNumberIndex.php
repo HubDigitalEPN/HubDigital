@@ -87,8 +87,11 @@ final class DuplicadosCatalogNumberIndex extends Component
                 'fechasDistintas' => $item->fechasDistintas,
                 'motivoInput' => '',
             ], $output->items);
-            // Los índices cambian al recargar; reinicia la selección.
-            $this->seleccion = [];
+            // Los índices cambian al recargar; reinicia la selección. Cada grupo
+            // se siembra como array (no ausente) para que Livewire trate el
+            // checkbox en modo-array: sin esto, el primer clic manual guardaría
+            // un booleano `true` en vez del id y `count()` reventaría el render.
+            $this->seleccion = $this->items === [] ? [] : array_fill(0, count($this->items), []);
             $this->errorMessage = null;
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);

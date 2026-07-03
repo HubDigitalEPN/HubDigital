@@ -179,6 +179,10 @@ final class LocalidadesRevisionIndex extends Component
 
         if (! empty($this->expandido[$idx])) {
             $this->expandido[$idx] = false;
+            // Al cerrar, descarta la selección parcial: con el grupo colapsado la
+            // acción aplica a TODO el grupo, así que una selección retenida sería
+            // engañosa.
+            unset($this->seleccion[$idx], $this->miembros[$idx]);
 
             return;
         }
@@ -187,13 +191,17 @@ final class LocalidadesRevisionIndex extends Component
             $output = $handler->handle(new ListarEspecimenesDeGrupoInput(
                 tipo: ListarEspecimenesDeGrupoInput::TIPO_LOCALIDAD,
                 verbatim: $this->items[$idx]['verbatim'],
+                limite: 2000,
             ));
 
             $this->miembros[$idx] = array_map(fn ($m) => [
                 'id' => $m['id'],
                 'codigoCatalogo' => $m['codigoCatalogo'],
-                'colector' => $m['colector'],
+                'taxonNombre' => $m['taxonNombre'] ?? null,
                 'localidad' => $m['localidad'],
+                'fechaColecta' => $m['fechaColecta'] ?? null,
+                'fechaVerbatim' => $m['fechaVerbatim'] ?? null,
+                'colector' => $m['colector'],
             ], $output->items);
             $this->seleccion[$idx] = array_map(fn ($m) => $m['id'], $output->items);
             $this->expandido[$idx] = true;
@@ -255,6 +263,13 @@ final class LocalidadesRevisionIndex extends Component
 
                 return;
             }
+            // Si el grupo se truncó al cargar (hay más miembros que los mostrados)
+            // y están TODOS los cargados marcados, aplica al grupo completo por
+            // verbatim (ids=null) para no dejar en silencio a los no cargados.
+            $cargados = count($this->miembros[$idx] ?? []);
+            if (count($ids) === $cargados && $cargados < (int) ($this->items[$idx]['totalEspecimenes'] ?? $cargados)) {
+                $ids = null;
+            }
         }
 
         try {
@@ -299,6 +314,13 @@ final class LocalidadesRevisionIndex extends Component
                 $this->errorMessage = 'Selecciona al menos un espécimen, o cierra el detalle para aplicar a todo el grupo.';
 
                 return;
+            }
+            // Si el grupo se truncó al cargar (hay más miembros que los mostrados)
+            // y están TODOS los cargados marcados, aplica al grupo completo por
+            // verbatim (ids=null) para no dejar en silencio a los no cargados.
+            $cargados = count($this->miembros[$idx] ?? []);
+            if (count($ids) === $cargados && $cargados < (int) ($this->items[$idx]['totalEspecimenes'] ?? $cargados)) {
+                $ids = null;
             }
         }
 
