@@ -6,6 +6,7 @@ use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importer
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\FilaCatalogoMapper;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\ImportarCatalogoInvertebrados;
 use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryEspecimenRepository;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryLocalidadRepository;
 use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryMuestraColectaRepository;
 use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryTaxonRepository;
 
@@ -36,14 +37,16 @@ function bootstrapImporter(): array
     $especimenRepo = new InMemoryEspecimenRepository;
     $muestraRepo = new InMemoryMuestraColectaRepository;
     $taxonRepo = new InMemoryTaxonRepository;
+    $localidadRepo = new InMemoryLocalidadRepository;
     $importer = new ImportarCatalogoInvertebrados(
         $especimenRepo,
         $muestraRepo,
         $taxonRepo,
+        $localidadRepo,
         new FilaCatalogoMapper,
     );
 
-    return [$importer, $especimenRepo, $muestraRepo, $taxonRepo];
+    return [$importer, $especimenRepo, $muestraRepo, $taxonRepo, $localidadRepo];
 }
 
 test('persiste un espécimen mínimo (camino feliz)', function (): void {
@@ -305,4 +308,64 @@ test('rango de fechas dd-mes/dd-mes/yyyy', function (): void {
     $e = $especimenRepo->buscarPorCodigoCatalogo('R3');
     expect($e->fechaColecta())->toBe('2005-06-30')
         ->and($e->fechaColectaFin())->toBe('2005-07-02');
+});
+
+test('localidad separada por comas crea la jerarquía y enlaza el espécimen a la hoja', function (): void {
+    [$importer, $especimenRepo, , , $localidadRepo] = bootstrapImporter();
+
+    $fuente = new ArrayFuenteCatalogo([[
+        'occurrenceID' => 'L1',
+        'recordedBy' => 'Juan',
+        'verbatimLocality' => 'ECUADOR, ORELLANA, YASUNÍ',
+    ]]);
+
+    $importer->ejecutar($fuente);
+
+    // Se crearon tres niveles: País, Provincia, Sitio.
+    $localidades = $localidadRepo->buscarTodos();
+    $porNombre = [];
+    foreach ($localidades as $l) {
+        $porNombre[$l->nombreCanonico()] = $l;
+    }
+    expect($porNombre)->toHaveKeys(['Ecuador', 'Orellana', 'Yasuní']);
+
+    // La jerarquía encadena por padre: Yasuní → Orellana → Ecuador.
+    expect((string) $porNombre['Yasuní']->padreId())->toBe((string) $porNombre['Orellana']->id())
+        ->and((string) $porNombre['Orellana']->padreId())->toBe((string) $porNombre['Ecuador']->id())
+        ->and($porNombre['Ecuador']->padreId())->toBeNull();
+
+    // El espécimen queda enlazado a la hoja (la más específica: Yasuní).
+    $e = $especimenRepo->buscarPorCodigoCatalogo('L1');
+    expect($e->localidadId())->toBe((string) $porNombre['Yasuní']->id());
+});
+
+test('localidad de un solo nombre sin comas NO crea jerarquía ni enlaza (queda por confirmar)', function (): void {
+    [$importer, $especimenRepo, , , $localidadRepo] = bootstrapImporter();
+
+    $fuente = new ArrayFuenteCatalogo([[
+        'occurrenceID' => 'L2',
+        'recordedBy' => 'Juan',
+        'verbatimLocality' => 'Yasuní',
+    ]]);
+
+    $importer->ejecutar($fuente);
+
+    expect($localidadRepo->buscarTodos())->toBeEmpty();
+
+    $e = $especimenRepo->buscarPorCodigoCatalogo('L2');
+    expect($e->localidadId())->toBeNull();
+});
+
+test('la misma localidad separada por comas se reutiliza entre filas (sin duplicar)', function (): void {
+    [$importer, , , , $localidadRepo] = bootstrapImporter();
+
+    $fuente = new ArrayFuenteCatalogo([
+        ['occurrenceID' => 'L3', 'recordedBy' => 'Juan', 'verbatimLocality' => 'ECUADOR, ORELLANA, YASUNÍ'],
+        ['occurrenceID' => 'L4', 'recordedBy' => 'Maria', 'verbatimLocality' => 'ecuador, orellana, yasuní'],
+    ]);
+
+    $importer->ejecutar($fuente);
+
+    // Pese a la diferencia de caja, se normaliza y reutiliza: 3 localidades, no 6.
+    expect($localidadRepo->buscarTodos())->toHaveCount(3);
 });

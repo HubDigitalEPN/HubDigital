@@ -7,6 +7,7 @@ namespace Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Im
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especimen;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\MuestraColecta;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\LocalidadRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\MuestraColectaRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\TaxonRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\MuestraColectaId;
@@ -42,6 +43,7 @@ final class ImportarCatalogoInvertebrados
         private readonly EspecimenRepositoryInterface $especimenRepo,
         private readonly MuestraColectaRepositoryInterface $muestraRepo,
         private readonly TaxonRepositoryInterface $taxonRepo,
+        private readonly LocalidadRepositoryInterface $localidadRepo,
         private readonly FilaCatalogoMapper $mapper,
     ) {}
 
@@ -61,8 +63,10 @@ final class ImportarCatalogoInvertebrados
         $erroresFatales = [];
 
         $constructorTaxonomia = new ConstructorTaxonomiaImport($this->taxonRepo);
+        $constructorLocalidades = new ConstructorLocalidadesImport($this->localidadRepo);
         if (! $dryRun) {
             $constructorTaxonomia->precargarTaxonomiaExistente();
+            $constructorLocalidades->precargarLocalidadesExistentes();
         }
 
         /** @var array<string, MuestraColectaId> $muestrasPorOldCode */
@@ -80,6 +84,7 @@ final class ImportarCatalogoInvertebrados
             &$motivosRevision,
             &$erroresFatales,
             $constructorTaxonomia,
+            $constructorLocalidades,
             $dryRun,
         ): void {
             if ($bufferFilas === []) {
@@ -106,6 +111,7 @@ final class ImportarCatalogoInvertebrados
                     $normalizada = $this->mapper->normalizarClaves($fila);
 
                     $taxonId = $constructorTaxonomia->resolverDeFila($normalizada);
+                    $localidadId = $constructorLocalidades->resolverDeMapeada($mapeada);
 
                     $muestraId = null;
                     if ($mapeada->oldCode !== null) {
@@ -129,6 +135,7 @@ final class ImportarCatalogoInvertebrados
                         id: $this->especimenRepo->nextIdentity(),
                         codigoCatalogo: $mapeada->codigoCatalogo,
                         taxonId: $taxonId !== null ? (string) $taxonId : null,
+                        localidadId: $localidadId !== null ? (string) $localidadId : null,
                         localidad: $mapeada->localidad,
                         fechaColecta: $mapeada->fechaColecta,
                         colector: $mapeada->colector,

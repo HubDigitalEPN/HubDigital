@@ -6,6 +6,7 @@ use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importer
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\FilaCatalogoMapper;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\ImportarCatalogoInvertebrados;
 use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryEspecimenRepository;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryLocalidadRepository;
 use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryMuestraColectaRepository;
 use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryTaxonRepository;
 
@@ -33,6 +34,7 @@ test('end-to-end con fixture CSV: 6 filas → 6 especímenes, 2 muestras (BT2F3 
         $especimenRepo,
         $muestraRepo,
         $taxonRepo,
+        new InMemoryLocalidadRepository,
         new FilaCatalogoMapper,
     );
 

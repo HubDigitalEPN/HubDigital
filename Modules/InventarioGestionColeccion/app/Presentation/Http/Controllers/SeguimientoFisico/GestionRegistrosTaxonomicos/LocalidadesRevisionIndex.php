@@ -29,6 +29,7 @@ final class LocalidadesRevisionIndex extends Component
      * @var list<array{
      *   verbatim: string,
      *   totalEspecimenes: int,
+     *   esNombreUnico: bool,
      *   candidatos: list<array{localidadId:string, nombreCanonico:string, rango:string, puntajeSimilitud:float}>,
      *   localidadSeleccionada: string,
      *   localidadSeleccionadaNombre: string,
@@ -102,6 +103,7 @@ final class LocalidadesRevisionIndex extends Component
             $this->items = array_map(fn ($item) => [
                 'verbatim' => $item->verbatim,
                 'totalEspecimenes' => $item->totalEspecimenes,
+                'esNombreUnico' => $item->esNombreUnico,
                 'candidatos' => array_map(fn ($c) => [
                     'localidadId' => $c->localidadId,
                     'nombreCanonico' => $c->nombreCanonico,

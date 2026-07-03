@@ -26,6 +26,8 @@
             <li>Botón <strong>"Ver especímenes"</strong>: abre el grupo para revisar cada ejemplar y
                 <strong>marcar solo algunos</strong>.</li>
             <li>Con el grupo cerrado se aplica a <strong>todos</strong>; con el grupo abierto, solo a los <strong>marcados</strong>.</li>
+            <li>La marca <strong>«Nombre único»</strong> señala localidades de un solo nombre sin comas: el importador
+                no pudo deducir su jerarquía (país, provincia, sitio), así que dependen de que las resuelvas a mano.</li>
         </ol>
     </x-inventariogestioncoleccion::bandeja-ayuda>
 
@@ -59,6 +61,13 @@
                         <span class="inline-flex items-center rounded-full bg-blue-navy/10 text-blue-navy border border-blue-navy/30 px-2 py-0.5 text-xs font-semibold">
                             {{ $item['totalEspecimenes'] }} espécimen(es)
                         </span>
+                        @if(!empty($item['esNombreUnico']))
+                            <span class="inline-flex items-center gap-1 rounded-full bg-warning/10 text-warning border border-warning/30 px-2 py-0.5 text-xs font-semibold"
+                                  title="Un solo nombre, sin comas: el importador no pudo deducir la jerarquía geográfica (país, provincia, sitio). Requiere que lo resuelvas a mano.">
+                                <flux:icon name="exclamation-triangle" class="size-3.5" />
+                                Nombre único
+                            </span>
+                        @endif
                     </div>
                     <div class="text-text-primary text-base font-medium break-words">"{{ $item['verbatim'] }}"</div>
                 </div>

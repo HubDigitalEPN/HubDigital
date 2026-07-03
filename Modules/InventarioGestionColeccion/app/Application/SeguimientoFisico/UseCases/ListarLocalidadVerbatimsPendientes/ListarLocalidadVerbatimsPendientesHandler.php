@@ -43,6 +43,7 @@ final class ListarLocalidadVerbatimsPendientesHandler
                 verbatim: (string) $verbatim,
                 totalEspecimenes: $conteo,
                 candidatos: $candidatos,
+                esNombreUnico: ! str_contains((string) $verbatim, ','),
             );
         }
 
