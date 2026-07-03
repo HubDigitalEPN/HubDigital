@@ -434,6 +434,45 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
         return count($unicos);
     }
 
+    public function contarTaxonSinDatoOrigen(): int
+    {
+        $n = 0;
+        foreach ($this->store as $e) {
+            $v = $e->taxonVerbatim();
+            if ($e->taxonId() === null && ($v === null || $v === '')) {
+                $n++;
+            }
+        }
+
+        return $n;
+    }
+
+    public function contarFechaSinDatoOrigen(): int
+    {
+        $n = 0;
+        foreach ($this->store as $e) {
+            $v = $e->fechaVerbatim();
+            if (($e->fechaColecta() === '' || $e->fechaColecta() === null) && ($v === null || $v === '')) {
+                $n++;
+            }
+        }
+
+        return $n;
+    }
+
+    public function contarLocalidadSinDatoOrigen(): int
+    {
+        $n = 0;
+        foreach ($this->store as $e) {
+            $v = $e->localidadVerbatim();
+            if ($e->localidadId() === null && ($v === null || $v === '')) {
+                $n++;
+            }
+        }
+
+        return $n;
+    }
+
     public function enlazarFechaPorVerbatim(string $verbatim, string $fechaInicio, ?string $fechaFin = null): int
     {
         // La entidad no expone un setter directo para fecha_colecta; en InMemory

@@ -227,6 +227,21 @@ interface EspecimenRepositoryInterface
     public function contarFechaVerbatimsPendientes(): int;
 
     /**
+     * "Falta de información": especímenes que NO se pueden resolver por revisión
+     * porque el Excel no trae dato de origen. Cuentan los que tienen el enlace
+     * canónico nulo Y el verbatim nulo/vacío (no hay texto que enlazar).
+     *
+     *  - taxón:     taxon_id NULL     y taxon_verbatim NULL/''
+     *  - fecha:     fecha_colecta NULL y fecha_verbatim NULL/''
+     *  - localidad: localidad_id NULL y localidad_verbatim NULL/''
+     */
+    public function contarTaxonSinDatoOrigen(): int;
+
+    public function contarFechaSinDatoOrigen(): int;
+
+    public function contarLocalidadSinDatoOrigen(): int;
+
+    /**
      * Asigna `fecha_colecta` (y opcionalmente `fecha_colecta_fin` para rangos)
      * a todos los especímenes con un `fecha_verbatim` dado cuya fecha aún no
      * está parseada. Devuelve filas afectadas.

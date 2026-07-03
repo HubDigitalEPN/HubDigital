@@ -462,6 +462,27 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
             ->count('fecha_verbatim');
     }
 
+    public function contarTaxonSinDatoOrigen(): int
+    {
+        return EspecimenEloquentModel::whereNull('taxon_id')
+            ->where(fn ($q) => $q->whereNull('taxon_verbatim')->orWhere('taxon_verbatim', '=', ''))
+            ->count();
+    }
+
+    public function contarFechaSinDatoOrigen(): int
+    {
+        return EspecimenEloquentModel::whereNull('fecha_colecta')
+            ->where(fn ($q) => $q->whereNull('fecha_verbatim')->orWhere('fecha_verbatim', '=', ''))
+            ->count();
+    }
+
+    public function contarLocalidadSinDatoOrigen(): int
+    {
+        return EspecimenEloquentModel::whereNull('localidad_id')
+            ->where(fn ($q) => $q->whereNull('localidad_verbatim')->orWhere('localidad_verbatim', '=', ''))
+            ->count();
+    }
+
     public function enlazarFechaPorVerbatim(string $verbatim, string $fechaInicio, ?string $fechaFin = null): int
     {
         return EspecimenEloquentModel::where('fecha_verbatim', $verbatim)

@@ -33,6 +33,13 @@ final class CentroRevisionIndex extends Component
 
     public int $muestrasPendientes = 0;
 
+    // "Falta de información": no resolubles por revisión (el Excel no trae dato).
+    public int $taxonSinDatoOrigen = 0;
+
+    public int $fechaSinDatoOrigen = 0;
+
+    public int $localidadSinDatoOrigen = 0;
+
     public ?string $errorMessage = null;
 
     public function mount(ResumirEstadoRevisionHandler $handler): void
@@ -59,6 +66,9 @@ final class CentroRevisionIndex extends Component
             $this->duplicadosCatalogNumberGrupos = $out->duplicadosCatalogNumberGrupos;
             $this->fechaVerbatimPendientes = $out->fechaVerbatimPendientes;
             $this->muestrasPendientes = $out->muestrasPendientes;
+            $this->taxonSinDatoOrigen = $out->taxonSinDatoOrigen;
+            $this->fechaSinDatoOrigen = $out->fechaSinDatoOrigen;
+            $this->localidadSinDatoOrigen = $out->localidadSinDatoOrigen;
         });
     }
 

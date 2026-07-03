@@ -150,6 +150,38 @@
         @endforeach
     </div>
 
+    {{-- Falta de información: no resoluble por revisión (depende del Excel de origen) --}}
+    @php $totalSinDato = $taxonSinDatoOrigen + $fechaSinDatoOrigen + $localidadSinDatoOrigen; @endphp
+    <div class="rounded-lg border border-border bg-surface shadow-sm p-5">
+        <div class="mb-1 flex items-center gap-2">
+            <flux:icon name="information-circle" class="size-5 text-text-secondary" />
+            <div class="text-sm font-semibold text-text-primary">Falta de información en el origen</div>
+        </div>
+        <p class="mb-4 text-xs text-text-secondary">
+            Estos especímenes <strong>no</strong> aparecen en las bandejas de arriba: el Excel no trae ningún
+            texto que enlazar (ni nombre de taxón, ni fecha, ni localidad), así que no se pueden resolver
+            asignando un valor —no hay de dónde partir—. Quedan registrados como <strong>falta de información</strong>
+            de la fuente; depende del dato original y se corrige re-importando un Excel más completo.
+        </p>
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div class="rounded-lg border border-border bg-bg-main p-3">
+                <div class="text-xs text-text-secondary">Sin taxón de origen</div>
+                <div class="text-2xl font-bold text-text-primary">{{ number_format($taxonSinDatoOrigen) }}</div>
+            </div>
+            <div class="rounded-lg border border-border bg-bg-main p-3">
+                <div class="text-xs text-text-secondary">Sin fecha de origen</div>
+                <div class="text-2xl font-bold text-text-primary">{{ number_format($fechaSinDatoOrigen) }}</div>
+            </div>
+            <div class="rounded-lg border border-border bg-bg-main p-3">
+                <div class="text-xs text-text-secondary">Sin localidad de origen</div>
+                <div class="text-2xl font-bold text-text-primary">{{ number_format($localidadSinDatoOrigen) }}</div>
+            </div>
+        </div>
+        @if($totalSinDato === 0)
+            <p class="mt-3 text-xs text-success">Todos los especímenes traen al menos un dato de origen para revisar. 👍</p>
+        @endif
+    </div>
+
     {{-- Atajos auxiliares --}}
     <div class="rounded-lg border border-border bg-surface shadow-sm p-5">
         <div class="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-3">Atajos útiles</div>

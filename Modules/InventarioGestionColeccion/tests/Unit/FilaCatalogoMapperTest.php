@@ -161,19 +161,20 @@ test('endemic vacío o desconocido devuelve null', function (?string $raw): void
     expect($fila->endemic)->toBeNull();
 })->with(['', '   ', 'maybe', null]);
 
-test('localidad_verbatim usa verbatimLocality si está; sino localityName', function (): void {
+test('localidad_verbatim usa verbatimLocality si está; sino localityName (normalizado)', function (): void {
+    // La caja se normaliza al importar (inicial mayúscula, resto minúsculas).
     $conVerbatim = mapearFila([
         'occurrenceID' => 'X',
         'verbatimLocality' => 'YSN-Onko',
         'localityName' => 'Yasuní Onkonegare',
     ]);
-    expect($conVerbatim->localidadVerbatim)->toBe('YSN-Onko');
+    expect($conVerbatim->localidadVerbatim)->toBe('Ysn-onko');
 
     $soloName = mapearFila([
         'occurrenceID' => 'Y',
         'localityName' => 'Yasuní Onkonegare',
     ]);
-    expect($soloName->localidadVerbatim)->toBe('Yasuní Onkonegare');
+    expect($soloName->localidadVerbatim)->toBe('Yasuní onkonegare');
 });
 
 test('campos opcionales vacíos quedan en null', function (): void {
