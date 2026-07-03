@@ -134,7 +134,7 @@
                             heading="Catálogo"
                             class="grid"
                             expandable
-                            :expanded="request()->routeIs('inventario.taxonomia.especimenes', 'inventario.taxonomia.taxones', 'inventario.taxonomia.localidades', 'inventario.taxonomia.muestras', 'inventario.taxonomia.entidades-depositantes')"
+                            :expanded="request()->routeIs('inventario.taxonomia.especimenes', 'inventario.taxonomia.taxones', 'inventario.taxonomia.localidades', 'inventario.taxonomia.entidades-depositantes')"
                         >
                             <flux:sidebar.item
                                 icon="magnifying-glass"
@@ -161,14 +161,6 @@
                                 Localidades
                             </flux:sidebar.item>
                             <flux:sidebar.item
-                                icon="rectangle-stack"
-                                :href="route('inventario.taxonomia.muestras')"
-                                :current="request()->routeIs('inventario.taxonomia.muestras')"
-                                wire:navigate
-                            >
-                                Muestras de colecta
-                            </flux:sidebar.item>
-                            <flux:sidebar.item
                                 icon="building-library"
                                 :href="route('inventario.taxonomia.entidades-depositantes')"
                                 :current="request()->routeIs('inventario.taxonomia.entidades-depositantes')"
@@ -181,7 +173,7 @@
                             heading="Control de calidad"
                             class="grid"
                             expandable
-                            :expanded="request()->routeIs('inventario.taxonomia.revision', 'inventario.taxonomia.especimenes.duplicados', 'inventario.taxonomia.fechas.revision', 'inventario.taxonomia.taxones.revision', 'inventario.taxonomia.localidades.revision')"
+                            :expanded="request()->routeIs('inventario.taxonomia.revision', 'inventario.taxonomia.especimenes.duplicados', 'inventario.taxonomia.fechas.revision', 'inventario.taxonomia.taxones.revision', 'inventario.taxonomia.localidades.revision', 'inventario.taxonomia.muestras')"
                         >
                             <flux:sidebar.item
                                 icon="clipboard-document-check"
@@ -222,6 +214,14 @@
                                 wire:navigate
                             >
                                 Localidades por confirmar
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="rectangle-stack"
+                                :href="route('inventario.taxonomia.muestras')"
+                                :current="request()->routeIs('inventario.taxonomia.muestras')"
+                                wire:navigate
+                            >
+                                Muestras de colecta
                             </flux:sidebar.item>
                         </flux:sidebar.group>
                         <flux:sidebar.group
