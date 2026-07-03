@@ -59,6 +59,8 @@ final class DevolverActaParaRefirmarHandler
         $acta->devolver(
             investigadorId: $solicitud->investigadorId(),
             motivo: $input->motivo,
+            devolverActa: $input->devolverActa,
+            devolverIdentidad: $input->devolverIdentidad,
         );
 
         $this->transactionManager->executeTransactional(function () use ($acta): void {

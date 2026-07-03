@@ -7,10 +7,13 @@ namespace Modules\GestionPrestamosRecepciones\Application\UseCases\FirmarActaDig
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\PdfGeneratorPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\UsuarioNombrePort;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\ActaNoPerteneceAlInvestigador;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\ActaPrestamoNoEncontradaException;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\FirmaBase64Invalida;
+use Modules\GestionPrestamosRecepciones\Domain\Exceptions\PatenteAnualNoConfigurada;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\ActaPrestamoRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\Repositories\PatenteAnualRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
 
@@ -28,6 +31,8 @@ final class FirmarActaDigitalmenteHandler
         private readonly PdfGeneratorPort $pdfGenerator,
         private readonly EventPublisherPort $publisher,
         private readonly TransactionManagerPort $transactionManager,
+        private readonly UsuarioNombrePort $usuarios,
+        private readonly PatenteAnualRepositoryInterface $patentes,
     ) {}
 
     /**
@@ -54,6 +59,13 @@ final class FirmarActaDigitalmenteHandler
 
         $this->validarFirmaBase64($input->firmaBase64);
 
+        $anioPatente = (int) $acta->fechaInicio()->format('Y');
+        $patente = $this->patentes->buscarCodigoPorAnio($anioPatente);
+
+        if ($patente === null) {
+            throw PatenteAnualNoConfigurada::paraAnio($anioPatente);
+        }
+
         $firmaImagenRuta = 'firmas-investigador/'.(string) $actaId.'.png';
 
         $this->pdfGenerator->almacenarImagenPng(
@@ -66,7 +78,9 @@ final class FirmarActaDigitalmenteHandler
             datos: [
                 'acta' => $acta,
                 'solicitud' => $solicitud,
+                'nombreInvestigador' => $this->usuarios->obtenerNombre($solicitud->investigadorId()),
                 'firmaBase64' => $input->firmaBase64,
+                'patente' => $patente,
             ],
             rutaDestino: $acta->pdfRuta(),
         );

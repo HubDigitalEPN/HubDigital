@@ -50,6 +50,10 @@
                         $diasRestantes = (int) $hoy->diff($detalle->fechaFin)->days;
                         $vencido = $detalle->fechaFin < $hoy;
                     @endphp
+
+                    <x-gestionprestamosrecepciones::plazo-devolucion-banner
+                        :dias-restantes="$diasRestantes" :vencido="$vencido" :fecha-fin="$detalle->fechaFin" />
+
                     <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                         <div>
                             <dt class="text-xs text-text-secondary uppercase tracking-wide">Fecha de inicio</dt>
@@ -58,12 +62,6 @@
                         <div>
                             <dt class="text-xs text-text-secondary uppercase tracking-wide">Fecha de vencimiento</dt>
                             <dd class="font-medium text-text-primary mt-1">{{ $detalle->fechaFin->format('d/m/Y') }}</dd>
-                        </div>
-                        <div class="sm:col-span-2">
-                            <dt class="text-xs text-text-secondary uppercase tracking-wide">Días restantes</dt>
-                            <dd class="font-semibold mt-1 {{ $vencido ? 'text-error' : ($diasRestantes <= 30 ? 'text-warning' : 'text-bio-green') }}">
-                                {{ $vencido ? 'Vencido hace ' . $diasRestantes . ' días' : $diasRestantes . ' días restantes' }}
-                            </dd>
                         </div>
                     </dl>
                 </div>
@@ -190,10 +188,6 @@
                     <div class="p-5">
                         <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                             <div>
-                                <dt class="text-xs text-text-secondary uppercase tracking-wide">N.º solicitud</dt>
-                                <dd class="font-mono font-medium text-text-primary mt-1">{{ $detalle->numeroSolicitud }}</dd>
-                            </div>
-                            <div>
                                 <dt class="text-xs text-text-secondary uppercase tracking-wide">Institución</dt>
                                 <dd class="font-medium text-text-primary mt-1">{{ $detalle->institucionAdscripcion }}</dd>
                             </div>
@@ -224,10 +218,6 @@
                     </div>
                     <div class="p-5">
                         <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                            <div>
-                                <dt class="text-xs text-text-secondary uppercase tracking-wide">N.º acta</dt>
-                                <dd class="font-mono font-medium text-text-primary mt-1">{{ $detalle->numeroPrestamo }}</dd>
-                            </div>
                             <div>
                                 <dt class="text-xs text-text-secondary uppercase tracking-wide">Tipo</dt>
                                 <dd class="font-medium text-text-primary mt-1 capitalize">{{ str_replace('_', ' ', $detalle->tipoPrestamo) }}</dd>

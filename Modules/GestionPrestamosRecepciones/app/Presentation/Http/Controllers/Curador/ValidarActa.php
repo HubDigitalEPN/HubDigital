@@ -37,6 +37,10 @@ final class ValidarActa extends Component
     #[Validate('required|string|min:10')]
     public string $motivoDevolucion = '';
 
+    public bool $devolverActa = true;
+
+    public bool $devolverIdentidad = true;
+
     /**
      * @param string $id
      * @param ConsultarActaHandler $handler
@@ -74,10 +78,18 @@ final class ValidarActa extends Component
     {
         $this->validate(['motivoDevolucion' => 'required|string|min:10']);
 
+        if (! $this->devolverActa && ! $this->devolverIdentidad) {
+            $this->addError('devolverActa', 'Selecciona al menos un documento para devolver.');
+
+            return;
+        }
+
         $handler->handle(new DevolverActaParaRefirmarInput(
             actaId: $this->id,
             curadorId: (string) auth()->id(),
             motivo: $this->motivoDevolucion,
+            devolverActa: $this->devolverActa,
+            devolverIdentidad: $this->devolverIdentidad,
         ));
 
         $this->redirectRoute('prestamos.curador.actas', navigate: true);

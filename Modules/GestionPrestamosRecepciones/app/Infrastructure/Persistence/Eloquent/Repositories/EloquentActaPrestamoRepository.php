@@ -9,8 +9,8 @@ use Modules\GestionPrestamosRecepciones\Domain\Entities\ActaPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\ActaPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\AlcancePrestamo;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\CodigoPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoActa;
-use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\NumeroPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoPrestamo;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\ActaPrestamoModel;
@@ -31,7 +31,7 @@ final class EloquentActaPrestamoRepository implements ActaPrestamoRepositoryInte
         ActaPrestamoModel::updateOrCreate(
             ['id' => (string) $acta->id()],
             [
-                'numero_prestamo' => (string) $acta->numeroPrestamo(),
+                'codigo' => (string) $acta->codigoPrestamo(),
                 'solicitud_prestamo_id' => (string) $acta->solicitudPrestamoId(),
                 'estado' => $acta->estado()->value,
                 'tipo_prestamo' => $acta->tipoPrestamo()->value,
@@ -96,9 +96,9 @@ final class EloquentActaPrestamoRepository implements ActaPrestamoRepositoryInte
 
         if ($busquedaTexto !== '') {
             $query->where(fn ($q) => $q
-                ->where('numero_prestamo', 'ilike', "%{$busquedaTexto}%")
+                ->where('codigo', 'ilike', "%{$busquedaTexto}%")
                 ->orWhereHas('solicitud', fn ($sq) => $sq
-                    ->where('numero_solicitud', 'ilike', "%{$busquedaTexto}%")
+                    ->where('codigo', 'ilike', "%{$busquedaTexto}%")
                     ->orWhere('titulo_estudio', 'ilike', "%{$busquedaTexto}%")
                 )
             );
@@ -112,19 +112,19 @@ final class EloquentActaPrestamoRepository implements ActaPrestamoRepositoryInte
             $query->whereHas('solicitud', fn ($q) => $q->whereIn('investigador_id', $investigadorIds));
         }
 
-        if ($ordenCampo === 'numero_solicitud') {
+        if ($ordenCampo === 'codigo') {
             $actas = $query->get();
             $actas = $ordenDireccion === 'asc'
-                ? $actas->sortBy('solicitud.numero_solicitud')
-                : $actas->sortByDesc('solicitud.numero_solicitud');
+                ? $actas->sortBy('codigo')
+                : $actas->sortByDesc('codigo');
         } else {
             $actas = $query->orderBy('created_at', $ordenDireccion)->get();
         }
 
         return $actas->map(fn (ActaPrestamoModel $acta): array => [
             'actaId' => (string) $acta->id,
-            'numeroPrestamo' => (string) $acta->numero_prestamo,
-            'numeroSolicitud' => $acta->solicitud?->numero_solicitud,
+            'numeroPrestamo' => (string) $acta->codigo,
+            'numeroSolicitud' => $acta->solicitud?->codigo,
             'investigadorId' => $acta->solicitud?->investigador_id,
             'estado' => (string) $acta->estado,
             'fecha' => DateTimeImmutable::createFromInterface($acta->created_at),
@@ -138,7 +138,7 @@ final class EloquentActaPrestamoRepository implements ActaPrestamoRepositoryInte
     {
         return ActaPrestamo::reconstituir(
             id: ActaPrestamoId::fromString($model->id),
-            numeroPrestamo: NumeroPrestamo::fromString($model->numero_prestamo),
+            codigoPrestamo: CodigoPrestamo::fromString($model->codigo),
             solicitudPrestamoId: SolicitudPrestamoId::fromString($model->solicitud_prestamo_id),
             estado: EstadoActa::from($model->estado),
             tipoPrestamo: TipoPrestamo::from($model->tipo_prestamo),

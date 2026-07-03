@@ -27,7 +27,7 @@ final class SolicitudPrestamoModel extends Model
 
     protected $fillable = [
         'id',
-        'numero_solicitud',
+        'codigo',
         'investigador_id',
         'alcance_prestamo',
         'estado',

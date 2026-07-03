@@ -22,7 +22,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRep
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\AlcancePrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitud;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ItemPrestamoId;
-use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\NumeroSolicitud;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\CodigoPrestamo;
 use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\BaseContext;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\FakeEventPublisherAdapter;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\PassThroughTransactionManagerAdapter;
@@ -112,7 +112,7 @@ final class ResolucionSolicitudesPrestamoContext extends BaseContext
 
         $solicitud = SolicitudPrestamo::crear(
             id: $this->solicitudRepo->nextIdentity(),
-            numeroSolicitud: NumeroSolicitud::generate(),
+            codigoPrestamo: CodigoPrestamo::fromParts(2026, random_int(1, 99999)),
             investigadorId: 'inv-001',
             alcancePrestamo: AlcancePrestamo::Nacional,
             tituloEstudio: $this->datosSolicitud['titulo_estudio'],

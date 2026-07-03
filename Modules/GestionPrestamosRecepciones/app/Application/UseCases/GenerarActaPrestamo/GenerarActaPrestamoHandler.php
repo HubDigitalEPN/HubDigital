@@ -11,7 +11,6 @@ use Modules\GestionPrestamosRecepciones\Domain\Entities\ActaPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\SolicitudPrestamoNoEncontradaException;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\ActaPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
-use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\NumeroPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoPrestamo;
 
@@ -55,7 +54,7 @@ final class GenerarActaPrestamoHandler
 
         $acta = ActaPrestamo::emitir(
             id: $this->actaRepo->nextIdentity(),
-            numeroPrestamo: NumeroPrestamo::generate(),
+            codigoPrestamo: $solicitud->codigoPrestamo(),
             solicitudPrestamoId: $solicitudId,
             tipoPrestamo: TipoPrestamo::Temporal,
             alcancePrestamo: $solicitud->alcancePrestamo(),

@@ -18,6 +18,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Events\VerificacionEntregaRegistr
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\TransicionDeEstadoInvalidaException;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\AlcancePrestamo;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\CodigoPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\CondicionEspecimen;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoRecordatorio;
@@ -46,6 +47,7 @@ final class Prestamo
     private function __construct(
         private readonly PrestamoId $id,
         private readonly ActaPrestamoId $actaPrestamoId,
+        private readonly CodigoPrestamo $codigoPrestamo,
         private readonly string $investigadorId,
         private EstadoPrestamo $estado,
         private readonly DateTimeImmutable $iniciadoEn,
@@ -66,6 +68,7 @@ final class Prestamo
     public static function iniciar(
         PrestamoId $id,
         ActaPrestamoId $actaPrestamoId,
+        CodigoPrestamo $codigoPrestamo,
         string $investigadorId,
         AlcancePrestamo $alcancePrestamo,
         DateTimeImmutable $iniciadoEn,
@@ -82,6 +85,7 @@ final class Prestamo
         $prestamo = new self(
             id: $id,
             actaPrestamoId: $actaPrestamoId,
+            codigoPrestamo: $codigoPrestamo,
             investigadorId: $investigadorId,
             estado: $estadoInicial,
             iniciadoEn: $iniciadoEn,
@@ -104,6 +108,7 @@ final class Prestamo
     public static function reconstituir(
         PrestamoId $id,
         ActaPrestamoId $actaPrestamoId,
+        CodigoPrestamo $codigoPrestamo,
         string $investigadorId,
         EstadoPrestamo $estado,
         DateTimeImmutable $iniciadoEn,
@@ -112,6 +117,7 @@ final class Prestamo
         return new self(
             id: $id,
             actaPrestamoId: $actaPrestamoId,
+            codigoPrestamo: $codigoPrestamo,
             investigadorId: $investigadorId,
             estado: $estado,
             iniciadoEn: $iniciadoEn,
@@ -327,6 +333,29 @@ final class Prestamo
     }
 
     /**
+     * El curador reitera manualmente el aviso de vencimiento de un préstamo ya vencido.
+     * No cambia el estado (ya es Vencido); solo vuelve a emitir el evento de recordatorio
+     * para que la notificación de vencido se reenvíe al investigador.
+     */
+    public function reiterarVencimiento(DateTimeImmutable $ahora): void
+    {
+        if (! $this->estado->equals(EstadoPrestamo::Vencido)) {
+            throw TransicionDeEstadoInvalidaException::para(
+                'Prestamo',
+                $this->estado->name,
+                'reiterarVencimiento — el préstamo debe estar vencido'
+            );
+        }
+
+        $this->events[] = new RecordatorioDevolucionEnviado(
+            prestamoId: $this->id,
+            investigadorId: $this->investigadorId,
+            estadoRecordatorio: EstadoRecordatorio::Vencido,
+            ocurridoEn: $ahora,
+        );
+    }
+
+    /**
      * Registra en el agregado que se envió un recordatorio de devolución.
      * Debe llamarse después de haber despachado la notificación vía Port.
      */
@@ -365,6 +394,11 @@ final class Prestamo
     public function actaPrestamoId(): ActaPrestamoId
     {
         return $this->actaPrestamoId;
+    }
+
+    public function codigoPrestamo(): CodigoPrestamo
+    {
+        return $this->codigoPrestamo;
     }
 
     public function investigadorId(): string

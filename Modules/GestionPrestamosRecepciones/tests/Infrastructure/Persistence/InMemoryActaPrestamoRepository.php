@@ -59,7 +59,7 @@ final class InMemoryActaPrestamoRepository implements ActaPrestamoRepositoryInte
                 }
 
                 if ($busquedaTexto !== ''
-                    && ! str_contains(mb_strtolower((string) $acta->numeroPrestamo()), mb_strtolower($busquedaTexto))) {
+                    && ! str_contains(mb_strtolower((string) $acta->codigoPrestamo()), mb_strtolower($busquedaTexto))) {
                     return false;
                 }
 
@@ -71,7 +71,7 @@ final class InMemoryActaPrestamoRepository implements ActaPrestamoRepositoryInte
 
         usort($actas, function (ActaPrestamo $a, ActaPrestamo $b) use ($ordenCampo): int {
             return $ordenCampo === 'numeroPrestamo'
-                ? strcmp((string) $a->numeroPrestamo(), (string) $b->numeroPrestamo())
+                ? strcmp((string) $a->codigoPrestamo(), (string) $b->codigoPrestamo())
                 : $this->fecha($a) <=> $this->fecha($b);
         });
 
@@ -81,7 +81,7 @@ final class InMemoryActaPrestamoRepository implements ActaPrestamoRepositoryInte
 
         return array_map(fn (ActaPrestamo $acta): array => [
             'actaId' => (string) $acta->id(),
-            'numeroPrestamo' => (string) $acta->numeroPrestamo(),
+            'numeroPrestamo' => (string) $acta->codigoPrestamo(),
             'numeroSolicitud' => null,
             'investigadorId' => null,
             'estado' => $acta->estado()->value,

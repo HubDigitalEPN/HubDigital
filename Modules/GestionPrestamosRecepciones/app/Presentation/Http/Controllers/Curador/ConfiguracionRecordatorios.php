@@ -14,6 +14,9 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarConfigurac
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarConfiguracionGlobalRecordatorios\ConsultarConfiguracionGlobalRecordatoriosInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\DefinirConfiguracionGlobalRecordatorios\DefinirConfiguracionGlobalRecordatoriosHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\DefinirConfiguracionGlobalRecordatorios\DefinirConfiguracionGlobalRecordatoriosInput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\GuardarPatenteAnual\GuardarPatenteAnualHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\GuardarPatenteAnual\GuardarPatenteAnualInput;
+use Modules\GestionPrestamosRecepciones\Domain\Repositories\PatenteAnualRepositoryInterface;
 
 /**
  * Componente Livewire para la configuración global de recordatorios de préstamo.
@@ -33,17 +36,54 @@ final class ConfiguracionRecordatorios extends Component
 
     public ?string $mensajeExito = null;
 
+    public int $anioPatente;
+
+    public string $patente = '';
+
+    public ?string $mensajePatente = null;
+
     /**
      * @param ConsultarConfiguracionGlobalRecordatoriosHandler $handler
+     * @param PatenteAnualRepositoryInterface $patentes
      * @return void
      */
-    public function mount(ConsultarConfiguracionGlobalRecordatoriosHandler $handler): void
-    {
+    public function mount(
+        ConsultarConfiguracionGlobalRecordatoriosHandler $handler,
+        PatenteAnualRepositoryInterface $patentes,
+    ): void {
         $configuracion = $handler->handle(new ConsultarConfiguracionGlobalRecordatoriosInput());
 
         if ($configuracion->configuracionId !== null) {
             $this->configuracionId = $configuracion->configuracionId;
             $this->diasAntes = $configuracion->diasAntes ?? $this->diasAntes;
+        }
+
+        $this->anioPatente = (int) now()->year;
+        $this->patente = $patentes->buscarCodigoPorAnio($this->anioPatente) ?? '';
+    }
+
+    /**
+     * Registra o cambia la patente del laboratorio para el año en curso.
+     *
+     * @param GuardarPatenteAnualHandler $handler
+     * @return void
+     */
+    public function guardarPatente(GuardarPatenteAnualHandler $handler): void
+    {
+        $this->validate([
+            'patente' => ['required', 'string', 'max:255'],
+        ]);
+
+        try {
+            $output = $handler->handle(new GuardarPatenteAnualInput(
+                anio: $this->anioPatente,
+                codigo: $this->patente,
+                curadorId: (string) auth()->id(),
+            ));
+            $this->patente = $output->codigo;
+            $this->mensajePatente = 'Patente guardada correctamente.';
+        } catch (\Throwable $e) {
+            $this->dispatch('domain-error', message: $e->getMessage());
         }
     }
 

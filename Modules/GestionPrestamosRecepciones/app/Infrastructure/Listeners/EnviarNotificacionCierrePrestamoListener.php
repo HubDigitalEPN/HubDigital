@@ -22,7 +22,7 @@ final class EnviarNotificacionCierrePrestamoListener
         $prestamoId = (string) $event->prestamoId;
 
         $prestamo    = PrestamoEloquentModel::with('acta')->find($prestamoId);
-        $numeroPrestamo = $prestamo?->acta?->numero_prestamo ?? $prestamoId;
+        $numeroPrestamo = $prestamo?->codigo ?? $prestamo?->acta?->codigo ?? $prestamoId;
 
         $investigador = User::find($event->investigadorId);
         $investigadorNombre = $investigador?->name ?? 'Investigador';

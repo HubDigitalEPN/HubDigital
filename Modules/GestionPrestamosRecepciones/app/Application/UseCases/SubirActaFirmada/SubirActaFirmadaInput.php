@@ -13,6 +13,6 @@ final readonly class SubirActaFirmadaInput
         public string $solicitudId,
         public string $investigadorId,
         public string $pdfFirmadoRuta,
-        public string $documentoIdentidadRuta,
+        public ?string $documentoIdentidadRuta,
     ) {}
 }

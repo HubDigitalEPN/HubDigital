@@ -93,7 +93,7 @@
                         <th class="px-4 py-3 text-left font-medium text-white">N.º solicitud</th>
                         <th class="px-4 py-3 text-left font-medium text-white w-72">Título del estudio</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Estado</th>
-                        <th class="px-4 py-3 text-left font-medium text-white">Fecha</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">Fecha de envío</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Acciones</th>
                     </tr>
                 </thead>

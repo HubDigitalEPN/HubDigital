@@ -38,7 +38,7 @@ final readonly class ConsultarSolicitudPrestamoOutput
     {
         return new self(
             solicitudId: (string) $solicitud->id(),
-            numeroSolicitud: (string) $solicitud->numeroSolicitud(),
+            numeroSolicitud: (string) $solicitud->codigoPrestamo(),
             investigadorId: $solicitud->investigadorId(),
             estado: $solicitud->estado(),
             enviadaEn: $solicitud->enviadaEn(),

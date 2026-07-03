@@ -24,7 +24,7 @@
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <flux:input
                     wire:model.live.debounce.300ms="busqueda"
-                    placeholder="Buscar por N.º acta, N.º solicitud o título..."
+                    placeholder="Buscar por código o título..."
                     icon="magnifying-glass"
                     clearable
                     class="flex-1" />
@@ -46,7 +46,7 @@
                 </flux:select>
                 <flux:select wire:model.live="ordenCampo" class="w-48">
                     <flux:select.option value="fecha">Por fecha</flux:select.option>
-                    <flux:select.option value="numero_solicitud">Por N.º solicitud</flux:select.option>
+                    <flux:select.option value="codigo">Por código</flux:select.option>
                 </flux:select>
                 <flux:button
                     wire:click="toggleOrden"
@@ -88,11 +88,10 @@
             <table class="w-full text-sm min-w-[750px]">
                 <thead class="bg-blue-navy border-b border-border">
                     <tr>
-                        <th class="px-4 py-3 text-left font-medium text-white">N.º acta</th>
-                        <th class="px-4 py-3 text-left font-medium text-white">N.º solicitud</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">Código</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Solicitante</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Estado</th>
-                        <th class="px-4 py-3 text-left font-medium text-white">Fecha</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">Fecha de generación</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Acciones</th>
                     </tr>
                 </thead>
@@ -101,9 +100,6 @@
                         <tr class="hover:bg-bg-main transition-colors">
                             <td class="px-4 py-3 font-mono text-xs text-text-secondary whitespace-nowrap">
                                 {{ $acta->numeroPrestamo }}
-                            </td>
-                            <td class="px-4 py-3 font-mono text-xs text-text-secondary whitespace-nowrap">
-                                {{ $acta->numeroSolicitud ?? '—' }}
                             </td>
                             <td class="px-4 py-3 text-sm text-text-secondary">
                                 {{ $acta->solicitanteNombre ?? '—' }}
