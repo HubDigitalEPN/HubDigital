@@ -9,6 +9,8 @@ use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConfirmarMuestra\ConfirmarMuestraHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConfirmarMuestra\ConfirmarMuestraInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarEspecimenesDeMuestra\ListarEspecimenesDeMuestraHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarEspecimenesDeMuestra\ListarEspecimenesDeMuestraInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarMuestrasParaRevision\ListarMuestrasParaRevisionHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarMuestrasParaRevision\ListarMuestrasParaRevisionInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\MarcarMuestraParaRevision\MarcarMuestraParaRevisionHandler;
@@ -29,6 +31,12 @@ final class MuestrasColectaIndex extends Component
     public int $pagina = 1;
 
     public int $porPagina = 25;
+
+    /** Muestras expandidas (drill-down): muestraId => true. */
+    public array $expandido = [];
+
+    /** Especímenes cargados por muestra: muestraId => list<array>. */
+    public array $miembros = [];
 
     public ?string $successMessage = null;
 
@@ -63,6 +71,27 @@ final class MuestrasColectaIndex extends Component
 
             $this->muestras = $output->items;
             $this->total = $output->total;
+            // Los índices cambian al recargar; cierra los drill-downs abiertos.
+            $this->expandido = [];
+            $this->miembros = [];
+            $this->errorMessage = null;
+        } catch (\Throwable $e) {
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
+        }
+    }
+
+    /** Abre/cierra el detalle de una muestra; al abrirla carga sus especímenes. */
+    public function verEspecimenes(ListarEspecimenesDeMuestraHandler $handler, string $id): void
+    {
+        if (! empty($this->expandido[$id])) {
+            $this->expandido[$id] = false;
+
+            return;
+        }
+
+        try {
+            $this->miembros[$id] = $handler->handle(new ListarEspecimenesDeMuestraInput(muestraId: $id))->items;
+            $this->expandido[$id] = true;
             $this->errorMessage = null;
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);

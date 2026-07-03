@@ -133,6 +133,14 @@ interface EspecimenRepositoryInterface
     public function contarPorMuestraIds(array $muestraIds): array;
 
     /**
+     * Lista los especímenes enganchados a una `muestra_id` (drill-down de la
+     * bandeja de muestras: ver qué especímenes concretos contiene el lote).
+     *
+     * @return Especimen[]
+     */
+    public function buscarPorMuestraId(string $muestraId, int $limite = 500): array;
+
+    /**
      * Agrupa los `localidad_verbatim` con `localidad_id IS NULL`. Devuelve
      * pares `verbatim => conteo`, ordenados por conteo desc. SQL-side
      * (GROUP BY) — escalable a las 48k filas del Excel.

@@ -600,6 +600,17 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
         return $out;
     }
 
+    public function buscarPorMuestraId(string $muestraId, int $limite = 500): array
+    {
+        return EspecimenEloquentModel::with('identificadores')
+            ->where('muestra_id', $muestraId)
+            ->orderBy('codigo_catalogo')
+            ->limit($limite)
+            ->get()
+            ->map(fn ($m) => $this->toDomain($m))
+            ->all();
+    }
+
     /** @return Especimen[] */
     public function buscarParaRevision(?string $contieneMotivo = null, int $limit = 200): array
     {

@@ -510,6 +510,18 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
         return $out;
     }
 
+    public function buscarPorMuestraId(string $muestraId, int $limite = 500): array
+    {
+        $out = [];
+        foreach ($this->store as $e) {
+            if ($e->muestraId() === $muestraId) {
+                $out[] = $e;
+            }
+        }
+
+        return array_slice($out, 0, $limite);
+    }
+
     /** @return Especimen[] */
     public function buscarParaRevision(?string $contieneMotivo = null, int $limit = 200): array
     {

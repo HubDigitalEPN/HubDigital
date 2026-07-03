@@ -165,6 +165,13 @@
                     @endforeach
                     <div role="cell" class="px-4 py-3 whitespace-nowrap" style="order: 99999;">
                         <div class="flex items-center gap-2">
+                            <flux:button size="sm" variant="ghost"
+                                         icon="{{ ! empty($expandido[$muestra['id']]) ? 'chevron-up' : 'chevron-down' }}"
+                                         wire:click="verEspecimenes('{{ $muestra['id'] }}')"
+                                         wire:loading.attr="disabled"
+                                         wire:target="verEspecimenes('{{ $muestra['id'] }}')">
+                                Ver ({{ $muestra['conteoEspecimenes'] ?? 0 }})
+                            </flux:button>
                             <flux:button size="sm" variant="primary" icon="check"
                                          wire:click="confirmar('{{ $muestra['id'] }}')"
                                          wire:loading.attr="disabled"
@@ -181,6 +188,30 @@
                         </div>
                     </div>
                 </div>
+                @if(! empty($expandido[$muestra['id']]))
+                    <div class="border-t border-border bg-bg-main px-4 py-3" wire:key="muestra-det-{{ $muestra['id'] }}">
+                        <div class="mb-2 text-xs font-semibold text-text-secondary uppercase tracking-wide">Especímenes de la muestra</div>
+                        <div class="max-h-72 overflow-y-auto divide-y divide-border rounded-lg border border-border bg-surface">
+                            @forelse($miembros[$muestra['id']] ?? [] as $m)
+                                <div class="px-3 py-2">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <span class="font-mono text-sm text-text-primary">{{ $m['codigoCatalogo'] }}</span>
+                                        @if(! empty($m['taxonNombre']))
+                                            <span class="font-serif text-sm italic text-text-primary">{{ $m['taxonNombre'] }}</span>
+                                        @else
+                                            <span class="text-xs italic text-text-secondary">sin determinar</span>
+                                        @endif
+                                    </div>
+                                    <div class="mt-0.5 text-xs text-text-secondary">
+                                        {{ $m['localidad'] ?: '—' }} · {{ $m['fechaColecta'] ?: '—' }} · {{ $m['colector'] ?: '—' }}
+                                    </div>
+                                </div>
+                            @empty
+                                <div class="px-3 py-4 text-center text-xs text-text-secondary">Esta muestra no tiene especímenes enganchados.</div>
+                            @endforelse
+                        </div>
+                    </div>
+                @endif
             @empty
                 <div class="px-4 py-8 text-center text-text-secondary border-t border-border">
                     No hay muestras pendientes de revisión.
@@ -217,6 +248,13 @@
                         </div>
                     @endforeach
                     <div class="flex flex-wrap gap-2 pt-2" style="order: 99999;">
+                        <flux:button variant="ghost"
+                                     icon="{{ ! empty($expandido[$muestra['id']]) ? 'chevron-up' : 'chevron-down' }}"
+                                     wire:click="verEspecimenes('{{ $muestra['id'] }}')"
+                                     wire:loading.attr="disabled"
+                                     wire:target="verEspecimenes('{{ $muestra['id'] }}')">
+                            Ver especímenes ({{ $muestra['conteoEspecimenes'] ?? 0 }})
+                        </flux:button>
                         <flux:button variant="primary" icon="check"
                                      wire:click="confirmar('{{ $muestra['id'] }}')"
                                      wire:loading.attr="disabled"
@@ -231,6 +269,31 @@
                             Descartar
                         </flux:button>
                     </div>
+
+                    @if(! empty($expandido[$muestra['id']]))
+                        <div class="mt-1 rounded-lg border border-border bg-bg-main p-2" wire:key="muestra-detm-{{ $muestra['id'] }}">
+                            <div class="mb-1 px-1 text-xs font-semibold text-text-secondary uppercase tracking-wide">Especímenes de la muestra</div>
+                            <div class="max-h-64 space-y-2 overflow-y-auto">
+                                @forelse($miembros[$muestra['id']] ?? [] as $m)
+                                    <div class="rounded-lg border border-border bg-surface p-2">
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <span class="font-mono text-sm text-text-primary">{{ $m['codigoCatalogo'] }}</span>
+                                            @if(! empty($m['taxonNombre']))
+                                                <span class="font-serif text-sm italic text-text-primary">{{ $m['taxonNombre'] }}</span>
+                                            @else
+                                                <span class="text-xs italic text-text-secondary">sin determinar</span>
+                                            @endif
+                                        </div>
+                                        <div class="mt-0.5 text-xs text-text-secondary">
+                                            {{ $m['localidad'] ?: '—' }} · {{ $m['fechaColecta'] ?: '—' }} · {{ $m['colector'] ?: '—' }}
+                                        </div>
+                                    </div>
+                                @empty
+                                    <div class="px-1 py-3 text-center text-xs text-text-secondary">Esta muestra no tiene especímenes enganchados.</div>
+                                @endforelse
+                            </div>
+                        </div>
+                    @endif
                 </div>
             @empty
                 <div class="p-6 text-center text-text-secondary text-sm">No hay muestras pendientes de revisión.</div>
