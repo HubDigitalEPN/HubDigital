@@ -398,6 +398,34 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
             ]);
     }
 
+    public function confirmarRevisionPorIds(array $ids): int
+    {
+        if ($ids === []) {
+            return 0;
+        }
+
+        return EspecimenEloquentModel::whereIn('id', $ids)
+            ->update([
+                'estado_revision' => 'confirmada',
+                'motivo_revision' => null,
+                'updated_at' => now(),
+            ]);
+    }
+
+    public function marcarRevisionPorIds(array $ids, string $motivo): int
+    {
+        if ($ids === []) {
+            return 0;
+        }
+
+        return EspecimenEloquentModel::whereIn('id', $ids)
+            ->update([
+                'estado_revision' => 'pendiente',
+                'motivo_revision' => $motivo,
+                'updated_at' => now(),
+            ]);
+    }
+
     /**
      * @return array<string, int>
      *

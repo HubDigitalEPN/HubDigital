@@ -7,7 +7,7 @@ namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCa
 final readonly class ListarCatalogNumberDuplicadosItem
 {
     /**
-     * @param  array<int, array{id: string, codigoCatalogo: string, fechaColecta: string, colector: string}>  $especimenes
+     * @param  array<int, array{id: string, codigoCatalogo: string, taxonNombre: ?string, localidad: string, fechaColecta: string, colector: string, estadoRevision: string}>  $especimenes
      */
     public function __construct(
         public string $catalogNumber,

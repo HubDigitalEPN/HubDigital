@@ -7,6 +7,7 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Li
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especimen;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EspecimenId;
 use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryEspecimenRepository;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryTaxonRepository;
 
 function crearEspecimenConCatalogNumber(string $catalogNumber, string $fechaColecta = '2024-01-01'): Especimen
 {
@@ -27,7 +28,7 @@ test('lista catalog_numbers compartidos por 2+ especímenes', function (): void 
     $repo->guardar(crearEspecimenConCatalogNumber('1'));
     $repo->guardar(crearEspecimenConCatalogNumber('2')); // único, no aparece
 
-    $output = (new ListarCatalogNumberDuplicadosHandler($repo))->handle(
+    $output = (new ListarCatalogNumberDuplicadosHandler($repo, new InMemoryTaxonRepository))->handle(
         new ListarCatalogNumberDuplicadosInput
     );
 
@@ -41,7 +42,7 @@ test('detecta cuando fechas son distintas (probable eventos legítimos)', functi
     $repo->guardar(crearEspecimenConCatalogNumber('1', '1994-03-15'));
     $repo->guardar(crearEspecimenConCatalogNumber('1', '2006-07-21'));
 
-    $output = (new ListarCatalogNumberDuplicadosHandler($repo))->handle(
+    $output = (new ListarCatalogNumberDuplicadosHandler($repo, new InMemoryTaxonRepository))->handle(
         new ListarCatalogNumberDuplicadosInput
     );
 
@@ -53,7 +54,7 @@ test('detecta cuando fechas coinciden (probable error de catalogación)', functi
     $repo->guardar(crearEspecimenConCatalogNumber('1', '2020-05-10'));
     $repo->guardar(crearEspecimenConCatalogNumber('1', '2020-05-10'));
 
-    $output = (new ListarCatalogNumberDuplicadosHandler($repo))->handle(
+    $output = (new ListarCatalogNumberDuplicadosHandler($repo, new InMemoryTaxonRepository))->handle(
         new ListarCatalogNumberDuplicadosInput
     );
 
@@ -65,7 +66,7 @@ test('ignora especímenes sin catalog_number', function (): void {
     $repo->guardar(Especimen::crear(EspecimenId::generar(), 'A', null, 'X', '2024-01-01', 'C'));
     $repo->guardar(Especimen::crear(EspecimenId::generar(), 'B', null, 'X', '2024-01-01', 'C'));
 
-    $output = (new ListarCatalogNumberDuplicadosHandler($repo))->handle(
+    $output = (new ListarCatalogNumberDuplicadosHandler($repo, new InMemoryTaxonRepository))->handle(
         new ListarCatalogNumberDuplicadosInput
     );
 
@@ -78,7 +79,7 @@ test('ordena por tamaño de grupo descendente', function (): void {
         $repo->guardar(crearEspecimenConCatalogNumber($cn));
     }
 
-    $output = (new ListarCatalogNumberDuplicadosHandler($repo))->handle(
+    $output = (new ListarCatalogNumberDuplicadosHandler($repo, new InMemoryTaxonRepository))->handle(
         new ListarCatalogNumberDuplicadosInput
     );
 

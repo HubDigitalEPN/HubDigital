@@ -61,16 +61,19 @@ final class FilaCatalogoMapper
 
         // Localidad: verbatim explícito del CSV preferido. Luego verbatim_locality, luego locality_name.
         $localityName = $this->limpiar($normalizada['locality_name'] ?? null);
-        $localidadVerbatim = $this->limpiar(
+        // Normaliza la caja de la localidad (inicial mayúscula, resto minúsculas)
+        // para que "YASUNÍ", "yasuní" y "Yasuní" entren como una sola localidad y
+        // caigan en el mismo grupo de la bandeja de revisión.
+        $localidadVerbatim = $this->normalizarLocalidad($this->limpiar(
             $normalizada['localidad_verbatim']
             ?? $normalizada['verbatim_locality']
             ?? $normalizada['locality_name']
             ?? null
-        );
+        ));
         $country = $this->limpiar($normalizada['country'] ?? null);
         $stateProvince = $this->limpiar($normalizada['state_province'] ?? null);
         $municipality = $this->limpiar($normalizada['municipality'] ?? null);
-        $localidad = $localityName ?? $country ?? '';
+        $localidad = $this->normalizarLocalidad($localityName ?? $country) ?? '';
 
         // Fechas — usa parsearRango para soportar "14-26/feb/2001", "Jun-Jul-1998", etc.
         // Prefiere fecha_verbatim explícito del CSV sobre event_date.
@@ -243,6 +246,24 @@ final class FilaCatalogoMapper
         $trim = trim($valor);
 
         return $trim === '' ? null : $trim;
+    }
+
+    /**
+     * Normaliza la caja de una localidad: primera letra en mayúscula y el resto
+     * en minúsculas (multibyte, respeta acentos). Ej: "YASUNÍ" -> "Yasuní".
+     * Devuelve null si el valor está vacío.
+     */
+    private function normalizarLocalidad(?string $valor): ?string
+    {
+        $valor = $this->limpiar($valor);
+        if ($valor === null) {
+            return null;
+        }
+
+        $minuscula = mb_strtolower($valor, 'UTF-8');
+
+        return mb_strtoupper(mb_substr($minuscula, 0, 1, 'UTF-8'), 'UTF-8')
+            .mb_substr($minuscula, 1, null, 'UTF-8');
     }
 
     private function floatOnumerico(?string $valor): ?float
