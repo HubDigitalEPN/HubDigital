@@ -134,7 +134,7 @@
                             heading="Catálogo"
                             class="grid"
                             expandable
-                            :expanded="request()->routeIs('inventario.taxonomia.especimenes', 'inventario.taxonomia.taxones', 'inventario.taxonomia.localidades', 'inventario.taxonomia.entidades-depositantes')"
+                            :expanded="request()->routeIs('inventario.taxonomia.especimenes', 'inventario.taxonomia.etiquetas', 'inventario.taxonomia.taxones', 'inventario.taxonomia.localidades', 'inventario.taxonomia.entidades-depositantes')"
                         >
                             <flux:sidebar.item
                                 icon="magnifying-glass"
@@ -143,6 +143,14 @@
                                 wire:navigate
                             >
                                 Especímenes
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="qr-code"
+                                :href="route('inventario.taxonomia.etiquetas')"
+                                :current="request()->routeIs('inventario.taxonomia.etiquetas')"
+                                wire:navigate
+                            >
+                                Etiquetado QR
                             </flux:sidebar.item>
                             <flux:sidebar.item
                                 icon="tag"
