@@ -36,54 +36,118 @@
     </div>
 
     @forelse($items as $idx => $item)
-        <div wire:key="dup-{{ md5($item['catalogNumber']) }}" class="rounded-lg border border-border bg-surface shadow-sm border-l-4 {{ $item['fechasDistintas'] ? 'border-l-info' : 'border-l-warning' }} overflow-hidden">
+        @php
+            // Señales que permiten decidir de un vistazo si el catalog_number es el
+            // mismo evento (mismo taxón/localidad) o se reusó para otra especie (error).
+            $taxones = collect($item['especimenes'])->pluck('taxonNombre')->filter()->unique()->values();
+            $localidades = collect($item['especimenes'])->pluck('localidad')->filter()->unique()->values();
+            $hayFechas = collect($item['especimenes'])->contains(fn ($e) => ($e['fechaColecta'] ?? '') !== '');
+            $bordeIzq = $taxones->count() > 1 ? 'border-l-error' : ($item['fechasDistintas'] ? 'border-l-info' : 'border-l-warning');
+        @endphp
+        <div wire:key="dup-{{ md5($item['catalogNumber']) }}" class="rounded-lg border border-border bg-surface shadow-sm border-l-4 {{ $bordeIzq }} overflow-hidden">
             {{-- Cabecera del grupo --}}
             <div class="px-5 py-4 bg-bg-main border-b border-border flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div class="min-w-0 space-y-1">
+                <div class="min-w-0 space-y-2">
                     <div class="flex items-center gap-2 flex-wrap">
-                        <span class="text-xs uppercase font-semibold text-text-secondary tracking-wide">catalog_number</span>
+                        <span class="text-xs uppercase font-semibold text-text-secondary tracking-wide">Número de catálogo</span>
                         <span class="inline-flex items-center rounded-full bg-blue-navy/10 text-blue-navy border border-blue-navy/30 px-2 py-0.5 text-xs font-semibold">
                             {{ $item['total'] }} espécimen(es)
                         </span>
-                        @if($item['fechasDistintas'])
-                            <span class="inline-flex items-center rounded-full bg-info/10 text-info border border-info px-2 py-0.5 text-xs font-semibold">
-                                Fechas distintas — probable evento legítimo
+                    </div>
+                    <div class="font-mono text-text-primary text-base break-words">{{ $item['catalogNumber'] }}</div>
+                    {{-- Señales para decidir de un vistazo --}}
+                    <div class="flex items-center gap-2 flex-wrap">
+                        @if($taxones->count() > 1)
+                            <span class="inline-flex items-center rounded-full bg-error/10 text-error border border-error px-2 py-0.5 text-xs font-semibold">
+                                {{ $taxones->count() }} taxones distintos — probable número reusado
+                            </span>
+                        @elseif($taxones->count() === 1)
+                            <span class="inline-flex items-center gap-1 rounded-full bg-success/10 text-success border border-success px-2 py-0.5 text-xs font-semibold">
+                                Mismo taxón: <span class="font-serif italic">{{ $taxones->first() }}</span>
                             </span>
                         @else
-                            <span class="inline-flex items-center rounded-full bg-warning/10 text-warning border border-warning px-2 py-0.5 text-xs font-semibold">
-                                Misma fecha — probable error
+                            <span class="inline-flex items-center rounded-full bg-border/40 text-text-secondary border border-border px-2 py-0.5 text-xs font-semibold">
+                                Sin taxón determinado
+                            </span>
+                        @endif
+                        <span class="inline-flex items-center rounded-full bg-bg-main text-text-secondary border border-border px-2 py-0.5 text-xs">
+                            {{ $localidades->count() }} localidad(es)
+                        </span>
+                        @if($hayFechas)
+                            <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold {{ $item['fechasDistintas'] ? 'bg-info/10 text-info border border-info' : 'bg-warning/10 text-warning border border-warning' }}">
+                                {{ $item['fechasDistintas'] ? 'Fechas distintas' : 'Misma fecha' }}
+                            </span>
+                        @else
+                            <span class="inline-flex items-center rounded-full bg-border/40 text-text-secondary border border-border px-2 py-0.5 text-xs">
+                                Sin fecha registrada
                             </span>
                         @endif
                     </div>
-                    <div class="font-mono text-text-primary text-base break-words">{{ $item['catalogNumber'] }}</div>
                 </div>
             </div>
 
             {{-- Listado de especímenes del grupo --}}
             <div class="p-4 space-y-3">
-                <div class="text-xs font-semibold text-text-secondary uppercase tracking-wide">Especímenes en el grupo</div>
-                <div class="grid gap-2">
+                <div class="text-xs font-semibold text-text-secondary uppercase tracking-wide">
+                    Especímenes en el grupo ({{ count($item['especimenes']) }})
+                </div>
+
+                @php
+                    $badge = fn ($estado) => match ($estado ?? 'pendiente') {
+                        'pendiente' => 'bg-warning/10 text-warning border-warning',
+                        'confirmada' => 'bg-success/10 text-success border-success',
+                        'descartada' => 'bg-error/10 text-error border-error',
+                        default => 'bg-border/30 text-text-secondary border-border',
+                    };
+                @endphp
+
+                {{-- Escritorio: tabla densa con scroll interno para que 96 filas no
+                     estiren la página; el encabezado queda fijo al hacer scroll. --}}
+                <div class="hidden md:block max-h-80 overflow-auto rounded-lg border border-border">
+                    <table class="w-full text-sm">
+                        <thead class="sticky top-0 z-10 bg-bg-main text-text-secondary">
+                            <tr class="text-left text-xs uppercase tracking-wide">
+                                <th class="px-3 py-2 font-medium">Código</th>
+                                <th class="px-3 py-2 font-medium">Taxón</th>
+                                <th class="px-3 py-2 font-medium">Localidad</th>
+                                <th class="px-3 py-2 font-medium whitespace-nowrap">Fecha</th>
+                                <th class="px-3 py-2 font-medium">Colector</th>
+                                <th class="px-3 py-2 font-medium">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($item['especimenes'] as $e)
+                                <tr class="border-t border-border">
+                                    <td class="px-3 py-2 font-mono text-text-primary whitespace-nowrap">{{ $e['codigoCatalogo'] }}</td>
+                                    <td class="px-3 py-2 font-serif italic text-text-primary">{{ $e['taxonNombre'] ?: '—' }}</td>
+                                    <td class="px-3 py-2 text-text-primary">{{ $e['localidad'] ?: '—' }}</td>
+                                    <td class="px-3 py-2 text-text-primary whitespace-nowrap">{{ $e['fechaColecta'] ?: '—' }}</td>
+                                    <td class="px-3 py-2 text-text-secondary">{{ $e['colector'] ?: '—' }}</td>
+                                    <td class="px-3 py-2">
+                                        <span class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold {{ $badge($e['estadoRevision']) }}">
+                                            {{ ucfirst($e['estadoRevision']) }}
+                                        </span>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+
+                {{-- Móvil: filas compactas apiladas, también con scroll interno. --}}
+                <div class="md:hidden max-h-80 space-y-2 overflow-y-auto rounded-lg border border-border p-2">
                     @foreach($item['especimenes'] as $e)
-                        @php
-                            $clases = match ($e['estadoRevision'] ?? 'pendiente') {
-                                'pendiente' => 'bg-warning/10 text-warning border-warning',
-                                'confirmada' => 'bg-success/10 text-success border-success',
-                                'descartada' => 'bg-error/10 text-error border-error',
-                                default => 'bg-border/30 text-text-secondary border-border',
-                            };
-                        @endphp
-                        <div class="rounded-lg border border-border bg-surface p-3 flex flex-wrap items-center gap-3">
-                            <div class="flex-1 min-w-0">
-                                <div class="font-mono text-text-primary text-sm break-all">{{ $e['codigoCatalogo'] }}</div>
-                                <div class="text-xs text-text-secondary mt-1">
-                                    Fecha: <span class="text-text-primary">{{ $e['fechaColecta'] ?: '—' }}</span>
-                                    &nbsp;·&nbsp;
-                                    Colector: <span class="text-text-primary">{{ $e['colector'] ?: '—' }}</span>
-                                </div>
+                        <div class="rounded-lg border border-border bg-surface p-3">
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="font-mono text-sm text-text-primary break-all">{{ $e['codigoCatalogo'] }}</span>
+                                <span class="inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-xs font-semibold {{ $badge($e['estadoRevision']) }}">
+                                    {{ ucfirst($e['estadoRevision']) }}
+                                </span>
                             </div>
-                            <span class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold {{ $clases }}">
-                                {{ ucfirst($e['estadoRevision']) }}
-                            </span>
+                            <p class="mt-1 font-serif text-sm italic text-text-primary">{{ $e['taxonNombre'] ?: '— sin taxón —' }}</p>
+                            <p class="mt-0.5 text-xs text-text-secondary">
+                                {{ $e['localidad'] ?: '—' }} · {{ $e['fechaColecta'] ?: '—' }} · {{ $e['colector'] ?: '—' }}
+                            </p>
                         </div>
                     @endforeach
                 </div>
