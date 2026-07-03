@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ResolverCodigoQr;
 
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especimen;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Exceptions\EspecimenNoEncontradoException;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\CodigoQrRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
@@ -52,6 +53,71 @@ final class ResolverCodigoQrHandler
             colector: $especimen->colector(),
             estado: $especimen->estado()->value,
             entidadDepositanteId: $especimen->entidadDepositanteId(),
+            datos: $this->mapaCompleto($especimen, $taxonNombre),
         );
+    }
+
+    /**
+     * Proyección COMPLETA del espécimen, keyed por la misma `clave` del registro
+     * de columnas (RegistroColumnasEspecimen), para pintar la ficha entera del QR
+     * agrupada y etiquetada. Valores ya formateados como texto (o null si vacío).
+     *
+     * @return array<string, ?string>
+     */
+    private function mapaCompleto(Especimen $e, ?string $taxonNombre): array
+    {
+        $texto = fn ($v): ?string => ($v === null || $v === '') ? null : (string) $v;
+
+        return [
+            // Identificación
+            'codigoCatalogo' => $texto($e->codigoCatalogo()),
+            'occurrenceId' => $texto($e->occurrenceId()),
+            'catalogNumber' => $texto($e->catalogNumber()),
+            'oldCode' => $texto($e->oldCode()),
+            'cardexLiquidCollectionCode' => $texto($e->cardexLiquidCollectionCode()),
+            'filaOrigenExcel' => $texto($e->filaOrigenExcel()),
+            // Taxonomía
+            'taxonNombre' => $texto($taxonNombre),
+            'taxonVerbatim' => $texto($e->taxonVerbatim()),
+            // Localidad
+            'localidad' => $texto($e->localidad()),
+            'localidadVerbatim' => $texto($e->localidadVerbatim()),
+            'localityName' => $texto($e->localityName()),
+            'country' => $texto($e->country()),
+            'stateProvince' => $texto($e->stateProvince()),
+            'municipality' => $texto($e->municipality()),
+            'decimalLatitude' => $texto($e->decimalLatitude()),
+            'decimalLongitude' => $texto($e->decimalLongitude()),
+            'coordVerbatim' => $texto($e->coordVerbatim()),
+            'geodeticDatum' => $texto($e->geodeticDatum()),
+            'elevationMinM' => $texto($e->elevationMinM()),
+            'elevationMaxM' => $texto($e->elevationMaxM()),
+            // Fecha
+            'fechaColecta' => $texto($e->fechaColecta()),
+            'fechaColectaFin' => $texto($e->fechaColectaFin()),
+            'fechaVerbatim' => $texto($e->fechaVerbatim()),
+            // Registro
+            'colector' => $texto($e->colector()),
+            'individualCount' => $texto($e->individualCount()),
+            'individualCountVerbatim' => $texto($e->individualCountVerbatim()),
+            'preparations' => $texto($e->preparations()),
+            'disposition' => $texto($e->disposition()),
+            'occurrenceStatus' => $texto($e->occurrenceStatus()),
+            'actaRecepcion' => $texto($e->actaRecepcion()),
+            'estado' => $texto($e->estado()->value),
+            // Atributos
+            'sex' => $texto($e->sex()),
+            'lifeStage' => $texto($e->lifeStage()),
+            'caste' => $texto($e->caste()),
+            'typeStatus' => $texto($e->typeStatus()),
+            'biome' => $texto($e->biome()),
+            'habitat' => $texto($e->habitat()),
+            'microhabitat' => $texto($e->microhabitat()),
+            'biogeographicRegion' => $texto($e->biogeographicRegion()),
+            'endemic' => $e->endemic() === null ? null : ($e->endemic() ? 'Sí' : 'No'),
+            // Revisión
+            'estadoRevision' => $texto($e->estadoRevision()->value),
+            'motivoRevision' => $texto($e->motivoRevision()),
+        ];
     }
 }

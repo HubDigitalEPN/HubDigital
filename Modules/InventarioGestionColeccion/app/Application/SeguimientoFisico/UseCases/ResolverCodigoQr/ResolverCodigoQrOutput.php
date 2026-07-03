@@ -21,5 +21,7 @@ final readonly class ResolverCodigoQrOutput
         public string $colector,
         public string $estado,
         public ?string $entidadDepositanteId,
+        /** @var array<string, ?string> Proyección completa keyed por clave del registro de columnas. */
+        public array $datos = [],
     ) {}
 }

@@ -45,24 +45,55 @@
                     @endif
                 </div>
 
-                <dl class="space-y-3 text-sm">
-                    <div class="flex justify-between gap-3">
-                        <dt class="shrink-0 text-text-secondary">Localidad</dt>
-                        <dd class="text-right text-text-primary">{{ $ficha->localidad ?: '—' }}</dd>
-                    </div>
-                    <div class="flex justify-between gap-3">
-                        <dt class="shrink-0 text-text-secondary">Fecha de colecta</dt>
-                        <dd class="text-right text-text-primary">{{ $ficha->fechaColecta ?: '—' }}</dd>
-                    </div>
-                    <div class="flex justify-between gap-3">
-                        <dt class="shrink-0 text-text-secondary">Colector</dt>
-                        <dd class="text-right text-text-primary">{{ $ficha->colector ?: '—' }}</dd>
-                    </div>
+                {{-- Ficha COMPLETA: todos los campos con dato, agrupados y etiquetados
+                     reusando el registro de columnas del espécimen. --}}
+                @php
+                    $etiquetasGrupo = [
+                        'identificacion' => 'Identificación',
+                        'taxonomia' => 'Taxonomía',
+                        'localidad' => 'Localidad y geografía',
+                        'fecha' => 'Fecha de colecta',
+                        'registro' => 'Registro',
+                        'atributos' => 'Atributos del espécimen',
+                        'revision' => 'Estado de revisión',
+                    ];
+                    // codigoCatalogo, taxonNombre y estado ya se muestran en la cabecera.
+                    $omitir = ['codigoCatalogo', 'taxonNombre', 'estado'];
+                    $porGrupo = [];
+                    foreach (\Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\RegistroColumnasEspecimen::todas() as $col) {
+                        if (in_array($col['clave'], $omitir, true)) {
+                            continue;
+                        }
+                        $valor = $ficha->datos[$col['clave']] ?? null;
+                        if ($valor === null || $valor === '') {
+                            continue;
+                        }
+                        $porGrupo[$col['grupo']][] = ['etiqueta' => $col['etiqueta'], 'valor' => $valor];
+                    }
+                @endphp
+
+                <div class="space-y-4 border-t border-border pt-4">
+                    @foreach($etiquetasGrupo as $g => $titulo)
+                        @if(! empty($porGrupo[$g]))
+                            <div>
+                                <p class="mb-2 text-xs font-semibold uppercase tracking-wider text-science-blue">{{ $titulo }}</p>
+                                <dl class="space-y-2 text-sm">
+                                    @foreach($porGrupo[$g] as $campo)
+                                        <div class="flex justify-between gap-3">
+                                            <dt class="shrink-0 text-text-secondary">{{ $campo['etiqueta'] }}</dt>
+                                            <dd class="min-w-0 text-right text-text-primary break-words">{{ $campo['valor'] }}</dd>
+                                        </div>
+                                    @endforeach
+                                </dl>
+                            </div>
+                        @endif
+                    @endforeach
+
                     <div class="flex flex-col gap-1 border-t border-border pt-3">
-                        <dt class="text-text-secondary">GUID</dt>
+                        <dt class="text-sm text-text-secondary">GUID</dt>
                         <dd class="font-mono text-xs break-all text-text-secondary">{{ $ficha->id }}</dd>
                     </div>
-                </dl>
+                </div>
             </div>
 
             <p class="mt-4 text-center text-xs text-text-secondary">
