@@ -76,6 +76,10 @@
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Especímenes</flux:heading>
         <div class="flex flex-wrap gap-2">
+            <flux:button icon="clipboard-document-check" variant="ghost"
+                         :href="route('inventario.taxonomia.revision')" wire:navigate>
+                Centro de revisión
+            </flux:button>
             <flux:button icon="adjustments-horizontal" variant="ghost" @click="panelColumnasAbierto = !panelColumnasAbierto">
                 Columnas (<span x-text="visibles.length"></span>)
             </flux:button>
@@ -143,7 +147,7 @@
                 ['label' => 'Para revisión', 'key' => 'para_revision'],
                 ['label' => 'Sin coordenadas', 'key' => 'sin_coords'],
                 ['label' => 'Fechas no parseables', 'key' => 'fechas_raras'],
-                ['label' => 'Sin occurrence_id', 'key' => 'sin_occurrence_id'],
+                ['label' => 'Sin ID de ocurrencia', 'key' => 'sin_occurrence_id'],
                 ['label' => 'Limpiar filtros', 'key' => 'todos'],
             ];
         @endphp
@@ -207,12 +211,12 @@
                 </flux:field>
 
                 <flux:field>
-                    <flux:label>occurrence_id</flux:label>
+                    <flux:label>ID de ocurrencia <span class="text-text-secondary font-normal">(occurrenceID)</span></flux:label>
                     <flux:input wire:model="fOccurrenceId" wire:keydown.enter="buscar" placeholder="MEPN:INV:..." />
                 </flux:field>
 
                 <flux:field>
-                    <flux:label>catalog_number</flux:label>
+                    <flux:label>Número de catálogo <span class="text-text-secondary font-normal">(catalogNumber)</span></flux:label>
                     <flux:input wire:model="fCatalogNumber" wire:keydown.enter="buscar" placeholder="50494" />
                 </flux:field>
 
@@ -243,7 +247,7 @@
                 <flux:field class="sm:col-span-2 lg:col-span-3">
                     <label class="flex items-center gap-2 cursor-pointer">
                         <input type="checkbox" wire:model="fParaRevision" class="size-4 rounded border-border" />
-                        <span class="text-sm text-text-primary">Solo marcados para revisión (estado_revision=pendiente con motivo)</span>
+                        <span class="text-sm text-text-primary">Solo los marcados para revisión (pendientes con un motivo)</span>
                     </label>
                 </flux:field>
             </div>
@@ -258,13 +262,79 @@
         @endif
     </div>
 
+    {{-- Panel del código QR del espécimen --}}
+    @if($qrUrl)
+        {{-- wire:key dinámico: al cambiar de espécimen, Alpine reinicia x-data y
+             `codigo` deja de apuntar al espécimen anterior (evita imprimir una
+             etiqueta con el código de uno y el QR de otro). --}}
+        <div
+            wire:key="panel-qr-{{ md5($qrUrl) }}"
+            class="relative rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-6"
+            x-data="{
+                codigo: @js($qrEspecimenCodigo),
+                imprimir() {
+                    const w = window.open('', '_blank', 'width=400,height=520');
+                    if (! w) { window.alert('Habilita las ventanas emergentes para imprimir la etiqueta.'); return; }
+                    const d = w.document;
+                    d.title = 'QR ' + this.codigo;
+                    d.body.style.cssText = 'margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif';
+                    const caja = d.createElement('div');
+                    caja.style.width = '220px';
+                    caja.innerHTML = this.$refs.caja.innerHTML;
+                    const label = d.createElement('p');
+                    label.style.cssText = 'font-weight:600;margin-top:8px';
+                    label.textContent = this.codigo;
+                    d.body.appendChild(caja);
+                    d.body.appendChild(label);
+                    w.focus();
+                    w.print();
+                },
+            }"
+        >
+            <flux:button variant="subtle" icon="x-mark" wire:click="cerrarQr"
+                         class="absolute right-3 top-3" aria-label="Cerrar" />
+
+            <div class="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
+                {{-- SVG generado en el servidor: se dibuja sin JS ni CDN, funciona offline. --}}
+                <div x-ref="caja" class="w-[220px] shrink-0 rounded-lg bg-white p-3 shadow-sm">
+                    {!! $qrSvg !!}
+                </div>
+
+                <div class="min-w-0 flex-1 space-y-3 pr-10">
+                    <flux:heading size="lg" class="text-text-primary">
+                        Código QR de {{ $qrEspecimenCodigo }}
+                    </flux:heading>
+                    <p class="text-sm text-text-secondary">
+                        Imprime este código y pégalo en el espécimen. Al escanearlo desde el móvil se abre su ficha digital.
+                    </p>
+
+                    <div class="flex flex-wrap gap-2">
+                        <flux:button variant="primary" icon="printer" @click="imprimir()">
+                            Imprimir
+                        </flux:button>
+                        <flux:button variant="ghost" icon="arrow-down-tray"
+                                     href="data:image/svg+xml;charset=utf-8,{{ rawurlencode($qrSvg) }}"
+                                     download="qr-{{ $qrEspecimenCodigo }}.svg">
+                            Descargar SVG
+                        </flux:button>
+                    </div>
+
+                    <flux:field>
+                        <flux:label>Enlace de la ficha</flux:label>
+                        <flux:input readonly value="{{ $qrUrl }}" />
+                    </flux:field>
+                </div>
+            </div>
+        </div>
+    @endif
+
     {{-- Resultados --}}
     @if($buscado)
         <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
             <div class="px-4 py-3 bg-bg-main border-b border-border flex flex-wrap items-center justify-between gap-2">
                 <span class="text-sm font-medium text-text-primary">{{ $totalItems }} resultado(s)</span>
                 @if($fParaRevision)
-                    <span class="text-xs text-text-secondary">Filtrando por estado_revision=pendiente</span>
+                    <span class="text-xs text-text-secondary">Mostrando solo los pendientes de revisión</span>
                 @endif
             </div>
 
@@ -318,7 +388,8 @@
                             <div class="flex items-center gap-2">
                                 @if(($especimen['estadoRevision'] ?? '') === 'pendiente' && !empty($especimen['motivoRevision']))
                                     <flux:button size="sm" variant="primary" icon="check"
-                                                 wire:click="confirmarRevision('{{ $especimen['id'] }}')">
+                                                 wire:click="confirmarRevision('{{ $especimen['id'] }}')"
+                                                 wire:confirm="¿Confirmar la revisión de este espécimen? Se marcará como revisado y se limpiará su motivo.">
                                         Confirmar
                                     </flux:button>
                                 @endif
@@ -328,6 +399,12 @@
                                         Editar
                                     </flux:button>
                                 @endif
+                                <flux:button size="sm" variant="ghost" icon="qr-code"
+                                             wire:click="mostrarQr('{{ $especimen['id'] }}')"
+                                             wire:loading.attr="disabled"
+                                             wire:target="mostrarQr('{{ $especimen['id'] }}')">
+                                    QR
+                                </flux:button>
                             </div>
                         </div>
                     </div>
@@ -367,7 +444,8 @@
                         <div class="flex flex-wrap gap-2 pt-2" style="order: 99999;">
                             @if(($especimen['estadoRevision'] ?? '') === 'pendiente' && !empty($especimen['motivoRevision']))
                                 <flux:button variant="primary" icon="check"
-                                             wire:click="confirmarRevision('{{ $especimen['id'] }}')">
+                                             wire:click="confirmarRevision('{{ $especimen['id'] }}')"
+                                                 wire:confirm="¿Confirmar la revisión de este espécimen? Se marcará como revisado y se limpiará su motivo.">
                                     Confirmar revisión
                                 </flux:button>
                             @endif
@@ -377,6 +455,12 @@
                                     Editar
                                 </flux:button>
                             @endif
+                            <flux:button variant="ghost" icon="qr-code"
+                                         wire:click="mostrarQr('{{ $especimen['id'] }}')"
+                                         wire:loading.attr="disabled"
+                                         wire:target="mostrarQr('{{ $especimen['id'] }}')">
+                                Código QR
+                            </flux:button>
                         </div>
                     </div>
                 @empty
@@ -441,7 +525,11 @@
             </flux:field>
             <div class="flex justify-end gap-3 pt-2">
                 <flux:button variant="ghost" wire:click="$set('showModal', false)">Cancelar</flux:button>
-                <flux:button variant="primary" wire:click="registrarEspecimen">Registrar</flux:button>
+                <flux:button variant="primary" wire:click="registrarEspecimen"
+                             wire:loading.attr="disabled" wire:target="registrarEspecimen">
+                    <span wire:loading.remove wire:target="registrarEspecimen">Registrar</span>
+                    <span wire:loading wire:target="registrarEspecimen">Registrando…</span>
+                </flux:button>
             </div>
         </div>
     </flux:modal>
@@ -481,7 +569,11 @@
             </flux:field>
             <div class="flex justify-end gap-3 pt-2">
                 <flux:button variant="ghost" wire:click="$set('showEditModal', false)">Cancelar</flux:button>
-                <flux:button variant="primary" wire:click="actualizarEspecimen">Guardar</flux:button>
+                <flux:button variant="primary" wire:click="actualizarEspecimen"
+                             wire:loading.attr="disabled" wire:target="actualizarEspecimen">
+                    <span wire:loading.remove wire:target="actualizarEspecimen">Guardar</span>
+                    <span wire:loading wire:target="actualizarEspecimen">Guardando…</span>
+                </flux:button>
             </div>
         </div>
     </flux:modal>

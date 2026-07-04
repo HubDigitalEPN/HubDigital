@@ -95,6 +95,10 @@ return (new Config)
                         'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\GestionRegistrosTaxonomicos\GeneracionActaEntregaContext',
                         'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\GestionRegistrosTaxonomicos\RegistroLocalidadesContext',
                         'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\GestionRegistrosTaxonomicos\RegistroMuestrasColectaContext',
+                        // IdentificacionFisicaEspecimenes
+                        'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\IdentificacionFisicaEspecimenes\AsignacionGuidEspecimenContext',
+                        'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\IdentificacionFisicaEspecimenes\GeneracionCodigoQrContext',
+                        'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\IdentificacionFisicaEspecimenes\LecturaQrMovilContext',
                     )
             )
     );

@@ -16,14 +16,13 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\Ent
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\TaxonRepositoryInterface;
 use Modules\InventarioGestionColeccion\Tests\Behat\Contexts\BaseContext;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryEntidadDepositanteRepository;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryEspecimenRepository;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryTaxonRepository;
 use PHPUnit\Framework\Assert;
 
 final class AsignacionGuidEspecimenContext extends BaseContext
 {
-    // ── Handlers ─────────────────────────────────────────────────────────────
-
-    private RegistrarEspecimenHandler $registrarHandler;
-
     // ── Estado del escenario ─────────────────────────────────────────────────
 
     private ?Especimen $especimenExistente = null;
@@ -43,7 +42,12 @@ final class AsignacionGuidEspecimenContext extends BaseContext
 
     public function __construct()
     {
-        $this->registrarHandler = $this->make(RegistrarEspecimenHandler::class);
+        // Repositorios en memoria por escenario. Los handlers se resuelven dentro de
+        // cada paso (no en el constructor) para usar siempre estas mismas instancias,
+        // aun cuando otros contextos de la suite reescriban los bindings al construirse.
+        self::$app->instance(TaxonRepositoryInterface::class, new InMemoryTaxonRepository);
+        self::$app->instance(EspecimenRepositoryInterface::class, new InMemoryEspecimenRepository);
+        self::$app->instance(EntidadDepositanteRepositoryInterface::class, new InMemoryEntidadDepositanteRepository);
     }
 
     // ── Helpers de fixture ───────────────────────────────────────────────────
@@ -118,7 +122,7 @@ final class AsignacionGuidEspecimenContext extends BaseContext
         $entidad = $this->sembrarEntidadBase();
 
         try {
-            $this->ultimaRespuesta = $this->registrarHandler->handle(
+            $this->ultimaRespuesta = $this->make(RegistrarEspecimenHandler::class)->handle(
                 new RegistrarEspecimenInput(
                     codigoCatalogo: $this->datosEspecimenValidos['codigoCatalogo'],
                     taxonId: (string) $taxon->id(),
@@ -170,7 +174,7 @@ final class AsignacionGuidEspecimenContext extends BaseContext
         Assert::assertNotNull($this->especimenExistente, 'Se esperaba un espécimen existente del step Dado anterior');
 
         try {
-            $this->ultimaRespuesta = $this->registrarHandler->handle(
+            $this->ultimaRespuesta = $this->make(RegistrarEspecimenHandler::class)->handle(
                 new RegistrarEspecimenInput(
                     codigoCatalogo: 'MEPN-002',
                     taxonId: (string) $this->especimenExistente->taxonId(),

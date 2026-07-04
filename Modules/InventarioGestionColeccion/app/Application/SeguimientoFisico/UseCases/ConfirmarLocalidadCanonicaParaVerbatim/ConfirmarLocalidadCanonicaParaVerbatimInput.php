@@ -6,8 +6,13 @@ namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCa
 
 final readonly class ConfirmarLocalidadCanonicaParaVerbatimInput
 {
+    /**
+     * @param  string[]|null  $especimenIds  Si se provee (no vacío), el enlace se
+     *                                       aplica solo a esos especímenes; si es null, a todo el grupo verbatim.
+     */
     public function __construct(
         public string $verbatim,
         public string $localidadId,
+        public ?array $especimenIds = null,
     ) {}
 }

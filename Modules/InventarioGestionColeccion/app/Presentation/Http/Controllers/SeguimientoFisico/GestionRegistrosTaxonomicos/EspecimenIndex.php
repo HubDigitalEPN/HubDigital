@@ -12,19 +12,26 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Ac
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarEspecimen\ActualizarEspecimenInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\BuscarEspecimenes\BuscarEspecimenesHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\BuscarEspecimenes\BuscarEspecimenesInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\BuscarEspecimenes\BuscarEspecimenesOutput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConfirmarRevisionEspecimen\ConfirmarRevisionEspecimenHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConfirmarRevisionEspecimen\ConfirmarRevisionEspecimenInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\GenerarCodigoQr\GenerarCodigoQrHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\GenerarCodigoQr\GenerarCodigoQrInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarEntidadesDepositantes\ListarEntidadesDepositantesHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarTaxones\ListarTaxonesHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ObtenerCodigoQr\ObtenerCodigoQrHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ObtenerCodigoQr\ObtenerCodigoQrInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarEspecimen\RegistrarEspecimenHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarEspecimen\RegistrarEspecimenInput;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\RegistroColumnasEspecimen;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\ResolverPrioridadColumnas;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\GeneraSvgQr;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
 
 #[Layout('layouts.app', params: ['title' => 'Especímenes'])]
 final class EspecimenIndex extends Component
 {
+    use GeneraSvgQr;
     use TraduceErroresPersistencia;
 
     // ── Búsqueda multi-filtro ─────────────────────────────────────────────────
@@ -36,6 +43,11 @@ final class EspecimenIndex extends Component
     public int $page = 1;
 
     public int $perPage = 25;
+
+    /** Total de coincidencias en BD (no solo la página actual): paginación server-side. */
+    public int $total = 0;
+
+    public int $totalPaginas = 1;
 
     public bool $filtrosAbiertos = true;
 
@@ -205,6 +217,20 @@ final class EspecimenIndex extends Component
 
     public string $editHabitat = '';
 
+    // ── Código QR ───────────────────────────────────────────────────────────────
+
+    /** URL de resolución codificada en el QR mostrado (null = panel cerrado). */
+    public ?string $qrUrl = null;
+
+    public ?string $qrEspecimenCodigo = null;
+
+    /**
+     * SVG del QR generado en el servidor (BaconQrCode). Se renderiza inline: no
+     * depende de ninguna librería JS externa ni de un CDN, así el QR se dibuja
+     * aunque el laboratorio esté sin internet.
+     */
+    public ?string $qrSvg = null;
+
     // ── Feedback ──────────────────────────────────────────────────────────────
 
     public ?string $successMessage = null;
@@ -264,8 +290,10 @@ final class EspecimenIndex extends Component
         $this->showModal = true;
     }
 
-    public function registrarEspecimen(RegistrarEspecimenHandler $handler): void
-    {
+    public function registrarEspecimen(
+        RegistrarEspecimenHandler $handler,
+        BuscarEspecimenesHandler $buscarHandler,
+    ): void {
         $this->validateOnly('codigoCatalogo');
         $this->validateOnly('taxonId');
         $this->validateOnly('localidad');
@@ -304,6 +332,12 @@ final class EspecimenIndex extends Component
             $this->showModal = false;
             $this->successMessage = "Especímen '{$this->codigoCatalogo}' registrado correctamente.";
             $this->errorMessage = null;
+
+            // Refresca la tabla si ya había una búsqueda activa, para que el nuevo
+            // espécimen aparezca sin que el curador tenga que volver a buscar.
+            if ($this->buscado) {
+                $this->ejecutarBusqueda($buscarHandler);
+            }
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
@@ -321,7 +355,7 @@ final class EspecimenIndex extends Component
         $this->editLocalidad = $especimen['localidad'];
         $this->editFechaColecta = $especimen['fechaColecta'];
         $this->editColector = $especimen['colector'];
-        $this->editEntidadDepositanteId = '';
+        $this->editEntidadDepositanteId = (string) ($especimen['entidadDepositanteId'] ?? '');
         $this->editPreparations = (string) ($especimen['preparations'] ?? '');
         $this->editDisposition = (string) ($especimen['disposition'] ?? '');
         $this->editOccurrenceStatus = (string) ($especimen['occurrenceStatus'] ?? '');
@@ -340,8 +374,10 @@ final class EspecimenIndex extends Component
         $this->showEditModal = true;
     }
 
-    public function actualizarEspecimen(ActualizarEspecimenHandler $handler): void
-    {
+    public function actualizarEspecimen(
+        ActualizarEspecimenHandler $handler,
+        BuscarEspecimenesHandler $buscarHandler,
+    ): void {
         $this->validateOnly('editLocalidad');
         $this->validateOnly('editFechaColecta');
         $this->validateOnly('editColector');
@@ -372,80 +408,161 @@ final class EspecimenIndex extends Component
             $this->showEditModal = false;
             $this->successMessage = 'Especímen actualizado correctamente.';
             $this->errorMessage = null;
-            // Reaplicar la búsqueda actual sería ideal, pero requiere injection de handler.
-            // Por ahora marcamos los datos como sucios para que el curador re-busque.
+
+            // Refresca la tabla con la búsqueda actual para reflejar los cambios
+            // (antes quedaba desactualizada hasta re-buscar a mano).
+            if ($this->buscado) {
+                $this->ejecutarBusqueda($buscarHandler);
+            }
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 
-    public function confirmarRevision(ConfirmarRevisionEspecimenHandler $handler, string $id): void
-    {
+    public function confirmarRevision(
+        ConfirmarRevisionEspecimenHandler $handler,
+        BuscarEspecimenesHandler $buscarHandler,
+        string $id,
+    ): void {
         try {
             $handler->handle(new ConfirmarRevisionEspecimenInput(especimenId: $id));
 
-            // Actualizar la copia local del row para feedback inmediato.
-            foreach ($this->especimenes as $i => $row) {
-                if (($row['id'] ?? null) === $id) {
-                    $this->especimenes[$i]['estadoRevision'] = 'confirmada';
-                    $this->especimenes[$i]['motivoRevision'] = null;
-                    break;
+            $this->successMessage = 'Revisión confirmada.';
+            $this->errorMessage = null;
+
+            // Recarga real: con el filtro por defecto "solo pendientes" el
+            // espécimen ya confirmado sale del conjunto, así que reconsultamos en
+            // vez de parchear la fila en memoria (que lo dejaba visible y con el
+            // contador desfasado hasta re-buscar a mano).
+            if ($this->buscado) {
+                $this->ejecutarBusqueda($buscarHandler);
+            } else {
+                foreach ($this->especimenes as $i => $row) {
+                    if (($row['id'] ?? null) === $id) {
+                        $this->especimenes[$i]['estadoRevision'] = 'confirmada';
+                        $this->especimenes[$i]['motivoRevision'] = null;
+                        break;
+                    }
                 }
             }
-            $this->successMessage = 'Revisión confirmada.';
+        } catch (\Throwable $e) {
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
+        }
+    }
+
+    /**
+     * Muestra el QR del espécimen: reutiliza el existente o lo genera la primera vez.
+     * El QR codifica la URL de resolución (token opaco), que abre la ficha al escanear.
+     */
+    public function mostrarQr(
+        string $id,
+        ObtenerCodigoQrHandler $obtenerHandler,
+        GenerarCodigoQrHandler $generarHandler,
+    ): void {
+        try {
+            $existente = $obtenerHandler->handle(new ObtenerCodigoQrInput(especimenId: $id));
+
+            $payload = $existente->existe
+                ? $existente->payload
+                : $generarHandler->handle(new GenerarCodigoQrInput(especimenId: $id))->payload;
+
+            $this->qrUrl = route('inventario.qr.resolver', ['payload' => $payload]);
+            $this->qrSvg = $this->generarSvgQr($this->qrUrl);
+            $row = collect($this->especimenes)->firstWhere('id', $id);
+            $this->qrEspecimenCodigo = $row['codigoCatalogo'] ?? $id;
             $this->errorMessage = null;
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 
-    public function nextPage(): void
+    public function cerrarQr(): void
     {
-        if ($this->page < (int) ceil(count($this->especimenes) / $this->perPage)) {
+        $this->qrUrl = null;
+        $this->qrSvg = null;
+        $this->qrEspecimenCodigo = null;
+    }
+
+    public function nextPage(BuscarEspecimenesHandler $handler): void
+    {
+        if ($this->page < $this->totalPaginas) {
             $this->page++;
+            $this->ejecutarBusqueda($handler);
         }
     }
 
-    public function prevPage(): void
+    public function prevPage(BuscarEspecimenesHandler $handler): void
     {
         if ($this->page > 1) {
             $this->page--;
+            $this->ejecutarBusqueda($handler);
         }
     }
 
-    public function goToPage(int $p): void
+    public function goToPage(BuscarEspecimenesHandler $handler, int $p): void
     {
-        $this->page = max(1, min($p, (int) ceil(count($this->especimenes) / $this->perPage)));
+        $destino = max(1, min($p, $this->totalPaginas));
+        if ($destino !== $this->page) {
+            $this->page = $destino;
+            $this->ejecutarBusqueda($handler);
+        }
     }
 
     public function buscar(BuscarEspecimenesHandler $handler): void
     {
         $this->validate();
+        $this->page = 1;
+        $this->ejecutarBusqueda($handler);
+    }
 
+    /**
+     * Ejecuta la búsqueda con los filtros actuales SIN validar el formulario del
+     * modal. Sirve tanto para el botón "Buscar" como para refrescar la tabla tras
+     * registrar/editar un espécimen (así el curador ve el cambio sin re-buscar).
+     */
+    private function ejecutarBusqueda(BuscarEspecimenesHandler $handler): void
+    {
         try {
-            $output = $handler->handle(new BuscarEspecimenesInput(
-                taxonNombre: $this->nullableString($this->fTaxon),
-                codigoCatalogo: $this->nullableString($this->fCodigoCatalogo),
-                occurrenceId: $this->nullableString($this->fOccurrenceId),
-                catalogNumber: $this->nullableString($this->fCatalogNumber),
-                localidad: $this->nullableString($this->fLocalidad),
-                colector: $this->nullableString($this->fColector),
-                familia: $this->nullableString($this->fFamilia),
-                fechaDesde: $this->nullableString($this->fFechaDesde),
-                fechaHasta: $this->nullableString($this->fFechaHasta),
-                estado: $this->nullableString($this->fEstado),
-                estadoRevision: $this->nullableString($this->fEstadoRevision),
-                motivoRevision: $this->nullableString($this->fMotivoRevision),
-                paraRevision: $this->fParaRevision,
-            ));
+            $output = $this->consultarPagina($handler, $this->page);
+
+            // Si la página pedida quedó fuera de rango (el conjunto encogió tras
+            // editar/registrar/filtrar), reencaja Y vuelve a consultar la página
+            // corregida: si solo reencajáramos, la tabla quedaría con los items
+            // vacíos de la página inexistente aunque el total diga que hay filas.
+            if ($this->page > $output->totalPaginas) {
+                $this->page = max(1, $output->totalPaginas);
+                $output = $this->consultarPagina($handler, $this->page);
+            }
 
             $this->especimenes = $output->items;
+            $this->total = $output->total;
+            $this->totalPaginas = $output->totalPaginas;
             $this->buscado = true;
-            $this->page = 1;
             $this->errorMessage = null;
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
+    }
+
+    private function consultarPagina(BuscarEspecimenesHandler $handler, int $page): BuscarEspecimenesOutput
+    {
+        return $handler->handle(new BuscarEspecimenesInput(
+            taxonNombre: $this->nullableString($this->fTaxon),
+            codigoCatalogo: $this->nullableString($this->fCodigoCatalogo),
+            occurrenceId: $this->nullableString($this->fOccurrenceId),
+            catalogNumber: $this->nullableString($this->fCatalogNumber),
+            localidad: $this->nullableString($this->fLocalidad),
+            colector: $this->nullableString($this->fColector),
+            familia: $this->nullableString($this->fFamilia),
+            fechaDesde: $this->nullableString($this->fFechaDesde),
+            fechaHasta: $this->nullableString($this->fFechaHasta),
+            estado: $this->nullableString($this->fEstado),
+            estadoRevision: $this->nullableString($this->fEstadoRevision),
+            motivoRevision: $this->nullableString($this->fMotivoRevision),
+            paraRevision: $this->fParaRevision,
+            page: $page,
+            perPage: $this->perPage,
+        ));
     }
 
     public function preset(string $nombre): void
@@ -472,6 +589,7 @@ final class EspecimenIndex extends Component
     {
         $this->reset(
             'especimenes', 'buscado', 'errorMessage', 'successMessage', 'page',
+            'total', 'totalPaginas',
             'fTaxon', 'fFamilia', 'fCodigoCatalogo', 'fOccurrenceId', 'fCatalogNumber',
             'fLocalidad', 'fColector', 'fFechaDesde', 'fFechaHasta',
             'fEstado', 'fEstadoRevision', 'fMotivoRevision',
@@ -482,16 +600,18 @@ final class EspecimenIndex extends Component
 
     public function render(): View
     {
-        $total = count($this->especimenes);
-        $totalPaginas = $total > 0 ? (int) ceil($total / $this->perPage) : 1;
+        // Paginación server-side: $this->especimenes ya es SOLO la página actual y
+        // $this->total es el total real en BD (no se corta nada en cliente).
+        $total = $this->total;
+        $totalPaginas = max(1, $this->totalPaginas);
         $offset = ($this->page - 1) * $this->perPage;
 
         return view('inventariogestioncoleccion::admin.taxonomia.especimenes.index', [
-            'especimenesPaginados' => array_slice($this->especimenes, $offset, $this->perPage),
+            'especimenesPaginados' => $this->especimenes,
             'totalPaginas' => $totalPaginas,
             'totalItems' => $total,
             'inicio' => $total > 0 ? $offset + 1 : 0,
-            'fin' => min($offset + $this->perPage, $total),
+            'fin' => min($offset + count($this->especimenes), $total),
             'columnasRegistro' => app(ResolverPrioridadColumnas::class)
                 ->aplicar('especimenes', RegistroColumnasEspecimen::todas()),
             'columnasVisiblesPorDefecto' => RegistroColumnasEspecimen::clavesVisiblesPorDefecto(),

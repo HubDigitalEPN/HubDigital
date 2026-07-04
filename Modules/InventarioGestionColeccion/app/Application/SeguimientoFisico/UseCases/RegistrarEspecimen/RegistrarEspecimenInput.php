@@ -33,5 +33,11 @@ final readonly class RegistrarEspecimenInput
         public ?string $biome = null,
         public ?string $habitat = null,
         public array $identificadores = [],
+        /**
+         * GUID a forzar para el espécimen en lugar de generar uno nuevo. Solo se
+         * usa en flujos controlados (migraciones, pruebas de unicidad); en el alta
+         * normal queda null y el repositorio asigna el GUID automáticamente.
+         */
+        public ?string $guidForzado = null,
     ) {}
 }

@@ -20,11 +20,13 @@ use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\Seguimiento
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\DuplicadosCatalogNumberIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\EntidadDepositanteIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\EspecimenIndex;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\EtiquetadoQrIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\ExportarDwcController;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\FechasRevisionIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\LocalidadesRevisionIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\LocalidadIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\MuestrasColectaIndex;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\ResolverQrController;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\TaxaRevisionIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\TaxonIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Visitante\AccesoInvalido;
@@ -55,6 +57,7 @@ Route::middleware(['web', 'auth', 'verified', 'role:curador'])
             Route::get('/localidades', LocalidadIndex::class)->name('localidades');
             Route::get('/localidades/revision', LocalidadesRevisionIndex::class)->name('localidades.revision');
             Route::get('/especimenes', EspecimenIndex::class)->name('especimenes');
+            Route::get('/etiquetas', EtiquetadoQrIndex::class)->name('etiquetas');
             Route::get('/especimenes/duplicados', DuplicadosCatalogNumberIndex::class)->name('especimenes.duplicados');
             Route::get('/muestras', MuestrasColectaIndex::class)->name('muestras');
             Route::get('/fechas/revision', FechasRevisionIndex::class)->name('fechas.revision');
@@ -85,4 +88,14 @@ Route::middleware(['web'])
         Route::middleware('visitante')->group(function () {
             Route::get('/mapa', MapaVisitante::class)->name('mapa');
         });
+    });
+
+// Resolución del QR físico de un espécimen a su ficha digital. El `payload` es un
+// token opaco e inadivinable impreso en la etiqueta, así que funciona como capacidad
+// de acceso: el investigador en campo escanea y ve la ficha sin autenticarse.
+Route::middleware(['web'])
+    ->prefix('inventario')
+    ->name('inventario.')
+    ->group(function () {
+        Route::get('/qr/{payload}', ResolverQrController::class)->name('qr.resolver');
     });

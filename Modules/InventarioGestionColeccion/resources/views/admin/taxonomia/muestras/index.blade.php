@@ -50,7 +50,7 @@
         <div>
             <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Muestras de colecta</flux:heading>
             <p class="text-sm text-text-secondary mt-1">
-                Bandeja de muestras agrupadas por <code class="text-xs">oldCode</code> del Excel, pendientes de revisión por el curador.
+                Muestras que el importador agrupó por su código de colecta original del Excel, pendientes de que el curador las revise.
             </p>
         </div>
         <div class="flex flex-wrap gap-2">
@@ -69,7 +69,7 @@
             de colecta" (una salida de campo). Las creó como <strong>pendientes</strong> esperando tu confirmación.
         </p>
         <ol class="list-decimal pl-6 space-y-1 text-xs text-text-secondary">
-            <li>Mira cada fila: oldCode + colector + fecha + localidad. ¿Hacen sentido juntos como una sola muestra real?</li>
+            <li>Mira cada fila: código de colecta + colector + fecha + localidad. ¿Hacen sentido juntos como una sola muestra real?</li>
             <li>Si sí → <strong>Confirmar</strong>. Las muestras confirmadas desaparecen de esta bandeja.</li>
             <li>Si parece basura o duplicado → <strong>Descartar</strong>. Queda en BD marcada con motivo.</li>
         </ol>
@@ -152,6 +152,7 @@
 
             @forelse($muestras as $muestra)
                 <div role="row"
+                     wire:key="muestra-fila-{{ $muestra['id'] }}"
                      class="grid border-t border-border hover:bg-bg-main transition-colors text-sm border-l-4 border-l-warning"
                      :style="`grid-template-columns: repeat(${visibles.length + 1}, minmax(140px, auto));`">
                     @foreach($columnasRegistro as $col)
@@ -164,17 +165,53 @@
                     @endforeach
                     <div role="cell" class="px-4 py-3 whitespace-nowrap" style="order: 99999;">
                         <div class="flex items-center gap-2">
+                            <flux:button size="sm" variant="ghost"
+                                         icon="{{ ! empty($expandido[$muestra['id']]) ? 'chevron-up' : 'chevron-down' }}"
+                                         wire:click="verEspecimenes('{{ $muestra['id'] }}')"
+                                         wire:loading.attr="disabled"
+                                         wire:target="verEspecimenes('{{ $muestra['id'] }}')">
+                                Ver ({{ $muestra['conteoEspecimenes'] ?? 0 }})
+                            </flux:button>
                             <flux:button size="sm" variant="primary" icon="check"
-                                         wire:click="confirmar('{{ $muestra['id'] }}')">
+                                         wire:click="confirmar('{{ $muestra['id'] }}')"
+                                         wire:loading.attr="disabled"
+                                         wire:target="confirmar('{{ $muestra['id'] }}')">
                                 Confirmar
                             </flux:button>
                             <flux:button size="sm" variant="ghost" icon="x-mark"
-                                         wire:click="descartar('{{ $muestra['id'] }}')">
+                                         wire:click="descartar('{{ $muestra['id'] }}')"
+                                         wire:confirm="¿Descartar esta muestra? Quedará marcada con motivo de descarte para revisión."
+                                         wire:loading.attr="disabled"
+                                         wire:target="descartar('{{ $muestra['id'] }}')">
                                 Descartar
                             </flux:button>
                         </div>
                     </div>
                 </div>
+                @if(! empty($expandido[$muestra['id']]))
+                    <div class="border-t border-border bg-bg-main px-4 py-3" wire:key="muestra-det-{{ $muestra['id'] }}">
+                        <div class="mb-2 text-xs font-semibold text-text-secondary uppercase tracking-wide">Especímenes de la muestra</div>
+                        <div class="max-h-72 overflow-y-auto divide-y divide-border rounded-lg border border-border bg-surface">
+                            @forelse($miembros[$muestra['id']] ?? [] as $m)
+                                <div class="px-3 py-2">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <span class="font-mono text-sm text-text-primary">{{ $m['codigoCatalogo'] }}</span>
+                                        @if(! empty($m['taxonNombre']))
+                                            <span class="font-serif text-sm italic text-text-primary">{{ $m['taxonNombre'] }}</span>
+                                        @else
+                                            <span class="text-xs italic text-text-secondary">sin determinar</span>
+                                        @endif
+                                    </div>
+                                    <div class="mt-0.5 text-xs text-text-secondary">
+                                        {{ $m['localidad'] ?: '—' }} · {{ $m['fechaColecta'] ?: '—' }} · {{ $m['colector'] ?: '—' }}
+                                    </div>
+                                </div>
+                            @empty
+                                <div class="px-3 py-4 text-center text-xs text-text-secondary">Esta muestra no tiene especímenes enganchados.</div>
+                            @endforelse
+                        </div>
+                    </div>
+                @endif
             @empty
                 <div class="px-4 py-8 text-center text-text-secondary border-t border-border">
                     No hay muestras pendientes de revisión.
@@ -185,7 +222,7 @@
         {{-- Móvil --}}
         <div class="md:hidden divide-y divide-border">
             @forelse($muestras as $muestra)
-                <div class="p-4 flex flex-col gap-2 border-l-4 border-l-warning">
+                <div wire:key="muestra-tarjeta-{{ $muestra['id'] }}" class="p-4 flex flex-col gap-2 border-l-4 border-l-warning">
                     <div class="flex items-start justify-between gap-2" style="order: -1;">
                         <div class="font-mono text-sm text-text-primary break-all">
                             {{ $muestra['codigoMuestra'] ?? '—' }}
@@ -211,15 +248,52 @@
                         </div>
                     @endforeach
                     <div class="flex flex-wrap gap-2 pt-2" style="order: 99999;">
+                        <flux:button variant="ghost"
+                                     icon="{{ ! empty($expandido[$muestra['id']]) ? 'chevron-up' : 'chevron-down' }}"
+                                     wire:click="verEspecimenes('{{ $muestra['id'] }}')"
+                                     wire:loading.attr="disabled"
+                                     wire:target="verEspecimenes('{{ $muestra['id'] }}')">
+                            Ver especímenes ({{ $muestra['conteoEspecimenes'] ?? 0 }})
+                        </flux:button>
                         <flux:button variant="primary" icon="check"
-                                     wire:click="confirmar('{{ $muestra['id'] }}')">
+                                     wire:click="confirmar('{{ $muestra['id'] }}')"
+                                     wire:loading.attr="disabled"
+                                     wire:target="confirmar('{{ $muestra['id'] }}')">
                             Confirmar
                         </flux:button>
                         <flux:button variant="ghost" icon="x-mark"
-                                     wire:click="descartar('{{ $muestra['id'] }}')">
+                                     wire:click="descartar('{{ $muestra['id'] }}')"
+                                     wire:confirm="¿Descartar esta muestra? Quedará marcada con motivo de descarte para revisión."
+                                     wire:loading.attr="disabled"
+                                     wire:target="descartar('{{ $muestra['id'] }}')">
                             Descartar
                         </flux:button>
                     </div>
+
+                    @if(! empty($expandido[$muestra['id']]))
+                        <div class="mt-1 rounded-lg border border-border bg-bg-main p-2" wire:key="muestra-detm-{{ $muestra['id'] }}">
+                            <div class="mb-1 px-1 text-xs font-semibold text-text-secondary uppercase tracking-wide">Especímenes de la muestra</div>
+                            <div class="max-h-64 space-y-2 overflow-y-auto">
+                                @forelse($miembros[$muestra['id']] ?? [] as $m)
+                                    <div class="rounded-lg border border-border bg-surface p-2">
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <span class="font-mono text-sm text-text-primary">{{ $m['codigoCatalogo'] }}</span>
+                                            @if(! empty($m['taxonNombre']))
+                                                <span class="font-serif text-sm italic text-text-primary">{{ $m['taxonNombre'] }}</span>
+                                            @else
+                                                <span class="text-xs italic text-text-secondary">sin determinar</span>
+                                            @endif
+                                        </div>
+                                        <div class="mt-0.5 text-xs text-text-secondary">
+                                            {{ $m['localidad'] ?: '—' }} · {{ $m['fechaColecta'] ?: '—' }} · {{ $m['colector'] ?: '—' }}
+                                        </div>
+                                    </div>
+                                @empty
+                                    <div class="px-1 py-3 text-center text-xs text-text-secondary">Esta muestra no tiene especímenes enganchados.</div>
+                                @endforelse
+                            </div>
+                        </div>
+                    @endif
                 </div>
             @empty
                 <div class="p-6 text-center text-text-secondary text-sm">No hay muestras pendientes de revisión.</div>

@@ -15,6 +15,9 @@ final readonly class ResumirEstadoRevisionOutput
         public int $duplicadosCatalogNumberGrupos,
         public int $fechaVerbatimPendientes,
         public int $muestrasPendientes,
+        public int $taxonSinDatoOrigen = 0,
+        public int $fechaSinDatoOrigen = 0,
+        public int $localidadSinDatoOrigen = 0,
     ) {}
 
     public function porcentajePublicables(): float

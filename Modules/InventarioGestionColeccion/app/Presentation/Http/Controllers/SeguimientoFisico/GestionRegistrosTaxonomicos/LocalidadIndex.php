@@ -12,15 +12,29 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Ac
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarLocalidad\ActualizarLocalidadInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarLocalidades\ListarLocalidadesHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarLocalidades\ListarLocalidadesInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarLocalidadesParaSelector\ListarLocalidadesParaSelectorHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarLocalidadesParaSelector\ListarLocalidadesParaSelectorInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarLocalidad\RegistrarLocalidadHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarLocalidad\RegistrarLocalidadInput;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\RangoLocalidad;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
 
 #[Layout('layouts.app', params: ['title' => 'Localidades'])]
 final class LocalidadIndex extends Component
 {
+    use TraduceErroresPersistencia;
+
     /** @var array<int, array<string, mixed>> */
     public array $localidades = [];
+
+    /**
+     * Todas las localidades canónicas (id, nombre, rango) para el selector
+     * "Localidad padre" de los modales. Es la lista COMPLETA, no la página
+     * visible: sin esto solo se podían elegir padres de la página actual.
+     *
+     * @var array<int, array{id: string, nombreCanonico: string, rango: string}>
+     */
+    public array $localidadesParaPadre = [];
 
     /** @var string[] */
     public array $rangos = [];
@@ -93,6 +107,14 @@ final class LocalidadIndex extends Component
     {
         $this->rangos = RangoLocalidad::valoresAceptados();
         $this->cargarLocalidades($handler);
+        $this->cargarSelectorPadres();
+    }
+
+    private function cargarSelectorPadres(): void
+    {
+        $this->localidadesParaPadre = app(ListarLocalidadesParaSelectorHandler::class)
+            ->handle(new ListarLocalidadesParaSelectorInput)
+            ->items;
     }
 
     public function abrirModal(): void
@@ -126,12 +148,13 @@ final class LocalidadIndex extends Component
                 stateProvince: $this->stateProvince,
             ));
 
-            $this->cargarLocalidades($listarHandler);
+            $this->cargarLocalidades($listarHandler, $this->page);
+            $this->cargarSelectorPadres();
             $this->showModal = false;
             $this->successMessage = 'Localidad registrada correctamente.';
             $this->errorMessage = null;
         } catch (\Throwable $e) {
-            $this->errorMessage = $e->getMessage();
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 
@@ -149,7 +172,7 @@ final class LocalidadIndex extends Component
         $this->editPadreId = $localidad['padreId'] ?? '';
         $this->editLatitud = $localidad['latitud'];
         $this->editLongitud = $localidad['longitud'];
-        $this->editGeodeticDatum = null;
+        $this->editGeodeticDatum = $localidad['geodeticDatum'] ?? null;
         $this->editCountry = $localidad['country'];
         $this->editStateProvince = $localidad['stateProvince'];
         $this->errorMessage = null;
@@ -176,12 +199,13 @@ final class LocalidadIndex extends Component
                 stateProvince: $this->editStateProvince,
             ));
 
-            $this->cargarLocalidades($listarHandler);
+            $this->cargarLocalidades($listarHandler, $this->page);
+            $this->cargarSelectorPadres();
             $this->showEditModal = false;
             $this->successMessage = 'Localidad actualizada correctamente.';
             $this->errorMessage = null;
         } catch (\Throwable $e) {
-            $this->errorMessage = $e->getMessage();
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 
@@ -229,6 +253,7 @@ final class LocalidadIndex extends Component
                 'country' => $l->country,
                 'stateProvince' => $l->stateProvince,
                 'municipality' => $l->municipality,
+                'geodeticDatum' => $l->geodeticDatum,
             ],
             $output->items,
         );

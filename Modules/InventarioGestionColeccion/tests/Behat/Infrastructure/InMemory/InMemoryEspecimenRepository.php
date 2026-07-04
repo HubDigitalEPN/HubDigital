@@ -368,6 +368,36 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
         return $contador;
     }
 
+    public function confirmarRevisionPorIds(array $ids): int
+    {
+        $contador = 0;
+        foreach ($this->store as $e) {
+            if (! in_array((string) $e->id(), $ids, true)) {
+                continue;
+            }
+            if ($e->estadoRevision()->puedeConfirmarse()) {
+                $e->confirmarRevision();
+            }
+            $contador++;
+        }
+
+        return $contador;
+    }
+
+    public function marcarRevisionPorIds(array $ids, string $motivo): int
+    {
+        $contador = 0;
+        foreach ($this->store as $e) {
+            if (! in_array((string) $e->id(), $ids, true)) {
+                continue;
+            }
+            $e->marcarParaRevision($motivo);
+            $contador++;
+        }
+
+        return $contador;
+    }
+
     /** @return array<string, int> */
     public function agruparFechaVerbatimsPendientes(int $limit, int $offset): array
     {
@@ -402,6 +432,45 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
         }
 
         return count($unicos);
+    }
+
+    public function contarTaxonSinDatoOrigen(): int
+    {
+        $n = 0;
+        foreach ($this->store as $e) {
+            $v = $e->taxonVerbatim();
+            if ($e->taxonId() === null && ($v === null || $v === '')) {
+                $n++;
+            }
+        }
+
+        return $n;
+    }
+
+    public function contarFechaSinDatoOrigen(): int
+    {
+        $n = 0;
+        foreach ($this->store as $e) {
+            $v = $e->fechaVerbatim();
+            if (($e->fechaColecta() === '' || $e->fechaColecta() === null) && ($v === null || $v === '')) {
+                $n++;
+            }
+        }
+
+        return $n;
+    }
+
+    public function contarLocalidadSinDatoOrigen(): int
+    {
+        $n = 0;
+        foreach ($this->store as $e) {
+            $v = $e->localidadVerbatim();
+            if ($e->localidadId() === null && ($v === null || $v === '')) {
+                $n++;
+            }
+        }
+
+        return $n;
     }
 
     public function enlazarFechaPorVerbatim(string $verbatim, string $fechaInicio, ?string $fechaFin = null): int
@@ -441,6 +510,18 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
         return $out;
     }
 
+    public function buscarPorMuestraId(string $muestraId, int $limite = 500): array
+    {
+        $out = [];
+        foreach ($this->store as $e) {
+            if ($e->muestraId() === $muestraId) {
+                $out[] = $e;
+            }
+        }
+
+        return array_slice($out, 0, $limite);
+    }
+
     /** @return Especimen[] */
     public function buscarParaRevision(?string $contieneMotivo = null, int $limit = 200): array
     {
@@ -468,6 +549,29 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
 
     /** @return Especimen[] */
     public function buscarConFiltros(array $filtros): array
+    {
+        $items = $this->filtrarEnMemoria($filtros);
+
+        $limit = (int) ($filtros['limit'] ?? 200);
+        $offset = max(0, (int) ($filtros['offset'] ?? 0));
+
+        return array_slice($items, $offset, $limit);
+    }
+
+    public function contarConFiltros(array $filtros): int
+    {
+        return count($this->filtrarEnMemoria($filtros));
+    }
+
+    /**
+     * Aplica los filtros (sin limit/offset) y devuelve la lista ordenada de forma
+     * determinista (por código de catálogo, luego id) para que la paginación sea
+     * estable, igual que la rama Eloquent.
+     *
+     * @param  array<string, mixed>  $filtros
+     * @return Especimen[]
+     */
+    private function filtrarEnMemoria(array $filtros): array
     {
         $items = array_values($this->store);
 
@@ -517,9 +621,12 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
             $items = array_filter($items, fn (Especimen $e) => $e->estadoRevision()->value === 'pendiente' && $e->motivoRevision() !== null);
         }
 
-        $limit = (int) ($filtros['limit'] ?? 200);
+        $items = array_values($items);
+        usort($items, function (Especimen $a, Especimen $b): int {
+            return [$a->codigoCatalogo(), (string) $a->id()] <=> [$b->codigoCatalogo(), (string) $b->id()];
+        });
 
-        return array_slice(array_values($items), 0, $limit);
+        return $items;
     }
 
     /** @param int[] $filasOrigen
@@ -543,5 +650,125 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
         foreach ($especimenes as $especimen) {
             $this->guardar($especimen);
         }
+    }
+
+    /** @return Especimen[] */
+    public function buscarPorFechaVerbatimPendiente(string $verbatim, int $limit = 500): array
+    {
+        $out = [];
+        foreach ($this->store as $e) {
+            if ($e->fechaVerbatim() !== $verbatim) {
+                continue;
+            }
+            if ($e->fechaColecta() !== '' && $e->fechaColecta() !== null) {
+                continue;
+            }
+            $out[] = $e;
+            if (count($out) >= $limit) {
+                break;
+            }
+        }
+
+        return $out;
+    }
+
+    /** @return Especimen[] */
+    public function buscarPorTaxonVerbatimPendiente(string $verbatim, int $limit = 500): array
+    {
+        $out = [];
+        foreach ($this->store as $e) {
+            if ($e->taxonId() !== null) {
+                continue;
+            }
+            if ($e->taxonVerbatim() !== $verbatim) {
+                continue;
+            }
+            $out[] = $e;
+            if (count($out) >= $limit) {
+                break;
+            }
+        }
+
+        return $out;
+    }
+
+    /** @return Especimen[] */
+    public function buscarPorLocalidadVerbatimPendiente(string $verbatim, int $limit = 500): array
+    {
+        $out = [];
+        foreach ($this->store as $e) {
+            if ($e->localidadId() !== null) {
+                continue;
+            }
+            if ($e->localidadVerbatim() !== $verbatim) {
+                continue;
+            }
+            $out[] = $e;
+            if (count($out) >= $limit) {
+                break;
+            }
+        }
+
+        return $out;
+    }
+
+    /** @param  string[]  $ids */
+    public function enlazarFechaPorIds(array $ids, string $fechaInicio, ?string $fechaFin = null): int
+    {
+        // La entidad no expone setter de fecha_colecta; en InMemory este método es
+        // informativo (cuenta cuántos serían afectados). Eloquent hace el UPDATE real.
+        $set = array_flip($ids);
+        $contador = 0;
+        foreach ($this->store as $e) {
+            if (! isset($set[(string) $e->id()])) {
+                continue;
+            }
+            if ($e->fechaColecta() !== '' && $e->fechaColecta() !== null) {
+                continue;
+            }
+            $contador++;
+        }
+
+        return $contador;
+    }
+
+    /** @param  string[]  $ids */
+    public function enlazarTaxonPorIds(array $ids, string $taxonId): int
+    {
+        $set = array_flip($ids);
+        $taxon = TaxonId::desde($taxonId);
+        $contador = 0;
+        foreach ($this->store as $e) {
+            if (! isset($set[(string) $e->id()])) {
+                continue;
+            }
+            if ($e->taxonId() !== null) {
+                continue;
+            }
+            $e->enlazarTaxon($taxon);
+            $contador++;
+        }
+
+        return $contador;
+    }
+
+    /** @param  string[]  $ids */
+    public function enlazarLocalidadPorIds(array $ids, string $localidadId): int
+    {
+        $set = array_flip($ids);
+        $localidad = LocalidadId::desde($localidadId);
+        $contador = 0;
+        foreach ($this->store as $e) {
+            if (! isset($set[(string) $e->id()])) {
+                continue;
+            }
+            if ($e->localidadId() !== null) {
+                continue;
+            }
+            $e->enlazarLocalidad($localidad);
+            $contador++;
+        }
+
+        return $contador;
     }
 }

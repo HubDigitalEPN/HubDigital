@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especimen;
@@ -397,6 +398,34 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
             ]);
     }
 
+    public function confirmarRevisionPorIds(array $ids): int
+    {
+        if ($ids === []) {
+            return 0;
+        }
+
+        return EspecimenEloquentModel::whereIn('id', $ids)
+            ->update([
+                'estado_revision' => 'confirmada',
+                'motivo_revision' => null,
+                'updated_at' => now(),
+            ]);
+    }
+
+    public function marcarRevisionPorIds(array $ids, string $motivo): int
+    {
+        if ($ids === []) {
+            return 0;
+        }
+
+        return EspecimenEloquentModel::whereIn('id', $ids)
+            ->update([
+                'estado_revision' => 'pendiente',
+                'motivo_revision' => $motivo,
+                'updated_at' => now(),
+            ]);
+    }
+
     /**
      * @return array<string, int>
      *
@@ -433,6 +462,27 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
             ->count('fecha_verbatim');
     }
 
+    public function contarTaxonSinDatoOrigen(): int
+    {
+        return EspecimenEloquentModel::whereNull('taxon_id')
+            ->where(fn ($q) => $q->whereNull('taxon_verbatim')->orWhere('taxon_verbatim', '=', ''))
+            ->count();
+    }
+
+    public function contarFechaSinDatoOrigen(): int
+    {
+        return EspecimenEloquentModel::whereNull('fecha_colecta')
+            ->where(fn ($q) => $q->whereNull('fecha_verbatim')->orWhere('fecha_verbatim', '=', ''))
+            ->count();
+    }
+
+    public function contarLocalidadSinDatoOrigen(): int
+    {
+        return EspecimenEloquentModel::whereNull('localidad_id')
+            ->where(fn ($q) => $q->whereNull('localidad_verbatim')->orWhere('localidad_verbatim', '=', ''))
+            ->count();
+    }
+
     public function enlazarFechaPorVerbatim(string $verbatim, string $fechaInicio, ?string $fechaFin = null): int
     {
         return EspecimenEloquentModel::where('fecha_verbatim', $verbatim)
@@ -440,6 +490,91 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
             ->update([
                 'fecha_colecta' => $fechaInicio,
                 'fecha_colecta_fin' => $fechaFin,
+                'updated_at' => now(),
+            ]);
+    }
+
+    /** @return Especimen[] */
+    public function buscarPorFechaVerbatimPendiente(string $verbatim, int $limit = 500): array
+    {
+        return EspecimenEloquentModel::with('identificadores')
+            ->where('fecha_verbatim', $verbatim)
+            ->whereNull('fecha_colecta')
+            ->orderBy('codigo_catalogo')
+            ->limit($limit)
+            ->get()
+            ->map(fn ($m) => $this->toDomain($m))
+            ->all();
+    }
+
+    /** @return Especimen[] */
+    public function buscarPorTaxonVerbatimPendiente(string $verbatim, int $limit = 500): array
+    {
+        return EspecimenEloquentModel::with('identificadores')
+            ->where('taxon_verbatim', $verbatim)
+            ->whereNull('taxon_id')
+            ->orderBy('codigo_catalogo')
+            ->limit($limit)
+            ->get()
+            ->map(fn ($m) => $this->toDomain($m))
+            ->all();
+    }
+
+    /** @return Especimen[] */
+    public function buscarPorLocalidadVerbatimPendiente(string $verbatim, int $limit = 500): array
+    {
+        return EspecimenEloquentModel::with('identificadores')
+            ->where('localidad_verbatim', $verbatim)
+            ->whereNull('localidad_id')
+            ->orderBy('codigo_catalogo')
+            ->limit($limit)
+            ->get()
+            ->map(fn ($m) => $this->toDomain($m))
+            ->all();
+    }
+
+    /** @param  string[]  $ids */
+    public function enlazarFechaPorIds(array $ids, string $fechaInicio, ?string $fechaFin = null): int
+    {
+        if ($ids === []) {
+            return 0;
+        }
+
+        return EspecimenEloquentModel::whereIn('id', $ids)
+            ->whereNull('fecha_colecta')
+            ->update([
+                'fecha_colecta' => $fechaInicio,
+                'fecha_colecta_fin' => $fechaFin,
+                'updated_at' => now(),
+            ]);
+    }
+
+    /** @param  string[]  $ids */
+    public function enlazarTaxonPorIds(array $ids, string $taxonId): int
+    {
+        if ($ids === []) {
+            return 0;
+        }
+
+        return EspecimenEloquentModel::whereIn('id', $ids)
+            ->whereNull('taxon_id')
+            ->update([
+                'taxon_id' => $taxonId,
+                'updated_at' => now(),
+            ]);
+    }
+
+    /** @param  string[]  $ids */
+    public function enlazarLocalidadPorIds(array $ids, string $localidadId): int
+    {
+        if ($ids === []) {
+            return 0;
+        }
+
+        return EspecimenEloquentModel::whereIn('id', $ids)
+            ->whereNull('localidad_id')
+            ->update([
+                'localidad_id' => $localidadId,
                 'updated_at' => now(),
             ]);
     }
@@ -465,6 +600,17 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
         return $out;
     }
 
+    public function buscarPorMuestraId(string $muestraId, int $limite = 500): array
+    {
+        return EspecimenEloquentModel::with('identificadores')
+            ->where('muestra_id', $muestraId)
+            ->orderBy('codigo_catalogo')
+            ->limit($limite)
+            ->get()
+            ->map(fn ($m) => $this->toDomain($m))
+            ->all();
+    }
+
     /** @return Especimen[] */
     public function buscarParaRevision(?string $contieneMotivo = null, int $limit = 200): array
     {
@@ -485,8 +631,39 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
     /** @return Especimen[] */
     public function buscarConFiltros(array $filtros): array
     {
-        $query = EspecimenEloquentModel::with('identificadores');
+        $query = EspecimenEloquentModel::query()->with('identificadores');
+        $this->aplicarFiltrosBusqueda($query, $filtros);
 
+        $limit = (int) ($filtros['limit'] ?? 200);
+        $offset = (int) ($filtros['offset'] ?? 0);
+
+        // Orden determinista: sin él, OFFSET/LIMIT puede repetir/saltarse filas
+        // entre páginas (Postgres no garantiza orden sin ORDER BY).
+        return $query->orderBy('codigo_catalogo')
+            ->orderBy('id')
+            ->offset(max(0, $offset))
+            ->limit($limit)
+            ->get()
+            ->map(fn ($m) => $this->toDomain($m))
+            ->all();
+    }
+
+    public function contarConFiltros(array $filtros): int
+    {
+        $query = EspecimenEloquentModel::query();
+        $this->aplicarFiltrosBusqueda($query, $filtros);
+
+        return $query->count();
+    }
+
+    /**
+     * Cláusulas WHERE compartidas por buscarConFiltros y contarConFiltros
+     * (no aplica limit/offset/order: eso es responsabilidad de cada llamador).
+     *
+     * @param  array<string, mixed>  $filtros
+     */
+    private function aplicarFiltrosBusqueda(Builder $query, array $filtros): void
+    {
         if (! empty($filtros['taxonIds'])) {
             $query->whereIn('taxon_id', $filtros['taxonIds']);
         }
@@ -530,13 +707,6 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
         if (! empty($filtros['paraRevision'])) {
             $query->where('estado_revision', 'pendiente')->whereNotNull('motivo_revision');
         }
-
-        $limit = (int) ($filtros['limit'] ?? 200);
-
-        return $query->limit($limit)
-            ->get()
-            ->map(fn ($m) => $this->toDomain($m))
-            ->all();
     }
 
     /** @param int[] $filasOrigen

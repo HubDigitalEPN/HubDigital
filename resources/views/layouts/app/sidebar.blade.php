@@ -131,19 +131,11 @@
                             </flux:sidebar.item>
                         </flux:sidebar.group>
                         <flux:sidebar.group
-                            heading="Inventario"
+                            heading="Catálogo"
                             class="grid"
                             expandable
-                            :expanded="request()->routeIs('inventario.taxonomia.*')"
+                            :expanded="request()->routeIs('inventario.taxonomia.especimenes', 'inventario.taxonomia.etiquetas', 'inventario.taxonomia.taxones', 'inventario.taxonomia.localidades', 'inventario.taxonomia.entidades-depositantes')"
                         >
-                            <flux:sidebar.item
-                                icon="clipboard-document-check"
-                                :href="route('inventario.taxonomia.revision')"
-                                :current="request()->routeIs('inventario.taxonomia.revision')"
-                                wire:navigate
-                            >
-                                Centro de revisión
-                            </flux:sidebar.item>
                             <flux:sidebar.item
                                 icon="magnifying-glass"
                                 :href="route('inventario.taxonomia.especimenes')"
@@ -153,28 +145,12 @@
                                 Especímenes
                             </flux:sidebar.item>
                             <flux:sidebar.item
-                                icon="exclamation-triangle"
-                                :href="route('inventario.taxonomia.especimenes.duplicados')"
-                                :current="request()->routeIs('inventario.taxonomia.especimenes.duplicados')"
+                                icon="qr-code"
+                                :href="route('inventario.taxonomia.etiquetas')"
+                                :current="request()->routeIs('inventario.taxonomia.etiquetas')"
                                 wire:navigate
                             >
-                                Duplicados catalog#
-                            </flux:sidebar.item>
-                            <flux:sidebar.item
-                                icon="calendar-days"
-                                :href="route('inventario.taxonomia.fechas.revision')"
-                                :current="request()->routeIs('inventario.taxonomia.fechas.revision')"
-                                wire:navigate
-                            >
-                                Parseo de fechas
-                            </flux:sidebar.item>
-                            <flux:sidebar.item
-                                icon="rectangle-stack"
-                                :href="route('inventario.taxonomia.muestras')"
-                                :current="request()->routeIs('inventario.taxonomia.muestras')"
-                                wire:navigate
-                            >
-                                Muestras de colecta
+                                Etiquetado QR
                             </flux:sidebar.item>
                             <flux:sidebar.item
                                 icon="tag"
@@ -185,14 +161,6 @@
                                 Taxones
                             </flux:sidebar.item>
                             <flux:sidebar.item
-                                icon="exclamation-triangle"
-                                :href="route('inventario.taxonomia.taxones.revision')"
-                                :current="request()->routeIs('inventario.taxonomia.taxones.revision')"
-                                wire:navigate
-                            >
-                                Revisión taxa
-                            </flux:sidebar.item>
-                            <flux:sidebar.item
                                 icon="map-pin"
                                 :href="route('inventario.taxonomia.localidades')"
                                 :current="request()->routeIs('inventario.taxonomia.localidades') && !request()->routeIs('inventario.taxonomia.localidades.revision')"
@@ -201,28 +169,82 @@
                                 Localidades
                             </flux:sidebar.item>
                             <flux:sidebar.item
-                                icon="exclamation-triangle"
-                                :href="route('inventario.taxonomia.localidades.revision')"
-                                :current="request()->routeIs('inventario.taxonomia.localidades.revision')"
-                                wire:navigate
-                            >
-                                Revisión localidades
-                            </flux:sidebar.item>
-                            <flux:sidebar.item
                                 icon="building-library"
                                 :href="route('inventario.taxonomia.entidades-depositantes')"
                                 :current="request()->routeIs('inventario.taxonomia.entidades-depositantes')"
                                 wire:navigate
                             >
-                                Entidades depositantes
+                                Instituciones depositantes
                             </flux:sidebar.item>
+                        </flux:sidebar.group>
+                        <flux:sidebar.group
+                            heading="Control de calidad"
+                            class="grid"
+                            expandable
+                            :expanded="request()->routeIs('inventario.taxonomia.revision', 'inventario.taxonomia.especimenes.duplicados', 'inventario.taxonomia.fechas.revision', 'inventario.taxonomia.taxones.revision', 'inventario.taxonomia.localidades.revision', 'inventario.taxonomia.muestras')"
+                        >
+                            <flux:sidebar.item
+                                icon="clipboard-document-check"
+                                :href="route('inventario.taxonomia.revision')"
+                                :current="request()->routeIs('inventario.taxonomia.revision')"
+                                wire:navigate
+                            >
+                                Centro de revisión
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="document-duplicate"
+                                :href="route('inventario.taxonomia.especimenes.duplicados')"
+                                :current="request()->routeIs('inventario.taxonomia.especimenes.duplicados')"
+                                wire:navigate
+                            >
+                                Especímenes duplicados
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="calendar-days"
+                                :href="route('inventario.taxonomia.fechas.revision')"
+                                :current="request()->routeIs('inventario.taxonomia.fechas.revision')"
+                                wire:navigate
+                            >
+                                Fechas por normalizar
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="exclamation-triangle"
+                                :href="route('inventario.taxonomia.taxones.revision')"
+                                :current="request()->routeIs('inventario.taxonomia.taxones.revision')"
+                                wire:navigate
+                            >
+                                Taxones por confirmar
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="exclamation-triangle"
+                                :href="route('inventario.taxonomia.localidades.revision')"
+                                :current="request()->routeIs('inventario.taxonomia.localidades.revision')"
+                                wire:navigate
+                            >
+                                Localidades por confirmar
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="rectangle-stack"
+                                :href="route('inventario.taxonomia.muestras')"
+                                :current="request()->routeIs('inventario.taxonomia.muestras')"
+                                wire:navigate
+                            >
+                                Muestras de colecta
+                            </flux:sidebar.item>
+                        </flux:sidebar.group>
+                        <flux:sidebar.group
+                            heading="Configuración del catálogo"
+                            class="grid"
+                            expandable
+                            :expanded="request()->routeIs('inventario.taxonomia.dataset.config', 'inventario.taxonomia.columnas.config')"
+                        >
                             <flux:sidebar.item
                                 icon="globe-alt"
                                 :href="route('inventario.taxonomia.dataset.config')"
                                 :current="request()->routeIs('inventario.taxonomia.dataset.config')"
                                 wire:navigate
                             >
-                                Dataset GBIF
+                                Publicación GBIF
                             </flux:sidebar.item>
                             <flux:sidebar.item
                                 icon="swatch"
@@ -230,7 +252,7 @@
                                 :current="request()->routeIs('inventario.taxonomia.columnas.config')"
                                 wire:navigate
                             >
-                                Prioridad columnas
+                                Columnas de la tabla
                             </flux:sidebar.item>
                         </flux:sidebar.group>
                         <flux:sidebar.group
