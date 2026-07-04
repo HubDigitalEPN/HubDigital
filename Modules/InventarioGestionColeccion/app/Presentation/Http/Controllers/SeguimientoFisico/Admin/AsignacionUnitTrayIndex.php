@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Admin;
 
-use Endroid\QrCode\Builder\Builder;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -22,13 +21,17 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Li
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarGabinetes\ListarGabineteHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarUnitTraysPorCaja\ListarUnitTraysPorCajaHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarUnitTraysPorCaja\ListarUnitTraysPorCajaInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ResolverCodigoQr\ResolverCodigoQrHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ResolverCodigoQr\ResolverCodigoQrInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ReubicarEspecimenes\ReubicarEspecimenesHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ReubicarEspecimenes\ReubicarEspecimenesInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ReubicarUnitTray\ReubicarUnitTrayHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ReubicarUnitTray\ReubicarUnitTrayInput;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Exceptions\EspecimenNoEncontradoException;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\CajaRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UnitTrayRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\UnitTrayId;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\GeneraSvgQr;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
 
 /**
@@ -42,6 +45,7 @@ use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\Seguimiento
 #[Layout('layouts.app', params: ['title' => 'Asignación de unit trays'])]
 final class AsignacionUnitTrayIndex extends Component
 {
+    use GeneraSvgQr;
     use TraduceErroresPersistencia;
 
     /** Valor del read-model `estado` para una caja en tránsito (contrato de ListarCajas). */
@@ -75,13 +79,13 @@ final class AsignacionUnitTrayIndex extends Component
 
     public ?string $errorMessage = null;
 
-    // --- QR imprimible del unit tray (server-side, endroid) ---
+    // --- QR imprimible del unit tray (server-side, BaconQrCode, igual que taxonomía) ---
     public bool $modalQr = false;
 
     public ?string $qrTrayNumero = null;
 
-    /** Data URI PNG del QR generado (codifica el UnitTrayId); null = modal cerrado. */
-    public ?string $qrDataUri = null;
+    /** SVG inline del QR generado (codifica el UnitTrayId); null = modal cerrado. */
+    public ?string $qrSvg = null;
 
     // --- Flujo: reubicar especímenes a un unit tray de destino ---
     public bool $modalReubicarEspecimenes = false;
@@ -247,11 +251,7 @@ final class AsignacionUnitTrayIndex extends Component
     {
         $this->limpiarMensajes();
         $this->qrTrayNumero = $numero;
-        $this->qrDataUri = (new Builder(
-            data: $unitTrayId,
-            size: 320,
-            margin: 16,
-        ))->build()->getDataUri();
+        $this->qrSvg = $this->generarSvgQr($unitTrayId);
         $this->modalQr = true;
     }
 
@@ -259,7 +259,7 @@ final class AsignacionUnitTrayIndex extends Component
     {
         $this->modalQr = false;
         $this->qrTrayNumero = null;
-        $this->qrDataUri = null;
+        $this->qrSvg = null;
     }
 
     // --- Reubicar especímenes ---
@@ -284,11 +284,10 @@ final class AsignacionUnitTrayIndex extends Component
     }
 
     /**
-     * Resuelve un código de catálogo escaneado y lo deja en espera de confirmación (popup con
-     * la info resuelta). El QR del espécimen codifica su código de catálogo.
-     *
-     * ponytail: se resuelve con la misma búsqueda acotada de la pantalla (ILIKE por código o
-     * nombre científico) y se exige coincidencia exacta de código; no hace falta otro endpoint.
+     * Resuelve lo escaneado y lo deja en espera de confirmación (popup con la info resuelta).
+     * El QR del espécimen es el mismo que genera la Estación de Etiquetado (Catálogo):
+     * codifica la URL `/inventario/qr/{payload}` con un token opaco. También acepta un código
+     * de catálogo tecleado a mano como respaldo.
      */
     public function escanearEspecimen(string $codigo): void
     {
@@ -297,29 +296,20 @@ final class AsignacionUnitTrayIndex extends Component
             return;
         }
 
-        foreach ($this->especimenesReubicar as $e) {
-            if ($e['codigoCatalogo'] === $codigo || $e['id'] === $codigo) {
-                $this->errorMessage = "El espécimen «{$codigo}» ya está en la lista.";
-
-                return;
-            }
-        }
-
-        $items = app(ListarEspecimenesAsignablesHandler::class)
-            ->handle(new ListarEspecimenesAsignablesInput(busqueda: $codigo, limite: 10))->items;
-
-        $match = null;
-        foreach ($items as $it) {
-            if ($it['codigoCatalogo'] === $codigo || $it['id'] === $codigo) {
-                $match = $it;
-                break;
-            }
-        }
+        $match = $this->resolverEspecimenEscaneado($codigo);
 
         if ($match === null) {
             $this->errorMessage = "No se encontró el espécimen «{$codigo}».";
 
             return;
+        }
+
+        foreach ($this->especimenesReubicar as $e) {
+            if ($e['id'] === $match['id']) {
+                $this->errorMessage = "El espécimen «{$match['codigoCatalogo']}» ya está en la lista.";
+
+                return;
+            }
         }
 
         $this->errorMessage = null;
@@ -328,6 +318,50 @@ final class AsignacionUnitTrayIndex extends Component
             'codigoCatalogo' => $match['codigoCatalogo'],
             'taxonNombre' => $match['taxonNombre'],
         ];
+    }
+
+    /**
+     * Si `$codigo` es la URL del QR de taxonomía, resuelve el payload por el mismo caso de uso
+     * que usa la ficha pública del QR. Si no, se trata como código de catálogo tecleado a mano
+     * y se busca con la búsqueda acotada de siempre (ILIKE por código o nombre científico,
+     * coincidencia exacta de código).
+     *
+     * @return array{id: string, codigoCatalogo: string, taxonNombre: ?string}|null
+     */
+    private function resolverEspecimenEscaneado(string $codigo): ?array
+    {
+        $payload = $this->payloadDeUrlQrTaxonomia($codigo);
+
+        if ($payload !== null) {
+            try {
+                $output = app(ResolverCodigoQrHandler::class)->handle(new ResolverCodigoQrInput($payload));
+
+                return [
+                    'id' => $output->id,
+                    'codigoCatalogo' => $output->codigoCatalogo,
+                    'taxonNombre' => $output->taxonNombre,
+                ];
+            } catch (EspecimenNoEncontradoException) {
+                return null;
+            }
+        }
+
+        $items = app(ListarEspecimenesAsignablesHandler::class)
+            ->handle(new ListarEspecimenesAsignablesInput(busqueda: $codigo, limite: 10))->items;
+
+        foreach ($items as $it) {
+            if ($it['codigoCatalogo'] === $codigo || $it['id'] === $codigo) {
+                return $it;
+            }
+        }
+
+        return null;
+    }
+
+    /** Extrae el payload si `$texto` es la URL del QR de taxonomía; null si no lo es (p. ej. un código de catálogo). */
+    private function payloadDeUrlQrTaxonomia(string $texto): ?string
+    {
+        return preg_match('#/inventario/qr/([0-9a-f]{6,})#i', $texto, $m) === 1 ? $m[1] : null;
     }
 
     public function confirmarEspecimenEscaneado(): void

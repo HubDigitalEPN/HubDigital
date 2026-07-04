@@ -384,30 +384,35 @@
     </div>{{-- fin contenido difuminable --}}
     </div>
 
-    {{-- Modal: QR imprimible del unit tray (generado server-side, codifica el UnitTrayId) --}}
+    {{-- Modal: QR imprimible del unit tray (server-side, BaconQrCode, codifica el UnitTrayId) --}}
     <flux:modal wire:model="modalQr" wire:close="cerrarQrTray" class="w-full max-w-sm">
         <div class="space-y-4 p-1 text-center">
             <flux:heading size="lg" class="text-text-primary">QR del unit tray N.° {{ $qrTrayNumero }}</flux:heading>
             <p class="text-sm text-text-secondary">
                 Imprime esta etiqueta y pégala en el unit tray. Siempre es el mismo código: sirve para escanearlo al reubicar.
             </p>
-            @if($qrDataUri)
+            @if($qrSvg)
                 <div x-data="{
-                        imprimir(src) {
+                        imprimir() {
                             const w = window.open('', '_blank');
                             if (! w) { return; }
-                            w.document.write('<img src=\'' + src + '\' style=\'width:320px;height:320px\' onload=\'window.print();window.close()\'>');
+                            w.document.write('<div style=\'width:240px\'>' + this.$refs.qr.innerHTML + '</div>');
                             w.document.close();
+                            w.focus();
+                            w.print();
+                            w.close();
                         },
                      }">
-                    <div class="flex justify-center">
-                        <img x-ref="qr" src="{{ $qrDataUri }}" alt="QR del unit tray" class="rounded-lg border border-border bg-white p-2" width="240" height="240" />
+                    <div x-ref="qr" class="flex justify-center rounded-lg border border-border bg-white p-2">
+                        {!! $qrSvg !!}
                     </div>
                     <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-center">
-                        <flux:button variant="primary" icon="printer" x-on:click="imprimir($refs.qr.src)" class="w-full min-h-[44px] sm:w-auto">
+                        <flux:button variant="primary" icon="printer" x-on:click="imprimir()" class="w-full min-h-[44px] sm:w-auto">
                             Imprimir
                         </flux:button>
-                        <flux:button variant="ghost" icon="arrow-down-tray" href="{{ $qrDataUri }}" download="unit-tray-{{ $qrTrayNumero }}.png" class="w-full min-h-[44px] sm:w-auto">
+                        <flux:button variant="ghost" icon="arrow-down-tray"
+                                     href="data:image/svg+xml;charset=utf-8,{{ rawurlencode($qrSvg) }}"
+                                     download="unit-tray-{{ $qrTrayNumero }}.svg" class="w-full min-h-[44px] sm:w-auto">
                             Descargar
                         </flux:button>
                     </div>
