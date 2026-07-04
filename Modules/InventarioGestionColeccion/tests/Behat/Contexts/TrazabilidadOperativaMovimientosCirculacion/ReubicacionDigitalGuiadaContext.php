@@ -219,6 +219,13 @@ final class ReubicacionDigitalGuiadaContext extends BaseContext
         $this->ejecutarReubicacionEspecimenes(confirmar: false);
     }
 
+    #[When('el curador confirma la reubicación del espécimen al unit tray de destino pese a la advertencia')]
+    public function elCuradorConfirmaLaReubicacionPeseALaAdvertencia(): void
+    {
+        $this->contexto->setActor(ActorRol::Curador, 'curador-001');
+        $this->ejecutarReubicacionEspecimenes(confirmar: true);
+    }
+
     #[Then('el espécimen queda asignado al unit tray de destino')]
     public function elEspecimenQuedaAsignadoAlUnitTrayDeDestino(): void
     {
@@ -275,17 +282,6 @@ final class ReubicacionDigitalGuiadaContext extends BaseContext
         // así que el espécimen sigue en su unit tray de origen.
         Assert::assertFalse($this->ultimaRespuesta->reubicado, 'Al cancelar no debe persistirse');
         $this->assertEspecimenEnTray($this->especimenIds[0], $this->origenTrayId);
-    }
-
-    #[Then('si el curador confirma, el espécimen queda asignado al unit tray de destino')]
-    public function siElCuradorConfirmaElEspecimenQuedaEnDestino(): void
-    {
-        // Confirmar: al reintentar con confirmar=true la reubicación se persiste.
-        $this->ejecutarReubicacionEspecimenes(confirmar: true);
-
-        Assert::assertNull($this->excepcionCapturada);
-        Assert::assertTrue($this->ultimaRespuesta->reubicado, 'Al confirmar, la reubicación debe persistirse');
-        $this->assertEspecimenEnTray($this->especimenIds[0], $this->destinoTrayId);
     }
 
     // ==========================================

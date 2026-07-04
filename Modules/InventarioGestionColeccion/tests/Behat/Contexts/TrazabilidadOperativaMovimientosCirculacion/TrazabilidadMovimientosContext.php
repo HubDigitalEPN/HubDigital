@@ -56,6 +56,8 @@ final class TrazabilidadMovimientosContext extends BaseContext
 
     private mixed $ultimaRespuesta = null;
 
+    private ?\Throwable $excepcionCapturada = null;
+
     private \DateTimeImmutable $reloj;
 
     public function __construct()
@@ -101,9 +103,13 @@ final class TrazabilidadMovimientosContext extends BaseContext
     #[When('el curador consulta la trazabilidad del elemento reubicado')]
     public function elCuradorConsultaLaTrazabilidad(): void
     {
-        $this->ultimaRespuesta = $this->handler->handle(
-            new ConsultarTrazabilidadEspecimenInput(especimenId: $this->especimenId)
-        );
+        try {
+            $this->ultimaRespuesta = $this->handler->handle(
+                new ConsultarTrazabilidadEspecimenInput(especimenId: $this->especimenId)
+            );
+        } catch (\Throwable $e) {
+            $this->excepcionCapturada = $e;
+        }
     }
 
     #[Then('el historial es retornado con los movimientos en orden cronológico')]

@@ -26,13 +26,19 @@ Característica: Reubicación de especímenes y unit trays en la colección
     Entonces el unit tray queda asignado a la caja de destino
     Y el movimiento queda registrado en la trazabilidad del unit tray
 
-  Escenario: El curador recibe una advertencia al reubicar un espécimen que no pertenece al unit tray de destino
+  Escenario: El curador recibe una advertencia y cancela al reubicar un espécimen que no pertenece al unit tray de destino
     Dado que existe un espécimen asignado a un unit tray de origen
     Y en el unit tray de destino el espécimen quedaría fuera del orden taxonómico
     Cuando el curador reubica el espécimen al unit tray de destino
     Entonces se advierte que el espécimen no pertenece taxonómicamente al unit tray de destino
     Y si el curador cancela, el espécimen permanece en su unit tray de origen
-    Y si el curador confirma, el espécimen queda asignado al unit tray de destino
+
+  Escenario: El curador confirma la reubicación de un espécimen pese a la advertencia taxonómica
+    Dado que existe un espécimen asignado a un unit tray de origen
+    Y en el unit tray de destino el espécimen quedaría fuera del orden taxonómico
+    Cuando el curador confirma la reubicación del espécimen al unit tray de destino pese a la advertencia
+    Entonces el espécimen queda asignado al unit tray de destino
+    Y el movimiento queda registrado en la trazabilidad del espécimen
 
   Escenario: El curador reubica un espécimen a una caja especial y el movimiento queda registrado
     Dado que existe un espécimen asignado a un unit tray de origen
