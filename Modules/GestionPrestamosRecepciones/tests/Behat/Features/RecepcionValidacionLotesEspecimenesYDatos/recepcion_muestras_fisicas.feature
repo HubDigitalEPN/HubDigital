@@ -42,9 +42,9 @@ Característica: Recepción de muestras físicas
             | Frascos rotos                 | Reemplazo de material   |
             | Inconsistencia en conteo      | Auditoría de inventario |
 
-    Esquema del escenario: Aceptación con observaciones cuando la anomalía no puede devolverse
+    Esquema del escenario: Aceptación con observaciones según los ítems no conformes del lote
         Dado que la solicitud es un trámite de "<tipo_tramite>"
-        Y el lote presenta la anomalía "<tipo_observacion>" que no es posible devolver al investigador
+        Y el lote presenta el ítem no conforme "<item_no_conforme>"
         Cuando el curador acepta la recepción del lote con observaciones
         Entonces el lote pasa a estado "Verificado con Observaciones"
         Y las observaciones quedan registradas en el "Acta Digital de Recepción"
@@ -52,8 +52,8 @@ Característica: Recepción de muestras físicas
         Y se notifica al investigador la finalización de la entrega con observaciones
 
         Ejemplos:
-            | tipo_tramite | tipo_observacion            | estado_coleccion |
-            | Depósito     | Contaminación por infección | Cuarentena       |
-            | Donación     | Contaminación por infección | Cuarentena       |
-            | Depósito     | Otras observaciones         | Temporal         |
-            | Donación     | Otras observaciones         | Permanente       |
+            | tipo_tramite | item_no_conforme          | estado_coleccion |
+            | Depósito     | Estado de los especímenes | Cuarentena       |
+            | Donación     | Estado de los especímenes | Cuarentena       |
+            | Depósito     | Integridad de los frascos | Temporal         |
+            | Donación     | Integridad de los frascos | Permanente       |

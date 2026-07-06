@@ -97,7 +97,8 @@ final class RecepcionMuestrasFisicasContext extends BaseContext
 
     private ?string $motivoFallo = null;
 
-    private ?string $tipoObservacion = null;
+    /** @var list<string> Ítems del checklist marcados como no conformes. */
+    private array $itemsNoConformes = [];
 
     // ── Constructor — inyecta In-Memory antes de resolver Handlers ───────────
 
@@ -446,29 +447,29 @@ final class RecepcionMuestrasFisicasContext extends BaseContext
     }
 
     // =========================================================================
-    // ESQUEMA DE ESCENARIO: Aceptación con observaciones cuando la anomalía no
-    // puede devolverse
+    // ESQUEMA DE ESCENARIO: Aceptación con observaciones según los ítems no
+    // conformes del lote
     // =========================================================================
 
-    #[Given('el lote presenta la anomalía :tipo_observacion que no es posible devolver al investigador')]
-    public function elLotePresentaLaAnomaliaQueNoEsPosibleDevolver(string $tipo_observacion): void
+    #[Given('el lote presenta el ítem no conforme :item_no_conforme')]
+    public function elLotePresentaElItemNoConforme(string $item_no_conforme): void
     {
-        Assert::assertNotSame('', trim($tipo_observacion), 'El tipo de observación no puede estar vacío');
-        $this->tipoObservacion = $tipo_observacion;
+        Assert::assertNotSame('', trim($item_no_conforme), 'El ítem no conforme no puede estar vacío');
+        $this->itemsNoConformes = [$item_no_conforme];
     }
 
     #[When('el curador acepta la recepción del lote con observaciones')]
     public function elCuradorAceptaLaRecepcionDelLoteConObservaciones(): void
     {
         Assert::assertNotNull($this->solicitudEnCurso, 'Se requiere una solicitud en curso');
-        Assert::assertNotNull($this->tipoObservacion, 'La aceptación con observaciones requiere una anomalía registrada');
+        Assert::assertNotEmpty($this->itemsNoConformes, 'La aceptación con observaciones requiere al menos un ítem no conforme');
 
         try {
             $this->ultimaRespuesta = ($this->aceptarConObservacionesHandler)(
                 new AceptarRecepcionConObservacionesInput(
                     solicitudId: (string) $this->solicitudEnCurso->id(),
                     curadorId: $this->curadorId,
-                    tipoObservacion: $this->tipoObservacion,
+                    itemsNoConformes: $this->itemsNoConformes,
                 )
             );
         } catch (\Throwable $e) {
@@ -495,11 +496,13 @@ final class RecepcionMuestrasFisicasContext extends BaseContext
             $lote->observaciones(),
             'Se esperaba que el lote conservara las observaciones registradas'
         );
-        Assert::assertContains(
-            $this->tipoObservacion,
-            $lote->observaciones(),
-            "Se esperaba que la observación '{$this->tipoObservacion}' quedara registrada en el lote"
-        );
+        foreach ($this->itemsNoConformes as $item) {
+            Assert::assertContains(
+                $item,
+                $lote->observaciones(),
+                "Se esperaba que el ítem no conforme '{$item}' quedara registrado como observación en el lote"
+            );
+        }
     }
 
     #[Then('se notifica al investigador la finalización de la entrega con observaciones')]

@@ -16,11 +16,11 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\CodigoQRLote;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\DocumentoAdjunto;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoColeccion;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoRecepcionLote;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ItemChecklistRecepcion;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ItemVerificacionRecepcion;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\MotivoFalloRecepcion;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\RecepcionLoteId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
-use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoObservacionRecepcion;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoTramite;
 
 /**
@@ -220,29 +220,47 @@ final class RecepcionLote
 
     /**
      * Acepta la recepción con observaciones cuando la anomalía no puede devolverse al
-     * investigador. Las observaciones quedan registradas en el acta y los especímenes
-     * ingresan a la colección (en cuarentena si la anomalía compromete su sanidad).
+     * investigador. Las observaciones se derivan de los ítems no conformes del checklist
+     * (más un comentario opcional) y quedan registradas en el acta; los especímenes
+     * ingresan a la colección, en cuarentena si algún ítem no conforme compromete su
+     * sanidad.
+     *
+     * @param  list<ItemChecklistRecepcion>  $itemsNoConformes
      */
-    public function aceptarConObservaciones(TipoObservacionRecepcion $tipoObservacion, ?string $detalle = null): void
+    public function aceptarConObservaciones(array $itemsNoConformes, ?string $comentario = null): void
     {
         $this->garantizarEnVerificacion('aceptarConObservaciones');
 
-        $ahora = new DateTimeImmutable;
-        $this->estado = EstadoRecepcionLote::VerificadoConObservaciones;
-        $this->observaciones[] = $tipoObservacion->value;
-
-        $detalle = $detalle !== null ? trim($detalle) : null;
-        if ($detalle !== null && $detalle !== '') {
-            $this->observaciones[] = $detalle;
+        if ($itemsNoConformes === []) {
+            throw new \DomainException('La aceptación con observaciones requiere al menos un ítem no conforme');
         }
 
-        $this->estadoColeccion = $tipoObservacion->requiereCuarentena()
+        $ahora = new DateTimeImmutable;
+        $this->estado = EstadoRecepcionLote::VerificadoConObservaciones;
+
+        foreach ($itemsNoConformes as $item) {
+            $this->observaciones[] = $item->value;
+        }
+
+        $comentario = $comentario !== null ? trim($comentario) : null;
+        if ($comentario !== null && $comentario !== '') {
+            $this->observaciones[] = $comentario;
+        }
+
+        $comprometeSanidad = false;
+        foreach ($itemsNoConformes as $item) {
+            if ($item->comprometeSanidad()) {
+                $comprometeSanidad = true;
+                break;
+            }
+        }
+
+        $this->estadoColeccion = $comprometeSanidad
             ? EstadoColeccion::Cuarentena
             : EstadoColeccion::porTipoTramite($this->tipoTramite);
 
         $this->events[] = new RecepcionLoteVerificadaConObservaciones(
             solicitudId: $this->solicitudId,
-            tipoObservacion: $tipoObservacion,
             estadoColeccion: $this->estadoColeccion,
             ocurridoEn: $ahora,
         );

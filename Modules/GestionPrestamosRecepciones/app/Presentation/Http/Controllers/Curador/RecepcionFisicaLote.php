@@ -20,6 +20,7 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\IniciarRecepcionLot
 use Modules\GestionPrestamosRecepciones\Application\UseCases\IniciarRecepcionLote\IniciarRecepcionLoteInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarRecepcionLote\RechazarRecepcionLoteHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarRecepcionLote\RechazarRecepcionLoteInput;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ItemChecklistRecepcion;
 
 /**
  * Componente Livewire para que el curador ejecute la recepción física del lote de una
@@ -30,14 +31,6 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarRecepcionLo
 final class RecepcionFisicaLote extends Component
 {
     use HandlesDomainExceptions;
-
-    /** Ítems de la lista de verificación de recepción y su resultado cuando son conformes. */
-    private const ITEMS = [
-        ['item' => 'Nivel de alcohol', 'conforme' => 'Adecuado'],
-        ['item' => 'Estado de los especímenes', 'conforme' => 'Sanos'],
-        ['item' => 'Integridad de los frascos', 'conforme' => 'Íntegros'],
-        ['item' => 'Completitud del conteo', 'conforme' => 'Exacto'],
-    ];
 
     public string $id;
 
@@ -52,14 +45,11 @@ final class RecepcionFisicaLote extends Component
     #[Validate('required')]
     public string $motivoFallo = '';
 
-    // ── Modal: aceptar con observaciones (anomalía no devolvible) ─────────────
+    // ── Modal: aceptar con observaciones (ítems no conformes del checklist) ───
     public bool $showObservacionModal = false;
 
-    #[Validate('required')]
-    public string $tipoObservacion = '';
-
-    /** Detalle libre o ítem elegido del checklist para el tipo "Otras observaciones". */
-    public string $detalleObservacion = '';
+    /** Comentario libre opcional que complementa a los ítems no conformes. */
+    public string $comentarioObservacion = '';
 
     public function mount(
         string $id,
@@ -92,8 +82,8 @@ final class RecepcionFisicaLote extends Component
         }
 
         $items = array_map(
-            fn (array $definicion): array => ['item' => $definicion['item'], 'resultado' => $definicion['conforme']],
-            self::ITEMS,
+            fn (ItemChecklistRecepcion $item): array => ['item' => $item->value, 'resultado' => $item->resultadoConforme()],
+            ItemChecklistRecepcion::cases(),
         );
 
         ($handler)(new AprobarRecepcionLoteInput(
@@ -121,13 +111,24 @@ final class RecepcionFisicaLote extends Component
 
     public function aceptarConObservaciones(AceptarRecepcionConObservacionesHandler $handler): void
     {
-        $this->validateOnly('tipoObservacion');
+        $itemsNoConformes = [];
+        foreach (ItemChecklistRecepcion::cases() as $indice => $item) {
+            if (! ($this->conforme[$indice] ?? false)) {
+                $itemsNoConformes[] = $item->value;
+            }
+        }
+
+        if ($itemsNoConformes === []) {
+            $this->showObservacionModal = false;
+
+            return;
+        }
 
         ($handler)(new AceptarRecepcionConObservacionesInput(
             solicitudId: $this->id,
             curadorId: (string) auth()->id(),
-            tipoObservacion: $this->tipoObservacion,
-            detalleObservacion: trim($this->detalleObservacion) !== '' ? trim($this->detalleObservacion) : null,
+            itemsNoConformes: $itemsNoConformes,
+            comentario: trim($this->comentarioObservacion) !== '' ? trim($this->comentarioObservacion) : null,
         ));
 
         $this->showObservacionModal = false;
@@ -139,9 +140,14 @@ final class RecepcionFisicaLote extends Component
         $recepcion = $detalle->handle(new ConsultarDetalleRecepcionInput($this->id));
         abort_if($recepcion === null, 404);
 
+        $items = array_map(
+            fn (ItemChecklistRecepcion $item): array => ['item' => $item->value, 'resultado' => $item->resultadoConforme()],
+            ItemChecklistRecepcion::cases(),
+        );
+
         return view('gestionprestamosrecepciones::curador.recepcion-fisica-lote', [
             'recepcion' => $recepcion,
-            'items' => self::ITEMS,
+            'items' => $items,
         ]);
     }
 }

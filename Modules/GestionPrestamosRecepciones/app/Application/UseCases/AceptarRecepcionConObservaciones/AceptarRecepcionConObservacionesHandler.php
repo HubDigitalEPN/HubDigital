@@ -10,8 +10,8 @@ use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionInvestigad
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\RecepcionLoteRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ItemChecklistRecepcion;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
-use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoObservacionRecepcion;
 
 /**
  * Acepta la recepción de un lote con observaciones cuando la anomalía no puede
@@ -41,8 +41,11 @@ final class AceptarRecepcionConObservacionesHandler
             throw RecepcionLoteNoEncontradaException::conSolicitud($input->solicitudId);
         }
 
-        $tipo = TipoObservacionRecepcion::from($input->tipoObservacion);
-        $lote->aceptarConObservaciones($tipo, $input->detalleObservacion);
+        $itemsNoConformes = array_map(
+            static fn (string $item): ItemChecklistRecepcion => ItemChecklistRecepcion::from($item),
+            array_values($input->itemsNoConformes),
+        );
+        $lote->aceptarConObservaciones($itemsNoConformes, $input->comentario);
 
         $solicitud = $this->solicitudRepo->buscarPorId($solicitudId);
 

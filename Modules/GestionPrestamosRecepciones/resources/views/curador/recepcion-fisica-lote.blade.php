@@ -1,6 +1,5 @@
 @php
     use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\MotivoFalloRecepcion;
-    use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoObservacionRecepcion;
 
     $enVerificacion = $recepcion->estadoRecepcion === 'En Verificación';
     $suspendida = $recepcion->estadoRecepcion === 'Recepción Suspendida';
@@ -202,36 +201,33 @@
         </div>
     </flux:modal>
 
-    {{-- Modal: aceptar con observaciones --}}
+    {{-- Modal: aceptar con observaciones (ítems no conformes) --}}
     <flux:modal wire:model="showObservacionModal" class="max-w-md">
         <div class="space-y-4 p-2">
             <flux:heading size="lg">Aceptar con observaciones</flux:heading>
             <flux:text class="text-text-secondary text-sm">
-                Indica la anomalía que no puede devolverse al investigador. Las observaciones quedarán registradas
-                en el Acta Digital de Recepción y los especímenes ingresarán a la colección.
+                Los siguientes ítems quedaron no conformes y se registrarán como observaciones en el Acta Digital
+                de Recepción.
+                @unless($conforme[1] ?? false)
+                    Como el estado de los especímenes no es conforme, ingresarán a la colección en
+                    <span class="font-semibold">cuarentena</span>.
+                @endunless
             </flux:text>
+            <ul class="space-y-1.5 rounded-lg border border-border bg-bg-main p-3 text-sm text-text-primary">
+                @foreach($items as $indice => $definicion)
+                    @unless($conforme[$indice] ?? false)
+                        <li class="flex items-center gap-2">
+                            <flux:icon name="exclamation-triangle" class="size-4 text-warning shrink-0" />
+                            {{ $definicion['item'] }}
+                        </li>
+                    @endunless
+                @endforeach
+            </ul>
             <flux:field>
-                <flux:label>Tipo de observación <span class="text-error">*</span></flux:label>
-                <flux:select wire:model.live="tipoObservacion" placeholder="Selecciona una observación...">
-                    @foreach(TipoObservacionRecepcion::cases() as $observacion)
-                        <flux:select.option value="{{ $observacion->value }}">{{ $observacion->value }}</flux:select.option>
-                    @endforeach
-                </flux:select>
-                <flux:error name="tipoObservacion" />
+                <flux:label>Comentario adicional (opcional)</flux:label>
+                <flux:textarea wire:model="comentarioObservacion" rows="2"
+                    placeholder="Añade una nota extra si hay algo más que registrar..." />
             </flux:field>
-            @if($tipoObservacion === 'Otras observaciones')
-                <flux:field>
-                    <flux:label>Detalle de la observación</flux:label>
-                    <flux:input wire:model="detalleObservacion" list="items-verificacion-lista"
-                        placeholder="Elige un ítem o escribe una nota breve..." />
-                    <flux:description>Puedes elegir uno de los ítems de la lista de verificación o escribir una nota libre.</flux:description>
-                </flux:field>
-                <datalist id="items-verificacion-lista">
-                    @foreach($items as $definicion)
-                        <option value="{{ $definicion['item'] }}"></option>
-                    @endforeach
-                </datalist>
-            @endif
             <div class="flex justify-end gap-2 pt-2">
                 <flux:button variant="ghost" wire:click="$set('showObservacionModal', false)">Cancelar</flux:button>
                 <flux:button variant="primary" icon="check-circle" wire:click="aceptarConObservaciones"
