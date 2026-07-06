@@ -28,10 +28,12 @@
         </div>
     </div>
 
+    {{-- Fila superior: datos de la solicitud (2/3) + panel de resolución (1/3).
+         Sin items-start: ambas tarjetas igualan su altura (bottoms alineados). --}}
     <div class="grid gap-6 lg:grid-cols-3">
 
-        {{-- Columna principal --}}
-        <div class="lg:col-span-2 space-y-5">
+        {{-- Datos de la solicitud --}}
+        <div class="lg:col-span-2">
 
             {{-- Datos de la solicitud --}}
             <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
@@ -57,7 +59,200 @@
                         </div>
                     </dl>
                 </div>
+
+                {{-- Resumen de revisión: contexto de decisión de un vistazo.
+                     Cada indicador es un ancla que baja a su sección correspondiente. --}}
+                @php
+                    $alertasPendientes = $alertas->where('estado_revision', 'Pendiente de Revisión')->count();
+                    $manualCount = count($deposito->datos_ingresados_manualmente ?? []);
+                    $docCount = count($deposito->documentos_cargados ?? []);
+
+                    // [valor, etiqueta, ancla, esAlerta, mostrar]
+                    $tilesResumen = array_values(array_filter([
+                        [$totalReg, $totalReg === 1 ? 'Espécimen' : 'Especímenes', '#seccion-matriz', false, (bool) $matriz],
+                        [$hallazgosMatriz, 'Revisión curatorial', '#seccion-matriz', $hallazgosMatriz > 0, (bool) $matriz],
+                        [$conteoConAdvertencias, 'Con advertencias', '#seccion-matriz', $conteoConAdvertencias > 0, (bool) $matriz],
+                        [$alertasPendientes, 'Alertas pendientes', '#seccion-alertas', $alertasPendientes > 0, $alertas->count() > 0],
+                        [$manualCount, 'Datos manuales', '#seccion-documentos', false, $manualCount > 0],
+                        [$docCount, $docCount === 1 ? 'Documento' : 'Documentos', '#seccion-documentos', false, $docCount > 0],
+                    ], fn ($t) => $t[4]));
+                @endphp
+                @if(count($tilesResumen))
+                    <div class="px-5 py-4 border-t border-border bg-bg-main/50">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-text-secondary mb-3 flex items-center gap-1.5">
+                            <flux:icon name="clipboard-document-check" class="size-3.5" />
+                            Resumen de revisión
+                        </p>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 auto-rows-fr">
+                            @foreach($tilesResumen as [$valor, $etiqueta, $ancla, $esAlerta, $mostrar])
+                                <a href="{{ $ancla }}"
+                                    x-on:click.prevent="document.querySelector('{{ $ancla }}')?.scrollIntoView({ behavior: 'smooth', block: 'start' })"
+                                    @class([
+                                        'group flex flex-col gap-0.5 rounded-lg border px-3 py-2.5 transition-colors',
+                                        'border-warning/40 bg-warning/5 hover:border-warning' => $esAlerta,
+                                        'border-border bg-surface hover:border-science-blue' => ! $esAlerta,
+                                    ])>
+                                    <span class="text-xl font-bold tabular-nums {{ $esAlerta ? 'text-warning' : 'text-text-primary' }}">{{ $valor }}</span>
+                                    <span class="text-[11px] flex items-center gap-1 {{ $esAlerta ? 'text-warning' : 'text-text-secondary' }}">
+                                        @if($esAlerta)
+                                            <flux:icon name="exclamation-triangle" class="size-3 shrink-0" />
+                                        @endif
+                                        {{ $etiqueta }}
+                                    </span>
+                                </a>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
             </div>
+        </div>
+
+        {{-- Panel de resolución (fila superior, columna derecha) --}}
+        <div class="space-y-5">
+
+            {{-- Panel de resolución --}}
+            @if($esPendiente)
+                <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden flex flex-col lg:h-full">
+                    <div class="px-5 py-4 border-b border-border flex items-center gap-3">
+                        <div class="flex h-7 w-7 items-center justify-center rounded-full bg-blue-navy text-white shrink-0">
+                            <flux:icon name="check-badge" class="size-3.5" />
+                        </div>
+                        <flux:heading size="base" level="2" class="font-display">Resolución</flux:heading>
+                    </div>
+                    <div class="p-5 flex flex-col flex-1">
+                        <div class="space-y-4">
+                        @if($hayAlertasPendientes)
+                            <flux:text class="text-text-secondary text-sm">
+                                Esta solicitud tiene justificaciones de alertas por revisar. Acepta todas para aprobarla,
+                                o rechaza las que no consideres válidas.
+                            </flux:text>
+                            <div class="flex flex-col gap-2">
+                                <flux:button variant="primary" icon="check-circle"
+                                    wire:click="pedirConfirmacion('justificaciones')">
+                                    Aceptar todas las justificaciones
+                                </flux:button>
+                                <flux:button variant="ghost" icon="x-circle"
+                                    wire:click="$set('showRechazoJustificacionesModal', true)">
+                                    Rechazar justificaciones
+                                </flux:button>
+                            </div>
+                        @else
+                            <flux:text class="text-text-secondary text-sm">
+                                Revisa la documentación y decide si apruebas la solicitud o la rechazas con un motivo.
+                            </flux:text>
+                            <div class="flex flex-col gap-2">
+                                @if($esDonacion)
+                                    <flux:button variant="primary" icon="check-circle"
+                                        wire:click="pedirConfirmacion('donacion')">
+                                        Aprobar donación (con Acta)
+                                    </flux:button>
+                                @else
+                                    <flux:button variant="primary" icon="check-circle"
+                                        wire:click="pedirConfirmacion('deposito')">
+                                        Aprobar documentalmente
+                                    </flux:button>
+                                @endif
+                                <flux:button variant="ghost" icon="x-circle"
+                                    wire:click="$set('showRechazoModal', true)">
+                                    Rechazar solicitud
+                                </flux:button>
+                            </div>
+                        @endif
+                        </div>
+
+                        <div class="mt-auto space-y-4 pt-4">
+                            <flux:separator />
+
+                            @if($deposito->prioridad !== 'Prioritaria')
+                                <flux:button variant="subtle" icon="flag" class="w-full"
+                                    wire:click="priorizar"
+                                    wire:loading.attr="disabled" wire:target="priorizar">
+                                    <flux:icon wire:loading wire:target="priorizar" name="arrow-path" class="animate-spin" />
+                                    Marcar como prioritaria
+                                </flux:button>
+                            @else
+                                <div class="flex items-center justify-center gap-2 text-xs text-text-secondary">
+                                    <flux:icon name="flag" class="size-3.5 text-indigo-500" />
+                                    Posicionada al inicio de la cola
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+            {{-- Panel de confirmación de aprobación (sin QR: el QR es del investigador) --}}
+            @if($deposito->estado === 'Aprobada Documentalmente' && $deposito->codigo_qr)
+                <div class="rounded-lg border border-success/40 bg-success/5 shadow-sm overflow-hidden">
+                    <div class="px-5 py-4 border-b border-success/30 flex items-center gap-3">
+                        <div class="flex h-7 w-7 items-center justify-center rounded-full bg-success text-white shrink-0">
+                            <flux:icon name="check-badge" class="size-3.5" />
+                        </div>
+                        <flux:heading size="base" level="2" class="font-display">Solicitud aprobada</flux:heading>
+                    </div>
+                    <div class="p-5 space-y-4">
+                        <div class="flex items-center justify-between gap-3">
+                            <span class="text-xs text-text-secondary uppercase tracking-wide">Lote asignado</span>
+                            <span class="font-mono font-semibold text-text-primary">{{ $deposito->codigo_qr }}</span>
+                        </div>
+                        <flux:text class="text-text-secondary text-xs">Código QR disponible para el investigador.</flux:text>
+
+                        @if($esDonacion && $deposito->acta_transferencia_dominio)
+                            @php $actaDisponible = \Illuminate\Support\Facades\Storage::disk('public')->exists($deposito->acta_transferencia_dominio['ruta'] ?? ''); @endphp
+                            @if($actaDisponible)
+                                <a href="{{ route('prestamos.deposito.acta', $deposito->id) }}"
+                                    target="_blank" rel="noopener"
+                                    class="flex items-center gap-3 rounded-lg border border-border bg-surface px-4 py-3 hover:border-science-blue transition-colors">
+                                    <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-science-blue/10">
+                                        <flux:icon name="document-check" class="size-4 text-science-blue" />
+                                    </div>
+                                    <p class="flex-1 text-sm font-medium text-text-primary">Acta de transferencia de dominio</p>
+                                    <flux:icon name="arrow-top-right-on-square" class="size-4 text-text-secondary shrink-0" />
+                                </a>
+                            @else
+                                <div class="flex items-center gap-3 rounded-lg border border-border bg-bg-main px-4 py-3">
+                                    <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-success/10">
+                                        <flux:icon name="document-check" class="size-4 text-success" />
+                                    </div>
+                                    <p class="flex-1 text-sm text-text-secondary">Acta de transferencia de dominio generada.</p>
+                                </div>
+                            @endif
+                        @endif
+                    </div>
+                </div>
+            @endif
+
+            {{-- Estado resuelto distinto a aprobado --}}
+            @if(in_array($deposito->estado, ['Requiere Corrección', 'Rechazo Permanente'], true))
+                <flux:callout :variant="$deposito->estado === 'Rechazo Permanente' ? 'danger' : 'warning'" icon="information-circle">
+                    <flux:callout.heading>{{ $deposito->estado }}</flux:callout.heading>
+                    <flux:callout.text>La solicitud ya fue resuelta y notificada al investigador.</flux:callout.text>
+                </flux:callout>
+            @endif
+
+            {{-- Estados sin decisión documental disponible (no enviada / en asesoría) --}}
+            @if($deposito->estado === 'Pausada para Asesoría')
+                <flux:callout variant="warning" icon="pause-circle">
+                    <flux:callout.heading>En espera de asesoría curatorial</flux:callout.heading>
+                    <flux:callout.text>
+                        Esta solicitud se pausó para asesoría y aún no está en la cola de revisión documental,
+                        por lo que no hay decisión de aprobación disponible.
+                    </flux:callout.text>
+                </flux:callout>
+            @elseif($deposito->estado === 'En Borrador')
+                <flux:callout variant="secondary" icon="pencil-square">
+                    <flux:callout.heading>Solicitud aún no enviada</flux:callout.heading>
+                    <flux:callout.text>
+                        El investigador todavía no ha enviado esta solicitud para revisión documental.
+                    </flux:callout.text>
+                </flux:callout>
+            @endif
+
+        </div>
+    </div>
+
+    {{-- Contenido a ancho completo --}}
+    <div class="space-y-5">
 
             {{-- Matriz de especímenes + alertas del sistema --}}
             @if($matriz)
@@ -104,7 +299,7 @@
                         default                         => ['zinc', 'Pendiente'],
                     };
                 @endphp
-                <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
+                <div id="seccion-matriz" class="scroll-mt-6 rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
                     <div class="px-5 py-4 border-b border-border flex items-center gap-3">
                         <div class="flex h-7 w-7 items-center justify-center rounded-full bg-blue-navy text-white shrink-0">
                             <flux:icon name="beaker" class="size-3.5" />
@@ -448,7 +643,7 @@
                 ], fn ($c) => ($c[1] ?? '') !== '' && $c[1] !== null));
             @endphp
             @if(count($documentos))
-                <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden"
+                <div id="seccion-documentos" class="scroll-mt-6 rounded-lg border border-border bg-surface shadow-sm overflow-hidden"
                     x-data="{
                         idx: 0,
                         urls: [
@@ -544,7 +739,7 @@
 
             {{-- Alertas --}}
             @if(count($alertas))
-                <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
+                <div id="seccion-alertas" class="scroll-mt-6 rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
                     <div class="px-5 py-4 border-b border-border flex items-center gap-3">
                         <div class="flex h-7 w-7 items-center justify-center rounded-full bg-warning text-white shrink-0">
                             <flux:icon name="exclamation-triangle" class="size-3.5" />
@@ -593,146 +788,6 @@
                 </flux:callout>
             @endif
 
-        </div>
-
-        {{-- Columna derecha --}}
-        <div class="space-y-5">
-
-            {{-- Panel de resolución --}}
-            @if($esPendiente)
-                <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
-                    <div class="px-5 py-4 border-b border-border flex items-center gap-3">
-                        <div class="flex h-7 w-7 items-center justify-center rounded-full bg-blue-navy text-white shrink-0">
-                            <flux:icon name="check-badge" class="size-3.5" />
-                        </div>
-                        <flux:heading size="base" level="2" class="font-display">Resolución</flux:heading>
-                    </div>
-                    <div class="p-5 space-y-4">
-                        @if($hayAlertasPendientes)
-                            <flux:text class="text-text-secondary text-sm">
-                                Esta solicitud tiene justificaciones de alertas por revisar. Acepta todas para aprobarla,
-                                o rechaza las que no consideres válidas.
-                            </flux:text>
-                            <div class="flex flex-col gap-2">
-                                <flux:button variant="primary" icon="check-circle"
-                                    wire:click="pedirConfirmacion('justificaciones')">
-                                    Aceptar todas las justificaciones
-                                </flux:button>
-                                <flux:button variant="ghost" icon="x-circle"
-                                    wire:click="$set('showRechazoJustificacionesModal', true)">
-                                    Rechazar justificaciones
-                                </flux:button>
-                            </div>
-                        @else
-                            <flux:text class="text-text-secondary text-sm">
-                                Revisa la documentación y decide si apruebas la solicitud o la rechazas con un motivo.
-                            </flux:text>
-                            <div class="flex flex-col gap-2">
-                                @if($esDonacion)
-                                    <flux:button variant="primary" icon="check-circle"
-                                        wire:click="pedirConfirmacion('donacion')">
-                                        Aprobar donación (con Acta)
-                                    </flux:button>
-                                @else
-                                    <flux:button variant="primary" icon="check-circle"
-                                        wire:click="pedirConfirmacion('deposito')">
-                                        Aprobar documentalmente
-                                    </flux:button>
-                                @endif
-                                <flux:button variant="ghost" icon="x-circle"
-                                    wire:click="$set('showRechazoModal', true)">
-                                    Rechazar solicitud
-                                </flux:button>
-                            </div>
-                        @endif
-
-                        <flux:separator />
-
-                        @if($deposito->prioridad !== 'Prioritaria')
-                            <flux:button variant="subtle" icon="flag" class="w-full"
-                                wire:click="priorizar"
-                                wire:loading.attr="disabled" wire:target="priorizar">
-                                <flux:icon wire:loading wire:target="priorizar" name="arrow-path" class="animate-spin" />
-                                Marcar como prioritaria
-                            </flux:button>
-                        @else
-                            <div class="flex items-center justify-center gap-2 text-xs text-text-secondary">
-                                <flux:icon name="flag" class="size-3.5 text-indigo-500" />
-                                Posicionada al inicio de la cola
-                            </div>
-                        @endif
-                    </div>
-                </div>
-            @endif
-
-            {{-- Panel de confirmación de aprobación (sin QR: el QR es del investigador) --}}
-            @if($deposito->estado === 'Aprobada Documentalmente' && $deposito->codigo_qr)
-                <div class="rounded-lg border border-success/40 bg-success/5 shadow-sm overflow-hidden">
-                    <div class="px-5 py-4 border-b border-success/30 flex items-center gap-3">
-                        <div class="flex h-7 w-7 items-center justify-center rounded-full bg-success text-white shrink-0">
-                            <flux:icon name="check-badge" class="size-3.5" />
-                        </div>
-                        <flux:heading size="base" level="2" class="font-display">Solicitud aprobada</flux:heading>
-                    </div>
-                    <div class="p-5 space-y-4">
-                        <div class="flex items-center justify-between gap-3">
-                            <span class="text-xs text-text-secondary uppercase tracking-wide">Lote asignado</span>
-                            <span class="font-mono font-semibold text-text-primary">{{ $deposito->codigo_qr }}</span>
-                        </div>
-                        <flux:text class="text-text-secondary text-xs">Código QR disponible para el investigador.</flux:text>
-
-                        @if($esDonacion && $deposito->acta_transferencia_dominio)
-                            @php $actaDisponible = \Illuminate\Support\Facades\Storage::disk('public')->exists($deposito->acta_transferencia_dominio['ruta'] ?? ''); @endphp
-                            @if($actaDisponible)
-                                <a href="{{ route('prestamos.deposito.acta', $deposito->id) }}"
-                                    target="_blank" rel="noopener"
-                                    class="flex items-center gap-3 rounded-lg border border-border bg-surface px-4 py-3 hover:border-science-blue transition-colors">
-                                    <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-science-blue/10">
-                                        <flux:icon name="document-check" class="size-4 text-science-blue" />
-                                    </div>
-                                    <p class="flex-1 text-sm font-medium text-text-primary">Acta de transferencia de dominio</p>
-                                    <flux:icon name="arrow-top-right-on-square" class="size-4 text-text-secondary shrink-0" />
-                                </a>
-                            @else
-                                <div class="flex items-center gap-3 rounded-lg border border-border bg-bg-main px-4 py-3">
-                                    <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-success/10">
-                                        <flux:icon name="document-check" class="size-4 text-success" />
-                                    </div>
-                                    <p class="flex-1 text-sm text-text-secondary">Acta de transferencia de dominio generada.</p>
-                                </div>
-                            @endif
-                        @endif
-                    </div>
-                </div>
-            @endif
-
-            {{-- Estado resuelto distinto a aprobado --}}
-            @if(in_array($deposito->estado, ['Requiere Corrección', 'Rechazo Permanente'], true))
-                <flux:callout :variant="$deposito->estado === 'Rechazo Permanente' ? 'danger' : 'warning'" icon="information-circle">
-                    <flux:callout.heading>{{ $deposito->estado }}</flux:callout.heading>
-                    <flux:callout.text>La solicitud ya fue resuelta y notificada al investigador.</flux:callout.text>
-                </flux:callout>
-            @endif
-
-            {{-- Estados sin decisión documental disponible (no enviada / en asesoría) --}}
-            @if($deposito->estado === 'Pausada para Asesoría')
-                <flux:callout variant="warning" icon="pause-circle">
-                    <flux:callout.heading>En espera de asesoría curatorial</flux:callout.heading>
-                    <flux:callout.text>
-                        Esta solicitud se pausó para asesoría y aún no está en la cola de revisión documental,
-                        por lo que no hay decisión de aprobación disponible.
-                    </flux:callout.text>
-                </flux:callout>
-            @elseif($deposito->estado === 'En Borrador')
-                <flux:callout variant="secondary" icon="pencil-square">
-                    <flux:callout.heading>Solicitud aún no enviada</flux:callout.heading>
-                    <flux:callout.text>
-                        El investigador todavía no ha enviado esta solicitud para revisión documental.
-                    </flux:callout.text>
-                </flux:callout>
-            @endif
-
-        </div>
     </div>
 
     {{-- Modal: confirmación de aprobación --}}
