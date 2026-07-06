@@ -31,6 +31,7 @@ use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigad
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\RegistroSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\SolicitudForm;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\VerificacionEntrega;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ResolverLoteQr;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ServirActaTransferenciaDeposito;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ServirDocumentoDeposito;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ServirDocumentoExportacion;
@@ -57,6 +58,9 @@ Route::middleware(['auth', 'verified'])
             ->where('indice', '[0-9]+')
             ->name('deposito.documento');
         Route::get('/deposito/{id}/qr.pdf', ImprimirQrDeposito::class)->name('deposito.qr-pdf');
+        Route::get('/lote/{codigo}', ResolverLoteQr::class)
+            ->where('codigo', 'LOTE-[A-Z0-9]{6}')
+            ->name('lote.resolver');
         Route::get('/deposito/{id}/acta-transferencia', ServirActaTransferenciaDeposito::class)->name('deposito.acta');
 
         // Investigador — solo usuarios con rol PRESTAMISTA

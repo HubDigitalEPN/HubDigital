@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\GestionPrestamosRecepciones\Domain\Repositories;
 
 use Modules\GestionPrestamosRecepciones\Domain\Entities\SolicitudDeposito;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\CodigoQRLote;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\NumeroSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
 
@@ -26,6 +27,9 @@ interface SolicitudDepositoRepositoryInterface
 
     /** Recupera la solicitud por su identificador, o null si no existe. */
     public function buscarPorId(SolicitudDepositoId $id): ?SolicitudDeposito;
+
+    /** Recupera la solicitud por el Código QR del lote que la rotula, o null si no existe. */
+    public function buscarPorCodigoQR(CodigoQRLote $codigoQR): ?SolicitudDeposito;
 
     /** Cuenta las solicitudes del investigador y tipo dentro del año en curso (para el límite anual). */
     public function contarPorInvestigadorYTipoEnAnioActual(string $investigadorId, string $tipoTramite): int;

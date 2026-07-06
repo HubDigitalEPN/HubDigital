@@ -34,7 +34,7 @@ final class ImprimirQrDeposito
 
         return view('gestionprestamosrecepciones::curador.qr-pdf', [
             'codigo' => $deposito->codigo_qr,
-            'qrBase64' => base64_encode(GeneradorQrSvg::svg($deposito->codigo_qr, 360)),
+            'qrBase64' => base64_encode(GeneradorQrSvg::svg(route('prestamos.lote.resolver', $deposito->codigo_qr), 360)),
             'numero' => $deposito->numero,
             'tipoTramite' => $deposito->tipo_tramite,
             'investigador' => $usuarios->obtenerNombre($deposito->investigador_id)
