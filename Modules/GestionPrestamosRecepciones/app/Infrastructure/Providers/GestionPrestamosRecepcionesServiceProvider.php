@@ -31,6 +31,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Repositories\ConfiguracionGlobalR
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\PatenteAnualRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\PrestamoRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\Repositories\RecepcionLoteRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\RecordatorioDevolucionRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
@@ -59,6 +60,7 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repo
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentSolicitudPrestamoRepository;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentVerificacionEspecimenesRepository;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Repositories\EloquentMatrizEspeciesRepository;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Repositories\EloquentRecepcionLoteRepository;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Repositories\EloquentSolicitudDepositoRepository;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\BandejaActas;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\BandejaSolicitudes;
@@ -96,6 +98,7 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
         ActaPrestamoRepositoryInterface::class => EloquentActaPrestamoRepository::class,
         PrestamoRepositoryInterface::class => EloquentPrestamoRepository::class,
         SolicitudDepositoRepositoryInterface::class => EloquentSolicitudDepositoRepository::class,
+        RecepcionLoteRepositoryInterface::class => EloquentRecepcionLoteRepository::class,
         MatrizEspeciesRepositoryInterface::class => EloquentMatrizEspeciesRepository::class,
         EventPublisherPort::class => LaravelEventPublisherAdapter::class,
         TransactionManagerPort::class => LaravelTransactionManagerAdapter::class,

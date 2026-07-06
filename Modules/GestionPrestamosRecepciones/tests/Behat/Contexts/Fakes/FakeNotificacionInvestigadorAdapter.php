@@ -19,4 +19,22 @@ final class FakeNotificacionInvestigadorAdapter implements NotificacionInvestiga
     {
         return self::REFERENCIA;
     }
+
+    public function notificarRecepcionFinalizada(string $solicitudId, string $investigadorId, string $estadoColeccion): string
+    {
+        return self::REFERENCIA;
+    }
+
+    /**
+     * @param  list<string>  $observaciones
+     */
+    public function notificarRecepcionConObservaciones(string $solicitudId, string $investigadorId, array $observaciones): string
+    {
+        return self::REFERENCIA;
+    }
+
+    public function notificarOrdenAccionCorrectiva(string $solicitudId, string $investigadorId, string $motivoFallo, string $accionCorrectiva): string
+    {
+        return self::REFERENCIA;
+    }
 }

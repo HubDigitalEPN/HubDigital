@@ -1,5 +1,6 @@
 # language: es
 # Feature: 4
+@listo
 Característica: Recepción de muestras físicas
     Como curador
     Quiero registrar la evaluación física de los lotes entregados

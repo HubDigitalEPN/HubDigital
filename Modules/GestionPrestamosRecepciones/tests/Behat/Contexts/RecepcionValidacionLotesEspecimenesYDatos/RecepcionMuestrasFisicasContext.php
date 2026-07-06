@@ -19,6 +19,8 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarDonacionConT
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarDonacionConTransferencia\AprobarDonacionConTransferenciaInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarRecepcionLote\AprobarRecepcionLoteHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarRecepcionLote\AprobarRecepcionLoteInput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\IniciarRecepcionLote\IniciarRecepcionLoteHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\IniciarRecepcionLote\IniciarRecepcionLoteInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarRecepcionLote\RechazarRecepcionLoteHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarRecepcionLote\RechazarRecepcionLoteInput;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\SolicitudDeposito;
@@ -43,11 +45,10 @@ use PHPUnit\Framework\Assert;
  *
  * Estrategia: 100% In-Memory. Cero persistencia real.
  *
- * BDD outside-in: el dominio de recepción física (handlers, entidad RecepcionLote,
- * enums EstadoRecepcionLote/EstadoColeccion y su repositorio) todavía no existe.
- * Este Context los referencia como si existieran y fija sus nombres por convención;
- * su implementación es trabajo posterior. Lo ya existente (SolicitudDeposito,
- * TipoTramite, CodigoQRLote, la aprobación documental) se reutiliza tal cual.
+ * El dominio, los casos de uso y el repositorio de recepción física ya están
+ * implementados: este Context ejercita los Handlers reales (Iniciar/Aprobar/Rechazar/
+ * Aceptar) contra repositorios In-Memory y fakes de notificación. La recepción del
+ * lote se materializa con IniciarRecepcionLoteHandler al acceder por Código QR.
  */
 final class RecepcionMuestrasFisicasContext extends BaseContext
 {
@@ -68,6 +69,8 @@ final class RecepcionMuestrasFisicasContext extends BaseContext
     private AprobarDocumentalmenteSolicitudHandler $aprobarDocumentalHandler;
 
     private AprobarDonacionConTransferenciaHandler $aprobarDonacionHandler;
+
+    private IniciarRecepcionLoteHandler $iniciarRecepcionHandler;
 
     private AprobarRecepcionLoteHandler $aprobarRecepcionHandler;
 
@@ -119,6 +122,7 @@ final class RecepcionMuestrasFisicasContext extends BaseContext
         // 3. Resolver Handlers — ya usan las instancias In-Memory.
         $this->aprobarDocumentalHandler = $this->make(AprobarDocumentalmenteSolicitudHandler::class);
         $this->aprobarDonacionHandler = $this->make(AprobarDonacionConTransferenciaHandler::class);
+        $this->iniciarRecepcionHandler = $this->make(IniciarRecepcionLoteHandler::class);
         $this->aprobarRecepcionHandler = $this->make(AprobarRecepcionLoteHandler::class);
         $this->rechazarRecepcionHandler = $this->make(RechazarRecepcionLoteHandler::class);
         $this->aceptarConObservacionesHandler = $this->make(AceptarRecepcionConObservacionesHandler::class);
@@ -199,6 +203,25 @@ final class RecepcionMuestrasFisicasContext extends BaseContext
         return false;
     }
 
+    /**
+     * Materializa la recepción del lote de la solicitud en curso invocando el caso de
+     * uso real, y asevera que el lote quedó iniciado y localizable por solicitud.
+     */
+    private function iniciarRecepcionDelLote(): void
+    {
+        Assert::assertNotNull($this->solicitudEnCurso, 'Se requiere una solicitud en curso');
+
+        ($this->iniciarRecepcionHandler)(
+            new IniciarRecepcionLoteInput(
+                solicitudId: (string) $this->solicitudEnCurso->id(),
+                curadorId: $this->curadorId,
+            )
+        );
+
+        $lote = $this->recepcionRepo->buscarPorSolicitudId($this->solicitudEnCurso->id());
+        Assert::assertNotNull($lote, 'La recepción del lote no fue iniciada');
+    }
+
     // =========================================================================
     // ANTECEDENTES (Background)
     // =========================================================================
@@ -230,6 +253,9 @@ final class RecepcionMuestrasFisicasContext extends BaseContext
             $solicitud->codigoQR()->equals($this->codigoQrLote),
             'El Código QR de la solicitud no coincide con el asignado al aprobarse documentalmente'
         );
+
+        // El curador abre la recepción física del lote entregado.
+        $this->iniciarRecepcionDelLote();
     }
 
     // =========================================================================
@@ -247,6 +273,9 @@ final class RecepcionMuestrasFisicasContext extends BaseContext
             TipoTramite::from($solicitud->tipoTramite())->equals(TipoTramite::from($tipo_tramite)),
             "Se esperaba un trámite de '{$tipo_tramite}', se obtuvo: {$solicitud->tipoTramite()}"
         );
+
+        // Re-abre la recepción para el lote de la solicitud recién sembrada.
+        $this->iniciarRecepcionDelLote();
     }
 
     #[Given('el lote cumple todos los ítems de la lista de verificación de recepción:')]
