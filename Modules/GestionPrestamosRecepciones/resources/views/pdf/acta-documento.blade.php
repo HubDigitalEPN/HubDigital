@@ -8,10 +8,10 @@
 
         /* Márgenes del PDF. Este DomPDF (v3) IGNORA la regla @page (margin), así
            que los márgenes de página van en <html> — DomPDF los repite en cada
-           hoja. El margen inferior (4cm) reserva el espacio físico de las firmas
-           fijas para que el contenido no las pise. En el navegador el bloque
-           $embed anula este margen (usa padding en body). */
-        html { margin: 2cm 2cm 4cm 2cm; }
+           hoja. El margen inferior amplio (4.5cm) reserva la banda donde se ancla
+           el área de firmas (.firma-band, absolute) para que el contenido nunca
+           la pise. En el navegador el bloque $embed anula este margen. */
+        html { margin: 2cm 2cm 4.5cm 2cm; }
 
         body {
             font-family: 'DejaVu Sans', Arial, sans-serif;
@@ -158,10 +158,14 @@
             color: #212121;
         }
 
-        /* Firmas — banda fija anclada al pie de cada hoja. bottom positivo = medido
-           desde el borde inferior del papel; cae dentro de los 4cm que reserva
-           @page, así el contenido (que se corta en el content-box) nunca las pisa. */
-        .firma-band { position: fixed; left: 0; right: 0; bottom: 1.6cm; }
+        /* Firmas — ancladas al PIE de la última página del contenido. Con
+           position:absolute DomPDF las dibuja UNA sola vez (en la hoja donde cae
+           su posición en el flujo = la última del contenido), NO en cada hoja
+           como haría position:fixed, y NUNCA en la hoja de especímenes (va después
+           del salto). `bottom` se mide desde el suelo del margen inferior (4.5cm);
+           el offset negativo baja la banda hasta ~1.6cm del borde del papel,
+           dentro de la reserva, así el contenido (que corta en 4.5cm) no la pisa. */
+        .firma-band { position: absolute; left: 0; right: 0; bottom: -2.9cm; page-break-inside: avoid; }
         .firma-table { width: 100%; }
         .firma-table td {
             width: 50%;
@@ -341,6 +345,29 @@
         </p>
     </div>
 
+    {{-- Firmas — fluyen al final del contenido principal; aparecen una sola vez,
+         en la última página del contenido, nunca en la hoja de especímenes. --}}
+    <div class="firma-band">
+        <table class="firma-table">
+            <tr>
+                <td>
+                    <div class="firma-line">
+                        <p class="firma-name">Adrian Troya</p>
+                        <p class="firma-sub">Curador</p>
+                        <p class="firma-sub">Laboratorio de Invertebrados</p>
+                    </div>
+                </td>
+                <td>
+                    <div class="firma-line">
+                        <p class="firma-name">{{ $acta->nombreInvestigador ?? 'Investigador solicitante' }}</p>
+                        <p class="firma-sub">{{ $acta->institucionAdscripcion }}</p>
+                        <p class="firma-sub">Fecha: ___________________</p>
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+
     {{-- Especímenes en préstamo — hoja aparte --}}
     @if(count($acta->items))
         <div class="section especimenes-page">
@@ -367,28 +394,6 @@
             </table>
         </div>
     @endif
-
-    {{-- Firmas — banda fija al pie de cada página --}}
-    <div class="firma-band">
-        <table class="firma-table">
-            <tr>
-                <td>
-                    <div class="firma-line">
-                        <p class="firma-name">Adrian Troya</p>
-                        <p class="firma-sub">Curador</p>
-                        <p class="firma-sub">Laboratorio de Invertebrados</p>
-                    </div>
-                </td>
-                <td>
-                    <div class="firma-line">
-                        <p class="firma-name">{{ $acta->nombreInvestigador ?? 'Investigador solicitante' }}</p>
-                        <p class="firma-sub">{{ $acta->institucionAdscripcion }}</p>
-                        <p class="firma-sub">Fecha: ___________________</p>
-                    </div>
-                </td>
-            </tr>
-        </table>
-    </div>
 
     {{-- Pie de página --}}
     <div class="footer">
