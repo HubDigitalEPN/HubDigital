@@ -197,6 +197,11 @@
                         </div>
                         <flux:text class="text-text-secondary text-xs">Código QR disponible para el investigador.</flux:text>
 
+                        <flux:button variant="primary" icon="inbox-arrow-down" class="w-full sm:w-auto" wire:navigate
+                            href="{{ route('prestamos.curador.deposito.recepcion', $deposito->id) }}">
+                            Recepción física del lote
+                        </flux:button>
+
                         @if($esDonacion && $deposito->acta_transferencia_dominio)
                             @php $actaDisponible = \Illuminate\Support\Facades\Storage::disk('public')->exists($deposito->acta_transferencia_dominio['ruta'] ?? ''); @endphp
                             @if($actaDisponible)

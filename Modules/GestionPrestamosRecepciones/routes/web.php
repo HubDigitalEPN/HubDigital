@@ -13,6 +13,7 @@ use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\Ce
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\ConfiguracionRecordatorios;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\DetallePrestamo as CuradorDetallePrestamo;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\PanelPrestamos;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\RecepcionFisicaLote;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\RevisarDeposito;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\RevisarSolicitud;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\ValidarActa;
@@ -87,6 +88,7 @@ Route::middleware(['auth', 'verified'])
             Route::get('/curador/solicitud/{id}', RevisarSolicitud::class)->name('curador.solicitud.revisar');
             Route::get('/curador/depositos', BandejaDepositos::class)->name('curador.depositos');
             Route::get('/curador/deposito/{id}', RevisarDeposito::class)->name('curador.deposito.revisar');
+            Route::get('/curador/deposito/{id}/recepcion', RecepcionFisicaLote::class)->name('curador.deposito.recepcion');
             Route::get('/curador/actas', BandejaActas::class)->name('curador.actas');
             Route::get('/curador/acta/{id}/validar', ValidarActa::class)->name('curador.acta.validar');
             Route::get('/curador/prestamos', CuradorBandejaPrestamos::class)->name('curador.prestamos');
