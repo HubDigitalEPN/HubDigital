@@ -6,13 +6,22 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
+        /* Márgenes del PDF. Este DomPDF (v3) IGNORA la regla @page (margin), así
+           que los márgenes de página van en <html> — DomPDF los repite en cada
+           hoja. El margen inferior (4cm) reserva el espacio físico de las firmas
+           fijas para que el contenido no las pise. En el navegador el bloque
+           $embed anula este margen (usa padding en body). */
+        html { margin: 2cm 2cm 4cm 2cm; }
+
         body {
             font-family: 'DejaVu Sans', Arial, sans-serif;
             font-size: 11px;
             color: #212121;
             background: #ffffff;
-            padding: 32px 40px;
         }
+
+        /* Especímenes en hoja aparte (en el PDF; en el navegador se anula abajo) */
+        .especimenes-page { page-break-before: always; }
 
         /* Encabezado con logos */
         .header-table {
@@ -149,8 +158,11 @@
             color: #212121;
         }
 
-        /* Firmas */
-        .firma-table { width: 100%; margin-top: 32px; }
+        /* Firmas — banda fija anclada al pie de cada hoja. bottom positivo = medido
+           desde el borde inferior del papel; cae dentro de los 4cm que reserva
+           @page, así el contenido (que se corta en el content-box) nunca las pisa. */
+        .firma-band { position: fixed; left: 0; right: 0; bottom: 1.6cm; }
+        .firma-table { width: 100%; }
         .firma-table td {
             width: 50%;
             vertical-align: bottom;
@@ -164,9 +176,10 @@
         .firma-name { font-size: 11px; font-weight: 600; color: #212121; }
         .firma-sub  { font-size: 9px; color: #757575; margin-top: 2px; }
 
-        /* Pie de página */
+        /* Pie de página — fijo al borde inferior de cada hoja */
         .footer {
-            margin-top: 28px;
+            position: fixed;
+            left: 0; right: 0; bottom: 0.7cm;
             border-top: 1px solid #E0E0E0;
             padding-top: 8px;
             font-size: 8px;
@@ -174,6 +187,18 @@
             text-align: center;
         }
     </style>
+    @if($embed ?? false)
+    {{-- Vista embebida en el navegador (iframe). @page y position:fixed no
+         aplican en pantalla, así que aquí los márgenes van por padding y las
+         firmas/pie fluyen. DomPDF nunca recibe este bloque ($embed=false). --}}
+    <style>
+        html { margin: 0; }
+        body { padding: 2cm; }
+        .especimenes-page { page-break-before: auto; }
+        .firma-band { position: static; margin-top: 2.5rem; }
+        .footer { position: static; margin-top: 1.5rem; }
+    </style>
+    @endif
 </head>
 <body>
 
@@ -268,33 +293,6 @@
         </table>
     </div>
 
-    {{-- Especímenes en préstamo --}}
-    @if(count($acta->items))
-        <div class="section">
-            <h2>Especímenes en préstamo</h2>
-            <table class="specimens-table">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Código de espécimen</th>
-                        <th>Cantidad</th>
-                        <th>Condiciones específicas</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($acta->items as $i => $item)
-                        <tr>
-                            <td>{{ $i + 1 }}</td>
-                            <td>{{ $item->codigoExterno }}</td>
-                            <td>{{ $item->cantidadSolicitada }}</td>
-                            <td>{{ $item->condicionesEspecificas ?? '—' }}</td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-    @endif
-
     {{-- Condiciones generales --}}
     <div class="section">
         <h2>Condiciones generales</h2>
@@ -343,27 +341,54 @@
         </p>
     </div>
 
-    {{-- Firmas --}}
-    <table class="firma-table">
-        <tr>
-            <td>
-                <div style="height: 66px;"></div>
-                <div class="firma-line">
-                    <p class="firma-name">Adrian Troya</p>
-                    <p class="firma-sub">Curador</p>
-                    <p class="firma-sub">Laboratorio de Invertebrados</p>
-                </div>
-            </td>
-            <td>
-                <div style="height: 66px;"></div>
-                <div class="firma-line">
-                    <p class="firma-name">{{ $acta->nombreInvestigador ?? 'Investigador solicitante' }}</p>
-                    <p class="firma-sub">{{ $acta->institucionAdscripcion }}</p>
-                    <p class="firma-sub">Fecha: ___________________</p>
-                </div>
-            </td>
-        </tr>
-    </table>
+    {{-- Especímenes en préstamo — hoja aparte --}}
+    @if(count($acta->items))
+        <div class="section especimenes-page">
+            <h2>Especímenes en préstamo</h2>
+            <table class="specimens-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Código de espécimen</th>
+                        <th>Cantidad</th>
+                        <th>Condiciones específicas</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($acta->items as $i => $item)
+                        <tr>
+                            <td>{{ $i + 1 }}</td>
+                            <td>{{ $item->codigoExterno }}</td>
+                            <td>{{ $item->cantidadSolicitada }}</td>
+                            <td>{{ $item->condicionesEspecificas ?? '—' }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
+
+    {{-- Firmas — banda fija al pie de cada página --}}
+    <div class="firma-band">
+        <table class="firma-table">
+            <tr>
+                <td>
+                    <div class="firma-line">
+                        <p class="firma-name">Adrian Troya</p>
+                        <p class="firma-sub">Curador</p>
+                        <p class="firma-sub">Laboratorio de Invertebrados</p>
+                    </div>
+                </td>
+                <td>
+                    <div class="firma-line">
+                        <p class="firma-name">{{ $acta->nombreInvestigador ?? 'Investigador solicitante' }}</p>
+                        <p class="firma-sub">{{ $acta->institucionAdscripcion }}</p>
+                        <p class="firma-sub">Fecha: ___________________</p>
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
 
     {{-- Pie de página --}}
     <div class="footer">

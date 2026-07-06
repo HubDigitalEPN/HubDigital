@@ -2,4 +2,22 @@
 
 return [
     'name' => 'GestionPrestamosRecepciones',
+
+    /*
+     * Firma criptográfica automática del acta al aprobarla el curador (pyHanko).
+     */
+    'firma' => [
+        // Ruta o nombre del ejecutable pyhanko (fallback si no está en PATH).
+        'binario' => env('PYHANKO_BIN', 'pyhanko'),
+
+        // Python con la librería `cryptography` (para leer .p12 legacy RC2). En dev
+        // apunta al python del venv; en prod, al que tiene pyhanko instalado.
+        'python_bin' => env('PYTHON_BIN', 'python'),
+
+        // Campo de firma visible: "pagina/x1,y1,x2,y2/Nombre". Ajustar a la plantilla del acta.
+        'campo' => env('FIRMA_CAMPO', '1/50,50,300,120/FirmaCurador'),
+
+        // Servidor de sellado de tiempo (TSA). Vacío => PAdES-B-B sin sello de tiempo.
+        'tsa_url' => env('FIRMA_TSA_URL'),
+    ],
 ];

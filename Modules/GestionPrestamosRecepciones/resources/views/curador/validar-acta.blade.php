@@ -24,6 +24,18 @@
                 <p class="font-mono text-xs text-text-secondary">{{ $acta->numeroPrestamo }}</p>
                 <x-gestionprestamosrecepciones::acta-status-badge :estado="$acta->estado" />
             </div>
+
+            @if($acta->firmadoCuradorCommonName)
+                <div class="mt-2 inline-flex items-center gap-2 rounded-lg bg-bio-green/10 px-3 py-1.5">
+                    <flux:icon name="shield-check" class="size-4 text-bio-green" />
+                    <span class="text-xs text-text-primary">
+                        Firmado digitalmente por <span class="font-medium">{{ $acta->firmadoCuradorCommonName }}</span>
+                        @if($acta->firmadoCuradorSelloDeTiempo)
+                            · sello de tiempo {{ $acta->firmadoCuradorSelloDeTiempo->format('d/m/Y H:i') }}
+                        @endif
+                    </span>
+                </div>
+            @endif
         </div>
 
         {{-- Grid: datos + historial --}}
@@ -89,6 +101,7 @@
                             'ActaFirmadaDigitalmente'      => 'Firmada digitalmente',
                             'ActaDevueltaPorFirmaInvalida' => 'Devuelta para refirmar',
                             'ActaValidada'                 => 'Acta validada',
+                            'ActaFirmadaCriptograficamentePorCurador' => 'Firmada por el curador',
                         ];
                     @endphp
                     @forelse($historialActa as $i => $evento)

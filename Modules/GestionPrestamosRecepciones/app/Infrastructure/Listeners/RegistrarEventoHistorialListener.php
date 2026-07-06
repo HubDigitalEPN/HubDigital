@@ -8,12 +8,13 @@ use DateTimeImmutable;
 use Illuminate\Support\Str;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaDevueltaPorFirmaInvalida;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaEnviada;
-use Modules\GestionPrestamosRecepciones\Domain\Events\DevolucionRegistrada;
-use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoCerrado;
+use Modules\GestionPrestamosRecepciones\Domain\Events\ActaFirmadaCriptograficamentePorCurador;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaFirmadaSubida;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaValidada;
+use Modules\GestionPrestamosRecepciones\Domain\Events\DevolucionRegistrada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\DocumentoExportacionSubido;
 use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoActivado;
+use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoCerrado;
 use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoHabilitadoParaEnvio;
 use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoIniciado;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ProrrogaAprobada;
@@ -67,6 +68,7 @@ final class RegistrarEventoHistorialListener
             $event instanceof SolicitudPrestamoRechazada,
             $event instanceof ActaEnviada,
             $event instanceof ActaFirmadaSubida,
+            $event instanceof ActaFirmadaCriptograficamentePorCurador,
             $event instanceof ActaDevueltaPorFirmaInvalida,
             $event instanceof ActaValidada => 'solicitud_prestamo',
             $event instanceof PrestamoIniciado,
@@ -97,6 +99,7 @@ final class RegistrarEventoHistorialListener
             $event instanceof SolicitudPrestamoRechazada => (string) $event->solicitudId,
             $event instanceof ActaEnviada,
             $event instanceof ActaFirmadaSubida,
+            $event instanceof ActaFirmadaCriptograficamentePorCurador,
             $event instanceof ActaValidada => (string) $event->solicitudId,
             $event instanceof ActaDevueltaPorFirmaInvalida => (string) (
                 ActaPrestamoModel::find((string) $event->actaId)?->solicitud_prestamo_id

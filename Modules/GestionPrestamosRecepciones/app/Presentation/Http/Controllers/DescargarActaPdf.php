@@ -56,6 +56,9 @@ final class DescargarActaPdf
         return response($pdf->output(), 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="' . $filename . '"',
+            // El PDF se genera al vuelo; evita que el navegador sirva una versión cacheada.
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+            'Pragma' => 'no-cache',
         ]);
     }
 }

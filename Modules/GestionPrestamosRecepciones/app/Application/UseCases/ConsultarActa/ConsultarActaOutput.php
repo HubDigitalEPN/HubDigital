@@ -13,20 +13,22 @@ use DateTimeImmutable;
 final readonly class ConsultarActaOutput
 {
     /**
-     * @param string $id Identificador del acta.
-     * @param string $numeroPrestamo Número de préstamo asignado.
-     * @param string $estado Estado del acta.
-     * @param string $tipoPrestamo Tipo de préstamo.
-     * @param string $alcancePrestamo Alcance (nacional/internacional).
-     * @param DateTimeImmutable $fechaInicio Fecha de inicio del préstamo.
-     * @param DateTimeImmutable $fechaFin Fecha de fin del préstamo.
-     * @param string|null $pdfFirmadoRuta Ruta del PDF firmado, si existe.
-     * @param string|null $documentoIdentidadRuta Ruta del documento de identidad, si existe.
-     * @param string|null $documentoExportacionRuta Ruta del documento de exportación, si existe.
-     * @param string $solicitudPrestamoId ID de la solicitud asociada.
-     * @param string|null $numeroSolicitud Número de la solicitud asociada.
-     * @param string|null $tituloEstudio Título del estudio.
-     * @param string|null $institucionAdscripcion Institución de adscripción.
+     * @param  string  $id  Identificador del acta.
+     * @param  string  $numeroPrestamo  Número de préstamo asignado.
+     * @param  string  $estado  Estado del acta.
+     * @param  string  $tipoPrestamo  Tipo de préstamo.
+     * @param  string  $alcancePrestamo  Alcance (nacional/internacional).
+     * @param  DateTimeImmutable  $fechaInicio  Fecha de inicio del préstamo.
+     * @param  DateTimeImmutable  $fechaFin  Fecha de fin del préstamo.
+     * @param  string|null  $pdfFirmadoRuta  Ruta del PDF firmado, si existe.
+     * @param  string|null  $documentoIdentidadRuta  Ruta del documento de identidad, si existe.
+     * @param  string|null  $documentoExportacionRuta  Ruta del documento de exportación, si existe.
+     * @param  string  $solicitudPrestamoId  ID de la solicitud asociada.
+     * @param  string|null  $numeroSolicitud  Número de la solicitud asociada.
+     * @param  string|null  $tituloEstudio  Título del estudio.
+     * @param  string|null  $institucionAdscripcion  Institución de adscripción.
+     * @param  string|null  $firmadoCuradorCommonName  Nombre común del curador que firmó criptográficamente, si aplica.
+     * @param  DateTimeImmutable|null  $firmadoCuradorSelloDeTiempo  Sello de tiempo de la firma del curador, si aplica.
      */
     public function __construct(
         public string $id,
@@ -43,5 +45,7 @@ final readonly class ConsultarActaOutput
         public ?string $numeroSolicitud,
         public ?string $tituloEstudio,
         public ?string $institucionAdscripcion,
+        public ?string $firmadoCuradorCommonName = null,
+        public ?DateTimeImmutable $firmadoCuradorSelloDeTiempo = null,
     ) {}
 }

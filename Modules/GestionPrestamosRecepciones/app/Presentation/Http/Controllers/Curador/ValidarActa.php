@@ -41,11 +41,6 @@ final class ValidarActa extends Component
 
     public bool $devolverIdentidad = true;
 
-    /**
-     * @param string $id
-     * @param ConsultarActaHandler $handler
-     * @return void
-     */
     public function mount(string $id, ConsultarActaHandler $handler): void
     {
         $this->id = $id;
@@ -55,10 +50,6 @@ final class ValidarActa extends Component
         }
     }
 
-    /**
-     * @param ValidarActaFirmadaHandler $handler
-     * @return void
-     */
     public function validar(ValidarActaFirmadaHandler $handler): void
     {
         $handler->handle(new ValidarActaFirmadaInput(
@@ -70,10 +61,6 @@ final class ValidarActa extends Component
         $this->successMessage = 'Acta validada. Los especímenes están siendo coordinados para el despacho al investigador. El préstamo se activará una vez que el investigador confirme la recepción.';
     }
 
-    /**
-     * @param DevolverActaParaRefirmarHandler $handler
-     * @return void
-     */
     public function devolverParaRefirmar(DevolverActaParaRefirmarHandler $handler): void
     {
         $this->validate(['motivoDevolucion' => 'required|string|min:10']);
@@ -101,13 +88,9 @@ final class ValidarActa extends Component
         'ActaFirmadaDigitalmente',
         'ActaDevueltaPorFirmaInvalida',
         'ActaValidada',
+        'ActaFirmadaCriptograficamentePorCurador',
     ];
 
-    /**
-     * @param ConsultarActaHandler $actaHandler
-     * @param ConsultarHistorialSolicitudHandler $historialHandler
-     * @return View
-     */
     public function render(
         ConsultarActaHandler $actaHandler,
         ConsultarHistorialSolicitudHandler $historialHandler,

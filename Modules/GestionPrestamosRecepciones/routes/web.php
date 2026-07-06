@@ -14,6 +14,7 @@ use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\Co
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\DetallePrestamo as CuradorDetallePrestamo;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\GestionarProrroga;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\PanelPrestamos;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\RegistrarCertificado;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\RevisarDeposito;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\RevisarSolicitud;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\ValidarActa;
@@ -99,5 +100,6 @@ Route::middleware(['auth', 'verified'])
             Route::get('/curador/prestamo/{id}/cerrar', CerrarPrestamo::class)->name('curador.prestamo.cerrar');
             Route::get('/curador/prestamo/{id}/prorroga', GestionarProrroga::class)->name('curador.prestamo.gestionar-prorroga');
             Route::get('/curador/configuracion', ConfiguracionRecordatorios::class)->name('curador.configuracion');
+            Route::get('/curador/certificado', RegistrarCertificado::class)->name('curador.certificado');
         });
     });
