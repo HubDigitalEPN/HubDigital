@@ -43,8 +43,8 @@ final class RecepcionFisicaLote extends Component
 
     public string $nombreInvestigador = '';
 
-    /** @var array<int, bool> Conformidad por índice de ITEMS. */
-    public array $conforme = [0 => true, 1 => true, 2 => true, 3 => true];
+    /** @var array<int, bool> Conformidad por índice de ITEMS; nacen en "No conforme" y el curador las activa. */
+    public array $conforme = [0 => false, 1 => false, 2 => false, 3 => false];
 
     // ── Modal: suspender por anomalía subsanable ─────────────────────────────
     public bool $showRechazoModal = false;
