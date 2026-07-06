@@ -119,7 +119,7 @@
                         @foreach($items as $indice => $definicion)
                             <tr class="hover:bg-bg-main transition-colors">
                                 <td class="px-4 py-3 font-medium text-text-primary">{{ $definicion['item'] }}</td>
-                                <td class="px-4 py-3 text-text-secondary">{{ $definicion['conforme'] }}</td>
+                                <td class="px-4 py-3 text-text-secondary">{{ $definicion['resultado'] }}</td>
                                 <td class="px-4 py-3">
                                     <div class="flex justify-end">
                                         <flux:switch wire:model="conforme.{{ $indice }}" label="Conforme" align="right" />
@@ -140,7 +140,7 @@
                                 {{ $definicion['item'] }}
                             </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
                             <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="Resultado conforme">
-                                {{ $definicion['conforme'] }}
+                                {{ $definicion['resultado'] }}
                             </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
                         </dl>
                         <flux:switch wire:model="conforme.{{ $indice }}" label="Conforme" />
