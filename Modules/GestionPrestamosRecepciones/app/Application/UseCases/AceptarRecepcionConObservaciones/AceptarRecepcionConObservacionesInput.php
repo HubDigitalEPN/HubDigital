@@ -11,5 +11,6 @@ final readonly class AceptarRecepcionConObservacionesInput
         public string $solicitudId,
         public string $curadorId,
         public string $tipoObservacion,
+        public ?string $detalleObservacion = null,
     ) {}
 }

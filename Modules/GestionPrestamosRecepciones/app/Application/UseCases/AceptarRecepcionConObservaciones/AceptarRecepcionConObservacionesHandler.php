@@ -42,7 +42,7 @@ final class AceptarRecepcionConObservacionesHandler
         }
 
         $tipo = TipoObservacionRecepcion::from($input->tipoObservacion);
-        $lote->aceptarConObservaciones($tipo);
+        $lote->aceptarConObservaciones($tipo, $input->detalleObservacion);
 
         $solicitud = $this->solicitudRepo->buscarPorId($solicitudId);
 

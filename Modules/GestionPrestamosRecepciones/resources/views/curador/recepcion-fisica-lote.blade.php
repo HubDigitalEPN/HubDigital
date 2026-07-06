@@ -212,13 +212,26 @@
             </flux:text>
             <flux:field>
                 <flux:label>Tipo de observación <span class="text-error">*</span></flux:label>
-                <flux:select wire:model="tipoObservacion" placeholder="Selecciona una observación...">
+                <flux:select wire:model.live="tipoObservacion" placeholder="Selecciona una observación...">
                     @foreach(TipoObservacionRecepcion::cases() as $observacion)
                         <flux:select.option value="{{ $observacion->value }}">{{ $observacion->value }}</flux:select.option>
                     @endforeach
                 </flux:select>
                 <flux:error name="tipoObservacion" />
             </flux:field>
+            @if($tipoObservacion === 'Otras observaciones')
+                <flux:field>
+                    <flux:label>Detalle de la observación</flux:label>
+                    <flux:input wire:model="detalleObservacion" list="items-verificacion-lista"
+                        placeholder="Elige un ítem o escribe una nota breve..." />
+                    <flux:description>Puedes elegir uno de los ítems de la lista de verificación o escribir una nota libre.</flux:description>
+                </flux:field>
+                <datalist id="items-verificacion-lista">
+                    @foreach($items as $definicion)
+                        <option value="{{ $definicion['item'] }}"></option>
+                    @endforeach
+                </datalist>
+            @endif
             <div class="flex justify-end gap-2 pt-2">
                 <flux:button variant="ghost" wire:click="$set('showObservacionModal', false)">Cancelar</flux:button>
                 <flux:button variant="primary" icon="check-circle" wire:click="aceptarConObservaciones"

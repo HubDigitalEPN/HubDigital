@@ -223,13 +223,19 @@ final class RecepcionLote
      * investigador. Las observaciones quedan registradas en el acta y los especímenes
      * ingresan a la colección (en cuarentena si la anomalía compromete su sanidad).
      */
-    public function aceptarConObservaciones(TipoObservacionRecepcion $tipoObservacion): void
+    public function aceptarConObservaciones(TipoObservacionRecepcion $tipoObservacion, ?string $detalle = null): void
     {
         $this->garantizarEnVerificacion('aceptarConObservaciones');
 
         $ahora = new DateTimeImmutable;
         $this->estado = EstadoRecepcionLote::VerificadoConObservaciones;
         $this->observaciones[] = $tipoObservacion->value;
+
+        $detalle = $detalle !== null ? trim($detalle) : null;
+        if ($detalle !== null && $detalle !== '') {
+            $this->observaciones[] = $detalle;
+        }
+
         $this->estadoColeccion = $tipoObservacion->requiereCuarentena()
             ? EstadoColeccion::Cuarentena
             : EstadoColeccion::porTipoTramite($this->tipoTramite);

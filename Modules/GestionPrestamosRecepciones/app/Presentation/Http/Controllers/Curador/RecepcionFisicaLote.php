@@ -58,6 +58,9 @@ final class RecepcionFisicaLote extends Component
     #[Validate('required')]
     public string $tipoObservacion = '';
 
+    /** Detalle libre o ítem elegido del checklist para el tipo "Otras observaciones". */
+    public string $detalleObservacion = '';
+
     public function mount(
         string $id,
         ConsultarDetalleRecepcionHandler $detalle,
@@ -124,6 +127,7 @@ final class RecepcionFisicaLote extends Component
             solicitudId: $this->id,
             curadorId: (string) auth()->id(),
             tipoObservacion: $this->tipoObservacion,
+            detalleObservacion: trim($this->detalleObservacion) !== '' ? trim($this->detalleObservacion) : null,
         ));
 
         $this->showObservacionModal = false;
