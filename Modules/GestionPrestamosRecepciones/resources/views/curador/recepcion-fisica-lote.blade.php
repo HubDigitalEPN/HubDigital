@@ -149,26 +149,18 @@
                 @endforeach
             </div>
 
-            @error('conforme')
-                <div class="px-5 py-3 border-t border-border">
-                    <flux:text class="text-error text-sm">{{ $message }}</flux:text>
-                </div>
-            @enderror
         </div>
 
         {{-- Zona de decisión --}}
         <div class="rounded-lg border border-border bg-surface shadow-sm p-5">
             <flux:heading size="base" level="2" class="font-display">Decisión de recepción</flux:heading>
             <flux:text class="text-text-secondary text-sm mt-1">
-                Aprueba si el lote cumple todos los ítems, suspende si la anomalía es subsanable, o acepta con
-                observaciones si la anomalía no puede devolverse.
+                Al aprobar, si todos los ítems están conformes la recepción se verifica por completo; si algún
+                ítem no lo está, se registrará con observaciones. Usa "Suspender y devolver" cuando la anomalía es
+                subsanable y el lote debe regresar al investigador.
             </flux:text>
 
             <div class="flex flex-col gap-2 pt-4 sm:flex-row sm:justify-end">
-                <flux:button variant="ghost" icon="exclamation-triangle" class="w-full sm:w-auto"
-                    wire:click="$set('showObservacionModal', true)">
-                    Aceptar con observaciones
-                </flux:button>
                 <flux:button variant="danger" icon="arrow-uturn-left" class="w-full sm:w-auto"
                     wire:click="$set('showRechazoModal', true)">
                     Suspender y devolver

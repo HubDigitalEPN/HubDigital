@@ -80,8 +80,10 @@ final class RecepcionFisicaLote extends Component
 
     public function aprobar(AprobarRecepcionLoteHandler $handler): void
     {
+        // Si algún ítem no está conforme, la aprobación pasa a ser "con observaciones":
+        // se pide el tipo de anomalía en el modal y se resuelve por aceptarConObservaciones().
         if (in_array(false, $this->conforme, true)) {
-            $this->addError('conforme', 'Marca todos los ítems como conformes, o usa Suspender / Aceptar con observaciones.');
+            $this->showObservacionModal = true;
 
             return;
         }
