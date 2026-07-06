@@ -1,7 +1,7 @@
 # language: es
 # Feature: 4
 
-Característica: Recepción de muestras físicas mediante escaneo QR
+Característica: Recepción de muestras físicas
     Como curador
     Quiero escanear el código QR de las solicitudes aprobadas
     Para registrar la evaluación física de los lotes entregados e ingresarlos a la colección temporal
