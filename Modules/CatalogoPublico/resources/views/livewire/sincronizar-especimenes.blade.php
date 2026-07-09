@@ -23,6 +23,57 @@
     {{-- ============================================================ --}}
     @if($paso === 1)
         <div class="flex flex-col gap-4">
+            {{-- Barra de filtros --}}
+            <div class="rounded-lg border border-border bg-surface shadow-sm p-4">
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                    <flux:input
+                        wire:model.live.debounce.300ms="busquedaCatalogo"
+                        label="N.º de catálogo"
+                        placeholder="Ej. EPN-000123"
+                        icon="magnifying-glass"
+                        size="sm"
+                        clearable
+                    />
+                    <flux:input
+                        wire:model.live.debounce.300ms="busquedaTaxonomia"
+                        label="Taxonomía"
+                        placeholder="Nombre científico"
+                        icon="magnifying-glass"
+                        size="sm"
+                        clearable
+                    />
+                    <flux:input
+                        type="date"
+                        wire:model.live="fechaDesde"
+                        label="Recolección desde"
+                        size="sm"
+                    />
+                    <flux:input
+                        type="date"
+                        wire:model.live="fechaHasta"
+                        label="Recolección hasta"
+                        size="sm"
+                    />
+                    <flux:select
+                        wire:model.live="colector"
+                        label="Colector"
+                        size="sm"
+                    >
+                        <flux:select.option value="">Todos</flux:select.option>
+                        @foreach($this->colectoresDisponibles as $col)
+                            <flux:select.option value="{{ $col }}">{{ $col }}</flux:select.option>
+                        @endforeach
+                    </flux:select>
+                </div>
+                @if($this->filtros->tieneFiltros())
+                    <div class="mt-3 flex justify-end">
+                        <flux:button wire:click="limpiarFiltros" variant="ghost" size="sm" icon="x-mark">
+                            Limpiar filtros
+                        </flux:button>
+                    </div>
+                @endif
+            </div>
+
             <div class="flex items-center justify-between">
                 <p class="text-sm text-text-secondary">
                     {{ count($seleccionados) }} espécimen(es) seleccionado(s)

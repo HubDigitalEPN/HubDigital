@@ -21,18 +21,54 @@
         </flux:callout>
     @endif
 
-    {{-- Search --}}
-    <div class="flex items-center gap-3">
-        <flux:input
-            wire:model.live.debounce.300ms="buscar"
-            icon="magnifying-glass"
-            placeholder="Buscar por nombre científico, occurrenceID o familia…"
-            class="max-w-sm"
-        />
-        @if($buscar !== '')
-            <flux:button wire:click="$set('buscar', '')" variant="ghost" size="sm" icon="x-mark">
-                Limpiar
-            </flux:button>
+    {{-- Barra de filtros --}}
+    <div class="rounded-lg border border-border bg-surface shadow-sm p-4">
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <flux:input
+                wire:model.live.debounce.300ms="busquedaCatalogo"
+                label="N.º de catálogo"
+                placeholder="Ej. EPN-000123"
+                icon="magnifying-glass"
+                size="sm"
+                clearable
+            />
+            <flux:input
+                wire:model.live.debounce.300ms="busquedaTaxonomia"
+                label="Taxonomía"
+                placeholder="Especie, género o familia"
+                icon="magnifying-glass"
+                size="sm"
+                clearable
+            />
+            <flux:input
+                type="date"
+                wire:model.live="fechaDesde"
+                label="Recolección desde"
+                size="sm"
+            />
+            <flux:input
+                type="date"
+                wire:model.live="fechaHasta"
+                label="Recolección hasta"
+                size="sm"
+            />
+            <flux:select
+                wire:model.live="colector"
+                label="Colector"
+                size="sm"
+            >
+                <flux:select.option value="">Todos</flux:select.option>
+                @foreach($this->colectoresDisponibles as $col)
+                    <flux:select.option value="{{ $col }}">{{ $col }}</flux:select.option>
+                @endforeach
+            </flux:select>
+        </div>
+        @if($this->tieneFiltros())
+            <div class="mt-3 flex justify-end">
+                <flux:button wire:click="limpiarFiltros" variant="ghost" size="sm" icon="x-mark">
+                    Limpiar filtros
+                </flux:button>
+            </div>
         @endif
     </div>
 

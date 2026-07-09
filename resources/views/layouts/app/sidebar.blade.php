@@ -354,7 +354,7 @@
                                 :current="request()->routeIs('divulgacion.index')"
                                 wire:navigate
                             >
-                                Tabla divulgada
+                                Espécimenes divulgados
                             </flux:sidebar.item>
                             <flux:sidebar.item
                                 icon="cloud-arrow-up"
@@ -362,7 +362,7 @@
                                 :current="request()->routeIs('divulgacion.sincronizar')"
                                 wire:navigate
                             >
-                                Sincronización
+                                Divulgar espécimenes
                             </flux:sidebar.item>
                             <flux:sidebar.item
                                 icon="photo"

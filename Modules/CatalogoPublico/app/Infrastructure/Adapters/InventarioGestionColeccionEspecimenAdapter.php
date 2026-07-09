@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Modules\CatalogoPublico\Infrastructure\Adapters;
 
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 use Modules\CatalogoPublico\Application\Ports\DatosEspecimenProveedor;
+use Modules\CatalogoPublico\Application\Ports\FiltrosPendientes;
 use Modules\CatalogoPublico\Application\Ports\ProveedorEspecimenesPort;
 
 /**
@@ -130,7 +132,7 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
         return array_map(fn ($fila) => $this->traducir($fila), $filas);
     }
 
-    public function contar(array $especimenIdsExcluir = []): int
+    public function contar(array $especimenIdsExcluir = [], ?FiltrosPendientes $filtros = null): int
     {
         $q = DB::table('taxonomia.especimenes as e')
             ->join('taxonomia.taxones as t', 't.id', '=', 'e.taxon_id')
@@ -141,11 +143,13 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
             $q->whereNotIn('e.id', $especimenIdsExcluir);
         }
 
+        $this->aplicarFiltros($q, $filtros);
+
         return $q->count();
     }
 
     /** @return DatosEspecimenProveedor[] */
-    public function obtenerPaginado(int $offset, int $limit, array $especimenIdsExcluir = []): array
+    public function obtenerPaginado(int $offset, int $limit, array $especimenIdsExcluir = [], ?FiltrosPendientes $filtros = null): array
     {
         $q = DB::table('taxonomia.especimenes as e')
             ->join('taxonomia.taxones as t', 't.id', '=', 'e.taxon_id')
@@ -156,6 +160,8 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
         if ($especimenIdsExcluir !== []) {
             $q->whereNotIn('e.id', $especimenIdsExcluir);
         }
+
+        $this->aplicarFiltros($q, $filtros);
 
         $filas = $q->orderBy('e.occurrence_id')
             ->offset(max(0, $offset))
@@ -197,6 +203,52 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
 
             return $this->traducir($fila);
         })->all();
+    }
+
+    public function obtenerColectoresPendientes(array $especimenIdsExcluir = []): array
+    {
+        $q = DB::table('taxonomia.especimenes as e')
+            ->join('taxonomia.taxones as t', 't.id', '=', 'e.taxon_id')
+            ->whereNotNull('e.occurrence_id')
+            ->whereNotNull('e.colector')
+            ->where('e.colector', '!=', '')
+            ->where('t.rango', 'especie');
+
+        if ($especimenIdsExcluir !== []) {
+            $q->whereNotIn('e.id', $especimenIdsExcluir);
+        }
+
+        return $q->distinct()
+            ->orderBy('e.colector')
+            ->pluck('e.colector')
+            ->all();
+    }
+
+    private function aplicarFiltros(Builder $q, ?FiltrosPendientes $filtros): void
+    {
+        if ($filtros === null) {
+            return;
+        }
+
+        if ($filtros->busquedaCatalogo !== null) {
+            $q->where('e.occurrence_id', 'ILIKE', '%'.$filtros->busquedaCatalogo.'%');
+        }
+
+        if ($filtros->busquedaTaxonomia !== null) {
+            $q->where('t.nombre_cientifico', 'ILIKE', '%'.$filtros->busquedaTaxonomia.'%');
+        }
+
+        if ($filtros->fechaDesde !== null) {
+            $q->where('e.fecha_colecta', '>=', $filtros->fechaDesde);
+        }
+
+        if ($filtros->fechaHasta !== null) {
+            $q->where('e.fecha_colecta', '<=', $filtros->fechaHasta);
+        }
+
+        if ($filtros->colector !== null) {
+            $q->where('e.colector', $filtros->colector);
+        }
     }
 
     /**

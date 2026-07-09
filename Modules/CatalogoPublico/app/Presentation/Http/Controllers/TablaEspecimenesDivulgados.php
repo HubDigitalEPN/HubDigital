@@ -20,8 +20,20 @@ final class TablaEspecimenesDivulgados extends Component
 {
     use WithPagination;
 
-    #[Url(as: 'q')]
-    public string $buscar = '';
+    #[Url(as: 'catalogo')]
+    public string $busquedaCatalogo = '';
+
+    #[Url(as: 'taxa')]
+    public string $busquedaTaxonomia = '';
+
+    #[Url(as: 'desde')]
+    public string $fechaDesde = '';
+
+    #[Url(as: 'hasta')]
+    public string $fechaHasta = '';
+
+    #[Url(as: 'colector')]
+    public string $colector = '';
 
     public bool $modalConfigAbierto = false;
 
@@ -128,9 +140,66 @@ final class TablaEspecimenesDivulgados extends Component
         $this->modalConfigAbierto = false;
     }
 
-    public function updatedBuscar(): void
+    public function updatedBusquedaCatalogo(): void
     {
         $this->resetPage();
+    }
+
+    public function updatedBusquedaTaxonomia(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFechaDesde(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFechaHasta(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedColector(): void
+    {
+        $this->resetPage();
+    }
+
+    public function limpiarFiltros(): void
+    {
+        $this->busquedaCatalogo = '';
+        $this->busquedaTaxonomia = '';
+        $this->fechaDesde = '';
+        $this->fechaHasta = '';
+        $this->colector = '';
+        $this->resetPage();
+    }
+
+    public function tieneFiltros(): bool
+    {
+        return $this->busquedaCatalogo !== ''
+            || $this->busquedaTaxonomia !== ''
+            || $this->fechaDesde !== ''
+            || $this->fechaHasta !== ''
+            || $this->colector !== '';
+    }
+
+    /**
+     * Colectores distintos entre los divulgados — para poblar el select.
+     *
+     * @return list<string>
+     */
+    #[Computed]
+    public function colectoresDisponibles(): array
+    {
+        return DB::table('divulgacion.especimenes_divulgables as ed')
+            ->join('taxonomia.especimenes as te', 'te.id', '=', 'ed.especimen_id')
+            ->whereNotNull('te.colector')
+            ->where('te.colector', '!=', '')
+            ->distinct()
+            ->orderBy('te.colector')
+            ->pluck('te.colector')
+            ->all();
     }
 
     public function render(): View
@@ -162,13 +231,29 @@ final class TablaEspecimenesDivulgados extends Component
                 ) as campos_visibles'),
             ]);
 
-        if ($this->buscar !== '') {
-            $termino = '%'.mb_strtolower($this->buscar).'%';
+        if ($this->busquedaCatalogo !== '') {
+            $query->where('te.occurrence_id', 'ILIKE', '%'.$this->busquedaCatalogo.'%');
+        }
+
+        if ($this->busquedaTaxonomia !== '') {
+            $termino = '%'.$this->busquedaTaxonomia.'%';
             $query->where(function ($q) use ($termino): void {
-                $q->whereRaw('LOWER(tx_species.nombre_cientifico) ILIKE ?', [$termino])
-                    ->orWhereRaw('LOWER(te.occurrence_id) ILIKE ?', [$termino])
-                    ->orWhereRaw('LOWER(tx_family.nombre_cientifico) ILIKE ?', [$termino]);
+                $q->where('tx_species.nombre_cientifico', 'ILIKE', $termino)
+                    ->orWhere('tx_genus.nombre_cientifico', 'ILIKE', $termino)
+                    ->orWhere('tx_family.nombre_cientifico', 'ILIKE', $termino);
             });
+        }
+
+        if ($this->fechaDesde !== '') {
+            $query->where('te.fecha_colecta', '>=', $this->fechaDesde);
+        }
+
+        if ($this->fechaHasta !== '') {
+            $query->where('te.fecha_colecta', '<=', $this->fechaHasta);
+        }
+
+        if ($this->colector !== '') {
+            $query->where('te.colector', $this->colector);
         }
 
         $especimenes = $query

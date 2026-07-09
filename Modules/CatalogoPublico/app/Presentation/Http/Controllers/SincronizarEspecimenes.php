@@ -9,6 +9,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Modules\CatalogoPublico\Application\Ports\DatosEspecimenProveedor;
+use Modules\CatalogoPublico\Application\Ports\FiltrosPendientes;
 use Modules\CatalogoPublico\Application\Ports\ProveedorEspecimenesPort;
 use Modules\CatalogoPublico\Application\UseCases\SincronizarEspecimenes\SincronizarEspecimenesHandler;
 use Modules\CatalogoPublico\Application\UseCases\SincronizarEspecimenes\SincronizarEspecimenesInput;
@@ -43,6 +44,16 @@ final class SincronizarEspecimenes extends Component
     public bool $sincronizando = false;
 
     public int $pagina = 1;
+
+    public string $busquedaCatalogo = '';
+
+    public string $busquedaTaxonomia = '';
+
+    public string $fechaDesde = '';
+
+    public string $fechaHasta = '';
+
+    public string $colector = '';
 
     private const int POR_PAGINA = 20;
 
@@ -226,6 +237,64 @@ final class SincronizarEspecimenes extends Component
         $this->paso = 3;
     }
 
+    public function updatedBusquedaCatalogo(): void
+    {
+        $this->pagina = 1;
+    }
+
+    public function updatedBusquedaTaxonomia(): void
+    {
+        $this->pagina = 1;
+    }
+
+    public function updatedFechaDesde(): void
+    {
+        $this->pagina = 1;
+    }
+
+    public function updatedFechaHasta(): void
+    {
+        $this->pagina = 1;
+    }
+
+    public function updatedColector(): void
+    {
+        $this->pagina = 1;
+    }
+
+    public function limpiarFiltros(): void
+    {
+        $this->busquedaCatalogo = '';
+        $this->busquedaTaxonomia = '';
+        $this->fechaDesde = '';
+        $this->fechaHasta = '';
+        $this->colector = '';
+        $this->pagina = 1;
+    }
+
+    #[Computed]
+    public function filtros(): FiltrosPendientes
+    {
+        return new FiltrosPendientes(
+            busquedaCatalogo: $this->busquedaCatalogo !== '' ? $this->busquedaCatalogo : null,
+            busquedaTaxonomia: $this->busquedaTaxonomia !== '' ? $this->busquedaTaxonomia : null,
+            fechaDesde: $this->fechaDesde !== '' ? $this->fechaDesde : null,
+            fechaHasta: $this->fechaHasta !== '' ? $this->fechaHasta : null,
+            colector: $this->colector !== '' ? $this->colector : null,
+        );
+    }
+
+    /**
+     * Colectores distintos entre los pendientes — para poblar el select del filtro.
+     *
+     * @return list<string>
+     */
+    #[Computed]
+    public function colectoresDisponibles(): array
+    {
+        return $this->proveedorEspecimenes->obtenerColectoresPendientes($this->sincronizadosIds());
+    }
+
     /**
      * IDs de espécimen (taxonomia.especimenes.id) ya sincronizados con divulgación.
      * Cacheado en el request — Livewire lo re-lee entre requests, que es lo esperado
@@ -243,7 +312,7 @@ final class SincronizarEspecimenes extends Component
     #[Computed]
     public function totalPendientes(): int
     {
-        return $this->proveedorEspecimenes->contar($this->sincronizadosIds());
+        return $this->proveedorEspecimenes->contar($this->sincronizadosIds(), $this->filtros());
     }
 
     /**
@@ -259,6 +328,7 @@ final class SincronizarEspecimenes extends Component
             offset: ($this->pagina - 1) * self::POR_PAGINA,
             limit: self::POR_PAGINA,
             especimenIdsExcluir: $this->sincronizadosIds(),
+            filtros: $this->filtros(),
         );
     }
 
