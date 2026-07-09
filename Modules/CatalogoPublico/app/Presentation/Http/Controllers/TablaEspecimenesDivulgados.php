@@ -204,17 +204,22 @@ final class TablaEspecimenesDivulgados extends Component
 
     public function render(): View
     {
+        // Familia canónica (rango='familia') por especie: se resuelve una vez y
+        // se aplica al filtro de búsqueda y al render, evitando el bug de asumir
+        // que familia = padre directo del género.
+        $familiasPorEspecie = $this->familiaCanonicaPorEspecie();
+
         $query = DB::table('divulgacion.especimenes_divulgables as ed')
             ->join('taxonomia.especimenes as te', 'te.id', '=', 'ed.especimen_id')
             ->join('taxonomia.taxones as tx_species', 'tx_species.id', '=', 'te.taxon_id')
             ->leftJoin('taxonomia.taxones as tx_genus', 'tx_genus.id', '=', 'tx_species.padre_id')
-            ->leftJoin('taxonomia.taxones as tx_family', 'tx_family.id', '=', 'tx_genus.padre_id')
+            ->where('tx_species.rango', 'especie')
             ->select([
                 'te.occurrence_id',
+                'tx_species.id as species_id',
                 'tx_species.nombre_cientifico as scientific_name',
                 DB::raw('te.disposition as type_status'),
                 'tx_genus.nombre_cientifico as genus',
-                'tx_family.nombre_cientifico as family',
                 'te.occurrence_status',
                 'te.country',
                 DB::raw('(
@@ -237,10 +242,21 @@ final class TablaEspecimenesDivulgados extends Component
 
         if ($this->busquedaTaxonomia !== '') {
             $termino = '%'.$this->busquedaTaxonomia.'%';
-            $query->where(function ($q) use ($termino): void {
+            $terminoLower = mb_strtolower($this->busquedaTaxonomia);
+            $especiesConFamiliaMatch = [];
+            foreach ($familiasPorEspecie as $speciesId => $familia) {
+                if (mb_stripos($familia, $terminoLower) !== false) {
+                    $especiesConFamiliaMatch[] = $speciesId;
+                }
+            }
+
+            $query->where(function ($q) use ($termino, $especiesConFamiliaMatch): void {
                 $q->where('tx_species.nombre_cientifico', 'ILIKE', $termino)
-                    ->orWhere('tx_genus.nombre_cientifico', 'ILIKE', $termino)
-                    ->orWhere('tx_family.nombre_cientifico', 'ILIKE', $termino);
+                    ->orWhere('tx_genus.nombre_cientifico', 'ILIKE', $termino);
+
+                if ($especiesConFamiliaMatch !== []) {
+                    $q->orWhereIn('tx_species.id', $especiesConFamiliaMatch);
+                }
             });
         }
 
@@ -260,10 +276,47 @@ final class TablaEspecimenesDivulgados extends Component
             ->orderBy('te.occurrence_id')
             ->paginate(25);
 
+        foreach ($especimenes->items() as $fila) {
+            $fila->family = $familiasPorEspecie[$fila->species_id] ?? null;
+        }
+
         return view('catalogopublico::livewire.tabla-especimenes-divulgados', [
             'especimenes' => $especimenes,
             'totalCampos' => count(self::FLAG_MAP),
             'especimenesDivulgablesIndexados' => $this->especimenesDivulgablesIndexados(),
         ]);
+    }
+
+    /**
+     * Mapa {uuid de taxón-especie → nombre científico de su ancestro con rango='familia'}.
+     * Recorre la cadena de ancestros por `padre_id` hasta encontrar el rango canónico,
+     * saltándose niveles intermedios (tribu, subfamilia, suborden, etc.).
+     *
+     * @return array<string, string>
+     */
+    private function familiaCanonicaPorEspecie(): array
+    {
+        $sql = <<<'SQL'
+            WITH RECURSIVE cadena AS (
+                SELECT tx.id AS raiz, tx.rango, tx.nombre_cientifico, tx.padre_id, 0 AS profundidad
+                FROM taxonomia.taxones tx
+                WHERE tx.rango = 'especie'
+                UNION ALL
+                SELECT c.raiz, p.rango, p.nombre_cientifico, p.padre_id, c.profundidad + 1
+                FROM cadena c
+                JOIN taxonomia.taxones p ON p.id = c.padre_id
+                WHERE c.profundidad < 20
+            )
+            SELECT DISTINCT raiz::text AS raiz, nombre_cientifico
+            FROM cadena
+            WHERE rango = 'familia'
+        SQL;
+
+        $mapa = [];
+        foreach (DB::select($sql) as $fila) {
+            $mapa[$fila->raiz] = $fila->nombre_cientifico;
+        }
+
+        return $mapa;
     }
 }

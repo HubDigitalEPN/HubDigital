@@ -87,11 +87,8 @@
         <div class="bg-blue-navy">
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
                 <h1 class="font-display text-2xl font-bold text-white">
-                    Catálogo
+                    Catálogo del laboratorio de invertebrados
                 </h1>
-                <p class="mt-1 text-sm text-white/70">
-                    Centro de Conservación · Escuela Politécnica Nacional
-                </p>
                 @if($totalGlobal > 0)
                     <p class="mt-3 text-sm text-white/70">
                         <strong class="text-white tabular-nums">{{ number_format($totalGlobal) }}</strong>

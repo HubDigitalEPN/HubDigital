@@ -47,7 +47,9 @@
                         </p>
                         @unless($img['esPortada'])
                             <flux:button
-                                wire:click="usarComoPortada('{{ $nivel }}', @js($valor), '{{ $img['imagenId'] }}')"
+                                wire:click="usarComoPortada('{{ $nivel }}', '{{ $img['imagenId'] }}')"
+                                wire:loading.attr="disabled"
+                                wire:target="usarComoPortada"
                                 variant="subtle"
                                 icon="star"
                                 class="mt-1.5 w-full"

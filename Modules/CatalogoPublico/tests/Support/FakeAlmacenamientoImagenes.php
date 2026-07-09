@@ -16,15 +16,35 @@ final class FakeAlmacenamientoImagenes implements AlmacenamientoImagenesPort
     /** @var array<string, string> nombreOriginal => contenido */
     private array $almacenadas = [];
 
-    public function guardar(string $contenido, string $nombreOriginal): ArchivoImagen
+    public function guardar(string $contenido, string $nombreDeseado): ArchivoImagen
     {
-        $this->almacenadas[$nombreOriginal] = $contenido;
+        $nombreFinal = $this->resolverColision($nombreDeseado);
+        $this->almacenadas[$nombreFinal] = $contenido;
 
         return ArchivoImagen::crear(
-            nombreOriginal: $nombreOriginal,
-            ruta: 'divulgacion/imagenes/'.$nombreOriginal,
+            nombreOriginal: $nombreFinal,
+            ruta: 'divulgacion/imagenes/'.$nombreFinal,
             disco: 'public',
         );
+    }
+
+    private function resolverColision(string $nombre): string
+    {
+        if (! array_key_exists($nombre, $this->almacenadas)) {
+            return $nombre;
+        }
+
+        $info = pathinfo($nombre);
+        $base = $info['filename'];
+        $ext = isset($info['extension']) ? '.'.$info['extension'] : '';
+        $n = 2;
+
+        do {
+            $candidato = $base.'_'.$n.$ext;
+            $n++;
+        } while (array_key_exists($candidato, $this->almacenadas));
+
+        return $candidato;
     }
 
     public function eliminar(ArchivoImagen $archivo): void

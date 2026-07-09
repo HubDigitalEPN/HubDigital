@@ -86,8 +86,26 @@
                                     </div>
                                 @endif
                             </div>
-                            <flux:input wire:model="nombreAutor" label="Nombre de quien sube" placeholder="María" />
-                            <flux:input wire:model="apellidoAutor" label="Apellido de quien sube" placeholder="Gómez" />
+                            <flux:select wire:model.live="vista" label="Tipo de vista (estándar AntWeb)">
+                                @foreach(\Modules\CatalogoPublico\Presentation\Http\Controllers\GestionImagenesTaxonomicas::VISTAS_ESTANDAR as $codigo => $etiqueta)
+                                    <option value="{{ $codigo }}">
+                                        {{ $etiqueta }}@if($codigo !== 'otra') (_{{ $codigo }})@endif
+                                    </option>
+                                @endforeach
+                            </flux:select>
+                            @if($vista === 'otra')
+                                <flux:input
+                                    wire:model="sufijoPersonalizado"
+                                    label="Sufijo personalizado"
+                                    placeholder="Ej. V, LD, ant"
+                                    description="Si no entra en las categorías anteriores, escribe la inicial o iniciales de la vista."
+                                    maxlength="4"
+                                />
+                            @else
+                                <div class="hidden sm:block"></div>
+                            @endif
+                            <flux:input wire:model="nombreAutor" label="Nombre del autor" placeholder="María" />
+                            <flux:input wire:model="apellidoAutor" label="Apellido del autor" placeholder="Gómez" />
                         </div>
 
                         <div class="mt-4 flex justify-end">

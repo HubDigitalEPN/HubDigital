@@ -12,5 +12,6 @@ final readonly class SubirImagenEspecimenInput
         public string $contenido,
         public string $nombreAutor,
         public string $apellidoAutor,
+        public string $vistaSufijo = '',
     ) {}
 }

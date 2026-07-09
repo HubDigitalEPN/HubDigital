@@ -10,6 +10,7 @@ use Modules\CatalogoPublico\Application\Ports\ProveedorEspecimenesParaArbolPort;
 use Modules\CatalogoPublico\Domain\ValueObjects\EspecimenParaArbol;
 use Modules\CatalogoPublico\Domain\ValueObjects\FiltrosBusqueda;
 use Modules\CatalogoPublico\Domain\ValueObjects\JerarquiaTaxonomica;
+use Modules\CatalogoPublico\Domain\ValueObjects\RangoTaxonomico;
 
 final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimenesParaArbolPort
 {
@@ -18,17 +19,7 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
     {
         $query = DB::table('taxonomia.especimenes as te')
             ->join('divulgacion.especimenes_divulgables as ed', 'ed.especimen_id', '=', 'te.id')
-            ->join('taxonomia.taxones as tx_species', 'tx_species.id', '=', 'te.taxon_id')
-            ->leftJoin('taxonomia.taxones as tx_genus', 'tx_genus.id', '=', 'tx_species.padre_id')
-            ->leftJoin('taxonomia.taxones as tx_family', 'tx_family.id', '=', 'tx_genus.padre_id')
-            ->leftJoin('taxonomia.taxones as tx_order', 'tx_order.id', '=', 'tx_family.padre_id')
-            ->leftJoin('taxonomia.taxones as tx_class', 'tx_class.id', '=', 'tx_order.padre_id')
-            ->leftJoin('taxonomia.taxones as tx_phylum', 'tx_phylum.id', '=', 'tx_class.padre_id')
-            ->whereNotNull('tx_genus.id')
-            ->whereNotNull('tx_family.id')
-            ->whereNotNull('tx_order.id')
-            ->whereNotNull('tx_class.id')
-            ->whereNotNull('tx_phylum.id');
+            ->join('taxonomia.taxones as tx_species', 'tx_species.id', '=', 'te.taxon_id');
 
         if ($filtros !== null && ! $filtros->estaVacio()) {
             $query = $this->aplicarFiltros($query, $filtros);
@@ -36,33 +27,41 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
 
         $filas = $query->select([
             'te.occurrence_id',
-            'tx_species.nombre_cientifico as scientific_name',
-            'tx_genus.nombre_cientifico as genus',
-            'tx_family.nombre_cientifico as family',
-            'tx_order.nombre_cientifico as order',
-            'tx_class.nombre_cientifico as class',
-            'tx_phylum.nombre_cientifico as phylum',
+            'te.taxon_id',
             'ed.genus_visible',
             'ed.scientific_name_visible',
         ])->get();
 
+        if ($filas->isEmpty()) {
+            return [];
+        }
+
+        $taxonIds = array_values(array_unique(array_map(fn ($f) => $f->taxon_id, $filas->all())));
+        $jerarquiasPorTaxon = $this->resolverJerarquiasPorTaxon($taxonIds);
+
         $result = [];
 
         foreach ($filas as $fila) {
-            $genus = $fila->genus;
+            $porRango = $jerarquiasPorTaxon[$fila->taxon_id] ?? null;
+            if ($porRango === null) {
+                continue;
+            }
 
-            $scientificName = str_starts_with($fila->scientific_name, $genus.' ')
-                ? $fila->scientific_name
-                : $genus.' '.$fila->scientific_name;
+            $genus = $porRango[RangoTaxonomico::Genus->rangoBD()];
+            $scientificName = $porRango[RangoTaxonomico::Species->rangoBD()];
+
+            if (! str_starts_with($scientificName, $genus.' ')) {
+                $scientificName = $genus.' '.$scientificName;
+            }
 
             $specificEpithet = substr($scientificName, strlen($genus) + 1);
 
             try {
                 $jerarquia = JerarquiaTaxonomica::desde(
-                    phylum: $fila->phylum,
-                    class: $fila->class,
-                    order: $fila->order,
-                    family: $fila->family,
+                    phylum: $porRango[RangoTaxonomico::Phylum->rangoBD()],
+                    class: $porRango[RangoTaxonomico::Class_->rangoBD()],
+                    order: $porRango[RangoTaxonomico::Order->rangoBD()],
+                    family: $porRango[RangoTaxonomico::Family->rangoBD()],
                     genus: $genus,
                     specificEpithet: $specificEpithet,
                     scientificName: $scientificName,
@@ -80,6 +79,71 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
         }
 
         return $result;
+    }
+
+    /**
+     * Resuelve, por cada taxón raíz recibido, la cadena de ancestros canónicos
+     * (phylum, clase, orden, familia, género, especie) usando `rango` real.
+     * Los taxones con cadenas incompletas se omiten del mapa devuelto.
+     *
+     * @param  list<string>  $taxonIds
+     * @return array<string, array<string, string>> taxon_id → [rango_bd → nombre_cientifico]
+     */
+    private function resolverJerarquiasPorTaxon(array $taxonIds): array
+    {
+        if ($taxonIds === []) {
+            return [];
+        }
+
+        $rangosCanonicos = [
+            RangoTaxonomico::Species->rangoBD(),
+            RangoTaxonomico::Genus->rangoBD(),
+            RangoTaxonomico::Family->rangoBD(),
+            RangoTaxonomico::Order->rangoBD(),
+            RangoTaxonomico::Class_->rangoBD(),
+            RangoTaxonomico::Phylum->rangoBD(),
+        ];
+
+        // CTE recursivo: parte de cada taxón raíz y sube por padre_id, conservando el
+        // `raiz` para pivotear luego por taxón de origen y rango.
+        $sql = <<<'SQL'
+            WITH RECURSIVE cadena AS (
+                SELECT tx.id AS raiz, tx.id, tx.rango, tx.nombre_cientifico, tx.padre_id, 0 AS profundidad
+                FROM taxonomia.taxones tx
+                WHERE tx.id = ANY(?)
+                UNION ALL
+                SELECT c.raiz, p.id, p.rango, p.nombre_cientifico, p.padre_id, c.profundidad + 1
+                FROM cadena c
+                JOIN taxonomia.taxones p ON p.id = c.padre_id
+                WHERE c.profundidad < 20
+            )
+            SELECT raiz::text AS raiz, rango, nombre_cientifico
+            FROM cadena
+            WHERE rango = ANY(?)
+        SQL;
+
+        $filas = DB::select($sql, [
+            '{'.implode(',', $taxonIds).'}',
+            '{'.implode(',', $rangosCanonicos).'}',
+        ]);
+
+        /** @var array<string, array<string, string>> */
+        $porTaxon = [];
+        foreach ($filas as $fila) {
+            $porTaxon[$fila->raiz][$fila->rango] = $fila->nombre_cientifico;
+        }
+
+        // Descartar cadenas incompletas (falta algún rango canónico).
+        foreach ($porTaxon as $taxonId => $rangos) {
+            foreach ($rangosCanonicos as $rangoBD) {
+                if (! isset($rangos[$rangoBD])) {
+                    unset($porTaxon[$taxonId]);
+                    break;
+                }
+            }
+        }
+
+        return $porTaxon;
     }
 
     private function aplicarFiltros(Builder $query, FiltrosBusqueda $filtros): Builder

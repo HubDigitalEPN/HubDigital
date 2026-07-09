@@ -15,17 +15,39 @@ final class StorageImagenesAdapter implements AlmacenamientoImagenesPort
 
     private const CARPETA = 'divulgacion/imagenes';
 
-    public function guardar(string $contenido, string $nombreOriginal): ArchivoImagen
+    public function guardar(string $contenido, string $nombreDeseado): ArchivoImagen
     {
-        $ruta = self::CARPETA.'/'.Str::uuid().'_'.$this->sanitizar($nombreOriginal);
+        $nombreFinal = $this->resolverColision($this->sanitizar($nombreDeseado));
+        $ruta = self::CARPETA.'/'.$nombreFinal;
 
         Storage::disk(self::DISCO)->put($ruta, $contenido);
 
         return ArchivoImagen::crear(
-            nombreOriginal: $nombreOriginal,
+            nombreOriginal: $nombreFinal,
             ruta: $ruta,
             disco: self::DISCO,
         );
+    }
+
+    private function resolverColision(string $nombre): string
+    {
+        $ruta = self::CARPETA.'/'.$nombre;
+
+        if (! Storage::disk(self::DISCO)->exists($ruta)) {
+            return $nombre;
+        }
+
+        $info = pathinfo($nombre);
+        $base = $info['filename'];
+        $ext = isset($info['extension']) ? '.'.$info['extension'] : '';
+        $n = 2;
+
+        do {
+            $candidato = $base.'_'.$n.$ext;
+            $n++;
+        } while (Storage::disk(self::DISCO)->exists(self::CARPETA.'/'.$candidato));
+
+        return $candidato;
     }
 
     public function eliminar(ArchivoImagen $archivo): void

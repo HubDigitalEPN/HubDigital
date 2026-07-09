@@ -354,7 +354,7 @@
                                 :current="request()->routeIs('divulgacion.index')"
                                 wire:navigate
                             >
-                                Espécimenes divulgados
+                                Catálogo divulgado
                             </flux:sidebar.item>
                             <flux:sidebar.item
                                 icon="cloud-arrow-up"

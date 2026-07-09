@@ -18,6 +18,23 @@ enum RangoTaxonomico: string
         return $this->value;
     }
 
+    /**
+     * Nombre del rango tal como está almacenado en la columna `rango` de
+     * `taxonomia.taxones` (en español). El dominio conserva los nombres en
+     * inglés; este método existe solo para el mapeo hacia persistencia.
+     */
+    public function rangoBD(): string
+    {
+        return match ($this) {
+            self::Phylum => 'phylum',
+            self::Class_ => 'clase',
+            self::Order => 'orden',
+            self::Family => 'familia',
+            self::Genus => 'genero',
+            self::Species => 'especie',
+        };
+    }
+
     public function orden(): int
     {
         return match ($this) {

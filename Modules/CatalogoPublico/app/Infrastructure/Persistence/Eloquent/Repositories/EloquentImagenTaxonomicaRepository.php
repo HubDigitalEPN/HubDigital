@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\CatalogoPublico\Infrastructure\Persistence\Eloquent\Repositories;
 
 use DateTimeImmutable;
+use Illuminate\Support\Facades\DB;
 use Modules\CatalogoPublico\Domain\Entities\ImagenTaxonomica;
 use Modules\CatalogoPublico\Domain\Repositories\ImagenTaxonomicaRepositoryInterface;
 use Modules\CatalogoPublico\Domain\ValueObjects\ArchivoImagen;
@@ -44,33 +45,18 @@ final class EloquentImagenTaxonomicaRepository implements ImagenTaxonomicaReposi
         return $model === null ? null : $this->reconstituir($model);
     }
 
-    /**
-     * Normaliza el nombre de especie igual que el árbol: prefija el género si el
-     * nombre científico no lo incluye, para que el valor case con el del portal.
-     */
-    private const SPECIES_EXPR = "(CASE WHEN tx_species.nombre_cientifico LIKE tx_genus.nombre_cientifico || ' %' THEN tx_species.nombre_cientifico ELSE tx_genus.nombre_cientifico || ' ' || tx_species.nombre_cientifico END)";
-
     /** @return list<ImagenTaxonomica> */
     public function listarPorSubarbol(RangoTaxonomico $nivel, string $valorTaxon): array
     {
-        $query = ImagenTaxonomicaEloquentModel::query()
-            ->join('taxonomia.especimenes as te', 'te.occurrence_id', '=', 'divulgacion.imagenes_taxonomicas.occurrence_id')
-            ->join('taxonomia.taxones as tx_species', 'tx_species.id', '=', 'te.taxon_id')
-            ->leftJoin('taxonomia.taxones as tx_genus', 'tx_genus.id', '=', 'tx_species.padre_id')
-            ->leftJoin('taxonomia.taxones as tx_family', 'tx_family.id', '=', 'tx_genus.padre_id')
-            ->leftJoin('taxonomia.taxones as tx_order', 'tx_order.id', '=', 'tx_family.padre_id')
-            ->leftJoin('taxonomia.taxones as tx_class', 'tx_class.id', '=', 'tx_order.padre_id')
-            ->leftJoin('taxonomia.taxones as tx_phylum', 'tx_phylum.id', '=', 'tx_class.padre_id');
+        $ocurrenceIDs = $this->occurrenceIDsBajo($nivel, $valorTaxon);
 
-        if ($nivel === RangoTaxonomico::Species) {
-            $query->whereRaw(self::SPECIES_EXPR.' = ?', [$valorTaxon]);
-        } else {
-            $query->where($this->aliasDeNivel($nivel).'.nombre_cientifico', $valorTaxon);
+        if ($ocurrenceIDs === []) {
+            return [];
         }
 
-        $models = $query
-            ->orderBy('divulgacion.imagenes_taxonomicas.created_at')
-            ->select('divulgacion.imagenes_taxonomicas.*')
+        $models = ImagenTaxonomicaEloquentModel::query()
+            ->whereIn('occurrence_id', $ocurrenceIDs)
+            ->orderBy('created_at')
             ->get();
 
         return $models->map(fn (ImagenTaxonomicaEloquentModel $model) => $this->reconstituir($model))
@@ -78,16 +64,51 @@ final class EloquentImagenTaxonomicaRepository implements ImagenTaxonomicaReposi
             ->all();
     }
 
-    private function aliasDeNivel(RangoTaxonomico $nivel): string
+    /**
+     * Occurrence IDs cuyo taxón asignado desciende (o es) del taxón indicado.
+     *
+     * Species: match por nombre científico compuesto (género + epíteto), igual
+     * que el árbol del portal.
+     * Cualquier otro rango canónico: se ubica el UUID del taxón por (rango, nombre)
+     * y se resuelven descendientes con CTE recursivo, así se respetan rangos
+     * intermedios (suborden, subfamilia, tribu).
+     *
+     * @return list<string>
+     */
+    private function occurrenceIDsBajo(RangoTaxonomico $nivel, string $valorTaxon): array
     {
-        return match ($nivel) {
-            RangoTaxonomico::Genus => 'tx_genus',
-            RangoTaxonomico::Family => 'tx_family',
-            RangoTaxonomico::Order => 'tx_order',
-            RangoTaxonomico::Class_ => 'tx_class',
-            RangoTaxonomico::Phylum => 'tx_phylum',
-            RangoTaxonomico::Species => 'tx_species',
-        };
+        if ($nivel === RangoTaxonomico::Species) {
+            $sql = <<<'SQL'
+                SELECT te.occurrence_id
+                FROM taxonomia.especimenes te
+                JOIN taxonomia.taxones tx_species ON tx_species.id = te.taxon_id
+                LEFT JOIN taxonomia.taxones tx_genus ON tx_genus.id = tx_species.padre_id
+                WHERE tx_species.rango = 'especie'
+                  AND tx_genus.rango = 'genero'
+                  AND (CASE
+                        WHEN tx_species.nombre_cientifico LIKE tx_genus.nombre_cientifico || ' %'
+                        THEN tx_species.nombre_cientifico
+                        ELSE tx_genus.nombre_cientifico || ' ' || tx_species.nombre_cientifico
+                       END) = ?
+            SQL;
+
+            return array_column(DB::select($sql, [$valorTaxon]), 'occurrence_id');
+        }
+
+        $sql = <<<'SQL'
+            WITH RECURSIVE descendientes AS (
+                SELECT id FROM taxonomia.taxones
+                WHERE rango = ? AND nombre_cientifico = ?
+                UNION ALL
+                SELECT t.id FROM taxonomia.taxones t
+                JOIN descendientes d ON t.padre_id = d.id
+            )
+            SELECT te.occurrence_id
+            FROM taxonomia.especimenes te
+            WHERE te.taxon_id IN (SELECT id FROM descendientes)
+        SQL;
+
+        return array_column(DB::select($sql, [$nivel->rangoBD(), $valorTaxon]), 'occurrence_id');
     }
 
     private function reconstituir(ImagenTaxonomicaEloquentModel $model): ImagenTaxonomica
