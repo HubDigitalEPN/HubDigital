@@ -33,7 +33,7 @@
                         variant="ghost"
                         size="sm"
                     >
-                        Seleccionar todos
+                        Seleccionar página
                     </flux:button>
                     @if(count($seleccionados) > 0)
                         <flux:button wire:click="deseleccionarTodos" variant="ghost" size="sm">

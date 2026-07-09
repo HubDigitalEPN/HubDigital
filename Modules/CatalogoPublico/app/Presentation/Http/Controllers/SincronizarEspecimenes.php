@@ -103,13 +103,13 @@ final class SincronizarEspecimenes extends Component
 
     public function seleccionarTodos(): void
     {
-        $todosIds = array_map(
+        $idsPagina = array_map(
             fn (DatosEspecimenProveedor $d) => $d->occurrenceId,
-            $this->todosPendientes()
+            $this->especimenesPagina()
         );
 
         $nuevosIds = array_values(array_filter(
-            $todosIds,
+            $idsPagina,
             fn ($id) => ! in_array($id, $this->seleccionados, true)
         ));
 
@@ -125,7 +125,7 @@ final class SincronizarEspecimenes extends Component
 
     public function irAPagina(int $pagina): void
     {
-        $total = max(1, (int) ceil(count($this->todosPendientes()) / self::POR_PAGINA));
+        $total = max(1, (int) ceil($this->totalPendientes() / self::POR_PAGINA));
         $this->pagina = max(1, min($pagina, $total));
     }
 
@@ -227,7 +227,9 @@ final class SincronizarEspecimenes extends Component
     }
 
     /**
-     * Caché computado de IDs sincronizados — se recalcula solo cuando es necesario.
+     * IDs de espécimen (taxonomia.especimenes.id) ya sincronizados con divulgación.
+     * Cacheado en el request — Livewire lo re-lee entre requests, que es lo esperado
+     * para reflejar cambios recientes.
      */
     #[Computed]
     public function sincronizadosIds(): array
@@ -236,38 +238,39 @@ final class SincronizarEspecimenes extends Component
     }
 
     /**
-     * Todos los especímenes pendientes de sincronización, ordenados por occurrence_id.
-     * Cacheado por Livewire — no vuelve a llamar al puerto si se accede múltiples veces en el mismo request.
+     * Total de especímenes pendientes — una sola consulta COUNT.
+     */
+    #[Computed]
+    public function totalPendientes(): int
+    {
+        return $this->proveedorEspecimenes->contar($this->sincronizadosIds());
+    }
+
+    /**
+     * Página actual de especímenes pendientes.
+     * Paginación real en base de datos: siempre trae a lo sumo POR_PAGINA registros.
      *
      * @return list<DatosEspecimenProveedor>
      */
     #[Computed]
-    public function todosPendientes(): array
+    public function especimenesPagina(): array
     {
-        $sincronizados = $this->sincronizadosIds();
-
-        return collect($this->proveedorEspecimenes->obtenerTodos())
-            ->filter(fn (DatosEspecimenProveedor $d) => ! in_array($d->especimenId, $sincronizados, true))
-            ->sortBy(fn (DatosEspecimenProveedor $d) => $d->occurrenceId)
-            ->values()
-            ->all();
+        return $this->proveedorEspecimenes->obtenerPaginado(
+            offset: ($this->pagina - 1) * self::POR_PAGINA,
+            limit: self::POR_PAGINA,
+            especimenIdsExcluir: $this->sincronizadosIds(),
+        );
     }
 
     /**
-     * Página actual de especímenes (paso 1) o los seleccionados (paso 2).
-     * Depende de $pagina — Livewire invalida el cache cuando cambia.
+     * Vista consumida por la plantilla: paso 1 muestra la página; paso 2 muestra
+     * la lista de seleccionados resolviendo cada uno por occurrence_id.
      */
     #[Computed]
     public function especimenesEnCache()
     {
         if ($this->paso === 1) {
-            $slice = array_slice(
-                $this->todosPendientes(),
-                ($this->pagina - 1) * self::POR_PAGINA,
-                self::POR_PAGINA
-            );
-
-            return collect($slice)
+            return collect($this->especimenesPagina())
                 ->map(fn (DatosEspecimenProveedor $d) => $this->dtoParaVista($d))
                 ->values();
         }
@@ -276,9 +279,7 @@ final class SincronizarEspecimenes extends Component
             return collect();
         }
 
-        return collect($this->seleccionados)
-            ->map(fn (string $id) => $this->proveedorEspecimenes->buscarPorOccurrenceId($id))
-            ->filter()
+        return collect($this->proveedorEspecimenes->buscarPorOccurrenceIds($this->seleccionados))
             ->map(fn (DatosEspecimenProveedor $d) => $this->dtoParaVista($d))
             ->sortBy('occurrence_id')
             ->values();
@@ -378,7 +379,7 @@ final class SincronizarEspecimenes extends Component
 
     public function render(): View
     {
-        $totalPendientes = count($this->todosPendientes());
+        $totalPendientes = $this->totalPendientes();
         $totalPaginas = max(1, (int) ceil($totalPendientes / self::POR_PAGINA));
 
         return view('catalogopublico::livewire.sincronizar-especimenes', [

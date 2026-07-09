@@ -130,6 +130,115 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
         return array_map(fn ($fila) => $this->traducir($fila), $filas);
     }
 
+    public function contar(array $especimenIdsExcluir = []): int
+    {
+        $q = DB::table('taxonomia.especimenes as e')
+            ->join('taxonomia.taxones as t', 't.id', '=', 'e.taxon_id')
+            ->whereNotNull('e.occurrence_id')
+            ->where('t.rango', 'especie');
+
+        if ($especimenIdsExcluir !== []) {
+            $q->whereNotIn('e.id', $especimenIdsExcluir);
+        }
+
+        return $q->count();
+    }
+
+    /** @return DatosEspecimenProveedor[] */
+    public function obtenerPaginado(int $offset, int $limit, array $especimenIdsExcluir = []): array
+    {
+        $q = DB::table('taxonomia.especimenes as e')
+            ->join('taxonomia.taxones as t', 't.id', '=', 'e.taxon_id')
+            ->leftJoin('taxonomia.muestras_colecta as mc', 'mc.id', '=', 'e.muestra_id')
+            ->whereNotNull('e.occurrence_id')
+            ->where('t.rango', 'especie');
+
+        if ($especimenIdsExcluir !== []) {
+            $q->whereNotIn('e.id', $especimenIdsExcluir);
+        }
+
+        $filas = $q->orderBy('e.occurrence_id')
+            ->offset(max(0, $offset))
+            ->limit($limit)
+            ->get([
+                'e.id',
+                'e.taxon_id',
+                'e.occurrence_id',
+                'e.colector',
+                'e.individual_count',
+                'e.disposition',
+                'e.occurrence_status',
+                'e.specimen_notes',
+                'e.country',
+                'e.state_province',
+                'e.locality_name',
+                'e.decimal_latitude',
+                'e.decimal_longitude',
+                'e.fecha_colecta',
+                'e.caste',
+                'e.life_stage',
+                'e.elevation_min_m',
+                'e.elevation_max_m',
+                'mc.sampling_protocol',
+                't.nombre_cientifico',
+            ]);
+
+        if ($filas->isEmpty()) {
+            return [];
+        }
+
+        $taxonIds = $filas->pluck('taxon_id')->unique()->values()->all();
+        $familiaGeneroPorTaxon = $this->resolverFamiliaGenero($taxonIds);
+
+        return $filas->map(function ($fila) use ($familiaGeneroPorTaxon) {
+            $resumen = $familiaGeneroPorTaxon[$fila->taxon_id] ?? null;
+            $fila->family = $resumen->family ?? null;
+            $fila->genus = $resumen->genus ?? null;
+
+            return $this->traducir($fila);
+        })->all();
+    }
+
+    /**
+     * Resuelve familia y género para un conjunto de taxon_ids mediante CTE recursivo.
+     *
+     * @param  list<int|string>  $taxonIds
+     * @return array<int|string, object> taxon_id => { family, genus }
+     */
+    private function resolverFamiliaGenero(array $taxonIds): array
+    {
+        if ($taxonIds === []) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($taxonIds), '?'));
+
+        $filas = DB::select("
+            WITH RECURSIVE ancestors AS (
+                SELECT t.id, t.nombre_cientifico, t.rango, t.padre_id, t.id AS origin_id
+                FROM taxonomia.taxones t
+                WHERE t.id IN ($placeholders)
+                UNION ALL
+                SELECT t.id, t.nombre_cientifico, t.rango, t.padre_id, a.origin_id
+                FROM taxonomia.taxones t
+                INNER JOIN ancestors a ON t.id = a.padre_id
+            )
+            SELECT
+                origin_id,
+                MAX(CASE WHEN rango = 'familia' THEN nombre_cientifico END) AS family,
+                MAX(CASE WHEN rango = 'genero'  THEN nombre_cientifico END) AS genus
+            FROM ancestors
+            GROUP BY origin_id
+        ", $taxonIds);
+
+        $indexado = [];
+        foreach ($filas as $fila) {
+            $indexado[$fila->origin_id] = $fila;
+        }
+
+        return $indexado;
+    }
+
     /**
      * @param  list<string>  $occurrenceIds
      * @return DatosEspecimenProveedor[]
