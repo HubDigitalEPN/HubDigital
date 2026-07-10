@@ -11,8 +11,10 @@ use Modules\GestionPrestamosRecepciones\Application\Ports\FirmadorPdfPort;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\FirmaPdfFallida;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\FirmaCuradorMetadata;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Support\Pkcs12Reader;
+use setasign\Fpdi\Fpdi;
 use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Process\Process;
+use Throwable;
 
 /**
  * Adaptador que firma criptográficamente (PAdES) un PDF con el certificado del curador
@@ -81,7 +83,7 @@ final class PyHankoFirmadorPdfAdapter implements FirmadorPdfPort
     {
         $binary = (new ExecutableFinder)->find('pyhanko', $this->binario);
 
-        $comando = [$binary, 'sign', 'addsig', '--field', $this->campoFirma];
+        $comando = [$binary, 'sign', 'addsig', '--field', $this->campoConPaginaFirma($this->campoFirma, $entrada)];
 
         if ($this->tsaUrl !== null && $this->tsaUrl !== '') {
             $comando[] = '--timestamp-url';
@@ -102,6 +104,32 @@ final class PyHankoFirmadorPdfAdapter implements FirmadorPdfPort
             // No se incluye la salida cruda para no arrastrar posibles secretos al log del dominio.
             throw FirmaPdfFallida::con('el proceso de firma pyHanko terminó con error (código '.$process->getExitCode().').');
         }
+    }
+
+    /**
+     * Sustituye el número de página del campo de firma por la ÚLTIMA página del PDF,
+     * que es donde la plantilla estandarizada (acta-documento) sitúa la línea del
+     * curador. Las coordenadas y el nombre del campo se conservan tal cual. Ante
+     * cualquier fallo de lectura se usa el campo configurado sin tocar.
+     *
+     * @param  string  $campo  Spec pyHanko "pagina/x1,y1,x2,y2/Nombre".
+     */
+    private function campoConPaginaFirma(string $campo, string $rutaPdf): string
+    {
+        $partes = explode('/', $campo);
+
+        if (count($partes) < 3) {
+            return $campo;
+        }
+
+        try {
+            // setSourceFile devuelve el total de páginas; la última = donde va la firma.
+            $partes[0] = (string) (new Fpdi)->setSourceFile($rutaPdf);
+        } catch (Throwable) {
+            return $campo;
+        }
+
+        return implode('/', $partes);
     }
 
     /**

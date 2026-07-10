@@ -14,7 +14,9 @@ return [
         // apunta al python del venv; en prod, al que tiene pyhanko instalado.
         'python_bin' => env('PYTHON_BIN', 'python'),
 
-        // Campo de firma visible: "pagina/x1,y1,x2,y2/Nombre". Ajustar a la plantilla del acta.
+        // Campo de firma visible: "pagina/x1,y1,x2,y2/Nombre". La PÁGINA se recalcula
+        // en runtime a la última del PDF (donde acta-documento pone la línea del
+        // curador), así que el número aquí es solo placeholder; ajustar x1,y1,x2,y2.
         'campo' => env('FIRMA_CAMPO', '1/50,50,300,120/FirmaCurador'),
 
         // Servidor de sellado de tiempo (TSA). Vacío => PAdES-B-B sin sello de tiempo.
