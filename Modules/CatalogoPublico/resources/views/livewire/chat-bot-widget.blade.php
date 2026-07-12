@@ -1,4 +1,4 @@
-<div class="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex justify-end px-4 sm:bottom-6 sm:px-6">
+<div class="pointer-events-none fixed inset-x-0 bottom-4 z-[9999] flex justify-end px-4 sm:bottom-6 sm:px-6">
     <div class="pointer-events-auto flex w-full max-w-sm flex-col items-end gap-3">
         @if($abierto)
             <section
@@ -37,7 +37,7 @@
                                     <p class="whitespace-pre-line">{{ $mensaje['texto'] }}</p>
                                     @if(! empty($mensaje['referencias']))
                                         <p class="mt-1.5 text-xs text-text-secondary">
-                                            Referencias:
+                                            N.º de catálogo:
                                             <span class="font-mono">{{ implode(', ', $mensaje['referencias']) }}</span>
                                         </p>
                                     @endif

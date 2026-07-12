@@ -2,7 +2,7 @@
     {{-- Page header --}}
     <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
         <div>
-            <h1 class="font-display text-2xl font-bold text-blue-navy">Sincronizar especímenes</h1>
+            <h1 class="font-display text-2xl font-bold text-blue-navy">Divulgar especímenes</h1>
             <p class="text-sm text-text-secondary">Seleccione especímenes y configure su visibilidad en el catálogo público</p>
         </div>
         <flux:button
@@ -99,9 +99,9 @@
                     <thead class="bg-blue-navy border-b border-border">
                         <tr>
                             <th class="px-4 py-3 text-left font-medium text-white" style="width: 2.5rem;"></th>
-                            <th class="px-4 py-3 text-left font-medium text-white w-3/12">Occurrence ID</th>
+                            <th class="px-4 py-3 text-left font-medium text-white w-3/12">N.º de catálogo</th>
                             <th class="px-4 py-3 text-left font-medium text-white w-3/12">Nombre científico</th>
-                            <th class="px-4 py-3 text-left font-medium text-white hidden md:table-cell w-2/12">Type Status</th>
+                            <th class="px-4 py-3 text-left font-medium text-white hidden md:table-cell w-2/12">Colector</th>
                             <th class="px-4 py-3 text-left font-medium text-white hidden lg:table-cell w-2/12">Familia</th>
                             <th class="px-4 py-3 text-left font-medium text-white hidden xl:table-cell w-2/12">Estado</th>
                         </tr>
@@ -132,7 +132,7 @@
                                     <span class="font-serif italic text-sm text-text-primary">{{ $esp->scientific_name ?? '—' }}</span>
                                 </td>
                                 <td class="px-4 py-3 hidden md:table-cell text-xs text-text-secondary">
-                                    {{ $esp->type_status ?? '—' }}
+                                    {{ $esp->colector ?? '—' }}
                                 </td>
                                 <td class="px-4 py-3 hidden lg:table-cell text-sm text-text-secondary">
                                     {{ $esp->family ?? '—' }}
@@ -150,7 +150,7 @@
                                 <td colspan="6" class="px-4 py-12 text-center">
                                     <div class="flex flex-col items-center gap-2 text-text-secondary">
                                         <flux:icon name="check-circle" class="size-8 text-success opacity-60" />
-                                        <span class="text-sm">Todos los especímenes ya están sincronizados.</span>
+                                        <span class="text-sm">Todos los especímenes ya están divulgados.</span>
                                         <flux:button
                                             :href="route('divulgacion.index')"
                                             variant="primary"

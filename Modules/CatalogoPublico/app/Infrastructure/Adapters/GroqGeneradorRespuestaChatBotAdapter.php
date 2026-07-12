@@ -93,7 +93,10 @@ final class GroqGeneradorRespuestaChatBotAdapter implements GeneradorRespuestaCh
         - Responde en español, de forma clara y concisa.
         - En el primer bloque, usa exclusivamente la información de la tabla. No inventes
           datos sobre la colección.
-        - Menciona los occurrenceID de los especímenes referenciados cuando sea útil.
+        - Al referirte al identificador de un espécimen (campo "occurrenceID" en la tabla)
+          usa SIEMPRE la expresión "N.º de catálogo" (por ejemplo: "el N.º de catálogo
+          EPN-0012"). Nunca uses "occurrenceID", "occurrence_id" ni "ID" al hablar con
+          el visitante.
         - Los nombres científicos deben ir en cursiva usando *asteriscos* de Markdown.
         - Si la tabla está vacía Y no tienes conocimiento útil sobre el tema, indica que
           no encontraste información y sugiere reformular la pregunta.

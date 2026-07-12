@@ -361,6 +361,7 @@ final class SincronizarEspecimenes extends Component
         $obj->occurrence_id = $datos->occurrenceId;
         $obj->scientific_name = $datos->scientificName;
         $obj->type_status = $datos->typeStatus;
+        $obj->colector = $datos->recordedBy;
         $obj->family = $datos->family;
         $obj->occurrence_status = $datos->occurrenceStatus;
 

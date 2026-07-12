@@ -77,9 +77,9 @@
         <table class="w-full text-sm">
             <thead class="bg-blue-navy border-b border-border">
                 <tr>
-                    <th class="px-4 py-3 text-left font-medium text-white">Occurrence ID</th>
+                    <th class="px-4 py-3 text-left font-medium text-white">N.º de catálogo</th>
                     <th class="px-4 py-3 text-left font-medium text-white">Nombre científico</th>
-                    <th class="px-4 py-3 text-left font-medium text-white hidden md:table-cell">Type Status</th>
+                    <th class="px-4 py-3 text-left font-medium text-white hidden md:table-cell">Colector</th>
                     <th class="px-4 py-3 text-left font-medium text-white hidden lg:table-cell">Familia</th>
                     <th class="px-4 py-3 text-left font-medium text-white hidden xl:table-cell">Estado</th>
                     <th class="px-4 py-3 text-left font-medium text-white">Campos visibles</th>
@@ -98,7 +98,7 @@
                             </span>
                         </td>
                         <td class="px-4 py-3 hidden md:table-cell text-xs text-text-secondary">
-                            {{ @$especimen->type_status ?? '—' }}
+                            {{ $especimen->colector ?? '—' }}
                         </td>
                         <td class="px-4 py-3 hidden lg:table-cell text-sm text-text-secondary">
                             {{ $especimen->family ?? '—' }}

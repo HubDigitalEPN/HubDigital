@@ -495,10 +495,24 @@
                             </div>
                         @else
                             <div
+                                wire:ignore
                                 x-data="{
                                     puntos: {{ Js::from($puntosGeo) }},
                                     mapa: null,
                                     init() {
+                                        this.$nextTick(() => this.inicializarMapa());
+                                    },
+                                    inicializarMapa(reintentos = 0) {
+                                        // Con wire:navigate el <script> de Leaflet puede
+                                        // no haber terminado de cargar cuando Alpine
+                                        // ejecuta init(). Reintentamos hasta ~1s.
+                                        if (typeof L === 'undefined') {
+                                            if (reintentos < 20) {
+                                                setTimeout(() => this.inicializarMapa(reintentos + 1), 50);
+                                            }
+                                            return;
+                                        }
+
                                         this.mapa = L.map(this.$refs.mapaContainer, {
                                             scrollWheelZoom: false,
                                         });
@@ -525,6 +539,13 @@
                                             const grupo = L.featureGroup(marcadores);
                                             this.mapa.fitBounds(grupo.getBounds().pad(0.2));
                                         }
+
+                                        // Con wire:navigate el contenedor puede tener
+                                        // dimensiones aún no estables; forzamos el
+                                        // recálculo tras el primer paint.
+                                        requestAnimationFrame(() => {
+                                            if (this.mapa) this.mapa.invalidateSize();
+                                        });
 
                                         this.$cleanup(() => {
                                             if (this.mapa) {

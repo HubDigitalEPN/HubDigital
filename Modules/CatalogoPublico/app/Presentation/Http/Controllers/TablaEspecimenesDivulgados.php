@@ -219,6 +219,7 @@ final class TablaEspecimenesDivulgados extends Component
                 'tx_species.id as species_id',
                 'tx_species.nombre_cientifico as scientific_name',
                 DB::raw('te.disposition as type_status'),
+                'te.colector',
                 'tx_genus.nombre_cientifico as genus',
                 'te.occurrence_status',
                 'te.country',
