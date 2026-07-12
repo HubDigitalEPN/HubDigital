@@ -51,6 +51,8 @@ return (new Config)
                         // GestionContenidoTaxonomico
                         'Modules\CatalogoPublico\Tests\Behat\Contexts\GestionContenidoTaxonomico\PresentacionArbolTaxonomicoContext',
                         'Modules\CatalogoPublico\Tests\Behat\Contexts\GestionContenidoTaxonomico\GestionImagenesNivelTaxonomicoContext',
+                        // ChatBot
+                        'Modules\CatalogoPublico\Tests\Behat\Contexts\ChatBot\ConsultaEnLenguajeNaturalContext',
                     )
             )
             ->withSuite(

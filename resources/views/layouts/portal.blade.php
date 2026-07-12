@@ -21,6 +21,8 @@
 
 {{ $slot }}
 
+@livewire(\Modules\CatalogoPublico\Presentation\Http\Controllers\ChatBotWidget::class)
+
 @fluxScripts
 </body>
 </html>

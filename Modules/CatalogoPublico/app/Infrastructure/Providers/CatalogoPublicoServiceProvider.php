@@ -3,8 +3,10 @@
 namespace Modules\CatalogoPublico\Infrastructure\Providers;
 
 use Modules\CatalogoPublico\Application\Ports\AlmacenamientoImagenesPort;
+use Modules\CatalogoPublico\Application\Ports\ClasificadorIntencionPort;
 use Modules\CatalogoPublico\Application\Ports\EventPublisherPort;
 use Modules\CatalogoPublico\Application\Ports\GeneradorMarcaAguaPort;
+use Modules\CatalogoPublico\Application\Ports\GeneradorRespuestaChatBotPort;
 use Modules\CatalogoPublico\Application\Ports\GeneradorXlsxPort;
 use Modules\CatalogoPublico\Application\Ports\ProveedorEspecimenesParaArbolPort;
 use Modules\CatalogoPublico\Application\Ports\ProveedorEspecimenesPort;
@@ -14,6 +16,8 @@ use Modules\CatalogoPublico\Application\Ports\TransactionManagerPort;
 use Modules\CatalogoPublico\Domain\Repositories\EspecimenDivulgableRepositoryInterface;
 use Modules\CatalogoPublico\Domain\Repositories\ImagenPorDefectoRepositoryInterface;
 use Modules\CatalogoPublico\Domain\Repositories\ImagenTaxonomicaRepositoryInterface;
+use Modules\CatalogoPublico\Infrastructure\Adapters\GroqClasificadorIntencionAdapter;
+use Modules\CatalogoPublico\Infrastructure\Adapters\GroqGeneradorRespuestaChatBotAdapter;
 use Modules\CatalogoPublico\Infrastructure\Adapters\InventarioGestionColeccionEspecimenAdapter;
 use Modules\CatalogoPublico\Infrastructure\Adapters\InventarioOpcionesFiltroAdapter;
 use Modules\CatalogoPublico\Infrastructure\Adapters\JerarquiaDeEspecimenAdapter;
@@ -53,6 +57,19 @@ class CatalogoPublicoServiceProvider extends ModuleServiceProvider
         AlmacenamientoImagenesPort::class => StorageImagenesAdapter::class,
         GeneradorMarcaAguaPort::class => MarcaAguaAdapter::class,
     ];
+
+    public function register(): void
+    {
+        parent::register();
+
+        $this->app->bind(ClasificadorIntencionPort::class, fn () => new GroqClasificadorIntencionAdapter(
+            modelo: (string) config('ai.providers.groq.model'),
+        ));
+
+        $this->app->bind(GeneradorRespuestaChatBotPort::class, fn () => new GroqGeneradorRespuestaChatBotAdapter(
+            modelo: (string) config('ai.providers.groq.model'),
+        ));
+    }
 
     public function boot(): void
     {

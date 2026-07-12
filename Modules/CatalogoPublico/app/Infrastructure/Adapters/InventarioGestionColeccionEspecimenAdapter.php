@@ -341,17 +341,22 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
         // El árbol construye el nombre con: si taxon ya empieza con el género → usarlo tal cual,
         // si no → genus + ' ' + taxon. Replicamos esa misma lógica en SQL para que el nombre
         // pasado desde $this->taxon (Livewire) coincida con lo que devuelve el arbol builder.
+        //
+        // Comparación case-insensitive y con espacios normalizados: el chatbot puede recibir
+        // el nombre científico del LLM con casing arbitrario o con doble espacio.
+        $normalizado = preg_replace('/\s+/', ' ', trim($scientificName)) ?? $scientificName;
+
         $filas = DB::table('taxonomia.especimenes as e')
             ->join('taxonomia.taxones as t', 't.id', '=', 'e.taxon_id')
             ->join('taxonomia.taxones as tx_genus', 'tx_genus.id', '=', 't.padre_id')
             ->leftJoin('taxonomia.muestras_colecta as mc', 'mc.id', '=', 'e.muestra_id')
             ->whereNotNull('e.occurrence_id')
             ->whereRaw(
-                "CASE WHEN t.nombre_cientifico LIKE (tx_genus.nombre_cientifico || ' %')
-                      THEN t.nombre_cientifico
-                      ELSE tx_genus.nombre_cientifico || ' ' || t.nombre_cientifico
-                 END = ?",
-                [$scientificName]
+                "LOWER(CASE WHEN t.nombre_cientifico LIKE (tx_genus.nombre_cientifico || ' %')
+                            THEN t.nombre_cientifico
+                            ELSE tx_genus.nombre_cientifico || ' ' || t.nombre_cientifico
+                       END) = LOWER(?)",
+                [$normalizado]
             )
             ->select([
                 'e.id',
