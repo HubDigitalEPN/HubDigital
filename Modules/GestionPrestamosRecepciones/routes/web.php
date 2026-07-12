@@ -18,6 +18,7 @@ use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\Re
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\RevisarSolicitud;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\ValidarActa;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\DescargarActaPdf;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\DescargarActaRecepcion;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ImprimirQrDeposito;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\BandejaActas as InvestigadorBandejaActas;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\BandejaPrestamos as InvestigadorBandejaPrestamos;
@@ -62,6 +63,7 @@ Route::middleware(['auth', 'verified'])
             ->where('codigo', 'LOTE-[A-Z0-9]{6}')
             ->name('lote.resolver');
         Route::get('/deposito/{id}/acta-transferencia', ServirActaTransferenciaDeposito::class)->name('deposito.acta');
+        Route::get('/deposito/{id}/acta-recepcion.pdf', DescargarActaRecepcion::class)->name('deposito.acta-recepcion');
 
         // Investigador — solo usuarios con rol PRESTAMISTA
         Route::middleware('role:prestamista')->group(function () {

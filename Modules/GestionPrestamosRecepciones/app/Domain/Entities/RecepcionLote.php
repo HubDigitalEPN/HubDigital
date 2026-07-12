@@ -6,6 +6,7 @@ namespace Modules\GestionPrestamosRecepciones\Domain\Entities;
 
 use DateTimeImmutable;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaDigitalRecepcionEmitida;
+use Modules\GestionPrestamosRecepciones\Domain\Events\ActaRecepcionFirmada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\RecepcionLoteIniciada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\RecepcionLoteSuspendida;
 use Modules\GestionPrestamosRecepciones\Domain\Events\RecepcionLoteVerificadaConObservaciones;
@@ -68,11 +69,16 @@ final class RecepcionLote
 
     private ?DocumentoAdjunto $actaRecepcion = null;
 
+    /** Ruta (disco público) del PDF del acta firmado electrónicamente (FirmaEC) por el curador. */
+    private ?string $actaFirmadaRuta = null;
+
     // ── Hitos de negocio ─────────────────────────────────────────
 
     private ?DateTimeImmutable $verificadoEn = null;
 
     private ?DateTimeImmutable $suspendidoEn = null;
+
+    private ?DateTimeImmutable $firmadaEn = null;
 
     /** @var object[] */
     private array $events = [];
@@ -129,6 +135,8 @@ final class RecepcionLote
         ?DocumentoAdjunto $actaRecepcion = null,
         ?DateTimeImmutable $verificadoEn = null,
         ?DateTimeImmutable $suspendidoEn = null,
+        ?string $actaFirmadaRuta = null,
+        ?DateTimeImmutable $firmadaEn = null,
     ): self {
         $lote = new self;
         $lote->id = $id;
@@ -144,6 +152,8 @@ final class RecepcionLote
         $lote->actaRecepcion = $actaRecepcion;
         $lote->verificadoEn = $verificadoEn;
         $lote->suspendidoEn = $suspendidoEn;
+        $lote->actaFirmadaRuta = $actaFirmadaRuta;
+        $lote->firmadaEn = $firmadaEn;
 
         return $lote;
     }
@@ -267,6 +277,34 @@ final class RecepcionLote
         $this->emitirActaRecepcion($ahora);
     }
 
+    /**
+     * Adjunta al acta el PDF firmado electrónicamente (FirmaEC) por el curador. La
+     * validación de que el PDF trae una firma electrónica real es responsabilidad del
+     * caso de uso (mediante el puerto de validación de firma); el agregado solo exige
+     * que el acta ya haya sido emitida (recepción finalizada).
+     */
+    public function adjuntarActaFirmada(string $rutaPdfFirmado): void
+    {
+        if (! $this->actaEmitida()) {
+            throw new \DomainException('No es posible firmar un acta que aún no ha sido emitida');
+        }
+
+        $ruta = trim($rutaPdfFirmado);
+        if ($ruta === '') {
+            throw new \InvalidArgumentException('La ruta del acta firmada no puede estar vacía');
+        }
+
+        $ahora = new DateTimeImmutable;
+        $this->actaFirmadaRuta = $ruta;
+        $this->firmadaEn = $ahora;
+
+        $this->events[] = new ActaRecepcionFirmada(
+            solicitudId: $this->solicitudId,
+            ruta: $ruta,
+            ocurridoEn: $ahora,
+        );
+    }
+
     // ── Consultas ────────────────────────────────────────────────
 
     public function id(): RecepcionLoteId
@@ -329,6 +367,21 @@ final class RecepcionLote
     public function actaRecepcion(): ?DocumentoAdjunto
     {
         return $this->actaRecepcion;
+    }
+
+    public function actaFirmada(): bool
+    {
+        return $this->actaFirmadaRuta !== null;
+    }
+
+    public function actaFirmadaRuta(): ?string
+    {
+        return $this->actaFirmadaRuta;
+    }
+
+    public function firmadaEn(): ?DateTimeImmutable
+    {
+        return $this->firmadaEn;
     }
 
     /**

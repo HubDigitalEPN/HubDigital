@@ -47,6 +47,14 @@ interface NotificacionInvestigadorPort
     public function notificarRecepcionConObservaciones(string $solicitudId, string $investigadorId, array $observaciones): string;
 
     /**
+     * Notifica al investigador que el Acta de Recepción, firmada electrónicamente por
+     * el curador, ya está disponible para descargar.
+     *
+     * @return string Referencia/identificador de la notificación generada.
+     */
+    public function notificarActaRecepcionDisponible(string $solicitudId, string $investigadorId): string;
+
+    /**
      * Notifica al investigador la orden de acción correctiva emitida al suspenderse la
      * recepción del lote por una anomalía subsanable.
      *

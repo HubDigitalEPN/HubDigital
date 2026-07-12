@@ -34,7 +34,12 @@ final class PdfsigValidacionFirmaElectronicaAdapter implements ValidacionFirmaEl
             // En macOS (desarrollo, Homebrew) puede estar en /opt/homebrew/bin o
             // /usr/local/bin. ExecutableFinder busca en PATH cuando está disponible
             // y cae al default de Linux cuando el worker de Supervisor no hereda PATH.
-            $binary = (new ExecutableFinder)->find('pdfsig', '/usr/bin/pdfsig');
+            // Con Herd/Valet el php-fpm tampoco hereda el PATH de Homebrew, así que se
+            // permite fijar la ruta explícitamente vía config (PDFSIG_BINARY).
+            $configurado = config('gestionprestamosrecepciones.pdfsig_binary');
+            $binary = is_string($configurado) && $configurado !== ''
+                ? $configurado
+                : (new ExecutableFinder)->find('pdfsig', '/usr/bin/pdfsig');
 
             $process = new Process([$binary, $rutaAbsoluta]);
             // HOME debe pasarse explícitamente: Supervisor no hereda variables de

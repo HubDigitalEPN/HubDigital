@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionInvestigadorPort;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\ActaRecepcionFirmadaNotification;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\CodigoQrDisponibleNotification;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\OrdenAccionCorrectivaNotification;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\RecepcionConObservacionesNotification;
@@ -67,6 +68,16 @@ final class NotificacionInvestigadorAdapter implements NotificacionInvestigadorP
             numero: $deposito?->numero,
             observaciones: $observaciones,
         ), 'Recepción con observaciones', $solicitudId);
+    }
+
+    public function notificarActaRecepcionDisponible(string $solicitudId, string $investigadorId): string
+    {
+        $deposito = SolicitudDepositoEloquentModel::find($solicitudId);
+
+        return $this->notificar($investigadorId, new ActaRecepcionFirmadaNotification(
+            solicitudId: $solicitudId,
+            numero: $deposito?->numero,
+        ), 'Acta de recepción firmada disponible', $solicitudId);
     }
 
     public function notificarOrdenAccionCorrectiva(string $solicitudId, string $investigadorId, string $motivoFallo, string $accionCorrectiva): string

@@ -50,6 +50,8 @@ final class EloquentRecepcionLoteRepository implements RecepcionLoteRepositoryIn
                 'acta_recepcion' => $acta !== null
                     ? ['nombre' => $acta->nombre(), 'ruta' => $acta->ruta()]
                     : null,
+                'acta_firmada_ruta' => $lote->actaFirmadaRuta(),
+                'firmada_en' => $lote->firmadaEn()?->format('Y-m-d H:i:s'),
             ],
         );
     }
@@ -99,6 +101,8 @@ final class EloquentRecepcionLoteRepository implements RecepcionLoteRepositoryIn
             motivoFallo: $model->motivo_fallo !== null ? MotivoFalloRecepcion::from($model->motivo_fallo) : null,
             accionCorrectiva: $model->accion_correctiva !== null ? AccionCorrectiva::from($model->accion_correctiva) : null,
             actaRecepcion: $acta !== null ? DocumentoAdjunto::of($acta['nombre'], $acta['ruta']) : null,
+            actaFirmadaRuta: $model->acta_firmada_ruta,
+            firmadaEn: $model->firmada_en?->toDateTimeImmutable(),
         );
     }
 }

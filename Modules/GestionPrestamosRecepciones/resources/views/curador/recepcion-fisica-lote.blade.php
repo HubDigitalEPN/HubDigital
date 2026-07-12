@@ -80,6 +80,55 @@
                     @endforeach
                 </ul>
             @endif
+            @if($recepcion->actaEmitida)
+                <div class="mt-4 flex flex-col gap-3 border-t border-border pt-4">
+                    @if($recepcion->actaFirmada)
+                        {{-- Acta ya firmada electrónicamente: disponible para el depositante --}}
+                        <p class="flex items-center gap-2 text-sm font-medium text-success">
+                            <flux:icon name="shield-check" variant="outline" class="size-5 shrink-0" />
+                            Acta firmada electrónicamente. El depositante ya puede descargarla.
+                        </p>
+                        <flux:button href="{{ route('prestamos.deposito.acta-recepcion', $this->id) }}"
+                            target="_blank" rel="noopener" variant="primary" icon="document-arrow-down"
+                            class="w-full sm:w-auto">
+                            Descargar acta firmada
+                        </flux:button>
+                    @else
+                        {{-- Flujo de firma FirmaEC: descargar → firmar fuera → subir → validar --}}
+                        <p class="text-sm text-text-secondary">
+                            Descarga el acta, fírmala con <span class="font-medium text-text-primary">FirmaEC</span>
+                            y súbela aquí. El sistema verificará la firma electrónica antes de aceptarla.
+                        </p>
+                        <flux:button href="{{ route('prestamos.deposito.acta-recepcion', $this->id) }}"
+                            target="_blank" rel="noopener" variant="filled" icon="document-arrow-down"
+                            class="w-full sm:w-auto">
+                            Descargar acta para firmar
+                        </flux:button>
+
+                        <div
+                            x-data="{ error: '' }"
+                            x-on:domain-error.window="error = $event.detail.message"
+                            class="flex flex-col gap-2"
+                        >
+                            <flux:input type="file" wire:model="actaFirmadaFile" accept="application/pdf"
+                                label="Acta firmada (PDF)" />
+                            <flux:error name="actaFirmadaFile" />
+
+                            <template x-if="error">
+                                <p class="flex items-center gap-1 text-sm text-error" x-text="error"></p>
+                            </template>
+
+                            <flux:button wire:click="subirActaFirmada" variant="primary" icon="arrow-up-tray"
+                                x-on:click="error = ''"
+                                wire:loading.attr="disabled" wire:target="subirActaFirmada,actaFirmadaFile"
+                                class="w-full sm:w-auto">
+                                <span wire:loading.remove wire:target="subirActaFirmada">Subir acta firmada</span>
+                                <span wire:loading wire:target="subirActaFirmada">Verificando firma…</span>
+                            </flux:button>
+                        </div>
+                    @endif
+                </div>
+            @endif
         </flux:callout>
     @endif
 

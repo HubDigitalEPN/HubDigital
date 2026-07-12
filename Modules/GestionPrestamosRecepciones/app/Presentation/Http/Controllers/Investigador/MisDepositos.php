@@ -8,6 +8,7 @@ use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\RecepcionLoteEloquentModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
 
 /**
@@ -74,8 +75,17 @@ final class MisDepositos extends Component
         $hayFiltros = $this->filtroTipo !== '' || $this->filtroEstado !== ''
             || $this->filtroDesde !== '' || $this->filtroHasta !== '';
 
+        // Estado de la recepción física por solicitud (una sola consulta) para rotular
+        // en el listado los depósitos ya recibidos y los que tienen acta firmada por descargar.
+        $ids = $depositos->pluck('id')->all();
+        $recepciones = $ids === []
+            ? collect()
+            : RecepcionLoteEloquentModel::whereIn('solicitud_deposito_id', $ids)
+                ->get(['solicitud_deposito_id', 'estado', 'acta_firmada_ruta'])
+                ->keyBy('solicitud_deposito_id');
+
         return view('gestionprestamosrecepciones::investigador.mis-depositos', compact(
-            'depositos', 'activas', 'historial', 'hayFiltros'
+            'depositos', 'activas', 'historial', 'hayFiltros', 'recepciones'
         ));
     }
 }

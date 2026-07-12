@@ -16,9 +16,15 @@ interface UsuarioNombrePort
     public function obtenerNombre(string $usuarioId): ?string;
 
     /**
+     * Retorna los datos profesionales (nombre, cargo, institución) del usuario
+     * indicado para el Acta recepción-depósito, o null si no existe.
+     */
+    public function obtenerDatosDepositante(string $usuarioId): ?DatosDepositante;
+
+    /**
      * Retorna un mapa identificador→nombre para los usuarios indicados.
      *
-     * @param array<int, string> $usuarioIds
+     * @param  array<int, string>  $usuarioIds
      * @return array<string, string>
      */
     public function obtenerNombres(array $usuarioIds): array;

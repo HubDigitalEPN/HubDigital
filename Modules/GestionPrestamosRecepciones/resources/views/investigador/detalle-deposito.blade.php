@@ -85,8 +85,8 @@
                                 :contenido="route('prestamos.lote.resolver', $deposito->codigo_qr)" :tamanio="150" />
                             <div class="flex w-full flex-col gap-2 sm:w-auto">
                                 <a href="{{ route('prestamos.deposito.qr-pdf', $deposito->id) }}" target="_blank" rel="noopener"
-                                    class="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-navy px-5 py-2.5 text-sm font-medium text-white hover:opacity-90 transition-opacity">
-                                    <flux:icon name="printer" class="size-4" />
+                                    class="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-navy px-5 py-2.5 text-sm font-medium text-white! hover:opacity-90 transition-opacity">
+                                    <flux:icon name="printer" class="size-4 text-white!" />
                                     Imprimir / Guardar QR (PDF)
                                 </a>
                                 @if($deposito->tipo_tramite === 'Donación' && $deposito->acta_transferencia_dominio
@@ -99,6 +99,77 @@
                                     </a>
                                 @endif
                             </div>
+                        </div>
+                    </div>
+                @endif
+
+                {{-- Estado de la recepción física del lote --}}
+                @if(isset($recepcion) && $recepcion?->recepcionIniciada)
+                    @php
+                        $estiloRecepcion = match($recepcion->estadoRecepcion) {
+                            'Verificado Físicamente' => ['green', 'check-badge', 'text-success', 'border-success/30', 'bg-success/5'],
+                            'Verificado con Observaciones' => ['amber', 'exclamation-triangle', 'text-warning', 'border-warning/30', 'bg-warning/5'],
+                            'Recepción Suspendida' => ['red', 'arrow-path', 'text-error', 'border-error/30', 'bg-error/5'],
+                            default => ['sky', 'clock', 'text-info', 'border-border', 'bg-surface'],
+                        };
+                    @endphp
+                    <div class="rounded-lg border {{ $estiloRecepcion[3] }} {{ $estiloRecepcion[4] }} shadow-sm p-5 space-y-3">
+                        <div class="flex items-start gap-3">
+                            <flux:icon name="{{ $estiloRecepcion[1] }}" variant="outline" class="size-6 shrink-0 {{ $estiloRecepcion[2] }}" />
+                            <div class="space-y-1">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <flux:heading size="sm">Recepción física</flux:heading>
+                                    <flux:badge size="sm" color="{{ $estiloRecepcion[0] }}">{{ $recepcion->estadoRecepcion }}</flux:badge>
+                                </div>
+
+                                @if($recepcion->estadoRecepcion === 'En Verificación')
+                                    <flux:text class="text-text-secondary text-sm">El curador está verificando físicamente tus muestras.</flux:text>
+                                @elseif($recepcion->estadoRecepcion === 'Recepción Suspendida')
+                                    <flux:text class="text-text-secondary text-sm">
+                                        Anomalía: <span class="font-medium text-text-primary">{{ $recepcion->motivoFallo }}</span>.
+                                        Acción correctiva: <span class="font-medium text-text-primary">{{ $recepcion->accionCorrectiva }}</span>.
+                                    </flux:text>
+                                @else
+                                    <flux:text class="text-text-secondary text-sm">
+                                        Tus muestras fueron recibidas e ingresan a la colección en estado
+                                        <span class="font-medium text-text-primary">{{ $recepcion->estadoColeccion ?? '—' }}</span>.
+                                    </flux:text>
+                                @endif
+                            </div>
+                        </div>
+
+                        @if($recepcion->observaciones !== [])
+                            <ul class="ml-9 space-y-1 text-sm text-text-primary">
+                                @foreach($recepcion->observaciones as $observacion)
+                                    <li class="flex items-start gap-2">
+                                        <flux:icon name="exclamation-triangle" variant="outline" class="size-4 text-warning shrink-0 mt-0.5" />
+                                        {{ $observacion }}
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
+                    </div>
+                @endif
+
+                {{-- Acta de Recepción firmada electrónicamente (disponible tras la firma del curador) --}}
+                @if(isset($recepcion) && $recepcion?->actaFirmada)
+                    <div class="rounded-lg border border-success/30 bg-success/5 shadow-sm overflow-hidden">
+                        <div class="p-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div class="flex items-start gap-3">
+                                <flux:icon name="shield-check" variant="outline" class="size-6 shrink-0 text-success" />
+                                <div>
+                                    <flux:heading size="sm">Acta de recepción-depósito</flux:heading>
+                                    <flux:text class="text-text-secondary text-xs">
+                                        Firmada electrónicamente por el curador. Constancia oficial de la recepción de tus muestras.
+                                    </flux:text>
+                                </div>
+                            </div>
+                            <a href="{{ route('prestamos.deposito.acta-recepcion', $deposito->id) }}"
+                                target="_blank" rel="noopener"
+                                class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-bio-green! px-5 py-2.5 text-sm font-medium text-white! hover:opacity-90 transition-opacity sm:w-auto">
+                                <flux:icon name="document-arrow-down" class="size-4 text-white!" />
+                                Descargar acta firmada
+                            </a>
                         </div>
                     </div>
                 @endif

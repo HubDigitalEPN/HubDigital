@@ -48,6 +48,9 @@ final class ConsultarDetalleRecepcionHandler
             nroMorfoespecies: $solicitud->nroMorfoespecies(),
             grupoAnimal: $solicitud->grupoAnimal(),
             localidad: $solicitud->localidad(),
+            nroPermisoRecoleccion: $solicitud->nroPermisoRecoleccion(),
+            nroPermisoMovilizacion: $solicitud->nroPermisoMovilizacion(),
+            curadorResponsable: $solicitud->curadorResponsable(),
             aprobadaEn: $solicitud->aprobadaEn(),
             recepcionIniciada: $lote !== null,
             estadoRecepcion: $lote?->estado()->value,
@@ -57,6 +60,8 @@ final class ConsultarDetalleRecepcionHandler
             motivoFallo: $lote?->motivoFallo()?->value,
             accionCorrectiva: $lote?->accionCorrectiva()?->value,
             actaEmitida: $lote?->actaEmitida() ?? false,
+            actaFirmada: $lote?->actaFirmada() ?? false,
+            actaFirmadaRuta: $lote?->actaFirmadaRuta(),
         );
     }
 }

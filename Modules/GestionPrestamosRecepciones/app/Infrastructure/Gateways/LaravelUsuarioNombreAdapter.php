@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\GestionPrestamosRecepciones\Infrastructure\Gateways;
 
 use App\Models\User;
+use Modules\GestionPrestamosRecepciones\Application\Ports\DatosDepositante;
 use Modules\GestionPrestamosRecepciones\Application\Ports\UsuarioNombrePort;
 
 /**
@@ -25,9 +26,27 @@ final class LaravelUsuarioNombreAdapter implements UsuarioNombrePort
     }
 
     /**
+     * Recupera los datos profesionales de un depositante por su identificador.
+     */
+    public function obtenerDatosDepositante(string $usuarioId): ?DatosDepositante
+    {
+        $usuario = User::find($usuarioId);
+
+        if ($usuario === null) {
+            return null;
+        }
+
+        return new DatosDepositante(
+            nombre: self::componerNombre($usuario->first_name, $usuario->last_name),
+            cargo: $usuario->cargo,
+            institucion: $usuario->institucion,
+        );
+    }
+
+    /**
      * Recupera un mapa identificador→nombre para un conjunto de usuarios.
      *
-     * @param array<int, string> $usuarioIds
+     * @param  array<int, string>  $usuarioIds
      * @return array<string, string>
      */
     public function obtenerNombres(array $usuarioIds): array

@@ -37,4 +37,9 @@ final class FakeNotificacionInvestigadorAdapter implements NotificacionInvestiga
     {
         return self::REFERENCIA;
     }
+
+    public function notificarActaRecepcionDisponible(string $solicitudId, string $investigadorId): string
+    {
+        return self::REFERENCIA;
+    }
 }

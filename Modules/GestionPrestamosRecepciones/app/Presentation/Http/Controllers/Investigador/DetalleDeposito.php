@@ -7,6 +7,8 @@ namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Inve
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDetalleRecepcion\ConsultarDetalleRecepcionHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDetalleRecepcion\ConsultarDetalleRecepcionInput;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
 
@@ -20,9 +22,6 @@ final class DetalleDeposito extends Component
 
     /**
      * Inicializa el componente.
-     *
-     * @param string $id
-     * @return void
      */
     public function mount(string $id): void
     {
@@ -37,15 +36,16 @@ final class DetalleDeposito extends Component
 
     /**
      * Renderiza el componente.
-     *
-     * @param \Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface $matrizRepo
-     * @return \Illuminate\View\View
      */
-    public function render(MatrizEspeciesRepositoryInterface $matrizRepo): View
-    {
+    public function render(
+        MatrizEspeciesRepositoryInterface $matrizRepo,
+        ConsultarDetalleRecepcionHandler $recepcionHandler,
+    ): View {
         $deposito = SolicitudDepositoEloquentModel::find($this->id);
         $matriz = $deposito ? $matrizRepo->buscarPorSolicitudId($this->id) : null;
+        // Estado de la recepción física (para exponer la descarga del Acta de Recepción).
+        $recepcion = $deposito ? $recepcionHandler->handle(new ConsultarDetalleRecepcionInput($this->id)) : null;
 
-        return view('gestionprestamosrecepciones::investigador.detalle-deposito', compact('deposito', 'matriz'));
+        return view('gestionprestamosrecepciones::investigador.detalle-deposito', compact('deposito', 'matriz', 'recepcion'));
     }
 }

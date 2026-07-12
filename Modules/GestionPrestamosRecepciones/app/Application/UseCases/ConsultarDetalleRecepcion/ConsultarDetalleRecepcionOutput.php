@@ -23,6 +23,9 @@ final readonly class ConsultarDetalleRecepcionOutput
         public ?string $nroMorfoespecies,
         public ?string $grupoAnimal,
         public ?string $localidad,
+        public ?string $nroPermisoRecoleccion,
+        public ?string $nroPermisoMovilizacion,
+        public ?string $curadorResponsable,
         public ?DateTimeImmutable $aprobadaEn,
         public bool $recepcionIniciada,
         public ?string $estadoRecepcion,
@@ -32,5 +35,7 @@ final readonly class ConsultarDetalleRecepcionOutput
         public ?string $motivoFallo,
         public ?string $accionCorrectiva,
         public bool $actaEmitida,
+        public bool $actaFirmada,
+        public ?string $actaFirmadaRuta,
     ) {}
 }
