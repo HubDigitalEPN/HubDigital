@@ -86,7 +86,7 @@
                                     </div>
                                 @endif
                             </div>
-                            <flux:select wire:model.live="vista" label="Tipo de vista (estándar AntWeb)">
+                            <flux:select wire:model.live="vista" label="Tipo de vista">
                                 @foreach(\Modules\CatalogoPublico\Presentation\Http\Controllers\GestionImagenesTaxonomicas::VISTAS_ESTANDAR as $codigo => $etiqueta)
                                     <option value="{{ $codigo }}">
                                         {{ $etiqueta }}@if($codigo !== 'otra') (_{{ $codigo }})@endif

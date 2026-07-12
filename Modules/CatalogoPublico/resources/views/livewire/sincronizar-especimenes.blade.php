@@ -157,7 +157,7 @@
                                             size="sm"
                                             wire:navigate
                                         >
-                                            Ver tabla de divulgación
+                                            Ver catálogo divulgado
                                         </flux:button>
                                     </div>
                                 </td>
@@ -372,7 +372,7 @@
                     icon="table-cells"
                     wire:navigate
                 >
-                    Ver tabla de divulgación
+                    Ver cátalogo divulgado
                 </flux:button>
                 <flux:button
                     wire:click="$set('paso', 1); $set('seleccionados', []); $set('configuracionPorEspecimen', []); $set('occurrenceIDsActualizados', [])"

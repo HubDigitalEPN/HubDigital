@@ -25,9 +25,13 @@ final class MarcaAguaAdapter implements GeneradorMarcaAguaPort
         $x = $margen;
         $y = $image->height() - $margen;
 
-        $textoConCopyright = '© '.$texto.' '.date('Y');
+        // Atribución bajo Creative Commons Attribution 4.0 International (CC BY 4.0):
+        // «Autor Año · CC BY 4.0». El símbolo © se omite porque la obra se publica bajo
+        // licencia abierta, siguiendo la convención de atribución compacta de CC
+        // (https://wiki.creativecommons.org/wiki/Best_practices_for_attribution).
+        $atribucion = $texto.' '.date('Y').' · CC BY 4.0';
 
-        $image->text($textoConCopyright, $x, $y, function (FontFactory $font) use ($tamanio): void {
+        $image->text($atribucion, $x, $y, function (FontFactory $font) use ($tamanio): void {
             $font->filename(self::FUENTE);
             $font->size($tamanio);
             $font->color('rgba(0, 0, 0, 0.85)');

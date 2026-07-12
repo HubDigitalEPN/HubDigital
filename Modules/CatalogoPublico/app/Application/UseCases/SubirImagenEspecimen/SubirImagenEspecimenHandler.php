@@ -39,7 +39,7 @@ final class SubirImagenEspecimenHandler
 
         if ($jerarquia === null) {
             throw new RuntimeException(
-                "El espécimen '{$input->occurrenceID}' no existe en la tabla de divulgación"
+                "El espécimen '{$input->occurrenceID}' no existe en el catálogo divulgado"
             );
         }
 

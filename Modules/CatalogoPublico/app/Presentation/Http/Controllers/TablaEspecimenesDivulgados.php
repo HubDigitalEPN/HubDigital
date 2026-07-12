@@ -15,7 +15,7 @@ use Modules\CatalogoPublico\Application\UseCases\ModificarConfiguracionDivulgaci
 use Modules\CatalogoPublico\Application\UseCases\ModificarConfiguracionDivulgacion\ModificarConfiguracionDivulgacionInput;
 use Modules\CatalogoPublico\Infrastructure\Persistence\Eloquent\Models\EspecimenDivulgableEloquentModel;
 
-#[Layout('layouts.app', params: ['title' => 'Tabla de divulgación'])]
+#[Layout('layouts.app', params: ['title' => 'Cátalogo divulgado'])]
 final class TablaEspecimenesDivulgados extends Component
 {
     use WithPagination;

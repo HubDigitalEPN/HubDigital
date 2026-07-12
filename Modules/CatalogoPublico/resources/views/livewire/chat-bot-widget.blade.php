@@ -66,7 +66,7 @@
                     <flux:input
                         wire:model="pregunta"
                         placeholder="Tu pregunta…"
-                        aria-label="Pregunta al chatbot"
+                        aria-label="Pregunta al bichochat"
                         wire:loading.attr="disabled"
                         wire:target="enviar"
                         size="sm"
