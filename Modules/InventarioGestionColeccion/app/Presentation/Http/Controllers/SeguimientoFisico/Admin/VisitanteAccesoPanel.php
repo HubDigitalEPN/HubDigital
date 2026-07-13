@@ -9,6 +9,8 @@ use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Rule;
 use Livewire\Component;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\DefinirReubicacionVisitante\DefinirReubicacionVisitanteHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\DefinirReubicacionVisitante\DefinirReubicacionVisitanteInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarVisitantes\ListarVisitantesHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegenerarAccesoVisitante\RegenerarAccesoVisitanteHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegenerarAccesoVisitante\RegenerarAccesoVisitanteInput;
@@ -116,6 +118,28 @@ final class VisitanteAccesoPanel extends Component
         $this->qrVisitanteNombre = null;
     }
 
+    /**
+     * Habilita o revoca que el visitante pueda reubicar especímenes. Recarga la lista
+     * para reflejar el nuevo estado del toggle.
+     */
+    public function alternarReubicacion(
+        string $id,
+        bool $habilitado,
+        DefinirReubicacionVisitanteHandler $handler,
+        ListarVisitantesHandler $listarHandler,
+    ): void {
+        try {
+            $handler->handle(new DefinirReubicacionVisitanteInput(visitanteId: $id, habilitado: $habilitado));
+            $this->cargarVisitantes($listarHandler);
+            $this->successMessage = $habilitado
+                ? 'Reubicación habilitada para el visitante.'
+                : 'Reubicación revocada para el visitante.';
+            $this->errorMessage = null;
+        } catch (\Throwable $e) {
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
+        }
+    }
+
     private function mostrarQr(string $visitanteId, int $version, string $nombre): void
     {
         $this->qrUrl = URL::temporarySignedRoute(
@@ -135,6 +159,7 @@ final class VisitanteAccesoPanel extends Component
                 'nombre' => $v->nombre,
                 'contacto' => $v->contacto,
                 'versionAcceso' => $v->versionAcceso,
+                'puedeReubicar' => $v->puedeReubicar,
                 'registradoEn' => $v->registradoEn->format('d/m/Y H:i'),
             ],
             $output->items,

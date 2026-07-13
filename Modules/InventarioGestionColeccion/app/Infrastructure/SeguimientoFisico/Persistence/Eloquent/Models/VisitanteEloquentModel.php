@@ -19,11 +19,13 @@ class VisitanteEloquentModel extends Model
         'nombre',
         'contacto',
         'version_acceso',
+        'puede_reubicar',
         'registrado_en',
     ];
 
     protected $casts = [
         'version_acceso' => 'integer',
+        'puede_reubicar' => 'boolean',
         'registrado_en' => 'datetime',
     ];
 }

@@ -9,13 +9,23 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\Act
 
 final class FakeContextoEjecucionAdapter implements ContextoEjecucionPort
 {
+    private ActorRol $actorRol = ActorRol::Sistema;
+
+    private ?string $actorId = null;
+
+    public function setActor(ActorRol $actorRol, ?string $actorId = null): void
+    {
+        $this->actorRol = $actorRol;
+        $this->actorId = $actorId;
+    }
+
     public function actorRol(): ActorRol
     {
-        return ActorRol::Sistema;
+        return $this->actorRol;
     }
 
     public function actorId(): ?string
     {
-        return null;
+        return $this->actorId;
     }
 }

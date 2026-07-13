@@ -21,6 +21,7 @@ class Visitante
         private string $nombre,
         private ?string $contacto,
         private int $versionAcceso,
+        private bool $puedeReubicar,
         private readonly \DateTimeImmutable $registradoEn,
     ) {}
 
@@ -35,6 +36,7 @@ class Visitante
             nombre: trim($nombre),
             contacto: self::normalizarOpcional($contacto),
             versionAcceso: 1,
+            puedeReubicar: false,
             registradoEn: $registradoEn,
         );
     }
@@ -44,6 +46,7 @@ class Visitante
         string $nombre,
         ?string $contacto,
         int $versionAcceso,
+        bool $puedeReubicar,
         \DateTimeImmutable $registradoEn,
     ): self {
         return new self(
@@ -51,6 +54,7 @@ class Visitante
             nombre: $nombre,
             contacto: $contacto,
             versionAcceso: $versionAcceso,
+            puedeReubicar: $puedeReubicar,
             registradoEn: $registradoEn,
         );
     }
@@ -61,6 +65,20 @@ class Visitante
     public function regenerarAcceso(): void
     {
         $this->versionAcceso++;
+    }
+
+    /**
+     * Habilita o revoca la capacidad del visitante de reubicar especímenes en la
+     * colección. Sin esta habilitación cualquier intento de reubicación es rechazado.
+     */
+    public function definirReubicacion(bool $habilitado): void
+    {
+        $this->puedeReubicar = $habilitado;
+    }
+
+    public function puedeReubicar(): bool
+    {
+        return $this->puedeReubicar;
     }
 
     private static function normalizarOpcional(?string $valor): ?string

@@ -302,6 +302,14 @@
                                 Unit trays
                             </flux:sidebar.item>
                             <flux:sidebar.item
+                                icon="arrows-right-left"
+                                :href="route('inventario.trazabilidad')"
+                                :current="request()->routeIs('inventario.trazabilidad')"
+                                wire:navigate
+                            >
+                                Trazabilidad
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
                                 icon="bell-alert"
                                 :href="route('inventario.alertas')"
                                 :current="request()->routeIs('inventario.alertas')"

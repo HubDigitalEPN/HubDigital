@@ -9,6 +9,7 @@ enum ActorRol: string
     case Sistema = 'sistema';
     case Esp32 = 'esp32';
     case Curador = 'curador';
+    case Visitante = 'visitante';
 
     public function valor(): string
     {

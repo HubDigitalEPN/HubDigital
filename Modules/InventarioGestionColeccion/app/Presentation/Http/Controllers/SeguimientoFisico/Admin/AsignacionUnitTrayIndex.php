@@ -13,12 +13,25 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Co
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConsultarOcupacionGabinete\ConsultarOcupacionGabineteInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\CrearUnitTray\CrearUnitTrayHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\CrearUnitTray\CrearUnitTrayInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\EliminarUnitTray\EliminarUnitTrayHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\EliminarUnitTray\EliminarUnitTrayInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarCajas\ListarCajasHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarEspecimenesAsignables\ListarEspecimenesAsignablesHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarEspecimenesAsignables\ListarEspecimenesAsignablesInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarGabinetes\ListarGabineteHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarUnitTraysPorCaja\ListarUnitTraysPorCajaHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarUnitTraysPorCaja\ListarUnitTraysPorCajaInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ResolverCodigoQr\ResolverCodigoQrHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ResolverCodigoQr\ResolverCodigoQrInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ReubicarEspecimenes\ReubicarEspecimenesHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ReubicarEspecimenes\ReubicarEspecimenesInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ReubicarUnitTray\ReubicarUnitTrayHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ReubicarUnitTray\ReubicarUnitTrayInput;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Exceptions\EspecimenNoEncontradoException;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\CajaRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UnitTrayRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\UnitTrayId;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\GeneraSvgQr;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
 
 /**
@@ -32,6 +45,7 @@ use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\Seguimiento
 #[Layout('layouts.app', params: ['title' => 'Asignación de unit trays'])]
 final class AsignacionUnitTrayIndex extends Component
 {
+    use GeneraSvgQr;
     use TraduceErroresPersistencia;
 
     /** Valor del read-model `estado` para una caja en tránsito (contrato de ListarCajas). */
@@ -64,6 +78,43 @@ final class AsignacionUnitTrayIndex extends Component
     public ?string $warningMessage = null;
 
     public ?string $errorMessage = null;
+
+    // --- QR imprimible del unit tray (server-side, BaconQrCode, igual que taxonomía) ---
+    public bool $modalQr = false;
+
+    public ?string $qrTrayNumero = null;
+
+    /** SVG inline del QR generado (codifica el UnitTrayId); null = modal cerrado. */
+    public ?string $qrSvg = null;
+
+    // --- Flujo: reubicar especímenes a un unit tray de destino ---
+    public bool $modalReubicarEspecimenes = false;
+
+    /** @var array<int, array{id: string, codigoCatalogo: string, taxonNombre: string}> */
+    public array $especimenesReubicar = [];
+
+    /** Espécimen recién escaneado en espera de confirmación (popup); null = ninguno. */
+    public ?array $especimenPorConfirmar = null;
+
+    public string $trayDestinoReubicar = '';
+
+    public ?string $trayDestinoReubicarLabel = null;
+
+    /** True cuando la reubicación disparó la advertencia taxonómica y espera confirmación. */
+    public bool $reubicacionRequiereConfirmacion = false;
+
+    /** @var string[] Códigos de catálogo fuera de lugar de la última reubicación. */
+    public array $reubicacionFueraDeLugar = [];
+
+    // --- Flujo: reubicar un unit tray completo a otra caja ---
+    public bool $modalReubicarTray = false;
+
+    public string $trayAReubicar = '';
+
+    public ?string $trayAReubicarLabel = null;
+
+    /** Selección efímera de la caja de destino en el modal de mover tray. */
+    public string $cajaDestinoSeleccionada = '';
 
     /** Carga solo las cajas disponibles; los especímenes se buscan después de forma acotada. */
     public function mount(ListarCajasHandler $cajasHandler): void
@@ -172,6 +223,287 @@ final class AsignacionUnitTrayIndex extends Component
             $this->cargarUnitTrays($this->cajaSeleccionada);
             $this->flash('Especímenes asignados al unit tray.');
             $this->advertirFueraDeLugar($output->especimenesFueraDeLugar);
+        } catch (\Throwable $e) {
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
+        }
+    }
+
+    /** Elimina un unit tray de la caja (recalcula la clasificación de la caja) y recarga la lista. */
+    public function eliminarUnitTray(string $unitTrayId, EliminarUnitTrayHandler $handler): void
+    {
+        try {
+            $handler->handle(new EliminarUnitTrayInput(unitTrayId: $unitTrayId));
+            if ($this->unitTraySeleccionado === $unitTrayId) {
+                $this->cancelarSeleccion();
+            }
+            $this->cargarUnitTrays($this->cajaSeleccionada);
+            $this->flash('Unit tray eliminado.');
+        } catch (\Throwable $e) {
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
+        }
+    }
+
+    /**
+     * Genera, server-side, el QR imprimible de un unit tray. El QR codifica el UnitTrayId, de
+     * modo que es "siempre el mismo" para ese tray y sirve para escanearlo al reubicar.
+     */
+    public function mostrarQrTray(string $unitTrayId, string $numero): void
+    {
+        $this->limpiarMensajes();
+        $this->qrTrayNumero = $numero;
+        $this->qrSvg = $this->generarSvgQr($unitTrayId);
+        $this->modalQr = true;
+    }
+
+    public function cerrarQrTray(): void
+    {
+        $this->modalQr = false;
+        $this->qrTrayNumero = null;
+        $this->qrSvg = null;
+    }
+
+    // --- Reubicar especímenes ---
+
+    public function abrirReubicarEspecimenes(): void
+    {
+        $this->reset(
+            'especimenesReubicar',
+            'especimenPorConfirmar',
+            'trayDestinoReubicar',
+            'trayDestinoReubicarLabel',
+            'reubicacionRequiereConfirmacion',
+            'reubicacionFueraDeLugar',
+        );
+        $this->limpiarMensajes();
+        $this->modalReubicarEspecimenes = true;
+    }
+
+    public function cerrarReubicarEspecimenes(): void
+    {
+        $this->modalReubicarEspecimenes = false;
+    }
+
+    /**
+     * Resuelve lo escaneado y lo deja en espera de confirmación (popup con la info resuelta).
+     * El QR del espécimen es el mismo que genera la Estación de Etiquetado (Catálogo):
+     * codifica la URL `/inventario/qr/{payload}` con un token opaco. También acepta un código
+     * de catálogo tecleado a mano como respaldo.
+     */
+    public function escanearEspecimen(string $codigo): void
+    {
+        $codigo = trim($codigo);
+        if ($codigo === '') {
+            return;
+        }
+
+        $match = $this->resolverEspecimenEscaneado($codigo);
+
+        if ($match === null) {
+            $this->errorMessage = "No se encontró el espécimen «{$codigo}».";
+
+            return;
+        }
+
+        foreach ($this->especimenesReubicar as $e) {
+            if ($e['id'] === $match['id']) {
+                $this->errorMessage = "El espécimen «{$match['codigoCatalogo']}» ya está en la lista.";
+
+                return;
+            }
+        }
+
+        $this->errorMessage = null;
+        $this->especimenPorConfirmar = [
+            'id' => $match['id'],
+            'codigoCatalogo' => $match['codigoCatalogo'],
+            'taxonNombre' => $match['taxonNombre'],
+        ];
+    }
+
+    /**
+     * Si `$codigo` es la URL del QR de taxonomía, resuelve el payload por el mismo caso de uso
+     * que usa la ficha pública del QR. Si no, se trata como código de catálogo tecleado a mano
+     * y se busca con la búsqueda acotada de siempre (ILIKE por código o nombre científico,
+     * coincidencia exacta de código).
+     *
+     * @return array{id: string, codigoCatalogo: string, taxonNombre: ?string}|null
+     */
+    private function resolverEspecimenEscaneado(string $codigo): ?array
+    {
+        $payload = $this->payloadDeUrlQrTaxonomia($codigo);
+
+        if ($payload !== null) {
+            try {
+                $output = app(ResolverCodigoQrHandler::class)->handle(new ResolverCodigoQrInput($payload));
+
+                return [
+                    'id' => $output->id,
+                    'codigoCatalogo' => $output->codigoCatalogo,
+                    'taxonNombre' => $output->taxonNombre,
+                ];
+            } catch (EspecimenNoEncontradoException) {
+                return null;
+            }
+        }
+
+        $items = app(ListarEspecimenesAsignablesHandler::class)
+            ->handle(new ListarEspecimenesAsignablesInput(busqueda: $codigo, limite: 10))->items;
+
+        foreach ($items as $it) {
+            if ($it['codigoCatalogo'] === $codigo || $it['id'] === $codigo) {
+                return $it;
+            }
+        }
+
+        return null;
+    }
+
+    /** Extrae el payload si `$texto` es la URL del QR de taxonomía; null si no lo es (p. ej. un código de catálogo). */
+    private function payloadDeUrlQrTaxonomia(string $texto): ?string
+    {
+        return preg_match('#/inventario/qr/([0-9a-f]{6,})#i', $texto, $m) === 1 ? $m[1] : null;
+    }
+
+    public function confirmarEspecimenEscaneado(): void
+    {
+        if ($this->especimenPorConfirmar === null) {
+            return;
+        }
+        $this->especimenesReubicar[] = $this->especimenPorConfirmar;
+        $this->especimenPorConfirmar = null;
+    }
+
+    public function descartarEspecimenEscaneado(): void
+    {
+        $this->especimenPorConfirmar = null;
+    }
+
+    public function quitarEspecimenReubicar(string $id): void
+    {
+        $this->especimenesReubicar = array_values(
+            array_filter($this->especimenesReubicar, fn ($e) => $e['id'] !== $id)
+        );
+    }
+
+    /** Fija el unit tray de destino, escaneando su QR (UnitTrayId) o eligiéndolo de la lista. */
+    public function fijarTrayDestino(string $unitTrayId): void
+    {
+        $unitTrayId = trim($unitTrayId);
+        if ($unitTrayId === '') {
+            return;
+        }
+
+        $tray = app(UnitTrayRepository::class)->buscarPorId(UnitTrayId::desde($unitTrayId));
+        if ($tray === null) {
+            $this->errorMessage = "No se encontró el unit tray de destino «{$unitTrayId}».";
+
+            return;
+        }
+
+        $this->errorMessage = null;
+        $this->trayDestinoReubicar = $unitTrayId;
+        $this->trayDestinoReubicarLabel = 'N.° '.$tray->numero();
+    }
+
+    /**
+     * Ejecuta la reubicación de los especímenes acumulados al tray de destino. Si el caso de uso
+     * pide confirmación (advertencia taxonómica), la expone para que el curador confirme o cancele.
+     */
+    public function reubicarEspecimenes(ReubicarEspecimenesHandler $handler, bool $confirmar = false): void
+    {
+        if ($this->especimenesReubicar === []) {
+            $this->errorMessage = 'Escanea al menos un espécimen.';
+
+            return;
+        }
+        if ($this->trayDestinoReubicar === '') {
+            $this->errorMessage = 'Selecciona o escanea el unit tray de destino.';
+
+            return;
+        }
+
+        try {
+            $output = $handler->handle(new ReubicarEspecimenesInput(
+                destinoUnitTrayId: $this->trayDestinoReubicar,
+                especimenIds: array_column($this->especimenesReubicar, 'id'),
+                confirmar: $confirmar,
+            ));
+
+            if ($output->requiereConfirmacion) {
+                $this->reubicacionRequiereConfirmacion = true;
+                $this->reubicacionFueraDeLugar = $output->especimenesFueraDeLugar;
+
+                return;
+            }
+
+            $this->cerrarReubicarEspecimenes();
+            $this->cargarUnitTrays($this->cajaSeleccionada);
+            if ($this->unitTraySeleccionado !== '') {
+                $this->cargarEspecimenes();
+            }
+            $this->flash('Especímenes reubicados al unit tray.');
+            $this->advertirFueraDeLugar($output->especimenesFueraDeLugar);
+        } catch (\Throwable $e) {
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
+        }
+    }
+
+    // --- Reubicar un unit tray completo a otra caja ---
+
+    public function abrirReubicarTray(string $unitTrayId, string $numero): void
+    {
+        $this->limpiarMensajes();
+        $this->trayAReubicar = $unitTrayId;
+        $this->trayAReubicarLabel = 'N.° '.$numero;
+        $this->cajaDestinoSeleccionada = '';
+        $this->modalReubicarTray = true;
+    }
+
+    public function cerrarReubicarTray(): void
+    {
+        $this->modalReubicarTray = false;
+        $this->trayAReubicar = '';
+        $this->trayAReubicarLabel = null;
+    }
+
+    /** Reubica el tray a la caja elegida de la lista (id directo). */
+    public function reubicarTrayACaja(string $cajaId, ReubicarUnitTrayHandler $handler): void
+    {
+        $this->ejecutarReubicacionTray($cajaId, $handler);
+    }
+
+    /** Reubica el tray a la caja resuelta por su RFID (escaneo NFC de la caja destino). */
+    public function reubicarTrayPorRfid(string $rfid, ReubicarUnitTrayHandler $handler): void
+    {
+        $rfid = strtoupper(trim($rfid));
+        if ($rfid === '') {
+            return;
+        }
+
+        $caja = app(CajaRepository::class)->buscarPorCodigoRfid($rfid);
+        if ($caja === null) {
+            $this->errorMessage = "No hay ninguna caja con el RFID {$rfid}.";
+
+            return;
+        }
+
+        $this->ejecutarReubicacionTray((string) $caja->id(), $handler);
+    }
+
+    private function ejecutarReubicacionTray(string $cajaDestinoId, ReubicarUnitTrayHandler $handler): void
+    {
+        if ($this->trayAReubicar === '' || $cajaDestinoId === '') {
+            return;
+        }
+
+        try {
+            $handler->handle(new ReubicarUnitTrayInput(
+                unitTrayId: $this->trayAReubicar,
+                cajaDestinoId: $cajaDestinoId,
+            ));
+            $this->cerrarReubicarTray();
+            $this->cargarUnitTrays($this->cajaSeleccionada);
+            $this->flash('Unit tray reubicado a otra caja.');
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }

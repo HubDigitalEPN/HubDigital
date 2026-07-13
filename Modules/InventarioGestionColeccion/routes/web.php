@@ -12,6 +12,7 @@ use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\Seguimiento
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Admin\HorarioSettingsForm;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Admin\MapaColeccion;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Admin\OrdenFamiliasIndex;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Admin\TrazabilidadMovimientosIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Admin\VisitanteAccesoPanel;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\CentroRevisionIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\ConfiguracionColumnasIndex;
@@ -43,6 +44,7 @@ Route::middleware(['web', 'auth', 'verified', 'role:curador'])
         Route::get('/gabinetes/{id}', GabineteShow::class)->name('gabinetes.show');
         Route::get('/cajas', CajaIndex::class)->name('cajas');
         Route::get('/unit-trays', AsignacionUnitTrayIndex::class)->name('unit-trays');
+        Route::get('/trazabilidad', TrazabilidadMovimientosIndex::class)->name('trazabilidad');
         Route::get('/alertas', AlertaIndex::class)->name('alertas');
         Route::get('/orden-familias', OrdenFamiliasIndex::class)->name('orden-familias');
         Route::get('/horario', HorarioSettingsForm::class)->name('horario');
