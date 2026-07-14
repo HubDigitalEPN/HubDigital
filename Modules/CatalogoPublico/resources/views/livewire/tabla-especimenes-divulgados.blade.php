@@ -11,7 +11,7 @@
             variant="primary"
             wire:navigate
         >
-            Sincronizar especímenes
+            Divulgar especímenes
         </flux:button>
     </div>
 
@@ -138,7 +138,7 @@
                                     size="sm"
                                     wire:navigate
                                 >
-                                    Sincronizar ahora
+                                    Divulgar ahora
                                 </flux:button>
                             </div>
                         </td>

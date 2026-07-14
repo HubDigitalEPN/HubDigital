@@ -15,7 +15,7 @@ use Modules\CatalogoPublico\Application\UseCases\SincronizarEspecimenes\Sincroni
 use Modules\CatalogoPublico\Application\UseCases\SincronizarEspecimenes\SincronizarEspecimenesInput;
 use Modules\CatalogoPublico\Infrastructure\Persistence\Eloquent\Models\EspecimenDivulgableEloquentModel;
 
-#[Layout('layouts.app', params: ['title' => 'Sincronizar Especímenes'])]
+#[Layout('layouts.app', params: ['title' => 'Divulgar especímenes'])]
 final class SincronizarEspecimenes extends Component
 {
     private ProveedorEspecimenesPort $proveedorEspecimenes;

@@ -324,7 +324,7 @@
                     icon="cloud-arrow-up"
                 >
                     <span wire:loading.remove wire:target="sincronizar">
-                        Sincronizar {{ count($seleccionados) }} espécimen(es)
+                        Divulgar {{ count($seleccionados) }} espécimen(es)
                     </span>
                     <span wire:loading wire:target="sincronizar">Sincronizando…</span>
                 </flux:button>

@@ -12,81 +12,59 @@ Característica: Búsqueda multicriterio en el catálogo público
       | EPN-003      | Morpho peleides       | Arthropoda | Insecta  | Lepidoptera | Nymphalidae | Morpho      | peleides        | Ecuador  | Pichincha     | Nono            | J. Pérez     | 2024-05-02 | Red entomológica | -0.0700         | -78.5900         | 2300          | Bosque nublado     | Seco         |
       | EPN-004      | Atta cephalotes       | Arthropoda | Insecta  | Hymenoptera | Formicidae  | Atta        | cephalotes      | Ecuador  | Napo          | Yasuní          | L. Torres    | 2022-11-20 | Pitfall          | -0.9800         | -76.4000         | 250           | Bosque amazónico   | Seco         |
 
-  Escenario: Búsqueda por número de catálogo único
-    Cuando el visitante aplica los filtros con "filtroCatalogo" igual a "EPN-002"
+  Esquema del escenario: Búsqueda por un solo criterio
+    Cuando el visitante aplica los filtros con "<campo>" igual a "<valor>"
     Entonces el resultado contiene exactamente los especímenes:
       | occurrenceID |
-      | EPN-002      |
+      | <esperado>   |
 
-  Escenario: Búsqueda por múltiples números de catálogo separados por coma
-    Cuando el visitante aplica los filtros con "filtroCatalogo" igual a "EPN-001, EPN-003"
-    Entonces el resultado contiene exactamente los especímenes:
-      | occurrenceID |
-      | EPN-001      |
-      | EPN-003      |
+    Ejemplos: catálogo
+      | campo          | valor             | esperado |
+      | filtroCatalogo | EPN-002           | EPN-002  |
+      | filtroCatalogo | EPN-001, EPN-003  | EPN-001  |
+      | filtroCatalogo | EPN-001, EPN-003  | EPN-003  |
 
-  Esquema del escenario: Búsqueda taxonómica a cualquier nivel del árbol
-    Cuando el visitante aplica los filtros con "filtroTaxon" igual a "<termino>"
-    Entonces el resultado contiene exactamente los especímenes:
-      | occurrenceID   |
-      | <esperado>     |
+    Ejemplos: taxonomía
+      | campo       | valor       | esperado |
+      | filtroTaxon | Insecta     | EPN-002  |
+      | filtroTaxon | Insecta     | EPN-003  |
+      | filtroTaxon | Insecta     | EPN-004  |
+      | filtroTaxon | Coleoptera  | EPN-002  |
+      | filtroTaxon | Morpho      | EPN-003  |
+      | filtroTaxon | cóleoptera  | EPN-002  |
 
-    Ejemplos:
-      | termino     | esperado |
-      | Insecta     | EPN-002  |
-      | Insecta     | EPN-003  |
-      | Insecta     | EPN-004  |
-      | Coleoptera  | EPN-002  |
-      | Morpho      | EPN-003  |
+    Ejemplos: geografía
+      | campo            | valor            | esperado |
+      | filtroGeografias | Pichincha, Napo  | EPN-001  |
+      | filtroGeografias | Pichincha, Napo  | EPN-002  |
+      | filtroGeografias | Pichincha, Napo  | EPN-003  |
+      | filtroGeografias | Pichincha, Napo  | EPN-004  |
 
-  Escenario: La búsqueda taxonómica ignora mayúsculas y acentos
-    Cuando el visitante aplica los filtros con "filtroTaxon" igual a "cóleoptera"
-    Entonces el resultado contiene exactamente los especímenes:
-      | occurrenceID |
-      | EPN-002      |
+    Ejemplos: colector
+      | campo          | valor  | esperado |
+      | filtroColector | Pérez  | EPN-001  |
+      | filtroColector | Pérez  | EPN-003  |
 
-  Escenario: Búsqueda por geografía con múltiples localidades
-    Cuando el visitante aplica los filtros con "filtroGeografias" igual a "Pichincha, Napo"
-    Entonces el resultado contiene exactamente los especímenes:
-      | occurrenceID |
-      | EPN-001      |
-      | EPN-002      |
-      | EPN-003      |
-      | EPN-004      |
+    Ejemplos: método de recolección
+      | campo         | valor                      | esperado |
+      | filtroMetodos | Red entomológica, Pitfall  | EPN-002  |
+      | filtroMetodos | Red entomológica, Pitfall  | EPN-003  |
+      | filtroMetodos | Red entomológica, Pitfall  | EPN-004  |
 
-  Escenario: Búsqueda por colector con coincidencia parcial
-    Cuando el visitante aplica los filtros con "filtroColector" igual a "Pérez"
-    Entonces el resultado contiene exactamente los especímenes:
-      | occurrenceID |
-      | EPN-001      |
-      | EPN-003      |
+    Ejemplos: tipo de preparación
+      | campo               | valor  | esperado |
+      | filtroPreparaciones | Húmedo | EPN-001  |
+
+    Ejemplos: bioma
+      | campo        | valor           | esperado |
+      | filtroBiomas | Bosque nublado  | EPN-001  |
+      | filtroBiomas | Bosque nublado  | EPN-003  |
 
   Escenario: Búsqueda por rango de fechas de recolección
     Cuando el visitante aplica los filtros:
       | campo            | valor      |
       | filtroFechaDesde | 2024-01-01 |
       | filtroFechaHasta | 2024-12-31 |
-    Entonces el resultado contiene exactamente los especímenes:
-      | occurrenceID |
-      | EPN-001      |
-      | EPN-003      |
-
-  Escenario: Búsqueda por método de recolección (selección múltiple)
-    Cuando el visitante aplica los filtros con "filtroMetodos" igual a "Red entomológica, Pitfall"
-    Entonces el resultado contiene exactamente los especímenes:
-      | occurrenceID |
-      | EPN-002      |
-      | EPN-003      |
-      | EPN-004      |
-
-  Escenario: Búsqueda por tipo de preparación (selección múltiple)
-    Cuando el visitante aplica los filtros con "filtroPreparaciones" igual a "Húmedo"
-    Entonces el resultado contiene exactamente los especímenes:
-      | occurrenceID |
-      | EPN-001      |
-
-  Escenario: Búsqueda por bioma
-    Cuando el visitante aplica los filtros con "filtroBiomas" igual a "Bosque nublado"
     Entonces el resultado contiene exactamente los especímenes:
       | occurrenceID |
       | EPN-001      |
