@@ -1,0 +1,151 @@
+============================================================================
+ DEMO PARA PRESENTACIÓN — Gabinetes en orden taxonómico (SQL puro, sin merge)
+============================================================================
+
+Qué hace:
+  Crea 2 gabinetes demo llenos en orden taxonómico correcto:
+    - GAB-DEMO-FORM : 25 cajas de Formicidae (hormigas)
+    - GAB-DEMO-SCAR : 25 cajas de Scarabaeidae (escarabajos)
+  Una caja por género, ordenadas subfamilia -> género (el mismo orden que
+  evalúa el sistema), así NO se dispara ninguna alerta de orden ni de familia.
+
+Cómo correrlo:
+  Pega el bloque en la consola de Postgres de producción:
+    psql "<conexion-prod>"      ó      php artisan db        ó  el cliente SQL que usen.
+  Las familias y sus géneros se resuelven POR NOMBRE contra taxonomia.taxones
+  en el momento (no dependen de UUID fijos), tomados de los registros reales.
+
+Notas:
+  - Todo lo creado lleva prefijos GAB-DEMO-* / CAJ-DEMO-*; nada más se toca.
+  - Si ya corriste el SEED antes, corre primero el bloque LIMPIAR (abajo).
+  - Requiere PostgreSQL 13+ (usa gen_random_uuid(), nativo).
+
+
+============================================================================
+ 1) SEMBRAR LA DEMO  — pegar este bloque completo
+============================================================================
+
+BEGIN;
+
+-- a) Plan: un género por ranura, con ids por fila (uuid por caja/ranura/ubicación).
+--    Materializado en tabla temporal para que cada uuid quede fijo entre los INSERT.
+CREATE TEMP TABLE demo_plan ON COMMIT DROP AS
+WITH RECURSIVE
+fam(familia, orden, suborden, gab, caja_pref, rfid_pref, nombre) AS (
+    VALUES
+        ('Formicidae',  'Hymenoptera', 'Apocrita',  'GAB-DEMO-FORM', 'CAJ-DEMO-FORM', 'DMOF', 'Gabinete demo — Formicidae (hormigas)'),
+        ('Scarabaeidae','Coleoptera',  NULL::text,  'GAB-DEMO-SCAR', 'CAJ-DEMO-SCAR', 'DMOS', 'Gabinete demo — Scarabaeidae (escarabajos)')
+),
+raices AS (
+    SELECT f.familia, t.id AS familia_id
+    FROM fam f
+    JOIN taxonomia.taxones t ON t.nombre_cientifico = f.familia AND t.rango = 'familia'
+),
+down AS (
+    SELECT r.familia, t.id, t.nombre_cientifico, t.rango, t.padre_id,
+           CASE WHEN t.rango = 'subfamilia' THEN t.nombre_cientifico END AS subfam
+    FROM raices r
+    JOIN taxonomia.taxones t ON t.id = r.familia_id
+    UNION ALL
+    SELECT d.familia, t.id, t.nombre_cientifico, t.rango, t.padre_id,
+           COALESCE(CASE WHEN t.rango = 'subfamilia' THEN t.nombre_cientifico END, d.subfam)
+    FROM taxonomia.taxones t
+    JOIN down d ON t.padre_id = d.id
+),
+generos AS (
+    SELECT familia, subfam AS subfamilia, nombre_cientifico AS genero,
+           row_number() OVER (PARTITION BY familia ORDER BY lower(subfam), lower(nombre_cientifico)) AS slot
+    FROM down
+    WHERE rango = 'genero' AND subfam IS NOT NULL
+)
+SELECT
+    g.familia, g.subfamilia, g.genero, g.slot::int AS slot,
+    f.orden, f.suborden, f.gab, f.caja_pref, f.rfid_pref, f.nombre,
+    r.familia_id::text AS familia_id,
+    count(*) OVER (PARTITION BY g.familia)::int AS total,
+    gen_random_uuid() AS caja_id,
+    gen_random_uuid() AS ranura_id,
+    gen_random_uuid() AS ubic_id
+FROM generos g
+JOIN fam f    ON f.familia = g.familia
+JOIN raices r ON r.familia = g.familia
+WHERE g.slot <= 25;
+
+-- b) Un gabinete por familia. El uuid se genera sobre las filas YA deduplicadas
+--    (subconsulta DISTINCT), para que cada gabinete reciba un id único y estable.
+CREATE TEMP TABLE demo_gab ON COMMIT DROP AS
+SELECT d.codigo, d.nombre, d.total, gen_random_uuid() AS gab_id
+FROM (SELECT DISTINCT gab AS codigo, nombre, total FROM demo_plan) d;
+
+INSERT INTO iot.gabinetes (id, codigo, nombre, total_ranuras, activo, created_at, updated_at)
+SELECT gab_id, codigo, nombre, total, true, now(), now()
+FROM demo_gab;
+
+INSERT INTO iot.cajas
+    (id, codigo, familia_taxonomica_id, nombre, estado, ranura_actual_id, codigo_rfid,
+     es_especial, observacion, clasificacion_taxonomica, created_at, updated_at)
+SELECT
+    caja_id,
+    caja_pref || '-' || lpad(slot::text, 2, '0'),
+    familia_id,
+    genero,
+    'en_gabinete',
+    ranura_id,
+    rfid_pref || lpad(slot::text, 4, '0'),
+    false,
+    NULL,
+    jsonb_build_object(
+        'orden',        orden,
+        'suborden',     suborden,
+        'superfamilia', NULL,
+        'familia',      familia,
+        'especie',      NULL,
+        'subfamilias',  jsonb_build_array(subfamilia),
+        'generos',      jsonb_build_array(genero)
+    ),
+    now(), now()
+FROM demo_plan;
+
+INSERT INTO iot.ranuras_gabinete (id, gabinete_id, numero_ranura, caja_actual_id, activa, created_at, updated_at)
+SELECT p.ranura_id, gb.gab_id, p.slot, p.caja_id, true, now(), now()
+FROM demo_plan p
+JOIN demo_gab gb ON gb.codigo = p.gab;
+
+INSERT INTO iot.ubicaciones_caja (id, caja_id, ranura_gabinete_id, ingresada_en, retirada_en, created_at, updated_at)
+SELECT ubic_id, caja_id, ranura_id, now(), NULL, now(), now()
+FROM demo_plan;
+
+COMMIT;
+
+
+============================================================================
+ 2) LIMPIAR LA DEMO  — pegar este bloque completo para borrar todo
+============================================================================
+
+BEGIN;
+
+DELETE FROM iot.alertas_ubicacion
+ WHERE caja_id IN (SELECT id FROM iot.cajas WHERE codigo LIKE 'CAJ-DEMO-%');
+
+DELETE FROM iot.ubicaciones_caja
+ WHERE caja_id IN (SELECT id FROM iot.cajas WHERE codigo LIKE 'CAJ-DEMO-%');
+
+UPDATE iot.ranuras_gabinete SET caja_actual_id = NULL
+ WHERE caja_actual_id IN (SELECT id FROM iot.cajas WHERE codigo LIKE 'CAJ-DEMO-%');
+
+DELETE FROM iot.cajas      WHERE codigo LIKE 'CAJ-DEMO-%';
+DELETE FROM iot.gabinetes  WHERE codigo LIKE 'GAB-DEMO-%';  -- arrastra sus ranuras (cascade)
+
+COMMIT;
+
+
+============================================================================
+ 3) VERIFICAR (opcional)  — debe dar 2 gabinetes, 50 cajas, 0 alertas
+============================================================================
+
+SELECT
+  (SELECT count(*) FROM iot.gabinetes WHERE codigo LIKE 'GAB-DEMO-%')                AS gabinetes_demo,
+  (SELECT count(*) FROM iot.cajas      WHERE codigo LIKE 'CAJ-DEMO-%')               AS cajas_demo,
+  (SELECT count(*) FROM iot.alertas_ubicacion a
+     JOIN iot.cajas c ON c.id = a.caja_id
+    WHERE c.codigo LIKE 'CAJ-DEMO-%')                                               AS alertas_demo;
