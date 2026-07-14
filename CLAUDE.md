@@ -46,7 +46,7 @@ Pest/Unit (Reglas dominio aisladas sin DB)
 * Primera línea obligatoria: # language: es. Todo el archivo se escribe en **Español**.
 * **Actores:** Cada Escenario debe nombrar al actor en el título. Prohibido usar "el usuario".
 * *LoanReceptionManagement:* el investigador, el curador
-* *InventoryCollectionManagement:* el curador, el sistema
+* *InventoryCollectionManagement:* el curador, el sistema, el visitante habilitado (solo reubicación, habilitado vía URL firmada por QR)
 * *PublicCatalog:* el visitante, el investigador
 
 

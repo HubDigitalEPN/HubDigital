@@ -42,6 +42,21 @@ class EloquentEventoCicloIotRepository implements EventoCicloIotRepository
         return $model ? $this->toDomain($model) : null;
     }
 
+    /**
+     * Devuelve todos los eventos de un agregado en orden cronológico ascendente.
+     *
+     * @return EventoCicloIot[]
+     */
+    public function buscarPorAgregado(string $tipoAgregado, string $agregadoId): array
+    {
+        return EventoCicloIotEloquentModel::where('tipo_agregado', $tipoAgregado)
+            ->where('agregado_id', $agregadoId)
+            ->orderBy('ocurrido_en')
+            ->get()
+            ->map(fn (EventoCicloIotEloquentModel $m) => $this->toDomain($m))
+            ->all();
+    }
+
     /** Reconstituye la entidad de evento a partir de la fila persistida. */
     private function toDomain(EventoCicloIotEloquentModel $model): EventoCicloIot
     {

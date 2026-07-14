@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Modules\CatalogoPublico\Infrastructure\Adapters;
 
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 use Modules\CatalogoPublico\Application\Ports\DatosEspecimenProveedor;
+use Modules\CatalogoPublico\Application\Ports\FiltrosPendientes;
 use Modules\CatalogoPublico\Application\Ports\ProveedorEspecimenesPort;
 
 /**
@@ -130,6 +132,165 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
         return array_map(fn ($fila) => $this->traducir($fila), $filas);
     }
 
+    public function contar(array $especimenIdsExcluir = [], ?FiltrosPendientes $filtros = null): int
+    {
+        $q = DB::table('taxonomia.especimenes as e')
+            ->join('taxonomia.taxones as t', 't.id', '=', 'e.taxon_id')
+            ->whereNotNull('e.occurrence_id')
+            ->where('t.rango', 'especie');
+
+        if ($especimenIdsExcluir !== []) {
+            $q->whereNotIn('e.id', $especimenIdsExcluir);
+        }
+
+        $this->aplicarFiltros($q, $filtros);
+
+        return $q->count();
+    }
+
+    /** @return DatosEspecimenProveedor[] */
+    public function obtenerPaginado(int $offset, int $limit, array $especimenIdsExcluir = [], ?FiltrosPendientes $filtros = null): array
+    {
+        $q = DB::table('taxonomia.especimenes as e')
+            ->join('taxonomia.taxones as t', 't.id', '=', 'e.taxon_id')
+            ->leftJoin('taxonomia.muestras_colecta as mc', 'mc.id', '=', 'e.muestra_id')
+            ->whereNotNull('e.occurrence_id')
+            ->where('t.rango', 'especie');
+
+        if ($especimenIdsExcluir !== []) {
+            $q->whereNotIn('e.id', $especimenIdsExcluir);
+        }
+
+        $this->aplicarFiltros($q, $filtros);
+
+        $filas = $q->orderBy('e.occurrence_id')
+            ->offset(max(0, $offset))
+            ->limit($limit)
+            ->get([
+                'e.id',
+                'e.taxon_id',
+                'e.occurrence_id',
+                'e.colector',
+                'e.individual_count',
+                'e.disposition',
+                'e.occurrence_status',
+                'e.specimen_notes',
+                'e.country',
+                'e.state_province',
+                'e.locality_name',
+                'e.decimal_latitude',
+                'e.decimal_longitude',
+                'e.fecha_colecta',
+                'e.caste',
+                'e.life_stage',
+                'e.elevation_min_m',
+                'e.elevation_max_m',
+                'mc.sampling_protocol',
+                't.nombre_cientifico',
+            ]);
+
+        if ($filas->isEmpty()) {
+            return [];
+        }
+
+        $taxonIds = $filas->pluck('taxon_id')->unique()->values()->all();
+        $familiaGeneroPorTaxon = $this->resolverFamiliaGenero($taxonIds);
+
+        return $filas->map(function ($fila) use ($familiaGeneroPorTaxon) {
+            $resumen = $familiaGeneroPorTaxon[$fila->taxon_id] ?? null;
+            $fila->family = $resumen->family ?? null;
+            $fila->genus = $resumen->genus ?? null;
+
+            return $this->traducir($fila);
+        })->all();
+    }
+
+    public function obtenerColectoresPendientes(array $especimenIdsExcluir = []): array
+    {
+        $q = DB::table('taxonomia.especimenes as e')
+            ->join('taxonomia.taxones as t', 't.id', '=', 'e.taxon_id')
+            ->whereNotNull('e.occurrence_id')
+            ->whereNotNull('e.colector')
+            ->where('e.colector', '!=', '')
+            ->where('t.rango', 'especie');
+
+        if ($especimenIdsExcluir !== []) {
+            $q->whereNotIn('e.id', $especimenIdsExcluir);
+        }
+
+        return $q->distinct()
+            ->orderBy('e.colector')
+            ->pluck('e.colector')
+            ->all();
+    }
+
+    private function aplicarFiltros(Builder $q, ?FiltrosPendientes $filtros): void
+    {
+        if ($filtros === null) {
+            return;
+        }
+
+        if ($filtros->busquedaCatalogo !== null) {
+            $q->where('e.occurrence_id', 'ILIKE', '%'.$filtros->busquedaCatalogo.'%');
+        }
+
+        if ($filtros->busquedaTaxonomia !== null) {
+            $q->where('t.nombre_cientifico', 'ILIKE', '%'.$filtros->busquedaTaxonomia.'%');
+        }
+
+        if ($filtros->fechaDesde !== null) {
+            $q->where('e.fecha_colecta', '>=', $filtros->fechaDesde);
+        }
+
+        if ($filtros->fechaHasta !== null) {
+            $q->where('e.fecha_colecta', '<=', $filtros->fechaHasta);
+        }
+
+        if ($filtros->colector !== null) {
+            $q->where('e.colector', $filtros->colector);
+        }
+    }
+
+    /**
+     * Resuelve familia y género para un conjunto de taxon_ids mediante CTE recursivo.
+     *
+     * @param  list<int|string>  $taxonIds
+     * @return array<int|string, object> taxon_id => { family, genus }
+     */
+    private function resolverFamiliaGenero(array $taxonIds): array
+    {
+        if ($taxonIds === []) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($taxonIds), '?'));
+
+        $filas = DB::select("
+            WITH RECURSIVE ancestors AS (
+                SELECT t.id, t.nombre_cientifico, t.rango, t.padre_id, t.id AS origin_id
+                FROM taxonomia.taxones t
+                WHERE t.id IN ($placeholders)
+                UNION ALL
+                SELECT t.id, t.nombre_cientifico, t.rango, t.padre_id, a.origin_id
+                FROM taxonomia.taxones t
+                INNER JOIN ancestors a ON t.id = a.padre_id
+            )
+            SELECT
+                origin_id,
+                MAX(CASE WHEN rango = 'familia' THEN nombre_cientifico END) AS family,
+                MAX(CASE WHEN rango = 'genero'  THEN nombre_cientifico END) AS genus
+            FROM ancestors
+            GROUP BY origin_id
+        ", $taxonIds);
+
+        $indexado = [];
+        foreach ($filas as $fila) {
+            $indexado[$fila->origin_id] = $fila;
+        }
+
+        return $indexado;
+    }
+
     /**
      * @param  list<string>  $occurrenceIds
      * @return DatosEspecimenProveedor[]
@@ -180,17 +341,22 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
         // El árbol construye el nombre con: si taxon ya empieza con el género → usarlo tal cual,
         // si no → genus + ' ' + taxon. Replicamos esa misma lógica en SQL para que el nombre
         // pasado desde $this->taxon (Livewire) coincida con lo que devuelve el arbol builder.
+        //
+        // Comparación case-insensitive y con espacios normalizados: el chatbot puede recibir
+        // el nombre científico del LLM con casing arbitrario o con doble espacio.
+        $normalizado = preg_replace('/\s+/', ' ', trim($scientificName)) ?? $scientificName;
+
         $filas = DB::table('taxonomia.especimenes as e')
             ->join('taxonomia.taxones as t', 't.id', '=', 'e.taxon_id')
             ->join('taxonomia.taxones as tx_genus', 'tx_genus.id', '=', 't.padre_id')
             ->leftJoin('taxonomia.muestras_colecta as mc', 'mc.id', '=', 'e.muestra_id')
             ->whereNotNull('e.occurrence_id')
             ->whereRaw(
-                "CASE WHEN t.nombre_cientifico LIKE (tx_genus.nombre_cientifico || ' %')
-                      THEN t.nombre_cientifico
-                      ELSE tx_genus.nombre_cientifico || ' ' || t.nombre_cientifico
-                 END = ?",
-                [$scientificName]
+                "LOWER(CASE WHEN t.nombre_cientifico LIKE (tx_genus.nombre_cientifico || ' %')
+                            THEN t.nombre_cientifico
+                            ELSE tx_genus.nombre_cientifico || ' ' || t.nombre_cientifico
+                       END) = LOWER(?)",
+                [$normalizado]
             )
             ->select([
                 'e.id',

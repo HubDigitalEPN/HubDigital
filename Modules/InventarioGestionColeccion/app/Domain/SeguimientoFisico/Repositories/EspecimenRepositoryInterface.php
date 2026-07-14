@@ -106,10 +106,20 @@ interface EspecimenRepositoryInterface
      *   motivoRevision?: string,
      *   paraRevision?: bool,
      *   limit?: int,
+     *   offset?: int,
      * }  $filtros
      * @return Especimen[]
      */
     public function buscarConFiltros(array $filtros): array;
+
+    /**
+     * Cuenta cuántos especímenes cumplen los mismos filtros que `buscarConFiltros`
+     * (ignorando `limit`/`offset`). Permite paginación server-side: se cuenta el
+     * total real y se traen solo las filas de la página pedida.
+     *
+     * @param  array<string, mixed>  $filtros  Mismos filtros que buscarConFiltros.
+     */
+    public function contarConFiltros(array $filtros): int;
 
     /**
      * Cuenta cuántos especímenes están enganchados a cada `muestra_id` del
@@ -121,6 +131,14 @@ interface EspecimenRepositoryInterface
      * @return array<string, int>
      */
     public function contarPorMuestraIds(array $muestraIds): array;
+
+    /**
+     * Lista los especímenes enganchados a una `muestra_id` (drill-down de la
+     * bandeja de muestras: ver qué especímenes concretos contiene el lote).
+     *
+     * @return Especimen[]
+     */
+    public function buscarPorMuestraId(string $muestraId, int $limite = 500): array;
 
     /**
      * Agrupa los `localidad_verbatim` con `localidad_id IS NULL`. Devuelve
@@ -191,6 +209,22 @@ interface EspecimenRepositoryInterface
     public function marcarRevisionPorCatalogNumber(string $catalogNumber, string $motivo): int;
 
     /**
+     * Variante selectiva de `confirmarRevisionPorCatalogNumber`: confirma la
+     * revisión SOLO de los especímenes indicados por id. Devuelve filas afectadas.
+     *
+     * @param  string[]  $ids
+     */
+    public function confirmarRevisionPorIds(array $ids): int;
+
+    /**
+     * Variante selectiva de `marcarRevisionPorCatalogNumber`: marca para revisión
+     * SOLO los especímenes indicados por id, con el motivo dado.
+     *
+     * @param  string[]  $ids
+     */
+    public function marcarRevisionPorIds(array $ids, string $motivo): int;
+
+    /**
      * Agrupa los `fecha_verbatim` cuyo `fecha_colecta` es null/vacío.
      * Pares verbatim => conteo, ordenados por conteo desc, paginado.
      *
@@ -199,6 +233,21 @@ interface EspecimenRepositoryInterface
     public function agruparFechaVerbatimsPendientes(int $limit, int $offset): array;
 
     public function contarFechaVerbatimsPendientes(): int;
+
+    /**
+     * "Falta de información": especímenes que NO se pueden resolver por revisión
+     * porque el Excel no trae dato de origen. Cuentan los que tienen el enlace
+     * canónico nulo Y el verbatim nulo/vacío (no hay texto que enlazar).
+     *
+     *  - taxón:     taxon_id NULL     y taxon_verbatim NULL/''
+     *  - fecha:     fecha_colecta NULL y fecha_verbatim NULL/''
+     *  - localidad: localidad_id NULL y localidad_verbatim NULL/''
+     */
+    public function contarTaxonSinDatoOrigen(): int;
+
+    public function contarFechaSinDatoOrigen(): int;
+
+    public function contarLocalidadSinDatoOrigen(): int;
 
     /**
      * Asigna `fecha_colecta` (y opcionalmente `fecha_colecta_fin` para rangos)
@@ -220,4 +269,52 @@ interface EspecimenRepositoryInterface
      * @return int[]
      */
     public function filasOrigenExistentes(array $filasOrigen): array;
+
+    /**
+     * Lista los especímenes concretos que caen en un grupo `fecha_verbatim`
+     * pendiente (aún sin `fecha_colecta`). Permite que el curador vea y elija
+     * uno por uno en la bandeja de revisión, en vez de aplicar en bloque.
+     *
+     * @return Especimen[]
+     */
+    public function buscarPorFechaVerbatimPendiente(string $verbatim, int $limit = 500): array;
+
+    /**
+     * Lista los especímenes de un grupo `taxon_verbatim` pendiente (sin taxon_id).
+     *
+     * @return Especimen[]
+     */
+    public function buscarPorTaxonVerbatimPendiente(string $verbatim, int $limit = 500): array;
+
+    /**
+     * Lista los especímenes de un grupo `localidad_verbatim` pendiente (sin localidad_id).
+     *
+     * @return Especimen[]
+     */
+    public function buscarPorLocalidadVerbatimPendiente(string $verbatim, int $limit = 500): array;
+
+    /**
+     * Asigna `fecha_colecta` (y opcional `fecha_colecta_fin`) SOLO a los
+     * especímenes indicados por id que aún no tengan fecha. Devuelve el número
+     * de filas afectadas. Es la variante selectiva de `enlazarFechaPorVerbatim`.
+     *
+     * @param  string[]  $ids
+     */
+    public function enlazarFechaPorIds(array $ids, string $fechaInicio, ?string $fechaFin = null): int;
+
+    /**
+     * Enlaza al taxón canónico SOLO los especímenes indicados por id que aún no
+     * tengan taxón. Variante selectiva de `enlazarTaxonPorVerbatim`.
+     *
+     * @param  string[]  $ids
+     */
+    public function enlazarTaxonPorIds(array $ids, string $taxonId): int;
+
+    /**
+     * Enlaza a la localidad canónica SOLO los especímenes indicados por id que
+     * aún no tengan localidad. Variante selectiva de `enlazarLocalidadPorVerbatim`.
+     *
+     * @param  string[]  $ids
+     */
+    public function enlazarLocalidadPorIds(array $ids, string $localidadId): int;
 }

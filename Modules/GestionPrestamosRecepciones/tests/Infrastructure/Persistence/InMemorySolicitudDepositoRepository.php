@@ -6,6 +6,7 @@ namespace Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Persistence;
 
 use Modules\GestionPrestamosRecepciones\Domain\Entities\SolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\CodigoQRLote;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\NumeroSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
 
@@ -36,6 +37,17 @@ final class InMemorySolicitudDepositoRepository implements SolicitudDepositoRepo
     public function buscarPorId(SolicitudDepositoId $id): ?SolicitudDeposito
     {
         return $this->store[(string) $id] ?? null;
+    }
+
+    public function buscarPorCodigoQR(CodigoQRLote $codigoQR): ?SolicitudDeposito
+    {
+        foreach ($this->store as $solicitud) {
+            if ($solicitud->codigoQR()?->equals($codigoQR)) {
+                return $solicitud;
+            }
+        }
+
+        return null;
     }
 
     public function contarPorInvestigadorYTipoEnAnioActual(string $investigadorId, string $tipoTramite): int

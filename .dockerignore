@@ -1,0 +1,61 @@
+# Version control
+.git
+.github
+.gitattributes
+
+# IDE / AI tools
+.vscode
+.idea
+.nova
+.zed
+.fleet
+.editorconfig
+.claude
+.ai
+.mcp.json
+boost.json
+
+# Node - rebuilt in frontend stage
+node_modules
+Modules/*/node_modules
+
+# PHP vendor - rebuilt in vendor stage
+vendor
+
+# Secrets - never bake into image
+.env
+.env.*
+auth.json
+
+# Compiled artifacts (copied from build stages instead)
+public/hot
+public/storage
+public/build
+public/build-*
+
+# Tests
+tests
+.phpunit.cache
+.phpunit.result.cache
+phpunit.xml
+behat.php
+pint.json
+Modules/*/tests
+
+# Docs and scripts not needed in production
+docs
+postman
+get-docker.sh
+pluck('migration')
+*.md
+CLAUDE.md.local-backup
+
+# Storage: completamente excluida del build context.
+# El Dockerfile crea la estructura con mkdir -p.
+# El contenido real se monta como bind volume en docker-compose.yml.
+# Excluir evita que Docker intente leer archivos con permisos restringidos
+# (firmas, documentos de identidad, actas) y previene filtración de datos sensibles.
+storage/
+
+# Bootstrap cache (populated by artisan cache commands at deploy time)
+bootstrap/cache/*.php

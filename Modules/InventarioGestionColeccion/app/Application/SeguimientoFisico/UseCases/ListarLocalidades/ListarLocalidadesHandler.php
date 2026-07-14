@@ -47,6 +47,7 @@ final class ListarLocalidadesHandler
                 country: $l->country(),
                 stateProvince: $l->stateProvince(),
                 municipality: $l->municipality(),
+                geodeticDatum: $l->geodeticDatum(),
             ),
             $localidades,
         );

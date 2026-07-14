@@ -25,7 +25,8 @@ final class ConsultarGaleriaTaxonHandler
         $imagenes = $this->repoImagenes->listarPorSubarbol($nivel, $input->valorTaxon);
         $defecto = $this->repoDefectos->obtener($nivel, $input->valorTaxon);
 
-        // R8: la portada por defecto se devuelve primero.
+        // R8: la portada por defecto se devuelve primero; el resto se ordena
+        // alfabéticamente por nombre para agrupar visualmente las vistas.
         $portada = [];
         $resto = [];
 
@@ -36,6 +37,14 @@ final class ConsultarGaleriaTaxonHandler
                 $resto[] = $imagen;
             }
         }
+
+        usort(
+            $resto,
+            fn (ImagenTaxonomica $a, ImagenTaxonomica $b): int => strnatcasecmp(
+                $a->archivo()->nombreOriginal,
+                $b->archivo()->nombreOriginal,
+            ),
+        );
 
         $ordenadas = array_merge($portada, $resto);
 

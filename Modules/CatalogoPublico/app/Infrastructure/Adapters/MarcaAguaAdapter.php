@@ -18,17 +18,24 @@ final class MarcaAguaAdapter implements GeneradorMarcaAguaPort
         $image = ImageManager::usingDriver(new Driver)->decodeBinary($contenido);
 
         // Tamaño relativo al ancho de la imagen para que sea legible en cualquier resolución.
-        $tamanio = (int) max(24, $image->width() * 0.07);
+        $tamanio = (int) max(12, $image->width() * 0.025);
 
-        // Centrada horizontalmente y elevada por encima del centro vertical.
-        $x = (int) ($image->width() / 2);
-        $y = (int) ($image->height() * 0.4);
+        // Esquina inferior izquierda, con un margen proporcional al ancho.
+        $margen = (int) max(8, $image->width() * 0.015);
+        $x = $margen;
+        $y = $image->height() - $margen;
 
-        $image->text($texto, $x, $y, function (FontFactory $font) use ($tamanio): void {
+        // Atribución bajo Creative Commons Attribution 4.0 International (CC BY 4.0):
+        // «Autor Año · CC BY 4.0». El símbolo © se omite porque la obra se publica bajo
+        // licencia abierta, siguiendo la convención de atribución compacta de CC
+        // (https://wiki.creativecommons.org/wiki/Best_practices_for_attribution).
+        $atribucion = $texto.' '.date('Y').' · CC BY 4.0';
+
+        $image->text($atribucion, $x, $y, function (FontFactory $font) use ($tamanio): void {
             $font->filename(self::FUENTE);
             $font->size($tamanio);
-            $font->color('rgba(255, 255, 255, 0.85)');
-            $font->align('center', 'center');
+            $font->color('rgba(0, 0, 0, 0.85)');
+            $font->align('left', 'bottom');
         });
 
         return (string) $image->encode();

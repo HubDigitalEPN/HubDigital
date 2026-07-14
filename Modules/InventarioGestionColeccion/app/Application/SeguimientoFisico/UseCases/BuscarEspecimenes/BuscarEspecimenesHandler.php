@@ -31,15 +31,21 @@ final class BuscarEspecimenesHandler
     {
         if (! $input->tieneFiltros()) {
             // Sin filtros, devolvemos vacío para evitar cargar miles de filas.
-            return new BuscarEspecimenesOutput(items: []);
+            return $this->salidaVacia($input);
         }
 
         // Resolver taxa por nombre y/o familia.
         $taxonIds = $this->resolverTaxonIds($input);
         if ($taxonIds === false) {
             // Se pidió filtro taxonómico pero no hay matches: resultado vacío.
-            return new BuscarEspecimenesOutput(items: []);
+            return $this->salidaVacia($input);
         }
+
+        $paginado = $input->page !== null;
+        $perPage = max(1, $input->perPage);
+        $paginaActual = $paginado ? max(1, $input->page) : 1;
+        $limit = $paginado ? $perPage : $input->limit;
+        $offset = $paginado ? ($paginaActual - 1) * $perPage : 0;
 
         $filtros = [
             'taxonIds' => $taxonIds,
@@ -54,14 +60,48 @@ final class BuscarEspecimenesHandler
             'estadoRevision' => $input->estadoRevision,
             'motivoRevision' => $input->motivoRevision,
             'paraRevision' => $input->paraRevision,
-            'limit' => $input->limit,
+            'limit' => $limit,
+            'offset' => $offset,
         ];
-        // Limpia las claves null para que el repo no filtre por ellas.
+        // Limpia las claves null para que el repo no filtre por ellas. `offset=0`
+        // es un valor válido y array_filter lo conserva (0 !== null).
         $filtros = array_filter($filtros, fn ($v) => $v !== null && $v !== '' && $v !== []);
 
         $especimenes = $this->especimenRepo->buscarConFiltros($filtros);
 
-        return new BuscarEspecimenesOutput(items: $this->mapearItems($especimenes));
+        if ($paginado) {
+            $total = $this->especimenRepo->contarConFiltros($filtros);
+            $totalPaginas = $total > 0 ? (int) ceil($total / $perPage) : 1;
+
+            return new BuscarEspecimenesOutput(
+                items: $this->mapearItems($especimenes),
+                total: $total,
+                page: $paginaActual,
+                perPage: $perPage,
+                totalPaginas: $totalPaginas,
+            );
+        }
+
+        return new BuscarEspecimenesOutput(
+            items: $this->mapearItems($especimenes),
+            total: count($especimenes),
+            page: 1,
+            perPage: $limit,
+            totalPaginas: 1,
+        );
+    }
+
+    private function salidaVacia(BuscarEspecimenesInput $input): BuscarEspecimenesOutput
+    {
+        $paginado = $input->page !== null;
+
+        return new BuscarEspecimenesOutput(
+            items: [],
+            total: 0,
+            page: $paginado ? max(1, $input->page) : 1,
+            perPage: $paginado ? max(1, $input->perPage) : $input->limit,
+            totalPaginas: 1,
+        );
     }
 
     /**
@@ -140,6 +180,7 @@ final class BuscarEspecimenesHandler
             'fechaColectaFin' => $e->fechaColectaFin(),
             'fechaVerbatim' => $e->fechaVerbatim(),
             'colector' => $e->colector(),
+            'entidadDepositanteId' => $e->entidadDepositanteId(),
             'estado' => $e->estado()->value,
             'occurrenceId' => $e->occurrenceId(),
             'catalogNumber' => $e->catalogNumber(),

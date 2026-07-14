@@ -8,7 +8,7 @@ use Modules\CatalogoPublico\Domain\ValueObjects\ArchivoImagen;
 
 interface AlmacenamientoImagenesPort
 {
-    public function guardar(string $contenido, string $nombreOriginal): ArchivoImagen;
+    public function guardar(string $contenido, string $nombreDeseado): ArchivoImagen;
 
     public function eliminar(ArchivoImagen $archivo): void;
 

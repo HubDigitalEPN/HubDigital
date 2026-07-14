@@ -1,10 +1,12 @@
 @props([
     'codigo',
+    'contenido' => null,
     'tamanio' => 180,
 ])
 
 @php
-    $svgQr = \Modules\GestionPrestamosRecepciones\Infrastructure\Services\GeneradorQrSvg::svg($codigo, (int) $tamanio);
+    // El QR codifica $contenido (p. ej. la URL del resolver) y muestra $codigo legible.
+    $svgQr = \Modules\GestionPrestamosRecepciones\Infrastructure\Services\GeneradorQrSvg::svg($contenido ?? $codigo, (int) $tamanio);
 @endphp
 
 <div {{ $attributes->merge(['class' => 'flex flex-col items-center gap-3']) }}>

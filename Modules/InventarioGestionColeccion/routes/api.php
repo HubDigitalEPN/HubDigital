@@ -14,8 +14,8 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function (): void {
         ->prefix('seguimiento-fisico')
         ->name('api.v1.seguimiento-fisico.')
         ->group(function (): void {
-            Route::post('eventos', [SeguimientoFisicoController::class, 'procesarEvento'])
-                ->name('eventos');
+            Route::post('sincronizaciones', [SeguimientoFisicoController::class, 'procesarSincronizacion'])
+                ->name('sincronizaciones');
         });
 
     // --- Gestión de registros taxonómicos ---

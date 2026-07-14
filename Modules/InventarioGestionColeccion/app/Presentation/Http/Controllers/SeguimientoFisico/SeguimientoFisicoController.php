@@ -6,43 +6,44 @@ namespace Modules\InventarioGestionColeccion\Presentation\Http\Controllers\Segui
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
-use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ProcesarEventoEsp32\ProcesarEventoEsp32Handler;
-use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ProcesarEventoEsp32\ProcesarEventoEsp32Input;
-use Modules\InventarioGestionColeccion\Presentation\Http\Requests\SeguimientoFisico\ProcesarEventoEsp32Request;
-use Modules\InventarioGestionColeccion\Presentation\Http\Resources\SeguimientoFisico\ProcesarEventoEsp32Resource;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ProcesarSincronizacionEsp32\ProcesarSincronizacionEsp32Handler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ProcesarSincronizacionEsp32\ProcesarSincronizacionEsp32Input;
+use Modules\InventarioGestionColeccion\Presentation\Http\Requests\SeguimientoFisico\ProcesarSincronizacionEsp32Request;
+use Modules\InventarioGestionColeccion\Presentation\Http\Resources\SeguimientoFisico\ProcesarSincronizacionEsp32Resource;
 
 /**
- * Punto de entrada HTTP de la API REST que consume el ESP32. Traduce la petición
- * validada al Input del caso de uso, delega la lógica en el Handler y envuelve el
- * resultado en un Resource JSON; no contiene reglas de negocio (capa de presentación).
+ * Punto de entrada HTTP que consume el ESP32 al finalizar cada barrido TDM.
+ * Recibe el snapshot completo del gabinete y delega la reconciliación al handler;
+ * no contiene reglas de negocio (capa de presentación pura).
  */
 final class SeguimientoFisicoController extends Controller
 {
-    /**
-     * @param  ProcesarEventoEsp32Handler  $eventoEsp32Handler  Caso de uso que ingiere el
-     *                                                          evento de barrido del ESP32 y coordina ubicación, alertas y notificaciones.
-     */
     public function __construct(
-        private readonly ProcesarEventoEsp32Handler $eventoEsp32Handler,
+        private readonly ProcesarSincronizacionEsp32Handler $sincronizacionHandler,
     ) {}
 
     /**
-     * Recibe un evento de presencia del ESP32 (tag entró o salió de una ranura), lo
-     * arma como Input, ejecuta el caso de uso y responde 200 con el estado resultante
-     * de la caja para que el firmware confirme el registro.
+     * Recibe el snapshot completo de las 25 ranuras, lo mapea al Input del caso de uso
+     * y devuelve el resumen de la reconciliación al firmware para su confirmación.
      */
-    public function procesarEvento(ProcesarEventoEsp32Request $request): JsonResponse
+    public function procesarSincronizacion(ProcesarSincronizacionEsp32Request $request): JsonResponse
     {
-        $input = new ProcesarEventoEsp32Input(
-            tagUid: $request->validated('tag_uid'),
-            gabineteId: $request->validated('gabinete_id'),
-            slotIndex: $request->validated('slot_index'),
-            evento: $request->validated('evento'),
+        $lecturas = array_map(
+            fn (array $l) => [
+                'slotIndex' => $l['slot_index'],
+                'tagUid' => $l['tag_uid'] ?? null,
+            ],
+            $request->validated('lecturas'),
         );
 
-        $output = $this->eventoEsp32Handler->handle($input);
+        $input = new ProcesarSincronizacionEsp32Input(
+            gabineteId: $request->validated('gabinete_id'),
+            lecturas: $lecturas,
+        );
 
-        return (new ProcesarEventoEsp32Resource($output))
+        $output = $this->sincronizacionHandler->handle($input);
+
+        return (new ProcesarSincronizacionEsp32Resource($output))
             ->response()
             ->setStatusCode(200);
     }

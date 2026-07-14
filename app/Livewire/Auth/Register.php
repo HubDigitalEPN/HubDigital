@@ -30,6 +30,12 @@ class Register extends Component
     #[Validate('required|same:password')]
     public string $password_confirmation = '';
 
+    // Datos profesionales del depositante para el Acta recepción-depósito.
+    // Solo se solicitan (y se validan) cuando el rol elegido es "depositante".
+    public string $cargo = '';
+
+    public string $institucion = '';
+
     public function submit(): void
     {
         $this->validate();
@@ -40,6 +46,15 @@ class Register extends Component
             return;
         }
 
+        $esDepositante = $this->role === 'depositante';
+
+        if ($esDepositante) {
+            $this->validate([
+                'cargo' => 'required|string|max:255',
+                'institucion' => 'required|string|max:255',
+            ]);
+        }
+
         try {
             $user = User::create([
                 'first_name' => $this->first_name,
@@ -47,6 +62,8 @@ class Register extends Component
                 'email' => $this->email,
                 'password' => $this->password,
                 'rol' => RolUsuario::from(strtoupper($this->role)),
+                'cargo' => $esDepositante ? $this->cargo : null,
+                'institucion' => $esDepositante ? $this->institucion : null,
             ]);
         } catch (UniqueConstraintViolationException) {
             $this->addError('form', 'No se pudo completar el registro. Verifica los datos e intenta de nuevo.');

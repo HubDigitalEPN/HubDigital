@@ -1,6 +1,7 @@
 <?php
 
 use App\Concerns\ProfileValidationRules;
+use App\Enums\RolUsuario;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
@@ -14,6 +15,8 @@ new #[Title('Configuración de perfil')] class extends Component {
     public string $first_name = '';
     public string $last_name = '';
     public string $email = '';
+    public string $cargo = '';
+    public string $institucion = '';
 
     /**
      * Mount the component.
@@ -23,6 +26,18 @@ new #[Title('Configuración de perfil')] class extends Component {
         $this->first_name = Auth::user()->first_name;
         $this->last_name = Auth::user()->last_name;
         $this->email = Auth::user()->email;
+        $this->cargo = Auth::user()->cargo ?? '';
+        $this->institucion = Auth::user()->institucion ?? '';
+    }
+
+    /**
+     * Indica si el usuario es depositante: solo ellos declaran cargo e institución
+     * (datos usados en el Acta recepción-depósito).
+     */
+    #[Computed]
+    public function esDepositante(): bool
+    {
+        return Auth::user()->rol === RolUsuario::DEPOSITANTE;
     }
 
     /**
@@ -32,7 +47,14 @@ new #[Title('Configuración de perfil')] class extends Component {
     {
         $user = Auth::user();
 
-        $validated = $this->validate($this->profileRules($user->id));
+        $reglas = $this->profileRules($user->id);
+
+        if ($this->esDepositante) {
+            $reglas['cargo'] = ['required', 'string', 'max:255'];
+            $reglas['institucion'] = ['required', 'string', 'max:255'];
+        }
+
+        $validated = $this->validate($reglas);
 
         $user->fill($validated);
 
@@ -88,6 +110,13 @@ new #[Title('Configuración de perfil')] class extends Component {
                 <flux:input wire:model="first_name" :label="__('Nombre')" type="text" required autofocus autocomplete="given-name" />
                 <flux:input wire:model="last_name" :label="__('Apellido')" type="text" required autocomplete="family-name" />
             </div>
+
+            @if ($this->esDepositante)
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <flux:input wire:model="cargo" :label="__('Cargo o posición')" type="text" required autocomplete="organization-title" placeholder="Ej. Coordinador Técnico de Proyectos" />
+                    <flux:input wire:model="institucion" :label="__('Institución o empresa')" type="text" required autocomplete="organization" placeholder="Ej. EcoSambito C. Ltda" />
+                </div>
+            @endif
 
             <div>
                 <flux:input wire:model="email" :label="__('Correo electrónico')" type="email" required autocomplete="email" />

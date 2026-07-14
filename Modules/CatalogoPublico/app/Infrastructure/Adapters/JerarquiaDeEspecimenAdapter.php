@@ -7,50 +7,73 @@ namespace Modules\CatalogoPublico\Infrastructure\Adapters;
 use Illuminate\Support\Facades\DB;
 use Modules\CatalogoPublico\Application\Ports\ProveedorJerarquiaDeEspecimenPort;
 use Modules\CatalogoPublico\Domain\ValueObjects\JerarquiaTaxonomica;
+use Modules\CatalogoPublico\Domain\ValueObjects\RangoTaxonomico;
 
 final class JerarquiaDeEspecimenAdapter implements ProveedorJerarquiaDeEspecimenPort
 {
     public function obtener(string $occurrenceID): ?JerarquiaTaxonomica
     {
-        // La jerarquía se resuelve igual que el árbol de divulgación: taxonomia.especimenes
-        // (solo divulgados) + la cadena de padres en taxonomia.taxones.
-        $fila = DB::table('taxonomia.especimenes as te')
-            ->join('divulgacion.especimenes_divulgables as ed', 'ed.especimen_id', '=', 'te.id')
-            ->join('taxonomia.taxones as tx_species', 'tx_species.id', '=', 'te.taxon_id')
-            ->leftJoin('taxonomia.taxones as tx_genus', 'tx_genus.id', '=', 'tx_species.padre_id')
-            ->leftJoin('taxonomia.taxones as tx_family', 'tx_family.id', '=', 'tx_genus.padre_id')
-            ->leftJoin('taxonomia.taxones as tx_order', 'tx_order.id', '=', 'tx_family.padre_id')
-            ->leftJoin('taxonomia.taxones as tx_class', 'tx_class.id', '=', 'tx_order.padre_id')
-            ->leftJoin('taxonomia.taxones as tx_phylum', 'tx_phylum.id', '=', 'tx_class.padre_id')
-            ->where('te.occurrence_id', $occurrenceID)
-            ->select([
-                'tx_species.nombre_cientifico as scientific_name',
-                'tx_genus.nombre_cientifico as genus',
-                'tx_family.nombre_cientifico as family',
-                'tx_order.nombre_cientifico as order',
-                'tx_class.nombre_cientifico as class',
-                'tx_phylum.nombre_cientifico as phylum',
-            ])
-            ->first();
+        $rangosCanonicos = [
+            RangoTaxonomico::Species->rangoBD(),
+            RangoTaxonomico::Genus->rangoBD(),
+            RangoTaxonomico::Family->rangoBD(),
+            RangoTaxonomico::Order->rangoBD(),
+            RangoTaxonomico::Class_->rangoBD(),
+            RangoTaxonomico::Phylum->rangoBD(),
+        ];
 
-        if ($fila === null
-            || $fila->genus === null || $fila->family === null
-            || $fila->order === null || $fila->class === null || $fila->phylum === null) {
+        // CTE recursivo: sube desde el taxón del espécimen hasta su raíz,
+        // conservando únicamente los nodos cuyo `rango` es canónico.
+        $sql = <<<'SQL'
+            WITH RECURSIVE cadena AS (
+                SELECT tx.id, tx.rango, tx.nombre_cientifico, tx.padre_id, 0 AS profundidad
+                FROM taxonomia.especimenes te
+                JOIN divulgacion.especimenes_divulgables ed ON ed.especimen_id = te.id
+                JOIN taxonomia.taxones tx ON tx.id = te.taxon_id
+                WHERE te.occurrence_id = ?
+                UNION ALL
+                SELECT p.id, p.rango, p.nombre_cientifico, p.padre_id, c.profundidad + 1
+                FROM cadena c
+                JOIN taxonomia.taxones p ON p.id = c.padre_id
+                WHERE c.profundidad < 20
+            )
+            SELECT rango, nombre_cientifico
+            FROM cadena
+            WHERE rango = ANY(?)
+        SQL;
+
+        $filas = DB::select($sql, [$occurrenceID, '{'.implode(',', $rangosCanonicos).'}']);
+
+        if ($filas === []) {
             return null;
         }
 
-        $genus = $fila->genus;
-        $scientificName = str_starts_with($fila->scientific_name, $genus.' ')
-            ? $fila->scientific_name
-            : $genus.' '.$fila->scientific_name;
+        $porRango = [];
+        foreach ($filas as $fila) {
+            $porRango[$fila->rango] = $fila->nombre_cientifico;
+        }
+
+        foreach ($rangosCanonicos as $rangoBD) {
+            if (! isset($porRango[$rangoBD])) {
+                return null;
+            }
+        }
+
+        $genus = $porRango[RangoTaxonomico::Genus->rangoBD()];
+        $scientificName = $porRango[RangoTaxonomico::Species->rangoBD()];
+
+        if (! str_starts_with($scientificName, $genus.' ')) {
+            $scientificName = $genus.' '.$scientificName;
+        }
+
         $epithet = substr($scientificName, strlen($genus) + 1);
 
         try {
             return JerarquiaTaxonomica::desde(
-                phylum: $fila->phylum,
-                class: $fila->class,
-                order: $fila->order,
-                family: $fila->family,
+                phylum: $porRango[RangoTaxonomico::Phylum->rangoBD()],
+                class: $porRango[RangoTaxonomico::Class_->rangoBD()],
+                order: $porRango[RangoTaxonomico::Order->rangoBD()],
+                family: $porRango[RangoTaxonomico::Family->rangoBD()],
                 genus: $genus,
                 specificEpithet: $epithet,
                 scientificName: $scientificName,

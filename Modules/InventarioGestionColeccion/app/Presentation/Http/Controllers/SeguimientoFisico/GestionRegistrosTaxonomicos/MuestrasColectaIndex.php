@@ -9,6 +9,8 @@ use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConfirmarMuestra\ConfirmarMuestraHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConfirmarMuestra\ConfirmarMuestraInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarEspecimenesDeMuestra\ListarEspecimenesDeMuestraHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarEspecimenesDeMuestra\ListarEspecimenesDeMuestraInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarMuestrasParaRevision\ListarMuestrasParaRevisionHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarMuestrasParaRevision\ListarMuestrasParaRevisionInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\MarcarMuestraParaRevision\MarcarMuestraParaRevisionHandler;
@@ -30,6 +32,12 @@ final class MuestrasColectaIndex extends Component
 
     public int $porPagina = 25;
 
+    /** Muestras expandidas (drill-down): muestraId => true. */
+    public array $expandido = [];
+
+    /** Especímenes cargados por muestra: muestraId => list<array>. */
+    public array $miembros = [];
+
     public ?string $successMessage = null;
 
     public ?string $errorMessage = null;
@@ -46,8 +54,44 @@ final class MuestrasColectaIndex extends Component
                 pagina: $this->pagina,
                 porPagina: $this->porPagina,
             ));
+
+            // Reencaje: si la página quedó fuera de rango tras confirmar/descartar
+            // la última muestra, vuelve al último válido y reconsulta (evita la
+            // bandeja vacía con un total que dice que aún hay muestras).
+            $maxPaginas = $output->total === 0
+                ? 1
+                : (int) ceil($output->total / max(1, $this->porPagina));
+            if ($this->pagina > $maxPaginas) {
+                $this->pagina = $maxPaginas;
+                $output = $handler->handle(new ListarMuestrasParaRevisionInput(
+                    pagina: $this->pagina,
+                    porPagina: $this->porPagina,
+                ));
+            }
+
             $this->muestras = $output->items;
             $this->total = $output->total;
+            // Los índices cambian al recargar; cierra los drill-downs abiertos.
+            $this->expandido = [];
+            $this->miembros = [];
+            $this->errorMessage = null;
+        } catch (\Throwable $e) {
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
+        }
+    }
+
+    /** Abre/cierra el detalle de una muestra; al abrirla carga sus especímenes. */
+    public function verEspecimenes(ListarEspecimenesDeMuestraHandler $handler, string $id): void
+    {
+        if (! empty($this->expandido[$id])) {
+            $this->expandido[$id] = false;
+
+            return;
+        }
+
+        try {
+            $this->miembros[$id] = $handler->handle(new ListarEspecimenesDeMuestraInput(muestraId: $id))->items;
+            $this->expandido[$id] = true;
             $this->errorMessage = null;
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);
@@ -58,6 +102,7 @@ final class MuestrasColectaIndex extends Component
     {
         $maxPaginas = (int) ceil($this->total / max(1, $this->porPagina));
         if ($this->pagina < $maxPaginas) {
+            $this->successMessage = null;
             $this->pagina++;
             $this->cargar($handler);
         }
@@ -66,40 +111,42 @@ final class MuestrasColectaIndex extends Component
     public function paginaAnterior(ListarMuestrasParaRevisionHandler $handler): void
     {
         if ($this->pagina > 1) {
+            $this->successMessage = null;
             $this->pagina--;
             $this->cargar($handler);
         }
     }
 
-    public function confirmar(ConfirmarMuestraHandler $handler, string $id): void
-    {
+    public function confirmar(
+        ConfirmarMuestraHandler $handler,
+        ListarMuestrasParaRevisionHandler $listHandler,
+        string $id,
+    ): void {
         try {
             $handler->handle(new ConfirmarMuestraInput(muestraId: $id));
-            foreach ($this->muestras as $i => $row) {
-                if (($row['id'] ?? null) === $id) {
-                    unset($this->muestras[$i]); // sale de la bandeja
-                    break;
-                }
-            }
-            $this->muestras = array_values($this->muestras);
-            $this->total = max(0, $this->total - 1);
             $this->successMessage = 'Muestra confirmada.';
-            $this->errorMessage = null;
+            // Recarga real: refleja el estado verdadero y reencaja la página si la
+            // muestra resuelta era la última de la última página.
+            $this->cargar($listHandler);
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 
-    public function descartar(MarcarMuestraParaRevisionHandler $handler, string $id): void
-    {
+    public function descartar(
+        MarcarMuestraParaRevisionHandler $handler,
+        ListarMuestrasParaRevisionHandler $listHandler,
+        string $id,
+    ): void {
         try {
             // Reutilizamos marcarParaRevision con motivo "descartada por curador" como mecanismo de descarte suave.
             $handler->handle(new MarcarMuestraParaRevisionInput(
                 muestraId: $id,
                 motivo: 'descartada por el curador en bandeja de revisión',
             ));
-            $this->successMessage = 'Muestra marcada con motivo de descarte.';
-            $this->errorMessage = null;
+            $this->successMessage = 'Muestra descartada (marcada con motivo de descarte).';
+            // Antes esta acción no actualizaba la bandeja; ahora recarga como confirmar().
+            $this->cargar($listHandler);
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }

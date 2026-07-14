@@ -13,19 +13,17 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Re
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ResolverCodigoQr\ResolverCodigoQrInput;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especimen;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Taxon;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\CodigoQrRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\TaxonRepositoryInterface;
 use Modules\InventarioGestionColeccion\Tests\Behat\Contexts\BaseContext;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryCodigoQrRepository;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryEspecimenRepository;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryTaxonRepository;
 use PHPUnit\Framework\Assert;
 
 final class LecturaQrMovilContext extends BaseContext
 {
-    // ── Handlers ─────────────────────────────────────────────────────────────
-
-    private GenerarCodigoQrHandler $generarQrHandler;
-
-    private ResolverCodigoQrHandler $resolverQrHandler;
-
     // ── Estado del escenario ─────────────────────────────────────────────────
 
     private ?Especimen $especimenExistente = null;
@@ -40,8 +38,12 @@ final class LecturaQrMovilContext extends BaseContext
 
     public function __construct()
     {
-        $this->generarQrHandler = $this->make(GenerarCodigoQrHandler::class);
-        $this->resolverQrHandler = $this->make(ResolverCodigoQrHandler::class);
+        // Repositorios en memoria por escenario. Los handlers se resuelven dentro de
+        // cada paso (no en el constructor) para usar siempre estas mismas instancias,
+        // aun cuando otros contextos de la suite reescriban los bindings al construirse.
+        self::$app->instance(TaxonRepositoryInterface::class, new InMemoryTaxonRepository);
+        self::$app->instance(EspecimenRepositoryInterface::class, new InMemoryEspecimenRepository);
+        self::$app->instance(CodigoQrRepositoryInterface::class, new InMemoryCodigoQrRepository);
     }
 
     // ── Helpers de fixture ───────────────────────────────────────────────────
@@ -69,7 +71,7 @@ final class LecturaQrMovilContext extends BaseContext
         );
         $repo->guardar($especimen);
 
-        $respuestaQr = $this->generarQrHandler->handle(
+        $respuestaQr = $this->make(GenerarCodigoQrHandler::class)->handle(
             new GenerarCodigoQrInput(especimenId: (string) $especimen->id())
         );
         $this->payloadQr = $respuestaQr->payload;
@@ -101,7 +103,7 @@ final class LecturaQrMovilContext extends BaseContext
         Assert::assertNotNull($this->payloadQr, 'Se esperaba un payload de QR del step Dado anterior');
 
         try {
-            $this->ultimaRespuesta = $this->resolverQrHandler->handle(
+            $this->ultimaRespuesta = $this->make(ResolverCodigoQrHandler::class)->handle(
                 new ResolverCodigoQrInput(payload: $this->payloadQr)
             );
         } catch (\Throwable $e) {
@@ -136,7 +138,7 @@ final class LecturaQrMovilContext extends BaseContext
         $this->payloadQr = 'payload-invalido-que-no-existe-en-el-sistema';
 
         $repo = $this->make(EspecimenRepositoryInterface::class);
-        $especimenes = $repo->listarTodos();
+        $especimenes = $repo->buscarTodos();
         foreach ($especimenes as $especimen) {
             Assert::assertNotSame(
                 $this->payloadQr,
@@ -152,7 +154,7 @@ final class LecturaQrMovilContext extends BaseContext
         Assert::assertNotNull($this->payloadQr, 'Se esperaba un payload del step Dado anterior');
 
         try {
-            $this->ultimaRespuesta = $this->resolverQrHandler->handle(
+            $this->ultimaRespuesta = $this->make(ResolverCodigoQrHandler::class)->handle(
                 new ResolverCodigoQrInput(payload: $this->payloadQr)
             );
         } catch (\Throwable $e) {

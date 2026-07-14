@@ -153,7 +153,7 @@
                 <div class="space-y-3">
                     @foreach($activas as $deposito)
                         <div class="rounded-lg border border-border border-l-4 {{ $leftBorder($deposito->estado) }} bg-surface shadow-sm px-5 py-4">
-                            @include('gestionprestamosrecepciones::investigador.mis-depositos._card', ['deposito' => $deposito, 'badgeVariant' => $badgeVariant])
+                            @include('gestionprestamosrecepciones::investigador.mis-depositos._card', ['deposito' => $deposito, 'badgeVariant' => $badgeVariant, 'estadoRecepcion' => ($recepciones[$deposito->id]->estado ?? null), 'actaFirmada' => (($recepciones[$deposito->id]->acta_firmada_ruta ?? null) !== null)])
                         </div>
                     @endforeach
                 </div>
@@ -170,7 +170,7 @@
                 <div class="space-y-3">
                     @foreach($historial as $deposito)
                         <div class="rounded-lg border border-border border-l-4 {{ $leftBorder($deposito->estado) }} bg-surface shadow-sm px-5 py-4 opacity-75">
-                            @include('gestionprestamosrecepciones::investigador.mis-depositos._card', ['deposito' => $deposito, 'badgeVariant' => $badgeVariant])
+                            @include('gestionprestamosrecepciones::investigador.mis-depositos._card', ['deposito' => $deposito, 'badgeVariant' => $badgeVariant, 'estadoRecepcion' => ($recepciones[$deposito->id]->estado ?? null), 'actaFirmada' => (($recepciones[$deposito->id]->acta_firmada_ruta ?? null) !== null)])
                         </div>
                     @endforeach
                 </div>

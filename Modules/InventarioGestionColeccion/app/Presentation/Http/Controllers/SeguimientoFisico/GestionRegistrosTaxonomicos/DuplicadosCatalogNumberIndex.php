@@ -13,7 +13,7 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Re
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ResolverDuplicadoDeCatalogNumber\ResolverDuplicadoDeCatalogNumberInput;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
 
-#[Layout('layouts.app', params: ['title' => 'Duplicados de catalog_number'])]
+#[Layout('layouts.app', params: ['title' => 'Números de catálogo duplicados'])]
 final class DuplicadosCatalogNumberIndex extends Component
 {
     use TraduceErroresPersistencia;
@@ -43,6 +43,9 @@ final class DuplicadosCatalogNumberIndex extends Component
 
     public int $minimoDuplicados = 2;
 
+    /** Ids seleccionados por grupo: idx => list<string>. Vacío = aplicar a todo el grupo. */
+    public array $seleccion = [];
+
     public ?string $successMessage = null;
 
     public ?string $errorMessage = null;
@@ -61,6 +64,21 @@ final class DuplicadosCatalogNumberIndex extends Component
                 porPagina: $this->porPagina,
             ));
 
+            // Reencaje: si la página quedó fuera de rango tras resolver el último
+            // grupo, vuelve al último válido y reconsulta (evita la lista vacía
+            // con un total que dice que aún hay grupos).
+            $maxPaginas = $output->totalGrupos === 0
+                ? 1
+                : (int) ceil($output->totalGrupos / $this->porPagina);
+            if ($this->pagina > $maxPaginas) {
+                $this->pagina = $maxPaginas;
+                $output = $handler->handle(new ListarCatalogNumberDuplicadosInput(
+                    minimoDuplicados: $this->minimoDuplicados,
+                    pagina: $this->pagina,
+                    porPagina: $this->porPagina,
+                ));
+            }
+
             $this->total = $output->totalGrupos;
             $this->items = array_map(fn ($item) => [
                 'catalogNumber' => $item->catalogNumber,
@@ -69,6 +87,8 @@ final class DuplicadosCatalogNumberIndex extends Component
                 'fechasDistintas' => $item->fechasDistintas,
                 'motivoInput' => '',
             ], $output->items);
+            // Los índices cambian al recargar; reinicia la selección.
+            $this->seleccion = [];
             $this->errorMessage = null;
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);
@@ -79,6 +99,7 @@ final class DuplicadosCatalogNumberIndex extends Component
     {
         $maxPaginas = $this->total === 0 ? 1 : (int) ceil($this->total / $this->porPagina);
         if ($this->pagina < $maxPaginas) {
+            $this->successMessage = null;
             $this->pagina++;
             $this->cargar($handler);
         }
@@ -87,13 +108,42 @@ final class DuplicadosCatalogNumberIndex extends Component
     public function paginaAnterior(ListarCatalogNumberDuplicadosHandler $handler): void
     {
         if ($this->pagina > 1) {
+            $this->successMessage = null;
             $this->pagina--;
             $this->cargar($handler);
         }
     }
 
-    public function marcarEventosDistintos(ResolverDuplicadoDeCatalogNumberHandler $handler, int $idx): void
+    public function seleccionarTodos(int $idx): void
     {
+        $this->seleccion[$idx] = array_map(
+            fn ($e) => $e['id'],
+            $this->items[$idx]['especimenes'] ?? [],
+        );
+    }
+
+    public function limpiarSeleccion(int $idx): void
+    {
+        $this->seleccion[$idx] = [];
+    }
+
+    /**
+     * Ids seleccionados del grupo, o null si no hay selección (aplica a todo).
+     *
+     * @return string[]|null
+     */
+    private function idsSeleccionados(int $idx): ?array
+    {
+        $ids = array_values($this->seleccion[$idx] ?? []);
+
+        return $ids === [] ? null : $ids;
+    }
+
+    public function marcarEventosDistintos(
+        ResolverDuplicadoDeCatalogNumberHandler $handler,
+        ListarCatalogNumberDuplicadosHandler $listHandler,
+        int $idx,
+    ): void {
         if (! isset($this->items[$idx])) {
             return;
         }
@@ -103,16 +153,22 @@ final class DuplicadosCatalogNumberIndex extends Component
                 catalogNumber: $this->items[$idx]['catalogNumber'],
                 decision: ResolverDuplicadoDeCatalogNumberInput::DECISION_EVENTOS_DISTINTOS,
                 motivo: '',
+                especimenIds: $this->idsSeleccionados($idx),
             ));
             $this->successMessage = "Confirmados como eventos distintos: {$output->especimenesAfectados} espécimen(es).";
-            $this->removerDelListado($idx);
+            // Recarga real: refleja el estado verdadero y reencaja la página si el
+            // grupo resuelto era el último de la última página.
+            $this->cargar($listHandler);
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
     }
 
-    public function marcarErrorCatalogacion(ResolverDuplicadoDeCatalogNumberHandler $handler, int $idx): void
-    {
+    public function marcarErrorCatalogacion(
+        ResolverDuplicadoDeCatalogNumberHandler $handler,
+        ListarCatalogNumberDuplicadosHandler $listHandler,
+        int $idx,
+    ): void {
         if (! isset($this->items[$idx])) {
             return;
         }
@@ -128,20 +184,13 @@ final class DuplicadosCatalogNumberIndex extends Component
                 catalogNumber: $this->items[$idx]['catalogNumber'],
                 decision: ResolverDuplicadoDeCatalogNumberInput::DECISION_ERROR_CATALOGACION,
                 motivo: $motivo,
+                especimenIds: $this->idsSeleccionados($idx),
             ));
             $this->successMessage = "Marcados con motivo para revisión: {$output->especimenesAfectados} espécimen(es).";
-            $this->removerDelListado($idx);
+            $this->cargar($listHandler);
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
-    }
-
-    private function removerDelListado(int $idx): void
-    {
-        unset($this->items[$idx]);
-        $this->items = array_values($this->items);
-        $this->total = max(0, $this->total - 1);
-        $this->errorMessage = null;
     }
 
     public function render(): View

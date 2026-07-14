@@ -22,7 +22,7 @@ class UnitTray
 {
     private function __construct(
         private readonly UnitTrayId $id,
-        private readonly CajaId $cajaId,
+        private CajaId $cajaId,
         private readonly int $numero,
         private ?ClasificacionTaxonomica $clasificacionDominante,
     ) {}
@@ -85,6 +85,15 @@ class UnitTray
     public function limpiarClasificacion(): void
     {
         $this->clasificacionDominante = null;
+    }
+
+    /**
+     * Reubica el tray a otra caja. La reclasificación de las cajas origen/destino
+     * la coordina la Application layer; aquí solo se reasigna la pertenencia.
+     */
+    public function moverACaja(CajaId $cajaDestino): void
+    {
+        $this->cajaId = $cajaDestino;
     }
 
     public function id(): UnitTrayId

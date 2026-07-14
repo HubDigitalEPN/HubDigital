@@ -135,6 +135,20 @@ final class EloquentSolicitudDepositoRepository implements SolicitudDepositoRepo
     }
 
     /**
+     * Busca una solicitud de depósito por el Código QR del lote que la rotula.
+     */
+    public function buscarPorCodigoQR(CodigoQRLote $codigoQR): ?SolicitudDeposito
+    {
+        $model = SolicitudDepositoEloquentModel::where('codigo_qr', (string) $codigoQR)->first();
+
+        if ($model === null) {
+            return null;
+        }
+
+        return $this->reconstituir($model);
+    }
+
+    /**
      * Cuenta cuántas solicitudes ha realizado un investigador de un tipo específico en el año actual.
      */
     public function contarPorInvestigadorYTipoEnAnioActual(string $investigadorId, string $tipoTramite): int

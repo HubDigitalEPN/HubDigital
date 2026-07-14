@@ -120,7 +120,7 @@
             <div>
                 <div class="mb-1 flex items-center gap-1">
                     <span class="text-xs font-medium text-white">
-                        Tipo de colección
+                        Tipo de recoleccion
                         <span class="font-normal text-white/50">(preparations)</span>
                     </span>
                     <flux:tooltip content="Forma en que los especímenes están preservados, por ejemplo húmedo o seco">

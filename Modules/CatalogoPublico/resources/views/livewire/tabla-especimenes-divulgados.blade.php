@@ -2,7 +2,7 @@
     {{-- Page header --}}
     <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <h1 class="font-display text-2xl font-bold text-blue-navy">Tabla de divulgación</h1>
+            <h1 class="font-display text-2xl font-bold text-blue-navy">Catálogo divulgado</h1>
             <p class="text-sm text-text-secondary">Especímenes publicados en el catálogo público</p>
         </div>
         <flux:button
@@ -11,7 +11,7 @@
             variant="primary"
             wire:navigate
         >
-            Sincronizar especímenes
+            Divulgar especímenes
         </flux:button>
     </div>
 
@@ -21,18 +21,54 @@
         </flux:callout>
     @endif
 
-    {{-- Search --}}
-    <div class="flex items-center gap-3">
-        <flux:input
-            wire:model.live.debounce.300ms="buscar"
-            icon="magnifying-glass"
-            placeholder="Buscar por nombre científico, occurrenceID o familia…"
-            class="max-w-sm"
-        />
-        @if($buscar !== '')
-            <flux:button wire:click="$set('buscar', '')" variant="ghost" size="sm" icon="x-mark">
-                Limpiar
-            </flux:button>
+    {{-- Barra de filtros --}}
+    <div class="rounded-lg border border-border bg-surface shadow-sm p-4">
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <flux:input
+                wire:model.live.debounce.300ms="busquedaCatalogo"
+                label="N.º de catálogo"
+                placeholder="Ej. EPN-000123"
+                icon="magnifying-glass"
+                size="sm"
+                clearable
+            />
+            <flux:input
+                wire:model.live.debounce.300ms="busquedaTaxonomia"
+                label="Taxonomía"
+                placeholder="Especie, género o familia"
+                icon="magnifying-glass"
+                size="sm"
+                clearable
+            />
+            <flux:input
+                type="date"
+                wire:model.live="fechaDesde"
+                label="Recolección desde"
+                size="sm"
+            />
+            <flux:input
+                type="date"
+                wire:model.live="fechaHasta"
+                label="Recolección hasta"
+                size="sm"
+            />
+            <flux:select
+                wire:model.live="colector"
+                label="Colector"
+                size="sm"
+            >
+                <flux:select.option value="">Todos</flux:select.option>
+                @foreach($this->colectoresDisponibles as $col)
+                    <flux:select.option value="{{ $col }}">{{ $col }}</flux:select.option>
+                @endforeach
+            </flux:select>
+        </div>
+        @if($this->tieneFiltros())
+            <div class="mt-3 flex justify-end">
+                <flux:button wire:click="limpiarFiltros" variant="ghost" size="sm" icon="x-mark">
+                    Limpiar filtros
+                </flux:button>
+            </div>
         @endif
     </div>
 
@@ -41,9 +77,9 @@
         <table class="w-full text-sm">
             <thead class="bg-blue-navy border-b border-border">
                 <tr>
-                    <th class="px-4 py-3 text-left font-medium text-white">Occurrence ID</th>
+                    <th class="px-4 py-3 text-left font-medium text-white">N.º de catálogo</th>
                     <th class="px-4 py-3 text-left font-medium text-white">Nombre científico</th>
-                    <th class="px-4 py-3 text-left font-medium text-white hidden md:table-cell">Type Status</th>
+                    <th class="px-4 py-3 text-left font-medium text-white hidden md:table-cell">Colector</th>
                     <th class="px-4 py-3 text-left font-medium text-white hidden lg:table-cell">Familia</th>
                     <th class="px-4 py-3 text-left font-medium text-white hidden xl:table-cell">Estado</th>
                     <th class="px-4 py-3 text-left font-medium text-white">Campos visibles</th>
@@ -62,7 +98,7 @@
                             </span>
                         </td>
                         <td class="px-4 py-3 hidden md:table-cell text-xs text-text-secondary">
-                            {{ @$especimen->type_status ?? '—' }}
+                            {{ $especimen->colector ?? '—' }}
                         </td>
                         <td class="px-4 py-3 hidden lg:table-cell text-sm text-text-secondary">
                             {{ $especimen->family ?? '—' }}
@@ -102,7 +138,7 @@
                                     size="sm"
                                     wire:navigate
                                 >
-                                    Sincronizar ahora
+                                    Divulgar ahora
                                 </flux:button>
                             </div>
                         </td>

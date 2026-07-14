@@ -32,6 +32,13 @@ return (new Config)
                         'Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\RecepcionValidacionLotesEspecimenesYDatos\AprobacionDocumentalSolicitudContext',
                     )
             )
+            ->withSuite(
+                (new Suite('RecepcionMuestrasFisicas'))
+                    ->withPaths($base.'/Modules/GestionPrestamosRecepciones/tests/Behat/Features/RecepcionValidacionLotesEspecimenesYDatos/recepcion_muestras_fisicas.feature')
+                    ->withContexts(
+                        'Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\RecepcionValidacionLotesEspecimenesYDatos\RecepcionMuestrasFisicasContext',
+                    )
+            )
     )
     ->withProfile(
         (new Profile('default'))
@@ -44,6 +51,8 @@ return (new Config)
                         // GestionContenidoTaxonomico
                         'Modules\CatalogoPublico\Tests\Behat\Contexts\GestionContenidoTaxonomico\PresentacionArbolTaxonomicoContext',
                         'Modules\CatalogoPublico\Tests\Behat\Contexts\GestionContenidoTaxonomico\GestionImagenesNivelTaxonomicoContext',
+                        // ChatBot
+                        'Modules\CatalogoPublico\Tests\Behat\Contexts\ChatBot\ConsultaEnLenguajeNaturalContext',
                     )
             )
             ->withSuite(
@@ -67,6 +76,7 @@ return (new Config)
                         // RecepcionValidacionLotesEspecimenesYDatos
                         'Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\RecepcionValidacionLotesEspecimenesYDatos\AprobacionDocumentalSolicitudContext',
                         'Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\RecepcionValidacionLotesEspecimenesYDatos\RecepcionMuestrasBiologicasContext',
+                        'Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\RecepcionValidacionLotesEspecimenesYDatos\RecepcionMuestrasFisicasContext',
                         'Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\RecepcionValidacionLotesEspecimenesYDatos\RegistroSolicitudDepositoContext',
                         'Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\RecepcionValidacionLotesEspecimenesYDatos\RevisionMatrizEspeciesContext',
                     )
@@ -81,6 +91,8 @@ return (new Config)
                         // TrazabilidadOperativaMovimientosCirculacion
                         'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\TrazabilidadOperativaMovimientosCirculacion\MonitoreoTiempoExtraccionContext',
                         'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\TrazabilidadOperativaMovimientosCirculacion\MapaUbicacionGuiaEspecimenesContext',
+                        'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\TrazabilidadOperativaMovimientosCirculacion\ReubicacionDigitalGuiadaContext',
+                        'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\TrazabilidadOperativaMovimientosCirculacion\TrazabilidadMovimientosContext',
                         // GestionRegistrosTaxonomicos
                         'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\GestionRegistrosTaxonomicos\RegistroTaxonContext',
                         'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\GestionRegistrosTaxonomicos\RegistroEspecimenContext',
@@ -92,6 +104,10 @@ return (new Config)
                         'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\GestionRegistrosTaxonomicos\GeneracionActaEntregaContext',
                         'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\GestionRegistrosTaxonomicos\RegistroLocalidadesContext',
                         'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\GestionRegistrosTaxonomicos\RegistroMuestrasColectaContext',
+                        // IdentificacionFisicaEspecimenes
+                        'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\IdentificacionFisicaEspecimenes\AsignacionGuidEspecimenContext',
+                        'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\IdentificacionFisicaEspecimenes\GeneracionCodigoQrContext',
+                        'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\IdentificacionFisicaEspecimenes\LecturaQrMovilContext',
                     )
             )
     );

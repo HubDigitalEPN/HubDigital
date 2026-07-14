@@ -8,7 +8,11 @@ use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionInvestigadorPort;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\ActaRecepcionFirmadaNotification;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\CodigoQrDisponibleNotification;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\OrdenAccionCorrectivaNotification;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\RecepcionConObservacionesNotification;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\RecepcionFinalizadaNotification;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\SolicitudRechazadaNotification;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
 
@@ -39,6 +43,53 @@ final class NotificacionInvestigadorAdapter implements NotificacionInvestigadorP
             numero: $deposito?->numero,
             comentario: $comentario,
         ), 'Rechazo de solicitud', $solicitudId);
+    }
+
+    public function notificarRecepcionFinalizada(string $solicitudId, string $investigadorId, string $estadoColeccion): string
+    {
+        $deposito = SolicitudDepositoEloquentModel::find($solicitudId);
+
+        return $this->notificar($investigadorId, new RecepcionFinalizadaNotification(
+            solicitudId: $solicitudId,
+            numero: $deposito?->numero,
+            estadoColeccion: $estadoColeccion,
+        ), 'Recepción finalizada', $solicitudId);
+    }
+
+    /**
+     * @param  list<string>  $observaciones
+     */
+    public function notificarRecepcionConObservaciones(string $solicitudId, string $investigadorId, array $observaciones): string
+    {
+        $deposito = SolicitudDepositoEloquentModel::find($solicitudId);
+
+        return $this->notificar($investigadorId, new RecepcionConObservacionesNotification(
+            solicitudId: $solicitudId,
+            numero: $deposito?->numero,
+            observaciones: $observaciones,
+        ), 'Recepción con observaciones', $solicitudId);
+    }
+
+    public function notificarActaRecepcionDisponible(string $solicitudId, string $investigadorId): string
+    {
+        $deposito = SolicitudDepositoEloquentModel::find($solicitudId);
+
+        return $this->notificar($investigadorId, new ActaRecepcionFirmadaNotification(
+            solicitudId: $solicitudId,
+            numero: $deposito?->numero,
+        ), 'Acta de recepción firmada disponible', $solicitudId);
+    }
+
+    public function notificarOrdenAccionCorrectiva(string $solicitudId, string $investigadorId, string $motivoFallo, string $accionCorrectiva): string
+    {
+        $deposito = SolicitudDepositoEloquentModel::find($solicitudId);
+
+        return $this->notificar($investigadorId, new OrdenAccionCorrectivaNotification(
+            solicitudId: $solicitudId,
+            numero: $deposito?->numero,
+            motivoFallo: $motivoFallo,
+            accionCorrectiva: $accionCorrectiva,
+        ), 'Orden de acción correctiva', $solicitudId);
     }
 
     /**

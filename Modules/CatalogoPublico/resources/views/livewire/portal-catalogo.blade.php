@@ -87,11 +87,8 @@
         <div class="bg-blue-navy">
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
                 <h1 class="font-display text-2xl font-bold text-white">
-                    Catálogo
+                    Catálogo del laboratorio de invertebrados
                 </h1>
-                <p class="mt-1 text-sm text-white/70">
-                    Centro de Conservación · Escuela Politécnica Nacional
-                </p>
                 @if($totalGlobal > 0)
                     <p class="mt-3 text-sm text-white/70">
                         <strong class="text-white tabular-nums">{{ number_format($totalGlobal) }}</strong>
@@ -454,11 +451,21 @@
                                 Especie sin imagen destacada
                             </div>
                         @else
-                            <div class="max-w-xs overflow-hidden rounded-lg border border-bio-green ring-2 ring-bio-green/30 bg-surface shadow-sm">
-                                <div class="aspect-square bg-bg-main">
-                                    <img src="{{ $portadaEspecie['url'] }}" alt="{{ $taxonActual }}" class="h-full w-full object-cover" loading="lazy" />
+                            <button
+                                type="button"
+                                @click="$dispatch('lightbox-open', { url: '{{ $portadaEspecie['url'] }}', alt: @js($taxonActual), filename: @js(str_replace(' ', '_', (string) $taxonActual)) })"
+                                class="group/portada block max-w-xs overflow-hidden rounded-lg border border-bio-green ring-2 ring-bio-green/30 bg-surface shadow-sm cursor-zoom-in text-left"
+                                title="Ver imagen completa"
+                            >
+                                <div class="relative aspect-square bg-bg-main">
+                                    <img src="{{ $portadaEspecie['url'] }}" alt="{{ $taxonActual }}" class="h-full w-full object-cover transition-transform group-hover/portada:scale-105" loading="lazy" />
+                                    <span class="absolute inset-0 flex items-end justify-end bg-blue-navy/0 p-2 transition-colors group-hover/portada:bg-blue-navy/20">
+                                        <span class="opacity-0 transition-opacity group-hover/portada:opacity-100 rounded-full bg-blue-navy/80 p-1.5 text-white">
+                                            <flux:icon name="magnifying-glass-plus" class="size-4" />
+                                        </span>
+                                    </span>
                                 </div>
-                            </div>
+                            </button>
                         @endif
                     </section>
 
@@ -498,10 +505,24 @@
                             </div>
                         @else
                             <div
+                                wire:ignore
                                 x-data="{
                                     puntos: {{ Js::from($puntosGeo) }},
                                     mapa: null,
                                     init() {
+                                        this.$nextTick(() => this.inicializarMapa());
+                                    },
+                                    inicializarMapa(reintentos = 0) {
+                                        // Con wire:navigate el <script> de Leaflet puede
+                                        // no haber terminado de cargar cuando Alpine
+                                        // ejecuta init(). Reintentamos hasta ~1s.
+                                        if (typeof L === 'undefined') {
+                                            if (reintentos < 20) {
+                                                setTimeout(() => this.inicializarMapa(reintentos + 1), 50);
+                                            }
+                                            return;
+                                        }
+
                                         this.mapa = L.map(this.$refs.mapaContainer, {
                                             scrollWheelZoom: false,
                                         });
@@ -528,6 +549,13 @@
                                             const grupo = L.featureGroup(marcadores);
                                             this.mapa.fitBounds(grupo.getBounds().pad(0.2));
                                         }
+
+                                        // Con wire:navigate el contenedor puede tener
+                                        // dimensiones aún no estables; forzamos el
+                                        // recálculo tras el primer paint.
+                                        requestAnimationFrame(() => {
+                                            if (this.mapa) this.mapa.invalidateSize();
+                                        });
 
                                         this.$cleanup(() => {
                                             if (this.mapa) {
@@ -734,12 +762,22 @@
                                             @if($numImagenes > 0)
                                                 <div x-show="abierto" x-collapse x-cloak class="mt-3 border-t border-border pt-3">
                                                     <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-                                                        @foreach($imagenesEspecimen as $img)
-                                                            <div class="overflow-hidden rounded-lg border border-border bg-bg-main">
-                                                                <div class="aspect-square">
-                                                                    <img src="{{ $img['url'] }}" alt="{{ $especimen->occurrence_id }}" class="h-full w-full object-cover" loading="lazy" />
+                                                        @foreach($imagenesEspecimen as $indice => $img)
+                                                            <button
+                                                                type="button"
+                                                                @click="$dispatch('lightbox-open', { url: '{{ $img['url'] }}', alt: @js($especimen->occurrence_id), filename: @js($especimen->occurrence_id.'_'.($indice + 1)) })"
+                                                                class="group/thumb-galeria overflow-hidden rounded-lg border border-border bg-bg-main cursor-zoom-in"
+                                                                title="Ver imagen completa"
+                                                            >
+                                                                <div class="relative aspect-square">
+                                                                    <img src="{{ $img['url'] }}" alt="{{ $especimen->occurrence_id }}" class="h-full w-full object-cover transition-transform group-hover/thumb-galeria:scale-105" loading="lazy" />
+                                                                    <span class="absolute inset-0 flex items-end justify-end bg-blue-navy/0 p-1.5 transition-colors group-hover/thumb-galeria:bg-blue-navy/20">
+                                                                        <span class="opacity-0 transition-opacity group-hover/thumb-galeria:opacity-100 rounded-full bg-blue-navy/80 p-1 text-white">
+                                                                            <flux:icon name="magnifying-glass-plus" class="size-3.5" />
+                                                                        </span>
+                                                                    </span>
                                                                 </div>
-                                                            </div>
+                                                            </button>
                                                         @endforeach
                                                     </div>
                                                 </div>
@@ -752,6 +790,93 @@
                         </div>
                     @endif
                 </div>
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════════
+             LIGHTBOX — visor de imagen completa
+             ══════════════════════════════════ --}}
+        <div
+            x-data="{
+                abierto: false,
+                url: '',
+                alt: '',
+                filename: 'imagen',
+                extension() {
+                    const limpia = (this.url || '').split('?')[0].split('#')[0];
+                    const punto = limpia.lastIndexOf('.');
+                    if (punto === -1) return 'jpg';
+                    const ext = limpia.substring(punto + 1).toLowerCase();
+                    return ext.length <= 5 ? ext : 'jpg';
+                },
+                nombreDescarga() {
+                    return (this.filename || 'imagen') + '.' + this.extension();
+                },
+            }"
+            x-on:lightbox-open.window="
+                url = $event.detail.url;
+                alt = $event.detail.alt || '';
+                filename = $event.detail.filename || 'imagen';
+                abierto = true;
+            "
+            x-on:keydown.escape.window="abierto = false"
+            x-show="abierto"
+            x-cloak
+            class="fixed inset-0 z-[10000] flex items-center justify-center"
+            role="dialog"
+            aria-modal="true"
+        >
+            <div
+                x-show="abierto"
+                x-transition:enter="transition ease-out duration-200"
+                x-transition:enter-start="opacity-0"
+                x-transition:enter-end="opacity-100"
+                x-transition:leave="transition ease-in duration-150"
+                x-transition:leave-start="opacity-100"
+                x-transition:leave-end="opacity-0"
+                @click="abierto = false"
+                class="absolute inset-0 bg-blue-navy/85 backdrop-blur-sm cursor-zoom-out"
+            ></div>
+
+            <div
+                x-show="abierto"
+                x-transition:enter="transition ease-out duration-200"
+                x-transition:enter-start="opacity-0 scale-95"
+                x-transition:enter-end="opacity-100 scale-100"
+                x-transition:leave="transition ease-in duration-150"
+                x-transition:leave-start="opacity-100 scale-100"
+                x-transition:leave-end="opacity-0 scale-95"
+                class="relative z-10 flex max-h-[92vh] max-w-[92vw] flex-col items-center gap-3"
+                @click.stop
+            >
+                <div class="absolute -top-3 right-0 flex items-center gap-2 -translate-y-full">
+                    <a
+                        :href="url"
+                        :download="nombreDescarga()"
+                        class="inline-flex items-center gap-1.5 rounded-lg bg-surface px-3 py-2 text-sm font-medium text-text-primary shadow-lg transition-colors hover:bg-bg-main"
+                        title="Descargar imagen"
+                    >
+                        <flux:icon name="arrow-down-tray" class="size-4" />
+                        <span class="hidden sm:inline">Descargar</span>
+                    </a>
+                    <button
+                        type="button"
+                        @click="abierto = false"
+                        class="inline-flex size-9 items-center justify-center rounded-lg bg-surface text-text-primary shadow-lg transition-colors hover:bg-error hover:text-white"
+                        aria-label="Cerrar"
+                        title="Cerrar (Esc)"
+                    >
+                        <flux:icon name="x-mark" class="size-5" />
+                    </button>
+                </div>
+
+                <img
+                    :src="url"
+                    :alt="alt"
+                    class="max-h-[92vh] max-w-[92vw] rounded-lg object-contain shadow-2xl"
+                />
+
+                <p x-show="alt" x-text="alt" class="rounded-full bg-surface/90 px-3 py-1 text-xs font-mono text-text-secondary shadow"></p>
             </div>
         </div>
     @endif

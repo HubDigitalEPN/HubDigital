@@ -12,6 +12,29 @@ interface ProveedorEspecimenesPort
     public function obtenerTodos(): array;
 
     /**
+     * Cuenta especímenes con occurrence_id, excluyendo los IDs indicados.
+     *
+     * @param  list<int|string>  $especimenIdsExcluir  IDs de taxonomia.especimenes.id a excluir
+     */
+    public function contar(array $especimenIdsExcluir = [], ?FiltrosPendientes $filtros = null): int;
+
+    /**
+     * Página de especímenes con occurrence_id, ordenados por occurrence_id ascendente.
+     *
+     * @param  list<int|string>  $especimenIdsExcluir  IDs de taxonomia.especimenes.id a excluir
+     * @return DatosEspecimenProveedor[]
+     */
+    public function obtenerPaginado(int $offset, int $limit, array $especimenIdsExcluir = [], ?FiltrosPendientes $filtros = null): array;
+
+    /**
+     * Lista de colectores distintos entre los especímenes pendientes (para poblar selects).
+     *
+     * @param  list<int|string>  $especimenIdsExcluir
+     * @return list<string>
+     */
+    public function obtenerColectoresPendientes(array $especimenIdsExcluir = []): array;
+
+    /**
      * @param  list<string>  $occurrenceIds
      * @return DatosEspecimenProveedor[]
      */

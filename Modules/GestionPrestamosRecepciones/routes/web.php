@@ -14,11 +14,13 @@ use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\Co
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\DetallePrestamo as CuradorDetallePrestamo;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\GestionarProrroga;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\PanelPrestamos;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\RecepcionFisicaLote;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\RegistrarCertificado;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\RevisarDeposito;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\RevisarSolicitud;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\ValidarActa;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\DescargarActaPdf;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\DescargarActaRecepcion;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ImprimirQrDeposito;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\BandejaActas as InvestigadorBandejaActas;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\BandejaPrestamos as InvestigadorBandejaPrestamos;
@@ -33,6 +35,7 @@ use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigad
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\SolicitarProrroga;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\SolicitudForm;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\VerificacionEntrega;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ResolverLoteQr;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ServirActaTransferenciaDeposito;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ServirDocumentoDeposito;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ServirDocumentoExportacion;
@@ -59,7 +62,11 @@ Route::middleware(['auth', 'verified'])
             ->where('indice', '[0-9]+')
             ->name('deposito.documento');
         Route::get('/deposito/{id}/qr.pdf', ImprimirQrDeposito::class)->name('deposito.qr-pdf');
+        Route::get('/lote/{codigo}', ResolverLoteQr::class)
+            ->where('codigo', 'LOTE-[A-Z0-9]{6}')
+            ->name('lote.resolver');
         Route::get('/deposito/{id}/acta-transferencia', ServirActaTransferenciaDeposito::class)->name('deposito.acta');
+        Route::get('/deposito/{id}/acta-recepcion.pdf', DescargarActaRecepcion::class)->name('deposito.acta-recepcion');
 
         // Investigador — solo usuarios con rol PRESTAMISTA
         Route::middleware('role:prestamista')->group(function () {
@@ -91,6 +98,7 @@ Route::middleware(['auth', 'verified'])
             Route::get('/curador/solicitud/{id}', RevisarSolicitud::class)->name('curador.solicitud.revisar');
             Route::get('/curador/depositos', BandejaDepositos::class)->name('curador.depositos');
             Route::get('/curador/deposito/{id}', RevisarDeposito::class)->name('curador.deposito.revisar');
+            Route::get('/curador/deposito/{id}/recepcion', RecepcionFisicaLote::class)->name('curador.deposito.recepcion');
             Route::get('/curador/actas', BandejaActas::class)->name('curador.actas');
             Route::get('/curador/acta/{id}/validar', ValidarActa::class)->name('curador.acta.validar');
             Route::get('/curador/prestamos', CuradorBandejaPrestamos::class)->name('curador.prestamos');

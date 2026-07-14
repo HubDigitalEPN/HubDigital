@@ -61,16 +61,43 @@ final class FilaCatalogoMapper
 
         // Localidad: verbatim explícito del CSV preferido. Luego verbatim_locality, luego locality_name.
         $localityName = $this->limpiar($normalizada['locality_name'] ?? null);
-        $localidadVerbatim = $this->limpiar(
+
+        // Fuente de la localidad: puede venir como una sola celda separada por comas
+        // en orden geográfico ("País, Provincia, Localidad, …").
+        $fuenteLocalidad = $this->limpiar(
             $normalizada['localidad_verbatim']
             ?? $normalizada['verbatim_locality']
             ?? $normalizada['locality_name']
             ?? null
         );
+        // Segmentos normalizados (por si viene "País, Provincia, Localidad, …").
+        $partes = $this->partesLocalidad($fuenteLocalidad);
+        // Verbatim: cadena normalizada, cada segmento con su propia caja. Se
+        // preserva entera para trazabilidad y para agrupar en la bandeja de
+        // revisión ("YASUNÍ" y "yasuní" caen en el mismo grupo).
+        $localidadVerbatim = $partes === [] ? null : implode(', ', $partes);
+
+        // Valores explícitos de sus propias columnas (se dejan crudos: no se
+        // normalizan para no dañar códigos como "USA").
         $country = $this->limpiar($normalizada['country'] ?? null);
         $stateProvince = $this->limpiar($normalizada['state_province'] ?? null);
         $municipality = $this->limpiar($normalizada['municipality'] ?? null);
-        $localidad = $localityName ?? $country ?? '';
+
+        // Si la localidad viene en una sola celda separada por comas, descompónla
+        // (país→provincia→…→localidad) y RELLENA solo los campos que no traigan ya
+        // un valor explícito de su propia columna.
+        if (count($partes) >= 2) {
+            $desc = $this->descomponerLocalidad($partes);
+            $country ??= $desc['country'];
+            $stateProvince ??= $desc['stateProvince'];
+            $municipality ??= $desc['municipality'];
+            $localityName ??= $desc['localityName'];
+        }
+
+        // Valor de trabajo: la parte más específica disponible (normalizada).
+        $localidad = $this->normalizarLocalidad(
+            $localityName ?? $municipality ?? $stateProvince ?? $country
+        ) ?? '';
 
         // Fechas — usa parsearRango para soportar "14-26/feb/2001", "Jun-Jul-1998", etc.
         // Prefiere fecha_verbatim explícito del CSV sobre event_date.
@@ -243,6 +270,73 @@ final class FilaCatalogoMapper
         $trim = trim($valor);
 
         return $trim === '' ? null : $trim;
+    }
+
+    /**
+     * Normaliza la caja de una localidad: primera letra en mayúscula y el resto
+     * en minúsculas (multibyte, respeta acentos). Ej: "YASUNÍ" -> "Yasuní".
+     * Devuelve null si el valor está vacío.
+     */
+    private function normalizarLocalidad(?string $valor): ?string
+    {
+        $valor = $this->limpiar($valor);
+        if ($valor === null) {
+            return null;
+        }
+
+        $minuscula = mb_strtolower($valor, 'UTF-8');
+
+        return mb_strtoupper(mb_substr($minuscula, 0, 1, 'UTF-8'), 'UTF-8')
+            .mb_substr($minuscula, 1, null, 'UTF-8');
+    }
+
+    /**
+     * Parte una localidad separada por comas en segmentos no vacíos, cada uno
+     * con la caja normalizada. "ECUADOR, ORELLANA, YASUNÍ" -> ["Ecuador","Orellana","Yasuní"].
+     *
+     * @return string[]
+     */
+    private function partesLocalidad(?string $valor): array
+    {
+        if ($valor === null || ! str_contains($valor, ',')) {
+            return $valor === null ? [] : [$this->normalizarLocalidad($valor)];
+        }
+
+        return array_values(array_filter(array_map(
+            fn (string $p): ?string => $this->normalizarLocalidad($p),
+            explode(',', $valor),
+        )));
+    }
+
+    /**
+     * Descompone una localidad en orden geográfico (país primero) en los campos
+     * Darwin Core. El último segmento es siempre la localidad más específica;
+     * los previos rellenan country/stateProvince/municipality.
+     *
+     * @param  string[]  $partes  segmentos ya normalizados (2 o más)
+     * @return array{country: ?string, stateProvince: ?string, municipality: ?string, localityName: ?string}
+     */
+    private function descomponerLocalidad(array $partes): array
+    {
+        $out = ['country' => null, 'stateProvince' => null, 'municipality' => null, 'localityName' => null];
+        $n = count($partes);
+        if ($n === 0) {
+            return $out;
+        }
+
+        $out['country'] = $partes[0];
+        if ($n === 2) {
+            $out['localityName'] = $partes[1];
+        } elseif ($n === 3) {
+            $out['stateProvince'] = $partes[1];
+            $out['localityName'] = $partes[2];
+        } elseif ($n >= 4) {
+            $out['stateProvince'] = $partes[1];
+            $out['municipality'] = $partes[2];
+            $out['localityName'] = implode(', ', array_slice($partes, 3));
+        }
+
+        return $out;
     }
 
     private function floatOnumerico(?string $valor): ?float

@@ -120,6 +120,36 @@
             <flux:error name="email" />
         </flux:field>
 
+        {{-- Datos del depositante: solo cuando el propósito es depositar material biológico.
+             Alimentan el Acta recepción-depósito oficial (MEPN). --}}
+        <div
+            x-show="$wire.role === 'depositante'"
+            x-collapse
+            class="flex flex-col gap-4"
+        >
+            <flux:field>
+                <flux:label class="font-medium text-text-primary">Cargo o posición</flux:label>
+                <flux:input
+                    wire:model="cargo"
+                    type="text"
+                    placeholder="Ej. Coordinador Técnico de Proyectos"
+                    autocomplete="organization-title"
+                />
+                <flux:error name="cargo" />
+            </flux:field>
+
+            <flux:field>
+                <flux:label class="font-medium text-text-primary">Institución o empresa</flux:label>
+                <flux:input
+                    wire:model="institucion"
+                    type="text"
+                    placeholder="Ej. EcoSambito C. Ltda"
+                    autocomplete="organization"
+                />
+                <flux:error name="institucion" />
+            </flux:field>
+        </div>
+
         <flux:field>
             <flux:label class="font-medium text-text-primary">Contraseña</flux:label>
             <flux:input

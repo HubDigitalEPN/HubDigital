@@ -90,6 +90,7 @@
                         <th class="px-4 py-3 text-left font-medium text-white">Nombre</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Contacto</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Registrado</th>
+                        <th class="px-4 py-3 text-left font-medium text-white">Reubicación</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Acciones</th>
                     </tr>
                 </thead>
@@ -99,6 +100,13 @@
                             <td class="px-4 py-3 font-medium text-text-primary">{{ $visitante['nombre'] }}</td>
                             <td class="px-4 py-3 text-text-primary">{{ $visitante['contacto'] ?: '—' }}</td>
                             <td class="px-4 py-3 text-text-secondary">{{ $visitante['registradoEn'] }}</td>
+                            <td class="px-4 py-3">
+                                <flux:switch
+                                    :checked="$visitante['puedeReubicar']"
+                                    wire:click="alternarReubicacion('{{ $visitante['id'] }}', {{ $visitante['puedeReubicar'] ? 'false' : 'true' }})"
+                                    label="Puede reubicar"
+                                />
+                            </td>
                             <td class="px-4 py-3 whitespace-nowrap">
                                 <div class="flex items-center gap-2">
                                     <flux:button size="sm" variant="primary" icon="qr-code"
@@ -107,7 +115,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="4" class="px-4 py-8 text-center text-text-secondary">Aún no hay visitantes registrados.</td></tr>
+                        <tr><td colspan="5" class="px-4 py-8 text-center text-text-secondary">Aún no hay visitantes registrados.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -126,6 +134,13 @@
                     <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="Registrado">
                         {{ $visitante['registradoEn'] }}
                     </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
+                    <div class="flex items-center justify-between gap-2 pt-1">
+                        <span class="text-sm text-text-secondary">Puede reubicar</span>
+                        <flux:switch
+                            :checked="$visitante['puedeReubicar']"
+                            wire:click="alternarReubicacion('{{ $visitante['id'] }}', {{ $visitante['puedeReubicar'] ? 'false' : 'true' }})"
+                        />
+                    </div>
                     <div class="flex flex-wrap gap-2 pt-2">
                         <flux:button variant="primary" icon="qr-code"
                                      wire:click="generarQr('{{ $visitante['id'] }}')">Generar QR</flux:button>

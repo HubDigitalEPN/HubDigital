@@ -176,6 +176,28 @@
                 <flux:icon name="arrow-path" class="size-4 animate-spin text-text-secondary" />
             </div>
 
+            @if($modo === 'visitante')
+                {{-- Búsqueda por cámara (stub provisional): abre la cámara, escanea el código del
+                     espécimen y lo vuelca al buscador resaltando el candidato objetivo. --}}
+                <div x-data="visitanteCamaraScanner()" class="mt-2">
+                    <flux:button type="button" icon="camera" variant="ghost" class="min-h-[44px] w-full sm:w-auto" x-on:click="abrir()">
+                        Buscar por cámara
+                    </flux:button>
+
+                    <div x-show="abierto" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" x-on:click.self="cerrar()">
+                        <div class="w-full max-w-md rounded-lg bg-surface p-4 shadow-sm">
+                            <div class="mb-3 flex items-center justify-between">
+                                <flux:heading size="lg" class="font-display text-blue-navy">Buscar por cámara</flux:heading>
+                                <flux:button type="button" icon="x-mark" variant="ghost" x-on:click="cerrar()" />
+                            </div>
+                            <p class="mb-3 text-xs text-text-secondary">Apunta la cámara al código del espécimen. Función provisional.</p>
+                            <div x-ref="lector" class="overflow-hidden rounded-lg"></div>
+                            <p x-show="error" x-text="error" class="mt-2 text-xs text-error"></p>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
             @if(count($sugerencias) > 0)
                 <ul class="absolute z-50 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border border-border bg-surface shadow-sm">
                     {{-- Al clicar una sugerencia, feedback inmediato mientras se resuelve la ubicación. --}}
@@ -184,6 +206,10 @@
                         Localizando…
                     </li>
                     @foreach($sugerencias as $sugerencia)
+                        @php
+                            $esObjetivo = $objetivoCamara !== null
+                                && ($sugerencia['codigoCatalogo'] === $objetivoCamara || $sugerencia['taxonNombre'] === $objetivoCamara);
+                        @endphp
                         <li>
                             <button
                                 type="button"
@@ -192,7 +218,7 @@
                                 @else
                                     wire:click="localizar('{{ $sugerencia['id'] }}')"
                                 @endif
-                                class="flex w-full min-h-[44px] flex-col items-start gap-0.5 px-3 py-2 text-left hover:bg-bg-main"
+                                class="flex w-full min-h-[44px] flex-col items-start gap-0.5 px-3 py-2 text-left hover:bg-bg-main {{ $esObjetivo ? 'bg-bg-main ring-2 ring-inset ring-science-blue' : '' }}"
                             >
                                 <span class="font-serif italic text-text-primary">{{ $sugerencia['taxonNombre'] }}</span>
                                 <span class="text-xs text-text-secondary">{{ $sugerencia['codigoCatalogo'] }}</span>
@@ -306,6 +332,7 @@
                                 <th class="px-4 py-2 font-semibold">N.º individuos</th>
                                 <th class="px-4 py-2 font-semibold">Provincia</th>
                                 <th class="px-4 py-2 font-semibold">Localidad</th>
+                                <th class="px-4 py-2 font-semibold">Notas</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -330,6 +357,7 @@
                                     <td class="px-4 py-2 text-text-primary">{{ $especimen['individualCount'] ?? '—' }}</td>
                                     <td class="px-4 py-2 text-text-primary">{{ $especimen['provincia'] ?? '—' }}</td>
                                     <td class="px-4 py-2 text-text-primary">{{ $especimen['localidad'] ?? '—' }}</td>
+                                    <td class="px-4 py-2 text-text-primary">{{ $especimen['notas'] ?? '—' }}</td>
                                 </tr>
                             @endforeach
                         </tbody>
@@ -363,6 +391,9 @@
                             </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
                             <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="Localidad">
                                 {{ $especimen['localidad'] ?? '—' }}
+                            </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
+                            <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="Notas">
+                                {{ $especimen['notas'] ?? '—' }}
                             </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
                         </div>
                     @endforeach
@@ -717,3 +748,49 @@
         </div>
     @endif
 </div>
+
+@script
+<script>
+    // ponytail: stub provisional — la "búsqueda por cámara" del visitante reutiliza el
+    // escáner QR (html5-qrcode, iOS + Android) como puente; la visión por cámara real queda pendiente.
+    if (! window.Html5QrcodeScanner && ! document.getElementById('html5-qrcode-lib')) {
+        const s = document.createElement('script');
+        s.id = 'html5-qrcode-lib';
+        s.src = 'https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js';
+        document.head.appendChild(s);
+    }
+
+    Alpine.data('visitanteCamaraScanner', () => ({
+        abierto: false,
+        error: null,
+        scanner: null,
+        ultimo: { texto: null, en: 0 },
+        abrir() {
+            this.abierto = true;
+            this.error = null;
+            this.$nextTick(() => this.iniciar());
+        },
+        iniciar() {
+            if (! window.Html5QrcodeScanner) {
+                this.error = 'Cargando la cámara… reintenta en un segundo.';
+                return;
+            }
+            this.$refs.lector.id = this.$refs.lector.id || ('lector-cam-' + Math.random().toString(36).slice(2));
+            this.scanner = new window.Html5QrcodeScanner(this.$refs.lector.id, { fps: 10, qrbox: 250 }, false);
+            this.scanner.render((texto) => this.onDecode(texto), () => {});
+        },
+        cerrar() {
+            if (this.scanner) { try { this.scanner.clear(); } catch (e) {} this.scanner = null; }
+            this.abierto = false;
+        },
+        onDecode(texto) {
+            const ahora = Date.now();
+            // Evita ráfagas: el mismo QR dispara el callback muchas veces por segundo.
+            if (texto === this.ultimo.texto && (ahora - this.ultimo.en) < 2000) return;
+            this.ultimo = { texto, en: ahora };
+            this.$wire.buscarPorCamara(texto);
+            this.cerrar();
+        },
+    }));
+</script>
+@endscript

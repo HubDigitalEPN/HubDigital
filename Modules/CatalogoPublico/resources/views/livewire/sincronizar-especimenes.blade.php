@@ -2,7 +2,7 @@
     {{-- Page header --}}
     <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
         <div>
-            <h1 class="font-display text-2xl font-bold text-blue-navy">Sincronizar especímenes</h1>
+            <h1 class="font-display text-2xl font-bold text-blue-navy">Divulgar especímenes</h1>
             <p class="text-sm text-text-secondary">Seleccione especímenes y configure su visibilidad en el catálogo público</p>
         </div>
         <flux:button
@@ -23,6 +23,57 @@
     {{-- ============================================================ --}}
     @if($paso === 1)
         <div class="flex flex-col gap-4">
+            {{-- Barra de filtros --}}
+            <div class="rounded-lg border border-border bg-surface shadow-sm p-4">
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                    <flux:input
+                        wire:model.live.debounce.300ms="busquedaCatalogo"
+                        label="N.º de catálogo"
+                        placeholder="Ej. EPN-000123"
+                        icon="magnifying-glass"
+                        size="sm"
+                        clearable
+                    />
+                    <flux:input
+                        wire:model.live.debounce.300ms="busquedaTaxonomia"
+                        label="Taxonomía"
+                        placeholder="Nombre científico"
+                        icon="magnifying-glass"
+                        size="sm"
+                        clearable
+                    />
+                    <flux:input
+                        type="date"
+                        wire:model.live="fechaDesde"
+                        label="Recolección desde"
+                        size="sm"
+                    />
+                    <flux:input
+                        type="date"
+                        wire:model.live="fechaHasta"
+                        label="Recolección hasta"
+                        size="sm"
+                    />
+                    <flux:select
+                        wire:model.live="colector"
+                        label="Colector"
+                        size="sm"
+                    >
+                        <flux:select.option value="">Todos</flux:select.option>
+                        @foreach($this->colectoresDisponibles as $col)
+                            <flux:select.option value="{{ $col }}">{{ $col }}</flux:select.option>
+                        @endforeach
+                    </flux:select>
+                </div>
+                @if($this->filtros->tieneFiltros())
+                    <div class="mt-3 flex justify-end">
+                        <flux:button wire:click="limpiarFiltros" variant="ghost" size="sm" icon="x-mark">
+                            Limpiar filtros
+                        </flux:button>
+                    </div>
+                @endif
+            </div>
+
             <div class="flex items-center justify-between">
                 <p class="text-sm text-text-secondary">
                     {{ count($seleccionados) }} espécimen(es) seleccionado(s)
@@ -33,7 +84,7 @@
                         variant="ghost"
                         size="sm"
                     >
-                        Seleccionar todos
+                        Seleccionar página
                     </flux:button>
                     @if(count($seleccionados) > 0)
                         <flux:button wire:click="deseleccionarTodos" variant="ghost" size="sm">
@@ -48,9 +99,9 @@
                     <thead class="bg-blue-navy border-b border-border">
                         <tr>
                             <th class="px-4 py-3 text-left font-medium text-white" style="width: 2.5rem;"></th>
-                            <th class="px-4 py-3 text-left font-medium text-white w-3/12">Occurrence ID</th>
+                            <th class="px-4 py-3 text-left font-medium text-white w-3/12">N.º de catálogo</th>
                             <th class="px-4 py-3 text-left font-medium text-white w-3/12">Nombre científico</th>
-                            <th class="px-4 py-3 text-left font-medium text-white hidden md:table-cell w-2/12">Type Status</th>
+                            <th class="px-4 py-3 text-left font-medium text-white hidden md:table-cell w-2/12">Colector</th>
                             <th class="px-4 py-3 text-left font-medium text-white hidden lg:table-cell w-2/12">Familia</th>
                             <th class="px-4 py-3 text-left font-medium text-white hidden xl:table-cell w-2/12">Estado</th>
                         </tr>
@@ -81,7 +132,7 @@
                                     <span class="font-serif italic text-sm text-text-primary">{{ $esp->scientific_name ?? '—' }}</span>
                                 </td>
                                 <td class="px-4 py-3 hidden md:table-cell text-xs text-text-secondary">
-                                    {{ $esp->type_status ?? '—' }}
+                                    {{ $esp->colector ?? '—' }}
                                 </td>
                                 <td class="px-4 py-3 hidden lg:table-cell text-sm text-text-secondary">
                                     {{ $esp->family ?? '—' }}
@@ -99,14 +150,14 @@
                                 <td colspan="6" class="px-4 py-12 text-center">
                                     <div class="flex flex-col items-center gap-2 text-text-secondary">
                                         <flux:icon name="check-circle" class="size-8 text-success opacity-60" />
-                                        <span class="text-sm">Todos los especímenes ya están sincronizados.</span>
+                                        <span class="text-sm">Todos los especímenes ya están divulgados.</span>
                                         <flux:button
                                             :href="route('divulgacion.index')"
                                             variant="primary"
                                             size="sm"
                                             wire:navigate
                                         >
-                                            Ver tabla de divulgación
+                                            Ver catálogo divulgado
                                         </flux:button>
                                     </div>
                                 </td>
@@ -273,7 +324,7 @@
                     icon="cloud-arrow-up"
                 >
                     <span wire:loading.remove wire:target="sincronizar">
-                        Sincronizar {{ count($seleccionados) }} espécimen(es)
+                        Divulgar {{ count($seleccionados) }} espécimen(es)
                     </span>
                     <span wire:loading wire:target="sincronizar">Sincronizando…</span>
                 </flux:button>
@@ -321,7 +372,7 @@
                     icon="table-cells"
                     wire:navigate
                 >
-                    Ver tabla de divulgación
+                    Ver cátalogo divulgado
                 </flux:button>
                 <flux:button
                     wire:click="$set('paso', 1); $set('seleccionados', []); $set('configuracionPorEspecimen', []); $set('occurrenceIDsActualizados', [])"

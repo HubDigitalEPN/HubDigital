@@ -3,7 +3,7 @@
 <div {{ $attributes->merge(['class' => 'flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-border bg-bg-main px-3 py-2 text-xs text-text-secondary']) }}>
     <span class="inline-flex items-center gap-1.5 font-medium text-text-primary">
         <flux:icon name="information-circle" class="size-4 text-science-blue" />
-        Leyenda taxonómica
+        Categorías taxonómicas
     </span>
     <span class="inline-flex items-center gap-1.5">
         <x-inventariogestioncoleccion::seguimiento-fisico.taxon-tipografico estilo="especie" texto="Aa bb" class="text-text-primary" />

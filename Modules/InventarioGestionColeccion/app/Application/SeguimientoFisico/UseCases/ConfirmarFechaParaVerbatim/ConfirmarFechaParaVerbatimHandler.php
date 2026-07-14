@@ -43,7 +43,10 @@ final class ConfirmarFechaParaVerbatimHandler
             $fechaFin = null;
         }
 
-        $afectados = $this->especimenRepo->enlazarFechaPorVerbatim($verbatim, $fechaInicio, $fechaFin);
+        $ids = $input->especimenIds;
+        $afectados = ($ids !== null && $ids !== [])
+            ? $this->especimenRepo->enlazarFechaPorIds($ids, $fechaInicio, $fechaFin)
+            : $this->especimenRepo->enlazarFechaPorVerbatim($verbatim, $fechaInicio, $fechaFin);
 
         return new ConfirmarFechaParaVerbatimOutput(
             verbatim: $verbatim,
