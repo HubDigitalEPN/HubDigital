@@ -18,8 +18,8 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
 final class ConsultarActaHandler
 {
     /**
-     * @param ActaPrestamoRepositoryInterface $actaRepo Repositorio de actas de préstamo.
-     * @param SolicitudPrestamoRepositoryInterface $solicitudRepo Repositorio de solicitudes de préstamo.
+     * @param  ActaPrestamoRepositoryInterface  $actaRepo  Repositorio de actas de préstamo.
+     * @param  SolicitudPrestamoRepositoryInterface  $solicitudRepo  Repositorio de solicitudes de préstamo.
      */
     public function __construct(
         private readonly ActaPrestamoRepositoryInterface $actaRepo,
@@ -29,7 +29,7 @@ final class ConsultarActaHandler
     /**
      * Ejecuta el caso de uso.
      *
-     * @param ConsultarActaInput $input Datos de entrada.
+     * @param  ConsultarActaInput  $input  Datos de entrada.
      * @return ConsultarActaOutput|null Datos del acta, o null si no existe.
      */
     public function handle(ConsultarActaInput $input): ?ConsultarActaOutput
@@ -41,6 +41,8 @@ final class ConsultarActaHandler
         }
 
         $solicitud = $this->solicitudRepo->buscarPorId($acta->solicitudPrestamoId());
+
+        $firma = $acta->firmaCuradorMetadata();
 
         return new ConsultarActaOutput(
             id: (string) $acta->id(),
@@ -57,6 +59,8 @@ final class ConsultarActaHandler
             numeroSolicitud: $solicitud !== null ? (string) $solicitud->codigoPrestamo() : null,
             tituloEstudio: $solicitud?->tituloEstudio(),
             institucionAdscripcion: $solicitud?->institucionAdscripcion(),
+            firmadoCuradorCommonName: $firma?->commonName(),
+            firmadoCuradorSelloDeTiempo: $firma?->selloDeTiempo(),
         );
     }
 }

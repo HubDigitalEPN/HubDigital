@@ -25,11 +25,13 @@ use Modules\GestionPrestamosRecepciones\Domain\Entities\ConfiguracionGlobalRecor
 use Modules\GestionPrestamosRecepciones\Domain\Entities\Prestamo;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\RecordatorioDevolucion;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\SolicitudPrestamo;
+use Modules\GestionPrestamosRecepciones\Domain\Entities\SolicitudProrroga;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\ActaPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\ConfiguracionGlobalRecordatoriosRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\PrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\RecordatorioDevolucionRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudProrrogaRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\AlcancePrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoPrestamo;
@@ -45,6 +47,7 @@ use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Persistence\InMemor
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Persistence\InMemoryPrestamoRepository;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Persistence\InMemoryRecordatorioDevolucionRepository;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Persistence\InMemorySolicitudPrestamoRepository;
+use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Persistence\InMemorySolicitudProrrogaRepository;
 use PHPUnit\Framework\Assert;
 
 /**
@@ -64,6 +67,8 @@ final class DefinicionRecordatoriosDevolucionContext extends BaseContext
     private InMemoryActaPrestamoRepository $actaRepo;
 
     private InMemorySolicitudPrestamoRepository $solicitudRepo;
+
+    private InMemorySolicitudProrrogaRepository $solicitudProrrogaRepo;
 
     private FakeEventPublisherAdapter $fakePublisher;
 
@@ -90,6 +95,8 @@ final class DefinicionRecordatoriosDevolucionContext extends BaseContext
     private ?SolicitudPrestamo $solicitudParaActivacion = null;
 
     private ?DateTimeImmutable $nuevaFechaFinProrrogada = null;
+
+    private ?DateTimeImmutable $fechaFinOriginalPrestamo = null;
 
     private mixed $ultimaRespuesta = null;
 
@@ -121,6 +128,7 @@ final class DefinicionRecordatoriosDevolucionContext extends BaseContext
         $this->prestamoRepo = new InMemoryPrestamoRepository;
         $this->actaRepo = new InMemoryActaPrestamoRepository;
         $this->solicitudRepo = new InMemorySolicitudPrestamoRepository;
+        $this->solicitudProrrogaRepo = new InMemorySolicitudProrrogaRepository;
         $this->fakePublisher = new FakeEventPublisherAdapter;
 
         self::$app->instance(ConfiguracionGlobalRecordatoriosRepositoryInterface::class, $this->configRepo);
@@ -128,6 +136,7 @@ final class DefinicionRecordatoriosDevolucionContext extends BaseContext
         self::$app->instance(PrestamoRepositoryInterface::class, $this->prestamoRepo);
         self::$app->instance(ActaPrestamoRepositoryInterface::class, $this->actaRepo);
         self::$app->instance(SolicitudPrestamoRepositoryInterface::class, $this->solicitudRepo);
+        self::$app->instance(SolicitudProrrogaRepositoryInterface::class, $this->solicitudProrrogaRepo);
         self::$app->instance(EventPublisherPort::class, $this->fakePublisher);
         self::$app->instance(TransactionManagerPort::class, new PassThroughTransactionManagerAdapter);
 
@@ -165,6 +174,7 @@ final class DefinicionRecordatoriosDevolucionContext extends BaseContext
         $prestamo = Prestamo::reconstituir(
             id: $this->prestamoRepo->nextIdentity(),
             actaPrestamoId: ActaPrestamoId::generate(),
+            codigoPrestamo: CodigoPrestamo::fromParts(2026, random_int(1, 99999)),
             investigadorId: $this->investigadorId,
             estado: EstadoPrestamo::Activo,
             iniciadoEn: $ahora,
@@ -526,12 +536,39 @@ final class DefinicionRecordatoriosDevolucionContext extends BaseContext
     #[Given('que existe un préstamo en estado activo con recordatorios configurados')]
     public function queExisteUnPrestamoEnEstadoActivoConRecordatoriosConfigurados(): void
     {
-        $prestamo = $this->sembrarPrestamoActivo();
+        // Para poder aprobar la prórroga, el préstamo debe estar en el estado intermedio
+        // 'prórroga solicitada' (con su solicitud pendiente), no simplemente activo.
+        $ahora = new DateTimeImmutable;
+
+        $prestamo = Prestamo::reconstituir(
+            id: $this->prestamoRepo->nextIdentity(),
+            actaPrestamoId: ActaPrestamoId::generate(),
+            codigoPrestamo: CodigoPrestamo::fromParts(2026, random_int(1, 99999)),
+            investigadorId: $this->investigadorId,
+            estado: EstadoPrestamo::ProrrogaSolicitada,
+            iniciadoEn: $ahora,
+            fechaFin: $ahora->modify('+3 months'),
+        );
+        $this->prestamoRepo->guardar($prestamo);
+        $this->prestamoExistente = $prestamo;
+        // El repo in-memory comparte la instancia y el handler la muta al aprobar la
+        // prórroga; conservamos la fecha original para contrastarla en el Then.
+        $this->fechaFinOriginalPrestamo = $prestamo->fechaFin();
+
+        $solicitud = SolicitudProrroga::solicitar(
+            id: $this->solicitudProrrogaRepo->nextIdentity(),
+            prestamoId: $prestamo->id(),
+            fechaPropuesta: $ahora->modify('+6 months'),
+            justificacion: 'Requiero ampliar el plazo para concluir el estudio.',
+            solicitadaEn: $ahora,
+        );
+        $this->solicitudProrrogaRepo->guardar($solicitud);
+
         $this->sembrarRecordatoriosParaPrestamo($prestamo, $this->diasAntesDefault);
 
         Assert::assertTrue(
-            $prestamo->estado()->equals(EstadoPrestamo::Activo),
-            "Se esperaba estado 'activo' en el préstamo sembrado"
+            $prestamo->estado()->equals(EstadoPrestamo::ProrrogaSolicitada),
+            "Se esperaba estado 'prórroga solicitada' en el préstamo sembrado"
         );
 
         $recordatoriosExistentes = $this->recordatorioRepo->listarPorPrestamo($prestamo->id());
@@ -600,7 +637,7 @@ final class DefinicionRecordatoriosDevolucionContext extends BaseContext
                 "La fecha del recordatorio de {$diasAntes} días no corresponde a la nueva fecha de vencimiento prorrogada"
             );
             Assert::assertNotEquals(
-                $this->prestamoExistente->fechaFin()->modify("-{$diasAntes} days")->format('Y-m-d'),
+                $this->fechaFinOriginalPrestamo->modify("-{$diasAntes} days")->format('Y-m-d'),
                 $recordatorio->fechaProgramada()->format('Y-m-d'),
                 "El recordatorio de {$diasAntes} días aún usa la fecha original — no fue regenerado correctamente"
             );

@@ -22,6 +22,8 @@
         "nwidart/laravel-modules": "^13.0",
         "phpoffice/phpspreadsheet": "^5.8",
         "resend/resend-php": "^1.3",
+        "setasign/fpdf": "1.9",
+        "setasign/fpdi": "2.6.8",
         "smalot/pdfparser": "^2.12"
     },
     "require-dev": {

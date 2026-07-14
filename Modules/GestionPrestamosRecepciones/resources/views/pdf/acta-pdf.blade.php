@@ -329,7 +329,6 @@
                 <div style="height: 66px;"></div>
                 <div class="firma-line">
                     <p class="firma-name">Adrian Troya</p>
-                    <p class="firma-sub">Biólogo</p>
                     <p class="firma-sub">Curador</p>
                     <p class="firma-sub">Laboratorio de Invertebrados</p>
                 </div>

@@ -114,6 +114,14 @@
                             >
                                 Configuración
                             </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="shield-check"
+                                :href="route('prestamos.curador.certificado')"
+                                :current="request()->routeIs('prestamos.curador.certificado')"
+                                wire:navigate
+                            >
+                                Certificado de firma
+                            </flux:sidebar.item>
                         </flux:sidebar.group>
                         <flux:sidebar.group
                             heading="Gestión de depósitos"

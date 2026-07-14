@@ -11,18 +11,21 @@ use Modules\GestionPrestamosRecepciones\Domain\Entities\RecordatorioDevolucion;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\PrestamoNoEncontradoException;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\PrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\RecordatorioDevolucionRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudProrrogaRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrestamoId;
 
 /**
- * Caso de uso: Aprueba una solicitud de prórroga para un préstamo.
+ * Caso de uso: Aprueba una solicitud de prórroga pendiente de un préstamo.
  *
- * El curador extiende la fecha de fin de un préstamo activo a petición del investigador.
- * También reprograma los recordatorios de devolución según la nueva fecha.
+ * El curador, sobre un préstamo en estado "prórroga solicitada", extiende su fecha
+ * de fin y lo devuelve a Activo. También marca la solicitud como aprobada y
+ * reprograma los recordatorios de devolución según la nueva fecha.
  */
 final class AprobarProrrogaPrestamoHandler
 {
     public function __construct(
         private readonly PrestamoRepositoryInterface $prestamoRepo,
+        private readonly SolicitudProrrogaRepositoryInterface $solicitudRepo,
         private readonly RecordatorioDevolucionRepositoryInterface $recordatorioRepo,
         private readonly EventPublisherPort $publisher,
         private readonly TransactionManagerPort $transactionManager,
@@ -54,10 +57,13 @@ final class AprobarProrrogaPrestamoHandler
             $recordatoriosActuales,
         );
 
-        $prestamo->prorrogar(
+        $prestamo->aprobarProrroga(
             curadorId: $input->curadorId,
             nuevaFechaFin: $nuevaFechaFin,
         );
+
+        $solicitud = $this->solicitudRepo->buscarPendientePorPrestamo($prestamo->id());
+        $solicitud?->aprobar(new DateTimeImmutable);
 
         $nuevosRecordatorios = array_map(
             fn (int $dias): RecordatorioDevolucion => RecordatorioDevolucion::programar(
@@ -69,8 +75,11 @@ final class AprobarProrrogaPrestamoHandler
             $diasCadencia,
         );
 
-        $this->transactionManager->executeTransactional(function () use ($prestamo, $nuevosRecordatorios): void {
+        $this->transactionManager->executeTransactional(function () use ($prestamo, $solicitud, $nuevosRecordatorios): void {
             $this->prestamoRepo->guardar($prestamo);
+            if ($solicitud !== null) {
+                $this->solicitudRepo->guardar($solicitud);
+            }
             $this->recordatorioRepo->eliminarPorPrestamo($prestamo->id());
             $this->recordatorioRepo->guardarTodos($nuevosRecordatorios);
             foreach ($prestamo->pullEvents() as $event) {

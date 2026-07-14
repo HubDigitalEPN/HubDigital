@@ -130,6 +130,11 @@
                                             wire:navigate href="{{ route('prestamos.curador.prestamo.cerrar', $prestamo->prestamoId) }}">
                                             Cerrar préstamo
                                         </flux:button>
+                                    @elseif($prestamo->estado === 'prorroga_solicitada')
+                                        <flux:button size="sm" variant="primary" icon="calendar-days"
+                                            wire:navigate href="{{ route('prestamos.curador.prestamo.gestionar-prorroga', $prestamo->prestamoId) }}">
+                                            Gestionar prórroga
+                                        </flux:button>
                                     @endif
                                     <flux:button size="sm" variant="ghost" icon="magnifying-glass"
                                         wire:navigate href="{{ route('prestamos.curador.prestamo.auditar', $prestamo->prestamoId) }}">

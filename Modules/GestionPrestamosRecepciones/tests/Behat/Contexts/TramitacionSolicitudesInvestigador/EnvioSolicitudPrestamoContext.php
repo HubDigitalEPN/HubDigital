@@ -185,6 +185,7 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
             $this->ultimaRespuesta = $this->registrarHandler->handle(
                 new RegistrarSolicitudPrestamoInput(
                     investigadorId: $this->investigadorId,
+                    alcancePrestamo: AlcancePrestamo::Nacional->value,
                     tituloEstudio: $this->datosSolicitudCompleta['titulo_estudio'],
                     institucionAdscripcion: $this->datosSolicitudCompleta['institucion_adscripcion'],
                     lineaInvestigacion: $this->datosSolicitudCompleta['linea_investigacion'],
@@ -511,6 +512,7 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
                     solicitudId: (string) $this->solicitudExistente->id(),
                     investigadorId: $this->investigadorId,
                     pdfFirmadoRuta: 'actas/firmadas/MEPN-INV-001-2026-firmada.pdf',
+                    documentoIdentidadRuta: 'documentos-identidad/'.(string) $this->solicitudExistente->id().'-id.pdf',
                 )
             );
         } catch (\Throwable $e) {
@@ -566,7 +568,10 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
         );
 
         $acta->marcarEnviada($this->investigadorId);
-        $acta->subirFirma('actas/firmadas/MEPN-INV-001-2026-firmada.pdf');
+        $acta->subirFirma(
+            'actas/firmadas/MEPN-INV-001-2026-firmada.pdf',
+            'documentos-identidad/MEPN-INV-001-2026-id.pdf',
+        );
         $this->actaRepo->guardar($acta);
     }
 

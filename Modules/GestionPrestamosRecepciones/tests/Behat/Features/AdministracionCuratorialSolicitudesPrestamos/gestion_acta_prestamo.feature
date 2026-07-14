@@ -16,6 +16,7 @@ Característica: Gestión del acta de préstamo
         Cuando el curador valida el acta firmada
         Entonces el acta queda en estado validada
         Y se crea un préstamo en estado activo
+        Y el acta queda firmada digitalmente por el curador
 
     Escenario: Devolver el acta por firma inválida
         Dado que el curador tiene un acta en estado pendiente de validación

@@ -12,6 +12,8 @@ use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoCerrado;
 use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoHabilitadoParaEnvio;
 use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoIniciado;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ProrrogaAprobada;
+use Modules\GestionPrestamosRecepciones\Domain\Events\ProrrogaRechazada;
+use Modules\GestionPrestamosRecepciones\Domain\Events\ProrrogaSolicitada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\RecordatorioDevolucionEnviado;
 use Modules\GestionPrestamosRecepciones\Domain\Events\VerificacionEntregaAprobada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\VerificacionEntregaRegistrada;
@@ -204,28 +206,94 @@ final class Prestamo
     }
 
     /**
-     * El curador prorroga el préstamo extendiendo su fecha de fin.
+     * El investigador solicita una prórroga del préstamo, dejándolo a la espera de
+     * la resolución del curador. Solo permitido cuando el préstamo está Activo
+     * (un préstamo vencido ya no admite solicitud de prórroga).
      *
-     * @throws TransicionDeEstadoInvalidaException Si la nueva fecha de fin no es posterior a la actual.
+     * @throws TransicionDeEstadoInvalidaException Si el préstamo no está activo.
      */
-    public function prorrogar(string $curadorId, DateTimeImmutable $nuevaFechaFin): void
+    public function solicitarProrroga(DateTimeImmutable $ahora): void
     {
+        if (! $this->estado->equals(EstadoPrestamo::Activo)) {
+            throw TransicionDeEstadoInvalidaException::para(
+                'Prestamo',
+                $this->estado->name,
+                'solicitarProrroga — el préstamo debe estar activo'
+            );
+        }
+
+        $this->estado = EstadoPrestamo::ProrrogaSolicitada;
+
+        $this->events[] = new ProrrogaSolicitada(
+            prestamoId: $this->id,
+            investigadorId: $this->investigadorId,
+            ocurridoEn: $ahora,
+        );
+    }
+
+    /**
+     * El curador aprueba la solicitud de prórroga extendiendo la fecha de fin.
+     * El préstamo vuelve a estado Activo con la nueva fecha de vencimiento.
+     * Solo permitido desde ProrrogaSolicitada.
+     *
+     * @throws TransicionDeEstadoInvalidaException Si no está en prórroga solicitada o la nueva fecha no es posterior a la actual.
+     */
+    public function aprobarProrroga(string $curadorId, DateTimeImmutable $nuevaFechaFin): void
+    {
+        if (! $this->estado->equals(EstadoPrestamo::ProrrogaSolicitada)) {
+            throw TransicionDeEstadoInvalidaException::para(
+                'Prestamo',
+                $this->estado->name,
+                'aprobarProrroga — el préstamo debe tener una prórroga solicitada'
+            );
+        }
+
         if ($nuevaFechaFin <= $this->fechaFin) {
             throw TransicionDeEstadoInvalidaException::para(
                 'Prestamo',
                 $this->estado->name,
-                'prorrogar — la nueva fecha de fin debe ser posterior a la actual'
+                'aprobarProrroga — la nueva fecha de fin debe ser posterior a la actual'
             );
         }
 
         $fechaAnterior = $this->fechaFin;
         $this->fechaFin = $nuevaFechaFin;
+        $this->estado = EstadoPrestamo::Activo;
 
         $this->events[] = new ProrrogaAprobada(
             prestamoId: $this->id,
+            investigadorId: $this->investigadorId,
             curadorId: $curadorId,
             nuevaFechaFin: $nuevaFechaFin,
             fechaAnterior: $fechaAnterior,
+            ocurridoEn: new DateTimeImmutable,
+        );
+    }
+
+    /**
+     * El curador rechaza la solicitud de prórroga. El préstamo vuelve a estado
+     * Activo conservando su fecha de fin original. Solo permitido desde
+     * ProrrogaSolicitada.
+     *
+     * @throws TransicionDeEstadoInvalidaException Si no está en prórroga solicitada.
+     */
+    public function rechazarProrroga(string $curadorId, string $comentario): void
+    {
+        if (! $this->estado->equals(EstadoPrestamo::ProrrogaSolicitada)) {
+            throw TransicionDeEstadoInvalidaException::para(
+                'Prestamo',
+                $this->estado->name,
+                'rechazarProrroga — el préstamo debe tener una prórroga solicitada'
+            );
+        }
+
+        $this->estado = EstadoPrestamo::Activo;
+
+        $this->events[] = new ProrrogaRechazada(
+            prestamoId: $this->id,
+            investigadorId: $this->investigadorId,
+            curadorId: $curadorId,
+            comentario: $comentario,
             ocurridoEn: new DateTimeImmutable,
         );
     }

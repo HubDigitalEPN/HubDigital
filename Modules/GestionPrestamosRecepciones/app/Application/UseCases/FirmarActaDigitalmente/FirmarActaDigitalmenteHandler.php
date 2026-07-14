@@ -7,7 +7,8 @@ namespace Modules\GestionPrestamosRecepciones\Application\UseCases\FirmarActaDig
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\PdfGeneratorPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
-use Modules\GestionPrestamosRecepciones\Application\Ports\UsuarioNombrePort;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarActaDocumento\ConsultarActaDocumentoHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarActaDocumento\ConsultarActaDocumentoInput;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\ActaNoPerteneceAlInvestigador;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\ActaPrestamoNoEncontradaException;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\FirmaBase64Invalida;
@@ -31,7 +32,7 @@ final class FirmarActaDigitalmenteHandler
         private readonly PdfGeneratorPort $pdfGenerator,
         private readonly EventPublisherPort $publisher,
         private readonly TransactionManagerPort $transactionManager,
-        private readonly UsuarioNombrePort $usuarios,
+        private readonly ConsultarActaDocumentoHandler $actaDocumento,
         private readonly PatenteAnualRepositoryInterface $patentes,
     ) {}
 
@@ -73,14 +74,18 @@ final class FirmarActaDigitalmenteHandler
             rutaDestino: $firmaImagenRuta,
         );
 
+        // Se firma sobre la MISMA plantilla estandarizada que se descarga
+        // (acta-documento), con la firma dibujada del investigador ya incrustada.
+        // El sello PAdES del curador se estampa después en ValidarActaFirmada.
+        $documento = $this->actaDocumento->handle(
+            new ConsultarActaDocumentoInput(actaId: (string) $actaId),
+        );
+
         $this->pdfGenerator->generarYAlmacenar(
-            vista: 'gestionprestamosrecepciones::pdf.acta-pdf',
+            vista: 'gestionprestamosrecepciones::pdf.acta-documento',
             datos: [
-                'acta' => $acta,
-                'solicitud' => $solicitud,
-                'nombreInvestigador' => $this->usuarios->obtenerNombre($solicitud->investigadorId()),
+                'acta' => $documento,
                 'firmaBase64' => $input->firmaBase64,
-                'patente' => $patente,
             ],
             rutaDestino: $acta->pdfRuta(),
         );

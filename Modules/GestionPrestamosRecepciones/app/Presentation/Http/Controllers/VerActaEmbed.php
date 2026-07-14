@@ -5,33 +5,26 @@ declare(strict_types=1);
 namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers;
 
 use App\Enums\RolUsuario;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
-use Livewire\Attributes\Layout;
-use Livewire\Component;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarActaDocumento\ConsultarActaDocumentoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarActaDocumento\ConsultarActaDocumentoInput;
 
 /**
- * Componente Livewire (Controlador) para visualizar el acta de préstamo de forma embebida.
+ * Sirve la previsualización embebida del acta (iframe).
+ *
+ * Renderiza exactamente la misma vista Blade que usa DescargarActaPdf para
+ * generar el PDF (pdf.acta-documento), de modo que la previsualización y la
+ * descarga sean idénticas en formato — sin plantillas divergentes.
  */
-#[Layout('layouts.print')]
-final class VerActaEmbed extends Component
+final class VerActaEmbed
 {
-    public string $id;
-
-    public bool $isEmbed = true;
-
-    public bool $sinFirma = false;
-
-    /**
-     * @param string $id
-     * @param ConsultarActaDocumentoHandler $handler
-     * @return void
-     */
-    public function mount(string $id, ConsultarActaDocumentoHandler $handler): void
+    public function __invoke(string $id, ConsultarActaDocumentoHandler $handler): View|RedirectResponse
     {
-        $this->id = $id;
-        $this->sinFirma = request()->boolean('sin_firma');
+        // Enlace "Descargar" (?download=1) delega en el generador de PDF real.
+        if (request('download') == '1') {
+            return redirect()->route('prestamos.acta.descargar-pdf', $id);
+        }
 
         $acta = $handler->handle(new ConsultarActaDocumentoInput(actaId: $id));
 
@@ -46,20 +39,10 @@ final class VerActaEmbed extends Component
         if (! $esCurador && ! $esDueno) {
             abort(403);
         }
-    }
 
-    /**
-     * @param ConsultarActaDocumentoHandler $handler
-     * @return View
-     */
-    public function render(ConsultarActaDocumentoHandler $handler): View
-    {
-        $acta = $handler->handle(new ConsultarActaDocumentoInput(actaId: $this->id));
-
-        if ($acta === null) {
-            abort(404);
-        }
-
-        return view('gestionprestamosrecepciones::ver-acta', compact('acta'));
+        return view('gestionprestamosrecepciones::pdf.acta-documento', [
+            'acta' => $acta,
+            'embed' => true,
+        ]);
     }
 }

@@ -12,8 +12,10 @@ use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\Ba
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\CerrarPrestamo;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\ConfiguracionRecordatorios;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\DetallePrestamo as CuradorDetallePrestamo;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\GestionarProrroga;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\PanelPrestamos;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\RecepcionFisicaLote;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\RegistrarCertificado;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\RevisarDeposito;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\RevisarSolicitud;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\ValidarActa;
@@ -30,6 +32,7 @@ use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigad
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\MisSolicitudes;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\RegistrarDevolucionPrestamo;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\RegistroSolicitudDeposito;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\SolicitarProrroga;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\SolicitudForm;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\VerificacionEntrega;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ResolverLoteQr;
@@ -77,6 +80,7 @@ Route::middleware(['auth', 'verified'])
             Route::get('/prestamo/{id}', InvestigadorDetallePrestamo::class)->name('investigador.prestamo.detalle');
             Route::get('/prestamo/{id}/verificacion-entrega', VerificacionEntrega::class)->name('investigador.prestamo.verificacion-entrega');
             Route::get('/prestamo/{id}/registrar-devolucion', RegistrarDevolucionPrestamo::class)->name('investigador.prestamo.registrar-devolucion');
+            Route::get('/prestamo/{id}/solicitar-prorroga', SolicitarProrroga::class)->name('investigador.prestamo.solicitar-prorroga');
         });
 
         // Depositante — solicitudes de depósito
@@ -102,6 +106,8 @@ Route::middleware(['auth', 'verified'])
             Route::get('/curador/prestamo/{id}/auditar', AuditarPrestamo::class)->name('curador.prestamo.auditar');
             Route::get('/curador/prestamo/{id}/aprobar-verificacion', AprobarVerificacion::class)->name('curador.prestamo.aprobar-verificacion');
             Route::get('/curador/prestamo/{id}/cerrar', CerrarPrestamo::class)->name('curador.prestamo.cerrar');
+            Route::get('/curador/prestamo/{id}/prorroga', GestionarProrroga::class)->name('curador.prestamo.gestionar-prorroga');
             Route::get('/curador/configuracion', ConfiguracionRecordatorios::class)->name('curador.configuracion');
+            Route::get('/curador/certificado', RegistrarCertificado::class)->name('curador.certificado');
         });
     });

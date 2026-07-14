@@ -60,13 +60,11 @@ final class DetalleActa extends Component
         'ActaFirmadaDigitalmente',
         'ActaDevueltaPorFirmaInvalida',
         'ActaValidada',
+        'ActaFirmadaCriptograficamentePorCurador',
     ];
 
     /**
      * Inicializa el componente.
-     *
-     * @param string $id
-     * @return void
      */
     public function mount(string $id, ConsultarDetalleActaHandler $handler): void
     {
@@ -87,9 +85,6 @@ final class DetalleActa extends Component
 
     /**
      * Sube un acta firmada.
-     *
-     * @param \Modules\GestionPrestamosRecepciones\Application\UseCases\SubirActaFirmada\SubirActaFirmadaHandler $handler
-     * @return void
      */
     public function subirActa(SubirActaFirmadaHandler $handler, ConsultarDetalleActaHandler $detalleHandler): void
     {
@@ -154,9 +149,6 @@ final class DetalleActa extends Component
 
     /**
      * Firma el acta digitalmente.
-     *
-     * @param \Modules\GestionPrestamosRecepciones\Application\UseCases\FirmarActaDigitalmente\FirmarActaDigitalmenteHandler $handler
-     * @return void
      */
     public function firmarDigitalmente(FirmarActaDigitalmenteHandler $handler): void
     {
@@ -180,9 +172,6 @@ final class DetalleActa extends Component
 
     /**
      * Sube el documento de identidad.
-     *
-     * @param \Modules\GestionPrestamosRecepciones\Application\UseCases\CompletarFirmaDigitalConIdentidad\CompletarFirmaDigitalConIdentidadHandler $handler
-     * @return void
      */
     public function subirDocumentoIdentidad(CompletarFirmaDigitalConIdentidadHandler $handler): void
     {
@@ -205,10 +194,6 @@ final class DetalleActa extends Component
 
     /**
      * Renderiza el componente.
-     *
-     * @param ConsultarDetalleActaHandler $detalleHandler
-     * @param ConsultarHistorialSolicitudHandler $historialHandler
-     * @return \Illuminate\View\View
      */
     public function render(
         ConsultarDetalleActaHandler $detalleHandler,

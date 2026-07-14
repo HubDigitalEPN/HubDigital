@@ -6,18 +6,37 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
+        /* Márgenes del PDF. Este DomPDF (v3) IGNORA la regla @page (margin), así
+           que los márgenes de página van en <html> — DomPDF los repite en cada
+           hoja. El margen SUPERIOR amplio (3.6cm) reserva la banda del encabezado
+           fijo (.doc-header-band) que se repite en todas las hojas; el INFERIOR
+           (4.5cm) reserva la banda del área de firmas (.firma-band, absolute).
+           Así el contenido nunca pisa ni el encabezado ni las firmas. En el
+           navegador el bloque $embed anula este margen. */
+        html { margin: 3.6cm 2cm 4.5cm 2cm; }
+
         body {
             font-family: 'DejaVu Sans', Arial, sans-serif;
             font-size: 11px;
             color: #212121;
             background: #ffffff;
-            padding: 32px 40px;
         }
+
+        /* Especímenes en hoja aparte (en el PDF; en el navegador se anula abajo) */
+        .especimenes-page { page-break-before: always; }
+
+        /* Encabezado con logos — banda FIJA que se repite en todas las hojas.
+           OJO: en DomPDF position:fixed se mide desde la CAJA DE CONTENIDO (dentro
+           de los márgenes de html), NO desde el borde del papel. Por eso el offset
+           es NEGATIVO: top:-2.6cm sube la banda hasta ~1cm del borde del papel,
+           dentro de la reserva superior de 3.6cm. left/right:0 = alineado con los
+           márgenes laterales del contenido (2cm). */
+        .doc-header-band { position: fixed; top: -2.6cm; left: 0; right: 0; }
 
         /* Encabezado con logos */
         .header-table {
             width: 100%;
-            margin-bottom: 20px;
+            margin-bottom: 8px;
         }
         .header-table td {
             vertical-align: middle;
@@ -149,14 +168,26 @@
             color: #212121;
         }
 
-        /* Firmas */
-        .firma-table { width: 100%; margin-top: 32px; }
+        /* Firmas — ancladas al PIE de la última página del contenido. Con
+           position:absolute DomPDF las dibuja UNA sola vez (en la hoja donde cae
+           su posición en el flujo = la última del contenido), NO en cada hoja
+           como haría position:fixed, y NUNCA en la hoja de especímenes (va después
+           del salto). `bottom` se mide desde el suelo del margen inferior (4.5cm);
+           el offset negativo baja la banda hasta ~1.6cm del borde del papel,
+           dentro de la reserva, así el contenido (que corta en 4.5cm) no la pisa. */
+        .firma-band { position: absolute; left: 0; right: 0; bottom: -2.9cm; page-break-inside: avoid; }
+        .firma-table { width: 100%; }
         .firma-table td {
             width: 50%;
             vertical-align: bottom;
             padding-right: 32px;
         }
         .firma-table td:last-child { padding-right: 0; }
+        .firma-img { display: block; max-width: 220px; height: 60px; margin-bottom: 6px; }
+        /* Reserva en blanco sobre la línea del curador donde pyHanko estampa el
+           sello PAdES por coordenadas (config FIRMA_CAMPO). También mantiene ambas
+           columnas alineadas cuando el acta aún no tiene firma del investigador. */
+        .firma-slot { height: 60px; }
         .firma-line {
             border-top: 2px solid #212121;
             padding-top: 6px;
@@ -164,9 +195,13 @@
         .firma-name { font-size: 11px; font-weight: 600; color: #212121; }
         .firma-sub  { font-size: 9px; color: #757575; margin-top: 2px; }
 
-        /* Pie de página */
+        /* Pie de página — fijo al borde inferior de cada hoja. bottom NEGATIVO
+           porque fixed se mide desde la caja de contenido: -3.8cm baja el pie
+           hasta ~0.7cm del borde del papel, dentro de la reserva inferior (4.5cm),
+           debajo del área de firmas. */
         .footer {
-            margin-top: 28px;
+            position: fixed;
+            left: 0; right: 0; bottom: -3.8cm;
             border-top: 1px solid #E0E0E0;
             padding-top: 8px;
             font-size: 8px;
@@ -174,6 +209,31 @@
             text-align: center;
         }
     </style>
+    @if($embed ?? false)
+    {{-- Vista embebida en el navegador (iframe). @page y position:fixed no
+         aplican en pantalla, así que aquí los márgenes van por padding y las
+         firmas/pie fluyen. DomPDF nunca recibe este bloque ($embed=false). --}}
+    <style>
+        html { margin: 0; }
+        body { padding: 2cm; }
+        .doc-header-band { position: static; }
+        .especimenes-page { page-break-before: auto; }
+        .firma-band { position: static; margin-top: 2.5rem; }
+        .footer { position: static; margin-top: 1.5rem; }
+    </style>
+    @endif
+    @if($soloEspecimenes ?? false)
+    {{-- Hoja de especímenes en HORIZONTAL (A4 landscape, 842x595). El controlador
+         la renderiza con setPaper('a4','landscape') y la fusiona (FPDI) después del
+         acta vertical. Reserva superior igual que el acta (encabezado fijo); abajo
+         solo 2cm (aquí no hay firmas). La tabla va centrada y con ancho cómodo. --}}
+    <style>
+        html { margin: 3.6cm 2cm 2cm 2cm; }
+        .footer { bottom: -1.3cm; }
+        .especimenes-page { page-break-before: auto; }
+        .specimens-table { width: 80%; margin: 0 auto; }
+    </style>
+    @endif
 </head>
 <body>
 
@@ -185,26 +245,28 @@
         $logoBioBase64 = 'data:image/jpeg;base64,' . base64_encode(file_get_contents($logoBioPath));
     @endphp
 
-    {{-- Encabezado con logos --}}
-    <table class="header-table">
-        <tr>
-            <td class="logo-left">
-                <img src="{{ $logoEpnBase64 }}" class="logo-img" alt="Logo EPN" />
-            </td>
-            <td class="header-center doc-header">
-                <p class="institution">Laboratorio de Invertebrados</p>
-                <h1>Acta de Préstamo de Especímenes</h1>
-                <p class="numero">{{ $acta->numeroPrestamo }}</p>
-                <p class="patente">Patente MAATE: {{ $acta->patente }}</p>
-            </td>
-            <td class="logo-right">
-                <img src="{{ $logoBioBase64 }}" class="logo-img" alt="Logo Departamento de Biología" />
-            </td>
-        </tr>
-    </table>
+    {{-- Encabezado con logos — banda fija, se repite en todas las hojas --}}
+    <div class="doc-header-band">
+        <table class="header-table">
+            <tr>
+                <td class="logo-left">
+                    <img src="{{ $logoEpnBase64 }}" class="logo-img" alt="Logo EPN" />
+                </td>
+                <td class="header-center doc-header">
+                    <p class="institution">Laboratorio de Invertebrados</p>
+                    <h1>Acta de Préstamo de Especímenes</h1>
+                    <p class="numero">{{ $acta->numeroPrestamo }}</p>
+                    <p class="patente">Patente MAATE: {{ $acta->patente }}</p>
+                </td>
+                <td class="logo-right">
+                    <img src="{{ $logoBioBase64 }}" class="logo-img" alt="Logo Departamento de Biología" />
+                </td>
+            </tr>
+        </table>
+        <hr />
+    </div>
 
-    <hr />
-
+    @unless($soloEspecimenes ?? false)
     {{-- Condiciones del préstamo --}}
     <div class="section">
         <h2>Condiciones del préstamo</h2>
@@ -268,33 +330,6 @@
         </table>
     </div>
 
-    {{-- Especímenes en préstamo --}}
-    @if(count($acta->items))
-        <div class="section">
-            <h2>Especímenes en préstamo</h2>
-            <table class="specimens-table">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Código de espécimen</th>
-                        <th>Cantidad</th>
-                        <th>Condiciones específicas</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($acta->items as $i => $item)
-                        <tr>
-                            <td>{{ $i + 1 }}</td>
-                            <td>{{ $item->codigoExterno }}</td>
-                            <td>{{ $item->cantidadSolicitada }}</td>
-                            <td>{{ $item->condicionesEspecificas ?? '—' }}</td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-    @endif
-
     {{-- Condiciones generales --}}
     <div class="section">
         <h2>Condiciones generales</h2>
@@ -331,8 +366,8 @@
         </ul>
     </div>
 
-    {{-- Compromiso del investigador --}}
-    <div class="section">
+    {{-- Compromiso del investigador — no partir el título de su cuerpo entre hojas --}}
+    <div class="section" style="page-break-inside: avoid;">
         <h2>Compromiso del investigador</h2>
         <p class="commitment">
             El investigador solicitante se compromete a utilizar los especímenes en préstamo únicamente para los fines
@@ -343,28 +378,63 @@
         </p>
     </div>
 
-    {{-- Firmas --}}
-    <table class="firma-table">
-        <tr>
-            <td>
-                <div style="height: 66px;"></div>
-                <div class="firma-line">
-                    <p class="firma-name">Adrian Troya</p>
-                    <p class="firma-sub">Biólogo</p>
-                    <p class="firma-sub">Curador</p>
-                    <p class="firma-sub">Laboratorio de Invertebrados</p>
-                </div>
-            </td>
-            <td>
-                <div style="height: 66px;"></div>
-                <div class="firma-line">
-                    <p class="firma-name">{{ $acta->nombreInvestigador ?? 'Investigador solicitante' }}</p>
-                    <p class="firma-sub">{{ $acta->institucionAdscripcion }}</p>
-                    <p class="firma-sub">Fecha: ___________________</p>
-                </div>
-            </td>
-        </tr>
-    </table>
+    {{-- Firmas — fluyen al final del contenido principal; aparecen una sola vez,
+         en la última página del contenido, nunca en la hoja de especímenes. --}}
+    <div class="firma-band">
+        <table class="firma-table">
+            <tr>
+                <td>
+                    <div class="firma-slot"></div>
+                    <div class="firma-line">
+                        <p class="firma-name">Adrian Troya</p>
+                        <p class="firma-sub">Curador</p>
+                        <p class="firma-sub">Laboratorio de Invertebrados</p>
+                    </div>
+                </td>
+                <td>
+                    @if($firmaBase64 ?? false)
+                        <img src="{{ $firmaBase64 }}" class="firma-img" alt="Firma del investigador" />
+                    @else
+                        <div class="firma-slot"></div>
+                    @endif
+                    <div class="firma-line">
+                        <p class="firma-name">{{ $acta->nombreInvestigador ?? 'Investigador solicitante' }}</p>
+                        <p class="firma-sub">{{ $acta->institucionAdscripcion }}</p>
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+    @endunless
+
+    {{-- Especímenes en préstamo. En el PDF va en hoja HORIZONTAL aparte que el
+         controlador fusiona ($soloEspecimenes); en el navegador (embed) se muestra
+         en el mismo flujo vertical. Nunca en el acta vertical descargada. --}}
+    @if(count($acta->items) && (($soloEspecimenes ?? false) || ($embed ?? false)))
+        <div class="section especimenes-page">
+            <h2>Especímenes en préstamo</h2>
+            <table class="specimens-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Código de espécimen</th>
+                        <th>Cantidad</th>
+                        <th>Condiciones específicas</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($acta->items as $i => $item)
+                        <tr>
+                            <td>{{ $i + 1 }}</td>
+                            <td>{{ $item->codigoExterno }}</td>
+                            <td>{{ $item->cantidadSolicitada }}</td>
+                            <td>{{ $item->condicionesEspecificas ?? '—' }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
 
     {{-- Pie de página --}}
     <div class="footer">

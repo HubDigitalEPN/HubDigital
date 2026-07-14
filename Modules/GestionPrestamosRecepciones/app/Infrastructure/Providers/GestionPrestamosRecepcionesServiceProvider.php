@@ -10,9 +10,11 @@ use Illuminate\Http\Request;
 use Livewire\Livewire;
 use Modules\GestionPrestamosRecepciones\Application\Exceptions\SolicitudNoEncontradaException;
 use Modules\GestionPrestamosRecepciones\Application\Ports\CatalogoCuraduriaPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\CertificadoCuradorPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ColaRevisionCuratorialPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ExtraccionDatosDocumentoPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\FirmadorPdfPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\GeneradorCodigoPrestamo;
 use Modules\GestionPrestamosRecepciones\Application\Ports\HistorialPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\InvestigadorEmailPort;
@@ -35,7 +37,9 @@ use Modules\GestionPrestamosRecepciones\Domain\Repositories\RecepcionLoteReposit
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\RecordatorioDevolucionRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudProrrogaRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\VerificacionEspecimenesRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\CertificadoCuradorEloquentAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\EloquentColaRevisionCuratorialAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\EloquentGeneradorCodigoPrestamoAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\EloquentHistorialAdapter;
@@ -47,6 +51,7 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\LaravelTransacti
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\NotificacionCuratoriaAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\NotificacionInvestigadorAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\PdfsigValidacionFirmaElectronicaAdapter;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\PyHankoFirmadorPdfAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Console\Commands\EvaluarPlazosDevolucionTodosLosPrestamosCommand;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Console\Commands\LimpiarBorradoresAbandonadosCommand;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Gateways\DomPdfGeneratorAdapter;
@@ -58,12 +63,14 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repo
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentPrestamoRepository;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentRecordatorioDevolucionRepository;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentSolicitudPrestamoRepository;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentSolicitudProrrogaRepository;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Repositories\EloquentVerificacionEspecimenesRepository;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Repositories\EloquentMatrizEspeciesRepository;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Repositories\EloquentRecepcionLoteRepository;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Repositories\EloquentSolicitudDepositoRepository;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\BandejaActas;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\BandejaSolicitudes;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\RegistrarCertificado;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\RevisarSolicitud;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\ValidarActa;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\DetalleSolicitud;
@@ -97,6 +104,7 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
         SolicitudPrestamoRepositoryInterface::class => EloquentSolicitudPrestamoRepository::class,
         ActaPrestamoRepositoryInterface::class => EloquentActaPrestamoRepository::class,
         PrestamoRepositoryInterface::class => EloquentPrestamoRepository::class,
+        SolicitudProrrogaRepositoryInterface::class => EloquentSolicitudProrrogaRepository::class,
         SolicitudDepositoRepositoryInterface::class => EloquentSolicitudDepositoRepository::class,
         RecepcionLoteRepositoryInterface::class => EloquentRecepcionLoteRepository::class,
         MatrizEspeciesRepositoryInterface::class => EloquentMatrizEspeciesRepository::class,
@@ -117,6 +125,7 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
         VerificacionEspecimenesRepositoryInterface::class => EloquentVerificacionEspecimenesRepository::class,
         GeneradorCodigoPrestamo::class => EloquentGeneradorCodigoPrestamoAdapter::class,
         PatenteAnualRepositoryInterface::class => EloquentPatenteAnualRepository::class,
+        CertificadoCuradorPort::class => CertificadoCuradorEloquentAdapter::class,
     ];
 
     /**
@@ -133,6 +142,12 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
 
         $this->app->bind(ExtraccionDatosDocumentoPort::class, fn () => new GroqExtraccionDatosDocumentoAdapter(
             modelo: config('ai.providers.groq.model'),
+        ));
+
+        $this->app->bind(FirmadorPdfPort::class, fn () => new PyHankoFirmadorPdfAdapter(
+            binario: config('gestionprestamosrecepciones.firma.binario', 'pyhanko'),
+            campoFirma: config('gestionprestamosrecepciones.firma.campo', '1/50,50,300,120/FirmaCurador'),
+            tsaUrl: config('gestionprestamosrecepciones.firma.tsa_url'),
         ));
     }
 
@@ -198,5 +213,6 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
         Livewire::component('prestamos.curador.revisar-solicitud', RevisarSolicitud::class);
         Livewire::component('prestamos.curador.bandeja-actas', BandejaActas::class);
         Livewire::component('prestamos.curador.validar-acta', ValidarActa::class);
+        Livewire::component('prestamos.curador.registrar-certificado', RegistrarCertificado::class);
     }
 }

@@ -8,7 +8,9 @@ use Behat\Step\Given;
 use Behat\Step\Then;
 use Behat\Step\When;
 use DateTimeImmutable;
+use Modules\GestionPrestamosRecepciones\Application\Ports\CertificadoCuradorPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\FirmadorPdfPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\HabilitarEnvioInternacional\HabilitarEnvioInternacionalHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\HabilitarEnvioInternacional\HabilitarEnvioInternacionalInput;
@@ -26,13 +28,15 @@ use Modules\GestionPrestamosRecepciones\Domain\Repositories\PrestamoRepositoryIn
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\RecordatorioDevolucionRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\AlcancePrestamo;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\CodigoPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoActa;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ItemPrestamoId;
-use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\CodigoPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoPrestamo;
 use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\BaseContext;
+use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\FakeCertificadoCuradorAdapter;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\FakeEventPublisherAdapter;
+use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\FakeFirmadorPdfAdapter;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\PassThroughTransactionManagerAdapter;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Persistence\InMemoryActaPrestamoRepository;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Persistence\InMemoryConfiguracionGlobalRecordatoriosRepository;
@@ -91,6 +95,8 @@ final class HabilitacionEnvioInternacionalContext extends BaseContext
         self::$app->instance(EventPublisherPort::class, $this->fakePublisher);
         self::$app->instance(ConfiguracionGlobalRecordatoriosRepositoryInterface::class, new InMemoryConfiguracionGlobalRecordatoriosRepository);
         self::$app->instance(RecordatorioDevolucionRepositoryInterface::class, new InMemoryRecordatorioDevolucionRepository);
+        self::$app->instance(FirmadorPdfPort::class, new FakeFirmadorPdfAdapter);
+        self::$app->instance(CertificadoCuradorPort::class, new FakeCertificadoCuradorAdapter);
 
         $this->habilitarHandler = $this->make(HabilitarEnvioInternacionalHandler::class);
         $this->validarActaHandler = $this->make(ValidarActaFirmadaHandler::class);

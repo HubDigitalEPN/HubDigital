@@ -16,6 +16,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Entities\Prestamo;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\PrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\VerificacionEspecimenesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\CodigoPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\CondicionEspecimen;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoVerificacion;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoPrestamo;
@@ -83,6 +84,7 @@ final class CierrePrestamosContext extends BaseContext
         $prestamo = Prestamo::reconstituir(
             id: $this->prestamoRepo->nextIdentity(),
             actaPrestamoId: ActaPrestamoId::generate(),
+            codigoPrestamo: CodigoPrestamo::fromParts(2026, random_int(1, 99999)),
             investigadorId: $this->investigadorId,
             estado: EstadoPrestamo::EnRevision,
             iniciadoEn: $ahora->modify('-1 month'),

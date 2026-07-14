@@ -19,6 +19,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoCerrado;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\PrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\VerificacionEspecimenesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\CodigoPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoVerificacionDevolucion;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoVerificacion;
@@ -89,6 +90,7 @@ final class CierrePrestamoDevolucionContext extends BaseContext
         $prestamo = Prestamo::reconstituir(
             id: $this->prestamoRepo->nextIdentity(),
             actaPrestamoId: ActaPrestamoId::generate(),
+            codigoPrestamo: CodigoPrestamo::fromParts(2026, random_int(1, 99999)),
             investigadorId: $this->investigadorId,
             estado: EstadoPrestamo::Activo,
             iniciadoEn: $ahora->modify('-1 month'),
@@ -108,6 +110,7 @@ final class CierrePrestamoDevolucionContext extends BaseContext
         $prestamo = Prestamo::reconstituir(
             id: $this->prestamoRepo->nextIdentity(),
             actaPrestamoId: ActaPrestamoId::generate(),
+            codigoPrestamo: CodigoPrestamo::fromParts(2026, random_int(1, 99999)),
             investigadorId: $this->investigadorId,
             estado: EstadoPrestamo::EnRevision,
             iniciadoEn: $ahora->modify('-2 months'),

@@ -14,6 +14,7 @@ final readonly class ProrrogaAprobada
 {
     public function __construct(
         public PrestamoId $prestamoId,
+        public string $investigadorId,
         public string $curadorId,
         public DateTimeImmutable $nuevaFechaFin,
         public DateTimeImmutable $fechaAnterior,
