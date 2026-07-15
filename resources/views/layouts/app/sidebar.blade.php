@@ -197,7 +197,7 @@
                             heading="Control de calidad"
                             class="grid"
                             expandable
-                            :expanded="request()->routeIs('inventario.taxonomia.revision', 'inventario.taxonomia.especimenes.duplicados', 'inventario.taxonomia.fechas.revision', 'inventario.taxonomia.taxones.revision', 'inventario.taxonomia.localidades.revision', 'inventario.taxonomia.muestras')"
+                            :expanded="request()->routeIs('inventario.taxonomia.revision', 'inventario.taxonomia.especimenes.duplicados', 'inventario.taxonomia.fechas.revision', 'inventario.taxonomia.muestras')"
                         >
                             <flux:sidebar.item
                                 icon="clipboard-document-check"
@@ -222,22 +222,6 @@
                                 wire:navigate
                             >
                                 Fechas por normalizar
-                            </flux:sidebar.item>
-                            <flux:sidebar.item
-                                icon="exclamation-triangle"
-                                :href="route('inventario.taxonomia.taxones.revision')"
-                                :current="request()->routeIs('inventario.taxonomia.taxones.revision')"
-                                wire:navigate
-                            >
-                                Taxones por confirmar
-                            </flux:sidebar.item>
-                            <flux:sidebar.item
-                                icon="exclamation-triangle"
-                                :href="route('inventario.taxonomia.localidades.revision')"
-                                :current="request()->routeIs('inventario.taxonomia.localidades.revision')"
-                                wire:navigate
-                            >
-                                Localidades por confirmar
                             </flux:sidebar.item>
                             <flux:sidebar.item
                                 icon="rectangle-stack"
