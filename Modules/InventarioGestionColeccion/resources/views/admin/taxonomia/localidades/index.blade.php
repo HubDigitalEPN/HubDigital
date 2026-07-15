@@ -20,9 +20,6 @@
                     <tr>
                         <th class="px-4 py-3 text-left font-medium text-white">Nombre canónico</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Rango</th>
-                        <th class="px-4 py-3 text-left font-medium text-white">País</th>
-                        <th class="px-4 py-3 text-left font-medium text-white">Provincia</th>
-                        <th class="px-4 py-3 text-left font-medium text-white">Coordenadas</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Acciones</th>
                     </tr>
                 </thead>
@@ -31,22 +28,13 @@
                         <tr class="hover:bg-bg-main transition-colors">
                             <td class="px-4 py-3 font-medium text-text-primary">{{ $l['nombreCanonico'] }}</td>
                             <td class="px-4 py-3 text-text-primary capitalize">{{ str_replace('_', ' ', $l['rango']) }}</td>
-                            <td class="px-4 py-3 text-text-primary">{{ $l['country'] ?? '—' }}</td>
-                            <td class="px-4 py-3 text-text-primary">{{ $l['stateProvince'] ?? '—' }}</td>
-                            <td class="px-4 py-3 text-text-secondary text-xs font-mono">
-                                @if($l['latitud'] !== null && $l['longitud'] !== null)
-                                    {{ number_format((float) $l['latitud'], 4) }}, {{ number_format((float) $l['longitud'], 4) }}
-                                @else
-                                    —
-                                @endif
-                            </td>
                             <td class="px-4 py-3 whitespace-nowrap">
                                 <flux:button size="sm" variant="ghost" icon="pencil"
                                              wire:click="abrirEditModal('{{ $l['id'] }}')">Editar</flux:button>
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="6" class="px-4 py-8 text-center text-text-secondary">No hay localidades registradas.</td></tr>
+                        <tr><td colspan="3" class="px-4 py-8 text-center text-text-secondary">No hay localidades registradas.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -64,21 +52,6 @@
                         <flux:button variant="ghost" icon="pencil"
                                      wire:click="abrirEditModal('{{ $l['id'] }}')">Editar</flux:button>
                     </div>
-                    @if(! empty($l['country']))
-                        <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="País">
-                            {{ $l['country'] }}
-                        </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
-                    @endif
-                    @if(! empty($l['stateProvince']))
-                        <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="Provincia">
-                            {{ $l['stateProvince'] }}
-                        </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
-                    @endif
-                    @if($l['latitud'] !== null && $l['longitud'] !== null)
-                        <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="Coords">
-                            <span class="font-mono text-xs">{{ number_format((float) $l['latitud'], 4) }}, {{ number_format((float) $l['longitud'], 4) }}</span>
-                        </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
-                    @endif
                 </div>
             @empty
                 <div class="p-6 text-center text-text-secondary text-sm">No hay localidades registradas.</div>
