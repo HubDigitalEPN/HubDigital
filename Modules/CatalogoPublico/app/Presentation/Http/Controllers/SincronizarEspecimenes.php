@@ -62,7 +62,7 @@ final class SincronizarEspecimenes extends Component
 
     private const GRUPOS = [
         'Identificación' => [
-            ['key' => 'occurrenceIDVisible', 'label' => 'occurrenceID', 'desc' => 'ID del registro', 'sensible' => false],
+            ['key' => 'occurrenceIDVisible', 'label' => 'N.º de catálogo', 'desc' => 'ID del registro', 'sensible' => false],
         ],
         'Taxonomía' => [
             ['key' => 'scientificNameVisible', 'label' => 'Nombre científico', 'desc' => 'Nombre taxonómico completo', 'sensible' => false],
