@@ -17,6 +17,7 @@ use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\Seguimiento
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\CentroRevisionIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\ConfiguracionColumnasIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\DatasetConfigForm;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\DescargarPlantillaImportController;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\DuplicadosCatalogNumberIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\EntidadDepositanteIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\EspecimenIndex;
@@ -59,6 +60,7 @@ Route::middleware(['web', 'auth', 'verified', 'role:curador'])
             Route::get('/localidades/revision', LocalidadesRevisionIndex::class)->name('localidades.revision');
             Route::get('/especimenes', EspecimenIndex::class)->name('especimenes');
             Route::get('/importar', ImportarCatalogoIndex::class)->name('importar');
+            Route::get('/importar/plantilla', DescargarPlantillaImportController::class)->name('importar.plantilla');
             Route::get('/etiquetas', EtiquetadoQrIndex::class)->name('etiquetas');
             Route::get('/especimenes/duplicados', DuplicadosCatalogNumberIndex::class)->name('especimenes.duplicados');
             Route::get('/muestras', MuestrasColectaIndex::class)->name('muestras');
