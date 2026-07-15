@@ -89,7 +89,11 @@ final class EspecimenIndex extends Component
     #[Rule('nullable|string|max:200')]
     public string $fMotivoRevision = '';
 
-    public bool $fParaRevision = true;
+    // Por defecto DESACTIVADO: la búsqueda muestra todo el catálogo. Antes venía
+    // activado y ocultaba los especímenes que no estaban marcados para revisión,
+    // dando la falsa impresión de que la búsqueda "no devolvía nada". El preset
+    // "Para revisión" y esta casilla siguen disponibles para el trabajo de QC.
+    public bool $fParaRevision = false;
 
     // ── Registro ──────────────────────────────────────────────────────────────
 
@@ -607,7 +611,7 @@ final class EspecimenIndex extends Component
             'fLocalidad', 'fColector', 'fFechaDesde', 'fFechaHasta',
             'fEstado', 'fEstadoRevision', 'fMotivoRevision',
         );
-        $this->fParaRevision = true;
+        $this->fParaRevision = false;
         $this->resetValidation();
     }
 
