@@ -25,9 +25,8 @@ final class ExportarEspecimenesGbif extends Component
     private const MAX_SELECCION = 2000;
 
     // ── Filtros ───────────────────────────────────────────────────────────────
+    /** Nombre de taxón en cualquier nivel (reino, orden, familia, género, especie). */
     public string $fTaxon = '';
-
-    public string $fFamilia = '';
 
     public string $fLocalidad = '';
 
@@ -157,7 +156,6 @@ final class ExportarEspecimenesGbif extends Component
             catalogNumber: $this->nullable($this->fCatalogNumber),
             localidad: $this->nullable($this->fLocalidad),
             colector: $this->nullable($this->fColector),
-            familia: $this->nullable($this->fFamilia),
             fechaDesde: $this->nullable($this->fFechaDesde),
             fechaHasta: $this->nullable($this->fFechaHasta),
             page: $page,

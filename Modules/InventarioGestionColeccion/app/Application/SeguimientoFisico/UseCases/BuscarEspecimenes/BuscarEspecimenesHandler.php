@@ -117,7 +117,22 @@ final class BuscarEspecimenesHandler
         $idsTaxonNombre = null;
         if ($input->taxonNombre !== null && trim($input->taxonNombre) !== '') {
             $taxa = $this->taxonRepo->buscarPorNombreContiene($input->taxonNombre);
-            $idsTaxonNombre = array_map(fn (Taxon $t) => (string) $t->id(), $taxa);
+            if ($taxa === []) {
+                return false;
+            }
+            // Incluye el taxón coincidente y TODOS sus descendientes: así un
+            // filtro por un rango alto (reino, filo, clase, orden, familia…)
+            // trae los especímenes clasificados debajo, no solo los clasificados
+            // exactamente en ese taxón. Para género/especie el resultado no
+            // cambia (no tienen descendientes que sumen especímenes nuevos).
+            $idsTaxonNombre = [];
+            foreach ($taxa as $t) {
+                $idsTaxonNombre = array_merge(
+                    $idsTaxonNombre,
+                    $this->taxonRepo->listarDescendientesIds((string) $t->id())
+                );
+            }
+            $idsTaxonNombre = array_values(array_unique($idsTaxonNombre));
             if ($idsTaxonNombre === []) {
                 return false;
             }

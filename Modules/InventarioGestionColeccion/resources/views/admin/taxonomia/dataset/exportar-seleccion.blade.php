@@ -12,8 +12,11 @@
 
     {{-- Filtros --}}
     <div class="rounded-lg border border-border bg-bg-main p-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <flux:field><flux:label>Taxón</flux:label><flux:input wire:model="fTaxon" wire:keydown.enter="buscar" placeholder="Ej. Morpho" /></flux:field>
-        <flux:field><flux:label>Familia</flux:label><flux:input wire:model="fFamilia" wire:keydown.enter="buscar" placeholder="Ej. Nymphalidae" /></flux:field>
+        <flux:field>
+            <flux:label>Taxón (cualquier nivel)</flux:label>
+            <flux:input wire:model="fTaxon" wire:keydown.enter="buscar" placeholder="Ej. Animalia, Lepidoptera, Nymphalidae, Morpho" />
+            <flux:description>Reino, filo, clase, orden, familia, género o especie: trae todo lo que cuelga debajo.</flux:description>
+        </flux:field>
         <flux:field><flux:label>Localidad</flux:label><flux:input wire:model="fLocalidad" wire:keydown.enter="buscar" /></flux:field>
         <flux:field><flux:label>Colector</flux:label><flux:input wire:model="fColector" wire:keydown.enter="buscar" /></flux:field>
         <flux:field><flux:label>N.º de catálogo</flux:label><flux:input wire:model="fCatalogNumber" wire:keydown.enter="buscar" /></flux:field>
