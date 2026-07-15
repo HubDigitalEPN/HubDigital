@@ -142,7 +142,7 @@
                             heading="Catálogo"
                             class="grid"
                             expandable
-                            :expanded="request()->routeIs('inventario.taxonomia.especimenes', 'inventario.taxonomia.etiquetas', 'inventario.taxonomia.taxones', 'inventario.taxonomia.localidades', 'inventario.taxonomia.entidades-depositantes')"
+                            :expanded="request()->routeIs('inventario.taxonomia.especimenes', 'inventario.taxonomia.importar', 'inventario.taxonomia.etiquetas', 'inventario.taxonomia.taxones', 'inventario.taxonomia.localidades', 'inventario.taxonomia.entidades-depositantes')"
                         >
                             <flux:sidebar.item
                                 icon="magnifying-glass"
@@ -151,6 +151,14 @@
                                 wire:navigate
                             >
                                 Especímenes
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="arrow-up-tray"
+                                :href="route('inventario.taxonomia.importar')"
+                                :current="request()->routeIs('inventario.taxonomia.importar')"
+                                wire:navigate
+                            >
+                                Importar catálogo
                             </flux:sidebar.item>
                             <flux:sidebar.item
                                 icon="qr-code"
