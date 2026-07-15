@@ -366,16 +366,19 @@
                     >
                         Cancelar
                     </flux:button>
+                    {{-- Candado síncrono: wire:loading deja una ventana entre el clic y el inicio
+                         del request donde clics rápidos encolan la acción dos veces (y el segundo
+                         intento pisa el mensaje de éxito con un error). --}}
                     <flux:button
                         variant="primary"
                         icon="check"
-                        wire:click="asignarEspecimenes"
-                        wire:loading.attr="disabled"
-                        wire:target="asignarEspecimenes"
+                        x-data="{ guardando: false }"
+                        x-bind:disabled="guardando"
+                        x-on:click="if (guardando) return; guardando = true; $wire.asignarEspecimenes().finally(() => guardando = false)"
                         class="w-full min-h-[44px] sm:w-auto"
                     >
-                        <span wire:loading.remove wire:target="asignarEspecimenes">Guardar asignación</span>
-                        <span wire:loading wire:target="asignarEspecimenes">Guardando…</span>
+                        <span x-show="! guardando">Guardar asignación</span>
+                        <span x-show="guardando">Guardando…</span>
                     </flux:button>
                 </div>
             </div>

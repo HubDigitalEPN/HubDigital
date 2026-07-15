@@ -101,11 +101,14 @@
                             <td class="px-4 py-3 text-text-primary">{{ $visitante['contacto'] ?: '—' }}</td>
                             <td class="px-4 py-3 text-text-secondary">{{ $visitante['registradoEn'] }}</td>
                             <td class="px-4 py-3">
-                                <flux:switch
-                                    :checked="$visitante['puedeReubicar']"
-                                    wire:click="alternarReubicacion('{{ $visitante['id'] }}', {{ $visitante['puedeReubicar'] ? 'false' : 'true' }})"
-                                    label="Puede reubicar"
-                                />
+                                <div class="flex items-center gap-2">
+                                    <flux:switch
+                                        :checked="$visitante['puedeReubicar']"
+                                        wire:click="alternarReubicacion('{{ $visitante['id'] }}', {{ $visitante['puedeReubicar'] ? 'false' : 'true' }})"
+                                        aria-label="Puede reubicar"
+                                    />
+                                    <span class="text-sm text-text-secondary">Puede reubicar</span>
+                                </div>
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap">
                                 <div class="flex items-center gap-2">
@@ -134,12 +137,13 @@
                     <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="Registrado">
                         {{ $visitante['registradoEn'] }}
                     </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
-                    <div class="flex items-center justify-between gap-2 pt-1">
-                        <span class="text-sm text-text-secondary">Puede reubicar</span>
+                    <div class="flex items-center gap-2 pt-1">
                         <flux:switch
                             :checked="$visitante['puedeReubicar']"
                             wire:click="alternarReubicacion('{{ $visitante['id'] }}', {{ $visitante['puedeReubicar'] ? 'false' : 'true' }})"
+                            aria-label="Puede reubicar"
                         />
+                        <span class="text-sm text-text-secondary">Puede reubicar</span>
                     </div>
                     <div class="flex flex-wrap gap-2 pt-2">
                         <flux:button variant="primary" icon="qr-code"
