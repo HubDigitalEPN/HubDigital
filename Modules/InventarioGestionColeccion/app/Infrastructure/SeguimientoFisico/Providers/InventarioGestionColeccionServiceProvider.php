@@ -49,6 +49,7 @@ use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\TaxonArbolClasificacionTaxonomicaAdapter;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Console\ExportarGbifCommand;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Console\ImportarCatalogoInvertebradosCommand;
+use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Console\ResincronizarClasificacionesCommand;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentAlertaUbicacionRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentCajaRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentCodigoQrRepository;
@@ -139,6 +140,7 @@ class InventarioGestionColeccionServiceProvider extends ModuleServiceProvider
             $this->commands([
                 ImportarCatalogoInvertebradosCommand::class,
                 ExportarGbifCommand::class,
+                ResincronizarClasificacionesCommand::class,
             ]);
         }
     }
