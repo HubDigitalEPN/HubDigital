@@ -10,9 +10,9 @@
             </p>
         </div>
         <a href="{{ route('inventario.taxonomia.importar.plantilla') }}"
-           class="inline-flex items-center justify-center gap-2 rounded-lg bg-science-blue text-white px-4 py-2 text-sm font-medium hover:opacity-90 transition-opacity w-full sm:w-auto shrink-0">
-            <flux:icon name="arrow-down-tray" class="size-4" />
-            Descargar plantilla Excel
+           class="inline-flex items-center gap-2 rounded-lg bg-science-blue px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition-opacity shrink-0 whitespace-nowrap">
+            <flux:icon name="arrow-down-tray" class="size-4 shrink-0 text-white" />
+            <span class="text-white">Descargar plantilla Excel</span>
         </a>
     </div>
 
