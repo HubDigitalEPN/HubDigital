@@ -66,6 +66,22 @@ test('un taxón inexistente devuelve vacío', function (): void {
     expect($handler->handle(new BuscarEspecimenesInput(taxonNombre: 'Inexistente', page: 1, perPage: 25))->total)->toBe(0);
 });
 
+test('encuentra especímenes por taxonomía verbatim aunque no estén enlazados a un Taxón', function (): void {
+    // Caso típico tras importar: el espécimen trae el nombre científico en
+    // taxon_verbatim pero NO quedó enlazado a una entidad Taxón (taxon_id null).
+    $taxonRepo = new InMemoryTaxonRepository; // sin taxones
+    $especimenRepo = new InMemoryEspecimenRepository;
+    $especimenRepo->guardar(Especimen::crear(
+        EspecimenId::generar(), 'MEPN-V', null, 'Yasuní', '2001-01-01', 'Juan',
+        taxonVerbatim: 'Morpho peleides',
+    ));
+
+    $handler = new BuscarEspecimenesHandler($especimenRepo, $taxonRepo);
+
+    expect($handler->handle(new BuscarEspecimenesInput(taxonNombre: 'Morpho', page: 1, perPage: 25))->total)->toBe(1)
+        ->and($handler->handle(new BuscarEspecimenesInput(taxonNombre: 'Otro', page: 1, perPage: 25))->total)->toBe(0);
+});
+
 test('el filtro Familia solo acepta familias: un reino en Familia devuelve vacío', function (): void {
     [$handler] = sembrarBusqueda();
 

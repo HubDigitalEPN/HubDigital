@@ -592,6 +592,19 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
             $set = array_flip($filtros['taxonIds']);
             $items = array_filter($items, fn (Especimen $e) => $e->taxonId() !== null && isset($set[$e->taxonId()]));
         }
+        $idsNombre = $filtros['taxonNombreIds'] ?? [];
+        $textoTaxon = $filtros['taxonNombreTexto'] ?? null;
+        if (! empty($idsNombre) || ($textoTaxon !== null && $textoTaxon !== '')) {
+            $setNombre = array_flip($idsNombre);
+            $items = array_filter($items, function (Especimen $e) use ($setNombre, $idsNombre, $textoTaxon): bool {
+                $porId = ! empty($idsNombre) && $e->taxonId() !== null && isset($setNombre[$e->taxonId()]);
+                $porVerbatim = $textoTaxon !== null && $textoTaxon !== ''
+                    && $e->taxonVerbatim() !== null
+                    && stripos($e->taxonVerbatim(), $textoTaxon) !== false;
+
+                return $porId || $porVerbatim;
+            });
+        }
         if (! empty($filtros['codigoCatalogo'])) {
             $items = array_filter($items, fn (Especimen $e) => stripos($e->codigoCatalogo(), $filtros['codigoCatalogo']) !== false);
         }

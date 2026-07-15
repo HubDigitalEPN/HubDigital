@@ -35,9 +35,10 @@ final class BuscarEspecimenesHandler
         }
 
         // Resolver taxa por nombre y/o familia.
-        $taxonIds = $this->resolverTaxonIds($input);
-        if ($taxonIds === false) {
-            // Se pidió filtro taxonómico pero no hay matches: resultado vacío.
+        $taxon = $this->resolverTaxon($input);
+        if ($taxon === false) {
+            // Se pidió filtro por FAMILIA y no hubo coincidencias: resultado vacío.
+            // (El filtro por nombre no corta aquí: puede matchear taxon_verbatim.)
             return $this->salidaVacia($input);
         }
 
@@ -48,7 +49,9 @@ final class BuscarEspecimenesHandler
         $offset = $paginado ? ($paginaActual - 1) * $perPage : 0;
 
         $filtros = [
-            'taxonIds' => $taxonIds,
+            'taxonIds' => $taxon['idsFamilia'] ?? null,
+            'taxonNombreIds' => $taxon['idsNombre'] ?? null,
+            'taxonNombreTexto' => $taxon['texto'] ?? null,
             'codigoCatalogo' => $input->codigoCatalogo,
             'occurrenceId' => $input->occurrenceId,
             'catalogNumber' => $input->catalogNumber,
@@ -112,33 +115,22 @@ final class BuscarEspecimenesHandler
      *
      * @return string[]|null|false
      */
-    private function resolverTaxonIds(BuscarEspecimenesInput $input): array|null|false
+    /**
+     * Resuelve el filtro taxonómico en tres piezas independientes:
+     *  - idsFamilia: taxones (familia + descendientes) para un match ESTRICTO por
+     *    taxon_id. Si se pidió familia y no coincide ninguna, devuelve false.
+     *  - idsNombre:  taxones (coincidencia por nombre + descendientes) para los
+     *    especímenes ya enlazados a un Taxón.
+     *  - texto:      el texto del filtro por nombre, para también matchear
+     *    `taxon_verbatim` en especímenes cuya taxonomía NO está enlazada a un
+     *    Taxón (caso frecuente tras una importación).
+     *
+     * @return array{idsFamilia?: string[], idsNombre?: string[], texto?: string}|false
+     */
+    private function resolverTaxon(BuscarEspecimenesInput $input): array|false
     {
-        $idsTaxonNombre = null;
-        if ($input->taxonNombre !== null && trim($input->taxonNombre) !== '') {
-            $taxa = $this->taxonRepo->buscarPorNombreContiene($input->taxonNombre);
-            if ($taxa === []) {
-                return false;
-            }
-            // Incluye el taxón coincidente y TODOS sus descendientes: así un
-            // filtro por un rango alto (reino, filo, clase, orden, familia…)
-            // trae los especímenes clasificados debajo, no solo los clasificados
-            // exactamente en ese taxón. Para género/especie el resultado no
-            // cambia (no tienen descendientes que sumen especímenes nuevos).
-            $idsTaxonNombre = [];
-            foreach ($taxa as $t) {
-                $idsTaxonNombre = array_merge(
-                    $idsTaxonNombre,
-                    $this->taxonRepo->listarDescendientesIds((string) $t->id())
-                );
-            }
-            $idsTaxonNombre = array_values(array_unique($idsTaxonNombre));
-            if ($idsTaxonNombre === []) {
-                return false;
-            }
-        }
+        $out = [];
 
-        $idsFamilia = null;
         if ($input->familia !== null && trim($input->familia) !== '') {
             $familiaCandidatos = array_filter(
                 $this->taxonRepo->buscarPorNombreContiene($input->familia),
@@ -155,15 +147,21 @@ final class BuscarEspecimenesHandler
             if ($idsFamilia === []) {
                 return false;
             }
+            $out['idsFamilia'] = $idsFamilia;
         }
 
-        if ($idsTaxonNombre !== null && $idsFamilia !== null) {
-            $intersec = array_values(array_intersect($idsTaxonNombre, $idsFamilia));
-
-            return $intersec === [] ? false : $intersec;
+        if ($input->taxonNombre !== null && trim($input->taxonNombre) !== '') {
+            // Coincidencias por entidad Taxón (+ descendientes), para que un rango
+            // alto (reino, orden, familia…) traiga todo lo que cuelga debajo.
+            $ids = [];
+            foreach ($this->taxonRepo->buscarPorNombreContiene($input->taxonNombre) as $t) {
+                $ids = array_merge($ids, $this->taxonRepo->listarDescendientesIds((string) $t->id()));
+            }
+            $out['idsNombre'] = array_values(array_unique($ids));
+            $out['texto'] = trim($input->taxonNombre);
         }
 
-        return $idsTaxonNombre ?? $idsFamilia;
+        return $out;
     }
 
     /**

@@ -677,8 +677,27 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
      */
     private function aplicarFiltrosBusqueda(Builder $query, array $filtros): void
     {
+        // Familia: match estricto por taxón enlazado.
         if (! empty($filtros['taxonIds'])) {
             $query->whereIn('taxon_id', $filtros['taxonIds']);
+        }
+        // Nombre de taxón: enlazado (taxon_id) O verbatim (taxon_verbatim), para
+        // encontrar también especímenes cuya taxonomía no quedó enlazada a un Taxón.
+        $idsNombre = $filtros['taxonNombreIds'] ?? [];
+        $textoTaxon = $filtros['taxonNombreTexto'] ?? null;
+        if (! empty($idsNombre) || ($textoTaxon !== null && $textoTaxon !== '')) {
+            $query->where(function (Builder $q) use ($idsNombre, $textoTaxon): void {
+                $tieneIds = ! empty($idsNombre);
+                if ($tieneIds) {
+                    $q->whereIn('taxon_id', $idsNombre);
+                }
+                if ($textoTaxon !== null && $textoTaxon !== '') {
+                    $pat = '%'.$textoTaxon.'%';
+                    $tieneIds
+                        ? $q->orWhere('taxon_verbatim', 'ilike', $pat)
+                        : $q->where('taxon_verbatim', 'ilike', $pat);
+                }
+            });
         }
         if (! empty($filtros['codigoCatalogo'])) {
             $query->where('codigo_catalogo', 'ilike', '%'.$filtros['codigoCatalogo'].'%');
