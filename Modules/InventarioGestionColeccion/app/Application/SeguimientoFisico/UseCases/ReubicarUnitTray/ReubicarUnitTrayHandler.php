@@ -55,7 +55,13 @@ final class ReubicarUnitTrayHandler
         $origenCajaId = (string) $tray->cajaId();
 
         $this->transactionManager->executeTransactional(function () use ($tray, $cajaDestino, $origenCajaId, $input, $actorId, $actorRol): void {
-            $tray->moverACaja($cajaDestino->id());
+            // La numeración es correlativa por caja: al cambiar de caja el tray toma el
+            // siguiente número libre del destino para no chocar con las bandejas existentes.
+            $numeroEnDestino = $origenCajaId === $input->cajaDestinoId
+                ? $tray->numero()
+                : $this->unitTrayRepo->siguienteNumero($cajaDestino->id());
+
+            $tray->moverACaja($cajaDestino->id(), $numeroEnDestino);
             $this->unitTrayRepo->guardar($tray);
 
             $this->eventoRepo->guardar(EventoCicloIot::registrar(
