@@ -9,10 +9,11 @@
                 Ninguna fila se pierde: las que tengan datos dudosos quedan marcadas para revisión.
             </p>
         </div>
-        <flux:button href="{{ route('inventario.taxonomia.importar.plantilla') }}" download
-                     icon="arrow-down-tray" variant="filled" class="w-full sm:w-auto shrink-0">
+        <a href="{{ route('inventario.taxonomia.importar.plantilla') }}"
+           class="inline-flex items-center justify-center gap-2 rounded-lg bg-science-blue text-white px-4 py-2 text-sm font-medium hover:opacity-90 transition-opacity w-full sm:w-auto shrink-0">
+            <flux:icon name="arrow-down-tray" class="size-4" />
             Descargar plantilla Excel
-        </flux:button>
+        </a>
     </div>
 
     @if($successMessage)
