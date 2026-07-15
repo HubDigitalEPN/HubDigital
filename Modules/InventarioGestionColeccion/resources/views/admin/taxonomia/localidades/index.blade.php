@@ -1,6 +1,9 @@
 <div class="space-y-6 p-4 sm:p-6">
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Localidades</flux:heading>
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+            <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Localidades</flux:heading>
+            <p class="text-sm text-text-secondary mt-1">Cada lugar se muestra una sola vez por nombre y rango.</p>
+        </div>
         <flux:button icon="plus" variant="primary" wire:click="abrirModal" class="w-full sm:w-auto">
             Nueva Localidad
         </flux:button>
@@ -17,7 +20,6 @@
                     <tr>
                         <th class="px-4 py-3 text-left font-medium text-white">Nombre canónico</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Rango</th>
-                        <th class="px-4 py-3 text-left font-medium text-white">Padre</th>
                         <th class="px-4 py-3 text-left font-medium text-white">País</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Provincia</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Coordenadas</th>
@@ -29,7 +31,6 @@
                         <tr class="hover:bg-bg-main transition-colors">
                             <td class="px-4 py-3 font-medium text-text-primary">{{ $l['nombreCanonico'] }}</td>
                             <td class="px-4 py-3 text-text-primary capitalize">{{ str_replace('_', ' ', $l['rango']) }}</td>
-                            <td class="px-4 py-3 text-text-secondary text-xs">{{ $l['padreNombre'] ?? '—' }}</td>
                             <td class="px-4 py-3 text-text-primary">{{ $l['country'] ?? '—' }}</td>
                             <td class="px-4 py-3 text-text-primary">{{ $l['stateProvince'] ?? '—' }}</td>
                             <td class="px-4 py-3 text-text-secondary text-xs font-mono">
@@ -45,7 +46,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="7" class="px-4 py-8 text-center text-text-secondary">No hay localidades registradas.</td></tr>
+                        <tr><td colspan="6" class="px-4 py-8 text-center text-text-secondary">No hay localidades registradas.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -63,11 +64,6 @@
                         <flux:button variant="ghost" icon="pencil"
                                      wire:click="abrirEditModal('{{ $l['id'] }}')">Editar</flux:button>
                     </div>
-                    @if(! empty($l['padreNombre']))
-                        <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="Padre">
-                            {{ $l['padreNombre'] }}
-                        </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
-                    @endif
                     @if(! empty($l['country']))
                         <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="País">
                             {{ $l['country'] }}
