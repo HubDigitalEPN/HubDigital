@@ -99,6 +99,19 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
         return $model ? $this->toDomain($model) : null;
     }
 
+    public function buscarPorIds(array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        return EspecimenEloquentModel::with('identificadores')
+            ->whereIn('id', array_map('strval', $ids))
+            ->get()
+            ->map(fn ($m) => $this->toDomain($m))
+            ->all();
+    }
+
     /** @return Especimen[] */
     public function buscarPorEntidadDepositante(string $entidadDepositanteId): array
     {

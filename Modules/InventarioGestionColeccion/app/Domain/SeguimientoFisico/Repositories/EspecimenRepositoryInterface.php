@@ -15,6 +15,14 @@ interface EspecimenRepositoryInterface
 
     public function buscarPorId(EspecimenId $id): ?Especimen;
 
+    /**
+     * Busca especímenes por una lista de IDs (para exportar una selección).
+     *
+     * @param  string[]  $ids
+     * @return Especimen[]
+     */
+    public function buscarPorIds(array $ids): array;
+
     /** @return Especimen[] */
     public function buscarPorEntidadDepositante(string $entidadDepositanteId): array;
 

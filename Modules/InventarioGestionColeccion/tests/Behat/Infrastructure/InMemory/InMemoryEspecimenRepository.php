@@ -31,6 +31,19 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
     }
 
     /** @return Especimen[] */
+    public function buscarPorIds(array $ids): array
+    {
+        $out = [];
+        foreach ($ids as $id) {
+            if (isset($this->store[(string) $id])) {
+                $out[] = $this->store[(string) $id];
+            }
+        }
+
+        return $out;
+    }
+
+    /** @return Especimen[] */
     public function buscarPorEntidadDepositante(string $entidadDepositanteId): array
     {
         return array_values(array_filter(

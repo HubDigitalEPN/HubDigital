@@ -73,6 +73,7 @@ use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persiste
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentUnitTrayEspecimenRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentUnitTrayRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentVisitanteRepository;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\ExportarEspecimenesGbif;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Mapa\MapaInteractivo;
 use Modules\InventarioGestionColeccion\Presentation\Http\Middleware\VisitanteSesionMiddleware;
 use Nwidart\Modules\Support\ModuleServiceProvider;
@@ -159,6 +160,10 @@ class InventarioGestionColeccionServiceProvider extends ModuleServiceProvider
         // registra con alias para que distintas páginas-host (curador y portal del
         // visitante) puedan montarlo con su propio modo.
         Livewire::component('inventario-mapa-interactivo', MapaInteractivo::class);
+
+        // Sección de selección/exportación de especímenes embebida en la página
+        // de Publicación GBIF (componente Livewire anidado).
+        Livewire::component('inventario-exportar-especimenes-gbif', ExportarEspecimenesGbif::class);
 
         // Guarda de la sesión efímera del visitante: protege el mapa del visitante para
         // que solo entre quien llegó por un QR válido y vigente, y nada más.

@@ -224,4 +224,22 @@
             @endif
         </div>
     </div>
+
+    {{-- Sección: Exportar selección de especímenes a Excel --}}
+    <div class="rounded-lg border border-border bg-surface shadow-sm">
+        <div class="px-5 py-4 bg-bg-main border-b border-border">
+            <flux:heading size="md" level="2" class="text-text-primary">
+                <span class="inline-flex items-center gap-2">
+                    <flux:icon name="table-cells" class="size-5 text-science-blue" />
+                    Exportar especímenes seleccionados (Excel)
+                </span>
+            </flux:heading>
+            <p class="text-xs text-text-secondary mt-1">
+                Elige especímenes concretos con casillas y descárgalos como tabla Excel formateada.
+            </p>
+        </div>
+        <div class="p-5">
+            <livewire:inventario-exportar-especimenes-gbif />
+        </div>
+    </div>
 </div>
