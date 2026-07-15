@@ -112,6 +112,30 @@
                 </flux:field>
             </div>
 
+            {{-- Detección de ubicación por coordenadas --}}
+            <div class="rounded-lg border border-border bg-bg-main p-3 space-y-2">
+                <flux:button type="button" variant="filled" icon="map-pin" class="w-full sm:w-auto"
+                             wire:click="detectarUbicacion" wire:loading.attr="disabled" wire:target="detectarUbicacion">
+                    <span wire:loading.remove wire:target="detectarUbicacion">Detectar por coordenadas</span>
+                    <span wire:loading wire:target="detectarUbicacion">Detectando…</span>
+                </flux:button>
+                @if($geoMensaje)
+                    <p class="text-xs text-warning">{{ $geoMensaje }}</p>
+                @endif
+                @if($ubicacionDetectada)
+                    <p class="text-xs text-text-secondary">
+                        <flux:icon name="map-pin" class="inline size-3.5 -mt-0.5 text-science-blue" />
+                        Ubicación detectada: <span class="text-text-primary">{{ $ubicacionDetectada }}</span>
+                    </p>
+                    @if($pobladoDetectado)
+                        <flux:button type="button" size="sm" variant="ghost" icon="arrow-down-tray"
+                                     wire:click="usarPobladoComoNombre">
+                            Usar «{{ $pobladoDetectado }}» como nombre
+                        </flux:button>
+                    @endif
+                @endif
+            </div>
+
             <flux:field>
                 <flux:label>Datum geodésico (opcional)</flux:label>
                 <flux:input wire:model="geodeticDatum" placeholder="Ej. WGS84" />
@@ -184,6 +208,30 @@
                     <flux:label>Longitud</flux:label>
                     <flux:input type="number" step="0.0000001" wire:model="editLongitud" />
                 </flux:field>
+            </div>
+
+            {{-- Detección de ubicación por coordenadas --}}
+            <div class="rounded-lg border border-border bg-bg-main p-3 space-y-2">
+                <flux:button type="button" variant="filled" icon="map-pin" class="w-full sm:w-auto"
+                             wire:click="detectarUbicacionEdicion" wire:loading.attr="disabled" wire:target="detectarUbicacionEdicion">
+                    <span wire:loading.remove wire:target="detectarUbicacionEdicion">Detectar por coordenadas</span>
+                    <span wire:loading wire:target="detectarUbicacionEdicion">Detectando…</span>
+                </flux:button>
+                @if($geoMensaje)
+                    <p class="text-xs text-warning">{{ $geoMensaje }}</p>
+                @endif
+                @if($ubicacionDetectada)
+                    <p class="text-xs text-text-secondary">
+                        <flux:icon name="map-pin" class="inline size-3.5 -mt-0.5 text-science-blue" />
+                        Ubicación detectada: <span class="text-text-primary">{{ $ubicacionDetectada }}</span>
+                    </p>
+                    @if($pobladoDetectado)
+                        <flux:button type="button" size="sm" variant="ghost" icon="arrow-down-tray"
+                                     wire:click="usarPobladoComoNombreEdicion">
+                            Usar «{{ $pobladoDetectado }}» como nombre
+                        </flux:button>
+                    @endif
+                @endif
             </div>
 
             <div class="grid grid-cols-2 gap-3">
