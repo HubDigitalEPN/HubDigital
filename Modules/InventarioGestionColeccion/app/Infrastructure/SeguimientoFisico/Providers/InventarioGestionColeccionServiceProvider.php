@@ -49,6 +49,7 @@ use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\SanctumTokenEsp32Adapter;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\SimplePdfActaAdapter;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\TaxonArbolClasificacionTaxonomicaAdapter;
+use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Console\DiagnosticoCatalogoCommand;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Console\ExportarGbifCommand;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Console\ImportarCatalogoInvertebradosCommand;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentAlertaUbicacionRepository;
@@ -143,6 +144,7 @@ class InventarioGestionColeccionServiceProvider extends ModuleServiceProvider
             $this->commands([
                 ImportarCatalogoInvertebradosCommand::class,
                 ExportarGbifCommand::class,
+                DiagnosticoCatalogoCommand::class,
             ]);
         }
     }
