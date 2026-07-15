@@ -8,9 +8,12 @@ use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithFileUploads;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\GeocodificadorInversoPort;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\Contracts\FuenteCatalogoIterator;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\CsvFuenteCatalogo;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\ExcelFuenteCatalogo;
+use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\FilaCatalogoMapper;
+use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\FuenteCatalogoGeocodificada;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\ImportarCatalogoInvertebrados;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\ResultadoImport;
 
@@ -38,6 +41,12 @@ final class ImportarCatalogoIndex extends Component
 
     /** Separador para archivos CSV (ignorado en Excel). */
     public string $delimitador = ',';
+
+    /** Completar país/provincia/cantón/localidad faltantes por coordenadas (Nominatim). */
+    public bool $geocodificar = false;
+
+    /** Tope de coordenadas nuevas a consultar en la web (acota el tiempo de la petición). */
+    private const MAX_LOOKUPS_WEB = 250;
 
     /** Resultado de la última corrida, ya aplanado para la vista. */
     public ?array $resultado = null;
@@ -115,6 +124,20 @@ final class ImportarCatalogoIndex extends Component
         try {
             $fuente = $this->construirFuente();
 
+            // La geocodificación solo corre en la importación real (no en la
+            // validación): consume un servicio con límite de tasa y no tendría
+            // sentido gastar consultas en un dry-run.
+            $fuenteGeo = null;
+            if ($this->geocodificar && ! $dryRun) {
+                $fuente = $fuenteGeo = new FuenteCatalogoGeocodificada(
+                    $fuente,
+                    app(GeocodificadorInversoPort::class),
+                    new FilaCatalogoMapper,
+                    throttleMs: 1100,
+                    maxLookups: self::MAX_LOOKUPS_WEB,
+                );
+            }
+
             /** @var ImportarCatalogoInvertebrados $importer */
             $importer = app(ImportarCatalogoInvertebrados::class);
 
@@ -126,6 +149,13 @@ final class ImportarCatalogoIndex extends Component
             $this->successMessage = $dryRun
                 ? "Validación completa: {$resultado->filasLeidas} filas leídas. Revisa el resumen y presiona «Importar al catálogo» para guardar."
                 : "Importación completa: {$resultado->especimenesPersistidos} especímenes guardados en el catálogo.";
+
+            if ($fuenteGeo !== null) {
+                $this->successMessage .= " Geocodificación: {$fuenteGeo->lookupsRealizados()} coordenadas consultadas, {$fuenteGeo->filasEnriquecidas()} filas completadas.";
+                if ($fuenteGeo->lookupsRealizados() >= self::MAX_LOOKUPS_WEB) {
+                    $this->successMessage .= ' Se alcanzó el tope de esta pantalla; para el catálogo completo usa «php artisan inventario:importar-catalogo --geocodificar».';
+                }
+            }
         } catch (\Throwable $e) {
             $this->resultado = null;
             $this->successMessage = null;
