@@ -25,4 +25,20 @@ interface NotificacionCuratoriaPort
      * @return string Referencia/identificador del curador notificado.
      */
     public function notificarNuevaSolicitudPorRevisar(string $solicitudId): string;
+
+    /**
+     * Notifica a los demás curadores que un colega tomó una decisión documental
+     * (aprobó o rechazó) sobre una solicitud. Incluye el motivo si fue rechazo.
+     *
+     * @param  string  $curadorQueDecideId  Curador que tomó la decisión (se excluye del envío).
+     * @param  'aprobada'|'rechazada'  $decision
+     * @param  string|null  $motivo  Motivo del rechazo (solo aplica cuando $decision es 'rechazada').
+     * @return string Referencia/identificador de la notificación generada.
+     */
+    public function notificarDecisionDocumentalAOtrosCuradores(
+        string $solicitudId,
+        string $curadorQueDecideId,
+        string $decision,
+        ?string $motivo = null,
+    ): string;
 }

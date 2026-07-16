@@ -31,4 +31,16 @@ final class FakeNotificacionCuratoriaAdapter implements NotificacionCuratoriaPor
     {
         return self::CURADOR_ID;
     }
+
+    /**
+     * Simula la notificación de una decisión documental a los demás curadores.
+     */
+    public function notificarDecisionDocumentalAOtrosCuradores(
+        string $solicitudId,
+        string $curadorQueDecideId,
+        string $decision,
+        ?string $motivo = null,
+    ): string {
+        return self::CURADOR_ID;
+    }
 }

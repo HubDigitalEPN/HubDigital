@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionCuratoriaPort;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\DecisionDocumentalCuradorNotification;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\NuevaSolicitudPorRevisarNotification;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
 
@@ -27,6 +28,43 @@ final class NotificacionCuratoriaAdapter implements NotificacionCuratoriaPort
     public function notificarNuevaSolicitudPorRevisar(string $solicitudId): string
     {
         return $this->notificarCuradores($solicitudId, 'Nueva solicitud por revisar');
+    }
+
+    public function notificarDecisionDocumentalAOtrosCuradores(
+        string $solicitudId,
+        string $curadorQueDecideId,
+        string $decision,
+        ?string $motivo = null,
+    ): string {
+        $referencia = (string) Str::uuid();
+
+        $deposito = SolicitudDepositoEloquentModel::find($solicitudId);
+
+        // Se notifica a todos los curadores EXCEPTO al que tomó la decisión.
+        $otrosCuradores = User::where('rol', RolUsuario::CURADOR)
+            ->where('id', '!=', $curadorQueDecideId)
+            ->get();
+
+        if ($otrosCuradores->isEmpty()) {
+            Log::info('Notificación de decisión a otros curadores omitida: no hay otros curadores', [
+                'referencia' => $referencia, 'solicitud_id' => $solicitudId, 'decision' => $decision,
+            ]);
+
+            return $referencia;
+        }
+
+        $curadorDecide = User::find($curadorQueDecideId);
+
+        Notification::send($otrosCuradores, new DecisionDocumentalCuradorNotification(
+            solicitudId: $solicitudId,
+            numero: $deposito?->numero,
+            tipoTramite: $deposito?->tipo_tramite,
+            decision: $decision,
+            motivo: $motivo,
+            nombreCuradorDecide: $curadorDecide?->name,
+        ));
+
+        return $referencia;
     }
 
     /**
