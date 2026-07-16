@@ -55,7 +55,7 @@
                         </div>
                         <div>
                             <dt class="text-xs text-text-secondary uppercase tracking-wide">Fecha de registro</dt>
-                            <dd class="font-medium text-text-primary mt-1">{{ $deposito->created_at?->format('d/m/Y H:i') }}</dd>
+                            <dd class="font-medium text-text-primary mt-1">@fechaEc($deposito->created_at)</dd>
                         </div>
                     </dl>
                 </div>

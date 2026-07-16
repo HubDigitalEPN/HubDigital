@@ -7,6 +7,7 @@ namespace Modules\GestionPrestamosRecepciones\Infrastructure\Providers;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Blade;
 use Livewire\Livewire;
 use Modules\GestionPrestamosRecepciones\Application\Exceptions\SolicitudNoEncontradaException;
 use Modules\GestionPrestamosRecepciones\Application\Ports\CatalogoCuraduriaPort;
@@ -77,6 +78,7 @@ use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigad
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\MisSolicitudes;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\RegistroSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\SolicitudForm;
+use Modules\GestionPrestamosRecepciones\Presentation\Support\FechaEcuador;
 use Nwidart\Modules\Support\ModuleServiceProvider;
 
 /**
@@ -167,6 +169,10 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
     {
         parent::boot();
         $this->loadMigrationsFrom(module_path($this->name, 'database/migrations'));
+
+        // Muestra fechas/horas (almacenadas en UTC) en la hora local de Ecuador.
+        // Uso: @fechaEc($fecha) o @fechaEc($fecha, 'd/m/Y').
+        Blade::directive('fechaEc', fn (string $expresion): string => '<?php echo \\'.FechaEcuador::class."::formatear($expresion); ?>");
 
         $handler = $this->app->make(ExceptionHandler::class);
 

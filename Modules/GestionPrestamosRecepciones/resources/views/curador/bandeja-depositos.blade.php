@@ -149,7 +149,7 @@
                                     </td>
                                 @endunless
                                 <td class="px-4 py-3 text-xs text-text-secondary whitespace-nowrap">
-                                    {{ ($esResueltas ? $solicitud->updated_at : $solicitud->created_at)?->format('d/m/Y') ?? '—' }}
+                                    @fechaEc($esResueltas ? $solicitud->updated_at : $solicitud->created_at, 'd/m/Y')
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap">
                                     <div class="flex items-center justify-end gap-2">
@@ -202,7 +202,7 @@
                             </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
                         @endunless
                         <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil :etiqueta="$esResueltas ? 'Resuelta' : 'Fecha'">
-                            {{ ($esResueltas ? $solicitud->updated_at : $solicitud->created_at)?->format('d/m/Y') ?? '—' }}
+                            @fechaEc($esResueltas ? $solicitud->updated_at : $solicitud->created_at, 'd/m/Y')
                         </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
                     </dl>
 

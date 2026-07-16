@@ -329,7 +329,7 @@
                         </div>
                         <div>
                             <dt class="text-text-secondary">Fecha de registro</dt>
-                            <dd class="font-medium text-text-primary mt-0.5">{{ $deposito->created_at->format('d/m/Y H:i') }}</dd>
+                            <dd class="font-medium text-text-primary mt-0.5">@fechaEc($deposito->created_at)</dd>
                         </div>
                         @if($deposito->origen_recoleccion)
                             <div>
@@ -557,20 +557,20 @@
 
                 <div class="mt-3 space-y-0">
                     <x-gestionprestamosrecepciones::timeline-event
-                        :fecha="$deposito->created_at->format('d/m/Y H:i')"
+                        :fecha="\Modules\GestionPrestamosRecepciones\Presentation\Support\FechaEcuador::formatear($deposito->created_at)"
                         titulo="Solicitud registrada"
                         :ultimo="$deposito->estado === 'En Borrador'" />
 
                     @if($matriz && $matriz->estado()->value !== 'Pendiente')
                         <x-gestionprestamosrecepciones::timeline-event
-                            :fecha="$deposito->updated_at->format('d/m/Y H:i')"
+                            :fecha="\Modules\GestionPrestamosRecepciones\Presentation\Support\FechaEcuador::formatear($deposito->updated_at)"
                             titulo="Matriz de especímenes procesada"
                             :ultimo="$deposito->estado === 'En Borrador'" />
                     @endif
 
                     @if($deposito->estado === 'Pausada para Asesoría')
                         <x-gestionprestamosrecepciones::timeline-event
-                            :fecha="$deposito->updated_at->format('d/m/Y H:i')"
+                            :fecha="\Modules\GestionPrestamosRecepciones\Presentation\Support\FechaEcuador::formatear($deposito->updated_at)"
                             titulo="Pausada para asesoría"
                             descripcion="Sin documentación disponible. Funcionario responsable notificado."
                             :ultimo="true" />
@@ -578,14 +578,14 @@
 
                     @if($deposito->estado === 'Pendiente de Revisión por Curaduría')
                         <x-gestionprestamosrecepciones::timeline-event
-                            :fecha="$deposito->updated_at->format('d/m/Y H:i')"
+                            :fecha="\Modules\GestionPrestamosRecepciones\Presentation\Support\FechaEcuador::formatear($deposito->updated_at)"
                             titulo="Documentación cargada"
                             :ultimo="true" />
                     @endif
 
                     @if($deposito->estado === 'Rechazada')
                         <x-gestionprestamosrecepciones::timeline-event
-                            :fecha="$deposito->updated_at->format('d/m/Y H:i')"
+                            :fecha="\Modules\GestionPrestamosRecepciones\Presentation\Support\FechaEcuador::formatear($deposito->updated_at)"
                             titulo="Solicitud rechazada"
                             :ultimo="true" />
                     @endif
