@@ -6,6 +6,7 @@ namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCa
 
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\ContextoEjecucionPort;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\TransactionManagerPort;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Support\PropagaClasificacionTaxonomica;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\EventoCicloIot;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Exceptions\ReubicacionNoAutorizadaException;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\CajaRepository;
@@ -19,14 +20,14 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\Vis
 
 /**
  * Caso de uso: reubicar un unit tray completo a otra caja, registrando el movimiento en la
- * trazabilidad. La caja de destino se selecciona/escanea (NFC) en la presentación.
- *
- * ponytail: no se revalida el orden taxonómico entre cajas aquí — el feature solo pide
- * reasignar el tray y registrar el movimiento. La reclasificación de las cajas la maneja
- * la asignación de especímenes cuando corresponde.
+ * trazabilidad y repropagando la clasificación dominante a las cajas de origen y destino
+ * (el origen puede quedar sin trays clasificados y debe limpiar su taxonomía cacheada).
+ * La caja de destino se selecciona/escanea (NFC) en la presentación.
  */
 final class ReubicarUnitTrayHandler
 {
+    use PropagaClasificacionTaxonomica;
+
     public function __construct(
         private readonly UnitTrayRepository $unitTrayRepo,
         private readonly CajaRepository $cajaRepo,
@@ -63,6 +64,16 @@ final class ReubicarUnitTrayHandler
 
             $tray->moverACaja($cajaDestino->id(), $numeroEnDestino);
             $this->unitTrayRepo->guardar($tray);
+
+            // Repropaga la clasificación de ambas cajas: el origen pudo quedar sin trays
+            // clasificados (limpia su taxonomía cacheada) y el destino absorbe la del tray.
+            if ($origenCajaId !== $input->cajaDestinoId) {
+                $cajaOrigen = $this->cajaRepo->buscarPorId(CajaId::desde($origenCajaId));
+                if ($cajaOrigen !== null) {
+                    $this->propagarClasificacionACaja($cajaOrigen->id(), $this->unitTrayRepo, $cajaOrigen, $this->cajaRepo);
+                }
+            }
+            $this->propagarClasificacionACaja($cajaDestino->id(), $this->unitTrayRepo, $cajaDestino, $this->cajaRepo);
 
             $this->eventoRepo->guardar(EventoCicloIot::registrar(
                 tipoAgregado: 'unit_tray',
