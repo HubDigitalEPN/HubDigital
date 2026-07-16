@@ -289,6 +289,26 @@
                     ];
                     $dwcLabel = fn (string $col): string => $etiquetasDwC[$col] ?? \Illuminate\Support\Str::headline($col);
 
+                    // Orden alfabético por etiqueta legible (sin acentos) para que el curador
+                    // ubique las columnas más rápido, tanto en la tabla como en el selector.
+                    $ordenarColumnas = function (array $cols) use ($dwcLabel): array {
+                        usort($cols, fn (string $a, string $b): int => strcasecmp(
+                            \Illuminate\Support\Str::ascii($dwcLabel($a)),
+                            \Illuminate\Support\Str::ascii($dwcLabel($b)),
+                        ));
+
+                        return $cols;
+                    };
+                    $columnasDwC = $ordenarColumnas($columnasDwC);
+                    $columnasVisibles = $ordenarColumnas($columnasVisibles);
+
+                    // El nombre científico siempre encabeza la matriz (identidad de la fila).
+                    if (($posSci = array_search('scientificName', $columnasVisibles, true)) !== false) {
+                        unset($columnasVisibles[$posSci]);
+                        array_unshift($columnasVisibles, 'scientificName');
+                    }
+                    $columnasVisibles = array_values($columnasVisibles);
+
                     $nRevision = $conteoEstados['Validación Manual por Curaduría'] ?? 0;
 
                     [$mzBg, $mzText, $mzIcon] = match($estadoMatriz) {

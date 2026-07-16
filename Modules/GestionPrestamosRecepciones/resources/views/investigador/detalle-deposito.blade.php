@@ -112,14 +112,14 @@
                     );
                 @endphp
                 @if($deposito->estado === 'Aprobada Documentalmente' && !$recepcionFinalizada)
-                    <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
-                        <div class="px-5 py-4 border-b border-border flex items-start gap-3">
-                            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-science-blue/10 text-science-blue">
-                                <flux:icon name="clipboard-document-check" variant="outline" class="size-4" />
+                    <div class="rounded-lg border-2 border-warning/40 bg-surface shadow-sm overflow-hidden">
+                        <div class="px-5 py-4 border-b border-warning/20 bg-warning/5 flex items-start gap-3">
+                            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-warning/15 text-warning">
+                                <flux:icon name="exclamation-triangle" variant="outline" class="size-5" />
                             </div>
                             <div>
-                                <flux:heading size="base" level="2" class="font-display">Consideraciones para la entrega física</flux:heading>
-                                <flux:text class="text-text-secondary text-xs">Prepara tus muestras según estos requisitos antes de entregarlas en el laboratorio.</flux:text>
+                                <flux:heading size="base" level="2" class="font-display text-warning">Importante: consideraciones para la entrega física</flux:heading>
+                                <flux:text class="text-text-secondary text-xs">Prepara tus muestras según estos requisitos antes de entregarlas en el laboratorio. No cumplirlos puede retrasar la recepción.</flux:text>
                             </div>
                         </div>
 

@@ -167,7 +167,7 @@
             <div class="flex flex-col gap-2 items-start w-full">
                 <div class="flex items-start gap-1.5 text-xs text-text-primary leading-snug">
                     <flux:icon name="exclamation-triangle" class="size-3.5 text-error shrink-0 mt-0.5" />
-                    <span>Especie no registrada en el catálogo. Justifica el hallazgo para continuar.</span>
+                    <span>Nombre no encontrado en el catálogo de referencia. Si es un nombre nuevo o no listado, justifícalo para continuar.</span>
                 </div>
                 <flux:select wire:change="justificarHallazgo('{{ $registroId }}', $event.target.value)" class="max-w-xs">
                     <flux:select.option value="">Selecciona un motivo de justificación...</flux:select.option>
