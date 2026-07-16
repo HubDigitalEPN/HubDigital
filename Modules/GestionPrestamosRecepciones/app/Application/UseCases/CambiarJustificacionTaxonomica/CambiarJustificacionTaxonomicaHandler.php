@@ -28,7 +28,7 @@ final class CambiarJustificacionTaxonomicaHandler
             );
         }
 
-        $matriz->cambiarJustificacionRegistro($input->registroId, $input->nuevoMotivo);
+        $matriz->cambiarJustificacionRegistro($input->registroId, $input->nuevoMotivo, $input->comentarioJustificacion);
 
         $this->transactionManager->executeTransactional(function () use ($matriz): void {
             $this->matrizRepo->guardar($matriz);

@@ -250,11 +250,11 @@ final class MatrizEspecies
      * Justifica un hallazgo taxonómico no catalogado.
      * Transiciona el registro a ValidacionManualPorCuraduria y la matriz a CargadaConAlertas.
      */
-    public function justificarRegistro(string $registroId, string $motivoJustificacion): void
+    public function justificarRegistro(string $registroId, string $motivoJustificacion, ?string $comentarioJustificacion = null): void
     {
         $registro = $this->obtenerRegistroOFallar($registroId);
 
-        $registro->justificar($motivoJustificacion);
+        $registro->justificar($motivoJustificacion, $comentarioJustificacion);
 
         $this->estado = EstadoMatrizEspecies::CargadaConAlertas;
 
@@ -304,11 +304,11 @@ final class MatrizEspecies
     /**
      * Cambia el motivo de justificación de un registro ya justificado.
      */
-    public function cambiarJustificacionRegistro(string $registroId, string $nuevoMotivo): void
+    public function cambiarJustificacionRegistro(string $registroId, string $nuevoMotivo, ?string $comentarioJustificacion = null): void
     {
         $registro = $this->obtenerRegistroOFallar($registroId);
 
-        $registro->cambiarJustificacion($nuevoMotivo);
+        $registro->cambiarJustificacion($nuevoMotivo, $comentarioJustificacion);
 
         $this->events[] = new JustificacionTaxonomicaCambiada(
             matrizId: $this->id,

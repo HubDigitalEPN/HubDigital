@@ -30,6 +30,7 @@ final class RegistroEspecimenEloquentModel extends Model
         'estado',
         'no_catalogado',
         'motivo_justificacion',
+        'comentario_justificacion',
         'datos_dwc',
         'normalizaciones',
     ];

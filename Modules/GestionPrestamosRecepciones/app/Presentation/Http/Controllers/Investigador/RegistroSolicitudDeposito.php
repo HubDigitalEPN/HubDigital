@@ -201,9 +201,16 @@ final class RegistroSolicitudDeposito extends Component
     /**
      * Estado de cada registro para la tabla visual.
      *
-     * @var array<string, array{catalogoId: string|null, especieIngresada: string, estado: string, especieSugerida: string|null, especieCorregida: string|null, noCatalogado: bool, motivoJustificacion: string|null}>
+     * @var array<string, array{catalogoId: string|null, especieIngresada: string, estado: string, especieSugerida: string|null, especiesSugeridas: list<string>, especieCorregida: string|null, noCatalogado: bool, motivoJustificacion: string|null, comentarioJustificacion: string|null}>
      */
     public array $estadosRegistros = [];
+
+    /**
+     * Comentario libre de justificación por registro (bind del textarea de la matriz).
+     *
+     * @var array<string, string>
+     */
+    public array $comentariosJustificacion = [];
 
     public string $archivoMatrizNombre = '';
 
@@ -1141,9 +1148,11 @@ final class RegistroSolicitudDeposito extends Component
                     'especieIngresada' => $registro->nombreCientifico(),
                     'estado' => 'Validado Técnicamente',
                     'especieSugerida' => null,
+                    'especiesSugeridas' => [],
                     'especieCorregida' => null,
                     'noCatalogado' => false,
                     'motivoJustificacion' => null,
+                    'comentarioJustificacion' => null,
                     'advertencias' => array_values(array_filter(
                         $registro->normalizaciones(),
                         fn (array $n) => ! empty($n['invalido'])
@@ -1164,7 +1173,7 @@ final class RegistroSolicitudDeposito extends Component
 
         foreach ($registros as $id => $registro) {
             $csvRow = $csvRegistros[$i] ?? [];
-            $validacion = $resultados[$i] ?? ['estado' => 'catalogado', 'sugerencia' => null];
+            $validacion = $resultados[$i] ?? ['estado' => 'catalogado', 'sugerencia' => null, 'sugerencias' => []];
             $estadoEntidad = $registro->estado();
 
             // Si el registro ya fue resuelto (sugerencia aceptada o hallazgo justificado),
@@ -1175,14 +1184,20 @@ final class RegistroSolicitudDeposito extends Component
                     'especieIngresada' => $registro->nombreCientifico(),
                     'estado' => $estadoEntidad->value,
                     'especieSugerida' => null,
+                    'especiesSugeridas' => [],
                     'especieCorregida' => $registro->nombreCorregido(),
                     'noCatalogado' => $registro->esNoCatalogado(),
                     'motivoJustificacion' => $registro->motivoJustificacion(),
+                    'comentarioJustificacion' => $registro->comentarioJustificacion(),
                     'advertencias' => array_values(array_filter(
                         $registro->normalizaciones(),
                         fn (array $n) => ! empty($n['invalido'])
                     )),
                 ];
+
+                if ($registro->comentarioJustificacion() !== null) {
+                    $this->comentariosJustificacion[$id] = $registro->comentarioJustificacion();
+                }
             } else {
                 $estado = match ($validacion['estado']) {
                     'catalogado' => 'Validado Técnicamente',
@@ -1206,9 +1221,11 @@ final class RegistroSolicitudDeposito extends Component
                     'especieIngresada' => $registro->nombreCientifico(),
                     'estado' => $estado,
                     'especieSugerida' => $validacion['sugerencia'],
+                    'especiesSugeridas' => $validacion['sugerencias'] ?? ($validacion['sugerencia'] !== null ? [$validacion['sugerencia']] : []),
                     'especieCorregida' => null,
                     'noCatalogado' => $esNoCatalogado,
                     'motivoJustificacion' => null,
+                    'comentarioJustificacion' => null,
                     'advertencias' => array_values(array_filter(
                         $registro->normalizaciones(),
                         fn (array $n) => ! empty($n['invalido'])
@@ -1343,6 +1360,8 @@ final class RegistroSolicitudDeposito extends Component
             return;
         }
 
+        $comentario = $this->comentariosJustificacion[$registroId] ?? null;
+
         $handler = app(JustificarHallazgoTaxonomicoHandler::class);
 
         $output = ($handler)(new JustificarHallazgoTaxonomicoInput(
@@ -1350,24 +1369,28 @@ final class RegistroSolicitudDeposito extends Component
             matrizId: $this->matrizId,
             registroId: $registroId,
             motivoJustificacion: $motivo,
+            comentarioJustificacion: $comentario,
         ));
 
         if (isset($this->estadosRegistros[$registroId])) {
             $this->estadosRegistros[$registroId]['estado'] = $output->estadoRegistro->value;
             $this->estadosRegistros[$registroId]['motivoJustificacion'] = $motivo;
+            $this->estadosRegistros[$registroId]['comentarioJustificacion'] = $comentario;
         }
 
         $this->estadoMatriz = $output->estadoMatriz->value;
     }
 
     /**
-     * Cambia la justificación existente para un registro.
+     * Cambia la justificación existente para un registro (motivo + comentario libre).
      */
     public function cambiarJustificacion(string $registroId, string $nuevoMotivo): void
     {
         if (empty($nuevoMotivo)) {
             return;
         }
+
+        $comentario = $this->comentariosJustificacion[$registroId] ?? null;
 
         $handler = app(CambiarJustificacionTaxonomicaHandler::class);
 
@@ -1376,11 +1399,29 @@ final class RegistroSolicitudDeposito extends Component
             matrizId: $this->matrizId,
             registroId: $registroId,
             nuevoMotivo: $nuevoMotivo,
+            comentarioJustificacion: $comentario,
         ));
 
         if (isset($this->estadosRegistros[$registroId])) {
             $this->estadosRegistros[$registroId]['motivoJustificacion'] = $nuevoMotivo;
+            $this->estadosRegistros[$registroId]['comentarioJustificacion'] = $comentario;
         }
+    }
+
+    /**
+     * Guarda solo el comentario libre de un registro ya justificado, conservando su motivo.
+     */
+    public function guardarComentarioJustificacion(string $registroId): void
+    {
+        $motivoActual = $this->estadosRegistros[$registroId]['motivoJustificacion'] ?? null;
+
+        if ($motivoActual === null || $motivoActual === '') {
+            return;
+        }
+
+        $this->cambiarJustificacion($registroId, $motivoActual);
+
+        $this->mostrarToast('Comentario guardado.', 'success');
     }
 
     public function deshacerSugerencia(string $registroId): void
@@ -1396,15 +1437,17 @@ final class RegistroSolicitudDeposito extends Component
         if (isset($this->estadosRegistros[$registroId])) {
             $especieOriginal = $this->estadosRegistros[$registroId]['especieIngresada'];
 
-            // Re-consultar validación taxonómica para recuperar la sugerencia
+            // Re-consultar validación taxonómica para recuperar la(s) sugerencia(s)
             $validador = app(ValidacionTaxonomicaPort::class);
             $especieSugerida = null;
+            $especiesSugeridas = [];
 
             try {
                 $resultados = $validador->validarEspecies([$especieOriginal]);
 
                 if (isset($resultados[0]) && $resultados[0]['estado'] === 'inconsistencia_tipografica') {
                     $especieSugerida = $resultados[0]['sugerencia'];
+                    $especiesSugeridas = $resultados[0]['sugerencias'] ?? ($especieSugerida !== null ? [$especieSugerida] : []);
                 }
             } catch (\Throwable) {
                 // Si GBIF no responde, se muestra como pendiente sin sugerencia
@@ -1413,6 +1456,7 @@ final class RegistroSolicitudDeposito extends Component
             $this->estadosRegistros[$registroId]['estado'] = $output->estadoRegistro->value;
             $this->estadosRegistros[$registroId]['especieCorregida'] = null;
             $this->estadosRegistros[$registroId]['especieSugerida'] = $especieSugerida;
+            $this->estadosRegistros[$registroId]['especiesSugeridas'] = $especiesSugeridas;
         }
 
         $this->estadoMatriz = $output->estadoMatriz->value;
@@ -1439,6 +1483,25 @@ final class RegistroSolicitudDeposito extends Component
 
         if (! empty($pendientes)) {
             $this->mostrarToast(count($pendientes).' registro(s) requieren tu acción.', 'warning');
+
+            return;
+        }
+
+        // Las coordenadas (latitud/longitud) deben ser válidas para poder avanzar.
+        $coordenadasInvalidas = 0;
+        foreach ($this->estadosRegistros as $r) {
+            foreach ($r['advertencias'] ?? [] as $adv) {
+                if (in_array($adv['campo'] ?? '', ['decimalLatitude', 'decimalLongitude'], true)) {
+                    $coordenadasInvalidas++;
+                }
+            }
+        }
+
+        if ($coordenadasInvalidas > 0) {
+            $this->mostrarToast(
+                $coordenadasInvalidas.' coordenada(s) inválida(s). Corrige latitud/longitud en el archivo y vuelve a cargar la matriz para continuar.',
+                'error',
+            );
 
             return;
         }

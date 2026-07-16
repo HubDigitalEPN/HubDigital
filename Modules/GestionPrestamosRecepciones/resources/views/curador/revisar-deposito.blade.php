@@ -530,6 +530,9 @@
                                                         @if($noCat && $reg->motivoJustificacion())
                                                             <p class="text-[11px] text-warning mt-0.5">{{ $reg->motivoJustificacion() }}</p>
                                                         @endif
+                                                        @if($reg->comentarioJustificacion())
+                                                            <p class="text-[11px] text-text-secondary mt-0.5 italic">“{{ $reg->comentarioJustificacion() }}”</p>
+                                                        @endif
                                                         @if($adv)
                                                             <p class="text-[11px] text-warning mt-0.5">{{ $adv }}</p>
                                                         @endif
@@ -602,6 +605,9 @@
                                         </div>
                                         @if($noCat && $reg->motivoJustificacion())
                                             <p class="text-[11px] text-warning mt-1">{{ $reg->motivoJustificacion() }}</p>
+                                        @endif
+                                        @if($reg->comentarioJustificacion())
+                                            <p class="text-[11px] text-text-secondary mt-1 italic">“{{ $reg->comentarioJustificacion() }}”</p>
                                         @endif
                                     </div>
                                     <flux:badge size="sm" :color="$bColor" class="shrink-0">{{ $bLabel }}</flux:badge>

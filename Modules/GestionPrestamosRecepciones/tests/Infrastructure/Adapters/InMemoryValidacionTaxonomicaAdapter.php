@@ -8,17 +8,20 @@ use Modules\GestionPrestamosRecepciones\Application\Ports\ValidacionTaxonomicaPo
 
 final class InMemoryValidacionTaxonomicaAdapter implements ValidacionTaxonomicaPort
 {
-    /** @var array<string, array{estado: string, sugerencia: ?string}> */
+    /** @var array<string, array{estado: string, sugerencia: ?string, sugerencias: list<string>}> */
     private array $resultados = [];
 
     /**
      * Configura el resultado de validación para una especie (uso en tests).
+     *
+     * @param  list<string>|null  $sugerencias  Lista completa de candidatos; si es null se deriva de $sugerencia.
      */
-    public function configurarResultado(string $nombreCientifico, string $estado, ?string $sugerencia = null): void
+    public function configurarResultado(string $nombreCientifico, string $estado, ?string $sugerencia = null, ?array $sugerencias = null): void
     {
         $this->resultados[$nombreCientifico] = [
             'estado' => $estado,
             'sugerencia' => $sugerencia,
+            'sugerencias' => $sugerencias ?? ($sugerencia !== null ? [$sugerencia] : []),
         ];
     }
 
@@ -27,12 +30,13 @@ final class InMemoryValidacionTaxonomicaAdapter implements ValidacionTaxonomicaP
         $resultados = [];
 
         foreach ($nombresCientificos as $nombre) {
-            $config = $this->resultados[$nombre] ?? ['estado' => 'catalogado', 'sugerencia' => null];
+            $config = $this->resultados[$nombre] ?? ['estado' => 'catalogado', 'sugerencia' => null, 'sugerencias' => []];
 
             $resultados[] = [
                 'nombreCientifico' => $nombre,
                 'estado' => $config['estado'],
                 'sugerencia' => $config['sugerencia'],
+                'sugerencias' => $config['sugerencias'] ?? ($config['sugerencia'] !== null ? [$config['sugerencia']] : []),
             ];
         }
 
