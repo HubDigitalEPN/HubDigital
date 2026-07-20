@@ -508,15 +508,15 @@
                     <flux:button type="button" size="sm" x-show="escaneando" x-on:click="detener()" icon="x-mark" variant="danger">
                         Detener cámara
                     </flux:button>
-                    {{-- Qué resuelve el próximo escaneo: un espécimen o el unit tray de destino --}}
-                    <flux:button type="button" size="sm" x-on:click="modo = 'especimen'" x-bind:variant="modo === 'especimen' ? 'filled' : 'ghost'">
+                    {{-- Qué resuelve el próximo escaneo: un espécimen o el unit tray de destino (solo tiene sentido con la cámara activa) --}}
+                    <flux:button type="button" size="sm" x-show="escaneando" x-on:click="modo = 'especimen'" x-bind:variant="modo === 'especimen' ? 'filled' : 'ghost'">
                         Escanear espécimen
                     </flux:button>
-                    <flux:button type="button" size="sm" x-on:click="modo = 'destino'" x-bind:variant="modo === 'destino' ? 'filled' : 'ghost'">
+                    <flux:button type="button" size="sm" x-show="escaneando" x-on:click="modo = 'destino'" x-bind:variant="modo === 'destino' ? 'filled' : 'ghost'">
                         Escanear destino
                     </flux:button>
                 </div>
-                <div x-ref="lector" class="mt-3 overflow-hidden rounded-lg"></div>
+                <div x-ref="lector" x-show="escaneando" class="mt-3 w-full overflow-hidden rounded-lg bg-black"></div>
                 <template x-if="error">
                     <p class="mt-2 text-sm text-error" x-text="error"></p>
                 </template>
@@ -711,11 +711,24 @@
     }
 
     // html5-qrcode: escaneo de QR por cámara (iOS + Android) para reubicar especímenes/unit trays.
-    if (! window.Html5QrcodeScanner && ! document.getElementById('html5-qrcode-lib')) {
-        const s = document.createElement('script');
-        s.id = 'html5-qrcode-lib';
-        s.src = 'https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js';
-        document.head.appendChild(s);
+    // ponytail: helper duplicado en este archivo y en mapa/interactivo.blade.php; extraer a JS
+    // compartido solo si aparece un tercer escáner (los app.js del módulo están vacíos hoy).
+    if (! window.cargarHtml5Qrcode) {
+        window.cargarHtml5Qrcode = function () {
+            if (window.Html5Qrcode) return Promise.resolve();
+            return new Promise((resolve, reject) => {
+                let s = document.getElementById('html5-qrcode-lib');
+                if (! s) {
+                    s = document.createElement('script');
+                    s.id = 'html5-qrcode-lib';
+                    s.src = 'https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js';
+                    document.head.appendChild(s);
+                }
+                s.addEventListener('load', () => resolve());
+                s.addEventListener('error', () => reject());
+                if (window.Html5Qrcode) resolve();
+            });
+        };
     }
 
     Alpine.data('reubicacionScanner', () => ({
@@ -725,20 +738,40 @@
         error: null,
         scanner: null,
         ultimo: { texto: null, en: 0 },
-        iniciar() {
+        async iniciar() {
             if (this.escaneando) return;
-            if (! window.Html5QrcodeScanner) {
-                this.error = 'Cargando el escáner… reintenta en un segundo.';
+            this.error = null;
+            try {
+                await window.cargarHtml5Qrcode();
+            } catch (e) {
+                this.error = 'No se pudo cargar el escáner. Revisa tu conexión.';
                 return;
             }
-            this.error = null;
             this.$refs.lector.id = this.$refs.lector.id || ('lector-' + Math.random().toString(36).slice(2));
-            this.scanner = new window.Html5QrcodeScanner(this.$refs.lector.id, { fps: 10, qrbox: 250 }, false);
-            this.scanner.render((texto) => this.onDecode(texto), () => {});
+            // Revela el contenedor ANTES de start(): la librería mide su ancho para el <video>.
             this.escaneando = true;
+            await this.$nextTick();
+            this.scanner = new window.Html5Qrcode(this.$refs.lector.id);
+            try {
+                await this.scanner.start(
+                    { facingMode: 'environment' },
+                    { fps: 10, qrbox: 250 },
+                    (texto) => this.onDecode(texto),
+                    () => {},
+                );
+            } catch (e) {
+                this.escaneando = false;
+                this.scanner = null;
+                this.error = (e && e.name === 'NotAllowedError')
+                    ? 'Permiso de cámara denegado. Habilítalo en el navegador.'
+                    : 'No se pudo abrir la cámara trasera.';
+            }
         },
-        detener() {
-            if (this.scanner) { try { this.scanner.clear(); } catch (e) {} this.scanner = null; }
+        async detener() {
+            if (this.scanner) {
+                try { await this.scanner.stop(); this.scanner.clear(); } catch (e) {}
+                this.scanner = null;
+            }
             this.escaneando = false;
         },
         onDecode(texto) {

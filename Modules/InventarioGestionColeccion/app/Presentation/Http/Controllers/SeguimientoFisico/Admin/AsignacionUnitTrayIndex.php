@@ -370,7 +370,8 @@ final class AsignacionUnitTrayIndex extends Component
                     'codigoCatalogo' => $output->codigoCatalogo,
                     'taxonNombre' => $output->taxonNombre,
                 ];
-            } catch (EspecimenNoEncontradoException) {
+            } catch (EspecimenNoEncontradoException|\InvalidArgumentException) {
+                // QR ilegible, corrupto o de otro tipo: se trata como "no encontrado", nunca como error fatal.
                 return null;
             }
         }
@@ -422,7 +423,16 @@ final class AsignacionUnitTrayIndex extends Component
             return;
         }
 
-        $tray = app(UnitTrayRepository::class)->buscarPorId(UnitTrayId::desde($unitTrayId));
+        try {
+            $tray = app(UnitTrayRepository::class)->buscarPorId(UnitTrayId::desde($unitTrayId));
+        } catch (\InvalidArgumentException) {
+            // El texto escaneado no tiene formato de UnitTrayId (p. ej. se escaneó el QR de un
+            // espécimen en modo "destino"): se informa, nunca debe tumbar la página.
+            $this->errorMessage = 'El código escaneado no es un QR de unit tray válido.';
+
+            return;
+        }
+
         if ($tray === null) {
             $this->errorMessage = "No se encontró el unit tray de destino «{$unitTrayId}».";
 
