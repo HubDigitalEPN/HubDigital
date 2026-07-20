@@ -495,7 +495,8 @@
                 <flux:callout variant="danger" dismissible>{{ $errorMessage }}</flux:callout>
             @endif
 
-            {{-- Escáner por cámara (html5-qrcode): el QR del espécimen codifica su código de catálogo. --}}
+            {{-- Escáner por cámara (html5-qrcode): el QR del espécimen codifica un payload opaco (o su URL de
+                 resolución); también acepta el código de catálogo tecleado a mano como respaldo. --}}
             <div
                 x-data="reubicacionScanner()"
                 x-effect="$wire.modalReubicarEspecimenes || detener()"

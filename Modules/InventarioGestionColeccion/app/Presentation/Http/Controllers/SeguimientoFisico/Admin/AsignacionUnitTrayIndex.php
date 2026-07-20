@@ -350,16 +350,17 @@ final class AsignacionUnitTrayIndex extends Component
     }
 
     /**
-     * Si `$codigo` es la URL del QR de taxonomía, resuelve el payload por el mismo caso de uso
-     * que usa la ficha pública del QR. Si no, se trata como código de catálogo tecleado a mano
-     * y se busca con la búsqueda acotada de siempre (ILIKE por código o nombre científico,
-     * coincidencia exacta de código).
+     * Si `$codigo` trae el payload del QR de taxonomía —envuelto en su URL, o pelado (etiquetas
+     * antiguas o lectores que solo entregan el token)— lo resuelve por el mismo caso de uso que usa
+     * la ficha pública del QR. Si no, se trata como código de catálogo tecleado a mano y se busca
+     * con la búsqueda acotada de siempre (ILIKE por código o nombre científico, coincidencia exacta
+     * de código).
      *
      * @return array{id: string, codigoCatalogo: string, taxonNombre: ?string}|null
      */
     private function resolverEspecimenEscaneado(string $codigo): ?array
     {
-        $payload = $this->payloadDeUrlQrTaxonomia($codigo);
+        $payload = $this->payloadDeQrTaxonomia($codigo);
 
         if ($payload !== null) {
             try {
@@ -371,7 +372,7 @@ final class AsignacionUnitTrayIndex extends Component
                     'taxonNombre' => $output->taxonNombre,
                 ];
             } catch (EspecimenNoEncontradoException|\InvalidArgumentException) {
-                // QR ilegible, corrupto o de otro tipo: se trata como "no encontrado", nunca como error fatal.
+                // Payload ilegible, corrupto o de otro tipo: se trata como "no encontrado", nunca como error fatal.
                 return null;
             }
         }
@@ -388,10 +389,18 @@ final class AsignacionUnitTrayIndex extends Component
         return null;
     }
 
-    /** Extrae el payload si `$texto` es la URL del QR de taxonomía; null si no lo es (p. ej. un código de catálogo). */
-    private function payloadDeUrlQrTaxonomia(string $texto): ?string
+    /**
+     * Extrae el payload del QR de taxonomía: de la URL `/inventario/qr/{payload}` si el texto la
+     * trae, o el propio texto si ya es un payload pelado (hex de 6+ caracteres, sin envoltorio de
+     * URL). Null si no tiene pinta de payload (p. ej. un código de catálogo tecleado a mano).
+     */
+    private function payloadDeQrTaxonomia(string $texto): ?string
     {
-        return preg_match('#/inventario/qr/([0-9a-f]{6,})#i', $texto, $m) === 1 ? $m[1] : null;
+        if (preg_match('#/inventario/qr/([0-9a-f]{6,})#i', $texto, $m) === 1) {
+            return $m[1];
+        }
+
+        return preg_match('/^[0-9a-f]{6,}$/i', $texto) === 1 ? $texto : null;
     }
 
     public function confirmarEspecimenEscaneado(): void
