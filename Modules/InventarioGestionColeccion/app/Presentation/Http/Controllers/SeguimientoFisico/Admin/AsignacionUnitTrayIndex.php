@@ -87,6 +87,12 @@ final class AsignacionUnitTrayIndex extends Component
     /** SVG inline del QR generado (codifica el UnitTrayId); null = modal cerrado. */
     public ?string $qrSvg = null;
 
+    // --- QR de todos los unit trays de la caja seleccionada, para imprimir en lote ---
+    public bool $modalQrCaja = false;
+
+    /** @var array<int, array{numero: string, svg: string}> */
+    public array $qrCajaTrays = [];
+
     // --- Flujo: reubicar especímenes a un unit tray de destino ---
     public bool $modalReubicarEspecimenes = false;
 
@@ -260,6 +266,29 @@ final class AsignacionUnitTrayIndex extends Component
         $this->modalQr = false;
         $this->qrTrayNumero = null;
         $this->qrSvg = null;
+    }
+
+    /**
+     * Genera el QR de todos los unit trays de la caja seleccionada para imprimirlos de una
+     * sola vez. Se ordenan por número (no por taxonomía, a diferencia del listado de arriba):
+     * es el orden físico en que se pegan las etiquetas.
+     */
+    public function mostrarQrCaja(): void
+    {
+        $this->limpiarMensajes();
+        $trays = $this->unitTrays;
+        usort($trays, fn ($a, $b) => $a['numero'] <=> $b['numero']);
+        $this->qrCajaTrays = array_map(
+            fn ($t) => ['numero' => $t['numero'], 'svg' => $this->generarSvgQr($t['unitTrayId'])],
+            $trays,
+        );
+        $this->modalQrCaja = true;
+    }
+
+    public function cerrarQrCaja(): void
+    {
+        $this->modalQrCaja = false;
+        $this->qrCajaTrays = [];
     }
 
     // --- Reubicar especímenes ---

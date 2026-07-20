@@ -96,14 +96,26 @@
                     <flux:icon name="archive-box" class="size-5 text-blue-navy" />
                     <span>Trabajando en <span class="font-medium">{{ $cajaSeleccionadaLabel }}</span></span>
                 </div>
-                <flux:button
-                    variant="primary"
-                    icon="plus"
-                    wire:click="crearUnitTray"
-                    class="w-full min-h-[44px] sm:w-auto"
-                >
-                    Nuevo unit tray
-                </flux:button>
+                <div class="flex flex-col gap-2 sm:flex-row">
+                    @if(count($unitTrays) > 0)
+                        <flux:button
+                            variant="ghost"
+                            icon="printer"
+                            wire:click="mostrarQrCaja"
+                            class="w-full min-h-[44px] sm:w-auto"
+                        >
+                            Imprimir QRs de la caja
+                        </flux:button>
+                    @endif
+                    <flux:button
+                        variant="primary"
+                        icon="plus"
+                        wire:click="crearUnitTray"
+                        class="w-full min-h-[44px] sm:w-auto"
+                    >
+                        Nuevo unit tray
+                    </flux:button>
+                </div>
             </div>
 
             <p class="text-xs text-text-secondary">
@@ -395,28 +407,75 @@
                 Imprime esta etiqueta y pégala en el unit tray. Siempre es el mismo código: sirve para escanearlo al reubicar.
             </p>
             @if($qrSvg)
-                <div x-data="{
-                        imprimir() {
-                            const w = window.open('', '_blank');
-                            if (! w) { return; }
-                            w.document.write('<div style=\'width:240px\'>' + this.$refs.qr.innerHTML + '</div>');
-                            w.document.close();
-                            w.focus();
-                            w.print();
-                            w.close();
-                        },
-                     }">
+                <div x-data="{ tamanoCm: 2.54, numero: @js($qrTrayNumero) }">
                     <div x-ref="qr" class="flex justify-center rounded-lg border border-border bg-white p-2">
                         {!! $qrSvg !!}
                     </div>
+                    <flux:field class="mt-3 mx-auto max-w-[10rem]">
+                        <flux:label>Tamaño al imprimir (cm)</flux:label>
+                        <flux:input type="number" x-model.number="tamanoCm" min="1" max="10" step="0.5" />
+                    </flux:field>
                     <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-center">
-                        <flux:button variant="primary" icon="printer" x-on:click="imprimir()" class="w-full min-h-[44px] sm:w-auto">
+                        <flux:button
+                            variant="primary"
+                            icon="printer"
+                            x-on:click="imprimirEtiquetas([{ numero: numero, svg: $refs.qr.innerHTML }], tamanoCm)"
+                            class="w-full min-h-[44px] sm:w-auto"
+                        >
                             Imprimir
                         </flux:button>
                         <flux:button variant="ghost" icon="arrow-down-tray"
                                      href="data:image/svg+xml;charset=utf-8,{{ rawurlencode($qrSvg) }}"
                                      download="unit-tray-{{ $qrTrayNumero }}.svg" class="w-full min-h-[44px] sm:w-auto">
                             Descargar
+                        </flux:button>
+                    </div>
+                </div>
+            @endif
+        </div>
+    </flux:modal>
+
+    {{-- Modal: imprimir de una vez los QR de todos los unit trays de la caja, en orden de número --}}
+    <flux:modal wire:model="modalQrCaja" wire:close="cerrarQrCaja" class="w-full max-w-2xl">
+        <div class="space-y-4 p-1">
+            <flux:heading size="lg" class="text-text-primary">QRs de {{ $cajaSeleccionadaLabel }}</flux:heading>
+            <p class="text-sm text-text-secondary">
+                Imprime de una vez las etiquetas de todos los unit trays de esta caja, ordenadas por número.
+            </p>
+
+            @if($qrCajaTrays !== [])
+                <div x-data="{ tamanoCm: 2.54 }">
+                    <flux:field class="max-w-[10rem]">
+                        <flux:label>Tamaño al imprimir (cm)</flux:label>
+                        <flux:input type="number" x-model.number="tamanoCm" min="1" max="10" step="0.5" />
+                    </flux:field>
+
+                    <div x-ref="hoja" class="mt-3 grid max-h-96 grid-cols-3 gap-3 overflow-y-auto rounded-lg border border-border bg-white p-3 sm:grid-cols-4">
+                        @foreach($qrCajaTrays as $t)
+                            <div class="etiqueta-preview flex flex-col items-center gap-1" data-numero="{{ $t['numero'] }}">
+                                {!! $t['svg'] !!}
+                                <span class="text-xs text-text-secondary">N.° {{ $t['numero'] }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+
+                    <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+                        <flux:button variant="ghost" wire:click="cerrarQrCaja" class="w-full min-h-[44px] sm:w-auto">
+                            Cerrar
+                        </flux:button>
+                        <flux:button
+                            variant="primary"
+                            icon="printer"
+                            x-on:click="imprimirEtiquetas(
+                                Array.from($refs.hoja.querySelectorAll('.etiqueta-preview')).map((el) => ({
+                                    numero: el.dataset.numero,
+                                    svg: el.querySelector('svg').outerHTML,
+                                })),
+                                tamanoCm,
+                            )"
+                            class="w-full min-h-[44px] sm:w-auto"
+                        >
+                            Imprimir todas ({{ count($qrCajaTrays) }})
                         </flux:button>
                     </div>
                 </div>
@@ -612,6 +671,45 @@
 
 @script
 <script>
+    // Imprime una o varias etiquetas QR ancladas en la esquina de la hoja (nunca centradas ni
+    // perdidas en medio de la página), a tamaño físico configurable. Reusado por el modal de
+    // un solo unit tray y por el de "imprimir todos los de la caja". En window: @@script encierra
+    // el bloque en su propia función, y las expresiones x-on:click de Alpine solo resuelven contra
+    // el scope global.
+    // Escapa para contexto HTML: "numero" solo debería ser un número, pero nunca se interpola
+    // sin escapar (defensa en profundidad si el dato cambiara de fuente más adelante).
+    function escaparHtml(texto) {
+        return String(texto).replace(/[&<>"']/g, (c) => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+        })[c]);
+    }
+
+    window.imprimirEtiquetas = function imprimirEtiquetas(items, tamanoCm) {
+        const w = window.open('', '_blank');
+        if (! w) return;
+        const etiquetas = items.map((it) => `
+            <div class="etiqueta">
+                ${it.svg}
+                <div class="numero">N.° ${escaparHtml(it.numero)}</div>
+            </div>
+        `).join('');
+        w.document.write(`
+            <style>
+                @page { margin: 0; }
+                html, body { margin: 0; padding: 0; }
+                .hoja { padding: 5mm; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 3mm; }
+                .etiqueta { width: ${tamanoCm}cm; page-break-inside: avoid; text-align: center; font-family: sans-serif; }
+                .etiqueta svg { display: block; width: 100%; height: auto; }
+                .etiqueta .numero { margin-top: 1mm; font-size: 8px; }
+            </style>
+            <div class="hoja">${etiquetas}</div>
+        `);
+        w.document.close();
+        w.focus();
+        w.print();
+        w.close();
+    }
+
     // html5-qrcode: escaneo de QR por cámara (iOS + Android) para reubicar especímenes/unit trays.
     if (! window.Html5QrcodeScanner && ! document.getElementById('html5-qrcode-lib')) {
         const s = document.createElement('script');
