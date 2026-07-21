@@ -652,6 +652,21 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
         }
     }
 
+    /** @param string[] $codigos
+     *  @return string[] */
+    public function codigosCatalogoExistentes(array $codigos): array
+    {
+        $buscados = array_flip($codigos);
+        $existentes = [];
+        foreach ($this->store as $especimen) {
+            if (isset($buscados[$especimen->codigoCatalogo()])) {
+                $existentes[] = $especimen->codigoCatalogo();
+            }
+        }
+
+        return array_values(array_unique($existentes));
+    }
+
     /** @return Especimen[] */
     public function buscarPorFechaVerbatimPendiente(string $verbatim, int $limit = 500): array
     {

@@ -10,6 +10,7 @@ use Illuminate\Support\Str;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especimen;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EspecimenId;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoCustodia;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoEspecimen;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoRevision;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\IdentificadorEspecimen;
@@ -46,6 +47,7 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
                 'colector' => $this->stringNullable($especimen->colector()),
                 'entidad_depositante_id' => $especimen->entidadDepositanteId(),
                 'estado' => $especimen->estado()->value,
+                'estado_custodia' => $especimen->estadoCustodia()?->value,
                 'individual_count' => $especimen->individualCount(),
                 'individual_count_verbatim' => $especimen->individualCountVerbatim(),
                 'sex' => $especimen->sex(),
@@ -723,6 +725,20 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
             ->all();
     }
 
+    /** @param string[] $codigos
+     *  @return string[] */
+    public function codigosCatalogoExistentes(array $codigos): array
+    {
+        if ($codigos === []) {
+            return [];
+        }
+
+        return EspecimenEloquentModel::whereIn('codigo_catalogo', $codigos)
+            ->pluck('codigo_catalogo')
+            ->map(fn ($v) => (string) $v)
+            ->all();
+    }
+
     public function guardarBatch(array $especimenes): void
     {
         if ($especimenes === []) {
@@ -753,6 +769,7 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
                 'colector' => $this->stringNullable($especimen->colector()),
                 'entidad_depositante_id' => $especimen->entidadDepositanteId(),
                 'estado' => $especimen->estado()->value,
+                'estado_custodia' => $especimen->estadoCustodia()?->value,
                 'individual_count' => $especimen->individualCount(),
                 'individual_count_verbatim' => $especimen->individualCountVerbatim(),
                 'sex' => $especimen->sex(),
@@ -837,6 +854,7 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
             fechaColecta: $fechaColecta,
             colector: $model->colector ?? '',
             estado: EstadoEspecimen::from($model->estado),
+            estadoCustodia: $model->estado_custodia !== null ? EstadoCustodia::from($model->estado_custodia) : null,
             entidadDepositanteId: $model->entidad_depositante_id,
             occurrenceId: $model->occurrence_id,
             catalogNumber: $model->catalog_number,

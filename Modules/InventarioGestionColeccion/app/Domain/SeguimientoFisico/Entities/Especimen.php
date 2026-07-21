@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities;
 
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EspecimenId;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoCustodia;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoEspecimen;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoRevision;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\IdentificadorEspecimen;
@@ -44,6 +45,7 @@ class Especimen
         private string $colector,
         private ?string $entidadDepositanteId,
         private EstadoEspecimen $estado,
+        private ?EstadoCustodia $estadoCustodia,
         private ?string $occurrenceId,
         private ?string $catalogNumber,
         private ?string $oldCode,
@@ -136,6 +138,7 @@ class Especimen
         ?string $actaRecepcion = null,
         ?string $motivoRevision = null,
         ?int $filaOrigenExcel = null,
+        ?EstadoCustodia $estadoCustodia = null,
     ): self {
         $localidad = trim($localidad);
         $localityName = self::limpiarTexto($localityName) ?? $localidad;
@@ -156,6 +159,7 @@ class Especimen
             colector: trim($colector),
             entidadDepositanteId: $entidadDepositanteId,
             estado: EstadoEspecimen::Disponible,
+            estadoCustodia: $estadoCustodia,
             occurrenceId: self::limpiarTexto($occurrenceId),
             catalogNumber: self::limpiarTexto($catalogNumber),
             oldCode: self::limpiarTexto($oldCode),
@@ -214,6 +218,7 @@ class Especimen
         string $fechaColecta,
         string $colector,
         EstadoEspecimen $estado,
+        ?EstadoCustodia $estadoCustodia = null,
         ?string $entidadDepositanteId = null,
         ?string $occurrenceId = null,
         ?string $catalogNumber = null,
@@ -274,6 +279,7 @@ class Especimen
             colector: $colector,
             entidadDepositanteId: $entidadDepositanteId,
             estado: $estado,
+            estadoCustodia: $estadoCustodia,
             occurrenceId: $occurrenceId,
             catalogNumber: $catalogNumber,
             oldCode: $oldCode,
@@ -661,6 +667,15 @@ class Especimen
     public function estado(): EstadoEspecimen
     {
         return $this->estado;
+    }
+
+    /**
+     * Régimen de tenencia del ingreso. Null en el material heredado de la carga
+     * masiva, que no proviene de un trámite de depósito.
+     */
+    public function estadoCustodia(): ?EstadoCustodia
+    {
+        return $this->estadoCustodia;
     }
 
     private static function limpiarTexto(?string $valor): ?string

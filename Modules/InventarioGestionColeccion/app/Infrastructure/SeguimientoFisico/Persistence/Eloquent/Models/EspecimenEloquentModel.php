@@ -35,6 +35,7 @@ class EspecimenEloquentModel extends Model
         'colector',
         'entidad_depositante_id',
         'estado',
+        'estado_custodia',
         'individual_count',
         'individual_count_verbatim',
         'sex',

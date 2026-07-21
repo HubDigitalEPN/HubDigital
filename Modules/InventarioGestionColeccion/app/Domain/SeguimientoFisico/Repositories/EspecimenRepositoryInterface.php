@@ -271,6 +271,20 @@ interface EspecimenRepositoryInterface
     public function filasOrigenExistentes(array $filasOrigen): array;
 
     /**
+     * De los códigos de catálogo dados, cuáles ya existen en la colección.
+     *
+     * Consulta por `codigo_catalogo` (el código interno), a diferencia de
+     * {@see buscarPorCatalogNumbersIn()}, que busca por `catalog_number`, el número
+     * que asignó el investigador. Es la comprobación de idempotencia de la ingesta de
+     * depósitos: la tabla solo tiene clave primaria sobre `id`, así que sin esto un
+     * reintento del job duplicaría los especímenes.
+     *
+     * @param  string[]  $codigos
+     * @return string[]
+     */
+    public function codigosCatalogoExistentes(array $codigos): array;
+
+    /**
      * Lista los especímenes concretos que caen en un grupo `fecha_verbatim`
      * pendiente (aún sin `fecha_colecta`). Permite que el curador vea y elija
      * uno por uno en la bandeja de revisión, en vez de aplicar en bloque.
