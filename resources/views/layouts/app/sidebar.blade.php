@@ -267,7 +267,7 @@
                             heading="Seguimiento físico"
                             class="grid"
                             expandable
-                            :expanded="request()->routeIs('inventario.dashboard', 'inventario.mapa', 'inventario.gabinetes*', 'inventario.cajas', 'inventario.unit-trays', 'inventario.alertas', 'inventario.orden-familias', 'inventario.horario', 'inventario.visitantes')"
+                            :expanded="request()->routeIs('inventario.dashboard', 'inventario.mapa', 'inventario.gabinetes*', 'inventario.cajas', 'inventario.unit-trays', 'inventario.trazabilidad', 'inventario.alertas', 'inventario.orden-familias', 'inventario.horario', 'inventario.visitantes')"
                         >
                             <flux:sidebar.item
                                 icon="chart-bar"
