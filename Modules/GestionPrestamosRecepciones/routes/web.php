@@ -61,7 +61,7 @@ Route::middleware(['auth', 'verified'])
         Route::get('/deposito/{id}/documento/{indice}', ServirDocumentoDeposito::class)
             ->where('indice', '[0-9]+')
             ->name('deposito.documento');
-        Route::get('/deposito/{id}/qr.pdf', ImprimirQrDeposito::class)->name('deposito.qr-pdf');
+        Route::get('/deposito/{id}/qr', ImprimirQrDeposito::class)->name('deposito.qr');
         Route::get('/lote/{codigo}', ResolverLoteQr::class)
             ->where('codigo', 'LOTE-[A-Z0-9]{6}')
             ->name('lote.resolver');

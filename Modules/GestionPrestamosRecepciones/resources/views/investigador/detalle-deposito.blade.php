@@ -84,7 +84,7 @@
                             <x-gestionprestamosrecepciones::codigo-qr :codigo="$deposito->codigo_qr"
                                 :contenido="route('prestamos.lote.resolver', $deposito->codigo_qr)" :tamanio="150" />
                             <div class="flex w-full flex-col gap-2 sm:w-auto">
-                                <a href="{{ route('prestamos.deposito.qr-pdf', $deposito->id) }}" target="_blank" rel="noopener"
+                                <a href="{{ route('prestamos.deposito.qr', $deposito->id) }}" target="_blank" rel="noopener"
                                     class="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-navy px-5 py-2.5 text-sm font-medium text-white! hover:opacity-90 transition-opacity">
                                     <flux:icon name="printer" class="size-4 text-white!" />
                                     Imprimir / Guardar QR (PDF)

@@ -277,7 +277,21 @@
         <div class="flex items-center justify-between gap-4">
             <flux:heading size="sm" level="3">Validación de identidad</flux:heading>
             @if($resultadoIdentidad)
-                <x-gestionprestamosrecepciones::deposito-status-badge estado="{{ $resultadoIdentidad }}" />
+                <div class="flex items-center gap-2">
+                    <x-gestionprestamosrecepciones::deposito-status-badge estado="{{ $resultadoIdentidad }}" />
+                    {{-- Permite repetir la comprobación tras corregir el nombre en el perfil
+                         o volver a cargar el formato de solicitud. --}}
+                    <flux:button
+                        size="sm"
+                        variant="ghost"
+                        icon="arrow-path"
+                        wire:click="resetearValidacionIdentidad"
+                        wire:loading.attr="disabled"
+                        wire:target="resetearValidacionIdentidad"
+                    >
+                        Volver a validar
+                    </flux:button>
+                </div>
             @endif
         </div>
 

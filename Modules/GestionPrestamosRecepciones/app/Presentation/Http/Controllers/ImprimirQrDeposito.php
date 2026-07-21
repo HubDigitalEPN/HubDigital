@@ -31,7 +31,7 @@ final class ImprimirQrDeposito
 
         abort_if(($deposito->codigo_qr ?? '') === '', 404);
 
-        return view('gestionprestamosrecepciones::curador.qr-pdf', [
+        return view('gestionprestamosrecepciones::curador.qr-imprimible', [
             'codigo' => $deposito->codigo_qr,
             'qrBase64' => base64_encode(GeneradorQrSvg::svg(route('prestamos.lote.resolver', $deposito->codigo_qr), 360)),
             'numero' => $deposito->numero,
