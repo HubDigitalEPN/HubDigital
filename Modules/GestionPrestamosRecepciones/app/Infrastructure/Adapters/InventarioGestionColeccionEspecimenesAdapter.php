@@ -26,6 +26,16 @@ final class InventarioGestionColeccionEspecimenesAdapter implements CatalogoEspe
      */
     private const ESTADO_PRESTABLE = 'disponible';
 
+    /**
+     * Situaciones Darwin Core que sacan al espécimen de la colección prestable, aunque
+     * su `estado` siga diciendo 'disponible': la importación del CSV dejó ese estado por
+     * defecto sin mirar `occurrence_status`.
+     */
+    private const OCCURRENCE_STATUS_NO_PRESTABLE = ['loaned', 'destroyed'];
+
+    /** Única constancia Darwin Core de que el espécimen sigue en la colección. */
+    private const OCCURRENCE_STATUS_PRESENTE = 'present';
+
     public function buscarDisponibles(string $texto, int $limite = 15): array
     {
         $texto = trim($texto);
@@ -38,7 +48,6 @@ final class InventarioGestionColeccionEspecimenesAdapter implements CatalogoEspe
         $patron = '%'.$texto.'%';
 
         $filas = $this->consultaBase()
-            ->where('e.estado', self::ESTADO_PRESTABLE)
             ->where(function (Builder $q) use ($patron): void {
                 $q->where('e.codigo_catalogo', 'ilike', $patron)
                     ->orWhere('t.nombre_cientifico', 'ilike', $patron);
@@ -54,7 +63,6 @@ final class InventarioGestionColeccionEspecimenesAdapter implements CatalogoEspe
     {
         $fila = $this->consultaBase()
             ->where('e.id', $especimenId)
-            ->where('e.estado', self::ESTADO_PRESTABLE)
             ->first();
 
         return $fila === null ? null : $this->traducir($fila);
@@ -68,7 +76,6 @@ final class InventarioGestionColeccionEspecimenesAdapter implements CatalogoEspe
 
         $filas = $this->consultaBase()
             ->whereIn('e.id', $especimenIds)
-            ->where('e.estado', self::ESTADO_PRESTABLE)
             ->get();
 
         $resultado = [];
@@ -82,6 +89,10 @@ final class InventarioGestionColeccionEspecimenesAdapter implements CatalogoEspe
     }
 
     /**
+     * Define qué es un espécimen prestable, para los tres métodos del puerto: la
+     * búsqueda del investigador y las dos revalidaciones del servidor comparten
+     * criterio, así que ninguno puede quedarse atrás.
+     *
      * LEFT JOIN y no INNER: `taxon_id` es nullable en el inventario, y un
      * espécimen sin determinación taxonómica sigue siendo prestable.
      */
@@ -89,6 +100,25 @@ final class InventarioGestionColeccionEspecimenesAdapter implements CatalogoEspe
     {
         return DB::table('taxonomia.especimenes as e')
             ->leftJoin('taxonomia.taxones as t', 't.id', '=', 'e.taxon_id')
+            ->where('e.estado', self::ESTADO_PRESTABLE)
+            // Segundo filtro sobre el mismo hecho: un espécimen prestado o destruido no
+            // vuelve a prestarse aunque su `estado` no se haya actualizado nunca.
+            // El OR sobre null es obligatorio: `NOT IN` deja fuera las filas nulas.
+            ->where(function (Builder $q): void {
+                $q->whereNull('e.occurrence_status')
+                    ->orWhereNotIn('e.occurrence_status', self::OCCURRENCE_STATUS_NO_PRESTABLE);
+            })
+            // Solo se ofrece lo que consta en la colección. Basta una de las dos
+            // evidencias: quedan individuos contados, o el registro Darwin Core declara
+            // el espécimen presente aunque nadie haya anotado cuántos. Sin ninguna de
+            // las dos no se muestra, y un conteo en cero nunca alcanza.
+            ->where(function (Builder $q): void {
+                $q->where('e.individual_count', '>', 0)
+                    ->orWhere(function (Builder $sinConteo): void {
+                        $sinConteo->whereNull('e.individual_count')
+                            ->where('e.occurrence_status', self::OCCURRENCE_STATUS_PRESENTE);
+                    });
+            })
             ->select([
                 'e.id',
                 'e.codigo_catalogo',
@@ -105,7 +135,9 @@ final class InventarioGestionColeccionEspecimenesAdapter implements CatalogoEspe
             especimenId: (string) $fila->id,
             codigoCatalogo: (string) $fila->codigo_catalogo,
             nombreCientifico: $fila->nombre_cientifico,           // null si el espécimen no está determinado
-            individualesDisponibles: (int) ($fila->individual_count ?? 0), // ACL: individual_count → individualesDisponibles; null se trata como 0
+            // ACL: individual_count → individualesDisponibles. El null se preserva: el
+            // inventario no registró el conteo, que no es lo mismo que no quedar ninguno.
+            individualesDisponibles: $fila->individual_count === null ? null : (int) $fila->individual_count,
             estado: (string) $fila->estado,
         );
     }

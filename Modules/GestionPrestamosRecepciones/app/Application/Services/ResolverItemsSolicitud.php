@@ -55,7 +55,10 @@ final class ResolverItemsSolicitud
                 throw EspecimenNoSolicitableException::noDisponible($especimenId);
             }
 
-            if ($cantidad > $especimen->individualesDisponibles) {
+            // Sin conteo registrado en el inventario no hay tope que comparar: se
+            // acepta la cantidad y el curador la contrasta al preparar la entrega.
+            if ($especimen->individualesDisponibles !== null
+                && $cantidad > $especimen->individualesDisponibles) {
                 throw EspecimenNoSolicitableException::cantidadExcedida(
                     $especimen->codigoCatalogo,
                     $cantidad,

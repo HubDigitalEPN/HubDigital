@@ -104,6 +104,9 @@ return (new Config)
                         'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\GestionRegistrosTaxonomicos\GeneracionActaEntregaContext',
                         'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\GestionRegistrosTaxonomicos\RegistroLocalidadesContext',
                         'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\GestionRegistrosTaxonomicos\RegistroMuestrasColectaContext',
+                        // InteroperabilidadEstados
+                        'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\InteroperabilidadEstados\SincronizacionEstadoPrestamoContext',
+                        'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\InteroperabilidadEstados\SincronizacionEstadoDevolucionContext',
                         // IdentificacionFisicaEspecimenes
                         'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\IdentificacionFisicaEspecimenes\AsignacionGuidEspecimenContext',
                         'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\IdentificacionFisicaEspecimenes\GeneracionCodigoQrContext',

@@ -356,7 +356,9 @@
                                     </span>
 
                                     <span class="shrink-0 text-xs text-text-secondary tabular-nums">
-                                        {{ $sugerencia->individualesDisponibles }} disp.
+                                        {{ $sugerencia->individualesDisponibles === null
+                                            ? 'Sin dato'
+                                            : $sugerencia->individualesDisponibles.' disp.' }}
                                     </span>
                                 </button>
                             @empty
@@ -407,7 +409,7 @@
                                                 type="number"
                                                 wire:model="items.{{ $index }}.cantidad_solicitada"
                                                 min="1"
-                                                max="{{ $item['disponibles'] }}"
+                                                @if($item['disponibles'] !== null) max="{{ $item['disponibles'] }}" @endif
                                                 class="text-center"
                                             />
                                         </flux:field>

@@ -7,141 +7,186 @@ namespace Modules\InventarioGestionColeccion\Tests\Behat\Contexts\Interoperabili
 use Behat\Step\Given;
 use Behat\Step\Then;
 use Behat\Step\When;
-use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ProcesarEventoEspecimenDevuelto\ProcesarEventoEspecimenDevueltoHandler;
-use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ProcesarEventoEspecimenDevuelto\ProcesarEventoEspecimenDevueltoInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RestaurarEstadoEspecimenes\RestaurarEstadoEspecimenesHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RestaurarEstadoEspecimenes\RestaurarEstadoEspecimenesInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RestaurarEstadoEspecimenes\RestaurarEstadoEspecimenesOutput;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especimen;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Taxon;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\TaxonRepositoryInterface;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EspecimenId;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoEspecimen;
 use Modules\InventarioGestionColeccion\Tests\Behat\Contexts\BaseContext;
 use PHPUnit\Framework\Assert;
 
 final class SincronizacionEstadoDevolucionContext extends BaseContext
 {
-    // ── Handlers ─────────────────────────────────────────────────────────────
+    private ?string $especimenId = null;
 
-    private ProcesarEventoEspecimenDevueltoHandler $procesarEventoHandler;
-
-    // ── Estado del escenario ─────────────────────────────────────────────────
-
-    private ?Especimen $especimenExistente = null;
-
-    private mixed $ultimaRespuesta = null;
-
-    private ?\Throwable $excepcionCapturada = null;
-
-    // ── Constructor ──────────────────────────────────────────────────────────
-
-    public function __construct()
-    {
-        $this->procesarEventoHandler = $this->make(ProcesarEventoEspecimenDevueltoHandler::class);
-    }
+    private ?RestaurarEstadoEspecimenesOutput $ultimaRespuesta = null;
 
     // ── Helpers de fixture ───────────────────────────────────────────────────
 
-    private function sembrarTaxonBase(): Taxon
+    private function sembrarEspecimen(?EstadoEspecimen $estado = null): string
     {
-        $repo = $this->make(TaxonRepositoryInterface::class);
+        $taxonRepo = $this->make(TaxonRepositoryInterface::class);
         $taxon = Taxon::crear(
-            id: $repo->nextIdentity(),
+            id: $taxonRepo->nextIdentity(),
             nombreCientifico: 'Morpho peleides',
             rango: 'especie',
             autor: 'Kollar',
             anioDescripcion: 1850,
         );
-        $repo->guardar($taxon);
-
-        return $taxon;
-    }
-
-    private function sembrarEspecimenEnEstado(EstadoEspecimen $estado): Especimen
-    {
-        $taxon = $this->sembrarTaxonBase();
+        $taxonRepo->guardar($taxon);
 
         $repo = $this->make(EspecimenRepositoryInterface::class);
         $especimen = Especimen::crear(
             id: $repo->nextIdentity(),
-            codigoCatalogo: 'MEPN-001',
+            codigoCatalogo: 'MEPN-SYNC-DEVOLUCION',
             taxonId: (string) $taxon->id(),
             localidad: 'Napo, Ecuador',
             fechaColecta: '2020-03-15',
             colector: 'Juan Pérez',
-            estado: $estado,
         );
-        $repo->guardar($especimen);
-        $this->especimenExistente = $especimen;
 
-        return $especimen;
-    }
-
-    // =========================================================================
-    // ESCENARIO: Espécimen vuelve a "disponible" al recibir el evento EspecimenDevuelto
-    // =========================================================================
-
-    #[Given('que existe un espécimen en estado prestado')]
-    public function queExisteUnEspecimenEnEstadoPrestado(): void
-    {
-        $especimen = $this->sembrarEspecimenEnEstado(EstadoEspecimen::Prestado);
-
-        $repo = $this->make(EspecimenRepositoryInterface::class);
-        $persistido = $repo->buscarPorId($especimen->id());
-        Assert::assertNotNull($persistido, 'El espécimen no fue encontrado en el repositorio');
-        Assert::assertTrue(
-            $persistido->estado()->equals(EstadoEspecimen::Prestado),
-            "Se esperaba estado 'prestado', se obtuvo: {$persistido->estado()->value}"
-        );
-    }
-
-    #[When('el sistema recibe el evento EspecimenDevuelto para ese espécimen')]
-    public function elSistemaRecibeElEventoEspecimenDevueltoParaEseEspecimen(): void
-    {
-        Assert::assertNotNull($this->especimenExistente, 'Se esperaba un espécimen del step Dado anterior');
-
-        try {
-            $this->ultimaRespuesta = $this->procesarEventoHandler->handle(
-                new ProcesarEventoEspecimenDevueltoInput(
-                    especimenId: (string) $this->especimenExistente->id(),
-                )
-            );
-        } catch (\Throwable $e) {
-            $this->excepcionCapturada = $e;
+        // `crear` siempre nace disponible: el estado inicial se ajusta por transición.
+        if ($estado === EstadoEspecimen::EnPrestamo) {
+            $especimen->marcarEnPrestamo();
         }
+
+        $repo->guardar($especimen);
+
+        return (string) $especimen->id();
     }
 
-    #[Then('el espécimen queda en estado disponible')]
-    public function elEspecimenQuedaEnEstadoDisponible(): void
+    private function estadoPersistido(): EstadoEspecimen
     {
-        Assert::assertNull(
-            $this->excepcionCapturada,
-            'El handler lanzó una excepción inesperada: '.$this->excepcionCapturada?->getMessage()
-        );
-        Assert::assertNotNull($this->ultimaRespuesta, 'El handler no retornó ninguna respuesta');
-
         $repo = $this->make(EspecimenRepositoryInterface::class);
-        $persistido = $repo->buscarPorId((string) $this->especimenExistente->id());
-        Assert::assertNotNull($persistido, 'El espécimen no fue encontrado en el repositorio tras el evento');
-        Assert::assertTrue(
-            $persistido->estado()->equals(EstadoEspecimen::Disponible),
-            "Se esperaba estado 'disponible' tras el evento, se obtuvo: {$persistido->estado()->value}"
+        $persistido = $repo->buscarPorId(EspecimenId::desde((string) $this->especimenId));
+        Assert::assertNotNull($persistido, 'El espécimen no fue encontrado en el repositorio');
+
+        return $persistido->estado();
+    }
+
+    private function restaurar(array $conNovedad): void
+    {
+        Assert::assertNotNull($this->especimenId, 'Se esperaba un espécimen del paso Dado anterior');
+
+        $handler = $this->make(RestaurarEstadoEspecimenesHandler::class);
+
+        $this->ultimaRespuesta = $handler->handle(
+            new RestaurarEstadoEspecimenesInput(
+                especimenIds: [$this->especimenId],
+                conNovedad: $conNovedad,
+            )
         );
     }
 
-    // =========================================================================
-    // ESCENARIO: No se actualiza si el espécimen ya está disponible
-    // =========================================================================
+    // ── Dado ─────────────────────────────────────────────────────────────────
 
-    #[Then('el sistema rechaza la transición indicando que el espécimen ya está disponible')]
-    public function elSistemaRechazaLaTransicionIndicandoQueElEspecimenYaEstaDisponible(): void
+    #[Given('que el catálogo tiene un espécimen en préstamo por cerrar')]
+    public function queElCatalogoTieneUnEspecimenEnPrestamoPorCerrar(): void
     {
-        Assert::assertNotNull(
-            $this->excepcionCapturada,
-            'Se esperaba que la transición fallara por espécimen ya disponible pero el handler completó sin error'
+        $this->especimenId = $this->sembrarEspecimen(EstadoEspecimen::EnPrestamo);
+
+        Assert::assertSame(
+            EstadoEspecimen::EnPrestamo,
+            $this->estadoPersistido(),
+            'El espécimen sembrado debía quedar en préstamo'
         );
-        Assert::assertStringContainsStringIgnoringCase(
-            'disponible',
-            $this->excepcionCapturada->getMessage(),
-            'El mensaje de error debe indicar que el espécimen ya está disponible'
+    }
+
+    #[Given('que el catálogo tiene un espécimen ya disponible por cerrar')]
+    public function queElCatalogoTieneUnEspecimenYaDisponiblePorCerrar(): void
+    {
+        $this->especimenId = $this->sembrarEspecimen();
+
+        Assert::assertSame(
+            EstadoEspecimen::Disponible,
+            $this->estadoPersistido(),
+            'El espécimen sembrado debía quedar disponible'
+        );
+    }
+
+    #[Given('que el identificador a restaurar no corresponde a ningún espécimen')]
+    public function queElIdentificadorARestaurarNoCorrespondeANingunEspecimen(): void
+    {
+        $repo = $this->make(EspecimenRepositoryInterface::class);
+        $id = $repo->nextIdentity();
+
+        Assert::assertNull(
+            $repo->buscarPorId($id),
+            'El identificador de prueba no debía existir en el catálogo'
+        );
+
+        $this->especimenId = (string) $id;
+    }
+
+    // ── Cuando ───────────────────────────────────────────────────────────────
+
+    #[When('el sistema restaura ese espécimen sin novedades')]
+    public function elSistemaRestauraEseEspecimenSinNovedades(): void
+    {
+        $this->restaurar(conNovedad: []);
+    }
+
+    #[When('el sistema restaura ese espécimen con novedad')]
+    public function elSistemaRestauraEseEspecimenConNovedad(): void
+    {
+        $this->restaurar(conNovedad: [$this->especimenId]);
+    }
+
+    // ── Entonces ─────────────────────────────────────────────────────────────
+
+    #[Then('el catálogo deja el espécimen disponible')]
+    public function elCatalogoDejaElEspecimenDisponible(): void
+    {
+        Assert::assertNotNull($this->ultimaRespuesta, 'El handler no retornó ninguna respuesta');
+        Assert::assertSame(
+            [$this->especimenId],
+            $this->ultimaRespuesta->disponibles,
+            'El espécimen debía figurar entre los devueltos a disponible'
+        );
+        Assert::assertSame(
+            EstadoEspecimen::Disponible,
+            $this->estadoPersistido(),
+            'El espécimen debía quedar disponible tras el cierre'
+        );
+    }
+
+    #[Then('el catálogo deja el espécimen observado')]
+    public function elCatalogoDejaElEspecimenObservado(): void
+    {
+        Assert::assertNotNull($this->ultimaRespuesta, 'El handler no retornó ninguna respuesta');
+        Assert::assertSame(
+            [$this->especimenId],
+            $this->ultimaRespuesta->observados,
+            'El espécimen con novedad debía figurar entre los observados'
+        );
+        Assert::assertSame(
+            [],
+            $this->ultimaRespuesta->disponibles,
+            'Un espécimen con novedad no debe volver a disponible'
+        );
+        Assert::assertSame(
+            EstadoEspecimen::Observado,
+            $this->estadoPersistido(),
+            'El espécimen debía quedar observado tras el cierre'
+        );
+    }
+
+    #[Then('el sistema reporta el espécimen como no encontrado al restaurar')]
+    public function elSistemaReportaElEspecimenComoNoEncontradoAlRestaurar(): void
+    {
+        Assert::assertNotNull($this->ultimaRespuesta, 'El handler no retornó ninguna respuesta');
+        Assert::assertSame(
+            [$this->especimenId],
+            $this->ultimaRespuesta->noEncontrados,
+            'El identificador debía reportarse como no encontrado'
+        );
+        Assert::assertTrue(
+            $this->ultimaRespuesta->tieneAnomalias(),
+            'El resultado debía marcarse como anómalo para que el adaptador lo registre'
         );
     }
 }

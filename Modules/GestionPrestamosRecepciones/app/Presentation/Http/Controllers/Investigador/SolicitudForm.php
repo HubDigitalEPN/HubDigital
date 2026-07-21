@@ -152,7 +152,7 @@ final class SolicitudForm extends Component
      * Agrega a la solicitud un espécimen elegido del catálogo.
      *
      * La cantidad se prellena con los individuos disponibles, que además hacen
-     * de tope.
+     * de tope. Si el inventario no registró el conteo no hay tope: se arranca en 1.
      */
     public function seleccionarEspecimen(
         BuscarEspecimenesCatalogoHandler $buscar,
@@ -181,7 +181,9 @@ final class SolicitudForm extends Component
             'especimen_codigo_externo' => $especimen->codigoCatalogo,
             'nombre_cientifico' => $especimen->nombreCientifico,
             'disponibles' => $especimen->individualesDisponibles,
-            'cantidad_solicitada' => $especimen->individualesDisponibles,
+            // Sin conteo conocido se arranca en 1: prellenar con null dejaba la
+            // cantidad en 0 y la solicitud no pasaba la validación.
+            'cantidad_solicitada' => $especimen->individualesDisponibles ?? 1,
         ];
 
         $this->busquedaEspecimen = '';

@@ -33,6 +33,8 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\EnviarNotificac
 use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\EnviarNotificacionResultadoProrrogaListener;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\IniciarPrestamoAlValidarActaListener;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\RegistrarEventoHistorialListener;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\SincronizarEstadoEspecimenesAlActivarListener;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\SincronizarEstadoEspecimenesAlCerrarListener;
 
 /**
  * Proveedor de servicios que registra los suscriptores (listeners) para los eventos
@@ -62,7 +64,10 @@ class EventServiceProvider extends ServiceProvider
         ],
         VerificacionEntregaRegistrada::class => [RegistrarEventoHistorialListener::class],
         VerificacionEntregaAprobada::class => [RegistrarEventoHistorialListener::class],
-        PrestamoActivado::class => [RegistrarEventoHistorialListener::class],
+        PrestamoActivado::class => [
+            RegistrarEventoHistorialListener::class,
+            SincronizarEstadoEspecimenesAlActivarListener::class,
+        ],
         DocumentoExportacionSubido::class => [RegistrarEventoHistorialListener::class],
         PrestamoHabilitadoParaEnvio::class => [RegistrarEventoHistorialListener::class],
         DevolucionRegistrada::class => [
@@ -72,6 +77,7 @@ class EventServiceProvider extends ServiceProvider
         PrestamoCerrado::class => [
             RegistrarEventoHistorialListener::class,
             EnviarNotificacionCierrePrestamoListener::class,
+            SincronizarEstadoEspecimenesAlCerrarListener::class,
         ],
         ProrrogaSolicitada::class => [RegistrarEventoHistorialListener::class],
         ProrrogaAprobada::class => [
