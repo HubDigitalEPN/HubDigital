@@ -103,6 +103,141 @@
                     </div>
                 @endif
 
+                {{-- Consideraciones para la entrega física (desde la aprobación hasta que la recepción se finalice) --}}
+                @php
+                    $recepcionFinalizada = isset($recepcion) && in_array(
+                        $recepcion?->estadoRecepcion,
+                        ['Verificado Físicamente', 'Verificado con Observaciones'],
+                        true,
+                    );
+                @endphp
+                @if($deposito->estado === 'Aprobada Documentalmente' && !$recepcionFinalizada)
+                    <div class="rounded-lg border-2 border-warning/40 bg-surface shadow-sm overflow-hidden">
+                        <div class="px-5 py-4 border-b border-warning/20 bg-warning/5 flex items-start gap-3">
+                            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-warning/15 text-warning">
+                                <flux:icon name="exclamation-triangle" variant="outline" class="size-5" />
+                            </div>
+                            <div>
+                                <flux:heading size="base" level="2" class="font-display text-warning">Importante: consideraciones para la entrega física</flux:heading>
+                                <flux:text class="text-text-secondary text-xs">Prepara tus muestras según estos requisitos antes de entregarlas en el laboratorio. No cumplirlos puede retrasar la recepción.</flux:text>
+                            </div>
+                        </div>
+
+                        <div class="p-5 space-y-5">
+                            {{-- Certificado por proyecto --}}
+                            <div class="flex items-center gap-3 rounded-lg bg-bio-green/5 border border-bio-green/20 px-4 py-3">
+                                <flux:icon name="document-check" variant="outline" class="size-5 text-bio-green shrink-0" />
+                                <p class="text-sm font-medium text-text-primary">Se emitirá un certificado por cada proyecto.</p>
+                            </div>
+
+                            {{-- Cajas entomológicas --}}
+                            <div class="space-y-3">
+                                <div class="flex items-center gap-2">
+                                    <flux:icon name="archive-box" variant="outline" class="size-4 text-text-secondary shrink-0" />
+                                    <flux:heading size="sm" class="font-display">Cajas entomológicas</flux:heading>
+                                </div>
+                                <p class="text-sm text-text-secondary leading-relaxed">
+                                    Por cada <span class="font-medium text-text-primary">cinco lotes en alcohol</span> a depositar de una localidad o
+                                    proyecto, se receptará <span class="font-medium text-text-primary">una caja entomológica</span>. El número de cajas
+                                    aumenta proporcionalmente al número de lotes:
+                                </p>
+
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-sm border border-border rounded-lg overflow-hidden">
+                                        <thead class="bg-bg-main">
+                                            <tr>
+                                                <th class="text-left font-medium text-text-secondary px-4 py-2">Lotes en alcohol</th>
+                                                <th class="text-left font-medium text-text-secondary px-4 py-2">Cajas requeridas</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr class="border-t border-border"><td class="px-4 py-2 text-text-primary">5 lotes</td><td class="px-4 py-2 text-text-primary">1 caja</td></tr>
+                                            <tr class="border-t border-border"><td class="px-4 py-2 text-text-primary">10 lotes</td><td class="px-4 py-2 text-text-primary">2 cajas</td></tr>
+                                            <tr class="border-t border-border"><td class="px-4 py-2 text-text-primary">15 lotes</td><td class="px-4 py-2 text-text-primary">3 cajas</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <p class="text-sm text-text-secondary leading-relaxed">
+                                    Las cajas alojan especímenes extraídos de los tubos con alcohol, que el staff del Laboratorio montará en alfileres
+                                    después de la entrega. Pueden ser de cualquier madera (se recomienda <span class="font-medium text-text-primary">balsa</span>),
+                                    deben tener <span class="font-medium text-text-primary">tapa de vidrio</span> y medir
+                                    <span class="font-medium text-text-primary">52 × 39 × 6.5 cm</span>.
+                                </p>
+                                <p class="text-sm text-text-secondary leading-relaxed">
+                                    Dudas sobre las cajas o dónde adquirirlas:
+                                    <a href="mailto:adrian.troya@epn.edu.ec" class="text-science-blue hover:underline">adrian.troya@epn.edu.ec</a>
+                                    o
+                                    <a href="mailto:vladimir.carvajal@epn.edu.ec" class="text-science-blue hover:underline">vladimir.carvajal@epn.edu.ec</a>.
+                                </p>
+                            </div>
+
+                            <flux:separator />
+
+                            {{-- Material en alcohol --}}
+                            <details class="group">
+                                <summary class="flex cursor-pointer items-center justify-between gap-3 list-none">
+                                    <span class="flex items-center gap-2">
+                                        <flux:icon name="beaker" variant="outline" class="size-4 text-text-secondary shrink-0" />
+                                        <flux:heading size="sm" class="font-display">Material en alcohol</flux:heading>
+                                    </span>
+                                    <flux:icon name="chevron-down" class="size-4 text-text-secondary transition-transform group-open:rotate-180" />
+                                </summary>
+                                <div class="mt-3 space-y-2 text-sm text-text-secondary leading-relaxed">
+                                    <p>Corresponde a especímenes de cuerpo blando (larvas o ninfas de macroinvertebrados acuáticos, o especímenes que no pudieron montarse en alfileres).</p>
+                                    <ul class="space-y-2 pl-1">
+                                        <li class="flex gap-2"><flux:icon name="check" class="size-4 text-bio-green shrink-0 mt-0.5" /><span>Individualiza cada espécimen en frascos plásticos pequeños (p. ej. tubos de 1.5 ml con tapa rosca hermética), agrúpalos por lote o sitio dentro de un frasco contenedor de vidrio de boca ancha (100–200 ml) con tapa hermética, y preserva en <span class="font-medium text-text-primary">alcohol al 75%</span>. Alternativa: entregar los tubos en cajas portaviales.</span></li>
+                                        <li class="flex gap-2"><flux:icon name="check" class="size-4 text-bio-green shrink-0 mt-0.5" /><span>Cada tubo de 1.5 ml lleva dos etiquetas. <span class="font-medium text-text-primary">Colección</span>: país, administración política 1, localidad específica, coordenadas en grados decimales, método y fecha de colección, colector. <span class="font-medium text-text-primary">Identificación</span>: familia, género, especie (si es posible) y nombre abreviado de quien identificó.</span></li>
+                                        <li class="flex gap-2"><flux:icon name="check" class="size-4 text-bio-green shrink-0 mt-0.5" /><span>En la pared exterior de cada frasco contenedor van dos etiquetas: la de colección (misma información) y la de identificación indicando solo el/los órdenes de insectos representados.</span></li>
+                                        <li class="flex gap-2"><flux:icon name="check" class="size-4 text-bio-green shrink-0 mt-0.5" /><span>Etiquetas impresas en láser sobre papel bond blanco, preferentemente de 75–105 gramos.</span></li>
+                                    </ul>
+                                </div>
+                            </details>
+
+                            <flux:separator />
+
+                            {{-- Material en seco --}}
+                            <details class="group">
+                                <summary class="flex cursor-pointer items-center justify-between gap-3 list-none">
+                                    <span class="flex items-center gap-2">
+                                        <flux:icon name="bug-ant" variant="outline" class="size-4 text-text-secondary shrink-0" />
+                                        <flux:heading size="sm" class="font-display">Material en seco</flux:heading>
+                                    </span>
+                                    <flux:icon name="chevron-down" class="size-4 text-text-secondary transition-transform group-open:rotate-180" />
+                                </summary>
+                                <div class="mt-3 space-y-2 text-sm text-text-secondary leading-relaxed">
+                                    <p>Corresponde a especímenes de cuerpo duro (insectos adultos como escarabajos u hormigas, o caparazones de moluscos).</p>
+                                    <ul class="space-y-2 pl-1">
+                                        <li class="flex gap-2"><flux:icon name="check" class="size-4 text-bio-green shrink-0 mt-0.5" /><span>Los especímenes montados en alfileres deben llevar <span class="font-medium text-text-primary">tres etiquetas</span>.</span></li>
+                                        <li class="flex gap-2"><flux:icon name="check" class="size-4 text-bio-green shrink-0 mt-0.5" /><span>Sigue las normas de etiquetado del Laboratorio (tipo de papel, modelo de etiquetas, alfileres y montaje) requeridas para la recepción.</span></li>
+                                    </ul>
+                                </div>
+                            </details>
+
+                            <flux:separator />
+
+                            {{-- Definición de lote --}}
+                            <details class="group">
+                                <summary class="flex cursor-pointer items-center justify-between gap-3 list-none">
+                                    <span class="flex items-center gap-2">
+                                        <flux:icon name="information-circle" variant="outline" class="size-4 text-text-secondary shrink-0" />
+                                        <flux:heading size="sm" class="font-display">¿Qué es un lote?</flux:heading>
+                                    </span>
+                                    <flux:icon name="chevron-down" class="size-4 text-text-secondary transition-transform group-open:rotate-180" />
+                                </summary>
+                                <div class="mt-3 space-y-3 text-sm text-text-secondary leading-relaxed">
+                                    <p>Conjunto de especímenes recolectados en una localidad y en días específicos.</p>
+                                    <div class="rounded-lg bg-bg-main border border-border px-4 py-3 space-y-2">
+                                        <p class="text-xs font-semibold uppercase tracking-wide text-text-secondary">Ejemplos</p>
+                                        <p>En Lumbaquí (Sucumbíos) se recolectaron 250 especímenes los días 12 y 13 de junio de 2022. <span class="font-medium text-text-primary">Total de lotes = 2.</span></p>
+                                        <p>En San Isidro (Morona Santiago), Puyo (Pastaza) y El Pangui (Zamora Chinchipe) se recolectaron 1200 especímenes: San Isidro el 15 y 16 de marzo; Puyo el 2 de abril; El Pangui el 10 y 11 de abril. <span class="font-medium text-text-primary">Total de lotes = 5.</span></p>
+                                    </div>
+                                </div>
+                            </details>
+                        </div>
+                    </div>
+                @endif
+
                 {{-- Estado de la recepción física del lote --}}
                 @if(isset($recepcion) && $recepcion?->recepcionIniciada)
                     @php
@@ -194,7 +329,7 @@
                         </div>
                         <div>
                             <dt class="text-text-secondary">Fecha de registro</dt>
-                            <dd class="font-medium text-text-primary mt-0.5">{{ $deposito->created_at->format('d/m/Y H:i') }}</dd>
+                            <dd class="font-medium text-text-primary mt-0.5">@fechaEc($deposito->created_at)</dd>
                         </div>
                         @if($deposito->origen_recoleccion)
                             <div>
@@ -422,20 +557,20 @@
 
                 <div class="mt-3 space-y-0">
                     <x-gestionprestamosrecepciones::timeline-event
-                        :fecha="$deposito->created_at->format('d/m/Y H:i')"
+                        :fecha="\Modules\GestionPrestamosRecepciones\Presentation\Support\FechaEcuador::formatear($deposito->created_at)"
                         titulo="Solicitud registrada"
                         :ultimo="$deposito->estado === 'En Borrador'" />
 
                     @if($matriz && $matriz->estado()->value !== 'Pendiente')
                         <x-gestionprestamosrecepciones::timeline-event
-                            :fecha="$deposito->updated_at->format('d/m/Y H:i')"
+                            :fecha="\Modules\GestionPrestamosRecepciones\Presentation\Support\FechaEcuador::formatear($deposito->updated_at)"
                             titulo="Matriz de especímenes procesada"
                             :ultimo="$deposito->estado === 'En Borrador'" />
                     @endif
 
                     @if($deposito->estado === 'Pausada para Asesoría')
                         <x-gestionprestamosrecepciones::timeline-event
-                            :fecha="$deposito->updated_at->format('d/m/Y H:i')"
+                            :fecha="\Modules\GestionPrestamosRecepciones\Presentation\Support\FechaEcuador::formatear($deposito->updated_at)"
                             titulo="Pausada para asesoría"
                             descripcion="Sin documentación disponible. Funcionario responsable notificado."
                             :ultimo="true" />
@@ -443,14 +578,14 @@
 
                     @if($deposito->estado === 'Pendiente de Revisión por Curaduría')
                         <x-gestionprestamosrecepciones::timeline-event
-                            :fecha="$deposito->updated_at->format('d/m/Y H:i')"
+                            :fecha="\Modules\GestionPrestamosRecepciones\Presentation\Support\FechaEcuador::formatear($deposito->updated_at)"
                             titulo="Documentación cargada"
                             :ultimo="true" />
                     @endif
 
                     @if($deposito->estado === 'Rechazada')
                         <x-gestionprestamosrecepciones::timeline-event
-                            :fecha="$deposito->updated_at->format('d/m/Y H:i')"
+                            :fecha="\Modules\GestionPrestamosRecepciones\Presentation\Support\FechaEcuador::formatear($deposito->updated_at)"
                             titulo="Solicitud rechazada"
                             :ultimo="true" />
                     @endif

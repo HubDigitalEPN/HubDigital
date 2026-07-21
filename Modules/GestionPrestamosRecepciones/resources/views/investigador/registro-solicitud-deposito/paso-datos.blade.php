@@ -10,19 +10,25 @@
     {{-- Aviso cuando la extracción automática no pudo completarse --}}
     @if($advertenciaExtraccion === 'error_modelo')
         <flux:callout variant="warning" icon="cpu-chip">
-            <flux:heading>El modelo de IA no está disponible</flux:heading>
+            <flux:heading>La extracción automática no está disponible</flux:heading>
             <flux:text>
-                No fue posible extraer los datos automáticamente porque el servicio de IA no respondió.
-                Completa manualmente los campos marcados abajo. El flujo continúa con normalidad.
+                El servicio de IA no respondió, así que los datos no se completaron solos.
+                No te preocupes: puedes ingresarlos tú mismo y continuar sin problemas.
             </flux:text>
+            <flux:button size="sm" variant="primary" icon="pencil-square" href="#datos-manuales" class="mt-3">
+                Clic aquí para completar manualmente
+            </flux:button>
         </flux:callout>
     @elseif($advertenciaExtraccion === 'error_cola')
         <flux:callout variant="warning" icon="queue-list">
-            <flux:heading>El procesador de tareas en segundo plano no está activo</flux:heading>
+            <flux:heading>La extracción automática no está disponible</flux:heading>
             <flux:text>
-                La extracción automática no pudo iniciarse porque el worker de colas no está corriendo.
-                Completa manualmente los campos marcados abajo. El flujo continúa con normalidad.
+                El procesamiento en segundo plano no está activo, así que los datos no se completaron solos.
+                No te preocupes: puedes ingresarlos tú mismo y continuar sin problemas.
             </flux:text>
+            <flux:button size="sm" variant="primary" icon="pencil-square" href="#datos-manuales" class="mt-3">
+                Clic aquí para completar manualmente
+            </flux:button>
         </flux:callout>
     @endif
 
@@ -76,7 +82,7 @@
     @endif
 
     {{-- Datos extraídos --}}
-    <div class="space-y-3">
+    <div id="datos-manuales" class="space-y-3 scroll-mt-6">
         <flux:heading size="sm" level="3">Datos integrados de documentación</flux:heading>
 
         @php

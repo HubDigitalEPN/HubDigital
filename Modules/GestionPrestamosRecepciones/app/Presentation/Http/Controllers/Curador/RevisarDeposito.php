@@ -208,6 +208,22 @@ final class RevisarDeposito extends Component
     }
 
     /**
+     * Mensajes de validación en español para el modal de rechazo documental
+     * (el locale global es 'en', por eso se declaran aquí de forma explícita).
+     *
+     * @return array<string, string>
+     */
+    protected function messages(): array
+    {
+        return [
+            'tipoRechazo.required' => 'Selecciona el tipo de rechazo.',
+            'tipoRechazo.in' => 'El tipo de rechazo seleccionado no es válido.',
+            'motivoRechazo.required' => 'Debes indicar el motivo del rechazo para el depositante.',
+            'motivoRechazo.min' => 'El motivo del rechazo debe tener al menos 10 caracteres.',
+        ];
+    }
+
+    /**
      * Clasifica la solicitud como prioritaria en la cola de revisión.
      */
     public function priorizar(PriorizarSolicitudEnColaHandler $handler): void

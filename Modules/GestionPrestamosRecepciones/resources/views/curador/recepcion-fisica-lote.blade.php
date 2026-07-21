@@ -40,7 +40,7 @@
             <p class="mt-1 font-mono text-base font-semibold text-blue-navy tracking-wide">{{ $recepcion->codigoQR ?? '—' }}</p>
         </div>
         <div class="rounded-lg border border-border bg-surface shadow-sm p-4">
-            <p class="text-xs text-text-secondary">Investigador</p>
+            <p class="text-xs text-text-secondary">Depositante</p>
             <p class="mt-1 text-sm font-medium text-text-primary">{{ $nombreInvestigador }}</p>
         </div>
         <div class="rounded-lg border border-border bg-surface shadow-sm p-4">
@@ -205,7 +205,7 @@
             <flux:text class="text-text-secondary text-sm mt-1">
                 Al aprobar, si todos los ítems están conformes la recepción se verifica por completo; si algún
                 ítem no lo está, se registrará con observaciones. Usa "Suspender y devolver" cuando la anomalía es
-                subsanable y el lote debe regresar al investigador.
+                subsanable y el lote debe regresar al depositante.
             </flux:text>
 
             <div class="flex flex-col gap-2 pt-4 sm:flex-row sm:justify-end">
@@ -228,7 +228,7 @@
             <flux:heading size="lg">Suspender la recepción</flux:heading>
             <flux:text class="text-text-secondary text-sm">
                 Indica el fallo de integridad subsanable. Se emitirá la orden de acción correctiva para el
-                investigador y el Código QR seguirá vigente para reintentar la recepción.
+                depositante y el Código QR seguirá vigente para reintentar la recepción.
             </flux:text>
             <flux:field>
                 <flux:label>Fallo de integridad <span class="text-error">*</span></flux:label>

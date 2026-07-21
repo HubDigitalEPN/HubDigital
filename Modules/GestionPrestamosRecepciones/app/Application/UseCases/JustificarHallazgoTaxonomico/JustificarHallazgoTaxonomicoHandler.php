@@ -24,8 +24,6 @@ final class JustificarHallazgoTaxonomicoHandler
     ) {}
 
     /**
-     * @param JustificarHallazgoTaxonomicoInput $input
-     * @return JustificarHallazgoTaxonomicoOutput
      * @throws \DomainException
      */
     public function __invoke(JustificarHallazgoTaxonomicoInput $input): JustificarHallazgoTaxonomicoOutput
@@ -39,7 +37,7 @@ final class JustificarHallazgoTaxonomicoHandler
             );
         }
 
-        $matriz->justificarRegistro($input->registroId, $input->motivoJustificacion);
+        $matriz->justificarRegistro($input->registroId, $input->motivoJustificacion, $input->comentarioJustificacion);
 
         $this->transactionManager->executeTransactional(function () use ($matriz): void {
             $this->matrizRepo->guardar($matriz);

@@ -94,6 +94,10 @@ final class BandejaDepositos extends Component
             EstadoSolicitudDeposito::Rechazada->value,
         ];
 
+        // Búsqueda por nombre del depositante: se resuelven primero los IDs de usuario
+        // cuyo nombre coincide, ya que el nombre no vive en la tabla de solicitudes.
+        $idsPorNombre = $this->busqueda !== '' ? $usuarios->buscarIdsPorNombre($this->busqueda) : [];
+
         $query = SolicitudDepositoEloquentModel::query()
             ->when(
                 $esResueltas,
@@ -101,7 +105,16 @@ final class BandejaDepositos extends Component
                 fn ($q) => $q->where('estado', EstadoSolicitudDeposito::PendienteDeRevisionPorCuraduria->value),
             )
             ->when($this->tipoTramite !== '', fn ($q) => $q->where('tipo_tramite', $this->tipoTramite))
-            ->when($this->busqueda !== '', fn ($q) => $q->where('numero', 'like', '%'.$this->busqueda.'%'));
+            ->when($this->busqueda !== '', function ($q) use ($idsPorNombre): void {
+                $q->where(function ($sub) use ($idsPorNombre): void {
+                    $sub->where('numero', 'ilike', '%'.$this->busqueda.'%')
+                        ->orWhere('nombre_investigador_documento', 'ilike', '%'.$this->busqueda.'%');
+
+                    if ($idsPorNombre !== []) {
+                        $sub->orWhereIn('investigador_id', $idsPorNombre);
+                    }
+                });
+            });
 
         $solicitudes = $esResueltas
             ? $query->orderBy('updated_at', $this->ordenDireccion === 'asc' ? 'asc' : 'desc')->get()

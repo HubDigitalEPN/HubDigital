@@ -31,6 +31,8 @@ final class RegistroEspecimen
 
     private ?string $motivoJustificacion;
 
+    private ?string $comentarioJustificacion;
+
     /** @var array<string, mixed> Registro DwC completo normalizado desde el Excel */
     private array $datosDwC = [];
 
@@ -62,6 +64,7 @@ final class RegistroEspecimen
         $registro->estado = $estadoInicial;
         $registro->noCatalogado = $noCatalogado;
         $registro->motivoJustificacion = null;
+        $registro->comentarioJustificacion = null;
         $registro->datosDwC = $datosDwC;
         $registro->normalizaciones = $normalizaciones;
 
@@ -98,9 +101,11 @@ final class RegistroEspecimen
      * Justifica un hallazgo no catalogado, transicionándolo a validación manual por
      * curaduría. Solo permitido en registros marcados como no catalogados.
      *
+     * @param  string|null  $comentario  Comentario libre opcional del depositante para el curador.
+     *
      * @throws \DomainException Si el motivo está vacío o el registro no es no catalogado.
      */
-    public function justificar(string $motivo): void
+    public function justificar(string $motivo, ?string $comentario = null): void
     {
         if (trim($motivo) === '') {
             throw new \DomainException('El motivo de justificación no puede estar vacío');
@@ -113,6 +118,7 @@ final class RegistroEspecimen
         }
 
         $this->motivoJustificacion = $motivo;
+        $this->comentarioJustificacion = $this->normalizarComentario($comentario);
         $this->estado = EstadoRegistroEspecimen::ValidacionManualPorCuraduria;
     }
 
@@ -141,9 +147,11 @@ final class RegistroEspecimen
     /**
      * Cambia el motivo de justificación de un registro ya justificado.
      *
+     * @param  string|null  $comentario  Comentario libre opcional del depositante para el curador.
+     *
      * @throws \DomainException Si el motivo está vacío o el estado no es ValidacionManualPorCuraduria.
      */
-    public function cambiarJustificacion(string $nuevoMotivo): void
+    public function cambiarJustificacion(string $nuevoMotivo, ?string $comentario = null): void
     {
         if (trim($nuevoMotivo) === '') {
             throw new \DomainException('El motivo de justificación no puede estar vacío');
@@ -156,6 +164,21 @@ final class RegistroEspecimen
         }
 
         $this->motivoJustificacion = $nuevoMotivo;
+        $this->comentarioJustificacion = $this->normalizarComentario($comentario);
+    }
+
+    /**
+     * Normaliza el comentario libre: recorta espacios y convierte cadena vacía en null.
+     */
+    private function normalizarComentario(?string $comentario): ?string
+    {
+        if ($comentario === null) {
+            return null;
+        }
+
+        $comentario = trim($comentario);
+
+        return $comentario === '' ? null : $comentario;
     }
 
     // ── Queries ──────────────────────────────────────────────────
@@ -190,6 +213,11 @@ final class RegistroEspecimen
         return $this->motivoJustificacion;
     }
 
+    public function comentarioJustificacion(): ?string
+    {
+        return $this->comentarioJustificacion;
+    }
+
     /** @return array<string, mixed> */
     public function datosDwC(): array
     {
@@ -217,6 +245,7 @@ final class RegistroEspecimen
         ?string $motivoJustificacion,
         array $datosDwC = [],
         array $normalizaciones = [],
+        ?string $comentarioJustificacion = null,
     ): self {
         $registro = new self;
         $registro->id = $id;
@@ -225,6 +254,7 @@ final class RegistroEspecimen
         $registro->estado = $estado;
         $registro->noCatalogado = $noCatalogado;
         $registro->motivoJustificacion = $motivoJustificacion;
+        $registro->comentarioJustificacion = $comentarioJustificacion;
         $registro->datosDwC = $datosDwC;
         $registro->normalizaciones = $normalizaciones;
 

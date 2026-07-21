@@ -6,14 +6,15 @@ namespace Modules\GestionPrestamosRecepciones\Domain\ValueObjects;
 
 /**
  * Value object inmutable que representa el número legible de una solicitud de
- * depósito, con formato secuencial `MEPN-INV-00001`.
+ * depósito, con formato secuencial `MEPN-INV-DEP-00001` (el prefijo DEP la
+ * distingue de los códigos de préstamo).
  *
  * Reconstruir desde texto con {@see from()} o derivar desde una secuencia numérica
  * con {@see fromSecuencia()}.
  */
 final readonly class NumeroSolicitudDeposito
 {
-    private const PREFIJO = 'MEPN-INV-';
+    private const PREFIJO = 'MEPN-INV-DEP-';
 
     private const LONGITUD_SECUENCIA = 5;
 
@@ -22,13 +23,13 @@ final readonly class NumeroSolicitudDeposito
     /**
      * Reconstruye el número desde su representación textual.
      *
-     * @throws \DomainException Si el valor no coincide con el formato `MEPN-INV-00001`.
+     * @throws \DomainException Si el valor no coincide con el formato `MEPN-INV-DEP-00001`.
      */
     public static function from(string $numero): self
     {
-        if (! preg_match('/^MEPN-INV-\d{5}$/', $numero)) {
+        if (! preg_match('/^MEPN-INV-DEP-\d{5}$/', $numero)) {
             throw new \DomainException(
-                sprintf('"%s" no es un número de solicitud válido. Formato esperado: MEPN-INV-00001', $numero)
+                sprintf('"%s" no es un número de solicitud válido. Formato esperado: MEPN-INV-DEP-00001', $numero)
             );
         }
 

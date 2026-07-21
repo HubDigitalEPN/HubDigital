@@ -14,5 +14,6 @@ final readonly class JustificarHallazgoTaxonomicoInput
         public string $matrizId,
         public string $registroId,
         public string $motivoJustificacion,
+        public ?string $comentarioJustificacion = null,
     ) {}
 }

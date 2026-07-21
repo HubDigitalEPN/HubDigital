@@ -6,6 +6,7 @@ namespace Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarDocum
 
 use Modules\GestionPrestamosRecepciones\Application\Exceptions\SolicitudNoEncontradaException;
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionCuratoriaPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionInvestigadorPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
@@ -26,6 +27,7 @@ final class RechazarDocumentalmenteSolicitudHandler
         private TransactionManagerPort $transactionManager,
         private EventPublisherPort $eventPublisher,
         private NotificacionInvestigadorPort $notificacionInvestigador,
+        private NotificacionCuratoriaPort $notificacionCuratoria,
     ) {}
 
     /**
@@ -55,6 +57,13 @@ final class RechazarDocumentalmenteSolicitudHandler
             solicitudId: (string) $solicitud->id(),
             investigadorId: $solicitud->investigadorId(),
             comentario: $input->motivo,
+        );
+
+        $this->notificacionCuratoria->notificarDecisionDocumentalAOtrosCuradores(
+            solicitudId: (string) $solicitud->id(),
+            curadorQueDecideId: $input->curadorId,
+            decision: 'rechazada',
+            motivo: $input->motivo,
         );
 
         return RechazarDocumentalmenteSolicitudOutput::fromPrimitives(

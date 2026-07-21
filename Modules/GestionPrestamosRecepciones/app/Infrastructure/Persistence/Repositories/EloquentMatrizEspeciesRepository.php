@@ -64,6 +64,7 @@ final class EloquentMatrizEspeciesRepository implements MatrizEspeciesRepository
                 'estado' => $registro->estado()->value,
                 'no_catalogado' => $registro->esNoCatalogado(),
                 'motivo_justificacion' => $registro->motivoJustificacion(),
+                'comentario_justificacion' => $registro->comentarioJustificacion(),
                 'datos_dwc' => json_encode($registro->datosDwC()) ?: null,
                 'normalizaciones' => json_encode($registro->normalizaciones()) ?: null,
                 'updated_at' => $now,
@@ -76,7 +77,7 @@ final class EloquentMatrizEspeciesRepository implements MatrizEspeciesRepository
             RegistroEspecimenEloquentModel::upsert(
                 $rows,
                 ['id'],
-                ['nombre_cientifico', 'nombre_corregido', 'estado', 'no_catalogado', 'motivo_justificacion', 'datos_dwc', 'normalizaciones', 'updated_at'],
+                ['nombre_cientifico', 'nombre_corregido', 'estado', 'no_catalogado', 'motivo_justificacion', 'comentario_justificacion', 'datos_dwc', 'normalizaciones', 'updated_at'],
             );
         }
 
@@ -132,6 +133,7 @@ final class EloquentMatrizEspeciesRepository implements MatrizEspeciesRepository
                 motivoJustificacion: $regModel->motivo_justificacion,
                 datosDwC: $regModel->datos_dwc ?? [],
                 normalizaciones: $regModel->normalizaciones ?? [],
+                comentarioJustificacion: $regModel->comentario_justificacion,
             );
         }
 

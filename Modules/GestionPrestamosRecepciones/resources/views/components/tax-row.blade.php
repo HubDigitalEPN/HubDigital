@@ -4,6 +4,7 @@
     'especieIngresada',
     'estado',
     'especieSugerida' => null,
+    'especiesSugeridas' => [],
     'especieCorregida' => null,
     'noCatalogado' => false,
     'motivoJustificacion' => null,
@@ -129,23 +130,38 @@
                     <span class="font-mono text-xs text-text-secondary/70">{{ $catalogoId }}</span>
                 @endif
             </div>
+            @php
+                // Lista de candidatos (mejor primero); cae al único sugerido si no hay lista.
+                $sugerencias = ! empty($especiesSugeridas)
+                    ? $especiesSugeridas
+                    : ($especieSugerida !== null ? [$especieSugerida] : []);
+            @endphp
             <div class="flex flex-col gap-2 items-start w-full">
                 <div class="flex items-start gap-1.5 text-xs text-text-primary leading-snug">
                     <flux:icon name="sparkles" class="size-3.5 text-warning shrink-0 mt-0.5" />
                     <span>
-                        Posible inconsistencia tipográfica — ¿quiso decir
-                        <em class="font-serif font-semibold not-italic">{{ $especieSugerida }}</em>?
+                        Posible inconsistencia tipográfica —
+                        @if(count($sugerencias) > 1)
+                            elige el nombre correcto del catálogo:
+                        @else
+                            ¿quiso decir
+                            <em class="font-serif font-semibold not-italic">{{ $especieSugerida }}</em>?
+                        @endif
                     </span>
                 </div>
-                <flux:button
-                    variant="primary"
-                    size="sm"
-                    icon="check"
-                    wire:click="aceptarSugerencia('{{ $registroId }}', '{{ addslashes($especieSugerida) }}')"
-                    wire:loading.attr="disabled"
-                >
-                    Aceptar sugerencia
-                </flux:button>
+                <div class="flex flex-wrap gap-2">
+                    @foreach($sugerencias as $sugerencia)
+                        <flux:button
+                            variant="primary"
+                            size="sm"
+                            icon="check"
+                            wire:click="aceptarSugerencia('{{ $registroId }}', '{{ addslashes($sugerencia) }}')"
+                            wire:loading.attr="disabled"
+                        >
+                            <span class="font-serif italic">{{ $sugerencia }}</span>
+                        </flux:button>
+                    @endforeach
+                </div>
                 @foreach($advertencias as $adv)
                     <span class="inline-flex items-center gap-1 rounded border border-warning/40 bg-warning/5 px-2 py-0.5 text-xs text-warning">
                         <flux:icon name="exclamation-triangle" variant="outline" class="size-3 shrink-0" />
@@ -167,8 +183,14 @@
             <div class="flex flex-col gap-2 items-start w-full">
                 <div class="flex items-start gap-1.5 text-xs text-text-primary leading-snug">
                     <flux:icon name="exclamation-triangle" class="size-3.5 text-error shrink-0 mt-0.5" />
-                    <span>Especie no registrada en el catálogo. Justifica el hallazgo para continuar.</span>
+                    <span>Nombre no encontrado en el catálogo de referencia. Si es un nombre nuevo o no listado, justifícalo para continuar.</span>
                 </div>
+                <flux:textarea
+                    wire:model.blur="comentariosJustificacion.{{ $registroId }}"
+                    rows="2"
+                    class="w-full max-w-md"
+                    placeholder="Comentario para el curador (opcional): explica por qué este nombre no figura en el catálogo…"
+                />
                 <flux:select wire:change="justificarHallazgo('{{ $registroId }}', $event.target.value)" class="max-w-xs">
                     <flux:select.option value="">Selecciona un motivo de justificación...</flux:select.option>
                     @foreach($motivosDisponibles as $motivo)
@@ -205,6 +227,23 @@
                             <flux:select.option value="{{ $motivo }}" :selected="$motivo === $motivoJustificacion">{{ $motivo }}</flux:select.option>
                         @endforeach
                     </flux:select>
+                </div>
+                <div class="flex flex-col gap-1.5 w-full max-w-md">
+                    <flux:textarea
+                        wire:model.blur="comentariosJustificacion.{{ $registroId }}"
+                        rows="2"
+                        placeholder="Comentario para el curador (opcional)…"
+                    />
+                    <flux:button
+                        size="sm"
+                        variant="ghost"
+                        icon="check"
+                        wire:click="guardarComentarioJustificacion('{{ $registroId }}')"
+                        wire:loading.attr="disabled"
+                        class="self-start"
+                    >
+                        Guardar comentario
+                    </flux:button>
                 </div>
                 @foreach($advertencias as $adv)
                     <span class="inline-flex items-center gap-1 rounded border border-warning/40 bg-warning/5 px-2 py-0.5 text-xs text-warning">
