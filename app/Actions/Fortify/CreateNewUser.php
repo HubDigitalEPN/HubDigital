@@ -25,12 +25,17 @@ class CreateNewUser implements CreatesNewUsers
             'password' => $this->passwordRules(),
         ])->validate();
 
-        return User::create([
+        $user = User::create([
             'first_name' => $input['first_name'],
             'last_name' => $input['last_name'],
             'email' => $input['email'],
             'password' => $input['password'],
             'rol' => $input['rol'] ?? RolUsuario::CURADOR->value,
         ]);
+
+        // Registra la membresía del rol primario en el pivote de roles.
+        $user->asignarRol($user->rol);
+
+        return $user;
     }
 }

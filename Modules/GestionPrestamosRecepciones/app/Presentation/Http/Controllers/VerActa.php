@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers;
 
-use App\Enums\RolUsuario;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -19,11 +18,6 @@ final class VerActa extends Component
 {
     public string $id;
 
-    /**
-     * @param string $id
-     * @param ConsultarActaDocumentoHandler $handler
-     * @return void
-     */
     public function mount(string $id, ConsultarActaDocumentoHandler $handler): void
     {
         $this->id = $id;
@@ -35,7 +29,7 @@ final class VerActa extends Component
         }
 
         $user = auth()->user();
-        $esCurador = $user?->rol === RolUsuario::CURADOR;
+        $esCurador = $user?->esCurador() ?? false;
         $esDueno = $acta->investigadorId === (string) $user?->id;
 
         if (! $esCurador && ! $esDueno) {
@@ -43,10 +37,6 @@ final class VerActa extends Component
         }
     }
 
-    /**
-     * @param ConsultarActaDocumentoHandler $handler
-     * @return View
-     */
     public function render(ConsultarActaDocumentoHandler $handler): View
     {
         $acta = $handler->handle(new ConsultarActaDocumentoInput(actaId: $this->id));

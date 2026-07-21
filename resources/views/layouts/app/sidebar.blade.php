@@ -39,7 +39,10 @@
                     </flux:sidebar.item>
                 </flux:sidebar.group>
                 @auth
-                    @if(auth()->user()->rol === RolUsuario::PRESTAMISTA)
+                    @php
+                        $rolActivo = auth()->user()->rolActivo();
+                    @endphp
+                    @if($rolActivo === RolUsuario::PRESTAMISTA)
                         <flux:sidebar.group heading="Préstamos" class="grid">
                             <flux:sidebar.item
                                 icon="document-text"
@@ -66,7 +69,7 @@
                                 Mis préstamos
                             </flux:sidebar.item>
                         </flux:sidebar.group>
-                    @elseif(auth()->user()->rol === RolUsuario::DEPOSITANTE)
+                    @elseif($rolActivo === RolUsuario::DEPOSITANTE)
                         <flux:sidebar.group heading="Depósitos" class="grid">
                             <flux:sidebar.item icon="archive-box" :href="route('prestamos.investigador.mis-depositos')" :current="request()->routeIs('prestamos.investigador.mis-depositos')" wire:navigate>
                                 Mis depósitos
@@ -75,7 +78,7 @@
                                 Nueva solicitud
                             </flux:sidebar.item>
                         </flux:sidebar.group>
-                    @elseif(auth()->user()->rol === RolUsuario::CURADOR)
+                    @elseif($rolActivo === RolUsuario::CURADOR)
                         <flux:sidebar.group
                             heading="Gestión de préstamos"
                             class="grid"
@@ -421,13 +424,27 @@
                                     :name="auth()->user()->name"
                                     :initials="auth()->user()->initials()"
                                 />
+                                @php
+                                    $rolMovil = auth()->user()->rolActivo();
+                                    [$badgeMovil, $iconoMovil] = match ($rolMovil) {
+                                        RolUsuario::DEPOSITANTE => ['bg-bio-green/10 text-bio-green', 'archive-box'],
+                                        RolUsuario::PRESTAMISTA => ['bg-science-blue/10 text-science-blue', 'document-text'],
+                                        RolUsuario::CURADOR => ['bg-blue-navy/10 text-blue-navy', 'shield-check'],
+                                    };
+                                @endphp
                                 <div class="grid flex-1 text-start text-sm leading-tight">
                                     <flux:heading class="truncate">{{ auth()->user()->name }}</flux:heading>
                                     <flux:text class="truncate text-text-secondary">{{ auth()->user()->email }}</flux:text>
+                                    <span class="mt-1 inline-flex items-center gap-1 self-start rounded-full {{ $badgeMovil }} px-2 py-0.5 text-xs font-medium">
+                                        <flux:icon :name="$iconoMovil" class="size-3" />
+                                        {{ $rolMovil->etiqueta() }}
+                                    </span>
                                 </div>
                             </div>
                         </div>
                     </flux:menu.radio.group>
+
+                    <livewire:selector-rol-activo />
 
                     <flux:menu.separator />
 
@@ -453,6 +470,8 @@
                 </flux:menu>
             </flux:dropdown>
         </flux:header>
+
+        <x-banner-activar-rol />
 
         {{ $slot }}
 

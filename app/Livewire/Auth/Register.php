@@ -65,6 +65,9 @@ class Register extends Component
                 'cargo' => $esDepositante ? $this->cargo : null,
                 'institucion' => $esDepositante ? $this->institucion : null,
             ]);
+
+            // Registra la membresía del rol primario en el pivote de roles.
+            $user->asignarRol($user->rol);
         } catch (UniqueConstraintViolationException) {
             $this->addError('form', 'No se pudo completar el registro. Verifica los datos e intenta de nuevo.');
 

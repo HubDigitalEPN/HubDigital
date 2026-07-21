@@ -27,7 +27,7 @@ class Dashboard extends Component
     ): View {
         $user = Auth::user();
 
-        return match ($user->rol) {
+        return match ($user->rolActivo()) {
             RolUsuario::CURADOR => view('livewire.dashboard.curador-panel', [
                 'statSolicitudesPendientes' => SolicitudPrestamoModel::query()
                     ->where('estado', 'enviada')

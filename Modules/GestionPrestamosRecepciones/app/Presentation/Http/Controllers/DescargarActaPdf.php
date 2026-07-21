@@ -4,15 +4,14 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers;
 
-use App\Enums\RolUsuario;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
-use setasign\Fpdi\Fpdi;
-use setasign\Fpdi\PdfParser\StreamReader;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarActaDocumento\ConsultarActaDocumentoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarActaDocumento\ConsultarActaDocumentoInput;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\PatenteAnualNoConfigurada;
+use setasign\Fpdi\Fpdi;
+use setasign\Fpdi\PdfParser\StreamReader;
 
 /**
  * Controlador para descargar el acta de préstamo como PDF generado por DomPDF.
@@ -23,11 +22,6 @@ use Modules\GestionPrestamosRecepciones\Domain\Exceptions\PatenteAnualNoConfigur
  */
 final class DescargarActaPdf
 {
-    /**
-     * @param string $id
-     * @param ConsultarActaDocumentoHandler $handler
-     * @return Response
-     */
     public function __invoke(string $id, ConsultarActaDocumentoHandler $handler): Response
     {
         $user = auth()->user();
@@ -43,7 +37,7 @@ final class DescargarActaPdf
             abort(422, PatenteAnualNoConfigurada::paraAnio($anio)->getMessage());
         }
 
-        $esCurador = $user?->rol === RolUsuario::CURADOR;
+        $esCurador = $user?->esCurador() ?? false;
         $esDueno = $acta->investigadorId === (string) $user?->id;
 
         if (! $esCurador && ! $esDueno) {
@@ -54,12 +48,12 @@ final class DescargarActaPdf
         // sello PAdES ya incrustado) es el documento oficial: se sirve tal cual, sin
         // regenerar. Su ruta la fija ValidarActaFirmada. Es vertical, sin la hoja de
         // especímenes.
-        $firmadoCurador = 'actas-firmadas-curador/' . $acta->id . '.pdf';
+        $firmadoCurador = 'actas-firmadas-curador/'.$acta->id.'.pdf';
 
         if (Storage::exists($firmadoCurador)) {
             return response(Storage::get($firmadoCurador), 200, [
                 'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'inline; filename="Acta-' . $acta->numeroPrestamo . '.pdf"',
+                'Content-Disposition' => 'inline; filename="Acta-'.$acta->numeroPrestamo.'.pdf"',
                 'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
                 'Pragma' => 'no-cache',
             ]);
@@ -83,11 +77,11 @@ final class DescargarActaPdf
             $contenido = $this->fusionar($actaPdf, $especimenesPdf);
         }
 
-        $filename = 'Acta-' . $acta->numeroPrestamo . '.pdf';
+        $filename = 'Acta-'.$acta->numeroPrestamo.'.pdf';
 
         return response($contenido, 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="' . $filename . '"',
+            'Content-Disposition' => 'inline; filename="'.$filename.'"',
             // El PDF se genera al vuelo; evita que el navegador sirva una versión cacheada.
             'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
             'Pragma' => 'no-cache',
@@ -101,7 +95,7 @@ final class DescargarActaPdf
      */
     private function fusionar(string ...$pdfs): string
     {
-        $fpdi = new Fpdi();
+        $fpdi = new Fpdi;
         $fpdi->SetAutoPageBreak(false);
 
         foreach ($pdfs as $bytes) {

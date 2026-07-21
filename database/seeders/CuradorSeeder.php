@@ -10,10 +10,11 @@ class CuradorSeeder extends Seeder
 {
     public function run(): void
     {
-        User::firstOrCreate(
+        $curador = User::firstOrCreate(
             ['email' => env('CURADOR_EMAIL', 'curador@epn.edu.ec')],
             [
-                'name' => 'Curador Hub Digital',
+                'first_name' => 'Curador',
+                'last_name' => 'Hub Digital',
                 'password' => env('CURADOR_PASSWORD', 'secret'),
                 'rol' => RolUsuario::CURADOR,
                 // El curador es una cuenta administrativa con correo institucional
@@ -22,5 +23,8 @@ class CuradorSeeder extends Seeder
                 'email_verified_at' => now(),
             ]
         );
+
+        // Registra la membresía del rol en el pivote (idempotente).
+        $curador->asignarRol(RolUsuario::CURADOR);
     }
 }
