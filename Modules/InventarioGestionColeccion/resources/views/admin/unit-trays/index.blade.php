@@ -574,10 +574,16 @@
                 @endif
                 <flux:select wire:model="trayDestinoReubicar" wire:change="fijarTrayDestino($event.target.value)" placeholder="Selecciona un unit tray...">
                     @foreach($unitTrays as $tray)
-                        <flux:select.option value="{{ $tray['unitTrayId'] }}">N.° {{ $tray['numero'] }} ({{ $tray['totalEspecimenes'] }} especímenes)</flux:select.option>
+                        <flux:select.option value="{{ $tray['unitTrayId'] }}">N.° {{ $tray['numero'] }} — {{ $cajaSeleccionadaLabel }} ({{ $tray['totalEspecimenes'] }} especímenes)</flux:select.option>
                     @endforeach
                 </flux:select>
-                <flux:description>O escanea el QR del unit tray con la cámara de arriba (botón «Escanear destino»).</flux:description>
+                <flux:description>
+                    @if($cajaSeleccionadaLabel)
+                        La lista muestra los unit trays de {{ $cajaSeleccionadaLabel }}. Para otra caja, escanea el QR del unit tray con la cámara de arriba (botón «Escanear destino»).
+                    @else
+                        Selecciona primero una caja arriba, o escanea el QR del unit tray con la cámara de arriba (botón «Escanear destino»).
+                    @endif
+                </flux:description>
             </flux:field>
 
             {{-- Confirmación de advertencia taxonómica suave --}}
@@ -587,9 +593,9 @@
                         Estos especímenes no parecen pertenecer al unit tray de destino según su taxonomía:
                         <span class="font-medium">{{ implode(', ', $reubicacionFueraDeLugar) }}</span>.
                     </p>
-                    <div class="mt-2 flex gap-2">
-                        <flux:button size="sm" variant="primary" wire:click="reubicarEspecimenes(true)" class="min-h-[44px]">Reubicar de todos modos</flux:button>
-                        <flux:button size="sm" variant="ghost" wire:click="cerrarReubicarEspecimenes" class="min-h-[44px]">Cancelar</flux:button>
+                    <div class="mt-2 flex flex-col gap-2 sm:flex-row">
+                        <flux:button size="sm" variant="primary" wire:click="reubicarEspecimenes(true)" class="w-full min-h-[44px] sm:w-auto">Reubicar de todos modos</flux:button>
+                        <flux:button size="sm" variant="ghost" wire:click="cerrarReubicarEspecimenes" class="w-full min-h-[44px] sm:w-auto">Cancelar</flux:button>
                     </div>
                 </flux:callout>
             @endif

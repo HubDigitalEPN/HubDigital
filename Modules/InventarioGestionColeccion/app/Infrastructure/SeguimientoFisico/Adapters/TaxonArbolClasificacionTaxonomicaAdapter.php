@@ -21,6 +21,19 @@ final class TaxonArbolClasificacionTaxonomicaAdapter implements ClasificacionTax
 {
     private const PROFUNDIDAD_MAXIMA = 30;
 
+    /**
+     * Cache por taxonId (incluye resultados null) para no repetir la caminata al padre: el
+     * mismo taxón se resuelve muchas veces en una sola operación (especímenes hermanos,
+     * recalculo del tray y luego de la caja). Vive mientras viva esta instancia; el binding
+     * en el ServiceProvider es singleton para que se comparta durante toda la request.
+     *
+     * @var array<string, ClasificacionTaxonomica|null>
+     */
+    private array $cache = [];
+
+    /** Cache de filas de Taxon por id: distintos especímenes comparten ancestros (género, familia...). */
+    private array $taxonCache = [];
+
     public function __construct(
         private readonly TaxonRepositoryInterface $taxonRepo,
     ) {}
@@ -34,10 +47,14 @@ final class TaxonArbolClasificacionTaxonomicaAdapter implements ClasificacionTax
      */
     public function resolverParaTaxon(string $taxonId): ?ClasificacionTaxonomica
     {
+        if (array_key_exists($taxonId, $this->cache)) {
+            return $this->cache[$taxonId];
+        }
+
         try {
             $actualId = TaxonId::desde($taxonId);
         } catch (\InvalidArgumentException) {
-            return null;
+            return $this->cache[$taxonId] = null;
         }
 
         $niveles = [];
@@ -51,7 +68,9 @@ final class TaxonArbolClasificacionTaxonomicaAdapter implements ClasificacionTax
             }
             $visitados[$clave] = true;
 
-            $taxon = $this->taxonRepo->buscarPorId($actualId);
+            $taxon = array_key_exists($clave, $this->taxonCache)
+                ? $this->taxonCache[$clave]
+                : $this->taxonCache[$clave] = $this->taxonRepo->buscarPorId($actualId);
             if ($taxon === null) {
                 break;
             }
@@ -69,6 +88,6 @@ final class TaxonArbolClasificacionTaxonomicaAdapter implements ClasificacionTax
             especie: $niveles[RangoTaxonomico::Especie->value] ?? null,
         );
 
-        return $clasificacion->estaVacia() ? null : $clasificacion;
+        return $this->cache[$taxonId] = ($clasificacion->estaVacia() ? null : $clasificacion);
     }
 }

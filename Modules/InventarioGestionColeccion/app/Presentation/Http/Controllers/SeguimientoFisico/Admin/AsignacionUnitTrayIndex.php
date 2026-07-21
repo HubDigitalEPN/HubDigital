@@ -448,9 +448,14 @@ final class AsignacionUnitTrayIndex extends Component
             return;
         }
 
+        $caja = app(CajaRepository::class)->buscarPorId($tray->cajaId());
+        $cajaLabel = $caja !== null
+            ? (string) $caja->codigo().($caja->nombre() ? ' — '.$caja->nombre() : '')
+            : 'caja desconocida';
+
         $this->errorMessage = null;
         $this->trayDestinoReubicar = $unitTrayId;
-        $this->trayDestinoReubicarLabel = 'N.° '.$tray->numero();
+        $this->trayDestinoReubicarLabel = 'N.° '.$tray->numero()." ({$cajaLabel})";
     }
 
     /**
