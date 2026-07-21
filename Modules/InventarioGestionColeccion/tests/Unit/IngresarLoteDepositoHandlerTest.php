@@ -168,6 +168,19 @@ test('los problemas reales de calidad de dato si mandan el especimen a revision'
         ->and($repo->buscarTodos()[0]->motivoRevision())->toContain('coordenadas');
 });
 
+test('no se ocupa fila_origen_excel, que pertenece al importador del catalogo', function (): void {
+    // Esa columna tiene un índice único en toda la tabla y el catálogo importado ya
+    // ocupa el rango 1..48856: escribir ahí el número de fila del depósito reventaría
+    // con una violación de unicidad contra el material heredado.
+    $repo = new InMemoryEspecimenRepository;
+
+    ingestaDeposito($repo)->handle(entradaDeposito([
+        ['indice' => 1, 'datosDwC' => filaDwC(), 'estadoRegistro' => 'Validado Técnicamente'],
+    ]));
+
+    expect($repo->buscarTodos()[0]->filaOrigenExcel())->toBeNull();
+});
+
 test('el acta de recepcion queda como trazabilidad en cada especimen', function (): void {
     $repo = new InMemoryEspecimenRepository;
 

@@ -120,7 +120,11 @@ final class IngresarLoteDepositoHandler
                 occurrenceRemarks: $mapeada->occurrenceRemarks,
                 taxonomicNotes: $mapeada->taxonomicNotes,
                 actaRecepcion: $input->actaRecepcion,
-                filaOrigenExcel: (int) $fila['indice'],
+                // filaOrigenExcel se deja deliberadamente en null: tiene un índice ÚNICO
+                // en toda la tabla y pertenece al importador del catálogo, que ya ocupa
+                // el rango 1..48856. Reutilizarlo con el número de fila del depósito
+                // chocaría con el material heredado. La trazabilidad de un espécimen
+                // depositado la dan su codigo_catalogo derivado y su acta_recepcion.
                 estadoCustodia: $custodia,
             );
 
