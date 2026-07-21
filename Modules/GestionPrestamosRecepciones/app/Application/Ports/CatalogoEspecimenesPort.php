@@ -36,4 +36,16 @@ interface CatalogoEspecimenesPort
      * @return array<string, EspecimenCatalogoDto> Indexado por especimenId.
      */
     public function obtenerPorIds(array $especimenIds): array;
+
+    /**
+     * Ficha descriptiva de cada espécimen para la hoja de especímenes del acta.
+     *
+     * A diferencia de {@see obtenerPorIds()}, NO filtra por disponibilidad: cuando el
+     * acta se genera o se descarga el espécimen ya pasó a 'en_prestamo', y aun así el
+     * documento debe describirlo.
+     *
+     * @param  list<string>  $especimenIds
+     * @return array<string, FichaEspecimenActaDto> Indexado por especimenId.
+     */
+    public function obtenerFichasParaActa(array $especimenIds): array;
 }

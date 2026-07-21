@@ -8,16 +8,23 @@ use Modules\GestionPrestamosRecepciones\Application\Ports\PdfGeneratorPort;
 
 final class FakePdfGeneratorAdapter implements PdfGeneratorPort
 {
-    /** @var list<array{vista: string, datos: array<string, mixed>, rutaDestino: string}> */
+    /** @var list<array{datos: array<string, mixed>, rutaDestino: string}> */
     private array $llamadas = [];
 
     /**
      * @param  array<string, mixed>  $datos
      */
-    public function generarYAlmacenar(string $vista, array $datos, string $rutaDestino): string
+    public function generarActa(array $datos): string
+    {
+        return '%PDF-fake';
+    }
+
+    /**
+     * @param  array<string, mixed>  $datos
+     */
+    public function generarActaYAlmacenar(array $datos, string $rutaDestino): string
     {
         $this->llamadas[] = [
-            'vista' => $vista,
             'datos' => $datos,
             'rutaDestino' => $rutaDestino,
         ];
@@ -36,7 +43,7 @@ final class FakePdfGeneratorAdapter implements PdfGeneratorPort
     }
 
     /**
-     * @return list<array{vista: string, datos: array<string, mixed>, rutaDestino: string}>
+     * @return list<array{datos: array<string, mixed>, rutaDestino: string}>
      */
     public function llamadas(): array
     {

@@ -8,6 +8,7 @@ use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 use Modules\GestionPrestamosRecepciones\Application\Ports\CatalogoEspecimenesPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\EspecimenCatalogoDto;
+use Modules\GestionPrestamosRecepciones\Application\Ports\FichaEspecimenActaDto;
 
 /**
  * ACL — Anti-Corruption Layer entre GestionPrestamosRecepciones (Customer) e
@@ -35,6 +36,12 @@ final class InventarioGestionColeccionEspecimenesAdapter implements CatalogoEspe
 
     /** Única constancia Darwin Core de que el espécimen sigue en la colección. */
     private const OCCURRENCE_STATUS_PRESENTE = 'present';
+
+    /** Rango del inventario que el acta imprime como familia. */
+    private const RANGO_FAMILIA = 'familia';
+
+    /** Rangos cuyo nombre científico es un género o una especie (o menor). */
+    private const RANGOS_GENERO_ESPECIE = ['genero', 'especie', 'subespecie'];
 
     public function buscarDisponibles(string $texto, int $limite = 15): array
     {
@@ -86,6 +93,120 @@ final class InventarioGestionColeccionEspecimenesAdapter implements CatalogoEspe
         }
 
         return $resultado;
+    }
+
+    public function obtenerFichasParaActa(array $especimenIds): array
+    {
+        if ($especimenIds === []) {
+            return [];
+        }
+
+        // Sin los filtros de consultaBase(): a la hora del acta el espécimen ya está
+        // 'en_prestamo' y el documento igual tiene que describirlo.
+        $filas = DB::table('taxonomia.especimenes as e')
+            ->leftJoin('taxonomia.taxones as t', 't.id', '=', 'e.taxon_id')
+            ->whereIn('e.id', $especimenIds)
+            ->select([
+                'e.id',
+                'e.codigo_catalogo',
+                'e.sex',
+                'e.state_province',
+                'e.locality_name',
+                'e.taxon_id',
+                't.nombre_cientifico',
+                't.rango',
+            ])
+            ->get();
+
+        $familias = $this->familiasPorTaxon(
+            $filas->pluck('taxon_id')->filter()->unique()->values()->all()
+        );
+
+        $resultado = [];
+
+        foreach ($filas as $fila) {
+            $resultado[(string) $fila->id] = new FichaEspecimenActaDto(
+                especimenId: (string) $fila->id,
+                codigoCatalogo: (string) $fila->codigo_catalogo,
+                familia: $familias[(string) $fila->taxon_id] ?? null,
+                sexo: $this->traducirSexo($fila->sex),
+                // Solo se imprime como especie lo que de verdad lo es: un espécimen
+                // determinado únicamente hasta 'reino' no debe mostrar "Animalia" ahí.
+                especie: in_array($fila->rango, self::RANGOS_GENERO_ESPECIE, true)
+                    ? $fila->nombre_cientifico
+                    : null,
+                provincia: $fila->state_province,
+                localidad: $fila->locality_name,
+            );
+        }
+
+        return $resultado;
+    }
+
+    /**
+     * Traduce el `sex` Darwin Core al español para imprimirlo en el acta.
+     *
+     * El dato del inventario no está normalizado del todo (conviven 'female', 'F',
+     * 'H', 'Male', 'nd', '?'), así que se compara en minúsculas y lo desconocido se
+     * imprime tal cual en lugar de perderse.
+     */
+    private function traducirSexo(?string $sex): ?string
+    {
+        $sex = trim((string) $sex);
+
+        if ($sex === '') {
+            return null;
+        }
+
+        return match (mb_strtolower($sex)) {
+            'male', 'm', 'macho' => 'Macho',
+            'female', 'f', 'h', 'hembra' => 'Hembra',
+            'male/female', 'm/f' => 'Macho/Hembra',
+            'unknown', 'nd', '?' => 'Indeterminado',
+            default => $sex,
+        };
+    }
+
+    /**
+     * Resuelve la familia de varios taxones en una sola consulta, subiendo por
+     * `padre_id` hasta encontrar el ancestro de rango 'familia'.
+     *
+     * @param  list<string>  $taxonIds
+     * @return array<string, string> taxonId => nombre de la familia. Los taxones cuya
+     *                               rama no llega a familia no aparecen.
+     */
+    private function familiasPorTaxon(array $taxonIds): array
+    {
+        if ($taxonIds === []) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($taxonIds), '?'));
+
+        // El corte por profundidad es el anticiclo (la jerarquía se autorreferencia y un
+        // padre_id mal cargado colgaría la consulta); el corte por rango detiene el
+        // ascenso en cuanto aparece la familia.
+        $filas = DB::select(<<<SQL
+            WITH RECURSIVE cadena AS (
+                SELECT t.id AS raiz, t.id, t.rango, t.nombre_cientifico, t.padre_id, 0 AS profundidad
+                FROM taxonomia.taxones t
+                WHERE t.id IN ($placeholders)
+                UNION ALL
+                SELECT c.raiz, p.id, p.rango, p.nombre_cientifico, p.padre_id, c.profundidad + 1
+                FROM cadena c
+                JOIN taxonomia.taxones p ON p.id = c.padre_id
+                WHERE c.profundidad < 20 AND c.rango <> ?
+            )
+            SELECT raiz, nombre_cientifico FROM cadena WHERE rango = ?
+            SQL, [...$taxonIds, self::RANGO_FAMILIA, self::RANGO_FAMILIA]);
+
+        $familias = [];
+
+        foreach ($filas as $fila) {
+            $familias[(string) $fila->raiz] = (string) $fila->nombre_cientifico;
+        }
+
+        return $familias;
     }
 
     /**

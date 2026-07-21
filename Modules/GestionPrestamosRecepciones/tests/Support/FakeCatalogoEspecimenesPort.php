@@ -6,6 +6,7 @@ namespace Modules\GestionPrestamosRecepciones\Tests\Support;
 
 use Modules\GestionPrestamosRecepciones\Application\Ports\CatalogoEspecimenesPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\EspecimenCatalogoDto;
+use Modules\GestionPrestamosRecepciones\Application\Ports\FichaEspecimenActaDto;
 
 /**
  * Doble de prueba del {@see CatalogoEspecimenesPort} para Behat.
@@ -56,6 +57,34 @@ final class FakeCatalogoEspecimenesPort implements CatalogoEspecimenesPort
             if (isset($this->especimenes[$id])) {
                 $resultado[$id] = $this->especimenes[$id];
             }
+        }
+
+        return $resultado;
+    }
+
+    public function obtenerFichasParaActa(array $especimenIds): array
+    {
+        $resultado = [];
+
+        foreach ($especimenIds as $id) {
+            if (! isset($this->especimenes[$id])) {
+                continue;
+            }
+
+            $especimen = $this->especimenes[$id];
+
+            // ponytail: la familia, el sexo y la procedencia salen del inventario real,
+            // que este doble no modela. Sembrarlos aquí si algún escenario llega a
+            // afirmar sobre esas columnas del acta.
+            $resultado[$id] = new FichaEspecimenActaDto(
+                especimenId: $especimen->especimenId,
+                codigoCatalogo: $especimen->codigoCatalogo,
+                familia: null,
+                sexo: null,
+                especie: $especimen->nombreCientifico,
+                provincia: null,
+                localidad: null,
+            );
         }
 
         return $resultado;

@@ -112,6 +112,11 @@ final class PyHankoFirmadorPdfAdapter implements FirmadorPdfPort
      * curador. Las coordenadas y el nombre del campo se conservan tal cual. Ante
      * cualquier fallo de lectura se usa el campo configurado sin tocar.
      *
+     * ponytail: desde que el acta incluye la hoja de especímenes al final, "última
+     * página" ya NO es la de las firmas — el sello cae sobre la tabla de
+     * especímenes. Pendiente decidir el anclaje (penúltima página, o mover el
+     * bloque de especímenes antes de las firmas).
+     *
      * @param  string  $campo  Spec pyHanko "pagina/x1,y1,x2,y2/Nombre".
      */
     private function campoConPaginaFirma(string $campo, string $rutaPdf): string
