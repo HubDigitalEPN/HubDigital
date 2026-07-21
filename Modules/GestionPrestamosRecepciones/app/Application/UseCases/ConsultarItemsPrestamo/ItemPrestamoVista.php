@@ -15,6 +15,8 @@ final readonly class ItemPrestamoVista
      * @param int $cantidadSolicitada Cantidad de individuos/lotes solicitados.
      * @param string|null $nombre Nombre legible del espécimen tomado del snapshot, si existe.
      * @param string|null $condicionesEspecificas Condiciones específicas fijadas por el curador, si existen.
+     * @param string|null $especimenId Identificador en el catálogo de inventario. Null en ítems anteriores a la conexión con el catálogo.
+     * @param int|null $individualesDisponibles Disponibles según el snapshot tomado al solicitar; sirve de tope al reeditar el borrador.
      */
     public function __construct(
         public string $itemPrestamoId,
@@ -22,5 +24,7 @@ final readonly class ItemPrestamoVista
         public int $cantidadSolicitada,
         public ?string $nombre = null,
         public ?string $condicionesEspecificas = null,
+        public ?string $especimenId = null,
+        public ?int $individualesDisponibles = null,
     ) {}
 }

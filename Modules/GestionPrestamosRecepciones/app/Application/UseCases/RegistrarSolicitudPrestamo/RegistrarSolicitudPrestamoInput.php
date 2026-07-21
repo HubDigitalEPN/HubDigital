@@ -10,7 +10,7 @@ namespace Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarSoli
 final readonly class RegistrarSolicitudPrestamoInput
 {
     /**
-     * @param  list<array{especimen_codigo_externo: string, cantidad_solicitada: int}>  $items
+     * @param  list<array{especimen_id: string, cantidad_solicitada: int}>  $items  El código y el nombre científico se resuelven contra el catálogo, no se aceptan del cliente.
      */
     public function __construct(
         public string $investigadorId,

@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Livewire\Livewire;
 use Modules\GestionPrestamosRecepciones\Application\Exceptions\SolicitudNoEncontradaException;
 use Modules\GestionPrestamosRecepciones\Application\Ports\CatalogoCuraduriaPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\CatalogoEspecimenesPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\CertificadoCuradorPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ColaRevisionCuratorialPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
@@ -46,6 +47,7 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\EloquentHistoria
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\GbifValidacionTaxonomicaAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\GroqExtraccionDatosDocumentoAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\InventarioGestionColeccionCatalogoCuraduriaAdapter;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\InventarioGestionColeccionEspecimenesAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\LaravelEventPublisherAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\LaravelTransactionManagerAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\NotificacionCuratoriaAdapter;
@@ -120,6 +122,7 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
         InvestigadorEmailPort::class => LaravelUserInvestigadorEmailAdapter::class,
         UsuarioNombrePort::class => LaravelUsuarioNombreAdapter::class,
         CatalogoCuraduriaPort::class => InventarioGestionColeccionCatalogoCuraduriaAdapter::class,
+        CatalogoEspecimenesPort::class => InventarioGestionColeccionEspecimenesAdapter::class,
         ValidacionTaxonomicaPort::class => GbifValidacionTaxonomicaAdapter::class,
         PdfGeneratorPort::class => DomPdfGeneratorAdapter::class,
         VerificacionEspecimenesRepositoryInterface::class => EloquentVerificacionEspecimenesRepository::class,

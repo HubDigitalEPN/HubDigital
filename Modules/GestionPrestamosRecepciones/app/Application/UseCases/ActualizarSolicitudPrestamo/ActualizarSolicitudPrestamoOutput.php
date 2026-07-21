@@ -13,7 +13,7 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitud;
 final readonly class ActualizarSolicitudPrestamoOutput
 {
     /**
-     * @param  list<array{especimen_codigo_externo: string, cantidad_solicitada: int}>  $items
+     * @param  list<array{especimen_id: ?string, especimen_codigo_externo: string, cantidad_solicitada: int}>  $items
      */
     public function __construct(
         public string $solicitudId,
@@ -37,6 +37,7 @@ final readonly class ActualizarSolicitudPrestamoOutput
     {
         $items = array_map(
             fn ($item) => [
+                'especimen_id'             => $item->especimenId(),
                 'especimen_codigo_externo' => $item->especimenCodigoExterno(),
                 'cantidad_solicitada'      => $item->cantidadSolicitada(),
             ],

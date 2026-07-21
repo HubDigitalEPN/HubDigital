@@ -104,6 +104,7 @@ final class ResolucionSolicitudesPrestamoContext extends BaseContext
         $items = array_map(
             fn (array $item) => ItemPrestamo::crear(
                 id: ItemPrestamoId::generate(),
+                especimenId: (string) \Illuminate\Support\Str::uuid(),
                 especimenCodigoExterno: $item['especimen_codigo_externo'],
                 cantidadSolicitada: $item['cantidad_solicitada'],
             ),
