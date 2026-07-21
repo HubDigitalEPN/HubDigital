@@ -471,8 +471,6 @@
             </flux:dropdown>
         </flux:header>
 
-        <x-banner-activar-rol />
-
         {{ $slot }}
 
         {{-- Domain exception toast --}}

@@ -17,7 +17,6 @@
             x-data="{ visible: localStorage.getItem('{{ $claveBanner }}') !== 'oculto' }"
             x-show="visible"
             x-cloak
-            class="px-4 pt-4 sm:px-6 sm:pt-6"
         >
             <div class="flex flex-col gap-3 rounded-lg border border-info/30 bg-info/5 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div class="flex items-start gap-3">
