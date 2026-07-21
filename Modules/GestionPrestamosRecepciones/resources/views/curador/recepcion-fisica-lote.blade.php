@@ -141,6 +141,18 @@
                 Orden de acción correctiva: <span class="font-semibold">{{ $recepcion->accionCorrectiva }}</span>.
                 El Código QR permanece vigente para reintentar la recepción del mismo lote.
             </flux:callout.text>
+            <x-slot name="actions">
+                <flux:button
+                    variant="primary"
+                    icon="arrow-path"
+                    wire:click="reintentar"
+                    wire:loading.attr="disabled"
+                    wire:target="reintentar"
+                    class="w-full sm:w-auto"
+                >
+                    Reintentar recepción
+                </flux:button>
+            </x-slot>
         </flux:callout>
     @endif
 

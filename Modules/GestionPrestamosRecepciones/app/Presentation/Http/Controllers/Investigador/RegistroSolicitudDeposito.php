@@ -296,6 +296,22 @@ final class RegistroSolicitudDeposito extends Component
     }
 
     /**
+     * Hook que se ejecuta al cambiar el tipo de trámite.
+     *
+     * Limpia el aviso de cupo anual: solo aplica al Depósito, y el propio aviso invita
+     * a continuar como Donación. Sin esto la bandera sobrevive al cambio de trámite y
+     * el botón de avance (deshabilitado mientras $limiteAlcanzado sea true) deja al
+     * depositante sin salida salvo recargando la página.
+     */
+    public function updatedTipoTramite(): void
+    {
+        if ($this->tipoTramite !== TipoTramite::Deposito->value) {
+            $this->limiteAlcanzado = false;
+            $this->mensajeLimite = '';
+        }
+    }
+
+    /**
      * Hook que se ejecuta al actualizar la propiedad origenRecoleccion.
      * Ajusta la situación regulatoria en base al origen.
      */

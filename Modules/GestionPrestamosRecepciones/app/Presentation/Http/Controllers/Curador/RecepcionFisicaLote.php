@@ -22,6 +22,8 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\IniciarRecepcionLot
 use Modules\GestionPrestamosRecepciones\Application\UseCases\IniciarRecepcionLote\IniciarRecepcionLoteInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarRecepcionLote\RechazarRecepcionLoteHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarRecepcionLote\RechazarRecepcionLoteInput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ReintentarRecepcionLote\ReintentarRecepcionLoteHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ReintentarRecepcionLote\ReintentarRecepcionLoteInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\SubirActaRecepcionFirmada\SubirActaRecepcionFirmadaHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\SubirActaRecepcionFirmada\SubirActaRecepcionFirmadaInput;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ItemChecklistRecepcion;
@@ -116,6 +118,22 @@ final class RecepcionFisicaLote extends Component
 
         $this->showRechazoModal = false;
         $this->dispatch('toast', message: 'Recepción suspendida. Se emitió la orden de acción correctiva.');
+    }
+
+    /**
+     * Reabre la verificación de un lote suspendido para volver a evaluarlo con el mismo
+     * Código QR, una vez subsanada la anomalía.
+     */
+    public function reintentar(ReintentarRecepcionLoteHandler $handler): void
+    {
+        ($handler)(new ReintentarRecepcionLoteInput(
+            solicitudId: $this->id,
+            curadorId: (string) auth()->id(),
+        ));
+
+        $this->conforme = [0 => false, 1 => false, 2 => false, 3 => false];
+        $this->motivoFallo = '';
+        $this->dispatch('toast', message: 'Recepción reabierta. Vuelve a verificar el lote.');
     }
 
     public function aceptarConObservaciones(AceptarRecepcionConObservacionesHandler $handler): void
