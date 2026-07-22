@@ -34,6 +34,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudDepositoPendiente
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPriorizada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudRechazadaDocumentalmente;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudRequiereCorreccion;
+use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoAlerta;
@@ -43,6 +44,7 @@ use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\Fakes\FakeNotificac
 use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\Fakes\FakeNotificacionInvestigadorAdapter;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\FakeEventPublisherAdapter;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\PassThroughTransactionManagerAdapter;
+use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Persistence\InMemoryMatrizEspeciesRepository;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Persistence\InMemorySolicitudDepositoRepository;
 use PHPUnit\Framework\Assert;
 
@@ -111,6 +113,10 @@ final class AprobacionDocumentalSolicitudContext extends BaseContext
 
         // 2. Interceptar el container para que los Handlers reciban estas instancias
         self::$app->instance(SolicitudDepositoRepositoryInterface::class, $this->repo);
+        // Los handlers de aprobación consultan la matriz para avisar de las correcciones
+        // de curaduría: sin este binding resolverían el repositorio Eloquent y el escenario
+        // dejaría de ser 100% en memoria.
+        self::$app->instance(MatrizEspeciesRepositoryInterface::class, new InMemoryMatrizEspeciesRepository);
         self::$app->instance(TransactionManagerPort::class, new PassThroughTransactionManagerAdapter);
         self::$app->instance(EventPublisherPort::class, $this->fakePublisher);
         self::$app->instance(NotificacionCuratoriaPort::class, $this->fakeNotificacionCuratoria);
