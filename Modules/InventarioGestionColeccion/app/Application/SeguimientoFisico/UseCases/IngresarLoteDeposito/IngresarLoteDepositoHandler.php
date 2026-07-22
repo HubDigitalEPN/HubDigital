@@ -156,9 +156,14 @@ final class IngresarLoteDepositoHandler
      *
      * Determinista a propósito — es lo que permite reejecutar la ingesta sin duplicar.
      */
-    private function codigoCatalogo(string $numeroSolicitud, int $indice): string
+    public static function codigoCatalogoPara(string $numeroSolicitud, int $indice): string
     {
         return sprintf('%s-%04d', $numeroSolicitud, $indice);
+    }
+
+    private function codigoCatalogo(string $numeroSolicitud, int $indice): string
+    {
+        return self::codigoCatalogoPara($numeroSolicitud, $indice);
     }
 
     /**

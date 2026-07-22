@@ -15,11 +15,19 @@ interface IngresoColeccionPort
     /**
      * Ingresa a la colección los especímenes de la matriz de la solicitud dada.
      *
-     * Debe ser idempotente: el listener que la invoca corre en cola y puede
-     * reintentarse, y un segundo ingreso duplicaría el lote entero.
+     * Debe ser idempotente: aprobar dos veces la misma recepción no puede duplicar
+     * el lote en la colección.
      *
      * @param  string  $solicitudId  Solicitud cuya recepción física fue aprobada.
      * @param  string  $estadoColeccion  Régimen de tenencia del ingreso (Temporal | Permanente | Cuarentena).
      */
     public function ingresarLote(string $solicitudId, string $estadoColeccion): ResultadoIngresoColeccion;
+
+    /**
+     * Qué hay realmente en la colección para este lote.
+     *
+     * Permite que la pantalla de recepción muestre el resultado del ingreso en vez de
+     * limitarse a prometerlo.
+     */
+    public function resumenDeLote(string $solicitudId): ResumenIngresoColeccion;
 }

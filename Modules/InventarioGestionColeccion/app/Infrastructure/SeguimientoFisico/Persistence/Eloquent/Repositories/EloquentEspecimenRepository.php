@@ -739,6 +739,24 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
             ->all();
     }
 
+    /** @param string[] $codigos
+     *  @return array{total: int, pendientesRevision: int} */
+    public function resumenPorCodigosCatalogo(array $codigos): array
+    {
+        if ($codigos === []) {
+            return ['total' => 0, 'pendientesRevision' => 0];
+        }
+
+        $fila = EspecimenEloquentModel::whereIn('codigo_catalogo', $codigos)
+            ->selectRaw('count(*) as total, count(*) filter (where estado_revision = ?) as pendientes', ['pendiente'])
+            ->first();
+
+        return [
+            'total' => (int) ($fila->total ?? 0),
+            'pendientesRevision' => (int) ($fila->pendientes ?? 0),
+        ];
+    }
+
     public function guardarBatch(array $especimenes): void
     {
         if ($especimenes === []) {

@@ -285,6 +285,17 @@ interface EspecimenRepositoryInterface
     public function codigosCatalogoExistentes(array $codigos): array;
 
     /**
+     * Cuántos de esos códigos están en la colección y cuántos esperan revisión.
+     *
+     * Lo usa el módulo de recepciones para poder decirle al curador qué entró de
+     * verdad tras aprobar un lote, en vez de limitarse a prometerlo.
+     *
+     * @param  string[]  $codigos
+     * @return array{total: int, pendientesRevision: int}
+     */
+    public function resumenPorCodigosCatalogo(array $codigos): array;
+
+    /**
      * Lista los especímenes concretos que caen en un grupo `fecha_verbatim`
      * pendiente (aún sin `fecha_colecta`). Permite que el curador vea y elija
      * uno por uno en la bandeja de revisión, en vez de aplicar en bloque.
