@@ -15,7 +15,7 @@
                     </span>
                     <div class="flex flex-col leading-tight">
                         <span class="font-display text-sm font-bold text-blue-navy">Hub Digital</span>
-                        <span class="text-[10px] font-medium uppercase tracking-wide text-text-secondary">Colección Entomológica</span>
+                        <span class="text-[10px] font-medium uppercase tracking-wide text-text-secondary">Laboratorio de Invertebrados</span>
                     </div>
                 </a>
                 <div class="ml-auto flex items-center text-text-secondary">

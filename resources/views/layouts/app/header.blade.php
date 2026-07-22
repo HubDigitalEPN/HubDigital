@@ -15,7 +15,7 @@
                 </span>
                 <div class="hidden flex-col leading-tight sm:flex">
                     <span class="font-display text-sm font-bold text-white">Hub Digital</span>
-                    <span class="text-[9px] font-medium uppercase tracking-widest text-white/50">Colección Entomológica · EPN</span>
+                    <span class="text-[9px] font-medium uppercase tracking-widest text-white/50">Laboratorio de Invertebrados · EPN</span>
                 </div>
             </a>
 

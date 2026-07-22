@@ -12,8 +12,8 @@
                 <img src="/images/logo-DB.jpg" alt="Departamento de Biología EPN" class="h-10 w-auto object-contain" />
             </a>
 
-            <nav class="hidden items-center gap-6 md:flex">
-                <a href="login" class="text-sm text-text-secondary transition-colors hover:text-text-primary">Login</a>
+            <nav class="flex items-center gap-6">
+                <a href="{{ route('login') }}" wire:navigate class="inline-flex min-h-11 items-center px-1 text-sm text-text-secondary transition-colors hover:text-text-primary">Iniciar sesión</a>
             </nav>
         </div>
     </div>
@@ -25,7 +25,7 @@
 
 @php
     $hubVersion = '1.0.0';
-    $hubUrl = 'www.Hubdigtal.test';
+    $hubUrl = 'www.Hubdigital.test';
     $meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
     $hoy = now();
     $fechaConsulta = $hoy->day.' de '.$meses[$hoy->month - 1].' de '.$hoy->year;
@@ -118,7 +118,7 @@
             </p>
             <p>
                 <span class="font-semibold text-white/85">Créditos:</span>
-                Alejandro Alemán, Jimmy Valladares, Michael Trocellier, Miguel Mendoza, Paul Cajas.
+                Alejandro Alemán, Jimmy Valladares, Michael Trocellier, Miguel Mendosa, Paul Cajas.
             </p>
             <p>
                 El HubDigital del Laboratorio de Invertebrados está alojado en los servidores de la

@@ -15,7 +15,7 @@
     <tr>
         <td style="background-color:#1B365D;padding:32px 40px 28px;">
             <p style="margin:0 0 4px;font-size:11px;color:#7B9CC4;letter-spacing:1.5px;text-transform:uppercase;font-weight:600;">
-                Colección Entomológica · EPN
+                Laboratorio de Invertebrados · EPN
             </p>
             <h1 style="margin:0;font-size:22px;color:#ffffff;font-weight:700;line-height:1.3;">
                 Solicitud de prórroga {{ $aprobada ? 'aprobada' : 'rechazada' }}
@@ -79,7 +79,7 @@
     <tr>
         <td style="background-color:#F5F7FA;padding:18px 40px;border-top:1px solid #E0E0E0;">
             <p style="margin:0;font-size:11px;color:#9E9E9E;line-height:1.6;">
-                Colección Entomológica — Escuela Politécnica Nacional<br>
+                Laboratorio de Invertebrados — Escuela Politécnica Nacional<br>
                 Este es un mensaje automático, por favor no respondas a este correo.
             </p>
         </td>

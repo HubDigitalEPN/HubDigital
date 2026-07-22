@@ -13,7 +13,7 @@
     <tr>
         <td style="background-color:#1B365D;padding:32px 40px 28px;">
             <p style="margin:0 0 4px;font-size:11px;color:#7B9CC4;letter-spacing:1.5px;text-transform:uppercase;font-weight:600;">
-                Colección Entomológica · EPN
+                Laboratorio de Invertebrados · EPN
             </p>
             <h1 style="margin:0;font-size:22px;color:#ffffff;font-weight:700;line-height:1.3;">
                 Acción correctiva requerida
@@ -58,7 +58,7 @@
     <tr>
         <td style="padding:20px 40px;border-top:1px solid #E0E0E0;">
             <p style="margin:0;font-size:12px;color:#757575;line-height:1.5;">
-                Este es un mensaje automático del sistema de la Colección Entomológica de la EPN.
+                Este es un mensaje automático del sistema del Laboratorio de Invertebrados de la EPN.
             </p>
         </td>
     </tr>

@@ -13,7 +13,7 @@
     <tr>
         <td style="background-color:#1B365D;padding:32px 40px 28px;">
             <p style="margin:0 0 4px;font-size:11px;color:#7B9CC4;letter-spacing:1.5px;text-transform:uppercase;font-weight:600;">
-                Colección Entomológica · EPN
+                Laboratorio de Invertebrados · EPN
             </p>
             <h1 style="margin:0;font-size:22px;color:#ffffff;font-weight:700;line-height:1.3;">
                 {{ count($correcciones) === 1 ? 'Curaduría ajustó un dato de tu matriz' : 'Curaduría ajustó '.count($correcciones).' datos de tu matriz' }}
