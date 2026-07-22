@@ -46,6 +46,7 @@ class Especimen
         private ?string $entidadDepositanteId,
         private EstadoEspecimen $estado,
         private ?EstadoCustodia $estadoCustodia,
+        private ?\DateTimeImmutable $devueltoEn,
         private ?string $occurrenceId,
         private ?string $catalogNumber,
         private ?string $oldCode,
@@ -160,6 +161,7 @@ class Especimen
             entidadDepositanteId: $entidadDepositanteId,
             estado: EstadoEspecimen::Disponible,
             estadoCustodia: $estadoCustodia,
+            devueltoEn: null,
             occurrenceId: self::limpiarTexto($occurrenceId),
             catalogNumber: self::limpiarTexto($catalogNumber),
             oldCode: self::limpiarTexto($oldCode),
@@ -219,6 +221,7 @@ class Especimen
         string $colector,
         EstadoEspecimen $estado,
         ?EstadoCustodia $estadoCustodia = null,
+        ?\DateTimeImmutable $devueltoEn = null,
         ?string $entidadDepositanteId = null,
         ?string $occurrenceId = null,
         ?string $catalogNumber = null,
@@ -280,6 +283,7 @@ class Especimen
             entidadDepositanteId: $entidadDepositanteId,
             estado: $estado,
             estadoCustodia: $estadoCustodia,
+            devueltoEn: $devueltoEn,
             occurrenceId: $occurrenceId,
             catalogNumber: $catalogNumber,
             oldCode: $oldCode,
@@ -676,6 +680,35 @@ class Especimen
     public function estadoCustodia(): ?EstadoCustodia
     {
         return $this->estadoCustodia;
+    }
+
+    public function devueltoEn(): ?\DateTimeImmutable
+    {
+        return $this->devueltoEn;
+    }
+
+    /**
+     * Registra que el material volvió a su depositante y salió de la colección.
+     *
+     * Solo aplica a material bajo custodia temporal: una donación es una cesión
+     * definitiva al patrimonio y no se devuelve. La fila se conserva —marcarla, no
+     * borrarla— porque el rastro de qué estuvo aquí y cuándo salió forma parte de la
+     * documentación de la colección.
+     *
+     * @throws \DomainException Si el material no es devolutivo.
+     */
+    public function marcarComoDevuelto(\DateTimeImmutable $devueltoEn): void
+    {
+        if ($this->estadoCustodia?->esDevolutivo() !== true) {
+            $regimen = $this->estadoCustodia?->value ?? 'sin régimen declarado';
+
+            throw new \DomainException(
+                "Solo se devuelve el material en custodia temporal; este espécimen está como \"{$regimen}\""
+            );
+        }
+
+        $this->estadoCustodia = EstadoCustodia::Devuelto;
+        $this->devueltoEn = $devueltoEn;
     }
 
     private static function limpiarTexto(?string $valor): ?string

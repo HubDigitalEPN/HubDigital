@@ -30,4 +30,14 @@ interface IngresoColeccionPort
      * limitarse a prometerlo.
      */
     public function resumenDeLote(string $solicitudId): ResumenIngresoColeccion;
+
+    /**
+     * Marca como devueltos los especímenes de un lote que volvió a su depositante.
+     *
+     * No los borra de la colección: quedan con su régimen cambiado y la fecha de
+     * salida, porque el rastro de qué estuvo bajo custodia es documentación.
+     *
+     * @return int Espécimenes efectivamente devueltos.
+     */
+    public function devolverLote(string $solicitudId, \DateTimeImmutable $devueltoEn): int;
 }

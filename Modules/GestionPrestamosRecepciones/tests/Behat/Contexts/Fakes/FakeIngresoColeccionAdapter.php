@@ -53,6 +53,24 @@ final class FakeIngresoColeccionAdapter implements IngresoColeccionPort
         );
     }
 
+    public function devolverLote(string $solicitudId, \DateTimeImmutable $devueltoEn): int
+    {
+        $devueltos = 0;
+
+        foreach ($this->ingresos as $i => $ingreso) {
+            if ($ingreso['solicitudId'] !== $solicitudId || $ingreso['estadoColeccion'] !== 'Temporal') {
+                continue;
+            }
+            // Igual que en la colección real: solo sale el material en custodia temporal.
+            unset($this->ingresos[$i]);
+            $devueltos += $this->especimenesPorLote;
+        }
+
+        $this->ingresos = array_values($this->ingresos);
+
+        return $devueltos;
+    }
+
     /** @return list<array{solicitudId: string, estadoColeccion: string}> */
     public function ingresos(): array
     {

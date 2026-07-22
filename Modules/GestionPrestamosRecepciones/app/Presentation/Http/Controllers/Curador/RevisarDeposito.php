@@ -23,6 +23,8 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarDocumentalm
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarDocumentalmenteSolicitud\RechazarDocumentalmenteSolicitudInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarJustificacionesAlertas\RechazarJustificacionesAlertasHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarJustificacionesAlertas\RechazarJustificacionesAlertasInput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarDevolucionDeposito\RegistrarDevolucionDepositoHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarDevolucionDeposito\RegistrarDevolucionDepositoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ValidacionManualCuraduria\ValidacionManualCuraduriaHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ValidacionManualCuraduria\ValidacionManualCuraduriaInput;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface;
@@ -91,6 +93,11 @@ final class RevisarDeposito extends Component
 
     /** Búsqueda por nombre científico (original o corregido). */
     public string $busquedaMatriz = '';
+
+    // ── Devolución del depósito ──────────────────────────────────────────────
+
+    /** Confirma la devolución del material al depositante. */
+    public bool $showDevolucionModal = false;
 
     // ── Edición curatorial de celdas anómalas ────────────────────────────────
 
@@ -244,6 +251,32 @@ final class RevisarDeposito extends Component
         ));
 
         $this->dispatch('toast', message: 'Solicitud marcada como prioritaria.');
+    }
+
+    /**
+     * Registra que el material del depósito volvió a su depositante.
+     *
+     * Cierra el trámite y saca los especímenes de la colección: quedan marcados como
+     * devueltos, con su fecha, sin borrarse.
+     */
+    public function registrarDevolucion(RegistrarDevolucionDepositoHandler $handler): void
+    {
+        $this->showDevolucionModal = false;
+
+        try {
+            $salida = ($handler)(new RegistrarDevolucionDepositoInput(
+                solicitudId: $this->id,
+                curadorId: (string) auth()->id(),
+            ));
+        } catch (\DomainException $e) {
+            $this->dispatch('domain-error', message: $e->getMessage());
+
+            return;
+        }
+
+        $this->dispatch('toast', message: $salida->especimenesDevueltos > 0
+            ? "Devolución registrada. {$salida->especimenesDevueltos} espécimen(es) salieron de la colección."
+            : 'Devolución registrada.');
     }
 
     // ── Edición curatorial de celdas anómalas ────────────────────────────────

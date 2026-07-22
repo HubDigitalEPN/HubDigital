@@ -202,6 +202,24 @@
                             Recepción física del lote
                         </flux:button>
 
+                        {{-- Cierre del ciclo: solo un depósito es devolutivo; una donación
+                             es una cesión definitiva al patrimonio. --}}
+                        @if(! $esDonacion)
+                            <div class="pt-2 border-t border-border">
+                                <flux:button
+                                    variant="ghost"
+                                    icon="arrow-uturn-left"
+                                    class="w-full sm:w-auto"
+                                    wire:click="$set('showDevolucionModal', true)"
+                                >
+                                    Registrar devolución al depositante
+                                </flux:button>
+                                <flux:text class="text-text-secondary text-xs mt-1.5">
+                                    Cierra el trámite y retira los especímenes de la colección.
+                                </flux:text>
+                            </div>
+                        @endif
+
                         @if($esDonacion && $deposito->acta_transferencia_dominio)
                             @php $actaDisponible = \Illuminate\Support\Facades\Storage::disk('public')->exists($deposito->acta_transferencia_dominio['ruta'] ?? ''); @endphp
                             @if($actaDisponible)
@@ -905,6 +923,40 @@
                     wire:loading.attr="disabled" wire:target="confirmarAprobacion">
                     <flux:icon wire:loading wire:target="confirmarAprobacion" name="arrow-path" class="animate-spin" />
                     Sí, aprobar
+                </flux:button>
+            </div>
+        </div>
+    </flux:modal>
+
+    {{-- Modal: devolución del depósito al depositante --}}
+    <flux:modal wire:model="showDevolucionModal" class="max-w-md">
+        <div class="space-y-4 p-2">
+            <flux:heading size="lg">Registrar devolución</flux:heading>
+            <flux:text class="text-text-secondary text-sm">
+                Confirmas que devolviste el material de este depósito a su depositante.
+            </flux:text>
+
+            <div class="rounded-lg border border-warning/30 bg-warning/5 px-4 py-3">
+                <p class="text-xs text-text-secondary leading-relaxed">
+                    El trámite quedará cerrado y sus especímenes saldrán de la colección: se marcan
+                    como devueltos con la fecha de hoy, <span class="font-medium text-text-primary">no se borran</span>,
+                    para conservar el rastro de qué estuvo bajo custodia. Esta acción no se puede deshacer.
+                </p>
+            </div>
+
+            <div class="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                <flux:button variant="ghost" class="w-full sm:w-auto" wire:click="$set('showDevolucionModal', false)">
+                    Cancelar
+                </flux:button>
+                <flux:button
+                    variant="primary"
+                    icon="arrow-uturn-left"
+                    class="w-full sm:w-auto"
+                    wire:click="registrarDevolucion"
+                    wire:loading.attr="disabled"
+                    wire:target="registrarDevolucion"
+                >
+                    Confirmar devolución
                 </flux:button>
             </div>
         </div>

@@ -48,6 +48,7 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
                 'entidad_depositante_id' => $especimen->entidadDepositanteId(),
                 'estado' => $especimen->estado()->value,
                 'estado_custodia' => $especimen->estadoCustodia()?->value,
+                'devuelto_en' => $especimen->devueltoEn(),
                 'individual_count' => $especimen->individualCount(),
                 'individual_count_verbatim' => $especimen->individualCountVerbatim(),
                 'sex' => $especimen->sex(),
@@ -757,6 +758,22 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
         ];
     }
 
+    /** @param string[] $codigos */
+    public function marcarDevueltosPorCodigosCatalogo(array $codigos, \DateTimeImmutable $devueltoEn): int
+    {
+        if ($codigos === []) {
+            return 0;
+        }
+
+        return EspecimenEloquentModel::whereIn('codigo_catalogo', $codigos)
+            ->where('estado_custodia', 'Temporal')
+            ->update([
+                'estado_custodia' => 'Devuelto',
+                'devuelto_en' => $devueltoEn,
+                'updated_at' => now(),
+            ]);
+    }
+
     public function guardarBatch(array $especimenes): void
     {
         if ($especimenes === []) {
@@ -788,6 +805,7 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
                 'entidad_depositante_id' => $especimen->entidadDepositanteId(),
                 'estado' => $especimen->estado()->value,
                 'estado_custodia' => $especimen->estadoCustodia()?->value,
+                'devuelto_en' => $especimen->devueltoEn(),
                 'individual_count' => $especimen->individualCount(),
                 'individual_count_verbatim' => $especimen->individualCountVerbatim(),
                 'sex' => $especimen->sex(),
@@ -873,6 +891,7 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
             colector: $model->colector ?? '',
             estado: EstadoEspecimen::from($model->estado),
             estadoCustodia: $model->estado_custodia !== null ? EstadoCustodia::from($model->estado_custodia) : null,
+            devueltoEn: $model->devuelto_en !== null ? new \DateTimeImmutable((string) $model->devuelto_en) : null,
             entidadDepositanteId: $model->entidad_depositante_id,
             occurrenceId: $model->occurrence_id,
             catalogNumber: $model->catalog_number,

@@ -11,6 +11,8 @@ use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesReposi
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\RecepcionLoteRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\DevolverLoteDeposito\DevolverLoteDepositoHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\DevolverLoteDeposito\DevolverLoteDepositoInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\IngresarLoteDeposito\IngresarLoteDepositoHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\IngresarLoteDeposito\IngresarLoteDepositoInput;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
@@ -31,6 +33,7 @@ final class InventarioIngresoColeccionAdapter implements IngresoColeccionPort
         private readonly RecepcionLoteRepositoryInterface $recepcionRepo,
         private readonly IngresarLoteDepositoHandler $ingresar,
         private readonly EspecimenRepositoryInterface $especimenRepo,
+        private readonly DevolverLoteDepositoHandler $devolver,
     ) {}
 
     public function ingresarLote(string $solicitudId, string $estadoColeccion): ResultadoIngresoColeccion
@@ -78,18 +81,10 @@ final class InventarioIngresoColeccionAdapter implements IngresoColeccionPort
 
     public function resumenDeLote(string $solicitudId): ResumenIngresoColeccion
     {
-        $solicitud = $this->solicitudRepo->buscarPorId(SolicitudDepositoId::from($solicitudId));
-        $matriz = $this->matrizRepo->buscarPorSolicitudId($solicitudId);
+        $codigos = $this->codigosDelLote($solicitudId);
 
-        if ($solicitud === null || $matriz === null) {
+        if ($codigos === []) {
             return new ResumenIngresoColeccion(0, 0, 0);
-        }
-
-        $numero = (string) $solicitud->numero();
-        $codigos = [];
-
-        foreach (array_keys(array_values($matriz->registros())) as $posicion) {
-            $codigos[] = IngresarLoteDepositoHandler::codigoCatalogoPara($numero, $posicion + 1);
         }
 
         $resumen = $this->especimenRepo->resumenPorCodigosCatalogo($codigos);
@@ -99,5 +94,46 @@ final class InventarioIngresoColeccionAdapter implements IngresoColeccionPort
             pendientesRevision: $resumen['pendientesRevision'],
             registrosEnMatriz: count($codigos),
         );
+    }
+
+    public function devolverLote(string $solicitudId, \DateTimeImmutable $devueltoEn): int
+    {
+        $codigos = $this->codigosDelLote($solicitudId);
+
+        if ($codigos === []) {
+            return 0;
+        }
+
+        return $this->devolver->handle(new DevolverLoteDepositoInput(
+            codigosCatalogo: $codigos,
+            devueltoEn: $devueltoEn,
+        ))->especimenesDevueltos;
+    }
+
+    /**
+     * Códigos de catálogo que corresponden a este depósito.
+     *
+     * Se derivan del número de solicitud y la posición en la matriz, igual que al
+     * ingresar: es el mismo cálculo determinista y por eso vive en un solo sitio.
+     *
+     * @return string[]
+     */
+    private function codigosDelLote(string $solicitudId): array
+    {
+        $solicitud = $this->solicitudRepo->buscarPorId(SolicitudDepositoId::from($solicitudId));
+        $matriz = $this->matrizRepo->buscarPorSolicitudId($solicitudId);
+
+        if ($solicitud === null || $matriz === null) {
+            return [];
+        }
+
+        $numero = (string) $solicitud->numero();
+        $codigos = [];
+
+        foreach (array_keys(array_values($matriz->registros())) as $posicion) {
+            $codigos[] = IngresarLoteDepositoHandler::codigoCatalogoPara($numero, $posicion + 1);
+        }
+
+        return $codigos;
     }
 }

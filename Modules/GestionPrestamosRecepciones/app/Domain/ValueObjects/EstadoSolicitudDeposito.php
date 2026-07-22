@@ -23,6 +23,14 @@ enum EstadoSolicitudDeposito: string
     case RequiereCorreccion = 'Requiere Corrección';
     case RechazoPermanente = 'Rechazo Permanente';
 
+    /**
+     * El material depositado volvió a su depositante y el trámite quedó cerrado.
+     *
+     * Estado terminal, solo alcanzable desde una solicitud de Depósito ya aprobada:
+     * una Donación es una cesión definitiva al patrimonio y no se devuelve.
+     */
+    case Devuelta = 'Devuelta';
+
     public function equals(self $other): bool
     {
         return $this->value === $other->value;

@@ -296,6 +296,18 @@ interface EspecimenRepositoryInterface
     public function resumenPorCodigosCatalogo(array $codigos): array;
 
     /**
+     * Marca como devueltos los espécimenes de un lote depositado.
+     *
+     * No borra: deja `estado_custodia = 'Devuelto'` y la fecha de salida. Solo afecta
+     * a los que siguen bajo custodia temporal, para que reejecutarlo sea inofensivo y
+     * para no tocar material donado, que es permanente por definición.
+     *
+     * @param  string[]  $codigos
+     * @return int Espécimenes efectivamente marcados.
+     */
+    public function marcarDevueltosPorCodigosCatalogo(array $codigos, \DateTimeImmutable $devueltoEn): int;
+
+    /**
      * Lista los especímenes concretos que caen en un grupo `fecha_verbatim`
      * pendiente (aún sin `fecha_colecta`). Permite que el curador vea y elija
      * uno por uno en la bandeja de revisión, en vez de aplicar en bloque.

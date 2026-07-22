@@ -29,6 +29,15 @@ enum EstadoCustodia: string
     /** Ingresó con observaciones sanitarias y permanece aislado hasta su revisión. */
     case Cuarentena = 'Cuarentena';
 
+    /**
+     * El material volvió a manos del depositante y ya no está en la colección.
+     *
+     * Estado terminal. La fila no se borra: en una colección científica el rastro de
+     * qué estuvo bajo custodia y cuándo salió es parte del patrimonio documental, y el
+     * Acta de Recepción sigue apuntando a estos especímenes.
+     */
+    case Devuelto = 'Devuelto';
+
     public function equals(self $other): bool
     {
         return $this === $other;
@@ -38,5 +47,11 @@ enum EstadoCustodia: string
     public function esDevolutivo(): bool
     {
         return $this === self::Temporal;
+    }
+
+    /** El material ya no está físicamente en la colección. */
+    public function salioDeLaColeccion(): bool
+    {
+        return $this === self::Devuelto;
     }
 }

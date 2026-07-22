@@ -645,6 +645,25 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
         return $existentes;
     }
 
+    /** @param string[] $codigos */
+    public function marcarDevueltosPorCodigosCatalogo(array $codigos, \DateTimeImmutable $devueltoEn): int
+    {
+        $buscados = array_flip($codigos);
+        $marcados = 0;
+        foreach ($this->store as $especimen) {
+            if (! isset($buscados[$especimen->codigoCatalogo()])) {
+                continue;
+            }
+            if ($especimen->estadoCustodia()?->esDevolutivo() !== true) {
+                continue;
+            }
+            $especimen->marcarComoDevuelto($devueltoEn);
+            $marcados++;
+        }
+
+        return $marcados;
+    }
+
     public function guardarBatch(array $especimenes): void
     {
         foreach ($especimenes as $especimen) {
