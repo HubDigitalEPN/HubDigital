@@ -4,12 +4,9 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Application\UseCases\ValidacionManualCuraduria;
 
-use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionInvestigadorPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface;
-use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Services\NormalizadorCamposDwC;
-use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
 
 /**
  * Permite al curador sanar una celda que la normalización marcó como anómala, en lugar
@@ -25,8 +22,6 @@ final class ValidacionManualCuraduriaHandler
         private readonly MatrizEspeciesRepositoryInterface $matrizRepo,
         private readonly NormalizadorCamposDwC $normalizador,
         private readonly TransactionManagerPort $transactionManager,
-        private readonly SolicitudDepositoRepositoryInterface $solicitudRepo,
-        private readonly NotificacionInvestigadorPort $notificacionInvestigador,
     ) {}
 
     /**
@@ -61,19 +56,6 @@ final class ValidacionManualCuraduriaHandler
         $this->transactionManager->executeTransactional(function () use ($matriz): void {
             $this->matrizRepo->guardar($matriz);
         });
-
-        // Transparencia con quien firmó la matriz: se le avisa de lo que se tocó.
-        $solicitud = $this->solicitudRepo->buscarPorId(SolicitudDepositoId::from($input->solicitudId));
-
-        if ($solicitud !== null) {
-            $this->notificacionInvestigador->notificarCorreccionCuratorial(
-                solicitudId: $input->solicitudId,
-                investigadorId: $solicitud->investigadorId(),
-                campo: $input->campo,
-                valorAnterior: $valorAnterior !== null ? (string) $valorAnterior : null,
-                valorNuevo: (string) $valorNormalizado,
-            );
-        }
 
         return new ValidacionManualCuraduriaOutput(
             campo: $input->campo,

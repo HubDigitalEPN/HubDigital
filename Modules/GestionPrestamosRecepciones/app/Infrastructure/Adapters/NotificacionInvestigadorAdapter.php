@@ -46,22 +46,22 @@ final class NotificacionInvestigadorAdapter implements NotificacionInvestigadorP
         ), 'Rechazo de solicitud', $solicitudId);
     }
 
-    public function notificarCorreccionCuratorial(
+    public function notificarCorreccionesCuratoriales(
         string $solicitudId,
         string $investigadorId,
-        string $campo,
-        ?string $valorAnterior,
-        ?string $valorNuevo,
+        array $correcciones,
     ): string {
+        if ($correcciones === []) {
+            return '';
+        }
+
         $deposito = SolicitudDepositoEloquentModel::find($solicitudId);
 
         return $this->notificar($investigadorId, new CorreccionCuratorialNotification(
             solicitudId: $solicitudId,
             numero: $deposito?->numero,
-            campo: $campo,
-            valorAnterior: $valorAnterior,
-            valorNuevo: $valorNuevo,
-        ), 'Corrección de curaduría', $solicitudId);
+            correcciones: $correcciones,
+        ), 'Correcciones de curaduría', $solicitudId);
     }
 
     public function notificarRecepcionFinalizada(string $solicitudId, string $investigadorId, string $estadoColeccion): string

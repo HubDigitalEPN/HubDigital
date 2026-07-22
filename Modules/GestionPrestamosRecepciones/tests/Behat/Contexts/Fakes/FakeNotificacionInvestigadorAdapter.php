@@ -43,12 +43,13 @@ final class FakeNotificacionInvestigadorAdapter implements NotificacionInvestiga
         return self::REFERENCIA;
     }
 
-    public function notificarCorreccionCuratorial(
+    /**
+     * @param  list<array{campo: string, anterior: mixed, nuevo: mixed, especie: string}>  $correcciones
+     */
+    public function notificarCorreccionesCuratoriales(
         string $solicitudId,
         string $investigadorId,
-        string $campo,
-        ?string $valorAnterior,
-        ?string $valorNuevo,
+        array $correcciones,
     ): string {
         return self::REFERENCIA;
     }

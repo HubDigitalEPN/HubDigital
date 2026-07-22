@@ -8,19 +8,21 @@ use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 /**
- * Avisa al depositante de que curaduría corrigió un dato de formato de su matriz.
+ * Resume al depositante los datos de formato que curaduría ajustó en su matriz.
  *
- * El depositante firmó una declaración al enviarla, así que un cambio posterior no
- * puede quedar en silencio aunque sea menor y le evite tener que reenviar todo.
+ * Se envía una sola vez, al aprobarse la solicitud, y no una por celda: el objetivo es
+ * que se entere de lo que se tocó, no llenarle el buzón. El depositante firmó esa
+ * matriz al enviarla, así que los cambios posteriores no pueden quedar en silencio.
  */
 final class CorreccionCuratorialNotification extends Notification
 {
+    /**
+     * @param  list<array{campo: string, anterior: mixed, nuevo: mixed, especie: string}>  $correcciones
+     */
     public function __construct(
         public readonly string $solicitudId,
         public readonly ?string $numero,
-        public readonly string $campo,
-        public readonly ?string $valorAnterior,
-        public readonly ?string $valorNuevo,
+        public readonly array $correcciones,
     ) {}
 
     /**
@@ -33,13 +35,15 @@ final class CorreccionCuratorialNotification extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
+        $n = count($this->correcciones);
+
         return (new MailMessage)
-            ->subject('Curaduría ajustó un dato de tu matriz')
+            ->subject($n === 1
+                ? 'Curaduría ajustó un dato de tu matriz'
+                : "Curaduría ajustó {$n} datos de tu matriz")
             ->view('gestionprestamosrecepciones::mails.correccion-curatorial', [
                 'numero' => $this->numero,
-                'campo' => $this->campo,
-                'valorAnterior' => $this->valorAnterior,
-                'valorNuevo' => $this->valorNuevo,
+                'correcciones' => $this->correcciones,
                 'url' => route('prestamos.investigador.deposito.detalle', $this->solicitudId),
             ]);
     }
@@ -49,11 +53,15 @@ final class CorreccionCuratorialNotification extends Notification
      */
     public function toArray(object $notifiable): array
     {
+        $n = count($this->correcciones);
+
         return [
             'tipo' => 'correccion_curatorial',
             'solicitudId' => $this->solicitudId,
             'numero' => $this->numero,
-            'mensaje' => 'Curaduría ajustó el campo '.$this->campo.' de tu solicitud '.($this->numero ?? '').'. No se modificó la identificación de las especies.',
+            'mensaje' => $n === 1
+                ? 'Curaduría ajustó un dato de formato de tu solicitud '.($this->numero ?? '').'. No se modificó la identificación de las especies.'
+                : 'Curaduría ajustó '.$n.' datos de formato de tu solicitud '.($this->numero ?? '').'. No se modificó la identificación de las especies.',
             'url' => route('prestamos.investigador.deposito.detalle', $this->solicitudId),
             'icono' => 'pencil-square',
         ];

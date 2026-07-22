@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Curaduría ajustó un dato de tu matriz</title>
+    <title>{{ count($correcciones) === 1 ? 'Curaduría ajustó un dato de tu matriz' : 'Curaduría ajustó '.count($correcciones).' datos de tu matriz' }}</title>
 </head>
 <body style="margin:0;padding:0;background-color:#F5F7FA;font-family:Arial,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#F5F7FA;padding:40px 16px;">
@@ -16,7 +16,7 @@
                 Colección Entomológica · EPN
             </p>
             <h1 style="margin:0;font-size:22px;color:#ffffff;font-weight:700;line-height:1.3;">
-                Curaduría ajustó un dato de tu matriz
+                {{ count($correcciones) === 1 ? 'Curaduría ajustó un dato de tu matriz' : 'Curaduría ajustó '.count($correcciones).' datos de tu matriz' }}
             </h1>
             @if($numero)
                 <p style="margin:6px 0 0;font-size:13px;color:#A8C3E0;">N.º {{ $numero }}</p>
@@ -35,29 +35,37 @@
     <tr>
         <td style="padding:28px 40px 8px;">
             <p style="margin:0 0 16px;font-size:15px;color:#212121;line-height:1.6;">
-                Al revisar tu matriz de especímenes, curaduría encontró un dato con un formato que no cumplía
-                el estándar y lo corrigió para no tener que devolverte la solicitud.
+                Al revisar tu matriz de especímenes, curaduría encontró
+                {{ count($correcciones) === 1 ? 'un dato con un formato' : count($correcciones).' datos con formatos' }}
+                que no cumplían el estándar y
+                {{ count($correcciones) === 1 ? 'lo corrigió' : 'los corrigió' }}
+                para no tener que devolverte la solicitud.
             </p>
 
             <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#F5F7FA;border-radius:8px;margin:0 0 16px;">
-                <tr>
-                    <td style="padding:16px 20px;">
-                        <p style="margin:0 0 8px;font-size:12px;color:#616161;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">
-                            {{ $campo }}
-                        </p>
-                        <p style="margin:0;font-size:15px;color:#212121;">
-                            <span style="text-decoration:line-through;color:#9E9E9E;">{{ $valorAnterior ?? '—' }}</span>
-                            <span style="color:#616161;">&nbsp;→&nbsp;</span>
-                            <span style="color:#2E7D32;font-weight:600;">{{ $valorNuevo ?? '—' }}</span>
-                        </p>
-                    </td>
-                </tr>
+                @foreach($correcciones as $correccion)
+                    <tr>
+                        <td style="padding:16px 20px;{{ ! $loop->last ? 'border-bottom:1px solid #E0E0E0;' : '' }}">
+                            <p style="margin:0 0 8px;font-size:12px;color:#616161;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">
+                                {{ $correccion['campo'] }}
+                                <span style="text-transform:none;letter-spacing:0;font-style:italic;font-weight:400;">
+                                    · {{ $correccion['especie'] }}
+                                </span>
+                            </p>
+                            <p style="margin:0;font-size:15px;color:#212121;">
+                                <span style="text-decoration:line-through;color:#9E9E9E;">{{ $correccion['anterior'] ?? '—' }}</span>
+                                <span style="color:#616161;">&nbsp;→&nbsp;</span>
+                                <span style="color:#2E7D32;font-weight:600;">{{ $correccion['nuevo'] ?? '—' }}</span>
+                            </p>
+                        </td>
+                    </tr>
+                @endforeach
             </table>
 
             <p style="margin:0 0 24px;font-size:14px;color:#616161;line-height:1.6;">
                 La identificación taxonómica de tus especímenes <strong style="color:#212121;">no se modificó</strong>:
                 curaduría solo ajusta formatos. Puedes ver el detalle completo, con la fecha y el responsable
-                del cambio, en tu solicitud.
+                de cada cambio, en tu solicitud.
             </p>
         </td>
     </tr>

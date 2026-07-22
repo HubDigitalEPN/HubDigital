@@ -8,6 +8,7 @@ use Modules\GestionPrestamosRecepciones\Application\Exceptions\SolicitudNoEncont
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionInvestigadorPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
+use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
 
@@ -25,6 +26,7 @@ final class AprobarDonacionConTransferenciaHandler
         private TransactionManagerPort $transactionManager,
         private EventPublisherPort $eventPublisher,
         private NotificacionInvestigadorPort $notificacionInvestigador,
+        private MatrizEspeciesRepositoryInterface $matrizRepo,
     ) {}
 
     /**
@@ -56,6 +58,18 @@ final class AprobarDonacionConTransferenciaHandler
             investigadorId: $solicitud->investigadorId(),
             codigoQR: $codigoQR,
         );
+
+        // Aviso agrupado: si curaduría sanó celdas de la matriz, el depositante se
+        // entera aquí en un solo mensaje y no en uno por celda tocada.
+        $matriz = $this->matrizRepo->buscarPorSolicitudId((string) $solicitud->id());
+
+        if ($matriz !== null && $matriz->correccionesCuratoriales() !== []) {
+            $this->notificacionInvestigador->notificarCorreccionesCuratoriales(
+                solicitudId: (string) $solicitud->id(),
+                investigadorId: $solicitud->investigadorId(),
+                correcciones: $matriz->correccionesCuratoriales(),
+            );
+        }
 
         return AprobarDonacionConTransferenciaOutput::fromPrimitives(
             estado: $solicitud->estado()->value,

@@ -55,17 +55,18 @@ interface NotificacionInvestigadorPort
     public function notificarActaRecepcionDisponible(string $solicitudId, string $investigadorId): string;
 
     /**
-     * Avisa de que curaduría ajustó un dato de formato de la matriz.
+     * Avisa, en un único mensaje al aprobar la solicitud, de todos los datos de formato
+     * que curaduría ajustó en la matriz.
      *
-     * El depositante firmó la matriz al enviarla, así que un cambio posterior —aunque
-     * sea menor y le evite reenviarla— no puede quedar en silencio.
+     * El depositante firmó la matriz al enviarla, así que los cambios posteriores no
+     * pueden quedar en silencio; se agrupan para no enviarle un correo por celda.
+     *
+     * @param  list<array{campo: string, anterior: mixed, nuevo: mixed, especie: string}>  $correcciones
      */
-    public function notificarCorreccionCuratorial(
+    public function notificarCorreccionesCuratoriales(
         string $solicitudId,
         string $investigadorId,
-        string $campo,
-        ?string $valorAnterior,
-        ?string $valorNuevo,
+        array $correcciones,
     ): string;
 
     /**
