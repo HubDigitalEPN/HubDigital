@@ -379,6 +379,15 @@ class Especimen
         $this->estado = EstadoEspecimen::Disponible;
     }
 
+    /**
+     * El espécimen vuelve de un préstamo con novedad: no queda disponible hasta
+     * que el curador resuelva la observación desde el inventario.
+     */
+    public function marcarObservado(): void
+    {
+        $this->estado = EstadoEspecimen::Observado;
+    }
+
     public function enlazarTaxon(TaxonId $taxonId): void
     {
         $this->taxonId = (string) $taxonId;

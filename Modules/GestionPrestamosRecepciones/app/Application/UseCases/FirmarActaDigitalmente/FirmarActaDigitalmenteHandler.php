@@ -37,8 +37,6 @@ final class FirmarActaDigitalmenteHandler
     ) {}
 
     /**
-     * @param FirmarActaDigitalmenteInput $input
-     * @return FirmarActaDigitalmenteOutput
      * @throws ActaPrestamoNoEncontradaException
      * @throws ActaNoPerteneceAlInvestigador
      * @throws FirmaBase64Invalida
@@ -81,8 +79,7 @@ final class FirmarActaDigitalmenteHandler
             new ConsultarActaDocumentoInput(actaId: (string) $actaId),
         );
 
-        $this->pdfGenerator->generarYAlmacenar(
-            vista: 'gestionprestamosrecepciones::pdf.acta-documento',
+        $this->pdfGenerator->generarActaYAlmacenar(
             datos: [
                 'acta' => $documento,
                 'firmaBase64' => $input->firmaBase64,

@@ -193,6 +193,7 @@ final class EloquentSolicitudPrestamoRepository implements SolicitudPrestamoRepo
                 [
                     'solicitud_prestamo_id' => $model->id,
                     'especimen_codigo_externo' => $item->especimenCodigoExterno(),
+                    'especimen_id' => $item->especimenId(),
                     'cantidad_solicitada' => $item->cantidadSolicitada(),
                     'especimen_snapshot' => $item->especimenSnapshot(),
                     'condiciones_especificas' => $item->condicionesEspecificas(),
@@ -212,6 +213,7 @@ final class EloquentSolicitudPrestamoRepository implements SolicitudPrestamoRepo
     {
         $items = $model->items->map(fn (ItemPrestamoModel $row) => ItemPrestamo::reconstituir(
             id: ItemPrestamoId::fromString($row->id),
+            especimenId: $row->especimen_id,
             especimenCodigoExterno: $row->especimen_codigo_externo,
             cantidadSolicitada: $row->cantidad_solicitada,
             especimenSnapshot: $row->especimen_snapshot,

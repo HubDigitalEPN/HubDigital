@@ -4,14 +4,12 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers;
 
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
+use Modules\GestionPrestamosRecepciones\Application\Ports\PdfGeneratorPort;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarActaDocumento\ConsultarActaDocumentoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarActaDocumento\ConsultarActaDocumentoInput;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\PatenteAnualNoConfigurada;
-use setasign\Fpdi\Fpdi;
-use setasign\Fpdi\PdfParser\StreamReader;
 
 /**
  * Controlador para descargar el acta de préstamo como PDF generado por DomPDF.
@@ -22,7 +20,7 @@ use setasign\Fpdi\PdfParser\StreamReader;
  */
 final class DescargarActaPdf
 {
-    public function __invoke(string $id, ConsultarActaDocumentoHandler $handler): Response
+    public function __invoke(string $id, ConsultarActaDocumentoHandler $handler, PdfGeneratorPort $pdf): Response
     {
         $user = auth()->user();
 
@@ -59,23 +57,7 @@ final class DescargarActaPdf
             ]);
         }
 
-        // Acta vertical (todo menos especímenes). DomPDF no soporta orientación
-        // mixta, así que la hoja de especímenes se genera aparte en horizontal y
-        // se fusiona con FPDI (ver fusionar()).
-        $actaPdf = Pdf::loadView('gestionprestamosrecepciones::pdf.acta-documento', [
-            'acta' => $acta,
-        ])->output();
-
-        if (count($acta->items) === 0) {
-            $contenido = $actaPdf;
-        } else {
-            $especimenesPdf = Pdf::loadView('gestionprestamosrecepciones::pdf.acta-documento', [
-                'acta' => $acta,
-                'soloEspecimenes' => true,
-            ])->setPaper('a4', 'landscape')->output();
-
-            $contenido = $this->fusionar($actaPdf, $especimenesPdf);
-        }
+        $contenido = $pdf->generarActa(['acta' => $acta]);
 
         $filename = 'Acta-'.$acta->numeroPrestamo.'.pdf';
 
@@ -86,29 +68,5 @@ final class DescargarActaPdf
             'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
             'Pragma' => 'no-cache',
         ]);
-    }
-
-    /**
-     * Fusiona varios PDF (bytes) en uno solo respetando el tamaño y la orientación
-     * de cada hoja original. Se usa para pegar la hoja de especímenes (horizontal)
-     * al final del acta (vertical). Solo recibe PDF generados por nosotros (DomPDF).
-     */
-    private function fusionar(string ...$pdfs): string
-    {
-        $fpdi = new Fpdi;
-        $fpdi->SetAutoPageBreak(false);
-
-        foreach ($pdfs as $bytes) {
-            $paginas = $fpdi->setSourceFile(StreamReader::createByString($bytes));
-
-            for ($n = 1; $n <= $paginas; $n++) {
-                $plantilla = $fpdi->importPage($n);
-                $tamano = $fpdi->getTemplateSize($plantilla);
-                $fpdi->AddPage($tamano['orientation'], [$tamano['width'], $tamano['height']]);
-                $fpdi->useTemplate($plantilla);
-            }
-        }
-
-        return $fpdi->Output('S');
     }
 }

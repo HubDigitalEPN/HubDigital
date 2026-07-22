@@ -11,8 +11,10 @@ use Illuminate\Support\Facades\Blade;
 use Livewire\Livewire;
 use Modules\GestionPrestamosRecepciones\Application\Exceptions\SolicitudNoEncontradaException;
 use Modules\GestionPrestamosRecepciones\Application\Ports\CatalogoCuraduriaPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\CatalogoEspecimenesPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\CertificadoCuradorPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ColaRevisionCuratorialPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\EstadoEspecimenCatalogoPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ExtraccionDatosDocumentoPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\FirmadorPdfPort;
@@ -48,6 +50,8 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\EloquentHistoria
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\GbifValidacionTaxonomicaAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\GroqExtraccionDatosDocumentoAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\InventarioGestionColeccionCatalogoCuraduriaAdapter;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\InventarioGestionColeccionEspecimenesAdapter;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\InventarioGestionColeccionEstadoEspecimenAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\InventarioIngresoColeccionAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\LaravelEventPublisherAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\LaravelTransactionManagerAdapter;
@@ -125,6 +129,8 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
         InvestigadorEmailPort::class => LaravelUserInvestigadorEmailAdapter::class,
         UsuarioNombrePort::class => LaravelUsuarioNombreAdapter::class,
         CatalogoCuraduriaPort::class => InventarioGestionColeccionCatalogoCuraduriaAdapter::class,
+        CatalogoEspecimenesPort::class => InventarioGestionColeccionEspecimenesAdapter::class,
+        EstadoEspecimenCatalogoPort::class => InventarioGestionColeccionEstadoEspecimenAdapter::class,
         ValidacionTaxonomicaPort::class => GbifValidacionTaxonomicaAdapter::class,
         PdfGeneratorPort::class => DomPdfGeneratorAdapter::class,
         VerificacionEspecimenesRepositoryInterface::class => EloquentVerificacionEspecimenesRepository::class,

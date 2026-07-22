@@ -26,6 +26,7 @@ final class ItemPrestamoModel extends Model
         'id',
         'solicitud_prestamo_id',
         'especimen_codigo_externo',
+        'especimen_id',
         'cantidad_solicitada',
         'especimen_snapshot',
         'condiciones_especificas',

@@ -5,32 +5,26 @@ declare(strict_types=1);
 namespace Modules\GestionPrestamosRecepciones\Infrastructure\Adapters;
 
 use Modules\GestionPrestamosRecepciones\Application\Ports\CatalogoCuraduriaPort;
-use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\RegistroColumnasEspecimen;
-use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\ResolverPrioridadColumnas;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConsultarPrioridadesColumnasDwc\ConsultarPrioridadesColumnasDwcHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConsultarPrioridadesColumnasDwc\ConsultarPrioridadesColumnasDwcInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConsultarPrioridadesColumnasDwc\ConsultarPrioridadesColumnasDwcOutput;
 
 /**
- * Adapter real que consulta el sistema de prioridades de InventarioGestionColeccion
- * para determinar qué campos DwC son críticos o recomendados en la validación del Excel.
+ * ACL entre GestionPrestamosRecepciones e InventarioGestionColeccion para el sistema de
+ * prioridades de columnas: determina qué campos DwC son críticos o recomendados en la
+ * validación del Excel de la matriz de especies.
  *
  * Las prioridades son dinámicas: si el curador las modifica en la pantalla de
- * configuración de columnas, la validación del paso 5 las refleja automáticamente.
- */
-/**
- * Adaptador para consultar el catálogo de curaduría de InventarioGestionColeccion.
+ * configuración de columnas del inventario, la validación del paso 5 lo refleja
+ * automáticamente.
  *
- * Implementa {@see CatalogoCuraduriaPort} utilizando el servicio de resolución de
- * prioridades de columnas del módulo de Inventario para determinar los campos
- * críticos y recomendados dinámicamente.
+ * Consume el caso de uso del inventario, no sus servicios de dominio: este módulo puede
+ * depender de la capa Application del inventario, nunca de su Domain.
  */
 final class InventarioGestionColeccionCatalogoCuraduriaAdapter implements CatalogoCuraduriaPort
 {
-    /**
-     * Constructor del adaptador para consultar el catálogo de curaduría.
-     *
-     * @param  ResolverPrioridadColumnas  $resolver  Servicio de resolución de prioridades de columnas.
-     */
     public function __construct(
-        private ResolverPrioridadColumnas $resolver,
+        private ConsultarPrioridadesColumnasDwcHandler $consultarPrioridades,
     ) {}
 
     /**
@@ -40,7 +34,7 @@ final class InventarioGestionColeccionCatalogoCuraduriaAdapter implements Catalo
      */
     public function camposCriticos(string $coleccionId): array
     {
-        return $this->camposDwCPorPrioridad('critica');
+        return $this->consultar()->camposCon('critica');
     }
 
     /**
@@ -50,7 +44,7 @@ final class InventarioGestionColeccionCatalogoCuraduriaAdapter implements Catalo
      */
     public function camposRecomendados(string $coleccionId): array
     {
-        return $this->camposDwCPorPrioridad('recomendada');
+        return $this->consultar()->camposCon('recomendada');
     }
 
     /**
@@ -60,41 +54,11 @@ final class InventarioGestionColeccionCatalogoCuraduriaAdapter implements Catalo
      */
     public function prioridadesPorCampo(string $coleccionId): array
     {
-        $columnas = $this->resolver->aplicar('especimenes', RegistroColumnasEspecimen::todas());
-        $mapa = RegistroColumnasEspecimen::mapaClaveADwC();
-
-        $prioridades = [];
-        foreach ($columnas as $col) {
-            $dwc = $mapa[$col['clave']] ?? null;
-            if ($dwc !== null) {
-                $prioridades[$dwc] = $col['prioridad'];
-            }
-        }
-
-        return $prioridades;
+        return $this->consultar()->prioridadesPorCampoDwc;
     }
 
-    /**
-     * Filtra las columnas configuradas en Inventario por su prioridad y las mapea a nombres DwC.
-     *
-     * @return string[]
-     */
-    private function camposDwCPorPrioridad(string $prioridad): array
+    private function consultar(): ConsultarPrioridadesColumnasDwcOutput
     {
-        $columnas = $this->resolver->aplicar('especimenes', RegistroColumnasEspecimen::todas());
-        $mapa = RegistroColumnasEspecimen::mapaClaveADwC();
-
-        $nombresDwC = [];
-        foreach ($columnas as $col) {
-            if ($col['prioridad'] !== $prioridad) {
-                continue;
-            }
-            $dwc = $mapa[$col['clave']] ?? null;
-            if ($dwc !== null) {
-                $nombresDwC[] = $dwc;
-            }
-        }
-
-        return array_values(array_unique($nombresDwC));
+        return $this->consultarPrioridades->handle(new ConsultarPrioridadesColumnasDwcInput);
     }
 }

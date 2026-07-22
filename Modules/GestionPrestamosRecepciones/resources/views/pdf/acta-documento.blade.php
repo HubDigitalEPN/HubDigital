@@ -108,21 +108,28 @@
         .value.mono { font-family: 'Courier New', monospace; }
         .value.capitalize { text-transform: capitalize; }
 
-        /* Tabla especímenes */
-        .specimens-table { width: 100%; border-collapse: collapse; font-size: 10px; }
+        /* Tabla especímenes. `fixed` es obligatorio: los anchos los fija el <colgroup>
+           y sin él la localidad (hasta 500 caracteres) se come el resto de columnas. */
+        .specimens-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9px;
+            table-layout: fixed;
+        }
         .specimens-table th {
             text-align: left;
-            padding: 5px 8px;
+            padding: 4px 5px;
             background: #F5F7FA;
             border: 1px solid #E0E0E0;
             font-weight: 600;
             color: #212121;
         }
         .specimens-table td {
-            padding: 5px 8px;
+            padding: 4px 5px;
             border: 1px solid #E0E0E0;
             color: #212121;
             vertical-align: top;
+            word-wrap: break-word;
         }
         .specimens-table tr:nth-child(even) td { background: #F5F7FA; }
 
@@ -226,12 +233,13 @@
     {{-- Hoja de especímenes en HORIZONTAL (A4 landscape, 842x595). El controlador
          la renderiza con setPaper('a4','landscape') y la fusiona (FPDI) después del
          acta vertical. Reserva superior igual que el acta (encabezado fijo); abajo
-         solo 2cm (aquí no hay firmas). La tabla va centrada y con ancho cómodo. --}}
+         solo 2cm (aquí no hay firmas). Márgenes laterales estrechos y ancho completo:
+         son ocho columnas y la localidad necesita todo el espacio disponible. --}}
     <style>
-        html { margin: 3.6cm 2cm 2cm 2cm; }
+        html { margin: 3.6cm 1.2cm 2cm 1.2cm; }
         .footer { bottom: -1.3cm; }
         .especimenes-page { page-break-before: auto; }
-        .specimens-table { width: 80%; margin: 0 auto; }
+        .specimens-table { width: 100%; }
     </style>
     @endif
 </head>
@@ -414,12 +422,28 @@
         <div class="section especimenes-page">
             <h2>Especímenes en préstamo</h2>
             <table class="specimens-table">
+                <colgroup>
+                    <col style="width: 3%">
+                    <col style="width: 12%">
+                    <col style="width: 12%">
+                    <col style="width: 8%">
+                    <col style="width: 14%">
+                    <col style="width: 10%">
+                    <col style="width: 20%">
+                    <col style="width: 6%">
+                    <col style="width: 15%">
+                </colgroup>
                 <thead>
                     <tr>
                         <th>#</th>
-                        <th>Código de espécimen</th>
-                        <th>Cantidad</th>
-                        <th>Condiciones específicas</th>
+                        <th>No. de catálogo</th>
+                        <th>Familia</th>
+                        <th>Género</th>
+                        <th>Especie</th>
+                        <th>Provincia</th>
+                        <th>Localidad</th>
+                        <th>No. de especímenes</th>
+                        <th>Notas</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -427,6 +451,12 @@
                         <tr>
                             <td>{{ $i + 1 }}</td>
                             <td>{{ $item->codigoExterno }}</td>
+                            <td>{{ $item->familia ?? '—' }}</td>
+                            <td>{{ $item->sexo ?? '—' }}</td>
+                            {{-- Nombre científico: cursiva por convención taxonómica. --}}
+                            <td><em>{{ $item->especie ?? '—' }}</em></td>
+                            <td>{{ $item->provincia ?? '—' }}</td>
+                            <td>{{ $item->localidad ?? '—' }}</td>
                             <td>{{ $item->cantidadSolicitada }}</td>
                             <td>{{ $item->condicionesEspecificas ?? '—' }}</td>
                         </tr>

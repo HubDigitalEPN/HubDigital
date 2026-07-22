@@ -64,8 +64,10 @@ final class ConsultarItemsPrestamoHandler
                 itemPrestamoId: (string) $item->id(),
                 codigoExterno: $item->especimenCodigoExterno(),
                 cantidadSolicitada: $item->cantidadSolicitada(),
-                nombre: $item->especimenSnapshot()['nombre'] ?? null,
+                nombre: $item->especimenSnapshot()['nombre_cientifico'] ?? null,
                 condicionesEspecificas: $item->condicionesEspecificas(),
+                especimenId: $item->especimenId(),
+                individualesDisponibles: $item->especimenSnapshot()['individuales_disponibles'] ?? null,
             ),
             $solicitud->items(),
         );

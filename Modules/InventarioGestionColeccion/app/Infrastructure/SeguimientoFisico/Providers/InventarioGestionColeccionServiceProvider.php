@@ -122,10 +122,20 @@ class InventarioGestionColeccionServiceProvider extends ModuleServiceProvider
         MuestraColectaRepositoryInterface::class => EloquentMuestraColectaRepository::class,
         IdentificacionRepositoryInterface::class => EloquentIdentificacionRepository::class,
         GeneradorActaPdfPort::class => SimplePdfActaAdapter::class,
-        ClasificacionTaxonomicaPort::class => TaxonArbolClasificacionTaxonomicaAdapter::class,
         UbicacionEspecimenPort::class => EloquentUbicacionEspecimenAdapter::class,
         GestorTokenEsp32Port::class => SanctumTokenEsp32Adapter::class,
         TraductorErroresPersistenciaPort::class => PostgresTraductorErroresPersistenciaAdapter::class,
+    ];
+
+    /**
+     * Singleton en vez de bind: {@see TaxonArbolClasificacionTaxonomicaAdapter} guarda una
+     * caché interna por taxonId. Con bind normal cada handler recibe su propia instancia y
+     * pierde la caché entre sí; reubicar especímenes acaba resolviendo el mismo árbol de
+     * taxones varias veces (una por handler que participa) y dispara N+1 severos contra
+     * Supabase, provocando timeouts de 30s con apenas 2 especímenes.
+     */
+    public array $singletons = [
+        ClasificacionTaxonomicaPort::class => TaxonArbolClasificacionTaxonomicaAdapter::class,
     ];
 
     /**

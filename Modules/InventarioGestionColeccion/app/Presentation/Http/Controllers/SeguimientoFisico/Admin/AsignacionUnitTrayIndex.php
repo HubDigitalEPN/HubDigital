@@ -87,6 +87,12 @@ final class AsignacionUnitTrayIndex extends Component
     /** SVG inline del QR generado (codifica el UnitTrayId); null = modal cerrado. */
     public ?string $qrSvg = null;
 
+    // --- QR de todos los unit trays de la caja seleccionada, para imprimir en lote ---
+    public bool $modalQrCaja = false;
+
+    /** @var array<int, array{numero: string, svg: string}> */
+    public array $qrCajaTrays = [];
+
     // --- Flujo: reubicar especímenes a un unit tray de destino ---
     public bool $modalReubicarEspecimenes = false;
 
@@ -262,6 +268,29 @@ final class AsignacionUnitTrayIndex extends Component
         $this->qrSvg = null;
     }
 
+    /**
+     * Genera el QR de todos los unit trays de la caja seleccionada para imprimirlos de una
+     * sola vez. Se ordenan por número (no por taxonomía, a diferencia del listado de arriba):
+     * es el orden físico en que se pegan las etiquetas.
+     */
+    public function mostrarQrCaja(): void
+    {
+        $this->limpiarMensajes();
+        $trays = $this->unitTrays;
+        usort($trays, fn ($a, $b) => $a['numero'] <=> $b['numero']);
+        $this->qrCajaTrays = array_map(
+            fn ($t) => ['numero' => $t['numero'], 'svg' => $this->generarSvgQr($t['unitTrayId'])],
+            $trays,
+        );
+        $this->modalQrCaja = true;
+    }
+
+    public function cerrarQrCaja(): void
+    {
+        $this->modalQrCaja = false;
+        $this->qrCajaTrays = [];
+    }
+
     // --- Reubicar especímenes ---
 
     public function abrirReubicarEspecimenes(): void
@@ -321,16 +350,17 @@ final class AsignacionUnitTrayIndex extends Component
     }
 
     /**
-     * Si `$codigo` es la URL del QR de taxonomía, resuelve el payload por el mismo caso de uso
-     * que usa la ficha pública del QR. Si no, se trata como código de catálogo tecleado a mano
-     * y se busca con la búsqueda acotada de siempre (ILIKE por código o nombre científico,
-     * coincidencia exacta de código).
+     * Si `$codigo` trae el payload del QR de taxonomía —envuelto en su URL, o pelado (etiquetas
+     * antiguas o lectores que solo entregan el token)— lo resuelve por el mismo caso de uso que usa
+     * la ficha pública del QR. Si no, se trata como código de catálogo tecleado a mano y se busca
+     * con la búsqueda acotada de siempre (ILIKE por código o nombre científico, coincidencia exacta
+     * de código).
      *
      * @return array{id: string, codigoCatalogo: string, taxonNombre: ?string}|null
      */
     private function resolverEspecimenEscaneado(string $codigo): ?array
     {
-        $payload = $this->payloadDeUrlQrTaxonomia($codigo);
+        $payload = $this->payloadDeQrTaxonomia($codigo);
 
         if ($payload !== null) {
             try {
@@ -341,7 +371,8 @@ final class AsignacionUnitTrayIndex extends Component
                     'codigoCatalogo' => $output->codigoCatalogo,
                     'taxonNombre' => $output->taxonNombre,
                 ];
-            } catch (EspecimenNoEncontradoException) {
+            } catch (EspecimenNoEncontradoException|\InvalidArgumentException) {
+                // Payload ilegible, corrupto o de otro tipo: se trata como "no encontrado", nunca como error fatal.
                 return null;
             }
         }
@@ -358,10 +389,18 @@ final class AsignacionUnitTrayIndex extends Component
         return null;
     }
 
-    /** Extrae el payload si `$texto` es la URL del QR de taxonomía; null si no lo es (p. ej. un código de catálogo). */
-    private function payloadDeUrlQrTaxonomia(string $texto): ?string
+    /**
+     * Extrae el payload del QR de taxonomía: de la URL `/inventario/qr/{payload}` si el texto la
+     * trae, o el propio texto si ya es un payload pelado (hex de 6+ caracteres, sin envoltorio de
+     * URL). Null si no tiene pinta de payload (p. ej. un código de catálogo tecleado a mano).
+     */
+    private function payloadDeQrTaxonomia(string $texto): ?string
     {
-        return preg_match('#/inventario/qr/([0-9a-f]{6,})#i', $texto, $m) === 1 ? $m[1] : null;
+        if (preg_match('#/inventario/qr/([0-9a-f]{6,})#i', $texto, $m) === 1) {
+            return $m[1];
+        }
+
+        return preg_match('/^[0-9a-f]{6,}$/i', $texto) === 1 ? $texto : null;
     }
 
     public function confirmarEspecimenEscaneado(): void
@@ -393,16 +432,30 @@ final class AsignacionUnitTrayIndex extends Component
             return;
         }
 
-        $tray = app(UnitTrayRepository::class)->buscarPorId(UnitTrayId::desde($unitTrayId));
+        try {
+            $tray = app(UnitTrayRepository::class)->buscarPorId(UnitTrayId::desde($unitTrayId));
+        } catch (\InvalidArgumentException) {
+            // El texto escaneado no tiene formato de UnitTrayId (p. ej. se escaneó el QR de un
+            // espécimen en modo "destino"): se informa, nunca debe tumbar la página.
+            $this->errorMessage = 'El código escaneado no es un QR de unit tray válido.';
+
+            return;
+        }
+
         if ($tray === null) {
             $this->errorMessage = "No se encontró el unit tray de destino «{$unitTrayId}».";
 
             return;
         }
 
+        $caja = app(CajaRepository::class)->buscarPorId($tray->cajaId());
+        $cajaLabel = $caja !== null
+            ? (string) $caja->codigo().($caja->nombre() ? ' — '.$caja->nombre() : '')
+            : 'caja desconocida';
+
         $this->errorMessage = null;
         $this->trayDestinoReubicar = $unitTrayId;
-        $this->trayDestinoReubicarLabel = 'N.° '.$tray->numero();
+        $this->trayDestinoReubicarLabel = 'N.° '.$tray->numero()." ({$cajaLabel})";
     }
 
     /**

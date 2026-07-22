@@ -86,6 +86,22 @@ test('marcarDisponible desde en_prestamo restaura estado disponible', function (
     expect($especimen->estado())->toBe(EstadoEspecimen::Disponible);
 });
 
+test('marcarObservado desde en_prestamo deja el espécimen observado', function (): void {
+    $especimen = Especimen::crear(
+        EspecimenId::generar(),
+        'COLEOP-001',
+        'taxon-uuid-dummy-0000-000000000001',
+        'Pichincha',
+        '2024-03-15',
+        'Colector',
+    );
+    $especimen->marcarEnPrestamo();
+
+    $especimen->marcarObservado();
+
+    expect($especimen->estado())->toBe(EstadoEspecimen::Observado);
+});
+
 test('el id asignado en crear se conserva', function (): void {
     $id = EspecimenId::generar();
     $especimen = Especimen::crear($id, 'COLEOP-001', 'taxon-uuid-0000-0000-000000000001', 'Quito', '2024-01-01', 'Colector');
