@@ -35,29 +35,29 @@
 
     {{-- Tiles de resumen --}}
     <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 auto-rows-fr">
-        <div class="rounded-lg border border-border bg-surface shadow-sm p-4">
+        <div class="min-w-0 rounded-lg border border-border bg-surface shadow-sm p-4">
             <p class="text-xs text-text-secondary">Código de lote (QR)</p>
-            <p class="mt-1 font-mono text-base font-semibold text-blue-navy tracking-wide">{{ $recepcion->codigoQR ?? '—' }}</p>
+            <p class="mt-1 font-mono text-base font-semibold text-blue-navy tracking-wide break-all">{{ $recepcion->codigoQR ?? '—' }}</p>
         </div>
-        <div class="rounded-lg border border-border bg-surface shadow-sm p-4">
+        <div class="min-w-0 rounded-lg border border-border bg-surface shadow-sm p-4">
             <p class="text-xs text-text-secondary">Depositante</p>
-            <p class="mt-1 text-sm font-medium text-text-primary">{{ $nombreInvestigador }}</p>
+            <p class="mt-1 text-sm font-medium text-text-primary hyphens-auto break-words">{{ $nombreInvestigador }}</p>
         </div>
-        <div class="rounded-lg border border-border bg-surface shadow-sm p-4">
+        <div class="min-w-0 rounded-lg border border-border bg-surface shadow-sm p-4">
             <p class="text-xs text-text-secondary">N.º de lotes</p>
-            <p class="mt-1 text-sm font-medium text-text-primary">{{ $recepcion->nroLotes ?? '—' }}</p>
+            <p class="mt-1 text-sm font-medium text-text-primary hyphens-auto break-words">{{ $recepcion->nroLotes ?? '—' }}</p>
         </div>
-        <div class="rounded-lg border border-border bg-surface shadow-sm p-4">
+        <div class="min-w-0 rounded-lg border border-border bg-surface shadow-sm p-4">
             <p class="text-xs text-text-secondary">N.º de individuos</p>
-            <p class="mt-1 text-sm font-medium text-text-primary">{{ $recepcion->nroIndividuos ?? '—' }}</p>
+            <p class="mt-1 text-sm font-medium text-text-primary hyphens-auto break-words">{{ $recepcion->nroIndividuos ?? '—' }}</p>
         </div>
-        <div class="rounded-lg border border-border bg-surface shadow-sm p-4">
+        <div class="min-w-0 rounded-lg border border-border bg-surface shadow-sm p-4">
             <p class="text-xs text-text-secondary">Grupo animal</p>
-            <p class="mt-1 text-sm font-medium text-text-primary">{{ $recepcion->grupoAnimal ?? '—' }}</p>
+            <p class="mt-1 text-sm font-medium text-text-primary hyphens-auto break-words">{{ $recepcion->grupoAnimal ?? '—' }}</p>
         </div>
-        <div class="rounded-lg border border-border bg-surface shadow-sm p-4">
+        <div class="min-w-0 rounded-lg border border-border bg-surface shadow-sm p-4">
             <p class="text-xs text-text-secondary">Localidad</p>
-            <p class="mt-1 text-sm font-medium text-text-primary">{{ $recepcion->localidad ?? '—' }}</p>
+            <p class="mt-1 text-sm font-medium text-text-primary hyphens-auto break-words">{{ $recepcion->localidad ?? '—' }}</p>
         </div>
     </div>
 
