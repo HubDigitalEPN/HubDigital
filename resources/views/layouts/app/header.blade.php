@@ -11,7 +11,7 @@
             {{-- Brand --}}
             <a href="{{ route('dashboard') }}" wire:navigate class="flex items-center gap-2.5">
                 <span class="flex h-7 w-7 items-center justify-center rounded bg-white/15">
-                    <x-app-logo-icon class="size-4 fill-current text-white" />
+                    <x-app-logo-icon class="size-5 fill-current text-white" />
                 </span>
                 <div class="hidden flex-col leading-tight sm:flex">
                     <span class="font-display text-sm font-bold text-white">Hub Digital</span>
@@ -63,7 +63,7 @@
             <flux:sidebar.header class="border-b border-border">
                 <div class="flex items-center gap-2">
                     <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-navy">
-                        <x-app-logo-icon class="size-4 fill-current text-white" />
+                        <x-app-logo-icon class="size-5 fill-current text-white" />
                     </span>
                     <span class="font-display text-sm font-bold text-blue-navy">Hub Digital</span>
                 </div>

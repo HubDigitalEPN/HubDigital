@@ -1,7 +1,10 @@
 {{-- Marca de Hub Digital: las cuatro siluetas del laboratorio (mariposa, araña, escarabajo, coral),
      vectorizadas desde el logo oficial. Usa currentColor para heredar el color del texto del chip
      de marca (text-white sobre fondo navy, text-black en fondos claros). --}}
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" fill="currentColor" aria-hidden="true" {{ $attributes }}>
+{{-- viewBox recortado al cuadro delimitador real del dibujo (691x671 de un lienzo de 800x800):
+     sin el recorte las siluetas quedaban con ~14% de aire muerto y se veían diminutas dentro
+     del chip navy de la marca. El cuadro es cuadrado y centrado para no deformar el conjunto. --}}
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="34 34 719 719" fill="currentColor" aria-hidden="true" {{ $attributes }}>
 <g transform="translate(0.000000,800.000000) scale(0.100000,-0.100000)"
 fill="currentColor" stroke="none">
 <path d="M5172 7353 c-27 -38 -57 -84 -67 -103 -9 -19 -32 -64 -51 -100 -35
