@@ -6,6 +6,7 @@ namespace Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarDocume
 
 use Modules\GestionPrestamosRecepciones\Application\Exceptions\SolicitudNoEncontradaException;
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionCuratoriaPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionInvestigadorPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
@@ -25,6 +26,7 @@ final class AprobarDocumentalmenteSolicitudHandler
         private TransactionManagerPort $transactionManager,
         private EventPublisherPort $eventPublisher,
         private NotificacionInvestigadorPort $notificacionInvestigador,
+        private NotificacionCuratoriaPort $notificacionCuratoria,
     ) {}
 
     /**
@@ -54,6 +56,12 @@ final class AprobarDocumentalmenteSolicitudHandler
             solicitudId: (string) $solicitud->id(),
             investigadorId: $solicitud->investigadorId(),
             codigoQR: $codigoQR,
+        );
+
+        $this->notificacionCuratoria->notificarDecisionDocumentalAOtrosCuradores(
+            solicitudId: (string) $solicitud->id(),
+            curadorQueDecideId: $input->curadorId,
+            decision: 'aprobada',
         );
 
         return AprobarDocumentalmenteSolicitudOutput::fromPrimitives(

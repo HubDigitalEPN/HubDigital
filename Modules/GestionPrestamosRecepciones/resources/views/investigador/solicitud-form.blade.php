@@ -321,77 +321,125 @@
             <div class="p-5 space-y-4">
                 <flux:error name="items" />
 
-                {{-- Lista de especímenes ya agregados --}}
+                {{-- Buscador del catálogo de la colección --}}
+                <div class="space-y-2">
+                    <flux:field class="mb-0">
+                        <flux:input
+                            wire:model.live.debounce.300ms="busquedaEspecimen"
+                            icon="magnifying-glass"
+                            placeholder="Buscar por nombre científico o código de catálogo…"
+                        />
+                        <flux:error name="busquedaEspecimen" />
+                        <flux:description>
+                            Escribe al menos tres letras. Solo aparecen los especímenes disponibles en la colección.
+                        </flux:description>
+                    </flux:field>
+
+                    @if($busquedaEspecimen !== '')
+                        <div class="max-h-72 overflow-y-auto rounded-lg border border-border divide-y divide-border">
+                            @forelse($sugerencias as $sugerencia)
+                                <button
+                                    type="button"
+                                    wire:key="sugerencia-{{ $sugerencia->especimenId }}"
+                                    wire:click="seleccionarEspecimen('{{ $sugerencia->especimenId }}')"
+                                    class="flex w-full min-h-[44px] items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-bg-main"
+                                >
+                                    <flux:icon name="beaker" class="size-4 shrink-0 text-science-blue" />
+
+                                    <span class="min-w-0 flex-1">
+                                        <span class="block truncate font-serif italic text-sm text-text-primary">
+                                            {{ $sugerencia->nombreCientifico ?? 'Sin determinar' }}
+                                        </span>
+                                        <span class="block truncate text-xs text-text-secondary tabular-nums">
+                                            {{ $sugerencia->codigoCatalogo }}
+                                        </span>
+                                    </span>
+
+                                    <span class="shrink-0 text-xs text-text-secondary tabular-nums">
+                                        {{ $sugerencia->individualesDisponibles === null
+                                            ? 'Sin dato'
+                                            : $sugerencia->individualesDisponibles.' disp.' }}
+                                    </span>
+                                </button>
+                            @empty
+                                <p class="px-4 py-3 text-sm text-text-secondary">
+                                    Ningún espécimen disponible coincide con «{{ $busquedaEspecimen }}».
+                                </p>
+                            @endforelse
+                        </div>
+                    @endif
+                </div>
+
+                {{-- Especímenes ya agregados --}}
                 @if(!empty($items))
+                    <flux:separator />
+
                     <div class="space-y-2">
                         @foreach($items as $index => $item)
                             <div
-                                class="group flex items-center gap-3 rounded-lg border border-border bg-bg-main px-4 py-3 transition-colors hover:border-science-blue/30"
+                                class="group rounded-lg border border-border bg-bg-main px-4 py-3 transition-colors hover:border-science-blue/30 sm:flex sm:items-center sm:gap-3"
                                 wire:key="item-{{ $index }}"
                             >
-                                <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-science-blue/10">
+                                <div class="hidden h-8 w-8 shrink-0 items-center justify-center rounded-md bg-science-blue/10 sm:flex">
                                     <flux:icon name="beaker" class="size-4 text-science-blue" />
                                 </div>
 
-                                <div class="flex-1 min-w-0">
-                                    <flux:field class="mb-0">
-                                        <flux:input
-                                            wire:model="items.{{ $index }}.especimen_codigo_externo"
-                                            placeholder="Código (Ej. MEPN-0001)"
-                                            class="h-8 text-sm"
-                                        />
-                                        <flux:error name="items.{{ $index }}.especimen_codigo_externo" />
-                                    </flux:field>
+                                <div class="min-w-0 flex-1">
+                                    <p class="truncate font-serif italic text-sm text-text-primary">
+                                        {{ $item['nombre_cientifico'] ?? 'Sin determinar' }}
+                                    </p>
+                                    <p class="truncate text-xs text-text-secondary tabular-nums">
+                                        {{ $item['especimen_codigo_externo'] }}
+                                        @if($item['disponibles'] !== null)
+                                            · {{ $item['disponibles'] }} disponibles
+                                        @endif
+                                    </p>
+
+                                    @if(empty($item['especimen_id']))
+                                        <p class="mt-1 text-xs text-warning">
+                                            Vuelve a seleccionar este espécimen del catálogo para poder guardar.
+                                        </p>
+                                    @endif
                                 </div>
 
-                                <div class="w-24 shrink-0">
-                                    <flux:field class="mb-0">
-                                        <flux:input
-                                            type="number"
-                                            wire:model="items.{{ $index }}.cantidad_solicitada"
-                                            min="1"
-                                            class="h-8 text-sm text-center"
-                                        />
-                                        <flux:error name="items.{{ $index }}.cantidad_solicitada" />
-                                    </flux:field>
+                                <div class="mt-3 flex items-center gap-3 sm:mt-0 sm:shrink-0">
+                                    <div class="w-24">
+                                        <flux:field class="mb-0">
+                                            <flux:input
+                                                type="number"
+                                                wire:model="items.{{ $index }}.cantidad_solicitada"
+                                                min="1"
+                                                @if($item['disponibles'] !== null) max="{{ $item['disponibles'] }}" @endif
+                                                class="text-center"
+                                            />
+                                        </flux:field>
+                                    </div>
+
+                                    <flux:button
+                                        variant="ghost"
+                                        icon="trash"
+                                        wire:click="removeItem({{ $index }})"
+                                        class="shrink-0 text-error sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100"
+                                    />
                                 </div>
 
-                                <flux:button
-                                    size="sm"
-                                    variant="ghost"
-                                    icon="trash"
-                                    wire:click="removeItem({{ $index }})"
-                                    class="shrink-0 text-error opacity-0 group-hover:opacity-100 transition-opacity"
-                                />
+                                <flux:error name="items.{{ $index }}.cantidad_solicitada" />
+                                <flux:error name="items.{{ $index }}.especimen_id" />
                             </div>
                         @endforeach
                     </div>
-
-                    <flux:separator />
-                @endif
-
-                {{-- Estado vacío --}}
-                @if(empty($items))
+                @else
+                    {{-- Estado vacío --}}
                     <div class="flex flex-col items-center justify-center py-8 text-center">
                         <div class="flex h-14 w-14 items-center justify-center rounded-full bg-bg-main border border-border mb-3">
                             <flux:icon name="beaker" class="size-7 text-text-secondary/50" />
                         </div>
                         <p class="text-sm font-medium text-text-primary">Sin especímenes aún</p>
                         <p class="text-xs text-text-secondary mt-1">
-                            Agrega al menos uno para guardar la solicitud.
+                            Búscalos en el catálogo para agregarlos a la solicitud.
                         </p>
                     </div>
                 @endif
-
-                {{-- Botón para agregar --}}
-                <flux:button
-                    variant="ghost"
-                    icon="plus"
-                    wire:click="addItem"
-                    class="w-full border border-dashed border-border hover:border-science-blue/50 hover:text-science-blue"
-                >
-                    Agregar espécimen
-                </flux:button>
             </div>
         </div>
 

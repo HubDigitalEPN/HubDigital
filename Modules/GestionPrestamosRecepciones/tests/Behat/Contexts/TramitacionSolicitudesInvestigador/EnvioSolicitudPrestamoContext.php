@@ -8,6 +8,8 @@ use Behat\Step\Given;
 use Behat\Step\Then;
 use Behat\Step\When;
 use DateTimeImmutable;
+use Modules\GestionPrestamosRecepciones\Application\Ports\CatalogoEspecimenesPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\EspecimenCatalogoDto;
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ActualizarSolicitudPrestamo\ActualizarSolicitudPrestamoHandler;
@@ -32,6 +34,7 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ItemPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\CodigoPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoPrestamo;
 use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\BaseContext;
+use Modules\GestionPrestamosRecepciones\Tests\Support\FakeCatalogoEspecimenesPort;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\FakeEventPublisherAdapter;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\PassThroughTransactionManagerAdapter;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Persistence\InMemoryActaPrestamoRepository;
@@ -51,6 +54,8 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
     private InMemoryActaPrestamoRepository $actaRepo;
 
     private FakeEventPublisherAdapter $fakePublisher;
+
+    private FakeCatalogoEspecimenesPort $fakeCatalogo;
 
     // ── Handlers ─────────────────────────────────────────────────────────────
 
@@ -83,10 +88,14 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
         'proposito_prestamo' => 'Estudio comparativo de morfología alar',
         'duracion_propuesta_meses' => 3,
         'items' => [
-            ['especimen_codigo_externo' => 'ESP-001', 'cantidad_solicitada' => 2],
-            ['especimen_codigo_externo' => 'ESP-002', 'cantidad_solicitada' => 1],
+            ['especimen_id' => self::ESPECIMEN_1, 'especimen_codigo_externo' => 'ESP-001', 'cantidad_solicitada' => 2],
+            ['especimen_id' => self::ESPECIMEN_2, 'especimen_codigo_externo' => 'ESP-002', 'cantidad_solicitada' => 1],
         ],
     ];
+
+    private const ESPECIMEN_1 = '11111111-1111-4111-8111-111111111111';
+
+    private const ESPECIMEN_2 = '22222222-2222-4222-8222-222222222222';
 
     // ── Constructor — registra dependencias in-memory antes de resolver Handlers
 
@@ -98,12 +107,14 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
         $this->solicitudRepo = new InMemorySolicitudPrestamoRepository;
         $this->actaRepo = new InMemoryActaPrestamoRepository;
         $this->fakePublisher = new FakeEventPublisherAdapter;
+        $this->fakeCatalogo = $this->sembrarCatalogo();
 
         // 2. Interceptar el container para que los Handlers reciban estas instancias
         self::$app->instance(SolicitudPrestamoRepositoryInterface::class, $this->solicitudRepo);
         self::$app->instance(ActaPrestamoRepositoryInterface::class, $this->actaRepo);
         self::$app->instance(TransactionManagerPort::class, new PassThroughTransactionManagerAdapter);
         self::$app->instance(EventPublisherPort::class, $this->fakePublisher);
+        self::$app->instance(CatalogoEspecimenesPort::class, $this->fakeCatalogo);
 
         // 3. Resolver Handlers — ya usan las instancias in-memory
         $this->registrarHandler = $this->make(RegistrarSolicitudPrestamoHandler::class);
@@ -115,11 +126,30 @@ final class EnvioSolicitudPrestamoContext extends BaseContext
 
     // ── Helpers de fixture ───────────────────────────────────────────────────
 
+    /** Puebla el catálogo falso con los especímenes que referencian los items de prueba. */
+    private function sembrarCatalogo(): FakeCatalogoEspecimenesPort
+    {
+        $catalogo = new FakeCatalogoEspecimenesPort;
+
+        foreach ($this->datosSolicitudCompleta['items'] as $item) {
+            $catalogo->agregar(new EspecimenCatalogoDto(
+                especimenId: $item['especimen_id'],
+                codigoCatalogo: $item['especimen_codigo_externo'],
+                nombreCientifico: 'Morpho '.$item['especimen_codigo_externo'],
+                individualesDisponibles: $item['cantidad_solicitada'],
+                estado: 'disponible',
+            ));
+        }
+
+        return $catalogo;
+    }
+
     private function sembrarSolicitudBase(): SolicitudPrestamo
     {
         $items = array_map(
             fn (array $item) => ItemPrestamo::crear(
                 id: ItemPrestamoId::generate(),
+                especimenId: $item['especimen_id'],
                 especimenCodigoExterno: $item['especimen_codigo_externo'],
                 cantidadSolicitada: $item['cantidad_solicitada'],
             ),

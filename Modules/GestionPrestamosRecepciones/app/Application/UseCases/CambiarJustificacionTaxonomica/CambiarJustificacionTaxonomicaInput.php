@@ -11,5 +11,6 @@ final readonly class CambiarJustificacionTaxonomicaInput
         public string $matrizId,
         public string $registroId,
         public string $nuevoMotivo,
+        public ?string $comentarioJustificacion = null,
     ) {}
 }

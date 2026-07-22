@@ -60,7 +60,7 @@
         <div class="px-4 py-3 space-y-3">
             <flux:input
                 wire:model.live.debounce.300ms="busqueda"
-                placeholder="Buscar por N.º solicitud..."
+                placeholder="Buscar por N.º o depositante..."
                 icon="magnifying-glass"
                 clearable />
             <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -112,7 +112,7 @@
                         <tr>
                             <th class="px-4 py-3 text-left font-medium text-white">N.º solicitud</th>
                             <th class="px-4 py-3 text-left font-medium text-white">Trámite</th>
-                            <th class="px-4 py-3 text-left font-medium text-white">Solicitante</th>
+                            <th class="px-4 py-3 text-left font-medium text-white">Depositante</th>
                             <th class="px-4 py-3 text-left font-medium text-white">Estado</th>
                             @unless($esResueltas)
                                 <th class="px-4 py-3 text-left font-medium text-white">Prioridad</th>
@@ -149,7 +149,7 @@
                                     </td>
                                 @endunless
                                 <td class="px-4 py-3 text-xs text-text-secondary whitespace-nowrap">
-                                    {{ ($esResueltas ? $solicitud->updated_at : $solicitud->created_at)?->format('d/m/Y') ?? '—' }}
+                                    @fechaEc($esResueltas ? $solicitud->updated_at : $solicitud->created_at, 'd/m/Y')
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap">
                                     <div class="flex items-center justify-end gap-2">
@@ -193,7 +193,7 @@
                     </div>
 
                     <dl class="space-y-2 text-sm">
-                        <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="Solicitante">
+                        <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="Depositante">
                             {{ $nombres[$solicitud->investigador_id] ?? $solicitud->nombre_investigador_documento ?? $solicitud->investigador_id }}
                         </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
                         @unless($esResueltas)
@@ -202,7 +202,7 @@
                             </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
                         @endunless
                         <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil :etiqueta="$esResueltas ? 'Resuelta' : 'Fecha'">
-                            {{ ($esResueltas ? $solicitud->updated_at : $solicitud->created_at)?->format('d/m/Y') ?? '—' }}
+                            @fechaEc($esResueltas ? $solicitud->updated_at : $solicitud->created_at, 'd/m/Y')
                         </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
                     </dl>
 

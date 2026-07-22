@@ -7,11 +7,14 @@ namespace Modules\GestionPrestamosRecepciones\Infrastructure\Providers;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Blade;
 use Livewire\Livewire;
 use Modules\GestionPrestamosRecepciones\Application\Exceptions\SolicitudNoEncontradaException;
 use Modules\GestionPrestamosRecepciones\Application\Ports\CatalogoCuraduriaPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\CatalogoEspecimenesPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\CertificadoCuradorPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ColaRevisionCuratorialPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\EstadoEspecimenCatalogoPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ExtraccionDatosDocumentoPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\FirmadorPdfPort;
@@ -46,6 +49,8 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\EloquentHistoria
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\GbifValidacionTaxonomicaAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\GroqExtraccionDatosDocumentoAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\InventarioGestionColeccionCatalogoCuraduriaAdapter;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\InventarioGestionColeccionEspecimenesAdapter;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\InventarioGestionColeccionEstadoEspecimenAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\LaravelEventPublisherAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\LaravelTransactionManagerAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\NotificacionCuratoriaAdapter;
@@ -77,6 +82,7 @@ use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigad
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\MisSolicitudes;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\RegistroSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\SolicitudForm;
+use Modules\GestionPrestamosRecepciones\Presentation\Support\FechaEcuador;
 use Nwidart\Modules\Support\ModuleServiceProvider;
 
 /**
@@ -120,6 +126,8 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
         InvestigadorEmailPort::class => LaravelUserInvestigadorEmailAdapter::class,
         UsuarioNombrePort::class => LaravelUsuarioNombreAdapter::class,
         CatalogoCuraduriaPort::class => InventarioGestionColeccionCatalogoCuraduriaAdapter::class,
+        CatalogoEspecimenesPort::class => InventarioGestionColeccionEspecimenesAdapter::class,
+        EstadoEspecimenCatalogoPort::class => InventarioGestionColeccionEstadoEspecimenAdapter::class,
         ValidacionTaxonomicaPort::class => GbifValidacionTaxonomicaAdapter::class,
         PdfGeneratorPort::class => DomPdfGeneratorAdapter::class,
         VerificacionEspecimenesRepositoryInterface::class => EloquentVerificacionEspecimenesRepository::class,
@@ -167,6 +175,10 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
     {
         parent::boot();
         $this->loadMigrationsFrom(module_path($this->name, 'database/migrations'));
+
+        // Muestra fechas/horas (almacenadas en UTC) en la hora local de Ecuador.
+        // Uso: @fechaEc($fecha) o @fechaEc($fecha, 'd/m/Y').
+        Blade::directive('fechaEc', fn (string $expresion): string => '<?php echo \\'.FechaEcuador::class."::formatear($expresion); ?>");
 
         $handler = $this->app->make(ExceptionHandler::class);
 

@@ -61,7 +61,7 @@
                 <td class="val">{{ $tipoTramite }}</td>
             </tr>
             <tr>
-                <td class="etq">Investigador</td>
+                <td class="etq">Depositante</td>
                 <td class="val">{{ $investigador }}</td>
             </tr>
             <tr>

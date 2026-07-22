@@ -191,7 +191,7 @@
                                 <flux:button type="button" icon="x-mark" variant="ghost" x-on:click="cerrar()" />
                             </div>
                             <p class="mb-3 text-xs text-text-secondary">Apunta la cámara al código del espécimen. Función provisional.</p>
-                            <div x-ref="lector" class="overflow-hidden rounded-lg"></div>
+                            <div x-ref="lector" class="w-full overflow-hidden rounded-lg bg-black"></div>
                             <p x-show="error" x-text="error" class="mt-2 text-xs text-error"></p>
                         </div>
                     </div>
@@ -753,11 +753,24 @@
 <script>
     // ponytail: stub provisional — la "búsqueda por cámara" del visitante reutiliza el
     // escáner QR (html5-qrcode, iOS + Android) como puente; la visión por cámara real queda pendiente.
-    if (! window.Html5QrcodeScanner && ! document.getElementById('html5-qrcode-lib')) {
-        const s = document.createElement('script');
-        s.id = 'html5-qrcode-lib';
-        s.src = 'https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js';
-        document.head.appendChild(s);
+    // ponytail: helper duplicado en este archivo y en admin/unit-trays/index.blade.php; extraer a
+    // JS compartido solo si aparece un tercer escáner (los app.js del módulo están vacíos hoy).
+    if (! window.cargarHtml5Qrcode) {
+        window.cargarHtml5Qrcode = function () {
+            if (window.Html5Qrcode) return Promise.resolve();
+            return new Promise((resolve, reject) => {
+                let s = document.getElementById('html5-qrcode-lib');
+                if (! s) {
+                    s = document.createElement('script');
+                    s.id = 'html5-qrcode-lib';
+                    s.src = 'https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js';
+                    document.head.appendChild(s);
+                }
+                s.addEventListener('load', () => resolve());
+                s.addEventListener('error', () => reject());
+                if (window.Html5Qrcode) resolve();
+            });
+        };
     }
 
     Alpine.data('visitanteCamaraScanner', () => ({
@@ -770,17 +783,31 @@
             this.error = null;
             this.$nextTick(() => this.iniciar());
         },
-        iniciar() {
-            if (! window.Html5QrcodeScanner) {
-                this.error = 'Cargando la cámara… reintenta en un segundo.';
+        async iniciar() {
+            try {
+                await window.cargarHtml5Qrcode();
+            } catch (e) {
+                this.error = 'No se pudo cargar el escáner. Revisa tu conexión.';
                 return;
             }
             this.$refs.lector.id = this.$refs.lector.id || ('lector-cam-' + Math.random().toString(36).slice(2));
-            this.scanner = new window.Html5QrcodeScanner(this.$refs.lector.id, { fps: 10, qrbox: 250 }, false);
-            this.scanner.render((texto) => this.onDecode(texto), () => {});
+            this.scanner = new window.Html5Qrcode(this.$refs.lector.id);
+            try {
+                await this.scanner.start(
+                    { facingMode: 'environment' },
+                    { fps: 10, qrbox: 250 },
+                    (texto) => this.onDecode(texto),
+                    () => {},
+                );
+            } catch (e) {
+                this.scanner = null;
+                this.error = (e && e.name === 'NotAllowedError')
+                    ? 'Permiso de cámara denegado. Habilítalo en el navegador.'
+                    : 'No se pudo abrir la cámara trasera.';
+            }
         },
-        cerrar() {
-            if (this.scanner) { try { this.scanner.clear(); } catch (e) {} this.scanner = null; }
+        async cerrar() {
+            if (this.scanner) { try { await this.scanner.stop(); this.scanner.clear(); } catch (e) {} this.scanner = null; }
             this.abierto = false;
         },
         onDecode(texto) {

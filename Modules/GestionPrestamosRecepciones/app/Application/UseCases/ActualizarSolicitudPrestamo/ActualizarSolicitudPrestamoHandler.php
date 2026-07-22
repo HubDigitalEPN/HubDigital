@@ -6,10 +6,9 @@ namespace Modules\GestionPrestamosRecepciones\Application\UseCases\ActualizarSol
 
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
-use Modules\GestionPrestamosRecepciones\Domain\Entities\ItemPrestamo;
+use Modules\GestionPrestamosRecepciones\Application\Services\ResolverItemsSolicitud;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\SolicitudPrestamoNoEncontradaException;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
-use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ItemPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudPrestamoId;
 
 /**
@@ -24,6 +23,7 @@ final class ActualizarSolicitudPrestamoHandler
         private readonly SolicitudPrestamoRepositoryInterface $repo,
         private readonly EventPublisherPort                   $publisher,
         private readonly TransactionManagerPort               $transactionManager,
+        private readonly ResolverItemsSolicitud               $resolverItems,
     )
     {
     }
@@ -44,16 +44,9 @@ final class ActualizarSolicitudPrestamoHandler
             throw SolicitudPrestamoNoEncontradaException::conId($id);
         }
 
-        $items = array_map(
-            fn(array $item) => ItemPrestamo::crear(
-                id: isset($item['id'])
-                    ? ItemPrestamoId::fromString($item['id'])
-                    : ItemPrestamoId::generate(),
-                especimenCodigoExterno: $item['especimen_codigo_externo'],
-                cantidadSolicitada: $item['cantidad_solicitada'],
-            ),
-            $input->items
-        );
+        // Contrasta contra el catálogo antes de persistir: valida disponibilidad
+        // y cantidad, y refresca el snapshot de cada espécimen.
+        $items = $this->resolverItems->resolver($input->items);
 
         $solicitud->actualizar(
             tituloEstudio: $input->tituloEstudio,

@@ -347,6 +347,7 @@
                             :especieIngresada="$registro['especieIngresada']"
                             :estado="$registro['estado']"
                             :especieSugerida="$registro['especieSugerida']"
+                            :especiesSugeridas="$registro['especiesSugeridas'] ?? []"
                             :especieCorregida="$registro['especieCorregida']"
                             :noCatalogado="$registro['noCatalogado']"
                             :motivoJustificacion="$registro['motivoJustificacion']"

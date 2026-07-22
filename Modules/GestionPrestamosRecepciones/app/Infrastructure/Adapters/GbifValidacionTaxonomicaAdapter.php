@@ -42,7 +42,7 @@ final class GbifValidacionTaxonomicaAdapter implements ValidacionTaxonomicaPort
      * Valida una lista de nombres científicos contra la API de GBIF.
      *
      * @param  string[]  $nombresCientificos
-     * @return array<int, array{nombreCientifico: string, estado: string, sugerencia: ?string}>
+     * @return array<int, array{nombreCientifico: string, estado: string, sugerencia: ?string, sugerencias: list<string>}>
      */
     public function validarEspecies(array $nombresCientificos): array
     {
@@ -91,7 +91,7 @@ final class GbifValidacionTaxonomicaAdapter implements ValidacionTaxonomicaPort
 
     /**
      * @param  string[]  $nombres
-     * @return array<string, array{nombreCientifico: string, estado: string, sugerencia: ?string}>
+     * @return array<string, array{nombreCientifico: string, estado: string, sugerencia: ?string, sugerencias: list<string>}>
      */
     private function consultarBatch(array $nombres): array
     {
@@ -108,7 +108,7 @@ final class GbifValidacionTaxonomicaAdapter implements ValidacionTaxonomicaPort
                     ->timeout(10)
                     ->get(self::BASE_URL, [
                         'name' => $nombre,
-                        'verbose' => 'false',
+                        'verbose' => 'true',
                         'kingdom' => 'Animalia',
                     ]),
                 $nombres
@@ -144,51 +144,96 @@ final class GbifValidacionTaxonomicaAdapter implements ValidacionTaxonomicaPort
 
     /**
      * @param  array<string, mixed>  $data
-     * @return array{nombreCientifico: string, estado: string, sugerencia: ?string}
+     * @return array{nombreCientifico: string, estado: string, sugerencia: ?string, sugerencias: list<string>}
      */
     private function interpretarRespuesta(string $nombreCientifico, array $data): array
     {
         $matchType = $data['matchType'] ?? 'NONE';
-        $confidence = (int) ($data['confidence'] ?? 0);
-        $canonicalName = $data['canonicalName'] ?? null;
 
-        if ($matchType === 'NONE') {
+        // Match exacto y confiable: el nombre está catalogado tal cual.
+        if (! in_array($matchType, ['NONE', 'HIGHERRANK', 'FUZZY'], true)) {
+            return $this->resultadoCatalogado($nombreCientifico);
+        }
+
+        // Para NONE/HIGHERRANK/FUZZY buscamos candidatos de corrección confiables,
+        // tanto en el match principal como en las alternativas (verbose=true).
+        $sugerencias = $this->extraerSugerencias($nombreCientifico, $data);
+
+        if ($sugerencias !== []) {
             return [
                 'nombreCientifico' => $nombreCientifico,
-                'estado' => 'no_catalogado',
-                'sugerencia' => null,
+                'estado' => 'inconsistencia_tipografica',
+                'sugerencia' => $sugerencias[0],
+                'sugerencias' => $sugerencias,
             ];
         }
 
-        if ($matchType === 'HIGHERRANK') {
-            return [
-                'nombreCientifico' => $nombreCientifico,
-                'estado' => 'no_catalogado',
-                'sugerencia' => null,
-            ];
-        }
-
-        if ($matchType === 'FUZZY' && $canonicalName !== null) {
-            if ($confidence >= self::CONFIDENCE_THRESHOLD) {
-                return [
-                    'nombreCientifico' => $nombreCientifico,
-                    'estado' => 'inconsistencia_tipografica',
-                    'sugerencia' => $canonicalName,
-                ];
-            }
-
-            return [
-                'nombreCientifico' => $nombreCientifico,
-                'estado' => 'no_catalogado',
-                'sugerencia' => null,
-            ];
-        }
-
-        return $this->resultadoCatalogado($nombreCientifico);
+        return [
+            'nombreCientifico' => $nombreCientifico,
+            'estado' => 'no_catalogado',
+            'sugerencia' => null,
+            'sugerencias' => [],
+        ];
     }
 
     /**
-     * @return array{nombreCientifico: string, estado: string, sugerencia: ?string}
+     * Reúne nombres candidatos de corrección (match principal + alternativas de GBIF),
+     * quedándose solo con coincidencias EXACT/FUZZY por encima del umbral de confianza.
+     * Deduplica sin distinguir mayúsculas, excluye el nombre original y limita a 3.
+     *
+     * @param  array<string, mixed>  $data
+     * @return list<string>
+     */
+    private function extraerSugerencias(string $nombreOriginal, array $data): array
+    {
+        $candidatos = [];
+
+        $agregar = function (mixed $match) use (&$candidatos): void {
+            if (! is_array($match)) {
+                return;
+            }
+
+            $tipo = $match['matchType'] ?? null;
+            $confianza = (int) ($match['confidence'] ?? 0);
+            $canonico = $match['canonicalName'] ?? ($match['scientificName'] ?? null);
+
+            if ($canonico === null || ! in_array($tipo, ['EXACT', 'FUZZY'], true) || $confianza < self::CONFIDENCE_THRESHOLD) {
+                return;
+            }
+
+            $candidatos[] = (string) $canonico;
+        };
+
+        $agregar($data);
+
+        foreach ($data['alternatives'] ?? [] as $alternativa) {
+            $agregar($alternativa);
+        }
+
+        $vistos = [];
+        $sugerencias = [];
+        $claveOriginal = mb_strtolower(trim($nombreOriginal));
+
+        foreach ($candidatos as $candidato) {
+            $clave = mb_strtolower(trim($candidato));
+
+            if ($clave === $claveOriginal || isset($vistos[$clave])) {
+                continue;
+            }
+
+            $vistos[$clave] = true;
+            $sugerencias[] = $candidato;
+
+            if (count($sugerencias) >= 3) {
+                break;
+            }
+        }
+
+        return $sugerencias;
+    }
+
+    /**
+     * @return array{nombreCientifico: string, estado: string, sugerencia: ?string, sugerencias: list<string>}
      */
     private function resultadoCatalogado(string $nombreCientifico): array
     {
@@ -196,11 +241,12 @@ final class GbifValidacionTaxonomicaAdapter implements ValidacionTaxonomicaPort
             'nombreCientifico' => $nombreCientifico,
             'estado' => 'catalogado',
             'sugerencia' => null,
+            'sugerencias' => [],
         ];
     }
 
     /**
-     * @return array{nombreCientifico: string, estado: string, sugerencia: ?string}
+     * @return array{nombreCientifico: string, estado: string, sugerencia: ?string, sugerencias: list<string>}
      */
     private function resultadoNoVerificado(string $nombreCientifico): array
     {
@@ -208,6 +254,7 @@ final class GbifValidacionTaxonomicaAdapter implements ValidacionTaxonomicaPort
             'nombreCientifico' => $nombreCientifico,
             'estado' => 'no_verificado',
             'sugerencia' => null,
+            'sugerencias' => [],
         ];
     }
 }

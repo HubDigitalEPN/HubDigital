@@ -50,12 +50,12 @@
                             <dd class="font-medium text-text-primary mt-1">{{ $deposito->tipo_tramite }}</dd>
                         </div>
                         <div>
-                            <dt class="text-xs text-text-secondary uppercase tracking-wide">Investigador</dt>
+                            <dt class="text-xs text-text-secondary uppercase tracking-wide">Depositante</dt>
                             <dd class="font-medium text-text-primary mt-1">{{ $nombreInvestigador }}</dd>
                         </div>
                         <div>
                             <dt class="text-xs text-text-secondary uppercase tracking-wide">Fecha de registro</dt>
-                            <dd class="font-medium text-text-primary mt-1">{{ $deposito->created_at?->format('d/m/Y H:i') }}</dd>
+                            <dd class="font-medium text-text-primary mt-1">@fechaEc($deposito->created_at)</dd>
                         </div>
                     </dl>
                 </div>
@@ -181,7 +181,7 @@
                 </div>
             @endif
 
-            {{-- Panel de confirmación de aprobación (sin QR: el QR es del investigador) --}}
+            {{-- Panel de confirmación de aprobación (sin QR: el QR es del depositante) --}}
             @if($deposito->estado === 'Aprobada Documentalmente' && $deposito->codigo_qr)
                 <div class="rounded-lg border border-success/40 bg-success/5 shadow-sm overflow-hidden">
                     <div class="px-5 py-4 border-b border-success/30 flex items-center gap-3">
@@ -195,7 +195,7 @@
                             <span class="text-xs text-text-secondary uppercase tracking-wide">Lote asignado</span>
                             <span class="font-mono font-semibold text-text-primary">{{ $deposito->codigo_qr }}</span>
                         </div>
-                        <flux:text class="text-text-secondary text-xs">Código QR disponible para el investigador.</flux:text>
+                        <flux:text class="text-text-secondary text-xs">Código QR disponible para el depositante.</flux:text>
 
                         <flux:button variant="primary" icon="inbox-arrow-down" class="w-full sm:w-auto" wire:navigate
                             href="{{ route('prestamos.curador.deposito.recepcion', $deposito->id) }}">
@@ -231,7 +231,7 @@
             @if(in_array($deposito->estado, ['Requiere Corrección', 'Rechazo Permanente'], true))
                 <flux:callout :variant="$deposito->estado === 'Rechazo Permanente' ? 'danger' : 'warning'" icon="information-circle">
                     <flux:callout.heading>{{ $deposito->estado }}</flux:callout.heading>
-                    <flux:callout.text>La solicitud ya fue resuelta y notificada al investigador.</flux:callout.text>
+                    <flux:callout.text>La solicitud ya fue resuelta y notificada al depositante.</flux:callout.text>
                 </flux:callout>
             @endif
 
@@ -248,7 +248,7 @@
                 <flux:callout variant="secondary" icon="pencil-square">
                     <flux:callout.heading>Solicitud aún no enviada</flux:callout.heading>
                     <flux:callout.text>
-                        El investigador todavía no ha enviado esta solicitud para revisión documental.
+                        El depositante todavía no ha enviado esta solicitud para revisión documental.
                     </flux:callout.text>
                 </flux:callout>
             @endif
@@ -289,6 +289,26 @@
                     ];
                     $dwcLabel = fn (string $col): string => $etiquetasDwC[$col] ?? \Illuminate\Support\Str::headline($col);
 
+                    // Orden alfabético por etiqueta legible (sin acentos) para que el curador
+                    // ubique las columnas más rápido, tanto en la tabla como en el selector.
+                    $ordenarColumnas = function (array $cols) use ($dwcLabel): array {
+                        usort($cols, fn (string $a, string $b): int => strcasecmp(
+                            \Illuminate\Support\Str::ascii($dwcLabel($a)),
+                            \Illuminate\Support\Str::ascii($dwcLabel($b)),
+                        ));
+
+                        return $cols;
+                    };
+                    $columnasDwC = $ordenarColumnas($columnasDwC);
+                    $columnasVisibles = $ordenarColumnas($columnasVisibles);
+
+                    // El nombre científico siempre encabeza la matriz (identidad de la fila).
+                    if (($posSci = array_search('scientificName', $columnasVisibles, true)) !== false) {
+                        unset($columnasVisibles[$posSci]);
+                        array_unshift($columnasVisibles, 'scientificName');
+                    }
+                    $columnasVisibles = array_values($columnasVisibles);
+
                     $nRevision = $conteoEstados['Validación Manual por Curaduría'] ?? 0;
 
                     [$mzBg, $mzText, $mzIcon] = match($estadoMatriz) {
@@ -318,7 +338,7 @@
 
                     {{-- TODO (edición curatorial): permitir que el curador edite/sane anomalías menores
                          de la matriz Darwin Core (p. ej. corregir un decimalLongitude o un formato) en
-                         lugar de forzar siempre el reenvío al investigador. Objetivo: evitar que el
+                         lugar de forzar siempre el reenvío al depositante. Objetivo: evitar que el
                          proceso se devuelva por pequeñeces. Requiere un caso de uso nuevo
                          (ValidacionManualCuraduria) con registro de auditoría de quién editó qué. --}}
 
@@ -328,8 +348,8 @@
                             <flux:icon name="information-circle" class="size-4 text-warning shrink-0 mt-0.5" />
                             <p class="text-xs text-text-secondary leading-relaxed">
                                 Las celdas resaltadas requieren atención. Si los datos deben corregirse, devuelve la solicitud
-                                al investigador con <span class="font-medium text-text-primary">Rechazar solicitud → Subsanable</span>;
-                                el investigador es quien edita y reenvía la matriz.
+                                al depositante con <span class="font-medium text-text-primary">Rechazar solicitud → Subsanable</span>;
+                                el depositante es quien edita y reenvía la matriz.
                             </p>
                         </div>
                     @endif
@@ -510,6 +530,9 @@
                                                         @if($noCat && $reg->motivoJustificacion())
                                                             <p class="text-[11px] text-warning mt-0.5">{{ $reg->motivoJustificacion() }}</p>
                                                         @endif
+                                                        @if($reg->comentarioJustificacion())
+                                                            <p class="text-[11px] text-text-secondary mt-0.5 italic">“{{ $reg->comentarioJustificacion() }}”</p>
+                                                        @endif
                                                         @if($adv)
                                                             <p class="text-[11px] text-warning mt-0.5">{{ $adv }}</p>
                                                         @endif
@@ -582,6 +605,9 @@
                                         </div>
                                         @if($noCat && $reg->motivoJustificacion())
                                             <p class="text-[11px] text-warning mt-1">{{ $reg->motivoJustificacion() }}</p>
+                                        @endif
+                                        @if($reg->comentarioJustificacion())
+                                            <p class="text-[11px] text-text-secondary mt-1 italic">“{{ $reg->comentarioJustificacion() }}”</p>
                                         @endif
                                     </div>
                                     <flux:badge size="sm" :color="$bColor" class="shrink-0">{{ $bLabel }}</flux:badge>
@@ -769,7 +795,7 @@
                                     <flux:badge size="sm" :color="$revColor">{{ $revLabel }}</flux:badge>
                                 </div>
                                 <div>
-                                    <dt class="text-xs text-text-secondary uppercase tracking-wide">Justificación del investigador</dt>
+                                    <dt class="text-xs text-text-secondary uppercase tracking-wide">Justificación del depositante</dt>
                                     <dd class="text-sm text-text-primary mt-1 leading-relaxed">{{ $alerta->justificacion_investigador }}</dd>
                                 </div>
                             </div>
@@ -783,7 +809,7 @@
             @if($deposito->comentario_curador)
                 @php $esReenvioPendiente = $deposito->rechazada_en && $deposito->estado === 'Pendiente de Revisión por Curaduría'; @endphp
                 <flux:callout variant="warning" icon="chat-bubble-left-ellipsis">
-                    <flux:callout.heading>{{ $esReenvioPendiente ? 'Observaciones de la devolución anterior' : 'Comentario para el investigador' }}</flux:callout.heading>
+                    <flux:callout.heading>{{ $esReenvioPendiente ? 'Observaciones de la devolución anterior' : 'Comentario para el depositante' }}</flux:callout.heading>
                     <flux:callout.text>
                         {{ $deposito->comentario_curador }}
                         @if($esReenvioPendiente)
@@ -830,7 +856,7 @@
                 @if($accionAprobar === 'donacion')
                     <li class="flex items-start gap-2"><flux:icon name="check" class="size-4 text-success shrink-0 mt-0.5" />Se genera el Acta de Transferencia de Dominio.</li>
                 @endif
-                <li class="flex items-start gap-2"><flux:icon name="check" class="size-4 text-success shrink-0 mt-0.5" />Se notifica al investigador para la entrega física.</li>
+                <li class="flex items-start gap-2"><flux:icon name="check" class="size-4 text-success shrink-0 mt-0.5" />Se notifica al depositante para la entrega física.</li>
             </ul>
             <div class="flex justify-end gap-2 pt-2">
                 <flux:button variant="ghost" wire:click="$set('showConfirmacionModal', false)">Cancelar</flux:button>
@@ -848,7 +874,7 @@
         <div class="space-y-4 p-2">
             <flux:heading size="lg">Rechazar solicitud</flux:heading>
             <flux:text class="text-text-secondary text-sm">
-                Indica el tipo de rechazo y el motivo. Quedará registrado como comentario para el investigador.
+                Indica el tipo de rechazo y el motivo. Quedará registrado como comentario para el depositante.
             </flux:text>
             @if($hallazgosMatriz > 0)
                 <div class="flex items-start gap-2 rounded-lg bg-warning/5 border border-warning/30 px-3 py-2">
@@ -863,7 +889,7 @@
                     <flux:select.option value="Definitivo">Definitivo (rechazo permanente)</flux:select.option>
                 </flux:select>
                 <flux:description>
-                    <span class="font-medium">Subsanable:</span> el investigador corrige y reenvía.
+                    <span class="font-medium">Subsanable:</span> el depositante corrige y reenvía.
                     <span class="font-medium">Definitivo:</span> cierra la solicitud sin posibilidad de corregir.
                 </flux:description>
                 <flux:error name="tipoRechazo" />
@@ -871,7 +897,7 @@
             <flux:field>
                 <flux:label>Motivo del rechazo</flux:label>
                 <flux:textarea wire:model="motivoRechazo" rows="4"
-                    placeholder="Describe el motivo del rechazo para el investigador..." />
+                    placeholder="Describe el motivo del rechazo para el depositante..." />
                 <flux:error name="motivoRechazo" />
             </flux:field>
             <div class="flex justify-end gap-2 pt-2">

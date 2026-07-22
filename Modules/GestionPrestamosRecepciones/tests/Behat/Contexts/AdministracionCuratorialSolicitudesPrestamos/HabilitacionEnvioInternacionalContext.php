@@ -110,6 +110,7 @@ final class HabilitacionEnvioInternacionalContext extends BaseContext
         $items = [
             ItemPrestamo::crear(
                 id: ItemPrestamoId::generate(),
+                especimenId: (string) \Illuminate\Support\Str::uuid(),
                 especimenCodigoExterno: 'ESP-001',
                 cantidadSolicitada: 2,
             ),

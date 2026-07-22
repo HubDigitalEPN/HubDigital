@@ -11,6 +11,8 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ActualizarSolicitudPrestamo\ActualizarSolicitudPrestamoHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\BuscarEspecimenesCatalogo\BuscarEspecimenesCatalogoHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\BuscarEspecimenesCatalogo\BuscarEspecimenesCatalogoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ActualizarSolicitudPrestamo\ActualizarSolicitudPrestamoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDetalleSolicitud\ConsultarDetalleSolicitudHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDetalleSolicitud\ConsultarDetalleSolicitudInput;
@@ -53,8 +55,17 @@ final class SolicitudForm extends Component
 
     public string $comentarioCurador = '';
 
-    /** @var list<array{especimen_codigo_externo: string, cantidad_solicitada: int}> */
+    /**
+     * Los campos más allá de `especimen_id` y `cantidad_solicitada` son para
+     * mostrar en pantalla: el servidor los resuelve de nuevo contra el catálogo
+     * al guardar y no confía en los que llegan del navegador.
+     *
+     * @var list<array{especimen_id: ?string, especimen_codigo_externo: string, nombre_cientifico: ?string, disponibles: ?int, cantidad_solicitada: int}>
+     */
     public array $items = [];
+
+    /** Texto del buscador de especímenes del catálogo. */
+    public string $busquedaEspecimen = '';
 
     public string $successMessage = '';
 
@@ -89,7 +100,10 @@ final class SolicitudForm extends Component
         $this->estadoSolicitud = $solicitud->estado;
         $this->comentarioCurador = $solicitud->comentarioCurador ?? '';
         $this->items = array_map(fn ($item) => [
+            'especimen_id' => $item->especimenId,
             'especimen_codigo_externo' => (string) $item->codigoExterno,
+            'nombre_cientifico' => $item->nombre,
+            'disponibles' => $item->individualesDisponibles,
             'cantidad_solicitada' => (int) $item->cantidadSolicitada,
         ], $solicitud->items);
     }
@@ -109,17 +123,8 @@ final class SolicitudForm extends Component
         $this->normalizeItems();
 
         try {
-            $this->validate([
-                'tituloEstudio' => 'required|string|max:200',
-                'institucionAdscripcion' => 'required|string|max:255',
-                'lineaInvestigacion' => 'required|string|max:255',
-                'propositoPrestamo' => 'required|string',
-                'duracionPropuestaMeses' => 'required|integer|min:1|max:24',
-                'justificacionExtendida' => $this->duracionPropuestaMeses > 12 ? 'required|string|min:20' : 'nullable|string',
-                'items' => 'required|array|min:1',
-                'items.*.especimen_codigo_externo' => 'required|string',
-                'items.*.cantidad_solicitada' => 'required|integer|min:1',
-            ]);
+            $this->validate($this->reglas());
+            $this->validarCantidades();
         } catch (ValidationException) {
             return;
         }
@@ -133,7 +138,7 @@ final class SolicitudForm extends Component
                 lineaInvestigacion: $this->lineaInvestigacion,
                 propositoPrestamo: $this->propositoPrestamo,
                 duracionPropuestaMeses: $this->duracionPropuestaMeses,
-                items: $this->items,
+                items: $this->itemsParaInput(),
                 justificacionExtendida: $this->duracionPropuestaMeses > 12 ? $this->justificacionExtendida : null,
             ));
 
@@ -144,21 +149,138 @@ final class SolicitudForm extends Component
     }
 
     /**
-     * Agrega un nuevo ítem a la solicitud.
+     * Agrega a la solicitud un espécimen elegido del catálogo.
      *
-     * @return void
+     * La cantidad se prellena con los individuos disponibles, que además hacen
+     * de tope. Si el inventario no registró el conteo no hay tope: se arranca en 1.
      */
-    public function addItem(): void
-    {
-        $this->items[] = ['especimen_codigo_externo' => '', 'cantidad_solicitada' => 1];
+    public function seleccionarEspecimen(
+        BuscarEspecimenesCatalogoHandler $buscar,
+        string $especimenId,
+    ): void {
+        foreach ($this->items as $item) {
+            if ($item['especimen_id'] === $especimenId) {
+                $this->busquedaEspecimen = '';
+
+                return;
+            }
+        }
+
+        $especimen = collect($buscar->handle(
+            new BuscarEspecimenesCatalogoInput($this->busquedaEspecimen)
+        )->resultados)->firstWhere('especimenId', $especimenId);
+
+        if ($especimen === null) {
+            $this->addError('busquedaEspecimen', 'Ese espécimen ya no está disponible.');
+
+            return;
+        }
+
+        $this->items[] = [
+            'especimen_id' => $especimen->especimenId,
+            'especimen_codigo_externo' => $especimen->codigoCatalogo,
+            'nombre_cientifico' => $especimen->nombreCientifico,
+            'disponibles' => $especimen->individualesDisponibles,
+            // Sin conteo conocido se arranca en 1: prellenar con null dejaba la
+            // cantidad en 0 y la solicitud no pasaba la validación.
+            'cantidad_solicitada' => $especimen->individualesDisponibles ?? 1,
+        ];
+
+        $this->busquedaEspecimen = '';
     }
 
     private function normalizeItems(): void
     {
         $this->items = array_values(array_map(fn (array $item) => [
+            'especimen_id' => $item['especimen_id'] ?? null,
             'especimen_codigo_externo' => (string) ($item['especimen_codigo_externo'] ?? ''),
+            'nombre_cientifico' => $item['nombre_cientifico'] ?? null,
+            'disponibles' => isset($item['disponibles']) ? (int) $item['disponibles'] : null,
             'cantidad_solicitada' => (int) ($item['cantidad_solicitada'] ?? 1),
         ], $this->items));
+    }
+
+    /**
+     * Reglas comunes a autoguardado, borrador y envío.
+     *
+     * @return array<string, string>
+     */
+    private function reglas(): array
+    {
+        return [
+            'tituloEstudio' => 'required|string|max:200',
+            'institucionAdscripcion' => 'required|string|max:255',
+            'lineaInvestigacion' => 'required|string|max:255',
+            'propositoPrestamo' => 'required|string',
+            'duracionPropuestaMeses' => 'required|integer|min:1|max:24',
+            'justificacionExtendida' => $this->duracionPropuestaMeses > 12 ? 'required|string|min:20' : 'nullable|string',
+            'items' => 'required|array|min:1',
+            'items.*.especimen_id' => 'required|uuid',
+            'items.*.cantidad_solicitada' => 'required|integer|min:1',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function mensajes(): array
+    {
+        return [
+            'tituloEstudio.required' => 'El título del estudio es obligatorio.',
+            'tituloEstudio.max' => 'El título no puede superar los 200 caracteres.',
+            'institucionAdscripcion.required' => 'La institución de adscripción es obligatoria.',
+            'lineaInvestigacion.required' => 'La línea de investigación es obligatoria.',
+            'propositoPrestamo.required' => 'El propósito del préstamo es obligatorio.',
+            'duracionPropuestaMeses.required' => 'La duración propuesta es obligatoria.',
+            'duracionPropuestaMeses.integer' => 'La duración debe ser un número entero.',
+            'duracionPropuestaMeses.min' => 'La duración mínima es 1 mes.',
+            'duracionPropuestaMeses.max' => 'La duración máxima permitida es 24 meses.',
+            'justificacionExtendida.required' => 'Debes justificar por qué la investigación requiere más de 12 meses.',
+            'justificacionExtendida.min' => 'La justificación debe tener al menos 20 caracteres.',
+            'items.required' => 'Debes agregar al menos un espécimen.',
+            'items.min' => 'Debes agregar al menos un espécimen.',
+            'items.*.especimen_id.required' => 'Selecciona el espécimen del catálogo.',
+            'items.*.especimen_id.uuid' => 'Selecciona el espécimen del catálogo.',
+            'items.*.cantidad_solicitada.required' => 'La cantidad es obligatoria.',
+            'items.*.cantidad_solicitada.min' => 'La cantidad mínima es 1.',
+        ];
+    }
+
+    /**
+     * Verifica que ninguna cantidad supere los individuos disponibles.
+     *
+     * Va aparte porque el tope cambia por fila y las reglas de Laravel no
+     * admiten un `max` distinto por índice del array. Es validación de
+     * usabilidad: el servidor la repite contra el catálogo al guardar.
+     */
+    private function validarCantidades(): void
+    {
+        foreach ($this->items as $i => $item) {
+            $disponibles = $item['disponibles'] ?? null;
+
+            if ($disponibles !== null && $item['cantidad_solicitada'] > $disponibles) {
+                throw ValidationException::withMessages([
+                    "items.{$i}.cantidad_solicitada" => sprintf(
+                        'Solo hay %d individuos disponibles de %s.',
+                        $disponibles,
+                        $item['especimen_codigo_externo'],
+                    ),
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Payload de ítems para los casos de uso: solo la referencia y la cantidad.
+     *
+     * @return list<array{especimen_id: string, cantidad_solicitada: int}>
+     */
+    private function itemsParaInput(): array
+    {
+        return array_map(fn (array $item) => [
+            'especimen_id' => (string) $item['especimen_id'],
+            'cantidad_solicitada' => $item['cantidad_solicitada'],
+        ], $this->items);
     }
 
     /**
@@ -186,34 +308,8 @@ final class SolicitudForm extends Component
     ): void {
         $this->normalizeItems();
 
-        $this->validate([
-            'tituloEstudio' => 'required|string|max:200',
-            'institucionAdscripcion' => 'required|string|max:255',
-            'lineaInvestigacion' => 'required|string|max:255',
-            'propositoPrestamo' => 'required|string',
-            'duracionPropuestaMeses' => 'required|integer|min:1|max:24',
-            'justificacionExtendida' => $this->duracionPropuestaMeses > 12 ? 'required|string|min:20' : 'nullable|string',
-            'items' => 'required|array|min:1',
-            'items.*.especimen_codigo_externo' => 'required|string',
-            'items.*.cantidad_solicitada' => 'required|integer|min:1',
-        ], [
-            'tituloEstudio.required' => 'El título del estudio es obligatorio.',
-            'tituloEstudio.max' => 'El título no puede superar los 200 caracteres.',
-            'institucionAdscripcion.required' => 'La institución de adscripción es obligatoria.',
-            'lineaInvestigacion.required' => 'La línea de investigación es obligatoria.',
-            'propositoPrestamo.required' => 'El propósito del préstamo es obligatorio.',
-            'duracionPropuestaMeses.required' => 'La duración propuesta es obligatoria.',
-            'duracionPropuestaMeses.integer' => 'La duración debe ser un número entero.',
-            'duracionPropuestaMeses.min' => 'La duración mínima es 1 mes.',
-            'duracionPropuestaMeses.max' => 'La duración máxima permitida es 24 meses.',
-            'justificacionExtendida.required' => 'Debes justificar por qué la investigación requiere más de 12 meses.',
-            'justificacionExtendida.min' => 'La justificación debe tener al menos 20 caracteres.',
-            'items.required' => 'Debes agregar al menos un espécimen.',
-            'items.min' => 'Debes agregar al menos un espécimen.',
-            'items.*.especimen_codigo_externo.required' => 'El código del espécimen es obligatorio.',
-            'items.*.cantidad_solicitada.required' => 'La cantidad es obligatoria.',
-            'items.*.cantidad_solicitada.min' => 'La cantidad mínima es 1.',
-        ]);
+        $this->validate($this->reglas(), $this->mensajes());
+        $this->validarCantidades();
 
         $investigadorId = (string) auth()->id();
 
@@ -226,7 +322,7 @@ final class SolicitudForm extends Component
                 lineaInvestigacion: $this->lineaInvestigacion,
                 propositoPrestamo: $this->propositoPrestamo,
                 duracionPropuestaMeses: $this->duracionPropuestaMeses,
-                items: $this->items,
+                items: $this->itemsParaInput(),
                 justificacionExtendida: $this->duracionPropuestaMeses > 12 ? $this->justificacionExtendida : null,
             ));
 
@@ -243,7 +339,7 @@ final class SolicitudForm extends Component
             lineaInvestigacion: $this->lineaInvestigacion,
             propositoPrestamo: $this->propositoPrestamo,
             duracionPropuestaMeses: $this->duracionPropuestaMeses,
-            items: $this->items,
+            items: $this->itemsParaInput(),
             justificacionExtendida: $this->duracionPropuestaMeses > 12 ? $this->justificacionExtendida : null,
         ));
 
@@ -262,34 +358,8 @@ final class SolicitudForm extends Component
             return;
         }
 
-        $this->validate([
-            'tituloEstudio' => 'required|string|max:200',
-            'institucionAdscripcion' => 'required|string|max:255',
-            'lineaInvestigacion' => 'required|string|max:255',
-            'propositoPrestamo' => 'required|string',
-            'duracionPropuestaMeses' => 'required|integer|min:1|max:24',
-            'justificacionExtendida' => $this->duracionPropuestaMeses > 12 ? 'required|string|min:20' : 'nullable|string',
-            'items' => 'required|array|min:1',
-            'items.*.especimen_codigo_externo' => 'required|string',
-            'items.*.cantidad_solicitada' => 'required|integer|min:1',
-        ], [
-            'tituloEstudio.required' => 'El título del estudio es obligatorio.',
-            'tituloEstudio.max' => 'El título no puede superar los 200 caracteres.',
-            'institucionAdscripcion.required' => 'La institución de adscripción es obligatoria.',
-            'lineaInvestigacion.required' => 'La línea de investigación es obligatoria.',
-            'propositoPrestamo.required' => 'El propósito del préstamo es obligatorio.',
-            'duracionPropuestaMeses.required' => 'La duración propuesta es obligatoria.',
-            'duracionPropuestaMeses.integer' => 'La duración debe ser un número entero.',
-            'duracionPropuestaMeses.min' => 'La duración mínima es 1 mes.',
-            'duracionPropuestaMeses.max' => 'La duración máxima permitida es 24 meses.',
-            'justificacionExtendida.required' => 'Debes justificar por qué la investigación requiere más de 12 meses.',
-            'justificacionExtendida.min' => 'La justificación debe tener al menos 20 caracteres.',
-            'items.required' => 'Debes agregar al menos un espécimen.',
-            'items.min' => 'Debes agregar al menos un espécimen.',
-            'items.*.especimen_codigo_externo.required' => 'El código del espécimen es obligatorio.',
-            'items.*.cantidad_solicitada.required' => 'La cantidad es obligatoria.',
-            'items.*.cantidad_solicitada.min' => 'La cantidad mínima es 1.',
-        ]);
+        $this->validate($this->reglas(), $this->mensajes());
+        $this->validarCantidades();
 
         $investigadorId = (string) auth()->id();
 
@@ -301,7 +371,7 @@ final class SolicitudForm extends Component
             lineaInvestigacion: $this->lineaInvestigacion,
             propositoPrestamo: $this->propositoPrestamo,
             duracionPropuestaMeses: $this->duracionPropuestaMeses,
-            items: $this->items,
+            items: $this->itemsParaInput(),
             justificacionExtendida: $this->duracionPropuestaMeses > 12 ? $this->justificacionExtendida : null,
         ));
 
@@ -313,8 +383,14 @@ final class SolicitudForm extends Component
         $this->redirectRoute('prestamos.investigador.solicitud.detalle', ['id' => $this->solicitudId], navigate: true);
     }
 
-    public function render(): View
+    public function render(BuscarEspecimenesCatalogoHandler $buscar): View
     {
-        return view('gestionprestamosrecepciones::investigador.solicitud-form');
+        $sugerencias = $this->busquedaEspecimen === ''
+            ? []
+            : $buscar->handle(new BuscarEspecimenesCatalogoInput($this->busquedaEspecimen))->resultados;
+
+        return view('gestionprestamosrecepciones::investigador.solicitud-form', [
+            'sugerencias' => $sugerencias,
+        ]);
     }
 }

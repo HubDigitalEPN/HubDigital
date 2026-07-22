@@ -23,7 +23,7 @@ class UnitTray
     private function __construct(
         private readonly UnitTrayId $id,
         private CajaId $cajaId,
-        private readonly int $numero,
+        private int $numero,
         private ?ClasificacionTaxonomica $clasificacionDominante,
     ) {}
 
@@ -88,12 +88,21 @@ class UnitTray
     }
 
     /**
-     * Reubica el tray a otra caja. La reclasificación de las cajas origen/destino
-     * la coordina la Application layer; aquí solo se reasigna la pertenencia.
+     * Reubica el tray a otra caja tomando el número que le corresponde en el destino:
+     * la numeración es correlativa por caja, así que conservar la de origen chocaría
+     * con las bandejas existentes. La reclasificación de las cajas origen/destino
+     * la coordina la Application layer.
+     *
+     * @throws \InvalidArgumentException Si el número es menor a 1.
      */
-    public function moverACaja(CajaId $cajaDestino): void
+    public function moverACaja(CajaId $cajaDestino, int $numeroEnDestino): void
     {
+        if ($numeroEnDestino < 1) {
+            throw new \InvalidArgumentException('El número de UnitTray debe ser mayor a 0.');
+        }
+
         $this->cajaId = $cajaDestino;
+        $this->numero = $numeroEnDestino;
     }
 
     public function id(): UnitTrayId

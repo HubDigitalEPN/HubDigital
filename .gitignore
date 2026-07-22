@@ -35,3 +35,4 @@ Modules/InventarioGestionColeccion/docs/provisioning_prod/
 **/provisioning_prod*.ino
 /.serena
 /.tokensave
+/.playwright-mcp

@@ -96,14 +96,26 @@
                     <flux:icon name="archive-box" class="size-5 text-blue-navy" />
                     <span>Trabajando en <span class="font-medium">{{ $cajaSeleccionadaLabel }}</span></span>
                 </div>
-                <flux:button
-                    variant="primary"
-                    icon="plus"
-                    wire:click="crearUnitTray"
-                    class="w-full min-h-[44px] sm:w-auto"
-                >
-                    Nuevo unit tray
-                </flux:button>
+                <div class="flex flex-col gap-2 sm:flex-row">
+                    @if(count($unitTrays) > 0)
+                        <flux:button
+                            variant="ghost"
+                            icon="printer"
+                            wire:click="mostrarQrCaja"
+                            class="w-full min-h-[44px] sm:w-auto"
+                        >
+                            Imprimir QRs de la caja
+                        </flux:button>
+                    @endif
+                    <flux:button
+                        variant="primary"
+                        icon="plus"
+                        wire:click="crearUnitTray"
+                        class="w-full min-h-[44px] sm:w-auto"
+                    >
+                        Nuevo unit tray
+                    </flux:button>
+                </div>
             </div>
 
             <p class="text-xs text-text-secondary">
@@ -366,16 +378,19 @@
                     >
                         Cancelar
                     </flux:button>
+                    {{-- Candado síncrono: wire:loading deja una ventana entre el clic y el inicio
+                         del request donde clics rápidos encolan la acción dos veces (y el segundo
+                         intento pisa el mensaje de éxito con un error). --}}
                     <flux:button
                         variant="primary"
                         icon="check"
-                        wire:click="asignarEspecimenes"
-                        wire:loading.attr="disabled"
-                        wire:target="asignarEspecimenes"
+                        x-data="{ guardando: false }"
+                        x-bind:disabled="guardando"
+                        x-on:click="if (guardando) return; guardando = true; $wire.asignarEspecimenes().finally(() => guardando = false)"
                         class="w-full min-h-[44px] sm:w-auto"
                     >
-                        <span wire:loading.remove wire:target="asignarEspecimenes">Guardar asignación</span>
-                        <span wire:loading wire:target="asignarEspecimenes">Guardando…</span>
+                        <span x-show="! guardando">Guardar asignación</span>
+                        <span x-show="guardando">Guardando…</span>
                     </flux:button>
                 </div>
             </div>
@@ -392,28 +407,75 @@
                 Imprime esta etiqueta y pégala en el unit tray. Siempre es el mismo código: sirve para escanearlo al reubicar.
             </p>
             @if($qrSvg)
-                <div x-data="{
-                        imprimir() {
-                            const w = window.open('', '_blank');
-                            if (! w) { return; }
-                            w.document.write('<div style=\'width:240px\'>' + this.$refs.qr.innerHTML + '</div>');
-                            w.document.close();
-                            w.focus();
-                            w.print();
-                            w.close();
-                        },
-                     }">
+                <div x-data="{ tamanoCm: 2.54, numero: @js($qrTrayNumero) }">
                     <div x-ref="qr" class="flex justify-center rounded-lg border border-border bg-white p-2">
                         {!! $qrSvg !!}
                     </div>
+                    <flux:field class="mt-3 mx-auto max-w-[10rem]">
+                        <flux:label>Tamaño al imprimir (cm)</flux:label>
+                        <flux:input type="number" x-model.number="tamanoCm" min="1" max="10" step="0.5" />
+                    </flux:field>
                     <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-center">
-                        <flux:button variant="primary" icon="printer" x-on:click="imprimir()" class="w-full min-h-[44px] sm:w-auto">
+                        <flux:button
+                            variant="primary"
+                            icon="printer"
+                            x-on:click="imprimirEtiquetas([{ numero: numero, svg: $refs.qr.innerHTML }], tamanoCm)"
+                            class="w-full min-h-[44px] sm:w-auto"
+                        >
                             Imprimir
                         </flux:button>
                         <flux:button variant="ghost" icon="arrow-down-tray"
                                      href="data:image/svg+xml;charset=utf-8,{{ rawurlencode($qrSvg) }}"
                                      download="unit-tray-{{ $qrTrayNumero }}.svg" class="w-full min-h-[44px] sm:w-auto">
                             Descargar
+                        </flux:button>
+                    </div>
+                </div>
+            @endif
+        </div>
+    </flux:modal>
+
+    {{-- Modal: imprimir de una vez los QR de todos los unit trays de la caja, en orden de número --}}
+    <flux:modal wire:model="modalQrCaja" wire:close="cerrarQrCaja" class="w-full max-w-2xl">
+        <div class="space-y-4 p-1">
+            <flux:heading size="lg" class="text-text-primary">QRs de {{ $cajaSeleccionadaLabel }}</flux:heading>
+            <p class="text-sm text-text-secondary">
+                Imprime de una vez las etiquetas de todos los unit trays de esta caja, ordenadas por número.
+            </p>
+
+            @if($qrCajaTrays !== [])
+                <div x-data="{ tamanoCm: 2.54 }">
+                    <flux:field class="max-w-[10rem]">
+                        <flux:label>Tamaño al imprimir (cm)</flux:label>
+                        <flux:input type="number" x-model.number="tamanoCm" min="1" max="10" step="0.5" />
+                    </flux:field>
+
+                    <div x-ref="hoja" class="mt-3 grid max-h-96 grid-cols-3 gap-3 overflow-y-auto rounded-lg border border-border bg-white p-3 sm:grid-cols-4">
+                        @foreach($qrCajaTrays as $t)
+                            <div class="etiqueta-preview flex flex-col items-center gap-1" data-numero="{{ $t['numero'] }}">
+                                {!! $t['svg'] !!}
+                                <span class="text-xs text-text-secondary">N.° {{ $t['numero'] }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+
+                    <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+                        <flux:button variant="ghost" wire:click="cerrarQrCaja" class="w-full min-h-[44px] sm:w-auto">
+                            Cerrar
+                        </flux:button>
+                        <flux:button
+                            variant="primary"
+                            icon="printer"
+                            x-on:click="imprimirEtiquetas(
+                                Array.from($refs.hoja.querySelectorAll('.etiqueta-preview')).map((el) => ({
+                                    numero: el.dataset.numero,
+                                    svg: el.querySelector('svg').outerHTML,
+                                })),
+                                tamanoCm,
+                            )"
+                            class="w-full min-h-[44px] sm:w-auto"
+                        >
+                            Imprimir todas ({{ count($qrCajaTrays) }})
                         </flux:button>
                     </div>
                 </div>
@@ -433,7 +495,8 @@
                 <flux:callout variant="danger" dismissible>{{ $errorMessage }}</flux:callout>
             @endif
 
-            {{-- Escáner por cámara (html5-qrcode): el QR del espécimen codifica su código de catálogo. --}}
+            {{-- Escáner por cámara (html5-qrcode): el QR del espécimen codifica un payload opaco (o su URL de
+                 resolución); también acepta el código de catálogo tecleado a mano como respaldo. --}}
             <div
                 x-data="reubicacionScanner()"
                 x-effect="$wire.modalReubicarEspecimenes || detener()"
@@ -446,15 +509,15 @@
                     <flux:button type="button" size="sm" x-show="escaneando" x-on:click="detener()" icon="x-mark" variant="danger">
                         Detener cámara
                     </flux:button>
-                    {{-- Qué resuelve el próximo escaneo: un espécimen o el unit tray de destino --}}
-                    <flux:button type="button" size="sm" x-on:click="modo = 'especimen'" x-bind:variant="modo === 'especimen' ? 'filled' : 'ghost'">
+                    {{-- Qué resuelve el próximo escaneo: un espécimen o el unit tray de destino (solo tiene sentido con la cámara activa) --}}
+                    <flux:button type="button" size="sm" x-show="escaneando" x-on:click="modo = 'especimen'" x-bind:variant="modo === 'especimen' ? 'filled' : 'ghost'">
                         Escanear espécimen
                     </flux:button>
-                    <flux:button type="button" size="sm" x-on:click="modo = 'destino'" x-bind:variant="modo === 'destino' ? 'filled' : 'ghost'">
+                    <flux:button type="button" size="sm" x-show="escaneando" x-on:click="modo = 'destino'" x-bind:variant="modo === 'destino' ? 'filled' : 'ghost'">
                         Escanear destino
                     </flux:button>
                 </div>
-                <div x-ref="lector" class="mt-3 overflow-hidden rounded-lg"></div>
+                <div x-ref="lector" x-show="escaneando" class="mt-3 w-full overflow-hidden rounded-lg bg-black"></div>
                 <template x-if="error">
                     <p class="mt-2 text-sm text-error" x-text="error"></p>
                 </template>
@@ -511,10 +574,16 @@
                 @endif
                 <flux:select wire:model="trayDestinoReubicar" wire:change="fijarTrayDestino($event.target.value)" placeholder="Selecciona un unit tray...">
                     @foreach($unitTrays as $tray)
-                        <flux:select.option value="{{ $tray['unitTrayId'] }}">N.° {{ $tray['numero'] }} ({{ $tray['totalEspecimenes'] }} especímenes)</flux:select.option>
+                        <flux:select.option value="{{ $tray['unitTrayId'] }}">N.° {{ $tray['numero'] }} — {{ $cajaSeleccionadaLabel }} ({{ $tray['totalEspecimenes'] }} especímenes)</flux:select.option>
                     @endforeach
                 </flux:select>
-                <flux:description>O escanea el QR del unit tray con la cámara de arriba (botón «Escanear destino»).</flux:description>
+                <flux:description>
+                    @if($cajaSeleccionadaLabel)
+                        La lista muestra los unit trays de {{ $cajaSeleccionadaLabel }}. Para otra caja, escanea el QR del unit tray con la cámara de arriba (botón «Escanear destino»).
+                    @else
+                        Selecciona primero una caja arriba, o escanea el QR del unit tray con la cámara de arriba (botón «Escanear destino»).
+                    @endif
+                </flux:description>
             </flux:field>
 
             {{-- Confirmación de advertencia taxonómica suave --}}
@@ -524,9 +593,9 @@
                         Estos especímenes no parecen pertenecer al unit tray de destino según su taxonomía:
                         <span class="font-medium">{{ implode(', ', $reubicacionFueraDeLugar) }}</span>.
                     </p>
-                    <div class="mt-2 flex gap-2">
-                        <flux:button size="sm" variant="primary" wire:click="reubicarEspecimenes(true)" class="min-h-[44px]">Reubicar de todos modos</flux:button>
-                        <flux:button size="sm" variant="ghost" wire:click="cerrarReubicarEspecimenes" class="min-h-[44px]">Cancelar</flux:button>
+                    <div class="mt-2 flex flex-col gap-2 sm:flex-row">
+                        <flux:button size="sm" variant="primary" wire:click="reubicarEspecimenes(true)" class="w-full min-h-[44px] sm:w-auto">Reubicar de todos modos</flux:button>
+                        <flux:button size="sm" variant="ghost" wire:click="cerrarReubicarEspecimenes" class="w-full min-h-[44px] sm:w-auto">Cancelar</flux:button>
                     </div>
                 </flux:callout>
             @endif
@@ -609,12 +678,64 @@
 
 @script
 <script>
+    // Imprime una o varias etiquetas QR ancladas en la esquina de la hoja (nunca centradas ni
+    // perdidas en medio de la página), a tamaño físico configurable. Reusado por el modal de
+    // un solo unit tray y por el de "imprimir todos los de la caja". En window: @@script encierra
+    // el bloque en su propia función, y las expresiones x-on:click de Alpine solo resuelven contra
+    // el scope global.
+    // Escapa para contexto HTML: "numero" solo debería ser un número, pero nunca se interpola
+    // sin escapar (defensa en profundidad si el dato cambiara de fuente más adelante).
+    function escaparHtml(texto) {
+        return String(texto).replace(/[&<>"']/g, (c) => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+        })[c]);
+    }
+
+    window.imprimirEtiquetas = function imprimirEtiquetas(items, tamanoCm) {
+        const w = window.open('', '_blank');
+        if (! w) return;
+        const etiquetas = items.map((it) => `
+            <div class="etiqueta">
+                ${it.svg}
+                <div class="numero">N.° ${escaparHtml(it.numero)}</div>
+            </div>
+        `).join('');
+        w.document.write(`
+            <style>
+                @page { margin: 0; }
+                html, body { margin: 0; padding: 0; }
+                .hoja { padding: 5mm; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 3mm; }
+                .etiqueta { width: ${tamanoCm}cm; page-break-inside: avoid; text-align: center; font-family: sans-serif; }
+                .etiqueta svg { display: block; width: 100%; height: auto; }
+                .etiqueta .numero { margin-top: 1mm; font-size: 8px; }
+            </style>
+            <div class="hoja">${etiquetas}</div>
+        `);
+        w.document.close();
+        w.focus();
+        w.print();
+        w.close();
+    }
+
     // html5-qrcode: escaneo de QR por cámara (iOS + Android) para reubicar especímenes/unit trays.
-    if (! window.Html5QrcodeScanner && ! document.getElementById('html5-qrcode-lib')) {
-        const s = document.createElement('script');
-        s.id = 'html5-qrcode-lib';
-        s.src = 'https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js';
-        document.head.appendChild(s);
+    // ponytail: helper duplicado en este archivo y en mapa/interactivo.blade.php; extraer a JS
+    // compartido solo si aparece un tercer escáner (los app.js del módulo están vacíos hoy).
+    if (! window.cargarHtml5Qrcode) {
+        window.cargarHtml5Qrcode = function () {
+            if (window.Html5Qrcode) return Promise.resolve();
+            return new Promise((resolve, reject) => {
+                let s = document.getElementById('html5-qrcode-lib');
+                if (! s) {
+                    s = document.createElement('script');
+                    s.id = 'html5-qrcode-lib';
+                    s.src = 'https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js';
+                    document.head.appendChild(s);
+                }
+                s.addEventListener('load', () => resolve());
+                s.addEventListener('error', () => reject());
+                if (window.Html5Qrcode) resolve();
+            });
+        };
     }
 
     Alpine.data('reubicacionScanner', () => ({
@@ -624,20 +745,40 @@
         error: null,
         scanner: null,
         ultimo: { texto: null, en: 0 },
-        iniciar() {
+        async iniciar() {
             if (this.escaneando) return;
-            if (! window.Html5QrcodeScanner) {
-                this.error = 'Cargando el escáner… reintenta en un segundo.';
+            this.error = null;
+            try {
+                await window.cargarHtml5Qrcode();
+            } catch (e) {
+                this.error = 'No se pudo cargar el escáner. Revisa tu conexión.';
                 return;
             }
-            this.error = null;
             this.$refs.lector.id = this.$refs.lector.id || ('lector-' + Math.random().toString(36).slice(2));
-            this.scanner = new window.Html5QrcodeScanner(this.$refs.lector.id, { fps: 10, qrbox: 250 }, false);
-            this.scanner.render((texto) => this.onDecode(texto), () => {});
+            // Revela el contenedor ANTES de start(): la librería mide su ancho para el <video>.
             this.escaneando = true;
+            await this.$nextTick();
+            this.scanner = new window.Html5Qrcode(this.$refs.lector.id);
+            try {
+                await this.scanner.start(
+                    { facingMode: 'environment' },
+                    { fps: 10, qrbox: 250 },
+                    (texto) => this.onDecode(texto),
+                    () => {},
+                );
+            } catch (e) {
+                this.escaneando = false;
+                this.scanner = null;
+                this.error = (e && e.name === 'NotAllowedError')
+                    ? 'Permiso de cámara denegado. Habilítalo en el navegador.'
+                    : 'No se pudo abrir la cámara trasera.';
+            }
         },
-        detener() {
-            if (this.scanner) { try { this.scanner.clear(); } catch (e) {} this.scanner = null; }
+        async detener() {
+            if (this.scanner) {
+                try { await this.scanner.stop(); this.scanner.clear(); } catch (e) {}
+                this.scanner = null;
+            }
             this.escaneando = false;
         },
         onDecode(texto) {

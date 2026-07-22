@@ -7,11 +7,10 @@ namespace Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarSoli
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\GeneradorCodigoPrestamo;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
-use Modules\GestionPrestamosRecepciones\Domain\Entities\ItemPrestamo;
+use Modules\GestionPrestamosRecepciones\Application\Services\ResolverItemsSolicitud;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\SolicitudPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\AlcancePrestamo;
-use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ItemPrestamoId;
 
 /**
  * Registra una nueva solicitud de préstamo de especímenes.
@@ -26,6 +25,7 @@ final class RegistrarSolicitudPrestamoHandler
         private readonly GeneradorCodigoPrestamo $generadorCodigo,
         private readonly EventPublisherPort $publisher,
         private readonly TransactionManagerPort $transactionManager,
+        private readonly ResolverItemsSolicitud $resolverItems,
     ) {}
 
     /**
@@ -37,14 +37,9 @@ final class RegistrarSolicitudPrestamoHandler
         $id = $this->repo->nextIdentity();
         $codigoPrestamo = $this->generadorCodigo->siguiente();
 
-        $items = array_map(
-            fn (array $item) => ItemPrestamo::crear(
-                id: ItemPrestamoId::generate(),
-                especimenCodigoExterno: $item['especimen_codigo_externo'],
-                cantidadSolicitada: (int) $item['cantidad_solicitada'],
-            ),
-            $input->items
-        );
+        // Contrasta contra el catálogo antes de persistir: valida disponibilidad
+        // y cantidad, y congela el snapshot de cada espécimen.
+        $items = $this->resolverItems->resolver($input->items);
 
         $solicitud = SolicitudPrestamo::crear(
             id: $id,

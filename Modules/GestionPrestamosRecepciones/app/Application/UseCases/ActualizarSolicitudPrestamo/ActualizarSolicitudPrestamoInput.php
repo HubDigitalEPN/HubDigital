@@ -10,7 +10,7 @@ namespace Modules\GestionPrestamosRecepciones\Application\UseCases\ActualizarSol
 final readonly class ActualizarSolicitudPrestamoInput
 {
     /**
-     * @param  list<array{id?: string, especimen_codigo_externo: string, cantidad_solicitada: int}>  $items
+     * @param  list<array{id?: string, especimen_id: string, cantidad_solicitada: int}>  $items  El código y el nombre científico se resuelven contra el catálogo, no se aceptan del cliente.
      */
     public function __construct(
         public string $solicitudId,

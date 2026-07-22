@@ -17,7 +17,8 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoNormalizaci
  * Campos normalizados:
  *  - sex          : aliases en español/abreviatura → vocabulario DwC
  *  - lifeStage    : aliases en español             → vocabulario DwC
- *  - decimalLatitude / decimalLongitude : coma → punto + redondeo a 4 decimales
+ *  - decimalLatitude / decimalLongitude : coma → punto; exige rango válido
+ *    (lat −90/90, lon −180/180) y entre 1 y 4 decimales (marca inválido si no)
  */
 final class NormalizadorCamposDwC
 {
@@ -112,11 +113,7 @@ final class NormalizadorCamposDwC
         }
 
         $original = $registro[$campo];
-        $valor = $original;
-
-        if (is_string($valor)) {
-            $valor = str_replace(',', '.', trim($valor));
-        }
+        $valor = is_string($original) ? str_replace(',', '.', trim($original)) : $original;
 
         if (! is_numeric($valor)) {
             return [$registro, [[
@@ -125,6 +122,18 @@ final class NormalizadorCamposDwC
                 'normalizado' => null,
                 'invalido' => true,
                 'mensaje' => 'No es un valor numérico válido',
+            ]]];
+        }
+
+        // Precisión geográfica exigida: entre 1 y 4 decimales.
+        $decimales = $this->contarDecimales((string) $valor);
+        if ($decimales < 1 || $decimales > 4) {
+            return [$registro, [[
+                'campo' => $campo,
+                'original' => $original,
+                'normalizado' => null,
+                'invalido' => true,
+                'mensaje' => 'Debe tener entre 1 y 4 decimales',
             ]]];
         }
 
@@ -160,6 +169,16 @@ final class NormalizadorCamposDwC
             'original' => $original,
             'normalizado' => $normalizado,
         ]]];
+    }
+
+    /**
+     * Cuenta los dígitos decimales de un valor numérico ya normalizado (con punto).
+     */
+    private function contarDecimales(string $valor): int
+    {
+        $pos = strpos($valor, '.');
+
+        return $pos === false ? 0 : strlen(substr($valor, $pos + 1));
     }
 
     /**
