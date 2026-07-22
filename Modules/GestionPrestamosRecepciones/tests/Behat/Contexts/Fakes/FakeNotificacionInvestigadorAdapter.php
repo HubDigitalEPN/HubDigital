@@ -42,4 +42,14 @@ final class FakeNotificacionInvestigadorAdapter implements NotificacionInvestiga
     {
         return self::REFERENCIA;
     }
+
+    public function notificarCorreccionCuratorial(
+        string $solicitudId,
+        string $investigadorId,
+        string $campo,
+        ?string $valorAnterior,
+        ?string $valorNuevo,
+    ): string {
+        return self::REFERENCIA;
+    }
 }

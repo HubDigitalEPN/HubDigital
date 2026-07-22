@@ -421,6 +421,16 @@
                             }
                         }
 
+                        // Correcciones que curaduría aplicó sobre celdas con formato anómalo.
+                        // Se muestran siempre: el depositante firmó esta matriz y tiene derecho
+                        // a saber qué se tocó después, quién y cuándo.
+                        $correccionesCuraduria = [];
+                        foreach ($registros as $reg) {
+                            foreach ($reg->correccionesCuratoriales() as $c) {
+                                $correccionesCuraduria[] = $c + ['especie' => $reg->nombreCientifico()];
+                            }
+                        }
+
                         $nCorregidos     = count($listaCorregidos);
                         $nRevision       = count($listaRevision);
                         $sinExcepciones  = $nCorregidos === 0 && $nRevision === 0;
@@ -444,6 +454,40 @@
                             </span>
                         </div>
                         <flux:separator />
+
+                        {{-- Correcciones aplicadas por curaduría sobre celdas con formato anómalo.
+                             Transparencia obligatoria: el depositante firmó esta matriz. --}}
+                        @if($correccionesCuraduria !== [])
+                            <div class="rounded-lg border border-info/30 bg-info/5 p-4 space-y-2.5">
+                                <div class="flex items-start gap-2.5">
+                                    <flux:icon name="pencil-square" class="size-4 text-info shrink-0 mt-0.5" />
+                                    <div>
+                                        <p class="text-sm font-medium text-text-primary">
+                                            Curaduría corrigió {{ count($correccionesCuraduria) }}
+                                            {{ count($correccionesCuraduria) === 1 ? 'dato de formato' : 'datos de formato' }}
+                                        </p>
+                                        <p class="text-xs text-text-secondary mt-0.5">
+                                            Se ajustaron para que la matriz cumpla el estándar, sin devolverte la solicitud.
+                                            La identificación de las especies no se modificó.
+                                        </p>
+                                    </div>
+                                </div>
+                                <ul class="space-y-1.5 pl-7">
+                                    @foreach($correccionesCuraduria as $c)
+                                        <li class="text-xs text-text-secondary">
+                                            <span class="font-medium text-text-primary">{{ $c['campo'] }}</span>
+                                            en <span class="font-serif italic">{{ $c['especie'] }}</span>:
+                                            <span class="line-through">{{ $c['anterior'] ?? '—' }}</span>
+                                            <flux:icon name="arrow-right" class="inline size-3" />
+                                            <span class="font-medium text-bio-green">{{ $c['nuevo'] }}</span>
+                                            <span class="text-text-secondary/70">
+                                                · {{ \Modules\GestionPrestamosRecepciones\Presentation\Support\FechaEcuador::formatear(new \DateTimeImmutable($c['corregidoEn'])) }}
+                                            </span>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
 
                         {{-- Contadores --}}
                         <div class="flex flex-wrap gap-2">

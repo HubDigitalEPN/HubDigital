@@ -10,6 +10,7 @@ use Illuminate\Support\Str;
 use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionInvestigadorPort;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\ActaRecepcionFirmadaNotification;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\CodigoQrDisponibleNotification;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\CorreccionCuratorialNotification;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\OrdenAccionCorrectivaNotification;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\RecepcionConObservacionesNotification;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\RecepcionFinalizadaNotification;
@@ -43,6 +44,24 @@ final class NotificacionInvestigadorAdapter implements NotificacionInvestigadorP
             numero: $deposito?->numero,
             comentario: $comentario,
         ), 'Rechazo de solicitud', $solicitudId);
+    }
+
+    public function notificarCorreccionCuratorial(
+        string $solicitudId,
+        string $investigadorId,
+        string $campo,
+        ?string $valorAnterior,
+        ?string $valorNuevo,
+    ): string {
+        $deposito = SolicitudDepositoEloquentModel::find($solicitudId);
+
+        return $this->notificar($investigadorId, new CorreccionCuratorialNotification(
+            solicitudId: $solicitudId,
+            numero: $deposito?->numero,
+            campo: $campo,
+            valorAnterior: $valorAnterior,
+            valorNuevo: $valorNuevo,
+        ), 'Corrección de curaduría', $solicitudId);
     }
 
     public function notificarRecepcionFinalizada(string $solicitudId, string $investigadorId, string $estadoColeccion): string
