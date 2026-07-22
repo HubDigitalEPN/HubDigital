@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Infrastructure\Listeners;
 
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 use Modules\GestionPrestamosRecepciones\Application\Ports\IngresoColeccionPort;
 use Modules\GestionPrestamosRecepciones\Domain\Events\RecepcionLoteVerificadaConObservaciones;
@@ -13,34 +12,33 @@ use Modules\GestionPrestamosRecepciones\Domain\Events\RecepcionLoteVerificadaFis
 /**
  * Traspasa a la colección los especímenes de un lote cuya recepción física se aprobó.
  *
- * Va en cola a propósito: la matriz puede traer miles de filas y la base está en otra
- * región, así que hacerlo dentro de la petición dejaría al curador esperando delante de
- * una pantalla congelada. El precio es que el ingreso no es inmediato, y por eso el
- * caso de uso de destino es idempotente: si el job se reintenta, no duplica el lote.
+ * Se ejecuta de forma síncrona, dentro de la misma petición que aprueba la recepción.
+ *
+ * La idea inicial fue encolarlo, suponiendo que una matriz grande congelaría la
+ * pantalla del curador. Al medirlo resultó falso: de los 3.002 ms que tardó el ingreso
+ * de 13 especímenes, 2.820 ms eran coste fijo de red contra la base (que vive en otra
+ * región) y las inserciones van agrupadas de 500 en 500. Es decir, el coste apenas
+ * depende del número de filas, así que el motivo para encolarlo no se sostenía.
+ *
+ * Además la entrega en cola no llegaba a funcionar: en el proceso de `queue:work` el
+ * proveedor del módulo no se registra —no figura en bootstrap/cache/services.php,
+ * nwidart los carga por su propia vía— y resolver IngresoColeccionPort revienta con
+ * BindingResolutionException, aunque el mismo enlace resuelva en tinker, consola y web.
+ * Si algún día una matriz justifica volver a la cola, hay que resolver eso primero.
+ *
+ * El caso de uso de destino es idempotente igualmente: aprobar dos veces no duplica.
  */
-final class IngresarLoteEnColeccionListener implements ShouldQueue
+final class IngresarLoteEnColeccionListener
 {
-    /**
-     * PENDIENTE — la entrega en cola todavía no funciona.
-     *
-     * En el proceso de `queue:work` el proveedor del módulo no llega a registrarse:
-     * no figura en bootstrap/cache/services.php (nwidart los carga por su propia vía)
-     * y la resolución de IngresoColeccionPort revienta con BindingResolutionException.
-     * El mismo enlace resuelve sin problema en cualquier otro proceso —tinker, consola,
-     * peticiones web—, y este es el primer listener en cola del proyecto, así que el
-     * hueco nunca se había ejercitado. Resolver el puerto aquí en vez de por constructor
-     * tampoco lo evita: el contenedor del worker sencillamente no tiene el enlace.
-     *
-     * La cadena de ingesta en sí está verificada contra datos reales ejecutándola de
-     * forma síncrona (13 especímenes del depósito MEPN-INV-DEP-00002, idempotente al
-     * repetirla). Lo que falta es que el worker vea los enlaces del módulo.
-     */
+    public function __construct(
+        private readonly IngresoColeccionPort $ingresoColeccion,
+    ) {}
+
     public function handle(RecepcionLoteVerificadaFisicamente|RecepcionLoteVerificadaConObservaciones $event): void
     {
-        $ingresoColeccion = app(IngresoColeccionPort::class);
         $solicitudId = (string) $event->solicitudId;
 
-        $resultado = $ingresoColeccion->ingresarLote(
+        $resultado = $this->ingresoColeccion->ingresarLote(
             solicitudId: $solicitudId,
             estadoColeccion: $event->estadoColeccion->value,
         );

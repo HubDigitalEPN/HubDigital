@@ -20,10 +20,10 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
  * investigador.
  *
  * El ingreso de los especímenes a la colección NO ocurre aquí: lo hace el listener
- * IngresarLoteEnColeccionListener en cola, al recibir el evento que este caso de uso
- * publica (se nombra sin importar para no acoplar Application a Infrastructure). Es asíncrono a propósito
- * —una matriz puede traer miles de filas— así que tras aprobar la recepción los
- * especímenes tardan un momento en aparecer en la colección.
+ * IngresarLoteEnColeccionListener al recibir el evento que este caso de uso publica
+ * (se nombra sin importar para no acoplar Application a Infrastructure). Ocurre de
+ * forma síncrona, dentro de la misma petición, así que al volver de este caso de uso
+ * los especímenes ya están en la colección.
  */
 final class AprobarRecepcionLoteHandler
 {
