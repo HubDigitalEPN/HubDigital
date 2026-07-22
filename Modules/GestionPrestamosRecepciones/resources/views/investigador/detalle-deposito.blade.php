@@ -264,6 +264,12 @@
                                         Anomalía: <span class="font-medium text-text-primary">{{ $recepcion->motivoFallo }}</span>.
                                         Acción correctiva: <span class="font-medium text-text-primary">{{ $recepcion->accionCorrectiva }}</span>.
                                     </flux:text>
+                                @elseif($deposito->estado === 'Devuelta')
+                                    <flux:text class="text-text-secondary text-sm">
+                                        Tus muestras fueron
+                                        <span class="font-medium text-text-primary">devueltas al depositante</span>
+                                        y ya no forman parte de la colección.
+                                    </flux:text>
                                 @else
                                     <flux:text class="text-text-secondary text-sm">
                                         Tus muestras fueron recibidas e ingresan a la colección en estado
