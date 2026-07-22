@@ -301,10 +301,16 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
             return [];
         }
 
+        // Filtrar por rango='especie' evita colisión cuando el mismo occurrence_id tiene
+        // múltiples filas en taxonomia.especimenes con distinto taxon_id (rango).
+        // Sin este filtro, el indexado $porOccurrenceId sobrescribe la fila-especie con
+        // otras de rangos superiores, y el divulgable termina apuntando a un UUID cuyo
+        // taxon no es especie → invisible en la tabla de divulgados.
         $filas = DB::table('taxonomia.especimenes as e')
             ->join('taxonomia.taxones as t', 't.id', '=', 'e.taxon_id')
             ->leftJoin('taxonomia.muestras_colecta as mc', 'mc.id', '=', 'e.muestra_id')
             ->whereIn('e.occurrence_id', $occurrenceIds)
+            ->where('t.rango', 'especie')
             ->select([
                 'e.id',
                 'e.occurrence_id',

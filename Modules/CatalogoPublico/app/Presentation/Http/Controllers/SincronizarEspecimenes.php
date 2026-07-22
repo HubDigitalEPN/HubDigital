@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\CatalogoPublico\Presentation\Http\Controllers;
 
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -296,14 +297,35 @@ final class SincronizarEspecimenes extends Component
     }
 
     /**
-     * IDs de espécimen (taxonomia.especimenes.id) ya sincronizados con divulgación.
-     * Cacheado en el request — Livewire lo re-lee entre requests, que es lo esperado
-     * para reflejar cambios recientes.
+     * IDs de espécimen (taxonomia.especimenes.id) a excluir del listado de pendientes.
+     *
+     * Devuelve TODOS los UUIDs de taxonomia.especimenes que comparten occurrence_id con
+     * cualquier divulgable existente — no solo el UUID persistido en la fila divulgable.
+     * Necesario porque taxonomia.especimenes.occurrence_id NO es único (mismo
+     * occurrence_id puede tener múltiples filas con distinto taxon_id), y si excluyéramos
+     * solo el UUID divulgado, los demás UUIDs del mismo occurrence_id aparecerían como
+     * pendientes y el usuario "re-divulgaría" el mismo ejemplar en bucle.
      */
     #[Computed]
     public function sincronizadosIds(): array
     {
-        return EspecimenDivulgableEloquentModel::pluck('especimen_id')->all();
+        return DB::table('taxonomia.especimenes as e')
+            ->join(
+                'taxonomia.especimenes as e_div',
+                'e_div.occurrence_id',
+                '=',
+                'e.occurrence_id'
+            )
+            ->join(
+                'divulgacion.especimenes_divulgables as ed',
+                'ed.especimen_id',
+                '=',
+                'e_div.id'
+            )
+            ->whereNotNull('e.occurrence_id')
+            ->distinct()
+            ->pluck('e.id')
+            ->all();
     }
 
     /**
