@@ -1,7 +1,7 @@
 <div class="space-y-6 p-4 sm:p-6 max-w-5xl">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Publicación GBIF</flux:heading>
+            <flux:heading size="xl" level="1" class="font-display text-blue-navy font-bold">Publicación GBIF</flux:heading>
             <p class="text-sm text-text-secondary mt-1">
                 Datos de tu museo/colección que se necesitan una sola vez para poder publicar en GBIF.
                 @if($existeConfig)

@@ -1,6 +1,6 @@
 <div class="space-y-6 p-4 sm:p-6">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Taxones</flux:heading>
+        <flux:heading size="xl" level="1" class="font-display text-blue-navy font-bold">Taxones</flux:heading>
         <flux:button icon="plus" variant="primary" wire:click="abrirModal" class="w-full sm:w-auto">
             Nuevo taxón
         </flux:button>

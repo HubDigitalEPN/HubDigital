@@ -1,7 +1,7 @@
 <div class="space-y-6 p-4 sm:p-6">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Taxones por confirmar</flux:heading>
+            <flux:heading size="xl" level="1" class="font-display text-blue-navy font-bold">Taxones por confirmar</flux:heading>
             <p class="text-sm text-text-secondary mt-1">
                 Nombres de taxón tal como venían en el Excel, sin enlazar a un taxón del catálogo.
                 Elige el nombre correcto (te sugerimos candidatos, o búscalo tú), y aplícalo a todo el

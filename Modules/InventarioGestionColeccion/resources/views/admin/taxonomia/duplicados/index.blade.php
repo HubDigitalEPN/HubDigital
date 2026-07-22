@@ -1,7 +1,7 @@
 <div class="space-y-6 p-4 sm:p-6">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Números de catálogo duplicados</flux:heading>
+            <flux:heading size="xl" level="1" class="font-display text-blue-navy font-bold">Números de catálogo duplicados</flux:heading>
             <p class="text-sm text-text-secondary mt-1">
                 Grupos de especímenes que comparten el mismo número de catálogo. Decide si son eventos
                 legítimos distintos o un error de catalogación.
