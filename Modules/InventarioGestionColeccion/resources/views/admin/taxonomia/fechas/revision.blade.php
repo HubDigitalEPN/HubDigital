@@ -44,7 +44,7 @@
     @forelse($items as $idx => $item)
         @php
             $abierto = ! empty($expandido[$idx]);
-            $seleccionados = count($seleccion[$idx] ?? []);
+            $seleccionados = count(is_array($seleccion[$idx] ?? null) ? $seleccion[$idx] : []);
             $mensajeConfirmar = $abierto
                 ? "Vas a asignar la fecha a {$seleccionados} espécimen(es) seleccionado(s). ¿Continuar?"
                 : "Vas a asignar la fecha a los {$item['totalEspecimenes']} espécimen(es) del grupo. ¿Continuar?";

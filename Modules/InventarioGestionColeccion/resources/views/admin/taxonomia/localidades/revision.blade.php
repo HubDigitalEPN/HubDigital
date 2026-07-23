@@ -126,7 +126,7 @@
     @forelse($items as $idx => $item)
         @php
             $abierto = ! empty($expandido[$idx]);
-            $seleccionados = count($seleccion[$idx] ?? []);
+            $seleccionados = count(is_array($seleccion[$idx] ?? null) ? $seleccion[$idx] : []);
             $mensajeConfirmar = $abierto
                 ? "Vas a enlazar {$seleccionados} espécimen(es) seleccionado(s) a «{$item['localidadSeleccionadaNombre']}». ¿Continuar?"
                 : "Vas a enlazar los {$item['totalEspecimenes']} espécimen(es) del grupo a «{$item['localidadSeleccionadaNombre']}». ¿Continuar?";
