@@ -22,7 +22,7 @@
             <flux:heading size="lg" level="2" class="font-display">Matriz de especies</flux:heading>
             <flux:text class="text-text-secondary text-sm mt-1">
                 Carga la matriz <strong>Darwin Core</strong> de tus especímenes. El sistema valida la integridad
-                de campos y la consistencia taxonómica contra el catálogo de curaduría.
+                de campos y la consistencia taxonómica contra el catálogo mundial de GBIF.
             </flux:text>
         </div>
         <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border border-science-blue/30 bg-science-blue/5 text-science-blue whitespace-nowrap self-start">
@@ -72,7 +72,7 @@
             <flux:icon name="arrow-path" class="size-8 text-science-blue animate-spin" />
             <div class="text-center space-y-1">
                 <p class="text-sm font-semibold text-text-primary">Procesando matriz de especies</p>
-                <p class="text-xs text-text-secondary">Validando campos Darwin Core y consistencia taxonómica contra el catálogo...</p>
+                <p class="text-xs text-text-secondary">Validando campos Darwin Core y consistencia taxonómica contra GBIF...</p>
             </div>
         </div>
     </div>
@@ -157,7 +157,7 @@
                         @if($esDonacion)
                             Transferencia por donación — se omite la validación de inconsistencias tipográficas.
                         @else
-                            Revisa cada espécimen contra el catálogo de referencia de la colección.
+                            Revisa cada espécimen contra el catálogo taxonómico mundial de GBIF.
                         @endif
                     </flux:text>
                 </div>
@@ -196,7 +196,7 @@
                         <flux:heading size="lg">Aceptar todas las sugerencias</flux:heading>
                         <flux:text class="text-text-secondary mt-1">
                             Se aplicarán <strong>{{ $pendientesConSugerencia->count() }}</strong> correcciones
-                            tipográficas sugeridas por el catálogo de referencia. Esta acción se puede deshacer
+                            tipográficas sugeridas por el catálogo de GBIF. Esta acción se puede deshacer
                             individualmente después.
                         </flux:text>
                     </div>
@@ -372,7 +372,7 @@
                     <flux:callout variant="success" icon="check-circle">
                         <flux:heading>Matriz validada técnicamente</flux:heading>
                         <flux:text class="text-sm">
-                            Todos los especímenes coinciden con el catálogo de referencia. La matriz está lista para el envío.
+                            Todos los especímenes coinciden con el catálogo de GBIF. La matriz está lista para el envío.
                         </flux:text>
                     </flux:callout>
                 @else

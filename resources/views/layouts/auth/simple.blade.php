@@ -10,15 +10,10 @@
         <div class="relative flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
             <div class="flex w-full max-w-md flex-col gap-6">
 
-                {{-- Brand --}}
-                <a href="{{ route('home') }}" class="flex items-center justify-center gap-3" wire:navigate>
-                    <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-navy shadow-sm">
-                        <x-app-logo-icon class="size-6 fill-current text-white" />
-                    </span>
-                    <div class="flex flex-col">
-                        <span class="font-display text-lg font-bold leading-tight text-blue-navy">Hub Digital</span>
-                        <span class="text-xs leading-tight text-text-secondary">Laboratorio de Especímenes</span>
-                    </div>
+                {{-- Brand: lockup oficial de Hub Digital --}}
+                <a href="{{ route('home') }}" class="flex items-center justify-center" wire:navigate>
+                    <img src="{{ asset('images/hub-logo.png') }}" alt="Hub Digital · Laboratorio de Invertebrados"
+                         class="h-16 w-auto" />
                 </a>
 
                 {{-- Card --}}

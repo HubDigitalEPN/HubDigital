@@ -1,7 +1,7 @@
 <div class="space-y-6 p-4 sm:p-6">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-            <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Localidades</flux:heading>
+            <flux:heading size="xl" level="1" class="font-display text-blue-navy font-bold">Localidades</flux:heading>
             <p class="text-sm text-text-secondary mt-1">Cada lugar se muestra una sola vez por nombre y rango.</p>
         </div>
         <flux:button icon="plus" variant="primary" wire:click="abrirModal" class="w-full sm:w-auto">

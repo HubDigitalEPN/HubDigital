@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers;
 
-use App\Enums\RolUsuario;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarActaDocumento\ConsultarActaDocumentoHandler;
@@ -33,7 +32,7 @@ final class VerActaEmbed
         }
 
         $user = auth()->user();
-        $esCurador = $user?->rol === RolUsuario::CURADOR;
+        $esCurador = $user?->esCurador() ?? false;
         $esDueno = $acta->investigadorId === (string) $user?->id;
 
         if (! $esCurador && ! $esDueno) {

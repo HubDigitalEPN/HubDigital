@@ -671,11 +671,65 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
         return $existentes;
     }
 
+    /** @param string[] $codigos */
+    public function marcarDevueltosPorCodigosCatalogo(array $codigos, \DateTimeImmutable $devueltoEn): int
+    {
+        $buscados = array_flip($codigos);
+        $marcados = 0;
+        foreach ($this->store as $especimen) {
+            if (! isset($buscados[$especimen->codigoCatalogo()])) {
+                continue;
+            }
+            if ($especimen->estadoCustodia()?->esDevolutivo() !== true) {
+                continue;
+            }
+            $especimen->marcarComoDevuelto($devueltoEn);
+            $marcados++;
+        }
+
+        return $marcados;
+    }
+
     public function guardarBatch(array $especimenes): void
     {
         foreach ($especimenes as $especimen) {
             $this->guardar($especimen);
         }
+    }
+
+    /** @param string[] $codigos
+     *  @return array{total: int, pendientesRevision: int} */
+    public function resumenPorCodigosCatalogo(array $codigos): array
+    {
+        $buscados = array_flip($codigos);
+        $total = 0;
+        $pendientes = 0;
+        foreach ($this->store as $especimen) {
+            if (! isset($buscados[$especimen->codigoCatalogo()])) {
+                continue;
+            }
+            $total++;
+            if ($especimen->estadoRevision()->value === 'pendiente') {
+                $pendientes++;
+            }
+        }
+
+        return ['total' => $total, 'pendientesRevision' => $pendientes];
+    }
+
+    /** @param string[] $codigos
+     *  @return string[] */
+    public function codigosCatalogoExistentes(array $codigos): array
+    {
+        $buscados = array_flip($codigos);
+        $existentes = [];
+        foreach ($this->store as $especimen) {
+            if (isset($buscados[$especimen->codigoCatalogo()])) {
+                $existentes[] = $especimen->codigoCatalogo();
+            }
+        }
+
+        return array_values(array_unique($existentes));
     }
 
     /** @return Especimen[] */

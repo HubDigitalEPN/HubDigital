@@ -9,11 +9,11 @@
             {{-- Marca --}}
             <div class="mb-4 flex items-center gap-2.5">
                 <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-navy shadow-sm">
-                    <x-app-logo-icon class="size-5 fill-current text-white" />
+                    <x-app-logo-icon class="size-6 fill-current text-white" />
                 </span>
                 <div class="flex flex-col leading-tight">
                     <span class="font-serif text-sm font-bold text-blue-navy">Hub Digital</span>
-                    <span class="text-[0.625rem] font-medium uppercase tracking-wider text-text-secondary">Colección Entomológica</span>
+                    <span class="text-[0.625rem] font-medium uppercase tracking-wider text-text-secondary">Laboratorio de Invertebrados</span>
                 </div>
             </div>
 

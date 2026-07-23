@@ -22,7 +22,7 @@
 
 <div class="space-y-6 p-4 sm:p-6 max-w-5xl">
     <div>
-        <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Columnas de la tabla</flux:heading>
+        <flux:heading size="xl" level="1" class="font-display text-blue-navy font-bold">Columnas de la tabla</flux:heading>
         <p class="text-sm text-text-secondary mt-1">
             Cambia la importancia (color) de cada columna por pantalla. Los cambios son globales: cualquier
             curador autorizado puede modificarlos y todos verán la nueva clasificación.

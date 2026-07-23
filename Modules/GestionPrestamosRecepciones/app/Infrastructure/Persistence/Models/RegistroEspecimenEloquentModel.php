@@ -33,12 +33,14 @@ final class RegistroEspecimenEloquentModel extends Model
         'comentario_justificacion',
         'datos_dwc',
         'normalizaciones',
+        'correcciones_curatoriales',
     ];
 
     protected $casts = [
         'no_catalogado' => 'boolean',
         'datos_dwc' => 'array',
         'normalizaciones' => 'array',
+        'correcciones_curatoriales' => 'array',
     ];
 
     /**

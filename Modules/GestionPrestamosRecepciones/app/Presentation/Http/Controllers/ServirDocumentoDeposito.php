@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers;
 
-use App\Enums\RolUsuario;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
@@ -28,7 +27,7 @@ final class ServirDocumentoDeposito
         $deposito = SolicitudDepositoEloquentModel::find($id);
         abort_if($deposito === null, 404);
 
-        $esCurador = $user?->rol === RolUsuario::CURADOR;
+        $esCurador = $user?->esCurador() ?? false;
         $esDueno = (string) $deposito->investigador_id === (string) $user?->id;
         abort_unless($esCurador || $esDueno, 403);
 

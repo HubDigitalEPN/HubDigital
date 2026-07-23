@@ -11,6 +11,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
 use Livewire\WithFileUploads;
+use Modules\GestionPrestamosRecepciones\Application\Ports\IngresoColeccionPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\UsuarioNombrePort;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AceptarRecepcionConObservaciones\AceptarRecepcionConObservacionesHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AceptarRecepcionConObservaciones\AceptarRecepcionConObservacionesInput;
@@ -22,6 +23,8 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\IniciarRecepcionLot
 use Modules\GestionPrestamosRecepciones\Application\UseCases\IniciarRecepcionLote\IniciarRecepcionLoteInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarRecepcionLote\RechazarRecepcionLoteHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarRecepcionLote\RechazarRecepcionLoteInput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ReintentarRecepcionLote\ReintentarRecepcionLoteHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ReintentarRecepcionLote\ReintentarRecepcionLoteInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\SubirActaRecepcionFirmada\SubirActaRecepcionFirmadaHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\SubirActaRecepcionFirmada\SubirActaRecepcionFirmadaInput;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ItemChecklistRecepcion;
@@ -118,6 +121,22 @@ final class RecepcionFisicaLote extends Component
         $this->dispatch('toast', message: 'Recepción suspendida. Se emitió la orden de acción correctiva.');
     }
 
+    /**
+     * Reabre la verificación de un lote suspendido para volver a evaluarlo con el mismo
+     * Código QR, una vez subsanada la anomalía.
+     */
+    public function reintentar(ReintentarRecepcionLoteHandler $handler): void
+    {
+        ($handler)(new ReintentarRecepcionLoteInput(
+            solicitudId: $this->id,
+            curadorId: (string) auth()->id(),
+        ));
+
+        $this->conforme = [0 => false, 1 => false, 2 => false, 3 => false];
+        $this->motivoFallo = '';
+        $this->dispatch('toast', message: 'Recepción reabierta. Vuelve a verificar el lote.');
+    }
+
     public function aceptarConObservaciones(AceptarRecepcionConObservacionesHandler $handler): void
     {
         $itemsNoConformes = [];
@@ -177,7 +196,7 @@ final class RecepcionFisicaLote extends Component
         $this->dispatch('toast', message: 'Acta firmada cargada. El depositante ya puede descargarla.');
     }
 
-    public function render(ConsultarDetalleRecepcionHandler $detalle): View
+    public function render(ConsultarDetalleRecepcionHandler $detalle, IngresoColeccionPort $ingresoColeccion): View
     {
         $recepcion = $detalle->handle(new ConsultarDetalleRecepcionInput($this->id));
         abort_if($recepcion === null, 404);
@@ -190,6 +209,9 @@ final class RecepcionFisicaLote extends Component
         return view('gestionprestamosrecepciones::curador.recepcion-fisica-lote', [
             'recepcion' => $recepcion,
             'items' => $items,
+            // Se consulta la colección en vivo: la pantalla dice lo que hay, no lo que
+            // se esperaba que hubiera.
+            'ingreso' => $ingresoColeccion->resumenDeLote($this->id),
         ]);
     }
 }

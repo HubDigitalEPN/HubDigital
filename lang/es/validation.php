@@ -189,5 +189,50 @@ return [
         'documentos_adjuntos' => 'documentos adjuntos',
         'nombre_en_documento' => 'nombre en el documento',
         'nombre_perfil' => 'nombre de perfil',
+
+        // Cuenta y acceso
+        'first_name' => 'nombre',
+        'last_name' => 'apellido',
+        'email' => 'correo electrónico',
+        'password' => 'contraseña',
+        'password_confirmation' => 'confirmación de contraseña',
+        'contrasenia' => 'contraseña',
+        'role' => 'propósito',
+        'cargo' => 'cargo',
+        'institucion' => 'institución',
+
+        // Registro de solicitud de depósito
+        'origenRecoleccion' => 'procedencia de los especímenes',
+        'situacionRegulatoria' => 'situación regulatoria',
+        'provincia' => 'zona de recolección',
+        'nombreEnDocumento' => 'nombre en el documento',
+        'archivoMatriz' => 'matriz de especies',
+        'declaracionAceptada' => 'declaración',
+
+        // Revisión de curaduría y recepción física
+        'motivoRechazo' => 'motivo del rechazo',
+        'tipoRechazo' => 'tipo de rechazo',
+        'comentarioRechazo' => 'comentario del rechazo',
+        'motivoFallo' => 'motivo del fallo',
+        'motivoObservacion' => 'motivo de la observación',
+        'comentarioObservacion' => 'comentario',
+        'actaFirmadaFile' => 'acta firmada',
+        'pdfFirmado' => 'PDF firmado',
+        'firmaBase64' => 'firma',
+        'documentoIdentidadSolo' => 'documento de identidad',
+        'documentoExportacion' => 'documento de exportación',
+
+        // Préstamos
+        'tituloEstudio' => 'título del estudio',
+        'lineaInvestigacion' => 'línea de investigación',
+        'propositoPrestamo' => 'propósito del préstamo',
+        'alcancePrestamo' => 'alcance del préstamo',
+        'tipoPrestamo' => 'tipo de préstamo',
+        'institucionAdscripcion' => 'institución de adscripción',
+        'justificacion' => 'justificación',
+        'motivoDevolucion' => 'motivo de la devolución',
+        'duracionPropuestaMeses' => 'duración propuesta',
+        'duracionPersonalizadaMeses' => 'duración personalizada',
+        'nuevaFechaFin' => 'nueva fecha de fin',
     ],
 ];

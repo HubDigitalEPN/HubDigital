@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers;
 
-use App\Enums\RolUsuario;
 use Illuminate\Contracts\View\View;
 use Modules\GestionPrestamosRecepciones\Application\Ports\UsuarioNombrePort;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
@@ -26,13 +25,13 @@ final class ImprimirQrDeposito
         $deposito = SolicitudDepositoEloquentModel::find($id);
         abort_if($deposito === null, 404);
 
-        $esCurador = $user?->rol === RolUsuario::CURADOR;
+        $esCurador = $user?->esCurador() ?? false;
         $esDueno = (string) $deposito->investigador_id === (string) $user?->id;
         abort_unless($esCurador || $esDueno, 403);
 
         abort_if(($deposito->codigo_qr ?? '') === '', 404);
 
-        return view('gestionprestamosrecepciones::curador.qr-pdf', [
+        return view('gestionprestamosrecepciones::curador.qr-imprimible', [
             'codigo' => $deposito->codigo_qr,
             'qrBase64' => base64_encode(GeneradorQrSvg::svg(route('prestamos.lote.resolver', $deposito->codigo_qr), 360)),
             'numero' => $deposito->numero,

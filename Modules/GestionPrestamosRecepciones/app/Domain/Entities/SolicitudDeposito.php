@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaTransferenciaDominioGenerada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\CodigoQRAsignado;
 use Modules\GestionPrestamosRecepciones\Domain\Events\DatoFaltanteCompletado;
+use Modules\GestionPrestamosRecepciones\Domain\Events\DepositoDevuelto;
 use Modules\GestionPrestamosRecepciones\Domain\Events\DocumentacionOficialCargada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\DomainEvent;
 use Modules\GestionPrestamosRecepciones\Domain\Events\IntervencionCuratoriaSolicitada;
@@ -408,6 +409,43 @@ final class SolicitudDeposito
      * @throws TransicionEstadoInvalida Si no está en revisión por curaduría.
      * @throws \DomainException Si quedan alertas pendientes o el curadorId está vacío.
      */
+    /**
+     * Registra que el material depositado volvió a su depositante.
+     *
+     * Cierra el ciclo de un depósito: hasta ahora el trámite terminaba en "Aprobada
+     * Documentalmente" y el material se quedaba indefinidamente en la colección aunque
+     * ya lo hubieran retirado.
+     *
+     * Solo aplica a un Depósito ya aprobado. Una Donación es una cesión definitiva al
+     * patrimonio, así que no admite devolución.
+     *
+     * @throws \DomainException Si el trámite es una donación o el estado no lo permite.
+     */
+    public function registrarDevolucion(string $curadorId): void
+    {
+        $this->garantizarCuradorId($curadorId);
+
+        if ($this->tipoTramite === TipoTramite::Donacion) {
+            throw new \DomainException(
+                'Una donación es una cesión definitiva al patrimonio de la colección: no admite devolución'
+            );
+        }
+
+        if ($this->estado !== EstadoSolicitudDeposito::AprobadaDocumentalmente) {
+            throw TransicionEstadoInvalida::de($this->estado->value, 'registrarDevolucion');
+        }
+
+        $ahora = new DateTimeImmutable;
+
+        $this->estado = EstadoSolicitudDeposito::Devuelta;
+
+        $this->events[] = new DepositoDevuelto(
+            solicitudId: $this->id,
+            curadorId: $curadorId,
+            devueltoEn: $ahora,
+        );
+    }
+
     public function aprobarDocumentalmente(string $curadorId): void
     {
         $this->garantizarEnRevision('aprobarDocumentalmente');

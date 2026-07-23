@@ -81,7 +81,7 @@
             {{-- Footer --}}
             <div style="border-top:1px solid #E0E0E0;padding:16px 32px;text-align:center;">
                 <p style="margin:0;font-size:12px;color:#757575;">Este es un mensaje automático — por favor no responda a este correo</p>
-                <p style="margin:4px 0 0;font-size:12px;color:#757575;">Colección Entomológica EPN · Quito, Ecuador</p>
+                <p style="margin:4px 0 0;font-size:12px;color:#757575;">Laboratorio de Invertebrados EPN · Quito, Ecuador</p>
             </div>
 
         </div>

@@ -6,7 +6,6 @@ use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\CompletarD
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\DeterminarDocumentacionRequeridaController;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\RegistrarSolicitudDepositoController;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\SolicitarIntervencionCuratoriaController;
-use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\SolicitudPrestamoController;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ValidarDocumentacionInicialController;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ValidarIdentidadSolicitudController;
 
@@ -33,16 +32,8 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function (): void {
         ValidarIdentidadSolicitudController::class)->name('solicitudes-deposito.validacion-identidad');
 });
 
-Route::prefix('v1')->group(function () {
-    Route::post('solicitudes-prestamo', [SolicitudPrestamoController::class, 'store'])
-        ->name('solicitudes-prestamo.store');
-
-    Route::put('solicitudes-prestamo/{id}', [SolicitudPrestamoController::class, 'update'])
-        ->name('solicitudes-prestamo.update');
-
-    Route::post('solicitudes-prestamo/{id}/envios', [SolicitudPrestamoController::class, 'enviar'])
-        ->name('solicitudes-prestamo.enviar');
-
-    Route::post('solicitudes-prestamo/{id}/actas-firmadas', [SolicitudPrestamoController::class, 'subirActa'])
-        ->name('solicitudes-prestamo.subir-acta');
-});
+// Las rutas 'solicitudes-prestamo' apuntaban a SolicitudPrestamoController, una clase
+// que no existe: solo podían devolver 500 y además rompían `php artisan route:list`.
+// El flujo de préstamos se atiende hoy por Livewire (routes/web.php). Si en el futuro
+// se expone por API, hay que escribir el controlador y registrarlas bajo auth:sanctum
+// como el resto del grupo v1.

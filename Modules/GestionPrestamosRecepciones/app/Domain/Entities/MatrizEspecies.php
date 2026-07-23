@@ -403,6 +403,28 @@ final class MatrizEspecies
     }
 
     /**
+     * Todas las correcciones que curaduría aplicó sobre celdas anómalas de la matriz,
+     * con la especie a la que pertenece cada una.
+     *
+     * Se agrega aquí para poder avisar al depositante una sola vez —al aprobar la
+     * solicitud— en lugar de un correo por celda tocada.
+     *
+     * @return list<array{campo: string, anterior: mixed, nuevo: mixed, curadorId: string, corregidoEn: string, especie: string}>
+     */
+    public function correccionesCuratoriales(): array
+    {
+        $correcciones = [];
+
+        foreach ($this->registros as $registro) {
+            foreach ($registro->correccionesCuratoriales() as $correccion) {
+                $correcciones[] = $correccion + ['especie' => $registro->nombreCientifico()];
+            }
+        }
+
+        return $correcciones;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function camposDwCPresentes(): array

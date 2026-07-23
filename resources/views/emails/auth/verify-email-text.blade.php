@@ -1,4 +1,4 @@
-Hub Digital · Colección Entomológica EPN
+Hub Digital · Laboratorio de Invertebrados EPN
 
 Confirma tu correo electrónico
 
@@ -10,4 +10,4 @@ Por tu seguridad, este enlace caduca en {{ $expireMinutes }} minutos. Si expira,
 
 Si no creaste esta cuenta, puedes ignorar este mensaje; no se realizará ninguna acción.
 
-© {{ date('Y') }} Colección Entomológica EPN · Hub Digital
+© {{ date('Y') }} Laboratorio de Invertebrados EPN · Hub Digital

@@ -9,6 +9,7 @@ use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionCuratoriaPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionInvestigadorPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
+use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
 
@@ -26,6 +27,7 @@ final class AprobarDocumentalmenteSolicitudHandler
         private TransactionManagerPort $transactionManager,
         private EventPublisherPort $eventPublisher,
         private NotificacionInvestigadorPort $notificacionInvestigador,
+        private MatrizEspeciesRepositoryInterface $matrizRepo,
         private NotificacionCuratoriaPort $notificacionCuratoria,
     ) {}
 
@@ -63,6 +65,18 @@ final class AprobarDocumentalmenteSolicitudHandler
             curadorQueDecideId: $input->curadorId,
             decision: 'aprobada',
         );
+
+        // Aviso agrupado: si curaduría sanó celdas de la matriz, el depositante se
+        // entera aquí en un solo mensaje y no en uno por celda tocada.
+        $matriz = $this->matrizRepo->buscarPorSolicitudId((string) $solicitud->id());
+
+        if ($matriz !== null && $matriz->correccionesCuratoriales() !== []) {
+            $this->notificacionInvestigador->notificarCorreccionesCuratoriales(
+                solicitudId: (string) $solicitud->id(),
+                investigadorId: $solicitud->investigadorId(),
+                correcciones: $matriz->correccionesCuratoriales(),
+            );
+        }
 
         return AprobarDocumentalmenteSolicitudOutput::fromPrimitives(
             estado: $solicitud->estado()->value,

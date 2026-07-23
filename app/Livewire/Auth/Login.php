@@ -2,7 +2,6 @@
 
 namespace App\Livewire\Auth;
 
-use App\Enums\RolUsuario;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
@@ -48,14 +47,11 @@ class Login extends Component
             return;
         }
 
-        $destination = match ($user->rol) {
-            RolUsuario::DEPOSITANTE => route('prestamos.investigador.deposito.crear'),
-            RolUsuario::PRESTAMISTA => route('prestamos.investigador.mis-solicitudes'),
-            RolUsuario::CURADOR => route('dashboard'),
-            default => route('dashboard'),
-        };
+        // Al iniciar sesión el rol activo se resetea al rol por defecto de la
+        // cuenta; rolActivo() lo siembra en sesión si aún no existe.
+        $user->rolActivo();
 
-        $this->redirect($destination, navigate: true);
+        $this->redirect(route('dashboard'), navigate: true);
     }
 
     /**

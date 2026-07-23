@@ -19,6 +19,8 @@ use Modules\GestionPrestamosRecepciones\Domain\Events\PrestamoIniciado;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ProrrogaAprobada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ProrrogaRechazada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ProrrogaSolicitada;
+use Modules\GestionPrestamosRecepciones\Domain\Events\RecepcionLoteVerificadaConObservaciones;
+use Modules\GestionPrestamosRecepciones\Domain\Events\RecepcionLoteVerificadaFisicamente;
 use Modules\GestionPrestamosRecepciones\Domain\Events\RecordatorioDevolucionEnviado;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoAprobada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPrestamoEnviada;
@@ -31,6 +33,7 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\EnviarNotificac
 use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\EnviarNotificacionDevolucionRegistradaListener;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\EnviarNotificacionRecordatorioListener;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\EnviarNotificacionResultadoProrrogaListener;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\IngresarLoteEnColeccionListener;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\IniciarPrestamoAlValidarActaListener;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\RegistrarEventoHistorialListener;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\SincronizarEstadoEspecimenesAlActivarListener;
@@ -44,6 +47,11 @@ class EventServiceProvider extends ServiceProvider
 {
     /** @var array<string, array<int, string>> */
     protected $listen = [
+        // Traspaso a la colección: la recepción física aprobada materializa los
+        // especímenes de la matriz en InventarioGestionColeccion (en cola).
+        RecepcionLoteVerificadaFisicamente::class => [IngresarLoteEnColeccionListener::class],
+        RecepcionLoteVerificadaConObservaciones::class => [IngresarLoteEnColeccionListener::class],
+
         SolicitudPrestamoRegistrada::class => [RegistrarEventoHistorialListener::class],
         SolicitudPrestamoEnviada::class => [RegistrarEventoHistorialListener::class],
         SolicitudPrestamoObservada::class => [RegistrarEventoHistorialListener::class],

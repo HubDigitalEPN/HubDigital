@@ -15,8 +15,15 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
 
 /**
  * Aprueba la recepción de un lote que cumple todos los ítems de la lista de
- * verificación: lo deja Verificado Físicamente, ingresa los especímenes a la
- * colección, emite el Acta Digital de Recepción y notifica al investigador.
+ * verificación: lo deja Verificado Físicamente, emite el Acta Digital de Recepción,
+ * fija el régimen de colección con el que entran sus especímenes y notifica al
+ * investigador.
+ *
+ * El ingreso de los especímenes a la colección NO ocurre aquí: lo hace el listener
+ * IngresarLoteEnColeccionListener al recibir el evento que este caso de uso publica
+ * (se nombra sin importar para no acoplar Application a Infrastructure). Ocurre de
+ * forma síncrona, dentro de la misma petición, así que al volver de este caso de uso
+ * los especímenes ya están en la colección.
  */
 final class AprobarRecepcionLoteHandler
 {

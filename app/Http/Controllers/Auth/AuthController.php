@@ -27,7 +27,10 @@ class AuthController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
+                // Rol primario: se conserva por compatibilidad con clientes existentes.
                 'rol' => $user->rol,
+                // Membresía completa de roles (aditivo).
+                'roles' => $user->rolesAsignados()->map(fn ($rol) => $rol->value)->values(),
             ],
         ]);
     }
@@ -41,6 +44,11 @@ class AuthController extends Controller
 
     public function me(Request $request): JsonResponse
     {
-        return response()->json($request->user());
+        $user = $request->user();
+
+        // Se conserva la forma existente (compat) y se añade la membresía de roles.
+        return response()->json(array_merge($user->toArray(), [
+            'roles' => $user->rolesAsignados()->map(fn ($rol) => $rol->value)->values(),
+        ]));
     }
 }

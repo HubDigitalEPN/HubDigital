@@ -1,6 +1,6 @@
 <div class="space-y-6 p-4 sm:p-6 max-w-4xl">
     <div>
-        <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Etiquetado QR</flux:heading>
+        <flux:heading size="xl" level="1" class="font-display text-blue-navy font-bold">Etiquetado QR</flux:heading>
         <p class="mt-1 text-sm text-text-secondary">
             Busca un espécimen por su código y genera su etiqueta QR para imprimir o descargar.
             Al escanearla desde el móvil se abre la ficha del espécimen. El QR se genera en el

@@ -35,29 +35,29 @@
 
     {{-- Tiles de resumen --}}
     <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 auto-rows-fr">
-        <div class="rounded-lg border border-border bg-surface shadow-sm p-4">
+        <div class="min-w-0 rounded-lg border border-border bg-surface shadow-sm p-4">
             <p class="text-xs text-text-secondary">Código de lote (QR)</p>
-            <p class="mt-1 font-mono text-base font-semibold text-blue-navy tracking-wide">{{ $recepcion->codigoQR ?? '—' }}</p>
+            <p class="mt-1 font-mono text-base font-semibold text-blue-navy tracking-wide break-all">{{ $recepcion->codigoQR ?? '—' }}</p>
         </div>
-        <div class="rounded-lg border border-border bg-surface shadow-sm p-4">
+        <div class="min-w-0 rounded-lg border border-border bg-surface shadow-sm p-4">
             <p class="text-xs text-text-secondary">Depositante</p>
-            <p class="mt-1 text-sm font-medium text-text-primary">{{ $nombreInvestigador }}</p>
+            <p class="mt-1 text-sm font-medium text-text-primary hyphens-auto break-words">{{ $nombreInvestigador }}</p>
         </div>
-        <div class="rounded-lg border border-border bg-surface shadow-sm p-4">
+        <div class="min-w-0 rounded-lg border border-border bg-surface shadow-sm p-4">
             <p class="text-xs text-text-secondary">N.º de lotes</p>
-            <p class="mt-1 text-sm font-medium text-text-primary">{{ $recepcion->nroLotes ?? '—' }}</p>
+            <p class="mt-1 text-sm font-medium text-text-primary hyphens-auto break-words">{{ $recepcion->nroLotes ?? '—' }}</p>
         </div>
-        <div class="rounded-lg border border-border bg-surface shadow-sm p-4">
+        <div class="min-w-0 rounded-lg border border-border bg-surface shadow-sm p-4">
             <p class="text-xs text-text-secondary">N.º de individuos</p>
-            <p class="mt-1 text-sm font-medium text-text-primary">{{ $recepcion->nroIndividuos ?? '—' }}</p>
+            <p class="mt-1 text-sm font-medium text-text-primary hyphens-auto break-words">{{ $recepcion->nroIndividuos ?? '—' }}</p>
         </div>
-        <div class="rounded-lg border border-border bg-surface shadow-sm p-4">
+        <div class="min-w-0 rounded-lg border border-border bg-surface shadow-sm p-4">
             <p class="text-xs text-text-secondary">Grupo animal</p>
-            <p class="mt-1 text-sm font-medium text-text-primary">{{ $recepcion->grupoAnimal ?? '—' }}</p>
+            <p class="mt-1 text-sm font-medium text-text-primary hyphens-auto break-words">{{ $recepcion->grupoAnimal ?? '—' }}</p>
         </div>
-        <div class="rounded-lg border border-border bg-surface shadow-sm p-4">
+        <div class="min-w-0 rounded-lg border border-border bg-surface shadow-sm p-4">
             <p class="text-xs text-text-secondary">Localidad</p>
-            <p class="mt-1 text-sm font-medium text-text-primary">{{ $recepcion->localidad ?? '—' }}</p>
+            <p class="mt-1 text-sm font-medium text-text-primary hyphens-auto break-words">{{ $recepcion->localidad ?? '—' }}</p>
         </div>
     </div>
 
@@ -66,10 +66,46 @@
         <flux:callout variant="success" icon="check-badge">
             <flux:callout.heading>Recepción finalizada</flux:callout.heading>
             <flux:callout.text>
-                Los especímenes ingresan a la colección en estado
-                <span class="font-semibold">{{ $recepcion->estadoColeccion }}</span>.
+                @if($ingreso->ingresoCompleto())
+                    Los {{ $ingreso->especimenesEnColeccion }} especímenes del lote ya están en la colección,
+                    en estado <span class="font-semibold">{{ $recepcion->estadoColeccion }}</span>.
+                @elseif($ingreso->especimenesEnColeccion > 0)
+                    {{ $ingreso->especimenesEnColeccion }} de {{ $ingreso->registrosEnMatriz }} especímenes
+                    están en la colección, en estado
+                    <span class="font-semibold">{{ $recepcion->estadoColeccion }}</span>.
+                @else
+                    Los especímenes ingresan a la colección en estado
+                    <span class="font-semibold">{{ $recepcion->estadoColeccion }}</span>.
+                @endif
                 @if($recepcion->actaEmitida) Se emitió el Acta Digital de Recepción. @endif
             </flux:callout.text>
+
+            {{-- Resultado real del ingreso: lo que hay en la colección, no lo prometido --}}
+            @if($ingreso->registrosEnMatriz > 0)
+                <div class="mt-3 flex flex-wrap gap-2">
+                    <span class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium
+                        {{ $ingreso->ingresoCompleto()
+                            ? 'border-success/20 bg-success/10 text-success'
+                            : 'border-warning/30 bg-warning/10 text-warning' }}">
+                        <flux:icon name="{{ $ingreso->ingresoCompleto() ? 'check-circle' : 'exclamation-triangle' }}" class="size-3.5" />
+                        {{ $ingreso->especimenesEnColeccion }} de {{ $ingreso->registrosEnMatriz }} en la colección
+                    </span>
+
+                    @if($ingreso->pendientesRevision > 0)
+                        <span class="inline-flex items-center gap-1.5 rounded-lg border border-info/30 bg-info/10 px-3 py-1.5 text-xs font-medium text-info">
+                            <flux:icon name="magnifying-glass" class="size-3.5" />
+                            {{ $ingreso->pendientesRevision }} esperan revisión de curaduría
+                        </span>
+                    @endif
+                </div>
+
+                @if(! $ingreso->ingresoCompleto())
+                    <p class="mt-2 text-xs text-text-secondary">
+                        Faltan especímenes por ingresar. Vuelve a cargar la página en unos segundos; si sigue
+                        incompleto, revisa el registro de la aplicación.
+                    </p>
+                @endif
+            @endif
             @if($recepcion->observaciones !== [])
                 <ul class="mt-2 space-y-1 text-sm text-text-primary">
                     @foreach($recepcion->observaciones as $observacion)
@@ -141,6 +177,18 @@
                 Orden de acción correctiva: <span class="font-semibold">{{ $recepcion->accionCorrectiva }}</span>.
                 El Código QR permanece vigente para reintentar la recepción del mismo lote.
             </flux:callout.text>
+            <x-slot name="actions">
+                <flux:button
+                    variant="primary"
+                    icon="arrow-path"
+                    wire:click="reintentar"
+                    wire:loading.attr="disabled"
+                    wire:target="reintentar"
+                    class="w-full sm:w-auto"
+                >
+                    Reintentar recepción
+                </flux:button>
+            </x-slot>
         </flux:callout>
     @endif
 

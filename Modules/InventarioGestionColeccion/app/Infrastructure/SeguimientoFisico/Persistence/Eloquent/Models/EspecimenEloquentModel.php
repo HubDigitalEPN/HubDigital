@@ -35,6 +35,8 @@ class EspecimenEloquentModel extends Model
         'colector',
         'entidad_depositante_id',
         'estado',
+        'estado_custodia',
+        'devuelto_en',
         'individual_count',
         'individual_count_verbatim',
         'sex',
@@ -103,6 +105,7 @@ class EspecimenEloquentModel extends Model
     ];
 
     protected $casts = [
+        'devuelto_en' => 'datetime',
         'endemic' => 'boolean',
         'fecha_colecta' => 'date',
         'fecha_colecta_fin' => 'date',

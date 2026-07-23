@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities;
 
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EspecimenId;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoCustodia;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoEspecimen;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoRevision;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\IdentificadorEspecimen;
@@ -44,6 +45,8 @@ class Especimen
         private string $colector,
         private ?string $entidadDepositanteId,
         private EstadoEspecimen $estado,
+        private ?EstadoCustodia $estadoCustodia,
+        private ?\DateTimeImmutable $devueltoEn,
         private ?string $occurrenceId,
         private ?string $catalogNumber,
         private ?string $oldCode,
@@ -200,6 +203,7 @@ class Especimen
         ?string $recordCreatedBy = null,
         ?string $responsibleResearcherExport = null,
         ?string $endemicVerbatim = null,
+        ?EstadoCustodia $estadoCustodia = null,
     ): self {
         $localidad = trim($localidad);
         $localityName = self::limpiarTexto($localityName) ?? $localidad;
@@ -220,6 +224,8 @@ class Especimen
             colector: trim($colector),
             entidadDepositanteId: $entidadDepositanteId,
             estado: EstadoEspecimen::Disponible,
+            estadoCustodia: $estadoCustodia,
+            devueltoEn: null,
             occurrenceId: self::limpiarTexto($occurrenceId),
             catalogNumber: self::limpiarTexto($catalogNumber),
             oldCode: self::limpiarTexto($oldCode),
@@ -310,6 +316,8 @@ class Especimen
         string $fechaColecta,
         string $colector,
         EstadoEspecimen $estado,
+        ?EstadoCustodia $estadoCustodia = null,
+        ?\DateTimeImmutable $devueltoEn = null,
         ?string $entidadDepositanteId = null,
         ?string $occurrenceId = null,
         ?string $catalogNumber = null,
@@ -402,6 +410,8 @@ class Especimen
             colector: $colector,
             entidadDepositanteId: $entidadDepositanteId,
             estado: $estado,
+            estadoCustodia: $estadoCustodia,
+            devueltoEn: $devueltoEn,
             occurrenceId: $occurrenceId,
             catalogNumber: $catalogNumber,
             oldCode: $oldCode,
@@ -992,6 +1002,44 @@ class Especimen
     public function endemicVerbatim(): ?string
     {
         return $this->endemicVerbatim;
+    }
+
+    /**
+     * Régimen de tenencia del ingreso. Null en el material heredado de la carga
+     * masiva, que no proviene de un trámite de depósito.
+     */
+    public function estadoCustodia(): ?EstadoCustodia
+    {
+        return $this->estadoCustodia;
+    }
+
+    public function devueltoEn(): ?\DateTimeImmutable
+    {
+        return $this->devueltoEn;
+    }
+
+    /**
+     * Registra que el material volvió a su depositante y salió de la colección.
+     *
+     * Solo aplica a material bajo custodia temporal: una donación es una cesión
+     * definitiva al patrimonio y no se devuelve. La fila se conserva —marcarla, no
+     * borrarla— porque el rastro de qué estuvo aquí y cuándo salió forma parte de la
+     * documentación de la colección.
+     *
+     * @throws \DomainException Si el material no es devolutivo.
+     */
+    public function marcarComoDevuelto(\DateTimeImmutable $devueltoEn): void
+    {
+        if ($this->estadoCustodia?->esDevolutivo() !== true) {
+            $regimen = $this->estadoCustodia?->value ?? 'sin régimen declarado';
+
+            throw new \DomainException(
+                "Solo se devuelve el material en custodia temporal; este espécimen está como \"{$regimen}\""
+            );
+        }
+
+        $this->estadoCustodia = EstadoCustodia::Devuelto;
+        $this->devueltoEn = $devueltoEn;
     }
 
     private static function limpiarTexto(?string $valor): ?string

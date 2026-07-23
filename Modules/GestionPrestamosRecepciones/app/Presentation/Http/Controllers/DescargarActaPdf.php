@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers;
 
-use App\Enums\RolUsuario;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
 use Modules\GestionPrestamosRecepciones\Application\Ports\PdfGeneratorPort;
@@ -36,7 +35,7 @@ final class DescargarActaPdf
             abort(422, PatenteAnualNoConfigurada::paraAnio($anio)->getMessage());
         }
 
-        $esCurador = $user?->rol === RolUsuario::CURADOR;
+        $esCurador = $user?->esCurador() ?? false;
         $esDueno = $acta->investigadorId === (string) $user?->id;
 
         if (! $esCurador && ! $esDueno) {
@@ -45,7 +44,8 @@ final class DescargarActaPdf
 
         // Si el curador ya firmó criptográficamente, ese PDF (acta-documento con el
         // sello PAdES ya incrustado) es el documento oficial: se sirve tal cual, sin
-        // regenerar. Su ruta la fija ValidarActaFirmada.
+        // regenerar. Su ruta la fija ValidarActaFirmada. Es vertical, sin la hoja de
+        // especímenes.
         $firmadoCurador = 'actas-firmadas-curador/'.$acta->id.'.pdf';
 
         if (Storage::exists($firmadoCurador)) {

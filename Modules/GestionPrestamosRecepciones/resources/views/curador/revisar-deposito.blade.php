@@ -202,6 +202,24 @@
                             Recepción física del lote
                         </flux:button>
 
+                        {{-- Cierre del ciclo: solo un depósito es devolutivo; una donación
+                             es una cesión definitiva al patrimonio. --}}
+                        @if(! $esDonacion)
+                            <div class="pt-2 border-t border-border">
+                                <flux:button
+                                    variant="ghost"
+                                    icon="arrow-uturn-left"
+                                    class="w-full sm:w-auto"
+                                    wire:click="$set('showDevolucionModal', true)"
+                                >
+                                    Registrar devolución al depositante
+                                </flux:button>
+                                <flux:text class="text-text-secondary text-xs mt-1.5">
+                                    Cierra el trámite y retira los especímenes de la colección.
+                                </flux:text>
+                            </div>
+                        @endif
+
                         @if($esDonacion && $deposito->acta_transferencia_dominio)
                             @php $actaDisponible = \Illuminate\Support\Facades\Storage::disk('public')->exists($deposito->acta_transferencia_dominio['ruta'] ?? ''); @endphp
                             @if($actaDisponible)
@@ -336,20 +354,17 @@
                         </span>
                     </div>
 
-                    {{-- TODO (edición curatorial): permitir que el curador edite/sane anomalías menores
-                         de la matriz Darwin Core (p. ej. corregir un decimalLongitude o un formato) en
-                         lugar de forzar siempre el reenvío al depositante. Objetivo: evitar que el
-                         proceso se devuelva por pequeñeces. Requiere un caso de uso nuevo
-                         (ValidacionManualCuraduria) con registro de auditoría de quién editó qué. --}}
-
-                    {{-- Recurso ante anomalías: devolver para corrección --}}
+                    {{-- Recurso ante anomalías: sanar en el sitio o devolver para corrección --}}
                     @if($nRevision > 0 && $esPendiente)
                         <div class="mx-6 my-5 flex items-start gap-2.5 rounded-lg border border-warning/30 bg-warning/5 px-4 py-3.5">
                             <flux:icon name="information-circle" class="size-4 text-warning shrink-0 mt-0.5" />
                             <p class="text-xs text-text-secondary leading-relaxed">
-                                Las celdas resaltadas requieren atención. Si los datos deben corregirse, devuelve la solicitud
-                                al depositante con <span class="font-medium text-text-primary">Rechazar solicitud → Subsanable</span>;
-                                el depositante es quien edita y reenvía la matriz.
+                                Las celdas resaltadas requieren atención. Si es un detalle de formato —una coordenada, una
+                                fecha, un conteo— puedes corregirlo aquí mismo con el lápiz de la celda: queda registrado a
+                                tu nombre y el depositante lo verá en su solicitud.
+                                Si el problema es de fondo o afecta a la identificación de la especie, devuelve la solicitud
+                                con <span class="font-medium text-text-primary">Rechazar solicitud → Subsanable</span>
+                                para que el depositante corrija y reenvíe la matriz.
                             </p>
                         </div>
                     @endif
@@ -504,6 +519,12 @@
                                                     $advPorCampo[$n['campo']] = $n['mensaje'];
                                                 }
                                             }
+                                            // Celdas ya saneadas por curaduría, con el valor que declaró el depositante.
+                                            $regId = (string) $reg->id();
+                                            $sanadoPorCampo = [];
+                                            foreach ($reg->correccionesCuratoriales() as $c) {
+                                                $sanadoPorCampo[$c['campo']] = $c;
+                                            }
                                         @endphp
                                         <tr class="align-top hover:bg-bg-main transition-colors">
                                             <td class="sticky left-0 z-10 bg-surface px-4 py-3 whitespace-nowrap">
@@ -538,19 +559,57 @@
                                                         @endif
                                                     </td>
                                                 @else
+                                                    @php
+                                                        $claveCelda = $regId.'|'.$col;
+                                                        $editando   = $celdaEnEdicion === $claveCelda;
+                                                        $saneada    = $sanadoPorCampo[$col] ?? null;
+                                                    @endphp
                                                     <td @class([
                                                         'px-4 py-3 whitespace-nowrap',
                                                         'bg-warning/10' => $adv,
-                                                        'text-text-secondary' => ! $adv,
+                                                        'bg-bio-green/10' => $saneada && ! $adv,
+                                                        'text-text-secondary' => ! $adv && ! $saneada,
                                                     ])>
-                                                        <div class="flex items-center gap-1.5">
+                                                        @if($editando)
+                                                            {{-- Edición curatorial: sanar el formato sin devolver el trámite --}}
+                                                            <div class="flex items-center gap-1.5">
+                                                                <flux:input
+                                                                    wire:model="valorCelda"
+                                                                    wire:keydown.enter="guardarCelda"
+                                                                    wire:keydown.escape="cancelarEdicionCelda"
+                                                                    size="sm"
+                                                                    class="w-40"
+                                                                    autofocus
+                                                                />
+                                                                <flux:button size="sm" variant="primary" icon="check" wire:click="guardarCelda" wire:loading.attr="disabled" wire:target="guardarCelda" />
+                                                                <flux:button size="sm" variant="ghost" icon="x-mark" wire:click="cancelarEdicionCelda" />
+                                                            </div>
+                                                            <flux:error name="valorCelda" />
+                                                        @else
+                                                            <div class="flex items-center gap-1.5">
+                                                                @if($adv)
+                                                                    <flux:icon name="exclamation-triangle" class="size-3.5 text-warning shrink-0" />
+                                                                @endif
+                                                                <span class="{{ $adv ? 'text-warning font-medium' : ($saneada ? 'text-bio-green font-medium' : '') }}">{{ ($dwc[$col] ?? '') !== '' ? $dwc[$col] : '—' }}</span>
+                                                                @if($adv && $esPendiente)
+                                                                    <button
+                                                                        type="button"
+                                                                        wire:click="editarCelda('{{ $regId }}', '{{ $col }}', @js((string) ($dwc[$col] ?? '')))"
+                                                                        class="text-science-blue hover:text-science-blue/70 transition-colors"
+                                                                        title="Corregir este valor"
+                                                                    >
+                                                                        <flux:icon name="pencil-square" class="size-3.5" />
+                                                                    </button>
+                                                                @endif
+                                                            </div>
                                                             @if($adv)
-                                                                <flux:icon name="exclamation-triangle" class="size-3.5 text-warning shrink-0" />
+                                                                <p class="text-[11px] text-warning mt-0.5">{{ $adv }}</p>
                                                             @endif
-                                                            <span class="{{ $adv ? 'text-warning font-medium' : '' }}">{{ ($dwc[$col] ?? '') !== '' ? $dwc[$col] : '—' }}</span>
-                                                        </div>
-                                                        @if($adv)
-                                                            <p class="text-[11px] text-warning mt-0.5">{{ $adv }}</p>
+                                                            @if($saneada)
+                                                                <p class="text-[11px] text-bio-green mt-0.5">
+                                                                    Corregido por curaduría · antes “{{ $saneada['anterior'] ?? '—' }}”
+                                                                </p>
+                                                            @endif
                                                         @endif
                                                     </td>
                                                 @endif
@@ -864,6 +923,40 @@
                     wire:loading.attr="disabled" wire:target="confirmarAprobacion">
                     <flux:icon wire:loading wire:target="confirmarAprobacion" name="arrow-path" class="animate-spin" />
                     Sí, aprobar
+                </flux:button>
+            </div>
+        </div>
+    </flux:modal>
+
+    {{-- Modal: devolución del depósito al depositante --}}
+    <flux:modal wire:model="showDevolucionModal" class="max-w-md">
+        <div class="space-y-4 p-2">
+            <flux:heading size="lg">Registrar devolución</flux:heading>
+            <flux:text class="text-text-secondary text-sm">
+                Confirmas que devolviste el material de este depósito a su depositante.
+            </flux:text>
+
+            <div class="rounded-lg border border-warning/30 bg-warning/5 px-4 py-3">
+                <p class="text-xs text-text-secondary leading-relaxed">
+                    El trámite quedará cerrado y sus especímenes saldrán de la colección: se marcan
+                    como devueltos con la fecha de hoy, <span class="font-medium text-text-primary">no se borran</span>,
+                    para conservar el rastro de qué estuvo bajo custodia. Esta acción no se puede deshacer.
+                </p>
+            </div>
+
+            <div class="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                <flux:button variant="ghost" class="w-full sm:w-auto" wire:click="$set('showDevolucionModal', false)">
+                    Cancelar
+                </flux:button>
+                <flux:button
+                    variant="primary"
+                    icon="arrow-uturn-left"
+                    class="w-full sm:w-auto"
+                    wire:click="registrarDevolucion"
+                    wire:loading.attr="disabled"
+                    wire:target="registrarDevolucion"
+                >
+                    Confirmar devolución
                 </flux:button>
             </div>
         </div>

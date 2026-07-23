@@ -84,3 +84,48 @@ it('no sugiere el mismo nombre ingresado', function () {
 
     expect($resultado[0]['sugerencias'])->toBe(['Baetodes']);
 });
+
+it('incluye un FUZZY justo en el umbral (85) y excluye el inmediato inferior (84)', function () {
+    Http::fake(['api.gbif.org/*' => Http::response([
+        'matchType' => 'NONE',
+        'confidence' => 0,
+        'alternatives' => [
+            ['matchType' => 'FUZZY', 'confidence' => 85, 'canonicalName' => 'Justo en el umbral'],
+            ['matchType' => 'FUZZY', 'confidence' => 84, 'canonicalName' => 'Uno por debajo'],
+        ],
+    ])]);
+
+    $resultado = (new GbifValidacionTaxonomicaAdapter)->validarEspecies(['Nombre dudoso']);
+
+    expect($resultado[0]['sugerencias'])->toBe(['Justo en el umbral']);
+});
+
+it('sugiere un candidato EXACT por debajo del umbral FUZZY (umbral EXACT más bajo)', function () {
+    Http::fake(['api.gbif.org/*' => Http::response([
+        'matchType' => 'HIGHERRANK',
+        'confidence' => 60,
+        'alternatives' => [
+            ['matchType' => 'EXACT', 'confidence' => 72, 'canonicalName' => 'Nombre catalogado exacto'],
+        ],
+    ])]);
+
+    $resultado = (new GbifValidacionTaxonomicaAdapter)->validarEspecies(['Nombre sin especie']);
+
+    expect($resultado[0]['estado'])->toBe('inconsistencia_tipografica')
+        ->and($resultado[0]['sugerencias'])->toBe(['Nombre catalogado exacto']);
+});
+
+it('excluye un candidato EXACT por debajo de su propio umbral (70)', function () {
+    Http::fake(['api.gbif.org/*' => Http::response([
+        'matchType' => 'NONE',
+        'confidence' => 0,
+        'alternatives' => [
+            ['matchType' => 'EXACT', 'confidence' => 69, 'canonicalName' => 'Exacto pero muy dudoso'],
+        ],
+    ])]);
+
+    $resultado = (new GbifValidacionTaxonomicaAdapter)->validarEspecies(['Xxxxx zzzzz']);
+
+    expect($resultado[0]['estado'])->toBe('no_catalogado')
+        ->and($resultado[0]['sugerencias'])->toBe([]);
+});

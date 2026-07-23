@@ -74,7 +74,7 @@
      })"
      x-init="init()">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Especímenes</flux:heading>
+        <flux:heading size="xl" level="1" class="font-display text-blue-navy font-bold">Especímenes</flux:heading>
         <div class="flex flex-wrap gap-2">
             <flux:button icon="clipboard-document-check" variant="ghost"
                          :href="route('inventario.taxonomia.revision')" wire:navigate>

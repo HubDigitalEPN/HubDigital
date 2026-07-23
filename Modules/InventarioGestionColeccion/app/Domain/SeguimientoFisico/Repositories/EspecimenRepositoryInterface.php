@@ -279,6 +279,43 @@ interface EspecimenRepositoryInterface
     public function filasOrigenExistentes(array $filasOrigen): array;
 
     /**
+     * De los códigos de catálogo dados, cuáles ya existen en la colección.
+     *
+     * Consulta por `codigo_catalogo` (el código interno), a diferencia de
+     * {@see buscarPorCatalogNumbersIn()}, que busca por `catalog_number`, el número
+     * que asignó el investigador. Es la comprobación de idempotencia de la ingesta de
+     * depósitos: la tabla solo tiene clave primaria sobre `id`, así que sin esto un
+     * reintento del job duplicaría los especímenes.
+     *
+     * @param  string[]  $codigos
+     * @return string[]
+     */
+    public function codigosCatalogoExistentes(array $codigos): array;
+
+    /**
+     * Cuántos de esos códigos están en la colección y cuántos esperan revisión.
+     *
+     * Lo usa el módulo de recepciones para poder decirle al curador qué entró de
+     * verdad tras aprobar un lote, en vez de limitarse a prometerlo.
+     *
+     * @param  string[]  $codigos
+     * @return array{total: int, pendientesRevision: int}
+     */
+    public function resumenPorCodigosCatalogo(array $codigos): array;
+
+    /**
+     * Marca como devueltos los espécimenes de un lote depositado.
+     *
+     * No borra: deja `estado_custodia = 'Devuelto'` y la fecha de salida. Solo afecta
+     * a los que siguen bajo custodia temporal, para que reejecutarlo sea inofensivo y
+     * para no tocar material donado, que es permanente por definición.
+     *
+     * @param  string[]  $codigos
+     * @return int Espécimenes efectivamente marcados.
+     */
+    public function marcarDevueltosPorCodigosCatalogo(array $codigos, \DateTimeImmutable $devueltoEn): int;
+
+    /**
      * Lista los especímenes concretos que caen en un grupo `fecha_verbatim`
      * pendiente (aún sin `fecha_colecta`). Permite que el curador vea y elija
      * uno por uno en la bandeja de revisión, en vez de aplicar en bloque.

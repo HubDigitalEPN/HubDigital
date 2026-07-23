@@ -11,11 +11,11 @@
             <flux:sidebar.header class="border-b border-border px-4 pt-3 pb-5">
                 <a href="{{ route('dashboard') }}" wire:navigate class="flex items-center gap-2.5">
                     <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-navy shadow-sm">
-                        <x-app-logo-icon class="size-5 fill-current text-white" />
+                        <x-app-logo-icon class="size-6 fill-current text-white" />
                     </span>
                     <div class="flex flex-col leading-tight">
                         <span class="font-display text-sm font-bold text-blue-navy">Hub Digital</span>
-                        <span class="text-[10px] font-medium uppercase tracking-wide text-text-secondary">Colección Entomológica</span>
+                        <span class="text-[10px] font-medium uppercase tracking-wide text-text-secondary">Laboratorio de Invertebrados</span>
                     </div>
                 </a>
                 <div class="ml-auto flex items-center text-text-secondary">
@@ -39,7 +39,10 @@
                     </flux:sidebar.item>
                 </flux:sidebar.group>
                 @auth
-                    @if(auth()->user()->rol === RolUsuario::PRESTAMISTA)
+                    @php
+                        $rolActivo = auth()->user()->rolActivo();
+                    @endphp
+                    @if($rolActivo === RolUsuario::PRESTAMISTA)
                         <flux:sidebar.group heading="Préstamos" class="grid">
                             <flux:sidebar.item
                                 icon="document-text"
@@ -66,7 +69,7 @@
                                 Mis préstamos
                             </flux:sidebar.item>
                         </flux:sidebar.group>
-                    @elseif(auth()->user()->rol === RolUsuario::DEPOSITANTE)
+                    @elseif($rolActivo === RolUsuario::DEPOSITANTE)
                         <flux:sidebar.group heading="Depósitos" class="grid">
                             <flux:sidebar.item icon="archive-box" :href="route('prestamos.investigador.mis-depositos')" :current="request()->routeIs('prestamos.investigador.mis-depositos')" wire:navigate>
                                 Mis depósitos
@@ -75,7 +78,7 @@
                                 Nueva solicitud
                             </flux:sidebar.item>
                         </flux:sidebar.group>
-                    @elseif(auth()->user()->rol === RolUsuario::CURADOR)
+                    @elseif($rolActivo === RolUsuario::CURADOR)
                         <flux:sidebar.group
                             heading="Gestión de préstamos"
                             class="grid"
@@ -390,7 +393,7 @@
 
             <div class="flex items-center gap-2 mx-auto">
                 <span class="flex h-6 w-6 items-center justify-center rounded bg-white/20">
-                    <x-app-logo-icon class="size-4 fill-current text-white" />
+                    <x-app-logo-icon class="size-5 fill-current text-white" />
                 </span>
                 <span class="font-display text-sm font-bold text-white">Hub Digital</span>
             </div>
@@ -413,13 +416,27 @@
                                     :name="auth()->user()->name"
                                     :initials="auth()->user()->initials()"
                                 />
+                                @php
+                                    $rolMovil = auth()->user()->rolActivo();
+                                    [$badgeMovil, $iconoMovil] = match ($rolMovil) {
+                                        RolUsuario::DEPOSITANTE => ['bg-bio-green/10 text-bio-green', 'archive-box'],
+                                        RolUsuario::PRESTAMISTA => ['bg-science-blue/10 text-science-blue', 'document-text'],
+                                        RolUsuario::CURADOR => ['bg-blue-navy/10 text-blue-navy', 'shield-check'],
+                                    };
+                                @endphp
                                 <div class="grid flex-1 text-start text-sm leading-tight">
                                     <flux:heading class="truncate">{{ auth()->user()->name }}</flux:heading>
                                     <flux:text class="truncate text-text-secondary">{{ auth()->user()->email }}</flux:text>
+                                    <span class="mt-1 inline-flex items-center gap-1 self-start rounded-full {{ $badgeMovil }} px-2 py-0.5 text-xs font-medium">
+                                        <flux:icon :name="$iconoMovil" class="size-3" />
+                                        {{ $rolMovil->etiqueta() }}
+                                    </span>
                                 </div>
                             </div>
                         </div>
                     </flux:menu.radio.group>
+
+                    <livewire:selector-rol-activo />
 
                     <flux:menu.separator />
 
