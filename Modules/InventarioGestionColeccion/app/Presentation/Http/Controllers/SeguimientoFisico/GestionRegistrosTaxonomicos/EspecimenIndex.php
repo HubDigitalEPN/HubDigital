@@ -8,6 +8,7 @@ use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Rule;
 use Livewire\Component;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\GeocodificadorInversoPort;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarEspecimen\ActualizarEspecimenHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarEspecimen\ActualizarEspecimenInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\BuscarEspecimenes\BuscarEspecimenesHandler;
@@ -88,7 +89,11 @@ final class EspecimenIndex extends Component
     #[Rule('nullable|string|max:200')]
     public string $fMotivoRevision = '';
 
-    public bool $fParaRevision = true;
+    // Por defecto DESACTIVADO: la búsqueda muestra todo el catálogo. Antes venía
+    // activado y ocultaba los especímenes que no estaban marcados para revisión,
+    // dando la falsa impresión de que la búsqueda "no devolvía nada". El preset
+    // "Para revisión" y esta casilla siguen disponibles para el trabajo de QC.
+    public bool $fParaRevision = false;
 
     // ── Registro ──────────────────────────────────────────────────────────────
 
@@ -237,6 +242,14 @@ final class EspecimenIndex extends Component
 
     public ?string $errorMessage = null;
 
+    // ── Geocodificación por coordenadas ───────────────────────────────────────
+
+    /** Texto legible de la ubicación detectada por coordenadas (para el modal). */
+    public ?string $ubicacionDetectada = null;
+
+    /** Aviso de la geocodificación (sin coordenadas o sin resultado). */
+    public ?string $geoMensaje = null;
+
     public function mount(
         ListarTaxonesHandler $taxonesHandler,
         ListarEntidadesDepositantesHandler $entidadesHandler,
@@ -284,6 +297,8 @@ final class EspecimenIndex extends Component
             'biome',
             'habitat',
             'errorMessage',
+            'ubicacionDetectada',
+            'geoMensaje',
         );
         $this->resetValidation();
         $this->fechaColecta = date('Y-m-d');
@@ -370,6 +385,8 @@ final class EspecimenIndex extends Component
         $this->editElevationMinM = isset($especimen['elevationMinM']) ? (string) $especimen['elevationMinM'] : '';
         $this->editBiome = (string) ($especimen['biome'] ?? '');
         $this->editHabitat = (string) ($especimen['habitat'] ?? '');
+        $this->ubicacionDetectada = null;
+        $this->geoMensaje = null;
         $this->errorMessage = null;
         $this->showEditModal = true;
     }
@@ -594,8 +611,68 @@ final class EspecimenIndex extends Component
             'fLocalidad', 'fColector', 'fFechaDesde', 'fFechaHasta',
             'fEstado', 'fEstadoRevision', 'fMotivoRevision',
         );
-        $this->fParaRevision = true;
+        $this->fParaRevision = false;
         $this->resetValidation();
+    }
+
+    /**
+     * Geocodificación inversa para el ALTA: con las coordenadas del espécimen
+     * rellena país/provincia/cantón y la localidad (poblado más cercano). Solo
+     * sobrescribe lo que el servicio resuelve; si no hay resultado, avisa.
+     */
+    public function detectarUbicacion(GeocodificadorInversoPort $geo): void
+    {
+        $this->geoMensaje = null;
+        $this->ubicacionDetectada = null;
+
+        $lat = is_numeric(trim($this->decimalLatitude)) ? (float) $this->decimalLatitude : null;
+        $lon = is_numeric(trim($this->decimalLongitude)) ? (float) $this->decimalLongitude : null;
+        if ($lat === null || $lon === null) {
+            $this->geoMensaje = 'Ingresa latitud y longitud válidas para detectar la ubicación.';
+
+            return;
+        }
+
+        $u = $geo->geocodificar($lat, $lon);
+        if ($u === null) {
+            $this->geoMensaje = 'No se pudo determinar la ubicación para esas coordenadas.';
+
+            return;
+        }
+
+        $this->country = $u->country ?? $this->country;
+        $this->stateProvince = $u->stateProvince ?? $this->stateProvince;
+        $this->municipality = $u->municipality ?? $this->municipality;
+        $this->localityName = $u->poblado ?? $this->localityName;
+        $this->ubicacionDetectada = $u->displayName;
+    }
+
+    /** Igual que detectarUbicacion pero para el modal de EDICIÓN. */
+    public function detectarUbicacionEdicion(GeocodificadorInversoPort $geo): void
+    {
+        $this->geoMensaje = null;
+        $this->ubicacionDetectada = null;
+
+        $lat = is_numeric(trim($this->editDecimalLatitude)) ? (float) $this->editDecimalLatitude : null;
+        $lon = is_numeric(trim($this->editDecimalLongitude)) ? (float) $this->editDecimalLongitude : null;
+        if ($lat === null || $lon === null) {
+            $this->geoMensaje = 'Ingresa latitud y longitud válidas para detectar la ubicación.';
+
+            return;
+        }
+
+        $u = $geo->geocodificar($lat, $lon);
+        if ($u === null) {
+            $this->geoMensaje = 'No se pudo determinar la ubicación para esas coordenadas.';
+
+            return;
+        }
+
+        $this->editCountry = $u->country ?? $this->editCountry;
+        $this->editStateProvince = $u->stateProvince ?? $this->editStateProvince;
+        $this->editMunicipality = $u->municipality ?? $this->editMunicipality;
+        $this->editLocalityName = $u->poblado ?? $this->editLocalityName;
+        $this->ubicacionDetectada = $u->displayName;
     }
 
     public function render(): View

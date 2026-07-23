@@ -25,14 +25,16 @@ final class ListarMuestrasParaRevisionHandler
 
         $ids = array_map(fn ($m) => (string) $m->id(), $muestras);
         $conteos = $this->especimenRepo->contarPorMuestraIds($ids);
+        // Localidad real derivada de los especímenes (la muestra casi nunca la
+        // trae): reemplaza los campos verbatim que venían vacíos.
+        $localidades = $this->especimenRepo->localidadRepresentativaPorMuestraIds($ids);
 
         $items = array_map(fn ($m) => [
             'id' => (string) $m->id(),
             'codigoMuestra' => $m->codigoMuestra(),
-            'fechaVerbatim' => $m->fechaVerbatim(),
-            'localidadVerbatim' => $m->localidadVerbatim(),
+            'localidad' => $localidades[(string) $m->id()] ?? null,
             'colector' => $m->colector(),
-            'samplingProtocol' => $m->samplingProtocol(),
+            'fechaVerbatim' => $m->fechaVerbatim(),
             'estadoRevision' => $m->estadoRevision()->value,
             'motivoRevision' => $m->motivoRevision(),
             'conteoEspecimenes' => $conteos[(string) $m->id()] ?? 0,

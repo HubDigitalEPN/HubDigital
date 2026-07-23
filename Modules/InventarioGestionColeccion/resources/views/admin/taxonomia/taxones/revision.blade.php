@@ -46,7 +46,7 @@
     @forelse($items as $idx => $item)
         @php
             $abierto = ! empty($expandido[$idx]);
-            $seleccionados = count($seleccion[$idx] ?? []);
+            $seleccionados = count(is_array($seleccion[$idx] ?? null) ? $seleccion[$idx] : []);
             $mensajeConfirmar = $abierto
                 ? "Vas a enlazar {$seleccionados} espécimen(es) seleccionado(s) a «{$item['taxonSeleccionadoNombre']}». ¿Continuar?"
                 : "Vas a enlazar los {$item['totalEspecimenes']} espécimen(es) del grupo a «{$item['taxonSeleccionadoNombre']}». ¿Continuar?";
@@ -87,20 +87,28 @@
                     </div>
                     <div class="max-h-72 overflow-y-auto divide-y divide-border rounded-lg border border-border">
                         @foreach($miembros[$idx] ?? [] as $m)
-                            <label class="flex items-start gap-3 px-3 py-2 hover:bg-bg-main cursor-pointer">
-                                <input type="checkbox"
-                                       wire:model.live="seleccion.{{ $idx }}"
-                                       value="{{ $m['id'] }}"
-                                       class="mt-1 size-4 rounded border-border text-science-blue" />
-                                <div class="min-w-0 flex-1">
-                                    <span class="font-mono text-sm text-text-primary">{{ $m['codigoCatalogo'] }}</span>
-                                    <div class="mt-0.5 text-xs text-text-secondary">
-                                        <span class="text-text-primary">{{ $m['localidad'] ?: '—' }}</span>
-                                        · {{ $m['fechaColecta'] ?: '—' }}
-                                        · {{ $m['colector'] ?: '—' }}
+                            <div class="flex items-start gap-2 px-3 py-2 hover:bg-bg-main"
+                                 wire:key="taxon-m-{{ $idx }}-{{ $m['id'] }}">
+                                <label class="flex min-w-0 flex-1 items-start gap-3 cursor-pointer">
+                                    <input type="checkbox"
+                                           wire:model.live="seleccion.{{ $idx }}"
+                                           value="{{ $m['id'] }}"
+                                           class="mt-1 size-4 rounded border-border text-science-blue" />
+                                    <div class="min-w-0 flex-1">
+                                        <span class="font-mono text-sm text-text-primary">{{ $m['codigoCatalogo'] }}</span>
+                                        <div class="mt-0.5 text-xs text-text-secondary">
+                                            <span class="text-text-primary">{{ ($m['taxonNombre'] ?? null) ?: 'sin determinar' }}</span>
+                                            · {{ $m['localidad'] ?: '—' }}
+                                            · {{ $m['fechaColecta'] ?: '—' }}
+                                            · {{ $m['colector'] ?: '—' }}
+                                        </div>
                                     </div>
-                                </div>
-                            </label>
+                                </label>
+                                <flux:button size="sm" variant="ghost" icon="eye"
+                                             wire:click="$dispatch('ver-ficha-especimen', { id: '{{ $m['id'] }}' })">
+                                    Ficha
+                                </flux:button>
+                            </div>
                         @endforeach
                     </div>
                 </div>
@@ -248,4 +256,6 @@
             </div>
         </div>
     @endif
+
+    @livewire('inventario-ficha-especimen', [], 'ficha-modal-taxa')
 </div>

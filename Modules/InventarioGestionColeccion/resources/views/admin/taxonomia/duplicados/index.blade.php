@@ -43,7 +43,7 @@
             $localidades = collect($item['especimenes'])->pluck('localidad')->filter()->unique()->values();
             $hayFechas = collect($item['especimenes'])->contains(fn ($e) => ($e['fechaColecta'] ?? '') !== '');
             $bordeIzq = $taxones->count() > 1 ? 'border-l-error' : ($item['fechasDistintas'] ? 'border-l-info' : 'border-l-warning');
-            $sel = count($seleccion[$idx] ?? []);
+            $sel = count(is_array($seleccion[$idx] ?? null) ? $seleccion[$idx] : []);
         @endphp
         <div wire:key="dup-{{ md5($item['catalogNumber']) }}" class="rounded-lg border border-border bg-surface shadow-sm border-l-4 {{ $bordeIzq }} overflow-hidden">
             {{-- Cabecera del grupo --}}
@@ -127,13 +127,14 @@
                                 <th class="px-3 py-2 font-medium whitespace-nowrap">Fecha</th>
                                 <th class="px-3 py-2 font-medium">Colector</th>
                                 <th class="px-3 py-2 font-medium">Estado</th>
+                                <th class="px-3 py-2 font-medium"><span class="sr-only">Ficha</span></th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($item['especimenes'] as $e)
                                 <tr class="border-t border-border" wire:key="dup-{{ md5($item['catalogNumber']) }}-{{ $e['id'] }}">
                                     <td class="px-3 py-2">
-                                        <flux:checkbox wire:model.live="seleccion.{{ $idx }}" value="{{ $e['id'] }}" />
+                                        <input type="checkbox" wire:model.live="seleccion.{{ $idx }}" value="{{ $e['id'] }}" class="size-4 rounded border-border text-science-blue" />
                                     </td>
                                     <td class="px-3 py-2 font-mono text-text-primary whitespace-nowrap">{{ $e['codigoCatalogo'] }}</td>
                                     <td class="px-3 py-2 font-serif italic text-text-primary">{{ $e['taxonNombre'] ?: '—' }}</td>
@@ -144,6 +145,12 @@
                                         <span class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold {{ $badge($e['estadoRevision']) }}">
                                             {{ ucfirst($e['estadoRevision']) }}
                                         </span>
+                                    </td>
+                                    <td class="px-3 py-2 whitespace-nowrap">
+                                        <flux:button size="sm" variant="ghost" icon="eye"
+                                                     wire:click="$dispatch('ver-ficha-especimen', { id: '{{ $e['id'] }}' })">
+                                            Ficha
+                                        </flux:button>
                                     </td>
                                 </tr>
                             @endforeach
@@ -157,7 +164,7 @@
                         <div class="rounded-lg border border-border bg-surface p-3" wire:key="dupm-{{ md5($item['catalogNumber']) }}-{{ $e['id'] }}">
                             <div class="flex items-center justify-between gap-2">
                                 <label class="flex min-w-0 items-center gap-2">
-                                    <flux:checkbox wire:model.live="seleccion.{{ $idx }}" value="{{ $e['id'] }}" />
+                                    <input type="checkbox" wire:model.live="seleccion.{{ $idx }}" value="{{ $e['id'] }}" class="size-4 rounded border-border text-science-blue" />
                                     <span class="font-mono text-sm text-text-primary break-all">{{ $e['codigoCatalogo'] }}</span>
                                 </label>
                                 <span class="inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-xs font-semibold {{ $badge($e['estadoRevision']) }}">
@@ -168,6 +175,12 @@
                             <p class="mt-0.5 text-xs text-text-secondary">
                                 {{ $e['localidad'] ?: '—' }} · {{ $e['fechaColecta'] ?: '—' }} · {{ $e['colector'] ?: '—' }}
                             </p>
+                            <div class="mt-2">
+                                <flux:button size="sm" variant="ghost" icon="eye" class="w-full"
+                                             wire:click="$dispatch('ver-ficha-especimen', { id: '{{ $e['id'] }}' })">
+                                    Ver ficha completa
+                                </flux:button>
+                            </div>
                         </div>
                     @endforeach
                 </div>
@@ -235,4 +248,6 @@
             </div>
         </div>
     @endif
+
+    @livewire('inventario-ficha-especimen', [], 'ficha-modal-duplicados')
 </div>

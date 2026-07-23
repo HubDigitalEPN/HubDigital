@@ -9,6 +9,7 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\Clasi
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\ContextoEjecucionPort;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\EventPublisherPort;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\GeneradorActaPdfPort;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\GeocodificadorInversoPort;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\GestorTokenEsp32Port;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\HorarioValidadorPort;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\TraductorErroresPersistenciaPort;
@@ -43,10 +44,12 @@ use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\HttpSeguridadContextoAdapter;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\LaravelEventPublisherAdapter;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\LaravelTransactionManagerAdapter;
+use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\NominatimGeocodificadorInversoAdapter;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\PostgresTraductorErroresPersistenciaAdapter;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\SanctumTokenEsp32Adapter;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\SimplePdfActaAdapter;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\TaxonArbolClasificacionTaxonomicaAdapter;
+use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Console\DiagnosticoCatalogoCommand;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Console\ExportarGbifCommand;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Console\ImportarCatalogoInvertebradosCommand;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Console\ResincronizarClasificacionesCommand;
@@ -72,6 +75,8 @@ use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persiste
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentUnitTrayEspecimenRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentUnitTrayRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentVisitanteRepository;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\ExportarEspecimenesGbif;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\FichaEspecimenModal;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Mapa\MapaInteractivo;
 use Modules\InventarioGestionColeccion\Presentation\Http\Middleware\VisitanteSesionMiddleware;
 use Nwidart\Modules\Support\ModuleServiceProvider;
@@ -125,6 +130,7 @@ class InventarioGestionColeccionServiceProvider extends ModuleServiceProvider
         UbicacionEspecimenPort::class => EloquentUbicacionEspecimenAdapter::class,
         GestorTokenEsp32Port::class => SanctumTokenEsp32Adapter::class,
         TraductorErroresPersistenciaPort::class => PostgresTraductorErroresPersistenciaAdapter::class,
+        GeocodificadorInversoPort::class => NominatimGeocodificadorInversoAdapter::class,
     ];
 
     /**
@@ -150,6 +156,7 @@ class InventarioGestionColeccionServiceProvider extends ModuleServiceProvider
             $this->commands([
                 ImportarCatalogoInvertebradosCommand::class,
                 ExportarGbifCommand::class,
+                DiagnosticoCatalogoCommand::class,
                 ResincronizarClasificacionesCommand::class,
             ]);
         }
@@ -168,6 +175,15 @@ class InventarioGestionColeccionServiceProvider extends ModuleServiceProvider
         // registra con alias para que distintas páginas-host (curador y portal del
         // visitante) puedan montarlo con su propio modo.
         Livewire::component('inventario-mapa-interactivo', MapaInteractivo::class);
+
+        // Sección de selección/exportación de especímenes embebida en la página
+        // de Publicación GBIF (componente Livewire anidado).
+        Livewire::component('inventario-exportar-especimenes-gbif', ExportarEspecimenesGbif::class);
+
+        // Modal reutilizable con la ficha completa (todas las columnas) de un
+        // espécimen: se monta una vez por bandeja de revisión y escucha el evento
+        // `ver-ficha-especimen`.
+        Livewire::component('inventario-ficha-especimen', FichaEspecimenModal::class);
 
         // Guarda de la sesión efímera del visitante: protege el mapa del visitante para
         // que solo entre quien llegó por un QR válido y vigente, y nada más.

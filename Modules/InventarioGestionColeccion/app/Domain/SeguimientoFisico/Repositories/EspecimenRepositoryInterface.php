@@ -15,6 +15,14 @@ interface EspecimenRepositoryInterface
 
     public function buscarPorId(EspecimenId $id): ?Especimen;
 
+    /**
+     * Busca especímenes por una lista de IDs (para exportar una selección).
+     *
+     * @param  string[]  $ids
+     * @return Especimen[]
+     */
+    public function buscarPorIds(array $ids): array;
+
     /** @return Especimen[] */
     public function buscarPorEntidadDepositante(string $entidadDepositanteId): array;
 
@@ -131,6 +139,17 @@ interface EspecimenRepositoryInterface
      * @return array<string, int>
      */
     public function contarPorMuestraIds(array $muestraIds): array;
+
+    /**
+     * Devuelve, por cada `muestra_id`, la localidad más frecuente entre sus
+     * especímenes (la muestra rara vez trae localidad propia, pero sus
+     * especímenes sí). Sirve para mostrar información real en la bandeja de
+     * muestras en vez de campos verbatim casi siempre vacíos.
+     *
+     * @param  string[]  $muestraIds
+     * @return array<string, string> muestra_id => localidad representativa
+     */
+    public function localidadRepresentativaPorMuestraIds(array $muestraIds): array;
 
     /**
      * Lista los especímenes enganchados a una `muestra_id` (drill-down de la
@@ -354,4 +373,17 @@ interface EspecimenRepositoryInterface
      * @param  string[]  $ids
      */
     public function enlazarLocalidadPorIds(array $ids, string $localidadId): int;
+
+    /**
+     * Cuenta los especímenes SIN coordenadas (falta latitud o longitud). Incluye
+     * los que además no tienen localidad.
+     */
+    public function contarSinCoordenadas(): int;
+
+    /**
+     * Lista los especímenes SIN coordenadas (falta latitud o longitud), paginado.
+     *
+     * @return Especimen[]
+     */
+    public function buscarSinCoordenadas(int $limit, int $offset): array;
 }

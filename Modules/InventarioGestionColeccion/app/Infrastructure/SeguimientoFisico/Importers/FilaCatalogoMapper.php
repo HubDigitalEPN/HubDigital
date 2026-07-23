@@ -94,6 +94,12 @@ final class FilaCatalogoMapper
             $localityName ??= $desc['localityName'];
         }
 
+        // La localidad específica es solo la última palabra tras la coma. Cuando
+        // localityName viene en su propia columna y es compuesta (ej. "Tena,
+        // Reserva Jatun Sacha, sendero X"), nos quedamos con "sendero X". El texto
+        // completo se conserva en localidad_verbatim (ubicación anterior).
+        $localityName = $this->ultimoSegmentoLocalidad($localityName);
+
         // Valor de trabajo: la parte más específica disponible (normalizada).
         $localidad = $this->normalizarLocalidad(
             $localityName ?? $municipality ?? $stateProvince ?? $country
@@ -171,8 +177,48 @@ final class FilaCatalogoMapper
         $elevationMinM = $this->floatOnumerico($normalizada['minimum_elevation_in_meters'] ?? null);
         $elevationMaxM = $this->floatOnumerico($normalizada['maximum_elevation_in_meters'] ?? null);
 
-        // Endemic: boolean inferido de "Yes"/"No"/"Sí"/"1"/"0".
+        // Endemic: boolean inferido de "Yes"/"No"/"Sí"/"1"/"0". La plantilla v2 lo
+        // trata como TEXTO descriptivo ("yes, Colombia", "endemic, Galápagos"); ese
+        // verbatim se preserva aparte y el booleano queda como mejor-esfuerzo.
         $endemic = $this->parsearBoolean($normalizada['endemic'] ?? null);
+        $endemicVerbatim = $this->limpiar($normalizada['endemic'] ?? null);
+
+        // Campos plantilla v2 (aditivos): se leen crudos y se preservan tal cual.
+        $recordNumber = $this->limpiar($normalizada['record_number'] ?? null);
+        $origin = $this->limpiar($normalizada['origin'] ?? null);
+        $identifiedBy = $this->limpiar($normalizada['identified_by'] ?? null);
+        $dateDetermined = $this->limpiar($normalizada['date_determined'] ?? null);
+        $researchPermit = $this->limpiar($normalizada['research_permit'] ?? null);
+        $transportPermit = $this->limpiar($normalizada['transport_permit'] ?? null);
+        $exportImportAuthorization = $this->limpiar($normalizada['export_import_authorization'] ?? null);
+        $scientificNameAuthorship = $this->limpiar($normalizada['scientific_name_authorship'] ?? null);
+        $latLonMaxError = $this->limpiar($normalizada['lat_lon_max_error'] ?? null);
+        $clade = $this->limpiar($normalizada['clade'] ?? null);
+        $identificationQualifier = $this->limpiar($normalizada['identification_qualifier'] ?? null);
+        $identificationRemarks = $this->limpiar($normalizada['identification_remarks'] ?? null);
+        $vernacularName = $this->limpiar($normalizada['vernacular_name'] ?? null);
+        $typeNotes = $this->limpiar($normalizada['type_notes'] ?? null);
+        $continent = $this->limpiar($normalizada['continent'] ?? null);
+        $countryCode = $this->limpiar($normalizada['country_code'] ?? null);
+        $localityNotes = $this->limpiar($normalizada['locality_notes'] ?? null);
+        $localityCode = $this->limpiar($normalizada['locality_code'] ?? null);
+        $elevationMaxError = $this->limpiar($normalizada['elevation_max_error'] ?? null);
+        $verbatimElevation = $this->limpiar($normalizada['verbatim_elevation'] ?? null);
+        $verbatimDepth = $this->limpiar($normalizada['verbatim_depth'] ?? null);
+        $verbatimLatitude = $this->limpiar($normalizada['verbatim_latitude'] ?? null);
+        $verbatimLongitude = $this->limpiar($normalizada['verbatim_longitude'] ?? null);
+        $verbatimCoordinateSystem = $this->limpiar($normalizada['verbatim_coordinate_system'] ?? null);
+        $verbatimSrs = $this->limpiar($normalizada['verbatim_srs'] ?? null);
+        $informationWithheld = $this->limpiar($normalizada['information_withheld'] ?? null);
+        $priorOwner = $this->limpiar($normalizada['prior_owner'] ?? null);
+        $locatedAt = $this->limpiar($normalizada['located_at'] ?? null);
+        $iptUpload = $this->limpiar($normalizada['ipt_upload'] ?? null);
+        $recordCreatedBy = $this->limpiar(
+            $normalizada['record_created_by,month-year'] ?? $normalizada['record_created_by'] ?? null
+        );
+        $responsibleResearcherExport = $this->limpiar(
+            $normalizada['responsible_researcher_or_applicant_for_export'] ?? null
+        );
 
         return new FilaMapeada(
             codigoCatalogo: $codigoCatalogo,
@@ -217,6 +263,38 @@ final class FilaCatalogoMapper
             taxonomicNotes: $this->limpiar($normalizada['taxonomic_notes'] ?? null),
             actaRecepcion: $this->limpiar($normalizada['acta_recepcion'] ?? $normalizada['#acta_recepcion'] ?? null),
             warnings: $warnings,
+            recordNumber: $recordNumber,
+            origin: $origin,
+            identifiedBy: $identifiedBy,
+            dateDetermined: $dateDetermined,
+            researchPermit: $researchPermit,
+            transportPermit: $transportPermit,
+            exportImportAuthorization: $exportImportAuthorization,
+            scientificNameAuthorship: $scientificNameAuthorship,
+            latLonMaxError: $latLonMaxError,
+            clade: $clade,
+            identificationQualifier: $identificationQualifier,
+            identificationRemarks: $identificationRemarks,
+            vernacularName: $vernacularName,
+            typeNotes: $typeNotes,
+            continent: $continent,
+            countryCode: $countryCode,
+            localityNotes: $localityNotes,
+            localityCode: $localityCode,
+            elevationMaxError: $elevationMaxError,
+            verbatimElevation: $verbatimElevation,
+            verbatimDepth: $verbatimDepth,
+            verbatimLatitude: $verbatimLatitude,
+            verbatimLongitude: $verbatimLongitude,
+            verbatimCoordinateSystem: $verbatimCoordinateSystem,
+            verbatimSrs: $verbatimSrs,
+            informationWithheld: $informationWithheld,
+            priorOwner: $priorOwner,
+            locatedAt: $locatedAt,
+            iptUpload: $iptUpload,
+            recordCreatedBy: $recordCreatedBy,
+            responsibleResearcherExport: $responsibleResearcherExport,
+            endemicVerbatim: $endemicVerbatim,
         );
     }
 
@@ -291,6 +369,26 @@ final class FilaCatalogoMapper
     }
 
     /**
+     * Devuelve solo el último segmento tras la coma, normalizado. Es la
+     * "ubicación específica" según la regla del usuario. "Tena, Reserva Jatun
+     * Sacha, sendero X" -> "Sendero X". Sin comas, normaliza el valor entero.
+     * null si está vacío.
+     */
+    private function ultimoSegmentoLocalidad(?string $valor): ?string
+    {
+        $valor = $this->limpiar($valor);
+        if ($valor === null) {
+            return null;
+        }
+        if (str_contains($valor, ',')) {
+            $partes = array_values(array_filter(array_map('trim', explode(',', $valor)), fn ($p) => $p !== ''));
+            $valor = $partes === [] ? $valor : end($partes);
+        }
+
+        return $this->normalizarLocalidad($valor);
+    }
+
+    /**
      * Parte una localidad separada por comas en segmentos no vacíos, cada uno
      * con la caja normalizada. "ECUADOR, ORELLANA, YASUNÍ" -> ["Ecuador","Orellana","Yasuní"].
      *
@@ -324,16 +422,16 @@ final class FilaCatalogoMapper
             return $out;
         }
 
+        // La localidad específica es SIEMPRE el último segmento tras la coma
+        // (decisión del usuario). Los segmentos previos alimentan país/provincia/
+        // cantón; el string completo se preserva aparte en localidad_verbatim.
         $out['country'] = $partes[0];
-        if ($n === 2) {
-            $out['localityName'] = $partes[1];
-        } elseif ($n === 3) {
+        $out['localityName'] = $partes[$n - 1];
+        if ($n >= 3) {
             $out['stateProvince'] = $partes[1];
-            $out['localityName'] = $partes[2];
-        } elseif ($n >= 4) {
-            $out['stateProvince'] = $partes[1];
+        }
+        if ($n >= 4) {
             $out['municipality'] = $partes[2];
-            $out['localityName'] = implode(', ', array_slice($partes, 3));
         }
 
         return $out;

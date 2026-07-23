@@ -187,12 +187,10 @@ final class TaxaRevisionIndex extends Component
                 verbatim: $this->items[$idx]['verbatim'],
             ));
 
-            $this->miembros[$idx] = array_map(fn ($m) => [
-                'id' => $m['id'],
-                'codigoCatalogo' => $m['codigoCatalogo'],
-                'colector' => $m['colector'],
-                'localidad' => $m['localidad'],
-            ], $output->items);
+            // Conserva TODOS los campos que entrega el handler (código, taxón,
+            // localidad, fecha, colector, verbatims…): antes se recortaban a 4 y
+            // la vista mostraba fecha/taxón vacíos.
+            $this->miembros[$idx] = $output->items;
             $this->seleccion[$idx] = array_map(fn ($m) => $m['id'], $output->items);
             $this->expandido[$idx] = true;
             $this->errorMessage = null;

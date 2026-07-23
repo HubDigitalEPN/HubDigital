@@ -87,8 +87,15 @@ final class DuplicadosCatalogNumberIndex extends Component
                 'fechasDistintas' => $item->fechasDistintas,
                 'motivoInput' => '',
             ], $output->items);
-            // Los índices cambian al recargar; reinicia la selección.
+            // Los índices cambian al recargar; reinicia la selección. Cada grupo
+            // arranca con un ARRAY vacío: es imprescindible para que Livewire trate
+            // los checkboxes como un grupo (selección múltiple) y no como un
+            // booleano compartido —lo que marcaba "todos o ninguno" y rompía el
+            // count() con un `false`.
             $this->seleccion = [];
+            foreach (array_keys($this->items) as $i) {
+                $this->seleccion[$i] = [];
+            }
             $this->errorMessage = null;
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);
@@ -134,7 +141,8 @@ final class DuplicadosCatalogNumberIndex extends Component
      */
     private function idsSeleccionados(int $idx): ?array
     {
-        $ids = array_values($this->seleccion[$idx] ?? []);
+        $sel = $this->seleccion[$idx] ?? [];
+        $ids = is_array($sel) ? array_values($sel) : [];
 
         return $ids === [] ? null : $ids;
     }

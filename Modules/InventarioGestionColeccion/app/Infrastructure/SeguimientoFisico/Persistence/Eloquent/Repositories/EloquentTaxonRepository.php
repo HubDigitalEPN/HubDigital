@@ -97,6 +97,33 @@ class EloquentTaxonRepository implements TaxonRepositoryInterface
         return array_map(fn ($r) => (string) $r->id, $rows);
     }
 
+    /**
+     * @param  string[]  $taxonIds
+     * @return string[]
+     */
+    public function listarDescendientesIdsDeVarios(array $taxonIds): array
+    {
+        $taxonIds = array_values(array_unique(array_filter($taxonIds, fn ($id) => $id !== '')));
+        if ($taxonIds === []) {
+            return [];
+        }
+
+        // Un único CTE recursivo sembrado con TODOS los taxa raíz: resuelve el
+        // bosque completo de descendientes en una sola consulta (en vez de N).
+        $placeholders = implode(',', array_fill(0, count($taxonIds), '?'));
+        $sql = "WITH RECURSIVE descendientes(id) AS (
+                    SELECT id FROM taxonomia.taxones WHERE id IN ({$placeholders})
+                    UNION
+                    SELECT t.id FROM taxonomia.taxones t
+                    INNER JOIN descendientes d ON t.padre_id = d.id
+                )
+                SELECT id FROM descendientes";
+
+        $rows = DB::select($sql, $taxonIds);
+
+        return array_map(fn ($r) => (string) $r->id, $rows);
+    }
+
     private function toDomain(TaxonEloquentModel $model): Taxon
     {
         return Taxon::reconstituir(

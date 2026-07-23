@@ -18,22 +18,44 @@ final class ListarLocalidadesHandler
         $page = max(1, $input->page);
         $perPage = max(1, min(200, $input->perPage));
 
-        $total = $this->localidadRepo->contarTodos();
-        $totalPaginas = $total > 0 ? (int) ceil($total / $perPage) : 1;
-        $offset = ($page - 1) * $perPage;
+        // La identidad real de una localidad para el catálogo es su nombre + rango.
+        // El padre (p. ej. la provincia) es incidental: "Aguarico (sitio)" bajo
+        // Orellana y bajo Napo NO son dos lugares distintos para esta pantalla. Por
+        // eso colapsamos por (nombre_canonico, rango) y mostramos cada uno una vez.
+        //
+        // Se trabaja sobre el conjunto completo (las localidades canónicas son un
+        // set curado y pequeño, no las 48k filas del catálogo) y se pagina ya
+        // colapsado, para que los conteos de paginación cuadren con lo que se ve.
+        $todas = $this->localidadRepo->buscarTodos();
 
-        $localidades = $this->localidadRepo->listarPagina($offset, $perPage);
+        // Mapa id → nombre para resolver el nombre del padre sin consultas extra.
+        $nombrePorId = [];
+        foreach ($todas as $l) {
+            $nombrePorId[(string) $l->id()] = $l->nombreCanonico();
+        }
 
-        $padreIds = array_values(array_unique(array_filter(
-            array_map(fn (Localidad $l) => $l->padreId() !== null ? (string) $l->padreId() : null, $localidades)
-        )));
-
-        $padresMap = [];
-        if ($padreIds !== []) {
-            foreach ($this->localidadRepo->buscarPorIds($padreIds) as $padre) {
-                $padresMap[(string) $padre->id()] = $padre->nombreCanonico();
+        // Un representante por grupo: se conserva el registro MÁS completo (con
+        // coordenadas/país/provincia), así "Editar" abre el mejor candidato.
+        /** @var array<string, Localidad> $representantes */
+        $representantes = [];
+        foreach ($todas as $l) {
+            $clave = mb_strtolower(trim($l->nombreCanonico())).'|'.$l->rango()->value;
+            $actual = $representantes[$clave] ?? null;
+            if ($actual === null || $this->completitud($l) > $this->completitud($actual)) {
+                $representantes[$clave] = $l;
             }
         }
+
+        $unicas = array_values($representantes);
+        usort(
+            $unicas,
+            fn (Localidad $a, Localidad $b): int => strcasecmp($a->nombreCanonico(), $b->nombreCanonico())
+                ?: strcmp($a->rango()->value, $b->rango()->value)
+        );
+
+        $total = count($unicas);
+        $totalPaginas = $total > 0 ? (int) ceil($total / $perPage) : 1;
+        $offset = ($page - 1) * $perPage;
 
         $items = array_map(
             fn (Localidad $l) => new ListarLocalidadesItemOutput(
@@ -41,7 +63,7 @@ final class ListarLocalidadesHandler
                 nombreCanonico: $l->nombreCanonico(),
                 rango: $l->rango()->value,
                 padreId: $l->padreId() !== null ? (string) $l->padreId() : null,
-                padreNombre: $l->padreId() !== null ? ($padresMap[(string) $l->padreId()] ?? null) : null,
+                padreNombre: $l->padreId() !== null ? ($nombrePorId[(string) $l->padreId()] ?? null) : null,
                 latitud: $l->coordenada()?->latitud,
                 longitud: $l->coordenada()?->longitud,
                 country: $l->country(),
@@ -49,7 +71,7 @@ final class ListarLocalidadesHandler
                 municipality: $l->municipality(),
                 geodeticDatum: $l->geodeticDatum(),
             ),
-            $localidades,
+            array_slice($unicas, $offset, $perPage),
         );
 
         return new ListarLocalidadesOutput(
@@ -59,5 +81,17 @@ final class ListarLocalidadesHandler
             perPage: $perPage,
             totalPaginas: $totalPaginas,
         );
+    }
+
+    /**
+     * Puntaje de completitud de una localidad: cuántos campos descriptivos tiene
+     * poblados. Se usa para elegir el representante de cada grupo (nombre+rango).
+     */
+    private function completitud(Localidad $l): int
+    {
+        return ($l->coordenada() !== null ? 1 : 0)
+            + ($l->country() !== null ? 1 : 0)
+            + ($l->stateProvince() !== null ? 1 : 0)
+            + ($l->municipality() !== null ? 1 : 0);
     }
 }

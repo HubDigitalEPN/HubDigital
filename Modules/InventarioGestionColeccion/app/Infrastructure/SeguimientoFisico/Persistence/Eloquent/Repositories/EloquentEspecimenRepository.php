@@ -81,6 +81,38 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
                 'estado_revision' => $especimen->estadoRevision()->value,
                 'motivo_revision' => $especimen->motivoRevision(),
                 'fila_origen_excel' => $especimen->filaOrigenExcel(),
+                'record_number' => $especimen->recordNumber(),
+                'origin' => $especimen->origin(),
+                'identified_by' => $especimen->identifiedBy(),
+                'date_determined' => $especimen->dateDetermined(),
+                'research_permit' => $especimen->researchPermit(),
+                'transport_permit' => $especimen->transportPermit(),
+                'export_import_authorization' => $especimen->exportImportAuthorization(),
+                'scientific_name_authorship' => $especimen->scientificNameAuthorship(),
+                'lat_lon_max_error' => $especimen->latLonMaxError(),
+                'clade' => $especimen->clade(),
+                'identification_qualifier' => $especimen->identificationQualifier(),
+                'identification_remarks' => $especimen->identificationRemarks(),
+                'vernacular_name' => $especimen->vernacularName(),
+                'type_notes' => $especimen->typeNotes(),
+                'continent' => $especimen->continent(),
+                'country_code' => $especimen->countryCode(),
+                'locality_notes' => $especimen->localityNotes(),
+                'locality_code' => $especimen->localityCode(),
+                'elevation_max_error' => $especimen->elevationMaxError(),
+                'verbatim_elevation' => $especimen->verbatimElevation(),
+                'verbatim_depth' => $especimen->verbatimDepth(),
+                'verbatim_latitude' => $especimen->verbatimLatitude(),
+                'verbatim_longitude' => $especimen->verbatimLongitude(),
+                'verbatim_coordinate_system' => $especimen->verbatimCoordinateSystem(),
+                'verbatim_srs' => $especimen->verbatimSrs(),
+                'information_withheld' => $especimen->informationWithheld(),
+                'prior_owner' => $especimen->priorOwner(),
+                'located_at' => $especimen->locatedAt(),
+                'ipt_upload' => $especimen->iptUpload(),
+                'record_created_by' => $especimen->recordCreatedBy(),
+                'responsible_researcher_export' => $especimen->responsibleResearcherExport(),
+                'endemic_verbatim' => $especimen->endemicVerbatim(),
             ]
         );
 
@@ -100,6 +132,19 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
         $model = EspecimenEloquentModel::with('identificadores')->find((string) $id);
 
         return $model ? $this->toDomain($model) : null;
+    }
+
+    public function buscarPorIds(array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        return EspecimenEloquentModel::with('identificadores')
+            ->whereIn('id', array_map('strval', $ids))
+            ->get()
+            ->map(fn ($m) => $this->toDomain($m))
+            ->all();
     }
 
     /** @return Especimen[] */
@@ -603,6 +648,34 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
         return $out;
     }
 
+    public function localidadRepresentativaPorMuestraIds(array $muestraIds): array
+    {
+        if ($muestraIds === []) {
+            return [];
+        }
+
+        // Localidad más frecuente por muestra: agrupa (muestra_id, localidad) con
+        // conteo y en PHP se queda con la de mayor conteo por muestra.
+        $rows = EspecimenEloquentModel::whereIn('muestra_id', $muestraIds)
+            ->whereNotNull('localidad')
+            ->where('localidad', '!=', '')
+            ->selectRaw('muestra_id, localidad, COUNT(*) AS total')
+            ->groupBy('muestra_id', 'localidad')
+            ->orderByDesc('total')
+            ->get();
+
+        $out = [];
+        foreach ($rows as $row) {
+            $mid = (string) $row->muestra_id;
+            // El primero que aparece por muestra es el de mayor conteo (orderByDesc).
+            if (! isset($out[$mid])) {
+                $out[$mid] = (string) $row->localidad;
+            }
+        }
+
+        return $out;
+    }
+
     public function buscarPorMuestraId(string $muestraId, int $limite = 500): array
     {
         return EspecimenEloquentModel::with('identificadores')
@@ -667,8 +740,27 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
      */
     private function aplicarFiltrosBusqueda(Builder $query, array $filtros): void
     {
+        // Familia: match estricto por taxón enlazado.
         if (! empty($filtros['taxonIds'])) {
             $query->whereIn('taxon_id', $filtros['taxonIds']);
+        }
+        // Nombre de taxón: enlazado (taxon_id) O verbatim (taxon_verbatim), para
+        // encontrar también especímenes cuya taxonomía no quedó enlazada a un Taxón.
+        $idsNombre = $filtros['taxonNombreIds'] ?? [];
+        $textoTaxon = $filtros['taxonNombreTexto'] ?? null;
+        if (! empty($idsNombre) || ($textoTaxon !== null && $textoTaxon !== '')) {
+            $query->where(function (Builder $q) use ($idsNombre, $textoTaxon): void {
+                $tieneIds = ! empty($idsNombre);
+                if ($tieneIds) {
+                    $q->whereIn('taxon_id', $idsNombre);
+                }
+                if ($textoTaxon !== null && $textoTaxon !== '') {
+                    $pat = '%'.$textoTaxon.'%';
+                    $tieneIds
+                        ? $q->orWhere('taxon_verbatim', 'ilike', $pat)
+                        : $q->where('taxon_verbatim', 'ilike', $pat);
+                }
+            });
         }
         if (! empty($filtros['codigoCatalogo'])) {
             $query->where('codigo_catalogo', 'ilike', '%'.$filtros['codigoCatalogo'].'%');
@@ -838,6 +930,38 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
                 'estado_revision' => $especimen->estadoRevision()->value,
                 'motivo_revision' => $especimen->motivoRevision(),
                 'fila_origen_excel' => $especimen->filaOrigenExcel(),
+                'record_number' => $especimen->recordNumber(),
+                'origin' => $especimen->origin(),
+                'identified_by' => $especimen->identifiedBy(),
+                'date_determined' => $especimen->dateDetermined(),
+                'research_permit' => $especimen->researchPermit(),
+                'transport_permit' => $especimen->transportPermit(),
+                'export_import_authorization' => $especimen->exportImportAuthorization(),
+                'scientific_name_authorship' => $especimen->scientificNameAuthorship(),
+                'lat_lon_max_error' => $especimen->latLonMaxError(),
+                'clade' => $especimen->clade(),
+                'identification_qualifier' => $especimen->identificationQualifier(),
+                'identification_remarks' => $especimen->identificationRemarks(),
+                'vernacular_name' => $especimen->vernacularName(),
+                'type_notes' => $especimen->typeNotes(),
+                'continent' => $especimen->continent(),
+                'country_code' => $especimen->countryCode(),
+                'locality_notes' => $especimen->localityNotes(),
+                'locality_code' => $especimen->localityCode(),
+                'elevation_max_error' => $especimen->elevationMaxError(),
+                'verbatim_elevation' => $especimen->verbatimElevation(),
+                'verbatim_depth' => $especimen->verbatimDepth(),
+                'verbatim_latitude' => $especimen->verbatimLatitude(),
+                'verbatim_longitude' => $especimen->verbatimLongitude(),
+                'verbatim_coordinate_system' => $especimen->verbatimCoordinateSystem(),
+                'verbatim_srs' => $especimen->verbatimSrs(),
+                'information_withheld' => $especimen->informationWithheld(),
+                'prior_owner' => $especimen->priorOwner(),
+                'located_at' => $especimen->locatedAt(),
+                'ipt_upload' => $especimen->iptUpload(),
+                'record_created_by' => $especimen->recordCreatedBy(),
+                'responsible_researcher_export' => $especimen->responsibleResearcherExport(),
+                'endemic_verbatim' => $especimen->endemicVerbatim(),
                 'created_at' => $ahora,
                 'updated_at' => $ahora,
             ];
@@ -870,6 +994,31 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
         $trim = trim($valor);
 
         return $trim === '' ? null : $trim;
+    }
+
+    public function contarSinCoordenadas(): int
+    {
+        return EspecimenEloquentModel::query()
+            ->where(function ($q): void {
+                $q->whereNull('decimal_latitude')->orWhereNull('decimal_longitude');
+            })
+            ->count();
+    }
+
+    public function buscarSinCoordenadas(int $limit, int $offset): array
+    {
+        return EspecimenEloquentModel::query()
+            ->with('identificadores')
+            ->where(function ($q): void {
+                $q->whereNull('decimal_latitude')->orWhereNull('decimal_longitude');
+            })
+            ->orderBy('codigo_catalogo')
+            ->orderBy('id')
+            ->offset(max(0, $offset))
+            ->limit(max(1, $limit))
+            ->get()
+            ->map(fn ($m) => $this->toDomain($m))
+            ->all();
     }
 
     private function toDomain(EspecimenEloquentModel $model): Especimen
@@ -940,6 +1089,38 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
                 : EstadoRevision::porDefecto(),
             motivoRevision: $model->motivo_revision,
             filaOrigenExcel: $model->fila_origen_excel !== null ? (int) $model->fila_origen_excel : null,
+            recordNumber: $model->record_number,
+            origin: $model->origin,
+            identifiedBy: $model->identified_by,
+            dateDetermined: $model->date_determined,
+            researchPermit: $model->research_permit,
+            transportPermit: $model->transport_permit,
+            exportImportAuthorization: $model->export_import_authorization,
+            scientificNameAuthorship: $model->scientific_name_authorship,
+            latLonMaxError: $model->lat_lon_max_error,
+            clade: $model->clade,
+            identificationQualifier: $model->identification_qualifier,
+            identificationRemarks: $model->identification_remarks,
+            vernacularName: $model->vernacular_name,
+            typeNotes: $model->type_notes,
+            continent: $model->continent,
+            countryCode: $model->country_code,
+            localityNotes: $model->locality_notes,
+            localityCode: $model->locality_code,
+            elevationMaxError: $model->elevation_max_error,
+            verbatimElevation: $model->verbatim_elevation,
+            verbatimDepth: $model->verbatim_depth,
+            verbatimLatitude: $model->verbatim_latitude,
+            verbatimLongitude: $model->verbatim_longitude,
+            verbatimCoordinateSystem: $model->verbatim_coordinate_system,
+            verbatimSrs: $model->verbatim_srs,
+            informationWithheld: $model->information_withheld,
+            priorOwner: $model->prior_owner,
+            locatedAt: $model->located_at,
+            iptUpload: $model->ipt_upload,
+            recordCreatedBy: $model->record_created_by,
+            responsibleResearcherExport: $model->responsible_researcher_export,
+            endemicVerbatim: $model->endemic_verbatim,
         );
     }
 }

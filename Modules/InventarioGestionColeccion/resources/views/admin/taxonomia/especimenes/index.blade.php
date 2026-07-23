@@ -506,6 +506,21 @@
                 <flux:field><flux:label>Datum</flux:label><flux:input wire:model="geodeticDatum" /></flux:field>
                 <flux:field><flux:label>Elevación min (m)</flux:label><flux:input wire:model="elevationMinM" /></flux:field>
             </div>
+            {{-- Detección de ubicación por coordenadas --}}
+            <div class="rounded-lg border border-border bg-bg-main p-3 space-y-2">
+                <flux:button type="button" variant="filled" icon="map-pin"
+                             wire:click="detectarUbicacion" wire:loading.attr="disabled" wire:target="detectarUbicacion">
+                    <span wire:loading.remove wire:target="detectarUbicacion">Detectar por coordenadas</span>
+                    <span wire:loading wire:target="detectarUbicacion">Detectando…</span>
+                </flux:button>
+                @if($geoMensaje)<p class="text-xs text-warning">{{ $geoMensaje }}</p>@endif
+                @if($ubicacionDetectada)
+                    <p class="text-xs text-text-secondary">
+                        <flux:icon name="map-pin" class="inline size-3.5 -mt-0.5 text-science-blue" />
+                        Ubicación detectada: <span class="text-text-primary">{{ $ubicacionDetectada }}</span>
+                    </p>
+                @endif
+            </div>
             <flux:field><flux:label>Colector</flux:label><flux:input wire:model="colector" /><flux:error name="colector" /></flux:field>
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <flux:field><flux:label>Individuos</flux:label><flux:input wire:model="individualCount" /></flux:field>
@@ -549,6 +564,21 @@
                 <flux:field><flux:label>Longitud</flux:label><flux:input wire:model="editDecimalLongitude" /></flux:field>
                 <flux:field><flux:label>Datum</flux:label><flux:input wire:model="editGeodeticDatum" /></flux:field>
                 <flux:field><flux:label>Elevación min (m)</flux:label><flux:input wire:model="editElevationMinM" /></flux:field>
+            </div>
+            {{-- Detección de ubicación por coordenadas --}}
+            <div class="rounded-lg border border-border bg-bg-main p-3 space-y-2">
+                <flux:button type="button" variant="filled" icon="map-pin"
+                             wire:click="detectarUbicacionEdicion" wire:loading.attr="disabled" wire:target="detectarUbicacionEdicion">
+                    <span wire:loading.remove wire:target="detectarUbicacionEdicion">Detectar por coordenadas</span>
+                    <span wire:loading wire:target="detectarUbicacionEdicion">Detectando…</span>
+                </flux:button>
+                @if($geoMensaje)<p class="text-xs text-warning">{{ $geoMensaje }}</p>@endif
+                @if($ubicacionDetectada)
+                    <p class="text-xs text-text-secondary">
+                        <flux:icon name="map-pin" class="inline size-3.5 -mt-0.5 text-science-blue" />
+                        Ubicación detectada: <span class="text-text-primary">{{ $ubicacionDetectada }}</span>
+                    </p>
+                @endif
             </div>
             <flux:field><flux:label>Fecha de Colecta</flux:label><flux:input type="date" wire:model="editFechaColecta" /><flux:error name="editFechaColecta" /></flux:field>
             <flux:field><flux:label>Colector</flux:label><flux:input wire:model="editColector" /><flux:error name="editColector" /></flux:field>

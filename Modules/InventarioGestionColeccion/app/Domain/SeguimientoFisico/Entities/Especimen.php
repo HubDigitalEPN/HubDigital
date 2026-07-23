@@ -84,6 +84,38 @@ class Especimen
         private ?string $motivoRevision,
         private array $identificadores,
         private ?int $filaOrigenExcel = null,
+        private ?string $recordNumber = null,
+        private ?string $origin = null,
+        private ?string $identifiedBy = null,
+        private ?string $dateDetermined = null,
+        private ?string $researchPermit = null,
+        private ?string $transportPermit = null,
+        private ?string $exportImportAuthorization = null,
+        private ?string $scientificNameAuthorship = null,
+        private ?string $latLonMaxError = null,
+        private ?string $clade = null,
+        private ?string $identificationQualifier = null,
+        private ?string $identificationRemarks = null,
+        private ?string $vernacularName = null,
+        private ?string $typeNotes = null,
+        private ?string $continent = null,
+        private ?string $countryCode = null,
+        private ?string $localityNotes = null,
+        private ?string $localityCode = null,
+        private ?string $elevationMaxError = null,
+        private ?string $verbatimElevation = null,
+        private ?string $verbatimDepth = null,
+        private ?string $verbatimLatitude = null,
+        private ?string $verbatimLongitude = null,
+        private ?string $verbatimCoordinateSystem = null,
+        private ?string $verbatimSrs = null,
+        private ?string $informationWithheld = null,
+        private ?string $priorOwner = null,
+        private ?string $locatedAt = null,
+        private ?string $iptUpload = null,
+        private ?string $recordCreatedBy = null,
+        private ?string $responsibleResearcherExport = null,
+        private ?string $endemicVerbatim = null,
     ) {}
 
     /**
@@ -139,6 +171,38 @@ class Especimen
         ?string $actaRecepcion = null,
         ?string $motivoRevision = null,
         ?int $filaOrigenExcel = null,
+        ?string $recordNumber = null,
+        ?string $origin = null,
+        ?string $identifiedBy = null,
+        ?string $dateDetermined = null,
+        ?string $researchPermit = null,
+        ?string $transportPermit = null,
+        ?string $exportImportAuthorization = null,
+        ?string $scientificNameAuthorship = null,
+        ?string $latLonMaxError = null,
+        ?string $clade = null,
+        ?string $identificationQualifier = null,
+        ?string $identificationRemarks = null,
+        ?string $vernacularName = null,
+        ?string $typeNotes = null,
+        ?string $continent = null,
+        ?string $countryCode = null,
+        ?string $localityNotes = null,
+        ?string $localityCode = null,
+        ?string $elevationMaxError = null,
+        ?string $verbatimElevation = null,
+        ?string $verbatimDepth = null,
+        ?string $verbatimLatitude = null,
+        ?string $verbatimLongitude = null,
+        ?string $verbatimCoordinateSystem = null,
+        ?string $verbatimSrs = null,
+        ?string $informationWithheld = null,
+        ?string $priorOwner = null,
+        ?string $locatedAt = null,
+        ?string $iptUpload = null,
+        ?string $recordCreatedBy = null,
+        ?string $responsibleResearcherExport = null,
+        ?string $endemicVerbatim = null,
         ?EstadoCustodia $estadoCustodia = null,
     ): self {
         $localidad = trim($localidad);
@@ -206,6 +270,38 @@ class Especimen
                 cardexLiquidCollectionCode: self::limpiarTexto($cardexLiquidCollectionCode),
             ),
             filaOrigenExcel: $filaOrigenExcel,
+            recordNumber: self::limpiarTexto($recordNumber),
+            origin: self::limpiarTexto($origin),
+            identifiedBy: self::limpiarTexto($identifiedBy),
+            dateDetermined: self::limpiarTexto($dateDetermined),
+            researchPermit: self::limpiarTexto($researchPermit),
+            transportPermit: self::limpiarTexto($transportPermit),
+            exportImportAuthorization: self::limpiarTexto($exportImportAuthorization),
+            scientificNameAuthorship: self::limpiarTexto($scientificNameAuthorship),
+            latLonMaxError: self::limpiarTexto($latLonMaxError),
+            clade: self::limpiarTexto($clade),
+            identificationQualifier: self::limpiarTexto($identificationQualifier),
+            identificationRemarks: self::limpiarTexto($identificationRemarks),
+            vernacularName: self::limpiarTexto($vernacularName),
+            typeNotes: self::limpiarTexto($typeNotes),
+            continent: self::limpiarTexto($continent),
+            countryCode: self::limpiarTexto($countryCode),
+            localityNotes: self::limpiarTexto($localityNotes),
+            localityCode: self::limpiarTexto($localityCode),
+            elevationMaxError: self::limpiarTexto($elevationMaxError),
+            verbatimElevation: self::limpiarTexto($verbatimElevation),
+            verbatimDepth: self::limpiarTexto($verbatimDepth),
+            verbatimLatitude: self::limpiarTexto($verbatimLatitude),
+            verbatimLongitude: self::limpiarTexto($verbatimLongitude),
+            verbatimCoordinateSystem: self::limpiarTexto($verbatimCoordinateSystem),
+            verbatimSrs: self::limpiarTexto($verbatimSrs),
+            informationWithheld: self::limpiarTexto($informationWithheld),
+            priorOwner: self::limpiarTexto($priorOwner),
+            locatedAt: self::limpiarTexto($locatedAt),
+            iptUpload: self::limpiarTexto($iptUpload),
+            recordCreatedBy: self::limpiarTexto($recordCreatedBy),
+            responsibleResearcherExport: self::limpiarTexto($responsibleResearcherExport),
+            endemicVerbatim: self::limpiarTexto($endemicVerbatim),
         );
     }
 
@@ -266,6 +362,38 @@ class Especimen
         ?EstadoRevision $estadoRevision = null,
         ?string $motivoRevision = null,
         ?int $filaOrigenExcel = null,
+        ?string $recordNumber = null,
+        ?string $origin = null,
+        ?string $identifiedBy = null,
+        ?string $dateDetermined = null,
+        ?string $researchPermit = null,
+        ?string $transportPermit = null,
+        ?string $exportImportAuthorization = null,
+        ?string $scientificNameAuthorship = null,
+        ?string $latLonMaxError = null,
+        ?string $clade = null,
+        ?string $identificationQualifier = null,
+        ?string $identificationRemarks = null,
+        ?string $vernacularName = null,
+        ?string $typeNotes = null,
+        ?string $continent = null,
+        ?string $countryCode = null,
+        ?string $localityNotes = null,
+        ?string $localityCode = null,
+        ?string $elevationMaxError = null,
+        ?string $verbatimElevation = null,
+        ?string $verbatimDepth = null,
+        ?string $verbatimLatitude = null,
+        ?string $verbatimLongitude = null,
+        ?string $verbatimCoordinateSystem = null,
+        ?string $verbatimSrs = null,
+        ?string $informationWithheld = null,
+        ?string $priorOwner = null,
+        ?string $locatedAt = null,
+        ?string $iptUpload = null,
+        ?string $recordCreatedBy = null,
+        ?string $responsibleResearcherExport = null,
+        ?string $endemicVerbatim = null,
     ): self {
         return new self(
             id: $id,
@@ -321,6 +449,38 @@ class Especimen
             motivoRevision: $motivoRevision,
             identificadores: $identificadores,
             filaOrigenExcel: $filaOrigenExcel,
+            recordNumber: $recordNumber,
+            origin: $origin,
+            identifiedBy: $identifiedBy,
+            dateDetermined: $dateDetermined,
+            researchPermit: $researchPermit,
+            transportPermit: $transportPermit,
+            exportImportAuthorization: $exportImportAuthorization,
+            scientificNameAuthorship: $scientificNameAuthorship,
+            latLonMaxError: $latLonMaxError,
+            clade: $clade,
+            identificationQualifier: $identificationQualifier,
+            identificationRemarks: $identificationRemarks,
+            vernacularName: $vernacularName,
+            typeNotes: $typeNotes,
+            continent: $continent,
+            countryCode: $countryCode,
+            localityNotes: $localityNotes,
+            localityCode: $localityCode,
+            elevationMaxError: $elevationMaxError,
+            verbatimElevation: $verbatimElevation,
+            verbatimDepth: $verbatimDepth,
+            verbatimLatitude: $verbatimLatitude,
+            verbatimLongitude: $verbatimLongitude,
+            verbatimCoordinateSystem: $verbatimCoordinateSystem,
+            verbatimSrs: $verbatimSrs,
+            informationWithheld: $informationWithheld,
+            priorOwner: $priorOwner,
+            locatedAt: $locatedAt,
+            iptUpload: $iptUpload,
+            recordCreatedBy: $recordCreatedBy,
+            responsibleResearcherExport: $responsibleResearcherExport,
+            endemicVerbatim: $endemicVerbatim,
         );
     }
 
@@ -680,6 +840,168 @@ class Especimen
     public function estado(): EstadoEspecimen
     {
         return $this->estado;
+    }
+
+    // ── Campos plantilla v2 (aditivos) ────────────────────────────────────────
+
+    public function recordNumber(): ?string
+    {
+        return $this->recordNumber;
+    }
+
+    public function origin(): ?string
+    {
+        return $this->origin;
+    }
+
+    public function identifiedBy(): ?string
+    {
+        return $this->identifiedBy;
+    }
+
+    public function dateDetermined(): ?string
+    {
+        return $this->dateDetermined;
+    }
+
+    public function researchPermit(): ?string
+    {
+        return $this->researchPermit;
+    }
+
+    public function transportPermit(): ?string
+    {
+        return $this->transportPermit;
+    }
+
+    public function exportImportAuthorization(): ?string
+    {
+        return $this->exportImportAuthorization;
+    }
+
+    public function scientificNameAuthorship(): ?string
+    {
+        return $this->scientificNameAuthorship;
+    }
+
+    public function latLonMaxError(): ?string
+    {
+        return $this->latLonMaxError;
+    }
+
+    public function clade(): ?string
+    {
+        return $this->clade;
+    }
+
+    public function identificationQualifier(): ?string
+    {
+        return $this->identificationQualifier;
+    }
+
+    public function identificationRemarks(): ?string
+    {
+        return $this->identificationRemarks;
+    }
+
+    public function vernacularName(): ?string
+    {
+        return $this->vernacularName;
+    }
+
+    public function typeNotes(): ?string
+    {
+        return $this->typeNotes;
+    }
+
+    public function continent(): ?string
+    {
+        return $this->continent;
+    }
+
+    public function countryCode(): ?string
+    {
+        return $this->countryCode;
+    }
+
+    public function localityNotes(): ?string
+    {
+        return $this->localityNotes;
+    }
+
+    public function localityCode(): ?string
+    {
+        return $this->localityCode;
+    }
+
+    public function elevationMaxError(): ?string
+    {
+        return $this->elevationMaxError;
+    }
+
+    public function verbatimElevation(): ?string
+    {
+        return $this->verbatimElevation;
+    }
+
+    public function verbatimDepth(): ?string
+    {
+        return $this->verbatimDepth;
+    }
+
+    public function verbatimLatitude(): ?string
+    {
+        return $this->verbatimLatitude;
+    }
+
+    public function verbatimLongitude(): ?string
+    {
+        return $this->verbatimLongitude;
+    }
+
+    public function verbatimCoordinateSystem(): ?string
+    {
+        return $this->verbatimCoordinateSystem;
+    }
+
+    public function verbatimSrs(): ?string
+    {
+        return $this->verbatimSrs;
+    }
+
+    public function informationWithheld(): ?string
+    {
+        return $this->informationWithheld;
+    }
+
+    public function priorOwner(): ?string
+    {
+        return $this->priorOwner;
+    }
+
+    public function locatedAt(): ?string
+    {
+        return $this->locatedAt;
+    }
+
+    public function iptUpload(): ?string
+    {
+        return $this->iptUpload;
+    }
+
+    public function recordCreatedBy(): ?string
+    {
+        return $this->recordCreatedBy;
+    }
+
+    public function responsibleResearcherExport(): ?string
+    {
+        return $this->responsibleResearcherExport;
+    }
+
+    public function endemicVerbatim(): ?string
+    {
+        return $this->endemicVerbatim;
     }
 
     /**

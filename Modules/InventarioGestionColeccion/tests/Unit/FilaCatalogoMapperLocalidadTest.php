@@ -18,13 +18,15 @@ test('descompone "País, Provincia, Localidad" en columnas Darwin Core', functio
         ->and($r->localidadVerbatim)->toBe('Ecuador, Orellana, Yasuní');
 });
 
-test('con muchos segmentos llena municipality y une el resto en localityName', function (): void {
+test('con muchos segmentos la localidad específica es SOLO la última palabra tras la coma', function (): void {
     $r = mapearLocalidad(['verbatimLocality' => 'Ecuador, Orellana, Aguarico, Estación, Onkone']);
 
     expect($r->country)->toBe('Ecuador')
         ->and($r->stateProvince)->toBe('Orellana')
         ->and($r->municipality)->toBe('Aguarico')
-        ->and($r->localityName)->toBe('Estación, Onkone');
+        // Solo el último segmento; el texto completo queda en localidad_verbatim.
+        ->and($r->localityName)->toBe('Onkone')
+        ->and($r->localidadVerbatim)->toBe('Ecuador, Orellana, Aguarico, Estación, Onkone');
 });
 
 test('dos segmentos: país y localidad', function (): void {
