@@ -87,7 +87,8 @@
                     </div>
                     <div class="max-h-72 overflow-y-auto divide-y divide-border rounded-lg border border-border">
                         @foreach($miembros[$idx] ?? [] as $m)
-                            <div class="flex items-start gap-2 px-3 py-2 hover:bg-bg-main">
+                            <div class="flex items-start gap-2 px-3 py-2 hover:bg-bg-main"
+                                 wire:key="taxon-m-{{ $idx }}-{{ $m['id'] }}">
                                 <label class="flex min-w-0 flex-1 items-start gap-3 cursor-pointer">
                                     <input type="checkbox"
                                            wire:model.live="seleccion.{{ $idx }}"
