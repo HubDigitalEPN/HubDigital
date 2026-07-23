@@ -21,6 +21,10 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\Uni
  *
  * ponytail: usa la cadena de contención ACTUAL del espécimen (unit tray vigente → su caja). No
  * reconstruye contenedores históricos; el histórico de cada contenedor sí se incluye completo.
+ * Excepción: si el evento trae un snapshot de caja embebido (p. ej. 'destino_caja_id' junto a
+ * 'destino_unit_tray_id', escrito por ReubicarEspecimenesHandler), ese snapshot tiene prioridad
+ * sobre la caja ACTUAL del tray — evita que un tray reubicado de caja *después* del movimiento
+ * retrate el pasado con la caja de hoy. Ver etiquetaUnitTray().
  */
 final class ConsultarTrazabilidadEspecimenHandler
 {
@@ -107,7 +111,7 @@ final class ConsultarTrazabilidadEspecimenHandler
             $valor = (string) $valor;
 
             return match (true) {
-                str_contains((string) $clave, 'unit_tray') => $this->etiquetaUnitTray($valor),
+                str_contains((string) $clave, 'unit_tray') => $this->etiquetaUnitTray($valor, $this->snapshotCaja($datos, $prefijo)),
                 str_contains((string) $clave, 'caja') => $this->etiquetaCaja($valor),
                 str_contains((string) $clave, 'ranura') => $this->etiquetaRanura($valor),
                 default => $valor,
@@ -117,8 +121,36 @@ final class ConsultarTrazabilidadEspecimenHandler
         return null;
     }
 
-    /** Resuelve un unit tray a "Tray #N — Caja {código}"; cae al id crudo si no existe. */
-    private function etiquetaUnitTray(string $unitTrayId): string
+    /**
+     * Lee el snapshot "<prefijo>_caja_id" que algunos handlers (p. ej. ReubicarEspecimenesHandler)
+     * ya escriben junto al id del tray, para no depender de la caja ACTUAL del tray al mostrarlo.
+     * Los eventos escritos antes de este fix no lo traen; en ese caso devuelve null y
+     * etiquetaUnitTray() cae a la caja actual del tray (comportamiento previo).
+     *
+     * @param  array<string, mixed>  $datos
+     */
+    private function snapshotCaja(array $datos, string $prefijo): ?string
+    {
+        $valor = $datos["{$prefijo}_caja_id"] ?? null;
+
+        return $valor !== null ? (string) $valor : null;
+    }
+
+    /**
+     * Resuelve un unit tray a "Caja {código} — Tray #N"; cae al id crudo si no existe.
+     *
+     * La caja va primero: el número de tray es correlativo POR CAJA (reinicia en 1 en cada
+     * una), así que dos trays de cajas distintas suelen compartir número — anteponer el tray
+     * ("Tray #1 — Caja A" vs "Tray #1 — Caja B") hacía parecer que origen y destino eran el
+     * mismo lugar. Con la caja al frente el cambio real salta a la vista de inmediato.
+     *
+     * $cajaIdAlMomento (opcional) prioriza la caja que tenía el tray CUANDO ocurrió el evento
+     * sobre su caja actual: un tray puede reubicarse de caja después de este movimiento, y
+     * mostrar la caja de hoy haría ver origen y destino como el mismo lugar aunque en su
+     * momento fueran distintos (ver docblock de la clase). El número de tray sigue siendo el
+     * actual — no hay snapshot para ese dato (limitación aceptada).
+     */
+    private function etiquetaUnitTray(string $unitTrayId, ?string $cajaIdAlMomento = null): string
     {
         try {
             $tray = $this->unitTrayRepo->buscarPorId(UnitTrayId::desde($unitTrayId));
@@ -126,9 +158,13 @@ final class ConsultarTrazabilidadEspecimenHandler
             return $unitTrayId;
         }
 
-        return $tray !== null
-            ? "Tray #{$tray->numero()} — {$this->etiquetaCaja((string) $tray->cajaId())}"
-            : $unitTrayId;
+        if ($tray === null) {
+            return $unitTrayId;
+        }
+
+        $cajaId = $cajaIdAlMomento ?? (string) $tray->cajaId();
+
+        return "{$this->etiquetaCaja($cajaId)} — Tray #{$tray->numero()}";
     }
 
     /** Resuelve una caja a "Caja {código}"; cae al id crudo si no existe. */
@@ -143,7 +179,11 @@ final class ConsultarTrazabilidadEspecimenHandler
         return $caja !== null ? "Caja {$caja->codigo()}" : $cajaId;
     }
 
-    /** Resuelve una ranura a "Ranura #N — Gabinete {código}"; cae al id crudo si no existe. */
+    /**
+     * Resuelve una ranura a "Gabinete {código} — Ranura #N"; cae al id crudo si no existe.
+     * El gabinete va primero por la misma razón que en {@see etiquetaUnitTray()}: el número
+     * de ranura reinicia por gabinete.
+     */
     private function etiquetaRanura(string $ranuraId): string
     {
         try {
@@ -159,6 +199,6 @@ final class ConsultarTrazabilidadEspecimenHandler
         $gabinete = $this->gabineteRepo->buscarPorId($ranura->gabineteId());
         $etiquetaGabinete = $gabinete !== null ? "Gabinete {$gabinete->codigo()}" : 'gabinete desconocido';
 
-        return "Ranura #{$ranura->numeroRanura()} — {$etiquetaGabinete}";
+        return "{$etiquetaGabinete} — Ranura #{$ranura->numeroRanura()}";
     }
 }

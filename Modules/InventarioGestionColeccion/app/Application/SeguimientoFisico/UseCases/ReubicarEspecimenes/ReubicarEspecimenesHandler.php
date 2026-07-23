@@ -10,11 +10,9 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\Trans
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Support\PropagaClasificacionTaxonomica;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarEspecimenesUnitTray\ActualizarEspecimenesUnitTrayHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarEspecimenesUnitTray\ActualizarEspecimenesUnitTrayInput;
-use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\EventoCicloIot;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Exceptions\ReubicacionNoAutorizadaException;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\CajaRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
-use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EventoCicloIotRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UnitTrayEspecimenRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UnitTrayRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\VisitanteRepositoryInterface;
@@ -25,10 +23,10 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\Vis
 /**
  * Caso de uso: reubicar uno o varios especímenes al unit tray de destino.
  *
- * La asignación (sincronización + reclasificación + propagación a la caja) se delega en
- * {@see ActualizarEspecimenesUnitTrayHandler}; este handler añade la autorización del actor,
- * la advertencia taxonómica previa (confirmar/cancelar) y el registro de un movimiento de
- * trazabilidad por cada espécimen reubicado.
+ * La asignación (sincronización + reclasificación + propagación a la caja + registro de
+ * trazabilidad) se delega por completo en {@see ActualizarEspecimenesUnitTrayHandler}; este
+ * handler añade solo lo que le es propio: la autorización del actor y la advertencia
+ * taxonómica previa (confirmar/cancelar).
  */
 final class ReubicarEspecimenesHandler
 {
@@ -41,7 +39,6 @@ final class ReubicarEspecimenesHandler
         private readonly EspecimenRepositoryInterface $especimenRepo,
         private readonly UnitTrayEspecimenRepository $asignacionRepo,
         private readonly ClasificacionTaxonomicaPort $clasificacionPort,
-        private readonly EventoCicloIotRepository $eventoRepo,
         private readonly ContextoEjecucionPort $contextoEjecucion,
         private readonly VisitanteRepositoryInterface $visitanteRepo,
         private readonly TransactionManagerPort $transactionManager,
@@ -93,7 +90,10 @@ final class ReubicarEspecimenesHandler
             );
         }
 
-        $this->transactionManager->executeTransactional(function () use ($destinoId, $nuevos, $input, $origenes, $actorId, $actorRol): void {
+        $this->transactionManager->executeTransactional(function () use ($destinoId, $nuevos, $origenes): void {
+            // Esta llamada sincroniza el tray destino Y registra la trazabilidad del movimiento
+            // (origen/destino, con la caja de cada tray al momento del cambio) dentro de
+            // ActualizarEspecimenesUnitTrayHandler — no se duplica aquí.
             $this->asignar->handle(new ActualizarEspecimenesUnitTrayInput(
                 unitTrayId: (string) $destinoId,
                 especimenIds: $nuevos,
@@ -102,6 +102,8 @@ final class ReubicarEspecimenesHandler
             // Los especímenes movidos ya se reubicaron (la asignación es 1:1 tray↔especimen), así
             // que sus trays de origen deben recalcular su clasificación dominante —y limpiarla si
             // quedaron vacíos— en vez de conservar la taxonomía de especímenes que ya no albergan.
+            // Como se les pasa exactamente su lista de miembros ya vigente (sin cambios), esta
+            // llamada no vuelve a registrar trazabilidad para ellos.
             $origenTrayIds = array_unique(array_filter(
                 array_values($origenes),
                 static fn (string $origenId): bool => $origenId !== (string) $destinoId,
@@ -111,23 +113,6 @@ final class ReubicarEspecimenesHandler
                 $this->asignar->handle(new ActualizarEspecimenesUnitTrayInput(
                     unitTrayId: $origenTrayId,
                     especimenIds: $this->asignacionRepo->especimenIdsPorUnitTray(UnitTrayId::desde($origenTrayId)),
-                ));
-            }
-
-            $ocurridoEn = new \DateTimeImmutable;
-            foreach ($input->especimenIds as $especimenId) {
-                $this->eventoRepo->guardar(EventoCicloIot::registrar(
-                    tipoAgregado: 'especimen',
-                    agregadoId: $especimenId,
-                    tipoEvento: 'especimen_reubicado',
-                    versionEvento: 1,
-                    datos: [
-                        'origen_unit_tray_id' => $origenes[$especimenId] ?? null,
-                        'destino_unit_tray_id' => (string) $destinoId,
-                    ],
-                    actorId: $actorId,
-                    actorRol: $actorRol,
-                    ocurridoEn: $ocurridoEn,
                 ));
             }
         });
