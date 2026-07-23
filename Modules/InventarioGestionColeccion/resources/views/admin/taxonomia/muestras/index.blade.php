@@ -22,7 +22,12 @@
 
             return '<span class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold whitespace-nowrap '.$clases.'">'.e(ucfirst($estado)).'</span>';
         }
-        if (in_array($clave, ['fechaVerbatim', 'localidadVerbatim'], true)) {
+        if ($clave === 'localidad') {
+            return $v !== null && $v !== ''
+                ? '<span class="text-text-primary">'.e((string) $v).'</span>'
+                : '<span class="text-text-secondary">—</span>';
+        }
+        if ($clave === 'fechaVerbatim') {
             return $v !== null && $v !== ''
                 ? '<span class="text-text-secondary text-xs italic">'.e((string) $v).'</span>'
                 : '<span class="text-text-secondary">—</span>';
@@ -326,7 +331,7 @@
 
     <script>
         function muestrasIndex(cfg) {
-            const STORAGE_KEY = 'inventario.muestras.columnas.v1';
+            const STORAGE_KEY = 'inventario.muestras.columnas.v2';
             const meta = {!! json_encode(array_map(fn($c) => [
                 'clave' => $c['clave'],
                 'etiqueta' => $c['etiqueta'],

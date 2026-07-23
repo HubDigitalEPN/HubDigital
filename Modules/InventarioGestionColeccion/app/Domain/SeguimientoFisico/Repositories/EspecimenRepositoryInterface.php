@@ -141,6 +141,17 @@ interface EspecimenRepositoryInterface
     public function contarPorMuestraIds(array $muestraIds): array;
 
     /**
+     * Devuelve, por cada `muestra_id`, la localidad más frecuente entre sus
+     * especímenes (la muestra rara vez trae localidad propia, pero sus
+     * especímenes sí). Sirve para mostrar información real en la bandeja de
+     * muestras en vez de campos verbatim casi siempre vacíos.
+     *
+     * @param  string[]  $muestraIds
+     * @return array<string, string> muestra_id => localidad representativa
+     */
+    public function localidadRepresentativaPorMuestraIds(array $muestraIds): array;
+
+    /**
      * Lista los especímenes enganchados a una `muestra_id` (drill-down de la
      * bandeja de muestras: ver qué especímenes concretos contiene el lote).
      *

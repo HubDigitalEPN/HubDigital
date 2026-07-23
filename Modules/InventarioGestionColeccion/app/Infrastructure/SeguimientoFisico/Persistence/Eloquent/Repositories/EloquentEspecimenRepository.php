@@ -648,6 +648,34 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
         return $out;
     }
 
+    public function localidadRepresentativaPorMuestraIds(array $muestraIds): array
+    {
+        if ($muestraIds === []) {
+            return [];
+        }
+
+        // Localidad más frecuente por muestra: agrupa (muestra_id, localidad) con
+        // conteo y en PHP se queda con la de mayor conteo por muestra.
+        $rows = EspecimenEloquentModel::whereIn('muestra_id', $muestraIds)
+            ->whereNotNull('localidad')
+            ->where('localidad', '!=', '')
+            ->selectRaw('muestra_id, localidad, COUNT(*) AS total')
+            ->groupBy('muestra_id', 'localidad')
+            ->orderByDesc('total')
+            ->get();
+
+        $out = [];
+        foreach ($rows as $row) {
+            $mid = (string) $row->muestra_id;
+            // El primero que aparece por muestra es el de mayor conteo (orderByDesc).
+            if (! isset($out[$mid])) {
+                $out[$mid] = (string) $row->localidad;
+            }
+        }
+
+        return $out;
+    }
+
     public function buscarPorMuestraId(string $muestraId, int $limite = 500): array
     {
         return EspecimenEloquentModel::with('identificadores')

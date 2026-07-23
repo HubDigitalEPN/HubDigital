@@ -523,6 +523,28 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
         return $out;
     }
 
+    public function localidadRepresentativaPorMuestraIds(array $muestraIds): array
+    {
+        $set = array_flip($muestraIds);
+        $conteos = []; // mid => [localidad => count]
+        foreach ($this->store as $e) {
+            $mid = $e->muestraId();
+            $loc = trim((string) $e->localidad());
+            if ($mid === null || ! isset($set[$mid]) || $loc === '') {
+                continue;
+            }
+            $conteos[$mid][$loc] = ($conteos[$mid][$loc] ?? 0) + 1;
+        }
+
+        $out = [];
+        foreach ($conteos as $mid => $locs) {
+            arsort($locs);
+            $out[$mid] = (string) array_key_first($locs);
+        }
+
+        return $out;
+    }
+
     public function buscarPorMuestraId(string $muestraId, int $limite = 500): array
     {
         $out = [];
