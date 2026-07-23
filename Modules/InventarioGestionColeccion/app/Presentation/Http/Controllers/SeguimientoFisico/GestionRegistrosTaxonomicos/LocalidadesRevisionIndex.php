@@ -15,6 +15,8 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Cr
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\CrearLocalidadYEnlazarVerbatim\CrearLocalidadYEnlazarVerbatimInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarEspecimenesDeGrupo\ListarEspecimenesDeGrupoHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarEspecimenesDeGrupo\ListarEspecimenesDeGrupoInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarEspecimenesSinCoordenadas\ListarEspecimenesSinCoordenadasHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarEspecimenesSinCoordenadas\ListarEspecimenesSinCoordenadasInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarLocalidadVerbatimsPendientes\ListarLocalidadVerbatimsPendientesHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarLocalidadVerbatimsPendientes\ListarLocalidadVerbatimsPendientesInput;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\RangoLocalidad;
@@ -69,9 +71,72 @@ final class LocalidadesRevisionIndex extends Component
 
     public ?string $errorMessage = null;
 
-    public function mount(ListarLocalidadVerbatimsPendientesHandler $handler): void
-    {
+    // ── Especímenes sin coordenadas ───────────────────────────────────────────
+
+    /** Total de especímenes sin coordenadas (se carga en mount, es barato). */
+    public int $sinCoordTotal = 0;
+
+    public bool $mostrarSinCoord = false;
+
+    /** @var list<array<string, mixed>> */
+    public array $sinCoordItems = [];
+
+    public int $sinCoordPagina = 1;
+
+    public int $sinCoordPorPagina = 20;
+
+    public int $sinCoordTotalPaginas = 1;
+
+    public function mount(
+        ListarLocalidadVerbatimsPendientesHandler $handler,
+        ListarEspecimenesSinCoordenadasHandler $sinCoordHandler,
+    ): void {
         $this->cargar($handler);
+        $this->sinCoordTotal = $sinCoordHandler->handle(
+            new ListarEspecimenesSinCoordenadasInput(page: 1, perPage: 1)
+        )->total;
+    }
+
+    /** Abre/cierra la sección de especímenes sin coordenadas (carga perezosa). */
+    public function alternarSinCoordenadas(ListarEspecimenesSinCoordenadasHandler $handler): void
+    {
+        $this->mostrarSinCoord = ! $this->mostrarSinCoord;
+        if ($this->mostrarSinCoord) {
+            $this->sinCoordPagina = 1;
+            $this->cargarSinCoordenadas($handler);
+        }
+    }
+
+    public function sinCoordSiguiente(ListarEspecimenesSinCoordenadasHandler $handler): void
+    {
+        if ($this->sinCoordPagina < $this->sinCoordTotalPaginas) {
+            $this->sinCoordPagina++;
+            $this->cargarSinCoordenadas($handler);
+        }
+    }
+
+    public function sinCoordAnterior(ListarEspecimenesSinCoordenadasHandler $handler): void
+    {
+        if ($this->sinCoordPagina > 1) {
+            $this->sinCoordPagina--;
+            $this->cargarSinCoordenadas($handler);
+        }
+    }
+
+    private function cargarSinCoordenadas(ListarEspecimenesSinCoordenadasHandler $handler): void
+    {
+        try {
+            $output = $handler->handle(new ListarEspecimenesSinCoordenadasInput(
+                page: $this->sinCoordPagina,
+                perPage: $this->sinCoordPorPagina,
+            ));
+            $this->sinCoordItems = $output->items;
+            $this->sinCoordTotal = $output->total;
+            $this->sinCoordTotalPaginas = $output->totalPaginas;
+            $this->errorMessage = null;
+        } catch (\Throwable $e) {
+            $this->errorMessage = $this->traducirErrorParaUsuario($e);
+        }
     }
 
     public function cargar(ListarLocalidadVerbatimsPendientesHandler $handler): void

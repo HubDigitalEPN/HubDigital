@@ -851,4 +851,24 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
 
         return $contador;
     }
+
+    public function contarSinCoordenadas(): int
+    {
+        return count($this->sinCoordenadas());
+    }
+
+    /** @return Especimen[] */
+    public function buscarSinCoordenadas(int $limit, int $offset): array
+    {
+        return array_slice($this->sinCoordenadas(), max(0, $offset), max(1, $limit));
+    }
+
+    /** @return Especimen[] */
+    private function sinCoordenadas(): array
+    {
+        return array_values(array_filter(
+            $this->store,
+            fn ($e) => $e->decimalLatitude() === null || $e->decimalLongitude() === null,
+        ));
+    }
 }

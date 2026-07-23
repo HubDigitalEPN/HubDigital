@@ -362,4 +362,17 @@ interface EspecimenRepositoryInterface
      * @param  string[]  $ids
      */
     public function enlazarLocalidadPorIds(array $ids, string $localidadId): int;
+
+    /**
+     * Cuenta los especímenes SIN coordenadas (falta latitud o longitud). Incluye
+     * los que además no tienen localidad.
+     */
+    public function contarSinCoordenadas(): int;
+
+    /**
+     * Lista los especímenes SIN coordenadas (falta latitud o longitud), paginado.
+     *
+     * @return Especimen[]
+     */
+    public function buscarSinCoordenadas(int $limit, int $offset): array;
 }

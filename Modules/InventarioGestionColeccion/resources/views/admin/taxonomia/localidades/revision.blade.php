@@ -29,6 +29,89 @@
         </ol>
     </x-inventariogestioncoleccion::bandeja-ayuda>
 
+    {{-- Especímenes sin coordenadas (incluye los que tampoco tienen localidad) --}}
+    <div class="rounded-lg border border-border bg-surface shadow-sm border-l-4 border-l-warning overflow-hidden">
+        <div class="px-5 py-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div class="min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <flux:icon name="map-pin" class="size-5 text-warning" />
+                    <span class="text-sm font-semibold text-text-primary">Especímenes sin coordenadas</span>
+                    <span class="inline-flex items-center rounded-full bg-warning/10 text-warning border border-warning/30 px-2 py-0.5 text-xs font-semibold">
+                        {{ $sinCoordTotal }}
+                    </span>
+                </div>
+                <p class="text-xs text-text-secondary mt-1">
+                    No se les puede autocompletar la ubicación por coordenadas. Se muestra su ubicación
+                    actual y la <strong>ubicación anterior</strong> (la del Excel) cuando la reemplazamos.
+                </p>
+            </div>
+            @if($sinCoordTotal > 0)
+                <flux:button variant="ghost" size="sm"
+                             :icon="$mostrarSinCoord ? 'chevron-up' : 'chevron-down'"
+                             wire:click="alternarSinCoordenadas"
+                             wire:loading.attr="disabled" wire:target="alternarSinCoordenadas"
+                             class="w-full sm:w-auto">
+                    {{ $mostrarSinCoord ? 'Ocultar' : 'Ver especímenes sin coordenadas' }}
+                </flux:button>
+            @endif
+        </div>
+
+        @if($mostrarSinCoord)
+            <div class="border-t border-border bg-bg-main px-4 py-3 space-y-2">
+                @forelse($sinCoordItems as $m)
+                    <div class="rounded-lg border border-border bg-surface p-3 flex items-start justify-between gap-2"
+                         wire:key="sincoord-{{ $m['id'] }}">
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="font-mono text-sm text-text-primary">{{ $m['codigoCatalogo'] }}</span>
+                                @if(!empty($m['taxonNombre']))
+                                    <span class="font-serif text-sm italic text-text-primary">{{ $m['taxonNombre'] }}</span>
+                                @else
+                                    <span class="text-xs italic text-text-secondary">sin determinar</span>
+                                @endif
+                                @if(!empty($m['sinLocalidad']))
+                                    <span class="inline-flex items-center rounded-full bg-error/10 text-error border border-error/30 px-2 py-0.5 text-xs font-semibold">
+                                        sin localidad
+                                    </span>
+                                @endif
+                            </div>
+                            <div class="mt-1 text-xs text-text-secondary">
+                                <span class="text-text-secondary">Ubicación actual:</span>
+                                <span class="text-text-primary">{{ $m['localidad'] ?: '—' }}</span>
+                            </div>
+                            @if(!empty($m['localidadVerbatim']))
+                                <div class="mt-0.5 text-xs text-text-secondary">
+                                    <span class="text-text-secondary">Ubicación anterior:</span>
+                                    <span class="text-text-primary">{{ $m['localidadVerbatim'] }}</span>
+                                </div>
+                            @endif
+                        </div>
+                        <flux:button size="sm" variant="ghost" icon="eye"
+                                     wire:click="$dispatch('ver-ficha-especimen', { id: '{{ $m['id'] }}' })">
+                            Ficha
+                        </flux:button>
+                    </div>
+                @empty
+                    <div class="px-3 py-4 text-center text-xs text-text-secondary">
+                        No hay especímenes sin coordenadas.
+                    </div>
+                @endforelse
+
+                @if($sinCoordTotalPaginas > 1)
+                    <div class="flex items-center justify-between pt-1">
+                        <span class="text-xs text-text-secondary">Página {{ $sinCoordPagina }} de {{ $sinCoordTotalPaginas }}</span>
+                        <div class="flex gap-2">
+                            <flux:button size="sm" variant="ghost" icon="chevron-left"
+                                         :disabled="$sinCoordPagina <= 1" wire:click="sinCoordAnterior">Anterior</flux:button>
+                            <flux:button size="sm" variant="ghost" icon="chevron-right"
+                                         :disabled="$sinCoordPagina >= $sinCoordTotalPaginas" wire:click="sinCoordSiguiente">Siguiente</flux:button>
+                        </div>
+                    </div>
+                @endif
+            </div>
+        @endif
+    </div>
+
     <div class="rounded-lg border border-border bg-surface shadow-sm p-4 flex flex-wrap items-center justify-between gap-2">
         <span class="text-sm font-medium text-text-primary">
             {{ $total }} grupo(s) de localidad pendiente(s)

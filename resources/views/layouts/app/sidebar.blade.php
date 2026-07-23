@@ -200,7 +200,7 @@
                             heading="Control de calidad"
                             class="grid"
                             expandable
-                            :expanded="request()->routeIs('inventario.taxonomia.revision', 'inventario.taxonomia.especimenes.duplicados', 'inventario.taxonomia.fechas.revision', 'inventario.taxonomia.muestras')"
+                            :expanded="request()->routeIs('inventario.taxonomia.revision', 'inventario.taxonomia.localidades.revision', 'inventario.taxonomia.especimenes.duplicados', 'inventario.taxonomia.fechas.revision', 'inventario.taxonomia.muestras')"
                         >
                             <flux:sidebar.item
                                 icon="clipboard-document-check"
@@ -209,6 +209,14 @@
                                 wire:navigate
                             >
                                 Centro de revisión
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="map-pin"
+                                :href="route('inventario.taxonomia.localidades.revision')"
+                                :current="request()->routeIs('inventario.taxonomia.localidades.revision')"
+                                wire:navigate
+                            >
+                                Localidades por confirmar
                             </flux:sidebar.item>
                             <flux:sidebar.item
                                 icon="document-duplicate"

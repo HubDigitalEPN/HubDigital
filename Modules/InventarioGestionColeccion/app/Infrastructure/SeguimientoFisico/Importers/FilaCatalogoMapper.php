@@ -94,6 +94,12 @@ final class FilaCatalogoMapper
             $localityName ??= $desc['localityName'];
         }
 
+        // La localidad específica es solo la última palabra tras la coma. Cuando
+        // localityName viene en su propia columna y es compuesta (ej. "Tena,
+        // Reserva Jatun Sacha, sendero X"), nos quedamos con "sendero X". El texto
+        // completo se conserva en localidad_verbatim (ubicación anterior).
+        $localityName = $this->ultimoSegmentoLocalidad($localityName);
+
         // Valor de trabajo: la parte más específica disponible (normalizada).
         $localidad = $this->normalizarLocalidad(
             $localityName ?? $municipality ?? $stateProvince ?? $country
@@ -363,6 +369,26 @@ final class FilaCatalogoMapper
     }
 
     /**
+     * Devuelve solo el último segmento tras la coma, normalizado. Es la
+     * "ubicación específica" según la regla del usuario. "Tena, Reserva Jatun
+     * Sacha, sendero X" -> "Sendero X". Sin comas, normaliza el valor entero.
+     * null si está vacío.
+     */
+    private function ultimoSegmentoLocalidad(?string $valor): ?string
+    {
+        $valor = $this->limpiar($valor);
+        if ($valor === null) {
+            return null;
+        }
+        if (str_contains($valor, ',')) {
+            $partes = array_values(array_filter(array_map('trim', explode(',', $valor)), fn ($p) => $p !== ''));
+            $valor = $partes === [] ? $valor : end($partes);
+        }
+
+        return $this->normalizarLocalidad($valor);
+    }
+
+    /**
      * Parte una localidad separada por comas en segmentos no vacíos, cada uno
      * con la caja normalizada. "ECUADOR, ORELLANA, YASUNÍ" -> ["Ecuador","Orellana","Yasuní"].
      *
@@ -396,16 +422,16 @@ final class FilaCatalogoMapper
             return $out;
         }
 
+        // La localidad específica es SIEMPRE el último segmento tras la coma
+        // (decisión del usuario). Los segmentos previos alimentan país/provincia/
+        // cantón; el string completo se preserva aparte en localidad_verbatim.
         $out['country'] = $partes[0];
-        if ($n === 2) {
-            $out['localityName'] = $partes[1];
-        } elseif ($n === 3) {
+        $out['localityName'] = $partes[$n - 1];
+        if ($n >= 3) {
             $out['stateProvince'] = $partes[1];
-            $out['localityName'] = $partes[2];
-        } elseif ($n >= 4) {
-            $out['stateProvince'] = $partes[1];
+        }
+        if ($n >= 4) {
             $out['municipality'] = $partes[2];
-            $out['localityName'] = implode(', ', array_slice($partes, 3));
         }
 
         return $out;

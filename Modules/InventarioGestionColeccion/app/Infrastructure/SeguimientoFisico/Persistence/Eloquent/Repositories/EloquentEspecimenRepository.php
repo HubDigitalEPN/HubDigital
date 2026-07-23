@@ -968,6 +968,31 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
         return $trim === '' ? null : $trim;
     }
 
+    public function contarSinCoordenadas(): int
+    {
+        return EspecimenEloquentModel::query()
+            ->where(function ($q): void {
+                $q->whereNull('decimal_latitude')->orWhereNull('decimal_longitude');
+            })
+            ->count();
+    }
+
+    public function buscarSinCoordenadas(int $limit, int $offset): array
+    {
+        return EspecimenEloquentModel::query()
+            ->with('identificadores')
+            ->where(function ($q): void {
+                $q->whereNull('decimal_latitude')->orWhereNull('decimal_longitude');
+            })
+            ->orderBy('codigo_catalogo')
+            ->orderBy('id')
+            ->offset(max(0, $offset))
+            ->limit(max(1, $limit))
+            ->get()
+            ->map(fn ($m) => $this->toDomain($m))
+            ->all();
+    }
+
     private function toDomain(EspecimenEloquentModel $model): Especimen
     {
         $fechaColecta = $model->fecha_colecta !== null

@@ -78,33 +78,42 @@ final class FuenteCatalogoGeocodificada implements FuenteCatalogoIterator
             return $fila;
         }
 
-        $faltaCountry = $this->vacio($norm['country'] ?? null);
-        $faltaState = $this->vacio($norm['state_province'] ?? null);
-        $faltaMun = $this->vacio($norm['municipality'] ?? null);
-        $faltaLoc = $this->vacio($norm['locality_name'] ?? null);
-        if (! $faltaCountry && ! $faltaState && ! $faltaMun && ! $faltaLoc) {
-            return $fila;
-        }
-
+        // Con coordenadas presentes, la ubicación administrativa (país/provincia/
+        // cantón) se toma de las coordenadas y REEMPLAZA lo que trajera el Excel
+        // (decisión del usuario). La localidad específica (locality_name) NO se
+        // pisa: es el sitio anotado por el colector. Sin coordenadas ya se retornó
+        // arriba, así que la ubicación anterior se mantiene tal cual.
         $u = $this->resolver($lat, $lon);
         if ($u === null) {
             return $fila;
         }
 
+        // Preserva la ubicación anterior (la del Excel) en localidad_verbatim, para
+        // poder mostrar el "antes" cuando la reemplazamos por la de coordenadas.
+        $verbatimActual = $norm['localidad_verbatim'] ?? $norm['verbatim_locality'] ?? null;
+        if ($this->vacio($verbatimActual)) {
+            $anterior = $this->componerUbicacionAnterior($norm);
+            if ($anterior !== null) {
+                $fila['localidad_verbatim'] = $anterior;
+            }
+        }
+
         $toco = false;
-        if ($faltaCountry && $u->country !== null) {
+        if ($u->country !== null) {
             $fila['country'] = $u->country;
             $toco = true;
         }
-        if ($faltaState && $u->stateProvince !== null) {
+        if ($u->stateProvince !== null) {
             $fila['state_province'] = $u->stateProvince;
             $toco = true;
         }
-        if ($faltaMun && $u->municipality !== null) {
+        if ($u->municipality !== null) {
             $fila['municipality'] = $u->municipality;
             $toco = true;
         }
-        if ($faltaLoc && $u->poblado !== null) {
+        // locality_name solo se completa si viene vacío (con el poblado más cercano);
+        // nunca reemplaza la localidad específica que anotó el colector.
+        if ($this->vacio($norm['locality_name'] ?? null) && $u->poblado !== null) {
             $fila['locality_name'] = $u->poblado;
             $toco = true;
         }
@@ -114,6 +123,25 @@ final class FuenteCatalogoGeocodificada implements FuenteCatalogoIterator
         }
 
         return $fila;
+    }
+
+    /**
+     * Compone la ubicación anterior (la que traía el Excel) como un string legible
+     * "país, provincia, cantón, localidad", para preservarla antes de reemplazar
+     * los campos administrativos por los obtenidos de las coordenadas.
+     *
+     * @param  array<string, string|null>  $norm
+     */
+    private function componerUbicacionAnterior(array $norm): ?string
+    {
+        $partes = array_filter([
+            $norm['country'] ?? null,
+            $norm['state_province'] ?? null,
+            $norm['municipality'] ?? null,
+            $norm['locality_name'] ?? null,
+        ], fn ($p) => is_string($p) && trim($p) !== '');
+
+        return $partes === [] ? null : implode(', ', array_map('trim', $partes));
     }
 
     private function resolver(float $lat, float $lon): ?UbicacionGeocodificada

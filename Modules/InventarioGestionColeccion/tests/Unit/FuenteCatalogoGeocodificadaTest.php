@@ -80,15 +80,32 @@ test('rellena país/provincia/cantón/localidad faltantes desde las coordenadas'
         ->and($geo->llamadas)->toBe(1);
 });
 
-test('no pisa un valor que ya venía en la fila', function (): void {
+test('con coordenadas REEMPLAZA los campos administrativos y preserva la ubicación anterior', function (): void {
     $geo = new GeoFakeStub(ubicacionFake());
     [$filas] = decorar([
-        ['occurrenceID' => 'A', 'country' => 'Perú', 'decimalLatitude' => '-0.4', 'decimalLongitude' => '-76.5'],
+        ['occurrenceID' => 'A', 'country' => 'Perú', 'stateProvince' => 'Loreto', 'localityName' => 'Río Napo', 'decimalLatitude' => '-0.4', 'decimalLongitude' => '-76.5'],
     ], $geo);
 
-    // country ya venía → se respeta; el resto se completa.
-    expect($filas[1]['country'])->toBe('Perú')
-        ->and($filas[1]['state_province'])->toBe('Sucumbíos');
+    // País/provincia/cantón se reemplazan por lo de las coordenadas.
+    expect($filas[1]['country'])->toBe('Ecuador')
+        ->and($filas[1]['state_province'])->toBe('Sucumbíos')
+        ->and($filas[1]['municipality'])->toBe('Shushufindi')
+        // La localidad específica anotada por el colector NO se pisa.
+        ->and($filas[1]['localityName'])->toBe('Río Napo')
+        // La ubicación anterior (la del Excel) se preserva en localidad_verbatim.
+        ->and($filas[1]['localidad_verbatim'])->toContain('Perú')
+        ->and($filas[1]['localidad_verbatim'])->toContain('Loreto');
+});
+
+test('sin coordenadas mantiene la ubicación anterior tal cual', function (): void {
+    $geo = new GeoFakeStub(ubicacionFake());
+    [$filas] = decorar([
+        ['occurrenceID' => 'A', 'country' => 'Perú', 'decimalLatitude' => '', 'decimalLongitude' => ''],
+    ], $geo);
+
+    expect($geo->llamadas)->toBe(0)
+        ->and($filas[1]['country'])->toBe('Perú')
+        ->and($filas[1])->not->toHaveKey('localidad_verbatim');
 });
 
 test('deduplica por coordenada: dos filas del mismo sitio = una sola consulta', function (): void {
