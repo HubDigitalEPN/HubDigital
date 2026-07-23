@@ -322,7 +322,7 @@
         @endif
     </div>
 
-    @livewire('inventario-ficha-especimen', key: 'ficha-modal-muestras')
+    @livewire('inventario-ficha-especimen', [], 'ficha-modal-muestras')
 
     <script>
         function muestrasIndex(cfg) {

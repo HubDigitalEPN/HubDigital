@@ -342,5 +342,5 @@
         </div>
     @endif
 
-    @livewire('inventario-ficha-especimen', key: 'ficha-modal-localidades')
+    @livewire('inventario-ficha-especimen', [], 'ficha-modal-localidades')
 </div>
