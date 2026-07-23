@@ -26,18 +26,32 @@
             </flux:field>
 
             @if($candidatos !== [])
-                <div class="divide-y divide-border rounded-lg border border-border">
-                    @foreach($candidatos as $c)
-                        <button
-                            type="button"
-                            wire:key="cand-{{ $c['id'] }}"
-                            wire:click="seleccionarEspecimen('{{ $c['id'] }}')"
-                            class="flex w-full min-h-[44px] flex-col items-start gap-0.5 px-4 py-3 text-left hover:bg-bg-main"
-                        >
-                            <span class="font-medium text-text-primary">{{ $c['codigoCatalogo'] }}</span>
-                            <span class="font-serif italic text-sm text-text-secondary">{{ $c['taxonNombre'] }}</span>
-                        </button>
-                    @endforeach
+                <div class="relative">
+                    <div
+                        wire:loading.flex
+                        wire:target="seleccionarEspecimen"
+                        class="absolute inset-0 z-10 hidden items-center justify-center gap-2 rounded-lg bg-surface/80 text-sm text-text-secondary"
+                    >
+                        <flux:icon name="arrow-path" class="size-4 animate-spin text-blue-navy" />
+                        <span>Cargando trazabilidad…</span>
+                    </div>
+                    <div
+                        wire:loading.class="pointer-events-none opacity-50"
+                        wire:target="seleccionarEspecimen"
+                        class="divide-y divide-border rounded-lg border border-border transition duration-150"
+                    >
+                        @foreach($candidatos as $c)
+                            <button
+                                type="button"
+                                wire:key="cand-{{ $c['id'] }}"
+                                wire:click="seleccionarEspecimen('{{ $c['id'] }}')"
+                                class="flex w-full min-h-[44px] flex-col items-start gap-0.5 px-4 py-3 text-left hover:bg-bg-main"
+                            >
+                                <span class="font-medium text-text-primary">{{ $c['codigoCatalogo'] }}</span>
+                                <span class="font-serif italic text-sm text-text-secondary">{{ $c['taxonNombre'] }}</span>
+                            </button>
+                        @endforeach
+                    </div>
                 </div>
             @elseif(trim($busqueda) !== '')
                 <p class="text-sm text-text-secondary">No se encontraron especímenes para «{{ $busqueda }}».</p>

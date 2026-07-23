@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers;
 
-use App\Enums\RolUsuario;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDocumentoActa\ConsultarDocumentoActaHandler;
@@ -15,11 +14,6 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDocumentoA
  */
 final class ServirDocumentoIdentidad
 {
-    /**
-     * @param string $id
-     * @param ConsultarDocumentoActaHandler $handler
-     * @return Response
-     */
     public function __invoke(string $id, ConsultarDocumentoActaHandler $handler): Response
     {
         $user = auth()->user();
@@ -27,7 +21,7 @@ final class ServirDocumentoIdentidad
         $documento = $handler->handle(new ConsultarDocumentoActaInput(
             actaId: $id,
             usuarioId: (string) $user?->id,
-            esCurador: $user?->rol === RolUsuario::CURADOR,
+            esCurador: $user?->esCurador() ?? false,
         ));
 
         if (! $documento->existe) {

@@ -39,23 +39,23 @@
                 </div>
                 <div class="p-5">
                     <dl class="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
-                        <div>
+                        <div class="min-w-0">
                             <dt class="text-xs text-text-secondary uppercase tracking-wide">Fecha de inicio</dt>
-                            <dd class="font-medium text-text-primary mt-1">{{ $acta->fechaInicio?->format('d/m/Y') ?? '—' }}</dd>
+                            <dd class="font-medium text-text-primary mt-1 hyphens-auto break-words">{{ $acta->fechaInicio?->format('d/m/Y') ?? '—' }}</dd>
                         </div>
-                        <div>
+                        <div class="min-w-0">
                             <dt class="text-xs text-text-secondary uppercase tracking-wide">Fecha de vencimiento</dt>
-                            <dd class="font-medium text-text-primary mt-1">{{ $acta->fechaFin?->format('d/m/Y') ?? '—' }}</dd>
+                            <dd class="font-medium text-text-primary mt-1 hyphens-auto break-words">{{ $acta->fechaFin?->format('d/m/Y') ?? '—' }}</dd>
                         </div>
-                        <div class="col-span-2">
+                        <div class="col-span-2 min-w-0">
                             <dt class="text-xs text-text-secondary uppercase tracking-wide">Título del estudio</dt>
-                            <dd class="font-medium text-text-primary mt-1">{{ $acta->tituloEstudio ?? '—' }}</dd>
+                            <dd class="font-medium text-text-primary mt-1 hyphens-auto break-words">{{ $acta->tituloEstudio ?? '—' }}</dd>
                         </div>
-                        <div>
+                        <div class="min-w-0">
                             <dt class="text-xs text-text-secondary uppercase tracking-wide">Institución</dt>
-                            <dd class="font-medium text-text-primary mt-1">{{ $acta->institucionAdscripcion ?? '—' }}</dd>
+                            <dd class="font-medium text-text-primary mt-1 hyphens-auto break-words">{{ $acta->institucionAdscripcion ?? '—' }}</dd>
                         </div>
-                        <div>
+                        <div class="min-w-0">
                             <dt class="text-xs text-text-secondary uppercase tracking-wide">Tipo / Alcance</dt>
                             <dd class="mt-1 capitalize font-medium text-text-primary">{{ str_replace('_', ' ', $acta->tipoPrestamo) }} ·
                                 @if(($acta->alcancePrestamo ?? 'nacional') === 'internacional')

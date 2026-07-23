@@ -176,7 +176,7 @@
             @php
                 $grupos = [
                     'Identificación' => [
-                        ['key' => 'occurrenceIDVisible', 'label' => 'occurrenceID', 'sensible' => false],
+                        ['key' => 'occurrenceIDVisible', 'label' => 'N.º de catálogo', 'sensible' => false],
                     ],
                     'Taxonomía' => [
                         ['key' => 'scientificNameVisible', 'label' => 'Nombre científico', 'sensible' => false],

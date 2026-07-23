@@ -15,6 +15,14 @@ interface EspecimenRepositoryInterface
 
     public function buscarPorId(EspecimenId $id): ?Especimen;
 
+    /**
+     * Busca especímenes por una lista de IDs (para exportar una selección).
+     *
+     * @param  string[]  $ids
+     * @return Especimen[]
+     */
+    public function buscarPorIds(array $ids): array;
+
     /** @return Especimen[] */
     public function buscarPorEntidadDepositante(string $entidadDepositanteId): array;
 
@@ -131,6 +139,17 @@ interface EspecimenRepositoryInterface
      * @return array<string, int>
      */
     public function contarPorMuestraIds(array $muestraIds): array;
+
+    /**
+     * Devuelve, por cada `muestra_id`, la localidad más frecuente entre sus
+     * especímenes (la muestra rara vez trae localidad propia, pero sus
+     * especímenes sí). Sirve para mostrar información real en la bandeja de
+     * muestras en vez de campos verbatim casi siempre vacíos.
+     *
+     * @param  string[]  $muestraIds
+     * @return array<string, string> muestra_id => localidad representativa
+     */
+    public function localidadRepresentativaPorMuestraIds(array $muestraIds): array;
 
     /**
      * Lista los especímenes enganchados a una `muestra_id` (drill-down de la
@@ -271,6 +290,43 @@ interface EspecimenRepositoryInterface
     public function filasOrigenExistentes(array $filasOrigen): array;
 
     /**
+     * De los códigos de catálogo dados, cuáles ya existen en la colección.
+     *
+     * Consulta por `codigo_catalogo` (el código interno), a diferencia de
+     * {@see buscarPorCatalogNumbersIn()}, que busca por `catalog_number`, el número
+     * que asignó el investigador. Es la comprobación de idempotencia de la ingesta de
+     * depósitos: la tabla solo tiene clave primaria sobre `id`, así que sin esto un
+     * reintento del job duplicaría los especímenes.
+     *
+     * @param  string[]  $codigos
+     * @return string[]
+     */
+    public function codigosCatalogoExistentes(array $codigos): array;
+
+    /**
+     * Cuántos de esos códigos están en la colección y cuántos esperan revisión.
+     *
+     * Lo usa el módulo de recepciones para poder decirle al curador qué entró de
+     * verdad tras aprobar un lote, en vez de limitarse a prometerlo.
+     *
+     * @param  string[]  $codigos
+     * @return array{total: int, pendientesRevision: int}
+     */
+    public function resumenPorCodigosCatalogo(array $codigos): array;
+
+    /**
+     * Marca como devueltos los espécimenes de un lote depositado.
+     *
+     * No borra: deja `estado_custodia = 'Devuelto'` y la fecha de salida. Solo afecta
+     * a los que siguen bajo custodia temporal, para que reejecutarlo sea inofensivo y
+     * para no tocar material donado, que es permanente por definición.
+     *
+     * @param  string[]  $codigos
+     * @return int Espécimenes efectivamente marcados.
+     */
+    public function marcarDevueltosPorCodigosCatalogo(array $codigos, \DateTimeImmutable $devueltoEn): int;
+
+    /**
      * Lista los especímenes concretos que caen en un grupo `fecha_verbatim`
      * pendiente (aún sin `fecha_colecta`). Permite que el curador vea y elija
      * uno por uno en la bandeja de revisión, en vez de aplicar en bloque.
@@ -317,4 +373,17 @@ interface EspecimenRepositoryInterface
      * @param  string[]  $ids
      */
     public function enlazarLocalidadPorIds(array $ids, string $localidadId): int;
+
+    /**
+     * Cuenta los especímenes SIN coordenadas (falta latitud o longitud). Incluye
+     * los que además no tienen localidad.
+     */
+    public function contarSinCoordenadas(): int;
+
+    /**
+     * Lista los especímenes SIN coordenadas (falta latitud o longitud), paginado.
+     *
+     * @return Especimen[]
+     */
+    public function buscarSinCoordenadas(int $limit, int $offset): array;
 }

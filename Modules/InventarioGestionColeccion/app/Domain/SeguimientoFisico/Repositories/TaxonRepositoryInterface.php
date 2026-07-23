@@ -38,4 +38,15 @@ interface TaxonRepositoryInterface
      * @return string[]
      */
     public function listarDescendientesIds(string $taxonId): array;
+
+    /**
+     * Versión por lotes de {@see listarDescendientesIds}: resuelve en UNA sola
+     * consulta los descendientes recursivos de varios taxones raíz (incluyéndolos).
+     * Evita el N+1 de llamar al CTE recursivo una vez por cada taxón coincidente
+     * cuando el filtro por nombre matchea cientos/miles de taxa.
+     *
+     * @param  string[]  $taxonIds
+     * @return string[]
+     */
+    public function listarDescendientesIdsDeVarios(array $taxonIds): array;
 }

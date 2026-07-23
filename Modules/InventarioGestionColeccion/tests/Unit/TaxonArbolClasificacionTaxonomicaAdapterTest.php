@@ -58,6 +58,11 @@ function repoTaxonesEnMemoria(array $taxones): TaxonRepositoryInterface
         {
             return [$taxonId];
         }
+
+        public function listarDescendientesIdsDeVarios(array $taxonIds): array
+        {
+            return array_values(array_unique($taxonIds));
+        }
     };
 }
 

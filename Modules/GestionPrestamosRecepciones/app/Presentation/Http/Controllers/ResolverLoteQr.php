@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers;
 
-use App\Enums\RolUsuario;
 use Illuminate\Http\RedirectResponse;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ResolverLotePorCodigoQr\ResolverLotePorCodigoQrHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ResolverLotePorCodigoQr\ResolverLotePorCodigoQrInput;
@@ -24,11 +23,11 @@ final class ResolverLoteQr
 
         $user = auth()->user();
 
-        if ($user?->rol === RolUsuario::CURADOR) {
+        if ($user?->esCurador()) {
             return redirect()->route('prestamos.curador.deposito.recepcion', $lote->solicitudId);
         }
 
-        if ($user?->rol === RolUsuario::DEPOSITANTE && (string) $user->id === $lote->investigadorId) {
+        if ($user?->esDepositante() && (string) $user->id === $lote->investigadorId) {
             return redirect()->route('prestamos.investigador.deposito.detalle', $lote->solicitudId);
         }
 

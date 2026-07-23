@@ -1,7 +1,7 @@
 <div class="space-y-6 p-4 sm:p-6">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div class="min-w-0">
-            <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Acceso de visitantes</flux:heading>
+            <flux:heading size="xl" level="1" class="font-display text-blue-navy font-bold">Acceso de visitantes</flux:heading>
             <p class="text-xs text-text-secondary">Registra visitantes y genérales un QR temporal para que entren al mapa de la colección.</p>
         </div>
         <flux:button icon="plus" variant="primary" wire:click="abrirModal" class="w-full sm:w-auto">

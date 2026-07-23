@@ -27,7 +27,7 @@
                                 Hub Digital
                             </span>
                             <div style="margin-top:4px; font-size:12px; color:#AFC1DB; letter-spacing:0.4px;">
-                                Colección Entomológica EPN
+                                Laboratorio de Invertebrados EPN
                             </div>
                         </td>
                     </tr>
@@ -81,7 +81,7 @@
                                 ninguna acción.
                             </p>
                             <p style="margin:12px 0 0; font-size:12px; color:#94A3B8;">
-                                © {{ date('Y') }} Colección Entomológica EPN · Hub Digital
+                                © {{ date('Y') }} Laboratorio de Invertebrados EPN · Hub Digital
                             </p>
                         </td>
                     </tr>

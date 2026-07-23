@@ -41,7 +41,7 @@ final class NotificacionCuratoriaAdapter implements NotificacionCuratoriaPort
         $deposito = SolicitudDepositoEloquentModel::find($solicitudId);
 
         // Se notifica a todos los curadores EXCEPTO al que tomó la decisión.
-        $otrosCuradores = User::where('rol', RolUsuario::CURADOR)
+        $otrosCuradores = User::whereHas('roles', fn ($q) => $q->where('rol', RolUsuario::CURADOR->value))
             ->where('id', '!=', $curadorQueDecideId)
             ->get();
 
@@ -77,7 +77,7 @@ final class NotificacionCuratoriaAdapter implements NotificacionCuratoriaPort
         $referencia = (string) Str::uuid();
 
         $deposito = SolicitudDepositoEloquentModel::find($solicitudId);
-        $curadores = User::where('rol', RolUsuario::CURADOR)->get();
+        $curadores = User::whereHas('roles', fn ($q) => $q->where('rol', RolUsuario::CURADOR->value))->get();
 
         if ($curadores->isEmpty()) {
             Log::info('Notificación a curaduría omitida: no hay curadores', [

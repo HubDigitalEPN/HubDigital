@@ -31,6 +31,19 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
     }
 
     /** @return Especimen[] */
+    public function buscarPorIds(array $ids): array
+    {
+        $out = [];
+        foreach ($ids as $id) {
+            if (isset($this->store[(string) $id])) {
+                $out[] = $this->store[(string) $id];
+            }
+        }
+
+        return $out;
+    }
+
+    /** @return Especimen[] */
     public function buscarPorEntidadDepositante(string $entidadDepositanteId): array
     {
         return array_values(array_filter(
@@ -510,6 +523,28 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
         return $out;
     }
 
+    public function localidadRepresentativaPorMuestraIds(array $muestraIds): array
+    {
+        $set = array_flip($muestraIds);
+        $conteos = []; // mid => [localidad => count]
+        foreach ($this->store as $e) {
+            $mid = $e->muestraId();
+            $loc = trim((string) $e->localidad());
+            if ($mid === null || ! isset($set[$mid]) || $loc === '') {
+                continue;
+            }
+            $conteos[$mid][$loc] = ($conteos[$mid][$loc] ?? 0) + 1;
+        }
+
+        $out = [];
+        foreach ($conteos as $mid => $locs) {
+            arsort($locs);
+            $out[$mid] = (string) array_key_first($locs);
+        }
+
+        return $out;
+    }
+
     public function buscarPorMuestraId(string $muestraId, int $limite = 500): array
     {
         $out = [];
@@ -579,6 +614,19 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
             $set = array_flip($filtros['taxonIds']);
             $items = array_filter($items, fn (Especimen $e) => $e->taxonId() !== null && isset($set[$e->taxonId()]));
         }
+        $idsNombre = $filtros['taxonNombreIds'] ?? [];
+        $textoTaxon = $filtros['taxonNombreTexto'] ?? null;
+        if (! empty($idsNombre) || ($textoTaxon !== null && $textoTaxon !== '')) {
+            $setNombre = array_flip($idsNombre);
+            $items = array_filter($items, function (Especimen $e) use ($setNombre, $idsNombre, $textoTaxon): bool {
+                $porId = ! empty($idsNombre) && $e->taxonId() !== null && isset($setNombre[$e->taxonId()]);
+                $porVerbatim = $textoTaxon !== null && $textoTaxon !== ''
+                    && $e->taxonVerbatim() !== null
+                    && stripos($e->taxonVerbatim(), $textoTaxon) !== false;
+
+                return $porId || $porVerbatim;
+            });
+        }
         if (! empty($filtros['codigoCatalogo'])) {
             $items = array_filter($items, fn (Especimen $e) => stripos($e->codigoCatalogo(), $filtros['codigoCatalogo']) !== false);
         }
@@ -645,11 +693,65 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
         return $existentes;
     }
 
+    /** @param string[] $codigos */
+    public function marcarDevueltosPorCodigosCatalogo(array $codigos, \DateTimeImmutable $devueltoEn): int
+    {
+        $buscados = array_flip($codigos);
+        $marcados = 0;
+        foreach ($this->store as $especimen) {
+            if (! isset($buscados[$especimen->codigoCatalogo()])) {
+                continue;
+            }
+            if ($especimen->estadoCustodia()?->esDevolutivo() !== true) {
+                continue;
+            }
+            $especimen->marcarComoDevuelto($devueltoEn);
+            $marcados++;
+        }
+
+        return $marcados;
+    }
+
     public function guardarBatch(array $especimenes): void
     {
         foreach ($especimenes as $especimen) {
             $this->guardar($especimen);
         }
+    }
+
+    /** @param string[] $codigos
+     *  @return array{total: int, pendientesRevision: int} */
+    public function resumenPorCodigosCatalogo(array $codigos): array
+    {
+        $buscados = array_flip($codigos);
+        $total = 0;
+        $pendientes = 0;
+        foreach ($this->store as $especimen) {
+            if (! isset($buscados[$especimen->codigoCatalogo()])) {
+                continue;
+            }
+            $total++;
+            if ($especimen->estadoRevision()->value === 'pendiente') {
+                $pendientes++;
+            }
+        }
+
+        return ['total' => $total, 'pendientesRevision' => $pendientes];
+    }
+
+    /** @param string[] $codigos
+     *  @return string[] */
+    public function codigosCatalogoExistentes(array $codigos): array
+    {
+        $buscados = array_flip($codigos);
+        $existentes = [];
+        foreach ($this->store as $especimen) {
+            if (isset($buscados[$especimen->codigoCatalogo()])) {
+                $existentes[] = $especimen->codigoCatalogo();
+            }
+        }
+
+        return array_values(array_unique($existentes));
     }
 
     /** @return Especimen[] */
@@ -770,5 +872,25 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
         }
 
         return $contador;
+    }
+
+    public function contarSinCoordenadas(): int
+    {
+        return count($this->sinCoordenadas());
+    }
+
+    /** @return Especimen[] */
+    public function buscarSinCoordenadas(int $limit, int $offset): array
+    {
+        return array_slice($this->sinCoordenadas(), max(0, $offset), max(1, $limit));
+    }
+
+    /** @return Especimen[] */
+    private function sinCoordenadas(): array
+    {
+        return array_values(array_filter(
+            $this->store,
+            fn ($e) => $e->decimalLatitude() === null || $e->decimalLongitude() === null,
+        ));
     }
 }

@@ -8,6 +8,7 @@ use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Rule;
 use Livewire\Component;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\GeocodificadorInversoPort;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarLocalidad\ActualizarLocalidadHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarLocalidad\ActualizarLocalidadInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarLocalidades\ListarLocalidadesHandler;
@@ -72,6 +73,9 @@ final class LocalidadIndex extends Component
     #[Rule('nullable|string|max:120')]
     public ?string $stateProvince = null;
 
+    #[Rule('nullable|string|max:120')]
+    public ?string $municipality = null;
+
     public bool $showEditModal = false;
 
     public string $editandoId = '';
@@ -99,6 +103,18 @@ final class LocalidadIndex extends Component
     #[Rule('nullable|string|max:120')]
     public ?string $editStateProvince = null;
 
+    #[Rule('nullable|string|max:120')]
+    public ?string $editMunicipality = null;
+
+    /** Ubicación detectada por coordenadas (texto legible) para mostrar en el modal. */
+    public ?string $ubicacionDetectada = null;
+
+    /** Poblado más cercano detectado, ofrecible como nombre canónico. */
+    public ?string $pobladoDetectado = null;
+
+    /** Aviso de la geocodificación (p. ej. sin coordenadas o sin resultado). */
+    public ?string $geoMensaje = null;
+
     public ?string $successMessage = null;
 
     public ?string $errorMessage = null;
@@ -122,7 +138,8 @@ final class LocalidadIndex extends Component
         $this->reset(
             'nombreCanonico', 'rango', 'padreId',
             'latitud', 'longitud', 'geodeticDatum',
-            'country', 'stateProvince',
+            'country', 'stateProvince', 'municipality',
+            'ubicacionDetectada', 'pobladoDetectado', 'geoMensaje',
             'successMessage', 'errorMessage'
         );
         $this->resetValidation();
@@ -146,6 +163,7 @@ final class LocalidadIndex extends Component
                 geodeticDatum: $this->geodeticDatum,
                 country: $this->country,
                 stateProvince: $this->stateProvince,
+                municipality: $this->municipality,
             ));
 
             $this->cargarLocalidades($listarHandler, $this->page);
@@ -175,6 +193,8 @@ final class LocalidadIndex extends Component
         $this->editGeodeticDatum = $localidad['geodeticDatum'] ?? null;
         $this->editCountry = $localidad['country'];
         $this->editStateProvince = $localidad['stateProvince'];
+        $this->editMunicipality = $localidad['municipality'] ?? null;
+        $this->reset('ubicacionDetectada', 'pobladoDetectado', 'geoMensaje');
         $this->errorMessage = null;
         $this->showEditModal = true;
     }
@@ -197,6 +217,7 @@ final class LocalidadIndex extends Component
                 geodeticDatum: $this->editGeodeticDatum,
                 country: $this->editCountry,
                 stateProvince: $this->editStateProvince,
+                municipality: $this->editMunicipality,
             ));
 
             $this->cargarLocalidades($listarHandler, $this->page);
@@ -257,6 +278,81 @@ final class LocalidadIndex extends Component
             ],
             $output->items,
         );
+    }
+
+    /**
+     * Geocodificación inversa para el modal de ALTA: con la lat/long ingresadas
+     * consulta el servicio y rellena país/provincia/cantón, y guarda el poblado
+     * más cercano para ofrecerlo como nombre. Solo sobrescribe lo que el servicio
+     * resuelva; si no hay resultado, deja los campos como están.
+     */
+    public function detectarUbicacion(GeocodificadorInversoPort $geo): void
+    {
+        $this->geoMensaje = null;
+        $this->ubicacionDetectada = null;
+        $this->pobladoDetectado = null;
+
+        if ($this->latitud === null || $this->longitud === null) {
+            $this->geoMensaje = 'Ingresa latitud y longitud para detectar la ubicación.';
+
+            return;
+        }
+
+        $ubicacion = $geo->geocodificar((float) $this->latitud, (float) $this->longitud);
+
+        if ($ubicacion === null) {
+            $this->geoMensaje = 'No se pudo determinar la ubicación para esas coordenadas.';
+
+            return;
+        }
+
+        $this->country = $ubicacion->country ?? $this->country;
+        $this->stateProvince = $ubicacion->stateProvince ?? $this->stateProvince;
+        $this->municipality = $ubicacion->municipality ?? $this->municipality;
+        $this->pobladoDetectado = $ubicacion->poblado;
+        $this->ubicacionDetectada = $ubicacion->displayName;
+    }
+
+    /** Igual que detectarUbicacion pero para el modal de EDICIÓN. */
+    public function detectarUbicacionEdicion(GeocodificadorInversoPort $geo): void
+    {
+        $this->geoMensaje = null;
+        $this->ubicacionDetectada = null;
+        $this->pobladoDetectado = null;
+
+        if ($this->editLatitud === null || $this->editLongitud === null) {
+            $this->geoMensaje = 'Ingresa latitud y longitud para detectar la ubicación.';
+
+            return;
+        }
+
+        $ubicacion = $geo->geocodificar((float) $this->editLatitud, (float) $this->editLongitud);
+
+        if ($ubicacion === null) {
+            $this->geoMensaje = 'No se pudo determinar la ubicación para esas coordenadas.';
+
+            return;
+        }
+
+        $this->editCountry = $ubicacion->country ?? $this->editCountry;
+        $this->editStateProvince = $ubicacion->stateProvince ?? $this->editStateProvince;
+        $this->editMunicipality = $ubicacion->municipality ?? $this->editMunicipality;
+        $this->pobladoDetectado = $ubicacion->poblado;
+        $this->ubicacionDetectada = $ubicacion->displayName;
+    }
+
+    public function usarPobladoComoNombre(): void
+    {
+        if ($this->pobladoDetectado !== null && $this->pobladoDetectado !== '') {
+            $this->nombreCanonico = $this->pobladoDetectado;
+        }
+    }
+
+    public function usarPobladoComoNombreEdicion(): void
+    {
+        if ($this->pobladoDetectado !== null && $this->pobladoDetectado !== '') {
+            $this->editNombreCanonico = $this->pobladoDetectado;
+        }
     }
 
     public function render(): View

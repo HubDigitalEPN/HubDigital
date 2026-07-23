@@ -37,7 +37,7 @@ new #[Title('Configuración de perfil')] class extends Component {
     #[Computed]
     public function esDepositante(): bool
     {
-        return Auth::user()->rol === RolUsuario::DEPOSITANTE;
+        return Auth::user()->tieneRol(RolUsuario::DEPOSITANTE);
     }
 
     /**

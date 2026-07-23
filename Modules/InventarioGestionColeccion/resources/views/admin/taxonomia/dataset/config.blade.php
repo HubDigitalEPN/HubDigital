@@ -1,7 +1,7 @@
 <div class="space-y-6 p-4 sm:p-6 max-w-5xl">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Publicación GBIF</flux:heading>
+            <flux:heading size="xl" level="1" class="font-display text-blue-navy font-bold">Publicación GBIF</flux:heading>
             <p class="text-sm text-text-secondary mt-1">
                 Datos de tu museo/colección que se necesitan una sola vez para poder publicar en GBIF.
                 @if($existeConfig)
@@ -222,6 +222,24 @@
                     Configura primero el dataset (arriba) antes de exportar.
                 </flux:callout>
             @endif
+        </div>
+    </div>
+
+    {{-- Sección: Exportar selección de especímenes a Excel --}}
+    <div class="rounded-lg border border-border bg-surface shadow-sm">
+        <div class="px-5 py-4 bg-bg-main border-b border-border">
+            <flux:heading size="md" level="2" class="text-text-primary">
+                <span class="inline-flex items-center gap-2">
+                    <flux:icon name="table-cells" class="size-5 text-science-blue" />
+                    Exportar especímenes seleccionados (Excel)
+                </span>
+            </flux:heading>
+            <p class="text-xs text-text-secondary mt-1">
+                Elige especímenes concretos con casillas y descárgalos como tabla Excel formateada.
+            </p>
+        </div>
+        <div class="p-5">
+            <livewire:inventario-exportar-especimenes-gbif />
         </div>
     </div>
 </div>

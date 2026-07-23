@@ -18,6 +18,7 @@ use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ExtraccionDatosDocumentoPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\GeneradorCodigoPrestamo;
 use Modules\GestionPrestamosRecepciones\Application\Ports\HistorialPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\IngresoColeccionPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\InvestigadorEmailPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionCuratoriaPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionInvestigadorPort;
@@ -48,6 +49,7 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\GroqExtraccionDa
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\InventarioGestionColeccionCatalogoCuraduriaAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\InventarioGestionColeccionEspecimenesAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\InventarioGestionColeccionEstadoEspecimenAdapter;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\InventarioIngresoColeccionAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\LaravelEventPublisherAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\LaravelTransactionManagerAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\NotificacionCuratoriaAdapter;
@@ -110,6 +112,7 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
         RecepcionLoteRepositoryInterface::class => EloquentRecepcionLoteRepository::class,
         MatrizEspeciesRepositoryInterface::class => EloquentMatrizEspeciesRepository::class,
         EventPublisherPort::class => LaravelEventPublisherAdapter::class,
+        IngresoColeccionPort::class => InventarioIngresoColeccionAdapter::class,
         TransactionManagerPort::class => LaravelTransactionManagerAdapter::class,
         NotificacionCuratoriaPort::class => NotificacionCuratoriaAdapter::class,
         NotificacionInvestigadorPort::class => NotificacionInvestigadorAdapter::class,

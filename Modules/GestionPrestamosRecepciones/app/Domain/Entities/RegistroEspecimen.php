@@ -39,6 +39,17 @@ final class RegistroEspecimen
     /** @var list<array{campo: string, original: mixed, normalizado: mixed}> Campos que fueron normalizados */
     private array $normalizaciones = [];
 
+    /**
+     * Correcciones que el curador aplicó sobre celdas anómalas, en orden cronológico.
+     *
+     * Es la auditoría de la edición curatorial: el depositante firma una declaración al
+     * enviar la matriz, así que si alguien la retoca después tiene que quedar constancia
+     * de quién, qué campo, con qué valores y cuándo. Nunca se sobrescribe una entrada.
+     *
+     * @var list<array{campo: string, anterior: mixed, nuevo: mixed, curadorId: string, corregidoEn: string}>
+     */
+    private array $correccionesCuratoriales = [];
+
     private function __construct() {}
 
     /**
@@ -246,6 +257,7 @@ final class RegistroEspecimen
         array $datosDwC = [],
         array $normalizaciones = [],
         ?string $comentarioJustificacion = null,
+        array $correccionesCuratoriales = [],
     ): self {
         $registro = new self;
         $registro->id = $id;
@@ -257,7 +269,101 @@ final class RegistroEspecimen
         $registro->comentarioJustificacion = $comentarioJustificacion;
         $registro->datosDwC = $datosDwC;
         $registro->normalizaciones = $normalizaciones;
+        $registro->correccionesCuratoriales = $correccionesCuratoriales;
 
         return $registro;
+    }
+
+    // ── Edición curatorial ────────────────────────────────────────────────────────
+
+    /**
+     * Corrige una celda que la normalización marcó como inválida.
+     *
+     * Existe para no devolver un trámite entero al depositante por un dígito de más en
+     * una coordenada. El alcance es deliberadamente estrecho:
+     *
+     *  - Solo se tocan campos que ya están marcados como inválidos. Lo que el sistema
+     *    dio por bueno no se reescribe.
+     *  - Nunca la identificación taxonómica: el nombre científico es la declaración
+     *    del depositante y corregirlo es otra conversación ({@see aceptarCorreccion()}).
+     *  - Cada cambio deja rastro en {@see correccionesCuratoriales()}.
+     *
+     * @param  mixed  $valorNormalizado  Valor ya validado por el normalizador de dominio.
+     *
+     * @throws \DomainException Si el campo no estaba marcado como inválido.
+     */
+    public function corregirCeldaAnomala(
+        string $campo,
+        mixed $valorNormalizado,
+        string $curadorId,
+        \DateTimeImmutable $corregidoEn,
+    ): void {
+        if (trim($curadorId) === '') {
+            throw new \DomainException('Toda corrección curatorial debe registrar quién la hizo');
+        }
+
+        $indice = $this->indiceNormalizacionInvalida($campo);
+
+        if ($indice === null) {
+            throw new \DomainException(
+                "El campo \"{$campo}\" no está marcado como anómalo: la edición curatorial solo sana celdas señaladas por el sistema"
+            );
+        }
+
+        $anterior = $this->datosDwC[$campo] ?? null;
+
+        $this->datosDwC[$campo] = $valorNormalizado;
+
+        // La celda deja de estar en falta, pero se conserva el valor original que
+        // declaró el depositante para no perder de vista qué se cambió.
+        $this->normalizaciones[$indice] = [
+            'campo' => $campo,
+            'original' => $this->normalizaciones[$indice]['original'] ?? $anterior,
+            'normalizado' => $valorNormalizado,
+            'corregidoPorCuraduria' => true,
+        ];
+
+        $this->correccionesCuratoriales[] = [
+            'campo' => $campo,
+            'anterior' => $anterior,
+            'nuevo' => $valorNormalizado,
+            'curadorId' => $curadorId,
+            'corregidoEn' => $corregidoEn->format(DATE_ATOM),
+        ];
+    }
+
+    /** Campos que el curador puede sanar: los que la normalización marcó como inválidos. */
+    public function camposAnomalos(): array
+    {
+        $campos = [];
+        foreach ($this->normalizaciones as $n) {
+            if (! empty($n['invalido'])) {
+                $campos[] = $n['campo'];
+            }
+        }
+
+        return array_values(array_unique($campos));
+    }
+
+    /** @return list<array{campo: string, anterior: mixed, nuevo: mixed, curadorId: string, corregidoEn: string}> */
+    public function correccionesCuratoriales(): array
+    {
+        return $this->correccionesCuratoriales;
+    }
+
+    public function fueCorregidoPorCuraduria(): bool
+    {
+        return $this->correccionesCuratoriales !== [];
+    }
+
+    private function indiceNormalizacionInvalida(string $campo): ?int
+    {
+        foreach ($this->normalizaciones as $i => $n) {
+            if (($n['campo'] ?? null) === $campo && ! empty($n['invalido'])) {
+                return $i;
+            }
+        }
+
+        return null;
     }
 }

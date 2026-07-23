@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Console;
 
 use Illuminate\Console\Command;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\GeocodificadorInversoPort;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\CsvFuenteCatalogo;
+use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\FilaCatalogoMapper;
+use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\FuenteCatalogoGeocodificada;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\ImportarCatalogoInvertebrados;
 
 /**
@@ -29,11 +32,12 @@ final class ImportarCatalogoInvertebradosCommand extends Command
         {--from=1 : Fila inicial (1-indexed, sin headers)}
         {--to= : Fila final (inclusivo). Si se omite, lee hasta el final}
         {--chunk=500 : Tamaño de batch}
-        {--delimiter=, : Separador CSV}';
+        {--delimiter=, : Separador CSV}
+        {--geocodificar : Completar país/provincia/cantón/localidad faltantes por coordenadas (Nominatim, ~1/seg)}';
 
     protected $description = 'Importa el catálogo de invertebrados desde CSV. Cero pérdida: toda fila se preserva con verbatims y FK nullables.';
 
-    public function handle(ImportarCatalogoInvertebrados $importer): int
+    public function handle(ImportarCatalogoInvertebrados $importer, GeocodificadorInversoPort $geo): int
     {
         $ruta = (string) $this->argument('ruta');
         if (! is_file($ruta)) {
@@ -48,15 +52,29 @@ final class ImportarCatalogoInvertebradosCommand extends Command
         $hasta = $hastaOpt !== null && $hastaOpt !== '' ? (int) $hastaOpt : null;
         $chunk = (int) $this->option('chunk');
         $delimiter = (string) $this->option('delimiter');
+        $geocodificar = (bool) $this->option('geocodificar');
 
         $this->info("Importando catálogo desde: {$ruta}");
         $this->line('  • modo: '.($dryRun ? 'DRY-RUN' : 'PERSISTIDO'));
         $this->line("  • rango: filas {$desde} → ".($hasta ?? 'final'));
         $this->line("  • chunk: {$chunk}");
         $this->line("  • delimitador: '{$delimiter}'");
+        $this->line('  • geocodificar: '.($geocodificar ? 'SÍ (Nominatim, ~1/seg)' : 'no'));
         $this->newLine();
 
         $fuente = new CsvFuenteCatalogo($ruta, $delimiter);
+
+        $fuenteGeo = null;
+        if ($geocodificar) {
+            // Sin tope en CLI: aquí no hay timeout de petición web.
+            $fuente = $fuenteGeo = new FuenteCatalogoGeocodificada(
+                $fuente,
+                $geo,
+                new FilaCatalogoMapper,
+                throttleMs: 1100,
+                maxLookups: null,
+            );
+        }
 
         $resultado = $importer->ejecutar(
             fuente: $fuente,
@@ -68,6 +86,13 @@ final class ImportarCatalogoInvertebradosCommand extends Command
 
         $this->newLine();
         $this->info($resultado->resumenLinea());
+
+        if ($fuenteGeo !== null) {
+            $this->line(
+                "  • geocodificación: {$fuenteGeo->lookupsRealizados()} coordenadas consultadas, ".
+                "{$fuenteGeo->filasEnriquecidas()} filas completadas"
+            );
+        }
 
         if ($resultado->motivosRevision !== []) {
             $this->newLine();

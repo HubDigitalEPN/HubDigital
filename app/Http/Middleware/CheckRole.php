@@ -11,12 +11,20 @@ use Symfony\Component\HttpFoundation\Response;
 
 final class CheckRole
 {
-    public function handle(Request $request, Closure $next, string $role): Response
+    public function handle(Request $request, Closure $next, string ...$roles): Response
     {
         $user = $request->user();
-        $expected = RolUsuario::from(strtoupper($role));
 
-        if (! $user || $user->rol !== $expected) {
+        if (! $user) {
+            abort(403, 'No tienes permiso para acceder a esta sección.');
+        }
+
+        $esperados = array_map(
+            static fn (string $role): RolUsuario => RolUsuario::from(strtoupper($role)),
+            $roles,
+        );
+
+        if (! $user->tieneAlgunRol(...$esperados)) {
             abort(403, 'No tienes permiso para acceder a esta sección.');
         }
 

@@ -55,6 +55,21 @@ interface NotificacionInvestigadorPort
     public function notificarActaRecepcionDisponible(string $solicitudId, string $investigadorId): string;
 
     /**
+     * Avisa, en un único mensaje al aprobar la solicitud, de todos los datos de formato
+     * que curaduría ajustó en la matriz.
+     *
+     * El depositante firmó la matriz al enviarla, así que los cambios posteriores no
+     * pueden quedar en silencio; se agrupan para no enviarle un correo por celda.
+     *
+     * @param  list<array{campo: string, anterior: mixed, nuevo: mixed, especie: string}>  $correcciones
+     */
+    public function notificarCorreccionesCuratoriales(
+        string $solicitudId,
+        string $investigadorId,
+        array $correcciones,
+    ): string;
+
+    /**
      * Notifica al investigador la orden de acción correctiva emitida al suspenderse la
      * recepción del lote por una anomalía subsanable.
      *

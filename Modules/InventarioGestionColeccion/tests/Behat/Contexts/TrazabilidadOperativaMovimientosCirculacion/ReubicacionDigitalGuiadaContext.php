@@ -129,6 +129,11 @@ final class ReubicacionDigitalGuiadaContext extends BaseContext
         $especimenId = $this->sembrarEspecimen('MEPN-REUB-001', $this->clasificacionNymphalidae());
         $this->asignacionRepo->sincronizar($tray->id(), [$especimenId]);
         $this->especimenIds = [$especimenId];
+
+        // El tray de origen ya carga la clasificación dominante de su único espécimen, tal
+        // como la habría dejado ActualizarEspecimenesUnitTrayHandler en el flujo real.
+        $tray->actualizarClasificacion($this->clasificacionNymphalidae());
+        $this->unitTrayRepo->guardar($tray);
     }
 
     #[Given('existe un unit tray de destino donde el espécimen respeta el orden taxonómico')]
@@ -246,6 +251,17 @@ final class ReubicacionDigitalGuiadaContext extends BaseContext
         foreach ($this->especimenIds as $especimenId) {
             $this->assertEspecimenEnTray($especimenId, $this->destinoTrayId);
         }
+    }
+
+    #[Then('el unit tray de origen queda sin clasificación taxonómica')]
+    public function elUnitTrayDeOrigenQuedaSinClasificacionTaxonomica(): void
+    {
+        $tray = $this->unitTrayRepo->buscarPorId(UnitTrayId::desde($this->origenTrayId));
+        Assert::assertNotNull($tray);
+        Assert::assertNull(
+            $tray->clasificacionDominante(),
+            'El unit tray de origen debe limpiar su clasificación al quedarse sin especímenes'
+        );
     }
 
     #[Then('el movimiento queda registrado en la trazabilidad del espécimen')]

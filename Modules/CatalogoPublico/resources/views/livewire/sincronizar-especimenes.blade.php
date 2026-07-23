@@ -372,7 +372,7 @@
                     icon="table-cells"
                     wire:navigate
                 >
-                    Ver cátalogo divulgado
+                    Ver catálogo divulgado
                 </flux:button>
                 <flux:button
                     wire:click="$set('paso', 1); $set('seleccionados', []); $set('configuracionPorEspecimen', []); $set('occurrenceIDsActualizados', [])"

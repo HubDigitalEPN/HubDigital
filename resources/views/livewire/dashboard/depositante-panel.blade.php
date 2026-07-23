@@ -13,6 +13,10 @@
 
 <div class="flex h-full w-full flex-1 flex-col gap-4 p-6">
 
+    {{-- Invitación a activar el rol complementario. Vive aquí y no en el layout:
+         es contenido del panel, no del armazón, y antes salía en todas las pantallas. --}}
+    <x-banner-activar-rol />
+
     {{-- Encabezado --}}
     <div class="flex flex-col gap-1">
         <h1 class="font-display text-2xl font-bold text-blue-navy">Mi contribución</h1>

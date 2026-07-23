@@ -23,6 +23,10 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarDocumentalm
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarDocumentalmenteSolicitud\RechazarDocumentalmenteSolicitudInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarJustificacionesAlertas\RechazarJustificacionesAlertasHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarJustificacionesAlertas\RechazarJustificacionesAlertasInput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarDevolucionDeposito\RegistrarDevolucionDepositoHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\RegistrarDevolucionDeposito\RegistrarDevolucionDepositoInput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ValidacionManualCuraduria\ValidacionManualCuraduriaHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\ValidacionManualCuraduria\ValidacionManualCuraduriaInput;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrioridadSolicitud;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoTramite;
@@ -89,6 +93,19 @@ final class RevisarDeposito extends Component
 
     /** Búsqueda por nombre científico (original o corregido). */
     public string $busquedaMatriz = '';
+
+    // ── Devolución del depósito ──────────────────────────────────────────────
+
+    /** Confirma la devolución del material al depositante. */
+    public bool $showDevolucionModal = false;
+
+    // ── Edición curatorial de celdas anómalas ────────────────────────────────
+
+    /** Celda que el curador está editando, como "registroId|campo"; vacío si ninguna. */
+    public string $celdaEnEdicion = '';
+
+    /** Valor tecleado para la celda en edición. */
+    public string $valorCelda = '';
 
     /**
      * Carga la solicitud y resuelve el nombre del investigador.
@@ -234,6 +251,88 @@ final class RevisarDeposito extends Component
         ));
 
         $this->dispatch('toast', message: 'Solicitud marcada como prioritaria.');
+    }
+
+    /**
+     * Registra que el material del depósito volvió a su depositante.
+     *
+     * Cierra el trámite y saca los especímenes de la colección: quedan marcados como
+     * devueltos, con su fecha, sin borrarse.
+     */
+    public function registrarDevolucion(RegistrarDevolucionDepositoHandler $handler): void
+    {
+        $this->showDevolucionModal = false;
+
+        try {
+            $salida = ($handler)(new RegistrarDevolucionDepositoInput(
+                solicitudId: $this->id,
+                curadorId: (string) auth()->id(),
+            ));
+        } catch (\DomainException $e) {
+            $this->dispatch('domain-error', message: $e->getMessage());
+
+            return;
+        }
+
+        $this->dispatch('toast', message: $salida->especimenesDevueltos > 0
+            ? "Devolución registrada. {$salida->especimenesDevueltos} espécimen(es) salieron de la colección."
+            : 'Devolución registrada.');
+    }
+
+    // ── Edición curatorial de celdas anómalas ────────────────────────────────
+
+    /**
+     * Abre la edición de una celda señalada como anómala.
+     *
+     * Solo se ofrece sobre celdas que el sistema marcó: el curador sana formatos, no
+     * reescribe la declaración científica del depositante.
+     */
+    public function editarCelda(string $registroId, string $campo, string $valorActual = ''): void
+    {
+        $this->celdaEnEdicion = $registroId.'|'.$campo;
+        $this->valorCelda = $valorActual;
+        $this->resetValidation('valorCelda');
+    }
+
+    public function cancelarEdicionCelda(): void
+    {
+        $this->celdaEnEdicion = '';
+        $this->valorCelda = '';
+        $this->resetValidation('valorCelda');
+    }
+
+    /**
+     * Guarda la corrección. El valor pasa por el mismo normalizador que la carga
+     * original, así que por esta vía no entra nada que el sistema hubiera rechazado.
+     */
+    public function guardarCelda(ValidacionManualCuraduriaHandler $handler): void
+    {
+        if ($this->celdaEnEdicion === '') {
+            return;
+        }
+
+        [$registroId, $campo] = explode('|', $this->celdaEnEdicion, 2);
+
+        try {
+            $salida = ($handler)(new ValidacionManualCuraduriaInput(
+                solicitudId: $this->id,
+                registroId: $registroId,
+                campo: $campo,
+                valor: $this->valorCelda,
+                curadorId: (string) auth()->id(),
+            ));
+        } catch (\DomainException $e) {
+            $this->addError('valorCelda', $e->getMessage());
+
+            return;
+        }
+
+        $this->cancelarEdicionCelda();
+
+        $restantes = $salida->celdasAnomalasRestantes;
+        $this->dispatch('toast', message: $restantes === 0
+            ? "Se corrigió {$salida->campo}. Ya no quedan celdas con advertencias."
+            : "Se corrigió {$salida->campo}. Quedan {$restantes} celda(s) con advertencias.");
     }
 
     /**

@@ -12,11 +12,11 @@
             <flux:sidebar.header class="border-b border-border px-4 py-3">
                 <a href="{{ route('inventario.visitante.mapa') }}" wire:navigate class="flex items-center gap-2.5">
                     <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-navy shadow-sm">
-                        <x-app-logo-icon class="size-5 fill-current text-white" />
+                        <x-app-logo-icon class="size-6 fill-current text-white" />
                     </span>
                     <div class="flex flex-col leading-tight">
                         <span class="font-display text-sm font-bold text-blue-navy">Hub Digital</span>
-                        <span class="text-[10px] font-medium uppercase tracking-wider text-text-secondary">Colección Entomológica</span>
+                        <span class="text-[10px] font-medium uppercase tracking-wider text-text-secondary">Laboratorio de Invertebrados</span>
                     </div>
                 </a>
                 <flux:sidebar.collapse class="lg:hidden ml-auto text-text-secondary" />
@@ -90,7 +90,7 @@
 
             <div class="flex items-center gap-2 mx-auto">
                 <span class="flex h-6 w-6 items-center justify-center rounded bg-white/20">
-                    <x-app-logo-icon class="size-4 fill-current text-white" />
+                    <x-app-logo-icon class="size-5 fill-current text-white" />
                 </span>
                 <span class="font-display text-sm font-bold text-white">Hub Digital</span>
             </div>

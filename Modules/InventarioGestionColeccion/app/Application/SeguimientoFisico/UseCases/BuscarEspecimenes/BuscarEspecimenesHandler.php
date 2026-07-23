@@ -8,6 +8,7 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especim
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Taxon;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\TaxonRepositoryInterface;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\MapeadorFilaEspecimen;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\RangoTaxonomico;
 
 /**
@@ -35,9 +36,10 @@ final class BuscarEspecimenesHandler
         }
 
         // Resolver taxa por nombre y/o familia.
-        $taxonIds = $this->resolverTaxonIds($input);
-        if ($taxonIds === false) {
-            // Se pidió filtro taxonómico pero no hay matches: resultado vacío.
+        $taxon = $this->resolverTaxon($input);
+        if ($taxon === false) {
+            // Se pidió filtro por FAMILIA y no hubo coincidencias: resultado vacío.
+            // (El filtro por nombre no corta aquí: puede matchear taxon_verbatim.)
             return $this->salidaVacia($input);
         }
 
@@ -48,7 +50,9 @@ final class BuscarEspecimenesHandler
         $offset = $paginado ? ($paginaActual - 1) * $perPage : 0;
 
         $filtros = [
-            'taxonIds' => $taxonIds,
+            'taxonIds' => $taxon['idsFamilia'] ?? null,
+            'taxonNombreIds' => $taxon['idsNombre'] ?? null,
+            'taxonNombreTexto' => $taxon['texto'] ?? null,
             'codigoCatalogo' => $input->codigoCatalogo,
             'occurrenceId' => $input->occurrenceId,
             'catalogNumber' => $input->catalogNumber,
@@ -112,18 +116,22 @@ final class BuscarEspecimenesHandler
      *
      * @return string[]|null|false
      */
-    private function resolverTaxonIds(BuscarEspecimenesInput $input): array|null|false
+    /**
+     * Resuelve el filtro taxonómico en tres piezas independientes:
+     *  - idsFamilia: taxones (familia + descendientes) para un match ESTRICTO por
+     *    taxon_id. Si se pidió familia y no coincide ninguna, devuelve false.
+     *  - idsNombre:  taxones (coincidencia por nombre + descendientes) para los
+     *    especímenes ya enlazados a un Taxón.
+     *  - texto:      el texto del filtro por nombre, para también matchear
+     *    `taxon_verbatim` en especímenes cuya taxonomía NO está enlazada a un
+     *    Taxón (caso frecuente tras una importación).
+     *
+     * @return array{idsFamilia?: string[], idsNombre?: string[], texto?: string}|false
+     */
+    private function resolverTaxon(BuscarEspecimenesInput $input): array|false
     {
-        $idsTaxonNombre = null;
-        if ($input->taxonNombre !== null && trim($input->taxonNombre) !== '') {
-            $taxa = $this->taxonRepo->buscarPorNombreContiene($input->taxonNombre);
-            $idsTaxonNombre = array_map(fn (Taxon $t) => (string) $t->id(), $taxa);
-            if ($idsTaxonNombre === []) {
-                return false;
-            }
-        }
+        $out = [];
 
-        $idsFamilia = null;
         if ($input->familia !== null && trim($input->familia) !== '') {
             $familiaCandidatos = array_filter(
                 $this->taxonRepo->buscarPorNombreContiene($input->familia),
@@ -132,23 +140,29 @@ final class BuscarEspecimenesHandler
             if ($familiaCandidatos === []) {
                 return false;
             }
-            $idsFamilia = [];
-            foreach ($familiaCandidatos as $t) {
-                $idsFamilia = array_merge($idsFamilia, $this->taxonRepo->listarDescendientesIds((string) $t->id()));
-            }
-            $idsFamilia = array_values(array_unique($idsFamilia));
+            $idsFamilia = $this->taxonRepo->listarDescendientesIdsDeVarios(
+                array_map(fn (Taxon $t) => (string) $t->id(), $familiaCandidatos),
+            );
             if ($idsFamilia === []) {
                 return false;
             }
+            $out['idsFamilia'] = $idsFamilia;
         }
 
-        if ($idsTaxonNombre !== null && $idsFamilia !== null) {
-            $intersec = array_values(array_intersect($idsTaxonNombre, $idsFamilia));
-
-            return $intersec === [] ? false : $intersec;
+        if ($input->taxonNombre !== null && trim($input->taxonNombre) !== '') {
+            // Coincidencias por entidad Taxón (+ descendientes), para que un rango
+            // alto (reino, orden, familia…) traiga todo lo que cuelga debajo.
+            // Resolución por lotes: un solo CTE para todos los taxa coincidentes,
+            // en vez de uno por match (que colgaba con términos genéricos).
+            $raices = array_map(
+                fn (Taxon $t) => (string) $t->id(),
+                $this->taxonRepo->buscarPorNombreContiene($input->taxonNombre),
+            );
+            $out['idsNombre'] = $this->taxonRepo->listarDescendientesIdsDeVarios($raices);
+            $out['texto'] = trim($input->taxonNombre);
         }
 
-        return $idsTaxonNombre ?? $idsFamilia;
+        return $out;
     }
 
     /**
@@ -168,57 +182,12 @@ final class BuscarEspecimenesHandler
             }
         }
 
-        return array_map(fn (Especimen $e) => [
-            'id' => (string) $e->id(),
-            'codigoCatalogo' => $e->codigoCatalogo(),
-            'taxonId' => $e->taxonId(),
-            'taxonNombre' => $e->taxonId() !== null ? ($taxonesMap[$e->taxonId()] ?? $e->taxonId()) : null,
-            'taxonVerbatim' => $e->taxonVerbatim(),
-            'localidad' => $e->localidad(),
-            'localidadVerbatim' => $e->localidadVerbatim(),
-            'fechaColecta' => $e->fechaColecta(),
-            'fechaColectaFin' => $e->fechaColectaFin(),
-            'fechaVerbatim' => $e->fechaVerbatim(),
-            'colector' => $e->colector(),
-            'entidadDepositanteId' => $e->entidadDepositanteId(),
-            'estado' => $e->estado()->value,
-            'occurrenceId' => $e->occurrenceId(),
-            'catalogNumber' => $e->catalogNumber(),
-            'oldCode' => $e->oldCode(),
-            'cardexLiquidCollectionCode' => $e->cardexLiquidCollectionCode(),
-            'individualCount' => $e->individualCount(),
-            'individualCountVerbatim' => $e->individualCountVerbatim(),
-            'sex' => $e->sex(),
-            'lifeStage' => $e->lifeStage(),
-            'caste' => $e->caste(),
-            'typeStatus' => $e->typeStatus(),
-            'preparations' => $e->preparations(),
-            'disposition' => $e->disposition(),
-            'occurrenceStatus' => $e->occurrenceStatus(),
-            'specimenNotes' => $e->specimenNotes(),
-            'country' => $e->country(),
-            'stateProvince' => $e->stateProvince(),
-            'municipality' => $e->municipality(),
-            'localityName' => $e->localityName(),
-            'decimalLatitude' => $e->decimalLatitude(),
-            'decimalLongitude' => $e->decimalLongitude(),
-            'coordVerbatim' => $e->coordVerbatim(),
-            'geodeticDatum' => $e->geodeticDatum(),
-            'elevationMinM' => $e->elevationMinM(),
-            'elevationMaxM' => $e->elevationMaxM(),
-            'biome' => $e->biome(),
-            'habitat' => $e->habitat(),
-            'microhabitat' => $e->microhabitat(),
-            'biogeographicRegion' => $e->biogeographicRegion(),
-            'endemic' => $e->endemic(),
-            'dnaNotes' => $e->dnaNotes(),
-            'occurrenceRemarks' => $e->occurrenceRemarks(),
-            'taxonomicNotes' => $e->taxonomicNotes(),
-            'actaRecepcion' => $e->actaRecepcion(),
-            'estadoRevision' => $e->estadoRevision()->value,
-            'motivoRevision' => $e->motivoRevision(),
-            'filaOrigenExcel' => $e->filaOrigenExcel(),
-            'identificadores' => array_map(fn ($i) => $i->toArray(), $e->identificadores()),
-        ], $especimenes);
+        return array_map(
+            fn (Especimen $e) => MapeadorFilaEspecimen::mapear(
+                $e,
+                $e->taxonId() !== null ? ($taxonesMap[$e->taxonId()] ?? null) : null,
+            ),
+            $especimenes,
+        );
     }
 }

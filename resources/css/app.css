@@ -27,6 +27,13 @@
     --color-error: #D32F2F;
     --color-info: #0288D1;
 
+    /* Relleno de datos en gráficas.
+       NO reutilizar --color-science-blue aquí: un color de interfaz se elige por
+       contraste de texto, un relleno de dato por la banda de luminosidad
+       (OKLCH L 0.43–0.77). El token de UI en oscuro (#7dd3fc) mide L 0.828 y se
+       sale de la banda. Ambos pasos de abajo están validados contra su superficie. */
+    --color-chart-serie: #1976D2;
+
     /* Hub Digital Design System — Neutrals */
     --color-bg-main: #F5F7FA;
     --color-surface: #FFFFFF;
@@ -65,6 +72,9 @@
         /* Fondos — escala slate (tinte azul frío, armoniza con blue-navy) */
         --color-bg-main:  #0f172a;   /* slate-900 — fondo base de página */
         --color-surface:  #1e293b;   /* slate-800 — tarjetas y paneles */
+
+        /* Relleno de gráficas: paso propio para la superficie oscura (#1e293b). */
+        --color-chart-serie: #3987e5;
 
         /* Texto */
         --color-text-primary:   #f1f5f9;  /* slate-100 */

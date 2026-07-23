@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers;
 
-use App\Enums\RolUsuario;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
@@ -34,7 +33,7 @@ final class DescargarActaRecepcion
         abort_unless($recepcion->actaEmitida, 404);
 
         $user = auth()->user();
-        $esCurador = $user?->rol === RolUsuario::CURADOR;
+        $esCurador = $user?->esCurador() ?? false;
         $esDueno = $recepcion->investigadorId === (string) $user?->id;
         abort_unless($esCurador || $esDueno, 403);
 

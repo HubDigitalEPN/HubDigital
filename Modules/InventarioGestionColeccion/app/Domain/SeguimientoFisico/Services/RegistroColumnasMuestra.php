@@ -28,12 +28,12 @@ final class RegistroColumnasMuestra
         return [
             self::col('codigoMuestra', 'Código (oldCode)', 'identificacion', self::PRIORIDAD_CRITICA, true),
             self::col('conteoEspecimenes', '# Especímenes', 'identificacion', self::PRIORIDAD_RECOMENDADA, true),
-            self::col('fechaVerbatim', 'Fecha verbatim', 'fecha', self::PRIORIDAD_CRITICA, true),
-            self::col('localidadVerbatim', 'Localidad verbatim', 'localidad', self::PRIORIDAD_RECOMENDADA, true),
+            self::col('localidad', 'Localidad', 'localidad', self::PRIORIDAD_RECOMENDADA, true),
             self::col('colector', 'Colector', 'registro', self::PRIORIDAD_CRITICA, true),
-            self::col('samplingProtocol', 'Protocolo', 'registro', self::PRIORIDAD_OPCIONAL, false),
             self::col('estadoRevision', 'Estado', 'revision', self::PRIORIDAD_CRITICA, true),
             self::col('motivoRevision', 'Motivo revisión', 'revision', self::PRIORIDAD_RECOMENDADA, true),
+            // Casi siempre vacía en el import (9%); disponible pero oculta por defecto.
+            self::col('fechaVerbatim', 'Fecha verbatim', 'fecha', self::PRIORIDAD_OPCIONAL, false),
         ];
     }
 

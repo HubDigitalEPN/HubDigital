@@ -14,7 +14,7 @@
                     {{-- Header --}}
                     <tr>
                         <td style="background-color:#1B365D;padding:28px 40px;">
-                            <p style="margin:0;font-size:12px;color:#90A4C4;letter-spacing:1px;text-transform:uppercase;">Colección Entomológica EPN</p>
+                            <p style="margin:0;font-size:12px;color:#90A4C4;letter-spacing:1px;text-transform:uppercase;">Laboratorio de Invertebrados EPN</p>
                             <h1 style="margin:8px 0 0;font-size:20px;color:#ffffff;font-weight:700;">Recordatorio de devolución</h1>
                         </td>
                     </tr>
@@ -32,7 +32,7 @@
                     <tr>
                         <td style="padding:32px 40px;">
                             <p style="margin:0 0 16px;font-size:15px;color:#212121;line-height:1.6;">
-                                Te recordamos que tienes un préstamo de especímenes de la Colección Entomológica EPN próximo a vencer.
+                                Te recordamos que tienes un préstamo de especímenes del Laboratorio de Invertebrados EPN próximo a vencer.
                             </p>
 
                             <table width="100%" cellpadding="12" cellspacing="0" style="background-color:#F5F7FA;border-radius:8px;margin-bottom:24px;">
@@ -71,7 +71,7 @@
                     <tr>
                         <td style="background-color:#F5F7FA;padding:20px 40px;border-top:1px solid #E0E0E0;">
                             <p style="margin:0;font-size:12px;color:#757575;">
-                                Colección Entomológica — Escuela Politécnica Nacional<br>
+                                Laboratorio de Invertebrados — Escuela Politécnica Nacional<br>
                                 Este es un mensaje automático, por favor no respondas a este correo.
                             </p>
                         </td>

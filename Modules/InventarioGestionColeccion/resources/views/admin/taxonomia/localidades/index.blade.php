@@ -1,6 +1,9 @@
 <div class="space-y-6 p-4 sm:p-6">
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Localidades</flux:heading>
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+            <flux:heading size="xl" level="1" class="font-display text-blue-navy font-bold">Localidades</flux:heading>
+            <p class="text-sm text-text-secondary mt-1">Cada lugar se muestra una sola vez por nombre y rango.</p>
+        </div>
         <flux:button icon="plus" variant="primary" wire:click="abrirModal" class="w-full sm:w-auto">
             Nueva Localidad
         </flux:button>
@@ -17,10 +20,6 @@
                     <tr>
                         <th class="px-4 py-3 text-left font-medium text-white">Nombre canónico</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Rango</th>
-                        <th class="px-4 py-3 text-left font-medium text-white">Padre</th>
-                        <th class="px-4 py-3 text-left font-medium text-white">País</th>
-                        <th class="px-4 py-3 text-left font-medium text-white">Provincia</th>
-                        <th class="px-4 py-3 text-left font-medium text-white">Coordenadas</th>
                         <th class="px-4 py-3 text-left font-medium text-white">Acciones</th>
                     </tr>
                 </thead>
@@ -29,23 +28,13 @@
                         <tr class="hover:bg-bg-main transition-colors">
                             <td class="px-4 py-3 font-medium text-text-primary">{{ $l['nombreCanonico'] }}</td>
                             <td class="px-4 py-3 text-text-primary capitalize">{{ str_replace('_', ' ', $l['rango']) }}</td>
-                            <td class="px-4 py-3 text-text-secondary text-xs">{{ $l['padreNombre'] ?? '—' }}</td>
-                            <td class="px-4 py-3 text-text-primary">{{ $l['country'] ?? '—' }}</td>
-                            <td class="px-4 py-3 text-text-primary">{{ $l['stateProvince'] ?? '—' }}</td>
-                            <td class="px-4 py-3 text-text-secondary text-xs font-mono">
-                                @if($l['latitud'] !== null && $l['longitud'] !== null)
-                                    {{ number_format((float) $l['latitud'], 4) }}, {{ number_format((float) $l['longitud'], 4) }}
-                                @else
-                                    —
-                                @endif
-                            </td>
                             <td class="px-4 py-3 whitespace-nowrap">
                                 <flux:button size="sm" variant="ghost" icon="pencil"
                                              wire:click="abrirEditModal('{{ $l['id'] }}')">Editar</flux:button>
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="7" class="px-4 py-8 text-center text-text-secondary">No hay localidades registradas.</td></tr>
+                        <tr><td colspan="3" class="px-4 py-8 text-center text-text-secondary">No hay localidades registradas.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -63,26 +52,6 @@
                         <flux:button variant="ghost" icon="pencil"
                                      wire:click="abrirEditModal('{{ $l['id'] }}')">Editar</flux:button>
                     </div>
-                    @if(! empty($l['padreNombre']))
-                        <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="Padre">
-                            {{ $l['padreNombre'] }}
-                        </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
-                    @endif
-                    @if(! empty($l['country']))
-                        <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="País">
-                            {{ $l['country'] }}
-                        </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
-                    @endif
-                    @if(! empty($l['stateProvince']))
-                        <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="Provincia">
-                            {{ $l['stateProvince'] }}
-                        </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
-                    @endif
-                    @if($l['latitud'] !== null && $l['longitud'] !== null)
-                        <x-inventariogestioncoleccion::seguimiento-fisico.campo-movil etiqueta="Coords">
-                            <span class="font-mono text-xs">{{ number_format((float) $l['latitud'], 4) }}, {{ number_format((float) $l['longitud'], 4) }}</span>
-                        </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
-                    @endif
                 </div>
             @empty
                 <div class="p-6 text-center text-text-secondary text-sm">No hay localidades registradas.</div>
@@ -141,6 +110,30 @@
                     <flux:input type="number" step="0.0000001" wire:model="longitud" />
                     <flux:error name="longitud" />
                 </flux:field>
+            </div>
+
+            {{-- Detección de ubicación por coordenadas --}}
+            <div class="rounded-lg border border-border bg-bg-main p-3 space-y-2">
+                <flux:button type="button" variant="filled" icon="map-pin" class="w-full sm:w-auto"
+                             wire:click="detectarUbicacion" wire:loading.attr="disabled" wire:target="detectarUbicacion">
+                    <span wire:loading.remove wire:target="detectarUbicacion">Detectar por coordenadas</span>
+                    <span wire:loading wire:target="detectarUbicacion">Detectando…</span>
+                </flux:button>
+                @if($geoMensaje)
+                    <p class="text-xs text-warning">{{ $geoMensaje }}</p>
+                @endif
+                @if($ubicacionDetectada)
+                    <p class="text-xs text-text-secondary">
+                        <flux:icon name="map-pin" class="inline size-3.5 -mt-0.5 text-science-blue" />
+                        Ubicación detectada: <span class="text-text-primary">{{ $ubicacionDetectada }}</span>
+                    </p>
+                    @if($pobladoDetectado)
+                        <flux:button type="button" size="sm" variant="ghost" icon="arrow-down-tray"
+                                     wire:click="usarPobladoComoNombre">
+                            Usar «{{ $pobladoDetectado }}» como nombre
+                        </flux:button>
+                    @endif
+                @endif
             </div>
 
             <flux:field>
@@ -215,6 +208,30 @@
                     <flux:label>Longitud</flux:label>
                     <flux:input type="number" step="0.0000001" wire:model="editLongitud" />
                 </flux:field>
+            </div>
+
+            {{-- Detección de ubicación por coordenadas --}}
+            <div class="rounded-lg border border-border bg-bg-main p-3 space-y-2">
+                <flux:button type="button" variant="filled" icon="map-pin" class="w-full sm:w-auto"
+                             wire:click="detectarUbicacionEdicion" wire:loading.attr="disabled" wire:target="detectarUbicacionEdicion">
+                    <span wire:loading.remove wire:target="detectarUbicacionEdicion">Detectar por coordenadas</span>
+                    <span wire:loading wire:target="detectarUbicacionEdicion">Detectando…</span>
+                </flux:button>
+                @if($geoMensaje)
+                    <p class="text-xs text-warning">{{ $geoMensaje }}</p>
+                @endif
+                @if($ubicacionDetectada)
+                    <p class="text-xs text-text-secondary">
+                        <flux:icon name="map-pin" class="inline size-3.5 -mt-0.5 text-science-blue" />
+                        Ubicación detectada: <span class="text-text-primary">{{ $ubicacionDetectada }}</span>
+                    </p>
+                    @if($pobladoDetectado)
+                        <flux:button type="button" size="sm" variant="ghost" icon="arrow-down-tray"
+                                     wire:click="usarPobladoComoNombreEdicion">
+                            Usar «{{ $pobladoDetectado }}» como nombre
+                        </flux:button>
+                    @endif
+                @endif
             </div>
 
             <div class="grid grid-cols-2 gap-3">

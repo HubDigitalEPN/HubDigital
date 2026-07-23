@@ -51,7 +51,7 @@
 <div class="space-y-6 p-4 sm:p-6 max-w-6xl">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-            <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Centro de revisión del catálogo</flux:heading>
+            <flux:heading size="xl" level="1" class="font-display text-blue-navy font-bold">Centro de revisión del catálogo</flux:heading>
             <p class="text-sm text-text-secondary mt-1">
                 Punto de partida para corregir lo que el importador no pudo resolver automáticamente.
                 Empieza por el orden sugerido para máxima eficiencia.

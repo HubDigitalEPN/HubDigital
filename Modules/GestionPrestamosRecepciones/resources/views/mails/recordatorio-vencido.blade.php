@@ -14,7 +14,7 @@
                     {{-- Header --}}
                     <tr>
                         <td style="background-color:#B71C1C;padding:28px 40px;">
-                            <p style="margin:0;font-size:12px;color:#FFCDD2;letter-spacing:1px;text-transform:uppercase;">Colección Entomológica EPN</p>
+                            <p style="margin:0;font-size:12px;color:#FFCDD2;letter-spacing:1px;text-transform:uppercase;">Laboratorio de Invertebrados EPN</p>
                             <h1 style="margin:8px 0 0;font-size:20px;color:#ffffff;font-weight:700;">⚠ Préstamo vencido</h1>
                         </td>
                     </tr>
@@ -32,7 +32,7 @@
                     <tr>
                         <td style="padding:32px 40px;">
                             <p style="margin:0 0 16px;font-size:15px;color:#212121;line-height:1.6;">
-                                El plazo de devolución de tu préstamo de especímenes de la Colección Entomológica EPN ha <strong>expirado</strong>.
+                                El plazo de devolución de tu préstamo de especímenes del Laboratorio de Invertebrados EPN ha <strong>expirado</strong>.
                                 Es necesario que tomes acción a la brevedad posible.
                             </p>
 
@@ -94,7 +94,7 @@
                     <tr>
                         <td style="background-color:#F5F7FA;padding:20px 40px;border-top:1px solid #E0E0E0;">
                             <p style="margin:0;font-size:12px;color:#757575;">
-                                Colección Entomológica — Escuela Politécnica Nacional<br>
+                                Laboratorio de Invertebrados — Escuela Politécnica Nacional<br>
                                 Este es un mensaje automático, por favor no respondas a este correo.
                             </p>
                         </td>

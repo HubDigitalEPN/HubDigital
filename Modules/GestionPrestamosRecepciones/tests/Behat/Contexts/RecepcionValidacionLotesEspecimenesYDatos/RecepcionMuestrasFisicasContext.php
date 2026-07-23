@@ -9,6 +9,7 @@ use Behat\Step\Given;
 use Behat\Step\Then;
 use Behat\Step\When;
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\IngresoColeccionPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionCuratoriaPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionInvestigadorPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
@@ -25,6 +26,9 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\IniciarRecepcionLot
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarRecepcionLote\RechazarRecepcionLoteHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarRecepcionLote\RechazarRecepcionLoteInput;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\SolicitudDeposito;
+use Modules\GestionPrestamosRecepciones\Domain\Events\RecepcionLoteVerificadaConObservaciones;
+use Modules\GestionPrestamosRecepciones\Domain\Events\RecepcionLoteVerificadaFisicamente;
+use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\RecepcionLoteRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\CodigoQRLote;
@@ -32,11 +36,14 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoColeccion;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoRecepcionLote;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoTramite;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\IngresarLoteEnColeccionListener;
 use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\BaseContext;
+use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\Fakes\FakeIngresoColeccionAdapter;
 use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\Fakes\FakeNotificacionCuratoriaAdapter;
 use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\Fakes\FakeNotificacionInvestigadorAdapter;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\FakeEventPublisherAdapter;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\PassThroughTransactionManagerAdapter;
+use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Persistence\InMemoryMatrizEspeciesRepository;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Persistence\InMemoryRecepcionLoteRepository;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Persistence\InMemorySolicitudDepositoRepository;
 use PHPUnit\Framework\Assert;
@@ -65,6 +72,8 @@ final class RecepcionMuestrasFisicasContext extends BaseContext
     private FakeEventPublisherAdapter $fakePublisher;
 
     private FakeNotificacionInvestigadorAdapter $fakeNotificacionInvestigador;
+
+    private FakeIngresoColeccionAdapter $fakeIngresoColeccion;
 
     // ── Handlers ─────────────────────────────────────────────────────────────
 
@@ -114,14 +123,20 @@ final class RecepcionMuestrasFisicasContext extends BaseContext
         $this->recepcionRepo = new InMemoryRecepcionLoteRepository;
         $this->fakePublisher = new FakeEventPublisherAdapter;
         $this->fakeNotificacionInvestigador = new FakeNotificacionInvestigadorAdapter;
+        $this->fakeIngresoColeccion = new FakeIngresoColeccionAdapter;
 
         // 2. Interceptar el container para que los Handlers reciban estas instancias.
         self::$app->instance(SolicitudDepositoRepositoryInterface::class, $this->solicitudRepo);
+        // Los handlers de aprobación consultan la matriz para avisar de las correcciones
+        // de curaduría: sin este binding resolverían el repositorio Eloquent y el escenario
+        // dejaría de ser 100% en memoria.
+        self::$app->instance(MatrizEspeciesRepositoryInterface::class, new InMemoryMatrizEspeciesRepository);
         self::$app->instance(RecepcionLoteRepositoryInterface::class, $this->recepcionRepo);
         self::$app->instance(TransactionManagerPort::class, new PassThroughTransactionManagerAdapter);
         self::$app->instance(EventPublisherPort::class, $this->fakePublisher);
         self::$app->instance(NotificacionInvestigadorPort::class, $this->fakeNotificacionInvestigador);
         self::$app->instance(NotificacionCuratoriaPort::class, new FakeNotificacionCuratoriaAdapter);
+        self::$app->instance(IngresoColeccionPort::class, $this->fakeIngresoColeccion);
 
         // 3. Resolver Handlers — ya usan las instancias In-Memory.
         $this->aprobarDocumentalHandler = $this->make(AprobarDocumentalmenteSolicitudHandler::class);
@@ -372,6 +387,45 @@ final class RecepcionMuestrasFisicasContext extends BaseContext
             $lote->estadoColeccion()->equals(EstadoColeccion::from($estado_coleccion)),
             "Se esperaba estado de colección '{$estado_coleccion}', se obtuvo: {$lote->estadoColeccion()->value}"
         );
+
+        // Hasta aquí solo se ha comprobado lo que el propio lote anotó. Durante mucho
+        // tiempo el escenario terminaba ahí y por eso pasó inadvertido que los
+        // especímenes no llegaban a la colección: el módulo de inventario no recibía
+        // nada. Ahora se exige el traspaso de verdad.
+        $this->entregarEventosAlListener();
+
+        $solicitudId = (string) $this->solicitudEnCurso->id();
+        $estadoIngresado = $this->fakeIngresoColeccion->estadoColeccionDe($solicitudId);
+
+        Assert::assertNotNull(
+            $estadoIngresado,
+            'El lote se dio por verificado pero nunca se pidió ingresar sus especímenes a la colección'
+        );
+        Assert::assertSame(
+            $estado_coleccion,
+            $estadoIngresado,
+            "Los especímenes ingresaron a la colección en estado '{$estadoIngresado}' y se esperaba '{$estado_coleccion}'"
+        );
+    }
+
+    /**
+     * Entrega a su listener los eventos de recepción verificada que se publicaron.
+     *
+     * El contexto usa un publicador falso —para poder inspeccionar los eventos— y por
+     * eso los listeners registrados en la aplicación no se disparan solos. Se invocan
+     * aquí para poder comprobar el efecto completo: recepción aprobada → especímenes
+     * en la colección.
+     */
+    private function entregarEventosAlListener(): void
+    {
+        $listener = self::$app->make(IngresarLoteEnColeccionListener::class);
+
+        foreach ($this->fakePublisher->publishedEvents() as $evento) {
+            if ($evento instanceof RecepcionLoteVerificadaFisicamente
+                || $evento instanceof RecepcionLoteVerificadaConObservaciones) {
+                $listener->handle($evento);
+            }
+        }
     }
 
     #[Then('se notifica al investigador la finalización exitosa de la entrega')]

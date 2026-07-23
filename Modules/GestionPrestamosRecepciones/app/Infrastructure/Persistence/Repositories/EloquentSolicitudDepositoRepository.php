@@ -44,10 +44,13 @@ final class EloquentSolicitudDepositoRepository implements SolicitudDepositoRepo
     public function nextNumero(): NumeroSolicitudDeposito
     {
         // El prefijo 'MEPN-INV-DEP-' ocupa 13 caracteres; la secuencia empieza en la posición 14.
+        // El filtro es una expresión regular y no un LIKE: con 'MEPN-INV-DEP-%' bastaba una
+        // sola fila con sufijo no numérico (importada o creada a mano) para que el CAST
+        // abortara la consulta y dejara de poder crearse cualquier solicitud.
         $maxSeq = DB::selectOne(
             "SELECT MAX(CAST(SUBSTRING(numero FROM 14) AS INTEGER)) AS max_seq
              FROM recepciones.solicitudes_deposito
-             WHERE numero LIKE 'MEPN-INV-DEP-%'"
+             WHERE numero ~ '^MEPN-INV-DEP-[0-9]+$'"
         );
 
         return NumeroSolicitudDeposito::fromSecuencia(($maxSeq->max_seq ?? 0) + 1);
