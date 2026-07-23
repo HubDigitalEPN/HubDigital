@@ -575,7 +575,7 @@
                                         @endif
                                     </div>
                                     <p class="text-xs text-text-secondary leading-relaxed">
-                                        {{ $nRevision === 1 ? 'Esta especie no fue encontrada' : 'Estas especies no fueron encontradas' }} en el catálogo de referencia. El funcionario responsable {{ $nRevision === 1 ? 'la revisará' : 'las revisará' }} antes de proceder con el depósito.
+                                        {{ $nRevision === 1 ? 'Esta especie no fue encontrada' : 'Estas especies no fueron encontradas' }} en el catálogo de GBIF. El funcionario responsable {{ $nRevision === 1 ? 'la revisará' : 'las revisará' }} antes de proceder con el depósito.
                                     </p>
                                 </div>
                             @endif

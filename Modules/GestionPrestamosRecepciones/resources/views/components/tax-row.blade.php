@@ -17,7 +17,7 @@
         ? $estado->value
         : (string) $estado;
 
-    $motivosDisponibles = ['Es una especie nueva', 'No listada en catálogo'];
+    $motivosDisponibles = ['Nombre no presente en el catálogo GBIF', 'Nombre verificado por el investigador'];
 
     $gridClasses = 'grid grid-cols-1 md:grid-cols-[1fr_1.5fr] gap-3 md:gap-3.5 items-start md:items-center px-4 py-4 md:py-3.5';
 
@@ -72,7 +72,7 @@
                     <flux:icon name="check" class="size-3" />
                     Validado Técnicamente
                 </span>
-                <span class="text-xs text-text-secondary/70">Coincide con el catálogo de referencia</span>
+                <span class="text-xs text-text-secondary/70">Coincide con el catálogo taxonómico de GBIF</span>
                 @foreach($advertencias as $adv)
                     <span class="inline-flex items-center gap-1 rounded border border-warning/40 bg-warning/5 px-2 py-0.5 text-xs text-warning">
                         <flux:icon name="exclamation-triangle" variant="outline" class="size-3 shrink-0" />
@@ -107,7 +107,7 @@
                         <span wire:loading wire:target="deshacerSugerencia('{{ $registroId }}')">Deshaciendo...</span>
                     </button>
                 </div>
-                <span class="text-xs text-text-secondary/70">Validado Técnicamente · catálogo de referencia</span>
+                <span class="text-xs text-text-secondary/70">Validado Técnicamente · catálogo de GBIF</span>
                 @foreach($advertencias as $adv)
                     <span class="inline-flex items-center gap-1 rounded border border-warning/40 bg-warning/5 px-2 py-0.5 text-xs text-warning">
                         <flux:icon name="exclamation-triangle" variant="outline" class="size-3 shrink-0" />
@@ -180,23 +180,36 @@
                     <span class="font-mono text-xs text-text-secondary/70">{{ $catalogoId }}</span>
                 @endif
             </div>
-            <div class="flex flex-col gap-2 items-start w-full">
+            <div class="flex flex-col gap-2.5 items-start w-full">
                 <div class="flex items-start gap-1.5 text-xs text-text-primary leading-snug">
                     <flux:icon name="exclamation-triangle" class="size-3.5 text-error shrink-0 mt-0.5" />
-                    <span>Nombre no encontrado en el catálogo de referencia. Si es un nombre nuevo o no listado, justifícalo para continuar.</span>
+                    <span>
+                        Este nombre no está en <strong>GBIF</strong>. Indica un motivo, deja un comentario para
+                        curaduría, o ambos — con cualquiera de los dos podrás continuar.
+                    </span>
                 </div>
-                <flux:textarea
-                    wire:model.blur="comentariosJustificacion.{{ $registroId }}"
-                    rows="2"
-                    class="w-full max-w-md"
-                    placeholder="Comentario para el curador (opcional): explica por qué este nombre no figura en el catálogo…"
-                />
-                <flux:select wire:change="justificarHallazgo('{{ $registroId }}', $event.target.value)" class="max-w-xs">
-                    <flux:select.option value="">Selecciona un motivo de justificación...</flux:select.option>
+                <flux:select wire:model="motivosJustificacion.{{ $registroId }}" class="w-full max-w-xs">
+                    <flux:select.option value="">Motivo (opcional)…</flux:select.option>
                     @foreach($motivosDisponibles as $motivo)
                         <flux:select.option value="{{ $motivo }}">{{ $motivo }}</flux:select.option>
                     @endforeach
                 </flux:select>
+                <flux:textarea
+                    wire:model.blur="comentariosJustificacion.{{ $registroId }}"
+                    rows="2"
+                    class="w-full max-w-md"
+                    placeholder="Comentario para el curador (opcional): explica por qué este nombre no figura en GBIF…"
+                />
+                <flux:button
+                    variant="primary"
+                    icon="check"
+                    wire:click="justificar('{{ $registroId }}')"
+                    wire:loading.attr="disabled"
+                    wire:target="justificar('{{ $registroId }}')"
+                    class="w-full sm:w-auto"
+                >
+                    Justificar
+                </flux:button>
                 @foreach($advertencias as $adv)
                     <span class="inline-flex items-center gap-1 rounded border border-warning/40 bg-warning/5 px-2 py-0.5 text-xs text-warning">
                         <flux:icon name="exclamation-triangle" variant="outline" class="size-3 shrink-0" />
@@ -215,36 +228,32 @@
                     <span class="font-mono text-xs text-text-secondary/70">{{ $catalogoId }}</span>
                 @endif
             </div>
-            <div class="flex flex-col gap-1.5 items-start">
+            <div class="flex flex-col gap-2.5 items-start w-full">
                 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border bg-warning/10 border-warning/30 text-warning">
                     <flux:icon name="exclamation-triangle" class="size-3" />
                     Validación Manual por Curaduría
                 </span>
-                <div class="flex items-center gap-2 text-xs">
-                    <span class="text-text-secondary/70">Motivo:</span>
-                    <flux:select wire:change="cambiarJustificacion('{{ $registroId }}', $event.target.value)" class="max-w-xs">
-                        @foreach($motivosDisponibles as $motivo)
-                            <flux:select.option value="{{ $motivo }}" :selected="$motivo === $motivoJustificacion">{{ $motivo }}</flux:select.option>
-                        @endforeach
-                    </flux:select>
-                </div>
-                <div class="flex flex-col gap-1.5 w-full max-w-md">
-                    <flux:textarea
-                        wire:model.blur="comentariosJustificacion.{{ $registroId }}"
-                        rows="2"
-                        placeholder="Comentario para el curador (opcional)…"
-                    />
-                    <flux:button
-                        size="sm"
-                        variant="ghost"
-                        icon="check"
-                        wire:click="guardarComentarioJustificacion('{{ $registroId }}')"
-                        wire:loading.attr="disabled"
-                        class="self-start"
-                    >
-                        Guardar comentario
-                    </flux:button>
-                </div>
+                <flux:select wire:model="motivosJustificacion.{{ $registroId }}" class="w-full max-w-xs">
+                    @foreach($motivosDisponibles as $motivo)
+                        <flux:select.option value="{{ $motivo }}">{{ $motivo }}</flux:select.option>
+                    @endforeach
+                </flux:select>
+                <flux:textarea
+                    wire:model.blur="comentariosJustificacion.{{ $registroId }}"
+                    rows="2"
+                    class="w-full max-w-md"
+                    placeholder="Comentario para el curador (opcional)…"
+                />
+                <flux:button
+                    variant="ghost"
+                    icon="check"
+                    wire:click="actualizarJustificacion('{{ $registroId }}')"
+                    wire:loading.attr="disabled"
+                    wire:target="actualizarJustificacion('{{ $registroId }}')"
+                    class="w-full sm:w-auto"
+                >
+                    Actualizar justificación
+                </flux:button>
                 @foreach($advertencias as $adv)
                     <span class="inline-flex items-center gap-1 rounded border border-warning/40 bg-warning/5 px-2 py-0.5 text-xs text-warning">
                         <flux:icon name="exclamation-triangle" variant="outline" class="size-3 shrink-0" />
