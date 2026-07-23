@@ -27,8 +27,6 @@ final readonly class ConsultarActaOutput
      * @param  string|null  $numeroSolicitud  Número de la solicitud asociada.
      * @param  string|null  $tituloEstudio  Título del estudio.
      * @param  string|null  $institucionAdscripcion  Institución de adscripción.
-     * @param  string|null  $firmadoCuradorCommonName  Nombre común del curador que firmó criptográficamente, si aplica.
-     * @param  DateTimeImmutable|null  $firmadoCuradorSelloDeTiempo  Sello de tiempo de la firma del curador, si aplica.
      */
     public function __construct(
         public string $id,
@@ -45,7 +43,5 @@ final readonly class ConsultarActaOutput
         public ?string $numeroSolicitud,
         public ?string $tituloEstudio,
         public ?string $institucionAdscripcion,
-        public ?string $firmadoCuradorCommonName = null,
-        public ?DateTimeImmutable $firmadoCuradorSelloDeTiempo = null,
     ) {}
 }

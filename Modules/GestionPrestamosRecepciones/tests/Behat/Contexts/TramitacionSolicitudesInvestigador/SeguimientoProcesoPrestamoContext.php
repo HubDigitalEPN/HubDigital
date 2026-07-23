@@ -195,7 +195,10 @@ final class SeguimientoProcesoPrestamoContext extends BaseContext
             );
         }
         if ($estado === EstadoActa::Validada) {
-            $acta->validar($this->curadorId);
+            $acta->validarConFirmaCurador(
+                $this->curadorId,
+                'actas-firmadas-curador/'.(string) $solicitud->id().'.pdf',
+            );
         }
 
         $this->actaRepo->guardar($acta);

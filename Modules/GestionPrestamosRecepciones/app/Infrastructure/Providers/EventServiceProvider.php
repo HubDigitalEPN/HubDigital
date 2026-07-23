@@ -7,7 +7,7 @@ namespace Modules\GestionPrestamosRecepciones\Infrastructure\Providers;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaDevueltaPorFirmaInvalida;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaEnviada;
-use Modules\GestionPrestamosRecepciones\Domain\Events\ActaFirmadaCriptograficamentePorCurador;
+use Modules\GestionPrestamosRecepciones\Domain\Events\ActaFirmadaPorCurador;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaFirmadaSubida;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaValidada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\DevolucionRegistrada;
@@ -32,6 +32,7 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\EnviarNotificac
 use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\EnviarNotificacionRecordatorioListener;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\EnviarNotificacionResultadoProrrogaListener;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\IniciarPrestamoAlValidarActaListener;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\NotificarCuradorEventoPrestamoListener;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\RegistrarEventoHistorialListener;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\SincronizarEstadoEspecimenesAlActivarListener;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Listeners\SincronizarEstadoEspecimenesAlCerrarListener;
@@ -45,24 +46,33 @@ class EventServiceProvider extends ServiceProvider
     /** @var array<string, array<int, string>> */
     protected $listen = [
         SolicitudPrestamoRegistrada::class => [RegistrarEventoHistorialListener::class],
-        SolicitudPrestamoEnviada::class => [RegistrarEventoHistorialListener::class],
+        SolicitudPrestamoEnviada::class => [
+            RegistrarEventoHistorialListener::class,
+            NotificarCuradorEventoPrestamoListener::class,
+        ],
         SolicitudPrestamoObservada::class => [RegistrarEventoHistorialListener::class],
         SolicitudPrestamoAprobada::class => [RegistrarEventoHistorialListener::class],
         SolicitudPrestamoRechazada::class => [RegistrarEventoHistorialListener::class],
         PrestamoIniciado::class => [RegistrarEventoHistorialListener::class],
         ActaEnviada::class => [RegistrarEventoHistorialListener::class],
-        ActaFirmadaSubida::class => [RegistrarEventoHistorialListener::class],
+        ActaFirmadaSubida::class => [
+            RegistrarEventoHistorialListener::class,
+            NotificarCuradorEventoPrestamoListener::class,
+        ],
         ActaDevueltaPorFirmaInvalida::class => [RegistrarEventoHistorialListener::class],
         ActaValidada::class => [
             RegistrarEventoHistorialListener::class,
             IniciarPrestamoAlValidarActaListener::class,
         ],
-        ActaFirmadaCriptograficamentePorCurador::class => [RegistrarEventoHistorialListener::class],
+        ActaFirmadaPorCurador::class => [RegistrarEventoHistorialListener::class],
         RecordatorioDevolucionEnviado::class => [
             RegistrarEventoHistorialListener::class,
             EnviarNotificacionRecordatorioListener::class,
         ],
-        VerificacionEntregaRegistrada::class => [RegistrarEventoHistorialListener::class],
+        VerificacionEntregaRegistrada::class => [
+            RegistrarEventoHistorialListener::class,
+            NotificarCuradorEventoPrestamoListener::class,
+        ],
         VerificacionEntregaAprobada::class => [RegistrarEventoHistorialListener::class],
         PrestamoActivado::class => [
             RegistrarEventoHistorialListener::class,
@@ -73,13 +83,17 @@ class EventServiceProvider extends ServiceProvider
         DevolucionRegistrada::class => [
             RegistrarEventoHistorialListener::class,
             EnviarNotificacionDevolucionRegistradaListener::class,
+            NotificarCuradorEventoPrestamoListener::class,
         ],
         PrestamoCerrado::class => [
             RegistrarEventoHistorialListener::class,
             EnviarNotificacionCierrePrestamoListener::class,
             SincronizarEstadoEspecimenesAlCerrarListener::class,
         ],
-        ProrrogaSolicitada::class => [RegistrarEventoHistorialListener::class],
+        ProrrogaSolicitada::class => [
+            RegistrarEventoHistorialListener::class,
+            NotificarCuradorEventoPrestamoListener::class,
+        ],
         ProrrogaAprobada::class => [
             RegistrarEventoHistorialListener::class,
             EnviarNotificacionResultadoProrrogaListener::class,

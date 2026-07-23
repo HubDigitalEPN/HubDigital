@@ -190,13 +190,13 @@
                     {{ $acta->pdfFirmadoRuta ? 'Acta firmada digitalmente' : 'Acta de préstamo' }}
                 </flux:text>
                 <div class="flex items-center gap-1">
-                    <a href="{{ route('prestamos.acta.embed', $acta->id) }}" target="_blank"
+                    <a href="{{ route('prestamos.acta.descargar-pdf', $acta->id) }}" target="_blank"
                         class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded transition-colors">
                         <flux:icon name="arrow-top-right-on-square" class="size-3.5" />
                         Abrir
                     </a>
                     @if($acta->pdfRuta && !$acta->pdfFirmadoRuta)
-                        <a href="{{ route('prestamos.acta.pdf-original', $acta->id) }}"
+                        <a href="{{ route('prestamos.acta.descargar-pdf', $acta->id) }}"
                             download="acta-{{ $acta->numeroPrestamo }}.pdf"
                             class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded transition-colors">
                             <flux:icon name="arrow-down-tray" class="size-3.5" />
@@ -205,7 +205,7 @@
                     @endif
                 </div>
             </div>
-            <iframe src="{{ route('prestamos.acta.embed', $acta->id) }}"
+            <iframe src="{{ route('prestamos.acta.descargar-pdf', $acta->id) }}"
                 class="w-full" style="height: calc(100vh - 310px); min-height: 520px;"
                 title="Acta de préstamo"></iframe>
         </div>
@@ -233,12 +233,12 @@
                     @endif
                     <div class="ml-auto flex items-center gap-2">
                         <div x-show="tab === 'firmada'" class="flex items-center gap-1">
-                            <a href="{{ route('prestamos.acta.embed', $acta->id) }}" target="_blank"
+                            <a href="{{ route('prestamos.acta.descargar-pdf', $acta->id) }}" target="_blank"
                                 class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded">
                                 <flux:icon name="arrow-top-right-on-square" class="size-3.5" />
                                 Abrir
                             </a>
-                            <a href="{{ route('prestamos.acta.embed', $acta->id) }}?download=1" target="_blank"
+                            <a href="{{ route('prestamos.acta.descargar-pdf', $acta->id) }}" download="acta-{{ $acta->numeroPrestamo }}.pdf"
                                 class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded">
                                 <flux:icon name="arrow-down-tray" class="size-3.5" />
                                 Descargar
@@ -261,7 +261,7 @@
                     </div>
                 </div>
                 <div x-show="tab === 'firmada'">
-                    <iframe src="{{ route('prestamos.acta.embed', $acta->id) }}"
+                    <iframe src="{{ route('prestamos.acta.descargar-pdf', $acta->id) }}"
                         class="w-full" style="height: calc(100vh - 310px); min-height: 520px;"
                         title="Acta firmada digitalmente"></iframe>
                 </div>

@@ -191,9 +191,8 @@
         }
         .firma-table td:last-child { padding-right: 0; }
         .firma-img { display: block; max-width: 220px; height: 60px; margin-bottom: 6px; }
-        /* Reserva en blanco sobre la línea del curador donde pyHanko estampa el
-           sello PAdES por coordenadas (config FIRMA_CAMPO). También mantiene ambas
-           columnas alineadas cuando el acta aún no tiene firma del investigador. */
+        /* Reserva en blanco que mantiene ambas columnas alineadas cuando aún no
+           existe la firma (del investigador o del curador) en esa columna. */
         .firma-slot { height: 60px; }
         .firma-line {
             border-top: 2px solid #212121;
@@ -392,7 +391,11 @@
         <table class="firma-table">
             <tr>
                 <td>
-                    <div class="firma-slot"></div>
+                    @if($firmaCuradorBase64 ?? false)
+                        <img src="{{ $firmaCuradorBase64 }}" class="firma-img" alt="Firma del curador" />
+                    @else
+                        <div class="firma-slot"></div>
+                    @endif
                     <div class="firma-line">
                         <p class="firma-name">Adrian Troya</p>
                         <p class="firma-sub">Curador</p>

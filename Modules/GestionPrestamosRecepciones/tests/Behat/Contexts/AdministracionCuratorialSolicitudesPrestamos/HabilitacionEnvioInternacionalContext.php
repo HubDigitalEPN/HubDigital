@@ -8,9 +8,7 @@ use Behat\Step\Given;
 use Behat\Step\Then;
 use Behat\Step\When;
 use DateTimeImmutable;
-use Modules\GestionPrestamosRecepciones\Application\Ports\CertificadoCuradorPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
-use Modules\GestionPrestamosRecepciones\Application\Ports\FirmadorPdfPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\HabilitarEnvioInternacional\HabilitarEnvioInternacionalHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\HabilitarEnvioInternacional\HabilitarEnvioInternacionalInput;
@@ -34,9 +32,7 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ItemPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoPrestamo;
 use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\BaseContext;
-use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\FakeCertificadoCuradorAdapter;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\FakeEventPublisherAdapter;
-use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\FakeFirmadorPdfAdapter;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\PassThroughTransactionManagerAdapter;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Persistence\InMemoryActaPrestamoRepository;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Persistence\InMemoryConfiguracionGlobalRecordatoriosRepository;
@@ -95,8 +91,6 @@ final class HabilitacionEnvioInternacionalContext extends BaseContext
         self::$app->instance(EventPublisherPort::class, $this->fakePublisher);
         self::$app->instance(ConfiguracionGlobalRecordatoriosRepositoryInterface::class, new InMemoryConfiguracionGlobalRecordatoriosRepository);
         self::$app->instance(RecordatorioDevolucionRepositoryInterface::class, new InMemoryRecordatorioDevolucionRepository);
-        self::$app->instance(FirmadorPdfPort::class, new FakeFirmadorPdfAdapter);
-        self::$app->instance(CertificadoCuradorPort::class, new FakeCertificadoCuradorAdapter);
 
         $this->habilitarHandler = $this->make(HabilitarEnvioInternacionalHandler::class);
         $this->validarActaHandler = $this->make(ValidarActaFirmadaHandler::class);
@@ -212,7 +206,7 @@ final class HabilitacionEnvioInternacionalContext extends BaseContext
 
         $acta->marcarEnviada($this->investigadorId);
         $acta->subirFirma('actas/firmadas/test-firmada.pdf', 'identidad/test-cedula.pdf');
-        $acta->validar($this->curadorId);
+        $acta->validarConFirmaCurador($this->curadorId, 'actas-firmadas-curador/test.pdf');
         $acta->pullEvents();
         $this->actaRepo->guardar($acta);
         $this->actaExistente = $acta;
@@ -299,6 +293,7 @@ final class HabilitacionEnvioInternacionalContext extends BaseContext
                 new ValidarActaFirmadaInput(
                     actaId: (string) $this->actaExistente->id(),
                     curadorId: $this->curadorId,
+                    pdfFirmadoCuradorRuta: 'actas-firmadas-curador/'.(string) $this->actaExistente->id().'.pdf',
                 )
             );
 

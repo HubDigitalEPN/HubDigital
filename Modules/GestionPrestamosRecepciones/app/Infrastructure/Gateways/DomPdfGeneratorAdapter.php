@@ -66,6 +66,18 @@ final class DomPdfGeneratorAdapter implements PdfGeneratorPort
     }
 
     /**
+     * Lee una imagen PNG almacenada y la devuelve como data-URI base64.
+     */
+    public function leerImagenBase64(string $ruta): ?string
+    {
+        if (! Storage::exists($ruta)) {
+            return null;
+        }
+
+        return 'data:image/png;base64,'.base64_encode(Storage::get($ruta));
+    }
+
+    /**
      * Fusiona varios PDF (bytes) en uno solo respetando el tamaño y la orientación
      * de cada hoja original. Solo recibe PDF generados por nosotros (DomPDF).
      */

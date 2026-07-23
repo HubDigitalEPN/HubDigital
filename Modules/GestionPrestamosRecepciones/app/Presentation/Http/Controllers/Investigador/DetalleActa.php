@@ -60,7 +60,7 @@ final class DetalleActa extends Component
         'ActaFirmadaDigitalmente',
         'ActaDevueltaPorFirmaInvalida',
         'ActaValidada',
-        'ActaFirmadaCriptograficamentePorCurador',
+        'ActaFirmadaPorCurador',
     ];
 
     /**

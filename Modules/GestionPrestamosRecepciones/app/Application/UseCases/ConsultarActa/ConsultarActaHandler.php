@@ -42,8 +42,6 @@ final class ConsultarActaHandler
 
         $solicitud = $this->solicitudRepo->buscarPorId($acta->solicitudPrestamoId());
 
-        $firma = $acta->firmaCuradorMetadata();
-
         return new ConsultarActaOutput(
             id: (string) $acta->id(),
             numeroPrestamo: (string) $acta->codigoPrestamo(),
@@ -59,8 +57,6 @@ final class ConsultarActaHandler
             numeroSolicitud: $solicitud !== null ? (string) $solicitud->codigoPrestamo() : null,
             tituloEstudio: $solicitud?->tituloEstudio(),
             institucionAdscripcion: $solicitud?->institucionAdscripcion(),
-            firmadoCuradorCommonName: $firma?->commonName(),
-            firmadoCuradorSelloDeTiempo: $firma?->selloDeTiempo(),
         );
     }
 }

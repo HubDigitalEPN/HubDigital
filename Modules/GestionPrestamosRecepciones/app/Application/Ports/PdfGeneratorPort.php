@@ -36,4 +36,13 @@ interface PdfGeneratorPort
      * @param  string  $rutaDestino  Ruta relativa donde almacenar la imagen.
      */
     public function almacenarImagenPng(string $base64, string $rutaDestino): void;
+
+    /**
+     * Lee una imagen PNG previamente almacenada y la devuelve como data-URI base64
+     * (p. ej. para re-incrustar la firma canvas del investigador en la plantilla).
+     *
+     * @param  string  $ruta  Ruta relativa de la imagen.
+     * @return string|null  data-URI `data:image/png;base64,...` o null si no existe.
+     */
+    public function leerImagenBase64(string $ruta): ?string;
 }

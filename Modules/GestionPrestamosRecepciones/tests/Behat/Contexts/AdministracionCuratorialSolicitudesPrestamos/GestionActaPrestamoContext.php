@@ -8,9 +8,7 @@ use Behat\Step\Given;
 use Behat\Step\Then;
 use Behat\Step\When;
 use DateTimeImmutable;
-use Modules\GestionPrestamosRecepciones\Application\Ports\CertificadoCuradorPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
-use Modules\GestionPrestamosRecepciones\Application\Ports\FirmadorPdfPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\DevolverActaParaRefirmar\DevolverActaParaRefirmarHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\DevolverActaParaRefirmar\DevolverActaParaRefirmarInput;
@@ -22,7 +20,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Entities\ActaPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\ItemPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\SolicitudPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaDevueltaPorFirmaInvalida;
-use Modules\GestionPrestamosRecepciones\Domain\Events\ActaFirmadaCriptograficamentePorCurador;
+use Modules\GestionPrestamosRecepciones\Domain\Events\ActaFirmadaPorCurador;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\ActaPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\AlcancePrestamo;
@@ -31,9 +29,7 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoActa;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ItemPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoPrestamo;
 use Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\BaseContext;
-use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\FakeCertificadoCuradorAdapter;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\FakeEventPublisherAdapter;
-use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\FakeFirmadorPdfAdapter;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\PassThroughTransactionManagerAdapter;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Persistence\InMemoryActaPrestamoRepository;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Persistence\InMemorySolicitudPrestamoRepository;
@@ -52,10 +48,6 @@ final class GestionActaPrestamoContext extends BaseContext
     private InMemoryActaPrestamoRepository $actaRepo;
 
     private FakeEventPublisherAdapter $fakePublisher;
-
-    private FakeFirmadorPdfAdapter $fakeFirmador;
-
-    private FakeCertificadoCuradorAdapter $fakeCertificados;
 
     // ── Handlers ─────────────────────────────────────────────────────────────
 
@@ -100,15 +92,11 @@ final class GestionActaPrestamoContext extends BaseContext
         $this->solicitudRepo = new InMemorySolicitudPrestamoRepository;
         $this->actaRepo = new InMemoryActaPrestamoRepository;
         $this->fakePublisher = new FakeEventPublisherAdapter;
-        $this->fakeFirmador = new FakeFirmadorPdfAdapter;
-        $this->fakeCertificados = new FakeCertificadoCuradorAdapter;
 
         self::$app->instance(SolicitudPrestamoRepositoryInterface::class, $this->solicitudRepo);
         self::$app->instance(ActaPrestamoRepositoryInterface::class, $this->actaRepo);
         self::$app->instance(TransactionManagerPort::class, new PassThroughTransactionManagerAdapter);
         self::$app->instance(EventPublisherPort::class, $this->fakePublisher);
-        self::$app->instance(FirmadorPdfPort::class, $this->fakeFirmador);
-        self::$app->instance(CertificadoCuradorPort::class, $this->fakeCertificados);
 
         $this->enviarActaHandler = $this->make(EnviarActaPrestamoHandler::class);
         $this->validarActaHandler = $this->make(ValidarActaFirmadaHandler::class);
@@ -303,6 +291,7 @@ final class GestionActaPrestamoContext extends BaseContext
                 new ValidarActaFirmadaInput(
                     actaId: (string) $this->actaExistente->id(),
                     curadorId: $this->curadorId,
+                    pdfFirmadoCuradorRuta: 'actas-firmadas-curador/'.(string) $this->actaExistente->id().'.pdf',
                 )
             );
         } catch (\Throwable $e) {
@@ -357,14 +346,10 @@ final class GestionActaPrestamoContext extends BaseContext
             $persistida->pdfFirmadoCuradorRuta(),
             'Se esperaba que el acta tuviera la ruta del PDF firmado por el curador'
         );
-        Assert::assertNotNull(
-            $persistida->firmaCuradorMetadata(),
-            'Se esperaba que el acta registrara la evidencia de la firma del curador'
-        );
 
         $evento = null;
         foreach ($this->fakePublisher->publishedEvents() as $e) {
-            if ($e instanceof ActaFirmadaCriptograficamentePorCurador) {
+            if ($e instanceof ActaFirmadaPorCurador) {
                 $evento = $e;
                 break;
             }
@@ -372,9 +357,9 @@ final class GestionActaPrestamoContext extends BaseContext
 
         Assert::assertNotNull(
             $evento,
-            'Se esperaba que el evento ActaFirmadaCriptograficamentePorCurador fuera publicado'
+            'Se esperaba que el evento ActaFirmadaPorCurador fuera publicado'
         );
-        Assert::assertNotEmpty($evento->commonName, 'El evento debe incluir el nombre del firmante');
+        Assert::assertNotEmpty($evento->pdfFirmadoCuradorRuta, 'El evento debe incluir la ruta del PDF firmado por el curador');
     }
 
     // =========================================================================

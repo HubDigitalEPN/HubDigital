@@ -8,8 +8,8 @@ use DateTimeImmutable;
 use InvalidArgumentException;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaDevueltaPorFirmaInvalida;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaEnviada;
-use Modules\GestionPrestamosRecepciones\Domain\Events\ActaFirmadaCriptograficamentePorCurador;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaFirmadaDigitalmente;
+use Modules\GestionPrestamosRecepciones\Domain\Events\ActaFirmadaPorCurador;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaFirmadaSubida;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaValidada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\DocumentoExportacionSubido;
@@ -18,7 +18,6 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\AlcancePrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\CodigoPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoActa;
-use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\FirmaCuradorMetadata;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoPrestamo;
 
@@ -60,7 +59,6 @@ final class ActaPrestamo
         private ?DateTimeImmutable $validadaEn,
         private ?string $validadaPor,
         private ?string $pdfFirmadoCuradorRuta = null,
-        private ?FirmaCuradorMetadata $firmaCuradorMetadata = null,
     ) {}
 
     // ── Named constructors ────────────────────────────────────────────────────
@@ -132,7 +130,6 @@ final class ActaPrestamo
         ?DateTimeImmutable $validadaEn,
         ?string $validadaPor,
         ?string $pdfFirmadoCuradorRuta = null,
-        ?FirmaCuradorMetadata $firmaCuradorMetadata = null,
     ): self {
         return new self(
             id: $id,
@@ -153,7 +150,6 @@ final class ActaPrestamo
             validadaEn: $validadaEn,
             validadaPor: $validadaPor,
             pdfFirmadoCuradorRuta: $pdfFirmadoCuradorRuta,
-            firmaCuradorMetadata: $firmaCuradorMetadata,
         );
     }
 
@@ -386,47 +382,17 @@ final class ActaPrestamo
     }
 
     /**
-     * El curador valida el acta firmada.
-     * Solo permitido desde PendienteValidacion.
-     */
-    public function validar(string $validadoPor): void
-    {
-        if (! $this->estado->equals(EstadoActa::PendienteValidacion)) {
-            throw TransicionDeEstadoInvalidaException::para(
-                'ActaPrestamo',
-                $this->estado->value,
-                'validar',
-            );
-        }
-
-        $ahora = new DateTimeImmutable;
-
-        $this->estado = EstadoActa::Validada;
-        $this->validadaEn = $ahora;
-        $this->validadaPor = $validadoPor;
-
-        $this->events[] = new ActaValidada(
-            actaId: $this->id,
-            solicitudId: $this->solicitudPrestamoId,
-            validadoPor: $validadoPor,
-            ocurridoEn: $ahora,
-        );
-    }
-
-    /**
-     * El curador aprueba el acta y ésta queda firmada criptográficamente (PAdES) de
-     * forma automática con su certificado. Registra el PDF firmado y la evidencia de
-     * la firma, además de realizar la validación. Solo permitido desde
-     * PendienteValidacion.
+     * El curador valida el acta adjuntando su propia firma al documento que ya firmó
+     * el investigador. La firma llega como un PDF ya producido fuera del dominio: bien
+     * regenerado desde la plantilla con la firma dibujada del curador (canvas), bien
+     * cargado por el curador (archivo firmado). Solo permitido desde PendienteValidacion.
      *
-     * La firma real se produce fuera del dominio (adaptador de infraestructura); aquí
-     * solo se registra su resultado. Emite {@see ActaValidada} (para iniciar el
-     * préstamo) y {@see ActaFirmadaCriptograficamentePorCurador} (para el historial).
+     * Emite {@see ActaValidada} (para iniciar el préstamo) y
+     * {@see ActaFirmadaPorCurador} (para el historial).
      */
     public function validarConFirmaCurador(
         string $curadorId,
         string $pdfFirmadoCuradorRuta,
-        FirmaCuradorMetadata $firma,
     ): void {
         if (! $this->estado->equals(EstadoActa::PendienteValidacion)) {
             throw TransicionDeEstadoInvalidaException::para(
@@ -446,7 +412,6 @@ final class ActaPrestamo
         $this->validadaEn = $ahora;
         $this->validadaPor = $curadorId;
         $this->pdfFirmadoCuradorRuta = trim($pdfFirmadoCuradorRuta);
-        $this->firmaCuradorMetadata = $firma;
 
         $this->events[] = new ActaValidada(
             actaId: $this->id,
@@ -455,12 +420,11 @@ final class ActaPrestamo
             ocurridoEn: $ahora,
         );
 
-        $this->events[] = new ActaFirmadaCriptograficamentePorCurador(
+        $this->events[] = new ActaFirmadaPorCurador(
             actaId: $this->id,
             solicitudId: $this->solicitudPrestamoId,
             curadorId: $curadorId,
             pdfFirmadoCuradorRuta: $this->pdfFirmadoCuradorRuta,
-            commonName: $firma->commonName(),
             ocurridoEn: $ahora,
         );
     }
@@ -568,10 +532,5 @@ final class ActaPrestamo
     public function pdfFirmadoCuradorRuta(): ?string
     {
         return $this->pdfFirmadoCuradorRuta;
-    }
-
-    public function firmaCuradorMetadata(): ?FirmaCuradorMetadata
-    {
-        return $this->firmaCuradorMetadata;
     }
 }

@@ -37,6 +37,11 @@ final class FakePdfGeneratorAdapter implements PdfGeneratorPort
         // no-op en tests
     }
 
+    public function leerImagenBase64(string $ruta): ?string
+    {
+        return 'data:image/png;base64,ZmFrZQ==';
+    }
+
     public function fueInvocado(): bool
     {
         return count($this->llamadas) > 0;

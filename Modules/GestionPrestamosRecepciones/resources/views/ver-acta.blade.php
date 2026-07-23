@@ -20,9 +20,9 @@
     @if(!$acta)
         <flux:callout variant="danger" icon="exclamation-triangle">Acta no encontrada.</flux:callout>
     @else
-        {{-- Documento: se sirve la plantilla canónica (pdf.acta-documento) vía el
-             embed, la misma que genera el PDF de descarga. Fuente de verdad única. --}}
-        <iframe src="{{ route('prestamos.acta.embed', $acta->id) }}"
+        {{-- Documento: se embebe el PDF real generado por DomPDF (el mismo que se
+             descarga/imprime), no el HTML de la plantilla. Fuente de verdad única. --}}
+        <iframe src="{{ route('prestamos.acta.descargar-pdf', $acta->id) }}"
             style="height: 85vh;"
             class="w-full rounded-lg border border-border bg-white shadow-sm"
             title="Acta de préstamo"></iframe>

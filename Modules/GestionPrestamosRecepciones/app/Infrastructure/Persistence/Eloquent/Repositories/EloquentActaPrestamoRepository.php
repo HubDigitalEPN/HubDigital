@@ -11,7 +11,6 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ActaPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\AlcancePrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\CodigoPrestamo;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoActa;
-use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\FirmaCuradorMetadata;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudPrestamoId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoPrestamo;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Models\ActaPrestamoModel;
@@ -49,7 +48,6 @@ final class EloquentActaPrestamoRepository implements ActaPrestamoRepositoryInte
                 'validada_en' => $acta->validadaEn()?->format('Y-m-d H:i:s'),
                 'validada_por' => $acta->validadaPor(),
                 'pdf_firmado_curador_ruta' => $acta->pdfFirmadoCuradorRuta(),
-                'firma_curador_metadata' => $this->serializarFirmaCurador($acta->firmaCuradorMetadata()),
             ],
         );
     }
@@ -162,49 +160,6 @@ final class EloquentActaPrestamoRepository implements ActaPrestamoRepositoryInte
                 : null,
             validadaPor: $model->validada_por,
             pdfFirmadoCuradorRuta: $model->pdf_firmado_curador_ruta,
-            firmaCuradorMetadata: $this->deserializarFirmaCurador($model->firma_curador_metadata),
-        );
-    }
-
-    /**
-     * Serializa la evidencia de firma del curador a un array para la columna JSON.
-     *
-     * @return array<string, string|null>|null
-     */
-    private function serializarFirmaCurador(?FirmaCuradorMetadata $firma): ?array
-    {
-        if ($firma === null) {
-            return null;
-        }
-
-        return [
-            'commonName' => $firma->commonName(),
-            'serialCertificado' => $firma->serialCertificado(),
-            'huella' => $firma->huella(),
-            'algoritmo' => $firma->algoritmo(),
-            'selloDeTiempo' => $firma->selloDeTiempo()?->format(DateTimeImmutable::ATOM),
-        ];
-    }
-
-    /**
-     * Reconstruye el VO de evidencia de firma desde la columna JSON.
-     *
-     * @param  array<string, string|null>|null  $datos
-     */
-    private function deserializarFirmaCurador(?array $datos): ?FirmaCuradorMetadata
-    {
-        if ($datos === null) {
-            return null;
-        }
-
-        return FirmaCuradorMetadata::crear(
-            commonName: (string) $datos['commonName'],
-            serialCertificado: (string) $datos['serialCertificado'],
-            huella: (string) $datos['huella'],
-            algoritmo: (string) $datos['algoritmo'],
-            selloDeTiempo: isset($datos['selloDeTiempo']) && $datos['selloDeTiempo'] !== null
-                ? new DateTimeImmutable($datos['selloDeTiempo'])
-                : null,
         );
     }
 }

@@ -24,18 +24,6 @@
                 <p class="font-mono text-xs text-text-secondary">{{ $acta->numeroPrestamo }}</p>
                 <x-gestionprestamosrecepciones::acta-status-badge :estado="$acta->estado" />
             </div>
-
-            @if($acta->firmadoCuradorCommonName)
-                <div class="mt-2 inline-flex items-center gap-2 rounded-lg bg-bio-green/10 px-3 py-1.5">
-                    <flux:icon name="shield-check" class="size-4 text-bio-green" />
-                    <span class="text-xs text-text-primary">
-                        Firmado digitalmente por <span class="font-medium">{{ $acta->firmadoCuradorCommonName }}</span>
-                        @if($acta->firmadoCuradorSelloDeTiempo)
-                            · sello de tiempo {{ $acta->firmadoCuradorSelloDeTiempo->format('d/m/Y H:i') }}
-                        @endif
-                    </span>
-                </div>
-            @endif
         </div>
 
         {{-- Grid: datos + historial --}}
@@ -101,7 +89,7 @@
                             'ActaFirmadaDigitalmente'      => 'Firmada digitalmente',
                             'ActaDevueltaPorFirmaInvalida' => 'Devuelta para refirmar',
                             'ActaValidada'                 => 'Acta validada',
-                            'ActaFirmadaCriptograficamentePorCurador' => 'Firmada por el curador',
+                            'ActaFirmadaPorCurador'        => 'Firmada por el curador',
                         ];
                     @endphp
                     @forelse($historialActa as $i => $evento)
@@ -149,11 +137,11 @@
 
                 <div class="ml-auto flex items-center gap-2">
                     <div x-show="tab === 'original'" class="flex items-center gap-1">
-                        <a href="{{ route('prestamos.acta.embed', $acta->id) }}" target="_blank"
+                        <a href="{{ route('prestamos.acta.descargar-pdf', $acta->id) }}?sin_firma=1" target="_blank"
                             class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded transition-colors">
                             <flux:icon name="arrow-top-right-on-square" class="size-3.5" /> Abrir
                         </a>
-                        <a href="{{ route('prestamos.acta.pdf-original', $acta->id) }}" download="acta-{{ $acta->numeroPrestamo }}.pdf"
+                        <a href="{{ route('prestamos.acta.descargar-pdf', $acta->id) }}?sin_firma=1" download="acta-{{ $acta->numeroPrestamo }}.pdf"
                             class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded transition-colors">
                             <flux:icon name="arrow-down-tray" class="size-3.5" /> Descargar
                         </a>
@@ -161,13 +149,13 @@
 
                     @php $esFirmaDigital = str_starts_with($acta->pdfFirmadoRuta ?? '', 'firmas-investigador/'); @endphp
                     <div x-show="tab === 'firmada'" x-cloak class="flex items-center gap-1">
-                        <a href="{{ $esFirmaDigital ? route('prestamos.acta.ver', $acta->id) : route('prestamos.acta.pdf-firmado', $acta->id) }}" target="_blank"
+                        <a href="{{ $esFirmaDigital ? route('prestamos.acta.descargar-pdf', $acta->id) : route('prestamos.acta.pdf-firmado', $acta->id) }}" target="_blank"
                             class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded transition-colors">
                             <flux:icon name="arrow-top-right-on-square" class="size-3.5" /> Abrir
                         </a>
                         @if($acta->pdfFirmadoRuta)
                             @if($esFirmaDigital)
-                                <a href="{{ route('prestamos.acta.ver', $acta->id) }}?download=1" target="_blank"
+                                <a href="{{ route('prestamos.acta.descargar-pdf', $acta->id) }}" download="acta-firmada-{{ $acta->numeroPrestamo }}.pdf"
                                     class="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary rounded transition-colors">
                                     <flux:icon name="arrow-down-tray" class="size-3.5" /> Descargar
                                 </a>
@@ -209,7 +197,7 @@
             </div>
 
             <div x-show="tab === 'original'">
-                <iframe src="{{ route('prestamos.acta.embed', $acta->id) }}?sin_firma=1"
+                <iframe src="{{ route('prestamos.acta.descargar-pdf', $acta->id) }}?sin_firma=1"
                     class="w-full" style="height: calc(100vh - 310px); min-height: 520px;"
                     title="Acta original"></iframe>
             </div>
@@ -217,7 +205,7 @@
             <div x-show="tab === 'firmada'" x-cloak>
                 @if($acta->pdfFirmadoRuta)
                     @if($esFirmaDigital)
-                        <iframe src="{{ route('prestamos.acta.embed', $acta->id) }}"
+                        <iframe src="{{ route('prestamos.acta.descargar-pdf', $acta->id) }}"
                             class="w-full" style="height: calc(100vh - 310px); min-height: 520px;"
                             title="Acta firmada digitalmente"></iframe>
                     @else
@@ -252,16 +240,28 @@
 
         {{-- Acciones de validación --}}
         @if($acta->estado === 'pendiente_validacion')
-            <div class="flex gap-3 justify-end">
-                <flux:button variant="ghost" icon="arrow-uturn-left"
+            @php $investigadorFirmoEnCanvas = str_starts_with($acta->pdfFirmadoRuta ?? '', 'firmas-investigador/'); @endphp
+            <div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                <flux:button variant="ghost" icon="arrow-uturn-left" class="w-full sm:w-auto"
                     wire:click="$set('showMotivoModal', true)">
                     Devolver para refirmar
                 </flux:button>
-                <flux:button variant="primary" icon="check-circle"
-                    wire:click="$set('showValidarFirmaModal', true)">
-                    Validar firma
+                <flux:button variant="ghost" icon="arrow-up-tray" class="w-full sm:w-auto"
+                    wire:click="$set('showUploadModal', true)">
+                    Subir acta firmada
                 </flux:button>
+                @if($investigadorFirmoEnCanvas)
+                    <flux:button variant="primary" icon="pencil-square" class="w-full sm:w-auto"
+                        wire:click="$set('showFirmaCanvasModal', true)">
+                        Firmar en canvas
+                    </flux:button>
+                @endif
             </div>
+            @unless($investigadorFirmoEnCanvas)
+                <p class="text-xs text-text-secondary text-right">
+                    El investigador subió su acta firmada como archivo; adjunta tu versión firmada para validar.
+                </p>
+            @endunless
         @endif
     @endif
 
@@ -297,28 +297,148 @@
         </div>
     </flux:modal>
 
-    {{-- Modal: confirmar validación de firma --}}
-    <flux:modal wire:model="showValidarFirmaModal" class="max-w-md">
-        <div class="space-y-4 p-2">
-            <div class="flex items-center gap-3">
-                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-bio-green/15 shrink-0">
-                    <flux:icon name="check-badge" class="size-5 text-bio-green" />
-                </div>
-                <flux:heading size="lg">Validar firma del acta</flux:heading>
-            </div>
+    {{-- Modal: firma en canvas del curador --}}
+    <flux:modal wire:model="showFirmaCanvasModal" class="w-full max-w-2xl" :dismissible="false">
+        <div
+            x-data="{
+                drawing: false,
+                _currentEl: null,
+                _currentD: '',
+                _lastPt: null,
+                errorMensaje: '',
+                init() {},
+                startDraw(event) {
+                    event.preventDefault();
+                    const svg = this.$refs.firmaCanvas;
+                    svg.setPointerCapture(event.pointerId);
+                    this.drawing = true;
+                    const rect = svg.getBoundingClientRect();
+                    const p = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+                    const el = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    el.setAttribute('stroke', '#1e1e1e');
+                    el.setAttribute('stroke-width', '2');
+                    el.setAttribute('fill', 'none');
+                    el.setAttribute('stroke-linecap', 'round');
+                    el.setAttribute('stroke-linejoin', 'round');
+                    this._currentEl = el;
+                    this._currentD = `M ${p.x} ${p.y}`;
+                    this._lastPt = p;
+                    el.setAttribute('d', this._currentD);
+                    svg.appendChild(el);
+                },
+                draw(event) {
+                    if (!this.drawing || !this._currentEl) return;
+                    event.preventDefault();
+                    const svg = this.$refs.firmaCanvas;
+                    const rect = svg.getBoundingClientRect();
+                    const p = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+                    const mid = { x: (this._lastPt.x + p.x) / 2, y: (this._lastPt.y + p.y) / 2 };
+                    this._currentD += ` Q ${this._lastPt.x} ${this._lastPt.y} ${mid.x} ${mid.y}`;
+                    this._currentEl.setAttribute('d', this._currentD);
+                    this._lastPt = p;
+                },
+                stopDraw() { this.drawing = false; this._currentEl = null; },
+                limpiar() {
+                    this.$refs.firmaCanvas.querySelectorAll('path').forEach(p => p.remove());
+                    this.errorMensaje = '';
+                },
+                isEmpty() { return !this.$refs.firmaCanvas.querySelector('path'); },
+                toDataURL() {
+                    const svg = this.$refs.firmaCanvas;
+                    const rect = svg.getBoundingClientRect();
+                    const ratio = Math.max(1, window.devicePixelRatio || 1);
+                    const canvas = document.createElement('canvas');
+                    canvas.width  = Math.round(rect.width  * ratio);
+                    canvas.height = Math.round(rect.height * ratio);
+                    const ctx = canvas.getContext('2d');
+                    ctx.scale(ratio, ratio);
+                    ctx.fillStyle = 'white';
+                    ctx.fillRect(0, 0, rect.width, rect.height);
+                    ctx.strokeStyle = '#1e1e1e';
+                    ctx.lineWidth   = 2;
+                    ctx.lineCap     = 'round';
+                    ctx.lineJoin    = 'round';
+                    svg.querySelectorAll('path').forEach(path => {
+                        ctx.stroke(new Path2D(path.getAttribute('d') ?? ''));
+                    });
+                    return canvas.toDataURL('image/png');
+                },
+                async confirmar() {
+                    this.errorMensaje = '';
+                    if (this.isEmpty()) { this.errorMensaje = 'Dibuja tu firma antes de confirmar.'; return; }
+                    try {
+                        const dataUrl = this.toDataURL();
+                        await $wire.set('firmaBase64', dataUrl);
+                        await $wire.call('firmarConCanvas');
+                    } catch (e) {
+                        this.errorMensaje = e.message ?? 'Ocurrió un error al procesar la firma.';
+                    }
+                }
+            }"
+            @domain-error.window="errorMensaje = $event.detail.message"
+            class="space-y-4 p-2"
+        >
+            <flux:heading size="lg">Firmar y validar el acta</flux:heading>
             <flux:text class="text-text-secondary text-sm">
-                Confirma que la firma digital es válida. El acta quedará cerrada y el proceso de préstamo concluirá.
+                Dibuja tu firma en el recuadro. Al confirmar, el acta quedará validada y el proceso de préstamo continuará.
             </flux:text>
+            <div class="rounded-lg border-2 border-border bg-white overflow-hidden" style="cursor: crosshair;">
+                <svg x-ref="firmaCanvas"
+                    style="width: 100%; height: 220px; display: block; touch-action: none; cursor: crosshair; background: white;"
+                    @pointerdown="startDraw($event)" @pointermove="draw($event)"
+                    @pointerup="stopDraw()" @pointerleave="stopDraw()"></svg>
+            </div>
+            <p x-show="errorMensaje" x-text="errorMensaje" class="text-xs text-error text-center"></p>
+            <p x-show="!errorMensaje" class="text-xs text-text-secondary text-center">— Área de firma —</p>
+            <div class="flex items-center justify-between gap-2">
+                <flux:button variant="ghost" size="sm" icon="arrow-path" @click="limpiar()">Limpiar</flux:button>
+                <div class="flex gap-2">
+                    <flux:button variant="ghost" wire:click="$set('showFirmaCanvasModal', false)">Cancelar</flux:button>
+                    <flux:button variant="primary" icon="check" wire:loading.attr="disabled"
+                        wire:target="firmarConCanvas" @click="confirmar()">
+                        <flux:icon wire:loading wire:target="firmarConCanvas" name="arrow-path" class="animate-spin" />
+                        Confirmar firma
+                    </flux:button>
+                </div>
+            </div>
+        </div>
+    </flux:modal>
+
+    {{-- Modal: subir acta firmada por el curador --}}
+    <flux:modal wire:model="showUploadModal" class="max-w-md">
+        <div class="space-y-4 p-2">
+            <flux:heading size="lg">Subir acta firmada</flux:heading>
+            <flux:text class="text-text-secondary text-sm">
+                Adjunta el acta firmada por ti en PDF (máximo 10 MB). Al validarla, el proceso de préstamo continuará.
+            </flux:text>
+            <flux:field>
+                <flux:label>Acta firmada (PDF)</flux:label>
+                @if($pdfFirmadoCurador)
+                    <div class="flex items-center justify-between rounded-lg border border-success/30 bg-success/5 px-3 py-2">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <flux:icon name="document-check" class="size-4 text-success shrink-0" />
+                            <span class="text-sm text-text-primary truncate">{{ $pdfFirmadoCurador->getClientOriginalName() }}</span>
+                        </div>
+                        <flux:button size="sm" variant="ghost" icon="x-mark" wire:click="limpiarPdfFirmadoCurador" />
+                    </div>
+                @else
+                    <label class="flex items-center gap-2 cursor-pointer rounded-lg border border-dashed border-border px-3 py-2.5 hover:border-science-blue hover:bg-science-blue/5 transition-colors">
+                        <flux:icon name="arrow-up-tray" class="size-4 text-text-secondary" />
+                        <span class="text-sm text-text-secondary">Seleccionar archivo PDF</span>
+                        <input type="file" wire:model="pdfFirmadoCurador" accept=".pdf" class="hidden" />
+                    </label>
+                @endif
+                <div wire:loading wire:target="pdfFirmadoCurador" class="flex items-center gap-1.5 mt-1 text-xs text-text-secondary">
+                    <flux:icon name="arrow-path" class="animate-spin size-3" /> Subiendo archivo...
+                </div>
+                <flux:error name="pdfFirmadoCurador" />
+            </flux:field>
             <div class="flex justify-end gap-2 pt-2">
-                <flux:modal.close>
-                    <flux:button variant="ghost">Cancelar</flux:button>
-                </flux:modal.close>
-                <flux:button variant="primary" icon="check-circle"
-                    wire:click="validar"
-                    wire:loading.attr="disabled"
-                    wire:target="validar">
-                    <flux:icon wire:loading wire:target="validar" name="arrow-path" class="animate-spin" />
-                    Sí, validar firma
+                <flux:button variant="ghost" wire:click="cancelarUploadActa">Cancelar</flux:button>
+                <flux:button variant="primary" icon="check-circle" wire:click="subirActaFirmada"
+                    wire:loading.attr="disabled" wire:target="subirActaFirmada,pdfFirmadoCurador">
+                    <flux:icon wire:loading wire:target="subirActaFirmada" name="arrow-path" class="animate-spin" />
+                    Validar acta
                 </flux:button>
             </div>
         </div>

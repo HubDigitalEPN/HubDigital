@@ -41,7 +41,6 @@ final class ActaPrestamoModel extends Model
         'validada_en',
         'validada_por',
         'pdf_firmado_curador_ruta',
-        'firma_curador_metadata',
     ];
 
     protected $casts = [
@@ -49,7 +48,6 @@ final class ActaPrestamoModel extends Model
         'fecha_fin' => 'date',
         'firmada_subida_en' => 'datetime',
         'validada_en' => 'datetime',
-        'firma_curador_metadata' => 'array',
     ];
 
     /**
