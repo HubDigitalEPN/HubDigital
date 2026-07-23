@@ -26,6 +26,38 @@ test('mapea una respuesta de Ecuador a los campos Darwin Core', function (): voi
         ->and($u->displayName)->toBe('Parroquia Limoncocha, Shushufindi, Sucumbíos, Ecuador');
 });
 
+test('resuelve la provincia desde el código ISO 3166-2 cuando falta state (DMQ)', function (): void {
+    // Caso real: Nominatim a zoom 12 en Quito NO devuelve `state`; la provincia
+    // solo llega como ISO3166-2-lvl4 = EC-P (Pichincha).
+    $u = MapeadorDireccionNominatim::desdeRespuesta([
+        'display_name' => 'Iñaquito, Distrito Metropolitano de Quito, Pichincha, Ecuador',
+        'address' => [
+            'city_district' => 'Iñaquito',
+            'county' => 'Distrito Metropolitano de Quito',
+            'ISO3166-2-lvl4' => 'EC-P',
+            'country' => 'Ecuador',
+            'country_code' => 'ec',
+        ],
+    ]);
+
+    expect($u->country)->toBe('Ecuador')
+        ->and($u->stateProvince)->toBe('Pichincha')
+        ->and($u->municipality)->toBe('Distrito Metropolitano de Quito');
+});
+
+test('el state explícito tiene prioridad sobre el código ISO', function (): void {
+    $u = MapeadorDireccionNominatim::desdeRespuesta([
+        'display_name' => 'X, Guayas, Ecuador',
+        'address' => [
+            'state' => 'Guayas',
+            'ISO3166-2-lvl4' => 'EC-P', // incoherente a propósito: debe ganar el state
+            'country' => 'Ecuador',
+        ],
+    ]);
+
+    expect($u->stateProvince)->toBe('Guayas');
+});
+
 test('prefiere city/town como poblado cuando existen', function (): void {
     $u = MapeadorDireccionNominatim::desdeRespuesta([
         'display_name' => 'Tena, Napo, Ecuador',

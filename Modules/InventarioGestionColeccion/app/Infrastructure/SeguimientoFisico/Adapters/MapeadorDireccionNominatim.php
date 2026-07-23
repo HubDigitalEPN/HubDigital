@@ -22,6 +22,21 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\Ubica
 final class MapeadorDireccionNominatim
 {
     /**
+     * Códigos ISO 3166-2 de las provincias de Ecuador → nombre. Se usa como
+     * respaldo cuando Nominatim no devuelve `state` (p. ej. el Distrito
+     * Metropolitano de Quito, donde la provincia solo llega como `EC-P`).
+     */
+    private const PROVINCIAS_EC = [
+        'EC-A' => 'Azuay', 'EC-B' => 'Bolívar', 'EC-C' => 'Carchi', 'EC-D' => 'Orellana',
+        'EC-E' => 'Esmeraldas', 'EC-F' => 'Cañar', 'EC-G' => 'Guayas', 'EC-H' => 'Chimborazo',
+        'EC-I' => 'Imbabura', 'EC-L' => 'Loja', 'EC-M' => 'Manabí', 'EC-N' => 'Napo',
+        'EC-O' => 'El Oro', 'EC-P' => 'Pichincha', 'EC-R' => 'Los Ríos', 'EC-S' => 'Morona Santiago',
+        'EC-SD' => 'Santo Domingo de los Tsáchilas', 'EC-SE' => 'Santa Elena', 'EC-T' => 'Tungurahua',
+        'EC-U' => 'Sucumbíos', 'EC-W' => 'Galápagos', 'EC-X' => 'Cotopaxi', 'EC-Y' => 'Pastaza',
+        'EC-Z' => 'Zamora Chinchipe',
+    ];
+
+    /**
      * @param  array<string, mixed>  $respuesta  Respuesta completa de /reverse (jsonv2).
      */
     public static function desdeRespuesta(array $respuesta): UbicacionGeocodificada
@@ -39,13 +54,27 @@ final class MapeadorDireccionNominatim
             return null;
         };
 
+        // Provincia: primero los campos administrativos; si faltan, se resuelve
+        // desde el código ISO 3166-2 (útil para cantones metropolitanos).
+        $stateProvince = $primero(['state', 'region', 'state_district'])
+            ?? self::provinciaDesdeIso($direccion['ISO3166-2-lvl4'] ?? null);
+
         return new UbicacionGeocodificada(
             country: $primero(['country']),
-            stateProvince: $primero(['state', 'region', 'state_district']),
+            stateProvince: $stateProvince,
             municipality: $primero(['county', 'city_district', 'municipality']),
             poblado: $primero(['city', 'town', 'village', 'hamlet', 'suburb', 'neighbourhood', 'locality', 'municipality']),
             displayName: self::limpiar($respuesta['display_name'] ?? null),
         );
+    }
+
+    private static function provinciaDesdeIso(mixed $codigo): ?string
+    {
+        if (! is_string($codigo)) {
+            return null;
+        }
+
+        return self::PROVINCIAS_EC[strtoupper(trim($codigo))] ?? null;
     }
 
     private static function limpiar(mixed $valor): ?string
