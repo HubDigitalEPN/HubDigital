@@ -19,7 +19,8 @@ use Modules\GestionPrestamosRecepciones\Application\Ports\ValidacionTaxonomicaPo
  * - Deduplicación de nombres antes de consultar
  * - Cache de 7 días por especie (la taxonomía no cambia frecuentemente)
  * - Solicitudes concurrentes en batches de 10 vía Http::pool()
- * - Umbral de confianza >= 85 % para sugerencias tipográficas
+ * - Umbrales de confianza por tipo de match (config gestionprestamosrecepciones.gbif):
+ *   FUZZY (aproximado) más exigente que EXACT (coincidencia exacta ya catalogada)
  * - Transparencia en fallos: retorna 'no_verificado' en vez de simular 'catalogado'
  *
  * Implementa {@see ValidacionTaxonomicaPort}.
@@ -34,9 +35,21 @@ final class GbifValidacionTaxonomicaAdapter implements ValidacionTaxonomicaPort
 
     private const CACHE_TTL_DAYS = 7;
 
-    private const CONFIDENCE_THRESHOLD = 85;
-
     private const CACHE_PREFIX = 'gbif_species:';
+
+    /** Confianza mínima (0–100) para sugerir un candidato FUZZY (aproximado). */
+    private readonly int $umbralConfianzaFuzzy;
+
+    /** Confianza mínima (0–100) para sugerir un candidato EXACT (coincidencia exacta ya catalogada). */
+    private readonly int $umbralConfianzaExact;
+
+    public function __construct(?int $umbralConfianzaFuzzy = null, ?int $umbralConfianzaExact = null)
+    {
+        $this->umbralConfianzaFuzzy = $umbralConfianzaFuzzy
+            ?? (int) config('gestionprestamosrecepciones.gbif.umbral_confianza_fuzzy', 85);
+        $this->umbralConfianzaExact = $umbralConfianzaExact
+            ?? (int) config('gestionprestamosrecepciones.gbif.umbral_confianza_exact', 70);
+    }
 
     /**
      * Valida una lista de nombres científicos contra la API de GBIF.
@@ -178,7 +191,8 @@ final class GbifValidacionTaxonomicaAdapter implements ValidacionTaxonomicaPort
 
     /**
      * Reúne nombres candidatos de corrección (match principal + alternativas de GBIF),
-     * quedándose solo con coincidencias EXACT/FUZZY por encima del umbral de confianza.
+     * quedándose solo con coincidencias EXACT/FUZZY por encima de su umbral de
+     * confianza (EXACT admite un umbral más bajo por ser más confiable que FUZZY).
      * Deduplica sin distinguir mayúsculas, excluye el nombre original y limita a 3.
      *
      * @param  array<string, mixed>  $data
@@ -197,7 +211,13 @@ final class GbifValidacionTaxonomicaAdapter implements ValidacionTaxonomicaPort
             $confianza = (int) ($match['confidence'] ?? 0);
             $canonico = $match['canonicalName'] ?? ($match['scientificName'] ?? null);
 
-            if ($canonico === null || ! in_array($tipo, ['EXACT', 'FUZZY'], true) || $confianza < self::CONFIDENCE_THRESHOLD) {
+            $umbral = match ($tipo) {
+                'EXACT' => $this->umbralConfianzaExact,
+                'FUZZY' => $this->umbralConfianzaFuzzy,
+                default => null,
+            };
+
+            if ($canonico === null || $umbral === null || $confianza < $umbral) {
                 return;
             }
 
