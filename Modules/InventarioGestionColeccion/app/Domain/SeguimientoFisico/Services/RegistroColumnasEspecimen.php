@@ -109,6 +109,50 @@ final class RegistroColumnasEspecimen
             // Revisión (siempre crítica para flujo curador post-import)
             self::col('estadoRevision', 'Estado revisión', self::GRUPO_REVISION, self::PRIORIDAD_CRITICA, true, null),
             self::col('motivoRevision', 'Motivo revisión', self::GRUPO_REVISION, self::PRIORIDAD_CRITICA, true, null),
+
+            // ── Plantilla v2 ──────────────────────────────────────────────────
+            // Clasificación del documento: obligatorio → crítica (rojo),
+            // opcional-si-aplica → recomendada (ámbar), opcional/uso-interno → opcional.
+
+            // Obligatorias (plantilla)
+            self::col('recordNumber', 'Record number (código campo)', self::GRUPO_IDENTIFICACION, self::PRIORIDAD_CRITICA, false, 'recordNumber'),
+            self::col('origin', 'Origen (research/consulting)', self::GRUPO_REGISTRO, self::PRIORIDAD_CRITICA, false, null),
+            self::col('identifiedBy', 'Identificado por', self::GRUPO_TAXONOMIA, self::PRIORIDAD_CRITICA, false, 'identifiedBy'),
+            self::col('dateDetermined', 'Fecha de determinación', self::GRUPO_TAXONOMIA, self::PRIORIDAD_CRITICA, false, 'dateIdentified'),
+            self::col('researchPermit', 'Permiso de investigación', self::GRUPO_REGISTRO, self::PRIORIDAD_CRITICA, false, null),
+            self::col('transportPermit', 'Permiso de transporte', self::GRUPO_REGISTRO, self::PRIORIDAD_CRITICA, false, null),
+
+            // Opcional-si-aplica (plantilla)
+            self::col('exportImportAuthorization', 'Autorización export/import', self::GRUPO_REGISTRO, self::PRIORIDAD_RECOMENDADA, false, null),
+            self::col('scientificNameAuthorship', 'Autor del nombre', self::GRUPO_TAXONOMIA, self::PRIORIDAD_RECOMENDADA, false, 'scientificNameAuthorship'),
+            self::col('latLonMaxError', 'Error coord (m)', self::GRUPO_LOCALIDAD, self::PRIORIDAD_RECOMENDADA, false, 'coordinateUncertaintyInMeters'),
+
+            // Opcionales (plantilla)
+            self::col('clade', 'Clado', self::GRUPO_TAXONOMIA, self::PRIORIDAD_OPCIONAL, false, null),
+            self::col('identificationQualifier', 'Calificador identificación', self::GRUPO_TAXONOMIA, self::PRIORIDAD_OPCIONAL, false, 'identificationQualifier'),
+            self::col('identificationRemarks', 'Notas de identificación', self::GRUPO_TAXONOMIA, self::PRIORIDAD_OPCIONAL, false, 'identificationRemarks'),
+            self::col('vernacularName', 'Nombre común', self::GRUPO_TAXONOMIA, self::PRIORIDAD_OPCIONAL, false, 'vernacularName'),
+            self::col('typeNotes', 'Notas de tipo', self::GRUPO_ATRIBUTOS, self::PRIORIDAD_OPCIONAL, false, null),
+            self::col('continent', 'Continente', self::GRUPO_LOCALIDAD, self::PRIORIDAD_OPCIONAL, false, 'continent'),
+            self::col('countryCode', 'Código país', self::GRUPO_LOCALIDAD, self::PRIORIDAD_OPCIONAL, false, 'countryCode'),
+            self::col('localityNotes', 'Notas de localidad', self::GRUPO_LOCALIDAD, self::PRIORIDAD_OPCIONAL, false, null),
+            self::col('localityCode', 'Código de localidad', self::GRUPO_LOCALIDAD, self::PRIORIDAD_OPCIONAL, false, null),
+            self::col('elevationMaxError', 'Error elevación', self::GRUPO_LOCALIDAD, self::PRIORIDAD_OPCIONAL, false, null),
+            self::col('verbatimElevation', 'Elevación verbatim', self::GRUPO_LOCALIDAD, self::PRIORIDAD_OPCIONAL, false, 'verbatimElevation'),
+            self::col('verbatimDepth', 'Profundidad verbatim', self::GRUPO_LOCALIDAD, self::PRIORIDAD_OPCIONAL, false, 'verbatimDepth'),
+            self::col('verbatimLatitude', 'Latitud verbatim', self::GRUPO_LOCALIDAD, self::PRIORIDAD_OPCIONAL, false, 'verbatimLatitude'),
+            self::col('verbatimLongitude', 'Longitud verbatim', self::GRUPO_LOCALIDAD, self::PRIORIDAD_OPCIONAL, false, 'verbatimLongitude'),
+            self::col('verbatimCoordinateSystem', 'Sistema coord verbatim', self::GRUPO_LOCALIDAD, self::PRIORIDAD_OPCIONAL, false, 'verbatimCoordinateSystem'),
+            self::col('verbatimSrs', 'SRS verbatim', self::GRUPO_LOCALIDAD, self::PRIORIDAD_OPCIONAL, false, 'verbatimSRS'),
+            self::col('informationWithheld', 'Información reservada', self::GRUPO_REGISTRO, self::PRIORIDAD_OPCIONAL, false, 'informationWithheld'),
+            self::col('priorOwner', 'Propietario previo', self::GRUPO_REGISTRO, self::PRIORIDAD_OPCIONAL, false, null),
+            self::col('locatedAt', 'Ubicado en', self::GRUPO_REGISTRO, self::PRIORIDAD_OPCIONAL, false, null),
+
+            // Uso interno (plantilla)
+            self::col('iptUpload', 'Subido a IPT', self::GRUPO_REGISTRO, self::PRIORIDAD_OPCIONAL, false, null),
+            self::col('recordCreatedBy', 'Registrado por', self::GRUPO_REGISTRO, self::PRIORIDAD_OPCIONAL, false, null),
+            self::col('responsibleResearcherExport', 'Responsable de exportación', self::GRUPO_REGISTRO, self::PRIORIDAD_OPCIONAL, false, null),
+            self::col('endemicVerbatim', 'Endémico (texto)', self::GRUPO_ATRIBUTOS, self::PRIORIDAD_OPCIONAL, false, null),
         ];
     }
 

@@ -127,6 +127,7 @@
                                 <th class="px-3 py-2 font-medium whitespace-nowrap">Fecha</th>
                                 <th class="px-3 py-2 font-medium">Colector</th>
                                 <th class="px-3 py-2 font-medium">Estado</th>
+                                <th class="px-3 py-2 font-medium"><span class="sr-only">Ficha</span></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -144,6 +145,12 @@
                                         <span class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold {{ $badge($e['estadoRevision']) }}">
                                             {{ ucfirst($e['estadoRevision']) }}
                                         </span>
+                                    </td>
+                                    <td class="px-3 py-2 whitespace-nowrap">
+                                        <flux:button size="sm" variant="ghost" icon="eye"
+                                                     wire:click="$dispatch('ver-ficha-especimen', { id: '{{ $e['id'] }}' })">
+                                            Ficha
+                                        </flux:button>
                                     </td>
                                 </tr>
                             @endforeach
@@ -168,6 +175,12 @@
                             <p class="mt-0.5 text-xs text-text-secondary">
                                 {{ $e['localidad'] ?: '—' }} · {{ $e['fechaColecta'] ?: '—' }} · {{ $e['colector'] ?: '—' }}
                             </p>
+                            <div class="mt-2">
+                                <flux:button size="sm" variant="ghost" icon="eye" class="w-full"
+                                             wire:click="$dispatch('ver-ficha-especimen', { id: '{{ $e['id'] }}' })">
+                                    Ver ficha completa
+                                </flux:button>
+                            </div>
                         </div>
                     @endforeach
                 </div>
@@ -235,4 +248,6 @@
             </div>
         </div>
     @endif
+
+    @livewire('inventario-ficha-especimen', key: 'ficha-modal-duplicados')
 </div>

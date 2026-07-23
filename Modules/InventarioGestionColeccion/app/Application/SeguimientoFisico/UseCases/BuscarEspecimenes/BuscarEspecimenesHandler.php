@@ -8,6 +8,7 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especim
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Taxon;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\TaxonRepositoryInterface;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\MapeadorFilaEspecimen;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\RangoTaxonomico;
 
 /**
@@ -139,11 +140,9 @@ final class BuscarEspecimenesHandler
             if ($familiaCandidatos === []) {
                 return false;
             }
-            $idsFamilia = [];
-            foreach ($familiaCandidatos as $t) {
-                $idsFamilia = array_merge($idsFamilia, $this->taxonRepo->listarDescendientesIds((string) $t->id()));
-            }
-            $idsFamilia = array_values(array_unique($idsFamilia));
+            $idsFamilia = $this->taxonRepo->listarDescendientesIdsDeVarios(
+                array_map(fn (Taxon $t) => (string) $t->id(), $familiaCandidatos),
+            );
             if ($idsFamilia === []) {
                 return false;
             }
@@ -153,11 +152,13 @@ final class BuscarEspecimenesHandler
         if ($input->taxonNombre !== null && trim($input->taxonNombre) !== '') {
             // Coincidencias por entidad Taxón (+ descendientes), para que un rango
             // alto (reino, orden, familia…) traiga todo lo que cuelga debajo.
-            $ids = [];
-            foreach ($this->taxonRepo->buscarPorNombreContiene($input->taxonNombre) as $t) {
-                $ids = array_merge($ids, $this->taxonRepo->listarDescendientesIds((string) $t->id()));
-            }
-            $out['idsNombre'] = array_values(array_unique($ids));
+            // Resolución por lotes: un solo CTE para todos los taxa coincidentes,
+            // en vez de uno por match (que colgaba con términos genéricos).
+            $raices = array_map(
+                fn (Taxon $t) => (string) $t->id(),
+                $this->taxonRepo->buscarPorNombreContiene($input->taxonNombre),
+            );
+            $out['idsNombre'] = $this->taxonRepo->listarDescendientesIdsDeVarios($raices);
             $out['texto'] = trim($input->taxonNombre);
         }
 
@@ -181,57 +182,12 @@ final class BuscarEspecimenesHandler
             }
         }
 
-        return array_map(fn (Especimen $e) => [
-            'id' => (string) $e->id(),
-            'codigoCatalogo' => $e->codigoCatalogo(),
-            'taxonId' => $e->taxonId(),
-            'taxonNombre' => $e->taxonId() !== null ? ($taxonesMap[$e->taxonId()] ?? $e->taxonId()) : null,
-            'taxonVerbatim' => $e->taxonVerbatim(),
-            'localidad' => $e->localidad(),
-            'localidadVerbatim' => $e->localidadVerbatim(),
-            'fechaColecta' => $e->fechaColecta(),
-            'fechaColectaFin' => $e->fechaColectaFin(),
-            'fechaVerbatim' => $e->fechaVerbatim(),
-            'colector' => $e->colector(),
-            'entidadDepositanteId' => $e->entidadDepositanteId(),
-            'estado' => $e->estado()->value,
-            'occurrenceId' => $e->occurrenceId(),
-            'catalogNumber' => $e->catalogNumber(),
-            'oldCode' => $e->oldCode(),
-            'cardexLiquidCollectionCode' => $e->cardexLiquidCollectionCode(),
-            'individualCount' => $e->individualCount(),
-            'individualCountVerbatim' => $e->individualCountVerbatim(),
-            'sex' => $e->sex(),
-            'lifeStage' => $e->lifeStage(),
-            'caste' => $e->caste(),
-            'typeStatus' => $e->typeStatus(),
-            'preparations' => $e->preparations(),
-            'disposition' => $e->disposition(),
-            'occurrenceStatus' => $e->occurrenceStatus(),
-            'specimenNotes' => $e->specimenNotes(),
-            'country' => $e->country(),
-            'stateProvince' => $e->stateProvince(),
-            'municipality' => $e->municipality(),
-            'localityName' => $e->localityName(),
-            'decimalLatitude' => $e->decimalLatitude(),
-            'decimalLongitude' => $e->decimalLongitude(),
-            'coordVerbatim' => $e->coordVerbatim(),
-            'geodeticDatum' => $e->geodeticDatum(),
-            'elevationMinM' => $e->elevationMinM(),
-            'elevationMaxM' => $e->elevationMaxM(),
-            'biome' => $e->biome(),
-            'habitat' => $e->habitat(),
-            'microhabitat' => $e->microhabitat(),
-            'biogeographicRegion' => $e->biogeographicRegion(),
-            'endemic' => $e->endemic(),
-            'dnaNotes' => $e->dnaNotes(),
-            'occurrenceRemarks' => $e->occurrenceRemarks(),
-            'taxonomicNotes' => $e->taxonomicNotes(),
-            'actaRecepcion' => $e->actaRecepcion(),
-            'estadoRevision' => $e->estadoRevision()->value,
-            'motivoRevision' => $e->motivoRevision(),
-            'filaOrigenExcel' => $e->filaOrigenExcel(),
-            'identificadores' => array_map(fn ($i) => $i->toArray(), $e->identificadores()),
-        ], $especimenes);
+        return array_map(
+            fn (Especimen $e) => MapeadorFilaEspecimen::mapear(
+                $e,
+                $e->taxonId() !== null ? ($taxonesMap[$e->taxonId()] ?? null) : null,
+            ),
+            $especimenes,
+        );
     }
 }

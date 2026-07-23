@@ -84,26 +84,32 @@
                     </div>
                     <div class="max-h-72 overflow-y-auto divide-y divide-border rounded-lg border border-border">
                         @foreach($miembros[$idx] ?? [] as $m)
-                            <label class="flex items-start gap-3 px-3 py-2 hover:bg-bg-main cursor-pointer">
-                                <input type="checkbox"
-                                       wire:model.live="seleccion.{{ $idx }}"
-                                       value="{{ $m['id'] }}"
-                                       class="mt-1 size-4 rounded border-border text-science-blue" />
-                                <div class="min-w-0 flex-1">
-                                    <div class="flex items-center gap-2 flex-wrap">
-                                        <span class="font-mono text-sm text-text-primary">{{ $m['codigoCatalogo'] }}</span>
-                                        @if(!empty($m['taxonNombre']))
-                                            <span class="font-serif text-sm italic text-text-primary">{{ $m['taxonNombre'] }}</span>
-                                        @else
-                                            <span class="text-xs italic text-text-secondary">sin determinar</span>
-                                        @endif
+                            <div class="flex items-start gap-2 px-3 py-2 hover:bg-bg-main">
+                                <label class="flex min-w-0 flex-1 items-start gap-3 cursor-pointer">
+                                    <input type="checkbox"
+                                           wire:model.live="seleccion.{{ $idx }}"
+                                           value="{{ $m['id'] }}"
+                                           class="mt-1 size-4 rounded border-border text-science-blue" />
+                                    <div class="min-w-0 flex-1">
+                                        <div class="flex items-center gap-2 flex-wrap">
+                                            <span class="font-mono text-sm text-text-primary">{{ $m['codigoCatalogo'] }}</span>
+                                            @if(!empty($m['taxonNombre']))
+                                                <span class="font-serif text-sm italic text-text-primary">{{ $m['taxonNombre'] }}</span>
+                                            @else
+                                                <span class="text-xs italic text-text-secondary">sin determinar</span>
+                                            @endif
+                                        </div>
+                                        <div class="mt-0.5 text-xs text-text-secondary">
+                                            {{ $m['fechaColecta'] ?: ($m['fechaVerbatim'] ?: '—') }}
+                                            · {{ $m['colector'] ?: '—' }}
+                                        </div>
                                     </div>
-                                    <div class="mt-0.5 text-xs text-text-secondary">
-                                        {{ $m['fechaColecta'] ?: ($m['fechaVerbatim'] ?: '—') }}
-                                        · {{ $m['colector'] ?: '—' }}
-                                    </div>
-                                </div>
-                            </label>
+                                </label>
+                                <flux:button size="sm" variant="ghost" icon="eye"
+                                             wire:click="$dispatch('ver-ficha-especimen', { id: '{{ $m['id'] }}' })">
+                                    Ficha
+                                </flux:button>
+                            </div>
                         @endforeach
                     </div>
                 </div>
@@ -251,4 +257,6 @@
             </div>
         </div>
     @endif
+
+    @livewire('inventario-ficha-especimen', key: 'ficha-modal-localidades')
 </div>

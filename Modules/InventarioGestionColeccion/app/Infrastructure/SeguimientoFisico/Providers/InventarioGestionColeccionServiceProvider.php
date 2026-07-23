@@ -76,6 +76,7 @@ use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persiste
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentUnitTrayRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentVisitanteRepository;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\ExportarEspecimenesGbif;
+use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\FichaEspecimenModal;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Mapa\MapaInteractivo;
 use Modules\InventarioGestionColeccion\Presentation\Http\Middleware\VisitanteSesionMiddleware;
 use Nwidart\Modules\Support\ModuleServiceProvider;
@@ -178,6 +179,11 @@ class InventarioGestionColeccionServiceProvider extends ModuleServiceProvider
         // Sección de selección/exportación de especímenes embebida en la página
         // de Publicación GBIF (componente Livewire anidado).
         Livewire::component('inventario-exportar-especimenes-gbif', ExportarEspecimenesGbif::class);
+
+        // Modal reutilizable con la ficha completa (todas las columnas) de un
+        // espécimen: se monta una vez por bandeja de revisión y escucha el evento
+        // `ver-ficha-especimen`.
+        Livewire::component('inventario-ficha-especimen', FichaEspecimenModal::class);
 
         // Guarda de la sesión efímera del visitante: protege el mapa del visitante para
         // que solo entre quien llegó por un QR válido y vigente, y nada más.

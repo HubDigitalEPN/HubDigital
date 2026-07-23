@@ -86,4 +86,16 @@ final class InMemoryTaxonRepository implements TaxonRepositoryInterface
 
         return array_values(array_unique($resultado));
     }
+
+    /** @param string[] $taxonIds
+     *  @return string[] */
+    public function listarDescendientesIdsDeVarios(array $taxonIds): array
+    {
+        $resultado = [];
+        foreach ($taxonIds as $id) {
+            $resultado = array_merge($resultado, $this->listarDescendientesIds($id));
+        }
+
+        return array_values(array_unique($resultado));
+    }
 }

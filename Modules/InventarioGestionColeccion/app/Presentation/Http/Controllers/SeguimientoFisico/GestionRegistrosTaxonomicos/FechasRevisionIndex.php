@@ -140,12 +140,9 @@ final class FechasRevisionIndex extends Component
                 verbatim: $this->items[$idx]['verbatim'],
             ));
 
-            $this->miembros[$idx] = array_map(fn ($m) => [
-                'id' => $m['id'],
-                'codigoCatalogo' => $m['codigoCatalogo'],
-                'colector' => $m['colector'],
-                'localidad' => $m['localidad'],
-            ], $output->items);
+            // Conserva TODOS los campos que entrega el handler: antes se recortaban
+            // a 4 y la vista mostraba taxón y fecha vacíos.
+            $this->miembros[$idx] = $output->items;
             $this->seleccion[$idx] = array_map(fn ($m) => $m['id'], $output->items);
             $this->expandido[$idx] = true;
             $this->errorMessage = null;
