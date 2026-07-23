@@ -19,6 +19,10 @@
 
     $motivosDisponibles = ['Nombre no presente en el catálogo GBIF', 'Nombre verificado por el investigador'];
 
+    // Campos cuya invalidez BLOQUEA el avance (ver RegistroSolicitudDeposito::guardarPasoCinco).
+    // Se pintan como error (rojo); el resto de advertencias son informativas (naranja).
+    $camposBloqueantes = ['decimalLatitude', 'decimalLongitude'];
+
     $gridClasses = 'grid grid-cols-1 md:grid-cols-[1fr_1.5fr] gap-3 md:gap-3.5 items-start md:items-center px-4 py-4 md:py-3.5';
 
     $bgFila = match(true) {
@@ -50,8 +54,13 @@
                 </span>
                 <span class="text-xs text-text-secondary/70">Identificación original conservada</span>
                 @foreach($advertencias as $adv)
-                    <span class="inline-flex items-center gap-1 rounded border border-warning/40 bg-warning/5 px-2 py-0.5 text-xs text-warning">
-                        <flux:icon name="exclamation-triangle" variant="outline" class="size-3 shrink-0" />
+                    @php $advBloqueante = in_array($adv['campo'] ?? '', $camposBloqueantes, true); @endphp
+                    <span @class([
+                        'inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs',
+                        'border-error/40 bg-error/5 text-error' => $advBloqueante,
+                        'border-warning/40 bg-warning/5 text-warning' => ! $advBloqueante,
+                    ])>
+                        <flux:icon :name="$advBloqueante ? 'x-circle' : 'exclamation-triangle'" variant="outline" class="size-3 shrink-0" />
                         {{ $adv['campo'] }}: {{ $adv['mensaje'] }}
                     </span>
                 @endforeach
@@ -74,8 +83,13 @@
                 </span>
                 <span class="text-xs text-text-secondary/70">Coincide con el catálogo taxonómico de GBIF</span>
                 @foreach($advertencias as $adv)
-                    <span class="inline-flex items-center gap-1 rounded border border-warning/40 bg-warning/5 px-2 py-0.5 text-xs text-warning">
-                        <flux:icon name="exclamation-triangle" variant="outline" class="size-3 shrink-0" />
+                    @php $advBloqueante = in_array($adv['campo'] ?? '', $camposBloqueantes, true); @endphp
+                    <span @class([
+                        'inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs',
+                        'border-error/40 bg-error/5 text-error' => $advBloqueante,
+                        'border-warning/40 bg-warning/5 text-warning' => ! $advBloqueante,
+                    ])>
+                        <flux:icon :name="$advBloqueante ? 'x-circle' : 'exclamation-triangle'" variant="outline" class="size-3 shrink-0" />
                         {{ $adv['campo'] }}: {{ $adv['mensaje'] }}
                     </span>
                 @endforeach
@@ -109,8 +123,13 @@
                 </div>
                 <span class="text-xs text-text-secondary/70">Validado Técnicamente · catálogo de GBIF</span>
                 @foreach($advertencias as $adv)
-                    <span class="inline-flex items-center gap-1 rounded border border-warning/40 bg-warning/5 px-2 py-0.5 text-xs text-warning">
-                        <flux:icon name="exclamation-triangle" variant="outline" class="size-3 shrink-0" />
+                    @php $advBloqueante = in_array($adv['campo'] ?? '', $camposBloqueantes, true); @endphp
+                    <span @class([
+                        'inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs',
+                        'border-error/40 bg-error/5 text-error' => $advBloqueante,
+                        'border-warning/40 bg-warning/5 text-warning' => ! $advBloqueante,
+                    ])>
+                        <flux:icon :name="$advBloqueante ? 'x-circle' : 'exclamation-triangle'" variant="outline" class="size-3 shrink-0" />
                         {{ $adv['campo'] }}: {{ $adv['mensaje'] }}
                     </span>
                 @endforeach
@@ -163,8 +182,13 @@
                     @endforeach
                 </div>
                 @foreach($advertencias as $adv)
-                    <span class="inline-flex items-center gap-1 rounded border border-warning/40 bg-warning/5 px-2 py-0.5 text-xs text-warning">
-                        <flux:icon name="exclamation-triangle" variant="outline" class="size-3 shrink-0" />
+                    @php $advBloqueante = in_array($adv['campo'] ?? '', $camposBloqueantes, true); @endphp
+                    <span @class([
+                        'inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs',
+                        'border-error/40 bg-error/5 text-error' => $advBloqueante,
+                        'border-warning/40 bg-warning/5 text-warning' => ! $advBloqueante,
+                    ])>
+                        <flux:icon :name="$advBloqueante ? 'x-circle' : 'exclamation-triangle'" variant="outline" class="size-3 shrink-0" />
                         {{ $adv['campo'] }}: {{ $adv['mensaje'] }}
                     </span>
                 @endforeach
@@ -211,8 +235,13 @@
                     Justificar
                 </flux:button>
                 @foreach($advertencias as $adv)
-                    <span class="inline-flex items-center gap-1 rounded border border-warning/40 bg-warning/5 px-2 py-0.5 text-xs text-warning">
-                        <flux:icon name="exclamation-triangle" variant="outline" class="size-3 shrink-0" />
+                    @php $advBloqueante = in_array($adv['campo'] ?? '', $camposBloqueantes, true); @endphp
+                    <span @class([
+                        'inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs',
+                        'border-error/40 bg-error/5 text-error' => $advBloqueante,
+                        'border-warning/40 bg-warning/5 text-warning' => ! $advBloqueante,
+                    ])>
+                        <flux:icon :name="$advBloqueante ? 'x-circle' : 'exclamation-triangle'" variant="outline" class="size-3 shrink-0" />
                         {{ $adv['campo'] }}: {{ $adv['mensaje'] }}
                     </span>
                 @endforeach
@@ -255,8 +284,13 @@
                     Actualizar justificación
                 </flux:button>
                 @foreach($advertencias as $adv)
-                    <span class="inline-flex items-center gap-1 rounded border border-warning/40 bg-warning/5 px-2 py-0.5 text-xs text-warning">
-                        <flux:icon name="exclamation-triangle" variant="outline" class="size-3 shrink-0" />
+                    @php $advBloqueante = in_array($adv['campo'] ?? '', $camposBloqueantes, true); @endphp
+                    <span @class([
+                        'inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs',
+                        'border-error/40 bg-error/5 text-error' => $advBloqueante,
+                        'border-warning/40 bg-warning/5 text-warning' => ! $advBloqueante,
+                    ])>
+                        <flux:icon :name="$advBloqueante ? 'x-circle' : 'exclamation-triangle'" variant="outline" class="size-3 shrink-0" />
                         {{ $adv['campo'] }}: {{ $adv['mensaje'] }}
                     </span>
                 @endforeach
@@ -279,8 +313,13 @@
                 </span>
                 <span class="text-xs text-text-secondary/70">El servicio de validación taxonómica no respondió</span>
                 @foreach($advertencias as $adv)
-                    <span class="inline-flex items-center gap-1 rounded border border-warning/40 bg-warning/5 px-2 py-0.5 text-xs text-warning">
-                        <flux:icon name="exclamation-triangle" variant="outline" class="size-3 shrink-0" />
+                    @php $advBloqueante = in_array($adv['campo'] ?? '', $camposBloqueantes, true); @endphp
+                    <span @class([
+                        'inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs',
+                        'border-error/40 bg-error/5 text-error' => $advBloqueante,
+                        'border-warning/40 bg-warning/5 text-warning' => ! $advBloqueante,
+                    ])>
+                        <flux:icon :name="$advBloqueante ? 'x-circle' : 'exclamation-triangle'" variant="outline" class="size-3 shrink-0" />
                         {{ $adv['campo'] }}: {{ $adv['mensaje'] }}
                     </span>
                 @endforeach
@@ -301,8 +340,13 @@
                     Pendiente
                 </span>
                 @foreach($advertencias as $adv)
-                    <span class="inline-flex items-center gap-1 rounded border border-warning/40 bg-warning/5 px-2 py-0.5 text-xs text-warning">
-                        <flux:icon name="exclamation-triangle" variant="outline" class="size-3 shrink-0" />
+                    @php $advBloqueante = in_array($adv['campo'] ?? '', $camposBloqueantes, true); @endphp
+                    <span @class([
+                        'inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs',
+                        'border-error/40 bg-error/5 text-error' => $advBloqueante,
+                        'border-warning/40 bg-warning/5 text-warning' => ! $advBloqueante,
+                    ])>
+                        <flux:icon :name="$advBloqueante ? 'x-circle' : 'exclamation-triangle'" variant="outline" class="size-3 shrink-0" />
                         {{ $adv['campo'] }}: {{ $adv['mensaje'] }}
                     </span>
                 @endforeach
