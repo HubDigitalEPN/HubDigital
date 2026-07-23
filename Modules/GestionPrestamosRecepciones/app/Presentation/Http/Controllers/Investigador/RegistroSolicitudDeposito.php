@@ -206,11 +206,25 @@ final class RegistroSolicitudDeposito extends Component
     public array $estadosRegistros = [];
 
     /**
+     * Motivo de justificación por registro (bind del select de la matriz).
+     *
+     * @var array<string, string>
+     */
+    public array $motivosJustificacion = [];
+
+    /**
      * Comentario libre de justificación por registro (bind del textarea de la matriz).
      *
      * @var array<string, string>
      */
     public array $comentariosJustificacion = [];
+
+    /**
+     * Motivo asignado cuando el depositante justifica solo con un comentario, sin
+     * elegir un motivo explícito: describe el hecho neutro (el nombre no está en GBIF)
+     * sin afirmar novedad taxonómica.
+     */
+    private const MOTIVO_JUSTIFICACION_NEUTRO = 'Nombre no presente en el catálogo GBIF';
 
     public string $archivoMatrizNombre = '';
 
@@ -1211,6 +1225,10 @@ final class RegistroSolicitudDeposito extends Component
                     )),
                 ];
 
+                if ($registro->motivoJustificacion() !== null) {
+                    $this->motivosJustificacion[$id] = $registro->motivoJustificacion();
+                }
+
                 if ($registro->comentarioJustificacion() !== null) {
                     $this->comentariosJustificacion[$id] = $registro->comentarioJustificacion();
                 }
@@ -1370,17 +1388,28 @@ final class RegistroSolicitudDeposito extends Component
         $this->dispatch('modal-close', name: 'confirmar-aceptar-todas');
     }
 
-    public function justificarHallazgo(string $registroId, string $motivo): void
+    /**
+     * Justifica un hallazgo no catalogado. El depositante puede elegir un motivo,
+     * escribir un comentario para curaduría, o ambos: con cualquiera de los dos basta.
+     * Si solo deja comentario, se asigna el motivo neutro por defecto.
+     */
+    public function justificar(string $registroId): void
     {
-        if (empty($motivo)) {
+        $motivo = trim((string) ($this->motivosJustificacion[$registroId] ?? ''));
+        $comentario = trim((string) ($this->comentariosJustificacion[$registroId] ?? '')) ?: null;
+
+        if ($motivo === '' && $comentario === null) {
+            $this->mostrarToast('Elige un motivo o escribe un comentario para justificar.');
+
             return;
         }
 
-        $comentario = $this->comentariosJustificacion[$registroId] ?? null;
+        if ($motivo === '') {
+            $motivo = self::MOTIVO_JUSTIFICACION_NEUTRO;
+            $this->motivosJustificacion[$registroId] = $motivo;
+        }
 
-        $handler = app(JustificarHallazgoTaxonomicoHandler::class);
-
-        $output = ($handler)(new JustificarHallazgoTaxonomicoInput(
+        $output = app(JustificarHallazgoTaxonomicoHandler::class)(new JustificarHallazgoTaxonomicoInput(
             solicitudId: $this->solicitudId,
             matrizId: $this->matrizId,
             registroId: $registroId,
@@ -1395,49 +1424,37 @@ final class RegistroSolicitudDeposito extends Component
         }
 
         $this->estadoMatriz = $output->estadoMatriz->value;
+        $this->mostrarToast('Hallazgo justificado. Se derivará a revisión de curaduría.', 'success');
     }
 
     /**
-     * Cambia la justificación existente para un registro (motivo + comentario libre).
+     * Actualiza la justificación de un registro ya derivado a curaduría (motivo +
+     * comentario libre). Si se vacía el motivo, se conserva el neutro por defecto.
      */
-    public function cambiarJustificacion(string $registroId, string $nuevoMotivo): void
+    public function actualizarJustificacion(string $registroId): void
     {
-        if (empty($nuevoMotivo)) {
-            return;
+        $motivo = trim((string) ($this->motivosJustificacion[$registroId] ?? ''));
+        $comentario = trim((string) ($this->comentariosJustificacion[$registroId] ?? '')) ?: null;
+
+        if ($motivo === '') {
+            $motivo = self::MOTIVO_JUSTIFICACION_NEUTRO;
+            $this->motivosJustificacion[$registroId] = $motivo;
         }
 
-        $comentario = $this->comentariosJustificacion[$registroId] ?? null;
-
-        $handler = app(CambiarJustificacionTaxonomicaHandler::class);
-
-        ($handler)(new CambiarJustificacionTaxonomicaInput(
+        app(CambiarJustificacionTaxonomicaHandler::class)(new CambiarJustificacionTaxonomicaInput(
             solicitudId: $this->solicitudId,
             matrizId: $this->matrizId,
             registroId: $registroId,
-            nuevoMotivo: $nuevoMotivo,
+            nuevoMotivo: $motivo,
             comentarioJustificacion: $comentario,
         ));
 
         if (isset($this->estadosRegistros[$registroId])) {
-            $this->estadosRegistros[$registroId]['motivoJustificacion'] = $nuevoMotivo;
+            $this->estadosRegistros[$registroId]['motivoJustificacion'] = $motivo;
             $this->estadosRegistros[$registroId]['comentarioJustificacion'] = $comentario;
         }
-    }
 
-    /**
-     * Guarda solo el comentario libre de un registro ya justificado, conservando su motivo.
-     */
-    public function guardarComentarioJustificacion(string $registroId): void
-    {
-        $motivoActual = $this->estadosRegistros[$registroId]['motivoJustificacion'] ?? null;
-
-        if ($motivoActual === null || $motivoActual === '') {
-            return;
-        }
-
-        $this->cambiarJustificacion($registroId, $motivoActual);
-
-        $this->mostrarToast('Comentario guardado.', 'success');
+        $this->mostrarToast('Justificación actualizada.', 'success');
     }
 
     public function deshacerSugerencia(string $registroId): void
