@@ -41,6 +41,38 @@ services:
     networks:
       - internal
 
+  worker:
+    build:
+      context: .
+      target: production
+    restart: unless-stopped
+    env_file: ./.env
+    command: php artisan queue:work --sleep=3 --tries=3 --max-time=3600
+    volumes:
+      - ./storage:/var/www/html/storage
+      - laravel_cache:/var/www/html/bootstrap/cache
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+
+  scheduler:
+    build:
+      context: .
+      target: production
+    restart: unless-stopped
+    env_file: ./.env
+    command: php artisan schedule:work
+    volumes:
+      - ./storage:/var/www/html/storage
+      - laravel_cache:/var/www/html/bootstrap/cache
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+
   nginx:
     build:
       context: .
