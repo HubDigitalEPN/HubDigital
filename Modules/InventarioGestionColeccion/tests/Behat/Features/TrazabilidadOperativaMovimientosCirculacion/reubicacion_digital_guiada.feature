@@ -12,6 +12,13 @@ Característica: Reubicación de especímenes y unit trays en la colección
     Entonces el espécimen queda asignado al unit tray de destino
     Y el movimiento queda registrado en la trazabilidad del espécimen
 
+  Escenario: El unit tray de origen queda sin clasificación taxonómica al vaciarse por una reubicación
+    Dado que existe un espécimen asignado a un unit tray de origen
+    Y existe un unit tray de destino donde el espécimen respeta el orden taxonómico
+    Cuando el curador reubica el espécimen al unit tray de destino
+    Entonces el espécimen queda asignado al unit tray de destino
+    Y el unit tray de origen queda sin clasificación taxonómica
+
   Escenario: El curador reubica varios especímenes a un unit tray en una sola operación
     Dado que existen varios especímenes asignados a unit trays de origen
     Y existe un unit tray de destino con espacio disponible

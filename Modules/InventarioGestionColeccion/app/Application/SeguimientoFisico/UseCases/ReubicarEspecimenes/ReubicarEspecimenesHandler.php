@@ -99,6 +99,21 @@ final class ReubicarEspecimenesHandler
                 especimenIds: $nuevos,
             ));
 
+            // Los especímenes movidos ya se reubicaron (la asignación es 1:1 tray↔especimen), así
+            // que sus trays de origen deben recalcular su clasificación dominante —y limpiarla si
+            // quedaron vacíos— en vez de conservar la taxonomía de especímenes que ya no albergan.
+            $origenTrayIds = array_unique(array_filter(
+                array_values($origenes),
+                static fn (string $origenId): bool => $origenId !== (string) $destinoId,
+            ));
+
+            foreach ($origenTrayIds as $origenTrayId) {
+                $this->asignar->handle(new ActualizarEspecimenesUnitTrayInput(
+                    unitTrayId: $origenTrayId,
+                    especimenIds: $this->asignacionRepo->especimenIdsPorUnitTray(UnitTrayId::desde($origenTrayId)),
+                ));
+            }
+
             $ocurridoEn = new \DateTimeImmutable;
             foreach ($input->especimenIds as $especimenId) {
                 $this->eventoRepo->guardar(EventoCicloIot::registrar(

@@ -11,15 +11,23 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Co
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConsultarTrazabilidadEspecimen\ConsultarTrazabilidadEspecimenInput;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Caja;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\EventoCicloIot;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Gabinete;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\RanuraGabinete;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\UnitTray;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\CajaRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EventoCicloIotRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\GabineteRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\RanuraGabineteRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UnitTrayEspecimenRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\UnitTrayRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\ActorRol;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\CodigoCaja;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\CodigoGabinete;
 use Modules\InventarioGestionColeccion\Tests\Behat\Contexts\BaseContext;
 use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryCajaRepository;
 use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryEventoCicloIotRepository;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryGabineteRepository;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryRanuraGabineteRepository;
 use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryUnitTrayEspecimenRepository;
 use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryUnitTrayRepository;
 use PHPUnit\Framework\Assert;
@@ -39,6 +47,10 @@ final class TrazabilidadMovimientosContext extends BaseContext
     private InMemoryUnitTrayEspecimenRepository $asignacionRepo;
 
     private InMemoryEventoCicloIotRepository $eventoRepo;
+
+    private InMemoryGabineteRepository $gabineteRepo;
+
+    private InMemoryRanuraGabineteRepository $ranuraRepo;
 
     private ConsultarTrazabilidadEspecimenHandler $handler;
 
@@ -66,11 +78,16 @@ final class TrazabilidadMovimientosContext extends BaseContext
         $this->unitTrayRepo = new InMemoryUnitTrayRepository;
         $this->asignacionRepo = new InMemoryUnitTrayEspecimenRepository;
         $this->eventoRepo = new InMemoryEventoCicloIotRepository;
+        $this->gabineteRepo = new InMemoryGabineteRepository;
+        $this->ranuraRepo = new InMemoryRanuraGabineteRepository;
         $this->reloj = new \DateTimeImmutable('2026-06-01 09:00:00');
 
         self::$app->instance(EventoCicloIotRepository::class, $this->eventoRepo);
         self::$app->instance(UnitTrayEspecimenRepository::class, $this->asignacionRepo);
         self::$app->instance(UnitTrayRepository::class, $this->unitTrayRepo);
+        self::$app->instance(CajaRepository::class, $this->cajaRepo);
+        self::$app->instance(GabineteRepository::class, $this->gabineteRepo);
+        self::$app->instance(RanuraGabineteRepository::class, $this->ranuraRepo);
 
         $this->handler = $this->make(ConsultarTrazabilidadEspecimenHandler::class);
     }
@@ -216,10 +233,11 @@ final class TrazabilidadMovimientosContext extends BaseContext
     #[When('la caja se mueve a otra ranura')]
     public function laCajaSeMueveAOtraRanura(): void
     {
+        $ranuraDestino = $this->sembrarRanuraEnGabinete('GAB-001', 2);
+
         // Movimiento detectado por el ESP32/sistema: sin actor humano (actorId null).
         $this->sembrarEvento('caja', $this->cajaId, 'caja_reubicada', [
-            'origen_ranura' => 'R-01',
-            'destino_ranura' => 'R-02',
+            'ranura_id' => (string) $ranuraDestino->id(),
         ], null, ActorRol::Sistema);
     }
 
@@ -260,9 +278,9 @@ final class TrazabilidadMovimientosContext extends BaseContext
             'origen_caja' => 'caja-previa',
             'destino_caja' => $this->contenedorCajaId,
         ], 'curador-001', ActorRol::Curador);
+        $ranura = $this->sembrarRanuraEnGabinete('GAB-CONTENEDOR-001', 3);
         $this->sembrarEvento('caja', $this->contenedorCajaId, 'caja_reubicada', [
-            'origen_ranura' => 'R-01',
-            'destino_ranura' => 'R-02',
+            'ranura_id' => (string) $ranura->id(),
         ], null, ActorRol::Sistema);
     }
 
@@ -324,5 +342,25 @@ final class TrazabilidadMovimientosContext extends BaseContext
     private function especimenRepoNextId(): string
     {
         return 'especimen-'.(++$this->secuenciaEspecimen);
+    }
+
+    private function sembrarRanuraEnGabinete(string $codigoGabinete, int $numeroRanura): RanuraGabinete
+    {
+        $gabinete = Gabinete::crear(
+            id: $this->gabineteRepo->nextIdentity(),
+            codigo: CodigoGabinete::desde($codigoGabinete),
+            nombre: $codigoGabinete,
+            totalRanuras: $numeroRanura,
+        );
+        $this->gabineteRepo->guardar($gabinete);
+
+        $ranura = RanuraGabinete::crear(
+            id: $this->ranuraRepo->nextIdentity(),
+            gabineteId: $gabinete->id(),
+            numeroRanura: $numeroRanura,
+        );
+        $this->ranuraRepo->guardar($ranura);
+
+        return $ranura;
     }
 }
