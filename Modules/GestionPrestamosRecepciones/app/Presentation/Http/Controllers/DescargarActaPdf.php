@@ -42,7 +42,6 @@ final class DescargarActaPdf
             abort(403);
         }
 
-<<<<<<< HEAD
         // ?sin_firma=1 fuerza el acta original SIN firmas (útil para contrastar con
         // la firmada), aun cuando ya existan firmas.
         $sinFirma = request('sin_firma') == '1';
@@ -50,12 +49,6 @@ final class DescargarActaPdf
         // Si el curador ya firmó, ese PDF (acta-documento con ambas firmas ya
         // incrustadas) es el documento oficial: se sirve tal cual, sin regenerar.
         // Su ruta la fija la validación del curador.
-=======
-        // Si el curador ya firmó criptográficamente, ese PDF (acta-documento con el
-        // sello PAdES ya incrustado) es el documento oficial: se sirve tal cual, sin
-        // regenerar. Su ruta la fija ValidarActaFirmada. Es vertical, sin la hoja de
-        // especímenes.
->>>>>>> f6edca66562ca7b2bb338ce065b7c6e692653c2c
         $firmadoCurador = 'actas-firmadas-curador/'.$acta->id.'.pdf';
 
         if (! $sinFirma && Storage::exists($firmadoCurador)) {
