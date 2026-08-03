@@ -20,30 +20,6 @@ use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persiste
 class EloquentEspecimenRepository implements EspecimenRepositoryInterface
 {
     /**
-     * Columnas que barre la búsqueda rápida de una sola caja. Son los campos por
-     * los que un curador identifica un espécimen cuando lo tiene en la mano: sus
-     * códigos, la determinación taxonómica y quién/dónde lo colectó.
-     */
-    private const COLUMNAS_BUSQUEDA_GLOBAL = [
-        'codigo_catalogo',
-        'occurrence_id',
-        'catalog_number',
-        'old_code',
-        'record_number',
-        'cardex_liquid_collection_code',
-        'taxon_verbatim',
-        'genus',
-        'specific_epithet',
-        'family',
-        'colector',
-        'localidad',
-        'localidad_verbatim',
-        'locality_name',
-        'municipality',
-        'state_province',
-    ];
-
-    /**
      * Traduce una clave de columna de la UI a su columna real, solo si está en la
      * lista blanca del dominio. Devuelve null para cualquier otra cosa, de modo
      * que el texto del usuario nunca llega interpolado al `ORDER BY`.
@@ -864,11 +840,12 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
         // curador reconoce un espécimen, más los taxa que coinciden por nombre.
         $global = $filtros['busquedaGlobal'] ?? null;
         if ($global !== null && $global !== '') {
-            // Se consulta la columna generada `busqueda_global` (las 16 columnas
-            // de COLUMNAS_BUSQUEDA_GLOBAL concatenadas en minúsculas) en vez de
-            // 16 ILIKE encadenados: así el índice GIN de trigramas puede
-            // resolver el comodín inicial. Medido antes: 794 ms de CPU por
-            // búsqueda, con Seq Scan sobre las 48.896 filas.
+            // Se consulta la columna generada `busqueda_global` —los códigos, la
+            // determinación taxonómica y el quién/dónde de la colecta,
+            // concatenados en minúsculas; la lista vive en la migración que la
+            // crea— en vez de encadenar un ILIKE por columna: así el índice GIN
+            // de trigramas puede resolver el comodín inicial. Medido antes:
+            // 794 ms de CPU por búsqueda, con Seq Scan sobre las 48.896 filas.
             //
             // `like` y no `ilike` a propósito: `gin_trgm_ops` no da soporte a
             // `ilike`, y la columna ya viene en minúsculas, así que basta con

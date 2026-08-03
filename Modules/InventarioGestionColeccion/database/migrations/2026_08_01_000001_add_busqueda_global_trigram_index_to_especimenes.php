@@ -29,7 +29,17 @@ use Illuminate\Support\Facades\Schema;
  */
 return new class extends Migration
 {
-    /** Las mismas 16 columnas que barre la búsqueda rápida en el repositorio. */
+    /**
+     * Columnas que barre la búsqueda rápida: los campos por los que un curador
+     * identifica un espécimen cuando lo tiene en la mano.
+     *
+     * Todas están creadas por migraciones anteriores de este módulo. Una versión
+     * previa incluía además `genus`, `specific_epithet` y `family`: existen en la
+     * base de desarrollo pero NINGUNA migración las crea, así que el deploy moría
+     * con «column "genus" does not exist» contra un esquema levantado desde cero.
+     * Tampoco las lee el código, y en desarrollo solo 26 de 48.896 filas tenían
+     * dato, de modo que quitarlas no cambia lo que la búsqueda encuentra.
+     */
     private const COLUMNAS = [
         'codigo_catalogo',
         'occurrence_id',
@@ -38,9 +48,6 @@ return new class extends Migration
         'record_number',
         'cardex_liquid_collection_code',
         'taxon_verbatim',
-        'genus',
-        'specific_epithet',
-        'family',
         'colector',
         'localidad',
         'localidad_verbatim',
@@ -51,6 +58,8 @@ return new class extends Migration
 
     public function up(): void
     {
+        $this->exigirColumnas();
+
         DB::statement('CREATE EXTENSION IF NOT EXISTS pg_trgm');
 
         if (! Schema::hasColumn('taxonomia.especimenes', 'busqueda_global')) {
@@ -80,5 +89,28 @@ return new class extends Migration
         }
 
         // La extensión no se elimina: puede haberla creado o necesitarla otra parte.
+    }
+
+    /**
+     * Falla antes de tocar nada si el esquema no trae alguna columna esperada.
+     *
+     * Sin esto el error llega como un SQLSTATE[42703] enterrado en un ALTER TABLE
+     * de veinte líneas, en mitad de un deploy. Con esto se lee de un vistazo qué
+     * columna falta y en qué base.
+     */
+    private function exigirColumnas(): void
+    {
+        $faltantes = array_values(array_filter(
+            self::COLUMNAS,
+            fn (string $columna) => ! Schema::hasColumn('taxonomia.especimenes', $columna),
+        ));
+
+        if ($faltantes !== []) {
+            throw new RuntimeException(
+                'taxonomia.especimenes no tiene las columnas ['.implode(', ', $faltantes).'], '
+                .'necesarias para la búsqueda global. Revisa que las migraciones anteriores '
+                .'del módulo se hayan aplicado en esta base antes de reintentar.'
+            );
+        }
     }
 };
