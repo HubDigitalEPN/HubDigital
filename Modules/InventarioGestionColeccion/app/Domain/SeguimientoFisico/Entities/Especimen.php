@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities;
 
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\RegistroColumnasEspecimen;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EspecimenId;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoCustodia;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoEspecimen;
@@ -587,6 +588,60 @@ class Especimen
         }
         $this->estadoRevision = EstadoRevision::Confirmada;
         $this->motivoRevision = null;
+    }
+
+    // ── Edición campo a campo ────────────────────────────────────────────────
+
+    /**
+     * Escribe un único campo de la lista blanca de edición masiva.
+     *
+     * Existe porque `actualizar()` no sirve para esto: cubre 18 de las ~74
+     * columnas, obliga a repetir localidad/fecha/colector aunque no se toquen,
+     * y sobre todo interpreta `null` como "conserva lo que había", de modo que
+     * por esa vía es imposible VACIAR un campo — que es justo la mitad de lo
+     * que se pide a una edición masiva.
+     *
+     * El valor entra y sale en texto: es el formato en el que la bitácora
+     * guarda el estado previo, así que redondear por aquí garantiza que lo
+     * escrito y lo registrado coinciden.
+     *
+     * @throws \InvalidArgumentException si el campo no es editable o si se
+     *                                   intenta vaciar uno obligatorio
+     */
+    public function fijarCampoEditable(string $clave, ?string $valor): void
+    {
+        $campo = RegistroColumnasEspecimen::campoEditable($clave);
+        if ($campo === null) {
+            throw new \InvalidArgumentException("El campo '{$clave}' no se puede editar en masa.");
+        }
+
+        if ($valor === null && ! $campo['admiteVacio']) {
+            throw new \InvalidArgumentException("El campo '{$clave}' no puede quedar vacío.");
+        }
+
+        if (! property_exists($this, $clave)) {
+            throw new \InvalidArgumentException("El campo '{$clave}' no existe en el espécimen.");
+        }
+
+        $this->{$clave} = $valor !== null && $campo['tipo'] === RegistroColumnasEspecimen::TIPO_BOOLEANO
+            ? $valor === 'true'
+            : $valor;
+    }
+
+    /** Valor actual de un campo editable, en la misma representación textual. */
+    public function valorDeCampoEditable(string $clave): ?string
+    {
+        if (! RegistroColumnasEspecimen::esEditableEnMasa($clave) || ! property_exists($this, $clave)) {
+            throw new \InvalidArgumentException("El campo '{$clave}' no se puede editar en masa.");
+        }
+
+        $valor = $this->{$clave};
+
+        if ($valor === null) {
+            return null;
+        }
+
+        return is_bool($valor) ? ($valor ? 'true' : 'false') : (string) $valor;
     }
 
     // ── Getters ──────────────────────────────────────────────────────────────

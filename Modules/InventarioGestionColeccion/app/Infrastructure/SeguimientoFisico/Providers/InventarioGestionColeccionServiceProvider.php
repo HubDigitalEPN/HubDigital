@@ -16,6 +16,7 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\Tradu
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\TransactionManagerPort;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\UbicacionEspecimenPort;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\AlertaUbicacionRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\BitacoraEdicionMasivaRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\CajaRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\CodigoQrRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\ConfiguracionColumnaRepositoryInterface;
@@ -55,6 +56,7 @@ use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Console\
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Console\ResincronizarClasificacionesCommand;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\CachedConfiguracionColumnaRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentAlertaUbicacionRepository;
+use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentBitacoraEdicionMasivaRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentCajaRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentCodigoQrRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentDatasetConfigRepository;
@@ -128,6 +130,7 @@ class InventarioGestionColeccionServiceProvider extends ModuleServiceProvider
         LocalidadRepositoryInterface::class => EloquentLocalidadRepository::class,
         MuestraColectaRepositoryInterface::class => EloquentMuestraColectaRepository::class,
         IdentificacionRepositoryInterface::class => EloquentIdentificacionRepository::class,
+        BitacoraEdicionMasivaRepositoryInterface::class => EloquentBitacoraEdicionMasivaRepository::class,
         GeneradorActaPdfPort::class => SimplePdfActaAdapter::class,
         UbicacionEspecimenPort::class => EloquentUbicacionEspecimenAdapter::class,
         GestorTokenEsp32Port::class => SanctumTokenEsp32Adapter::class,
