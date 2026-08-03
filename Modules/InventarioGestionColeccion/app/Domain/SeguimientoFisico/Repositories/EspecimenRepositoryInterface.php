@@ -113,9 +113,22 @@ interface EspecimenRepositoryInterface
      *   estadoRevision?: string,
      *   motivoRevision?: string,
      *   paraRevision?: bool,
+     *   busquedaGlobal?: string,
+     *   busquedaGlobalTaxonIds?: string[],
+     *   ordenarPor?: string,
+     *   ordenDireccion?: string,
      *   limit?: int,
      *   offset?: int,
      * }  $filtros
+     *
+     * `busquedaGlobal` matchea en OR sobre los campos identificatorios del
+     * espécimen (códigos, taxón verbatim, colector, localidad) y sobre
+     * `busquedaGlobalTaxonIds`; el conjunto resultante se combina en AND con el
+     * resto de filtros.
+     *
+     * `ordenarPor` es una clave de {@see RegistroColumnasEspecimen::clavesOrdenables()};
+     * cualquier clave fuera de esa lista blanca se ignora y se usa el orden por
+     * defecto (código de catálogo). `ordenDireccion` acepta `asc`/`desc`.
      * @return Especimen[]
      */
     public function buscarConFiltros(array $filtros): array;
@@ -128,6 +141,64 @@ interface EspecimenRepositoryInterface
      * @param  array<string, mixed>  $filtros  Mismos filtros que buscarConFiltros.
      */
     public function contarConFiltros(array $filtros): int;
+
+    /**
+     * Trae la página, el total y los nombres de taxón en UN SOLO viaje.
+     *
+     * Existe por latencia, no por CPU: contra una base remota cada consulta
+     * cuesta ~400 ms de ida y vuelta, mientras que el `count(*)` en sí ronda los
+     * 14 ms. Hacer página + total + nombres por separado eran tres viajes para
+     * un trabajo que Postgres resuelve en uno.
+     *
+     * El total viaja como subconsulta escalar NO correlacionada, de modo que el
+     * planificador la evalúa una única vez y no una por fila. Los nombres salen
+     * de un LEFT JOIN, así que son siempre frescos: no hay caché que invalidar.
+     *
+     * `total` es null cuando la página salió vacía (Postgres puede no llegar a
+     * evaluar la subconsulta). En ese caso el llamador debe recurrir a
+     * `contarConFiltros()`, que es justo el caso "página fuera de rango".
+     *
+     * `nombresTaxon` es null cuando la implementación no resuelve nombres, para
+     * que el llamador los busque por su cuenta. Un array vacío significa algo
+     * distinto: "ninguno de estos especímenes tiene taxón enlazado".
+     *
+     * @param  array<string, mixed>  $filtros  Mismos filtros que buscarConFiltros.
+     * @return array{especimenes: Especimen[], total: int|null, nombresTaxon: array<string, string>|null}
+     */
+    public function buscarPaginaConTotal(array $filtros): array;
+
+    /**
+     * Lee el valor actual de un campo editable en varios especímenes, ya
+     * convertido a su representación textual.
+     *
+     * Es la instantánea que la bitácora guarda como "valor previo". Se devuelve
+     * en texto (y no con el tipo PHP) porque el deshacer compara ese texto con
+     * lo que la columna rinda en ese momento: si la instantánea se tomara
+     * casteando en PHP, un `numeric` guardado como '1200' no coincidiría nunca
+     * con el '1200.00' que devuelve Postgres, y toda reversión daría conflicto.
+     *
+     * @param  string[]  $ids
+     * @param  string  $clave  Clave de RegistroColumnasEspecimen::clavesEditablesEnMasa()
+     * @return array<string, string|null> especimen_id => valor actual en texto
+     */
+    public function valoresDeCampoPorIds(array $ids, string $clave): array;
+
+    /**
+     * Fija el MISMO valor en un campo de varios especímenes. `null` vacía el
+     * campo. Devuelve el número de filas afectadas.
+     *
+     * @param  string[]  $ids
+     */
+    public function fijarCampoPorIds(array $ids, string $clave, ?string $valor): int;
+
+    /**
+     * Fija un valor DISTINTO por espécimen en el mismo campo. Lo usan el
+     * buscar/reemplazar (cada fila queda con su propio resultado) y el deshacer
+     * (cada fila vuelve a su propio valor previo).
+     *
+     * @param  array<string, string|null>  $valoresPorId  especimen_id => valor
+     */
+    public function fijarCampoPorIdValor(array $valoresPorId, string $clave): int;
 
     /**
      * Cuenta cuántos especímenes están enganchados a cada `muestra_id` del

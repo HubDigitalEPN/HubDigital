@@ -30,8 +30,10 @@ final class BuscarEspecimenesHandler
 
     public function handle(BuscarEspecimenesInput $input): BuscarEspecimenesOutput
     {
-        if (! $input->tieneFiltros()) {
+        if (! $input->tieneFiltros() && ! $input->permitirSinFiltros) {
             // Sin filtros, devolvemos vacío para evitar cargar miles de filas.
+            // La pantalla de inventario pide `permitirSinFiltros` para listar el
+            // catálogo completo paginado al abrirla.
             return $this->salidaVacia($input);
         }
 
@@ -49,10 +51,16 @@ final class BuscarEspecimenesHandler
         $limit = $paginado ? $perPage : $input->limit;
         $offset = $paginado ? ($paginaActual - 1) * $perPage : 0;
 
+        $global = $this->nullableTrim($input->busquedaGlobal);
+
         $filtros = [
             'taxonIds' => $taxon['idsFamilia'] ?? null,
             'taxonNombreIds' => $taxon['idsNombre'] ?? null,
             'taxonNombreTexto' => $taxon['texto'] ?? null,
+            'busquedaGlobal' => $global,
+            'busquedaGlobalTaxonIds' => $global !== null ? $this->taxaQueCoincidenCon($global) : null,
+            'ordenarPor' => $input->ordenarPor,
+            'ordenDireccion' => $input->ordenDireccion,
             'codigoCatalogo' => $input->codigoCatalogo,
             'occurrenceId' => $input->occurrenceId,
             'catalogNumber' => $input->catalogNumber,
@@ -71,20 +79,26 @@ final class BuscarEspecimenesHandler
         // es un valor válido y array_filter lo conserva (0 !== null).
         $filtros = array_filter($filtros, fn ($v) => $v !== null && $v !== '' && $v !== []);
 
-        $especimenes = $this->especimenRepo->buscarConFiltros($filtros);
-
         if ($paginado) {
-            $total = $this->especimenRepo->contarConFiltros($filtros);
-            $totalPaginas = $total > 0 ? (int) ceil($total / $perPage) : 1;
+            // Página, total y nombres de taxón en un solo viaje: contra una base
+            // remota cada consulta cuesta ~400 ms de latencia, así que el número
+            // de viajes pesa más que el coste de cada uno.
+            $pagina = $this->especimenRepo->buscarPaginaConTotal($filtros);
+
+            // La subconsulta del total no se evalúa si la página salió vacía
+            // (justo el caso "página fuera de rango"): solo entonces se cuenta.
+            $total = $pagina['total'] ?? $this->especimenRepo->contarConFiltros($filtros);
 
             return new BuscarEspecimenesOutput(
-                items: $this->mapearItems($especimenes),
+                items: $this->mapearItems($pagina['especimenes'], $pagina['nombresTaxon']),
                 total: $total,
                 page: $paginaActual,
                 perPage: $perPage,
-                totalPaginas: $totalPaginas,
+                totalPaginas: $total > 0 ? (int) ceil($total / $perPage) : 1,
             );
         }
+
+        $especimenes = $this->especimenRepo->buscarConFiltros($filtros);
 
         return new BuscarEspecimenesOutput(
             items: $this->mapearItems($especimenes),
@@ -93,6 +107,40 @@ final class BuscarEspecimenesHandler
             perPage: $limit,
             totalPaginas: 1,
         );
+    }
+
+    private function nullableTrim(?string $valor): ?string
+    {
+        if ($valor === null) {
+            return null;
+        }
+        $valor = trim($valor);
+
+        return $valor !== '' ? $valor : null;
+    }
+
+    /**
+     * IDs de taxa (+ descendientes) cuyo nombre contiene el término de búsqueda
+     * rápida. Permite que escribir "Morpho" encuentre también los especímenes
+     * ya enlazados a un Taxón, cuyo `taxon_verbatim` puede estar vacío.
+     *
+     * A partir de 3 caracteres: con 1–2 letras el CTE de descendientes traería
+     * casi todo el árbol sin aportar precisión, y el coste no se justifica.
+     *
+     * @return string[]
+     */
+    private function taxaQueCoincidenCon(string $termino): array
+    {
+        if (mb_strlen($termino) < 3) {
+            return [];
+        }
+
+        $raices = array_map(
+            fn (Taxon $t) => (string) $t->id(),
+            $this->taxonRepo->buscarPorNombreContiene($termino),
+        );
+
+        return $raices === [] ? [] : $this->taxonRepo->listarDescendientesIdsDeVarios($raices);
     }
 
     private function salidaVacia(BuscarEspecimenesInput $input): BuscarEspecimenesOutput
@@ -167,18 +215,25 @@ final class BuscarEspecimenesHandler
 
     /**
      * @param  Especimen[]  $especimenes
+     * @param  array<string, string>|null  $nombresTaxon  Mapa ya resuelto por el
+     *                                                    repositorio (vía JOIN). Si no llega, se resuelve con una consulta
+     *                                                    aparte, que es el camino de los llamadores sin paginación.
      * @return list<array<string, mixed>>
      */
-    private function mapearItems(array $especimenes): array
+    private function mapearItems(array $especimenes, ?array $nombresTaxon = null): array
     {
-        $taxonIds = array_values(array_unique(array_filter(
-            array_map(fn (Especimen $e) => $e->taxonId(), $especimenes)
-        )));
+        $taxonesMap = $nombresTaxon;
 
-        $taxonesMap = [];
-        if ($taxonIds !== []) {
-            foreach ($this->taxonRepo->buscarPorIds($taxonIds) as $taxon) {
-                $taxonesMap[(string) $taxon->id()] = $taxon->nombreCientifico();
+        if ($taxonesMap === null) {
+            $taxonIds = array_values(array_unique(array_filter(
+                array_map(fn (Especimen $e) => $e->taxonId(), $especimenes)
+            )));
+
+            $taxonesMap = [];
+            if ($taxonIds !== []) {
+                foreach ($this->taxonRepo->buscarPorIds($taxonIds) as $taxon) {
+                    $taxonesMap[(string) $taxon->id()] = $taxon->nombreCientifico();
+                }
             }
         }
 

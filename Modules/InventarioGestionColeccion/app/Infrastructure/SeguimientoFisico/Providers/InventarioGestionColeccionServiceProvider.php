@@ -16,6 +16,7 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\Tradu
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\TransactionManagerPort;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\UbicacionEspecimenPort;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\AlertaUbicacionRepository;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\BitacoraEdicionMasivaRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\CajaRepository;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\CodigoQrRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\ConfiguracionColumnaRepositoryInterface;
@@ -53,10 +54,11 @@ use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Console\
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Console\ExportarGbifCommand;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Console\ImportarCatalogoInvertebradosCommand;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Console\ResincronizarClasificacionesCommand;
+use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\CachedConfiguracionColumnaRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentAlertaUbicacionRepository;
+use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentBitacoraEdicionMasivaRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentCajaRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentCodigoQrRepository;
-use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentConfiguracionColumnaRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentDatasetConfigRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentEntidadDepositanteRepository;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories\EloquentEspecimenRepository;
@@ -122,10 +124,13 @@ class InventarioGestionColeccionServiceProvider extends ModuleServiceProvider
         EntidadDepositanteRepositoryInterface::class => EloquentEntidadDepositanteRepository::class,
         VisitanteRepositoryInterface::class => EloquentVisitanteRepository::class,
         DatasetConfigRepositoryInterface::class => EloquentDatasetConfigRepository::class,
-        ConfiguracionColumnaRepositoryInterface::class => EloquentConfiguracionColumnaRepository::class,
+        // Decorador con caché: se lee en cada render de Livewire y se escribe
+        // desde una sola pantalla de administración.
+        ConfiguracionColumnaRepositoryInterface::class => CachedConfiguracionColumnaRepository::class,
         LocalidadRepositoryInterface::class => EloquentLocalidadRepository::class,
         MuestraColectaRepositoryInterface::class => EloquentMuestraColectaRepository::class,
         IdentificacionRepositoryInterface::class => EloquentIdentificacionRepository::class,
+        BitacoraEdicionMasivaRepositoryInterface::class => EloquentBitacoraEdicionMasivaRepository::class,
         GeneradorActaPdfPort::class => SimplePdfActaAdapter::class,
         UbicacionEspecimenPort::class => EloquentUbicacionEspecimenAdapter::class,
         GestorTokenEsp32Port::class => SanctumTokenEsp32Adapter::class,
