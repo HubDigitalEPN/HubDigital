@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especimen;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\RegistroColumnasEspecimen;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EspecimenId;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoCustodia;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoEspecimen;
@@ -18,6 +19,44 @@ use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persiste
 
 class EloquentEspecimenRepository implements EspecimenRepositoryInterface
 {
+    /**
+     * Columnas que barre la búsqueda rápida de una sola caja. Son los campos por
+     * los que un curador identifica un espécimen cuando lo tiene en la mano: sus
+     * códigos, la determinación taxonómica y quién/dónde lo colectó.
+     */
+    private const COLUMNAS_BUSQUEDA_GLOBAL = [
+        'codigo_catalogo',
+        'occurrence_id',
+        'catalog_number',
+        'old_code',
+        'record_number',
+        'cardex_liquid_collection_code',
+        'taxon_verbatim',
+        'genus',
+        'specific_epithet',
+        'family',
+        'colector',
+        'localidad',
+        'localidad_verbatim',
+        'locality_name',
+        'municipality',
+        'state_province',
+    ];
+
+    /**
+     * Traduce una clave de columna de la UI a su columna real, solo si está en la
+     * lista blanca del dominio. Devuelve null para cualquier otra cosa, de modo
+     * que el texto del usuario nunca llega interpolado al `ORDER BY`.
+     */
+    private static function columnaDeOrden(?string $clave): ?string
+    {
+        if ($clave === null || ! in_array($clave, RegistroColumnasEspecimen::clavesOrdenables(), true)) {
+            return null;
+        }
+
+        return Str::snake($clave);
+    }
+
     public function nextIdentity(): EspecimenId
     {
         return EspecimenId::generar();
@@ -704,17 +743,78 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
             ->all();
     }
 
+    /**
+     * @param  array<string, mixed>  $filtros
+     * @return array{especimenes: Especimen[], total: int|null, nombresTaxon: array<string, string>}
+     */
+    public function buscarPaginaConTotal(array $filtros): array
+    {
+        $tabla = (new EspecimenEloquentModel)->getTable();
+
+        // Subconsulta del total: mismos filtros, sin orden ni límite.
+        $conteo = EspecimenEloquentModel::query();
+        $this->aplicarFiltrosBusqueda($conteo, $filtros);
+
+        $query = EspecimenEloquentModel::query()
+            // `{$tabla}.*` es imprescindible: sin él, el LEFT JOIN a taxones
+            // colisiona en `id`/`created_at`/`updated_at` y toDomain()
+            // reconstruiría los especímenes con el id del taxón. Falla en
+            // silencio, así que no se toca.
+            ->select("{$tabla}.*")
+            ->selectSub($conteo->getQuery()->selectRaw('count(*)'), 'total_filtrado')
+            ->leftJoin('taxonomia.taxones as tx', 'tx.id', '=', "{$tabla}.taxon_id")
+            ->addSelect('tx.nombre_cientifico as taxon_nombre');
+
+        if (($filtros['conIdentificadores'] ?? false) === true) {
+            $query->with('identificadores');
+        }
+
+        $this->aplicarFiltrosBusqueda($query, $filtros);
+        $this->aplicarOrdenYPagina($query, $filtros);
+
+        $modelos = $query->get();
+
+        $nombres = [];
+        foreach ($modelos as $m) {
+            if ($m->taxon_id !== null && $m->taxon_nombre !== null) {
+                $nombres[(string) $m->taxon_id] = (string) $m->taxon_nombre;
+            }
+        }
+
+        return [
+            'especimenes' => $modelos->map(fn ($m) => $this->toDomain($m))->all(),
+            'total' => $modelos->isEmpty() ? null : (int) $modelos->first()->total_filtrado,
+            'nombresTaxon' => $nombres,
+        ];
+    }
+
     /** @return Especimen[] */
     public function buscarConFiltros(array $filtros): array
     {
-        $query = EspecimenEloquentModel::query()->with('identificadores');
+        $query = EspecimenEloquentModel::query();
+
+        // Opt-in: la hoja de inventario no pinta identificadores y cargarlos
+        // costaba ~400 ms por interacción. Solo los pide quien los muestra.
+        if (($filtros['conIdentificadores'] ?? false) === true) {
+            $query->with('identificadores');
+        }
+
         $this->aplicarFiltrosBusqueda($query, $filtros);
 
         $limit = (int) ($filtros['limit'] ?? 200);
         $offset = (int) ($filtros['offset'] ?? 0);
 
-        // Orden determinista: sin él, OFFSET/LIMIT puede repetir/saltarse filas
-        // entre páginas (Postgres no garantiza orden sin ORDER BY).
+        // Orden pedido por el usuario (si es una clave válida) y, en todo caso,
+        // desempate determinista: sin ORDER BY estable, OFFSET/LIMIT puede
+        // repetir o saltarse filas entre páginas (Postgres no garantiza orden).
+        $columnaOrden = self::columnaDeOrden($filtros['ordenarPor'] ?? null);
+        if ($columnaOrden !== null) {
+            $direccion = strtolower((string) ($filtros['ordenDireccion'] ?? 'asc')) === 'desc' ? 'desc' : 'asc';
+            // Los NULL van siempre al final: en una hoja de inventario los huecos
+            // estorban arriba, y el curador ordena para ver lo que SÍ tiene dato.
+            $query->orderByRaw("{$columnaOrden} {$direccion} nulls last");
+        }
+
         return $query->orderBy('codigo_catalogo')
             ->orderBy('id')
             ->offset(max(0, $offset))
@@ -733,6 +833,26 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
     }
 
     /**
+     * Orden y ventana, compartidos por `buscarConFiltros` y
+     * `buscarPaginaConTotal` para que ambos paginen exactamente igual.
+     *
+     * @param  array<string, mixed>  $filtros
+     */
+    private function aplicarOrdenYPagina(Builder $query, array $filtros): void
+    {
+        $columnaOrden = self::columnaDeOrden($filtros['ordenarPor'] ?? null);
+        if ($columnaOrden !== null) {
+            $direccion = strtolower((string) ($filtros['ordenDireccion'] ?? 'asc')) === 'desc' ? 'desc' : 'asc';
+            $query->orderByRaw("{$columnaOrden} {$direccion} nulls last");
+        }
+
+        $query->orderBy('codigo_catalogo')
+            ->orderBy('id')
+            ->offset(max(0, (int) ($filtros['offset'] ?? 0)))
+            ->limit((int) ($filtros['limit'] ?? 200));
+    }
+
+    /**
      * Cláusulas WHERE compartidas por buscarConFiltros y contarConFiltros
      * (no aplica limit/offset/order: eso es responsabilidad de cada llamador).
      *
@@ -740,6 +860,30 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
      */
     private function aplicarFiltrosBusqueda(Builder $query, array $filtros): void
     {
+        // Búsqueda rápida (una sola caja): OR sobre los campos por los que un
+        // curador reconoce un espécimen, más los taxa que coinciden por nombre.
+        $global = $filtros['busquedaGlobal'] ?? null;
+        if ($global !== null && $global !== '') {
+            // Se consulta la columna generada `busqueda_global` (las 16 columnas
+            // de COLUMNAS_BUSQUEDA_GLOBAL concatenadas en minúsculas) en vez de
+            // 16 ILIKE encadenados: así el índice GIN de trigramas puede
+            // resolver el comodín inicial. Medido antes: 794 ms de CPU por
+            // búsqueda, con Seq Scan sobre las 48.896 filas.
+            //
+            // `like` y no `ilike` a propósito: `gin_trgm_ops` no da soporte a
+            // `ilike`, y la columna ya viene en minúsculas, así que basta con
+            // bajar también el patrón para conservar la insensibilidad a
+            // mayúsculas que tenía la búsqueda.
+            $pat = '%'.mb_strtolower($global, 'UTF-8').'%';
+            $taxonIdsGlobal = $filtros['busquedaGlobalTaxonIds'] ?? [];
+            $query->where(function (Builder $q) use ($pat, $taxonIdsGlobal): void {
+                $q->where('busqueda_global', 'like', $pat);
+                if (! empty($taxonIdsGlobal)) {
+                    $q->orWhereIn('taxon_id', $taxonIdsGlobal);
+                }
+            });
+        }
+
         // Familia: match estricto por taxón enlazado.
         if (! empty($filtros['taxonIds'])) {
             $query->whereIn('taxon_id', $filtros['taxonIds']);
@@ -802,6 +946,98 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
         if (! empty($filtros['paraRevision'])) {
             $query->where('estado_revision', 'pendiente')->whereNotNull('motivo_revision');
         }
+    }
+
+    /**
+     * @param  string[]  $ids
+     * @return array<string, string|null>
+     */
+    public function valoresDeCampoPorIds(array $ids, string $clave): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        $columna = self::columnaEditable($clave);
+
+        // `::text` deja que Postgres decida la representación (un boolean sale
+        // 'true'/'false'), que es exactamente contra lo que después compara el
+        // deshacer. Castear en PHP produciría un formato distinto.
+        return EspecimenEloquentModel::whereIn('id', $ids)
+            ->selectRaw("id, {$columna}::text AS valor_campo")
+            ->pluck('valor_campo', 'id')
+            ->map(fn ($v) => $v !== null ? (string) $v : null)
+            ->all();
+    }
+
+    /** @param string[] $ids */
+    public function fijarCampoPorIds(array $ids, string $clave, ?string $valor): int
+    {
+        if ($ids === []) {
+            return 0;
+        }
+
+        $columna = self::columnaEditable($clave);
+
+        // Builder::update() no dispara los timestamps de Eloquent: si no se
+        // pone a mano, la operación que más filas toca deja el catálogo con
+        // fechas de modificación mentirosas.
+        return EspecimenEloquentModel::whereIn('id', $ids)->update([
+            $columna => self::valorParaColumna($clave, $valor),
+            'updated_at' => now(),
+        ]);
+    }
+
+    /** @param array<string, string|null> $valoresPorId */
+    public function fijarCampoPorIdValor(array $valoresPorId, string $clave): int
+    {
+        if ($valoresPorId === []) {
+            return 0;
+        }
+
+        $columna = self::columnaEditable($clave);
+        $afectados = 0;
+
+        // Una sentencia por fila, pero dentro de la transacción del caso de uso
+        // y sobre una selección manual (cientos de filas como mucho). Un CASE
+        // WHEN gigante sería más rápido y mucho más difícil de auditar.
+        foreach ($valoresPorId as $id => $valor) {
+            $afectados += EspecimenEloquentModel::where('id', $id)->update([
+                $columna => self::valorParaColumna($clave, $valor),
+                'updated_at' => now(),
+            ]);
+        }
+
+        return $afectados;
+    }
+
+    /**
+     * Traduce la clave de UI a columna real, solo si está en la lista blanca de
+     * edición masiva. El nombre de columna no puede ir como binding, así que se
+     * interpola: esta guarda es lo único que impide que llegue texto del
+     * usuario al SQL.
+     */
+    private static function columnaEditable(string $clave): string
+    {
+        if (! RegistroColumnasEspecimen::esEditableEnMasa($clave)) {
+            throw new \InvalidArgumentException("El campo '{$clave}' no se puede editar en masa.");
+        }
+
+        return Str::snake($clave);
+    }
+
+    /** Convierte la representación textual de la bitácora al tipo de la columna. */
+    private static function valorParaColumna(string $clave, ?string $valor): mixed
+    {
+        if ($valor === null) {
+            return null;
+        }
+
+        $campo = RegistroColumnasEspecimen::campoEditable($clave);
+
+        return $campo !== null && $campo['tipo'] === RegistroColumnasEspecimen::TIPO_BOOLEANO
+            ? $valor === 'true'
+            : $valor;
     }
 
     /** @param int[] $filasOrigen
@@ -1061,9 +1297,15 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
             elevationMinM: $model->elevation_min_m !== null ? (float) $model->elevation_min_m : null,
             biome: $model->biome,
             habitat: $model->habitat,
-            identificadores: $model->identificadores
-                ->map(fn ($identificador) => IdentificadorEspecimen::crear($identificador->tipo, $identificador->valor))
-                ->all(),
+            // Guarda deliberada: sin ella, un modelo que llegue sin la relación
+            // cargada dispara un lazy load POR FILA. `preventLazyLoading` no
+            // está activo en el proyecto, así que ese N+1 no lanzaría ninguna
+            // excepción — degradaría en silencio a 51 consultas por página.
+            identificadores: $model->relationLoaded('identificadores')
+                ? $model->identificadores
+                    ->map(fn ($identificador) => IdentificadorEspecimen::crear($identificador->tipo, $identificador->valor))
+                    ->all()
+                : [],
             taxonVerbatim: $model->taxon_verbatim,
             muestraId: $model->muestra_id,
             localidadId: $model->localidad_id,

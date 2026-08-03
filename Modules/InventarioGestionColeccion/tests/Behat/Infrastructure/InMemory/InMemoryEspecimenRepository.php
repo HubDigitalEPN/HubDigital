@@ -6,6 +6,8 @@ namespace Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory
 
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especimen;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\MapeadorFilaEspecimen;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\RegistroColumnasEspecimen;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EspecimenId;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\LocalidadId;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TaxonId;
@@ -599,6 +601,29 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
     }
 
     /**
+     * @param  array<string, mixed>  $filtros
+     * @return array{especimenes: Especimen[], total: int|null, nombresTaxon: array<string, string>|null}
+     */
+    public function buscarPaginaConTotal(array $filtros): array
+    {
+        $items = $this->filtrarEnMemoria($filtros);
+        $pagina = array_slice(
+            $items,
+            max(0, (int) ($filtros['offset'] ?? 0)),
+            (int) ($filtros['limit'] ?? 200),
+        );
+
+        // `null` (y no `[]`) porque el doble NO resuelve nombres de taxón: no
+        // conoce ese repositorio. Un mapa vacío significaría "ninguno de estos
+        // especímenes tiene taxón", y el handler dejaría de resolverlos.
+        return [
+            'especimenes' => $pagina,
+            'total' => $pagina === [] ? null : count($items),
+            'nombresTaxon' => null,
+        ];
+    }
+
+    /**
      * Aplica los filtros (sin limit/offset) y devuelve la lista ordenada de forma
      * determinista (por código de catálogo, luego id) para que la paginación sea
      * estable, igual que la rama Eloquent.
@@ -609,6 +634,29 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
     private function filtrarEnMemoria(array $filtros): array
     {
         $items = array_values($this->store);
+
+        $global = $filtros['busquedaGlobal'] ?? null;
+        if ($global !== null && $global !== '') {
+            $taxonIdsGlobal = array_flip($filtros['busquedaGlobalTaxonIds'] ?? []);
+            $items = array_filter($items, function (Especimen $e) use ($global, $taxonIdsGlobal): bool {
+                if ($e->taxonId() !== null && isset($taxonIdsGlobal[$e->taxonId()])) {
+                    return true;
+                }
+                $campos = [
+                    $e->codigoCatalogo(), $e->occurrenceId(), $e->catalogNumber(), $e->oldCode(),
+                    $e->recordNumber(), $e->cardexLiquidCollectionCode(), $e->taxonVerbatim(),
+                    $e->colector(), $e->localidad(), $e->localidadVerbatim(), $e->localityName(),
+                    $e->municipality(), $e->stateProvince(),
+                ];
+                foreach ($campos as $valor) {
+                    if ($valor !== null && stripos($valor, $global) !== false) {
+                        return true;
+                    }
+                }
+
+                return false;
+            });
+        }
 
         if (! empty($filtros['taxonIds'])) {
             $set = array_flip($filtros['taxonIds']);
@@ -670,11 +718,78 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
         }
 
         $items = array_values($items);
-        usort($items, function (Especimen $a, Especimen $b): int {
+
+        // Mismo criterio que la rama Eloquent: orden pedido (si la clave está en
+        // la lista blanca), con el código de catálogo como desempate estable.
+        $clave = $filtros['ordenarPor'] ?? null;
+        $ordenable = $clave !== null && in_array($clave, RegistroColumnasEspecimen::clavesOrdenables(), true);
+        $desc = strtolower((string) ($filtros['ordenDireccion'] ?? 'asc')) === 'desc';
+
+        usort($items, function (Especimen $a, Especimen $b) use ($ordenable, $clave, $desc): int {
+            if ($ordenable) {
+                $va = MapeadorFilaEspecimen::mapear($a)[$clave] ?? null;
+                $vb = MapeadorFilaEspecimen::mapear($b)[$clave] ?? null;
+                // NULLs al final en ambas direcciones, igual que `nulls last`.
+                if ($va === null || $vb === null) {
+                    if ($va !== $vb) {
+                        return $va === null ? 1 : -1;
+                    }
+                } elseif ($va !== $vb) {
+                    return $desc ? ($vb <=> $va) : ($va <=> $vb);
+                }
+            }
+
             return [$a->codigoCatalogo(), (string) $a->id()] <=> [$b->codigoCatalogo(), (string) $b->id()];
         });
 
         return $items;
+    }
+
+    /**
+     * @param  string[]  $ids
+     * @return array<string, string|null>
+     */
+    public function valoresDeCampoPorIds(array $ids, string $clave): array
+    {
+        $valores = [];
+        foreach ($ids as $id) {
+            $especimen = $this->store[$id] ?? null;
+            if ($especimen !== null) {
+                $valores[$id] = $especimen->valorDeCampoEditable($clave);
+            }
+        }
+
+        return $valores;
+    }
+
+    /** @param string[] $ids */
+    public function fijarCampoPorIds(array $ids, string $clave, ?string $valor): int
+    {
+        $afectados = 0;
+        foreach ($ids as $id) {
+            $especimen = $this->store[$id] ?? null;
+            if ($especimen !== null) {
+                $especimen->fijarCampoEditable($clave, $valor);
+                $afectados++;
+            }
+        }
+
+        return $afectados;
+    }
+
+    /** @param array<string, string|null> $valoresPorId */
+    public function fijarCampoPorIdValor(array $valoresPorId, string $clave): int
+    {
+        $afectados = 0;
+        foreach ($valoresPorId as $id => $valor) {
+            $especimen = $this->store[$id] ?? null;
+            if ($especimen !== null) {
+                $especimen->fijarCampoEditable($clave, $valor);
+                $afectados++;
+            }
+        }
+
+        return $afectados;
     }
 
     /** @param int[] $filasOrigen

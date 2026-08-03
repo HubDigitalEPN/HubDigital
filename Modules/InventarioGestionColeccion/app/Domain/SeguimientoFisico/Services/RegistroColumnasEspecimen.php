@@ -156,6 +156,176 @@ final class RegistroColumnasEspecimen
         ];
     }
 
+    public const TIPO_TEXTO = 'texto';
+
+    public const TIPO_TEXTO_LARGO = 'texto_largo';
+
+    public const TIPO_BOOLEANO = 'booleano';
+
+    /**
+     * Campos que pueden fijarse en bloque sobre una selección de especímenes.
+     *
+     * Es una lista blanca CERRADA, y la exclusión importa tanto como la
+     * inclusión. Quedan fuera a propósito:
+     *
+     *  - **Identificadores** (`codigoCatalogo`, `occurrenceId`, `catalogNumber`,
+     *    `oldCode`…): identifican una pieza concreta. Fijar el mismo valor en
+     *    varias filas no es una corrección, es perder de qué ejemplar habla cada
+     *    registro. Además alimentan `taxonomia.especimen_identificadores`.
+     *  - **Claves foráneas** (`taxonId`, `localidadId`, `muestraId`…): se enlazan
+     *    desde las bandejas de revisión, que validan que el destino existe.
+     *  - **Campos verbatim** (`taxonVerbatim`, `localidadVerbatim`,
+     *    `fechaVerbatim`, `coordVerbatim`…): son el dato crudo del Excel, la
+     *    única prueba de qué decía la etiqueta original. Sobrescribirlos borra
+     *    la trazabilidad del import y no se puede reconstruir.
+     *  - **Coordenadas, fechas de colecta e individualCount**: son hechos
+     *    medidos de cada ejemplar, no metadatos repetibles. Se corrigen uno a
+     *    uno en el modal.
+     *  - **`estadoRevision` / `motivoRevision`**: tienen su propio flujo, que
+     *    mantiene coherente la pareja estado + motivo. Pisar `motivoRevision` en
+     *    bloque además apagaría los avisos que {@see ClasificadorMotivoRevision}
+     *    deriva de ese texto.
+     *
+     * Lo que queda es justo lo que un curador rellena repetido: procedencia
+     * administrativa, atributos del ejemplar y notas.
+     *
+     * `maximo` refleja el `varchar` real de la columna para poder avisar ANTES
+     * de escribir, en vez de dejar que Postgres aborte el lote entero.
+     *
+     * @return array<string, array{tipo: string, maximo: int|null, admiteVacio: bool}>
+     */
+    public static function camposEditablesEnMasa(): array
+    {
+        return [
+            // Procedencia geográfica normalizada (el crudo vive en los verbatim)
+            'localidad' => self::campoEdit(self::TIPO_TEXTO, 255, admiteVacio: false),
+            'localityName' => self::campoEdit(self::TIPO_TEXTO, 500),
+            'localityCode' => self::campoEdit(self::TIPO_TEXTO, 255),
+            'localityNotes' => self::campoEdit(self::TIPO_TEXTO_LARGO, null),
+            'country' => self::campoEdit(self::TIPO_TEXTO, 120),
+            'countryCode' => self::campoEdit(self::TIPO_TEXTO, 255),
+            'continent' => self::campoEdit(self::TIPO_TEXTO, 255),
+            'stateProvince' => self::campoEdit(self::TIPO_TEXTO, 120),
+            'municipality' => self::campoEdit(self::TIPO_TEXTO, 120),
+            'geodeticDatum' => self::campoEdit(self::TIPO_TEXTO, 60),
+            'latLonMaxError' => self::campoEdit(self::TIPO_TEXTO, 255),
+            'elevationMaxError' => self::campoEdit(self::TIPO_TEXTO, 255),
+
+            // Quién y cómo se recolectó / determinó
+            'colector' => self::campoEdit(self::TIPO_TEXTO, 255, admiteVacio: false),
+            'identifiedBy' => self::campoEdit(self::TIPO_TEXTO, 255),
+            'dateDetermined' => self::campoEdit(self::TIPO_TEXTO, 255),
+            'scientificNameAuthorship' => self::campoEdit(self::TIPO_TEXTO, 255),
+            'identificationQualifier' => self::campoEdit(self::TIPO_TEXTO, 255),
+            'identificationRemarks' => self::campoEdit(self::TIPO_TEXTO_LARGO, null),
+            'clade' => self::campoEdit(self::TIPO_TEXTO, 255),
+            'vernacularName' => self::campoEdit(self::TIPO_TEXTO, 255),
+
+            // Atributos del ejemplar
+            'sex' => self::campoEdit(self::TIPO_TEXTO, 40),
+            'lifeStage' => self::campoEdit(self::TIPO_TEXTO, 40),
+            'caste' => self::campoEdit(self::TIPO_TEXTO, 60),
+            'typeStatus' => self::campoEdit(self::TIPO_TEXTO, 120),
+            'typeNotes' => self::campoEdit(self::TIPO_TEXTO_LARGO, null),
+            'endemic' => self::campoEdit(self::TIPO_BOOLEANO, null),
+            'biome' => self::campoEdit(self::TIPO_TEXTO, 120),
+            'habitat' => self::campoEdit(self::TIPO_TEXTO, 255),
+            'microhabitat' => self::campoEdit(self::TIPO_TEXTO, 255),
+            'biogeographicRegion' => self::campoEdit(self::TIPO_TEXTO, 120),
+
+            // Gestión curatorial y administrativa
+            'preparations' => self::campoEdit(self::TIPO_TEXTO, 120),
+            'disposition' => self::campoEdit(self::TIPO_TEXTO, 120),
+            'occurrenceStatus' => self::campoEdit(self::TIPO_TEXTO, 120),
+            'actaRecepcion' => self::campoEdit(self::TIPO_TEXTO, 120),
+            'origin' => self::campoEdit(self::TIPO_TEXTO, 255),
+            'researchPermit' => self::campoEdit(self::TIPO_TEXTO, 255),
+            'transportPermit' => self::campoEdit(self::TIPO_TEXTO, 255),
+            'exportImportAuthorization' => self::campoEdit(self::TIPO_TEXTO, 255),
+            'informationWithheld' => self::campoEdit(self::TIPO_TEXTO_LARGO, null),
+            'priorOwner' => self::campoEdit(self::TIPO_TEXTO, 255),
+            'locatedAt' => self::campoEdit(self::TIPO_TEXTO, 255),
+            'iptUpload' => self::campoEdit(self::TIPO_TEXTO, 255),
+            'recordCreatedBy' => self::campoEdit(self::TIPO_TEXTO, 255),
+            'responsibleResearcherExport' => self::campoEdit(self::TIPO_TEXTO, 255),
+        ];
+    }
+
+    /** @return string[] */
+    public static function clavesEditablesEnMasa(): array
+    {
+        return array_keys(self::camposEditablesEnMasa());
+    }
+
+    /**
+     * Solo los campos de texto: buscar y reemplazar no tiene sentido sobre un
+     * booleano, y aplicarlo ahí solo produciría valores inválidos.
+     *
+     * @return string[]
+     */
+    public static function clavesEditablesDeTexto(): array
+    {
+        return array_keys(array_filter(
+            self::camposEditablesEnMasa(),
+            fn (array $c) => in_array($c['tipo'], [self::TIPO_TEXTO, self::TIPO_TEXTO_LARGO], true),
+        ));
+    }
+
+    public static function esEditableEnMasa(string $clave): bool
+    {
+        return array_key_exists($clave, self::camposEditablesEnMasa());
+    }
+
+    /** @return array{tipo: string, maximo: int|null, admiteVacio: bool}|null */
+    public static function campoEditable(string $clave): ?array
+    {
+        return self::camposEditablesEnMasa()[$clave] ?? null;
+    }
+
+    /** @return array{tipo: string, maximo: int|null, admiteVacio: bool} */
+    private static function campoEdit(string $tipo, ?int $maximo, bool $admiteVacio = true): array
+    {
+        return compact('tipo', 'maximo', 'admiteVacio');
+    }
+
+    /**
+     * Claves que la tabla del catálogo puede ordenar.
+     *
+     * Solo columnas que existen tal cual en `taxonomia.especimenes`: la capa de
+     * infraestructura convierte la clave camelCase a snake_case y la usa como
+     * `ORDER BY`. Al ser una lista blanca cerrada, ningún texto del usuario llega
+     * a la consulta. `taxonNombre` queda fuera a propósito (se resuelve contra el
+     * repositorio de taxones, no es una columna del espécimen): para ordenar por
+     * taxonomía está `taxonVerbatim`.
+     *
+     * @return string[]
+     */
+    public static function clavesOrdenables(): array
+    {
+        return [
+            // Identificación
+            'codigoCatalogo', 'occurrenceId', 'catalogNumber', 'oldCode',
+            'cardexLiquidCollectionCode', 'recordNumber', 'filaOrigenExcel',
+            // Taxonomía
+            'taxonVerbatim', 'clade', 'vernacularName', 'scientificNameAuthorship',
+            'identifiedBy', 'dateDetermined',
+            // Localidad
+            'localidad', 'localidadVerbatim', 'localityName', 'country', 'countryCode',
+            'continent', 'stateProvince', 'municipality', 'decimalLatitude',
+            'decimalLongitude', 'elevationMinM', 'elevationMaxM',
+            // Fecha
+            'fechaColecta', 'fechaColectaFin', 'fechaVerbatim',
+            // Registro
+            'colector', 'individualCount', 'preparations', 'disposition',
+            'occurrenceStatus', 'actaRecepcion', 'estado', 'origin',
+            // Atributos
+            'sex', 'lifeStage', 'caste', 'typeStatus', 'biome', 'habitat',
+            'microhabitat', 'biogeographicRegion', 'endemic',
+            // Revisión
+            'estadoRevision', 'motivoRevision',
+        ];
+    }
+
     /** @return array<string, string> Mapa clave interna → nombre DwC (solo columnas con DwC no nulo). */
     public static function mapaClaveADwC(): array
     {
