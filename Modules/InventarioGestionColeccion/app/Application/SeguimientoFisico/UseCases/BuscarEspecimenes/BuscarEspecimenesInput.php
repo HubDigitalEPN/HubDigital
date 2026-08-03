@@ -21,6 +21,12 @@ namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCa
 final readonly class BuscarEspecimenesInput
 {
     public function __construct(
+        /**
+         * Búsqueda rápida de una sola caja: matchea en OR contra los campos por
+         * los que un curador identifica un espécimen a ojo (códigos, taxón,
+         * colector, localidad). Se combina en AND con el resto de filtros.
+         */
+        public ?string $busquedaGlobal = null,
         public ?string $taxonNombre = null,
         public ?string $codigoCatalogo = null,
         public ?string $occurrenceId = null,
@@ -43,11 +49,24 @@ final readonly class BuscarEspecimenesInput
          */
         public ?int $page = null,
         public int $perPage = 25,
+        /**
+         * Cuando es true, "sin filtros" significa *todo el catálogo paginado* en
+         * vez de un resultado vacío. Lo activa la pantalla de inventario, que se
+         * comporta como una hoja de cálculo: al abrirla debe mostrar los datos.
+         * Las demás pantallas lo dejan en false para no traerse decenas de miles
+         * de filas por accidente.
+         */
+        public bool $permitirSinFiltros = false,
+        /** Clave de columna a ordenar (lista blanca de RegistroColumnasEspecimen). */
+        public ?string $ordenarPor = null,
+        /** 'asc' | 'desc'. Cualquier otro valor cae a 'asc' en el repositorio. */
+        public string $ordenDireccion = 'asc',
     ) {}
 
     public function tieneFiltros(): bool
     {
-        return $this->taxonNombre !== null
+        return $this->busquedaGlobal !== null
+            || $this->taxonNombre !== null
             || $this->codigoCatalogo !== null
             || $this->occurrenceId !== null
             || $this->catalogNumber !== null
