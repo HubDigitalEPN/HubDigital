@@ -17,11 +17,14 @@
         />
 
         @php
-            $rango = collect(range(1, $totalPaginas));
-            $visible = $rango->filter(fn($p) =>
-                $p === 1 || $p === $totalPaginas ||
-                abs($p - $pagina) <= 1
-            )->values();
+            // Se calcula la ventana directamente en vez de recorrer 1..totalPaginas:
+            // con decenas de miles de registros ese rango llegaba a miles de
+            // elementos por render y solo se pintaban cinco.
+            $visible = collect([1, $pagina - 1, $pagina, $pagina + 1, $totalPaginas])
+                ->filter(fn ($p) => $p >= 1 && $p <= $totalPaginas)
+                ->unique()
+                ->sort()
+                ->values();
         @endphp
 
         @foreach($visible as $i => $p)
