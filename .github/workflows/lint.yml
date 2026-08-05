@@ -37,8 +37,14 @@ jobs:
           composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
           npm install
 
-      - name: Run Pint
-        run: composer lint
+      # Gate duro: --test detecta archivos sin formatear y rompe el pipeline.
+      # Hay que correr "composer lint" y commitear antes de mergear a dev.
+      - name: Check formatting
+        run: composer lint:check
+
+      # Gate duro: rompe ante cualquier advisory de seguridad en dependencias.
+      - name: Audit Dependencies (CVEs)
+        run: composer audit
 
       # - name: Commit Changes
       #   uses: stefanzweifel/git-auto-commit-action@v7
