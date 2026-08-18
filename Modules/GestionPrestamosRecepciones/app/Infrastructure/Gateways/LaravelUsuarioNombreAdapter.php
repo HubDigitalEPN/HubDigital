@@ -40,6 +40,7 @@ final class LaravelUsuarioNombreAdapter implements UsuarioNombrePort
             nombre: self::componerNombre($usuario->first_name, $usuario->last_name),
             cargo: $usuario->cargo,
             institucion: $usuario->institucion,
+            email: $usuario->email,
         );
     }
 

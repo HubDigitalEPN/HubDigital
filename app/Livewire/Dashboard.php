@@ -82,7 +82,9 @@ class Dashboard extends Component
 
         return [
             // Gestión de información taxonómica
-            'colEspecimenes' => EspecimenEloquentModel::query()->count(),
+            // enLaColeccion(): lo devuelto a su depositante ya no está en el museo, y
+            // contarlo aquí infla la cifra que se cita en informes.
+            'colEspecimenes' => EspecimenEloquentModel::query()->enLaColeccion()->count(),
             'colTaxones' => TaxonEloquentModel::query()->count(),
             'colLocalidades' => LocalidadEloquentModel::query()->count(),
             'colFamilias' => TaxonEloquentModel::query()->where('rango', 'familia')->count(),
@@ -124,6 +126,7 @@ class Dashboard extends Component
     private function graficoFamilias(): array
     {
         return EspecimenEloquentModel::query()
+            ->enLaColeccion()
             ->join('taxonomia.taxones as t', 't.id', '=', 'taxonomia.especimenes.taxon_id')
             ->where('t.rango', 'familia')
             ->selectRaw('t.nombre_cientifico AS etiqueta, COUNT(*) AS valor')
@@ -146,6 +149,7 @@ class Dashboard extends Component
     private function graficoDeterminacion(): array
     {
         $conteos = EspecimenEloquentModel::query()
+            ->enLaColeccion()
             ->join('taxonomia.taxones as t', 't.id', '=', 'taxonomia.especimenes.taxon_id')
             ->selectRaw('t.rango AS rango, COUNT(*) AS valor')
             ->groupBy('t.rango')

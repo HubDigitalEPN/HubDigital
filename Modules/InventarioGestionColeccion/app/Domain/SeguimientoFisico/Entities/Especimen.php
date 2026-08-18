@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities;
 
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\DarwinCoreExtendido;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EspecimenId;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoCustodia;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoEspecimen;
@@ -11,6 +12,7 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\Est
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\IdentificadorEspecimen;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\LocalidadId;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\MuestraColectaId;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\ProcedenciaDeposito;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TaxonId;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TipoIdentificadorEspecimen;
 
@@ -116,7 +118,53 @@ class Especimen
         private ?string $recordCreatedBy = null,
         private ?string $responsibleResearcherExport = null,
         private ?string $endemicVerbatim = null,
+        private ?ProcedenciaDeposito $procedenciaDeposito = null,
+        private ?DarwinCoreExtendido $darwinCoreExtendido = null,
     ) {}
+
+    /**
+     * Jerarquía taxonómica declarada y demás campos Darwin Core que no tienen columna
+     * propia en la entidad. Nunca null hacia fuera: si no se declaró nada, va vacío.
+     */
+    public function darwinCoreExtendido(): DarwinCoreExtendido
+    {
+        return $this->darwinCoreExtendido ??= DarwinCoreExtendido::vacio();
+    }
+
+    /**
+     * De qué trámite de depósito vino, si vino de uno.
+     *
+     * Null para el material heredado de la carga masiva del catálogo.
+     */
+    public function procedenciaDeposito(): ?ProcedenciaDeposito
+    {
+        return $this->procedenciaDeposito;
+    }
+
+    /**
+     * Ata el espécimen al trámite que lo trajo.
+     *
+     * Se permite una sola vez: la procedencia es un hecho histórico, y reescribirla
+     * significaría que el mismo material físico entró por dos trámites distintos.
+     *
+     * @throws \DomainException Si ya tenía una procedencia con vínculo fuerte.
+     */
+    public function registrarProcedenciaDeposito(ProcedenciaDeposito $procedencia): void
+    {
+        if ($this->procedenciaDeposito?->tieneVinculoFuerte() === true
+            && ! $this->procedenciaDeposito->equals($procedencia)) {
+            throw new \DomainException(
+                sprintf(
+                    'El espécimen %s ya proviene del depósito %s; no puede reasignarse a %s.',
+                    $this->codigoCatalogo,
+                    $this->procedenciaDeposito->numeroSolicitud,
+                    $procedencia->numeroSolicitud,
+                )
+            );
+        }
+
+        $this->procedenciaDeposito = $procedencia;
+    }
 
     /**
      * @param  array<int, IdentificadorEspecimen|array{tipo: string, valor: string}>  $identificadores
@@ -204,6 +252,7 @@ class Especimen
         ?string $responsibleResearcherExport = null,
         ?string $endemicVerbatim = null,
         ?EstadoCustodia $estadoCustodia = null,
+        ?DarwinCoreExtendido $darwinCoreExtendido = null,
     ): self {
         $localidad = trim($localidad);
         $localityName = self::limpiarTexto($localityName) ?? $localidad;
@@ -302,6 +351,7 @@ class Especimen
             recordCreatedBy: self::limpiarTexto($recordCreatedBy),
             responsibleResearcherExport: self::limpiarTexto($responsibleResearcherExport),
             endemicVerbatim: self::limpiarTexto($endemicVerbatim),
+            darwinCoreExtendido: $darwinCoreExtendido,
         );
     }
 
@@ -394,6 +444,8 @@ class Especimen
         ?string $recordCreatedBy = null,
         ?string $responsibleResearcherExport = null,
         ?string $endemicVerbatim = null,
+        ?ProcedenciaDeposito $procedenciaDeposito = null,
+        ?DarwinCoreExtendido $darwinCoreExtendido = null,
     ): self {
         return new self(
             id: $id,
@@ -481,6 +533,8 @@ class Especimen
             recordCreatedBy: $recordCreatedBy,
             responsibleResearcherExport: $responsibleResearcherExport,
             endemicVerbatim: $endemicVerbatim,
+            procedenciaDeposito: $procedenciaDeposito,
+            darwinCoreExtendido: $darwinCoreExtendido,
         );
     }
 
@@ -529,8 +583,35 @@ class Especimen
         $this->specimenNotes = self::limpiarTexto($specimenNotes) ?? $this->specimenNotes;
     }
 
+    /**
+     * Red de seguridad del préstamo: material que ya no está en la colección no sale.
+     *
+     * La búsqueda de especímenes prestables ya lo filtra, pero ese filtro vive en una
+     * consulta y una consulta se puede saltar (un id pegado a mano, una revalidación que
+     * se olvide). Aquí la invariante es del agregado y no hay forma de rodearla.
+     *
+     * @throws \DomainException Si fue devuelto a su depositante o está en cuarentena.
+     */
     public function marcarEnPrestamo(): void
     {
+        if ($this->estadoCustodia?->salioDeLaColeccion() === true) {
+            throw new \DomainException(
+                sprintf(
+                    'El espécimen %s fue devuelto a su depositante y ya no está en la colección: no puede prestarse.',
+                    $this->codigoCatalogo,
+                )
+            );
+        }
+
+        if ($this->estadoCustodia === EstadoCustodia::Cuarentena) {
+            throw new \DomainException(
+                sprintf(
+                    'El espécimen %s está en cuarentena hasta su revisión sanitaria: no puede prestarse.',
+                    $this->codigoCatalogo,
+                )
+            );
+        }
+
         $this->estado = EstadoEspecimen::EnPrestamo;
     }
 

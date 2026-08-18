@@ -34,6 +34,8 @@ final class RegistroEspecimenEloquentModel extends Model
         'datos_dwc',
         'normalizaciones',
         'correcciones_curatoriales',
+        // Espécimen del inventario que produjo esta fila (referencia opaca)
+        'especimen_id',
     ];
 
     protected $casts = [

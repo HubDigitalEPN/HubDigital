@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Repositories;
 
+use Illuminate\Support\Facades\DB;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\MatrizEspecies;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\RegistroEspecimen;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface;
@@ -148,5 +149,25 @@ final class EloquentMatrizEspeciesRepository implements MatrizEspeciesRepository
             registros: $registros,
             identificacionOriginalConservada: (bool) $model->identificacion_original_conservada,
         );
+    }
+
+    /** @param array<string, string> $especimenIdPorRegistroId */
+    public function vincularEspecimenes(array $especimenIdPorRegistroId): int
+    {
+        if ($especimenIdPorRegistroId === []) {
+            return 0;
+        }
+
+        $anotadas = 0;
+
+        DB::transaction(function () use ($especimenIdPorRegistroId, &$anotadas): void {
+            foreach ($especimenIdPorRegistroId as $registroId => $especimenId) {
+                $anotadas += RegistroEspecimenEloquentModel::where('id', $registroId)
+                    ->whereNull('especimen_id')
+                    ->update(['especimen_id' => $especimenId, 'updated_at' => now()]);
+            }
+        });
+
+        return $anotadas;
     }
 }

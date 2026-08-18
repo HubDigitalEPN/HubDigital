@@ -20,6 +20,36 @@ use Modules\CatalogoPublico\Application\Ports\ProveedorEspecimenesPort;
  */
 final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspecimenesPort
 {
+    /**
+     * Regímenes de tenencia que sacan al espécimen de la vitrina pública.
+     *
+     * `Devuelto`: volvió a manos de su depositante y ya no está en el museo.
+     * `Cuarentena`: aislado hasta su revisión sanitaria, aún no forma parte de lo que la
+     * colección exhibe.
+     *
+     * Hoy este filtro no cambia ningún resultado, porque el material de depósito entra
+     * sin `occurrence_id` y sin `taxon_id` y ya queda fuera por eso. Se pone ahora
+     * porque el día que se le asigne un `occurrence_id` para publicarlo en GBIF, esa
+     * puerta se abriría sola y de par en par.
+     *
+     * @var string[]
+     */
+    private const CUSTODIAS_NO_PUBLICABLES = ['Devuelto', 'Cuarentena'];
+
+    /**
+     * Predicado reutilizable para las consultas construidas con el query builder.
+     *
+     * El `OR IS NULL` es obligatorio: `NOT IN` descarta las filas nulas, y los ~48k
+     * especímenes heredados del catálogo no tienen régimen declarado.
+     */
+    private function soloMaterialEnColeccion(): \Closure
+    {
+        return function ($q): void {
+            $q->whereNull('e.estado_custodia')
+                ->orWhereNotIn('e.estado_custodia', self::CUSTODIAS_NO_PUBLICABLES);
+        };
+    }
+
     public function buscarPorOccurrenceId(string $occurrenceId): ?DatosEspecimenProveedor
     {
         $fila = DB::selectOne('
@@ -28,6 +58,7 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
                 FROM taxonomia.taxones t
                 INNER JOIN taxonomia.especimenes e ON e.taxon_id = t.id
                 WHERE e.occurrence_id = ?
+                  AND (e.estado_custodia IS NULL OR e.estado_custodia NOT IN (\'Devuelto\', \'Cuarentena\'))
                 UNION ALL
                 SELECT t.id, t.nombre_cientifico, t.rango, t.padre_id
                 FROM taxonomia.taxones t
@@ -66,6 +97,7 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
             CROSS JOIN taxon_resumen tr
             LEFT JOIN taxonomia.muestras_colecta mc ON mc.id = e.muestra_id
             WHERE e.occurrence_id = ?
+                  AND (e.estado_custodia IS NULL OR e.estado_custodia NOT IN (\'Devuelto\', \'Cuarentena\'))
         ', [$occurrenceId, $occurrenceId]);
 
         if ($fila === null) {
@@ -83,7 +115,9 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
                 SELECT t.id, t.nombre_cientifico, t.rango, t.padre_id, t.id AS origin_id
                 FROM taxonomia.taxones t
                 WHERE t.id IN (
-                    SELECT DISTINCT taxon_id FROM taxonomia.especimenes WHERE occurrence_id IS NOT NULL
+                    SELECT DISTINCT taxon_id FROM taxonomia.especimenes
+                    WHERE occurrence_id IS NOT NULL
+                      AND (estado_custodia IS NULL OR estado_custodia NOT IN (\'Devuelto\', \'Cuarentena\'))
                 )
                 AND t.rango = \'especie\'
                 UNION ALL
@@ -126,6 +160,7 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
             LEFT JOIN taxon_resumen tr ON tr.origin_id = e.taxon_id
             LEFT JOIN taxonomia.muestras_colecta mc ON mc.id = e.muestra_id
             WHERE e.occurrence_id IS NOT NULL
+            AND (e.estado_custodia IS NULL OR e.estado_custodia NOT IN (\'Devuelto\', \'Cuarentena\'))
             AND t.rango = \'especie\'
         ');
 
@@ -137,6 +172,7 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
         $q = DB::table('taxonomia.especimenes as e')
             ->join('taxonomia.taxones as t', 't.id', '=', 'e.taxon_id')
             ->whereNotNull('e.occurrence_id')
+            ->where($this->soloMaterialEnColeccion())
             ->where('t.rango', 'especie');
 
         if ($especimenIdsExcluir !== []) {
@@ -155,6 +191,7 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
             ->join('taxonomia.taxones as t', 't.id', '=', 'e.taxon_id')
             ->leftJoin('taxonomia.muestras_colecta as mc', 'mc.id', '=', 'e.muestra_id')
             ->whereNotNull('e.occurrence_id')
+            ->where($this->soloMaterialEnColeccion())
             ->where('t.rango', 'especie');
 
         if ($especimenIdsExcluir !== []) {
@@ -210,6 +247,7 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
         $q = DB::table('taxonomia.especimenes as e')
             ->join('taxonomia.taxones as t', 't.id', '=', 'e.taxon_id')
             ->whereNotNull('e.occurrence_id')
+            ->where($this->soloMaterialEnColeccion())
             ->whereNotNull('e.colector')
             ->where('e.colector', '!=', '')
             ->where('t.rango', 'especie');
@@ -357,6 +395,7 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
             ->join('taxonomia.taxones as tx_genus', 'tx_genus.id', '=', 't.padre_id')
             ->leftJoin('taxonomia.muestras_colecta as mc', 'mc.id', '=', 'e.muestra_id')
             ->whereNotNull('e.occurrence_id')
+            ->where($this->soloMaterialEnColeccion())
             ->whereRaw(
                 "LOWER(CASE WHEN t.nombre_cientifico LIKE (tx_genus.nombre_cientifico || ' %')
                             THEN t.nombre_cientifico

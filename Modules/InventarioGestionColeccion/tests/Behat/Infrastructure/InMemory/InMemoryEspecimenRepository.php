@@ -6,8 +6,10 @@ namespace Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory
 
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especimen;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\EspecimenPrestable;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EspecimenId;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\LocalidadId;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\ProcedenciaDeposito;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TaxonId;
 
 final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
@@ -737,6 +739,178 @@ final class InMemoryEspecimenRepository implements EspecimenRepositoryInterface
         }
 
         return ['total' => $total, 'pendientesRevision' => $pendientes];
+    }
+
+    /**
+     * @param  string[]  $ids
+     * @return array<int, array{id: string, codigoCatalogo: string, individualCount: ?int, estado: string, nombreCientifico: ?string}>
+     */
+    public function buscarPrestables(?string $texto, array $ids = [], int $limite = 15): array
+    {
+        $texto = $texto !== null ? trim($texto) : null;
+
+        if (($texto === null || $texto === '') && $ids === []) {
+            return [];
+        }
+
+        $prestable = new EspecimenPrestable;
+        $buscados = array_flip($ids);
+        $salida = [];
+
+        foreach ($this->store as $especimen) {
+            if ($ids !== [] && ! isset($buscados[(string) $especimen->id()])) {
+                continue;
+            }
+
+            if (! $prestable->puedePrestarse($especimen)) {
+                continue;
+            }
+
+            if ($texto !== null && $texto !== '' && ! $this->coincideConTexto($especimen, $texto)) {
+                continue;
+            }
+
+            $salida[] = [
+                'id' => (string) $especimen->id(),
+                'codigoCatalogo' => $especimen->codigoCatalogo(),
+                'individualCount' => $especimen->individualCount(),
+                'estado' => $especimen->estado()->value,
+                'nombreCientifico' => $especimen->taxonVerbatim(),
+            ];
+        }
+
+        usort($salida, fn (array $a, array $b): int => strcmp($a['codigoCatalogo'], $b['codigoCatalogo']));
+
+        return $ids === [] ? array_slice($salida, 0, $limite) : $salida;
+    }
+
+    private function coincideConTexto(Especimen $especimen, string $texto): bool
+    {
+        $patron = mb_strtolower($texto);
+
+        return str_contains(mb_strtolower($especimen->codigoCatalogo()), $patron)
+            || str_contains(mb_strtolower((string) $especimen->taxonVerbatim()), $patron);
+    }
+
+    /**
+     * El saneamiento de campos perdidos es un backfill sobre datos históricos; los
+     * escenarios en memoria arrancan de cero, así que no hay nada que rellenar.
+     *
+     * @param  array<string, mixed>  $columnas
+     */
+    public function rellenarCamposVacios(string $especimenId, array $columnas): int
+    {
+        return 0;
+    }
+
+    /** Tampoco puede haber huérfanos: aquí el trámite vive lo que dura el escenario. */
+    public function marcarHuerfanosDeDeposito(string $motivo): int
+    {
+        return 0;
+    }
+
+    /** @param string[] $registroIds
+     *  @return array<string, string> */
+    public function registrosDepositoExistentes(array $registroIds): array
+    {
+        $buscados = array_flip($registroIds);
+        $existentes = [];
+
+        foreach ($this->store as $especimen) {
+            $procedencia = $especimen->procedenciaDeposito();
+
+            if ($procedencia === null || ! $procedencia->tieneVinculoFuerte()) {
+                continue;
+            }
+
+            if (isset($buscados[$procedencia->registroId])) {
+                $existentes[$procedencia->registroId] = (string) $especimen->id();
+            }
+        }
+
+        return $existentes;
+    }
+
+    /** @return array{total: int, pendientesRevision: int, devueltos: int} */
+    public function resumenPorSolicitudDeposito(string $solicitudDepositoId): array
+    {
+        $total = 0;
+        $pendientes = 0;
+        $devueltos = 0;
+
+        foreach ($this->store as $especimen) {
+            if ($especimen->procedenciaDeposito()?->solicitudId !== $solicitudDepositoId) {
+                continue;
+            }
+
+            $total++;
+
+            if ($especimen->estadoRevision()->value === 'pendiente') {
+                $pendientes++;
+            }
+
+            if ($especimen->estadoCustodia()?->salioDeLaColeccion() === true) {
+                $devueltos++;
+            }
+        }
+
+        return ['total' => $total, 'pendientesRevision' => $pendientes, 'devueltos' => $devueltos];
+    }
+
+    /** @return array<int, array{id: string, taxonVerbatim: ?string, registroDepositoId: ?string}> */
+    public function especimenesPorIndiceDeSolicitud(string $solicitudDepositoId): array
+    {
+        $salida = [];
+
+        foreach ($this->store as $especimen) {
+            $procedencia = $especimen->procedenciaDeposito();
+
+            if ($procedencia === null || $procedencia->solicitudId !== $solicitudDepositoId) {
+                continue;
+            }
+
+            $salida[$procedencia->indiceMatriz] = [
+                'id' => (string) $especimen->id(),
+                'taxonVerbatim' => $especimen->taxonVerbatim(),
+                'registroDepositoId' => $procedencia->tieneVinculoFuerte() ? $procedencia->registroId : null,
+            ];
+        }
+
+        ksort($salida);
+
+        return $salida;
+    }
+
+    /** @param array<string, string> $registroIdPorEspecimenId */
+    public function vincularRegistrosDeposito(array $registroIdPorEspecimenId): int
+    {
+        $vinculados = 0;
+
+        foreach ($this->store as $especimen) {
+            $id = (string) $especimen->id();
+            $procedencia = $especimen->procedenciaDeposito();
+
+            if (! isset($registroIdPorEspecimenId[$id]) || $procedencia === null) {
+                continue;
+            }
+
+            if ($procedencia->tieneVinculoFuerte()) {
+                continue;
+            }
+
+            $especimen->registrarProcedenciaDeposito(ProcedenciaDeposito::crear(
+                registroId: $registroIdPorEspecimenId[$id],
+                solicitudId: $procedencia->solicitudId,
+                indiceMatriz: $procedencia->indiceMatriz,
+                numeroSolicitud: $procedencia->numeroSolicitud,
+                tipoTramite: $procedencia->tipoTramite,
+                ingresadoEn: $procedencia->ingresadoEn,
+            ));
+
+            $vinculados++;
+        }
+
+        return $vinculados;
     }
 
     /** @param string[] $codigos

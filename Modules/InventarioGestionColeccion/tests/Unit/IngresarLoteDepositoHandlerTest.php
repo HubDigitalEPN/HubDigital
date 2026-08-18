@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\IngresarLoteDeposito\IngresarLoteDepositoHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\IngresarLoteDeposito\IngresarLoteDepositoInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ResolverEntidadDepositante\ResolverEntidadDepositanteHandler;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoCustodia;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoRevision;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\FilaCatalogoMapper;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryEntidadDepositanteRepository;
 use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\InMemoryEspecimenRepository;
+use Modules\InventarioGestionColeccion\Tests\Behat\Infrastructure\InMemory\ResolverTaxonomiaDwCEnMemoria;
 
 /** Fila Darwin Core como la guarda el módulo de depósitos en `datos_dwc` (camelCase). */
 function filaDwC(array $sobrescribir = []): array
@@ -30,14 +33,21 @@ function filaDwC(array $sobrescribir = []): array
 
 function ingestaDeposito(InMemoryEspecimenRepository $repo): IngresarLoteDepositoHandler
 {
-    return new IngresarLoteDepositoHandler($repo, new FilaCatalogoMapper);
+    // La entidad depositante se resuelve contra su propio repositorio; en memoria, para
+    // que estas pruebas no den de alta instituciones en ningún sitio.
+    return new IngresarLoteDepositoHandler(
+        $repo,
+        new FilaCatalogoMapper,
+        new ResolverEntidadDepositanteHandler(new InMemoryEntidadDepositanteRepository),
+        new ResolverTaxonomiaDwCEnMemoria,
+    );
 }
 
 function entradaDeposito(array $filas, string $custodia = 'Temporal'): IngresarLoteDepositoInput
 {
     return new IngresarLoteDepositoInput(
         numeroSolicitud: 'MEPN-INV-DEP-00002',
-        actaRecepcion: 'ACTA-DEP-00002',
+        codigoQrLote: 'LOTE-DEP00002',
         estadoCustodia: $custodia,
         filas: $filas,
     );
@@ -188,5 +198,5 @@ test('el acta de recepcion queda como trazabilidad en cada especimen', function 
         ['indice' => 1, 'datosDwC' => filaDwC(), 'estadoRegistro' => 'Validado Técnicamente'],
     ]));
 
-    expect($repo->buscarTodos()[0]->actaRecepcion())->toBe('ACTA-DEP-00002');
+    expect($repo->buscarTodos()[0]->actaRecepcion())->toBe('LOTE-DEP00002');
 });

@@ -11,6 +11,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Modules\GestionPrestamosRecepciones\Application\Ports\CatalogoCuraduriaPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\IngresoColeccionPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ValidacionTaxonomicaPort;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AceptarSugerenciaTaxonomica\AceptarSugerenciaTaxonomicaHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AceptarSugerenciaTaxonomica\AceptarSugerenciaTaxonomicaInput;
@@ -447,8 +448,8 @@ final class RegistroSolicitudDeposito extends Component
                 $this->archivoMatrizNombre = 'Matriz cargada';
 
                 $catalogo = app(CatalogoCuraduriaPort::class);
-                $this->camposDwCCriticos = $catalogo->camposCriticos($this->solicitudId ?? '');
-                $this->camposDwCRecomendados = $catalogo->camposRecomendados($this->solicitudId ?? '');
+                $this->camposDwCCriticos = $catalogo->camposCriticos();
+                $this->camposDwCRecomendados = $catalogo->camposRecomendados();
                 $this->camposDwCRecomendadosFaltantes = array_values(array_filter(
                     $this->camposDwCRecomendados,
                     fn (string $campo) => ! in_array($campo, $this->camposDwCPresentes, true)
@@ -1112,8 +1113,8 @@ final class RegistroSolicitudDeposito extends Component
         $this->camposDwCPresentes = $campos;
 
         $catalogo = app(CatalogoCuraduriaPort::class);
-        $this->camposDwCCriticos = $catalogo->camposCriticos($this->solicitudId ?? '');
-        $this->camposDwCRecomendados = $catalogo->camposRecomendados($this->solicitudId ?? '');
+        $this->camposDwCCriticos = $catalogo->camposCriticos();
+        $this->camposDwCRecomendados = $catalogo->camposRecomendados();
 
         $cargar = app(CargarMatrizEspeciesHandler::class);
 
@@ -1337,6 +1338,19 @@ final class RegistroSolicitudDeposito extends Component
      */
     public function eliminarMatriz(): void
     {
+        // Guarda contra el escenario que dejó trece especímenes huérfanos: si el material
+        // de esta solicitud ya cruzó a la colección, borrar la matriz arrastra en cascada
+        // sus registros y deja al inventario sin nada que ate esos especímenes a su
+        // procedencia. Llegados ahí, la matriz es documentación del ingreso.
+        if ($this->solicitudId !== null && app(IngresoColeccionPort::class)->loteYaIngresado($this->solicitudId)) {
+            $this->mostrarToast(
+                'No se puede eliminar la matriz: sus especímenes ya ingresaron a la colección.',
+                'error',
+            );
+
+            return;
+        }
+
         if ($this->matrizId) {
             MatrizEspeciesEloquentModel::where('id', $this->matrizId)->delete();
         }

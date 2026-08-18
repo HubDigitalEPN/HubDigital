@@ -13,6 +13,9 @@ final class InMemoryMatrizEspeciesRepository implements MatrizEspeciesRepository
     /** @var array<string, MatrizEspecies> */
     private array $store = [];
 
+    /** @var array<string, string> registroId => especimenId */
+    private array $vinculos = [];
+
     public function nextIdentity(): MatrizEspeciesId
     {
         return MatrizEspeciesId::generate();
@@ -37,5 +40,33 @@ final class InMemoryMatrizEspeciesRepository implements MatrizEspeciesRepository
         }
 
         return null;
+    }
+
+    /**
+     * El vínculo con el inventario vive fuera del agregado, así que en memoria basta
+     * con recordarlo aparte: los tests que lo usan preguntan por {@see vinculos()}.
+     *
+     * @param  array<string, string>  $especimenIdPorRegistroId
+     */
+    public function vincularEspecimenes(array $especimenIdPorRegistroId): int
+    {
+        $anotadas = 0;
+
+        foreach ($especimenIdPorRegistroId as $registroId => $especimenId) {
+            if (isset($this->vinculos[$registroId])) {
+                continue;
+            }
+
+            $this->vinculos[$registroId] = $especimenId;
+            $anotadas++;
+        }
+
+        return $anotadas;
+    }
+
+    /** @return array<string, string> registroId => especimenId */
+    public function vinculos(): array
+    {
+        return $this->vinculos;
     }
 }

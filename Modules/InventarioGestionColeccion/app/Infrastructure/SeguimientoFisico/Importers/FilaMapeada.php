@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers;
 
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\DarwinCoreExtendido;
+
 /**
  * DTO que representa una fila del Excel mapeada a campos de Especimen.
  *
@@ -94,7 +96,17 @@ final readonly class FilaMapeada
         public ?string $recordCreatedBy = null,
         public ?string $responsibleResearcherExport = null,
         public ?string $endemicVerbatim = null,
+        public ?DarwinCoreExtendido $darwinCoreExtendido = null,
     ) {}
+
+    /**
+     * Jerarquía taxonómica declarada y campos sin columna propia, listos para la
+     * entidad. Nunca null: si la fila no trajo nada, va vacío.
+     */
+    public function darwinCoreExtendido(): DarwinCoreExtendido
+    {
+        return $this->darwinCoreExtendido ?? DarwinCoreExtendido::vacio();
+    }
 
     public function requiereRevision(): bool
     {

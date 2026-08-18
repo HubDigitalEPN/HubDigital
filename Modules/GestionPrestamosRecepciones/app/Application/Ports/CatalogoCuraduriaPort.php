@@ -18,14 +18,14 @@ interface CatalogoCuraduriaPort
      *
      * @return string[]
      */
-    public function camposCriticos(string $coleccionId): array;
+    public function camposCriticos(): array;
 
     /**
      * Campos DwC recomendados: generan advertencia visual pero no bloquean la carga.
      *
      * @return string[]
      */
-    public function camposRecomendados(string $coleccionId): array;
+    public function camposRecomendados(): array;
 
     /**
      * Mapa de prioridad efectiva por campo DwC (respeta los overrides de BD del
@@ -33,5 +33,5 @@ interface CatalogoCuraduriaPort
      *
      * @return array<string, string> dwcKey => 'critica'|'recomendada'|'opcional'
      */
-    public function prioridadesPorCampo(string $coleccionId): array;
+    public function prioridadesPorCampo(): array;
 }

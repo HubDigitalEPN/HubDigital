@@ -32,6 +32,40 @@ interface IngresoColeccionPort
     public function resumenDeLote(string $solicitudId): ResumenIngresoColeccion;
 
     /**
+     * ¿Este lote ya tiene material en la colección?
+     *
+     * Es la guarda que impide borrar una matriz cuyos especímenes ya cruzaron: sin ella,
+     * el trámite desaparece y los especímenes quedan huérfanos, sin nada que los ate a
+     * su procedencia. Ya ocurrió con 13 de ellos.
+     */
+    public function loteYaIngresado(string $solicitudId): bool;
+
+    /**
+     * Ata cada fila de la matriz al espécimen que produjo.
+     *
+     * Backfill del material que entró antes de que la junta existiera. Verifica el orden
+     * antes de escribir; con `$simular` no escribe nada y solo informa qué haría.
+     */
+    public function vincularRegistros(string $solicitudId, bool $simular = true): ResultadoVinculacionDeposito;
+
+    /**
+     * Recupera los campos Darwin Core que se perdieron en los ingresos antiguos.
+     *
+     * Relee la matriz y rellena solo las columnas vacías del material ya ingresado.
+     * Con `$simular` no escribe: informa cuántas columnas llenaría.
+     *
+     * @return array{especimenesTocados: int, columnasEscritas: int}
+     */
+    public function sanearDatosDwC(string $solicitudId, bool $simular = true): array;
+
+    /**
+     * Marca para revisión el material cuyo trámite de origen ya no existe.
+     *
+     * @return int Espécimenes marcados.
+     */
+    public function marcarHuerfanos(string $motivo): int;
+
+    /**
      * Marca como devueltos los especímenes de un lote que volvió a su depositante.
      *
      * No los borra de la colección: quedan con su régimen cambiado y la fecha de

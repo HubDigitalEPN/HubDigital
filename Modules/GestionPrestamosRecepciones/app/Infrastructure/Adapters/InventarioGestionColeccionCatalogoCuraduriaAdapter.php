@@ -28,21 +28,21 @@ final class InventarioGestionColeccionCatalogoCuraduriaAdapter implements Catalo
     ) {}
 
     /**
-     * Obtiene la lista de nombres de campos DwC considerados críticos para una colección.
+     * Obtiene la lista de nombres de campos DwC considerados críticos.
      *
      * @return string[]
      */
-    public function camposCriticos(string $coleccionId): array
+    public function camposCriticos(): array
     {
         return $this->consultar()->camposCon('critica');
     }
 
     /**
-     * Obtiene la lista de nombres de campos DwC considerados recomendados para una colección.
+     * Obtiene la lista de nombres de campos DwC considerados recomendados.
      *
      * @return string[]
      */
-    public function camposRecomendados(string $coleccionId): array
+    public function camposRecomendados(): array
     {
         return $this->consultar()->camposCon('recomendada');
     }
@@ -52,7 +52,7 @@ final class InventarioGestionColeccionCatalogoCuraduriaAdapter implements Catalo
      *
      * @return array<string, string> dwcKey => 'critica'|'recomendada'|'opcional'
      */
-    public function prioridadesPorCampo(string $coleccionId): array
+    public function prioridadesPorCampo(): array
     {
         return $this->consultar()->prioridadesPorCampoDwc;
     }

@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\IngresarLoteDeposito;
 
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\ResolverTaxonomiaDwCPort;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ResolverEntidadDepositante\ResolverEntidadDepositanteHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ResolverEntidadDepositante\ResolverEntidadDepositanteInput;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especimen;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoCustodia;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\ProcedenciaDeposito;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\FilaCatalogoMapper;
 
 /**
@@ -50,39 +54,74 @@ final class IngresarLoteDepositoHandler
     public function __construct(
         private readonly EspecimenRepositoryInterface $especimenRepo,
         private readonly FilaCatalogoMapper $mapper,
+        private readonly ResolverEntidadDepositanteHandler $resolverEntidad,
+        private readonly ResolverTaxonomiaDwCPort $resolverTaxonomia,
     ) {}
 
     public function handle(IngresarLoteDepositoInput $input): IngresarLoteDepositoOutput
     {
-        $custodia = EstadoCustodia::from($input->estadoCustodia);
+        $custodia = self::custodiaDesdeIngreso($input->estadoCustodia);
+
+        $entidadDepositanteId = $this->resolverDepositante($input);
 
         $codigosExistentes = $this->codigosYaIngresados($input);
+        $registrosExistentes = $this->registrosYaIngresados($input);
 
         /** @var Especimen[] $nuevos */
         $nuevos = [];
         $codigosCreados = [];
         $omitidos = 0;
         $marcadosParaRevision = 0;
+        /** @var ResultadoFilaDeposito[] $resultados */
+        $resultados = [];
 
         foreach ($input->filas as $fila) {
             $codigo = $this->codigoCatalogo($input->numeroSolicitud, (int) $fila['indice']);
+            $registroId = $this->registroId($fila);
 
-            if (isset($codigosExistentes[$codigo])) {
+            // El uuid del registro es AUTORITATIVO cuando viaja: si lo hay, decide él solo.
+            //
+            // No basta con consultarlo antes que el código derivado: hay que ignorar el
+            // código por completo. Los dos criterios juntos hacen daño en los dos sentidos
+            // al reordenarse la matriz, porque el código depende de la posición. Una fila
+            // que se desplaza hereda el código de otra y se duplicaría; una fila nueva
+            // hereda el código de la que ocupaba su puesto y se descartaría en silencio,
+            // que es lo grave: material declarado que nunca llega a la colección.
+            $yaIngresada = $registroId !== null
+                ? isset($registrosExistentes[$registroId])
+                : isset($codigosExistentes[$codigo]);
+
+            if ($yaIngresada) {
                 $omitidos++;
+                $resultados[] = new ResultadoFilaDeposito(
+                    indiceMatriz: (int) $fila['indice'],
+                    registroId: $registroId,
+                    // El espécimen que ya existía, para que el otro módulo pueda anotar el
+                    // vínculo aunque esta pasada no haya creado nada.
+                    especimenId: $registroId !== null ? ($registrosExistentes[$registroId] ?? null) : null,
+                    codigoCatalogo: $codigo,
+                    resultado: ResultadoFilaDeposito::OMITIDO,
+                );
 
                 continue;
             }
 
             $mapeada = $this->mapper->mapear($fila['datosDwC']);
 
+            // La identificación que vale es la que quedó tras la revisión de la matriz:
+            // si el curador aceptó una corrección tipográfica, la colección recibe el
+            // nombre corregido y no el que declaró el depositante. El registro Darwin
+            // Core original no se toca — sigue en `datosDwC` y en `dwc_extra`.
+            $taxonVerbatim = $this->nombreCanonico($fila) ?? $mapeada->taxonVerbatim;
+
             $especimen = Especimen::crear(
                 id: $this->especimenRepo->nextIdentity(),
                 codigoCatalogo: $codigo,
-                taxonId: null,
+                taxonId: $this->taxonCanonico($fila, $mapeada),
                 localidad: $mapeada->localidad,
                 fechaColecta: $mapeada->fechaColecta,
                 colector: $mapeada->colector,
-                entidadDepositanteId: $input->entidadDepositanteId,
+                entidadDepositanteId: $entidadDepositanteId,
                 occurrenceId: $mapeada->occurrenceId,
                 catalogNumber: $mapeada->catalogNumber,
                 oldCode: $mapeada->oldCode,
@@ -102,7 +141,7 @@ final class IngresarLoteDepositoHandler
                 elevationMinM: $mapeada->elevationMinM,
                 biome: $mapeada->biome,
                 habitat: $mapeada->habitat,
-                taxonVerbatim: $mapeada->taxonVerbatim,
+                taxonVerbatim: $taxonVerbatim,
                 localidadVerbatim: $mapeada->localidadVerbatim,
                 fechaVerbatim: $mapeada->fechaVerbatim,
                 fechaColectaFin: $mapeada->fechaColectaFin,
@@ -119,14 +158,58 @@ final class IngresarLoteDepositoHandler
                 dnaNotes: $mapeada->dnaNotes,
                 occurrenceRemarks: $mapeada->occurrenceRemarks,
                 taxonomicNotes: $mapeada->taxonomicNotes,
-                actaRecepcion: $input->actaRecepcion,
+                actaRecepcion: $input->codigoQrLote,
                 // filaOrigenExcel se deja deliberadamente en null: tiene un índice ÚNICO
                 // en toda la tabla y pertenece al importador del catálogo, que ya ocupa
                 // el rango 1..48856. Reutilizarlo con el número de fila del depósito
                 // chocaría con el material heredado. La trazabilidad de un espécimen
-                // depositado la dan su codigo_catalogo derivado y su acta_recepcion.
+                // depositado la da ahora su procedencia de depósito.
+                //
+                // Campos de la plantilla v2. Estaban mapeados desde el principio y no se
+                // pasaban: el ingreso por depósito llegó a la colección con permisos,
+                // determinador y número de campo en blanco mientras la matriz sí los
+                // traía. El importador del catálogo sí los pasaba, y por eso la
+                // divergencia no saltaba a la vista.
+                recordNumber: $mapeada->recordNumber,
+                origin: $mapeada->origin,
+                identifiedBy: $mapeada->identifiedBy,
+                dateDetermined: $mapeada->dateDetermined,
+                // El permiso ampara al depósito entero y vive en el trámite. Si una
+                // matriz antigua todavía trae el suyo por fila, se respeta: es lo que
+                // declaró su depositante en su momento.
+                researchPermit: $mapeada->researchPermit ?? $input->permisoRecoleccion,
+                transportPermit: $mapeada->transportPermit ?? $input->permisoMovilizacion,
+                exportImportAuthorization: $mapeada->exportImportAuthorization,
+                scientificNameAuthorship: $mapeada->scientificNameAuthorship,
+                latLonMaxError: $mapeada->latLonMaxError,
+                clade: $mapeada->clade,
+                identificationQualifier: $mapeada->identificationQualifier,
+                identificationRemarks: $mapeada->identificationRemarks,
+                vernacularName: $mapeada->vernacularName,
+                typeNotes: $mapeada->typeNotes,
+                continent: $mapeada->continent,
+                countryCode: $mapeada->countryCode,
+                localityNotes: $mapeada->localityNotes,
+                localityCode: $mapeada->localityCode,
+                elevationMaxError: $mapeada->elevationMaxError,
+                verbatimElevation: $mapeada->verbatimElevation,
+                verbatimDepth: $mapeada->verbatimDepth,
+                verbatimLatitude: $mapeada->verbatimLatitude,
+                verbatimLongitude: $mapeada->verbatimLongitude,
+                verbatimCoordinateSystem: $mapeada->verbatimCoordinateSystem,
+                verbatimSrs: $mapeada->verbatimSrs,
+                informationWithheld: $mapeada->informationWithheld,
+                priorOwner: $mapeada->priorOwner,
+                locatedAt: $mapeada->locatedAt,
+                iptUpload: $mapeada->iptUpload,
+                recordCreatedBy: $mapeada->recordCreatedBy ?? $input->registradoPor,
+                responsibleResearcherExport: $mapeada->responsibleResearcherExport,
+                endemicVerbatim: $mapeada->endemicVerbatim,
                 estadoCustodia: $custodia,
+                darwinCoreExtendido: $mapeada->darwinCoreExtendido(),
             );
+
+            $this->registrarProcedencia($especimen, $input, $fila, $registroId);
 
             $motivo = $this->motivoRevision($fila, $mapeada->warnings);
 
@@ -137,6 +220,17 @@ final class IngresarLoteDepositoHandler
 
             $nuevos[] = $especimen;
             $codigosCreados[] = $codigo;
+
+            $resultados[] = new ResultadoFilaDeposito(
+                indiceMatriz: (int) $fila['indice'],
+                registroId: $registroId,
+                especimenId: (string) $especimen->id(),
+                codigoCatalogo: $codigo,
+                resultado: $motivo === null
+                    ? ResultadoFilaDeposito::CREADO
+                    : ResultadoFilaDeposito::CREADO_PARA_REVISION,
+                motivoRevision: $motivo,
+            );
         }
 
         foreach (array_chunk($nuevos, self::TAMANIO_CHUNK) as $chunk) {
@@ -148,7 +242,165 @@ final class IngresarLoteDepositoHandler
             omitidosPorDuplicado: $omitidos,
             marcadosParaRevision: $marcadosParaRevision,
             codigosCreados: $codigosCreados,
+            resultados: $resultados,
         );
+    }
+
+    /**
+     * Taxón canónico al que se engancha la fila, si procede engancharla.
+     *
+     * **Solo para lo que el curador ya validó.** Resolver la jerarquía crea taxones que
+     * no existían, y el árbol taxonómico del museo es patrimonio compartido: dejar que un
+     * depósito sin revisar dé de alta nombres ahí lo contaminaría. El gate de validación
+     * del módulo de recepciones es precisamente lo que autoriza a tocarlo.
+     *
+     * Lo que no se resuelve no se pierde: entra con `taxon_verbatim`, queda pendiente de
+     * revisión y lo concilia después la bandeja de verbatims, que ya existe para eso.
+     *
+     * @param  array<string, mixed>  $fila
+     */
+    private function taxonCanonico(array $fila, $mapeada): ?string
+    {
+        if (in_array($fila['estadoRegistro'], self::ESTADOS_SIN_VALIDAR, true)) {
+            return null;
+        }
+
+        $jerarquia = $mapeada->darwinCoreExtendido();
+
+        if (! $jerarquia->tieneJerarquia()) {
+            return null;
+        }
+
+        return $this->resolverTaxonomia->resolver($jerarquia->jerarquiaParaResolucion());
+    }
+
+    /**
+     * Entidad depositante a la que pertenece este lote.
+     *
+     * Se resuelve una sola vez por lote, no por fila: todo el material de un depósito
+     * viene del mismo depositante. Si el lote no trae quién lo depositó se respeta lo
+     * que llegue en `entidadDepositanteId`, que puede ser null.
+     */
+    private function resolverDepositante(IngresarLoteDepositoInput $input): ?string
+    {
+        $nombre = trim((string) $input->depositanteNombre);
+        $institucion = trim((string) $input->depositanteInstitucion);
+
+        if ($nombre === '' && $institucion === '') {
+            return $input->entidadDepositanteId;
+        }
+
+        return $this->resolverEntidad->handle(new ResolverEntidadDepositanteInput(
+            nombrePersona: $nombre,
+            institucion: $institucion === '' ? null : $institucion,
+            email: $input->depositanteEmail,
+        ))->entidadId;
+    }
+
+    /**
+     * Ata el espécimen recién creado al trámite y a la fila que lo declararon.
+     *
+     * Sin `solicitudDepositoId` no hay junta fuerte que registrar —los escenarios que
+     * arman filas a mano no lo pasan—, pero el número de solicitud siempre viaja y basta
+     * para dejar rastro de la procedencia.
+     *
+     * @param  array<string, mixed>  $fila
+     */
+    private function registrarProcedencia(
+        Especimen $especimen,
+        IngresarLoteDepositoInput $input,
+        array $fila,
+        ?string $registroId,
+    ): void {
+        $procedencia = ProcedenciaDeposito::parcial(
+            registroId: $registroId,
+            solicitudId: $input->solicitudDepositoId,
+            indiceMatriz: (int) $fila['indice'],
+            numeroSolicitud: $input->numeroSolicitud,
+            tipoTramite: $input->tipoTramite,
+            ingresadoEn: $input->recibidoEn ?? new \DateTimeImmutable,
+        );
+
+        if ($procedencia !== null) {
+            $especimen->registrarProcedenciaDeposito($procedencia);
+        }
+    }
+
+    /**
+     * Filas de este lote que ya produjeron un espécimen, por su uuid de registro.
+     *
+     * @return array<string, string>
+     */
+    private function registrosYaIngresados(IngresarLoteDepositoInput $input): array
+    {
+        $ids = [];
+
+        foreach ($input->filas as $fila) {
+            $registroId = $this->registroId($fila);
+
+            if ($registroId !== null) {
+                $ids[] = $registroId;
+            }
+        }
+
+        return $ids === [] ? [] : $this->especimenRepo->registrosDepositoExistentes($ids);
+    }
+
+    /** @param array<string, mixed> $fila */
+    private function registroId(array $fila): ?string
+    {
+        $registroId = $fila['registroId'] ?? null;
+
+        return is_string($registroId) && trim($registroId) !== '' ? trim($registroId) : null;
+    }
+
+    /**
+     * Nombre científico ya revisado que trae la fila, si el contrato lo incluye.
+     *
+     * Opcional a propósito: los escenarios que construyen filas a mano no tienen por qué
+     * conocer este campo, y sin él se cae al nombre del registro Darwin Core.
+     *
+     * @param  array<string, mixed>  $fila
+     */
+    private function nombreCanonico(array $fila): ?string
+    {
+        $nombre = $fila['nombreCientificoCanonico'] ?? null;
+
+        if (! is_string($nombre) || trim($nombre) === '') {
+            return null;
+        }
+
+        return trim($nombre);
+    }
+
+    /**
+     * Traduce el régimen que emite el módulo de recepciones al de esta colección.
+     *
+     * Los dos vocabularios coinciden hoy palabra por palabra, y precisamente por eso
+     * conviene que la traducción sea explícita: el contrato viaja como `string` entre
+     * bounded contexts, así que si el otro módulo renombra uno de sus casos, nada avisa
+     * en compilación. Con `EstadoCustodia::from()` a secas el fallo salía como un error
+     * de enum ilegible en medio del ingreso; aquí sale nombrando el valor y de dónde
+     * viene.
+     *
+     * `Devuelto` no se acepta: es un estado terminal al que se llega devolviendo el
+     * material, nunca ingresándolo.
+     *
+     * @throws \InvalidArgumentException Si el régimen no es uno de los tres de ingreso.
+     */
+    public static function custodiaDesdeIngreso(string $estadoColeccion): EstadoCustodia
+    {
+        return match ($estadoColeccion) {
+            'Temporal' => EstadoCustodia::Temporal,
+            'Permanente' => EstadoCustodia::Permanente,
+            'Cuarentena' => EstadoCustodia::Cuarentena,
+            default => throw new \InvalidArgumentException(
+                sprintf(
+                    'Régimen de custodia "%s" desconocido al ingresar un lote depositado; se esperaba Temporal, Permanente o Cuarentena.',
+                    $estadoColeccion,
+                )
+            ),
+        };
     }
 
     /**

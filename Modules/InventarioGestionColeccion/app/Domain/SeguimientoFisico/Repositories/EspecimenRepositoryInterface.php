@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories;
 
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especimen;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\EspecimenPrestable;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EspecimenId;
 
 interface EspecimenRepositoryInterface
@@ -313,6 +314,88 @@ interface EspecimenRepositoryInterface
      * @return array{total: int, pendientesRevision: int}
      */
     public function resumenPorCodigosCatalogo(array $codigos): array;
+
+    /**
+     * Proyección de los especímenes que pueden salir en préstamo.
+     *
+     * Traduce a SQL el predicado de {@see EspecimenPrestable},
+     * incluida la exclusión por régimen de custodia que antes faltaba: material devuelto
+     * a su depositante o en cuarentena ya no se ofrece.
+     *
+     * No hidrata entidades: son decenas de miles de filas y quien pregunta solo necesita
+     * el código, el conteo y el nombre del taxón.
+     *
+     * @param  string|null  $texto  Filtra por código de catálogo o nombre científico (ILIKE).
+     * @param  string[]  $ids  Restringe a estos identificadores; vacío = sin restricción.
+     * @return array<int, array{id: string, codigoCatalogo: string, individualCount: ?int, estado: string, nombreCientifico: ?string}>
+     */
+    public function buscarPrestables(?string $texto, array $ids = [], int $limite = 15): array;
+
+    /**
+     * Qué filas de matriz de este depósito ya tienen espécimen en la colección.
+     *
+     * Es la comprobación de idempotencia que sustituye a {@see codigosCatalogoExistentes()}:
+     * aquella dependía del `codigo_catalogo` derivado, y con él de la POSICIÓN de la fila
+     * dentro de la matriz. Si el curador añadía o quitaba una fila entre dos aprobaciones,
+     * los índices se corrían y el lote entero se duplicaba. El uuid del registro no se
+     * mueve.
+     *
+     * @param  string[]  $registroIds  uuid de `recepciones.registros_especimen`
+     * @return array<string, string> registroId => especimenId
+     */
+    public function registrosDepositoExistentes(array $registroIds): array;
+
+    /**
+     * Estado en la colección de todo el material de un depósito.
+     *
+     * Consulta por la junta explícita en vez de reconstruir los códigos derivados uno a
+     * uno, que es lo que obligaba al módulo de recepciones a conocer la fórmula del
+     * código.
+     *
+     * @return array{total: int, pendientesRevision: int, devueltos: int}
+     */
+    public function resumenPorSolicitudDeposito(string $solicitudDepositoId): array;
+
+    /**
+     * Espécimenes de un depósito indexados por su posición en la matriz.
+     *
+     * Existe para el backfill del vínculo fila↔espécimen: permite comprobar, antes de
+     * escribir nada, que el orden reconstruido de la matriz coincide de verdad con lo
+     * que se ingresó.
+     *
+     * @return array<int, array{id: string, taxonVerbatim: ?string, registroDepositoId: ?string}>
+     *                                                                                            indexado por `indice_matriz`
+     */
+    public function especimenesPorIndiceDeSolicitud(string $solicitudDepositoId): array;
+
+    /**
+     * Rellena columnas de un espécimen **solo donde están vacías**.
+     *
+     * Es el saneamiento del material que ingresó cuando el traspaso descartaba campos.
+     * Nunca pisa un valor existente: si alguien ya corrigió algo a mano, gana lo que hay.
+     *
+     * @param  array<string, mixed>  $columnas
+     * @return int Columnas efectivamente escritas.
+     */
+    public function rellenarCamposVacios(string $especimenId, array $columnas): int;
+
+    /**
+     * Marca para revisión al material cuyo trámite de origen desapareció.
+     *
+     * No se borra: en una colección científica el rastro de qué estuvo bajo custodia es
+     * patrimonio documental. Se le pone motivo para que el curador lo resuelva.
+     *
+     * @return int Espécimenes marcados.
+     */
+    public function marcarHuerfanosDeDeposito(string $motivo): int;
+
+    /**
+     * Ata cada espécimen a la fila de matriz que lo originó.
+     *
+     * @param  array<string, string>  $registroIdPorEspecimenId  especimenId => registroId
+     * @return int Espécimenes efectivamente vinculados.
+     */
+    public function vincularRegistrosDeposito(array $registroIdPorEspecimenId): int;
 
     /**
      * Marca como devueltos los espécimenes de un lote depositado.

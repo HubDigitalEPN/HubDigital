@@ -57,6 +57,8 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\NotificacionInve
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\PdfsigValidacionFirmaElectronicaAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Console\Commands\EvaluarPlazosDevolucionTodosLosPrestamosCommand;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Console\Commands\LimpiarBorradoresAbandonadosCommand;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Console\Commands\SanearDatosDepositoCommand;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Console\Commands\VincularEspecimenesDepositoCommand;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Gateways\DomPdfGeneratorAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Gateways\LaravelUserInvestigadorEmailAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Gateways\LaravelUsuarioNombreAdapter;
@@ -143,6 +145,8 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
         $this->commands([
             LimpiarBorradoresAbandonadosCommand::class,
             EvaluarPlazosDevolucionTodosLosPrestamosCommand::class,
+            VincularEspecimenesDepositoCommand::class,
+            SanearDatosDepositoCommand::class,
         ]);
 
         $this->app->bind(ExtraccionDatosDocumentoPort::class, fn () => new GroqExtraccionDatosDocumentoAdapter(

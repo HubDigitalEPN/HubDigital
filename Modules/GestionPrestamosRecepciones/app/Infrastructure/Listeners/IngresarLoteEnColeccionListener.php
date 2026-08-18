@@ -49,6 +49,7 @@ final class IngresarLoteEnColeccionListener
             'especimenes_creados' => $resultado->especimenesCreados,
             'omitidos_por_duplicado' => $resultado->omitidosPorDuplicado,
             'marcados_para_revision' => $resultado->marcadosParaRevision,
+            'filas_anotadas' => $resultado->filasAnotadas,
         ]);
     }
 }

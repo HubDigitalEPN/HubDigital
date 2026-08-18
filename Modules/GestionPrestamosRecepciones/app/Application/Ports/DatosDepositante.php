@@ -14,5 +14,7 @@ final readonly class DatosDepositante
         public string $nombre,
         public ?string $cargo,
         public ?string $institucion,
+        /** Correo de contacto; lo usa la colección para la ficha de la entidad depositante. */
+        public ?string $email = null,
     ) {}
 }

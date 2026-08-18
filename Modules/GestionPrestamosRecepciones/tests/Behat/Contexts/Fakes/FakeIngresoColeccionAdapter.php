@@ -6,6 +6,7 @@ namespace Modules\GestionPrestamosRecepciones\Tests\Behat\Contexts\Fakes;
 
 use Modules\GestionPrestamosRecepciones\Application\Ports\IngresoColeccionPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ResultadoIngresoColeccion;
+use Modules\GestionPrestamosRecepciones\Application\Ports\ResultadoVinculacionDeposito;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ResumenIngresoColeccion;
 
 /**
@@ -51,6 +52,45 @@ final class FakeIngresoColeccionAdapter implements IngresoColeccionPort
             pendientesRevision: 0,
             registrosEnMatriz: $this->especimenesPorLote,
         );
+    }
+
+    public function loteYaIngresado(string $solicitudId): bool
+    {
+        foreach ($this->ingresos as $ingreso) {
+            if ($ingreso['solicitudId'] === $solicitudId) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * El backfill del vínculo no tiene nada que reconstruir aquí: este falso módulo
+     * ingresa lotes enteros sin conservar las filas de matriz una a una.
+     */
+    public function vincularRegistros(string $solicitudId, bool $simular = true): ResultadoVinculacionDeposito
+    {
+        return new ResultadoVinculacionDeposito(
+            especimenesVinculados: 0,
+            filasAnotadas: 0,
+            yaVinculados: 0,
+            sinEspecimen: 0,
+            discrepancias: [],
+            simulado: $simular,
+        );
+    }
+
+    /** Este falso módulo no guarda campos Darwin Core, así que no hay nada que sanear. */
+    public function sanearDatosDwC(string $solicitudId, bool $simular = true): array
+    {
+        return ['especimenesTocados' => 0, 'columnasEscritas' => 0];
+    }
+
+    /** Tampoco puede haber huérfanos: los lotes solo existen mientras dure el escenario. */
+    public function marcarHuerfanos(string $motivo): int
+    {
+        return 0;
     }
 
     public function devolverLote(string $solicitudId, \DateTimeImmutable $devueltoEn): int

@@ -107,6 +107,8 @@ return (new Config)
                         // InteroperabilidadEstados
                         'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\InteroperabilidadEstados\SincronizacionEstadoPrestamoContext',
                         'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\InteroperabilidadEstados\SincronizacionEstadoDevolucionContext',
+                        'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\InteroperabilidadEstados\CustodiaMaterialDepositadoContext',
+                        'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\InteroperabilidadEstados\IngresoLoteDepositoContext',
                         // IdentificacionFisicaEspecimenes
                         'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\IdentificacionFisicaEspecimenes\AsignacionGuidEspecimenContext',
                         'Modules\InventarioGestionColeccion\Tests\Behat\Contexts\IdentificacionFisicaEspecimenes\GeneracionCodigoQrContext',

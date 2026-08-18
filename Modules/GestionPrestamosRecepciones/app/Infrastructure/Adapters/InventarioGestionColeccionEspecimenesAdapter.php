@@ -4,44 +4,43 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Infrastructure\Adapters;
 
-use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 use Modules\GestionPrestamosRecepciones\Application\Ports\CatalogoEspecimenesPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\EspecimenCatalogoDto;
 use Modules\GestionPrestamosRecepciones\Application\Ports\FichaEspecimenActaDto;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConsultarEspecimenesPrestables\ConsultarEspecimenesPrestablesHandler;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConsultarEspecimenesPrestables\ConsultarEspecimenesPrestablesInput;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ConsultarEspecimenesPrestables\EspecimenPrestableDto;
 
 /**
  * ACL — Anti-Corruption Layer entre GestionPrestamosRecepciones (Customer) e
  * InventarioGestionColeccion (Supplier).
  *
- * Es la única clase de este módulo que conoce el esquema `taxonomia`. Si el
- * inventario cambia sus tablas, solo este archivo se modifica. No importa ni una
- * clase del Domain o la Application del inventario: en un monolito, el único
- * punto de contacto legítimo entre bounded contexts es la base de datos.
+ * Reparte las lecturas según lo que codifiquen, siguiendo la regla del proyecto:
+ *
+ *  - **Con regla de negocio del inventario → su caso de uso.** Qué espécimen es
+ *    prestable lo decide la colección, no este módulo. Antes se resolvía aquí con SQL
+ *    propio y una copia de las reglas; cuando el inventario añadió el régimen de
+ *    custodia, esta copia se quedó vieja y siguió ofreciendo material ya devuelto a su
+ *    depositante.
+ *  - **Proyección pura → SQL directo.** {@see obtenerFichasParaActa()} y la jerarquía de
+ *    familias solo leen columnas para imprimirlas en un acta; no hay regla que se pueda
+ *    quedar desactualizada, y a esa altura el espécimen ya está `en_prestamo`, así que
+ *    los criterios de préstamo no le aplican.
+ *
+ * Sigue siendo la única clase de este módulo que conoce el esquema `taxonomia`.
  */
 final class InventarioGestionColeccionEspecimenesAdapter implements CatalogoEspecimenesPort
 {
-    /**
-     * Un espécimen solo es prestable si está disponible: uno ya prestado,
-     * observado o extraviado no debe poder solicitarse.
-     */
-    private const ESTADO_PRESTABLE = 'disponible';
-
-    /**
-     * Situaciones Darwin Core que sacan al espécimen de la colección prestable, aunque
-     * su `estado` siga diciendo 'disponible': la importación del CSV dejó ese estado por
-     * defecto sin mirar `occurrence_status`.
-     */
-    private const OCCURRENCE_STATUS_NO_PRESTABLE = ['loaned', 'destroyed'];
-
-    /** Única constancia Darwin Core de que el espécimen sigue en la colección. */
-    private const OCCURRENCE_STATUS_PRESENTE = 'present';
-
     /** Rango del inventario que el acta imprime como familia. */
     private const RANGO_FAMILIA = 'familia';
 
     /** Rangos cuyo nombre científico es un género o una especie (o menor). */
     private const RANGOS_GENERO_ESPECIE = ['genero', 'especie', 'subespecie'];
+
+    public function __construct(
+        private readonly ConsultarEspecimenesPrestablesHandler $consultarPrestables,
+    ) {}
 
     public function buscarDisponibles(string $texto, int $limite = 15): array
     {
@@ -52,27 +51,21 @@ final class InventarioGestionColeccionEspecimenesAdapter implements CatalogoEspe
             return [];
         }
 
-        $patron = '%'.$texto.'%';
-
-        $filas = $this->consultaBase()
-            ->where(function (Builder $q) use ($patron): void {
-                $q->where('e.codigo_catalogo', 'ilike', $patron)
-                    ->orWhere('t.nombre_cientifico', 'ilike', $patron);
-            })
-            ->orderBy('e.codigo_catalogo')
-            ->limit($limite)
-            ->get();
-
-        return $filas->map(fn ($fila) => $this->traducir($fila))->all();
+        return array_map(
+            fn (EspecimenPrestableDto $dto): EspecimenCatalogoDto => $this->traducirPrestable($dto),
+            $this->consultarPrestables
+                ->handle(ConsultarEspecimenesPrestablesInput::porTexto($texto, $limite))
+                ->especimenes,
+        );
     }
 
     public function obtenerPorId(string $especimenId): ?EspecimenCatalogoDto
     {
-        $fila = $this->consultaBase()
-            ->where('e.id', $especimenId)
-            ->first();
+        $dto = $this->consultarPrestables
+            ->handle(ConsultarEspecimenesPrestablesInput::porIds([$especimenId]))
+            ->primero();
 
-        return $fila === null ? null : $this->traducir($fila);
+        return $dto === null ? null : $this->traducirPrestable($dto);
     }
 
     public function obtenerPorIds(array $especimenIds): array
@@ -81,15 +74,10 @@ final class InventarioGestionColeccionEspecimenesAdapter implements CatalogoEspe
             return [];
         }
 
-        $filas = $this->consultaBase()
-            ->whereIn('e.id', $especimenIds)
-            ->get();
-
         $resultado = [];
 
-        foreach ($filas as $fila) {
-            $dto = $this->traducir($fila);
-            $resultado[$dto->especimenId] = $dto;
+        foreach ($this->consultarPrestables->handle(ConsultarEspecimenesPrestablesInput::porIds($especimenIds))->especimenes as $dto) {
+            $resultado[$dto->especimenId] = $this->traducirPrestable($dto);
         }
 
         return $resultado;
@@ -209,57 +197,17 @@ final class InventarioGestionColeccionEspecimenesAdapter implements CatalogoEspe
         return $familias;
     }
 
-    /**
-     * Define qué es un espécimen prestable, para los tres métodos del puerto: la
-     * búsqueda del investigador y las dos revalidaciones del servidor comparten
-     * criterio, así que ninguno puede quedarse atrás.
-     *
-     * LEFT JOIN y no INNER: `taxon_id` es nullable en el inventario, y un
-     * espécimen sin determinación taxonómica sigue siendo prestable.
-     */
-    private function consultaBase(): Builder
-    {
-        return DB::table('taxonomia.especimenes as e')
-            ->leftJoin('taxonomia.taxones as t', 't.id', '=', 'e.taxon_id')
-            ->where('e.estado', self::ESTADO_PRESTABLE)
-            // Segundo filtro sobre el mismo hecho: un espécimen prestado o destruido no
-            // vuelve a prestarse aunque su `estado` no se haya actualizado nunca.
-            // El OR sobre null es obligatorio: `NOT IN` deja fuera las filas nulas.
-            ->where(function (Builder $q): void {
-                $q->whereNull('e.occurrence_status')
-                    ->orWhereNotIn('e.occurrence_status', self::OCCURRENCE_STATUS_NO_PRESTABLE);
-            })
-            // Solo se ofrece lo que consta en la colección. Basta una de las dos
-            // evidencias: quedan individuos contados, o el registro Darwin Core declara
-            // el espécimen presente aunque nadie haya anotado cuántos. Sin ninguna de
-            // las dos no se muestra, y un conteo en cero nunca alcanza.
-            ->where(function (Builder $q): void {
-                $q->where('e.individual_count', '>', 0)
-                    ->orWhere(function (Builder $sinConteo): void {
-                        $sinConteo->whereNull('e.individual_count')
-                            ->where('e.occurrence_status', self::OCCURRENCE_STATUS_PRESENTE);
-                    });
-            })
-            ->select([
-                'e.id',
-                'e.codigo_catalogo',
-                'e.individual_count',
-                'e.estado',
-                't.nombre_cientifico',
-            ]);
-    }
-
-    /** Único punto de traducción del esquema del inventario al lenguaje de préstamos. */
-    private function traducir(mixed $fila): EspecimenCatalogoDto
+    /** Único punto de traducción del inventario al lenguaje de préstamos. */
+    private function traducirPrestable(EspecimenPrestableDto $dto): EspecimenCatalogoDto
     {
         return new EspecimenCatalogoDto(
-            especimenId: (string) $fila->id,
-            codigoCatalogo: (string) $fila->codigo_catalogo,
-            nombreCientifico: $fila->nombre_cientifico,           // null si el espécimen no está determinado
-            // ACL: individual_count → individualesDisponibles. El null se preserva: el
+            especimenId: $dto->especimenId,
+            codigoCatalogo: $dto->codigoCatalogo,
+            nombreCientifico: $dto->nombreCientifico,   // null si el espécimen no está determinado
+            // ACL: individualCount → individualesDisponibles. El null se preserva: el
             // inventario no registró el conteo, que no es lo mismo que no quedar ninguno.
-            individualesDisponibles: $fila->individual_count === null ? null : (int) $fila->individual_count,
-            estado: (string) $fila->estado,
+            individualesDisponibles: $dto->individualCount,
+            estado: $dto->estado,
         );
     }
 }

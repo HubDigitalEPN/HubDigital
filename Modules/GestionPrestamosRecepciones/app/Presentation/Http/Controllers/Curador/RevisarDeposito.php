@@ -452,7 +452,7 @@ final class RevisarDeposito extends Component
         $registros = $matriz !== null ? array_values($matriz->registros()) : [];
         $columnasDwC = $registros !== [] ? array_keys($registros[0]->datosDwC()) : [];
 
-        $prioridadesCampos = $catalogo->prioridadesPorCampo($this->id);
+        $prioridadesCampos = $catalogo->prioridadesPorCampo();
         $prioridadDe = fn (string $col): string => $prioridadesCampos[$col] ?? 'opcional';
 
         // Columnas visibles según prioridad o selección manual; scientificName siempre presente.

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers;
 
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\ParsearFechaVerbatim;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\DarwinCoreExtendido;
 
 /**
  * Mapper puro: array asociativo de fila de Excel → FilaMapeada.
@@ -30,6 +31,54 @@ final class FilaCatalogoMapper
 {
     /** Pivot de siglo per spec del usuario: yy ≤ 25 → 20yy, yy > 25 → 19yy. */
     public const PIVOT_SIGLO_DOS_DIGITOS = 25;
+
+    /**
+     * Claves normalizadas que este mapeo sí coloca en una columna propia.
+     *
+     * Todo lo demás se conserva en `dwcExtra`, que es lo que hace cierta la promesa de
+     * "cero pérdida" del encabezado: antes, una columna que el mapeo no reconociera
+     * simplemente desaparecía.
+     *
+     * Si esta lista se queda corta porque alguien añade una lectura y olvida apuntarla
+     * aquí, el campo acaba a la vez en su columna y en `dwcExtra`. Duplicado, no perdido:
+     * es el modo de fallo que interesa.
+     *
+     * @var string[]
+     */
+    private const CLAVES_CON_COLUMNA_PROPIA = [
+        'occurrence_id', 'old_code', 'catalog_number',
+        'cardex_liquid_col_code', 'cardex_liquid_collection_code',
+        'taxon_verbatim', 'scientific_name',
+        'locality_name', 'localidad_verbatim', 'verbatim_locality',
+        'country', 'state_province', 'municipality',
+        'fecha_verbatim', 'event_date', 'datecollected_end', 'date_collected_end',
+        'recorded_by',
+        'individual_count', 'invidual_count', 'individual_count_verbatim',
+        'coord_verbatim', 'decimal_latitude', 'decimal_longitude',
+        'minimum_elevation_in_meters', 'maximum_elevation_in_meters',
+        'endemic',
+        'sex', 'life_stage', 'caste', 'typecaste', 'type_status',
+        'preparations', 'disposition', 'occurrence_status',
+        'specimen_notes', 'comment', 'geodetic_datum',
+        'biome', 'habitat', 'microhabitat', 'biogeographic_region',
+        'dna_notes', 'occurrence_remarks', 'taxonomic_notes', 'acta_recepcion',
+        // Plantilla v2
+        'record_number', 'origin', 'identified_by', 'date_determined', 'date_identified',
+        'research_permit', 'transport_permit', 'export_import_authorization',
+        'scientific_name_authorship', 'lat_lon_max_error', 'clade',
+        'identification_qualifier', 'identification_remarks', 'vernacular_name',
+        'type_notes', 'continent', 'country_code', 'locality_notes', 'locality_code',
+        'elevation_max_error', 'verbatim_elevation', 'verbatim_depth',
+        'verbatim_latitude', 'verbatim_longitude', 'verbatim_coordinate_system',
+        'verbatim_srs', 'information_withheld', 'prior_owner', 'located_at',
+        'ipt_upload', 'record_created_by', 'record_created_by,month-year',
+        'responsible_researcher_or_applicant_for_export',
+        // Jerarquía y columnas recuperadas
+        'kingdom', 'phylum', 'class', 'order', 'suborder', 'family', 'subfamily',
+        'tribe', 'genus', 'specific_epithet', 'infraspecific_epithet', 'taxon_rank',
+        'sampling_protocol', 'other_catalog_numbers', 'event_time', 'project_name',
+        'collection_notes', 'medium', 'movilization_permit', 'language',
+    ];
 
     public function mapear(array $fila): FilaMapeada
     {
@@ -110,7 +159,12 @@ final class FilaCatalogoMapper
         $fechaVerbatim = $this->limpiar(
             $normalizada['fecha_verbatim'] ?? $normalizada['event_date'] ?? null
         );
-        $fechaColectaFinVerbatim = $this->limpiar($normalizada['datecollected_end'] ?? null);
+        // `datecollected_end` es la cabecera del Excel heredado; `date_collected_end` la
+        // que produce la plantilla de depósitos al pasar por snake_case. Se leen las dos:
+        // durante meses la segunda no casó con nada y la fecha de fin se perdía.
+        $fechaColectaFinVerbatim = $this->limpiar(
+            $normalizada['datecollected_end'] ?? $normalizada['date_collected_end'] ?? null
+        );
         $parsedInicio = null;
         $parsedFin = null;
         if ($fechaVerbatim !== null) {
@@ -187,7 +241,7 @@ final class FilaCatalogoMapper
         $recordNumber = $this->limpiar($normalizada['record_number'] ?? null);
         $origin = $this->limpiar($normalizada['origin'] ?? null);
         $identifiedBy = $this->limpiar($normalizada['identified_by'] ?? null);
-        $dateDetermined = $this->limpiar($normalizada['date_determined'] ?? null);
+        $dateDetermined = $this->limpiar($normalizada['date_identified'] ?? $normalizada['date_determined'] ?? null);
         $researchPermit = $this->limpiar($normalizada['research_permit'] ?? null);
         $transportPermit = $this->limpiar($normalizada['transport_permit'] ?? null);
         $exportImportAuthorization = $this->limpiar($normalizada['export_import_authorization'] ?? null);
@@ -219,6 +273,35 @@ final class FilaCatalogoMapper
         $responsibleResearcherExport = $this->limpiar(
             $normalizada['responsible_researcher_or_applicant_for_export'] ?? null
         );
+
+        // Jerarquía taxonómica declarada y columnas de la plantilla que hasta ahora no
+        // tenían destino. Se guardan tal como llegaron: cuando el material entra sin
+        // catalogar, `taxon_id` queda en null y esto es lo único que describe al bicho.
+        $extendido = [
+            'kingdom' => $this->limpiar($normalizada['kingdom'] ?? null),
+            'phylum' => $this->limpiar($normalizada['phylum'] ?? null),
+            'dwcClass' => $this->limpiar($normalizada['class'] ?? null),
+            'dwcOrder' => $this->limpiar($normalizada['order'] ?? null),
+            'suborder' => $this->limpiar($normalizada['suborder'] ?? null),
+            'family' => $this->limpiar($normalizada['family'] ?? null),
+            'subfamily' => $this->limpiar($normalizada['subfamily'] ?? null),
+            'tribe' => $this->limpiar($normalizada['tribe'] ?? null),
+            'genus' => $this->limpiar($normalizada['genus'] ?? null),
+            'specificEpithet' => $this->limpiar($normalizada['specific_epithet'] ?? null),
+            'infraspecificEpithet' => $this->limpiar($normalizada['infraspecific_epithet'] ?? null),
+            'taxonRank' => $this->limpiar($normalizada['taxon_rank'] ?? null),
+            'samplingProtocol' => $this->limpiar($normalizada['sampling_protocol'] ?? null),
+            'otherCatalogNumbers' => $this->limpiar($normalizada['other_catalog_numbers'] ?? null),
+            'eventTime' => $this->limpiar($normalizada['event_time'] ?? null),
+            'projectName' => $this->limpiar($normalizada['project_name'] ?? null),
+            'collectionNotes' => $this->limpiar($normalizada['collection_notes'] ?? null),
+            'medium' => $this->limpiar($normalizada['medium'] ?? null),
+            'movilizationPermit' => $this->limpiar($normalizada['movilization_permit'] ?? null),
+            'language' => $this->limpiar($normalizada['language'] ?? null),
+        ];
+
+        // Lo que no reconocimos se conserva en crudo en vez de desaparecer.
+        $extra = array_diff_key($normalizada, array_flip(self::CLAVES_CON_COLUMNA_PROPIA));
 
         return new FilaMapeada(
             codigoCatalogo: $codigoCatalogo,
@@ -295,6 +378,7 @@ final class FilaCatalogoMapper
             recordCreatedBy: $recordCreatedBy,
             responsibleResearcherExport: $responsibleResearcherExport,
             endemicVerbatim: $endemicVerbatim,
+            darwinCoreExtendido: DarwinCoreExtendido::desdeCampos($extendido, $extra),
         );
     }
 

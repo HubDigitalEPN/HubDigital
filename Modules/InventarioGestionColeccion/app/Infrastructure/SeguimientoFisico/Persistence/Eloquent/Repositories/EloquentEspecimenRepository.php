@@ -5,15 +5,19 @@ declare(strict_types=1);
 namespace Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Repositories;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especimen;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\EspecimenPrestable;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\DarwinCoreExtendido;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EspecimenId;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoCustodia;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoEspecimen;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoRevision;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\IdentificadorEspecimen;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\ProcedenciaDeposito;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Models\EspecimenEloquentModel;
 
 class EloquentEspecimenRepository implements EspecimenRepositoryInterface
@@ -113,6 +117,8 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
                 'record_created_by' => $especimen->recordCreatedBy(),
                 'responsible_researcher_export' => $especimen->responsibleResearcherExport(),
                 'endemic_verbatim' => $especimen->endemicVerbatim(),
+                ...$this->columnasProcedencia($especimen),
+                ...$especimen->darwinCoreExtendido()->paraPersistencia(),
             ]
         );
 
@@ -850,6 +856,206 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
         ];
     }
 
+    /**
+     * @param  string[]  $ids
+     * @return array<int, array{id: string, codigoCatalogo: string, individualCount: ?int, estado: string, nombreCientifico: ?string}>
+     */
+    public function buscarPrestables(?string $texto, array $ids = [], int $limite = 15): array
+    {
+        $texto = $texto !== null ? trim($texto) : null;
+
+        // Sin término ni lista de ids no se vuelca la colección entera.
+        if (($texto === null || $texto === '') && $ids === []) {
+            return [];
+        }
+
+        $consulta = DB::table('taxonomia.especimenes as e')
+            // LEFT JOIN y no INNER: `taxon_id` es nullable y un espécimen sin
+            // determinación taxonómica sigue siendo prestable.
+            ->leftJoin('taxonomia.taxones as t', 't.id', '=', 'e.taxon_id')
+            ->where('e.estado', EspecimenPrestable::ESTADO_PRESTABLE)
+            // Régimen de tenencia: lo devuelto ya no está en el museo y lo que está en
+            // cuarentena no sale hasta su revisión sanitaria. El OR sobre null es
+            // obligatorio: `NOT IN` descarta las filas nulas, y el material heredado del
+            // catálogo no tiene régimen declarado.
+            ->where(function (QueryBuilder $q): void {
+                $q->whereNull('e.estado_custodia')
+                    ->orWhereNotIn('e.estado_custodia', EspecimenPrestable::CUSTODIAS_NO_PRESTABLES);
+            })
+            // Un espécimen prestado o destruido no vuelve a prestarse aunque su `estado`
+            // no se haya actualizado nunca.
+            ->where(function (QueryBuilder $q): void {
+                $q->whereNull('e.occurrence_status')
+                    ->orWhereNotIn('e.occurrence_status', EspecimenPrestable::OCCURRENCE_STATUS_NO_PRESTABLE);
+            })
+            // Solo se ofrece lo que consta en la colección: quedan individuos contados, o
+            // el registro Darwin Core declara el espécimen presente aunque nadie los haya
+            // contado. Un conteo en cero nunca alcanza.
+            ->where(function (QueryBuilder $q): void {
+                $q->where('e.individual_count', '>', 0)
+                    ->orWhere(function (QueryBuilder $sinConteo): void {
+                        $sinConteo->whereNull('e.individual_count')
+                            ->where('e.occurrence_status', EspecimenPrestable::OCCURRENCE_STATUS_PRESENTE);
+                    });
+            });
+
+        if ($ids !== []) {
+            $consulta->whereIn('e.id', $ids);
+        }
+
+        if ($texto !== null && $texto !== '') {
+            $patron = '%'.$texto.'%';
+            $consulta->where(function (QueryBuilder $q) use ($patron): void {
+                $q->where('e.codigo_catalogo', 'ilike', $patron)
+                    ->orWhere('t.nombre_cientifico', 'ilike', $patron);
+            });
+        }
+
+        $filas = $consulta
+            ->orderBy('e.codigo_catalogo')
+            // Pedir por ids concretos no es una búsqueda: no se recorta el resultado.
+            ->when($ids === [], fn ($q) => $q->limit($limite))
+            ->get(['e.id', 'e.codigo_catalogo', 'e.individual_count', 'e.estado', 't.nombre_cientifico']);
+
+        return $filas->map(fn ($fila): array => [
+            'id' => (string) $fila->id,
+            'codigoCatalogo' => (string) $fila->codigo_catalogo,
+            'individualCount' => $fila->individual_count !== null ? (int) $fila->individual_count : null,
+            'estado' => (string) $fila->estado,
+            'nombreCientifico' => $fila->nombre_cientifico !== null ? (string) $fila->nombre_cientifico : null,
+        ])->all();
+    }
+
+    /** @param string[] $registroIds
+     *  @return array<string, string> */
+    public function registrosDepositoExistentes(array $registroIds): array
+    {
+        if ($registroIds === []) {
+            return [];
+        }
+
+        return EspecimenEloquentModel::whereIn('registro_deposito_id', $registroIds)
+            ->pluck('id', 'registro_deposito_id')
+            ->map(fn ($v) => (string) $v)
+            ->all();
+    }
+
+    /** @return array{total: int, pendientesRevision: int, devueltos: int} */
+    public function resumenPorSolicitudDeposito(string $solicitudDepositoId): array
+    {
+        $fila = EspecimenEloquentModel::where('solicitud_deposito_id', $solicitudDepositoId)
+            ->selectRaw(
+                'count(*) as total,
+                 count(*) filter (where estado_revision = ?) as pendientes,
+                 count(*) filter (where estado_custodia = ?) as devueltos',
+                ['pendiente', 'Devuelto']
+            )
+            ->first();
+
+        return [
+            'total' => (int) ($fila->total ?? 0),
+            'pendientesRevision' => (int) ($fila->pendientes ?? 0),
+            'devueltos' => (int) ($fila->devueltos ?? 0),
+        ];
+    }
+
+    /** @return array<int, array{id: string, taxonVerbatim: ?string, registroDepositoId: ?string}> */
+    public function especimenesPorIndiceDeSolicitud(string $solicitudDepositoId): array
+    {
+        $filas = EspecimenEloquentModel::where('solicitud_deposito_id', $solicitudDepositoId)
+            ->whereNotNull('indice_matriz')
+            ->orderBy('indice_matriz')
+            ->get(['id', 'indice_matriz', 'taxon_verbatim', 'registro_deposito_id']);
+
+        $salida = [];
+
+        foreach ($filas as $fila) {
+            $salida[(int) $fila->indice_matriz] = [
+                'id' => (string) $fila->id,
+                'taxonVerbatim' => $fila->taxon_verbatim !== null ? (string) $fila->taxon_verbatim : null,
+                'registroDepositoId' => $fila->registro_deposito_id !== null ? (string) $fila->registro_deposito_id : null,
+            ];
+        }
+
+        return $salida;
+    }
+
+    /** @param array<string, mixed> $columnas */
+    public function rellenarCamposVacios(string $especimenId, array $columnas): int
+    {
+        $modelo = EspecimenEloquentModel::find($especimenId);
+
+        if ($modelo === null) {
+            return 0;
+        }
+
+        $aEscribir = [];
+
+        foreach ($columnas as $columna => $valor) {
+            if ($valor === null || $valor === '' || $valor === []) {
+                continue;
+            }
+
+            $actual = $modelo->getAttribute($columna);
+
+            // Solo lo que está vacío. `dwc_extra` cuenta como vacío cuando es `{}`.
+            if ($actual === null || $actual === '' || $actual === []) {
+                $aEscribir[$columna] = $valor;
+            }
+        }
+
+        if ($aEscribir === []) {
+            return 0;
+        }
+
+        $modelo->forceFill($aEscribir)->save();
+
+        return count($aEscribir);
+    }
+
+    public function marcarHuerfanosDeDeposito(string $motivo): int
+    {
+        return EspecimenEloquentModel::whereNotNull('numero_solicitud_deposito')
+            ->whereNull('solicitud_deposito_id')
+            // Idempotente: no se vuelve a anotar lo ya anotado.
+            ->where(function (Builder $q) use ($motivo): void {
+                $q->whereNull('motivo_revision')
+                    ->orWhere('motivo_revision', 'not like', '%'.$motivo.'%');
+            })
+            ->update([
+                'estado_revision' => 'pendiente',
+                'motivo_revision' => DB::raw(
+                    "CASE WHEN motivo_revision IS NULL OR motivo_revision = '' THEN "
+                    .DB::getPdo()->quote($motivo)
+                    ." ELSE motivo_revision || '; ' || ".DB::getPdo()->quote($motivo).' END'
+                ),
+                'updated_at' => now(),
+            ]);
+    }
+
+    /** @param array<string, string> $registroIdPorEspecimenId */
+    public function vincularRegistrosDeposito(array $registroIdPorEspecimenId): int
+    {
+        if ($registroIdPorEspecimenId === []) {
+            return 0;
+        }
+
+        $vinculados = 0;
+
+        DB::transaction(function () use ($registroIdPorEspecimenId, &$vinculados): void {
+            foreach ($registroIdPorEspecimenId as $especimenId => $registroId) {
+                $vinculados += EspecimenEloquentModel::where('id', $especimenId)
+                    ->whereNull('registro_deposito_id')
+                    ->update([
+                        'registro_deposito_id' => $registroId,
+                        'updated_at' => now(),
+                    ]);
+            }
+        });
+
+        return $vinculados;
+    }
+
     /** @param string[] $codigos */
     public function marcarDevueltosPorCodigosCatalogo(array $codigos, \DateTimeImmutable $devueltoEn): int
     {
@@ -962,6 +1168,8 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
                 'record_created_by' => $especimen->recordCreatedBy(),
                 'responsible_researcher_export' => $especimen->responsibleResearcherExport(),
                 'endemic_verbatim' => $especimen->endemicVerbatim(),
+                ...$this->columnasProcedencia($especimen),
+                ...$this->columnasDwCParaBatch($especimen),
                 'created_at' => $ahora,
                 'updated_at' => $ahora,
             ];
@@ -1121,6 +1329,59 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
             recordCreatedBy: $model->record_created_by,
             responsibleResearcherExport: $model->responsible_researcher_export,
             endemicVerbatim: $model->endemic_verbatim,
+            darwinCoreExtendido: DarwinCoreExtendido::desdePersistencia($model->getAttributes()),
+            procedenciaDeposito: ProcedenciaDeposito::parcial(
+                registroId: $model->registro_deposito_id,
+                solicitudId: $model->solicitud_deposito_id,
+                indiceMatriz: $model->indice_matriz !== null ? (int) $model->indice_matriz : null,
+                numeroSolicitud: $model->numero_solicitud_deposito,
+                tipoTramite: $model->tipo_tramite_origen,
+                ingresadoEn: $model->ingresado_en !== null
+                    ? \DateTimeImmutable::createFromInterface($model->ingresado_en)
+                    : null,
+            ),
         );
+    }
+
+    /**
+     * Campos Darwin Core listos para el guardado masivo.
+     *
+     * El guardado individual pasa por Eloquent, que aplica el cast `array` y serializa
+     * `dwc_extra` solo. El masivo inserta con el query builder para no instanciar miles
+     * de modelos, y ahí los casts NO corren: el array llegaba a PostgreSQL convertido a
+     * la cadena "Array" y la columna jsonb rechazaba la inserción entera.
+     *
+     * @return array<string, mixed>
+     */
+    private function columnasDwCParaBatch(Especimen $especimen): array
+    {
+        $columnas = $especimen->darwinCoreExtendido()->paraPersistencia();
+        $columnas['dwc_extra'] = json_encode($columnas['dwc_extra'] ?: new \stdClass, JSON_UNESCAPED_UNICODE);
+
+        return $columnas;
+    }
+
+    /**
+     * Columnas de la junta con el trámite de depósito.
+     *
+     * Se extraen aparte porque las escriben dos caminos (guardado individual y batch) y
+     * porque el material heredado del catálogo no tiene procedencia: para él todas van
+     * a null en vez de omitirse, de modo que un `updateOrCreate` no arrastre valores
+     * viejos de otra fila.
+     *
+     * @return array<string, string|int|\DateTimeImmutable|null>
+     */
+    private function columnasProcedencia(Especimen $especimen): array
+    {
+        $procedencia = $especimen->procedenciaDeposito();
+
+        return [
+            'registro_deposito_id' => $procedencia?->tieneVinculoFuerte() === true ? $procedencia->registroId : null,
+            'solicitud_deposito_id' => ($procedencia !== null && ! $procedencia->esHuerfano()) ? $procedencia->solicitudId : null,
+            'indice_matriz' => ($procedencia !== null && $procedencia->indiceMatriz > 0) ? $procedencia->indiceMatriz : null,
+            'numero_solicitud_deposito' => $procedencia?->numeroSolicitud,
+            'tipo_tramite_origen' => $procedencia?->tipoTramite,
+            'ingresado_en' => $procedencia?->ingresadoEn,
+        ];
     }
 }

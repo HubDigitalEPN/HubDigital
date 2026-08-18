@@ -12,6 +12,7 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\Gener
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\GeocodificadorInversoPort;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\GestorTokenEsp32Port;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\HorarioValidadorPort;
+use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\ResolverTaxonomiaDwCPort;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\TraductorErroresPersistenciaPort;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\TransactionManagerPort;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\UbicacionEspecimenPort;
@@ -39,6 +40,7 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\Uni
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\VisitanteRepositoryInterface;
 use Modules\InventarioGestionColeccion\Infrastructure\Providers\EventServiceProvider;
 use Modules\InventarioGestionColeccion\Infrastructure\Providers\RouteServiceProvider;
+use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\ConstructorTaxonomiaResolverAdapter;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\DatabaseHorarioValidadorAdapter;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\EloquentUbicacionEspecimenAdapter;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Adapters\HttpSeguridadContextoAdapter;
@@ -118,6 +120,7 @@ class InventarioGestionColeccionServiceProvider extends ModuleServiceProvider
         ContextoEjecucionPort::class => HttpSeguridadContextoAdapter::class,
         TaxonRepositoryInterface::class => EloquentTaxonRepository::class,
         EspecimenRepositoryInterface::class => EloquentEspecimenRepository::class,
+        ResolverTaxonomiaDwCPort::class => ConstructorTaxonomiaResolverAdapter::class,
         CodigoQrRepositoryInterface::class => EloquentCodigoQrRepository::class,
         EntidadDepositanteRepositoryInterface::class => EloquentEntidadDepositanteRepository::class,
         VisitanteRepositoryInterface::class => EloquentVisitanteRepository::class,
