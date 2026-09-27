@@ -18,7 +18,8 @@ for runtime_file in \
     vendor/livewire/flux/dist/manifest.json \
     public/build/manifest.json \
     resources/bin/hubdigital-pdf-signature.jar \
-    deploy/oracle/scripts/verify-deposit-pdf.php; do
+    deploy/oracle/scripts/verify-deposit-pdf.php \
+    deploy/oracle/scripts/verify-migration-classes.php; do
     [[ -f "${repo_dir}/${runtime_file}" ]] || {
         echo "Falta archivo runtime obligatorio: ${runtime_file}." >&2
         exit 65
@@ -46,3 +47,7 @@ done
     cd "${repo_dir}"
     "${php_bin}" "${composer_bin}" check-platform-reqs --no-dev --no-interaction
 )
+
+# Cargar clases detecta incompatibilidades de herencia antes de poner la
+# aplicación en mantenimiento; no ejecuta up/down ni modifica PostgreSQL.
+"${php_bin}" "${repo_dir}/deploy/oracle/scripts/verify-migration-classes.php"

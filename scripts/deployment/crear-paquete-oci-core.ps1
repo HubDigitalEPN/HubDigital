@@ -224,6 +224,7 @@ if (-not $php) {
 $phpPrograma = if ($php -and $php.PSObject.Properties['Source'] -and $php.Source) { $php.Source } elseif ($php) { $php.FullName } else { $null }
 $archivosPhp = @($archivosCambiados | Where-Object { $_ -match '\.php$' -and $_ -notmatch '\.blade\.php$' })
 if ($php) {
+    Invoke-Comando -Programa $phpPrograma -Argumentos @('deploy/oracle/scripts/verify-migration-classes.php') -Descripcion 'Comprobando clases de migraciones sin ejecutar cambios en la base' -DirectorioTrabajo $Proyecto
     if ($archivosPhp) {
         Write-Host "`n==> Validando sintaxis PHP" -ForegroundColor Cyan
         foreach ($archivo in $archivosPhp) {
@@ -296,7 +297,8 @@ $requeridos = @(
     'Modules/CatalogoPublico/resources/views/livewire/chat-bot-widget.blade.php',
     'Modules/CatalogoPublico/resources/views/livewire/administrar-asistente.blade.php',
     'config/chatbot.php',
-    'deploy/oracle/scripts/verify-portal-chat.php'
+    'deploy/oracle/scripts/verify-portal-chat.php',
+    'deploy/oracle/scripts/verify-migration-classes.php'
 )
 foreach ($ruta in $requeridos) {
     if (-not (Test-Path -LiteralPath (Join-Path $Proyecto $ruta) -PathType Leaf)) { throw "Falta un archivo requerido para el paquete: $ruta" }
