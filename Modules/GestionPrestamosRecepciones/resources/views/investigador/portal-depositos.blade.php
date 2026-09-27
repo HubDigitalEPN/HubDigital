@@ -1,21 +1,24 @@
 <style>
     .portal-depositos-hero-image { object-position: 78% 50%; }
     @media (min-width: 640px) { .portal-depositos-hero-image { object-position: 70% 50%; } }
-    @media (min-width: 1024px) { .portal-depositos-hero-image { object-position: 62% 50%; } }
+    @media (min-width: 1024px) {
+        .portal-depositos-hero-image { object-position: 62% 50%; }
+        .portal-depositos-hero-grid { grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr); }
+    }
 </style>
 
 <div class="overflow-hidden bg-white text-text-primary">
     <section class="relative isolate border-b border-blue-navy/10 bg-white" aria-labelledby="titulo-depositos">
-        <div class="portal-hero-grid min-w-0 lg:min-h-[34rem]">
+        <div class="portal-hero-grid portal-depositos-hero-grid min-w-0 lg:min-h-[34rem]">
             <div class="portal-container portal-hero-copy relative z-10 flex items-center">
-                <div class="min-w-0 max-w-2xl">
+                <div class="min-w-0 max-w-4xl">
                     <h1 id="titulo-depositos" class="portal-hero-title font-display font-bold leading-[1.08] tracking-[-0.025em] text-blue-navy">
                         <span class="block">Depósito de colecciones</span>
                         <span class="block">biológicas</span>
                     </h1>
                     <div class="mt-5 h-1 w-14 rounded-full bg-bio-green" aria-hidden="true"></div>
-                    <p class="mt-6 max-w-xl text-lg leading-8 text-text-secondary">
-                        Registra el depósito temporal o la donación de especímenes. El sistema lee tus documentos, recupera los datos útiles y te acompaña hasta la firma y el envío al equipo curatorial.
+                    <p class="mt-6 max-w-4xl text-lg leading-8 text-text-secondary">
+                        Registra un depósito o donación. El sistema revisa tus PDF, recupera datos y te guía hasta la firma y el envío a curaduría.
                     </p>
 
                     <div class="portal-responsive-actions mt-8">
@@ -79,37 +82,6 @@
         </div>
     </section>
 
-    <section class="border-b border-blue-navy/10 bg-[#F5F8FC]" aria-labelledby="proceso-deposito">
-        <div class="portal-container mx-auto py-12 lg:py-14">
-            <div class="max-w-2xl">
-                <h2 id="proceso-deposito" class="font-display text-3xl font-bold tracking-tight text-blue-navy">Tu solicitud, paso a paso</h2>
-                <p class="mt-3 leading-7 text-text-secondary">La entrega física se coordina únicamente cuando la documentación ha sido revisada.</p>
-            </div>
-
-            <ol class="relative mt-9 grid gap-6 md:grid-cols-4 md:gap-0">
-                @foreach([
-                    ['Registra', 'Completa los formularios y adjunta la documentación requerida.'],
-                    ['Validamos', 'Leemos los PDF, extraemos sus códigos y comprobamos el expediente.'],
-                    ['Curaduría revisa', 'El equipo evalúa la pertinencia y las condiciones de custodia.'],
-                    ['Entrega y acta', 'La EPN constata el lote y curaduría emite el acta firmada.'],
-                ] as $indice => [$titulo, $descripcion])
-                    <li class="relative flex gap-4 md:block md:pr-7">
-                        @if($indice < 3)
-                            <div class="absolute left-4 top-8 hidden h-px w-[calc(100%-2rem)] bg-bio-green/45 md:block" aria-hidden="true"></div>
-                        @endif
-                        <div class="relative z-10 flex size-8 shrink-0 items-center justify-center rounded-full border border-bio-green bg-white font-mono text-sm font-semibold text-bio-green">
-                            {{ $indice + 1 }}
-                        </div>
-                        <div class="md:mt-5">
-                            <h3 class="font-display text-lg font-semibold text-blue-navy">{{ $titulo }}</h3>
-                            <p class="mt-1.5 text-sm leading-6 text-text-secondary">{{ $descripcion }}</p>
-                        </div>
-                    </li>
-                @endforeach
-            </ol>
-        </div>
-    </section>
-
     <section class="bg-white" aria-labelledby="preparar-expediente">
         <div class="portal-container mx-auto grid gap-10 py-14 lg:grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)] lg:gap-12 lg:py-16">
             <article>
@@ -147,34 +119,4 @@
         </div>
     </section>
 
-    <section class="bg-blue-navy text-white">
-        <div class="portal-container mx-auto flex flex-col items-start justify-between gap-6 py-9 md:flex-row md:items-center">
-            <div class="flex items-start gap-4">
-                <div class="hidden size-11 shrink-0 items-center justify-center rounded-lg border border-white/20 bg-white/10 sm:flex">
-                    <flux:icon name="document-plus" class="size-6" />
-                </div>
-                <div>
-                    <h2 class="font-display text-2xl font-bold">¿Listo para iniciar tu depósito?</h2>
-                    <p class="mt-1.5 text-sm leading-6 text-white/75">Puedes guardar el avance y completar el trámite por etapas.</p>
-                </div>
-            </div>
-            @auth
-                <a
-                    href="{{ auth()->user()->esDepositante() || auth()->user()->esAdministrador() ? route('depositos.solicitud.crear') : route('dashboard') }}"
-                    class="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-lg bg-white px-5 py-3 text-sm font-semibold !text-blue-navy transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-blue-navy"
-                >
-                    {{ auth()->user()->esDepositante() || auth()->user()->esAdministrador() ? 'Iniciar una solicitud' : 'Ir a mi cuenta' }}
-                    <flux:icon name="arrow-right" class="size-4" />
-                </a>
-            @else
-                <a
-                    href="{{ route('register') }}"
-                    class="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-lg bg-white px-5 py-3 text-sm font-semibold !text-blue-navy transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-blue-navy"
-                >
-                    Crear cuenta e iniciar
-                    <flux:icon name="arrow-right" class="size-4" />
-                </a>
-            @endauth
-        </div>
-    </section>
 </div>

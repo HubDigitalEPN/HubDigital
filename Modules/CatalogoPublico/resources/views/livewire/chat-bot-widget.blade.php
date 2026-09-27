@@ -1,137 +1,119 @@
 <div
     class="portal-chat-shell pointer-events-none fixed inset-x-0 bottom-4 z-[9999] flex justify-end px-4 sm:bottom-6 sm:px-6"
-    x-data
-    x-on:chat-cerrado.window="$nextTick(() => document.getElementById('chat-bot-trigger')?.focus())"
+    x-data="{ abierto: false }"
+    x-on:keydown.escape.window="if (abierto) { abierto = false; $nextTick(() => $refs.trigger.focus()) }"
+    x-on:chat-respuesta.window="$nextTick(() => { $refs.messages.scrollTop = $refs.messages.scrollHeight; $refs.input.focus() })"
 >
-    <div class="pointer-events-auto flex w-full max-w-sm flex-col items-end gap-3">
-        @if($abierto)
-            <section
-                id="chat-bot-panel"
-                aria-label="Chat de consulta a la colección"
-                wire:keydown.escape.window="alternar"
-                class="flex h-[min(32rem,calc(100dvh-1rem))] w-full flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-lg sm:h-[min(32rem,calc(100dvh-7rem))]"
-            >
-                <header class="flex items-center justify-between gap-2 border-b border-border bg-blue-navy px-2 py-1 text-white sm:px-4 sm:py-3">
-                    <div class="flex items-center gap-2">
-                        <flux:icon name="chat-bubble-left-right" class="h-5 w-5" />
-                        <div class="flex flex-col">
-                            <span class="text-sm font-semibold leading-tight">Asistente HubDigital</span>
-                            <span class="text-xs text-white/70">Coleccion, tramites y biodiversidad</span>
-                        </div>
+    <div class="pointer-events-auto flex w-full max-w-[25rem] flex-col items-end gap-2">
+        <section
+            id="chat-bot-panel"
+            x-cloak
+            x-show="abierto"
+            x-transition.opacity.duration.100ms
+            aria-label="Asistente HubDigital"
+            class="flex h-[min(34rem,calc(100dvh-2rem))] w-full flex-col overflow-hidden rounded-xl border border-blue-navy/15 bg-white shadow-2xl sm:h-[min(34rem,calc(100dvh-7rem))]"
+        >
+            <header class="flex min-h-14 items-center justify-between gap-2 bg-blue-navy px-4 py-2 text-white">
+                <div class="flex min-w-0 items-center gap-2.5">
+                    <span class="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/10" aria-hidden="true">
+                        <flux:icon name="chat-bubble-left-right" class="size-5" />
+                    </span>
+                    <div class="min-w-0">
+                        <p class="text-sm font-semibold leading-tight">Asistente HubDigital</p>
+                        <p class="text-xs text-white/75">Depósitos y catálogo público</p>
                     </div>
-                    <button
-                        type="button"
-                        wire:click="alternar"
-                        wire:loading.attr="disabled"
-                        wire:target="alternar"
-                        class="inline-flex size-11 shrink-0 items-center justify-center rounded-md text-white/80 transition-colors hover:bg-white/10 hover:text-white"
-                        aria-label="Cerrar chat"
-                    >
-                        <flux:icon name="x-mark" class="h-5 w-5" />
-                    </button>
-                </header>
+                </div>
+                <button type="button" wire:click="nuevaConversacion" class="ml-auto shrink-0 cursor-pointer rounded-lg px-2 py-1 text-xs font-semibold text-white/90 hover:bg-white/15" title="Borrar el contexto de este chat">Nueva conversación</button>
+                <button type="button" x-on:click="abierto = false; $nextTick(() => $refs.trigger.focus())"
+                    class="flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-lg text-white transition hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                    aria-label="Cerrar chat">
+                    <flux:icon name="x-mark" class="size-5" />
+                </button>
+            </header>
 
-                <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto bg-bg-main p-2 sm:p-4">
-                    @forelse($mensajes as $mensaje)
-                        @if($mensaje['rol'] === 'visitante')
-                            <div class="flex justify-end">
-                                <div class="max-w-[85%] rounded-lg bg-science-blue px-3 py-2 text-sm text-white shadow-sm">
-                                    {{ $mensaje['texto'] }}
-                                </div>
-                            </div>
-                        @else
-                            <div class="flex justify-start">
-                                <div class="max-w-[85%] rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-primary shadow-sm">
-                                    <p class="whitespace-pre-line">{{ $mensaje['texto'] }}</p>
-                                    @if(! empty($mensaje['opciones']))
-                                        <div class="mt-3 flex flex-wrap gap-2">
-                                            @foreach($mensaje['opciones'] as $opcion)
-                                                @if(isset($opcion['pregunta']))
-                                                    <button type="button" wire:click="sugerir(@js($opcion['pregunta']))" class="rounded-full border border-bio-green/30 px-2.5 py-1 text-xs font-medium text-bio-green hover:bg-bio-green/10">{{ $opcion['label'] }}</button>
-                                                @else
-                                                    <a href="{{ $opcion['url'] }}" class="rounded-full border border-bio-green/30 px-2.5 py-1 text-xs font-medium text-bio-green hover:bg-bio-green/10">{{ $opcion['label'] }}</a>
-                                                @endif
-                                            @endforeach
-                                        </div>
-                                    @endif
-                                    @if(! empty($mensaje['referencias']))
-                                        <p class="mt-1.5 text-xs text-text-secondary">
-                                            N.º de catálogo:
-                                            <span class="font-mono">{{ implode(', ', $mensaje['referencias']) }}</span>
-                                        </p>
-                                    @endif
-                                </div>
-                            </div>
-                        @endif
-                    @empty
-                        <div class="flex flex-1 flex-col items-start justify-center gap-3 text-sm text-text-secondary">
-                            <p>Pregunta por especimenes, invertebrados o como realizar un tramite.</p>
-                            <div class="flex flex-wrap gap-2">
-                                @foreach(['Como hago un deposito?', 'Que son los artrópodos?', 'Como solicito un prestamo?'] as $sugerencia)
-                                    <button type="button" wire:click="sugerir(@js($sugerencia))" class="rounded-full border border-border bg-surface px-3 py-2 text-left text-xs hover:border-bio-green hover:text-bio-green">{{ $sugerencia }}</button>
-                                @endforeach
+            <div x-ref="messages" class="min-h-0 flex-1 space-y-3 overflow-y-auto bg-[#F5F8FC] px-3 py-4" aria-live="polite" aria-relevant="additions text">
+                @forelse($mensajes as $indice => $mensaje)
+                    @if($mensaje['rol'] === 'visitante')
+                        <div class="flex justify-end" wire:key="chat-user-{{ $indice }}">
+                            <div class="max-w-[86%] whitespace-pre-wrap break-words rounded-2xl rounded-br-sm bg-blue-navy px-3.5 py-2.5 text-sm leading-5 text-white shadow-sm">
+                                {{ $mensaje['texto'] }}
                             </div>
                         </div>
-                    @endforelse
-
-                    @if($procesando)
-                        <div class="flex justify-start">
-                            <div class="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-secondary shadow-sm">
-                                Buscando en la colección…
+                    @else
+                        <div class="flex items-end gap-2" wire:key="chat-assistant-{{ $indice }}">
+                            <span class="mb-1 flex size-7 shrink-0 items-center justify-center rounded-full bg-science-blue/10 text-science-blue" aria-hidden="true">
+                                <flux:icon name="sparkles" class="size-4" />
+                            </span>
+                            <div class="max-w-[88%] min-w-0 rounded-2xl rounded-bl-sm border border-blue-navy/10 bg-white px-3.5 py-2.5 text-sm leading-5 text-blue-navy shadow-sm">
+                                <p class="whitespace-pre-wrap break-words">{{ $mensaje['texto'] }}</p>
+                                @if(! empty($mensaje['opciones']))
+                                    <div class="mt-2.5 flex flex-wrap gap-1.5">
+                                        @foreach($mensaje['opciones'] as $opcion)
+                                            @if(isset($opcion['pregunta']))
+                                                <button type="button" wire:click="sugerir(@js($opcion['pregunta']))"
+                                                    class="cursor-pointer rounded-full border border-science-blue/25 bg-[#F5F8FC] px-2.5 py-1.5 text-xs font-medium text-science-blue transition hover:border-science-blue hover:bg-science-blue/10">
+                                                    {{ $opcion['label'] }}
+                                                </button>
+                                            @else
+                                                <a href="{{ $opcion['url'] }}" class="rounded-full border border-science-blue/25 bg-[#F5F8FC] px-2.5 py-1.5 text-xs font-medium !text-science-blue transition hover:border-science-blue hover:bg-science-blue/10">
+                                                    {{ $opcion['label'] }}
+                                                </a>
+                                            @endif
+                                        @endforeach
+                                    </div>
+                                @endif
+                                @if(! empty($mensaje['node_id']))
+                                    <div class="mt-2 border-t border-blue-navy/10 pt-1.5 text-[11px] text-text-secondary">
+                                        @if(empty($mensaje['valorado']))
+                                            <span>¿Te sirvió?</span>
+                                            <button type="button" wire:click="valorar({{ $indice }}, true)" class="ml-2 cursor-pointer font-semibold text-science-blue hover:underline">Sí</button>
+                                            <button type="button" wire:click="valorar({{ $indice }}, false)" class="ml-2 cursor-pointer font-semibold text-science-blue hover:underline">No</button>
+                                        @else
+                                            Gracias por tu respuesta.
+                                        @endif
+                                    </div>
+                                @endif
                             </div>
                         </div>
                     @endif
-                </div>
+                @empty
+                    <div class="flex items-end gap-2">
+                        <span class="mb-1 flex size-7 shrink-0 items-center justify-center rounded-full bg-science-blue/10 text-science-blue" aria-hidden="true"><flux:icon name="sparkles" class="size-4" /></span>
+                        <div class="max-w-[88%] rounded-2xl rounded-bl-sm border border-blue-navy/10 bg-white px-3.5 py-2.5 text-sm leading-5 text-blue-navy shadow-sm">
+                            ¡Hola! Cuéntame qué necesitas sobre depósitos o el catálogo público.
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap gap-1.5 pl-9">
+                        @foreach(['¿Qué documentos necesito?', 'Quiero hacer un depósito', 'Buscar especímenes'] as $sugerencia)
+                            <button type="button" wire:click="sugerir(@js($sugerencia))"
+                                class="cursor-pointer rounded-full border border-science-blue/25 bg-white px-2.5 py-1.5 text-xs font-medium text-science-blue transition hover:border-science-blue hover:bg-science-blue/10">{{ $sugerencia }}</button>
+                        @endforeach
+                    </div>
+                @endforelse
+                <div wire:loading wire:target="enviar,sugerir" class="pl-9 text-xs text-text-secondary" role="status">Consultando…</div>
+            </div>
 
-                <form wire:submit="enviar" class="flex gap-2 border-t border-border bg-surface p-1 sm:p-3">
-                    <flux:input
-                        wire:model="pregunta"
-                        placeholder="Tu pregunta…"
-                        aria-label="Pregunta al bichochat"
-                        required
-                        wire:loading.attr="disabled"
-                        wire:target="enviar"
-                        size="sm"
-                        class="min-h-11 flex-1"
-                    />
-                    <flux:button
-                        type="submit"
-                        variant="primary"
-                        wire:loading.attr="disabled"
-                        wire:target="enviar"
-                        size="sm"
-                        class="min-h-11 min-w-11"
-                        aria-label="Enviar pregunta"
-                    >
-                        <span wire:loading.remove wire:target="enviar" class="inline-flex">
-                            <flux:icon name="paper-airplane" class="h-4 w-4" />
-                        </span>
-                        <span wire:loading wire:target="enviar" class="inline-flex">
-                            <flux:icon name="arrow-path" class="h-4 w-4 animate-spin" />
-                        </span>
-                    </flux:button>
-                </form>
-            </section>
-        @endif
+            <p wire:offline class="border-t border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900" role="status">Sin conexión. Cuando vuelva, puedes reenviar tu pregunta.</p>
 
-        <button
-            id="chat-bot-trigger"
-            type="button"
-            wire:click="alternar"
-            @class([
-                'h-14 w-14 items-center justify-center rounded-full shadow-lg transition-colors',
-                'flex' => ! $abierto,
-                'hidden sm:flex' => $abierto,
-                'bg-blue-navy text-white hover:bg-blue-navy/90' => ! $abierto,
-                'bg-error text-white hover:bg-error/90' => $abierto,
-            ])
-            wire:loading.attr="disabled"
-            wire:target="alternar"
-            aria-controls="chat-bot-panel"
-            aria-label="{{ $abierto ? 'Cerrar chat' : 'Abrir chat de consulta' }}"
-            aria-expanded="{{ $abierto ? 'true' : 'false' }}"
-        >
-            <flux:icon :name="$abierto ? 'x-mark' : 'chat-bubble-left-right'" class="h-6 w-6" />
+            <form wire:submit="enviar" class="flex items-end gap-2 border-t border-blue-navy/10 bg-white p-3">
+                <input x-ref="input" type="text" wire:model="pregunta" maxlength="500" required
+                    placeholder="Escribe tu pregunta…" aria-label="Escribe tu pregunta al asistente"
+                    class="min-h-11 min-w-0 flex-1 rounded-xl border border-blue-navy/20 bg-white px-3 text-sm text-blue-navy placeholder:text-text-secondary focus:border-science-blue focus:outline-none focus:ring-2 focus:ring-science-blue/20" />
+                <button type="submit" wire:loading.attr="disabled" wire:target="enviar,sugerir"
+                    class="flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-blue-navy text-white transition hover:bg-[#244872] disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-science-blue"
+                    aria-label="Enviar pregunta">
+                    <span wire:loading.remove wire:target="enviar,sugerir"><flux:icon name="paper-airplane" class="size-5" /></span>
+                    <span wire:loading wire:target="enviar,sugerir"><flux:icon name="arrow-path" class="size-5 animate-spin" /></span>
+                </button>
+            </form>
+        </section>
+
+        <button x-ref="trigger" id="chat-bot-trigger" type="button"
+            x-on:click="abierto = true; $nextTick(() => $refs.input.focus())"
+            x-show="!abierto"
+            class="flex size-14 cursor-pointer items-center justify-center rounded-full bg-blue-navy text-white shadow-lg transition hover:bg-[#244872] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-science-blue focus-visible:ring-offset-2"
+            aria-controls="chat-bot-panel" aria-label="Abrir asistente HubDigital" :aria-expanded="abierto.toString()">
+            <flux:icon name="chat-bubble-left-right" class="size-6" />
         </button>
     </div>
 </div>

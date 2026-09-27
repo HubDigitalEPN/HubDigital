@@ -62,63 +62,48 @@
         </section>
 
         <section id="catalogo" class="scroll-mt-28 bg-blue-navy text-white" aria-labelledby="titulo-catalogo">
-            <div class="portal-container mx-auto grid gap-12 py-16 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,.9fr)] lg:items-center lg:gap-20 lg:py-24">
-                <div>
-                    <h2 id="titulo-catalogo" class="font-display text-3xl font-bold tracking-[-0.02em] sm:text-4xl">Datos abiertos con contexto científico</h2>
-                    <p class="mt-5 max-w-2xl text-base leading-8 text-white/75">
-                        El catálogo reúne información taxonómica y geográfica preparada para consulta. Los registros se estructuran con términos Darwin Core y se contrastan con fuentes taxonómicas como GBIF para favorecer su calidad e interoperabilidad.
-                    </p>
-                    <a href="{{ route('portal.catalogo') }}" class="mt-8 inline-flex min-h-12 items-center justify-center gap-3 rounded-md bg-white px-5 py-3 text-sm font-semibold !text-blue-navy transition hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-blue-navy">
-                        Consultar el catálogo digital
-                        <svg viewBox="0 0 24 24" aria-hidden="true" class="size-4 fill-none stroke-current stroke-2"><path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round" /></svg>
-                    </a>
-                </div>
-
-                <dl class="border-y border-white/20">
-                    <div class="grid grid-cols-[8rem_1fr] gap-5 border-b border-white/20 py-5">
-                        <dt class="font-semibold text-[#9BD7A5]">Darwin Core</dt>
-                        <dd class="text-sm leading-6 text-white/70">Vocabulario común para describir y compartir datos de biodiversidad.</dd>
-                    </div>
-                    <div class="grid grid-cols-[8rem_1fr] gap-5 border-b border-white/20 py-5">
-                        <dt class="font-semibold text-[#9BD7A5]">GBIF</dt>
-                        <dd class="text-sm leading-6 text-white/70">Referencia taxonómica y marco para la publicación interoperable.</dd>
-                    </div>
-                    <div class="grid grid-cols-[8rem_1fr] gap-5 py-5">
-                        <dt class="font-semibold text-[#9BD7A5]">Trazabilidad</dt>
-                        <dd class="text-sm leading-6 text-white/70">Relación verificable entre ejemplar, evento de colecta y gestión curatorial.</dd>
-                    </div>
-                </dl>
-            </div>
-        </section>
-
-        <section id="investigacion" class="scroll-mt-28 bg-white" aria-labelledby="titulo-investigacion">
-            <div class="portal-container mx-auto py-16 lg:py-24">
-                <div class="grid gap-12 lg:grid-cols-[0.95fr_1.05fr] lg:gap-20">
+            <div class="portal-container mx-auto py-14 lg:py-20">
+                <div class="grid gap-10 lg:grid-cols-[minmax(0,.9fr)_minmax(0,1.1fr)] lg:gap-16">
                     <div>
-                        <h2 id="titulo-investigacion" class="font-display text-3xl font-bold tracking-[-0.02em] text-blue-navy sm:text-4xl">Investigación que parte de los ejemplares</h2>
-                        <p class="mt-5 max-w-xl leading-8 text-text-secondary">
-                            Una colección científica permite contrastar identificaciones, documentar distribuciones y producir evidencia reproducible sobre la diversidad biológica a lo largo del tiempo.
+                        <h2 id="titulo-catalogo" class="font-display text-3xl font-bold tracking-[-0.02em] sm:text-4xl">Catálogo e investigación de la biodiversidad</h2>
+                        <p class="mt-5 max-w-2xl text-base leading-8 text-white/75">
+                            El catálogo conecta ejemplares, identificaciones y localidades para consultar la diversidad de invertebrados y apoyar la investigación. Los registros publicados conservan su contexto científico y curatorial.
                         </p>
-                        <a href="{{ route('portal.catalogo') }}" class="mt-7 inline-flex min-h-11 items-center gap-2 text-sm font-semibold !text-science-blue hover:underline">
-                            Consultar datos disponibles
+                        <a href="{{ route('portal.catalogo') }}" class="mt-7 inline-flex min-h-12 items-center justify-center gap-3 rounded-md bg-white px-5 py-3 text-sm font-semibold !text-blue-navy transition hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-blue-navy">
+                            Consultar el catálogo digital
                             <svg viewBox="0 0 24 24" aria-hidden="true" class="size-4 fill-none stroke-current stroke-2"><path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round" /></svg>
                         </a>
                     </div>
 
-                    <div class="grid gap-x-10 gap-y-8 sm:grid-cols-2">
+                    <div class="grid gap-x-8 gap-y-6 sm:grid-cols-2">
                         @foreach([
-                            ['Taxonomía y sistemática', 'Identificación, comparación y documentación de la diversidad de invertebrados.'],
-                            ['Distribución y biogeografía', 'Registros de ocurrencia asociados a localidades y periodos de colecta.'],
-                            ['Conservación', 'Evidencia histórica para comprender cambios y apoyar decisiones informadas.'],
-                            ['Formación científica', 'Material de referencia para docencia, tesis y desarrollo de capacidades.'],
+                            ['Taxonomía y sistemática', 'Identificación y documentación de la diversidad de invertebrados.'],
+                            ['Distribución y biogeografía', 'Ocurrencias relacionadas con localidades y fechas de colecta.'],
+                            ['Conservación', 'Evidencia histórica para comprender cambios en la biodiversidad.'],
+                            ['Formación científica', 'Material de referencia para docencia y tesis.'],
                         ] as [$titulo, $descripcion])
-                            <article class="border-l-2 border-bio-green pl-5">
-                                <h3 class="font-display text-xl font-semibold text-blue-navy">{{ $titulo }}</h3>
-                                <p class="mt-2 text-sm leading-6 text-text-secondary">{{ $descripcion }}</p>
+                            <article class="border-l-2 border-[#9BD7A5] pl-4">
+                                <h3 class="font-display text-lg font-semibold text-white">{{ $titulo }}</h3>
+                                <p class="mt-2 text-sm leading-6 text-white/70">{{ $descripcion }}</p>
                             </article>
                         @endforeach
                     </div>
                 </div>
+
+                <dl class="mt-10 grid gap-6 border-t border-white/20 pt-7 md:grid-cols-3 md:gap-8">
+                    <div>
+                        <dt class="font-semibold text-[#9BD7A5]">Darwin Core</dt>
+                        <dd class="mt-1 text-sm leading-6 text-white/70">Términos comunes para describir datos de biodiversidad.</dd>
+                    </div>
+                    <div>
+                        <dt class="font-semibold text-[#9BD7A5]">GBIF</dt>
+                        <dd class="mt-1 text-sm leading-6 text-white/70">Referencia para contrastar nombres taxonómicos.</dd>
+                    </div>
+                    <div>
+                        <dt class="font-semibold text-[#9BD7A5]">Trazabilidad</dt>
+                        <dd class="mt-1 text-sm leading-6 text-white/70">Vínculo entre el ejemplar, su colecta y la gestión curatorial.</dd>
+                    </div>
+                </dl>
             </div>
         </section>
 

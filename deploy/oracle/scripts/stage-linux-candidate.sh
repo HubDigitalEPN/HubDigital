@@ -41,5 +41,22 @@ tar --extract --gzip --file="${archive}" --directory="${target_dir}" --no-same-o
 PHP_BIN=/usr/bin/php8.4 COMPOSER_BIN=/usr/bin/composer bash "${target_dir}/deploy/oracle/scripts/verify-platform.sh" "${target_dir}"
 /usr/bin/php8.4 -l "${target_dir}/config/deposit-storage.php" >/dev/null
 /usr/bin/php8.4 -l "${target_dir}/Modules/GestionPrestamosRecepciones/app/Infrastructure/Storage/AlmacenamientoDepositos.php" >/dev/null
+/usr/bin/php8.4 -l "${target_dir}/Modules/CatalogoPublico/app/Application/UseCases/ConsultarChatBot/ConocimientoPortal.php" >/dev/null
+/usr/bin/php8.4 -l "${target_dir}/Modules/CatalogoPublico/app/Application/UseCases/ConsultarChatBot/TextoChat.php" >/dev/null
+/usr/bin/php8.4 -l "${target_dir}/Modules/CatalogoPublico/app/Application/UseCases/ConsultarChatBot/ConversacionBasica.php" >/dev/null
+/usr/bin/php8.4 -l "${target_dir}/Modules/CatalogoPublico/app/Application/UseCases/ConsultarChatBot/ConsultaCatalogoPublico.php" >/dev/null
+/usr/bin/php8.4 -l "${target_dir}/Modules/CatalogoPublico/app/Application/UseCases/ConsultarChatBot/RankingIntencionesChat.php" >/dev/null
+/usr/bin/php8.4 -l "${target_dir}/Modules/CatalogoPublico/app/Application/UseCases/ConsultarChatBot/SenalesIntencionChat.php" >/dev/null
+/usr/bin/php8.4 -l "${target_dir}/Modules/CatalogoPublico/app/Application/UseCases/ConsultarChatBot/CorpusChat.php" >/dev/null
+/usr/bin/php8.4 -l "${target_dir}/Modules/CatalogoPublico/app/Application/UseCases/ConsultarChatBot/DetectorEntidadesChat.php" >/dev/null
+/usr/bin/php8.4 -l "${target_dir}/Modules/CatalogoPublico/app/Application/UseCases/ConsultarChatBot/AnaliticaChat.php" >/dev/null
+/usr/bin/php8.4 -l "${target_dir}/Modules/CatalogoPublico/app/Application/UseCases/ConsultarChatBot/EvaluadorCorpusChat.php" >/dev/null
+/usr/bin/php8.4 -l "${target_dir}/Modules/CatalogoPublico/app/Application/UseCases/ConsultarChatBot/TransferenciaConocimientoChat.php" >/dev/null
+/usr/bin/php8.4 -l "${target_dir}/Modules/CatalogoPublico/database/migrations/2026_09_26_000005_chat_confidence_observations.php" >/dev/null
+for migration in 000006_chat_quality_and_versions 000007_chat_node_drafts 000008_chat_train_vocabulary 000009_chat_trace; do
+    /usr/bin/php8.4 -l "${target_dir}/Modules/CatalogoPublico/database/migrations/2026_09_26_${migration}.php" >/dev/null
+done
+/usr/bin/php8.4 -l "${target_dir}/Modules/CatalogoPublico/app/Presentation/Http/Controllers/AdministrarAsistente.php" >/dev/null
+/usr/bin/php8.4 -l "${target_dir}/deploy/oracle/scripts/verify-portal-chat.php" >/dev/null
 
 printf 'candidate=%s\nchecksum=%s\nstaging=%s\nplatform=ok\n' "$(basename "${archive}")" "${sha_actual}" "${target_dir}"

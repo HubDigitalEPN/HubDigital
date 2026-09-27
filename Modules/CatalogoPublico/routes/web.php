@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Modules\CatalogoPublico\Presentation\Http\Controllers\AdministrarAsistente;
 use Modules\CatalogoPublico\Presentation\Http\Controllers\GestionImagenesTaxonomicas;
 use Modules\CatalogoPublico\Presentation\Http\Controllers\PortalCatalogo;
 use Modules\CatalogoPublico\Presentation\Http\Controllers\ServirImagenCatalogo;
@@ -14,6 +15,7 @@ Route::middleware(['auth', 'verified'])
         Route::get('/', TablaEspecimenesDivulgados::class)->name('index');
         Route::get('/sincronizar', SincronizarEspecimenes::class)->name('sincronizar');
         Route::get('/imagenes', GestionImagenesTaxonomicas::class)->name('imagenes');
+        Route::get('/asistente', AdministrarAsistente::class)->middleware('role:curador')->name('asistente');
     });
 
 Route::prefix('portal')

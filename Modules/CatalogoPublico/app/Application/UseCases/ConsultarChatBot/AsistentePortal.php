@@ -7,21 +7,38 @@ namespace Modules\CatalogoPublico\Application\UseCases\ConsultarChatBot;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
-use Modules\CatalogoPublico\Domain\Services\BuscadorTaxonesCercanos;
 use Modules\CatalogoPublico\Domain\ValueObjects\ChatBotMensajes;
 
 final class AsistentePortal
 {
     public function __construct(
         private readonly ModeloLocalPequeno $modeloLocal,
-        private readonly BuscadorTaxonesCercanos $buscadorTaxones,
+        private readonly ConocimientoPortal $conocimiento,
+        private readonly ConsultaCatalogoPublico $consultaCatalogo,
+        private readonly ConversacionBasica $conversacion,
     ) {}
 
-    /** @return array{texto:string, opciones:list<array{label:string,url:string}>} */
-    public function responder(string $pregunta, ConsultarChatBotHandler $catalogo): array
+    /** @return array{texto:string, opciones:array, node_id?:int, variant_id?:int|null} */
+    public function responder(string $pregunta, ConsultarChatBotHandler $catalogo, ?int $nodoAnterior = null, array $variantesRecientes = [], array $contextoCatalogo = []): array
     {
         $normal = preg_replace('/^[\s\x{00bf}?]+/u', '', Str::lower(Str::ascii(trim($pregunta)))) ?? '';
         $opciones = $this->opcionesBase();
+
+        if (($social = $this->conversacion->responder($pregunta)) !== null) {
+            return $social;
+        }
+        $consultaCientifica = (bool) preg_match('/\b(tienen|cuantos?|busca|buscar|existe|registros|especies|familias|generos|ejemplares|especimenes|catalogo)\b/', $normal)
+            || ($contextoCatalogo !== [] && (bool) preg_match('/^(?:y\s+de\s+|y\s+)?cuantos?|^y\s+de\s+|^(?:perdon|corrijo|quise decir|queria decir|no\s+)|^donde\s+los\s+encontraron/i', $normal));
+        if ($consultaCientifica && ($publica = $this->consultaCatalogo->responder($pregunta, $contextoCatalogo)) !== null) {
+            return $publica;
+        }
+        if (($compuesta = $this->conocimiento->responderCompuesta($pregunta)) !== null) {
+            return $compuesta;
+        }
+        $conocida = $this->conocimiento->responder($pregunta, $nodoAnterior, $variantesRecientes);
+        if ($conocida !== null) {
+            return $conocida;
+        }
 
         if (preg_match('/^(menu|ayuda|que puedo hacer|que necesitas)/', $normal)) {
             return $this->menuPrincipal();
@@ -64,32 +81,12 @@ final class AsistentePortal
             ]];
         }
 
-        if (preg_match('/deposit|donaci|entregar|custodia|solicitud de material/', $normal)) {
-            return [
-                'texto' => 'Para registrar material, entra al portal de depositos, inicia sesion como Depositante y crea una solicitud. El asistente te guiara por tramite, origen, documentos, datos MEPN, detalle biologico y firma. Una donacion transfiere el material a la coleccion; un deposito es temporal.',
-                'opciones' => [
-                    ['label' => 'Ir a depositos', 'url' => route('depositos.portal')],
-                    ['label' => 'Iniciar sesion', 'url' => route('login')],
-                ],
-            ];
-        }
-
         if (preg_match('/prestam|solicitante|pedir especimen/', $normal)) {
             return [
                 'texto' => 'Para solicitar especimenes en prestamo, entra con tu cuenta y activa el rol Solicitante desde Configuracion. Luego abre Mis solicitudes y registra el material que necesitas.',
                 'opciones' => [
                     ['label' => 'Iniciar sesion', 'url' => route('login')],
                     ['label' => 'Explorar catalogo', 'url' => route('portal.catalogo')],
-                ],
-            ];
-        }
-
-        if (preg_match('/\bcuenta\b|\bclave\b|\bcontrasena\b|\busuario\b|\bregistrarse\b|\bconfiguraci|\brol\b|\bingresar\b|\bacceso\b|\bcorreo\b/', $normal)) {
-            return [
-                'texto' => 'Puedes registrarte desde el acceso al sistema. Si un administrador creo tu cuenta, usa la clave inicial y cambiala cuando el sistema te lo pida. En Configuracion puedes activar o cambiar entre los roles de Depositante y Solicitante.',
-                'opciones' => [
-                    ['label' => 'Entrar al sistema', 'url' => route('login')],
-                    ['label' => 'Portal de depositos', 'url' => route('depositos.portal')],
                 ],
             ];
         }
@@ -111,18 +108,14 @@ final class AsistentePortal
             return $respuestaBiologica;
         }
 
-        if (! $preguntaBiologica && preg_match('/catalog|colecci|buscar|especimen|registro|taxon|familia|genero|especie|invertebr|distribuci|provincia|[A-Z]{2,8}-\d+/i', Str::ascii($pregunta))) {
+        if (! $preguntaBiologica && preg_match('/catalog|colecci|buscar|busca|tienen|cuant|existe|especimen|registro|taxon|familia|genero|especie|invertebr|distribuci|provincia|[A-Z]{2,8}-\d+/i', Str::ascii($pregunta))) {
             try {
                 $salida = $catalogo->handle(new ConsultarChatBotInput($pregunta));
                 if ($salida->dentroDeDominio) {
                     if ($salida->respuesta === ChatBotMensajes::SIN_RESULTADOS) {
-                        $sugeridos = $this->buscadorTaxones->sugerir($pregunta);
-                        if ($sugeridos !== []) {
-                            return [
-                                'texto' => 'No encontré registros publicados con ese nombre. ¿Quisiste decir '.implode(', ', $sugeridos).'? Confirma el nombre antes de buscar.',
-                                'opciones' => $opciones,
-                            ];
-                        }
+                        return ['texto' => 'No encontré registros públicos que coincidan con esa búsqueda. Esto no confirma la inexistencia del taxón ni de ejemplares no divulgados.',
+                            'opciones' => $opciones, 'fuente' => 'catalogo', 'intent' => 'catalogo.none',
+                            'confianza' => 'HIGH', 'confianza_valor' => 1.0];
                     }
                     return ['texto' => $salida->respuesta, 'opciones' => $opciones];
                 }
@@ -133,7 +126,7 @@ final class AsistentePortal
 
         if (! preg_match('/\b(artr[oó]pod|insect|invertebr|hormig|maripos|ara[nñ]|escarabaj|crust[aá]ce|molusc|biodivers|ecolog|taxonom|animal|especie|abej|avisp|cole[oó]pter|lepid[oó]pter)\w*/iu', $pregunta)
             && ! preg_match('/\b[A-Z][a-z]{2,}\s+[a-z]{3,}\b/u', $pregunta)) {
-            return $this->menuPrincipal();
+            return $this->menuPrincipal($pregunta);
         }
 
         $biologiaLocal = $this->biologiaLocal($normal);
@@ -156,14 +149,22 @@ final class AsistentePortal
             return ['texto' => $respuesta.' Fuente externa: '.$libre['url'], 'opciones' => $opciones];
         }
 
-        return $this->menuPrincipal();
+        return $this->menuPrincipal($pregunta);
     }
 
     /** @return array{texto:string,opciones:array} */
-    private function menuPrincipal(): array
+    private function menuPrincipal(?string $pregunta = null): array
     {
+        $inDomain = $pregunta !== null && (bool) preg_match(
+            '/depos|dona|document|papel|requis|entreg|solicitud|curadur|laboratorio|muestra|catalog|registro|cuenta|contact|especimen|animal|taxon/i',
+            Str::ascii($pregunta));
         return [
-            'texto' => '¿Qué necesitas hacer? Elige una tarea o escribe tu pregunta.',
+            'texto' => $pregunta !== null && ! $inDomain
+                ? 'Puedo ayudarte con el Laboratorio, los depósitos y el catálogo público. ¿Cuál de esos temas necesitas?'
+                : 'Puedo orientarte sobre depósitos, donaciones, requisitos, el estado de una solicitud o el catálogo público. ¿Sobre cuál necesitas información?',
+            'fuente' => 'unknown', 'intent' => $pregunta === null ? 'menu'
+                : ($inDomain ? 'UNKNOWN_IN_DOMAIN' : 'UNKNOWN_OUT_OF_DOMAIN'),
+            'confianza' => 'UNKNOWN', 'confianza_valor' => 0.0,
             'opciones' => [
                 ['label' => 'Buscar espécimen', 'pregunta' => 'Buscar un espécimen'],
                 ['label' => 'Consultar colección', 'pregunta' => 'Consultar la colección'],

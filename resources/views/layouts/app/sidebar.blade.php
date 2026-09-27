@@ -407,6 +407,14 @@
                             >
                                 Imágenes
                             </flux:sidebar.item>
+                            <flux:sidebar.item
+                                icon="chat-bubble-left-right"
+                                :href="route('divulgacion.asistente')"
+                                :current="request()->routeIs('divulgacion.asistente')"
+                                wire:navigate
+                            >
+                                Asistente del portal
+                            </flux:sidebar.item>
                         </flux:sidebar.group>
                         @if($rolActivo === RolUsuario::ADMIN)
                             <flux:sidebar.group heading="Administración" icon="cog-6-tooth" expandable :expanded="request()->routeIs('admin.*')" class="grid">

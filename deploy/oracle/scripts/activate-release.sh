@@ -176,6 +176,16 @@ else
     echo "${pdf_result}"
 fi
 
+if ! chat_result="$(systemd-run --quiet --wait --collect --pipe \
+    --property=User=www-data --property=Group=www-data \
+    --property=EnvironmentFile="${env_file}" --working-directory="${release_dir}" \
+    /usr/bin/php8.4 "${release_dir}/deploy/oracle/scripts/verify-portal-chat.php" 2>&1)"; then
+    echo "NO OK asistente del portal: ${chat_result}" >&2
+    verification_failed=1
+else
+    echo "${chat_result}"
+fi
+
 for unit in hubdigital-worker.service php8.4-fpm.service nginx.service; do
     if systemctl is-active --quiet "${unit}"; then
         echo "OK ${unit}: active"
@@ -205,7 +215,7 @@ jq --arg activated_at "$(date --utc +%FT%TZ)" --arg worker_queue "${validation_q
     '. + {activado_local_en:$activated_at, worker_queue:$worker_queue, estado:"activo_local_validacion"}' "${state_file}" > "${state_file}.tmp"
 chmod 0600 "${state_file}.tmp"
 mv "${state_file}.tmp" "${state_file}"
-echo 'Verificacion final OK: release, URLs publicas, servicios, Java y admision PDF de depositos en el estado esperado.'
+echo 'Verificacion final OK: release, URLs publicas, servicios, Java, admision PDF y asistente del portal en el estado esperado.'
 echo "Release activa en el origen directo: ${release_id}. Worker limitado a ${validation_queue}; scheduler detenido."
 
 echo

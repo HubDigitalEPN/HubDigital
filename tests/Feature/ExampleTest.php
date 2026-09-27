@@ -14,5 +14,6 @@ test('la raiz muestra el portal publico del laboratorio', function (): void {
         ->assertDontSee('Conservación y documentación de ejemplares de la colección científica.')
         ->assertDontSee('>Colecciones</a>', false);
 
-    expect(substr_count($response->getContent(), '>Servicios</a>'))->toBe(1);
+    // El enlace aparece en las navegaciones de escritorio y móvil y en el pie.
+    expect(substr_count($response->getContent(), '>Servicios</a>'))->toBe(3);
 });

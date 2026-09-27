@@ -32,6 +32,10 @@ pest()->extend(DatabaseFeatureTestCase::class)
         'Feature/FlujoDepositoPersistenciaE2ETest.php',
         'Feature/OperacionesDocumentalesDepositosTest.php',
         'Feature/PwaPushSubscriptionTest.php',
+        'Feature/PortalChatConocimientoTest.php',
+        'Feature/PortalChatSegundaIteracionTest.php',
+        'Feature/PortalChatTerceraIteracionTest.php',
+        'Feature/PortalChatCuartaIteracionTest.php',
         'Feature/SolicitudFirmadaIntegridadTest.php',
     );
 

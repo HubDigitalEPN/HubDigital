@@ -1,0 +1,3129 @@
+{
+    "test_final": {
+        "total": 68,
+        "correct": 36,
+        "top_two": 42,
+        "top1": 0.5294,
+        "top2": 0.6176,
+        "top3": 0.75,
+        "top5": 0.7941,
+        "coverage": 0.5147,
+        "automatic_precision": 0.7714,
+        "automatic_cases": 35,
+        "unknown_incorrect": 22,
+        "clarification_correct": 2,
+        "clarification_unnecessary": 2,
+        "high_incorrect": 2,
+        "error_categories": {
+            "UNKNOWN_THRESHOLD": 11,
+            "CANDIDATE_GENERATION": 11,
+            "NEGATION": 4,
+            "RERANKING": 3,
+            "AMBIGUITY": 2,
+            "CONTEXT": 1
+        },
+        "macro_precision": 0.6201,
+        "macro_recall": 0.5127,
+        "macro_f1": 0.5215,
+        "weighted_f1": 0.5114,
+        "per_class": {
+            "saludo": {
+                "support": 3,
+                "precision": 0,
+                "recall": 0,
+                "f1": 0
+            },
+            "conversacion": {
+                "support": 3,
+                "precision": 0,
+                "recall": 0,
+                "f1": 0
+            },
+            "deposito": {
+                "support": 5,
+                "precision": 0.3333,
+                "recall": 0.2,
+                "f1": 0.25
+            },
+            "donacion": {
+                "support": 5,
+                "precision": 0.3333,
+                "recall": 0.2,
+                "f1": 0.25
+            },
+            "documentos": {
+                "support": 5,
+                "precision": 1,
+                "recall": 0.8,
+                "f1": 0.8889
+            },
+            "documentos_permisos": {
+                "support": 2,
+                "precision": 1,
+                "recall": 1,
+                "f1": 1
+            },
+            "documentos_firma": {
+                "support": 2,
+                "precision": 1,
+                "recall": 1,
+                "f1": 1
+            },
+            "deposito_requisitos": {
+                "support": 3,
+                "precision": 0,
+                "recall": 0,
+                "f1": 0
+            },
+            "donacion_requisitos": {
+                "support": 3,
+                "precision": 1,
+                "recall": 0.6667,
+                "f1": 0.8
+            },
+            "revision": {
+                "support": 5,
+                "precision": 0.8,
+                "recall": 0.8,
+                "f1": 0.8
+            },
+            "entrega": {
+                "support": 5,
+                "precision": 0.6667,
+                "recall": 0.8,
+                "f1": 0.7273
+            },
+            "acceso": {
+                "support": 3,
+                "precision": 0.6667,
+                "recall": 0.6667,
+                "f1": 0.6667
+            },
+            "acceso_registro": {
+                "support": 3,
+                "precision": 1,
+                "recall": 0.3333,
+                "f1": 0.5
+            },
+            "contacto": {
+                "support": 4,
+                "precision": 1,
+                "recall": 0.25,
+                "f1": 0.4
+            },
+            "catalogo": {
+                "support": 5,
+                "precision": 1,
+                "recall": 0.6,
+                "f1": 0.75
+            },
+            "UNKNOWN": {
+                "support": 7,
+                "precision": 0.2414,
+                "recall": 1,
+                "f1": 0.3889
+            },
+            "ambiguous": {
+                "support": 5,
+                "precision": 0.5,
+                "recall": 0.4,
+                "f1": 0.4444
+            }
+        },
+        "matrix": {
+            "saludo": {
+                "UNKNOWN": 3
+            },
+            "conversacion": {
+                "UNKNOWN": 3
+            },
+            "deposito": {
+                "deposito": 1,
+                "UNKNOWN": 2,
+                "acceso": 1,
+                "revision": 1
+            },
+            "donacion": {
+                "UNKNOWN": 3,
+                "entrega": 1,
+                "donacion": 1
+            },
+            "documentos": {
+                "UNKNOWN": 1,
+                "documentos": 4
+            },
+            "documentos_permisos": {
+                "documentos_permisos": 2
+            },
+            "documentos_firma": {
+                "documentos_firma": 2
+            },
+            "deposito_requisitos": {
+                "ambiguous": 1,
+                "UNKNOWN": 2
+            },
+            "donacion_requisitos": {
+                "donacion": 1,
+                "donacion_requisitos": 2
+            },
+            "revision": {
+                "UNKNOWN": 1,
+                "revision": 4
+            },
+            "entrega": {
+                "entrega": 4,
+                "UNKNOWN": 1
+            },
+            "acceso": {
+                "acceso": 2,
+                "UNKNOWN": 1
+            },
+            "acceso_registro": {
+                "UNKNOWN": 1,
+                "deposito": 1,
+                "acceso_registro": 1
+            },
+            "contacto": {
+                "contacto": 1,
+                "UNKNOWN": 2,
+                "deposito": 1
+            },
+            "catalogo": {
+                "UNKNOWN": 1,
+                "catalogo": 3,
+                "ambiguous": 1
+            },
+            "UNKNOWN": {
+                "UNKNOWN": 7
+            },
+            "ambiguous": {
+                "ambiguous": 2,
+                "donacion": 1,
+                "entrega": 1,
+                "UNKNOWN": 1
+            }
+        },
+        "rows": [
+            {
+                "question": "buen día equipo del museo",
+                "expected": "saludo",
+                "actual": "UNKNOWN",
+                "score": 0.2814,
+                "second": "contacto",
+                "second_score": 0.1215,
+                "confidence": 0.4191,
+                "level": "LOW",
+                "margin": 0.1599,
+                "tag": null,
+                "reason": "alias",
+                "correct": false,
+                "candidate_slugs": [
+                    "saludo",
+                    "contacto",
+                    "catalogo",
+                    "catalogo",
+                    "deposito"
+                ],
+                "category": "UNKNOWN_THRESHOLD"
+            },
+            {
+                "question": "hola, hay alguien que me oriente",
+                "expected": "saludo",
+                "actual": "UNKNOWN",
+                "score": 0.146,
+                "second": "saludo",
+                "second_score": 0.1368,
+                "confidence": 0.1453,
+                "level": "UNKNOWN",
+                "margin": 0.0092,
+                "tag": null,
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "contacto",
+                    "saludo",
+                    "deposito",
+                    "acceso",
+                    "donacion"
+                ],
+                "category": "UNKNOWN_THRESHOLD"
+            },
+            {
+                "question": "muy buenas, recién entro al portal",
+                "expected": "saludo",
+                "actual": "UNKNOWN",
+                "score": 0.1186,
+                "second": "catalogo",
+                "second_score": 0.0844,
+                "confidence": 0.136,
+                "level": "UNKNOWN",
+                "margin": 0.0342,
+                "tag": null,
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "saludo",
+                    "catalogo",
+                    "deposito",
+                    "catalogo",
+                    "acceso"
+                ],
+                "category": "UNKNOWN_THRESHOLD"
+            },
+            {
+                "question": "te agradezco la explicación",
+                "expected": "conversacion",
+                "actual": "UNKNOWN",
+                "score": 0.0823,
+                "second": "catalogo",
+                "second_score": 0.0735,
+                "confidence": 0.1012,
+                "level": "UNKNOWN",
+                "margin": 0.0088,
+                "tag": null,
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "donacion",
+                    "catalogo",
+                    "deposito",
+                    "contacto",
+                    "saludo"
+                ],
+                "category": "CANDIDATE_GENERATION"
+            },
+            {
+                "question": "vale, quedó claro",
+                "expected": "conversacion",
+                "actual": "UNKNOWN",
+                "score": 0.0803,
+                "second": "deposito",
+                "second_score": 0.0712,
+                "confidence": 0.0933,
+                "level": "UNKNOWN",
+                "margin": 0.0091,
+                "tag": null,
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "saludo",
+                    "deposito",
+                    "donacion",
+                    "acceso",
+                    "catalogo"
+                ],
+                "category": "CANDIDATE_GENERATION"
+            },
+            {
+                "question": "hasta la próxima consulta",
+                "expected": "conversacion",
+                "actual": "UNKNOWN",
+                "score": 0.1449,
+                "second": "contacto",
+                "second_score": 0.082,
+                "confidence": 0.1894,
+                "level": "UNKNOWN",
+                "margin": 0.0629,
+                "tag": null,
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "catalogo",
+                    "contacto",
+                    "catalogo",
+                    "deposito",
+                    "donacion"
+                ],
+                "category": "CANDIDATE_GENERATION"
+            },
+            {
+                "question": "poseo frascos que deseo poner bajo custodia por unos meses",
+                "expected": "deposito",
+                "actual": "deposito",
+                "score": 0.4171,
+                "second": "documentos",
+                "second_score": 0.2792,
+                "confidence": 0.5047,
+                "level": "MEDIUM",
+                "margin": 0.1379,
+                "tag": null,
+                "reason": "quality",
+                "correct": true,
+                "candidate_slugs": [
+                    "deposito",
+                    "documentos",
+                    "deposito_requisitos",
+                    "entrega",
+                    "procedencia"
+                ],
+                "category": null
+            },
+            {
+                "question": "cómo registro especímenes sin cederlos a la institución",
+                "expected": "deposito",
+                "actual": "UNKNOWN",
+                "score": 0.2514,
+                "second": "donacion",
+                "second_score": 0.2168,
+                "confidence": 0.2757,
+                "level": "LOW",
+                "margin": 0.0346,
+                "tag": null,
+                "reason": "alias",
+                "correct": false,
+                "candidate_slugs": [
+                    "deposito",
+                    "donacion",
+                    "catalogo",
+                    "entrega",
+                    "acceso_registro"
+                ],
+                "category": "NEGATION"
+            },
+            {
+                "question": "el material seguirá siendo mío, pero quisiera resguardarlo allí",
+                "expected": "deposito",
+                "actual": "UNKNOWN",
+                "score": 0.1123,
+                "second": "donacion",
+                "second_score": 0.0957,
+                "confidence": 0.1212,
+                "level": "UNKNOWN",
+                "margin": 0.0166,
+                "tag": null,
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "deposito",
+                    "donacion",
+                    "acceso",
+                    "catalogo",
+                    "catalogo"
+                ],
+                "category": "UNKNOWN_THRESHOLD"
+            },
+            {
+                "question": "me interesa iniciar el ingreso de un lote temporal",
+                "expected": "deposito",
+                "actual": "acceso",
+                "score": 0.4215,
+                "second": "acceso_registro",
+                "second_score": 0.223,
+                "confidence": 0.5578,
+                "level": "MEDIUM",
+                "margin": 0.1985,
+                "tag": null,
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "acceso",
+                    "acceso_registro",
+                    "saludo",
+                    "deposito",
+                    "donacion"
+                ],
+                "category": "RERANKING"
+            },
+            {
+                "question": "necesito dejar una caja en el museo y retirarla después",
+                "expected": "deposito",
+                "actual": "revision",
+                "score": 0.6953,
+                "second": "deposito_requisitos",
+                "second_score": 0.3192,
+                "confidence": 0.9282,
+                "level": "HIGH",
+                "margin": 0.3761,
+                "tag": null,
+                "reason": "structural",
+                "correct": false,
+                "candidate_slugs": [
+                    "revision",
+                    "deposito_requisitos",
+                    "entrega",
+                    "deposito",
+                    "procedencia"
+                ],
+                "category": "RERANKING"
+            },
+            {
+                "question": "quiero que la universidad se quede con esta colección",
+                "expected": "donacion",
+                "actual": "UNKNOWN",
+                "score": 0.143,
+                "second": "catalogo",
+                "second_score": 0.1365,
+                "confidence": 0.1412,
+                "level": "UNKNOWN",
+                "margin": 0.0065,
+                "tag": null,
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "donacion",
+                    "catalogo",
+                    "deposito",
+                    "saludo",
+                    "contacto"
+                ],
+                "category": "UNKNOWN_THRESHOLD"
+            },
+            {
+                "question": "puedo obsequiar mis ejemplares al laboratorio",
+                "expected": "donacion",
+                "actual": "UNKNOWN",
+                "score": 0.1603,
+                "second": "deposito",
+                "second_score": 0.1525,
+                "confidence": 0.1533,
+                "level": "UNKNOWN",
+                "margin": 0.0078,
+                "tag": null,
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "contacto",
+                    "deposito",
+                    "donacion",
+                    "catalogo",
+                    "catalogo"
+                ],
+                "category": "UNKNOWN_THRESHOLD"
+            },
+            {
+                "question": "la propiedad del material pasaría definitivamente a la EPN",
+                "expected": "donacion",
+                "actual": "UNKNOWN",
+                "score": 0.1144,
+                "second": "donacion",
+                "second_score": 0.1066,
+                "confidence": 0.1082,
+                "level": "UNKNOWN",
+                "margin": 0.0078,
+                "tag": null,
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "deposito",
+                    "donacion",
+                    "acceso",
+                    "catalogo",
+                    "catalogo"
+                ],
+                "category": "UNKNOWN_THRESHOLD"
+            },
+            {
+                "question": "tengo invertebrados para entregar como aporte permanente",
+                "expected": "donacion",
+                "actual": "entrega",
+                "score": 0.4564,
+                "second": "documentos",
+                "second_score": 0.0725,
+                "confidence": 0.6678,
+                "level": "MEDIUM",
+                "margin": 0.3839,
+                "tag": null,
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "entrega",
+                    "documentos",
+                    "deposito_requisitos",
+                    "deposito",
+                    "catalogo"
+                ],
+                "category": "CANDIDATE_GENERATION"
+            },
+            {
+                "question": "no es un préstamo ni custodia, deseo ceder el lote",
+                "expected": "donacion",
+                "actual": "donacion",
+                "score": 0.5028,
+                "second": "donacion_requisitos",
+                "second_score": 0.3379,
+                "confidence": 0.5786,
+                "level": "MEDIUM",
+                "margin": 0.1649,
+                "tag": null,
+                "reason": "keyword",
+                "correct": true,
+                "candidate_slugs": [
+                    "donacion",
+                    "donacion_requisitos",
+                    "saludo",
+                    "deposito",
+                    "documentos"
+                ],
+                "category": null
+            },
+            {
+                "question": "qué evidencias debo anexar a la solicitud electrónica",
+                "expected": "documentos",
+                "actual": "UNKNOWN",
+                "score": 0.0726,
+                "second": "donacion",
+                "second_score": 0.0713,
+                "confidence": 0.0809,
+                "level": "UNKNOWN",
+                "margin": 0.0013,
+                "tag": null,
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "deposito",
+                    "donacion",
+                    "catalogo",
+                    "saludo",
+                    "catalogo"
+                ],
+                "category": "CANDIDATE_GENERATION"
+            },
+            {
+                "question": "necesito la lista de respaldos para completar el expediente",
+                "expected": "documentos",
+                "actual": "documentos",
+                "score": 0.4086,
+                "second": "donacion_requisitos",
+                "second_score": 0.2605,
+                "confidence": 0.5126,
+                "level": "MEDIUM",
+                "margin": 0.1481,
+                "tag": null,
+                "reason": "quality",
+                "correct": true,
+                "candidate_slugs": [
+                    "documentos",
+                    "donacion_requisitos",
+                    "revision",
+                    "documentos_firma",
+                    "revision"
+                ],
+                "category": null
+            },
+            {
+                "question": "en la plataforma, qué archivos me pedirán cargar",
+                "expected": "documentos",
+                "actual": "documentos",
+                "score": 0.4473,
+                "second": "donacion_requisitos",
+                "second_score": 0.2519,
+                "confidence": 0.5752,
+                "level": "MEDIUM",
+                "margin": 0.1954,
+                "tag": null,
+                "reason": "quality",
+                "correct": true,
+                "candidate_slugs": [
+                    "documentos",
+                    "donacion_requisitos",
+                    "revision",
+                    "documentos_firma",
+                    "documentos_permisos"
+                ],
+                "category": null
+            },
+            {
+                "question": "cuáles documentos van junto al formulario",
+                "expected": "documentos",
+                "actual": "documentos",
+                "score": 0.4787,
+                "second": "donacion_requisitos",
+                "second_score": 0.2583,
+                "confidence": 0.6149,
+                "level": "MEDIUM",
+                "margin": 0.2204,
+                "tag": null,
+                "reason": "quality",
+                "correct": true,
+                "candidate_slugs": [
+                    "documentos",
+                    "donacion_requisitos",
+                    "documentos_firma",
+                    "revision",
+                    "documentos_permisos"
+                ],
+                "category": null
+            },
+            {
+                "question": "tengo los papeles pero no sé cuáles adjuntar",
+                "expected": "documentos",
+                "actual": "documentos",
+                "score": 0.5218,
+                "second": "donacion_requisitos",
+                "second_score": 0.2538,
+                "confidence": 0.6804,
+                "level": "MEDIUM",
+                "margin": 0.268,
+                "tag": null,
+                "reason": "keyword",
+                "correct": true,
+                "candidate_slugs": [
+                    "documentos",
+                    "donacion_requisitos",
+                    "documentos_permisos",
+                    "revision",
+                    "documentos_firma"
+                ],
+                "category": null
+            },
+            {
+                "question": "es obligatoria la autorización de colecta para mi caso",
+                "expected": "documentos_permisos",
+                "actual": "documentos_permisos",
+                "score": 0.3941,
+                "second": "donacion_requisitos",
+                "second_score": 0.0109,
+                "confidence": 0.6305,
+                "level": "MEDIUM",
+                "margin": 0.3832,
+                "tag": null,
+                "reason": "quality",
+                "correct": true,
+                "candidate_slugs": [
+                    "documentos_permisos",
+                    "donacion_requisitos",
+                    "documentos_firma",
+                    "revision",
+                    "procedencia"
+                ],
+                "category": null
+            },
+            {
+                "question": "qué hago con la guía que autoriza mover el lote",
+                "expected": "documentos_permisos",
+                "actual": "documentos_permisos",
+                "score": 0.4449,
+                "second": "procedencia",
+                "second_score": 0.0485,
+                "confidence": 0.6609,
+                "level": "MEDIUM",
+                "margin": 0.3964,
+                "tag": null,
+                "reason": "quality",
+                "correct": true,
+                "candidate_slugs": [
+                    "documentos_permisos",
+                    "procedencia",
+                    "revision",
+                    "deposito_requisitos",
+                    "donacion_requisitos"
+                ],
+                "category": null
+            },
+            {
+                "question": "se comprueba la firma electrónica del archivo adjunto",
+                "expected": "documentos_firma",
+                "actual": "documentos_firma",
+                "score": 0.5889,
+                "second": "documentos",
+                "second_score": 0.3246,
+                "confidence": 0.7176,
+                "level": "HIGH",
+                "margin": 0.2643,
+                "tag": null,
+                "reason": "alias",
+                "correct": true,
+                "candidate_slugs": [
+                    "documentos_firma",
+                    "documentos",
+                    "donacion_requisitos",
+                    "documentos_permisos",
+                    "revision"
+                ],
+                "category": null
+            },
+            {
+                "question": "debo cargar un pdf ya firmado digitalmente",
+                "expected": "documentos_firma",
+                "actual": "documentos_firma",
+                "score": 0.6121,
+                "second": "documentos",
+                "second_score": 0.3305,
+                "confidence": 0.7459,
+                "level": "HIGH",
+                "margin": 0.2816,
+                "tag": null,
+                "reason": "alias",
+                "correct": true,
+                "candidate_slugs": [
+                    "documentos_firma",
+                    "documentos",
+                    "donacion_requisitos",
+                    "revision",
+                    "documentos_permisos"
+                ],
+                "category": null
+            },
+            {
+                "question": "qué condiciones evalúan al aceptar custodia temporal",
+                "expected": "deposito_requisitos",
+                "actual": "ambiguous",
+                "score": 0.6973,
+                "second": "revision",
+                "second_score": 0.6463,
+                "confidence": 0.7219,
+                "level": "MEDIUM",
+                "margin": 0.051,
+                "tag": null,
+                "reason": "structural",
+                "correct": false,
+                "candidate_slugs": [
+                    "deposito_requisitos",
+                    "revision",
+                    "deposito",
+                    "entrega",
+                    "revision"
+                ],
+                "category": "AMBIGUITY"
+            },
+            {
+                "question": "criterios de admisión si el lote no cambia de dueño",
+                "expected": "deposito_requisitos",
+                "actual": "UNKNOWN",
+                "score": 0.0753,
+                "second": "donacion",
+                "second_score": 0.0736,
+                "confidence": 0.0841,
+                "level": "UNKNOWN",
+                "margin": 0.0017,
+                "tag": null,
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "deposito",
+                    "donacion",
+                    "catalogo",
+                    "acceso",
+                    "contacto"
+                ],
+                "category": "NEGATION"
+            },
+            {
+                "question": "qué exigen para recibir una cesión permanente",
+                "expected": "donacion_requisitos",
+                "actual": "donacion",
+                "score": 0.381,
+                "second": "donacion_requisitos",
+                "second_score": 0.2339,
+                "confidence": 0.4907,
+                "level": "MEDIUM",
+                "margin": 0.1471,
+                "tag": null,
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "donacion",
+                    "donacion_requisitos",
+                    "saludo",
+                    "deposito",
+                    "documentos"
+                ],
+                "category": "RERANKING"
+            },
+            {
+                "question": "cuáles son las condiciones para regalar la colección",
+                "expected": "donacion_requisitos",
+                "actual": "donacion_requisitos",
+                "score": 0.7133,
+                "second": "donacion",
+                "second_score": 0.4566,
+                "confidence": 0.9029,
+                "level": "HIGH",
+                "margin": 0.2567,
+                "tag": null,
+                "reason": "structural",
+                "correct": true,
+                "candidate_slugs": [
+                    "donacion_requisitos",
+                    "donacion",
+                    "deposito_requisitos",
+                    "saludo",
+                    "deposito"
+                ],
+                "category": null
+            },
+            {
+                "question": "el equipo curatorial ya recibió mi expediente, qué ocurre",
+                "expected": "revision",
+                "actual": "UNKNOWN",
+                "score": 0.1052,
+                "second": "revision",
+                "second_score": 0.0849,
+                "confidence": 0.11,
+                "level": "UNKNOWN",
+                "margin": 0.0203,
+                "tag": null,
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "contacto",
+                    "revision",
+                    "deposito",
+                    "donacion",
+                    "catalogo"
+                ],
+                "category": "UNKNOWN_THRESHOLD"
+            },
+            {
+                "question": "cómo puedo saber si me pidieron correcciones",
+                "expected": "revision",
+                "actual": "revision",
+                "score": 0.3969,
+                "second": "procedencia",
+                "second_score": 0.0184,
+                "confidence": 0.6321,
+                "level": "MEDIUM",
+                "margin": 0.3785,
+                "tag": null,
+                "reason": "quality",
+                "correct": true,
+                "candidate_slugs": [
+                    "revision",
+                    "procedencia",
+                    "documentos_permisos",
+                    "entrega",
+                    "documentos_firma"
+                ],
+                "category": null
+            },
+            {
+                "question": "quién analiza los datos después de enviar el formulario",
+                "expected": "revision",
+                "actual": "revision",
+                "score": 0.4764,
+                "second": "donacion_requisitos",
+                "second_score": 0.0182,
+                "confidence": 0.6798,
+                "level": "MEDIUM",
+                "margin": 0.4582,
+                "tag": null,
+                "reason": "quality",
+                "correct": true,
+                "candidate_slugs": [
+                    "revision",
+                    "donacion_requisitos",
+                    "deposito_requisitos",
+                    "documentos_permisos",
+                    "procedencia"
+                ],
+                "category": null
+            },
+            {
+                "question": "dónde consulto el seguimiento de mi solicitud",
+                "expected": "revision",
+                "actual": "revision",
+                "score": 0.6123,
+                "second": "revision",
+                "second_score": 0.3266,
+                "confidence": 0.7495,
+                "level": "HIGH",
+                "margin": 0.2857,
+                "tag": null,
+                "reason": "alias",
+                "correct": true,
+                "candidate_slugs": [
+                    "revision",
+                    "revision",
+                    "documentos_firma",
+                    "entrega",
+                    "procedencia"
+                ],
+                "category": null
+            },
+            {
+                "question": "mi expediente está en evaluación, cómo lo reviso",
+                "expected": "revision",
+                "actual": "revision",
+                "score": 0.6671,
+                "second": "revision",
+                "second_score": 0.0839,
+                "confidence": 0.7943,
+                "level": "HIGH",
+                "margin": 0.5832,
+                "tag": null,
+                "reason": "alias",
+                "correct": true,
+                "candidate_slugs": [
+                    "revision",
+                    "revision",
+                    "documentos_firma",
+                    "catalogo",
+                    "entrega"
+                ],
+                "category": null
+            },
+            {
+                "question": "en qué fase puedo llevar físicamente los frascos",
+                "expected": "entrega",
+                "actual": "entrega",
+                "score": 0.4633,
+                "second": "documentos",
+                "second_score": 0.0208,
+                "confidence": 0.672,
+                "level": "MEDIUM",
+                "margin": 0.4425,
+                "tag": null,
+                "reason": "quality",
+                "correct": true,
+                "candidate_slugs": [
+                    "entrega",
+                    "documentos",
+                    "documentos_firma",
+                    "donacion_requisitos",
+                    "deposito_requisitos"
+                ],
+                "category": null
+            },
+            {
+                "question": "necesito coordinar el traslado al laboratorio",
+                "expected": "entrega",
+                "actual": "entrega",
+                "score": 0.4596,
+                "second": "contacto",
+                "second_score": 0.1021,
+                "confidence": 0.6698,
+                "level": "MEDIUM",
+                "margin": 0.3575,
+                "tag": null,
+                "reason": "quality",
+                "correct": true,
+                "candidate_slugs": [
+                    "entrega",
+                    "contacto",
+                    "donacion_requisitos",
+                    "documentos",
+                    "deposito_requisitos"
+                ],
+                "category": null
+            },
+            {
+                "question": "se fija una cita para recibir los ejemplares",
+                "expected": "entrega",
+                "actual": "UNKNOWN",
+                "score": 0.1319,
+                "second": "catalogo",
+                "second_score": 0.1304,
+                "confidence": 0.1213,
+                "level": "UNKNOWN",
+                "margin": 0.0015,
+                "tag": null,
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "deposito",
+                    "catalogo",
+                    "donacion",
+                    "acceso",
+                    "contacto"
+                ],
+                "category": "CANDIDATE_GENERATION"
+            },
+            {
+                "question": "puedo acercarme con el lote sin esperar instrucciones",
+                "expected": "entrega",
+                "actual": "entrega",
+                "score": 0.5172,
+                "second": "documentos",
+                "second_score": 0.0248,
+                "confidence": 0.7043,
+                "level": "HIGH",
+                "margin": 0.4924,
+                "tag": null,
+                "reason": "keyword",
+                "correct": true,
+                "candidate_slugs": [
+                    "entrega",
+                    "documentos",
+                    "revision",
+                    "revision",
+                    "procedencia"
+                ],
+                "category": null
+            },
+            {
+                "question": "dónde se hace la recepción material",
+                "expected": "entrega",
+                "actual": "entrega",
+                "score": 0.4588,
+                "second": "procedencia",
+                "second_score": 0.1025,
+                "confidence": 0.6693,
+                "level": "MEDIUM",
+                "margin": 0.3563,
+                "tag": null,
+                "reason": "quality",
+                "correct": true,
+                "candidate_slugs": [
+                    "entrega",
+                    "procedencia",
+                    "revision",
+                    "revision",
+                    "donacion"
+                ],
+                "category": null
+            },
+            {
+                "question": "olvidé los datos para autenticarme",
+                "expected": "acceso",
+                "actual": "acceso",
+                "score": 0.4539,
+                "second": "acceso_registro",
+                "second_score": 0.2306,
+                "confidence": 0.5979,
+                "level": "MEDIUM",
+                "margin": 0.2233,
+                "tag": null,
+                "reason": "quality",
+                "correct": true,
+                "candidate_slugs": [
+                    "acceso",
+                    "acceso_registro",
+                    "saludo",
+                    "deposito",
+                    "donacion"
+                ],
+                "category": null
+            },
+            {
+                "question": "la página no me permite entrar con mi clave",
+                "expected": "acceso",
+                "actual": "UNKNOWN",
+                "score": 0.0742,
+                "second": "donacion",
+                "second_score": 0.0712,
+                "confidence": 0.087,
+                "level": "UNKNOWN",
+                "margin": 0.003,
+                "tag": null,
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "contacto",
+                    "donacion",
+                    "catalogo",
+                    "catalogo",
+                    "deposito"
+                ],
+                "category": "NEGATION"
+            },
+            {
+                "question": "cómo recupero la contraseña de la cuenta",
+                "expected": "acceso",
+                "actual": "acceso",
+                "score": 0.6269,
+                "second": "acceso_registro",
+                "second_score": 0.3285,
+                "confidence": 0.7643,
+                "level": "HIGH",
+                "margin": 0.2984,
+                "tag": null,
+                "reason": "alias",
+                "correct": true,
+                "candidate_slugs": [
+                    "acceso",
+                    "acceso_registro",
+                    "saludo",
+                    "deposito",
+                    "donacion"
+                ],
+                "category": null
+            },
+            {
+                "question": "todavía no tengo usuario, cómo lo creo",
+                "expected": "acceso_registro",
+                "actual": "UNKNOWN",
+                "score": 0.0768,
+                "second": "catalogo",
+                "second_score": 0.0722,
+                "confidence": 0.0859,
+                "level": "UNKNOWN",
+                "margin": 0.0046,
+                "tag": null,
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "contacto",
+                    "catalogo",
+                    "saludo",
+                    "deposito",
+                    "catalogo"
+                ],
+                "category": "NEGATION"
+            },
+            {
+                "question": "cuál es el proceso de alta de depositantes",
+                "expected": "acceso_registro",
+                "actual": "deposito",
+                "score": 0.3978,
+                "second": "deposito_requisitos",
+                "second_score": 0.2543,
+                "confidence": 0.4978,
+                "level": "MEDIUM",
+                "margin": 0.1435,
+                "tag": null,
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "deposito",
+                    "deposito_requisitos",
+                    "documentos",
+                    "procedencia",
+                    "revision"
+                ],
+                "category": "CANDIDATE_GENERATION"
+            },
+            {
+                "question": "necesito una cuenta nueva para empezar",
+                "expected": "acceso_registro",
+                "actual": "acceso_registro",
+                "score": 0.7536,
+                "second": "acceso",
+                "second_score": 0.3193,
+                "confidence": 0.9632,
+                "level": "HIGH",
+                "margin": 0.4343,
+                "tag": null,
+                "reason": "structural",
+                "correct": true,
+                "candidate_slugs": [
+                    "acceso_registro",
+                    "acceso",
+                    "saludo",
+                    "deposito",
+                    "donacion"
+                ],
+                "category": null
+            },
+            {
+                "question": "puedo escribir directamente a una persona de curaduría",
+                "expected": "contacto",
+                "actual": "contacto",
+                "score": 0.4329,
+                "second": "saludo",
+                "second_score": 0,
+                "confidence": 0.6492,
+                "level": "MEDIUM",
+                "margin": 0.4329,
+                "tag": null,
+                "reason": "quality",
+                "correct": true,
+                "candidate_slugs": [
+                    "contacto",
+                    "saludo",
+                    "deposito",
+                    "donacion",
+                    "documentos"
+                ],
+                "category": null
+            },
+            {
+                "question": "cuál es el email de atención del museo",
+                "expected": "contacto",
+                "actual": "UNKNOWN",
+                "score": 0.0757,
+                "second": "acceso",
+                "second_score": 0.0703,
+                "confidence": 0.0847,
+                "level": "UNKNOWN",
+                "margin": 0.0054,
+                "tag": null,
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "catalogo",
+                    "acceso",
+                    "contacto",
+                    "deposito",
+                    "donacion"
+                ],
+                "category": "UNKNOWN_THRESHOLD"
+            },
+            {
+                "question": "quiero hablar con el responsable de depósitos",
+                "expected": "contacto",
+                "actual": "deposito",
+                "score": 0.4889,
+                "second": "documentos",
+                "second_score": 0.3362,
+                "confidence": 0.5601,
+                "level": "MEDIUM",
+                "margin": 0.1527,
+                "tag": null,
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "deposito",
+                    "documentos",
+                    "deposito_requisitos",
+                    "entrega",
+                    "revision"
+                ],
+                "category": "CANDIDATE_GENERATION"
+            },
+            {
+                "question": "dónde pido orientación al laboratorio",
+                "expected": "contacto",
+                "actual": "UNKNOWN",
+                "score": 0.1753,
+                "second": "deposito",
+                "second_score": 0.0748,
+                "confidence": 0.2635,
+                "level": "UNKNOWN",
+                "margin": 0.1005,
+                "tag": null,
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "contacto",
+                    "deposito",
+                    "catalogo",
+                    "acceso",
+                    "donacion"
+                ],
+                "category": "UNKNOWN_THRESHOLD"
+            },
+            {
+                "question": "quiero explorar los taxones que sí son públicos",
+                "expected": "catalogo",
+                "actual": "UNKNOWN",
+                "score": 0.4594,
+                "second": "catalogo",
+                "second_score": 0.4464,
+                "confidence": 0.426,
+                "level": "LOW",
+                "margin": 0.013,
+                "tag": null,
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "catalogo",
+                    "catalogo",
+                    "saludo",
+                    "deposito",
+                    "donacion"
+                ],
+                "category": "UNKNOWN_THRESHOLD"
+            },
+            {
+                "question": "dónde veo el inventario divulgado de invertebrados",
+                "expected": "catalogo",
+                "actual": "catalogo",
+                "score": 0.4436,
+                "second": "catalogo",
+                "second_score": 0.3699,
+                "confidence": 0.4671,
+                "level": "MEDIUM",
+                "margin": 0.0737,
+                "tag": null,
+                "reason": "quality",
+                "correct": true,
+                "candidate_slugs": [
+                    "catalogo",
+                    "catalogo",
+                    "saludo",
+                    "deposito",
+                    "donacion"
+                ],
+                "category": null
+            },
+            {
+                "question": "puedo filtrar la colección por género y provincia",
+                "expected": "catalogo",
+                "actual": "ambiguous",
+                "score": 0.4441,
+                "second": "catalogo",
+                "second_score": 0.4355,
+                "confidence": 0.4131,
+                "level": "LOW",
+                "margin": 0.0086,
+                "tag": null,
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "catalogo",
+                    "catalogo",
+                    "saludo",
+                    "deposito",
+                    "donacion"
+                ],
+                "category": "AMBIGUITY"
+            },
+            {
+                "question": "hay registros publicados de Megasoma",
+                "expected": "catalogo",
+                "actual": "catalogo",
+                "score": 0,
+                "second": null,
+                "second_score": 0,
+                "confidence": null,
+                "level": null,
+                "margin": null,
+                "tag": null,
+                "reason": "catalogo",
+                "correct": true,
+                "candidate_slugs": [],
+                "category": null
+            },
+            {
+                "question": "busca el código EPN-9080 en el catálogo",
+                "expected": "catalogo",
+                "actual": "catalogo",
+                "score": 0,
+                "second": null,
+                "second_score": 0,
+                "confidence": null,
+                "level": null,
+                "margin": null,
+                "tag": null,
+                "reason": "catalogo",
+                "correct": true,
+                "candidate_slugs": [],
+                "category": null
+            },
+            {
+                "question": "resuelve esta integral definida",
+                "expected": "UNKNOWN",
+                "actual": "UNKNOWN",
+                "score": 0.0794,
+                "second": "deposito",
+                "second_score": 0.0721,
+                "confidence": 0.0963,
+                "level": "UNKNOWN",
+                "margin": 0.0073,
+                "tag": null,
+                "reason": "quality",
+                "correct": true,
+                "candidate_slugs": [
+                    "acceso",
+                    "deposito",
+                    "donacion",
+                    "saludo",
+                    "catalogo"
+                ],
+                "category": null
+            },
+            {
+                "question": "puedes redactar mi currículo",
+                "expected": "UNKNOWN",
+                "actual": "UNKNOWN",
+                "score": 0.1403,
+                "second": "catalogo",
+                "second_score": 0.0822,
+                "confidence": 0.1826,
+                "level": "UNKNOWN",
+                "margin": 0.0581,
+                "tag": null,
+                "reason": "quality",
+                "correct": true,
+                "candidate_slugs": [
+                    "saludo",
+                    "catalogo",
+                    "contacto",
+                    "donacion",
+                    "catalogo"
+                ],
+                "category": null
+            },
+            {
+                "question": "cuánto cuesta una laptop nueva",
+                "expected": "UNKNOWN",
+                "actual": "UNKNOWN",
+                "score": 0.075,
+                "second": "deposito",
+                "second_score": 0.0736,
+                "confidence": 0.0822,
+                "level": "UNKNOWN",
+                "margin": 0.0014,
+                "tag": null,
+                "reason": "quality",
+                "correct": true,
+                "candidate_slugs": [
+                    "contacto",
+                    "deposito",
+                    "acceso",
+                    "catalogo",
+                    "catalogo"
+                ],
+                "category": null
+            },
+            {
+                "question": "qué equipo ganó la final de baloncesto",
+                "expected": "UNKNOWN",
+                "actual": "UNKNOWN",
+                "score": 0.1174,
+                "second": "deposito",
+                "second_score": 0.0868,
+                "confidence": 0.1334,
+                "level": "UNKNOWN",
+                "margin": 0.0306,
+                "tag": null,
+                "reason": "quality",
+                "correct": true,
+                "candidate_slugs": [
+                    "contacto",
+                    "deposito",
+                    "catalogo",
+                    "donacion",
+                    "saludo"
+                ],
+                "category": null
+            },
+            {
+                "question": "dame un pronóstico bursátil",
+                "expected": "UNKNOWN",
+                "actual": "UNKNOWN",
+                "score": 0.0764,
+                "second": "catalogo",
+                "second_score": 0.076,
+                "confidence": 0.0862,
+                "level": "UNKNOWN",
+                "margin": 0.0004,
+                "tag": null,
+                "reason": "quality",
+                "correct": true,
+                "candidate_slugs": [
+                    "deposito",
+                    "catalogo",
+                    "acceso",
+                    "contacto",
+                    "saludo"
+                ],
+                "category": null
+            },
+            {
+                "question": "cómo preparar chocolate caliente",
+                "expected": "UNKNOWN",
+                "actual": "UNKNOWN",
+                "score": 0.0847,
+                "second": "deposito",
+                "second_score": 0.0802,
+                "confidence": 0.1033,
+                "level": "UNKNOWN",
+                "margin": 0.0045,
+                "tag": null,
+                "reason": "quality",
+                "correct": true,
+                "candidate_slugs": [
+                    "acceso",
+                    "deposito",
+                    "catalogo",
+                    "contacto",
+                    "donacion"
+                ],
+                "category": null
+            },
+            {
+                "question": "cuál es la hora en Madrid",
+                "expected": "UNKNOWN",
+                "actual": "UNKNOWN",
+                "score": 0.076,
+                "second": "contacto",
+                "second_score": 0.0755,
+                "confidence": 0.0796,
+                "level": "UNKNOWN",
+                "margin": 0.0005,
+                "tag": null,
+                "reason": "quality",
+                "correct": true,
+                "candidate_slugs": [
+                    "catalogo",
+                    "contacto",
+                    "deposito",
+                    "acceso",
+                    "donacion"
+                ],
+                "category": null
+            },
+            {
+                "question": "documentos",
+                "expected": "ambiguous",
+                "actual": "ambiguous",
+                "score": 0.8106,
+                "second": "documentos_firma",
+                "second_score": 0.3266,
+                "confidence": 0,
+                "level": "LOW",
+                "margin": 0,
+                "tag": null,
+                "reason": "keyword",
+                "correct": true,
+                "candidate_slugs": [
+                    "documentos",
+                    "documentos_firma",
+                    "donacion_requisitos",
+                    "revision",
+                    "documentos_permisos"
+                ],
+                "category": null
+            },
+            {
+                "question": "requisitos",
+                "expected": "ambiguous",
+                "actual": "ambiguous",
+                "score": 0.8444,
+                "second": "donacion_requisitos",
+                "second_score": 0.7974,
+                "confidence": 0,
+                "level": "LOW",
+                "margin": 0,
+                "tag": null,
+                "reason": "keyword",
+                "correct": true,
+                "candidate_slugs": [
+                    "deposito_requisitos",
+                    "donacion_requisitos",
+                    "documentos",
+                    "documentos_permisos",
+                    "documentos_firma"
+                ],
+                "category": null
+            },
+            {
+                "question": "no sé si debo dejarlo o regalarlo",
+                "expected": "ambiguous",
+                "actual": "donacion",
+                "score": 0.3826,
+                "second": "donacion_requisitos",
+                "second_score": 0.2336,
+                "confidence": 0.4932,
+                "level": "MEDIUM",
+                "margin": 0.149,
+                "tag": null,
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "donacion",
+                    "donacion_requisitos",
+                    "saludo",
+                    "deposito",
+                    "documentos"
+                ],
+                "category": "CANDIDATE_GENERATION"
+            },
+            {
+                "question": "quiero entregar algo al museo",
+                "expected": "ambiguous",
+                "actual": "entrega",
+                "score": 0.5402,
+                "second": "documentos",
+                "second_score": 0.13,
+                "confidence": 0.7181,
+                "level": "HIGH",
+                "margin": 0.4102,
+                "tag": null,
+                "reason": "keyword",
+                "correct": false,
+                "candidate_slugs": [
+                    "entrega",
+                    "documentos",
+                    "deposito_requisitos",
+                    "deposito",
+                    "revision"
+                ],
+                "category": "CANDIDATE_GENERATION"
+            },
+            {
+                "question": "necesito orientación sobre un trámite",
+                "expected": "ambiguous",
+                "actual": "UNKNOWN",
+                "score": 0.0797,
+                "second": "deposito",
+                "second_score": 0.0767,
+                "confidence": 0.0892,
+                "level": "UNKNOWN",
+                "margin": 0.003,
+                "tag": null,
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "contacto",
+                    "deposito",
+                    "acceso",
+                    "catalogo",
+                    "saludo"
+                ],
+                "category": "CANDIDATE_GENERATION"
+            },
+            {
+                "question": "y las exigencias del proceso?",
+                "expected": "deposito_requisitos",
+                "actual": "UNKNOWN",
+                "score": 0.2619,
+                "second": "documentos",
+                "second_score": 0.1762,
+                "confidence": 0.2826,
+                "level": "LOW",
+                "margin": 0.0857,
+                "tag": null,
+                "reason": "context",
+                "correct": false,
+                "candidate_slugs": [
+                    "deposito",
+                    "documentos",
+                    "revision",
+                    "deposito_requisitos",
+                    "procedencia"
+                ],
+                "category": "CONTEXT"
+            },
+            {
+                "question": "qué condiciones se aplican entonces?",
+                "expected": "donacion_requisitos",
+                "actual": "donacion_requisitos",
+                "score": 0.5938,
+                "second": "deposito_requisitos",
+                "second_score": 0.3156,
+                "confidence": 0.7861,
+                "level": "HIGH",
+                "margin": 0.2782,
+                "tag": null,
+                "reason": "context",
+                "correct": true,
+                "candidate_slugs": [
+                    "donacion_requisitos",
+                    "deposito_requisitos",
+                    "donacion",
+                    "documentos",
+                    "saludo"
+                ],
+                "category": null
+            }
+        ],
+        "confusions": [
+            {
+                "expected": "saludo",
+                "actual": "UNKNOWN",
+                "count": 3
+            },
+            {
+                "expected": "conversacion",
+                "actual": "UNKNOWN",
+                "count": 3
+            },
+            {
+                "expected": "donacion",
+                "actual": "UNKNOWN",
+                "count": 3
+            },
+            {
+                "expected": "deposito",
+                "actual": "UNKNOWN",
+                "count": 2
+            },
+            {
+                "expected": "deposito_requisitos",
+                "actual": "UNKNOWN",
+                "count": 2
+            },
+            {
+                "expected": "contacto",
+                "actual": "UNKNOWN",
+                "count": 2
+            },
+            {
+                "expected": "deposito",
+                "actual": "acceso",
+                "count": 1
+            },
+            {
+                "expected": "deposito",
+                "actual": "revision",
+                "count": 1
+            },
+            {
+                "expected": "donacion",
+                "actual": "entrega",
+                "count": 1
+            },
+            {
+                "expected": "documentos",
+                "actual": "UNKNOWN",
+                "count": 1
+            },
+            {
+                "expected": "deposito_requisitos",
+                "actual": "ambiguous",
+                "count": 1
+            },
+            {
+                "expected": "donacion_requisitos",
+                "actual": "donacion",
+                "count": 1
+            },
+            {
+                "expected": "revision",
+                "actual": "UNKNOWN",
+                "count": 1
+            },
+            {
+                "expected": "entrega",
+                "actual": "UNKNOWN",
+                "count": 1
+            },
+            {
+                "expected": "acceso",
+                "actual": "UNKNOWN",
+                "count": 1
+            },
+            {
+                "expected": "acceso_registro",
+                "actual": "UNKNOWN",
+                "count": 1
+            },
+            {
+                "expected": "acceso_registro",
+                "actual": "deposito",
+                "count": 1
+            },
+            {
+                "expected": "contacto",
+                "actual": "deposito",
+                "count": 1
+            },
+            {
+                "expected": "catalogo",
+                "actual": "UNKNOWN",
+                "count": 1
+            },
+            {
+                "expected": "catalogo",
+                "actual": "ambiguous",
+                "count": 1
+            }
+        ],
+        "errors": [
+            {
+                "question": "necesito dejar una caja en el museo y retirarla después",
+                "expected": "deposito",
+                "actual": "revision",
+                "score": 0.6953,
+                "second": "deposito_requisitos",
+                "second_score": 0.3192,
+                "confidence": 0.9282,
+                "level": "HIGH",
+                "margin": 0.3761,
+                "tag": null,
+                "reason": "structural",
+                "correct": false,
+                "candidate_slugs": [
+                    "revision",
+                    "deposito_requisitos",
+                    "entrega",
+                    "deposito",
+                    "procedencia"
+                ],
+                "category": "RERANKING"
+            },
+            {
+                "question": "qué condiciones evalúan al aceptar custodia temporal",
+                "expected": "deposito_requisitos",
+                "actual": "ambiguous",
+                "score": 0.6973,
+                "second": "revision",
+                "second_score": 0.6463,
+                "confidence": 0.7219,
+                "level": "MEDIUM",
+                "margin": 0.051,
+                "tag": null,
+                "reason": "structural",
+                "correct": false,
+                "candidate_slugs": [
+                    "deposito_requisitos",
+                    "revision",
+                    "deposito",
+                    "entrega",
+                    "revision"
+                ],
+                "category": "AMBIGUITY"
+            },
+            {
+                "question": "quiero entregar algo al museo",
+                "expected": "ambiguous",
+                "actual": "entrega",
+                "score": 0.5402,
+                "second": "documentos",
+                "second_score": 0.13,
+                "confidence": 0.7181,
+                "level": "HIGH",
+                "margin": 0.4102,
+                "tag": null,
+                "reason": "keyword",
+                "correct": false,
+                "candidate_slugs": [
+                    "entrega",
+                    "documentos",
+                    "deposito_requisitos",
+                    "deposito",
+                    "revision"
+                ],
+                "category": "CANDIDATE_GENERATION"
+            },
+            {
+                "question": "tengo invertebrados para entregar como aporte permanente",
+                "expected": "donacion",
+                "actual": "entrega",
+                "score": 0.4564,
+                "second": "documentos",
+                "second_score": 0.0725,
+                "confidence": 0.6678,
+                "level": "MEDIUM",
+                "margin": 0.3839,
+                "tag": null,
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "entrega",
+                    "documentos",
+                    "deposito_requisitos",
+                    "deposito",
+                    "catalogo"
+                ],
+                "category": "CANDIDATE_GENERATION"
+            },
+            {
+                "question": "quiero hablar con el responsable de depósitos",
+                "expected": "contacto",
+                "actual": "deposito",
+                "score": 0.4889,
+                "second": "documentos",
+                "second_score": 0.3362,
+                "confidence": 0.5601,
+                "level": "MEDIUM",
+                "margin": 0.1527,
+                "tag": null,
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "deposito",
+                    "documentos",
+                    "deposito_requisitos",
+                    "entrega",
+                    "revision"
+                ],
+                "category": "CANDIDATE_GENERATION"
+            },
+            {
+                "question": "me interesa iniciar el ingreso de un lote temporal",
+                "expected": "deposito",
+                "actual": "acceso",
+                "score": 0.4215,
+                "second": "acceso_registro",
+                "second_score": 0.223,
+                "confidence": 0.5578,
+                "level": "MEDIUM",
+                "margin": 0.1985,
+                "tag": null,
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "acceso",
+                    "acceso_registro",
+                    "saludo",
+                    "deposito",
+                    "donacion"
+                ],
+                "category": "RERANKING"
+            },
+            {
+                "question": "cuál es el proceso de alta de depositantes",
+                "expected": "acceso_registro",
+                "actual": "deposito",
+                "score": 0.3978,
+                "second": "deposito_requisitos",
+                "second_score": 0.2543,
+                "confidence": 0.4978,
+                "level": "MEDIUM",
+                "margin": 0.1435,
+                "tag": null,
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "deposito",
+                    "deposito_requisitos",
+                    "documentos",
+                    "procedencia",
+                    "revision"
+                ],
+                "category": "CANDIDATE_GENERATION"
+            },
+            {
+                "question": "no sé si debo dejarlo o regalarlo",
+                "expected": "ambiguous",
+                "actual": "donacion",
+                "score": 0.3826,
+                "second": "donacion_requisitos",
+                "second_score": 0.2336,
+                "confidence": 0.4932,
+                "level": "MEDIUM",
+                "margin": 0.149,
+                "tag": null,
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "donacion",
+                    "donacion_requisitos",
+                    "saludo",
+                    "deposito",
+                    "documentos"
+                ],
+                "category": "CANDIDATE_GENERATION"
+            },
+            {
+                "question": "qué exigen para recibir una cesión permanente",
+                "expected": "donacion_requisitos",
+                "actual": "donacion",
+                "score": 0.381,
+                "second": "donacion_requisitos",
+                "second_score": 0.2339,
+                "confidence": 0.4907,
+                "level": "MEDIUM",
+                "margin": 0.1471,
+                "tag": null,
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "donacion",
+                    "donacion_requisitos",
+                    "saludo",
+                    "deposito",
+                    "documentos"
+                ],
+                "category": "RERANKING"
+            },
+            {
+                "question": "quiero explorar los taxones que sí son públicos",
+                "expected": "catalogo",
+                "actual": "UNKNOWN",
+                "score": 0.4594,
+                "second": "catalogo",
+                "second_score": 0.4464,
+                "confidence": 0.426,
+                "level": "LOW",
+                "margin": 0.013,
+                "tag": null,
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "catalogo",
+                    "catalogo",
+                    "saludo",
+                    "deposito",
+                    "donacion"
+                ],
+                "category": "UNKNOWN_THRESHOLD"
+            },
+            {
+                "question": "buen día equipo del museo",
+                "expected": "saludo",
+                "actual": "UNKNOWN",
+                "score": 0.2814,
+                "second": "contacto",
+                "second_score": 0.1215,
+                "confidence": 0.4191,
+                "level": "LOW",
+                "margin": 0.1599,
+                "tag": null,
+                "reason": "alias",
+                "correct": false,
+                "candidate_slugs": [
+                    "saludo",
+                    "contacto",
+                    "catalogo",
+                    "catalogo",
+                    "deposito"
+                ],
+                "category": "UNKNOWN_THRESHOLD"
+            },
+            {
+                "question": "puedo filtrar la colección por género y provincia",
+                "expected": "catalogo",
+                "actual": "ambiguous",
+                "score": 0.4441,
+                "second": "catalogo",
+                "second_score": 0.4355,
+                "confidence": 0.4131,
+                "level": "LOW",
+                "margin": 0.0086,
+                "tag": null,
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "catalogo",
+                    "catalogo",
+                    "saludo",
+                    "deposito",
+                    "donacion"
+                ],
+                "category": "AMBIGUITY"
+            },
+            {
+                "question": "y las exigencias del proceso?",
+                "expected": "deposito_requisitos",
+                "actual": "UNKNOWN",
+                "score": 0.2619,
+                "second": "documentos",
+                "second_score": 0.1762,
+                "confidence": 0.2826,
+                "level": "LOW",
+                "margin": 0.0857,
+                "tag": null,
+                "reason": "context",
+                "correct": false,
+                "candidate_slugs": [
+                    "deposito",
+                    "documentos",
+                    "revision",
+                    "deposito_requisitos",
+                    "procedencia"
+                ],
+                "category": "CONTEXT"
+            },
+            {
+                "question": "cómo registro especímenes sin cederlos a la institución",
+                "expected": "deposito",
+                "actual": "UNKNOWN",
+                "score": 0.2514,
+                "second": "donacion",
+                "second_score": 0.2168,
+                "confidence": 0.2757,
+                "level": "LOW",
+                "margin": 0.0346,
+                "tag": null,
+                "reason": "alias",
+                "correct": false,
+                "candidate_slugs": [
+                    "deposito",
+                    "donacion",
+                    "catalogo",
+                    "entrega",
+                    "acceso_registro"
+                ],
+                "category": "NEGATION"
+            },
+            {
+                "question": "dónde pido orientación al laboratorio",
+                "expected": "contacto",
+                "actual": "UNKNOWN",
+                "score": 0.1753,
+                "second": "deposito",
+                "second_score": 0.0748,
+                "confidence": 0.2635,
+                "level": "UNKNOWN",
+                "margin": 0.1005,
+                "tag": null,
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "contacto",
+                    "deposito",
+                    "catalogo",
+                    "acceso",
+                    "donacion"
+                ],
+                "category": "UNKNOWN_THRESHOLD"
+            },
+            {
+                "question": "hasta la próxima consulta",
+                "expected": "conversacion",
+                "actual": "UNKNOWN",
+                "score": 0.1449,
+                "second": "contacto",
+                "second_score": 0.082,
+                "confidence": 0.1894,
+                "level": "UNKNOWN",
+                "margin": 0.0629,
+                "tag": null,
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "catalogo",
+                    "contacto",
+                    "catalogo",
+                    "deposito",
+                    "donacion"
+                ],
+                "category": "CANDIDATE_GENERATION"
+            },
+            {
+                "question": "puedo obsequiar mis ejemplares al laboratorio",
+                "expected": "donacion",
+                "actual": "UNKNOWN",
+                "score": 0.1603,
+                "second": "deposito",
+                "second_score": 0.1525,
+                "confidence": 0.1533,
+                "level": "UNKNOWN",
+                "margin": 0.0078,
+                "tag": null,
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "contacto",
+                    "deposito",
+                    "donacion",
+                    "catalogo",
+                    "catalogo"
+                ],
+                "category": "UNKNOWN_THRESHOLD"
+            },
+            {
+                "question": "hola, hay alguien que me oriente",
+                "expected": "saludo",
+                "actual": "UNKNOWN",
+                "score": 0.146,
+                "second": "saludo",
+                "second_score": 0.1368,
+                "confidence": 0.1453,
+                "level": "UNKNOWN",
+                "margin": 0.0092,
+                "tag": null,
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "contacto",
+                    "saludo",
+                    "deposito",
+                    "acceso",
+                    "donacion"
+                ],
+                "category": "UNKNOWN_THRESHOLD"
+            },
+            {
+                "question": "quiero que la universidad se quede con esta colección",
+                "expected": "donacion",
+                "actual": "UNKNOWN",
+                "score": 0.143,
+                "second": "catalogo",
+                "second_score": 0.1365,
+                "confidence": 0.1412,
+                "level": "UNKNOWN",
+                "margin": 0.0065,
+                "tag": null,
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "donacion",
+                    "catalogo",
+                    "deposito",
+                    "saludo",
+                    "contacto"
+                ],
+                "category": "UNKNOWN_THRESHOLD"
+            },
+            {
+                "question": "muy buenas, recién entro al portal",
+                "expected": "saludo",
+                "actual": "UNKNOWN",
+                "score": 0.1186,
+                "second": "catalogo",
+                "second_score": 0.0844,
+                "confidence": 0.136,
+                "level": "UNKNOWN",
+                "margin": 0.0342,
+                "tag": null,
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "saludo",
+                    "catalogo",
+                    "deposito",
+                    "catalogo",
+                    "acceso"
+                ],
+                "category": "UNKNOWN_THRESHOLD"
+            }
+        ],
+        "bins": {
+            "0.90-1.00": {
+                "cases": 3,
+                "correct": 2,
+                "accuracy": 0.6667
+            },
+            "0.80-0.89": {
+                "cases": 0,
+                "correct": 0,
+                "accuracy": null
+            },
+            "0.70-0.79": {
+                "cases": 9,
+                "correct": 7,
+                "accuracy": 0.7778
+            },
+            "0.60-0.69": {
+                "cases": 11,
+                "correct": 10,
+                "accuracy": 0.9091
+            },
+            "0.50-0.59": {
+                "cases": 7,
+                "correct": 5,
+                "accuracy": 0.7143
+            },
+            "<0.50": {
+                "cases": 36,
+                "correct": 10,
+                "accuracy": 0.2778
+            }
+        },
+        "ood_correct": 7,
+        "ood_total": 7
+    },
+    "challenge": {
+        "total": 28,
+        "correct": 25,
+        "top_two": 25,
+        "top1": 0.8929,
+        "top2": 0.8929,
+        "top3": 0.9643,
+        "top5": 1,
+        "coverage": 0.6071,
+        "automatic_precision": 1,
+        "automatic_cases": 17,
+        "unknown_incorrect": 3,
+        "clarification_correct": 5,
+        "clarification_unnecessary": 0,
+        "high_incorrect": 0,
+        "error_categories": {
+            "UNKNOWN_THRESHOLD": 2,
+            "NEGATION": 1
+        },
+        "macro_precision": 0.9583,
+        "macro_recall": 0.9389,
+        "macro_f1": 0.9347,
+        "weighted_f1": 0.8982,
+        "per_class": {
+            "ambiguous": {
+                "support": 5,
+                "precision": 1,
+                "recall": 1,
+                "f1": 1
+            },
+            "deposito": {
+                "support": 3,
+                "precision": 1,
+                "recall": 0.6667,
+                "f1": 0.8
+            },
+            "donacion": {
+                "support": 3,
+                "precision": 1,
+                "recall": 1,
+                "f1": 1
+            },
+            "contacto": {
+                "support": 1,
+                "precision": 1,
+                "recall": 1,
+                "f1": 1
+            },
+            "acceso": {
+                "support": 1,
+                "precision": 1,
+                "recall": 1,
+                "f1": 1
+            },
+            "revision": {
+                "support": 1,
+                "precision": 1,
+                "recall": 1,
+                "f1": 1
+            },
+            "documentos": {
+                "support": 2,
+                "precision": 1,
+                "recall": 1,
+                "f1": 1
+            },
+            "deposito_requisitos": {
+                "support": 1,
+                "precision": 1,
+                "recall": 1,
+                "f1": 1
+            },
+            "donacion_requisitos": {
+                "support": 1,
+                "precision": 1,
+                "recall": 1,
+                "f1": 1
+            },
+            "entrega": {
+                "support": 2,
+                "precision": 1,
+                "recall": 1,
+                "f1": 1
+            },
+            "catalogo": {
+                "support": 5,
+                "precision": 1,
+                "recall": 0.6,
+                "f1": 0.75
+            },
+            "UNKNOWN": {
+                "support": 3,
+                "precision": 0.5,
+                "recall": 1,
+                "f1": 0.6667
+            }
+        },
+        "matrix": {
+            "ambiguous": {
+                "ambiguous": 5
+            },
+            "deposito": {
+                "deposito": 2,
+                "UNKNOWN": 1
+            },
+            "donacion": {
+                "donacion": 3
+            },
+            "contacto": {
+                "contacto": 1
+            },
+            "acceso": {
+                "acceso": 1
+            },
+            "revision": {
+                "revision": 1
+            },
+            "documentos": {
+                "documentos": 2
+            },
+            "deposito_requisitos": {
+                "deposito_requisitos": 1
+            },
+            "donacion_requisitos": {
+                "donacion_requisitos": 1
+            },
+            "entrega": {
+                "entrega": 2
+            },
+            "catalogo": {
+                "UNKNOWN": 2,
+                "catalogo": 3
+            },
+            "UNKNOWN": {
+                "UNKNOWN": 3
+            }
+        },
+        "rows": [
+            {
+                "question": "papeles",
+                "expected": "ambiguous",
+                "actual": "ambiguous",
+                "score": 0.7222,
+                "second": "revision",
+                "second_score": 0.2312,
+                "confidence": 0,
+                "level": "LOW",
+                "margin": 0,
+                "tag": "short",
+                "reason": "keyword",
+                "correct": true,
+                "candidate_slugs": [
+                    "documentos",
+                    "revision",
+                    "donacion_requisitos",
+                    "documentos_firma",
+                    "documentos_permisos"
+                ],
+                "category": null
+            },
+            {
+                "question": "requisitos",
+                "expected": "ambiguous",
+                "actual": "ambiguous",
+                "score": 0.8444,
+                "second": "donacion_requisitos",
+                "second_score": 0.7974,
+                "confidence": 0,
+                "level": "LOW",
+                "margin": 0,
+                "tag": "short",
+                "reason": "keyword",
+                "correct": true,
+                "candidate_slugs": [
+                    "deposito_requisitos",
+                    "donacion_requisitos",
+                    "documentos",
+                    "documentos_permisos",
+                    "documentos_firma"
+                ],
+                "category": null
+            },
+            {
+                "question": "deposito",
+                "expected": "deposito",
+                "actual": "deposito",
+                "score": 0.844,
+                "second": "deposito_requisitos",
+                "second_score": 0.6195,
+                "confidence": 0.8435,
+                "level": "HIGH",
+                "margin": 0.2245,
+                "tag": "short",
+                "reason": "keyword",
+                "correct": true,
+                "candidate_slugs": [
+                    "deposito",
+                    "deposito_requisitos",
+                    "documentos",
+                    "entrega",
+                    "revision"
+                ],
+                "category": null
+            },
+            {
+                "question": "donacion",
+                "expected": "donacion",
+                "actual": "donacion",
+                "score": 1,
+                "second": "donacion_requisitos",
+                "second_score": 0.6508,
+                "confidence": 1,
+                "level": "HIGH",
+                "margin": 0.3492,
+                "tag": "short",
+                "reason": "exact",
+                "correct": true,
+                "candidate_slugs": [
+                    "donacion",
+                    "donacion_requisitos",
+                    "saludo",
+                    "deposito",
+                    "documentos"
+                ],
+                "category": null
+            },
+            {
+                "question": "contacto",
+                "expected": "contacto",
+                "actual": "contacto",
+                "score": 1,
+                "second": "saludo",
+                "second_score": 0,
+                "confidence": 1,
+                "level": "HIGH",
+                "margin": 1,
+                "tag": "short",
+                "reason": "exact",
+                "correct": true,
+                "candidate_slugs": [
+                    "contacto",
+                    "saludo",
+                    "deposito",
+                    "donacion",
+                    "documentos"
+                ],
+                "category": null
+            },
+            {
+                "question": "acceso",
+                "expected": "acceso",
+                "actual": "acceso",
+                "score": 0.6334,
+                "second": "acceso_registro",
+                "second_score": 0.1862,
+                "confidence": 0.78,
+                "level": "HIGH",
+                "margin": 0.4472,
+                "tag": "short",
+                "reason": "keyword",
+                "correct": true,
+                "candidate_slugs": [
+                    "acceso",
+                    "acceso_registro",
+                    "saludo",
+                    "deposito",
+                    "donacion"
+                ],
+                "category": null
+            },
+            {
+                "question": "estado",
+                "expected": "revision",
+                "actual": "revision",
+                "score": 0.6074,
+                "second": "revision",
+                "second_score": 0.2895,
+                "confidence": 0.7644,
+                "level": "HIGH",
+                "margin": 0.3179,
+                "tag": "short",
+                "reason": "keyword",
+                "correct": true,
+                "candidate_slugs": [
+                    "revision",
+                    "revision",
+                    "saludo",
+                    "deposito",
+                    "donacion"
+                ],
+                "category": null
+            },
+            {
+                "question": "nesesito documetos para el tramite",
+                "expected": "documentos",
+                "actual": "documentos",
+                "score": 0.5144,
+                "second": "donacion_requisitos",
+                "second_score": 0.2724,
+                "confidence": 0.6543,
+                "level": "MEDIUM",
+                "margin": 0.242,
+                "tag": "typos",
+                "reason": "quality",
+                "correct": true,
+                "candidate_slugs": [
+                    "documentos",
+                    "donacion_requisitos",
+                    "deposito_requisitos",
+                    "revision",
+                    "documentos_firma"
+                ],
+                "category": null
+            },
+            {
+                "question": "quisiera aser una donasion",
+                "expected": "donacion",
+                "actual": "donacion",
+                "score": 0.4041,
+                "second": "donacion_requisitos",
+                "second_score": 0.2848,
+                "confidence": 0.4814,
+                "level": "MEDIUM",
+                "margin": 0.1193,
+                "tag": "typos",
+                "reason": "quality",
+                "correct": true,
+                "candidate_slugs": [
+                    "donacion",
+                    "donacion_requisitos",
+                    "saludo",
+                    "deposito",
+                    "documentos"
+                ],
+                "category": null
+            },
+            {
+                "question": "como abro un deposiito",
+                "expected": "deposito",
+                "actual": "UNKNOWN",
+                "score": 0.1241,
+                "second": "contacto",
+                "second_score": 0.0931,
+                "confidence": 0.1703,
+                "level": "UNKNOWN",
+                "margin": 0.031,
+                "tag": "typos",
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "deposito",
+                    "contacto",
+                    "acceso",
+                    "catalogo",
+                    "catalogo"
+                ],
+                "category": "UNKNOWN_THRESHOLD"
+            },
+            {
+                "question": "requicitos de custodia temporal",
+                "expected": "deposito_requisitos",
+                "actual": "deposito_requisitos",
+                "score": 0.7777,
+                "second": "deposito",
+                "second_score": 0.5284,
+                "confidence": 0.9354,
+                "level": "HIGH",
+                "margin": 0.2493,
+                "tag": "typos",
+                "reason": "structural",
+                "correct": true,
+                "candidate_slugs": [
+                    "deposito_requisitos",
+                    "deposito",
+                    "documentos",
+                    "entrega",
+                    "revision"
+                ],
+                "category": null
+            },
+            {
+                "question": "y los papeles?",
+                "expected": "documentos",
+                "actual": "documentos",
+                "score": 0.9151,
+                "second": "revision",
+                "second_score": 0.4212,
+                "confidence": 0.9971,
+                "level": "HIGH",
+                "margin": 0.4939,
+                "tag": "context",
+                "reason": "keyword",
+                "correct": true,
+                "candidate_slugs": [
+                    "documentos",
+                    "revision",
+                    "documentos_permisos",
+                    "documentos_firma",
+                    "deposito_requisitos"
+                ],
+                "category": null
+            },
+            {
+                "question": "y las condiciones?",
+                "expected": "donacion_requisitos",
+                "actual": "donacion_requisitos",
+                "score": 0.5771,
+                "second": "deposito_requisitos",
+                "second_score": 0.2929,
+                "confidence": 0.7811,
+                "level": "HIGH",
+                "margin": 0.2842,
+                "tag": "context",
+                "reason": "context",
+                "correct": true,
+                "candidate_slugs": [
+                    "donacion_requisitos",
+                    "deposito_requisitos",
+                    "donacion",
+                    "documentos",
+                    "saludo"
+                ],
+                "category": null
+            },
+            {
+                "question": "y dónde llevo el lote?",
+                "expected": "entrega",
+                "actual": "entrega",
+                "score": 0.6877,
+                "second": "revision",
+                "second_score": 0.3147,
+                "confidence": 0.8606,
+                "level": "HIGH",
+                "margin": 0.373,
+                "tag": "context",
+                "reason": "keyword",
+                "correct": true,
+                "candidate_slugs": [
+                    "entrega",
+                    "revision",
+                    "documentos",
+                    "procedencia",
+                    "revision"
+                ],
+                "category": null
+            },
+            {
+                "question": "no es depósito, es donación",
+                "expected": "donacion",
+                "actual": "donacion",
+                "score": 0.8194,
+                "second": "donacion_requisitos",
+                "second_score": 0.6488,
+                "confidence": 0.7838,
+                "level": "HIGH",
+                "margin": 0.1706,
+                "tag": "negation",
+                "reason": "keyword",
+                "correct": true,
+                "candidate_slugs": [
+                    "donacion",
+                    "donacion_requisitos",
+                    "saludo",
+                    "deposito",
+                    "documentos"
+                ],
+                "category": null
+            },
+            {
+                "question": "no quiero donar sino depositar",
+                "expected": "deposito",
+                "actual": "deposito",
+                "score": 0.9491,
+                "second": "deposito_requisitos",
+                "second_score": 0.573,
+                "confidence": 0.9695,
+                "level": "HIGH",
+                "margin": 0.3761,
+                "tag": "negation",
+                "reason": "exact",
+                "correct": true,
+                "candidate_slugs": [
+                    "deposito",
+                    "deposito_requisitos",
+                    "documentos",
+                    "entrega",
+                    "documentos_permisos"
+                ],
+                "category": null
+            },
+            {
+                "question": "no necesito requisitos, quiero saber dónde entrego",
+                "expected": "entrega",
+                "actual": "entrega",
+                "score": 0.7341,
+                "second": "revision",
+                "second_score": 0.1323,
+                "confidence": 0.8405,
+                "level": "HIGH",
+                "margin": 0.6018,
+                "tag": "negation",
+                "reason": "keyword",
+                "correct": true,
+                "candidate_slugs": [
+                    "entrega",
+                    "revision",
+                    "procedencia",
+                    "revision",
+                    "deposito"
+                ],
+                "category": null
+            },
+            {
+                "question": "perdón, quería decir Megasoma",
+                "expected": "catalogo",
+                "actual": "UNKNOWN",
+                "score": 0.0832,
+                "second": "deposito",
+                "second_score": 0.08,
+                "confidence": 0.0954,
+                "level": "UNKNOWN",
+                "margin": 0.0032,
+                "tag": "correction",
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "donacion",
+                    "deposito",
+                    "catalogo",
+                    "acceso",
+                    "saludo"
+                ],
+                "category": "UNKNOWN_THRESHOLD"
+            },
+            {
+                "question": "no Pichincha, Quito",
+                "expected": "catalogo",
+                "actual": "UNKNOWN",
+                "score": 0.0353,
+                "second": "contacto",
+                "second_score": 0.0333,
+                "confidence": 0.0365,
+                "level": "UNKNOWN",
+                "margin": 0.002,
+                "tag": "correction",
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "deposito",
+                    "contacto",
+                    "saludo",
+                    "donacion",
+                    "catalogo"
+                ],
+                "category": "NEGATION"
+            },
+            {
+                "question": "necesito hacer un trámite",
+                "expected": "ambiguous",
+                "actual": "ambiguous",
+                "score": 0.2211,
+                "second": "saludo",
+                "second_score": 0.1698,
+                "confidence": 0,
+                "level": "LOW",
+                "margin": 0,
+                "tag": "ambiguity",
+                "reason": "keyword",
+                "correct": true,
+                "candidate_slugs": [
+                    "deposito",
+                    "saludo",
+                    "contacto",
+                    "acceso",
+                    "donacion"
+                ],
+                "category": null
+            },
+            {
+                "question": "quiero entregar algo",
+                "expected": "ambiguous",
+                "actual": "ambiguous",
+                "score": 0.6623,
+                "second": "deposito_requisitos",
+                "second_score": 0.3399,
+                "confidence": 0,
+                "level": "LOW",
+                "margin": 0,
+                "tag": "ambiguity",
+                "reason": "keyword",
+                "correct": true,
+                "candidate_slugs": [
+                    "entrega",
+                    "deposito_requisitos",
+                    "deposito",
+                    "documentos",
+                    "acceso_registro"
+                ],
+                "category": null
+            },
+            {
+                "question": "documentos",
+                "expected": "ambiguous",
+                "actual": "ambiguous",
+                "score": 0.8106,
+                "second": "documentos_firma",
+                "second_score": 0.3266,
+                "confidence": 0,
+                "level": "LOW",
+                "margin": 0,
+                "tag": "ambiguity",
+                "reason": "keyword",
+                "correct": true,
+                "candidate_slugs": [
+                    "documentos",
+                    "documentos_firma",
+                    "donacion_requisitos",
+                    "revision",
+                    "documentos_permisos"
+                ],
+                "category": null
+            },
+            {
+                "question": "cómo está el clima en Lima",
+                "expected": "UNKNOWN",
+                "actual": "UNKNOWN",
+                "score": 0.0898,
+                "second": "contacto",
+                "second_score": 0.0848,
+                "confidence": 0.1088,
+                "level": "UNKNOWN",
+                "margin": 0.005,
+                "tag": "ood",
+                "reason": "quality",
+                "correct": true,
+                "candidate_slugs": [
+                    "acceso",
+                    "contacto",
+                    "deposito",
+                    "catalogo",
+                    "donacion"
+                ],
+                "category": null
+            },
+            {
+                "question": "hazme una receta con arroz",
+                "expected": "UNKNOWN",
+                "actual": "UNKNOWN",
+                "score": 0.0796,
+                "second": "catalogo",
+                "second_score": 0.0673,
+                "confidence": 0.0949,
+                "level": "UNKNOWN",
+                "margin": 0.0123,
+                "tag": "ood",
+                "reason": "quality",
+                "correct": true,
+                "candidate_slugs": [
+                    "contacto",
+                    "catalogo",
+                    "acceso",
+                    "donacion",
+                    "saludo"
+                ],
+                "category": null
+            },
+            {
+                "question": "quién ganó ayer la carrera",
+                "expected": "UNKNOWN",
+                "actual": "UNKNOWN",
+                "score": 0.0864,
+                "second": "deposito",
+                "second_score": 0.076,
+                "confidence": 0.1067,
+                "level": "UNKNOWN",
+                "margin": 0.0104,
+                "tag": "ood",
+                "reason": "quality",
+                "correct": true,
+                "candidate_slugs": [
+                    "saludo",
+                    "deposito",
+                    "catalogo",
+                    "acceso",
+                    "donacion"
+                ],
+                "category": null
+            },
+            {
+                "question": "tienen Dynastes de Ecuador",
+                "expected": "catalogo",
+                "actual": "catalogo",
+                "score": 0,
+                "second": null,
+                "second_score": 0,
+                "confidence": null,
+                "level": null,
+                "margin": null,
+                "tag": "catalog",
+                "reason": "catalogo",
+                "correct": true,
+                "candidate_slugs": [],
+                "category": null
+            },
+            {
+                "question": "cuántos Megasoma están publicados",
+                "expected": "catalogo",
+                "actual": "catalogo",
+                "score": 0,
+                "second": null,
+                "second_score": 0,
+                "confidence": null,
+                "level": null,
+                "margin": null,
+                "tag": "catalog",
+                "reason": "catalogo",
+                "correct": true,
+                "candidate_slugs": [],
+                "category": null
+            },
+            {
+                "question": "buscar por código MEPN-0008",
+                "expected": "catalogo",
+                "actual": "catalogo",
+                "score": 0.3063,
+                "second": "catalogo",
+                "second_score": 0.1523,
+                "confidence": 0.4351,
+                "level": "MEDIUM",
+                "margin": 0.154,
+                "tag": "catalog",
+                "reason": "alias",
+                "correct": true,
+                "candidate_slugs": [
+                    "catalogo",
+                    "catalogo",
+                    "contacto",
+                    "donacion",
+                    "saludo"
+                ],
+                "category": null
+            }
+        ],
+        "confusions": [
+            {
+                "expected": "catalogo",
+                "actual": "UNKNOWN",
+                "count": 2
+            },
+            {
+                "expected": "deposito",
+                "actual": "UNKNOWN",
+                "count": 1
+            }
+        ],
+        "errors": [
+            {
+                "question": "como abro un deposiito",
+                "expected": "deposito",
+                "actual": "UNKNOWN",
+                "score": 0.1241,
+                "second": "contacto",
+                "second_score": 0.0931,
+                "confidence": 0.1703,
+                "level": "UNKNOWN",
+                "margin": 0.031,
+                "tag": "typos",
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "deposito",
+                    "contacto",
+                    "acceso",
+                    "catalogo",
+                    "catalogo"
+                ],
+                "category": "UNKNOWN_THRESHOLD"
+            },
+            {
+                "question": "perdón, quería decir Megasoma",
+                "expected": "catalogo",
+                "actual": "UNKNOWN",
+                "score": 0.0832,
+                "second": "deposito",
+                "second_score": 0.08,
+                "confidence": 0.0954,
+                "level": "UNKNOWN",
+                "margin": 0.0032,
+                "tag": "correction",
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "donacion",
+                    "deposito",
+                    "catalogo",
+                    "acceso",
+                    "saludo"
+                ],
+                "category": "UNKNOWN_THRESHOLD"
+            },
+            {
+                "question": "no Pichincha, Quito",
+                "expected": "catalogo",
+                "actual": "UNKNOWN",
+                "score": 0.0353,
+                "second": "contacto",
+                "second_score": 0.0333,
+                "confidence": 0.0365,
+                "level": "UNKNOWN",
+                "margin": 0.002,
+                "tag": "correction",
+                "reason": "quality",
+                "correct": false,
+                "candidate_slugs": [
+                    "deposito",
+                    "contacto",
+                    "saludo",
+                    "donacion",
+                    "catalogo"
+                ],
+                "category": "NEGATION"
+            }
+        ],
+        "bins": {
+            "0.90-1.00": {
+                "cases": 5,
+                "correct": 5,
+                "accuracy": 1
+            },
+            "0.80-0.89": {
+                "cases": 3,
+                "correct": 3,
+                "accuracy": 1
+            },
+            "0.70-0.79": {
+                "cases": 4,
+                "correct": 4,
+                "accuracy": 1
+            },
+            "0.60-0.69": {
+                "cases": 1,
+                "correct": 1,
+                "accuracy": 1
+            },
+            "0.50-0.59": {
+                "cases": 0,
+                "correct": 0,
+                "accuracy": null
+            },
+            "<0.50": {
+                "cases": 13,
+                "correct": 10,
+                "accuracy": 0.7692
+            }
+        },
+        "ood_correct": 3,
+        "ood_total": 3
+    }
+}
