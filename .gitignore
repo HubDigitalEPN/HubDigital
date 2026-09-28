@@ -35,10 +35,6 @@ yarn-error.log
 Manual de Diseño.md
 docs/PITCH-VIDEO.md
 /docs/*.pdf
-CLAUDE.local.md
-claude.local.md
-.claude/settings.local.json
-/.claude/
 
 /Modules/GestionPrestamosRecepciones/References/
 # Firmware de provisioning con credenciales — nunca versionar

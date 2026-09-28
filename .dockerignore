@@ -10,7 +10,6 @@
 .zed
 .fleet
 .editorconfig
-.claude
 .ai
 .agents
 .tools
@@ -42,10 +41,6 @@ public/build-*
 
 # Tests
 tests
-!tests/
-tests/*
-!tests/js/
-!tests/js/**
 .phpunit.cache
 .phpunit.result.cache
 phpunit.xml
@@ -59,7 +54,7 @@ postman
 get-docker.sh
 pluck('migration')
 *.md
-CLAUDE.md.local-backup
+*.local-backup
 
 # Storage: completamente excluida del build context.
 # El Dockerfile crea la estructura con mkdir -p.

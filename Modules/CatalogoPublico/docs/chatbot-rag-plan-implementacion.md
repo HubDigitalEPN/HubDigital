@@ -18,7 +18,7 @@ Rama: `feature/divulgacion/implementacion-RAG`
    - Cero llamadas a Groq en CI.
    - El fake del generador **captura** el `ContextoLLM` para asertar sobre él.
 
-4. **Módulo autorizado**: `CatalogoPublico` es el único con `laravel/ai` (CLAUDE.md §1).
+4. **Módulo autorizado**: `CatalogoPublico` es el único con `laravel/ai`.
 
 ## Contratos (Application)
 
@@ -128,7 +128,7 @@ GeneradorRespuestaChatBotPort::class => GroqGeneradorRespuestaChatBotAdapter::cl
 - [ ] Componente Livewire del chatbot (≤10 líneas por acción).
 - [ ] Vista en `Modules/CatalogoPublico/resources/views/`.
 - [ ] Ruta en `Modules/CatalogoPublico/routes/web.php`.
-- [ ] Cumplir Flux UI + tokens de color (CLAUDE.md §3): sin hex, iconos outline, `rounded-lg`, `p-4 sm:p-6`.
+- [ ] Cumplir Flux UI + tokens de color: sin hex, iconos outline, `rounded-lg`, `p-4 sm:p-6`.
 
 ### 11. Añadir `@listo`
 - [ ] Añadir tag `@listo` encima de `Característica:` en el `.feature`.

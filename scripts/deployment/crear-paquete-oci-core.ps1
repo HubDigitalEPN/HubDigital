@@ -397,7 +397,7 @@ $incluir = @(
 $argumentosTar = @(
     '-czf', $paquete,
     '--exclude=.git', '--exclude=.env', '--exclude=.env.*', '--exclude=.codex-*',
-    '--exclude=.ai', '--exclude=.claude', '--exclude=.agents', '--exclude=.tools', '--exclude=.local',
+    '--exclude=.ai', '--exclude=.agents', '--exclude=.tools', '--exclude=.local',
     '--exclude=artifacts', '--exclude=docs', '--exclude=tests', '--exclude=postman', '--exclude=docker',
     '--exclude=node_modules', '--exclude=public/hot', '--exclude=public/storage',
     '--exclude=Modules/*/tests', '--exclude=Modules/*/tests/*',
@@ -412,7 +412,7 @@ $rutasFuente = @(Get-SalidaGit -Argumentos @('-c', 'core.quotepath=false', 'ls-f
     $ruta = $_
     $permitida = @($incluir | Where-Object { $ruta -eq $_ -or $ruta.StartsWith("$_/") }).Count -gt 0
     $permitida -and $ruta -notmatch '(^|/)(tests|docs|postman|docker|node_modules)(/|$)' -and
-        $ruta -notmatch '(^|/)\.(git|ai|claude|agents|tools|local)(/|$)' -and
+        $ruta -notmatch '(^|/)\.(git|ai|agents|tools|local)(/|$)' -and
         $ruta -notmatch '\.(key|pem|p12|pfx|pass)$'
 } | Sort-Object)
 $lineasFuente = @($rutasFuente | ForEach-Object {
@@ -458,7 +458,7 @@ try {
     if ($LASTEXITCODE -ne 0 -or -not $contenido) { throw 'El paquete se creo, pero no pudo volver a leerse.' }
     $prohibidos = @($contenido | Where-Object {
         $_ -match '(^|/)\.git(/|$)' -or $_ -match '(^|/)\.env($|\.(?!example$))' -or
-        $_ -match '(^|/)\.codex-' -or $_ -match '(^|/)\.(ai|claude|agents|tools|local)(/|$)' -or
+        $_ -match '(^|/)\.codex-' -or $_ -match '(^|/)\.(ai|agents|tools|local)(/|$)' -or
         $_ -match '(^|/)(artifacts|docs|tests|postman|docker)(/|$)' -or
         $_ -match '\.(key|pem|p12|pfx|pass)$' -or
         $_ -match '(^|/)node_modules(/|$)' -or
@@ -727,13 +727,14 @@ Rama remota: $upstream
 Identidad: SOURCE-METADATA.json registra el commit de main y las huellas de Java y Vite.
 Kit que debe subirse: $nombreKitCloudShell
 VM OCI: ubuntu@129.153.23.57
-Migraciones de base de datos: DESHABILITADAS
+Migraciones de base de datos: se aplican en la preparacion, antes de activar
 
 OBJETIVO
 --------
 Este procedimiento transfiere una release validada desde Windows a OCI Cloud
 Shell, luego a la VM y finalmente la activa en https://dev.labinvepn.org.
-El despliegue usa checksums SHA-256 y no modifica el esquema PostgreSQL.
+El despliegue verifica checksums SHA-256 y aplica las migraciones pendientes
+antes de activar la release.
 
 ARCHIVOS GENERADOS EN WINDOWS
 -----------------------------
@@ -935,7 +936,8 @@ sudo /srv/hubdigital/current/deploy/oracle/scripts/cleanup-old-releases.sh --app
 
 DIAGNOSTICO SI FALLA LA ACTIVACION
 ----------------------------------
-No use chmod 777, no cambie current manualmente y no habilite migraciones.
+No use chmod 777 ni cambie current manualmente. Las migraciones se aplican
+solo en el paso de preparacion indicado.
 Consulte estos registros y conserve la salida:
 
 sudo tail -n 150 /var/log/php8.4-fpm.log

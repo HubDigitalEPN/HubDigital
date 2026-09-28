@@ -157,7 +157,7 @@ ProveedorJerarquiaDeEspecimenPort::class   => JerarquiaDeEspecimenAdapter::class
 
 ---
 
-## 8. Refinamientos sugeridos al `.feature` (conformidad CLAUDE.md)
+## 8. Refinamientos sugeridos al `.feature` (convenciones del proyecto)
 1. Línea 1: `#language: es` → **`# language: es`** (con espacio, como exige la convención).
 2. Actor: el resto del BC público usa `el visitante`/`el investigador`, pero esta feature es administrativa y usa `el curador`
    (coherente con Sincronización y Tabla divulgada). Mantener `el curador` y documentarlo como la cara *admin* de CatalogoPublico.
