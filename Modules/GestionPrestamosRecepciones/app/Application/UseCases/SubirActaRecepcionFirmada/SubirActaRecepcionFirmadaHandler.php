@@ -48,7 +48,7 @@ final class SubirActaRecepcionFirmadaHandler
             $input->rutaOriginalAbsoluta,
         );
 
-        if (! $validacion->esAceptable((bool) config('firma-electronica.exigir_certificado_confiable'))) {
+        if (! $validacion->esAceptable()) {
             throw ActaRecepcionSinFirmaElectronica::crear();
         }
 

@@ -7,7 +7,7 @@ declare(strict_types=1);
 
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Contracts\Console\Kernel;
-use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\PdfsigValidacionFirmaElectronicaAdapter;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\JavaValidacionFirmaElectronicaAdapter;
 use Modules\GestionPrestamosRecepciones\Presentation\Support\PerfilFirmaPdf;
 
 $raiz = dirname(__DIR__, 4);
@@ -53,25 +53,28 @@ if ($modo === 'generar') {
         'nroPermisoMovilizacion' => 'PRUEBA-M', 'grupoAnimal' => 'Insecta',
         'nroIndividuos' => 35, 'nroMorfoespecies' => 2, 'nroLotes' => 1,
         'localidad' => 'Localidad sintetica', 'verificadoEn' => new DateTimeImmutable('2026-01-01 10:00:00'),
+        'tipoTramite' => 'Depósito', 'estadoRecepcion' => 'Conforme', 'observaciones' => [],
     ];
     $pdfActa = Pdf::loadView('gestionprestamosrecepciones::pdf.acta-recepcion', [
         'recepcion' => $recepcion, 'depositante' => $depositante, 'investigador' => $depositante->nombre,
         'curador' => 'Curador de prueba', 'receptor' => 'Receptor de prueba',
         'fecha' => '1 de enero de 2026', 'perfilFirma' => PerfilFirmaPdf::actaRecepcionCurador(),
+        'versionActa' => 1,
     ])->setPaper('a4')->output();
     file_put_contents($directorio.'/acta-original.pdf', $pdfActa);
     fwrite(STDOUT, "Plantillas reales DomPDF generadas con datos sinteticos.\n");
     exit(0);
 }
 
-$validador = new PdfsigValidacionFirmaElectronicaAdapter;
+config()->set('firma-electronica.java_signature_trust_dir', $directorio);
+$validador = new JavaValidacionFirmaElectronicaAdapter;
 foreach (['solicitud', 'acta'] as $nombre) {
     $detalle = $validador->verificarFirmaDetallada(
         $directorio.'/'.$nombre.'-firmada.pdf',
         $directorio.'/'.$nombre.'-original.pdf',
     );
-    // La confianza de una CA real no aplica al certificado autofirmado de prueba.
-    if (! $detalle->esAceptable(false)) {
+    // El motor confía solo en la raíz sintética creada en este directorio temporal.
+    if (! $detalle->esAceptable()) {
         fwrite(STDERR, $nombre.': '.json_encode([
             'integridad' => $detalle->integridadCriptografica,
             'cobertura' => $detalle->documentoCompletoFirmado,
@@ -86,10 +89,13 @@ foreach (['solicitud', 'acta'] as $nombre) {
 }
 
 // Aisla el control de contenido: una reescritura de prueba tambien invalida el CMS.
-$compararContenido = new ReflectionMethod($validador, 'contenidoVisibleCoincide');
 foreach (['desplazada', 'apariencia-vacia', 'anotacion-extra', 'contenido-alterado'] as $alteracion) {
     $ruta = $directorio.'/solicitud-'.$alteracion.'.pdf';
-    if (! is_file($ruta) || $compararContenido->invoke($validador, $directorio.'/solicitud-original.pdf', $ruta)) {
+    if (! is_file($ruta)) {
+        throw new RuntimeException('Falta el fixture de alteración '.$alteracion.'.');
+    }
+    $detalle = $validador->verificarFirmaDetallada($ruta, $directorio.'/solicitud-original.pdf');
+    if ($detalle->contenidoOficialCoincide || $detalle->resultado === \Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoValidacionFirma::VerificacionNoDisponible) {
         fwrite(STDERR, $alteracion.": el control de contenido no rechazo la alteracion.\n");
         exit(1);
     }

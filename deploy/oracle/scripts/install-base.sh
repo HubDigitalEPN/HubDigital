@@ -16,7 +16,7 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get install -y --no-install-recommends \
     ca-certificates certbot curl gnupg jq software-properties-common nginx postgresql-16 postgresql-client-16 \
-    poppler-utils qpdf tesseract-ocr tesseract-ocr-eng tesseract-ocr-spa openjdk-17-jre-headless \
+    poppler-utils tesseract-ocr tesseract-ocr-eng tesseract-ocr-spa openjdk-17-jre-headless \
     sysstat logrotate
 
 # Noble mantiene PHP 8.3 como versión predeterminada; el lock de HubDigital

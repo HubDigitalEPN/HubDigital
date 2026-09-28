@@ -165,6 +165,8 @@ final class RecepcionMuestrasFisicasContext extends BaseContext
                     contenidoOficialCoincide: true,
                     certificadoVigente: true,
                     certificadoConfiable: true,
+                    aceptadaPorMotor: true,
+                    formatoFirmaAceptado: true,
                     certificado: [
                         'nombre' => 'Curador EPN de prueba',
                         'tipo_firma' => 'ETSI.CAdES.detached',

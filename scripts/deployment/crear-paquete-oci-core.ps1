@@ -474,7 +474,6 @@ try {
         '<R2_BUCKET>' = $valoresEntorno['R2_BUCKET']
         '<R2_ACCESS_KEY_ID>' = $valoresEntorno['R2_ACCESS_KEY_ID']
         '<R2_SECRET_ACCESS_KEY>' = $valoresEntorno['R2_SECRET_ACCESS_KEY']
-        '<NSS_DIR_CON_RAICES_AUTORIZADAS>' = 'sql:/etc/hubdigital/nssdb'
         '<VAPID_PUBLIC_KEY>' = $vapidPublica
         '<VAPID_PRIVATE_KEY>' = $vapidPrivada
         '<turnstile-site-key>' = $valoresEntorno['TURNSTILE_SITE_KEY']
@@ -727,11 +726,11 @@ de un comando.
 
 PASO 4 - VERIFICAR Y PREPARAR EL CANDIDATO EN LA VM
 ----------------------------------------------------
-En una VM existente, el staging exige Java 17 y qpdf. Si faltan,
+En una VM existente, el staging exige Java 17. Si falta,
 instale el runtime PDF antes de preparar el candidato:
 
 sudo apt-get update
-sudo apt-get install -y --no-install-recommends openjdk-17-jre-headless qpdf
+sudo apt-get install -y --no-install-recommends openjdk-17-jre-headless
 
 Dentro de la VM ejecute:
 

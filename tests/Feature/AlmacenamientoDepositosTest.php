@@ -36,7 +36,7 @@ test('rechaza como PDF un archivo cuyo contenido no tiene cabecera PDF', functio
     $archivo = UploadedFile::fake()->createWithContent('aparente.pdf', 'contenido que no es PDF');
 
     expect(fn () => (new AlmacenamientoDepositos)->guardarArchivo($archivo, 'depositos/prueba'))
-        ->toThrow(InvalidArgumentException::class, 'no corresponde a un documento PDF');
+        ->toThrow(InvalidArgumentException::class, 'número mágico de PDF');
     Storage::disk('local')->assertMissing('depositos/prueba');
 });
 
@@ -46,7 +46,7 @@ test('rechaza un PDF si el numero magico no comienza en el byte cero', function 
     $archivo = UploadedFile::fake()->createWithContent('aparente.pdf', 'MZ'.pdfValidoParaDepositos());
 
     expect(fn () => (new AlmacenamientoDepositos)->guardarArchivo($archivo, 'depositos/prueba'))
-        ->toThrow(InvalidArgumentException::class, 'no corresponde a un documento PDF');
+        ->toThrow(InvalidArgumentException::class, 'número mágico de PDF');
     Storage::disk('local')->assertMissing('depositos/prueba');
 });
 

@@ -10,7 +10,7 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoValidacionF
 /**
  * Puerto de la capa de aplicación para verificar la firma electrónica de un PDF.
  *
- * Lo implementa un adaptador en Infrastructure (p. ej. basado en pdfsig).
+ * Lo implementa el adaptador de infraestructura que invoca el motor Java.
  */
 interface ValidacionFirmaElectronicaPort
 {

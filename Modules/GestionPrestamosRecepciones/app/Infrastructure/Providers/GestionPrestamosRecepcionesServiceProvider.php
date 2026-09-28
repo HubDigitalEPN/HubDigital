@@ -60,7 +60,7 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\LaravelTransacti
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\LocalExtraccionDatosDocumentoAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\NotificacionCuratoriaAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\NotificacionInvestigadorAdapter;
-use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\PdfsigValidacionFirmaElectronicaAdapter;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\JavaValidacionFirmaElectronicaAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Console\Commands\ConciliarDocumentosDepositosCommand;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Console\Commands\EvaluarPlazosDevolucionTodosLosPrestamosCommand;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Console\Commands\LimpiarBorradoresAbandonadosCommand;
@@ -129,7 +129,7 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
         NotificacionCuratoriaPort::class => NotificacionCuratoriaAdapter::class,
         NotificacionInvestigadorPort::class => NotificacionInvestigadorAdapter::class,
         ColaRevisionCuratorialPort::class => EloquentColaRevisionCuratorialAdapter::class,
-        ValidacionFirmaElectronicaPort::class => PdfsigValidacionFirmaElectronicaAdapter::class,
+        ValidacionFirmaElectronicaPort::class => JavaValidacionFirmaElectronicaAdapter::class,
         SolicitudFirmadaPort::class => EloquentSolicitudFirmadaAdapter::class,
         RevisionDocumentalPort::class => EloquentRevisionDocumentalAdapter::class,
         HistorialPort::class => EloquentHistorialAdapter::class,

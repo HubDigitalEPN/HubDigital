@@ -1048,6 +1048,7 @@ final class RegistroSolicitudDeposito extends Component
      */
     public function guardarPasoTres(): void
     {
+        $this->actualizarFirmas();
         foreach ($this->documentosRequeridos as $doc) {
             if (! isset($this->documentosCargados[$doc])) {
                 $this->addError('documentos', "El documento \"{$doc}\" es requerido.");
@@ -1158,7 +1159,7 @@ final class RegistroSolicitudDeposito extends Component
             $pendientes = [];
             foreach (($modelo->documentos_cargados ?? []) as $nombre => $ruta) {
                 if (($modelo->validacion_archivos[$nombre] ?? null) !== 'valido'
-                    || in_array($firmas[$nombre] ?? null, ['firmado', 'firmado_sin_revocacion', 'validando'], true)) {
+                    || in_array($firmas[$nombre] ?? null, ['firmado', 'validando'], true)) {
                     continue;
                 }
                 $firmas[$nombre] = 'validando';
@@ -1657,7 +1658,7 @@ final class RegistroSolicitudDeposito extends Component
 
     public function guardarPasoFirmas(): void
     {
-        $sinVerificar = array_filter($this->firmasElectronicas, fn ($estado) => ! in_array($estado, ['firmado', 'sin_firma'], true));
+        $sinVerificar = array_filter($this->firmasElectronicas, fn ($estado) => ! in_array($estado, ['firmado', 'firmado_sin_revocacion'], true));
         if (! empty($sinVerificar)) {
             $this->mostrarToast('Revisa el motivo de validación de cada firma antes de continuar.', 'error');
 

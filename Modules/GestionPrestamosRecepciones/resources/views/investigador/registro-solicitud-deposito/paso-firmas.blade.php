@@ -2,9 +2,10 @@
     @php
         $sinValidar = array_filter($firmasElectronicas, fn ($estado) => !in_array($estado, ['firmado', 'firmado_sin_revocacion'], true));
         $soloFallaRevocacion = $sinValidar !== [] && count(array_filter($sinValidar, fn ($estado) => $estado === 'revocacion_no_comprobable')) === count($sinValidar);
-        $puedeReintentar = array_intersect($firmasElectronicas, ['verificacion_no_disponible', 'certificado_no_confiable', 'almacen_incompleto', 'revocacion_no_comprobable']) !== [];
+        $puedeReintentar = array_intersect($firmasElectronicas, ['verificacion_no_disponible', 'certificado_no_confiable', 'almacen_incompleto', 'revocacion_no_comprobable', 'firmado_sin_revocacion', 'no_verificado', 'firma_invalida', 'certificado_caducado']) !== [];
         $motivosFirma = [
             'firmado' => 'Firma criptográfica válida y certificado de confianza.',
+            'validando' => 'Se está comprobando la firma electrónica.',
             'sin_firma' => 'El PDF no contiene firma electrónica.',
             'firma_invalida' => 'La firma no supera la comprobación criptográfica de integridad o cobertura.',
             'certificado_caducado' => 'El certificado está caducado y no hay un sello de tiempo confiable que pruebe la firma durante su vigencia.',
@@ -23,7 +24,7 @@
             <flux:icon :name="$sinValidar ? 'shield-exclamation' : 'shield-check'" class="mt-0.5 size-5 shrink-0 {{ $sinValidar ? 'text-error' : 'text-science-blue' }}" />
             <div>
                 <p class="text-sm font-semibold text-text-primary">{{ $soloFallaRevocacion ? 'No se pudo comprobar la revocación' : ($sinValidar ? 'Corrige las firmas para continuar' : 'Firmas electrónicas verificadas') }}</p>
-                @if($sinValidar)<p class="text-xs text-text-secondary">{{ $soloFallaRevocacion ? 'Conservamos los PDF; vuelve a consultar la fuente oficial.' : 'Elimina el archivo indicado y carga un PDF firmado correctamente.' }}</p>@endif
+                @if($sinValidar)<p class="text-xs text-text-secondary">Revisa el resultado de cada PDF. Puedes volver a comprobar las firmas cuando falte una respuesta del servicio o un certificado emisor.</p>@endif
             </div>
         </div>
         <div class="grid gap-1 sm:grid-cols-2">

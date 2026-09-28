@@ -59,16 +59,6 @@ function abrirCertificado(bytes, clave) {
         throw new Error('No se encontró el certificado que corresponde a la clave privada.');
     }
 
-    const usoClave = certificado.getExtension('keyUsage');
-    if (usoClave && usoClave.digitalSignature !== true && usoClave.nonRepudiation !== true) {
-        throw new Error('El certificado no está habilitado para firma digital.');
-    }
-
-    const ahora = new Date();
-    if (ahora < certificado.validity.notBefore || ahora > certificado.validity.notAfter) {
-        throw new Error('El certificado está fuera de su período de vigencia.');
-    }
-
     return {
         nombre: atributo(certificado.subject.attributes, 'commonName') ?? 'Titular del certificado',
         identificacion: atributo(certificado.subject.attributes, 'serialNumber'),

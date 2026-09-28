@@ -114,6 +114,8 @@ test('flujo integral separa depositante receptor y curador hasta el acta final f
                 contenidoOficialCoincide: true,
                 certificadoVigente: true,
                 certificadoConfiable: true,
+                aceptadaPorMotor: true,
+                formatoFirmaAceptado: true,
                 certificado: [
                     'nombre' => 'Curadora EPN Prueba',
                     'tipo_firma' => 'ETSI.CAdES.detached',

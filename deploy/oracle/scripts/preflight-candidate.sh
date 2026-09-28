@@ -42,7 +42,7 @@ systemctl is-active --quiet hubdigital-schedule.timer && { echo 'Timer activo du
 systemctl is-active --quiet cloudflared-hubdigital.service && { echo 'Tunnel activo durante preflight de candidato.' >&2; exit 65; }
 
 php_modules="$(/usr/bin/php8.4 -m)"
-for binary in java qpdf; do
+for binary in java; do
     command -v "${binary}" >/dev/null 2>&1 || {
         echo "Falta ${binary} para inspeccionar PDFs y firmas. Instale el runtime de documentos antes de continuar." >&2
         exit 65

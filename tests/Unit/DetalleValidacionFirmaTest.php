@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\DetalleValidacionFirma;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoValidacionFirma;
 
-function detalleFirmaValida(array $certificado = []): DetalleValidacionFirma
+function detalleFirmaMotor(bool $aceptada): DetalleValidacionFirma
 {
     return new DetalleValidacionFirma(
         resultado: ResultadoValidacionFirma::Firmado,
@@ -17,30 +17,30 @@ function detalleFirmaValida(array $certificado = []): DetalleValidacionFirma
         certificado: [
             'nombre' => 'Firmante de prueba',
             'tipo_firma' => 'ETSI.CAdES.detached',
-            ...$certificado,
         ],
+        aceptadaPorMotor: $aceptada,
+        formatoFirmaAceptado: true,
     );
 }
 
-test('acepta una firma CAdES íntegra vigente y confiable', function (): void {
-    expect(detalleFirmaValida()->esAceptable(true))->toBeTrue();
+test('conserva la aceptación emitida por el motor Java', function (): void {
+    expect(detalleFirmaMotor(true)->esAceptable())->toBeTrue();
 });
 
-test('rechaza una firma de formato distinto aunque sea criptográficamente válida', function (): void {
-    expect(detalleFirmaValida(['tipo_firma' => 'adbe.pkcs7.detached'])->esAceptable(false))->toBeFalse();
+test('no sustituye un rechazo del motor por comprobaciones PHP', function (): void {
+    expect(detalleFirmaMotor(false)->esAceptable())->toBeFalse();
 });
 
-test('en producción rechaza certificados cuya cadena no es confiable', function (): void {
+test('una respuesta sin decisión explícita del motor queda sin aceptar', function (): void {
     $detalle = new DetalleValidacionFirma(
         resultado: ResultadoValidacionFirma::Firmado,
         integridadCriptografica: true,
         documentoCompletoFirmado: true,
         contenidoOficialCoincide: true,
         certificadoVigente: true,
-        certificadoConfiable: false,
+        certificadoConfiable: true,
         certificado: ['tipo_firma' => 'ETSI.CAdES.detached'],
     );
 
-    expect($detalle->esAceptable(true))->toBeFalse()
-        ->and($detalle->esAceptable(false))->toBeTrue();
+    expect($detalle->esAceptable())->toBeFalse();
 });

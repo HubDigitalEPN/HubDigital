@@ -45,7 +45,6 @@ test('el depósito completo persiste actores, documentos, taxonomía, recepción
 
     Notification::fake();
     configurarR2FalsoParaPruebas();
-    config()->set('firma-electronica.exigir_certificado_confiable', true);
 
     app()->instance(EventPublisherPort::class, new FakeEventPublisherAdapter);
     app()->instance(ExtraccionDatosDocumentoPort::class, new class implements ExtraccionDatosDocumentoPort
@@ -94,6 +93,8 @@ test('el depósito completo persiste actores, documentos, taxonomía, recepción
                 contenidoOficialCoincide: true,
                 certificadoVigente: true,
                 certificadoConfiable: true,
+                aceptadaPorMotor: true,
+                formatoFirmaAceptado: true,
                 certificado: [
                     'nombre' => 'Firmante de prueba',
                     'tipo_firma' => 'ETSI.CAdES.detached',

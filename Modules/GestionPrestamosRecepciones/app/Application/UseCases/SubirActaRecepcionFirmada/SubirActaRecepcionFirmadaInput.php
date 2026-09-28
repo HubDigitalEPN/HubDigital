@@ -9,7 +9,7 @@ namespace Modules\GestionPrestamosRecepciones\Application\UseCases\SubirActaRece
  *
  * La capa de presentación almacena el PDF subido y provee tanto la ruta relativa
  * (referencia persistida en el agregado) como la absoluta (necesaria para verificar
- * la firma con pdfsig).
+ * la firma con Java).
  */
 final readonly class SubirActaRecepcionFirmadaInput
 {

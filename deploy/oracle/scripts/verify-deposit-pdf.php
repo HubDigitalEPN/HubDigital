@@ -58,7 +58,7 @@ try {
         // Rechazo esperado.
     }
 
-    $firma = app(\Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\PdfsigValidacionFirmaElectronicaAdapter::class)
+    $firma = app(\Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\JavaValidacionFirmaElectronicaAdapter::class)
         ->verificarFirma($archivoValido);
     if ($firma !== \Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoValidacionFirma::SinFirma) {
         throw new \RuntimeException('El adaptador PHP/Java no detectó el PDF sin firma.');
@@ -99,7 +99,7 @@ try {
     }
 
     config()->set('firma-electronica.java_signature_trust_dir', $directorioFirma);
-    $adaptador = app(\Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\PdfsigValidacionFirmaElectronicaAdapter::class);
+    $adaptador = app(\Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\JavaValidacionFirmaElectronicaAdapter::class);
     $resultado = $adaptador->verificarFirma($firmado);
     if (! in_array($resultado, [
         \Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoValidacionFirma::Firmado,

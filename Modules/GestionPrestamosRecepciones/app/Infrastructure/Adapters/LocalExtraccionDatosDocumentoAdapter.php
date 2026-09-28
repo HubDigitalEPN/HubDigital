@@ -12,7 +12,7 @@ use Modules\GestionPrestamosRecepciones\Application\Ports\ExtraccionDatosDocumen
 use Modules\GestionPrestamosRecepciones\Domain\Services\AnalizadorDocumentoAmbiental;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\DatosIntegradosDocumento;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
-use setasign\Fpdi\Fpdi;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\ValidadorPdfDeposito;
 use Smalot\PdfParser\Parser;
 use Symfony\Component\Process\Process;
 
@@ -215,22 +215,36 @@ final class LocalExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocum
             if (PHP_OS_FAMILY === 'Windows') {
                 $paginas = [];
                 $fragmentos = [];
-                foreach ((new Parser)->parseFile($archivo)->getPages() as $indice => $pagina) {
-                    $texto = trim($pagina->getText());
+                $proceso = new Process([
+                    (string) config('firma-electronica.java_binary', 'java'),
+                    '-Djava.awt.headless=true', '-jar',
+                    (string) config('firma-electronica.java_signature_jar'), 'text', '--paths-stdin',
+                ]);
+                $proceso->setInput($archivo);
+                $proceso->setEnv(DirectorioTemporalHubDigital::entornoProcesos());
+                $proceso->setTimeout(30);
+                $proceso->mustRun();
+                $lectura = json_decode($proceso->getOutput(), true, 512, JSON_THROW_ON_ERROR);
+                if (! is_array($lectura['paginas'] ?? null)) {
+                    throw new \RuntimeException('Java no pudo leer las páginas del PDF.');
+                }
+                foreach ($lectura['paginas'] as $pagina) {
+                    $numero = (int) $pagina['numero'];
+                    $texto = trim((string) $pagina['texto']);
                     $paginas[] = [
-                        'numero' => $indice + 1,
-                        'metodo' => 'pdf-parser',
+                        'numero' => $numero,
+                        'metodo' => 'java-pdfbox',
                         'caracteres' => mb_strlen($texto),
                         'estado' => $texto === '' ? 'sin_texto' : 'texto_nativo',
                     ];
                     if ($texto !== '') {
-                        $fragmentos[] = sprintf('[Página %d · pdf-parser]%s%s', $indice + 1, PHP_EOL, $texto);
+                        $fragmentos[] = sprintf('[Página %d · java-pdfbox]%s%s', $numero, PHP_EOL, $texto);
                     }
                 }
 
                 return [
                     'texto' => implode(PHP_EOL.PHP_EOL, $fragmentos),
-                    'motor' => 'pdf-parser',
+                    'motor' => 'java-pdfbox',
                     'uso_ocr' => false,
                     'procesamiento_parcial' => count($paginas) !== $totalPaginas || count($fragmentos) !== $totalPaginas,
                     'paginas' => $paginas,
@@ -306,80 +320,14 @@ final class LocalExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocum
      */
     private function validarPdfSeguro(string $archivo): int
     {
-        $maxPaginas = max(1, (int) config('document-extraction.ocr_max_pages', 25));
-        $maxPoints = max(842, (int) config('document-extraction.max_page_points', 1440));
-        $dpi = max(72, min(300, (int) config('document-extraction.ocr_dpi', 200)));
-        $maxPixeles = max(10_000_000, (int) config('document-extraction.max_render_pixels', 120_000_000));
-
-        if (PHP_OS_FAMILY === 'Windows') {
-            try {
-                $pdf = new Fpdi;
-                $paginas = $pdf->setSourceFile($archivo);
-                if ($paginas < 1 || $paginas > $maxPaginas) {
-                    throw new \RuntimeException("El PDF debe tener entre 1 y {$maxPaginas} páginas.");
-                }
-                $pixeles = 0.0;
-                for ($numero = 1; $numero <= $paginas; $numero++) {
-                    $tamano = $pdf->getTemplateSize($pdf->importPage($numero));
-                    $ancho = (float) $tamano['width'] * 72 / 25.4;
-                    $alto = (float) $tamano['height'] * 72 / 25.4;
-                    if ($ancho <= 0 || $alto <= 0 || $ancho > $maxPoints || $alto > $maxPoints) {
-                        throw new \RuntimeException('El PDF contiene una página con dimensiones no permitidas.');
-                    }
-                    $pixeles += ($ancho * $dpi / 72) * ($alto * $dpi / 72);
-                }
-                if ($pixeles > $maxPixeles) {
-                    throw new \RuntimeException('El PDF excede el límite seguro de procesamiento gráfico.');
-                }
-
-                return $paginas;
-            } catch (\Throwable $error) {
-                throw new \RuntimeException('El PDF no superó la validación técnica previa.', previous: $error);
-            }
-        }
-
-        $proceso = new Process([
-            'pdfinfo', '-box', '-f', '1', '-l', (string) ($maxPaginas + 1), $archivo,
+        $resultado = app(ValidadorPdfDeposito::class)->inspeccionar($archivo, [
+            'max_pages' => max(1, (int) config('document-extraction.ocr_max_pages', 25)),
+            'max_page_points' => (int) config('document-extraction.max_page_points', 1440),
+            'max_render_pixels' => (int) config('document-extraction.max_render_pixels', 120_000_000),
+            'render_dpi' => (int) config('document-extraction.ocr_dpi', 200),
         ]);
-        $proceso->setTimeout(15);
-        $proceso->run();
-        if (! $proceso->isSuccessful()) {
-            throw new \RuntimeException('El PDF no superó la validación técnica previa.');
-        }
 
-        $salida = $proceso->getOutput();
-        $paginas = preg_match('/^Pages:\s+(\d+)\s*$/mi', $salida, $matchPaginas) === 1
-            ? (int) $matchPaginas[1]
-            : 0;
-        if ($paginas < 1 || $paginas > $maxPaginas) {
-            throw new \RuntimeException("El PDF debe tener entre 1 y {$maxPaginas} páginas.");
-        }
-
-        preg_match_all(
-            '/^(?:Page(?:\s+\d+)?\s+)?size:\s*([0-9.]+)\s+x\s+([0-9.]+)\s+pts/mi',
-            $salida,
-            $tamanos,
-            PREG_SET_ORDER,
-        );
-        if ($tamanos === []) {
-            throw new \RuntimeException('No se pudo validar la geometría de las páginas del PDF.');
-        }
-
-        $maxPixelesPagina = 0.0;
-        foreach ($tamanos as $tamano) {
-            $ancho = (float) $tamano[1];
-            $alto = (float) $tamano[2];
-            if ($ancho <= 0 || $alto <= 0 || $ancho > $maxPoints || $alto > $maxPoints) {
-                throw new \RuntimeException('El PDF contiene una página con dimensiones no permitidas.');
-            }
-            $maxPixelesPagina = max($maxPixelesPagina, ($ancho * $dpi / 72) * ($alto * $dpi / 72));
-        }
-
-        if (($maxPixelesPagina * $paginas) > $maxPixeles) {
-            throw new \RuntimeException('El PDF excede el límite seguro de procesamiento gráfico.');
-        }
-
-        return $paginas;
+        return (int) ($resultado['paginas'] ?? 0);
     }
 
     private function aplicarOcrPagina(string $archivo, int $numeroPagina): string

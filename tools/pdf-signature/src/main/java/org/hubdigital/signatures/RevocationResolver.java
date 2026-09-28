@@ -106,7 +106,10 @@ final class RevocationResolver {
     static Resultado resolver(X509Certificate signer, X509Certificate issuer, CertPath path,
         Set<TrustAnchor> anchors, Evidencia evidencia, URI ocspExcepcional, URI crlExcepcional,
         Date fechaValidacion, int timeoutSeconds) {
-        String clave = issuer.getSubjectX500Principal().getName() + "|" + signer.getSerialNumber().toString(16);
+        // Dos firmas del mismo certificado pueden tener fechas probadas diferentes.
+        // Una revocación posterior al primer sello no debe reutilizar su dictamen.
+        String clave = issuer.getSubjectX500Principal().getName() + "|" + signer.getSerialNumber().toString(16)
+            + "|" + fechaValidacion.getTime();
         if (CACHE.size() >= LIMITE_CACHE) CACHE.entrySet().removeIf(e -> {
             if (!e.getValue().isDone()) return false;
             Entrada entrada = e.getValue().getNow(null);

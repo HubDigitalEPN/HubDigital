@@ -17,19 +17,13 @@ final readonly class DetalleValidacionFirma
         public bool $certificadoConfiable,
         public array $certificado = [],
         public ?string $error = null,
+        public bool $aceptadaPorMotor = false,
+        public bool $formatoFirmaAceptado = false,
     ) {}
 
-    public function esAceptable(bool $exigirCertificadoConfiable): bool
+    public function esAceptable(): bool
     {
-        $tipoFirma = strtolower(trim((string) ($this->certificado['tipo_firma'] ?? '')));
-
-        return $this->resultado === ResultadoValidacionFirma::Firmado
-            && $this->integridadCriptografica
-            && $this->documentoCompletoFirmado
-            && $this->contenidoOficialCoincide
-            && $this->certificadoVigente
-            && $tipoFirma === 'etsi.cades.detached'
-            && (! $exigirCertificadoConfiable || $this->certificadoConfiable);
+        return $this->aceptadaPorMotor;
     }
 
     /** @return array<string, mixed> */
@@ -42,11 +36,11 @@ final readonly class DetalleValidacionFirma
             'contenido_oficial_coincide' => $this->contenidoOficialCoincide,
             'certificado_vigente' => $this->certificadoVigente,
             'certificado_confiable' => $this->certificadoConfiable,
-            'formato_firma_aceptado' => strtolower(trim((string) ($this->certificado['tipo_firma'] ?? '')))
-                === 'etsi.cades.detached',
+            'formato_firma_aceptado' => $this->formatoFirmaAceptado,
+            'aceptable' => $this->aceptadaPorMotor,
             'certificado' => $this->certificado,
             'error' => $this->error,
-            'motor' => 'pdfsig+poppler',
+            'motor' => 'java-pdfbox-bouncycastle',
             'verificado_en' => now()->toIso8601String(),
         ];
     }

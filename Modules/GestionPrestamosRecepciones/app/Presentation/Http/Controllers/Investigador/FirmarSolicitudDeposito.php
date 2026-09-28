@@ -58,7 +58,7 @@ final class FirmarSolicitudDeposito
             // esa misma secuencia de bytes que fue persistida en R2 o en local.
             $rutaAbsoluta = $archivoFirmado->getRealPath();
             $validacion = $validador->verificarFirmaDetallada($rutaAbsoluta, $originalTemporal);
-            if (! $validacion->esAceptable((bool) config('firma-electronica.exigir_certificado_confiable'))) {
+            if (! $validacion->esAceptable()) {
                 $almacenamiento->eliminar($ruta);
 
                 return response()->json([

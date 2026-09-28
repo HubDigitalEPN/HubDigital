@@ -151,7 +151,7 @@ check_public_url 'https://dev.labinvepn.org/depositos' || verification_failed=1
 
 # Comprueba el artefacto Java de ESTA release y el camino real de admisión PDF
 # de Laravel. La autoprueba firma, altera y rechaza PDFs sintéticos; la prueba
-# PHP usa el inspector, qpdf y adaptador de firmas sin tocar R2.
+# PHP invoca el inspector y validador Java sin tocar R2.
 signature_jar="${release_dir}/resources/bin/hubdigital-pdf-signature.jar"
 if [[ ! -r "${signature_jar}" ]] || ! command -v java >/dev/null 2>&1; then
     echo 'NO OK Java PDF: falta el JAR de la release o el runtime Java.' >&2

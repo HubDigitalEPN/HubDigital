@@ -116,10 +116,6 @@ final class AlmacenamientoDepositos
 
     private function validarCargaPdf(string $ruta, string $contenido): void
     {
-        if (preg_match('/\A%PDF-[12]\.\d/', substr($contenido, 0, 8)) !== 1) {
-            throw new \InvalidArgumentException('El contenido del archivo no corresponde a un documento PDF.');
-        }
-
         app(ValidadorPdfDeposito::class)->validar($ruta);
         $huellaInspeccionada = hash_file('sha256', $ruta);
         if ($huellaInspeccionada === false || ! hash_equals(hash('sha256', $contenido), $huellaInspeccionada)) {
