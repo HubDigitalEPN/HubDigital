@@ -24,7 +24,7 @@ final class ValidadorPdfDeposito
         try {
             $inspector = new Process([
                 (string) config('firma-electronica.java_binary', 'java'),
-                '-Djava.awt.headless=true',
+                '-Djava.awt.headless=true', '-Xmx384m',
                 '-Dhubdigital.pdf.max_pages='.($limites['max_pages'] ?? (int) config('firma-electronica.max_pages', 40)),
                 '-Dhubdigital.pdf.max_page_points='.($limites['max_page_points'] ?? (int) config('firma-electronica.max_page_points', 1440)),
                 '-Dhubdigital.pdf.max_render_pixels='.($limites['max_render_pixels'] ?? (int) config('firma-electronica.max_render_pixels', 100_000_000)),

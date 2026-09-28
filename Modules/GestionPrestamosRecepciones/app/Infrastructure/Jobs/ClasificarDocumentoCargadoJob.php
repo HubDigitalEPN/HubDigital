@@ -7,18 +7,18 @@ namespace Modules\GestionPrestamosRecepciones\Infrastructure\Jobs;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Modules\GestionPrestamosRecepciones\Application\Ports\ExtraccionDatosDocumentoPort;
-use Modules\GestionPrestamosRecepciones\Domain\Services\AnalizadorDocumentoAmbiental;
+use Illuminate\Support\Str;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\DocumentoDepositoRechazado;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\ValidacionPreviaDocumentoDeposito;
 
-/** Identifica el tipo del documento antes de iniciar la firma electrónica. */
+/** Revisa archivos históricos o vigentes sin comprobación previa; no acepta nuevas cargas. */
 final class ClasificarDocumentoCargadoJob implements ShouldQueue
 {
     use Queueable;
 
     public int $tries = 2;
-
     public int $timeout = 180;
 
     public function __construct(
@@ -31,65 +31,69 @@ final class ClasificarDocumentoCargadoJob implements ShouldQueue
         }
     }
 
-    public function handle(ExtraccionDatosDocumentoPort $extractor, AnalizadorDocumentoAmbiental $analizador): void
+    public function handle(ValidacionPreviaDocumentoDeposito $revision, AlmacenamientoDepositos $almacenamiento): void
     {
         $modelo = SolicitudDepositoEloquentModel::query()->find($this->solicitudId);
-        if (($modelo?->documentos_cargados[$this->nombre] ?? null) !== $this->ruta) {
+        if (($modelo?->documentos_cargados[$this->nombre] ?? null) !== $this->ruta
+            || ($modelo?->validacion_archivos[$this->nombre] ?? null) !== 'analizando') {
             return;
         }
-
-        $esperado = $analizador->tipoEsperadoParaNombre($this->nombre);
-        $estado = 'valido';
-        if ($esperado !== null) {
-            $extraido = $extractor->extraerDatos([$this->nombre => $this->ruta]);
-            $detalle = $extraido->metadatosExtraccion['documentos'][$this->nombre] ?? [];
-            $detectado = $detalle['analisis']['tipo_detectado'] ?? AnalizadorDocumentoAmbiental::DESCONOCIDO;
-            $estado = $detectado === $esperado && ($detalle['contenido_compatible_con_casilla'] ?? false)
-                ? 'valido' : 'tipo_incorrecto';
-            Log::info('Clasificación automática del PDF cargado', [
-                'solicitud_id' => $this->solicitudId,
-                'documento' => $this->nombre,
-                'tipo_esperado' => $esperado,
-                'tipo_detectado' => $detectado,
-                'estado' => $estado,
-            ]);
+        $provincia = $modelo->provincia_origen;
+        $copia = $almacenamiento->copiaLocal($this->ruta);
+        try {
+            $resultado = $revision->validar($copia->ruta(), $this->nombre);
+            $estado = 'valido';
+        } catch (DocumentoDepositoRechazado $error) {
+            $resultado = ['mensaje' => $error->getMessage()];
+            $estado = $error->estado;
+        } finally {
+            $copia->limpiar();
         }
+        $token = DB::transaction(function () use ($resultado, $estado, $provincia): ?string {
+            $vigente = SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)->lockForUpdate()->first();
+            if (($vigente?->documentos_cargados[$this->nombre] ?? null) !== $this->ruta
+                || $vigente?->provincia_origen !== $provincia
+                || ($vigente?->validacion_archivos[$this->nombre] ?? null) !== 'analizando') {
+                return null;
+            }
+            $token = (string) Str::uuid();
+            $validaciones = $vigente->validacion_archivos ?? [];
+            $firmas = $vigente->firmas_electronicas ?? [];
+            $previas = $vigente->validacion_previa_documentos ?? [];
+            $validaciones[$this->nombre] = $estado;
+            unset($firmas[$this->nombre]);
+            $previas[$this->nombre] = [...$resultado, 'ruta' => $this->ruta, 'verificacion_id' => $token,
+                'firma_verificada' => false, 'comprobado_en' => now()->toIso8601String()];
+            if ($estado === 'valido') {
+                $firmas[$this->nombre] = 'validando';
+            }
+            $vigente->forceFill(['validacion_archivos' => $validaciones,
+                'firmas_electronicas' => $firmas, 'validacion_previa_documentos' => $previas])->save();
 
-        $this->guardarEstado($estado);
-        if ($estado === 'valido') {
-            VerificarFirmaDocumentoJob::dispatch($this->solicitudId, $this->nombre, $this->ruta);
+            return $estado === 'valido' ? $token : null;
+        });
+        if ($token !== null) {
+            try {
+                VerificarFirmaDocumentoJob::dispatch($this->solicitudId, $this->nombre, $this->ruta, $token);
+            } catch (\Throwable $error) {
+                report($error);
+                (new VerificarFirmaDocumentoJob($this->solicitudId, $this->nombre, $this->ruta, $token))->failed($error);
+            }
         }
     }
 
     public function failed(\Throwable $error): void
     {
-        Log::error('Falló la clasificación automática del PDF', [
-            'solicitud_id' => $this->solicitudId,
-            'documento' => $this->nombre,
-            'error' => $error->getMessage(),
-        ]);
-        $this->guardarEstado('revision_fallida');
-    }
-
-    private function guardarEstado(string $estado): void
-    {
-        DB::transaction(function () use ($estado): void {
+        report($error);
+        DB::transaction(function (): void {
             $modelo = SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)->lockForUpdate()->first();
-            if (($modelo?->documentos_cargados[$this->nombre] ?? null) !== $this->ruta) {
+            if (($modelo?->documentos_cargados[$this->nombre] ?? null) !== $this->ruta
+                || ($modelo?->validacion_archivos[$this->nombre] ?? null) !== 'analizando') {
                 return;
             }
-            $validaciones = $modelo->validacion_archivos ?? [];
-            $validaciones[$this->nombre] = $estado;
-            $firmas = $modelo->firmas_electronicas ?? [];
-            if ($estado === 'valido') {
-                $firmas[$this->nombre] = 'validando';
-            } else {
-                unset($firmas[$this->nombre]);
-            }
-            $modelo->forceFill([
-                'validacion_archivos' => $validaciones,
-                'firmas_electronicas' => $firmas,
-            ])->save();
+            $estados = $modelo->validacion_archivos ?? [];
+            $estados[$this->nombre] = 'revision_fallida';
+            $modelo->forceFill(['validacion_archivos' => $estados])->save();
         });
     }
 }

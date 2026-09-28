@@ -386,8 +386,9 @@
                                 <dd class="font-medium text-text-primary mt-0.5">{{ $deposito->provincia_origen }}</dd>
                             </div>
                         @endif
-                        @if($deposito->canton_origen)
-                            <div><dt class="text-text-secondary">Cantón de origen</dt><dd class="font-medium text-text-primary mt-0.5">{{ $deposito->canton_origen }}</dd></div>
+                        @if($deposito->localidad_origen_codigo)
+                            @php $origenLocalidad = \App\Support\CatalogoLocalidadesEcuador::buscar($deposito->provincia_origen ?? '', $deposito->localidad_origen_codigo, false); @endphp
+                            <div><dt class="text-text-secondary">Localidad de origen</dt><dd class="font-medium text-text-primary mt-0.5">{{ $origenLocalidad?->nombre ?? 'Localidad pendiente de actualizar' }}</dd></div>
                         @endif
                         @if($deposito->localidad)
                             <div>

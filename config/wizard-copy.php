@@ -88,8 +88,8 @@ return [
         'intro' => 'Comprueba la información, genera el documento institucional y fírmalo antes de remitir el expediente al equipo curatorial.',
         'plazo' => 'Tu solicitud será evaluada por curaduría en máximo 3 días hábiles. Recibirás notificación en cada cambio de estado.',
         'accion' => 'Enviar solicitud',
-        'certificado_explicacion' => 'El certificado se abre localmente en un proceso aislado de tu navegador.',
-        'clave_explicacion' => 'La contraseña nunca se transmite ni se almacena.',
+        'certificado_explicacion' => 'Java abre el certificado temporalmente para firmar el documento oficial.',
+        'clave_explicacion' => 'La contraseña se envía de forma protegida y se elimina después del intento de firma.',
         'copia_firmada' => 'La copia firmada quedó sellada con huella SHA-256 en el expediente.',
     ],
 ];

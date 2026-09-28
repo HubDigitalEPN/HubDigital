@@ -8,6 +8,7 @@ use App\Livewire\Administracion\ConfiguracionSistema;
 use App\Livewire\Administracion\ConfiguracionExpediente;
 use App\Livewire\Administracion\ConfiguracionTextosWizard;
 use App\Livewire\Administracion\InstitucionesCatalogo;
+use App\Livewire\Administracion\LocalidadesEcuadorCatalogo;
 use App\Livewire\Administracion\GruposAnimalesCatalogo;
 use App\Livewire\Administracion\FuentesRevocacionFirma;
 use App\Livewire\Administracion\GestionUsuarios;
@@ -45,6 +46,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('admin.textos-depositos');
     Route::get('/administracion/instituciones', InstitucionesCatalogo::class)
         ->name('admin.instituciones');
+    Route::get('/administracion/localidades', LocalidadesEcuadorCatalogo::class)
+        ->middleware('role:admin')->name('admin.localidades');
     Route::get('/administracion/grupos-animales', GruposAnimalesCatalogo::class)
         ->name('admin.grupos-animales');
     Route::get('/administracion/fuentes-revocacion', FuentesRevocacionFirma::class)

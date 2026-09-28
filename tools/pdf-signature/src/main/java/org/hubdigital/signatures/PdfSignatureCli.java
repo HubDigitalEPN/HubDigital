@@ -3,6 +3,8 @@ package org.hubdigital.signatures;
 import java.io.ByteArrayInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -30,6 +32,7 @@ import java.security.cert.X509Certificate;
 import java.security.cert.X509CRL;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.Date;
 import java.util.Enumeration;
@@ -41,6 +44,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.math.BigInteger;
 import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.io.RandomAccessReadBuffer;
+import org.apache.pdfbox.pdfparser.PDFParser;
+import org.apache.pdfbox.cos.COSStream;
 import org.apache.pdfbox.cos.COSDictionary;
 import org.apache.pdfbox.cos.COSArray;
 import org.apache.pdfbox.cos.COSBase;
@@ -98,7 +104,24 @@ public final class PdfSignatureCli {
                 args[0] = comando;
                 System.arraycopy(rutas, 0, args, 1, rutas.length);
             }
-            if (args.length == 2 && "verify".equals(args[0])) {
+            if (args.length == 1 && "verify-stream".equals(args[0])) {
+                verifyStream();
+            } else if (args.length == 2 && "sign".equals(args[0]) && "--request-stdin".equals(args[1])) {
+                byte[] entrada = System.in.readNBytes(65_537);
+                String[] datos = null;
+                try {
+                    if (entrada.length > 65_536) throw new IllegalArgumentException("Petición de firma demasiado larga.");
+                    datos = new String(entrada, StandardCharsets.UTF_8).split("\\x00", -1);
+                    if (datos.length != 5) throw new IllegalArgumentException("Petición de firma incompleta.");
+                    Result seguro = inspect(Path.of(datos[0]));
+                    if (!"seguro".equals(seguro.status)) throw new IllegalArgumentException("El original no es un PDF seguro.");
+                    FirmadorPdfOficial.firmar(Path.of(datos[0]), Path.of(datos[1]), Path.of(datos[2]), datos[3].toCharArray(), datos[4]);
+                    emit(new Result("firmado", "Firma creada por Java.", true));
+                } finally {
+                    Arrays.fill(entrada, (byte) 0);
+                    if (datos != null) Arrays.fill(datos, "");
+                }
+            } else if (args.length == 2 && "verify".equals(args[0])) {
                 emit(verify(Path.of(args[1])));
             } else if (args.length == 3 && "verify".equals(args[0])) {
                 emitOfficial(Path.of(args[1]), Path.of(args[2]));
@@ -126,6 +149,33 @@ public final class PdfSignatureCli {
     }
 
     private static Result verify(Path path) throws Exception {
+        return verify(path, true);
+    }
+
+    /** Una JVM por trabajador PHP; cada línea conserva el mismo dictamen Java. */
+    private static void verifyStream() throws Exception {
+        BufferedReader input = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
+        String line;
+        while ((line = input.readLine()) != null) {
+            try {
+                if (line.length() > 87_384) throw new IllegalArgumentException("Rutas PDF demasiado largas.");
+                byte[] decoded = Base64.getDecoder().decode(line);
+                if (decoded.length > 65_536) throw new IllegalArgumentException("Rutas PDF demasiado largas.");
+                String[] paths = new String(decoded, StandardCharsets.UTF_8).split("\\x00", -1);
+                if (paths.length < 1 || paths.length > 2 || Arrays.stream(paths).anyMatch(String::isEmpty)) {
+                    throw new IllegalArgumentException("Indica una ruta PDF, o dos para comparar con el original.");
+                }
+                if (paths.length == 2) emitOfficial(Path.of(paths[0]), Path.of(paths[1]));
+                else emit(verify(Path.of(paths[0])));
+            } catch (Exception e) {
+                diagnosticarError(e);
+                emit(new Result("verificacion_no_disponible", "Java no pudo completar esta validación PDF.", false));
+            }
+            System.out.flush();
+        }
+    }
+
+    private static Result verify(Path path, boolean documentoHistorico) throws Exception {
         long inicio = System.nanoTime();
         byte[] bytes = Files.readAllBytes(path);
         try (PDDocument pdf = Loader.loadPDF(bytes)) {
@@ -133,6 +183,18 @@ public final class PdfSignatureCli {
             List<PDSignature> signatures = pdf.getSignatureDictionaries();
             if (signatures.isEmpty()) return new Result("sin_firma", "El PDF no contiene firma digital.", false);
             if (pdf.isEncrypted()) return new Result("firma_invalida", "El PDF está cifrado.", false);
+            boolean contieneCms = false;
+            for (PDSignature signature : signatures) {
+                COSBase contenido = signature.getCOSObject().getDictionaryObject(COSName.CONTENTS);
+                if (contenido instanceof COSString valor) {
+                    try {
+                        CMSSignedData cms = new CMSSignedData(valor.getBytes());
+                        contieneCms |= !cms.getSignerInfos().getSigners().isEmpty();
+                    } catch (Exception ignored) { /* un campo de firma no garantiza un CMS utilizable */ }
+                }
+            }
+            if (!contieneCms) return new Result("sin_firma",
+                "El PDF conserva campos de firma, pero no contiene una firma digital CMS utilizable.", false);
             for (PDSignature signature : signatures) {
                 if (!rangoValido(signature, bytes)) {
                     return new Result("firma_invalida", "Los rangos de bytes de una firma están dañados o excluyen contenido ajeno a la firma.", false);
@@ -144,9 +206,9 @@ public final class PdfSignatureCli {
                 (long) b.getByteRange()[2] + b.getByteRange()[3]));
             PDSignature ultima = signatures.get(signatures.size() - 1);
             int finFirmado = ultima.getByteRange()[2] + ultima.getByteRange()[3];
-            if (!RevisionFirmadaPdf.coincide(bytes, finFirmado, pdf)) {
-                return new Result("firma_invalida", "El contenido del PDF cambió después de la última firma.", false);
-            }
+            // Una revisión posterior, incluso de metadatos o DSS, debe quedar
+            // cubierta por una nueva firma o sello de tiempo del documento.
+            boolean documentoCompleto = finFirmado == bytes.length;
             List<X509CertificateHolder> certificadosPdf = new ArrayList<>();
             for (PDSignature signature : signatures) {
                 CMSSignedData cms = new CMSSignedData(new ByteArrayInputStream(signature.getContents(bytes)));
@@ -179,16 +241,18 @@ public final class PdfSignatureCli {
             String revocationStatus = "NO_REVOCADO";
             Result fallo = null;
             boolean criptografiaIntegra = true;
+            List<FechaFirma> fechasComprobadas = new ArrayList<>();
             ExecutorService workers = Executors.newFixedThreadPool(Math.min(4, signatures.size()));
             try {
                 List<Future<Result>> results = new ArrayList<>();
                 for (int index = 0; index < signatures.size(); index++) {
                     final int current = index;
                     results.add(workers.submit(() -> verifyOne(bytes, signatures.get(current),
-                        evidencia, fechasFirmas.get(current), certificadosPdf)));
+                        evidencia, fechasFirmas.get(current), certificadosPdf, documentoHistorico, documentoCompleto)));
                 }
                 for (int index = 0; index < results.size(); index++) {
                     Result result = results.get(index).get();
+                    fechasComprobadas.addAll(result.fechasFirma);
                     criptografiaIntegra &= result.cryptographicallyValid;
                     if ("firmado_sin_revocacion".equals(result.status)) {
                         missingRevocationSource = true;
@@ -204,12 +268,13 @@ public final class PdfSignatureCli {
             } finally {
                 workers.shutdownNow();
             }
-            if (fallo != null) return new Result(fallo.status, fallo.reason, criptografiaIntegra, fallo.estadoRevocacion);
+            if (fallo != null) return new Result(fallo.status, fallo.reason, criptografiaIntegra,
+                fallo.estadoRevocacion).conFechas(fechasComprobadas);
             return new Result(missingRevocationSource ? "firmado_sin_revocacion" : "firmado",
                 "Se verificaron criptográficamente " + firmasAutor + " firma(s) y "
                     + (signatures.size() - firmasAutor) + " sello(s) de tiempo."
                     + (missingRevocationSource ? " El estado de revocación no pudo comprobarse en al menos una firma." : ""),
-                true, revocationStatus);
+                true, revocationStatus).conFechas(fechasComprobadas);
         } catch (org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException e) {
             return new Result("firma_invalida", "El PDF está cifrado y no se puede validar.", false);
         } catch (Exception e) {
@@ -234,13 +299,15 @@ public final class PdfSignatureCli {
 
     private static Result inspect(Path path) {
         try {
+            if (Files.size(path) > 32L * 1024 * 1024) return new Result("archivo_inseguro", "El PDF excede el tamaño permitido.", false);
             byte[] bytes = Files.readAllBytes(path);
             if (bytes.length < 8 || !new String(bytes, 0, 8, StandardCharsets.ISO_8859_1).matches("%PDF-[12]\\.\\d.*")) {
                 return new Result("archivo_inseguro", "El archivo no comienza con el número mágico de PDF.", false);
             }
             String cola = new String(bytes, Math.max(0, bytes.length - 4096), Math.min(4096, bytes.length), StandardCharsets.ISO_8859_1);
             if (!cola.contains("%%EOF")) return new Result("archivo_inseguro", "El archivo no tiene una estructura PDF completa.", false);
-            try (PDDocument pdf = Loader.loadPDF(bytes)) {
+            try (RandomAccessReadBuffer origen = new RandomAccessReadBuffer(bytes);
+                 PDDocument pdf = new PDFParser(origen).parse(false)) {
                 if (pdf.isEncrypted() || pdf.getNumberOfPages() < 1) {
                     return new Result("archivo_inseguro", "El PDF está cifrado o no contiene páginas legibles.", false);
                 }
@@ -248,8 +315,20 @@ public final class PdfSignatureCli {
                     "EmbeddedFile", "EmbeddedFiles", "RichMedia", "Rendition", "XFA", "GoToR",
                     "SubmitForm", "ImportData", "FileAttachment");
                 Set<COSBase> visitados = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
-                for (var objectKey : pdf.getDocument().getXrefTable().keySet()) {
+                long decodificados = 0;
+                long maxDecoded = Long.getLong("hubdigital.pdf.max_decoded_bytes", 268_435_456L);
+                byte[] bloque = new byte[16_384];
+                for (var objectKey : new ArrayList<>(pdf.getDocument().getXrefTable().keySet())) {
                     COSObject object = pdf.getDocument().getObjectFromPool(objectKey);
+                    if (object.getObject() instanceof COSStream stream) {
+                        try (InputStream contenido = stream.createInputStream()) {
+                            int cantidad;
+                            while ((cantidad = contenido.read(bloque)) != -1) {
+                                decodificados += cantidad;
+                                if (decodificados > maxDecoded) return new Result("archivo_inseguro", "El PDF excede el límite de contenido descomprimido.", false);
+                            }
+                        }
+                    }
                     String peligro = contenidoActivo(object, forbidden, visitados);
                     if (peligro != null) return new Result("archivo_inseguro", "El PDF contiene acciones o contenido activo: " + peligro, false);
                 }
@@ -356,7 +435,7 @@ public final class PdfSignatureCli {
 
     private static Result verifyOne(byte[] bytes, PDSignature signature,
         RevocationResolver.Evidencia evidencia, Date fechaDocumento,
-        List<X509CertificateHolder> certificadosPdf) throws Exception {
+        List<X509CertificateHolder> certificadosPdf, boolean documentoHistorico, boolean documentoCompleto) throws Exception {
         long inicio = System.nanoTime();
         byte[] signed = signature.getSignedContent(bytes);
         byte[] contents = signature.getContents(bytes);
@@ -395,35 +474,66 @@ public final class PdfSignatureCli {
         X509Certificate certificate = (X509Certificate) CertificateFactory.getInstance("X.509")
             .generateCertificate(new ByteArrayInputStream(matches.iterator().next().getEncoded()));
         diagnostico("extraer_certificado", inicio);
-        Date fechaValidacion = fechaDocumento == null ? new Date() : fechaDocumento;
+        Date ahora = new Date();
+        Date fechaConfiable = fechaDocumento;
         if (selloDocumento) {
             Date fechaSello = MarcaTiempoConfiable.obtenerDocumento(signature, bytes,
                 trustAnchors(), certificadosPdf);
             if (fechaSello == null) return new Result("firma_invalida", "El sello de tiempo del documento no es íntegro o confiable.", false);
-            fechaValidacion = fechaSello;
+            fechaConfiable = fechaSello;
         } else if (!("adbe.pkcs7.sha1".equals(formato)
             ? signer.verify(new JcaSimpleSignerInfoVerifierBuilder().build(certificate.getPublicKey()))
             : verificarCms(signer, certificate, signed))) {
             return new Result("firma_invalida", "Falló la comprobación criptográfica del contenido firmado.", false);
         }
         diagnostico("firma_criptografica", inicio);
+        if (!documentoCompleto) {
+            return new Result("documento_modificado",
+                "La firma es criptográficamente válida, pero el PDF tiene una revisión posterior que ninguna firma ni sello de tiempo de documento cubre.", true);
+        }
         boolean[] usoClave = certificate.getKeyUsage();
         if (usoClave != null && (usoClave.length == 0 || (!usoClave[0] && (usoClave.length < 2 || !usoClave[1])))) {
             return new Result("certificado_no_confiable", "El certificado no autoriza firma digital ni no repudio.", true);
         }
         AttributeTable unsigned = signer.getUnsignedAttributes();
         if (unsigned != null && unsigned.get(PKCSObjectIdentifiers.id_aa_signatureTimeStampToken) != null) {
-            Date fechaConfiable = MarcaTiempoConfiable.obtener(signer, trustAnchors(), certificadosPdf);
-            if (fechaConfiable != null && fechaConfiable.before(fechaValidacion)) fechaValidacion = fechaConfiable;
+            Date fechaSello = MarcaTiempoConfiable.obtener(signer, trustAnchors(), certificadosPdf);
+            if (fechaSello != null && (fechaConfiable == null || fechaSello.before(fechaConfiable))) fechaConfiable = fechaSello;
+        }
+        Date fechaValidacion = fechaConfiable == null ? ahora : fechaConfiable;
+        String baseTemporal = fechaConfiable == null ? "FECHA_ACTUAL" : "SELLO_TIEMPO_CONFIABLE";
+        // Los documentos recibidos se comprueban en su fecha de firma. La fecha
+        // declarada está cubierta por la firma, pero no equivale a una prueba TSA.
+        if (fechaConfiable == null && documentoHistorico && !selloDocumento) {
+            AttributeTable firmados = signer.getSignedAttributes();
+            Attribute fechaCms = firmados == null ? null : firmados.get(CMSAttributes.signingTime);
+            if (fechaCms != null) {
+                if (firmados.getAll(CMSAttributes.signingTime).size() != 1 || fechaCms.getAttrValues().size() != 1) {
+                    return new Result("firma_invalida", "La firma declara fechas CMS ambiguas.", true);
+                }
+                fechaValidacion = org.bouncycastle.asn1.cms.Time.getInstance(
+                    fechaCms.getAttrValues().getObjectAt(0)).getDate();
+                baseTemporal = "FECHA_DECLARADA_CMS";
+            } else if (signature.getSignDate() != null) {
+                fechaValidacion = signature.getSignDate().getTime();
+                baseTemporal = "FECHA_DECLARADA_PDF";
+            }
+        }
+        FechaFirma fecha = new FechaFirma(fechaValidacion, baseTemporal,
+            certificate.getNotBefore(), certificate.getNotAfter(), certificate.getNotAfter().before(ahora));
+        if (fechaValidacion.after(Date.from(Instant.now().plusSeconds(300)))) {
+            return new Result("firma_invalida", "La fecha de firma declarada es futura.", true).conFechas(List.of(fecha));
         }
         try {
             certificate.checkValidity(fechaValidacion);
         } catch (java.security.cert.CertificateExpiredException e) {
-            return new Result("certificado_caducado", "El certificado está caducado y no hay un sello de tiempo confiable durante su vigencia.", true);
+            return new Result("certificado_caducado", "El certificado estaba caducado en la fecha de validación de la firma.", true)
+                .conFechas(List.of(fecha));
         } catch (java.security.cert.CertificateNotYetValidException e) {
-            return new Result("certificado_aun_no_vigente", "El certificado aún no era válido en la fecha comprobada.", true);
+            return new Result("certificado_aun_no_vigente", "El certificado aún no era válido en la fecha comprobada.", true)
+                .conFechas(List.of(fecha));
         }
-        return validateChain(certificate, evidencia, fechaValidacion, certificadosPdf);
+        return validateChain(certificate, evidencia, fechaValidacion, certificadosPdf).conFechas(List.of(fecha));
     }
 
     private static boolean verificarCms(SignerInformation signer, X509Certificate certificate, byte[] signed)
@@ -725,13 +835,22 @@ public final class PdfSignatureCli {
 
     private record PdfInfo(int paginas, double ancho, double alto, double area, int firmasAutor, int sellosTiempo) {}
 
-    private record Result(String status, String reason, boolean cryptographicallyValid, String estadoRevocacion, PdfInfo pdfInfo) {
+    private record FechaFirma(Date fecha, String baseTemporal, Date validoDesde, Date validoHasta, boolean caducadoAhora) {}
+
+    private record Result(String status, String reason, boolean cryptographicallyValid, String estadoRevocacion,
+        PdfInfo pdfInfo, List<FechaFirma> fechasFirma) {
+        Result(String status, String reason, boolean cryptographicallyValid, String estadoRevocacion, PdfInfo pdfInfo) {
+            this(status, reason, cryptographicallyValid, estadoRevocacion, pdfInfo, List.of());
+        }
         Result(String status, String reason, boolean cryptographicallyValid, String estadoRevocacion) {
             this(status, reason, cryptographicallyValid, estadoRevocacion, null);
         }
         Result(String status, String reason, boolean cryptographicallyValid) {
             this(status, reason, cryptographicallyValid,
                 "certificado_revocado".equals(status) ? "REVOCADO" : "NO_COMPROBADO", null);
+        }
+        Result conFechas(List<FechaFirma> fechas) {
+            return new Result(status, reason, cryptographicallyValid, estadoRevocacion, pdfInfo, List.copyOf(fechas));
         }
     }
 
@@ -740,7 +859,9 @@ public final class PdfSignatureCli {
     }
 
     private static void emitOfficial(Path path, Path original) throws Exception {
-        Result result = verify(path);
+        // Al firmar una solicitud o acta nueva, una fecha declarada por el
+        // cliente no permite usar un certificado que ya está caducado hoy.
+        Result result = verify(path, false);
         boolean certificadoValido = "firmado".equals(result.status) || "firmado_sin_revocacion".equals(result.status);
         boolean formato = false, coincide = false;
         String certificado = "{}";
@@ -808,6 +929,7 @@ public final class PdfSignatureCli {
         String certificado = switch (result.status) {
             case "certificado_revocado" -> "REVOCADO";
             case "certificado_caducado" -> "CADUCADO";
+            case "documento_modificado" -> "NO_COMPROBADO";
             case "certificado_aun_no_vigente" -> "AUN_NO_VIGENTE";
             case "certificado_no_confiable", "almacen_incompleto" -> "NO_CONFIABLE";
             default -> valido ? "VALIDO" : "NO_COMPROBADO";
@@ -816,9 +938,18 @@ public final class PdfSignatureCli {
             + escape(result.reason) + "\",\"cryptographically_valid\":" + result.cryptographicallyValid
             + ",\"estado_documento\":\"" + (valido ? "VALIDO" : (indeterminado ? "INDETERMINADO" : "INVALIDO"))
             + "\",\"estado_firma\":\"" + (indeterminado ? "NO_COMPROBADA"
-                : (result.cryptographicallyValid ? "VALIDA" : "INVALIDA"))
+                : ("sin_firma".equals(result.status) ? "SIN_FIRMA"
+                    : (result.cryptographicallyValid ? "VALIDA" : "INVALIDA")))
             + "\",\"estado_certificado\":\"" + certificado
             + "\",\"estado_revocacion\":\"" + escape(result.estadoRevocacion) + "\""
+            + ",\"validacion_temporal\":[" + result.fechasFirma.stream().map(fecha ->
+                "{\"fecha_validacion\":\"" + fecha.fecha.toInstant()
+                    + "\",\"base_temporal\":\"" + fecha.baseTemporal
+                    + "\",\"sello_tiempo_confiable\":" + "SELLO_TIEMPO_CONFIABLE".equals(fecha.baseTemporal)
+                    + ",\"certificado_caducado_actualmente\":" + fecha.caducadoAhora
+                    + ",\"certificado_valido_desde\":\"" + fecha.validoDesde.toInstant()
+                    + "\",\"certificado_valido_hasta\":\"" + fecha.validoHasta.toInstant() + "\"}"
+            ).collect(java.util.stream.Collectors.joining(",")) + "]"
             + (result.pdfInfo == null ? "" : ",\"paginas\":" + result.pdfInfo.paginas
                 + ",\"ancho_maximo_points\":" + result.pdfInfo.ancho
                 + ",\"alto_maximo_points\":" + result.pdfInfo.alto

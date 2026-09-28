@@ -303,13 +303,13 @@ final class AnalizadorDocumentoAmbiental
      * @param array<string, array<string, mixed>> $documentos Clave = tipo esperado.
      * @return array{estado: string, decision_automatica: string, autocompletado_habilitado: bool, errores: list<string>, advertencias: list<string>}
      */
-    public function validarExpediente(array $documentos): array
+    public function validarExpediente(array $documentos, ?array $tiposRequeridos = null): array
     {
         $errores = [];
         $advertencias = [];
 
         if ($documentos !== []) {
-            foreach ([self::AUTORIZACION_RECOLECCION, self::GUIA_MOVILIZACION] as $requerido) {
+            foreach ($tiposRequeridos ?? [self::AUTORIZACION_RECOLECCION, self::GUIA_MOVILIZACION] as $requerido) {
                 if (! isset($documentos[$requerido])) {
                     $errores[] = 'Falta la '.$this->etiqueta($requerido).' requerida para contrastar el expediente.';
                 }

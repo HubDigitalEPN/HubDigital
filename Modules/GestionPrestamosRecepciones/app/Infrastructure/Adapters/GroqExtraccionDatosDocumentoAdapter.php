@@ -34,13 +34,6 @@ final class GroqExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocume
     private const TIPO_DESCONOCIDO = 'desconocido';
 
     /** @var string[] */
-    private const PROVINCIAS_ECUADOR = [
-        'Azuay', 'Bolívar', 'Cañar', 'Carchi', 'Chimborazo', 'Cotopaxi',
-        'El Oro', 'Esmeraldas', 'Galápagos', 'Guayas', 'Imbabura', 'Loja',
-        'Los Ríos', 'Manabí', 'Morona Santiago', 'Napo', 'Orellana',
-        'Pastaza', 'Pichincha', 'Santa Elena', 'Santo Domingo de los Tsáchilas',
-        'Sucumbíos', 'Tungurahua', 'Zamora Chinchipe',
-    ];
 
     /**
      * Crea una nueva instancia del adaptador de extracción de datos con Groq.
@@ -97,7 +90,7 @@ final class GroqExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocume
             nroPermisoRecoleccion: $this->limpiar($acumulado['nroPermisoRecoleccion'] ?? null),
             nroPermisoMovilizacion: $this->limpiar($acumulado['nroPermisoMovilizacion'] ?? null),
             grupoAnimal: $this->limpiar($acumulado['grupoAnimal'] ?? null),
-            provinciaOrigen: $this->limpiar($acumulado['provinciaOrigen'] ?? null),
+            provinciaOrigen: null,
             localidad: $this->limpiar($acumulado['localidad'] ?? null),
             origenDonacion: $this->limpiar($acumulado['origenDonacion'] ?? null),
             nombreInvestigador: $this->limpiar($acumulado['nombreInvestigador'] ?? null),
@@ -351,10 +344,7 @@ final class GroqExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocume
           Puede estar en una tabla (Entomofauna, Macroinvertebrados, Herpetofauna, etc.).
           Si hay múltiples grupos, extrae el primero listado. null si no aparece.
 
-        - "provinciaOrigen": Provincia ecuatoriana de recolección.
-          Suele aparecer cerca de "Área geográfica" o "Provincia" dentro del cuerpo del documento.
-          null si no aparece.
-
+        - "provinciaOrigen": Siempre null. La provincia la selecciona el usuario.
         - "localidad": Lugar, bloque, sector o área específica de recolección.
           Puede ser un nombre de reserva, bloque de exploración, sector, etc.
           null si no aparece.
@@ -364,10 +354,10 @@ final class GroqExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocume
         --- Ejemplos de extracción correcta ---
 
         Texto: "...AUTORIZACIÓN DE INVESTIGACIÓN CIENTÍFICA N.º 007-2023-IC-FAU-DPAO-MAE... se autoriza la recolección de fauna silvestre (Entomofauna)... Área geográfica: Provincia de Sucumbíos... Bloque 56 Lago Agrio..."
-        Resultado: {"nroPermisoRecoleccion": "007-2023-IC-FAU-DPAO-MAE", "nroPermisoMovilizacion": null, "grupoAnimal": "Entomofauna", "provinciaOrigen": "Sucumbíos", "localidad": "Bloque 56 Lago Agrio", "origenDonacion": null, "nombreInvestigador": null}
+        Resultado: {"nroPermisoRecoleccion": "007-2023-IC-FAU-DPAO-MAE", "nroPermisoMovilizacion": null, "grupoAnimal": "Entomofauna", "provinciaOrigen": null, "localidad": "Bloque 56 Lago Agrio", "origenDonacion": null, "nombreInvestigador": null}
 
         Texto: "...Autorización Nro. 012-2024-ENT-DPAN-MAE... recolección de macroinvertebrados acuáticos... Provincia: Napo..."
-        Resultado: {"nroPermisoRecoleccion": "012-2024-ENT-DPAN-MAE", "nroPermisoMovilizacion": null, "grupoAnimal": "Macroinvertebrados acuáticos", "provinciaOrigen": "Napo", "localidad": null, "origenDonacion": null, "nombreInvestigador": null}
+        Resultado: {"nroPermisoRecoleccion": "012-2024-ENT-DPAN-MAE", "nroPermisoMovilizacion": null, "grupoAnimal": "Macroinvertebrados acuáticos", "provinciaOrigen": null, "localidad": null, "origenDonacion": null, "nombreInvestigador": null}
         INST;
     }
 
@@ -389,11 +379,7 @@ final class GroqExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocume
           Suele estar en la tabla de especies, bajo "Nombre científico" u "Orden".
           Si hay múltiples, extrae el primer grupo mencionado. null si no aparece.
 
-        - "provinciaOrigen": Provincia de donde provienen los especímenes (sección ORIGEN).
-          IMPORTANTE: Si el documento tiene secciones ORIGEN y DESTINO, extrae SOLO
-          la provincia de ORIGEN, no la de DESTINO.
-          null si no aparece.
-
+        - "provinciaOrigen": Siempre null. La provincia la selecciona el usuario.
         - "localidad": Sitio específico de donde provienen los especímenes.
           Suele estar en la tabla de especies bajo "Sitio" o dentro de la sección ORIGEN.
           null si no aparece.
@@ -403,10 +389,10 @@ final class GroqExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocume
         --- Ejemplos de extracción correcta ---
 
         Texto: "...GUÍA DE MOVILIZACIÓN DE ESPECÍMENES Nro. GM-2024-00145... Autorización Nro. 007-2023-IC-FAU-DPAO-MAE... ORIGEN: Provincia Orellana, Cantón Aguarico, Sitio: Estación Tiputini... DESTINO: Provincia Pichincha, Cantón Quito... Orden: Lepidoptera..."
-        Resultado: {"nroPermisoRecoleccion": null, "nroPermisoMovilizacion": "GM-2024-00145", "grupoAnimal": "Lepidoptera", "provinciaOrigen": "Orellana", "localidad": "Estación Tiputini", "origenDonacion": null, "nombreInvestigador": null}
+        Resultado: {"nroPermisoRecoleccion": null, "nroPermisoMovilizacion": "GM-2024-00145", "grupoAnimal": "Lepidoptera", "provinciaOrigen": null, "localidad": "Estación Tiputini", "origenDonacion": null, "nombreInvestigador": null}
 
         Texto: "...Guía de Movilización Nro. 0089-2024-SUIA... Origen: Napo... Especie: Pristimantis sp. (Anura)..."
-        Resultado: {"nroPermisoRecoleccion": null, "nroPermisoMovilizacion": "0089-2024-SUIA", "grupoAnimal": "Anura", "provinciaOrigen": "Napo", "localidad": null, "origenDonacion": null, "nombreInvestigador": null}
+        Resultado: {"nroPermisoRecoleccion": null, "nroPermisoMovilizacion": "0089-2024-SUIA", "grupoAnimal": "Anura", "provinciaOrigen": null, "localidad": null, "origenDonacion": null, "nombreInvestigador": null}
         INST;
     }
 
@@ -477,23 +463,6 @@ final class GroqExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocume
         return self::TIPO_DESCONOCIDO;
     }
 
-    private function normalizarProvincia(string $valor): string
-    {
-        $valorNorm = $this->normalizarTexto(trim($valor));
-
-        $mejorDistancia = PHP_INT_MAX;
-        $mejorNombre = $valor;
-
-        foreach (self::PROVINCIAS_ECUADOR as $provincia) {
-            $distancia = levenshtein($valorNorm, $this->normalizarTexto($provincia));
-            if ($distancia < $mejorDistancia) {
-                $mejorDistancia = $distancia;
-                $mejorNombre = $provincia;
-            }
-        }
-
-        return $mejorDistancia <= 2 ? $mejorNombre : $valor;
-    }
 
     private function normalizarTexto(string $texto): string
     {
@@ -515,20 +484,7 @@ final class GroqExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocume
     /** @return array<string, mixed> */
     private function validar(array $resultado): array
     {
-        // Provincia: al menos 2 caracteres y no solo dígitos; luego normalizar contra lista canónica.
-        if (isset($resultado['provinciaOrigen'])) {
-            $prov = trim((string) $resultado['provinciaOrigen']);
-            if (mb_strlen($prov, 'UTF-8') < 2 || preg_match('/^\d+$/', $prov)) {
-                Log::info('GroqExtraccion: provinciaOrigen descartada por validación', ['valor' => $prov]);
-                $resultado['provinciaOrigen'] = null;
-            } else {
-                $normalizada = $this->normalizarProvincia($prov);
-                if ($normalizada !== $prov) {
-                    Log::info('GroqExtraccion: provinciaOrigen normalizada', ['original' => $prov, 'canonica' => $normalizada]);
-                }
-                $resultado['provinciaOrigen'] = $normalizada;
-            }
-        }
+        $resultado['provinciaOrigen'] = null;
 
         // Permisos: deben contener al menos un dígito.
         foreach (['nroPermisoRecoleccion', 'nroPermisoMovilizacion'] as $campo) {

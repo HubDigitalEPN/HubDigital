@@ -14,11 +14,14 @@ import java.security.cert.PKIXRevocationChecker;
 import java.security.cert.TrustAnchor;
 import java.security.cert.X509CRL;
 import java.security.cert.X509Certificate;
+import java.security.MessageDigest;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -52,7 +55,9 @@ import org.bouncycastle.cert.ocsp.SingleResp;
 /** Resuelve revocación con evidencia del PDF, OCSP y finalmente CRL efímeras. */
 final class RevocationResolver {
     enum Estado { NO_REVOCADO, REVOCADO, DESCONOCIDO, NO_DISPONIBLE, NO_COMPROBADO }
-    record Resultado(Estado estado, String fuente) {}
+    record Resultado(Estado estado, String fuente, Instant validoHasta) {
+        Resultado(Estado estado, String fuente) { this(estado, fuente, null); }
+    }
     record Evidencia(List<byte[]> ocsp, List<byte[]> crl) {}
     private record Entrada(Resultado resultado, Instant validoHasta) {}
 
@@ -108,8 +113,17 @@ final class RevocationResolver {
         Date fechaValidacion, int timeoutSeconds) {
         // Dos firmas del mismo certificado pueden tener fechas probadas diferentes.
         // Una revocación posterior al primer sello no debe reutilizar su dictamen.
-        String clave = issuer.getSubjectX500Principal().getName() + "|" + signer.getSerialNumber().toString(16)
-            + "|" + fechaValidacion.getTime();
+        String clave;
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            digest.update(signer.getEncoded());
+            digest.update(issuer.getEncoded());
+            for (byte[] ocsp : evidencia.ocsp()) digest.update(ocsp);
+            for (byte[] crl : evidencia.crl()) digest.update(crl);
+            clave = HexFormat.of().formatHex(digest.digest()) + "|" + fechaValidacion.getTime();
+        } catch (Exception e) {
+            return new Resultado(Estado.NO_DISPONIBLE, "No se pudo identificar la evidencia de revocación.");
+        }
         if (CACHE.size() >= LIMITE_CACHE) CACHE.entrySet().removeIf(e -> {
             if (!e.getValue().isDone()) return false;
             Entrada entrada = e.getValue().getNow(null);
@@ -133,12 +147,19 @@ final class RevocationResolver {
                 anchors, evidencia, ocspExcepcional, crlExcepcional, fechaValidacion, timeoutSeconds));
             Resultado resultado;
             try {
-                resultado = consulta.get(Math.min(4, Math.max(2, timeoutSeconds * 2L)), TimeUnit.SECONDS);
+                // Permitir el intento OCSP y sus alternativas CRL dentro de un
+                // presupuesto acotado, incluso si la primera fuente no responde.
+                resultado = consulta.get(Math.min(12, Math.max(4, timeoutSeconds * 4L)), TimeUnit.SECONDS);
             } catch (Exception e) {
                 consulta.cancel(true);
                 resultado = new Resultado(Estado.NO_DISPONIBLE, "La consulta de revocación excedió el tiempo configurado.");
             }
-            nueva.complete(new Entrada(resultado, Instant.now().plusSeconds(300)));
+            Instant ahora = Instant.now();
+            // La JVM se reutiliza: un dictamen nunca sobrevive a la evidencia
+            // firmada que lo sustenta. OCSP sin nextUpdate accesible se consulta otra vez.
+            Instant hasta = resultado.validoHasta() == null ? ahora : resultado.validoHasta();
+            if (hasta.isAfter(ahora.plusSeconds(300))) hasta = ahora.plusSeconds(300);
+            nueva.complete(new Entrada(resultado, hasta));
             return resultado;
         } catch (Exception e) {
             Resultado resultado = new Resultado(Estado.NO_DISPONIBLE, "No fue posible consultar la revocación.");
@@ -161,13 +182,13 @@ final class RevocationResolver {
         }
 
         boolean intento = false;
-        for (URI ocsp : fuentesExternas(primeraUrl(signer, true), ocspExcepcional)) {
+        for (URI ocsp : fuentesExternas(urlsCertificado(signer, true), ocspExcepcional)) {
             if (!fuentePublica(ocsp)) continue;
             intento = true;
             Resultado resultado = comprobarOcsp(signer, path, anchors, null, ocsp, fechaValidacion);
             if (resultado.estado() == Estado.NO_REVOCADO || resultado.estado() == Estado.REVOCADO) return resultado;
         }
-        for (URI crl : fuentesExternas(primeraUrl(signer, false), crlExcepcional)) {
+        for (URI crl : fuentesExternas(urlsCertificado(signer, false), crlExcepcional)) {
             if (!fuentePublica(crl)) continue;
             intento = true;
             try {
@@ -188,10 +209,10 @@ final class RevocationResolver {
             intento ? "No fue posible consultar OCSP ni CRL." : "El certificado no publica una fuente de revocación utilizable.");
     }
 
-    private static List<URI> fuentesExternas(URI delCertificado, URI excepcional) {
-        if (delCertificado == null) return excepcional == null ? List.of() : List.of(excepcional);
-        if (excepcional == null || delCertificado.equals(excepcional)) return List.of(delCertificado);
-        return List.of(delCertificado, excepcional);
+    private static List<URI> fuentesExternas(List<URI> delCertificado, URI excepcional) {
+        List<URI> fuentes = new ArrayList<>(delCertificado);
+        if (excepcional != null && !fuentes.contains(excepcional)) fuentes.add(excepcional);
+        return fuentes;
     }
 
     private static Resultado comprobarOcsp(X509Certificate signer, CertPath path, Set<TrustAnchor> anchors,
@@ -239,23 +260,25 @@ final class RevocationResolver {
             crl.verify(issuer.getPublicKey());
             var revocado = crl.getRevokedCertificate(signer);
             boolean revocadoEnFecha = revocado != null && !revocado.getRevocationDate().after(fechaValidacion);
-            return new Resultado(revocadoEnFecha ? Estado.REVOCADO : Estado.NO_REVOCADO, fuente);
+            return new Resultado(revocadoEnFecha ? Estado.REVOCADO : Estado.NO_REVOCADO,
+                fuente, crl.getNextUpdate().toInstant());
         } catch (Exception e) {
             return null;
         }
     }
 
-    private static URI primeraUrl(X509Certificate cert, boolean ocsp) {
+    private static List<URI> urlsCertificado(X509Certificate cert, boolean ocsp) {
+        Set<URI> fuentes = new LinkedHashSet<>();
         try {
             byte[] wrapped = cert.getExtensionValue(ocsp
                 ? Extension.authorityInfoAccess.getId() : Extension.cRLDistributionPoints.getId());
-            if (wrapped == null) return null;
+            if (wrapped == null) return List.of();
             ASN1Primitive value = ASN1Primitive.fromByteArray(ASN1OctetString.getInstance(wrapped).getOctets());
             if (ocsp) {
                 for (AccessDescription access : AuthorityInformationAccess.getInstance(value).getAccessDescriptions()) {
                     if (AccessDescription.id_ad_ocsp.equals(access.getAccessMethod())
                         && access.getAccessLocation().getTagNo() == GeneralName.uniformResourceIdentifier)
-                        return URI.create(access.getAccessLocation().getName().toString());
+                        agregarUrl(fuentes, access.getAccessLocation().getName().toString());
                 }
             } else {
                 for (DistributionPoint point : CRLDistPoint.getInstance(value).getDistributionPoints()) {
@@ -263,12 +286,28 @@ final class RevocationResolver {
                     if (name == null || name.getType() != DistributionPointName.FULL_NAME) continue;
                     for (GeneralName location : GeneralNames.getInstance(name.getName()).getNames()) {
                         if (location.getTagNo() == GeneralName.uniformResourceIdentifier)
-                            return URI.create(location.getName().toString());
+                            agregarUrl(fuentes, location.getName().toString());
                     }
                 }
             }
         } catch (Exception ignored) { /* extensión ausente o mal formada */ }
-        return null;
+        return List.copyOf(fuentes);
+    }
+
+    private static void agregarUrl(Set<URI> fuentes, String valor) {
+        if (fuentes.size() >= 8) return;
+        try {
+            // Algunas CA publican espacios en el nombre del emisor o una sola
+            // barra tras http:. La CRL sigue exigiendo firma del emisor y vigencia.
+            String fuente = valor.trim().replace(" ", "%20");
+            if (fuente.matches("(?i)^https?:/[^/].*")) {
+                int inicioHost = fuente.indexOf(":/") + 2;
+                fuente = fuente.substring(0, inicioHost) + "/" + fuente.substring(inicioHost);
+            }
+            URI uri = URI.create(fuente);
+            if (("http".equalsIgnoreCase(uri.getScheme()) || "https".equalsIgnoreCase(uri.getScheme()))
+                && uri.getHost() != null && uri.getUserInfo() == null) fuentes.add(uri);
+        } catch (IllegalArgumentException ignored) { /* una dirección dañada no oculta las siguientes */ }
     }
 
     private static boolean fuentePublica(URI uri) {

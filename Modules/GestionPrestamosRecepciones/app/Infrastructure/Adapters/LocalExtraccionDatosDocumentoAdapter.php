@@ -6,7 +6,6 @@ namespace Modules\GestionPrestamosRecepciones\Infrastructure\Adapters;
 
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\DirectorioTemporalHubDigital;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ExtraccionDatosDocumentoPort;
 use Modules\GestionPrestamosRecepciones\Domain\Services\AnalizadorDocumentoAmbiental;
@@ -25,14 +24,6 @@ final class LocalExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocum
     private AnalizadorDocumentoAmbiental $analizador;
 
     private AlmacenamientoDepositos $almacenamiento;
-
-    /** @var list<string> */
-    private const PROVINCIAS = [
-        'Azuay', 'Bolivar', 'Canar', 'Carchi', 'Chimborazo', 'Cotopaxi', 'El Oro',
-        'Esmeraldas', 'Galapagos', 'Guayas', 'Imbabura', 'Loja', 'Los Rios', 'Manabi',
-        'Morona Santiago', 'Napo', 'Orellana', 'Pastaza', 'Pichincha', 'Santa Elena',
-        'Santo Domingo de los Tsachilas', 'Sucumbios', 'Tungurahua', 'Zamora Chinchipe',
-    ];
 
     public function __construct(
         ?AnalizadorDocumentoAmbiental $analizador = null,
@@ -79,9 +70,6 @@ final class LocalExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocum
                 'grupoAnimal' => ($analisis['grupos_biologicos'] ?? []) !== []
                     ? implode(', ', $analisis['grupos_biologicos'])
                     : null,
-                // La provincia se toma solamente de una etiqueta territorial del
-                // documento, nunca de la dirección de la entidad emisora.
-                'provinciaOrigen' => ($hallazgoProvincia = $this->buscarProvincia($texto))['valor'],
                 'localidad' => $analisis['origen'] ?? null,
                 'origenDonacion' => null,
                 'nombreInvestigador' => $analisis['titular'] ?? null,
@@ -99,7 +87,6 @@ final class LocalExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocum
                         'nroPermisoRecoleccion' => 'numero_autorizacion',
                         'nroPermisoMovilizacion' => 'numero_documento',
                         'grupoAnimal' => 'grupos_biologicos',
-                        'provinciaOrigen' => null,
                         'localidad' => 'origen',
                         'nombreInvestigador' => 'titular',
                         'nroIndividuos' => 'numero_individuos',
@@ -107,24 +94,16 @@ final class LocalExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocum
                         'nroLotes' => 'numero_lotes',
                         default => null,
                     };
-                    if ($campo === 'provinciaOrigen') {
-                        if ($hallazgoProvincia['confianza'] < 0.9) {
-                            continue;
-                        }
-                    } elseif ($campoAnalisis === null || ! $this->analizador->campoTieneEvidenciaSuficiente($analisis, $campoAnalisis)) {
+                    if ($campoAnalisis === null || ! $this->analizador->campoTieneEvidenciaSuficiente($analisis, $campoAnalisis)) {
                         continue;
                     }
                     $valores[$campo] = trim($valor);
-                    $evidencia = $campo === 'provinciaOrigen'
-                        ? $hallazgoProvincia['evidencia']
-                        : ($analisis['evidencias_campos'][$campoAnalisis] ?? null);
+                    $evidencia = $analisis['evidencias_campos'][$campoAnalisis] ?? null;
                     $metadata['campos'][$campo] = [
-                        'confianza' => $campo === 'provinciaOrigen'
-                            ? $hallazgoProvincia['confianza']
-                            : ($analisis['confianzas_campos'][$campoAnalisis] ?? 0.0),
+                        'confianza' => $analisis['confianzas_campos'][$campoAnalisis] ?? 0.0,
                         'fuente' => $nombre,
                         'motor' => $motor,
-                        'metodo' => $campo === 'provinciaOrigen' ? 'etiqueta_territorial' : 'clasificador_ambiental',
+                        'metodo' => 'clasificador_ambiental',
                         'evidencia' => $evidencia,
                         'pagina' => $this->paginaDeEvidencia($evidencia, $lectura['paginas']),
                         'requiere_confirmacion_humana' => true,
@@ -176,7 +155,7 @@ final class LocalExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocum
             nroPermisoRecoleccion: $valores['nroPermisoRecoleccion'] ?? null,
             nroPermisoMovilizacion: $valores['nroPermisoMovilizacion'] ?? null,
             grupoAnimal: $valores['grupoAnimal'] ?? null,
-            provinciaOrigen: $valores['provinciaOrigen'] ?? null,
+            provinciaOrigen: null,
             localidad: $valores['localidad'] ?? null,
             origenDonacion: $valores['origenDonacion'] ?? null,
             nombreInvestigador: $valores['nombreInvestigador'] ?? null,
@@ -199,7 +178,16 @@ final class LocalExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocum
     private function leerTexto(string $ruta): array
     {
         $copia = $this->almacenamiento->copiaLocal($ruta);
-        $archivo = $copia->ruta();
+        try {
+            return $this->leerArchivoLocal($copia->ruta());
+        } finally {
+            $copia->limpiar();
+        }
+    }
+
+    /** Lee el temporal de una carga sin escribirlo en el almacenamiento del expediente. */
+    public function leerArchivoLocal(string $archivo): array
+    {
         if (! is_file($archivo)) {
             return [
                 'texto' => '',
@@ -210,108 +198,103 @@ final class LocalExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocum
             ];
         }
 
-        try {
-            $totalPaginas = $this->validarPdfSeguro($archivo);
-            if (PHP_OS_FAMILY === 'Windows') {
-                $paginas = [];
-                $fragmentos = [];
-                $proceso = new Process([
-                    (string) config('firma-electronica.java_binary', 'java'),
-                    '-Djava.awt.headless=true', '-jar',
-                    (string) config('firma-electronica.java_signature_jar'), 'text', '--paths-stdin',
-                ]);
-                $proceso->setInput($archivo);
-                $proceso->setEnv(DirectorioTemporalHubDigital::entornoProcesos());
-                $proceso->setTimeout(30);
-                $proceso->mustRun();
-                $lectura = json_decode($proceso->getOutput(), true, 512, JSON_THROW_ON_ERROR);
-                if (! is_array($lectura['paginas'] ?? null)) {
-                    throw new \RuntimeException('Java no pudo leer las páginas del PDF.');
-                }
-                foreach ($lectura['paginas'] as $pagina) {
-                    $numero = (int) $pagina['numero'];
-                    $texto = trim((string) $pagina['texto']);
-                    $paginas[] = [
-                        'numero' => $numero,
-                        'metodo' => 'java-pdfbox',
-                        'caracteres' => mb_strlen($texto),
-                        'estado' => $texto === '' ? 'sin_texto' : 'texto_nativo',
-                    ];
-                    if ($texto !== '') {
-                        $fragmentos[] = sprintf('[Página %d · java-pdfbox]%s%s', $numero, PHP_EOL, $texto);
-                    }
-                }
-
-                return [
-                    'texto' => implode(PHP_EOL.PHP_EOL, $fragmentos),
-                    'motor' => 'java-pdfbox',
-                    'uso_ocr' => false,
-                    'procesamiento_parcial' => count($paginas) !== $totalPaginas || count($fragmentos) !== $totalPaginas,
-                    'paginas' => $paginas,
-                ];
-            }
-            $minimo = max(1, (int) config('document-extraction.minimum_text_length', 80));
+        $totalPaginas = $this->validarPdfSeguro($archivo);
+        if (PHP_OS_FAMILY === 'Windows') {
             $paginas = [];
             $fragmentos = [];
-            $usoOcr = false;
-            $procesamientoParcial = false;
-
-            for ($numero = 1; $numero <= $totalPaginas; $numero++) {
-                $textoNativo = trim($this->ejecutar(new Process([
-                    'pdftotext', '-layout', '-f', (string) $numero, '-l', (string) $numero, $archivo, '-',
-                ])));
-                $metodo = 'pdftotext';
-                $textoPagina = $textoNativo;
-                $estado = 'texto_nativo';
-
-                if ($this->textoInsuficiente($textoNativo, $minimo)) {
-                    $ocr = trim($this->aplicarOcrPagina($archivo, $numero));
-                    $usoOcr = true;
-                    if ($ocr !== '') {
-                        $textoPagina = $ocr;
-                        $metodo = 'tesseract-5-spa-eng';
-                        $estado = 'ocr';
-                    } elseif ($textoNativo === '') {
-                        $estado = 'sin_texto';
-                        $procesamientoParcial = true;
-                    } else {
-                        $estado = 'texto_nativo_insuficiente';
-                        $procesamientoParcial = true;
-                    }
-                }
-
-                if ($textoPagina !== '') {
-                    // La marca conserva la procedencia para que cualquier evidencia
-                    // extraída pueda asociarse al folio y método real de lectura.
-                    $fragmentos[] = sprintf('[Página %d · %s]%s%s', $numero, $metodo, PHP_EOL, $textoPagina);
-                }
+            $proceso = new Process([
+                (string) config('firma-electronica.java_binary', 'java'),
+                '-Djava.awt.headless=true', '-Xmx384m', '-jar',
+                (string) config('firma-electronica.java_signature_jar'), 'text', '--paths-stdin',
+            ]);
+            $proceso->setInput($archivo);
+            $proceso->setEnv(DirectorioTemporalHubDigital::entornoProcesos());
+            $proceso->setTimeout(30);
+            $proceso->mustRun();
+            $lectura = json_decode($proceso->getOutput(), true, 512, JSON_THROW_ON_ERROR);
+            if (! is_array($lectura['paginas'] ?? null)) {
+                throw new \RuntimeException('Java no pudo leer las páginas del PDF.');
+            }
+            foreach ($lectura['paginas'] as $pagina) {
+                $numero = (int) $pagina['numero'];
+                $texto = trim((string) $pagina['texto']);
                 $paginas[] = [
                     'numero' => $numero,
-                    'metodo' => $metodo,
-                    'caracteres' => mb_strlen($textoPagina),
-                    'estado' => $estado,
+                    'metodo' => 'java-pdfbox',
+                    'caracteres' => mb_strlen($texto),
+                    'estado' => $texto === '' ? 'sin_texto' : 'texto_nativo',
                 ];
-            }
-
-            $texto = trim(implode(PHP_EOL.PHP_EOL, $fragmentos));
-            if ($texto === '') {
-                try {
-                    $texto = (new Parser)->parseFile($archivo)->getText();
-                } catch (\Throwable $e) {
-                    Log::warning('No se pudo leer PDF para autocompletado', ['error' => $e->getMessage()]);
+                if ($texto !== '') {
+                    $fragmentos[] = sprintf('[Página %d · java-pdfbox]%s%s', $numero, PHP_EOL, $texto);
                 }
             }
 
             return [
-                'texto' => trim($texto),
-                'motor' => $usoOcr ? 'pdftotext+tesseract-5' : 'pdftotext',
-                'uso_ocr' => $usoOcr,
-                'procesamiento_parcial' => $procesamientoParcial,
+                'texto' => implode(PHP_EOL.PHP_EOL, $fragmentos),
+                'motor' => 'java-pdfbox',
+                'uso_ocr' => false,
+                'procesamiento_parcial' => count($paginas) !== $totalPaginas,
                 'paginas' => $paginas,
             ];
-        } finally {
-            $copia->limpiar();
         }
+        $minimo = max(1, (int) config('document-extraction.minimum_text_length', 80));
+        $paginas = [];
+        $fragmentos = [];
+        $usoOcr = false;
+        $procesamientoParcial = false;
+
+        for ($numero = 1; $numero <= $totalPaginas; $numero++) {
+            $textoNativo = trim($this->ejecutar(new Process([
+                'pdftotext', '-layout', '-f', (string) $numero, '-l', (string) $numero, $archivo, '-',
+            ])));
+            $metodo = 'pdftotext';
+            $textoPagina = $textoNativo;
+            $estado = 'texto_nativo';
+
+            if ($this->textoInsuficiente($textoNativo, $minimo)) {
+                $ocr = trim($this->aplicarOcrPagina($archivo, $numero));
+                $usoOcr = true;
+                if ($ocr !== '') {
+                    $textoPagina = $ocr;
+                    $metodo = 'tesseract-5-spa-eng';
+                    $estado = 'ocr';
+                } elseif ($textoNativo === '') {
+                    $estado = 'sin_texto';
+                } else {
+                    $estado = 'texto_nativo_insuficiente';
+                    $procesamientoParcial = true;
+                }
+            }
+
+            if ($textoPagina !== '') {
+                // La marca conserva la procedencia para que cualquier evidencia
+                // extraída pueda asociarse al folio y método real de lectura.
+                $fragmentos[] = sprintf('[Página %d · %s]%s%s', $numero, $metodo, PHP_EOL, $textoPagina);
+            }
+            $paginas[] = [
+                'numero' => $numero,
+                'metodo' => $metodo,
+                'caracteres' => mb_strlen($textoPagina),
+                'estado' => $estado,
+            ];
+        }
+
+        $texto = trim(implode(PHP_EOL.PHP_EOL, $fragmentos));
+        if ($texto === '') {
+            try {
+                $texto = (new Parser)->parseFile($archivo)->getText();
+            } catch (\Throwable $e) {
+                Log::warning('No se pudo leer PDF para autocompletado', ['error' => $e->getMessage()]);
+            }
+        }
+
+        return [
+            'texto' => trim($texto),
+            'motor' => $usoOcr ? 'pdftotext+tesseract-5' : 'pdftotext',
+            'uso_ocr' => $usoOcr,
+            'procesamiento_parcial' => $procesamientoParcial,
+            'paginas' => $paginas,
+        ];
     }
 
     /**
@@ -410,7 +393,6 @@ final class LocalExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocum
                 '/(?:grupo(?:\s+animal)?|grupo\s+taxon[oó]mico)\s*[:\-]\s*([^\r\n]{3,90})/iu',
                 '/\b(moluscos?|insectos?|crust[aá]ceos?|an[eé]lidos?|ar[aá]cnidos?)\b/iu',
             ]),
-            'provinciaOrigen' => $this->buscarProvincia($texto),
             'localidad' => $this->buscar($texto, [
                 '/(?:localidad|sitio\s+de\s+colecta)\s*[:\-]\s*([^\r\n]{3,120})/iu',
             ]),
@@ -444,28 +426,4 @@ final class LocalExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocum
         return ['valor' => null, 'confianza' => 0.0, 'evidencia' => null];
     }
 
-    /** @return array{valor: ?string, confianza: float, evidencia: ?string} */
-    private function buscarProvincia(string $texto): array
-    {
-        if (preg_match('/(?:provincia|administraci[oó]n\s+pol[ií]tica)\s*[:\-]\s*([^\r\n]{3,120})/iu', $texto, $coincidencia, PREG_OFFSET_CAPTURE) !== 1) {
-            return ['valor' => null, 'confianza' => 0.0, 'evidencia' => null];
-        }
-
-        $capturado = (string) $coincidencia[1][0];
-        $ascii = Str::lower(Str::ascii($capturado));
-        foreach (self::PROVINCIAS as $provincia) {
-            if (str_contains($ascii, Str::lower(Str::ascii($provincia)))) {
-                $inicio = max(0, (int) $coincidencia[0][1] - 40);
-                $fragmento = mb_strcut($texto, $inicio, 200, 'UTF-8');
-
-                return [
-                    'valor' => $provincia,
-                    'confianza' => 0.9,
-                    'evidencia' => trim(preg_replace('/\s+/u', ' ', $fragmento) ?? $fragmento),
-                ];
-            }
-        }
-
-        return ['valor' => null, 'confianza' => 0.0, 'evidencia' => null];
-    }
 }

@@ -53,4 +53,15 @@ current_manifest_sha="$(sha256sum "${manifest_file}" | awk '{print $1}')"
     exit 65
 }
 
+if [[ -e "${release_dir}/SOURCE-METADATA.json" || -e "${release_dir}/SOURCE-MANIFEST.sha256" ]]; then
+    source_head="$(bash "${release_dir}/deploy/oracle/scripts/verify-source-identity.sh" "${release_dir}")"
+    [[ "$(jq -r '.git_head' "${metadata_file}")" == "${source_head}" &&
+       "$(jq -r '.git_branch' "${metadata_file}")" == main &&
+       "$(jq -r '.repository' "${metadata_file}")" == 'https://github.com/HubDigitalEPN/HubDigital' ]] || {
+        echo 'La release preparada no corresponde al commit de main de su paquete.' >&2
+        exit 65
+    }
+    echo "Commit main verificado: ${source_head}."
+fi
+
 echo "Identidad de release verificada: ${release_id}."

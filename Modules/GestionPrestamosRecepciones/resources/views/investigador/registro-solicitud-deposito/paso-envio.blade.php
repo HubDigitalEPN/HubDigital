@@ -75,7 +75,7 @@
                 <div class="flex items-center justify-between px-4 py-3">
                     <span class="text-xs text-text-secondary">Provincia</span>
                     <span class="text-sm text-text-primary">
-                        {{ $provincia }}@if($localidad) / {{ $localidad }}@endif
+                        {{ $provincia }}@if($localidad) / {{ $localidad }}@elseif($localidadOrigenCodigo) / {{ \App\Support\CatalogoLocalidadesEcuador::buscar($provincia, $localidadOrigenCodigo, false)?->nombre }}@endif
                     </span>
                 </div>
             @endif
@@ -304,7 +304,7 @@
                     <p x-show="error" x-text="error" class="text-sm font-medium text-error" role="alert" aria-live="assertive"></p>
                     <div class="flex items-start gap-2 border-t border-blue-navy/10 pt-4 text-xs leading-5 text-text-secondary">
                         <flux:icon name="shield-check" class="mt-0.5 size-4 shrink-0 text-bio-green" />
-                        <p><strong class="text-text-primary">Firma privada en tu navegador.</strong> El archivo P12 y la clave permanecen en este dispositivo. El servidor recibe únicamente el PDF firmado y comprueba el certificado, la cobertura total y la integridad visual.</p>
+                        <p><strong class="text-text-primary">Firma electrónica con Java.</strong> El certificado y la contraseña se usan temporalmente para firmar el original oficial. Se eliminan después del intento; el expediente conserva el PDF y el resultado de su verificación.</p>
                     </div>
                 </div>
             @else

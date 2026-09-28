@@ -13,10 +13,18 @@ trap cleanup EXIT
 [[ -d "${repo_dir}/vendor" ]] || { echo 'Falta vendor/: ejecute composer install fuera de Oracle.' >&2; exit 65; }
 [[ -f "${repo_dir}/vendor/autoload.php" ]] || { echo 'Falta vendor/autoload.php: la instalación de Composer no está completa.' >&2; exit 65; }
 [[ -d "${repo_dir}/public/build" ]] || { echo 'Falta public/build: ejecute npm run build fuera de Oracle.' >&2; exit 65; }
+# Los bundles nuevos conservan el commit de main aunque la VM no tenga .git.
+source_metadata="${repo_dir}/SOURCE-METADATA.json"
+source_manifest="${repo_dir}/SOURCE-MANIFEST.sha256"
+source_head=''
+if [[ -e "${source_metadata}" || -e "${source_manifest}" ]]; then
+    source_head="$(bash "${repo_dir}/deploy/oracle/scripts/verify-source-identity.sh" "${repo_dir}")"
+fi
 bash "${repo_dir}/deploy/oracle/scripts/verify-platform.sh" "${repo_dir}"
 
 install -d -m 0755 "${stage}"
-for directory in app config database lang Modules public resources routes vendor deploy; do
+for directory in app config database lang Modules public resources routes vendor deploy scripts/depositos; do
+    if [[ "${directory}" == scripts/depositos && ! -d "${repo_dir}/${directory}" ]]; then continue; fi
     [[ -d "${repo_dir}/${directory}" ]] || { echo "Falta ${directory}/ en el árbol fuente." >&2; exit 65; }
     while IFS= read -r -d '' link; do
         target="$(realpath -e -- "${link}")" || { echo "Enlace roto: ${link}" >&2; exit 65; }
@@ -25,6 +33,7 @@ for directory in app config database lang Modules public resources routes vendor
             *) echo "Enlace fuera del repositorio: ${link}" >&2; exit 65 ;;
         esac
     done < <(find "${repo_dir}/${directory}" -type l -print0)
+    install -d -m 0755 "$(dirname -- "${stage}/${directory}")"
     cp -aL -- "${repo_dir}/${directory}" "${stage}/${directory}"
 done
 # Los bundles fuente creados en Windows no conservan el bit ejecutable POSIX.
@@ -45,6 +54,11 @@ for file in artisan composer.json composer.lock modules_statuses.json; do
     install -m 0644 "${repo_dir}/${file}" "${stage}/${file}"
 done
 chmod 0755 "${stage}/artisan"
+if [[ -n "${source_head}" ]]; then
+    install -m 0644 "${source_metadata}" "${stage}/SOURCE-METADATA.json"
+    install -m 0644 "${source_manifest}" "${stage}/SOURCE-MANIFEST.sha256"
+fi
+
 
 remaining_link="$(find "${stage}" -type l -print -quit)"
 [[ -z "${remaining_link}" ]] || { echo "El staging conserva un enlace: ${remaining_link}" >&2; exit 65; }
@@ -76,11 +90,22 @@ manifest="${stage}/RELEASE-MANIFEST.sha256"
     find . -type f ! -name RELEASE-MANIFEST.sha256 -print0 | LC_ALL=C sort -z | xargs -0 sha256sum
 ) > "${manifest}"
 content_sha="$(sha256sum "${manifest}" | awk '{print $1}')"
-head="$(git -C "${repo_dir}" rev-parse --short=12 HEAD 2>/dev/null || printf 'sin-git')"
+head="${source_head}"
+if [[ -z "${head}" ]]; then
+    # Compatibilidad con releases anteriores; no se altera su restauracion.
+    head="$(git -C "${repo_dir}" rev-parse --short=12 HEAD 2>/dev/null || printf 'sin-git')"
+fi
 release_id="${head}-${content_sha:0:12}"
 metadata="${stage}/RELEASE-METADATA.json"
 printf '{"git_head":"%s","content_sha256":"%s","php_version":"%s"}\n' \
     "${head}" "${content_sha}" "$("${PHP_BIN:-php}" -r 'echo PHP_VERSION;')" > "${metadata}"
+if [[ -n "${source_head}" ]]; then
+    jq --slurpfile source "${source_metadata}" '
+        . + {git_branch: $source[0].git_branch, repository: $source[0].repository,
+             git_tree: $source[0].git_tree, source_manifest_sha256: $source[0].source_manifest_sha256}
+    ' "${metadata}" > "${stage}/metadata.tmp"
+    mv -- "${stage}/metadata.tmp" "${metadata}"
+fi
 
 mkdir -p "${output_dir}"
 archive="${output_dir}/hubdigital-${release_id}.tar.gz"

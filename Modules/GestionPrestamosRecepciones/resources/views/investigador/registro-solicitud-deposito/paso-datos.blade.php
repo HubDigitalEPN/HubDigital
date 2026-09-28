@@ -161,7 +161,7 @@
                             'Cargo' => 'Indica el puesto o función que desempeñas en la institución solicitante.',
                             'Institución' => 'Selecciona la entidad a la que perteneces. El curador administra esta lista.',
                             'Provincia' => 'Selecciona la provincia donde se recolectó el material. Debe coincidir con la zona de recolección.',
-                            'Localidad' => 'Indica el lugar de recolección dentro de la provincia y cantón seleccionados.',
+                            'Localidad' => 'Indica el lugar de recolección dentro de la provincia seleccionada.',
                             default => $tooltipsPorCampo[$campoEditorManual] ?? 'Completa este dato de la solicitud de depósito.',
                         } }}
                     </p>
@@ -186,7 +186,7 @@
                         <select wire:model.live="valorEditorManual" aria-label="Localidad" class="min-h-9 w-full rounded-lg border border-border bg-white px-3 text-sm">
                             <option value="">Selecciona una localidad de {{ $canton }}, {{ $provincia }}</option>
                             @foreach($localidadesCatalogo as $localidadOpcion)<option value="{{ $localidadOpcion }}">{{ $localidadOpcion }}</option>@endforeach
-                            <option value="__OTRA__">Otra localidad de este cantón…</option>
+                            <option value="__OTRA__">Otra localidad de esta provincia…</option>
                         </select>
                         @if($valorEditorManual === '__OTRA__')
                             <div class="mt-2"><flux:input wire:model="localidadEspecifica" label="Nombre de la localidad" maxlength="140" placeholder="Área natural, parroquia o sitio de recolección" /><flux:error name="localidadEspecifica" /></div>

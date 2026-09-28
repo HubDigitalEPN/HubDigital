@@ -6,6 +6,9 @@ namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Cura
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Services\FirmaPdfJava;
+use Modules\GestionPrestamosRecepciones\Presentation\Support\PerfilFirmaPdf;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDetalleRecepcion\ConsultarDetalleRecepcionHandler;
@@ -16,7 +19,7 @@ use Modules\GestionPrestamosRecepciones\Application\Ports\OriginalActaRecepcionP
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\DirectorioTemporalHubDigital;
 
-/** Recibe solo el PDF que el firmador local produjo; nunca recibe el P12 o su clave. */
+/** Delega a Java la firma del original oficial y conserva la validación integral de recepción. */
 final class FirmarActaRecepcion
 {
     public function __invoke(
@@ -27,8 +30,8 @@ final class FirmarActaRecepcion
         AlmacenamientoDepositos $almacenamiento,
         OriginalActaRecepcionPort $originales,
     ): JsonResponse {
-        $request->validate([
-            'pdf_firmado' => ['required', 'file', 'mimes:pdf', 'max:15360'],
+        $request->attributes->set('credencial_firma_sensible', $request->hasFile('certificado'));
+        $request->validate([...FirmaPdfJava::reglas(),
             'original_referencia' => ['required', 'uuid'],
             'original_sha256' => ['required', 'string', 'size:64'],
         ]);
@@ -40,6 +43,7 @@ final class FirmarActaRecepcion
 
         $originalTemporal = null;
         $rutaRelativa = null;
+        $archivoJava = null;
         try {
             $original = $originales->obtenerVerificado($id);
             if (! hash_equals($original['referencia'], (string) $request->input('original_referencia'))
@@ -56,7 +60,8 @@ final class FirmarActaRecepcion
             // Un nombre no predecible evita que dos intentos concurrentes o un archivo
             // rechazado sobrescriban un acta previamente validada.
             $rutaRelativa = 'actas/recepcion-firmada/'.$id.'-'.Str::uuid().'.pdf';
-            $archivo = $request->file('pdf_firmado');
+            $archivoJava = app(FirmaPdfJava::class)->preparar($request, $originalTemporal, PerfilFirmaPdf::ACTA_RECEPCION_CURADOR);
+            $archivo = new UploadedFile($archivoJava->ruta(), 'acta-firmada.pdf', 'application/pdf', null, true);
             $rutaGuardada = $almacenamiento->guardarSubidoComo($archivo, $rutaRelativa);
             abort_unless($rutaGuardada === $rutaRelativa, 500, 'No se pudo guardar el acta firmada.');
 
@@ -70,8 +75,11 @@ final class FirmarActaRecepcion
                 sha256Original: (string) $request->input('original_sha256'),
             ));
         } catch (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) {
+            if ($rutaRelativa !== null) {
+                $almacenamiento->eliminar($rutaRelativa);
+            }
             throw $e;
-        } catch (\DomainException $e) {
+        } catch (\DomainException | \InvalidArgumentException $e) {
             if ($rutaRelativa !== null) {
                 $almacenamiento->eliminar($rutaRelativa);
             }
@@ -93,6 +101,8 @@ final class FirmarActaRecepcion
                 'message' => 'No fue posible validar y guardar el acta firmada.',
             ], 500);
         } finally {
+            $archivoJava?->limpiar();
+            $request->request->remove('clave_certificado');
             if (is_string($originalTemporal)) {
                 DirectorioTemporalHubDigital::eliminar(dirname($originalTemporal));
             }

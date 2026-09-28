@@ -2,13 +2,14 @@
     @php
         $sinValidar = array_filter($firmasElectronicas, fn ($estado) => !in_array($estado, ['firmado', 'firmado_sin_revocacion'], true));
         $soloFallaRevocacion = $sinValidar !== [] && count(array_filter($sinValidar, fn ($estado) => $estado === 'revocacion_no_comprobable')) === count($sinValidar);
-        $puedeReintentar = array_intersect($firmasElectronicas, ['verificacion_no_disponible', 'certificado_no_confiable', 'almacen_incompleto', 'revocacion_no_comprobable', 'firmado_sin_revocacion', 'no_verificado', 'firma_invalida', 'certificado_caducado']) !== [];
+        $puedeReintentar = array_intersect($firmasElectronicas, ['validando', 'verificacion_no_disponible', 'certificado_no_confiable', 'almacen_incompleto', 'revocacion_no_comprobable', 'firmado_sin_revocacion', 'no_verificado', 'firma_invalida', 'certificado_caducado']) !== [];
         $motivosFirma = [
             'firmado' => 'Firma criptográfica válida y certificado de confianza.',
             'validando' => 'Se está comprobando la firma electrónica.',
-            'sin_firma' => 'El PDF no contiene firma electrónica.',
+            'sin_firma' => 'El PDF no contiene una firma electrónica utilizable.',
             'firma_invalida' => 'La firma no supera la comprobación criptográfica de integridad o cobertura.',
-            'certificado_caducado' => 'El certificado está caducado y no hay un sello de tiempo confiable que pruebe la firma durante su vigencia.',
+            'documento_modificado' => 'La firma es válida, pero el PDF tiene cambios posteriores que no están firmados.',
+            'certificado_caducado' => 'El certificado estaba caducado en la fecha de firma comprobada.',
             'certificado_aun_no_vigente' => 'El certificado aún no era válido en la fecha comprobada.',
             'certificado_revocado' => 'El certificado fue revocado por su emisor.',
             'certificado_no_confiable' => 'No se pudo establecer una cadena de confianza aceptada.',

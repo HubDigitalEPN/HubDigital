@@ -72,6 +72,8 @@ final class SolicitudDeposito
 
     private ?string $cantonOrigen = null;
 
+    private ?string $localidadOrigenCodigo = null;
+
     private bool $sinDocumentacion = false;
 
     // ── Documentación ────────────────────────────────────────────
@@ -200,6 +202,19 @@ final class SolicitudDeposito
         $this->cantonOrigen = $canton;
     }
 
+    public function declararLocalidadOrigen(?string $codigo, ?string $nombre = null): void
+    {
+        $this->localidadOrigenCodigo = $codigo;
+        if ($nombre !== null) {
+            $this->localidad = $nombre;
+        }
+    }
+
+    public function localidadOrigenCodigo(): ?string
+    {
+        return $this->localidadOrigenCodigo;
+    }
+
     public function marcarSinDocumentacionDisponible(): void
     {
         $this->sinDocumentacion = true;
@@ -246,16 +261,15 @@ final class SolicitudDeposito
             $this->nroPermisoMovilizacion = $datos->nroPermisoMovilizacion;
         }
 
-        if ($datos->provinciaOrigen !== null) {
-            $this->provinciaOrigen = $datos->provinciaOrigen;
-        } elseif ($this->tipoTramite->equals(TipoTramite::Deposito)) {
+        // La provincia procede de la selección del paso de origen, no del PDF.
+        if ($this->provinciaOrigen === null && $this->tipoTramite->equals(TipoTramite::Deposito)) {
             $this->marcarDatoComoFaltante($esExtranjero ? 'Administración Política' : 'Provincia');
         }
 
         if (! $esExtranjero
             && $this->nroPermisoMovilizacion === null
             && $this->tipoTramite->equals(TipoTramite::Deposito)
-            && ($datos->provinciaOrigen === null || strtolower(trim($datos->provinciaOrigen)) !== 'pichincha')
+            && ($this->provinciaOrigen === null || strtolower(trim($this->provinciaOrigen)) !== 'pichincha')
         ) {
             $this->marcarDatoComoFaltante('N.º Permiso Movilización');
         }
@@ -266,9 +280,9 @@ final class SolicitudDeposito
             $this->marcarDatoComoFaltante('Grupo Animal');
         }
 
-        if ($datos->localidad !== null) {
+        if ($this->localidadOrigenCodigo === null && $datos->localidad !== null) {
             $this->localidad = $datos->localidad;
-        } elseif ($this->tipoTramite->equals(TipoTramite::Deposito)) {
+        } elseif ($this->localidad === null && $this->tipoTramite->equals(TipoTramite::Deposito)) {
             $this->marcarDatoComoFaltante('Localidad');
         }
 
@@ -946,6 +960,7 @@ final class SolicitudDeposito
         ?DocumentoAdjunto $actaTransferenciaDominio = null,
         array $alertas = [],
         ?string $cantonOrigen = null,
+        ?string $localidadOrigenCodigo = null,
     ): self {
         $solicitud = new self;
 
@@ -958,6 +973,7 @@ final class SolicitudDeposito
         $solicitud->situacionRegulatoria = $situacionRegulatoria;
         $solicitud->provinciaOrigen = $provinciaOrigen;
         $solicitud->cantonOrigen = $cantonOrigen;
+        $solicitud->localidadOrigenCodigo = $localidadOrigenCodigo;
         $solicitud->sinDocumentacion = $sinDocumentacion;
         $solicitud->nroPermisoRecoleccion = $nroPermisoRecoleccion;
         $solicitud->nroPermisoMovilizacion = $nroPermisoMovilizacion;

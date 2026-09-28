@@ -6,6 +6,9 @@ namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Inve
 
 use App\Concerns\HandlesDomainExceptions;
 use App\Support\CatalogoTerritorialEcuador;
+use App\Support\CatalogoLocalidadesEcuador;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\ValidacionPreviaDocumentoDeposito;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\DocumentoDepositoRechazado;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -112,7 +115,11 @@ final class RegistroSolicitudDeposito extends Component
 
     public string $provincia = '';
 
-    public string $canton = '';
+    public string $localidadOrigenCodigo = '';
+
+    public string $busquedaLocalidadOrigen = '';
+
+    public array $rechazosDocumentos = [];
 
     public string $localidad = '';
 
@@ -448,26 +455,28 @@ final class RegistroSolicitudDeposito extends Component
 
     public function updatedProvincia(): void
     {
-        $this->canton = '';
+        $this->localidadOrigenCodigo = '';
+        $this->busquedaLocalidadOrigen = '';
     }
 
     public function seleccionarProvincia(string $provincia): void
     {
         $permitidas = array_column(CatalogoTerritorialEcuador::provincias(), 'nombre');
         $this->provincia = in_array($provincia, $permitidas, true) ? $provincia : '';
-        $this->canton = '';
+        $this->localidadOrigenCodigo = '';
+        $this->busquedaLocalidadOrigen = '';
     }
 
-    public function seleccionarCanton(string $canton): void
+    public function seleccionarLocalidadOrigen(string $codigo): void
     {
-        $this->canton = CatalogoTerritorialEcuador::contiene($this->provincia, $canton) ? $canton : '';
+        $this->localidadOrigenCodigo = CatalogoLocalidadesEcuador::buscar($this->provincia, $codigo) !== null ? $codigo : '';
     }
 
-    public function guardarOrigenDesdeFormulario(string $provincia, string $canton, string $situacion): void
+    public function guardarOrigenDesdeFormulario(string $provincia, string $localidadCodigo, string $situacion): void
     {
         $this->origenRecoleccion = 'Nacional (Ecuador)';
         $this->provincia = $provincia;
-        $this->canton = $canton;
+        $this->localidadOrigenCodigo = $localidadCodigo;
         $this->situacionRegulatoria = $situacion;
         $this->guardarPasoDos(
             app(DeterminarDocumentacionRequeridaHandler::class),
@@ -492,7 +501,7 @@ final class RegistroSolicitudDeposito extends Component
         $this->origenRecoleccion = $model->origen_recoleccion ?? '';
         $this->situacionRegulatoria = $model->situacion_regulatoria ?? '';
         $this->provincia = $model->provincia_origen ?? '';
-        $this->canton = $model->canton_origen ?? '';
+        $this->localidadOrigenCodigo = $model->localidad_origen_codigo ?? '';
 
         // Paso 3 data
         $this->documentosRequeridos = $model->documentos_requeridos ?? [];
@@ -609,6 +618,9 @@ final class RegistroSolicitudDeposito extends Component
         // Restaurar paso y pasos completados
         $this->paso = $pasoGuardado === 5 ? 3 : $pasoGuardado;
         $this->pasosCompletados = $this->calcularPasosCompletados($pasoGuardado);
+        if ($this->paso === 3) {
+            $this->actualizarFirmas();
+        }
     }
 
     /** @return int[] */
@@ -765,7 +777,7 @@ final class RegistroSolicitudDeposito extends Component
         $this->origenRecoleccion = 'Nacional (Ecuador)';
         if ($this->situacionRegulatoria !== ''
             && ! in_array($this->situacionRegulatoria, ['Posee permisos del MAE', 'Sin permisos del MAE'], true)) {
-            throw ValidationException::withMessages(['situacionRegulatoria' => 'Selecciona una situaci?n regulatoria v?lida.']);
+            throw ValidationException::withMessages(['situacionRegulatoria' => 'Selecciona una situación regulatoria válida.']);
         }
         $rules = [
             'origenRecoleccion' => 'required|string',
@@ -779,15 +791,15 @@ final class RegistroSolicitudDeposito extends Component
 
         if ($this->origenRecoleccion === 'Nacional (Ecuador)') {
             $rules['provincia'] = 'required|string';
-            $rules['canton'] = 'required|string';
+            $rules['localidadOrigenCodigo'] = 'required|string|max:64';
             $messages['provincia.required'] = 'Selecciona la provincia de recolección.';
-            $messages['canton.required'] = 'Selecciona el cantón de recolección.';
+            $messages['localidadOrigenCodigo.required'] = 'Selecciona la localidad de recolección.';
         }
 
         $this->validate($rules, $messages);
         if ($this->origenRecoleccion === 'Nacional (Ecuador)'
-            && ! CatalogoTerritorialEcuador::contiene($this->provincia, $this->canton)) {
-            throw ValidationException::withMessages(['canton' => 'Selecciona un cantón válido para la provincia indicada.']);
+            && CatalogoLocalidadesEcuador::buscar($this->provincia, $this->localidadOrigenCodigo) === null) {
+            throw ValidationException::withMessages(['localidadOrigenCodigo' => 'Selecciona una localidad activa de la provincia indicada.']);
         }
 
         $output = ($determinar)(new DeterminarDocumentacionRequeridaInput(
@@ -805,12 +817,17 @@ final class RegistroSolicitudDeposito extends Component
             origenRecoleccion: $this->origenRecoleccion,
             situacionRegulatoria: $this->situacionRegulatoria,
             provinciaOrigen: $this->provincia ?: null,
-            cantonOrigen: $this->canton ?: null,
+            localidadOrigenCodigo: $this->localidadOrigenCodigo ?: null,
         ));
 
         $this->pasosCompletados = array_values(array_unique([...$this->pasosCompletados, 2]));
         $this->paso = 3;
         $this->persistirEstadoWizard();
+        $this->actualizarFirmas();
+        $actual = SolicitudDepositoEloquentModel::query()->findOrFail($this->solicitudId);
+        $this->localidad = (string) ($actual->localidad ?? '');
+        $this->solicitudFirmada = filled($actual->solicitud_firmada_ruta);
+        $this->solicitudFirmaMetadata = $actual->solicitud_firma_metadata ?? [];
     }
 
     // ── Paso 3 – File upload lifecycle hooks ──────────────────────────────────────
@@ -885,11 +902,29 @@ final class RegistroSolicitudDeposito extends Component
         );
 
         try {
-            $ruta = app(AlmacenamientoDepositos::class)->guardarArchivo($archivo, 'depositos/'.$this->solicitudId);
+            $previo = SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)
+                ->where('investigador_id', (string) auth()->id())->firstOrFail();
+            abort_unless(in_array($previo->estado, [EstadoSolicitudDeposito::EnBorrador->value, EstadoSolicitudDeposito::RequiereCorreccion->value], true), 409, 'La solicitud ya no admite cambios de documentos.');
+            abort_unless(in_array($nombre, $previo->documentos_requeridos ?? [], true), 422);
+            $provinciaAlIniciar = $previo->provincia_origen;
+            $comprobacion = app(ValidacionPreviaDocumentoDeposito::class)->validar(
+                $archivo->getRealPath(), $nombre,
+            );
+            $guardado = app(AlmacenamientoDepositos::class)->guardarArchivoConHuella($archivo, 'depositos/'.$this->solicitudId);
+            $ruta = $guardado['ruta'];
+            if (! hash_equals($comprobacion['sha256'], $guardado['sha256'])) {
+                app(AlmacenamientoDepositos::class)->eliminar($ruta);
+                throw new DocumentoDepositoRechazado('pdf_inseguro', 'El archivo cambió después de comprobarlo.');
+            }
         } catch (\InvalidArgumentException $error) {
             $this->reset($propiedad);
+            $this->rechazosDocumentos[$nombre] = [
+                'estado' => $error instanceof DocumentoDepositoRechazado ? $error->estado : 'pdf_inseguro',
+                'mensaje' => $error->getMessage(),
+            ];
             $this->addError($propiedad, $error->getMessage());
-            $this->dispatch('documento-rechazado', propiedad: $propiedad);
+            $this->dispatch('documento-rechazado', propiedad: $propiedad,
+                estado: $this->rechazosDocumentos[$nombre]['estado'], mensaje: $error->getMessage());
 
             return;
         }
@@ -900,12 +935,15 @@ final class RegistroSolicitudDeposito extends Component
         $this->erroresDocumentales = [];
         $this->advertenciasDocumentales = [];
         try {
-            [$documentosActualizados, $nombresActualizados, $rutaAnterior, $firmas, $validaciones] = DB::transaction(function () use ($nombre, $ruta, $archivo): array {
+            [$documentosActualizados, $nombresActualizados, $rutaAnterior, $firmas, $validaciones, $verificacionId] = DB::transaction(function () use ($nombre, $ruta, $archivo, $comprobacion, $provinciaAlIniciar): array {
                 $modelo = SolicitudDepositoEloquentModel::query()
                     ->whereKey($this->solicitudId)
                     ->where('investigador_id', (string) auth()->id())
                     ->lockForUpdate()
                     ->firstOrFail();
+                abort_unless(in_array($modelo->estado, [EstadoSolicitudDeposito::EnBorrador->value, EstadoSolicitudDeposito::RequiereCorreccion->value], true), 409, 'La solicitud cambió de estado mientras se revisaba el PDF.');
+                abort_unless($modelo->provincia_origen === $provinciaAlIniciar, 409, 'La provincia cambió mientras se revisaba el PDF. Vuelve a seleccionarlo.');
+                abort_unless(in_array($nombre, $modelo->documentos_requeridos ?? [], true), 409);
                 $documentosActualizados = $modelo->documentos_cargados ?? [];
                 $nombresActualizados = $modelo->nombres_archivos_originales ?? [];
                 $rutaAnterior = $documentosActualizados[$nombre] ?? null;
@@ -913,8 +951,13 @@ final class RegistroSolicitudDeposito extends Component
                 $nombresActualizados[$nombre] = $archivo->getClientOriginalName();
                 $firmas = $modelo->firmas_electronicas ?? [];
                 $validaciones = $modelo->validacion_archivos ?? [];
-                unset($firmas[$nombre]);
-                $validaciones[$nombre] = 'analizando';
+                $firmas[$nombre] = 'validando';
+                $validaciones[$nombre] = 'valido';
+                $verificacionId = (string) Str::uuid();
+                $previas = $modelo->validacion_previa_documentos ?? [];
+                $previas[$nombre] = [...$comprobacion, 'ruta' => $ruta,
+                    'verificacion_id' => $verificacionId, 'firma_verificada' => false,
+                    'comprobado_en' => now()->toIso8601String()];
                 $metadatos = $modelo->extraccion_metadatos ?? [];
                 $revision = $metadatos['revision_documental'] ?? null;
                 $historial = $metadatos['revision_documental_historial'] ?? [];
@@ -931,8 +974,9 @@ final class RegistroSolicitudDeposito extends Component
                     'documentos_procesados' => [],
                     'firmas_electronicas' => $firmas,
                     'validacion_archivos' => $validaciones,
+                    'validacion_previa_documentos' => $previas,
                 ])->save();
-                return [$documentosActualizados, $nombresActualizados, $rutaAnterior, $firmas, $validaciones];
+                return [$documentosActualizados, $nombresActualizados, $rutaAnterior, $firmas, $validaciones, $verificacionId];
             });
         } catch (\Throwable $error) {
             app(AlmacenamientoDepositos::class)->eliminar($ruta);
@@ -942,12 +986,21 @@ final class RegistroSolicitudDeposito extends Component
         $this->nombresArchivosOriginales = $nombresActualizados;
         $this->firmasElectronicas = $firmas;
         $this->validacionArchivos = $validaciones;
+        unset($this->rechazosDocumentos[$nombre]);
+        $this->resetErrorBag($propiedad);
         if (is_string($rutaAnterior) && $rutaAnterior !== '') {
-            app(AlmacenamientoDepositos::class)->eliminar($rutaAnterior);
+            try { app(AlmacenamientoDepositos::class)->eliminar($rutaAnterior); }
+            catch (\Throwable $error) { report($error); }
         }
         $this->invalidarFirmaSolicitud();
         $this->dispatch('documento-aceptado', propiedad: $propiedad);
-        ClasificarDocumentoCargadoJob::dispatch($this->solicitudId, $nombre, $ruta);
+        try {
+            VerificarFirmaDocumentoJob::dispatch($this->solicitudId, $nombre, $ruta, $verificacionId);
+        } catch (\Throwable $error) {
+            report($error);
+            (new VerificarFirmaDocumentoJob($this->solicitudId, $nombre, $ruta, $verificacionId))->failed($error);
+            $this->actualizarFirmas();
+        }
 
     }
 
@@ -1049,10 +1102,22 @@ final class RegistroSolicitudDeposito extends Component
     public function guardarPasoTres(): void
     {
         $this->actualizarFirmas();
+        if ($this->rechazosDocumentos !== []) {
+            $this->addError('documentos', 'Reemplaza los documentos rechazados antes de continuar.');
+            return;
+        }
+        $actual = SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)
+            ->where('investigador_id', (string) auth()->id())->firstOrFail();
         foreach ($this->documentosRequeridos as $doc) {
             if (! isset($this->documentosCargados[$doc])) {
                 $this->addError('documentos', "El documento \"{$doc}\" es requerido.");
 
+                return;
+            }
+            $previa = $actual->validacion_previa_documentos[$doc] ?? [];
+            if (($previa['ruta'] ?? null) !== ($actual->documentos_cargados[$doc] ?? null)
+                || ($previa['firma_verificada'] ?? false) !== true) {
+                $this->addError('documentos', 'Cada PDF debe completar su propia comprobación de contenido y firma.');
                 return;
             }
         }
@@ -1071,7 +1136,7 @@ final class RegistroSolicitudDeposito extends Component
         }
 
         if ($this->analisisDocumentalCompletado) {
-            $sinVerificar = array_filter($this->firmasElectronicas, fn ($estado) => ! in_array($estado, ['firmado', 'firmado_sin_revocacion'], true));
+            $sinVerificar = array_filter(array_intersect_key($this->firmasElectronicas, array_flip($this->documentosRequeridos)), fn ($estado) => ! in_array($estado, ['firmado', 'firmado_sin_revocacion'], true));
             if ($sinVerificar !== []) {
                 $this->mostrarToast('Adjunta documentos firmados y corrige las firmas inválidas antes de continuar.', 'error');
 
@@ -1110,7 +1175,7 @@ final class RegistroSolicitudDeposito extends Component
             try {
                 ExtraccionDatosDocumentoJob::dispatch(
                     $this->solicitudId,
-                    $this->documentosCargados,
+                    array_intersect_key($this->documentosCargados, array_flip($this->documentosRequeridos)),
                     $versionDocumental,
                     $ejecucionId,
                 );
@@ -1159,19 +1224,38 @@ final class RegistroSolicitudDeposito extends Component
             $pendientes = [];
             foreach (($modelo->documentos_cargados ?? []) as $nombre => $ruta) {
                 if (($modelo->validacion_archivos[$nombre] ?? null) !== 'valido'
-                    || in_array($firmas[$nombre] ?? null, ['firmado', 'validando'], true)) {
+                    || ($firmas[$nombre] ?? null) === 'firmado') {
                     continue;
                 }
+                $previas = $modelo->validacion_previa_documentos ?? [];
+                if (($previas[$nombre]['ruta'] ?? null) !== $ruta) {
+                    continue;
+                }
+                $fecha = $previas[$nombre]['comprobado_en'] ?? null;
+                if (($firmas[$nombre] ?? null) === 'validando' && is_string($fecha)
+                    && \Illuminate\Support\Carbon::parse($fecha)->diffInSeconds(now(), true) < 180) {
+                    continue;
+                }
+                $token = (string) Str::uuid();
+                $previas[$nombre]['verificacion_id'] = $token;
+                $previas[$nombre]['firma_verificada'] = false;
+                $previas[$nombre]['comprobado_en'] = now()->toIso8601String();
+                $modelo->validacion_previa_documentos = $previas;
                 $firmas[$nombre] = 'validando';
-                $pendientes[$nombre] = $ruta;
+                $pendientes[$nombre] = ['ruta' => $ruta, 'token' => $token];
             }
             $modelo->forceFill(['firmas_electronicas' => $firmas])->save();
             $this->firmasElectronicas = $firmas;
             return $pendientes;
         });
-        foreach ($pendientes as $nombre => $ruta) {
+        foreach ($pendientes as $nombre => $pendiente) {
             $this->dispatch('firma-actualizada', nombre: $nombre, estado: 'validando');
-            VerificarFirmaDocumentoJob::dispatch($this->solicitudId, $nombre, $ruta);
+            try {
+                VerificarFirmaDocumentoJob::dispatch($this->solicitudId, $nombre, $pendiente['ruta'], $pendiente['token']);
+            } catch (\Throwable $error) {
+                report($error);
+                (new VerificarFirmaDocumentoJob($this->solicitudId, $nombre, $pendiente['ruta'], $pendiente['token']))->failed($error);
+            }
         }
     }
 
@@ -1180,15 +1264,26 @@ final class RegistroSolicitudDeposito extends Component
         if ($this->paso !== 3 || $this->solicitudId === null) {
             return;
         }
-        $modelo = SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)->first();
+        $this->prepararRevisionesHistoricas();
+        $modelo = SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)->where('investigador_id', (string) auth()->id())->first();
         if ($modelo === null) {
             return;
         }
+        $this->documentosCargados = $modelo->documentos_cargados ?? [];
+        $this->nombresArchivosOriginales = $modelo->nombres_archivos_originales ?? [];
+        $this->analisisDocumentalCompletado = $modelo->extraccion_estado === 'completada';
         $nuevasFirmas = $modelo->firmas_electronicas ?? [];
         $nuevasValidaciones = $modelo->validacion_archivos ?? [];
         foreach ($nuevasValidaciones as $nombre => $estado) {
+            $mensaje = $modelo->validacion_previa_documentos[$nombre]['mensaje']
+                ?? ($estado === 'revision_fallida' ? 'No se pudo leer y confirmar el tipo del PDF. Elimina el archivo y vuelve a cargarlo.'
+                    : 'El PDF no supera la comprobación de contenido.');
             if (($this->validacionArchivos[$nombre] ?? null) !== $estado) {
-                $this->dispatch('archivo-validado', nombre: $nombre, estado: $estado);
+                $this->dispatch('archivo-validado', nombre: $nombre, estado: $estado, mensaje: $mensaje);
+                if ($estado === 'valido') unset($this->rechazosDocumentos[$nombre]);
+            }
+            if (! in_array($estado, ['valido', 'analizando'], true)) {
+                $this->rechazosDocumentos[$nombre] = ['estado' => $estado, 'mensaje' => $mensaje];
             }
         }
         $this->validacionArchivos = $nuevasValidaciones;
@@ -1198,6 +1293,42 @@ final class RegistroSolicitudDeposito extends Component
             }
         }
         $this->firmasElectronicas = $nuevasFirmas;
+    }
+
+    private function prepararRevisionesHistoricas(): void
+    {
+        $pendientes = DB::transaction(function (): array {
+            $modelo = SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)
+                ->where('investigador_id', (string) auth()->id())->lockForUpdate()->first();
+            if ($modelo === null) return [];
+            $previas = $modelo->validacion_previa_documentos ?? [];
+            $estados = $modelo->validacion_archivos ?? [];
+            $firmas = $modelo->firmas_electronicas ?? [];
+            $pendientes = [];
+            foreach (($modelo->documentos_cargados ?? []) as $nombre => $ruta) {
+                if (! in_array($nombre, $modelo->documentos_requeridos ?? [], true)
+                    || ($previas[$nombre]['ruta'] ?? null) === $ruta) continue;
+                $previas[$nombre] = ['ruta' => $ruta, 'firma_verificada' => false];
+                $estados[$nombre] = 'analizando';
+                unset($firmas[$nombre]);
+                $pendientes[$nombre] = $ruta;
+            }
+            if ($pendientes !== []) {
+                $metadata = $modelo->extraccion_metadatos ?? [];
+                unset($metadata['ejecucion_id'], $metadata['confirmacion_humana']);
+                $modelo->forceFill(['validacion_previa_documentos' => $previas,
+                    'validacion_archivos' => $estados, 'firmas_electronicas' => $firmas,
+                    'extraccion_estado' => 'pendiente', 'extraccion_metadatos' => $metadata])->save();
+                $this->extraccionProcesando = false;
+            }
+            return $pendientes;
+        });
+        foreach ($pendientes as $nombre => $ruta) {
+            try { ClasificarDocumentoCargadoJob::dispatch($this->solicitudId, $nombre, $ruta); }
+            catch (\Throwable $error) {
+                (new ClasificarDocumentoCargadoJob($this->solicitudId, $nombre, $ruta))->failed($error);
+            }
+        }
     }
 
     /**
@@ -1464,7 +1595,7 @@ final class RegistroSolicitudDeposito extends Component
 
                 return;
             }
-            $valor = "{$nombreLugar}, cantón {$this->canton}, provincia {$this->provincia}, Ecuador";
+            $valor = "{$nombreLugar}, provincia {$this->provincia}, Ecuador";
         }
         $limite = $campo === 'Cargo' ? 120 : ($campo === 'Institución' ? 160 : 255);
         if ($valor === '' || mb_strlen($valor) > $limite) {
@@ -1486,9 +1617,9 @@ final class RegistroSolicitudDeposito extends Component
             return;
         }
 
-        if ($campo === 'Localidad' && (! CatalogoTerritorialEcuador::contiene($this->provincia, $this->canton)
+        if ($campo === 'Localidad' && (CatalogoLocalidadesEcuador::buscar($this->provincia, $this->localidadOrigenCodigo) === null
             || ($this->valorEditorManual !== '__OTRA__' && ! in_array($valor, $this->localidadesDisponibles(), true)))) {
-            $this->addError('valorEditorManual', "Incluye {$this->canton} en la localidad para relacionarla con el cantón de recolección.");
+            $this->addError('valorEditorManual', 'Selecciona una localidad de la provincia de recolección.');
 
             return;
         }
@@ -1618,16 +1749,6 @@ final class RegistroSolicitudDeposito extends Component
                 return;
             }
 
-            $localidad = (string) ($this->datosExtraidos['Localidad'] ?? '');
-            foreach (CatalogoTerritorialEcuador::provincias() as $opcion) {
-                $otraProvincia = $opcion['nombre'];
-                if ($otraProvincia !== $this->provincia
-                    && preg_match('/\\bprovincia\\s+(?:de\\s+)?'.preg_quote($otraProvincia, '/').'\\b/iu', $localidad)) {
-                    $this->mostrarToast('La localidad indica otra provincia. Corrige la zona de recolección o la localidad.', 'error');
-
-                    return;
-                }
-            }
         }
 
         // Validar que cada número de permiso ingresado tenga su documento de respaldo
@@ -1658,7 +1779,7 @@ final class RegistroSolicitudDeposito extends Component
 
     public function guardarPasoFirmas(): void
     {
-        $sinVerificar = array_filter($this->firmasElectronicas, fn ($estado) => ! in_array($estado, ['firmado', 'firmado_sin_revocacion'], true));
+        $sinVerificar = array_filter(array_intersect_key($this->firmasElectronicas, array_flip($this->documentosRequeridos)), fn ($estado) => ! in_array($estado, ['firmado', 'firmado_sin_revocacion'], true));
         if (! empty($sinVerificar)) {
             $this->mostrarToast('Revisa el motivo de validación de cada firma antes de continuar.', 'error');
 
@@ -2486,7 +2607,7 @@ final class RegistroSolicitudDeposito extends Component
         $this->origenRecoleccion = (string) ($model->origen_recoleccion ?? '');
         $this->situacionRegulatoria = (string) ($model->situacion_regulatoria ?? '');
         $this->provincia = (string) ($model->provincia_origen ?? '');
-        $this->canton = (string) ($model->canton_origen ?? '');
+        $this->localidadOrigenCodigo = (string) ($model->localidad_origen_codigo ?? '');
         $this->localidad = (string) ($model->localidad ?? '');
         $this->matrizCargada = $model->matriz_id !== null;
         $this->solicitudFirmada = $model->solicitud_firmada_en !== null;
@@ -2660,6 +2781,9 @@ final class RegistroSolicitudDeposito extends Component
             $firmas = $modelo->firmas_electronicas ?? [];
             $validaciones = $modelo->validacion_archivos ?? [];
             unset($firmas[$nombre], $validaciones[$nombre]);
+            $previas = $modelo->validacion_previa_documentos ?? [];
+            unset($previas[$nombre]);
+            unset($this->rechazosDocumentos[$nombre]);
             $metadatos = $modelo->extraccion_metadatos ?? [];
             $revision = $metadatos['revision_documental'] ?? null;
             if (is_array($revision) && ($revision['estado'] ?? null) !== 'invalidada') {
@@ -2673,6 +2797,7 @@ final class RegistroSolicitudDeposito extends Component
                 'documentos_procesados' => [],
                 'firmas_electronicas' => $firmas,
                 'validacion_archivos' => $validaciones,
+                'validacion_previa_documentos' => $previas,
                 'extraccion_estado' => null,
                 'extraccion_metadatos' => $metadatos,
             ])->save();
@@ -2951,6 +3076,8 @@ final class RegistroSolicitudDeposito extends Component
     {
         return view('gestionprestamosrecepciones::investigador.registro-solicitud-deposito', [
             'provinciasCatalogo' => CatalogoTerritorialEcuador::provincias(),
+            'localidadesOrigenCatalogo' => $this->paso === 2
+                ? CatalogoLocalidadesEcuador::opciones($this->provincia, $this->busquedaLocalidadOrigen, $this->localidadOrigenCodigo) : [],
             'localidadesCatalogo' => $this->campoEditorManual === 'Localidad' ? $this->localidadesDisponibles() : [],
             'institucionesCatalogo' => DB::table('usuarios.instituciones_catalogo')
                 ->where('activo', true)->orderBy('nombre')->pluck('nombre')->all(),
@@ -2960,22 +3087,20 @@ final class RegistroSolicitudDeposito extends Component
     /** @return list<string> */
     private function localidadesDisponibles(): array
     {
-        if (! CatalogoTerritorialEcuador::contiene($this->provincia, $this->canton)) {
+        $fila = CatalogoLocalidadesEcuador::buscar($this->provincia, $this->localidadOrigenCodigo, false);
+        if ($fila === null) {
             return [];
         }
 
-        $opciones = ["{$this->canton}, provincia {$this->provincia}, Ecuador"];
-        foreach (CatalogoTerritorialEcuador::parroquias($this->provincia, $this->canton) as $parroquia) {
-            $opciones[] = "{$parroquia}, cantón {$this->canton}, provincia {$this->provincia}, Ecuador";
-        }
+        $opciones = ["{$fila->nombre}, provincia {$this->provincia}, Ecuador"];
         if (Schema::hasTable('taxonomia.localidades')) {
             $nombres = DB::table('taxonomia.localidades')
                 ->whereRaw('LOWER(state_province) = LOWER(?)', [$this->provincia])
-                ->whereRaw('LOWER(municipality) = LOWER(?)', [$this->canton])
+                ->whereRaw('LOWER(municipality) = LOWER(?)', [$fila->canton])
                 ->distinct()->orderBy('nombre_canonico')->limit(200)
                 ->pluck('nombre_canonico');
             foreach ($nombres as $nombre) {
-                $opciones[] = "{$nombre}, cantón {$this->canton}, provincia {$this->provincia}, Ecuador";
+                $opciones[] = "{$nombre}, provincia {$this->provincia}, Ecuador";
             }
         }
 

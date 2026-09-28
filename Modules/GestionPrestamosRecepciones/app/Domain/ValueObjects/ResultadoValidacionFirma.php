@@ -15,6 +15,7 @@ enum ResultadoValidacionFirma: string
     case NoVerificado = 'no_verificado';
     case VerificacionNoDisponible = 'verificacion_no_disponible';
     case FirmaInvalida = 'firma_invalida';
+    case DocumentoModificado = 'documento_modificado';
     case CertificadoCaducado = 'certificado_caducado';
     case CertificadoAunNoVigente = 'certificado_aun_no_vigente';
     case CertificadoRevocado = 'certificado_revocado';

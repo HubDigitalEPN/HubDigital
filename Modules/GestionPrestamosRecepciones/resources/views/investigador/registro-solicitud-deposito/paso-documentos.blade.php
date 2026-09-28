@@ -188,6 +188,7 @@
                         :propiedad="$prop"
                         :requerido="true"
                         :cargado="isset($documentosCargados[$docNombre])"
+                        :rechazo="$rechazosDocumentos[$docNombre] ?? null"
                         :estado-firma="$firmasElectronicas[$docNombre] ?? null"
                         :estado-archivo="$validacionArchivos[$docNombre] ?? null"
                         :validando-firma="($firmasElectronicas[$docNombre] ?? null) === 'validando'"
@@ -202,9 +203,9 @@
                     />
                 @endforeach
             </section>
-            @if(!$analisisDocumentalCompletado && in_array('revocacion_no_comprobable', $firmasElectronicas, true))
+            @if(!$analisisDocumentalCompletado && array_intersect($firmasElectronicas, ['revocacion_no_comprobable', 'verificacion_no_disponible', 'almacen_incompleto', 'no_verificado', 'validando']) !== [])
                 <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-error/30 bg-error/5 px-3 py-2 text-xs text-text-primary" role="alert">
-                    <p>La firma es íntegra, pero no se pudo consultar una fuente vigente de revocación del emisor. Conservamos los PDF; vuelve a comprobar cuando el servicio responda.</p>
+                    <p>Cada PDF conserva su resultado de firma. Puedes reintentar las comprobaciones pendientes o interrumpidas; espera a que termine un intento que acaba de iniciar.</p>
                     <flux:button size="xs" variant="outline" icon="arrow-path" wire:click="repetirVerificacionFirmas" wire:loading.attr="disabled" wire:target="repetirVerificacionFirmas">Volver a comprobar</flux:button>
                 </div>
             @endif

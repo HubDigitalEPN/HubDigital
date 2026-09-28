@@ -115,13 +115,23 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
 
             foreach ($this->documentos as $nombre => $ruta) {
                 $documentoEnProceso = $nombre;
+                $previa = $modelSolicitud?->validacion_previa_documentos[$nombre] ?? [];
+                if (($previa['ruta'] ?? null) !== $ruta
+                    || ($previa['firma_verificada'] ?? false) !== true
+                    || ($modelSolicitud?->validacion_archivos[$nombre] ?? null) !== 'valido'
+                    || ! in_array($modelSolicitud?->firmas_electronicas[$nombre] ?? '', ['firmado', 'firmado_sin_revocacion'], true)) {
+                    throw new \RuntimeException('Cada documento debe completar su control previo y firma en el paso 3.');
+                }
+                if (! hash_equals((string) ($previa['sha256'] ?? ''), $almacenamiento->sha256($ruta))) {
+                    throw new \RuntimeException('El PDF cambió después de su comprobación de firma.');
+                }
                 $parcial = $extraccion->extraerDatos([$nombre => $ruta]);
 
                 foreach ([
                     'nroPermisoRecoleccion' => $parcial->nroPermisoRecoleccion,
                     'nroPermisoMovilizacion' => $parcial->nroPermisoMovilizacion,
                     'grupoAnimal' => $parcial->grupoAnimal,
-                    'provinciaOrigen' => $parcial->provinciaOrigen,
+                    'provinciaOrigen' => null,
                     'localidad' => $parcial->localidad,
                     'origenDonacion' => $parcial->origenDonacion,
                     'nombreInvestigador' => $parcial->nombreInvestigador,
@@ -169,7 +179,11 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
                 ]);
             }
 
-            $validacionContenido = $analizadorDocumento->validarExpediente($documentosAnalizados);
+            $tiposRequeridos = array_values(array_filter(array_map(
+                fn (string $nombre): ?string => $analizadorDocumento->tipoEsperadoParaNombre($nombre),
+                $modelSolicitud?->documentos_requeridos ?? [],
+            )));
+            $validacionContenido = $analizadorDocumento->validarExpediente($documentosAnalizados, $tiposRequeridos);
             $metadatosExtraccion['validacion_contenido'] = $validacionContenido;
             if (($validacionContenido['autocompletado_habilitado'] ?? false) !== true) {
                 foreach ($metadatosExtraccion['campos'] as $campo => &$detalleCampo) {
@@ -202,26 +216,20 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
             }
             $metadatosExtraccion['registros_sugeridos'] = array_values($registrosSugeridos);
 
-            // Validar firmas electrónicas de cada documento.
+            // Consumir únicamente dictámenes Java asociados a la revisión de cada PDF.
             $firmas = [];
+            $tokensFirmas = [];
             $firmasPersistidas = SolicitudDepositoEloquentModel::query()->find($this->solicitudId);
             foreach ($this->documentos as $nombre => $ruta) {
-                $estadoFirma = null;
-                if (($firmasPersistidas?->documentos_cargados[$nombre] ?? null) === $ruta
-                    && ($firmasPersistidas?->validacion_archivos[$nombre] ?? null) === 'valido') {
-                    $guardado = $firmasPersistidas?->firmas_electronicas[$nombre] ?? null;
-                    if (in_array($guardado, ['firmado', 'firmado_sin_revocacion'], true)) {
-                        $estadoFirma = $guardado;
-                    }
+                $previa = $firmasPersistidas?->validacion_previa_documentos[$nombre] ?? [];
+                $estadoFirma = $firmasPersistidas?->firmas_electronicas[$nombre] ?? '';
+                if (($previa['ruta'] ?? null) !== $ruta
+                    || ($previa['firma_verificada'] ?? false) !== true
+                    || ! in_array($estadoFirma, ['firmado', 'firmado_sin_revocacion'], true)) {
+                    throw new \RuntimeException('La comprobación de firma cambió durante el análisis. Vuelve al paso 3.');
                 }
-                if ($estadoFirma === null) {
-                    $copia = $almacenamiento->copiaLocal($ruta);
-                    try {
-                        $estadoFirma = $validadorFirma->verificarFirma($copia->ruta())->value;
-                    } finally {
-                        $copia->limpiar();
-                    }
-                }
+                $tokensFirmas[$nombre] = $previa['verificacion_id'] ?? '';
+
                 $firmas[$nombre] = $estadoFirma;
                 $metadatosExtraccion['documentos'][$nombre]['firma_electronica'] = $estadoFirma;
 
@@ -273,10 +281,15 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
 
             // Persistir firmas después de la integración de dominio para evitar
             // inconsistencia si la transacción anterior falla.
-            $transactionManager->executeTransactional(function () use ($repo, $datosIntegrados, $firmas, &$metadatosExtraccion, &$eventos, &$aplicada): void {
+            $transactionManager->executeTransactional(function () use ($repo, $datosIntegrados, $firmas, $tokensFirmas, &$metadatosExtraccion, &$eventos, &$aplicada): void {
                 $modelo = SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)->lockForUpdate()->firstOrFail();
                 if (! $this->coincideVersionYEjecucion($modelo)) {
                     return;
+                }
+                foreach ($tokensFirmas as $nombre => $token) {
+                    $previa = $modelo->validacion_previa_documentos[$nombre] ?? [];
+                    if (($previa['verificacion_id'] ?? '') !== $token
+                        || ($previa['firma_verificada'] ?? false) !== true) return;
                 }
                 $solicitud = $repo->buscarPorIdParaActualizar(SolicitudDepositoId::from($this->solicitudId));
                 if ($solicitud === null) {
@@ -296,7 +309,7 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
                 }
 
                 $modelo->forceFill([
-                    'firmas_electronicas' => $firmas,
+                    'firmas_electronicas' => array_replace($modelo->firmas_electronicas ?? [], $firmas),
                     'extraccion_metadatos' => $metadatosExtraccion,
                     'extraccion_estado' => 'completada',
                 ])->save();

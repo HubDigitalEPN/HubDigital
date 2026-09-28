@@ -154,7 +154,7 @@
                         <flux:button
                             variant="primary"
                             icon-trailing="arrow-right"
-                            x-on:click.prevent="$wire.guardarOrigenDesdeFormulario(document.getElementById('provincia-recoleccion')?.value ?? '', document.getElementById('canton-recoleccion')?.value ?? '', document.querySelector('[data-situacion][aria-pressed=true]')?.dataset.situacion ?? '')"
+                            x-on:click.prevent="$wire.guardarOrigenDesdeFormulario(document.getElementById('provincia-recoleccion')?.value ?? '', document.getElementById('localidad-recoleccion')?.value ?? '', document.querySelector('[data-situacion][aria-pressed=true]')?.dataset.situacion ?? '')"
                             wire:loading.attr="disabled"
                             wire:target="guardarOrigenDesdeFormulario"
                         >

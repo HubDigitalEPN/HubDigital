@@ -9,3 +9,6 @@
 CHANGELOG.md export-ignore
 README.md export-ignore
 .github/workflows/browser-tests.yml export-ignore
+
+# Motor criptografico propio de HubDigital; su codigo forma parte de la aplicacion.
+tools/pdf-signature/src/main/java/** linguist-vendored=false linguist-generated=false

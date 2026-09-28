@@ -55,3 +55,7 @@ Modules/InventarioGestionColeccion/docs/provisioning_prod/
 **/*credenciales*p12*.txt
 /resources/bin/hubdigital-pdf-signature.jar
 /tools/pdf-signature/target/
+
+# Identidad generada del bundle OCI; el commit que contiene el codigo se conserva en Git.
+/SOURCE-METADATA.json
+/SOURCE-MANIFEST.sha256

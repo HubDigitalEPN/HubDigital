@@ -18,14 +18,18 @@
                 <flux:error name="provincia" />
             </div>
             <div class="w-full sm:w-80">
-                <label for="canton-recoleccion" class="mb-1 block text-sm font-medium text-blue-navy">Cantón <span class="text-error">*</span></label>
-                <select id="canton-recoleccion" wire:key="cantones-{{ $provincia }}" wire:change="seleccionarCanton($event.target.value)" @disabled(!$provincia) class="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-blue-navy disabled:opacity-50">
-                    <option value="">Selecciona un cantón</option>
-                    @foreach(\App\Support\CatalogoTerritorialEcuador::cantones($provincia) as $cantonOpcion)
-                        <option value="{{ $cantonOpcion['nombre'] }}" @selected($canton === $cantonOpcion['nombre'])>{{ $cantonOpcion['nombre'] }}</option>
+                <label for="localidad-recoleccion" class="mb-1 block text-sm font-medium text-blue-navy">Localidad <span class="text-error">*</span></label>
+                <input type="search" wire:model.live.debounce.350ms="busquedaLocalidadOrigen" @disabled(!$provincia) maxlength="120"
+                    aria-label="Buscar localidad en la provincia seleccionada" placeholder="Buscar localidad…"
+                    class="mb-2 w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-blue-navy disabled:opacity-50" />
+                <select id="localidad-recoleccion" wire:key="localidades-{{ $provincia }}" wire:change="seleccionarLocalidadOrigen($event.target.value)" @disabled(!$provincia) class="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-blue-navy disabled:opacity-50">
+                    <option value="">Selecciona una localidad</option>
+                    @foreach($localidadesOrigenCatalogo as $opcion)
+                        <option value="{{ $opcion->codigo }}" @selected($localidadOrigenCodigo === $opcion->codigo)>{{ \App\Support\CatalogoLocalidadesEcuador::etiqueta($opcion) }}</option>
                     @endforeach
                 </select>
-                <flux:error name="canton" />
+                <p class="mt-1 text-xs text-text-secondary">Escribe el nombre para buscar más localidades de esta provincia.</p>
+                <flux:error name="localidadOrigenCodigo" />
             </div>
         </div>
 

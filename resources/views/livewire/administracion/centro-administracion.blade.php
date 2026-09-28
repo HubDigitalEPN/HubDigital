@@ -61,6 +61,7 @@
             <div class="mt-6 flex flex-wrap gap-3">
                 <a href="{{ route('inventario.taxonomia.especimenes') }}" wire:navigate class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-semibold text-blue-navy hover:border-science-blue/45"><flux:icon name="archive-box" class="size-4" />Colección</a>
                 <a href="{{ route('inventario.taxonomia.taxones') }}" wire:navigate class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-semibold text-blue-navy hover:border-science-blue/45"><flux:icon name="tag" class="size-4" />Catálogos maestros</a>
+                <a href="{{ route('admin.localidades') }}" wire:navigate class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-semibold text-blue-navy hover:border-science-blue/45"><flux:icon name="map-pin" class="size-4" />Localidades de Ecuador</a>
                 <a href="{{ route('inventario.dashboard') }}" wire:navigate class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-semibold text-blue-navy hover:border-science-blue/45"><flux:icon name="chart-bar" class="size-4" />Seguimiento físico</a>
             </div>
         </article>

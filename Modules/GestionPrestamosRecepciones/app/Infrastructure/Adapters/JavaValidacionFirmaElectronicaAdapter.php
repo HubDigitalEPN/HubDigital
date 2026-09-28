@@ -9,8 +9,8 @@ use Modules\GestionPrestamosRecepciones\Application\Ports\ValidacionFirmaElectro
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\DetalleValidacionFirma;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoValidacionFirma;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Services\PrepararFuentesRevocacionFirma;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Services\ProcesoFirmaJava;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\DirectorioTemporalHubDigital;
-use Symfony\Component\Process\Process;
 
 /** Transporta al único motor Java los PDF y devuelve su dictamen, sin validadores alternativos. */
 final class JavaValidacionFirmaElectronicaAdapter implements ValidacionFirmaElectronicaPort
@@ -75,24 +75,14 @@ final class JavaValidacionFirmaElectronicaAdapter implements ValidacionFirmaElec
                 '-Dhubdigital.pdf.max_render_pixels='.(int) config('firma-electronica.max_render_pixels', 100_000_000),
                 '-jar', $jar, 'verify', '--paths-stdin',
             ];
-            $proceso = new Process($comando);
-            $proceso->setInput($ruta.($original !== null ? "\0".$original : ''));
-            $proceso->setEnv(array_merge(DirectorioTemporalHubDigital::entornoProcesos(), [
+            $entorno = array_merge(DirectorioTemporalHubDigital::entornoProcesos(), [
                 'HUBDIGITAL_SIGNATURE_TRUST_DIR' => (string) config('firma-electronica.java_signature_trust_dir'),
                 'HUBDIGITAL_SIGNATURE_OCSP_RESPONDERS' => implode('|', $fuentes['ocsp']),
                 'HUBDIGITAL_SIGNATURE_CRL_OVERRIDES' => implode('|', $fuentes['crl']),
-            ]));
-            $proceso->setTimeout((int) config('firma-electronica.java_timeout', 60));
-            $proceso->run();
-            $resultado = json_decode(trim($proceso->getOutput()), true);
-            if (! $proceso->isSuccessful() || ! is_array($resultado) || ! is_string($resultado['status'] ?? null)) {
-                Log::warning('El motor Java no devolvió un dictamen de firma', [
-                    'exit_code' => $proceso->getExitCode(),
-                    'error' => $proceso->getErrorOutput(),
-                ]);
-
-                return $this->noDisponible('El motor Java no pudo completar la validación de firma.');
-            }
+            ]);
+            $resultado = ProcesoFirmaJava::ejecutar($comando, $entorno,
+                $ruta.($original !== null ? "\0".$original : ''),
+                (int) config('firma-electronica.java_timeout', 60));
             Log::info('Comprobación Java de firma PDF', [
                 'duracion_ms' => (int) round((microtime(true) - $inicio) * 1000),
                 'estado' => $resultado['status'],

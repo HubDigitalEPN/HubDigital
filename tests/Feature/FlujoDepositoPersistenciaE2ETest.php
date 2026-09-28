@@ -52,8 +52,8 @@ test('el depósito completo persiste actores, documentos, taxonomía, recepción
         public function extraerDatos(array $documentos): DatosIntegradosDocumento
         {
             expect($documentos)->toHaveCount(2);
-            foreach ($documentos as $rutaTemporal) {
-                expect(is_file($rutaTemporal))->toBeTrue();
+            foreach ($documentos as $rutaPrivada) {
+                expect(app(\Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos::class)->existe($rutaPrivada))->toBeTrue();
             }
 
             return new DatosIntegradosDocumento(
@@ -148,7 +148,11 @@ test('el depósito completo persiste actores, documentos, taxonomía, recepción
         investigadorId: (string) $depositante->id,
         tipoTramite: TipoTramite::Deposito->value,
     );
+    $solicitud->declararProvincia('Pichincha');
     $solicitudes->guardar($solicitud);
+    SolicitudDepositoEloquentModel::findOrFail((string) $solicitud->id())->update([
+        'documentos_requeridos' => ['Copia de la autorización de recolección (MAE)', 'Copia del permiso de movilización'],
+    ]);
 
     $apiLogin = $this->postJson('/api/login', [
         'email' => $depositante->email,
@@ -161,13 +165,13 @@ test('el depósito completo persiste actores, documentos, taxonomía, recepción
         route('api.solicitudes-deposito.documentacion-oficial', (string) $solicitud->id()),
         [
             'documentos' => [
-                'Permiso de investigación' => UploadedFile::fake()->createWithContent(
+                'Copia de la autorización de recolección (MAE)' => UploadedFile::fake()->createWithContent(
                     'permiso-maate.pdf',
-                    pdfValidoParaDepositos('Permiso de prueba'),
+                    pdfValidoParaDepositos('Autorizacion de recoleccion de especimenes. Se otorga la autorizacion a Ana Depositante. Vigencia de la autorizacion de recoleccion: desde 01/01/2026 hasta 31/12/2026. Ministerio del Ambiente, Agua y Transicion Ecologica.'),
                 ),
-                'Guía de movilización' => UploadedFile::fake()->createWithContent(
+                'Copia del permiso de movilización' => UploadedFile::fake()->createWithContent(
                     'guia-movilizacion.pdf',
-                    pdfValidoParaDepositos('Guia de prueba'),
+                    pdfValidoParaDepositos('Guia de movilizacion de especimenes. Fecha de movilizacion: 28/09/2026. Lugar de origen: Reserva. Lugar de destino: Museo. Medio de transporte: vehiculo. Ministerio del Ambiente, Agua y Transicion Ecologica.'),
                 ),
             ],
         ],

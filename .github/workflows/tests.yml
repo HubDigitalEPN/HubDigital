@@ -66,16 +66,29 @@ jobs:
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --optimize-autoloader
 
+      - name: Setup Java 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+          cache-dependency-path: tools/pdf-signature/pom.xml
+
+      - name: Build Java PDF engine
+        run: |
+          mvn -q -f tools/pdf-signature/pom.xml -DskipTests package
+          mkdir -p resources/bin
+          cp tools/pdf-signature/target/pdf-signature-1.0.0.jar resources/bin/hubdigital-pdf-signature.jar
+
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Build frontend assets
         run: |
           npm ci
-          npm run test:signer
           npm run build
 
       - name: Prepare test environment

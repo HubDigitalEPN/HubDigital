@@ -442,6 +442,9 @@
                                 >
                                     Configuración del sistema
                                 </flux:sidebar.item>
+                                <flux:sidebar.item icon="map-pin" :href="route('admin.localidades')" :current="request()->routeIs('admin.localidades')" wire:navigate>
+                                    Localidades del Ecuador
+                                </flux:sidebar.item>
                                 <flux:sidebar.item icon="hashtag" :href="route('admin.siglas-expedientes')" :current="request()->routeIs('admin.siglas-expedientes')" wire:navigate>
                                     Siglas de expedientes
                                 </flux:sidebar.item>

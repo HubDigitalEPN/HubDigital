@@ -105,9 +105,9 @@
 
                     <div class="space-y-4">
                         <flux:callout variant="info" icon="lock-closed">
-                            <flux:callout.heading>La clave privada no sale de este navegador</flux:callout.heading>
+                            <flux:callout.heading>Firma y verificación con Java</flux:callout.heading>
                             <flux:callout.text>
-                                El archivo y la contraseña se procesan en un trabajador local efímero. Laravel recibe solamente el PDF firmado.
+                                El certificado y la contraseña se entregan temporalmente a Java para firmar el original oficial. Se eliminan al terminar el intento; el expediente conserva el PDF firmado y su validación.
                             </flux:callout.text>
                         </flux:callout>
 

@@ -2,18 +2,12 @@
 .SYNOPSIS
 Valida, publica en Git y crea un paquete de despliegue OCI para HubDigital.
 
-.PARAMETER SinPostgres
-Modo seguro para cambios exclusivamente frontend. Compila Vite pero no inicia
-PostgreSQL. Se rechaza automaticamente si hay archivos backend modificados.
+Publica exclusivamente en main de HubDigitalEPN/HubDigital. Antes de publicar
+exige todas las pruebas y compilaciones. Las opciones de omision se conservan
+para mostrar un error claro: ya no pueden producir un paquete para main.
 
 .EXAMPLE
-crear-paquete-oci -SinPostgres
-
-.EXAMPLE
-crear-paquete-oci -SinPostgres -DescripcionCambio "ajusta colores del portal"
-
-.EXAMPLE
-crear-paquete-oci -OmitirCompilacion -DescripcionCambio "corrige repositorio de depositos"
+crear-paquete-oci -DescripcionCambio "actualiza solicitudes de deposito"
 #>
 [CmdletBinding()]
 param(
@@ -117,6 +111,19 @@ function Get-SalidaGit {
     return $salida
 }
 
+function Get-HuellasCodigo {
+    $rutasCodigo = @(Get-SalidaGit -Argumentos @('-c', 'core.quotepath=false', 'ls-files', '--cached', '--others', '--exclude-standard') | Sort-Object -Unique)
+    foreach ($rutaCodigo in $rutasCodigo) {
+        $archivoCodigo = Join-Path $Proyecto $rutaCodigo
+        if (Test-Path -LiteralPath $archivoCodigo -PathType Leaf) {
+            $huellaCodigo = (Get-FileHash -LiteralPath $archivoCodigo -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$huellaCodigo  $rutaCodigo"
+        } else {
+            "eliminado  $rutaCodigo"
+        }
+    }
+}
+
 $Proyecto = [IO.Path]::GetFullPath($Proyecto)
 if ([string]::IsNullOrWhiteSpace($Destino)) { $Destino = Join-Path $Proyecto 'artifacts\oci' }
 $Destino = [IO.Path]::GetFullPath($Destino)
@@ -139,21 +146,38 @@ Write-Host "`nCommit previsto:  $mensajeCommit" -ForegroundColor Yellow
 Write-Host "Nombre base:      $nombreSeguro" -ForegroundColor Yellow
 
 $rama = (Get-SalidaGit -Argumentos @('symbolic-ref', '--short', 'HEAD') | Select-Object -First 1).Trim()
-$upstream = (Get-SalidaGit -Argumentos @('rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}') | Select-Object -First 1).Trim()
-$separador = $upstream.IndexOf('/')
-if ($separador -lt 1) { throw "El upstream de Git no es valido: $upstream" }
-$remoto = $upstream.Substring(0, $separador)
-$ramaRemota = $upstream.Substring($separador + 1)
-
-Invoke-Comando -Programa 'git.exe' -Argumentos @('-C', $Proyecto, 'fetch', '--prune', $remoto, $ramaRemota) -Descripcion "Conectando con Git y actualizando $upstream"
-$conteo = (Get-SalidaGit -Argumentos @('rev-list', '--left-right', '--count', "HEAD...$upstream") | Select-Object -First 1) -split '\s+'
-if ($conteo.Count -lt 2) { throw 'No se pudo comparar la rama local con Git remoto.' }
-$atras = [int]$conteo[1]
-if ($atras -gt 0) {
-    throw "Git remoto tiene $atras commit(s) que no estan localmente. Se detiene para no pisar codigo; revise y fusione esos cambios primero."
+$remoto = 'origin'
+$ramaRemota = 'main'
+$repositorioGit = 'https://github.com/HubDigitalEPN/HubDigital'
+$upstream = "$remoto/$ramaRemota"
+$urlRemota = (Get-SalidaGit -Argumentos @('remote', 'get-url', $remoto) | Select-Object -First 1).Trim()
+$urlPush = (Get-SalidaGit -Argumentos @('remote', 'get-url', '--push', $remoto) | Select-Object -First 1).Trim()
+if ($urlRemota -ne "$repositorioGit.git" -or $urlPush -ne "$repositorioGit.git") {
+    throw "El destino oficial debe ser $repositorioGit.git en origin. No se publico en otro repositorio."
+}
+if ($OmitirCompilacion -or $OmitirPruebasPHP -or $SinPostgres) {
+    throw 'Publicar en main exige compilacion Java/Vite y pruebas PHP/PostgreSQL completas. No se admiten opciones de omision.'
 }
 
-$archivosRastreadosCambiados = @(Get-SalidaGit -Argumentos @('diff', '--name-only', 'HEAD'))
+Invoke-Comando -Programa 'git.exe' -Argumentos @('-C', $Proyecto, 'fetch', $remoto, 'refs/heads/main:refs/remotes/origin/main') -Descripcion "Actualizando $upstream sin borrar ramas"
+& git.exe -C $Proyecto merge-base --is-ancestor $upstream HEAD
+if ($LASTEXITCODE -ne 0) {
+    throw 'main contiene trabajo que no esta en esta rama. Integralo en la rama de trabajo antes de reintentar; no se sobrescribira main.'
+}
+$estadoInicial = @(Get-SalidaGit -Argumentos @('status', '--porcelain=v1', '--untracked-files=all'))
+if ($rama -eq 'main' -and $estadoInicial) {
+    throw 'Los cambios deben desarrollarse en una rama nueva. Conservamos todos los archivos; prepara esa rama antes de empaquetar.'
+}
+& git.exe -C $Proyecto show-ref --verify --quiet refs/heads/main
+$mainExiste = $LASTEXITCODE -eq 0
+$mainAnterior = $null
+if ($mainExiste) {
+    $mainAnterior = (Get-SalidaGit -Argumentos @('rev-parse', 'refs/heads/main') | Select-Object -First 1).Trim()
+    & git.exe -C $Proyecto merge-base --is-ancestor $mainAnterior HEAD
+    if ($LASTEXITCODE -ne 0) { throw 'main local contiene trabajo distinto. No se movera ni se publicara hasta integrarlo en esta rama.' }
+}
+
+$archivosRastreadosCambiados = @(Get-SalidaGit -Argumentos @('diff', '--name-only', $upstream))
 $archivosNuevos = @(Get-SalidaGit -Argumentos @('ls-files', '--others', '--exclude-standard'))
 $archivosCambiados = @(($archivosRastreadosCambiados + $archivosNuevos) | Sort-Object -Unique)
 $rutasProhibidas = @($archivosCambiados | Where-Object {
@@ -163,19 +187,10 @@ if ($rutasProhibidas) {
     throw "Hay archivos sensibles no ignorados. No se agrego nada a Git: $($rutasProhibidas -join ', ')"
 }
 
-if ($SinPostgres -and -not $OmitirPruebasPHP) {
-    $cambiosQueRequierenPostgres = @($archivosCambiados | Where-Object {
-        $_ -match '(?i)\.php$' -or
-        $_ -match '(?i)^(database|config|routes|bootstrap)/' -or
-        $_ -match '(?i)^(composer\.json|composer\.lock|phpunit\.xml|artisan)$'
-    })
-    if ($cambiosQueRequierenPostgres) {
-        throw "No se puede usar -SinPostgres porque hay cambios backend que requieren la suite PostgreSQL: $($cambiosQueRequierenPostgres -join ', ')"
-    }
-    Write-Host "`nModo frontend: PostgreSQL no se encendera; no se detectaron cambios backend." -ForegroundColor Yellow
-}
+$headAntesValidacion = (Get-SalidaGit -Argumentos @('rev-parse', 'HEAD') | Select-Object -First 1).Trim()
+$huellasAntesValidacion = @(Get-HuellasCodigo)
 
-Invoke-Comando -Programa 'git.exe' -Argumentos @('-C', $Proyecto, 'diff', 'HEAD', '--check') -Descripcion 'Validando espacios, conflictos y formato basico del diff'
+Invoke-Comando -Programa 'git.exe' -Argumentos @('-C', $Proyecto, 'diff', $upstream, '--check') -Descripcion 'Validando espacios, conflictos y formato basico del diff'
 
 $archivosJson = @($archivosCambiados | Where-Object { $_ -match '\.json$' })
 if ($archivosJson) {
@@ -254,21 +269,29 @@ if ($php) {
 
     }
 } else {
-    Write-Host "`nADVERTENCIA: PHP no esta instalado en PATH; la sintaxis y pruebas PHP se validaran nuevamente al preparar la release en OCI." -ForegroundColor Yellow
+    throw 'No se encontro PHP: main solo se publica despues de validar PHP/PostgreSQL.'
 }
 
 if (-not $OmitirCompilacion) {
     if (-not (Get-Command 'npm.cmd' -ErrorAction SilentlyContinue)) { throw 'No se encontro npm.cmd en PATH.' }
+    Invoke-Comando -Programa 'npm.cmd' -Argumentos @('ci') -Descripcion 'Instalando dependencias frontend exactas desde package-lock.json' -DirectorioTrabajo $Proyecto
     Invoke-Comando -Programa 'npm.cmd' -Argumentos @('run', 'build') -Descripcion 'Compilando y validando JavaScript, CSS y Tailwind con Vite' -DirectorioTrabajo $Proyecto
 }
 
 $requeridos = @(
     'vendor/autoload.php', 'vendor/livewire/flux/dist/manifest.json',
     'public/build/manifest.json', 'deploy/oracle/scripts/stage-linux-candidate.sh',
+    'deploy/oracle/scripts/verify-source-identity.sh',
     'deploy/oracle/scripts/verify-deposit-pdf.php',
     'bootstrap/app.php', 'bootstrap/providers.php', 'bootstrap/cache/.gitignore',
     'composer.json', 'composer.lock', 'modules_statuses.json',
     'resources/bin/hubdigital-pdf-signature.jar',
+    'resources/data/ecuador-localidades-inec.json',
+    'database/migrations/2026_09_28_000001_create_localidades_ecuador_catalogo.php',
+    'app/Support/CatalogoLocalidadesEcuador.php',
+    'app/Livewire/Administracion/LocalidadesEcuadorCatalogo.php',
+    'Modules/GestionPrestamosRecepciones/app/Infrastructure/Services/FirmaPdfJava.php',
+    'Modules/GestionPrestamosRecepciones/app/Infrastructure/Storage/ValidacionPreviaDocumentoDeposito.php',
     'Modules/CatalogoPublico/database/migrations/2026_09_26_000001_create_portal_chat_knowledge.php',
     'Modules/CatalogoPublico/database/migrations/2026_09_26_000002_enhance_portal_chat.php',
     'Modules/CatalogoPublico/database/migrations/2026_09_26_000003_chat_language_examples.php',
@@ -304,6 +327,13 @@ foreach ($ruta in $requeridos) {
     if (-not (Test-Path -LiteralPath (Join-Path $Proyecto $ruta) -PathType Leaf)) { throw "Falta un archivo requerido para el paquete: $ruta" }
 }
 
+$headDespuesValidacion = (Get-SalidaGit -Argumentos @('rev-parse', 'HEAD') | Select-Object -First 1).Trim()
+$huellasDespuesValidacion = @(Get-HuellasCodigo)
+if ($headAntesValidacion -ne $headDespuesValidacion -or
+    [string]::Join("`n", $huellasAntesValidacion) -ne [string]::Join("`n", $huellasDespuesValidacion)) {
+    throw 'El codigo cambio durante las pruebas o compilaciones. main no se publica: vuelve a validar la version actual.'
+}
+
 $estadoAntesCommit = @(Get-SalidaGit -Argumentos @('status', '--porcelain=v1', '--untracked-files=all'))
 if ($estadoAntesCommit) {
     Invoke-Comando -Programa 'git.exe' -Argumentos @('-C', $Proyecto, 'add', '-A') -Descripcion 'Agregando cambios a Git'
@@ -316,11 +346,23 @@ if ($estadoAntesCommit) {
 $estadoDespuesCommit = @(Get-SalidaGit -Argumentos @('status', '--porcelain=v1', '--untracked-files=all'))
 if ($estadoDespuesCommit) { throw 'Quedaron cambios fuera del commit. Se detiene antes de publicar para no crear un paquete distinto de Git.' }
 
-Invoke-Comando -Programa 'git.exe' -Argumentos @('-C', $Proyecto, 'push', $remoto, "HEAD:$ramaRemota") -Descripcion "Publicando por push normal en $upstream"
-Invoke-Comando -Programa 'git.exe' -Argumentos @('-C', $Proyecto, 'fetch', $remoto, $ramaRemota) -Descripcion 'Verificando el commit publicado'
+if (-not $suitePostgresCompletada -or -not $solucionPdfComprobada) {
+    throw 'No se completaron las validaciones obligatorias. main no se publica.'
+}
 $commit = (Get-SalidaGit -Argumentos @('rev-parse', 'HEAD') | Select-Object -First 1).Trim()
+Invoke-Comando -Programa 'git.exe' -Argumentos @('-C', $Proyecto, 'push', $remoto, 'HEAD:refs/heads/main') -Descripcion "Publicando el trabajo validado en $upstream sin force"
+Invoke-Comando -Programa 'git.exe' -Argumentos @('-C', $Proyecto, 'fetch', $remoto, 'refs/heads/main:refs/remotes/origin/main') -Descripcion 'Verificando el commit publicado'
 $commitRemoto = (Get-SalidaGit -Argumentos @('rev-parse', $upstream) | Select-Object -First 1).Trim()
 if ($commit -ne $commitRemoto) { throw 'El commit local y el remoto no coinciden. No se crea el paquete.' }
+if ($rama -ne 'main') {
+    if ($mainExiste) {
+        Invoke-Comando -Programa 'git.exe' -Argumentos @('-C', $Proyecto, 'update-ref', 'refs/heads/main', $commit, $mainAnterior) -Descripcion 'Avanzando main local conservando su historial'
+    } else {
+        Invoke-Comando -Programa 'git.exe' -Argumentos @('-C', $Proyecto, 'branch', 'main', $commit) -Descripcion 'Creando main local desde el trabajo publicado'
+    }
+}
+Invoke-Comando -Programa 'git.exe' -Argumentos @('-C', $Proyecto, 'branch', '--set-upstream-to=origin/main', 'main') -Descripcion 'Vinculando main local al repositorio oficial'
+
 
 New-Item -ItemType Directory -Path $Destino -Force | Out-Null
 $marcaTiempo = (Get-Date).ToString('yyyyMMdd-HHmmss')
@@ -363,6 +405,35 @@ $argumentosTar = @(
     '-C', $Proyecto
 ) + $incluir
 
+# El bundle transporta la identidad de main incluso cuando OCI no tiene .git.
+$fuenteManifest = Join-Path $Proyecto 'SOURCE-MANIFEST.sha256'
+$fuenteMetadata = Join-Path $Proyecto 'SOURCE-METADATA.json'
+$rutasFuente = @(Get-SalidaGit -Argumentos @('-c', 'core.quotepath=false', 'ls-files') | Where-Object {
+    $ruta = $_
+    $permitida = @($incluir | Where-Object { $ruta -eq $_ -or $ruta.StartsWith("$_/") }).Count -gt 0
+    $permitida -and $ruta -notmatch '(^|/)(tests|docs|postman|docker|node_modules)(/|$)' -and
+        $ruta -notmatch '(^|/)\.(git|ai|claude|agents|tools|local)(/|$)' -and
+        $ruta -notmatch '\.(key|pem|p12|pfx|pass)$'
+} | Sort-Object)
+$lineasFuente = @($rutasFuente | ForEach-Object {
+    $huella = (Get-FileHash -LiteralPath (Join-Path $Proyecto $_) -Algorithm SHA256).Hash.ToLowerInvariant()
+    "$huella  $_"
+})
+[IO.File]::WriteAllText($fuenteManifest, (($lineasFuente -join "`n") + "`n"), [Text.UTF8Encoding]::new($false))
+$metadataFuente = [ordered]@{
+    format_version = 1
+    repository = $repositorioGit
+    git_branch = 'main'
+    git_commit = $commit
+    git_tree = (Get-SalidaGit -Argumentos @('rev-parse', ($commit + '^{tree}')) | Select-Object -First 1).Trim()
+    source_manifest_sha256 = (Get-FileHash -LiteralPath $fuenteManifest -Algorithm SHA256).Hash.ToLowerInvariant()
+    java_jar_sha256 = (Get-FileHash -LiteralPath $destinoJar -Algorithm SHA256).Hash.ToLowerInvariant()
+    frontend_manifest_sha256 = (Get-FileHash -LiteralPath (Join-Path $Proyecto 'public/build/manifest.json') -Algorithm SHA256).Hash.ToLowerInvariant()
+}
+[IO.File]::WriteAllText($fuenteMetadata, (($metadataFuente | ConvertTo-Json -Depth 4) + "`n"), [Text.UTF8Encoding]::new($false))
+$argumentosTar += @('SOURCE-METADATA.json', 'SOURCE-MANIFEST.sha256')
+$requeridos += @('SOURCE-METADATA.json', 'SOURCE-MANIFEST.sha256')
+
 $dependenciasDesarrolloRetiradas = $false
 try {
     Invoke-Comando -Programa $composerPrograma -Argumentos @(
@@ -370,6 +441,16 @@ try {
     ) -Descripcion 'Preparando dependencias PHP exclusivas de produccion' -DirectorioTrabajo $Proyecto
     $dependenciasDesarrolloRetiradas = $true
 
+    $commitActual = (Get-SalidaGit -Argumentos @('rev-parse', 'HEAD') | Select-Object -First 1).Trim()
+    if ($commitActual -ne $commit -or @(Get-SalidaGit -Argumentos @('status', '--porcelain=v1', '--untracked-files=all')).Count -gt 0) {
+        throw 'El trabajo cambio durante el empaquetado. No se crea un paquete distinto del commit publicado.'
+    }
+    foreach ($linea in $lineasFuente) {
+        $rutaFuente = $linea.Substring(66)
+        if ((Get-FileHash -LiteralPath (Join-Path $Proyecto $rutaFuente) -Algorithm SHA256).Hash.ToLowerInvariant() -ne $linea.Substring(0, 64)) {
+            throw "El archivo cambio durante el empaquetado: $rutaFuente. No se crea el bundle."
+        }
+    }
     Invoke-TarConProgreso -Argumentos $argumentosTar -ArchivoSalida $paquete
 
     Write-Host "`n==> Validando contenido y exclusiones" -ForegroundColor Cyan
@@ -641,7 +722,9 @@ MANUAL COMPLETO DE DESPLIEGUE OCI - HUBDIGITAL
 
 Paquete: $identificadorPaquete
 Commit Git: $commit
+Repositorio: $repositorioGit
 Rama remota: $upstream
+Identidad: SOURCE-METADATA.json registra el commit de main y las huellas de Java y Vite.
 Kit que debe subirse: $nombreKitCloudShell
 VM OCI: ubuntu@129.153.23.57
 Migraciones de base de datos: DESHABILITADAS
@@ -661,7 +744,7 @@ La carpeta de este paquete contiene cinco archivos:
    entorno OCI completo cifrado durante el transporte SSH, pero no debe
    compartirse ni conservarse despues del despliegue.
 2. $nombre
-   Es el paquete fuente de produccion.
+   Es el paquete fuente de produccion del commit indicado de main. La preparacion Linux verifica su identidad antes de continuar.
 3. $([IO.Path]::GetFileName($suma))
    Contiene los checksums SHA-256.
 4. $nombreScriptTransferencia
@@ -885,7 +968,9 @@ finally {
 Write-Host "`nProceso completo." -ForegroundColor Green
 Write-Host "Commit:    $commit"
 Write-Host "Mensaje:   $mensajeCommit"
-Write-Host "Git:       $upstream sincronizado"
+Write-Host "Git:       $repositorioGit/tree/main"
+Write-Host "Main:      $upstream sincronizado"
+Write-Host "Identidad: $commit (incluida y verificada en el paquete)"
 Write-Host "Directorio: $directorioPaquete"
 Write-Host "Paquete:   $paquete"
 Write-Host "Checksum:  $suma"

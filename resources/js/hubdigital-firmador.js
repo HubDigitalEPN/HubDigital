@@ -1,21 +1,17 @@
-/**
- * Firmador de PDF de HubDigital. El P12 y su contrasena se entregan a un Web
- * Worker efimero y nunca forman parte de una peticion HTTP.
- */
+/** La interfaz entrega las credenciales temporales al firmador Java del servidor. */
 window.hubDigitalFirmador = (config) => ({
     estado: 'listo',
     progreso: '',
     error: '',
 
     async firmar() {
+        if (this.estado === 'procesando') return;
         this.error = '';
-
         const archivo = this.$refs.certificado?.files?.[0];
         let clave = this.$refs.clave?.value ?? '';
         if (!archivo || !/\.(p12|pfx)$/i.test(archivo.name)) {
             this.error = 'Selecciona un certificado .p12 o .pfx.';
             this.limpiarCamposCredenciales();
-            clave = '';
             return;
         }
         if (clave.length === 0) {
@@ -25,62 +21,22 @@ window.hubDigitalFirmador = (config) => ({
         }
 
         this.estado = 'procesando';
-        this.progreso = 'Obteniendo el PDF oficial…';
-
-        let trabajador;
-        let certificadoBytes;
+        this.progreso = 'Java está firmando y verificando el documento oficial…';
+        const formulario = new FormData();
+        const controlador = new AbortController();
+        const temporizador = window.setTimeout(() => controlador.abort(), 90000);
         try {
-            const respuestaPdf = await fetch(config.documentUrl, {
-                credentials: 'same-origin',
-                headers: { Accept: 'application/pdf' },
-            });
-            if (!respuestaPdf.ok) {
-                throw new Error('No se pudo obtener el PDF oficial para firmar.');
-            }
-
-            const pdfBytes = await respuestaPdf.arrayBuffer();
-            certificadoBytes = await archivo.arrayBuffer();
-            this.progreso = 'Leyendo el certificado y creando la firma local…';
-
-            trabajador = new Worker(
-                new URL('./workers/pdf-signing.worker.js', import.meta.url),
-                { type: 'module', name: 'hubdigital-firmador' },
-            );
-
-            const resultado = await new Promise((resolve, reject) => {
-                const temporizador = window.setTimeout(
-                    () => reject(new Error('La operación de firma excedió el tiempo permitido.')),
-                    90000,
-                );
-
-                trabajador.onmessage = (evento) => {
-                    window.clearTimeout(temporizador);
-                    evento.data?.ok ? resolve(evento.data) : reject(new Error(evento.data?.error));
-                };
-                trabajador.onerror = () => {
-                    window.clearTimeout(temporizador);
-                    reject(new Error('El firmador local no pudo iniciarse.'));
-                };
-                trabajador.postMessage({
-                    pdf: pdfBytes,
-                    p12: certificadoBytes,
-                    passphrase: clave,
-                    signatureProfile: config.signatureProfile,
-                    reason: config.reason,
-                    location: config.location ?? 'Quito, Ecuador',
-                }, [pdfBytes, certificadoBytes]);
-            });
-
-            this.progreso = 'Validando la firma y la integridad del documento…';
-
-            const formulario = new FormData();
-            formulario.append('pdf_firmado', new Blob([resultado.pdf], { type: 'application/pdf' }), 'documento-firmado.pdf');
+            formulario.append('certificado', archivo);
+            formulario.append('clave_certificado', clave);
             formulario.append('original_referencia', config.originalReference ?? '');
             formulario.append('original_sha256', config.originalSha256 ?? '');
+            clave = '';
+            this.limpiarCamposCredenciales();
 
             const respuesta = await fetch(config.uploadUrl, {
                 method: 'POST',
                 credentials: 'same-origin',
+                signal: controlador.signal,
                 headers: {
                     Accept: 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
@@ -89,39 +45,35 @@ window.hubDigitalFirmador = (config) => ({
             });
             const cuerpo = await respuesta.json().catch(() => ({}));
             if (!respuesta.ok) {
-                throw new Error(cuerpo.message ?? 'El servidor rechazó el documento firmado.');
+                throw new Error(cuerpo.message ?? 'No se pudo firmar y validar el documento.');
             }
-
             this.estado = 'completado';
-            this.progreso = cuerpo.message ?? 'Documento firmado y validado.';
+            this.progreso = cuerpo.message ?? 'Documento firmado y validado por Java.';
             window.dispatchEvent(new CustomEvent('toast', { detail: { message: this.progreso } }));
             window.setTimeout(() => window.location.reload(), 900);
         } catch (error) {
             this.estado = 'error';
             this.progreso = '';
-            this.error = this.mensajeSeguro(error);
+            this.error = error?.name === 'AbortError'
+                ? 'La firma demoró demasiado. Actualiza la pantalla para comprobar su estado.'
+                : this.mensajeSeguro(error);
         } finally {
-            trabajador?.terminate();
-            if (certificadoBytes && certificadoBytes.byteLength > 0) {
-                new Uint8Array(certificadoBytes).fill(0);
-            }
+            window.clearTimeout(temporizador);
+            formulario.delete('clave_certificado');
+            formulario.delete('certificado');
             clave = '';
             this.limpiarCamposCredenciales();
         }
     },
 
     limpiarCamposCredenciales() {
-        if (this.$refs.clave) {
-            this.$refs.clave.value = '';
-        }
-        if (this.$refs.certificado) {
-            this.$refs.certificado.value = '';
-        }
+        if (this.$refs.clave) this.$refs.clave.value = '';
+        if (this.$refs.certificado) this.$refs.certificado.value = '';
     },
 
     mensajeSeguro(error) {
         const mensaje = String(error?.message ?? 'No se pudo firmar el documento.');
-        if (/password|passphrase|PKCS#12|Invalid password|MAC could not be verified|ASN\.1|BER|DER|too few bytes|unexpected end/i.test(mensaje)) {
+        if (/password|passphrase|PKCS#12|ASN\.1|BER|DER|MAC could not|too few bytes/i.test(mensaje)) {
             return 'No se pudo abrir el certificado. Verifica el archivo y su contraseña.';
         }
         return mensaje;

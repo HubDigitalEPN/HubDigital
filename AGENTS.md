@@ -1,5 +1,11 @@
-# Acuerdo de validacion de HubDigital
+# Acuerdo de validacion y publicacion de HubDigital
 
 - El usuario ejecuta `crear-paquete-oci`. Ese comando realiza las pruebas, compilaciones y validaciones integrales del proyecto. No lo ejecutes salvo que el usuario te lo pida expresamente.
 - Despues de cada cambio de codigo, no ejecutes por iniciativa propia pruebas PHP/Pest/PostgreSQL, pruebas Java/Maven, compilaciones Vite/npm ni otras comprobaciones automatizadas ya incluidas en `crear-paquete-oci`, aunque se cierre VS Code o se retome el trabajo en otra sesion. No repitas esas pruebas antes ni despues del paquete.
 - Revisa el cambio de forma estatica y comunica que la validacion automatizada queda a cargo de `crear-paquete-oci`. Si el usuario pide una comprobacion concreta o el paquete informa un fallo, investiga solo ese caso de forma puntual, sin repetir la suite integral.
+- El repositorio oficial es `https://github.com/HubDigitalEPN/HubDigital`, remoto `origin`. `main` es la base del sistema que se empaqueta para OCI. No publicar automaticamente en el fork `labinv`.
+- Para cada nueva solicitud de cambios, crea una rama de trabajo nueva basada en `main` antes de editar. Preserva primero cualquier trabajo pendiente; no descartes archivos ni reutilices una rama con trabajo ajeno.
+- Desarrolla y revisa en esa rama. Una vez listo el cambio, el usuario ejecuta `crear-paquete-oci`: solo si todas las pruebas y compilaciones terminan correctamente, el comando registra el cambio, avanza `main` sin reescribir el historial, publica `origin/main` y crea el paquete desde ese mismo commit.
+- No usar push forzado, reset destructivo ni borrar ramas para resolver divergencias. Si `main` contiene cambios no integrados, incorporalos y resuelve los conflictos en la rama de trabajo antes de reintentar el paquete.
+- El paquete conserva el commit de `main` en `SOURCE-METADATA.json` y las huellas en `SOURCE-MANIFEST.sha256`. OCI debe conservar esa identidad y verificarla al preparar y activar la release. No mezclar archivos de otros commits ni cambios locales sin publicar.
+- La publicacion inicial de todo el trabajo actual en `main` fue solicitada expresamente por el usuario. No significa que una release este desplegada: el paquete valida y compila Java/Vite; el despliegue aplica las migraciones antes de activar. No asegurar ausencia de regresiones sin evidencia de esas comprobaciones.

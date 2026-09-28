@@ -6,6 +6,9 @@ namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Inve
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Services\FirmaPdfJava;
+use Modules\GestionPrestamosRecepciones\Presentation\Support\PerfilFirmaPdf;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -16,7 +19,7 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDep
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\DirectorioTemporalHubDigital;
 use Modules\GestionPrestamosRecepciones\Presentation\Support\GeneradorPdfSolicitudDeposito;
 
-/** Recibe exclusivamente el PDF firmado localmente; el P12 y su clave nunca salen del navegador. */
+/** Java crea y verifica la firma; PHP coordina el original y la persistencia. */
 final class FirmarSolicitudDeposito
 {
     public function __invoke(
@@ -26,9 +29,8 @@ final class FirmarSolicitudDeposito
         ValidacionFirmaElectronicaPort $validador,
         AlmacenamientoDepositos $almacenamiento,
     ): JsonResponse {
-        $request->validate([
-            'pdf_firmado' => ['required', 'file', 'mimes:pdf', 'max:15360'],
-        ]);
+        $request->attributes->set('credencial_firma_sensible', $request->hasFile('certificado'));
+        $request->validate(FirmaPdfJava::reglas());
 
         $solicitud = SolicitudDepositoEloquentModel::findOrFail($id);
         abort_unless((string) $solicitud->investigador_id === (string) $request->user()->id, 403);
@@ -48,19 +50,14 @@ final class FirmarSolicitudDeposito
         $ruta = 'solicitudes-deposito/firmadas/'.$solicitud->id
             .'-v'.((int) $solicitud->solicitud_documento_version)
             .'-'.Str::uuid().'.pdf';
-        $archivoFirmado = $request->file('pdf_firmado');
-        $rutaGuardada = $almacenamiento->guardarSubidoComo($archivoFirmado, $ruta);
-        abort_unless($rutaGuardada === $ruta, 500, 'No se pudo guardar la solicitud firmada.');
-
         $persistido = false;
+        $guardado = false;
+        $archivoJava = null;
         try {
-            // El archivo subido ya es una copia temporal local de Laravel. Se valida
-            // esa misma secuencia de bytes que fue persistida en R2 o en local.
-            $rutaAbsoluta = $archivoFirmado->getRealPath();
+            $archivoJava = app(FirmaPdfJava::class)->preparar($request, $originalTemporal, PerfilFirmaPdf::SOLICITUD_DEPOSITANTE);
+            $rutaAbsoluta = $archivoJava->ruta();
             $validacion = $validador->verificarFirmaDetallada($rutaAbsoluta, $originalTemporal);
             if (! $validacion->esAceptable()) {
-                $almacenamiento->eliminar($ruta);
-
                 return response()->json([
                     'message' => $validacion->error ?: 'La firma no superó la validación criptográfica e integral.',
                     'validacion' => $validacion->toArray(),
@@ -71,6 +68,10 @@ final class FirmarSolicitudDeposito
             $firmaMetadata['firmante_usuario_id'] = (string) $request->user()->id;
             $firmaMetadata['proposito'] = 'solicitud_deposito';
             $firmaMetadata['pdf_sha256'] = hash_file('sha256', $rutaAbsoluta);
+            $archivoFirmado = new UploadedFile($rutaAbsoluta, 'solicitud-firmada.pdf', 'application/pdf', null, true);
+            $rutaGuardada = $almacenamiento->guardarSubidoComo($archivoFirmado, $ruta);
+            abort_unless($rutaGuardada === $ruta, 500, 'No se pudo guardar la solicitud firmada.');
+            $guardado = true;
 
             $rutaAnterior = DB::transaction(function () use (
                 $id,
@@ -122,12 +123,17 @@ final class FirmarSolicitudDeposito
                     ]);
                 }
             }
+        } catch (\InvalidArgumentException $e) {
+            if ($guardado && ! $persistido) $almacenamiento->eliminar($ruta);
+            return response()->json(['message' => $e->getMessage()], 422);
         } catch (\Throwable $e) {
-            if (! $persistido) {
+            if ($guardado && ! $persistido) {
                 $almacenamiento->eliminar($ruta);
             }
             throw $e;
         } finally {
+            $archivoJava?->limpiar();
+            $request->request->remove('clave_certificado');
             DirectorioTemporalHubDigital::eliminar(dirname($originalTemporal));
         }
 

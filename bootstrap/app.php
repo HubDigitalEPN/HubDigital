@@ -24,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->trimStrings(except: ['clave_certificado']);
         $middleware->web(append: [
             NormalizeAuthenticationEmail::class,
             EnsureInitialPasswordChanged::class,
@@ -37,17 +38,19 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->dontFlash(['bootstrap_token']);
+        $exceptions->dontFlash(['bootstrap_token', 'clave_certificado']);
 
         // Las excepciones de un alta pueden contener SQL con hashes o el cuerpo
         // de la petición. Estas rutas no muestran el depurador ni registran el
         // mensaje, el SQL o la traza, incluso si APP_DEBUG está habilitado.
         $exceptions->report(function (Throwable $e): ?bool {
-            if (! request()->attributes->get('administracion_sensible')) {
+            if (! request()->attributes->get('administracion_sensible')
+                && ! request()->attributes->get('credencial_firma_sensible')) {
                 return null;
             }
 
-            Log::error('Fallo en administración de usuarios.', [
+            Log::error(request()->attributes->get('credencial_firma_sensible')
+                ? 'Fallo en la operación de firma Java.' : 'Fallo en administración de usuarios.', [
                 'exception_type' => $e::class,
                 'exception_code' => $e->getCode(),
             ]);
@@ -56,7 +59,8 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         $exceptions->render(function (Throwable $e, Request $request): ?Response {
-            if (! $request->attributes->get('administracion_sensible') || $e instanceof ValidationException) {
+            if ((! $request->attributes->get('administracion_sensible')
+                && ! $request->attributes->get('credencial_firma_sensible')) || $e instanceof ValidationException) {
                 return null;
             }
 
