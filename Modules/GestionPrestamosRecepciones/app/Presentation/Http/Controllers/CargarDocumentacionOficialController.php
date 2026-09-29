@@ -86,7 +86,7 @@ final class CargarDocumentacionOficialController
                     'extraccion_metadatos' => $metadata, 'documentos_procesados' => [],
                     'solicitud_documento_version' => (int) $vigente->solicitud_documento_version + 1,
                     'solicitud_firmada_ruta' => null, 'solicitud_firmada_sha256' => null,
-                    'solicitud_firmada_en' => null, 'solicitud_firma_metadata' => null,
+                    'solicitud_firmada_en' => null, 'solicitud_firma_metadata' => [],
                 ])->save();
 
                 return ($this->handler)(new CargarDocumentacionOficialInput(

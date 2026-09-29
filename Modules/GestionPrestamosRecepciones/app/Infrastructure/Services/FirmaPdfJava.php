@@ -15,8 +15,8 @@ final class FirmaPdfJava
     public static function reglas(): array
     {
         return [
-            'pdf_firmado' => ['required_without:certificado', 'prohibited_with:certificado', 'file', 'mimes:pdf', 'max:15360'],
-            'certificado' => ['required_without:pdf_firmado', 'prohibited_with:pdf_firmado', 'file', 'extensions:p12,pfx', 'max:5120'],
+            'pdf_firmado' => ['required_without:certificado', 'prohibits:certificado', 'file', 'mimes:pdf', 'max:15360'],
+            'certificado' => ['required_without:pdf_firmado', 'prohibits:pdf_firmado', 'file', 'extensions:p12,pfx', 'max:5120'],
             'clave_certificado' => ['required_with:certificado', 'string', 'max:512', 'not_regex:/\x00/'],
         ];
     }
