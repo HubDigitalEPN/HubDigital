@@ -14,21 +14,25 @@
     x-data="{
         ampliada: false,
 
-        filtroCatalogo:      '{{ addslashes($fa['filtroCatalogo'] ?? '') }}',
+        filtroCatalogo:      {{ Js::from($fa['filtroCatalogo'] ?? '') }},
         filtroPreparaciones: {{ Js::from($fa['filtroPreparaciones'] ?? []) }},
-        filtroTaxon:         '{{ addslashes($fa['filtroTaxon'] ?? '') }}',
+        filtroTaxon:         {{ Js::from($fa['filtroTaxon'] ?? '') }},
         filtroGeografias:    {{ Js::from($fa['filtroGeografias'] ?? []) }},
-        filtroColector:      '{{ addslashes($fa['filtroColector'] ?? '') }}',
-        filtroFechaDesde:    '{{ $fa['filtroFechaDesde'] ?? '' }}',
-        filtroFechaHasta:    '{{ $fa['filtroFechaHasta'] ?? '' }}',
+        filtroColector:      {{ Js::from($fa['filtroColector'] ?? '') }},
+        filtroFechaDesde:    {{ Js::from($fa['filtroFechaDesde'] ?? '') }},
+        filtroFechaHasta:    {{ Js::from($fa['filtroFechaHasta'] ?? '') }},
         filtroMetodos:       {{ Js::from($fa['filtroMetodos'] ?? []) }},
-        filtroLatMin:        '{{ $fa['filtroLatMin'] ?? '' }}',
-        filtroLatMax:        '{{ $fa['filtroLatMax'] ?? '' }}',
-        filtroLonMin:        '{{ $fa['filtroLonMin'] ?? '' }}',
-        filtroLonMax:        '{{ $fa['filtroLonMax'] ?? '' }}',
-        filtroElevDesde:     '{{ $fa['filtroElevDesde'] ?? '' }}',
-        filtroElevHasta:     '{{ $fa['filtroElevHasta'] ?? '' }}',
+        filtroLatMin:        {{ Js::from($fa['filtroLatMin'] ?? '') }},
+        filtroLatMax:        {{ Js::from($fa['filtroLatMax'] ?? '') }},
+        filtroLonMin:        {{ Js::from($fa['filtroLonMin'] ?? '') }},
+        filtroLonMax:        {{ Js::from($fa['filtroLonMax'] ?? '') }},
+        filtroElevDesde:     {{ Js::from($fa['filtroElevDesde'] ?? '') }},
+        filtroElevHasta:     {{ Js::from($fa['filtroElevHasta'] ?? '') }},
         filtroBiomas:        {{ Js::from($fa['filtroBiomas'] ?? []) }},
+        filtroHabitat:       {{ Js::from($fa['filtroHabitat'] ?? '') }},
+        filtroTipo:          {{ Js::from($fa['filtroTipo'] ?? '') }},
+        filtroCasta:         {{ Js::from($fa['filtroCasta'] ?? '') }},
+        filtroEstadio:       {{ Js::from($fa['filtroEstadio'] ?? '') }},
 
         toggleArray(arr, val) {
             const i = arr.indexOf(val);
@@ -52,6 +56,10 @@
                 filtroElevDesde:     this.filtroElevDesde,
                 filtroElevHasta:     this.filtroElevHasta,
                 filtroBiomas:        this.filtroBiomas,
+                filtroHabitat:       this.filtroHabitat,
+                filtroTipo:          this.filtroTipo,
+                filtroCasta:         this.filtroCasta,
+                filtroEstadio:       this.filtroEstadio,
             });
         },
 
@@ -71,6 +79,10 @@
             this.filtroElevDesde     = '';
             this.filtroElevHasta     = '';
             this.filtroBiomas        = [];
+            this.filtroHabitat       = '';
+            this.filtroTipo          = '';
+            this.filtroCasta         = '';
+            this.filtroEstadio       = '';
             $wire.limpiarFiltros();
         },
     }"
@@ -379,41 +391,17 @@
                             Coordenadas
                             <span class="font-normal text-white/50">(decimalLatitude / decimalLongitude)</span>
                         </span>
-                        <flux:tooltip content="Grados decimales. Ingrese latitud y longitud del centro del área. El sistema buscará especímenes en un radio de ±0.5°">
+                        <flux:tooltip content="Límites en grados decimales. También puedes seleccionar un rectángulo desde el mapa de estadísticas.">
                             <button type="button" tabindex="-1">
                                 <flux:icon name="information-circle" class="size-3.5 cursor-help text-white/50 transition-colors hover:text-white/80" />
                             </button>
                         </flux:tooltip>
                     </div>
-                    <div class="flex gap-2">
-                        <input
-                            type="number"
-                            step="0.0001"
-                            min="-90"
-                            max="90"
-                            placeholder="Lat. Ej. -0.2345"
-                            x-on:change="
-                                const v = parseFloat($event.target.value);
-                                if (!isNaN(v)) { filtroLatMin = String(v - 0.5); filtroLatMax = String(v + 0.5); }
-                                else { filtroLatMin = ''; filtroLatMax = ''; }
-                            "
-                            :value="filtroLatMin !== '' ? ((parseFloat(filtroLatMin) + 0.5).toFixed(4)) : ''"
-                            class="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
-                        />
-                        <input
-                            type="number"
-                            step="0.0001"
-                            min="-180"
-                            max="180"
-                            placeholder="Lon. Ej. -76.9023"
-                            x-on:change="
-                                const v = parseFloat($event.target.value);
-                                if (!isNaN(v)) { filtroLonMin = String(v - 0.5); filtroLonMax = String(v + 0.5); }
-                                else { filtroLonMin = ''; filtroLonMax = ''; }
-                            "
-                            :value="filtroLonMin !== '' ? ((parseFloat(filtroLonMin) + 0.5).toFixed(4)) : ''"
-                            class="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
-                        />
+                    <div class="grid grid-cols-2 gap-2">
+                        <input x-model="filtroLatMin" type="number" step="any" min="-90" max="90" aria-label="Latitud mínima" placeholder="Lat. mín." class="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/30" />
+                        <input x-model="filtroLatMax" type="number" step="any" min="-90" max="90" aria-label="Latitud máxima" placeholder="Lat. máx." class="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/30" />
+                        <input x-model="filtroLonMin" type="number" step="any" min="-180" max="180" aria-label="Longitud mínima" placeholder="Lon. mín." class="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/30" />
+                        <input x-model="filtroLonMax" type="number" step="any" min="-180" max="180" aria-label="Longitud máxima" placeholder="Lon. máx." class="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/30" />
                     </div>
                 </div>
 
@@ -498,6 +486,20 @@
                         </div>
                     @endif
                 </div>
+
+                <label class="block text-xs font-medium text-white">Hábitat o microhábitat
+                    <input x-model="filtroHabitat" type="text" placeholder="Ej. bosque, hojarasca" x-on:keydown.enter="buscar()" class="mt-1 block w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/30">
+                </label>
+                <label class="block text-xs font-medium text-white">Condición de tipo
+                    <input x-model="filtroTipo" type="text" list="tipos-especimen" placeholder="Ej. holotype, paratype" x-on:keydown.enter="buscar()" class="mt-1 block w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/30">
+                    <datalist id="tipos-especimen"><option value="holotype"></option><option value="paratype"></option><option value="allotype"></option></datalist>
+                </label>
+                <label class="block text-xs font-medium text-white">Casta
+                    <input x-model="filtroCasta" type="text" placeholder="Ej. worker, queen" x-on:keydown.enter="buscar()" class="mt-1 block w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/30">
+                </label>
+                <label class="block text-xs font-medium text-white">Estadio de vida
+                    <input x-model="filtroEstadio" type="text" placeholder="Ej. adult, larva" x-on:keydown.enter="buscar()" class="mt-1 block w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/30">
+                </label>
 
             </div>
 

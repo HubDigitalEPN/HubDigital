@@ -24,6 +24,10 @@ final readonly class FiltrosBusqueda
         public readonly ?float $elevDesde,
         public readonly ?float $elevHasta,
         public readonly array $biomas,
+        public readonly ?string $habitat,
+        public readonly ?string $tipo,
+        public readonly ?string $casta,
+        public readonly ?string $estadio,
     ) {}
 
     public static function vacio(): self
@@ -44,6 +48,10 @@ final readonly class FiltrosBusqueda
             elevDesde: null,
             elevHasta: null,
             biomas: [],
+            habitat: null,
+            tipo: null,
+            casta: null,
+            estadio: null,
         );
     }
 
@@ -97,6 +105,12 @@ final readonly class FiltrosBusqueda
             }
         }
 
+        $textoOpcional = static function (string $clave) use ($datos, $normalizar): ?string {
+            $texto = $normalizar((string) ($datos[$clave] ?? ''));
+
+            return $texto === '' ? null : mb_substr($texto, 0, 120);
+        };
+
         return new self(
             codigosCatalogo: $codigosCatalogo,
             preparaciones: $normalizarArray($datos['filtroPreparaciones'] ?? []),
@@ -113,6 +127,10 @@ final readonly class FiltrosBusqueda
             elevDesde: $elevDesde,
             elevHasta: $elevHasta,
             biomas: $normalizarArray($datos['filtroBiomas'] ?? []),
+            habitat: $textoOpcional('filtroHabitat'),
+            tipo: $textoOpcional('filtroTipo'),
+            casta: $textoOpcional('filtroCasta'),
+            estadio: $textoOpcional('filtroEstadio'),
         );
     }
 
@@ -127,8 +145,15 @@ final readonly class FiltrosBusqueda
             && $this->fechaHasta === null
             && $this->metodosRecoleccion === []
             && $this->latMin === null
+            && $this->latMax === null
+            && $this->lonMin === null
+            && $this->lonMax === null
             && $this->elevDesde === null
             && $this->elevHasta === null
-            && $this->biomas === [];
+            && $this->biomas === []
+            && $this->habitat === null
+            && $this->tipo === null
+            && $this->casta === null
+            && $this->estadio === null;
     }
 }

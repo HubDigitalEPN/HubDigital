@@ -24,6 +24,7 @@ use Modules\CatalogoPublico\Domain\Entities\EspecimenDivulgable;
 use Modules\CatalogoPublico\Domain\Repositories\EspecimenDivulgableRepositoryInterface;
 use Modules\CatalogoPublico\Domain\ValueObjects\FiltrosBusqueda;
 use Modules\CatalogoPublico\Infrastructure\Adapters\StorageImagenesAdapter;
+use Modules\CatalogoPublico\Infrastructure\Persistence\Eloquent\Repositories\EloquentProveedorEspecimenesParaArbol;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 #[Layout('layouts.portal', params: ['title' => 'Catálogo taxonómico · Departamento de Biología — EPN'])]
@@ -85,6 +86,15 @@ final class PortalCatalogo extends Component
     #[Url(as: 'explorar')]
     public string $explorar = '';
 
+    #[Url(as: 'vista')]
+    public string $vista = 'tarjetas';
+
+    #[Url(as: 'pagina')]
+    public int $pagina = 1;
+
+    #[Url(as: 'sinfilo')]
+    public bool $mostrarSinFilo = false;
+
     // ─── Filtros (URL-persistidos) ────────────────────────────────────────────
 
     #[Url(as: 'fc')]
@@ -131,6 +141,18 @@ final class PortalCatalogo extends Component
 
     #[Url(as: 'fb')]
     public array $filtroBiomas = [];
+
+    #[Url(as: 'fh')]
+    public string $filtroHabitat = '';
+
+    #[Url(as: 'fsti')]
+    public string $filtroTipo = '';
+
+    #[Url(as: 'fca')]
+    public string $filtroCasta = '';
+
+    #[Url(as: 'fes')]
+    public string $filtroEstadio = '';
 
     // ─── Servicio de opciones (no serializado entre requests) ─────────────────
 
@@ -179,6 +201,34 @@ final class PortalCatalogo extends Component
         $this->nivel = $nivel;
         $this->taxon = $taxon;
         $this->explorar = '';
+        $this->mostrarSinFilo = false;
+        $this->pagina = 1;
+    }
+
+    public function cambiarVista(string $vista): void
+    {
+        if (in_array($vista, ['tarjetas', 'registros'], true)) {
+            $this->vista = $vista;
+            if ($vista === 'tarjetas') {
+                $this->mostrarSinFilo = false;
+            }
+            $this->pagina = 1;
+        }
+    }
+
+    public function verSinFilo(): void
+    {
+        $this->nivel = '';
+        $this->taxon = '';
+        $this->explorar = '';
+        $this->mostrarSinFilo = true;
+        $this->vista = 'registros';
+        $this->pagina = 1;
+    }
+
+    public function cambiarPagina(int $pagina): void
+    {
+        $this->pagina = max(1, $pagina);
     }
 
     public function explorarNivel(string $nivel): void
@@ -186,6 +236,8 @@ final class PortalCatalogo extends Component
         $this->explorar = $nivel;
         $this->nivel = '';
         $this->taxon = '';
+        $this->mostrarSinFilo = false;
+        $this->pagina = 1;
     }
 
     public function volverAlArbol(): void
@@ -197,6 +249,7 @@ final class PortalCatalogo extends Component
 
     public function aplicarFiltros(array $datos): void
     {
+        $this->pagina = 1;
         $this->filtroCatalogo = (string) ($datos['filtroCatalogo'] ?? '');
         $this->filtroPreparaciones = (array) ($datos['filtroPreparaciones'] ?? []);
         $this->filtroTaxon = (string) ($datos['filtroTaxon'] ?? '');
@@ -212,10 +265,15 @@ final class PortalCatalogo extends Component
         $this->filtroElevDesde = (string) ($datos['filtroElevDesde'] ?? '');
         $this->filtroElevHasta = (string) ($datos['filtroElevHasta'] ?? '');
         $this->filtroBiomas = (array) ($datos['filtroBiomas'] ?? []);
+        $this->filtroHabitat = (string) ($datos['filtroHabitat'] ?? '');
+        $this->filtroTipo = (string) ($datos['filtroTipo'] ?? '');
+        $this->filtroCasta = (string) ($datos['filtroCasta'] ?? '');
+        $this->filtroEstadio = (string) ($datos['filtroEstadio'] ?? '');
     }
 
     public function limpiarFiltros(): void
     {
+        $this->pagina = 1;
         $this->filtroCatalogo = '';
         $this->filtroPreparaciones = [];
         $this->filtroTaxon = '';
@@ -231,6 +289,10 @@ final class PortalCatalogo extends Component
         $this->filtroElevDesde = '';
         $this->filtroElevHasta = '';
         $this->filtroBiomas = [];
+        $this->filtroHabitat = '';
+        $this->filtroTipo = '';
+        $this->filtroCasta = '';
+        $this->filtroEstadio = '';
     }
 
     // ─── Exportación ─────────────────────────────────────────────────────────
@@ -248,15 +310,43 @@ final class PortalCatalogo extends Component
         );
     }
 
-    // ─── Render ───────────────────────────────────────────────────────────────
+    public function descargarResultados(EloquentProveedorEspecimenesParaArbol $repositorio): StreamedResponse
+    {
+        $filtros = $this->filtrosActuales();
 
-    public function render(
-        ConstruirArbolTaxonomicoHandler $handler,
-        ProveedorEspecimenesPort $proveedor,
-        EspecimenDivulgableRepositoryInterface $repoDivulgable,
-        ConsultarGaleriaTaxonHandler $galeriaHandler,
-    ): View {
-        $filtros = FiltrosBusqueda::desde([
+        return response()->streamDownload(static function () use ($repositorio, $filtros): void {
+            $salida = fopen('php://output', 'wb');
+            fwrite($salida, "\xEF\xBB\xBF");
+            fputcsv($salida, ['N.º catálogo', 'Taxón', 'Fecha', 'Localidad del Excel', 'Localidad INEC', 'Código INEC', 'Provincia', 'Latitud', 'Longitud', 'Precisión', 'Tipo'], ';', '"', '');
+            $celda = static function (mixed $valor): string {
+                $texto = (string) ($valor ?? '');
+
+                return preg_match('/^[=+\-@\t\r]/u', $texto) ? "'".$texto : $texto;
+            };
+            foreach ($repositorio->cursorParaCsv($filtros) as $fila) {
+                $localidad = (bool) $fila->locality_name_visible;
+                $coordenadas = (bool) $fila->decimal_latitude_visible && (bool) $fila->decimal_longitude_visible;
+                fputcsv($salida, array_map($celda, [
+                    $fila->occurrence_id_visible ? ($fila->occurrence_id ?: $fila->codigo_catalogo) : null,
+                    $fila->scientific_name_visible ? $fila->nombre_cientifico : null,
+                    $fila->event_date_visible ? $fila->fecha_colecta : null,
+                    $localidad ? $fila->localidad_verbatim : null,
+                    $localidad ? $fila->localidad_inec : null,
+                    $localidad ? $fila->codigo_inec : null,
+                    $fila->state_province_visible ? $fila->state_province : null,
+                    $coordenadas ? $fila->decimal_latitude : null,
+                    $coordenadas ? $fila->decimal_longitude : null,
+                    $coordenadas ? $fila->lat_lon_max_error : null,
+                    $fila->type_status_visible ? $fila->type_status : null,
+                ]), ';', '"', '');
+            }
+            fclose($salida);
+        }, 'registros-catalogo.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    private function filtrosActuales(): FiltrosBusqueda
+    {
+        return FiltrosBusqueda::desde([
             'filtroCatalogo' => $this->filtroCatalogo,
             'filtroPreparaciones' => $this->filtroPreparaciones,
             'filtroTaxon' => $this->filtroTaxon,
@@ -272,18 +362,43 @@ final class PortalCatalogo extends Component
             'filtroElevDesde' => $this->filtroElevDesde,
             'filtroElevHasta' => $this->filtroElevHasta,
             'filtroBiomas' => $this->filtroBiomas,
+            'filtroHabitat' => $this->filtroHabitat,
+            'filtroTipo' => $this->filtroTipo,
+            'filtroCasta' => $this->filtroCasta,
+            'filtroEstadio' => $this->filtroEstadio,
         ]);
+    }
+
+    // ─── Render ───────────────────────────────────────────────────────────────
+
+    public function render(
+        ConstruirArbolTaxonomicoHandler $handler,
+        ProveedorEspecimenesPort $proveedor,
+        EspecimenDivulgableRepositoryInterface $repoDivulgable,
+        ConsultarGaleriaTaxonHandler $galeriaHandler,
+    ): View {
+        $filtros = $this->filtrosActuales();
 
         $output = ($handler)(new ConstruirArbolTaxonomicoInput($filtros->estaVacio() ? null : $filtros));
 
-        $totalGlobal = (int) array_sum(array_map('count', $output->especimenesPorEspecie));
+        $totalGlobal = count($output->especimenIds);
         $conteos = $this->calcularConteos($output);
         $ruta = $this->resolverRuta($output);
         $hijos = $this->resolverHijos($output);
         $especiesActuales = $this->nivel === 'genus' ? $this->resolverEspecies($output) : [];
         $hermanos = $this->nivel !== '' ? $this->resolverHermanos($output) : [];
-        $especimenes = $this->nivel === 'species'
+        $especimenes = $this->nivel === 'species' && $this->vista === 'tarjetas'
             ? $this->cargarDetallesEspecimenes($output->especimenesPorEspecie[$this->taxon] ?? [], $proveedor, $repoDivulgable)
+            : [];
+
+        $idsParaVista = $this->mostrarSinFilo
+            ? $output->especimenesSinFilo
+            : ($this->nivel === '' ? $output->especimenIds : ($output->especimenesPorNodo[$this->nivel.':'.$this->taxon] ?? []));
+        $totalRegistrosVista = count($idsParaVista);
+        $ultimaPagina = max(1, (int) ceil($totalRegistrosVista / 50));
+        $paginaActual = min(max(1, $this->pagina), $ultimaPagina);
+        $registrosVista = $this->vista === 'registros' && $this->explorar === ''
+            ? $this->cargarDetallesPorEspecimenIds(array_slice($idsParaVista, ($paginaActual - 1) * 50, 50), $proveedor, $repoDivulgable)
             : [];
 
         $descendientes = $this->calcularDescendientes($output);
@@ -304,14 +419,21 @@ final class PortalCatalogo extends Component
             'filtroElevDesde' => $this->filtroElevDesde,
             'filtroElevHasta' => $this->filtroElevHasta,
             'filtroBiomas' => $this->filtroBiomas,
+            'filtroHabitat' => $this->filtroHabitat,
+            'filtroTipo' => $this->filtroTipo,
+            'filtroCasta' => $this->filtroCasta,
+            'filtroEstadio' => $this->filtroEstadio,
         ];
 
-        $galeriaEspecie = $this->nivel === 'species'
+        $galeriaEspecie = $this->nivel === 'species' && $this->vista === 'tarjetas'
             ? $galeriaHandler->handle(new ConsultarGaleriaTaxonInput('species', $this->taxon))->imagenes
             : [];
 
-        $imagenesPorEspecimen = $this->nivel === 'species'
-            ? $this->cargarImagenesPorEspecimen(array_map(fn (object $e): string => $e->occurrence_id, $especimenes))
+        $imagenesPorEspecimen = $this->nivel === 'species' && $this->vista === 'tarjetas'
+            ? $this->cargarImagenesPorEspecimen(array_values(array_filter(array_map(
+                fn (object $e): ?string => $e->occurrence_id,
+                $especimenes,
+            ))))
             : [];
 
         return view('catalogopublico::livewire.portal-catalogo', [
@@ -323,6 +445,11 @@ final class PortalCatalogo extends Component
             'especiesActuales' => $especiesActuales,
             'hermanos' => $hermanos,
             'especimenes' => $especimenes,
+            'registrosVista' => $registrosVista,
+            'totalRegistrosVista' => $totalRegistrosVista,
+            'paginaActual' => $paginaActual,
+            'ultimaPagina' => $ultimaPagina,
+            'sinFilo' => count($output->especimenesSinFilo),
             'conteos' => $conteos,
             'descendientes' => $descendientes,
             'taxonesExplorados' => $this->explorar !== ''
@@ -508,23 +635,42 @@ final class PortalCatalogo extends Component
             return [];
         }
 
+        return $this->aplicarVisibilidad($proveedor->buscarPorOccurrenceIds($occurrenceIDs), $repoDivulgable);
+    }
+
+    /** @param list<string> $especimenIds @return list<object> */
+    private function cargarDetallesPorEspecimenIds(
+        array $especimenIds,
+        ProveedorEspecimenesPort $proveedor,
+        EspecimenDivulgableRepositoryInterface $repoDivulgable,
+    ): array {
+        return $this->aplicarVisibilidad($proveedor->buscarPorEspecimenIds($especimenIds), $repoDivulgable);
+    }
+
+    /** @param list<DatosEspecimenProveedor> $datos @return list<object> */
+    private function aplicarVisibilidad(array $datos, EspecimenDivulgableRepositoryInterface $repoDivulgable): array
+    {
+        if ($datos === []) {
+            return [];
+        }
+
         // Config de visibilidad indexada por especimenId (FK estable compartida con el DTO).
         $configPorEspecimen = [];
-        foreach ($repoDivulgable->buscarPorOccurrenceIDs($occurrenceIDs) as $divulgable) {
+        foreach ($repoDivulgable->buscarPorOccurrenceIDs(array_map(fn (DatosEspecimenProveedor $dto): string => $dto->occurrenceId, $datos)) as $divulgable) {
             $configPorEspecimen[$divulgable->especimenId()] = $divulgable;
         }
 
+        $datosPublicados = array_values(array_filter($datos, fn (DatosEspecimenProveedor $dto): bool => isset($configPorEspecimen[$dto->especimenId])));
+
         return array_map(
             function (DatosEspecimenProveedor $dto) use ($configPorEspecimen): object {
-                // Si por algún motivo no hay registro de divulgación, el espécimen no
-                // llegaría al árbol; defensivamente lo tratamos como todo-visible.
-                $cfg = $configPorEspecimen[$dto->especimenId] ?? null;
-                $ver = fn (callable $flag): bool => $cfg === null || $flag($cfg);
+                $cfg = $configPorEspecimen[$dto->especimenId];
+                $ver = fn (callable $flag): bool => $flag($cfg);
                 $g = fn (bool $visible, mixed $valor): mixed => $visible ? $valor : null;
 
                 return (object) [
-                    'occurrence_id' => $dto->occurrenceId,
-                    'scientific_name' => $dto->scientificName,
+                    'occurrence_id' => $g($ver(fn (EspecimenDivulgable $d) => $d->occurrenceIDVisible()), $dto->occurrenceId),
+                    'scientific_name' => $g($ver(fn (EspecimenDivulgable $d) => $d->scientificNameVisible()), $dto->scientificName),
                     'individual_count' => $g($ver(fn (EspecimenDivulgable $d) => $d->individualCountVisible()), $dto->individualCount),
                     'type_status' => $g($ver(fn (EspecimenDivulgable $d) => $d->typeStatusVisible()), $dto->typeStatus),
                     'type_notes' => $g($ver(fn (EspecimenDivulgable $d) => $d->typeNotesVisible()), $dto->typeNotes),
@@ -535,6 +681,11 @@ final class PortalCatalogo extends Component
                     'country' => $g($ver(fn (EspecimenDivulgable $d) => $d->countryVisible()), $dto->country),
                     'state_province' => $g($ver(fn (EspecimenDivulgable $d) => $d->stateProvinceVisible()), $dto->stateProvince),
                     'locality_name' => $g($ver(fn (EspecimenDivulgable $d) => $d->localityNameVisible()), $dto->localityName),
+                    'locality_excel' => $g($ver(fn (EspecimenDivulgable $d) => $d->localityNameVisible()), $dto->localityExcel),
+                    'locality_inec' => $g($ver(fn (EspecimenDivulgable $d) => $d->localityNameVisible()), $dto->localityInec),
+                    'locality_inec_reference' => $g($ver(fn (EspecimenDivulgable $d) => $d->localityNameVisible()), $dto->localityInecReference),
+                    'locality_visible' => $ver(fn (EspecimenDivulgable $d) => $d->localityNameVisible()),
+                    'coordinate_reference' => $g($ver(fn (EspecimenDivulgable $d) => $d->decimalLatitudeVisible()) && $ver(fn (EspecimenDivulgable $d) => $d->decimalLongitudeVisible()), $dto->coordinateReference),
                     'decimal_latitude' => $g($ver(fn (EspecimenDivulgable $d) => $d->decimalLatitudeVisible()), $dto->decimalLatitude),
                     'decimal_longitude' => $g($ver(fn (EspecimenDivulgable $d) => $d->decimalLongitudeVisible()), $dto->decimalLongitude),
                     'elevation_min_m' => $g($ver(fn (EspecimenDivulgable $d) => $d->elevationVisible()), $dto->elevationMinM),
@@ -544,7 +695,7 @@ final class PortalCatalogo extends Component
                     'life_stage' => $g($ver(fn (EspecimenDivulgable $d) => $d->lifeStageVisible()), $dto->lifeStage),
                 ];
             },
-            $proveedor->buscarPorOccurrenceIds($occurrenceIDs)
+            $datosPublicados
         );
     }
 
@@ -617,6 +768,9 @@ final class PortalCatalogo extends Component
     /** @return array<string, int> */
     private function calcularConteos(ConstruirArbolTaxonomicoOutput $output): array
     {
+        if ($output->especimenesPorNodo !== []) {
+            return array_map('count', $output->especimenesPorNodo);
+        }
         $conteos = [];
 
         foreach ($output->especimenesPorEspecie as $especie => $ids) {

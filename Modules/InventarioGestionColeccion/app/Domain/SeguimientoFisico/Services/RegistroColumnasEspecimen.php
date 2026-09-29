@@ -81,9 +81,9 @@ final class RegistroColumnasEspecimen
             self::col('elevationMaxM', 'Elevación max (m)', self::GRUPO_LOCALIDAD, self::PRIORIDAD_OPCIONAL, false, 'maximumElevationInMeters'),
 
             // Fecha
-            self::col('fechaColecta', 'Fecha colecta', self::GRUPO_FECHA, self::PRIORIDAD_RECOMENDADA, true, 'eventDate'),
+            self::col('fechaColecta', 'Fecha normalizada', self::GRUPO_FECHA, self::PRIORIDAD_RECOMENDADA, true, 'eventDate'),
+            self::col('fechaVerbatim', 'Fecha del Excel', self::GRUPO_FECHA, self::PRIORIDAD_RECOMENDADA, true, 'verbatimEventDate'),
             self::col('fechaColectaFin', 'Fecha colecta fin', self::GRUPO_FECHA, self::PRIORIDAD_OPCIONAL, false, null),
-            self::col('fechaVerbatim', 'Fecha verbatim', self::GRUPO_FECHA, self::PRIORIDAD_RECOMENDADA, false, 'verbatimEventDate'),
 
             // Registro
             self::col('colector', 'Colector (recordedBy)', self::GRUPO_REGISTRO, self::PRIORIDAD_RECOMENDADA, true, 'recordedBy'),

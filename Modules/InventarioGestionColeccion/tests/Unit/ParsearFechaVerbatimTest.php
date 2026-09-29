@@ -59,9 +59,18 @@ test('formato desconocido devuelve null', function (string $verbatim): void {
 })->with([
     'dañada',
     'sin fecha',
-    'Julio 2020', // sin día
     '2020',
     'mes 5 año 2020',
+    'checar!!',
+]);
+
+test('rangos y mes sin día toman la fecha inicial verificable', function (string $verbatim, string $esperado): void {
+    expect(ParsearFechaVerbatim::parsear($verbatim, 26)?->format('Y-m-d'))->toBe($esperado);
+})->with([
+    ['25 a 27-May-09', '2009-05-25'],
+    ['10/18-22/2007', '2007-10-18'],
+    ['nov-16', '2016-11-01'],
+    ['Julio 2020', '2020-07-01'],
 ]);
 
 test('mes inválido devuelve null', function (): void {

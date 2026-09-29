@@ -40,6 +40,9 @@ interface ProveedorEspecimenesPort
      */
     public function buscarPorOccurrenceIds(array $occurrenceIds): array;
 
+    /** @param list<string> $especimenIds UUIDs estables; @return DatosEspecimenProveedor[] */
+    public function buscarPorEspecimenIds(array $especimenIds): array;
+
     /** @return DatosEspecimenProveedor[] */
     public function buscarPorNombreCientifico(string $scientificName): array;
 }

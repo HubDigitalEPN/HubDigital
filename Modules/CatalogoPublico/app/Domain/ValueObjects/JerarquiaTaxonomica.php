@@ -56,6 +56,30 @@ final readonly class JerarquiaTaxonomica
         return $this->scientificName;
     }
 
+    /** Conserva únicamente los rangos conocidos, sin inventar los que faltan. */
+    public static function parcial(
+        string $phylum = '',
+        string $class = '',
+        string $order = '',
+        string $family = '',
+        string $genus = '',
+        string $scientificName = '',
+    ): self {
+        $genus = trim($genus);
+        $scientificName = trim($scientificName);
+        $specificEpithet = '';
+        if ($genus !== '' && $scientificName !== '') {
+            if (! str_starts_with($scientificName, $genus.' ')) {
+                $scientificName = $genus.' '.$scientificName;
+            }
+            $specificEpithet = substr($scientificName, strlen($genus) + 1);
+        } else {
+            $scientificName = '';
+        }
+
+        return new self(trim($phylum), trim($class), trim($order), trim($family), $genus, $specificEpithet, $scientificName);
+    }
+
     public function padreDeEspecie(): string
     {
         return $this->genus;

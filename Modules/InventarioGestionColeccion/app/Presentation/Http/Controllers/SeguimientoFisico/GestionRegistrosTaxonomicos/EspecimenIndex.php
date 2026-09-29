@@ -61,7 +61,7 @@ final class EspecimenIndex extends Component
     use GeneraSvgQr;
     use TraduceErroresPersistencia;
 
-    private const CLAVE_SESION_COLUMNAS = 'inventario.especimenes.columnas';
+    private const CLAVE_SESION_COLUMNAS = 'inventario.especimenes.columnas.v3';
 
     /** Tamaños de página ofrecidos en el selector. */
     private const TAMANOS_PAGINA = [25, 50, 100, 200];

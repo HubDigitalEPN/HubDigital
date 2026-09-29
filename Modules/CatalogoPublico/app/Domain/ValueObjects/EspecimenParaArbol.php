@@ -11,6 +11,7 @@ final readonly class EspecimenParaArbol
         public JerarquiaTaxonomica $jerarquia,
         public bool $genusVisible,
         public bool $scientificNameVisible,
+        public string $especimenId,
     ) {}
 
     public static function crear(
@@ -18,6 +19,7 @@ final readonly class EspecimenParaArbol
         JerarquiaTaxonomica $jerarquia,
         bool $genusVisible,
         bool $scientificNameVisible,
+        ?string $especimenId = null,
     ): self {
         if (trim($occurrenceID) === '') {
             throw new \InvalidArgumentException('El occurrenceID del EspecimenParaArbol no puede ser vacío');
@@ -28,6 +30,7 @@ final readonly class EspecimenParaArbol
             jerarquia: $jerarquia,
             genusVisible: $genusVisible,
             scientificNameVisible: $scientificNameVisible,
+            especimenId: $especimenId ?? $occurrenceID,
         );
     }
 

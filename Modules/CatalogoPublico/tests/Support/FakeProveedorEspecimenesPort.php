@@ -129,4 +129,9 @@ final class FakeProveedorEspecimenesPort implements ProveedorEspecimenesPort
             fn (DatosEspecimenProveedor $datos): bool => $datos->scientificName === $scientificName
         ));
     }
+
+    public function buscarPorEspecimenIds(array $especimenIds): array
+    {
+        return array_values(array_filter($this->especimenes, fn (DatosEspecimenProveedor $dato): bool => in_array($dato->especimenId, $especimenIds, true)));
+    }
 }

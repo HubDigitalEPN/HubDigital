@@ -61,6 +61,36 @@ final class ParsearFechaVerbatim
             return [self::construir((int) $m[1], (int) $m[2], (int) $m[3]), null];
         }
 
+        // Rango estadounidense inequívoco: mes/día-día/año.
+        if (preg_match('/^(\d{1,2})\/(\d{1,2})\s*[-–]\s*(\d{1,2})\/(\d{2,4})$/u', $verbatim, $m) && (int) $m[2] > 12) {
+            $anio = self::resolverAnio($m[4], $pivotYearDosDigitos);
+            $inicio = self::construir($anio, (int) $m[1], (int) $m[2]);
+            $fin = self::construir($anio, (int) $m[1], (int) $m[3]);
+
+            return $inicio !== null && $fin !== null && $inicio <= $fin ? [$inicio, $fin] : [null, null];
+        }
+
+        // Rango con "a": 25 a 27-May-09.
+        if (preg_match('/^(\d{1,2})\s+a\s+(\d{1,2})[\/\-\s.]+(\p{L}+)[\/\-\s.]+(\d{2,4})$/iu', $verbatim, $m)) {
+            $mes = self::MESES[self::normalizarMes($m[3])] ?? null;
+            if ($mes === null) {
+                return [null, null];
+            }
+            $anio = self::resolverAnio($m[4], $pivotYearDosDigitos);
+            $inicio = self::construir($anio, $mes, (int) $m[1]);
+            $fin = self::construir($anio, $mes, (int) $m[2]);
+
+            return $inicio !== null && $fin !== null && $inicio <= $fin ? [$inicio, $fin] : [null, null];
+        }
+
+        // Mes y año sin día: se registra el primero del mes.
+        if (preg_match('/^(\p{L}+)[\/\-\s.]+(\d{2,4})$/u', $verbatim, $m)) {
+            $mes = self::MESES[self::normalizarMes($m[1])] ?? null;
+            if ($mes !== null) {
+                return [self::construir(self::resolverAnio($m[2], $pivotYearDosDigitos), $mes, 1), null];
+            }
+        }
+
         // RANGO 1: dd-dd/mes/yyyy  ej. "14-26/feb/2001"
         if (preg_match('/^(\d{1,2})\s*[-–]\s*(\d{1,2})[\/\-\s.]+(\p{L}+)[\/\-\s.]+(\d{2,4})$/u', $verbatim, $m)) {
             $mes = self::MESES[self::normalizarMes($m[3])] ?? null;

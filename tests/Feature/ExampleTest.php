@@ -8,12 +8,15 @@ test('la raiz muestra el portal publico del laboratorio', function (): void {
         ->assertSee('Ciencia, colecciones y biodiversidad del Ecuador')
         ->assertSee('Laboratorio de Invertebrados')
         ->assertSee('Orcés&nbsp;V.', false)
+        ->assertSee('Explorar el catálogo')
+        ->assertDontSee('Conocer las colecciones')
+        ->assertDontSee('Servicios para la comunidad')
+        ->assertDontSee('id="servicios"', false)
+        ->assertDontSee('#servicios', false)
+        ->assertDontSee('>Servicios</a>', false)
         ->assertDontSee('Una infraestructura científica para la biodiversidad')
         ->assertDontSee('Una colección también es una herramienta educativa')
         ->assertDontSee('Equipo y responsabilidades')
         ->assertDontSee('Conservación y documentación de ejemplares de la colección científica.')
         ->assertDontSee('>Colecciones</a>', false);
-
-    // El enlace aparece en las navegaciones de escritorio y móvil y en el pie.
-    expect(substr_count($response->getContent(), '>Servicios</a>'))->toBe(3);
 });

@@ -80,10 +80,93 @@
         </div>
     @endif
 
+    <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6 lg:px-8">
+        <div class="flex flex-wrap items-center gap-4"><p class="text-sm text-text-secondary">Elige cómo explorar la colección:</p><a href="{{ route('portal.estadisticas') }}" class="text-sm font-semibold text-science-blue hover:underline">Mapa y estadísticas →</a><a href="{{ route('portal.comparar-especies') }}" class="text-sm font-semibold text-science-blue hover:underline">Comparar especies →</a></div>
+        <div class="inline-flex rounded-lg border border-border bg-surface p-1" role="group" aria-label="Presentación del catálogo">
+            <button type="button" wire:click="cambiarVista('tarjetas')" aria-pressed="{{ $vista === 'tarjetas' ? 'true' : 'false' }}"
+                @class(['rounded-md px-3 py-1.5 text-sm font-medium', 'bg-science-blue text-white' => $vista === 'tarjetas', 'text-text-secondary hover:text-text-primary' => $vista !== 'tarjetas'])>Tarjetas</button>
+            <button type="button" wire:click="cambiarVista('registros')" aria-pressed="{{ $vista === 'registros' ? 'true' : 'false' }}"
+                @class(['rounded-md px-3 py-1.5 text-sm font-medium', 'bg-science-blue text-white' => $vista === 'registros', 'text-text-secondary hover:text-text-primary' => $vista !== 'registros'])>Registros</button>
+        </div>
+    </div>
+
+    @if($vista === 'registros')
+        @if($nivelActual === '' && ! $mostrarSinFilo)
+            <x-catalogopublico::filtro-catalogo
+                :preparaciones="$preparacionesDisponibles"
+                :biomas="$biomasDisponibles"
+                :metodos-recoleccion="$metodosRecoleccionDisponibles"
+                :colectores="$colectoresDisponibles"
+                :filtros-activos="$filtrosActivos"
+            />
+        @endif
+        <div class="mx-auto max-w-7xl px-4 pb-10 pt-4 sm:px-6 lg:px-8">
+            <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+                <div>
+                    <h1 class="font-display text-2xl font-bold text-blue-navy">
+                        {{ $mostrarSinFilo ? 'Registros pendientes de identificar el filo' : ($taxonActual !== '' ? 'Registros de '.$taxonActual : 'Registros del catálogo') }}
+                    </h1>
+                    <p class="mt-1 text-sm text-text-secondary">{{ number_format($totalRegistrosVista) }} registros · página {{ $paginaActual }} de {{ $ultimaPagina }}</p>
+                </div>
+                @if($nivelActual === '' && ! $mostrarSinFilo && $totalRegistrosVista > 0)
+                    <button type="button" wire:click="descargarResultados" wire:loading.attr="disabled" wire:target="descargarResultados" class="rounded-md border border-science-blue px-4 py-2 text-sm font-semibold text-science-blue hover:bg-sky-50 disabled:opacity-50">Descargar resultados CSV</button>
+                @endif
+                @if($mostrarSinFilo)
+                    <button type="button" wire:click="navegar('', '')" class="text-sm font-medium text-science-blue hover:underline">
+                        Ver todos los registros
+                    </button>
+                @elseif($sinFilo > 0)
+                    <button type="button" wire:click="verSinFilo" class="text-sm font-medium text-science-blue hover:underline">
+                        Ver {{ number_format($sinFilo) }} registros sin filo
+                    </button>
+                @endif
+            </div>
+            @if($totalRegistrosVista === 0)
+                <p class="rounded-lg border border-border bg-surface p-8 text-center text-text-secondary">No hay registros públicos para esta selección.</p>
+            @else
+                <div class="overflow-x-auto rounded-lg border border-border bg-surface shadow-sm">
+                    <table class="w-full min-w-[850px] text-left text-sm">
+                        <thead class="border-b border-border bg-bg-main text-text-secondary">
+                            <tr>
+                                <th scope="col" class="px-4 py-3 font-semibold">N.º de catálogo</th>
+                                <th scope="col" class="px-4 py-3 font-semibold">Identificación</th>
+                                <th scope="col" class="px-4 py-3 font-semibold">Fecha de recolección</th>
+                                <th scope="col" class="px-4 py-3 font-semibold">Localidad del Excel</th>
+                                <th scope="col" class="px-4 py-3 font-semibold">Localidad INEC cercana o exacta</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-border">
+                            @foreach($registrosVista as $registro)
+                                <tr>
+                                    <td class="whitespace-nowrap px-4 py-3 font-medium text-text-primary">{{ $registro->occurrence_id ?: 'Reservado' }}</td>
+                                    <td class="px-4 py-3 italic text-text-primary">{{ $registro->scientific_name ?: 'Identificación pendiente' }}</td>
+                                    <td class="whitespace-nowrap px-4 py-3 text-text-secondary">{{ $registro->event_date ? \Carbon\CarbonImmutable::parse($registro->event_date)->format('d/m/Y') : '—' }}</td>
+                                    <td class="px-4 py-3 text-text-secondary">{{ $registro->locality_visible ? ($registro->locality_excel ?: '—') : 'Reservada' }}</td>
+                                    <td class="px-4 py-3 text-text-secondary">
+                                        {{ $registro->locality_visible ? ($registro->locality_inec ?: 'Sin correspondencia confirmada') : 'Reservada' }}
+                                        @if($registro->locality_inec && $registro->locality_inec_reference)
+                                            <span class="block text-xs">{{ $registro->locality_inec_reference }}</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+                <nav class="mt-5 flex items-center justify-between gap-3" aria-label="Páginas de registros">
+                    <button type="button" wire:click="cambiarPagina({{ $paginaActual - 1 }})" @disabled($paginaActual <= 1)
+                        class="rounded-lg border border-border px-4 py-2 text-sm text-science-blue disabled:cursor-not-allowed disabled:opacity-40">Anterior</button>
+                    <span class="text-sm text-text-secondary">{{ $paginaActual }} / {{ $ultimaPagina }}</span>
+                    <button type="button" wire:click="cambiarPagina({{ $paginaActual + 1 }})" @disabled($paginaActual >= $ultimaPagina)
+                        class="rounded-lg border border-border px-4 py-2 text-sm text-science-blue disabled:cursor-not-allowed disabled:opacity-40">Siguiente</button>
+                </nav>
+            @endif
+        </div>
+
     {{-- =====================================================================
          RAÍZ — presentación del catálogo + grid de filos
          ===================================================================== --}}
-    @if($nivelActual === '')
+    @elseif($nivelActual === '')
         <div class="bg-blue-navy">
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
                 <h1 class="font-display text-2xl font-bold text-white">
@@ -92,10 +175,15 @@
                 @if($totalGlobal > 0)
                     <p class="mt-3 text-sm text-white/70">
                         <strong class="text-white tabular-nums">{{ number_format($totalGlobal) }}</strong>
-                        registros en
+                        registros publicados; identificados en
                         <strong class="text-white tabular-nums">{{ count($hijos) }}</strong>
                         {{ count($hijos) === 1 ? 'filo' : 'filos' }}
                     </p>
+                @endif
+                @if($sinFilo > 0)
+                    <button type="button" wire:click="verSinFilo" class="mt-3 text-sm font-medium text-white underline decoration-white/60 underline-offset-4 hover:decoration-white">
+                        Ver {{ number_format($sinFilo) }} registros cuyo filo está pendiente de identificar
+                    </button>
                 @endif
             </div>
         </div>
@@ -109,6 +197,11 @@
         />
 
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+            <details class="mb-6 rounded-lg border border-border bg-surface p-4 text-sm text-text-secondary">
+                <summary class="cursor-pointer font-semibold text-science-blue">¿Qué es Arthropoda?</summary>
+                <p class="mt-2">Arthropoda es el filo de los artrópodos: animales invertebrados con exoesqueleto y apéndices articulados. Incluye insectos, arácnidos, crustáceos y miriápodos. En este catálogo, cada tarjeta de filo permite seguir explorando sus grupos o ver directamente sus registros.</p>
+                <a href="https://nationalzoo.si.edu/conservation/news/house-hunters-amazing-arthropods" target="_blank" rel="noopener noreferrer" class="mt-2 inline-block text-science-blue underline">Conocer más · Smithsonian</a>
+            </details>
             @if(count($hijos) === 0)
                 <div role="status" class="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-surface px-6 py-12 text-center">
                     <flux:icon name="magnifying-glass" class="size-6 text-text-secondary" />
@@ -381,7 +474,6 @@
     @elseif($nivelActual === 'species')
         @assets
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
         @endassets
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
             <div class="flex gap-8">
@@ -491,6 +583,7 @@
                                 'occurrence_id'   => $e->occurrence_id,
                                 'scientific_name' => $e->scientific_name,
                                 'locality'        => collect([$e->locality_name, $e->country])->filter()->implode(' · '),
+                                'precision'       => $e->coordinate_reference,
                             ])
                             ->values();
                     @endphp
@@ -519,37 +612,58 @@
                                 x-data="{
                                     puntos: {{ Js::from($puntosGeo) }},
                                     mapa: null,
+                                    errorMapa: false,
                                     init() {
                                         this.$nextTick(() => this.inicializarMapa());
                                     },
-                                    inicializarMapa(reintentos = 0) {
-                                        // Con wire:navigate el <script> de Leaflet puede
-                                        // no haber terminado de cargar cuando Alpine
-                                        // ejecuta init(). Reintentamos hasta ~1s.
+                                    destroy() {
+                                        if (this.mapa) {
+                                            this.mapa.remove();
+                                            this.mapa = null;
+                                        }
+                                    },
+                                    inicializarMapa() {
                                         if (typeof L === 'undefined') {
-                                            if (reintentos < 20) {
-                                                setTimeout(() => this.inicializarMapa(reintentos + 1), 50);
+                                            if (!window.__hubLeafletPromise) {
+                                                window.__hubLeafletPromise = new Promise((resolve, reject) => {
+                                                    const script = document.createElement('script');
+                                                    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+                                                    script.onload = resolve;
+                                                    script.onerror = reject;
+                                                    document.head.appendChild(script);
+                                                });
                                             }
+                                            window.__hubLeafletPromise.then(() => this.$nextTick(() => this.inicializarMapa()))
+                                                .catch(() => { this.errorMapa = true; });
                                             return;
                                         }
 
                                         this.mapa = L.map(this.$refs.mapaContainer, {
                                             scrollWheelZoom: false,
                                         });
-                                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                                        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
                                             attribution: '&copy; <a href=\'https://www.openstreetmap.org/copyright\'>OpenStreetMap</a>',
                                             maxZoom: 18,
                                         }).addTo(this.mapa);
 
                                         const marcadores = this.puntos.map(p => {
                                             const m = L.marker([p.lat, p.lon]).addTo(this.mapa);
-                                            m.bindPopup(
-                                                '<div style=\'font-family:sans-serif;font-size:13px;min-width:160px\'>' +
-                                                '<p style=\'font-style:italic;font-weight:600;margin:0 0 4px\'>' + p.scientific_name + '</p>' +
-                                                '<p style=\'font-family:monospace;font-size:11px;margin:0 0 2px\'>' + p.occurrence_id + '</p>' +
-                                                (p.locality ? '<p style=\'color:#666;font-size:11px;margin:0\'>' + p.locality + '</p>' : '') +
-                                                '</div>'
-                                            );
+                                            const popup = L.DomUtil.create('div');
+                                            const nombre = L.DomUtil.create('p', '', popup);
+                                            nombre.textContent = p.scientific_name || 'Identificación pendiente';
+                                            nombre.style.fontWeight = '600';
+                                            const codigo = L.DomUtil.create('p', '', popup);
+                                            codigo.textContent = p.occurrence_id || '';
+                                            if (p.locality) {
+                                                const lugar = L.DomUtil.create('p', '', popup);
+                                                lugar.textContent = p.locality;
+                                            }
+                                            if (p.precision) {
+                                                const precision = L.DomUtil.create('p', '', popup);
+                                                precision.textContent = p.precision;
+                                                precision.style.fontSize = '11px';
+                                            }
+                                            m.bindPopup(popup);
                                             return m;
                                         });
 
@@ -567,16 +681,11 @@
                                             if (this.mapa) this.mapa.invalidateSize();
                                         });
 
-                                        this.$cleanup(() => {
-                                            if (this.mapa) {
-                                                this.mapa.remove();
-                                                this.mapa = null;
-                                            }
-                                        });
                                     }
                                 }"
                                 class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden"
                             >
+                                <p x-show="errorMapa" x-cloak class="p-4 text-sm text-text-secondary">No se pudo cargar el mapa. Recarga la página para intentarlo nuevamente.</p>
                                 <div x-ref="mapaContainer" class="h-72 sm:h-96 w-full"></div>
                             </div>
                         @endif
@@ -689,10 +798,17 @@
 
                                             {{-- Metadatos como lista de definición --}}
                                             <dl class="grid grid-cols-1 gap-x-8 gap-y-1.5 text-xs sm:grid-cols-2">
-                                                @if($especimen->locality_name)
-                                                    <div class="flex gap-2 sm:col-span-2">
-                                                        <dt class="w-24 shrink-0 text-text-secondary">Localidad</dt>
-                                                        <dd class="text-text-primary">{{ $especimen->locality_name }}</dd>
+                                                @if($especimen->locality_visible)
+                                                    <div class="min-w-0">
+                                                        <dt class="mb-1 font-semibold text-text-secondary">Localidad del Excel</dt>
+                                                        <dd class="break-words text-text-primary">{{ $especimen->locality_excel ?: $especimen->locality_name ?: 'Sin datos' }}</dd>
+                                                    </div>
+                                                    <div class="min-w-0">
+                                                        <dt class="mb-1 font-semibold text-text-secondary">Localidad INEC</dt>
+                                                        <dd class="break-words text-text-primary">{{ $especimen->locality_inec ?: 'Sin coincidencia INEC' }}</dd>
+                                                        @if($especimen->locality_inec_reference)
+                                                            <dd class="mt-1 text-text-secondary">{{ ucfirst($especimen->locality_inec_reference) }}</dd>
+                                                        @endif
                                                     </div>
                                                 @endif
                                                 @if($especimen->country)
@@ -716,13 +832,20 @@
                                                 @if($coordStr)
                                                     <div class="flex gap-2">
                                                         <dt class="w-24 shrink-0 text-text-secondary">Coordenadas</dt>
-                                                        <dd class="font-mono text-text-primary">{{ $coordStr }}</dd>
+                                                        <dd class="text-text-primary">
+                                                            <span class="font-mono">{{ $coordStr }}</span>
+                                                            @if(str_contains($especimen->coordinate_reference ?? '', 'aproximada'))
+                                                                <span class="mt-1 block text-text-secondary">Referencia aproximada; ubicación de colecta pendiente de confirmar.</span>
+                                                            @elseif(str_contains($especimen->coordinate_reference ?? '', 'recuperada'))
+                                                                <span class="mt-1 block text-text-secondary">Coordenada recuperada del Excel; precisión de colecta pendiente de confirmar.</span>
+                                                            @endif
+                                                        </dd>
                                                     </div>
                                                 @endif
                                                 @if($especimen->event_date)
                                                     <div class="flex gap-2">
                                                         <dt class="w-24 shrink-0 text-text-secondary">Recolección</dt>
-                                                        <dd class="text-text-primary tabular-nums">{{ $especimen->event_date }}</dd>
+                                                        <dd class="text-text-primary tabular-nums">{{ \Carbon\CarbonImmutable::parse($especimen->event_date)->format('d/m/Y') }}</dd>
                                                     </div>
                                                 @endif
                                                 @if($especimen->sampling_protocol)

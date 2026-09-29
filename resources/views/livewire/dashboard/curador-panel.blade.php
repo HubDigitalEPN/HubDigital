@@ -15,7 +15,8 @@
         <a href="{{ route('inventario.taxonomia.especimenes') }}" wire:navigate><flux:icon name="magnifying-glass" class="size-6" /><span><strong>Buscar</strong><small>Objetos, lotes y registros</small></span></a>
         <a href="{{ route('prestamos.curador.depositos') }}" wire:navigate><flux:icon name="tag" class="size-6" /><span><strong>Ingresos</strong><small>Revisar nuevos materiales</small></span></a>
         <a href="{{ route('divulgacion.imagenes') }}" wire:navigate><flux:icon name="photo" class="size-6" /><span><strong>Imágenes</strong><small>Archivo de la colección</small></span></a>
-        <button type="button" wire:click="descargarReporteDepositos"><flux:icon name="chart-bar" class="size-6" /><span><strong>Reportes</strong><small>Descargar movimientos</small></span></button>
+        <a href="{{ route('divulgacion.analisis-diversidad') }}"><flux:icon name="chart-bar" class="size-6" /><span><strong>Análisis de diversidad</strong><small>Índices de la colección</small></span></a>
+        <button type="button" wire:click="descargarReporteDepositos"><flux:icon name="arrow-down-tray" class="size-6" /><span><strong>Reportes</strong><small>Descargar movimientos</small></span></button>
     </nav>
 
     <div class="hub-curator-grid">

@@ -50,6 +50,10 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
                 e.country,
                 e.state_province,
                 e.locality_name,
+                e.localidad_verbatim,
+                e.lat_lon_max_error,
+                loc.referencia_inec,
+                inec.nombre AS localidad_inec,
                 e.decimal_latitude,
                 e.decimal_longitude,
                 e.fecha_colecta,
@@ -65,6 +69,8 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
             INNER JOIN taxonomia.taxones t ON t.id = e.taxon_id
             CROSS JOIN taxon_resumen tr
             LEFT JOIN taxonomia.muestras_colecta mc ON mc.id = e.muestra_id
+            LEFT JOIN taxonomia.localidades loc ON loc.id = e.localidad_id
+            LEFT JOIN recepciones.localidades_ecuador_catalogo inec ON inec.codigo = loc.codigo_inec AND inec.fuente LIKE \'INEC %\'
             WHERE e.occurrence_id = ?
         ', [$occurrenceId, $occurrenceId]);
 
@@ -110,6 +116,10 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
                 e.country,
                 e.state_province,
                 e.locality_name,
+                e.localidad_verbatim,
+                e.lat_lon_max_error,
+                loc.referencia_inec,
+                inec.nombre AS localidad_inec,
                 e.decimal_latitude,
                 e.decimal_longitude,
                 e.fecha_colecta,
@@ -125,6 +135,8 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
             INNER JOIN taxonomia.taxones t ON t.id = e.taxon_id
             LEFT JOIN taxon_resumen tr ON tr.origin_id = e.taxon_id
             LEFT JOIN taxonomia.muestras_colecta mc ON mc.id = e.muestra_id
+            LEFT JOIN taxonomia.localidades loc ON loc.id = e.localidad_id
+            LEFT JOIN recepciones.localidades_ecuador_catalogo inec ON inec.codigo = loc.codigo_inec AND inec.fuente LIKE \'INEC %\'
             WHERE e.occurrence_id IS NOT NULL
             AND t.rango = \'especie\'
         ');
@@ -154,6 +166,10 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
         $q = DB::table('taxonomia.especimenes as e')
             ->join('taxonomia.taxones as t', 't.id', '=', 'e.taxon_id')
             ->leftJoin('taxonomia.muestras_colecta as mc', 'mc.id', '=', 'e.muestra_id')
+            ->leftJoin('taxonomia.localidades as loc', 'loc.id', '=', 'e.localidad_id')
+            ->leftJoin('recepciones.localidades_ecuador_catalogo as inec', function (\Illuminate\Database\Query\JoinClause $join): void {
+                $join->on('inec.codigo', '=', 'loc.codigo_inec')->where('inec.fuente', 'LIKE', 'INEC %');
+            })
             ->whereNotNull('e.occurrence_id')
             ->where('t.rango', 'especie');
 
@@ -178,6 +194,10 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
                 'e.country',
                 'e.state_province',
                 'e.locality_name',
+                'e.localidad_verbatim',
+                'e.lat_lon_max_error',
+                'loc.referencia_inec',
+                'inec.nombre as localidad_inec',
                 'e.decimal_latitude',
                 'e.decimal_longitude',
                 'e.fecha_colecta',
@@ -309,6 +329,10 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
         $filas = DB::table('taxonomia.especimenes as e')
             ->join('taxonomia.taxones as t', 't.id', '=', 'e.taxon_id')
             ->leftJoin('taxonomia.muestras_colecta as mc', 'mc.id', '=', 'e.muestra_id')
+            ->leftJoin('taxonomia.localidades as loc', 'loc.id', '=', 'e.localidad_id')
+            ->leftJoin('recepciones.localidades_ecuador_catalogo as inec', function (\Illuminate\Database\Query\JoinClause $join): void {
+                $join->on('inec.codigo', '=', 'loc.codigo_inec')->where('inec.fuente', 'LIKE', 'INEC %');
+            })
             ->whereIn('e.occurrence_id', $occurrenceIds)
             ->where('t.rango', 'especie')
             ->select([
@@ -322,6 +346,10 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
                 'e.country',
                 'e.state_province',
                 'e.locality_name',
+                'e.localidad_verbatim',
+                'e.lat_lon_max_error',
+                'loc.referencia_inec',
+                'inec.nombre as localidad_inec',
                 'e.decimal_latitude',
                 'e.decimal_longitude',
                 'e.fecha_colecta',
@@ -356,6 +384,10 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
             ->join('taxonomia.taxones as t', 't.id', '=', 'e.taxon_id')
             ->join('taxonomia.taxones as tx_genus', 'tx_genus.id', '=', 't.padre_id')
             ->leftJoin('taxonomia.muestras_colecta as mc', 'mc.id', '=', 'e.muestra_id')
+            ->leftJoin('taxonomia.localidades as loc', 'loc.id', '=', 'e.localidad_id')
+            ->leftJoin('recepciones.localidades_ecuador_catalogo as inec', function (\Illuminate\Database\Query\JoinClause $join): void {
+                $join->on('inec.codigo', '=', 'loc.codigo_inec')->where('inec.fuente', 'LIKE', 'INEC %');
+            })
             ->whereNotNull('e.occurrence_id')
             ->whereRaw(
                 "LOWER(CASE WHEN t.nombre_cientifico LIKE (tx_genus.nombre_cientifico || ' %')
@@ -375,6 +407,10 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
                 'e.country',
                 'e.state_province',
                 'e.locality_name',
+                'e.localidad_verbatim',
+                'e.lat_lon_max_error',
+                'loc.referencia_inec',
+                'inec.nombre as localidad_inec',
                 'e.decimal_latitude',
                 'e.decimal_longitude',
                 'e.fecha_colecta',
@@ -388,6 +424,38 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
                 DB::raw('NULL as genus'),
             ])
             ->orderBy('e.occurrence_id')
+            ->get();
+
+        return $filas->map(fn ($fila) => $this->traducir($fila))->all();
+    }
+
+
+    /** Consulta por UUID estable, incluyendo registros identificados hasta un rango superior. */
+    public function buscarPorEspecimenIds(array $especimenIds): array
+    {
+        if ($especimenIds === []) {
+            return [];
+        }
+
+        $filas = DB::table('taxonomia.especimenes as e')
+            ->leftJoin('taxonomia.taxones as t', 't.id', '=', 'e.taxon_id')
+            ->leftJoin('taxonomia.muestras_colecta as mc', 'mc.id', '=', 'e.muestra_id')
+            ->leftJoin('taxonomia.localidades as loc', 'loc.id', '=', 'e.localidad_id')
+            ->leftJoin('recepciones.localidades_ecuador_catalogo as inec', function (\Illuminate\Database\Query\JoinClause $join): void {
+                $join->on('inec.codigo', '=', 'loc.codigo_inec')->where('inec.fuente', 'LIKE', 'INEC %');
+            })
+            ->whereIn('e.id', $especimenIds)
+            ->select([
+                'e.*',
+                'mc.sampling_protocol',
+                'loc.referencia_inec',
+                'inec.nombre as localidad_inec',
+                DB::raw("COALESCE(t.nombre_cientifico, 'Identificación pendiente') as nombre_cientifico"),
+                DB::raw('NULL as family'),
+                DB::raw('NULL as genus'),
+            ])
+            ->orderBy('e.fila_origen_excel')
+            ->orderBy('e.id')
             ->get();
 
         return $filas->map(fn ($fila) => $this->traducir($fila))->all();
@@ -418,6 +486,10 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
             lifeStage: $fila->life_stage,
             elevationMinM: $fila->elevation_min_m !== null ? (float) $fila->elevation_min_m : null,
             elevationMaxM: $fila->elevation_max_m !== null ? (float) $fila->elevation_max_m : null,
+            localityExcel: $fila->localidad_verbatim ?? null,
+            localityInec: $fila->localidad_inec ?? null,
+            localityInecReference: $fila->referencia_inec ?? null,
+            coordinateReference: $fila->lat_lon_max_error ?? null,
         );
     }
 }

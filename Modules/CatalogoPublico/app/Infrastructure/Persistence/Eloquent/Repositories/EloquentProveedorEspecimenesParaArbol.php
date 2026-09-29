@@ -6,6 +6,7 @@ namespace Modules\CatalogoPublico\Infrastructure\Persistence\Eloquent\Repositori
 
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\LazyCollection;
 use Modules\CatalogoPublico\Application\Ports\ProveedorEspecimenesParaArbolPort;
 use Modules\CatalogoPublico\Domain\ValueObjects\EspecimenParaArbol;
 use Modules\CatalogoPublico\Domain\ValueObjects\FiltrosBusqueda;
@@ -14,57 +15,67 @@ use Modules\CatalogoPublico\Domain\ValueObjects\RangoTaxonomico;
 
 final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimenesParaArbolPort
 {
+    /** Filas filtradas y en orden estable para una descarga CSV de memoria acotada. */
+    public function cursorParaCsv(FiltrosBusqueda $filtros): LazyCollection
+    {
+        $query = DB::table('taxonomia.especimenes as te')
+            ->join('divulgacion.especimenes_divulgables as ed', 'ed.especimen_id', '=', 'te.id')
+            ->leftJoin('taxonomia.taxones as tx', 'tx.id', '=', 'te.taxon_id')
+            ->leftJoin('taxonomia.localidades as loc', 'loc.id', '=', 'te.localidad_id');
+
+        if (! $filtros->estaVacio()) {
+            $query = $this->aplicarFiltros($query, $filtros);
+        }
+
+        return $query->select([
+            'te.occurrence_id', 'te.codigo_catalogo', 'te.fecha_colecta',
+            'te.localidad_verbatim', 'te.state_province', 'te.decimal_latitude',
+            'te.decimal_longitude', 'te.lat_lon_max_error', 'te.type_status',
+            'tx.nombre_cientifico', 'tx.rango', 'loc.nombre_canonico as localidad_inec',
+            'loc.codigo_inec', 'ed.occurrence_id_visible', 'ed.scientific_name_visible',
+            'ed.event_date_visible', 'ed.locality_name_visible', 'ed.state_province_visible',
+            'ed.decimal_latitude_visible', 'ed.decimal_longitude_visible', 'ed.type_status_visible',
+        ])->orderBy('te.fila_origen_excel')->orderBy('te.id')->cursor();
+    }
+
     /** @return list<EspecimenParaArbol> */
     public function obtenerTodos(?FiltrosBusqueda $filtros = null): array
     {
         $query = DB::table('taxonomia.especimenes as te')
-            ->join('divulgacion.especimenes_divulgables as ed', 'ed.especimen_id', '=', 'te.id')
-            ->join('taxonomia.taxones as tx_species', 'tx_species.id', '=', 'te.taxon_id');
+            ->join('divulgacion.especimenes_divulgables as ed', 'ed.especimen_id', '=', 'te.id');
 
         if ($filtros !== null && ! $filtros->estaVacio()) {
             $query = $this->aplicarFiltros($query, $filtros);
         }
 
         $filas = $query->select([
+            'te.id',
             'te.occurrence_id',
             'te.taxon_id',
             'ed.genus_visible',
             'ed.scientific_name_visible',
-        ])->get();
+        ])->orderBy('te.fila_origen_excel')->orderBy('te.id')->get();
 
         if ($filas->isEmpty()) {
             return [];
         }
 
-        $taxonIds = array_values(array_unique(array_map(fn ($f) => $f->taxon_id, $filas->all())));
+        $taxonIds = array_values(array_filter(array_unique(array_map(fn ($f) => $f->taxon_id, $filas->all()))));
         $jerarquiasPorTaxon = $this->resolverJerarquiasPorTaxon($taxonIds);
 
         $result = [];
 
         foreach ($filas as $fila) {
-            $porRango = $jerarquiasPorTaxon[$fila->taxon_id] ?? null;
-            if ($porRango === null) {
-                continue;
-            }
-
-            $genus = $porRango[RangoTaxonomico::Genus->rangoBD()];
-            $scientificName = $porRango[RangoTaxonomico::Species->rangoBD()];
-
-            if (! str_starts_with($scientificName, $genus.' ')) {
-                $scientificName = $genus.' '.$scientificName;
-            }
-
-            $specificEpithet = substr($scientificName, strlen($genus) + 1);
+            $porRango = $jerarquiasPorTaxon[$fila->taxon_id] ?? [];
 
             try {
-                $jerarquia = JerarquiaTaxonomica::desde(
-                    phylum: $porRango[RangoTaxonomico::Phylum->rangoBD()],
-                    class: $porRango[RangoTaxonomico::Class_->rangoBD()],
-                    order: $porRango[RangoTaxonomico::Order->rangoBD()],
-                    family: $porRango[RangoTaxonomico::Family->rangoBD()],
-                    genus: $genus,
-                    specificEpithet: $specificEpithet,
-                    scientificName: $scientificName,
+                $jerarquia = JerarquiaTaxonomica::parcial(
+                    phylum: $porRango[RangoTaxonomico::Phylum->rangoBD()] ?? '',
+                    class: $porRango[RangoTaxonomico::Class_->rangoBD()] ?? '',
+                    order: $porRango[RangoTaxonomico::Order->rangoBD()] ?? '',
+                    family: $porRango[RangoTaxonomico::Family->rangoBD()] ?? '',
+                    genus: $porRango[RangoTaxonomico::Genus->rangoBD()] ?? '',
+                    scientificName: $porRango[RangoTaxonomico::Species->rangoBD()] ?? '',
                 );
 
                 $result[] = EspecimenParaArbol::crear(
@@ -72,6 +83,7 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
                     jerarquia: $jerarquia,
                     genusVisible: (bool) $fila->genus_visible,
                     scientificNameVisible: (bool) $fila->scientific_name_visible,
+                    especimenId: $fila->id,
                 );
             } catch (\Throwable) {
                 continue;
@@ -84,7 +96,7 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
     /**
      * Resuelve, por cada taxón raíz recibido, la cadena de ancestros canónicos
      * (phylum, clase, orden, familia, género, especie) usando `rango` real.
-     * Los taxones con cadenas incompletas se omiten del mapa devuelto.
+     * Conserva las cadenas incompletas con los rangos que sí estén identificados.
      *
      * @param  list<string>  $taxonIds
      * @return array<string, array<string, string>> taxon_id → [rango_bd → nombre_cientifico]
@@ -131,16 +143,6 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
         $porTaxon = [];
         foreach ($filas as $fila) {
             $porTaxon[$fila->raiz][$fila->rango] = $fila->nombre_cientifico;
-        }
-
-        // Descartar cadenas incompletas (falta algún rango canónico).
-        foreach ($porTaxon as $taxonId => $rangos) {
-            foreach ($rangosCanonicos as $rangoBD) {
-                if (! isset($rangos[$rangoBD])) {
-                    unset($porTaxon[$taxonId]);
-                    break;
-                }
-            }
         }
 
         return $porTaxon;
@@ -209,9 +211,11 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
 
         // Coordenadas — bounding box
         if ($filtros->latMin !== null && $filtros->latMax !== null) {
+            $query->where('ed.decimal_latitude_visible', true);
             $query->whereBetween('te.decimal_latitude', [$filtros->latMin, $filtros->latMax]);
         }
         if ($filtros->lonMin !== null && $filtros->lonMax !== null) {
+            $query->where('ed.decimal_longitude_visible', true);
             $query->whereBetween('te.decimal_longitude', [$filtros->lonMin, $filtros->lonMax]);
         }
 
@@ -228,6 +232,25 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
             $placeholders = implode(',', array_fill(0, count($filtros->biomas), '?'));
             $valores = array_map('strtolower', $filtros->biomas);
             $query->whereRaw("LOWER(te.biome) = ANY(ARRAY[{$placeholders}])", $valores);
+        }
+
+        if ($filtros->habitat !== null) {
+            $query->where(static function (Builder $q) use ($filtros): void {
+                $q->where('te.habitat', 'ILIKE', '%'.$filtros->habitat.'%')
+                    ->orWhere('te.microhabitat', 'ILIKE', '%'.$filtros->habitat.'%');
+            });
+        }
+        if ($filtros->tipo !== null) {
+            $query->where('ed.type_status_visible', true)
+                ->where('te.type_status', 'ILIKE', '%'.$filtros->tipo.'%');
+        }
+        if ($filtros->casta !== null) {
+            $query->where('ed.caste_visible', true)
+                ->where('te.caste', 'ILIKE', '%'.$filtros->casta.'%');
+        }
+        if ($filtros->estadio !== null) {
+            $query->where('ed.life_stage_visible', true)
+                ->where('te.life_stage', 'ILIKE', '%'.$filtros->estadio.'%');
         }
 
         return $query;

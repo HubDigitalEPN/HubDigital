@@ -40,12 +40,20 @@ final class ArbolTaxonomicoBuilder
         // PASO 2 — Nodos intermedios deduplicados (Phylum → Genus)
         /** @var array<string, NodoTaxonomico> clave → NodoTaxonomico */
         $nodosMapa = [];
+        $especimenesPorNodo = [];
+        $especimenesSinFilo = [];
 
         foreach ($visibles as $especimen) {
             $padreAnterior = 'root';
+            if ($especimen->jerarquia->phylum === '') {
+                $especimenesSinFilo[] = $especimen->especimenId;
+            }
 
             foreach (self::RANGOS_INTERMEDIOS as $rango) {
                 $taxon = $especimen->jerarquia->valorEnRango($rango);
+                if ($taxon === '') {
+                    continue;
+                }
                 $nodo = NodoTaxonomico::crear($rango, $taxon, $padreAnterior);
 
                 if (! isset($nodosMapa[$nodo->clave()])) {
@@ -53,6 +61,7 @@ final class ArbolTaxonomicoBuilder
                 }
 
                 $padreAnterior = $taxon;
+                $especimenesPorNodo[$rango->value.':'.$taxon][] = $especimen->especimenId;
             }
         }
 
@@ -64,6 +73,9 @@ final class ArbolTaxonomicoBuilder
         $especimenesPorEspecie = [];
 
         foreach ($visibles as $especimen) {
+            if ($especimen->jerarquia->scientificName === '') {
+                continue;
+            }
             $nodoEspecie = NodoEspecie::desdeJerarquia($especimen->jerarquia);
 
             if (! isset($especiesMapa[$nodoEspecie->especie])) {
@@ -71,15 +83,19 @@ final class ArbolTaxonomicoBuilder
             }
 
             $especimenesPorEspecie[$nodoEspecie->especie][] = $especimen->occurrenceID;
+            $especimenesPorNodo['species:'.$nodoEspecie->especie][] = $especimen->especimenId;
         }
 
-        // PASO 4 — Poda de huérfanos (bottom-up desde Genus hacia Phylum)
-        $nodosMapa = $this->podarHuerfanos($nodosMapa, $especiesMapa);
+        // Cada nodo procede de un registro visible: conserva los identificados solo
+        // hasta filo, clase, orden, familia o género, aunque aún no tengan especie.
 
         return ArbolTaxonomico::construir(
             nodosJerarquicos: array_values($nodosMapa),
             especies: array_values($especiesMapa),
             especimenesPorEspecie: $especimenesPorEspecie,
+            especimenesPorNodo: $especimenesPorNodo,
+            especimenIds: array_map(fn (EspecimenParaArbol $e): string => $e->especimenId, $visibles),
+            especimenesSinFilo: $especimenesSinFilo,
         );
     }
 

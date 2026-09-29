@@ -1233,7 +1233,7 @@
     // ordenada) pero se recuerda por navegador. Al montar, si este navegador
     // tiene una preferencia distinta a la que el servidor acaba de renderizar,
     // se la envía una vez; a partir de ahí la sesión ya coincide y no hay viaje.
-    const CLAVE = 'inventario.especimenes.columnas.v2';
+    const CLAVE = 'inventario.especimenes.columnas.v3';
     const servidor = { orden: @json($ordenColumnas), visibles: @json($columnasVisibles) };
 
     let local = null;

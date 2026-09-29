@@ -19,13 +19,6 @@
                                 Explorar el catálogo
                                 <svg viewBox="0 0 24 24" aria-hidden="true" class="size-4 fill-none stroke-current stroke-2"><path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round" /></svg>
                             </a>
-                            <a
-                                href="{{ route('portal.catalogo') }}"
-                                class="inline-flex min-h-12 items-center justify-center gap-3 rounded-md border border-blue-navy/40 bg-white px-5 py-3 text-sm font-semibold !text-blue-navy transition hover:border-blue-navy hover:bg-blue-navy/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-science-blue focus-visible:ring-offset-2"
-                            >
-                                Conocer las colecciones
-                                <svg viewBox="0 0 24 24" aria-hidden="true" class="size-4 fill-none stroke-current stroke-2"><path d="m7 10 5 5 5-5" stroke-linecap="round" stroke-linejoin="round" /></svg>
-                            </a>
                         </div>
                     </div>
                 </div>
@@ -104,36 +97,6 @@
                         <dd class="mt-1 text-sm leading-6 text-white/70">Vínculo entre el ejemplar, su colecta y la gestión curatorial.</dd>
                     </div>
                 </dl>
-            </div>
-        </section>
-
-        <section id="servicios" class="scroll-mt-28 border-y border-blue-navy/10 bg-[#F5F8FC]" aria-labelledby="titulo-servicios">
-            <div class="portal-container mx-auto py-16 lg:py-24">
-                <div class="flex flex-col gap-5 border-b border-blue-navy/15 pb-9 lg:flex-row lg:items-end lg:justify-between">
-                    <div>
-                        <h2 id="titulo-servicios" class="font-display text-3xl font-bold tracking-[-0.02em] text-blue-navy sm:text-4xl">Servicios para la comunidad</h2>
-                        <p class="mt-4 max-w-2xl leading-7 text-text-secondary">Acceso organizado para investigación, gestión de material y aprendizaje.</p>
-                    </div>
-                    <a href="#contacto" class="inline-flex min-h-11 items-center gap-2 text-sm font-semibold !text-science-blue hover:underline">Contactar al laboratorio <span aria-hidden="true">→</span></a>
-                </div>
-
-                <div class="grid divide-y divide-blue-navy/15 lg:grid-cols-3 lg:divide-x lg:divide-y-0">
-                    <article class="py-8 lg:pr-9">
-                        <h3 class="font-display text-2xl font-semibold text-blue-navy">Consulta científica</h3>
-                        <p class="mt-3 leading-7 text-text-secondary">Exploración del catálogo y atención de consultas sobre ejemplares, taxonomía y datos asociados.</p>
-                        <a href="{{ route('portal.catalogo') }}" class="mt-5 inline-flex min-h-11 items-center gap-2 text-sm font-semibold !text-science-blue hover:underline">Explorar registros <span aria-hidden="true">→</span></a>
-                    </article>
-                    <article class="py-8 lg:px-9">
-                        <h3 class="font-display text-2xl font-semibold text-blue-navy">Depósito de material</h3>
-                        <p class="mt-3 leading-7 text-text-secondary">Proceso digital guiado para proponer el ingreso de material, documentar su procedencia y seguir la revisión.</p>
-                        <a href="{{ route('depositos.portal') }}" class="mt-5 inline-flex min-h-11 items-center gap-2 text-sm font-semibold !text-science-blue hover:underline">Iniciar el proceso <span aria-hidden="true">→</span></a>
-                    </article>
-                    <article class="py-8 lg:pl-9">
-                        <h3 class="font-display text-2xl font-semibold text-blue-navy">Educación y divulgación</h3>
-                        <p class="mt-3 leading-7 text-text-secondary">Recursos de apoyo para acercar la diversidad de invertebrados, las colecciones y el trabajo curatorial a nuevos públicos.</p>
-                        <a href="#contacto" class="mt-5 inline-flex min-h-11 items-center gap-2 text-sm font-semibold !text-science-blue hover:underline">Contactar al laboratorio <span aria-hidden="true">→</span></a>
-                    </article>
-                </div>
             </div>
         </section>
 

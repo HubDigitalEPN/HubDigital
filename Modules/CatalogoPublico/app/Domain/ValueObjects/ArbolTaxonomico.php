@@ -15,6 +15,9 @@ final readonly class ArbolTaxonomico
         public array $nodosJerarquicos,
         public array $especies,
         public array $especimenesPorEspecie,
+        public array $especimenesPorNodo,
+        public array $especimenIds,
+        public array $especimenesSinFilo,
     ) {}
 
     /**
@@ -26,11 +29,17 @@ final readonly class ArbolTaxonomico
         array $nodosJerarquicos,
         array $especies,
         array $especimenesPorEspecie,
+        array $especimenesPorNodo = [],
+        array $especimenIds = [],
+        array $especimenesSinFilo = [],
     ): self {
         return new self(
             nodosJerarquicos: $nodosJerarquicos,
             especies: $especies,
             especimenesPorEspecie: $especimenesPorEspecie,
+            especimenesPorNodo: $especimenesPorNodo,
+            especimenIds: $especimenIds,
+            especimenesSinFilo: $especimenesSinFilo,
         );
     }
 
@@ -61,6 +70,6 @@ final readonly class ArbolTaxonomico
 
     public function estaVacio(): bool
     {
-        return $this->especies === [];
+        return $this->nodosJerarquicos === [] && $this->especies === [] && $this->especimenIds === [];
     }
 }

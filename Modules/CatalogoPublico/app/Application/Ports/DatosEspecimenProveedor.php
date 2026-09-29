@@ -29,5 +29,9 @@ final readonly class DatosEspecimenProveedor
         public ?string $lifeStage = null,
         public ?float $elevationMinM = null,
         public ?float $elevationMaxM = null,
+        public ?string $localityExcel = null,
+        public ?string $localityInec = null,
+        public ?string $localityInecReference = null,
+        public ?string $coordinateReference = null,
     ) {}
 }

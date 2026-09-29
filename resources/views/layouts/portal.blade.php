@@ -23,7 +23,6 @@
             <nav class="hidden h-full min-w-0 items-center gap-0 lg:flex" aria-label="Navegación principal">
                 <a href="{{ route('home') }}" class="inline-flex h-full items-center border-b-2 px-2 text-[clamp(.78rem,1vw,.9rem)] font-semibold transition {{ request()->routeIs('home') ? 'border-science-blue !text-blue-navy' : 'border-transparent !text-text-secondary hover:!text-blue-navy' }}">Inicio</a>
                 <a href="{{ route('portal.catalogo') }}" class="inline-flex h-full items-center border-b-2 px-2 text-[clamp(.78rem,1vw,.9rem)] font-semibold transition {{ request()->routeIs('portal.*') ? 'border-science-blue !text-blue-navy' : 'border-transparent !text-text-secondary hover:!text-blue-navy' }}">Catálogo</a>
-                <a href="{{ route('home') }}#servicios" class="inline-flex h-full items-center border-b-2 border-transparent px-2 text-[clamp(.78rem,1vw,.9rem)] font-semibold !text-text-secondary transition hover:!text-blue-navy">Servicios</a>
                 <a href="{{ route('depositos.portal') }}" class="inline-flex h-full items-center border-b-2 px-2 text-[clamp(.78rem,1vw,.9rem)] font-semibold transition {{ request()->routeIs('depositos.*') ? 'border-science-blue !text-blue-navy' : 'border-transparent !text-text-secondary hover:!text-blue-navy' }}">Depósitos</a>
             </nav>
 
@@ -73,7 +72,6 @@
             <div class="portal-container mx-auto grid gap-1">
                 <a href="{{ route('home') }}" @click="abierto = false" class="flex min-h-11 items-center border-l-2 border-transparent px-3 text-sm font-semibold !text-blue-navy hover:border-science-blue hover:bg-[#F5F8FC]">Inicio</a>
                 <a href="{{ route('portal.catalogo') }}" @click="abierto = false" class="flex min-h-11 items-center border-l-2 border-transparent px-3 text-sm font-semibold !text-blue-navy hover:border-science-blue hover:bg-[#F5F8FC]">Catálogo</a>
-                <a href="{{ route('home') }}#servicios" @click="abierto = false" class="flex min-h-11 items-center border-l-2 border-transparent px-3 text-sm font-semibold !text-blue-navy hover:border-science-blue hover:bg-[#F5F8FC]">Servicios</a>
                 <a href="{{ route('depositos.portal') }}" @click="abierto = false" class="flex min-h-11 items-center border-l-2 border-transparent px-3 text-sm font-semibold !text-blue-navy hover:border-science-blue hover:bg-[#F5F8FC]">Depósitos</a>
                 @auth
                     <a href="{{ route('dashboard') }}" wire:navigate class="mt-2 flex min-h-11 items-center justify-center rounded-md bg-blue-navy px-4 text-sm font-semibold !text-white">Mi cuenta</a>
@@ -106,10 +104,8 @@
                 <h2 class="text-xs font-semibold uppercase tracking-[0.14em] text-white">Enlaces</h2>
                 <ul class="mt-4 space-y-2 text-sm">
                     <li><a href="{{ route('home') }}" class="!text-white/75 hover:!text-white">Inicio</a></li>
-                    <li><a href="{{ route('portal.catalogo') }}" class="!text-white/75 hover:!text-white">Catálogo digital</a></li>
-                    <li><a href="{{ route('home') }}#servicios" class="!text-white/75 hover:!text-white">Servicios</a></li>
-                    <li><a href="{{ route('depositos.portal') }}" class="!text-white/75 hover:!text-white">Depósitos biológicos</a></li>
-                    <li><a href="{{ route('home') }}#contacto" class="!text-white/75 hover:!text-white">Contacto</a></li>
+                    <li><a href="{{ route('portal.catalogo') }}" class="!text-white/75 hover:!text-white">Catálogo</a></li>
+                    <li><a href="{{ route('depositos.portal') }}" class="!text-white/75 hover:!text-white">Depósitos</a></li>
                 </ul>
             </div>
 

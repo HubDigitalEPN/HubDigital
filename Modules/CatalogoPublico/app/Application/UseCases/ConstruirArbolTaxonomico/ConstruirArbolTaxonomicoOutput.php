@@ -19,6 +19,9 @@ final readonly class ConstruirArbolTaxonomicoOutput
         public array $nodosJerarquicos,
         public array $especies,
         public array $especimenesPorEspecie,
+        public array $especimenesPorNodo,
+        public array $especimenIds,
+        public array $especimenesSinFilo,
     ) {}
 
     public static function fromArbol(ArbolTaxonomico $arbol): self
@@ -46,6 +49,9 @@ final readonly class ConstruirArbolTaxonomicoOutput
             nodosJerarquicos: $nodosJerarquicos,
             especies: $especies,
             especimenesPorEspecie: $arbol->especimenesPorEspecie,
+            especimenesPorNodo: $arbol->especimenesPorNodo,
+            especimenIds: $arbol->especimenIds,
+            especimenesSinFilo: $arbol->especimenesSinFilo,
         );
     }
 }
