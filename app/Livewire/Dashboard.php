@@ -21,11 +21,7 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Eloquent\Mode
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\RecepcionLoteEloquentModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\RegistroEspecimenEloquentModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
-use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarAlertas\ListarAlertasHandler;
-use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarAlertas\ListarAlertasInput;
-use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarCajas\ListarCajasHandler;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Models\EspecimenEloquentModel;
-use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Models\EventoCicloIotEloquentModel;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Models\LocalidadEloquentModel;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Models\TaxonEloquentModel;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -98,16 +94,13 @@ class Dashboard extends Component
         ]);
     }
 
-    public function render(
-        ListarCajasHandler $cajasHandler,
-        ListarAlertasHandler $alertasHandler,
-    ): View {
+    public function render(): View
+    {
         $user = Auth::user();
 
         return match ($user->rolActivo()) {
             RolUsuario::CURADOR, RolUsuario::ADMIN => view('livewire.dashboard.curador-panel', [
                 ...$this->resumenCuraduria(),
-                ...$this->resumenSeguimientoFisico($cajasHandler, $alertasHandler),
                 'graficoFamilias' => $this->graficoFamilias(),
                 'graficoDeterminacion' => $this->graficoDeterminacion(),
                 'graficoDepositosPorMes' => $this->graficoDepositosPorMes(),
@@ -239,9 +232,6 @@ class Dashboard extends Component
                 ->count(),
             'prestActivos' => (int) $prestamos->activos,
             'prestVencidos' => (int) $prestamos->vencidos,
-
-            // Seguimiento físico (el resto llega por resumenSeguimientoFisico)
-            'fisMovimientos' => EventoCicloIotEloquentModel::query()->count(),
         ];
     }
 
@@ -638,31 +628,6 @@ class Dashboard extends Component
             'rechazadas' => (int) $resumen->rechazadas,
             'donacionesRealizadas' => $donacionesRealizadas,
             'depositosRecientes' => (clone $base)->orderByDesc('created_at')->limit(4)->get(['id', 'numero', 'estado', 'tipo_tramite', 'created_at']),
-        ];
-    }
-
-    /**
-     * @return array{statCajasTotal: int, statCajasFueraDeLugar: int, statAlertasActivas: int}
-     */
-    private function resumenSeguimientoFisico(
-        ListarCajasHandler $cajasHandler,
-        ListarAlertasHandler $alertasHandler,
-    ): array {
-        $cajas = $cajasHandler->handle()->items;
-
-        // Una caja está "fuera de su lugar" solo cuando no está alojada en una ranura.
-        // en_gabinete, ubicacion_incorrecta y pendiente_clasificacion siguen presentes en
-        // su ranura (banderas de negocio), por lo que NO cuentan como ausentes.
-        $estadosFueraDeRanura = ['en_transito', 'extraccion_prolongada', 'extraviada'];
-
-        return [
-            'statCajasTotal' => count($cajas),
-            'statCajasFueraDeLugar' => count(
-                array_filter($cajas, fn ($c) => in_array($c->estado, $estadosFueraDeRanura, true)),
-            ),
-            'statAlertasActivas' => count(
-                $alertasHandler->handle(new ListarAlertasInput('activa'))->items,
-            ),
         ];
     }
 }

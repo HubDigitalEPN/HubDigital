@@ -6,18 +6,8 @@ use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\Seguimiento
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\EntidadDepositanteController;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\EspecimenController;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\TaxonController;
-use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\SeguimientoFisicoController;
 
 Route::middleware(['auth:sanctum'])->prefix('v1')->group(function (): void {
-
-    // --- Seguimiento físico (eventos IoT) — requiere token con habilidad 'esp32' ---
-    Route::middleware('ability:esp32')
-        ->prefix('seguimiento-fisico')
-        ->name('api.v1.seguimiento-fisico.')
-        ->group(function (): void {
-            Route::post('sincronizaciones', [SeguimientoFisicoController::class, 'procesarSincronizacion'])
-                ->name('sincronizaciones');
-        });
 
     // --- Gestión de registros taxonómicos ---
     Route::prefix('taxonomia')

@@ -9,3 +9,5 @@ Cada cambio se desarrolla en una rama nueva desde main. El usuario ejecuta `crea
 El archivo indicado al final del comando se sube a OCI. `SOURCE-METADATA.json` registra el commit de main, la huella del JAR y la del manifiesto Vite; la preparacion Linux verifica esos datos. Una nueva publicacion en Git no actualiza por si sola la VM: OCI usa el commit del paquete que se haya desplegado.
 
 La migracion de localidades crea el catalogo provincial y conserva los datos historicos. El despliegue aplica las migraciones antes de activar la release. La provincia la selecciona el usuario; del PDF se descubre el tipo de documento, y cada archivo tiene su comprobacion independiente.
+
+El seguimiento de cajas mediante lectores RFID y Arduino se ha retirado. Se conservan las tablas históricas y el catálogo científico; la retirada no requiere borrar datos. Las pruebas del sistema se mantienen en Git y se excluyen del paquete de producción.

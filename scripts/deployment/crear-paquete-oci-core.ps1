@@ -106,9 +106,18 @@ function Invoke-TarConProgreso {
 function Get-SalidaGit {
     param([Parameter(Mandatory)] [string[]]$Argumentos)
 
-    $salida = @(& git.exe -c core.safecrlf=false -C $Proyecto @Argumentos)
-    if ($LASTEXITCODE -ne 0) { throw "Fallo git $($Argumentos -join ' ')." }
-    return $salida
+    # Git emite las rutas en UTF-8. Windows PowerShell 5.1 las decodifica con
+    # la codificacion de consola, que puede ser OEM y alterar tildes o simbolos.
+    $codificacionAnterior = [Console]::OutputEncoding
+    try {
+        [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+        $salida = @(& git.exe -c core.safecrlf=false -c core.quotepath=false -C $Proyecto @Argumentos)
+        if ($LASTEXITCODE -ne 0) { throw "Fallo git $($Argumentos -join ' ')." }
+        return $salida
+    }
+    finally {
+        [Console]::OutputEncoding = $codificacionAnterior
+    }
 }
 
 function Get-HuellasCodigo {
@@ -181,7 +190,7 @@ $archivosRastreadosCambiados = @(Get-SalidaGit -Argumentos @('diff', '--name-onl
 $archivosNuevos = @(Get-SalidaGit -Argumentos @('ls-files', '--others', '--exclude-standard'))
 $archivosCambiados = @(($archivosRastreadosCambiados + $archivosNuevos) | Sort-Object -Unique)
 $rutasProhibidas = @($archivosCambiados | Where-Object {
-    $_ -match '(^|/)\.env($|\.(?!example$))' -or $_ -match '(^|/)\.codex-' -or $_ -match '\.(key|pem|p12|pfx|pass)$'
+    $_ -match '(^|/)\.env($|\.(?!example$))' -or $_ -match '(^|/)\.[^/]*-' -or $_ -match '\.(key|pem|p12|pfx|pass)$'
 })
 if ($rutasProhibidas) {
     throw "Hay archivos sensibles no ignorados. No se agrego nada a Git: $($rutasProhibidas -join ', ')"
@@ -396,7 +405,7 @@ $incluir = @(
 )
 $argumentosTar = @(
     '-czf', $paquete,
-    '--exclude=.git', '--exclude=.env', '--exclude=.env.*', '--exclude=.codex-*',
+    '--exclude=.git', '--exclude=.env', '--exclude=.env.*', '--exclude=.*-*',
     '--exclude=.ai', '--exclude=.agents', '--exclude=.tools', '--exclude=.local',
     '--exclude=artifacts', '--exclude=docs', '--exclude=tests', '--exclude=postman', '--exclude=docker',
     '--exclude=node_modules', '--exclude=public/hot', '--exclude=public/storage',
@@ -458,7 +467,7 @@ try {
     if ($LASTEXITCODE -ne 0 -or -not $contenido) { throw 'El paquete se creo, pero no pudo volver a leerse.' }
     $prohibidos = @($contenido | Where-Object {
         $_ -match '(^|/)\.git(/|$)' -or $_ -match '(^|/)\.env($|\.(?!example$))' -or
-        $_ -match '(^|/)\.codex-' -or $_ -match '(^|/)\.(ai|agents|tools|local)(/|$)' -or
+        $_ -match '(^|/)\.[^/]*-' -or $_ -match '(^|/)\.(ai|agents|tools|local)(/|$)' -or
         $_ -match '(^|/)(artifacts|docs|tests|postman|docker)(/|$)' -or
         $_ -match '\.(key|pem|p12|pfx|pass)$' -or
         $_ -match '(^|/)node_modules(/|$)' -or

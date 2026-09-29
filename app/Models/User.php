@@ -260,7 +260,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     /**
      * Capacidades mínimas de un token emitido por el inicio de sesión API.
-     * Nunca incluye `*` ni `esp32`; los dispositivos se aprovisionan aparte.
+     * Cada rol recibe únicamente las capacidades necesarias para sus trámites.
      *
      * @return list<string>
      */

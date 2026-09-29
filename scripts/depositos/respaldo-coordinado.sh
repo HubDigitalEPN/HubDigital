@@ -103,10 +103,12 @@ source_instance="${SOURCE_INSTANCE:-$COMPOSE_PROJECT}"
 source_database="$(dc exec -T postgres sh -c 'printf %s "$POSTGRES_DB"')"
 source_revision="${SOURCE_REVISION:-$(git rev-parse --verify HEAD 2>/dev/null || printf sin-git)}"
 for value in "$source_environment" "$source_instance" "$source_database" "$source_revision"; do
-    [[ "$value" =~ ^[A-Za-z0-9._:@/-]+$ ]] || {
-        echo 'Los metadatos de origen contienen caracteres no permitidos.' >&2
-        exit 65
-    }
+    case "$value" in
+        ''|*[!A-Za-z0-9._:@/-]*)
+            echo 'Los metadatos de origen contienen caracteres no permitidos.' >&2
+            exit 65
+            ;;
+    esac
 done
 
 cat >"$manifesto" <<EOF

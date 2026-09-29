@@ -14,7 +14,7 @@
 .agents
 .tools
 .local
-.codex-*
+.*-*
 .mcp.json
 boost.json
 artifacts

@@ -12,11 +12,13 @@
 .env.backup
 .env.production
 /.env.testing
-/.codex-*
+# Archivos ocultos auxiliares de desarrollo.
+/.*-*
 /.local/
 /artifacts/
 /playwright-report/
 /test-results/
+/postman/
 .phpactor.json
 .phpunit.result.cache
 Homestead.json

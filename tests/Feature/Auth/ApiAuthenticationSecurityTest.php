@@ -20,7 +20,6 @@ test('api login issues a short lived token limited to the user role', function (
 
     expect($token->abilities)->toBe(['depositos:gestionar'])
         ->and($token->abilities)->not->toContain('*')
-        ->and($token->abilities)->not->toContain('esp32')
         ->and($token->expires_at)->not->toBeNull()
         ->and($token->expires_at->betweenIncluded(
             $before->copy()->addMinutes(29),

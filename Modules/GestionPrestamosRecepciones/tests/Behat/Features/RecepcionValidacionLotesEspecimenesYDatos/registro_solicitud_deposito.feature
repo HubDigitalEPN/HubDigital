@@ -10,7 +10,7 @@ Característica: Registro de solicitud de depósito
         Dado que el investigador tiene una cuenta activa en el sistema
         Y ha iniciado una nueva solicitud de depósito
 
-    Esquema del escenario: Aplicación de límite anual por tipo de trámite
+    Esquema del escenario: Registro de solicitudes con historial anual
         Dado que el investigador tiene <solicitudes_previas> solicitudes de tipo "<tipo_tramite>" registradas este año
         Cuando el investigador intenta crear una nueva solicitud de tipo "<tipo_tramite>"
         Entonces la nueva solicitud de depósito queda en estado "<estado_solicitud>"
@@ -19,7 +19,7 @@ Característica: Registro de solicitud de depósito
         Ejemplos:
             | tipo_tramite | solicitudes_previas | estado_solicitud | mensaje_alerta                         |
             | Depósito     | 2                   | En Borrador      | Ninguno                                |
-            | Depósito     | 3                   | Rechazada        | Límite anual de depósitos alcanzado    |
+            | Depósito     | 3                   | En Borrador      | Ninguno                                |
             | Donación     | 3                   | En Borrador      | Ninguno                                |
             | Donación     | 10                  | En Borrador      | Ninguno                                |
 
@@ -59,6 +59,7 @@ Característica: Registro de solicitud de depósito
     @deposito
     Escenario: Integración de datos a partir de documentación oficial para Depósitos
         Dado que el investigador seleccionó el trámite de "Depósito"
+        Y que el investigador declara que las muestras provienen de la provincia de "Guayas"
         Cuando el investigador carga los siguientes documentos:
             | Documento Oficial                               |
             | Copia de la autorización de recolección (MAE) |
@@ -68,8 +69,8 @@ Característica: Registro de solicitud de depósito
             | N.º Permiso Recolección  | Copia de la autorización de recolección (MAE) |
             | N.º Permiso Movilización | Copia del permiso de movilización               |
             | Grupo Animal             | Copia del permiso de movilización               |
-            | Provincia                | Copia del permiso de movilización               |
             | Localidad                | Copia del permiso de movilización               |
+        Y la solicitud conserva la provincia de origen declarada "Guayas"
 
     @donacion
     Escenario: Carga de documentación oficial para Donaciones

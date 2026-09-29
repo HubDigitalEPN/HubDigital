@@ -110,7 +110,7 @@ test('el respaldo coordinado preserva copias completas y reporta la recuperacion
         $huella = hash_file('sha256', $destino.'/manifiesto-coordinado.json');
 
         $repetido = ejecutarRespaldoCoordinadoSintetico($raiz);
-        expect($repetido->getExitCode())->toBe(4)
+        expect($repetido->getExitCode())->toBe(4, $repetido->getErrorOutput())
             ->and($repetido->getErrorOutput())->toContain('ya esta COMPLETO')
             ->and(hash_file('sha256', $destino.'/manifiesto-coordinado.json'))->toBe($huella);
 
@@ -118,7 +118,7 @@ test('el respaldo coordinado preserva copias completas y reporta la recuperacion
         file_put_contents($raiz.'/docker.log', '');
         $exitoso = ejecutarRespaldoCoordinadoSintetico($raiz);
         $logExitoso = (string) file_get_contents($raiz.'/docker.log');
-        expect($exitoso->getExitCode())->toBe(0)
+        expect($exitoso->getExitCode())->toBe(0, $exitoso->getErrorOutput())
             ->and($logExitoso)->toContain('--user 0:0')
             ->and($logExitoso)->toContain('--entrypoint chown');
 
@@ -126,7 +126,7 @@ test('el respaldo coordinado preserva copias completas y reporta la recuperacion
         $falloRecuperable = ejecutarRespaldoCoordinadoSintetico($raiz, ['QA_FAIL_BACKUP' => '1']);
         $incompleto = json_decode((string) file_get_contents($destino.'/manifiesto-coordinado.json'), true, 512, JSON_THROW_ON_ERROR);
         $log = (string) file_get_contents($raiz.'/docker.log');
-        expect($falloRecuperable->getExitCode())->toBe(42)
+        expect($falloRecuperable->getExitCode())->toBe(42, $falloRecuperable->getErrorOutput())
             ->and($incompleto['estado'])->toBe('INCOMPLETO')
             ->and($log)->toContain('--user 0:0')
             ->and($log)->toContain('--entrypoint php')
@@ -140,7 +140,7 @@ test('el respaldo coordinado preserva copias completas y reporta la recuperacion
             'QA_FAIL_START' => '1',
         ]);
         $incompleto = json_decode((string) file_get_contents($destino.'/manifiesto-coordinado.json'), true, 512, JSON_THROW_ON_ERROR);
-        expect($falloRecuperacion->getExitCode())->toBe(5)
+        expect($falloRecuperacion->getExitCode())->toBe(5, $falloRecuperacion->getErrorOutput())
             ->and($falloRecuperacion->getErrorOutput())->toContain('recuperacion manual')
             ->and($incompleto['recuperacion_servicios_fallida'])->toBe(1);
     } finally {

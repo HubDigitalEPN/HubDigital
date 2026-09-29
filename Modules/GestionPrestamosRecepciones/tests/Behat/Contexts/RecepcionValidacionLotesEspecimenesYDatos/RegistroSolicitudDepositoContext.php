@@ -179,7 +179,7 @@ final class RegistroSolicitudDepositoContext extends BaseContext
                 tipoTramite: $tipoTramite,
             );
             // Avanzar a un estado no-borrador para que `eliminarBorradoresDe()`
-            // del handler no las elimine antes de contar el límite anual.
+            // del handler no las elimine al registrar la nueva solicitud.
             $solicitud->avanzarARevisionCuraduria();
             $this->repo->guardar($solicitud);
         }
@@ -230,7 +230,7 @@ final class RegistroSolicitudDepositoContext extends BaseContext
     }
 
     // =========================================================================
-    // ESQUEMA DE ESCENARIO: Aplicación de límite anual por tipo de trámite
+    // ESQUEMA DE ESCENARIO: Registro de solicitudes con historial anual
     // =========================================================================
 
     #[Given('que el investigador tiene :solicitudesPrevias solicitudes de tipo :tipoTramite registradas este año')]
@@ -628,7 +628,6 @@ final class RegistroSolicitudDepositoContext extends BaseContext
             'N.º Permiso Recolección' => 'nroPermisoRecoleccion',
             'N.º Permiso Movilización' => 'nroPermisoMovilizacion',
             'Grupo Animal' => 'grupoAnimal',
-            'Provincia' => 'provinciaOrigen',
             'Localidad' => 'localidad',
         ];
 
@@ -652,6 +651,15 @@ final class RegistroSolicitudDepositoContext extends BaseContext
                 "Se esperaba que '{$informacionRequerida}' fuera extraído automáticamente pero está vacío"
             );
         }
+    }
+
+    #[Then('la solicitud conserva la provincia de origen declarada :provincia')]
+    public function laSolicitudConservaLaProvinciaDeOrigenDeclarada(string $provincia): void
+    {
+        Assert::assertNotNull($this->solicitudEnCurso, 'Se requiere una solicitud en curso');
+        $solicitud = $this->repo->buscarPorId($this->solicitudEnCurso->id());
+        Assert::assertNotNull($solicitud, 'La solicitud no fue encontrada tras cargar la documentación');
+        Assert::assertSame($provincia, $solicitud->provinciaOrigen());
     }
 
     // =========================================================================

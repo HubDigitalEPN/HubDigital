@@ -145,8 +145,7 @@ return [
 
     'remember_lifetime' => (int) env('AUTH_REMEMBER_LIFETIME', 60 * 24 * 30),
 
-    // Solo tokens emitidos por el login interactivo. Los tokens de dispositivos
-    // (por ejemplo ESP32) se aprovisionan por separado y no heredan este plazo.
+    // Vigencia de los tokens emitidos por el inicio de sesión interactivo.
     'api_token_lifetime' => (int) env('AUTH_API_TOKEN_LIFETIME', 480),
 
     // Solo estos dominios pueden recibir roles internos mediante el comando

@@ -23,17 +23,11 @@ final class PostgresTraductorErroresPersistenciaAdapter implements TraductorErro
     /**
      * Mensaje amigable por nombre de constraint de la base de datos.
      * Laravel genera el nombre reemplazando '.' por '_' en el nombre de la tabla
-     * (p. ej. la tabla "iot.unit_trays" produce "iot_unit_trays_..._unique").
+     * (p. ej. "taxonomia.taxones" produce "taxonomia_taxones_..._unique").
      *
      * @var array<string, string>
      */
     private array $mensajesPorConstraint = [
-        'iot_unit_trays_caja_id_numero_unique' => 'Ya existe un unit tray con ese número en la caja seleccionada. Usa un número distinto.',
-        'iot_unit_tray_especimenes_especimen_id_unique' => 'Ese espécimen ya está asignado a un unit tray. Quítalo del tray actual antes de reasignarlo.',
-        'iot_cajas_codigo_unique' => 'Ya existe una caja con ese código.',
-        'iot_cajas_codigo_rfid_unique' => 'Ese código RFID ya está asignado a otra caja.',
-        'iot_gabinetes_codigo_unique' => 'Ya existe un gabinete con ese código.',
-        'iot_ranuras_gabinete_gabinete_id_numero_ranura_unique' => 'Esa ranura ya existe en el gabinete.',
         'taxonomia_taxones_nombre_cientifico_rango_unique' => 'Ya existe un taxón con ese nombre científico y rango.',
         'taxonomia_entidades_depositantes_nombre_unique' => 'Ya existe una entidad depositante con ese nombre.',
         'taxonomia_especimenes_codigo_catalogo_unique' => 'Ya existe un espécimen con ese código de catálogo.',
