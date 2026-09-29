@@ -165,7 +165,7 @@ if ($urlRemota -ne "$repositorioGit.git" -or $urlPush -ne "$repositorioGit.git")
     throw "El destino oficial debe ser $repositorioGit.git en origin. No se publico en otro repositorio."
 }
 if ($OmitirCompilacion -or $OmitirPruebasPHP -or $SinPostgres) {
-    throw 'Publicar en main exige compilacion Java/Vite y pruebas PHP/PostgreSQL completas. No se admiten opciones de omision.'
+    throw 'Publicar en main exige compilacion Java/Vite y pruebas PHP/PostgreSQL y Gherkin completas. No se admiten opciones de omision.'
 }
 
 Invoke-Comando -Programa 'git.exe' -Argumentos @('-C', $Proyecto, 'fetch', $remoto, 'refs/heads/main:refs/remotes/origin/main') -Descripcion "Actualizando $upstream sin borrar ramas"
@@ -237,6 +237,7 @@ Invoke-Comando -Programa 'java.exe' -Argumentos @('-jar', $destinoJar, 'selftest
 Write-Host 'OK Java: firma valida, alteracion, ausencia de firma y seguridad PDF comprobadas.' -ForegroundColor Green
 
 $suitePostgresCompletada = $false
+$suiteGherkinCompletada = $false
 $solucionPdfComprobada = $false
 $php = Get-Command 'php' -ErrorAction SilentlyContinue
 if (-not $php) {
@@ -261,6 +262,18 @@ if ($php) {
     }
     if (-not $OmitirPruebasPHP) {
         Invoke-Comando -Programa $phpPrograma -Argumentos @('artisan', 'about', '--only=environment') -Descripcion 'Validando el arranque de Laravel' -DirectorioTrabajo $Proyecto
+
+        $ejecutableBehat = Join-Path $Proyecto 'vendor/bin/behat'
+        if (-not (Test-Path -LiteralPath $ejecutableBehat -PathType Leaf)) {
+            throw 'Falta Behat: no se puede publicar en main ni crear el paquete sin validar Gherkin.'
+        }
+        # Los mismos escenarios activos que GitHub. --strict rechaza fallos,
+        # pasos pendientes o sin definir antes del commit y del archivo OCI.
+        Invoke-Comando -Programa $phpPrograma -Argumentos @(
+            $ejecutableBehat, '--profile=default', '--no-interaction', '--tags=@listo', '--strict'
+        ) -Descripcion 'Validando escenarios de negocio Gherkin con Behat' -DirectorioTrabajo $Proyecto
+        $suiteGherkinCompletada = $true
+        Write-Host 'OK Gherkin: escenarios activos completados con Behat.' -ForegroundColor Green
 
         if ($SinPostgres) {
             Write-Host "`n==> Suite PostgreSQL omitida mediante -SinPostgres" -ForegroundColor Yellow
@@ -343,6 +356,10 @@ if ($headAntesValidacion -ne $headDespuesValidacion -or
     throw 'El codigo cambio durante las pruebas o compilaciones. main no se publica: vuelve a validar la version actual.'
 }
 
+if (-not $suitePostgresCompletada -or -not $suiteGherkinCompletada -or -not $solucionPdfComprobada) {
+    throw 'No se completaron las validaciones PHP/PostgreSQL, Gherkin y PDF obligatorias. main no se publica y no se crea el paquete.'
+}
+
 $estadoAntesCommit = @(Get-SalidaGit -Argumentos @('status', '--porcelain=v1', '--untracked-files=all'))
 if ($estadoAntesCommit) {
     Invoke-Comando -Programa 'git.exe' -Argumentos @('-C', $Proyecto, 'add', '-A') -Descripcion 'Agregando cambios a Git'
@@ -355,9 +372,6 @@ if ($estadoAntesCommit) {
 $estadoDespuesCommit = @(Get-SalidaGit -Argumentos @('status', '--porcelain=v1', '--untracked-files=all'))
 if ($estadoDespuesCommit) { throw 'Quedaron cambios fuera del commit. Se detiene antes de publicar para no crear un paquete distinto de Git.' }
 
-if (-not $suitePostgresCompletada -or -not $solucionPdfComprobada) {
-    throw 'No se completaron las validaciones obligatorias. main no se publica.'
-}
 $commit = (Get-SalidaGit -Argumentos @('rev-parse', 'HEAD') | Select-Object -First 1).Trim()
 Invoke-Comando -Programa 'git.exe' -Argumentos @('-C', $Proyecto, 'push', $remoto, 'HEAD:refs/heads/main') -Descripcion "Publicando el trabajo validado en $upstream sin force"
 Invoke-Comando -Programa 'git.exe' -Argumentos @('-C', $Proyecto, 'fetch', $remoto, 'refs/heads/main:refs/remotes/origin/main') -Descripcion 'Verificando el commit publicado'
@@ -992,6 +1006,7 @@ Write-Host "SHA-256:   $hash"
 Write-Host "SHA kit:   $hashKit"
 Write-Host "Tamano:    $tamanoMiB MiB"
 Write-Host 'Java PDF:  OK, compilacion Maven y autoprueba criptografica.'
+Write-Host 'Gherkin:   OK, escenarios de negocio activos completados con Behat en modo estricto.'
 if ($suitePostgresCompletada) {
     Write-Host 'Depositos: OK, suite PHP/PostgreSQL completada.'
 } else {

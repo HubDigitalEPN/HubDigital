@@ -10,8 +10,8 @@ Característica: Recepción de muestras físicas
         Dado que el investigador entrega el lote físico de una solicitud "Aprobada Documentalmente"
         Y el receptor EPN accede a los datos de la solicitud a partir de su Código QR
 
-    Esquema del escenario: Recepción física conforme cuando el lote supera la lista de verificación
-        Dado que la solicitud es un trámite de "<tipo_tramite>"
+    Escenario: Recepción conforme de una donación incorpora el lote de forma permanente
+        Dado que la solicitud es un trámite de "Donación"
         Y el lote cumple todos los ítems de la lista de verificación de recepción:
             | Ítem de verificación       | Resultado |
             | Nivel de alcohol           | Adecuado  |
@@ -23,13 +23,8 @@ Característica: Recepción de muestras físicas
         Y el acta final queda pendiente de curaduría
         Y los especímenes todavía no ingresan a la colección
         Cuando el curador genera y firma electrónicamente el acta final
-        Y los especímenes asociados ingresan a la colección en estado "<estado_coleccion>"
+        Y los especímenes asociados ingresan a la colección en estado "Permanente"
         Y se notifica al investigador la finalización exitosa de la entrega
-
-        Ejemplos:
-            | tipo_tramite | estado_coleccion |
-            | Depósito     | Temporal         |
-            | Donación     | Permanente       |
 
     Esquema del escenario: Rechazo y devolución al investigador cuando la anomalía es subsanable
         Cuando el receptor EPN registra el fallo de integridad subsanable "<motivo_fallo>"

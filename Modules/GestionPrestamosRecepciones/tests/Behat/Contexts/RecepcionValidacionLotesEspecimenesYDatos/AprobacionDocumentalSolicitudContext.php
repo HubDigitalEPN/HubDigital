@@ -18,8 +18,6 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarDocumentalme
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarDocumentalmenteSolicitud\AprobarDocumentalmenteSolicitudInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarDonacionConTransferencia\AprobarDonacionConTransferenciaHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarDonacionConTransferencia\AprobarDonacionConTransferenciaInput;
-use Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarSolicitudDeposito\EnviarSolicitudDepositoHandler;
-use Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarSolicitudDeposito\EnviarSolicitudDepositoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\PriorizarSolicitudEnCola\PriorizarSolicitudEnColaHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\PriorizarSolicitudEnCola\PriorizarSolicitudEnColaInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\RechazarDocumentalmenteSolicitud\RechazarDocumentalmenteSolicitudHandler;
@@ -31,7 +29,6 @@ use Modules\GestionPrestamosRecepciones\Domain\Entities\SolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ActaTransferenciaDominioGenerada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\CodigoQRAsignado;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudAprobadaDocumentalmente;
-use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudDepositoPendienteDeRevision;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudPriorizada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudRechazadaDocumentalmente;
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudRequiereCorreccion;
@@ -68,8 +65,6 @@ final class AprobacionDocumentalSolicitudContext extends BaseContext
     private FakeNotificacionCuratoriaAdapter $fakeNotificacionCuratoria;
 
     // ── Handlers ─────────────────────────────────────────────────────────────
-
-    private EnviarSolicitudDepositoHandler $enviarSolicitudHandler;
 
     private AprobarDocumentalmenteSolicitudHandler $aprobarHandler;
 
@@ -128,7 +123,6 @@ final class AprobacionDocumentalSolicitudContext extends BaseContext
         self::$app->instance(ColaRevisionCuratorialPort::class, new FakeColaRevisionCuratorialAdapter);
 
         // 3. Resolver Handlers — ya usan las instancias In-Memory
-        $this->enviarSolicitudHandler = $this->make(EnviarSolicitudDepositoHandler::class);
         $this->aprobarHandler = $this->make(AprobarDocumentalmenteSolicitudHandler::class);
         $this->aceptarJustificacionesHandler = $this->make(AceptarJustificacionesAlertasHandler::class);
         $this->rechazarJustificacionesHandler = $this->make(RechazarJustificacionesAlertasHandler::class);
@@ -273,26 +267,6 @@ final class AprobacionDocumentalSolicitudContext extends BaseContext
         );
     }
 
-    // =========================================================================
-    // ESCENARIO: El curador es notificado de una nueva solicitud por revisar
-    // =========================================================================
-
-    #[When('el investigador envía la solicitud para revisión documental')]
-    public function elInvestigadorEnviaLaSolicitudParaRevisionDocumental(): void
-    {
-        Assert::assertNotNull($this->solicitudEnCurso, 'Se requiere una solicitud en curso');
-
-        try {
-            $this->ultimaRespuesta = ($this->enviarSolicitudHandler)(
-                new EnviarSolicitudDepositoInput(
-                    solicitudId: (string) $this->solicitudEnCurso->id(),
-                )
-            );
-        } catch (\Throwable $e) {
-            $this->excepcionCapturada = $e;
-        }
-    }
-
     #[Then('la solicitud pasa a estado :estadoEsperado')]
     public function laSolicitudPasaAEstado(string $estadoEsperado): void
     {
@@ -311,24 +285,8 @@ final class AprobacionDocumentalSolicitudContext extends BaseContext
         );
     }
 
-    #[Then('se notifica al curador que hay una nueva solicitud por revisar')]
-    public function seNotificaAlCuradorQueHayUnaNuevaSolicitudPorRevisar(): void
-    {
-        Assert::assertNotNull($this->ultimaRespuesta, 'El handler no retornó ninguna respuesta');
-        Assert::assertTrue(
-            $this->ultimaRespuesta->notificacionCuradorEnviada,
-            'Se esperaba que el curador fuera notificado de la nueva solicitud por revisar'
-        );
-
-        // El envío a revisión debe haber publicado el evento de dominio correspondiente.
-        Assert::assertTrue(
-            $this->huboEventoDeTipo(SolicitudDepositoPendienteDeRevision::class),
-            'Se esperaba que se publicara el evento SolicitudDepositoPendienteDeRevision'
-        );
-    }
-
     // =========================================================================
-    // ESCENARIO: El curador aprueba una solicitud que llega sin alertas
+    // ESCENARIO: La aprobación sin alertas conserva al curador en la auditoría
     // =========================================================================
 
     #[Given('que la solicitud está :estadoPrevio')]

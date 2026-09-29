@@ -64,12 +64,16 @@ remaining_link="$(find "${stage}" -type l -print -quit)"
 [[ -z "${remaining_link}" ]] || { echo "El staging conserva un enlace: ${remaining_link}" >&2; exit 65; }
 
 # Rechaza secretos, cachés de configuración y respaldos incluso si aparecieron
-# dentro de un directorio permitido. Se imprimen sólo rutas, nunca contenido.
+# dentro de un directorio permitido. El script operativo de respaldo es código,
+# no una copia de datos: sólo su ruta exacta se permite en este filtro de nombres.
+# Se imprimen sólo rutas, nunca contenido.
 forbidden="$(find "${stage}" -type f \( \
     -name '.env' -o -name '.env.*' -o -name 'config.php' -path '*/bootstrap/cache/*' -o \
     -name '*.key' -o -name '*.pem' -o -name '*.p12' -o -name '*.pfx' -o \
     -name '*.dump' -o -name '*.sqlite' -o -name '*.sqlite3' -o \
-    -name '*backup*' -o -name '*respaldo*' -o -name 'php-error.log' \
+    \( \( -name '*backup*' -o -name '*respaldo*' \) \
+        ! -path "${stage}/scripts/depositos/respaldo-coordinado.sh" \) -o \
+    -name 'php-error.log' \
 \) -print -quit)"
 [[ -z "${forbidden}" ]] || { echo "El staging contiene un archivo prohibido: ${forbidden#"${stage}"/}" >&2; exit 65; }
 

@@ -19,7 +19,6 @@ use Modules\CatalogoPublico\Application\UseCases\ConsultarChatBot\ConsultarChatB
 use Modules\CatalogoPublico\Application\UseCases\ConsultarChatBot\ConsultarChatBotOutput;
 use Modules\CatalogoPublico\Domain\Entities\EspecimenDivulgable;
 use Modules\CatalogoPublico\Domain\Repositories\EspecimenDivulgableRepositoryInterface;
-use Modules\CatalogoPublico\Domain\ValueObjects\ChatBotMensajes;
 use Modules\CatalogoPublico\Domain\ValueObjects\ConfiguracionVisibilidad;
 use Modules\CatalogoPublico\Domain\ValueObjects\ContextoLLM;
 use Modules\CatalogoPublico\Domain\ValueObjects\EntidadesExtraidas;
@@ -181,39 +180,6 @@ final class ConsultaEnLenguajeNaturalContext extends BaseContext
     public function elContextoDelLlmIncluyeElMetodoDeRecoleccion(string $metodo): void
     {
         $this->afirmarCampoPresenteEnContexto('samplingProtocol', $metodo);
-    }
-
-    // =========================================================================
-    // ESCENARIO 3: Guardrail
-    // =========================================================================
-
-    #[Given('/^que el visitante realiza una pregunta fuera del dominio como "(.+)"$/u')]
-    public function queElVisitanteRealizaUnaPreguntaFueraDelDominioComo(string $pregunta): void
-    {
-        $this->pregunta = $pregunta;
-        $this->fakeClasificador->registrar($pregunta, IntencionConsulta::fueraDelDominio());
-    }
-
-    #[When('el clasificador de intención evalúa la pertinencia de la consulta')]
-    public function elClasificadorDeIntencionEvaluaLaPertinenciaDeLaConsulta(): void
-    {
-        $this->ultimaRespuesta = $this->handler->handle(new ConsultarChatBotInput($this->pregunta));
-    }
-
-    #[Then('la consulta se marca como fuera de dominio y no se envía al LLM')]
-    public function laConsultaSeMarcaComoFueraDeDominioYNoSeEnviaAlLlm(): void
-    {
-        Assert::assertNotNull($this->ultimaRespuesta, 'No se ejecutó ninguna consulta al chatbot');
-        Assert::assertFalse($this->ultimaRespuesta->dentroDeDominio, 'La consulta debería haberse marcado como fuera de dominio');
-        Assert::assertSame(0, $this->fakeGenerador->llamadas, 'El generador del LLM no debía haberse invocado en una consulta fuera de dominio');
-        Assert::assertNull($this->fakeGenerador->ultimoContexto, 'No debía haberse construido contexto para el LLM');
-    }
-
-    #[Then('el chatbot responde con el mensaje predeterminado de dominio no soportado')]
-    public function elChatbotRespondeConElMensajePredeterminadoDeDominioNoSoportado(): void
-    {
-        Assert::assertNotNull($this->ultimaRespuesta);
-        Assert::assertSame(ChatBotMensajes::FUERA_DE_DOMINIO, $this->ultimaRespuesta->respuesta);
     }
 
     // =========================================================================

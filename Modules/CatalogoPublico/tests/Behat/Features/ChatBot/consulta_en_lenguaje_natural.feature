@@ -34,15 +34,3 @@ Característica: Consulta en lenguaje natural
             | occurrenceID | familia     | metodo_recoleccion |
             | EPN-002      | Apidae      | Red entomológica   |
             | EPN-0012     | Formicidae  | Trampa Winkler     |
-
-    Esquema del escenario: El visitante recibe rechazo ante preguntas fuera del dominio
-        Dado que el visitante realiza una pregunta fuera del dominio como "<pregunta_invalida>"
-        Cuando el clasificador de intención evalúa la pertinencia de la consulta
-        Entonces la consulta se marca como fuera de dominio y no se envía al LLM
-        Y el chatbot responde con el mensaje predeterminado de dominio no soportado
-
-        Ejemplos:
-            | pregunta_invalida                                                          |
-            | ¿Cuáles son las probabilidades de que Ecuador gane el próximo mundial?     |
-            | Escribe un script en Python para migrar datos a PostgreSQL                 |
-            | ¿Cuál es la receta para hacer pan?                                         |

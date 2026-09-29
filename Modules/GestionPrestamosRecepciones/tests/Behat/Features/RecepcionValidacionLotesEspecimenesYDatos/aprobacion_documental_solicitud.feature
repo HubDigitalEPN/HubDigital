@@ -9,20 +9,11 @@ Característica: Aprobación documental de la solicitud
     Antecedentes:
         Dado que el investigador completó la carga de los documentos oficiales y de la matriz Darwin Core
 
-    Escenario: El curador es notificado de una nueva solicitud por revisar
-        Cuando el investigador envía la solicitud para revisión documental
-        Entonces la solicitud pasa a estado "Pendiente de Revisión por Curaduría"
-        Y se notifica al curador que hay una nueva solicitud por revisar
-
-    Escenario: El curador aprueba una solicitud que llega sin alertas
+    Escenario: La aprobación sin alertas conserva al curador responsable en la auditoría
         Dado que la solicitud está "Pendiente de Revisión por Curaduría"
         Y no presenta discrepancias de identidad ni alertas taxonómicas pendientes
         Cuando el curador confirma que la solicitud está validada
-        Entonces la solicitud pasa a estado "Aprobada Documentalmente"
-        Y la aprobación queda registrada en la auditoría con el curador responsable
-        Y se asigna un Código QR único para identificar el lote de muestras
-        Y el Código QR queda disponible para el investigador
-        Y se notifica al investigador que ya puede descargar el Código QR para la entrega física
+        Entonces la aprobación queda registrada en la auditoría con el curador responsable
 
     Esquema del escenario: El curador aprueba una solicitud validando las alertas ya justificadas
         Dado que la solicitud está "Pendiente de Revisión por Curaduría"

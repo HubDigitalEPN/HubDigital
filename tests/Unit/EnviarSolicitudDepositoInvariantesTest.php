@@ -11,6 +11,7 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarSolicitudDepo
 use Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarSolicitudDeposito\EnviarSolicitudDepositoInput;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\MatrizEspecies;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\SolicitudDeposito;
+use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudDepositoPendienteDeRevision;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\MatrizEspeciesRequeridaException;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\SolicitudDepositoYaProcesada;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito;
@@ -19,7 +20,7 @@ use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\PassThroug
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Persistence\InMemoryMatrizEspeciesRepository;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Persistence\InMemorySolicitudDepositoRepository;
 
-/** @return array{0: EnviarSolicitudDepositoHandler, 1: InMemorySolicitudDepositoRepository, 2: InMemoryMatrizEspeciesRepository, 3: object} */
+/** @return array{0: EnviarSolicitudDepositoHandler, 1: InMemorySolicitudDepositoRepository, 2: InMemoryMatrizEspeciesRepository, 3: object, 4: FakeEventPublisherAdapter} */
 function prepararEnvioDepositoConFirma(): array
 {
     $solicitudes = new InMemorySolicitudDepositoRepository;
@@ -55,10 +56,11 @@ function prepararEnvioDepositoConFirma(): array
         }
     };
 
+    $eventos = new FakeEventPublisherAdapter;
     $handler = new EnviarSolicitudDepositoHandler(
         repo: $solicitudes,
         transactionManager: new PassThroughTransactionManagerAdapter,
-        eventPublisher: new FakeEventPublisherAdapter,
+        eventPublisher: $eventos,
         notificacionCuratoria: $notificaciones,
         solicitudFirmada: new class implements SolicitudFirmadaPort
         {
@@ -70,7 +72,7 @@ function prepararEnvioDepositoConFirma(): array
         matrizRepo: $matrices,
     );
 
-    return [$handler, $solicitudes, $matrices, $notificaciones];
+    return [$handler, $solicitudes, $matrices, $notificaciones, $eventos];
 }
 
 function crearSolicitudBorrador(InMemorySolicitudDepositoRepository $solicitudes): SolicitudDeposito
@@ -122,7 +124,7 @@ test('ninguna matriz vacía o con registros pendientes puede enviarse', function
 });
 
 test('una matriz con todos sus registros resueltos permite el envío firmado', function (): void {
-    [$handler, $solicitudes, $matrices, $notificaciones] = prepararEnvioDepositoConFirma();
+    [$handler, $solicitudes, $matrices, $notificaciones, $eventos] = prepararEnvioDepositoConFirma();
     $solicitud = crearSolicitudBorrador($solicitudes);
     $matriz = MatrizEspecies::crear(
         id: $matrices->nextIdentity(),
@@ -138,6 +140,10 @@ test('una matriz con todos sus registros resueltos permite el envío firmado', f
 
     expect($salida->estado)->toBe(EstadoSolicitudDeposito::PendienteDeRevisionPorCuraduria)
         ->and($notificaciones->solicitudesPorRevisar)->toBe(1);
+    expect(array_filter(
+        $eventos->publishedEvents(),
+        static fn (object $evento): bool => $evento instanceof SolicitudDepositoPendienteDeRevision,
+    ))->toHaveCount(1);
 
     expect(fn () => $handler(new EnviarSolicitudDepositoInput((string) $solicitud->id())))
         ->toThrow(
@@ -148,6 +154,10 @@ test('una matriz con todos sus registros resueltos permite el envío firmado', f
     expect($solicitudes->buscarPorId($solicitud->id())->estado())
         ->toBe(EstadoSolicitudDeposito::PendienteDeRevisionPorCuraduria)
         ->and($notificaciones->solicitudesPorRevisar)->toBe(1);
+    expect(array_filter(
+        $eventos->publishedEvents(),
+        static fn (object $evento): bool => $evento instanceof SolicitudDepositoPendienteDeRevision,
+    ))->toHaveCount(1);
 });
 
 test('una aprobación ya consumida se distingue sin repetir QR ni notificaciones', function (): void {
