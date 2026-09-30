@@ -12,16 +12,13 @@
         <div class="portal-hero-grid portal-depositos-hero-grid min-w-0 lg:min-h-[34rem]">
             <div class="portal-container portal-hero-copy relative z-10 flex items-center">
                 <div class="min-w-0 max-w-4xl">
-                    <h1 id="titulo-depositos" class="portal-hero-title font-display font-bold leading-[1.08] tracking-[-0.025em] text-blue-navy">
-                        <span class="block">Depósito de colecciones</span>
-                        <span class="block">biológicas</span>
-                    </h1>
+                    <h1 id="titulo-depositos" class="portal-hero-title portal-depositos-title font-display font-bold leading-[1.08] tracking-[-0.025em] text-blue-navy">Depósito de colecciones biológicas</h1>
                     <div class="mt-5 h-1 w-14 rounded-full bg-bio-green" aria-hidden="true"></div>
                     <p class="mt-6 max-w-4xl text-lg leading-8 text-text-secondary">
                         Registra un depósito o donación. El sistema revisa tus PDF, recupera datos y te guía hasta la firma y el envío a curaduría.
                     </p>
 
-                    <div class="portal-responsive-actions mt-8">
+                    <div class="portal-responsive-actions portal-depositos-actions mt-8">
                         @auth
                             <a
                                 href="{{ auth()->user()->esDepositante() || auth()->user()->esAdministrador() ? route('depositos.solicitud.crear') : route('dashboard') }}"

@@ -11,12 +11,12 @@
                             El Laboratorio de Invertebrados de la Escuela Politécnica Nacional conserva, estudia y conecta con la sociedad el patrimonio biológico que custodia el Museo de Historia Natural Gustavo Orcés&nbsp;V.
                         </p>
 
-                        <div class="portal-responsive-actions mt-8">
+                        <div class="portal-responsive-actions portal-home-actions mt-8">
                             <a
-                                href="{{ route('portal.catalogo') }}"
+                                href="{{ route('portal.estadisticas') }}"
                                 class="inline-flex min-h-12 items-center justify-center gap-3 rounded-md bg-science-blue px-5 py-3 text-sm font-semibold !text-white shadow-sm transition hover:bg-[#1266b8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-science-blue focus-visible:ring-offset-2"
                             >
-                                Explorar el catálogo
+                                Ver mapa y estadísticas
                                 <svg viewBox="0 0 24 24" aria-hidden="true" class="size-4 fill-none stroke-current stroke-2"><path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round" /></svg>
                             </a>
                         </div>
@@ -38,21 +38,6 @@
             </div>
         </section>
 
-        <section class="border-b border-blue-navy/10 bg-[#F5F8FC]" aria-label="Propósitos del laboratorio">
-            <div class="portal-container mx-auto grid grid-cols-2 lg:grid-cols-4">
-                @foreach([
-                    ['Preservar', 'Patrimonio biológico'],
-                    ['Documentar', 'Datos verificables'],
-                    ['Investigar', 'Diversidad del Ecuador'],
-                    ['Compartir', 'Conocimiento científico'],
-                ] as [$accion, $resultado])
-                    <div class="border-blue-navy/10 py-6 odd:border-r even:pl-6 lg:border-r lg:px-7 lg:first:pl-0 lg:last:border-r-0">
-                        <p class="font-display text-lg font-semibold text-blue-navy">{{ $accion }}</p>
-                        <p class="mt-1 text-xs uppercase tracking-[0.1em] text-text-secondary">{{ $resultado }}</p>
-                    </div>
-                @endforeach
-            </div>
-        </section>
 
         <section id="catalogo" class="scroll-mt-28 bg-blue-navy text-white" aria-labelledby="titulo-catalogo">
             <div class="portal-container mx-auto py-14 lg:py-20">
@@ -62,7 +47,7 @@
                         <p class="mt-5 max-w-2xl text-base leading-8 text-white/75">
                             El catálogo conecta ejemplares, identificaciones y localidades para consultar la diversidad de invertebrados y apoyar la investigación. Los registros publicados conservan su contexto científico y curatorial.
                         </p>
-                        <a href="{{ route('portal.catalogo') }}" class="mt-7 inline-flex min-h-12 items-center justify-center gap-3 rounded-md bg-white px-5 py-3 text-sm font-semibold !text-blue-navy transition hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-blue-navy">
+                        <a href="{{ route('portal.estadisticas') }}" class="mt-7 inline-flex min-h-12 items-center justify-center gap-3 rounded-md bg-white px-5 py-3 text-sm font-semibold !text-blue-navy transition hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-blue-navy">
                             Consultar el catálogo digital
                             <svg viewBox="0 0 24 24" aria-hidden="true" class="size-4 fill-none stroke-current stroke-2"><path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round" /></svg>
                         </a>

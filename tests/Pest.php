@@ -37,6 +37,7 @@ pest()->extend(DatabaseFeatureTestCase::class)
         'Feature/PortalChatTerceraIteracionTest.php',
         'Feature/PortalChatCuartaIteracionTest.php',
         'Feature/SolicitudFirmadaIntegridadTest.php',
+        'Feature/VisibilidadCuratorialTest.php',
     );
 
 // El bootstrap inicial solo aplica a una instalacion sin usuarios. Se conserva
@@ -53,8 +54,8 @@ pest()->extend(InfrastructureTestCase::class)
 
 // Las rutas que verifican R2 con relaciones reales se ejecutan contra una
 // base PostgreSQL local previamente migrada. No emplean SQLite ni hacen
-// DDL por caso de prueba: el procedimiento de integración crea y elimina esa
-// base efímera completa.
+// DDL por caso de prueba: el paquete migra la base local una sola vez y cada
+// caso revierte sus cambios mediante una transacción.
 pest()->extend(PostgresIntegrationTestCase::class)
     ->in('Feature/RutasObjetosR2Test.php');
 

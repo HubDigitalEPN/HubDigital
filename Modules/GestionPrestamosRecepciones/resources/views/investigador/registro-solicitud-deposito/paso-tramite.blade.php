@@ -61,7 +61,7 @@
         </flux:callout>
         <div class="border-l-2 border-blue-navy/20 bg-[#F8FAFC] px-4 py-3">
             <p class="mb-2 text-xs font-semibold uppercase tracking-[0.1em] text-blue-navy">{{ \App\Support\WizardCopy::text('tramite.documentos_titulo') }}</p>
-            <ul class="space-y-2 text-xs leading-5 text-text-secondary">
+            <ul class="grid gap-x-4 gap-y-2 text-xs leading-5 text-text-secondary sm:grid-cols-2">
                 <li class="flex items-center gap-2">
                     <flux:icon name="document-text" class="size-3.5 text-text-secondary shrink-0" />
                     {{ \App\Support\WizardCopy::text('tramite.requisito_deposito_solicitud') }}
@@ -90,7 +90,7 @@
         </flux:callout>
         <div class="border-l-2 border-bio-green/30 bg-[#F8FAFC] px-4 py-3">
             <p class="mb-2 text-xs font-semibold uppercase tracking-[0.1em] text-blue-navy">{{ \App\Support\WizardCopy::text('tramite.documentos_titulo') }}</p>
-            <ul class="space-y-2 text-xs leading-5 text-text-secondary">
+            <ul class="grid gap-x-4 gap-y-2 text-xs leading-5 text-text-secondary sm:grid-cols-2">
                 <li class="flex items-center gap-2">
                     <flux:icon name="document-text" class="size-3.5 text-text-secondary shrink-0" />
                     {{ \App\Support\WizardCopy::text('tramite.requisito_donacion_solicitud') }}

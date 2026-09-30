@@ -112,7 +112,7 @@ final readonly class RecuperadorContextoEspecimenes
             $candidatos,
         );
 
-        $divulgables = $this->repoDivulgable->buscarPorOccurrenceIDs($occurrenceIDs);
+        $divulgables = $this->repoDivulgable->buscarPublicadosPorOccurrenceIDs($occurrenceIDs);
 
         $indexados = [];
         foreach ($divulgables as $divulgable) {

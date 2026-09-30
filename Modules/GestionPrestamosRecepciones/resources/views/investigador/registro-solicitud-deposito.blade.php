@@ -80,23 +80,24 @@
         <div aria-label="Progreso de la solicitud" class="hub-wizard-progress overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
             <div class="flex items-center justify-between px-3 pt-2 sm:hidden">
                 @php
-                    $pasoVisible = $paso <= 4 ? $paso : $paso - 1;
-                    $etiquetaPaso = ['Trámite', 'Origen', 'Archivos y firmas', 'Datos', 'Identidad', 'Detalle', 'Envío'][$pasoVisible - 1] ?? '';
+                    $pasoVisible = $paso <= 4 ? $paso + 1 : $paso;
+                    $etiquetaPaso = ['Solicitud', 'Trámite', 'Origen', 'Archivos y firmas', 'Datos', 'Identidad', 'Detalle', 'Envío'][$pasoVisible - 1] ?? '';
                 @endphp
-                <p class="text-sm font-semibold text-blue-navy">Paso {{ $pasoVisible }} de 7 · {{ $etiquetaPaso }}</p>
+                <p class="text-sm font-semibold text-blue-navy">Paso {{ $pasoVisible }} de 8 · {{ $etiquetaPaso }}</p>
             </div>
             <x-gestionprestamosrecepciones::wizard-stepper
                 :pasos="[
+                    ['label' => 'Solicitud', 'sub' => 'Firma PDF'],
                     ['label' => 'Trámite',    'sub' => 'Modalidad'],
                     ['label' => 'Origen',     'sub' => 'Procedencia'],
                     ['label' => 'Archivos y firmas', 'sub' => 'Validación'],
                     ['label' => 'Datos', 'sub' => 'Formulario'],
                     ['label' => 'Identidad',  'sub' => 'Solicitante'],
                     ['label' => 'Detalle',    'sub' => 'Taxonomía'],
-                    ['label' => 'Envío',      'sub' => 'Firma'],
+                    ['label' => 'Envío',      'sub' => 'Revisión'],
                 ]"
-                :pasoActual="$paso <= 4 ? $paso : $paso - 1"
-                :pasosCompletados="array_values(array_unique(array_map(fn ($numero) => $numero <= 4 ? $numero : $numero - 1, array_filter($pasosCompletados, fn ($numero) => $numero !== 5))))"
+                :pasoActual="$paso <= 4 ? $paso + 1 : $paso"
+                :pasosCompletados="array_values(array_unique(array_merge($paso > 0 ? [1] : [], array_map(fn ($numero) => $numero <= 4 ? $numero + 1 : $numero, array_filter($pasosCompletados, fn ($numero) => $numero !== 5)))))"
             />
         </div>
     @endif
@@ -107,7 +108,9 @@
 
             {{-- Step content --}}
             <div class="min-w-0 p-4 sm:p-5 lg:p-6" wire:key="paso-{{ $paso }}">
-                @if($paso === 1)
+                @if($paso === 0)
+                    @include('gestionprestamosrecepciones::investigador.registro-solicitud-deposito.paso-solicitud')
+                @elseif($paso === 1)
                     @include('gestionprestamosrecepciones::investigador.registro-solicitud-deposito.paso-tramite')
                 @elseif($paso === 2)
                     @include('gestionprestamosrecepciones::investigador.registro-solicitud-deposito.paso-origen')
@@ -130,7 +133,7 @@
         @if($paso < 9)
             <div class="flex items-center justify-between gap-3 border-t border-blue-navy/10 bg-[#F8FAFC] px-4 py-3 sm:px-6 sm:py-4 lg:px-8">
                 <div>
-                    @if($paso > 1 && !$extraccionProcesando)
+                    @if($paso > 0 && !$extraccionProcesando)
                         <flux:button variant="ghost" wire:click="retroceder" icon="arrow-left">
                             Atrás
                         </flux:button>
@@ -138,7 +141,9 @@
                 </div>
 
                 <div class="flex items-center gap-3">
-                    @if($paso === 1)
+                    @if($paso === 0)
+                        <flux:button variant="primary" icon-trailing="arrow-right" wire:click="continuarDesdeSolicitud" wire:loading.attr="disabled" wire:target="continuarDesdeSolicitud" :disabled="!$solicitudFirmada">Continuar al trámite</flux:button>
+                    @elseif($paso === 1)
                         <flux:button
                             variant="primary"
                             icon-trailing="arrow-right"

@@ -92,9 +92,6 @@ final class PortalCatalogo extends Component
     #[Url(as: 'pagina')]
     public int $pagina = 1;
 
-    #[Url(as: 'sinfilo')]
-    public bool $mostrarSinFilo = false;
-
     // ─── Filtros (URL-persistidos) ────────────────────────────────────────────
 
     #[Url(as: 'fc')]
@@ -201,7 +198,6 @@ final class PortalCatalogo extends Component
         $this->nivel = $nivel;
         $this->taxon = $taxon;
         $this->explorar = '';
-        $this->mostrarSinFilo = false;
         $this->pagina = 1;
     }
 
@@ -209,21 +205,8 @@ final class PortalCatalogo extends Component
     {
         if (in_array($vista, ['tarjetas', 'registros'], true)) {
             $this->vista = $vista;
-            if ($vista === 'tarjetas') {
-                $this->mostrarSinFilo = false;
-            }
             $this->pagina = 1;
         }
-    }
-
-    public function verSinFilo(): void
-    {
-        $this->nivel = '';
-        $this->taxon = '';
-        $this->explorar = '';
-        $this->mostrarSinFilo = true;
-        $this->vista = 'registros';
-        $this->pagina = 1;
     }
 
     public function cambiarPagina(int $pagina): void
@@ -236,7 +219,6 @@ final class PortalCatalogo extends Component
         $this->explorar = $nivel;
         $this->nivel = '';
         $this->taxon = '';
-        $this->mostrarSinFilo = false;
         $this->pagina = 1;
     }
 
@@ -391,9 +373,9 @@ final class PortalCatalogo extends Component
             ? $this->cargarDetallesEspecimenes($output->especimenesPorEspecie[$this->taxon] ?? [], $proveedor, $repoDivulgable)
             : [];
 
-        $idsParaVista = $this->mostrarSinFilo
-            ? $output->especimenesSinFilo
-            : ($this->nivel === '' ? $output->especimenIds : ($output->especimenesPorNodo[$this->nivel.':'.$this->taxon] ?? []));
+        $idsParaVista = $this->nivel === ''
+            ? $output->especimenIds
+            : ($output->especimenesPorNodo[$this->nivel.':'.$this->taxon] ?? []);
         $totalRegistrosVista = count($idsParaVista);
         $ultimaPagina = max(1, (int) ceil($totalRegistrosVista / 50));
         $paginaActual = min(max(1, $this->pagina), $ultimaPagina);
@@ -449,7 +431,6 @@ final class PortalCatalogo extends Component
             'totalRegistrosVista' => $totalRegistrosVista,
             'paginaActual' => $paginaActual,
             'ultimaPagina' => $ultimaPagina,
-            'sinFilo' => count($output->especimenesSinFilo),
             'conteos' => $conteos,
             'descendientes' => $descendientes,
             'taxonesExplorados' => $this->explorar !== ''
@@ -656,7 +637,7 @@ final class PortalCatalogo extends Component
 
         // Config de visibilidad indexada por especimenId (FK estable compartida con el DTO).
         $configPorEspecimen = [];
-        foreach ($repoDivulgable->buscarPorOccurrenceIDs(array_map(fn (DatosEspecimenProveedor $dto): string => $dto->occurrenceId, $datos)) as $divulgable) {
+        foreach ($repoDivulgable->buscarPublicadosPorOccurrenceIDs(array_map(fn (DatosEspecimenProveedor $dto): string => $dto->occurrenceId, $datos)) as $divulgable) {
             $configPorEspecimen[$divulgable->especimenId()] = $divulgable;
         }
 

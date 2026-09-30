@@ -19,7 +19,7 @@ final class ConsultarInformacionDivulgadaHandler
 
     public function handle(ConsultarInformacionDivulgadaInput $input): ConsultarInformacionDivulgadaOutput
     {
-        $divulgable = $this->repoDivulgable->buscarPorOccurrenceID($input->occurrenceID);
+        $divulgable = $this->repoDivulgable->buscarPublicadosPorOccurrenceIDs([$input->occurrenceID])[0] ?? null;
 
         if ($divulgable === null) {
             throw new RuntimeException(

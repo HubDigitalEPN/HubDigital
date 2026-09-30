@@ -31,6 +31,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.pdfbox.cos.COSArray;
 import org.apache.pdfbox.cos.COSBase;
 import org.apache.pdfbox.cos.COSDictionary;
@@ -64,6 +65,11 @@ final class RevocationResolver {
     private static final ConcurrentHashMap<String, CompletableFuture<Entrada>> CACHE = new ConcurrentHashMap<>();
     private static final ExecutorService CONSULTAS = Executors.newFixedThreadPool(4, task -> {
         Thread thread = new Thread(task, "hubdigital-revocacion");
+        thread.setDaemon(true);
+        return thread;
+    });
+    private static final ExecutorService FUENTES_CRL = Executors.newFixedThreadPool(4, task -> {
+        Thread thread = new Thread(task, "hubdigital-crl");
         thread.setDaemon(true);
         return thread;
     });
@@ -181,16 +187,40 @@ final class RevocationResolver {
             if (resultado != null) return resultado;
         }
 
-        boolean intento = false;
-        for (URI ocsp : fuentesExternas(urlsCertificado(signer, true), ocspExcepcional)) {
-            if (!fuentePublica(ocsp)) continue;
-            intento = true;
-            Resultado resultado = comprobarOcsp(signer, path, anchors, null, ocsp, fechaValidacion);
-            if (resultado.estado() == Estado.NO_REVOCADO || resultado.estado() == Estado.REVOCADO) return resultado;
+        // La descarga CRL avanza mientras se consulta OCSP. Se conserva la
+        // prioridad del dictamen OCSP, sin sumar ambos tiempos de espera.
+        AtomicBoolean intento = new AtomicBoolean(false);
+        List<URI> fuentesCrl = fuentesExternas(urlsCertificado(signer, false), crlExcepcional);
+        Future<Resultado> consultaCrl = fuentesCrl.isEmpty() ? null : FUENTES_CRL.submit(() ->
+            consultarCrl(signer, issuer, fechaValidacion, timeoutSeconds, fuentesCrl, intento));
+        try {
+            for (URI ocsp : fuentesExternas(urlsCertificado(signer, true), ocspExcepcional)) {
+                if (!fuentePublica(ocsp)) continue;
+                intento.set(true);
+                Resultado resultado = comprobarOcsp(signer, path, anchors, null, ocsp, fechaValidacion);
+                if (resultado.estado() == Estado.NO_REVOCADO || resultado.estado() == Estado.REVOCADO) return resultado;
+            }
+            if (consultaCrl != null) {
+                try {
+                    Resultado resultado = consultaCrl.get();
+                    if (resultado != null) return resultado;
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } catch (Exception ignored) { /* una fuente fallida no reemplaza la comprobación criptográfica */ }
+            }
+        } finally {
+            if (consultaCrl != null) consultaCrl.cancel(true);
         }
-        for (URI crl : fuentesExternas(urlsCertificado(signer, false), crlExcepcional)) {
+        return new Resultado(intento.get() ? Estado.NO_DISPONIBLE : Estado.NO_COMPROBADO,
+            intento.get() ? "No fue posible consultar OCSP ni CRL." : "El certificado no publica una fuente de revocación utilizable.");
+    }
+
+    private static Resultado consultarCrl(X509Certificate signer, X509Certificate issuer, Date fechaValidacion,
+        int timeoutSeconds, List<URI> fuentesCrl, AtomicBoolean intento) {
+        for (URI crl : fuentesCrl) {
+            if (Thread.currentThread().isInterrupted()) return null;
             if (!fuentePublica(crl)) continue;
-            intento = true;
+            intento.set(true);
             try {
                 HttpURLConnection connection = (HttpURLConnection) crl.toURL().openConnection();
                 connection.setInstanceFollowRedirects(false);
@@ -202,11 +232,12 @@ final class RevocationResolver {
                         Resultado resultado = comprobarCrl(encoded, signer, issuer, "CRL del certificado", fechaValidacion);
                         if (resultado != null) return resultado;
                     }
+                } finally {
+                    connection.disconnect();
                 }
             } catch (Exception ignored) { /* estado separado de la validez criptográfica */ }
         }
-        return new Resultado(intento ? Estado.NO_DISPONIBLE : Estado.NO_COMPROBADO,
-            intento ? "No fue posible consultar OCSP ni CRL." : "El certificado no publica una fuente de revocación utilizable.");
+        return null;
     }
 
     private static List<URI> fuentesExternas(List<URI> delCertificado, URI excepcional) {

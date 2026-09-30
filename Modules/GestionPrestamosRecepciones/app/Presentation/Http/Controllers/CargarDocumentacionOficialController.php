@@ -74,9 +74,6 @@ final class CargarDocumentacionOficialController
                         'firma_verificada' => false, 'comprobado_en' => now()->toIso8601String()];
                     $previas[$nombre] = $revisiones[$nombre];
                 }
-                if ($vigente->solicitud_firmada_ruta !== null) {
-                    $anteriores[] = $vigente->solicitud_firmada_ruta;
-                }
                 $metadata = $vigente->extraccion_metadatos ?? [];
                 unset($metadata['ejecucion_id'], $metadata['confirmacion_humana'], $metadata['validacion_contenido']);
                 $vigente->forceFill([
@@ -84,9 +81,6 @@ final class CargarDocumentacionOficialController
                     'validacion_archivos' => $estados, 'firmas_electronicas' => $firmas,
                     'validacion_previa_documentos' => $previas, 'extraccion_estado' => 'pendiente',
                     'extraccion_metadatos' => $metadata, 'documentos_procesados' => [],
-                    'solicitud_documento_version' => (int) $vigente->solicitud_documento_version + 1,
-                    'solicitud_firmada_ruta' => null, 'solicitud_firmada_sha256' => null,
-                    'solicitud_firmada_en' => null, 'solicitud_firma_metadata' => [],
                 ])->save();
 
                 return ($this->handler)(new CargarDocumentacionOficialInput(

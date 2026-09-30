@@ -35,10 +35,36 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoValidacionF
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoTramite;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\LoteRecibidoParaActaNotification;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\NuevaSolicitudPorRevisarNotification;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\JavaValidacionFirmaElectronicaAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\RecepcionLoteEloquentModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\DirectorioTemporalHubDigital;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\GestionActaRecepcion;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\RegistroSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\FakeEventPublisherAdapter;
+
+/** @return array{archivo: UploadedFile, clave: string} */
+function certificadoRealDepositoParaPruebas(): array
+{
+    $directorio = base_path('.local/secrets');
+    $nombre = 'HERNAN AUGUSTO TROYA PROANO 1707514251-241025084137.p12';
+    $contenido = @file_get_contents($directorio.DIRECTORY_SEPARATOR.$nombre);
+    $textoCredenciales = @file_get_contents($directorio.DIRECTORY_SEPARATOR.'credencialesp12 .txt');
+    if (! is_string($contenido) || $contenido === '' || ! is_string($textoCredenciales)) {
+        throw new RuntimeException('Faltan el P12 autorizado o sus credenciales locales para la prueba de firma real.');
+    }
+
+    foreach (preg_split('/\R/u', $textoCredenciales) ?: [] as $linea) {
+        if (preg_match('/^\s*clave\s+(\S+)\s*$/iu', $linea, $coincidencia) === 1) {
+            return [
+                'archivo' => UploadedFile::fake()->createWithContent($nombre, $contenido),
+                'clave' => $coincidencia[1],
+            ];
+        }
+    }
+
+    throw new RuntimeException('No se encontró la clave del P12 autorizado en el archivo local.');
+}
 
 test('el depósito completo persiste actores, documentos, taxonomía, recepción, alerta y acta firmada', function (): void {
     $this->skipUnlessFortifyFeature(Features::registration());
@@ -152,6 +178,13 @@ test('el depósito completo persiste actores, documentos, taxonomía, recepción
     $solicitudes->guardar($solicitud);
     SolicitudDepositoEloquentModel::findOrFail((string) $solicitud->id())->update([
         'documentos_requeridos' => ['Copia de la autorización de recolección (MAE)', 'Copia del permiso de movilización'],
+        'solicitud_nombre_permiso' => 'Hernan Augusto Troya Proano',
+        'solicitud_cedula' => '1707514251',
+        'solicitud_cargo' => 'Investigador del proyecto',
+        'solicitud_grupo' => 'insectos',
+        'solicitud_proyecto' => 'Inventario de insectos de prueba',
+        'solicitud_institucion' => 'Consultoría E2E',
+        'solicitud_correo' => 'ana.depositante.e2e@example.test',
     ]);
 
     $apiLogin = $this->postJson('/api/login', [
@@ -214,7 +247,15 @@ test('el depósito completo persiste actores, documentos, taxonomía, recepción
             ),
         ],
         ['Accept' => 'application/json'],
+    )->assertUnprocessable();
+
+    $credencial = certificadoRealDepositoParaPruebas();
+    $this->actingAs($depositante)->post(
+        route('depositos.solicitud.firmar', (string) $solicitud->id()),
+        ['certificado' => $credencial['archivo'], 'clave_certificado' => $credencial['clave']],
+        ['Accept' => 'application/json'],
     )->assertOk();
+    unset($credencial);
 
     $expediente = $expediente->fresh();
     expect($expediente->solicitud_firmada_ruta)->not->toBeNull()
@@ -237,6 +278,20 @@ test('el depósito completo persiste actores, documentos, taxonomía, recepción
         ->assertOk()
         ->assertHeader('Content-Type', 'application/pdf');
     expect($respuestaOriginal->getContent())->not->toBe($contenidoFirmado);
+
+    $directorioVerificacion = DirectorioTemporalHubDigital::crear('verificacion-solicitud-real', 24 * 1024 * 1024);
+    try {
+        $originalLocal = $directorioVerificacion.DIRECTORY_SEPARATOR.'original.pdf';
+        $firmadoLocal = $directorioVerificacion.DIRECTORY_SEPARATOR.'firmado.pdf';
+        expect(file_put_contents($originalLocal, $respuestaOriginal->getContent()))->toBeGreaterThan(0)
+            ->and(file_put_contents($firmadoLocal, $contenidoFirmado))->toBeGreaterThan(0);
+        $verificacionReal = app(JavaValidacionFirmaElectronicaAdapter::class)
+            ->verificarFirmaDetallada($firmadoLocal, $originalLocal);
+        expect($verificacionReal->integridadCriptografica)->toBeTrue()
+            ->and($verificacionReal->contenidoOficialCoincide)->toBeTrue();
+    } finally {
+        DirectorioTemporalHubDigital::eliminar($directorioVerificacion);
+    }
 
     $almacenamiento->guardarContenido($rutaFirmada, $contenidoFirmado."\ncontenido alterado", 'application/pdf');
     $this->actingAs($depositante)
@@ -349,4 +404,75 @@ test('el depósito completo persiste actores, documentos, taxonomía, recepción
         ->get(route('prestamos.deposito.acta-recepcion', (string) $solicitud->id()))
         ->assertOk()
         ->assertHeader('Content-Type', 'application/pdf');
+});
+
+test('el oficio sin firma no avanza y al descartar el borrador se elimina su PDF firmado de R2', function (): void {
+    configurarR2FalsoParaPruebas();
+    $depositante = User::factory()->depositante()->create();
+    $component = Livewire::actingAs($depositante)->test(RegistroSolicitudDeposito::class)
+        ->set('solicitudNombrePermiso', 'Hernan Augusto Troya Proano')
+        ->set('solicitudCedula', '1707514251')
+        ->set('solicitudCargo', 'Investigador del proyecto')
+        ->set('solicitudGrupo', 'macroinvertebrados acuáticos')
+        ->set('solicitudProyecto', 'Inventario de prueba')
+        ->set('solicitudInstitucion', 'Laboratorio de prueba')
+        ->set('solicitudCorreo', $depositante->email)
+        ->call('guardarSolicitudInicial')
+        ->assertHasNoErrors()
+        ->call('continuarDesdeSolicitud')
+        ->assertHasErrors('solicitudFirmada')
+        ->assertSet('paso', 0);
+
+    $borrador = SolicitudDepositoEloquentModel::query()
+        ->where('investigador_id', (string) $depositante->id)->sole();
+    expect($borrador->solicitud_firmada_ruta)->toBeNull()
+        ->and($borrador->solicitud_documento_version)->toBe(1);
+    \Illuminate\Support\Facades\Http::assertNotSent(
+        static fn (\Illuminate\Http\Client\Request $request): bool => $request->method() === 'PUT'
+    );
+
+    app()->instance(ValidacionFirmaElectronicaPort::class, new class implements ValidacionFirmaElectronicaPort
+    {
+        public function verificarFirma(string $rutaAbsoluta): ResultadoValidacionFirma
+        {
+            return ResultadoValidacionFirma::Firmado;
+        }
+
+        public function verificarFirmaDetallada(string $rutaFirmadaAbsoluta, string $rutaOriginalAbsoluta): DetalleValidacionFirma
+        {
+            return new DetalleValidacionFirma(
+                resultado: ResultadoValidacionFirma::Firmado,
+                integridadCriptografica: true,
+                documentoCompletoFirmado: true,
+                contenidoOficialCoincide: true,
+                certificadoVigente: true,
+                certificadoConfiable: true,
+                aceptadaPorMotor: true,
+                formatoFirmaAceptado: true,
+            );
+        }
+    });
+
+    $credencial = certificadoRealDepositoParaPruebas();
+    $this->actingAs($depositante)->post(
+        route('depositos.solicitud.firmar', (string) $borrador->id),
+        ['certificado' => $credencial['archivo'], 'clave_certificado' => $credencial['clave']],
+        ['Accept' => 'application/json'],
+    )->assertOk();
+    unset($credencial);
+
+    $ruta = $borrador->fresh()->solicitud_firmada_ruta;
+    expect($ruta)->not->toBeNull();
+    $almacenamiento = app(\Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos::class);
+    expect($almacenamiento->existe($ruta))->toBeTrue();
+
+    Livewire::actingAs($depositante)->test(RegistroSolicitudDeposito::class)
+        ->call('continuarDesdeSolicitud')
+        ->assertHasNoErrors()
+        ->assertSet('paso', 1)
+        ->call('descartarBorrador')
+        ->assertHasNoErrors();
+
+    expect(SolicitudDepositoEloquentModel::query()->whereKey($borrador->id)->exists())->toBeFalse()
+        ->and($almacenamiento->existe($ruta))->toBeFalse();
 });

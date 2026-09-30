@@ -16,15 +16,16 @@ test('el chat conserva controles táctiles y refluye cuando el zoom reduce el vi
     expect($chat)
         ->not->toBeFalse()
         ->toContain('portal-chat-shell')
-        ->toContain('h-[min(32rem,calc(100dvh-1rem))]')
-        ->toContain('sm:h-[min(32rem,calc(100dvh-7rem))]')
-        ->toContain('flex min-h-0 flex-1')
-        ->toContain('p-1 sm:p-3')
-        ->toContain('aria-label="Pregunta al bichochat"')
+        ->toContain('h-[min(34rem,calc(100dvh-2rem))]')
+        ->toContain('sm:h-[min(34rem,calc(100dvh-7rem))]')
+        ->toContain('min-h-0 flex-1')
+        ->toContain('x-on:keydown.escape.window')
+        ->toContain('$refs.trigger.focus()')
+        ->toContain('aria-label="Escribe tu pregunta al asistente"')
         ->toContain('required')
-        ->toContain('inline-flex size-11 shrink-0')
-        ->toContain('min-h-11 min-w-11')
-        ->toContain("'hidden sm:flex' => \$abierto");
+        ->toContain('flex size-11 shrink-0')
+        ->toContain('min-h-11 min-w-0')
+        ->toContain('aria-label="Abrir asistente HubDigital"');
 
     $styles = file_get_contents(dirname(__DIR__, 2).'/resources/css/app.css');
 

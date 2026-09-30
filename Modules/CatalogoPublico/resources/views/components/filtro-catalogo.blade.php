@@ -90,17 +90,6 @@
 >
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-5">
 
-        {{-- Encabezado --}}
-        <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
-            <div class="flex items-center gap-2">
-                <flux:icon name="funnel" class="size-4 text-white/60" />
-                <span class="text-xs font-semibold uppercase tracking-wider text-white/60">Búsqueda</span>
-            </div>
-            <p class="text-xs italic text-white/50">
-                Sin distinción de mayúsculas, acentos ni artículos
-            </p>
-        </div>
-
         {{-- ═══════════════════════════════════════════════════════
              BÚSQUEDA RÁPIDA
              ═══════════════════════════════════════════════════════ --}}

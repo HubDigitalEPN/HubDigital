@@ -19,7 +19,7 @@ final class ReglaDocumentacionRequerida
     private const FORMATO_BASE = [
         // Los formularios institucionales ya no se cargan como archivos preparados
         // fuera del sistema. HubDigital los construye con los datos del expediente y
-        // exige que el depositante los firme electrónicamente en el último paso.
+        // exige que el depositante firme el oficio electrónico en el primer paso.
         'Depósito' => [],
         'Donación' => [],
     ];

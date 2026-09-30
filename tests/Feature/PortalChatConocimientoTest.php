@@ -60,10 +60,12 @@ test('solo curaduría puede administrar el chat y publicar una respuesta nueva',
 });
 
 test('las consultas científicas cuentan únicamente ejemplares divulgables', function (): void {
+    $phylum = (string) Str::uuid();
     $genus = (string) Str::uuid();
     $species = (string) Str::uuid();
     DB::table('taxonomia.taxones')->insert([
-        ['id' => $genus, 'nombre_cientifico' => 'Probatorius', 'rango' => 'genero', 'autor' => 'Prueba', 'anio_descripcion' => 2026, 'padre_id' => null],
+        ['id' => $phylum, 'nombre_cientifico' => 'Filo QA '.substr($phylum, 0, 8), 'rango' => 'phylum', 'autor' => 'Prueba', 'anio_descripcion' => 2026, 'padre_id' => null],
+        ['id' => $genus, 'nombre_cientifico' => 'Probatorius', 'rango' => 'genero', 'autor' => 'Prueba', 'anio_descripcion' => 2026, 'padre_id' => $phylum],
         ['id' => $species, 'nombre_cientifico' => 'Probatorius exemplaris', 'rango' => 'especie', 'autor' => 'Prueba', 'anio_descripcion' => 2026, 'padre_id' => $genus],
     ]);
     $publicId = (string) Str::uuid();

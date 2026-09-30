@@ -101,7 +101,7 @@ final class ConsultaCatalogoPublico
         return DB::table('taxonomia.especimenes as e')
             ->join('taxonomia.taxones as t', 't.id', '=', 'e.taxon_id')
             ->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
-            ->where('t.rango', 'especie')->where('d.occurrence_id_visible', true)
+            ->where('d.publicado', true)->where('t.rango', 'especie')->where('d.occurrence_id_visible', true)
             ->where('d.scientific_name_visible', true)->whereNotNull('e.occurrence_id');
     }
 
@@ -114,13 +114,13 @@ final class ConsultaCatalogoPublico
                 SELECT t.nombre_cientifico AS nombre FROM taxonomia.especimenes e
                 JOIN taxonomia.taxones t ON t.id = e.taxon_id
                 JOIN divulgacion.especimenes_divulgables d ON d.especimen_id = e.id
-                WHERE d.scientific_name_visible = true AND d.occurrence_id_visible = true
+                WHERE d.publicado = true AND d.scientific_name_visible = true AND d.occurrence_id_visible = true
                 UNION
                 SELECT p.nombre_cientifico AS nombre FROM taxonomia.especimenes e
                 JOIN taxonomia.taxones t ON t.id = e.taxon_id
                 JOIN taxonomia.taxones p ON p.id = t.padre_id
                 JOIN divulgacion.especimenes_divulgables d ON d.especimen_id = e.id
-                WHERE d.scientific_name_visible = true AND d.occurrence_id_visible = true
+                WHERE d.publicado = true AND d.scientific_name_visible = true AND d.occurrence_id_visible = true
             )
             SELECT nombre FROM nombres WHERE similarity(lower(nombre), lower(?)) >= 0.45
               AND lower(nombre) <> lower(?) ORDER BY similarity(lower(nombre), lower(?)) DESC, nombre LIMIT 10
@@ -161,7 +161,7 @@ final class ConsultaCatalogoPublico
                 FROM taxonomia.especimenes e
                 JOIN taxonomia.taxones t ON t.id = e.taxon_id
                 JOIN divulgacion.especimenes_divulgables d ON d.especimen_id = e.id
-                WHERE d.occurrence_id_visible = true AND d.scientific_name_visible = true
+                WHERE d.publicado = true AND d.occurrence_id_visible = true AND d.scientific_name_visible = true
                   AND d.family_visible = true AND e.occurrence_id IS NOT NULL AND t.rango = 'especie'
                 UNION ALL
                 SELECT l.especimen_id, p.id, p.padre_id, p.rango, p.nombre_cientifico, l.profundidad + 1
@@ -191,7 +191,7 @@ final class ConsultaCatalogoPublico
             JOIN taxonomia.especimenes e ON e.taxon_id = x.id
             JOIN divulgacion.especimenes_divulgables v ON v.especimen_id = e.id
             JOIN taxonomia.taxones g ON g.id = x.genero_id
-            WHERE x.rango = 'especie' AND v.occurrence_id_visible = true
+            WHERE x.rango = 'especie' AND v.publicado = true AND v.occurrence_id_visible = true
               AND v.scientific_name_visible = true AND v.genus_visible = true
               AND e.occurrence_id IS NOT NULL
             ORDER BY g.nombre_cientifico LIMIT 10

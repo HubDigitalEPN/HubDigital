@@ -54,11 +54,13 @@ test('cero resultados públicos no afirma inexistencia biológica', function ():
 });
 
 test('el catálogo combina taxón y geografía visibles, responde por código y conserva el filtro en una referencia', function (): void {
+    $phylum = (string) Str::uuid();
     $genus = (string) Str::uuid();
     $species = (string) Str::uuid();
     $specimen = (string) Str::uuid();
     DB::table('taxonomia.taxones')->insert([
-        ['id' => $genus, 'nombre_cientifico' => 'Dynastes', 'rango' => 'genero', 'autor' => 'Prueba', 'anio_descripcion' => 2026, 'padre_id' => null],
+        ['id' => $phylum, 'nombre_cientifico' => 'Filo QA '.substr($phylum, 0, 8), 'rango' => 'phylum', 'autor' => 'Prueba', 'anio_descripcion' => 2026, 'padre_id' => null],
+        ['id' => $genus, 'nombre_cientifico' => 'Dynastes', 'rango' => 'genero', 'autor' => 'Prueba', 'anio_descripcion' => 2026, 'padre_id' => $phylum],
         ['id' => $species, 'nombre_cientifico' => 'Dynastes hercules', 'rango' => 'especie', 'autor' => 'Prueba', 'anio_descripcion' => 2026, 'padre_id' => $genus],
     ]);
     DB::table('taxonomia.especimenes')->insert([

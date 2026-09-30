@@ -80,11 +80,22 @@ final class EloquentEspecimenDivulgableRepository implements EspecimenDivulgable
      */
     public function buscarPorOccurrenceIDs(array $occurrenceIDs): array
     {
+        return $this->buscarListaPorOccurrenceIDs($occurrenceIDs, false);
+    }
+
+    public function buscarPublicadosPorOccurrenceIDs(array $occurrenceIDs): array
+    {
+        return $this->buscarListaPorOccurrenceIDs($occurrenceIDs, true);
+    }
+
+    /** @param list<string> $occurrenceIDs @return list<EspecimenDivulgable> */
+    private function buscarListaPorOccurrenceIDs(array $occurrenceIDs, bool $soloPublicados): array
+    {
         if ($occurrenceIDs === []) {
             return [];
         }
 
-        $models = EspecimenDivulgableEloquentModel::query()
+        $consulta = EspecimenDivulgableEloquentModel::query()
             ->join(
                 'taxonomia.especimenes',
                 'taxonomia.especimenes.id',
@@ -92,8 +103,11 @@ final class EloquentEspecimenDivulgableRepository implements EspecimenDivulgable
                 'divulgacion.especimenes_divulgables.especimen_id'
             )
             ->whereIn('taxonomia.especimenes.occurrence_id', $occurrenceIDs)
-            ->select('divulgacion.especimenes_divulgables.*')
-            ->get();
+            ->select('divulgacion.especimenes_divulgables.*');
+        if ($soloPublicados) {
+            $consulta->where('divulgacion.especimenes_divulgables.publicado', true);
+        }
+        $models = $consulta->get();
 
         return $models->map(fn (EspecimenDivulgableEloquentModel $model) => EspecimenDivulgable::reconstituir(
             id: EspecimenDivulgableId::fromString($model->id),

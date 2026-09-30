@@ -378,6 +378,21 @@ img, svg, video, canvas, iframe, embed, object {
     flex: 1 1 13rem;
 }
 
+@media (min-width: 640px) {
+    .portal-home-actions > a { flex: 0 1 50%; }
+    .portal-depositos-actions > a { flex: 0 1 19rem; }
+}
+
+@media (min-width: 1024px) {
+    .portal-hero-title.portal-depositos-title {
+        max-width: none;
+        font-size: clamp(1.5rem, 2.1vw, 2.6rem);
+        overflow-wrap: normal;
+        text-wrap: nowrap;
+        white-space: nowrap;
+    }
+}
+
 @media (min-width: 1024px) {
     .portal-hero-grid {
         min-height: min(42rem, calc(100svh - 4.75rem));
@@ -983,6 +998,59 @@ select:focus[data-flux-control] {
     color: var(--color-text-primary) !important;
 }
 .dark [role="dialog"] { color-scheme: dark; }
+.dark .bg-white,
+.dark [class~="bg-white/95"],
+.dark [class~="bg-white/90"],
+.dark [class*="bg-[#F8FAFC]"],
+.dark [class*="bg-[#F5F8FC]"],
+.dark [class*="bg-[#F5F5F5]"],
+.dark [class*="bg-[#FDFDFC]"],
+.dark [class*="bg-[#f8fbfe]"],
+.dark [class*="bg-[#f3f7fb]"],
+.dark [class*="bg-[#eeeeec]"],
+.dark [class*="bg-[#dbdbd7]"] { background-color: var(--color-surface) !important; }
+.dark :is(.bg-blue-50, .bg-sky-50, .bg-emerald-50, .bg-amber-50, .bg-amber-100, .bg-green-50, .bg-green-100, .bg-red-50, .bg-zinc-100, .bg-zinc-200, .bg-stone-100, .bg-stone-200, .bg-neutral-100),
+.dark [class*="bg-[#E3F2FD]"],
+.dark [class*="bg-[#FFF8E1]"],
+.dark [class*="bg-[#E8F5E9]"],
+.dark [class*="bg-[#FFEBEE]"],
+.dark [class*="bg-[#FFF3E0]"],
+.dark [class*="bg-[#fff2f2]"],
+.dark [class*="bg-[#e5edf4]"] { background-color: #1b3349 !important; }
+.dark .from-white { --tw-gradient-from: var(--color-surface) !important; }
+.dark .hub-curator-home { color: var(--color-text-primary); }
+.dark .hub-curator-shortcuts,
+.dark .hub-curator-card,
+.dark .hub-curator-details,
+.dark .hub-curator-button--outline { background: var(--color-surface); border-color: var(--color-border); }
+.dark .hub-curator-shortcuts > *,
+.dark .hub-curator-metrics > a,
+.dark .hub-curator-preview-empty strong,
+.dark .hub-depositor-impact strong,
+.dark .hub-workspace .hub-page-title { color: var(--color-text-primary); }
+.dark .hub-curator-heading p,
+.dark .hub-curator-card__heading p,
+.dark .hub-curator-shortcuts small,
+.dark .hub-curator-metrics span,
+.dark .hub-curator-activity > p,
+.dark .hub-curator-activity small,
+.dark .hub-curator-preview-empty,
+.dark .hub-depositor-help,
+.dark .hub-depositor-impact { color: var(--color-text-secondary); }
+.dark .hub-curator-shortcuts > *:hover,
+.dark .hub-curator-metrics > a:hover { background: #1b3349; }
+.dark .hub-curator-button--outline,
+.dark .hub-curator-card__heading > a,
+.dark .hub-curator-preview > div a,
+.dark .hub-curator-preview-empty a,
+.dark .hub-curator-pending > a,
+.dark .hub-curator-file-picker,
+.dark .hub-workspace .hub-page-kicker { color: var(--color-science-blue); }
+.dark .hub-depositor-impact { border-color: var(--color-border); }
+.dark .hub-curator-activity,
+.dark .hub-curator-pending,
+.dark .hub-curator-metrics > a + a,
+.dark .hub-curator-shortcuts > * + *::before { border-color: var(--color-border); }
 
 @media (max-width: 767px) {
     .hub-account-settings-modal { max-height: 94dvh; }
@@ -1261,6 +1329,18 @@ body:has(.hub-app-sidebar) { --color-accent: #174a9a; --color-accent-foreground:
 
 .hub-depositos-ui .hub-wizard-copy-header { padding-bottom: .6rem; }
 .hub-depositos-ui .hub-wizard-copy-header [data-flux-text] { max-width: none; line-height: 1.4; margin-top: .3rem; }
+.dark .hub-transactional-ui .hub-panel,
+.dark .hub-workspace .hub-panel,
+.dark .hub-workspace .hub-table-shell { border-color: var(--color-border); }
+.dark .hub-curator-file-picker select { background: var(--color-surface); border-color: var(--color-border); color: var(--color-text-primary); }
+.dark .hub-curator-preview > a,
+.dark .hub-curator-preview > iframe { background: #1b3349; }
+.dark .hub-status--pending { background: #493718; color: #f4c96b; }
+.dark .hub-status--active { background: #153d55; color: #9dd7f5; }
+.dark .hub-status--complete { background: #183f32; color: #9be6bd; }
+.dark .hub-status--alert { background: #4c2726; color: #ffc8c3; }
+.dark .hub-connectivity-status { background: #493718; border-color: #8c6425; color: #ffe0a3; }
+.dark .hub-in-app-toast__emblem { background: #183f32; color: #9be6bd; }
 @media(min-width: 900px) {
     .hub-depositos-ui .hub-wizard-document-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .65rem; }
     .hub-depositos-ui .hub-wizard-document-grid > div:first-child { grid-column: 1 / -1; }

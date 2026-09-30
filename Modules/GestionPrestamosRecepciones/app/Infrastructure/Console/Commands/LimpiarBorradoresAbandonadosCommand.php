@@ -47,6 +47,9 @@ final class LimpiarBorradoresAbandonadosCommand extends Command
                     $almacenamiento->eliminar($ruta);
                 }
             }
+            if (is_string($borrador->solicitud_firmada_ruta) && $borrador->solicitud_firmada_ruta !== '') {
+                $almacenamiento->eliminar($borrador->solicitud_firmada_ruta);
+            }
 
             $borrador->delete();
             $eliminados++;

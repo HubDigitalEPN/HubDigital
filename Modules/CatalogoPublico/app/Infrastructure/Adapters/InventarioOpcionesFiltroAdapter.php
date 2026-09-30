@@ -11,12 +11,14 @@ final class InventarioOpcionesFiltroAdapter implements ProveedorOpcionesFiltroPo
 {
     public function obtenerPreparaciones(): array
     {
-        return DB::table('taxonomia.especimenes')
-            ->whereNotNull('preparations')
-            ->where('preparations', '<>', '')
+        return DB::table('taxonomia.especimenes as e')
+            ->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
+            ->where('d.publicado', true)
+            ->whereNotNull('e.preparations')
+            ->where('e.preparations', '<>', '')
             ->distinct()
-            ->orderBy('preparations')
-            ->pluck('preparations')
+            ->orderBy('e.preparations')
+            ->pluck('e.preparations')
             ->map(fn ($v) => (string) $v)
             ->values()
             ->all();
@@ -24,12 +26,14 @@ final class InventarioOpcionesFiltroAdapter implements ProveedorOpcionesFiltroPo
 
     public function obtenerBiomas(): array
     {
-        return DB::table('taxonomia.especimenes')
-            ->whereNotNull('biome')
-            ->where('biome', '<>', '')
+        return DB::table('taxonomia.especimenes as e')
+            ->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
+            ->where('d.publicado', true)
+            ->whereNotNull('e.biome')
+            ->where('e.biome', '<>', '')
             ->distinct()
-            ->orderBy('biome')
-            ->pluck('biome')
+            ->orderBy('e.biome')
+            ->pluck('e.biome')
             ->map(fn ($v) => (string) $v)
             ->values()
             ->all();
@@ -37,12 +41,16 @@ final class InventarioOpcionesFiltroAdapter implements ProveedorOpcionesFiltroPo
 
     public function obtenerMetodosRecoleccion(): array
     {
-        return DB::table('taxonomia.muestras_colecta')
-            ->whereNotNull('sampling_protocol')
-            ->where('sampling_protocol', '<>', '')
+        return DB::table('taxonomia.muestras_colecta as m')
+            ->join('taxonomia.especimenes as e', 'e.muestra_id', '=', 'm.id')
+            ->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
+            ->where('d.publicado', true)
+            ->where('d.sampling_protocol_visible', true)
+            ->whereNotNull('m.sampling_protocol')
+            ->where('m.sampling_protocol', '<>', '')
             ->distinct()
-            ->orderBy('sampling_protocol')
-            ->pluck('sampling_protocol')
+            ->orderBy('m.sampling_protocol')
+            ->pluck('m.sampling_protocol')
             ->map(fn ($v) => (string) $v)
             ->values()
             ->all();
@@ -50,12 +58,15 @@ final class InventarioOpcionesFiltroAdapter implements ProveedorOpcionesFiltroPo
 
     public function obtenerColectores(): array
     {
-        return DB::table('taxonomia.especimenes')
-            ->whereNotNull('colector')
-            ->where('colector', '<>', '')
+        return DB::table('taxonomia.especimenes as e')
+            ->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
+            ->where('d.publicado', true)
+            ->where('d.recorded_by_visible', true)
+            ->whereNotNull('e.colector')
+            ->where('e.colector', '<>', '')
             ->distinct()
-            ->orderBy('colector')
-            ->pluck('colector')
+            ->orderBy('e.colector')
+            ->pluck('e.colector')
             ->map(fn ($v) => (string) $v)
             ->values()
             ->all();

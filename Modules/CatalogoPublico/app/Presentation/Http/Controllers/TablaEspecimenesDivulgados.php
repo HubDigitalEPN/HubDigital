@@ -35,6 +35,9 @@ final class TablaEspecimenesDivulgados extends Component
     #[Url(as: 'colector')]
     public string $colector = '';
 
+    #[Url(as: 'publicacion')]
+    public string $publicacion = 'todos';
+
     public bool $modalConfigAbierto = false;
 
     public ?string $occurrenceIDActivo = null;
@@ -67,27 +70,16 @@ final class TablaEspecimenesDivulgados extends Component
         'lifeStageVisible' => 'life_stage_visible',
     ];
 
-    #[Computed]
-    public function especimenesDivulgablesIndexados()
-    {
-        return EspecimenDivulgableEloquentModel::query()
-            ->join(
-                'taxonomia.especimenes',
-                'taxonomia.especimenes.id',
-                '=',
-                'divulgacion.especimenes_divulgables.especimen_id'
-            )
-            ->select('divulgacion.especimenes_divulgables.*', 'taxonomia.especimenes.occurrence_id')
-            ->get()
-            ->keyBy('occurrence_id');
-    }
-
     public function abrirConfiguracion(string $occurrenceID): void
     {
         $this->occurrenceIDActivo = $occurrenceID;
         $this->configGuardada = false;
 
-        $registro = $this->especimenesDivulgablesIndexados()[$occurrenceID] ?? null;
+        $registro = EspecimenDivulgableEloquentModel::query()
+            ->join('taxonomia.especimenes as e', 'e.id', '=', 'divulgacion.especimenes_divulgables.especimen_id')
+            ->where('e.occurrence_id', $occurrenceID)
+            ->select('divulgacion.especimenes_divulgables.*')
+            ->first();
 
         if ($registro !== null) {
             $config = [];
@@ -165,6 +157,11 @@ final class TablaEspecimenesDivulgados extends Component
         $this->resetPage();
     }
 
+    public function updatedPublicacion(): void
+    {
+        $this->resetPage();
+    }
+
     public function limpiarFiltros(): void
     {
         $this->busquedaCatalogo = '';
@@ -172,6 +169,7 @@ final class TablaEspecimenesDivulgados extends Component
         $this->fechaDesde = '';
         $this->fechaHasta = '';
         $this->colector = '';
+        $this->publicacion = 'todos';
         $this->resetPage();
     }
 
@@ -181,7 +179,8 @@ final class TablaEspecimenesDivulgados extends Component
             || $this->busquedaTaxonomia !== ''
             || $this->fechaDesde !== ''
             || $this->fechaHasta !== ''
-            || $this->colector !== '';
+            || $this->colector !== ''
+            || $this->publicacion !== 'todos';
     }
 
     /**
@@ -211,13 +210,14 @@ final class TablaEspecimenesDivulgados extends Component
 
         $query = DB::table('divulgacion.especimenes_divulgables as ed')
             ->join('taxonomia.especimenes as te', 'te.id', '=', 'ed.especimen_id')
-            ->join('taxonomia.taxones as tx_species', 'tx_species.id', '=', 'te.taxon_id')
+            ->leftJoin('taxonomia.taxones as tx_species', 'tx_species.id', '=', 'te.taxon_id')
             ->leftJoin('taxonomia.taxones as tx_genus', 'tx_genus.id', '=', 'tx_species.padre_id')
-            ->where('tx_species.rango', 'especie')
             ->select([
                 'te.occurrence_id',
                 'tx_species.id as species_id',
                 'tx_species.nombre_cientifico as scientific_name',
+                'te.taxon_verbatim',
+                'ed.publicado',
                 DB::raw('te.disposition as type_status'),
                 'te.colector',
                 'tx_genus.nombre_cientifico as genus',
@@ -236,6 +236,12 @@ final class TablaEspecimenesDivulgados extends Component
                     (ed.caste_visible::int) + (ed.life_stage_visible::int)
                 ) as campos_visibles'),
             ]);
+
+        if ($this->publicacion === 'publicos') {
+            $query->where('ed.publicado', true);
+        } elseif ($this->publicacion === 'curaduria') {
+            $query->where('ed.publicado', false);
+        }
 
         if ($this->busquedaCatalogo !== '') {
             $query->where('te.occurrence_id', 'ILIKE', '%'.$this->busquedaCatalogo.'%');
@@ -284,7 +290,6 @@ final class TablaEspecimenesDivulgados extends Component
         return view('catalogopublico::livewire.tabla-especimenes-divulgados', [
             'especimenes' => $especimenes,
             'totalCampos' => count(self::FLAG_MAP),
-            'especimenesDivulgablesIndexados' => $this->especimenesDivulgablesIndexados(),
         ]);
     }
 

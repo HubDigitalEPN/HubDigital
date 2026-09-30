@@ -9,12 +9,18 @@
             <directory>tests/Unit</directory>
             <directory>Modules/InventarioGestionColeccion/tests/Unit</directory>
             <directory>Modules/CatalogoPublico/tests/Unit</directory>
+            <directory>Modules/GestionPrestamosRecepciones/tests/Unit</directory>
         </testsuite>
         <testsuite name="Feature">
             <directory>tests/Feature</directory>
+            <directory>tests/Regression</directory>
+            <directory>Modules/CatalogoPublico/tests/Feature</directory>
+            <directory>Modules/GestionPrestamosRecepciones/tests/Infrastructure</directory>
         </testsuite>
         <testsuite name="Integration">
             <directory>Modules/InventarioGestionColeccion/tests/Integration</directory>
+            <directory>Modules/CatalogoPublico/tests/Integration</directory>
+            <directory>Modules/GestionPrestamosRecepciones/tests/Integration</directory>
         </testsuite>
     </testsuites>
     <source>

@@ -18,6 +18,7 @@ final class DetectorEntidadesChat
             && ! in_array($this->texto->normalizar($match[1]), ['especimenes', 'especies', 'registros', 'taxones', 'familias'], true)
             && (preg_match('/[0-9._:-]/', $match[1]) || DB::table('taxonomia.especimenes as e')
                 ->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
+                ->where('d.publicado', true)
                 ->where('d.occurrence_id_visible', true)->whereRaw('lower(e.occurrence_id) = lower(?)', [$match[1]])->exists())) {
             return ['codigo' => $match[1]];
         }
@@ -40,6 +41,7 @@ final class DetectorEntidadesChat
             // La geografía solo se reconoce si hay registros divulgables con el campo visible.
             $geografia = DB::table('taxonomia.especimenes as e')
                 ->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
+                ->where('d.publicado', true)
                 ->where(function ($query) use ($principal): void {
                     $query->where(fn ($q) => $q->where('d.state_province_visible', true)->whereRaw('lower(e.state_province) = lower(?)', [$principal]))
                         ->orWhere(fn ($q) => $q->where('d.locality_name_visible', true)->whereRaw('lower(e.locality_name) = lower(?)', [$principal]))

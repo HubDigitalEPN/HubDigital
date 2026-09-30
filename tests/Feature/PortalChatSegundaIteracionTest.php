@@ -30,11 +30,13 @@ test('las frases sociales no consultan el catálogo y los requisitos ambiguos pi
 });
 
 test('el catálogo separa taxón y geografía y solo usa campos públicos', function (): void {
+    $phylum = (string) Str::uuid();
     $family = (string) Str::uuid();
     $genus = (string) Str::uuid();
     $species = (string) Str::uuid();
     DB::table('taxonomia.taxones')->insert([
-        ['id' => $family, 'nombre_cientifico' => 'Probaticidae', 'rango' => 'familia', 'autor' => 'Prueba', 'anio_descripcion' => 2026, 'padre_id' => null],
+        ['id' => $phylum, 'nombre_cientifico' => 'Filo QA '.substr($phylum, 0, 8), 'rango' => 'phylum', 'autor' => 'Prueba', 'anio_descripcion' => 2026, 'padre_id' => null],
+        ['id' => $family, 'nombre_cientifico' => 'Probaticidae', 'rango' => 'familia', 'autor' => 'Prueba', 'anio_descripcion' => 2026, 'padre_id' => $phylum],
         ['id' => $genus, 'nombre_cientifico' => 'Probaticus', 'rango' => 'genero', 'autor' => 'Prueba', 'anio_descripcion' => 2026, 'padre_id' => $family],
         ['id' => $species, 'nombre_cientifico' => 'Probaticus exemplaris', 'rango' => 'especie', 'autor' => 'Prueba', 'anio_descripcion' => 2026, 'padre_id' => $genus],
     ]);

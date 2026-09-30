@@ -68,6 +68,12 @@ final class InMemoryEspecimenDivulgableRepository implements EspecimenDivulgable
         return $result;
     }
 
+    /** @param list<string> $occurrenceIDs @return list<EspecimenDivulgable> */
+    public function buscarPublicadosPorOccurrenceIDs(array $occurrenceIDs): array
+    {
+        return $this->buscarPorOccurrenceIDs($occurrenceIDs);
+    }
+
     /**
      * Reconstituye una entidad fresca para no compartir la identidad mutable
      * con el llamador (espejo del comportamiento del repositorio Eloquent).

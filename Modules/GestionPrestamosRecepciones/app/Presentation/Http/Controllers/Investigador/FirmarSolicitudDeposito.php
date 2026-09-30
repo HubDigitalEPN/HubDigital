@@ -30,7 +30,10 @@ final class FirmarSolicitudDeposito
         AlmacenamientoDepositos $almacenamiento,
     ): JsonResponse {
         $request->attributes->set('credencial_firma_sensible', $request->hasFile('certificado'));
-        $request->validate(FirmaPdfJava::reglas());
+        $reglas = FirmaPdfJava::reglas();
+        $reglas['certificado'] = ['required', 'file', 'extensions:p12,pfx', 'max:5120'];
+        $reglas['pdf_firmado'] = ['prohibited'];
+        $request->validate($reglas);
 
         $solicitud = SolicitudDepositoEloquentModel::findOrFail($id);
         abort_unless((string) $solicitud->investigador_id === (string) $request->user()->id, 403);
@@ -53,10 +56,14 @@ final class FirmarSolicitudDeposito
         $persistido = false;
         $guardado = false;
         $archivoJava = null;
+        $inicioFirma = microtime(true);
         try {
             $archivoJava = app(FirmaPdfJava::class)->preparar($request, $originalTemporal, PerfilFirmaPdf::SOLICITUD_DEPOSITANTE);
+            $firmaMs = (int) round((microtime(true) - $inicioFirma) * 1000);
             $rutaAbsoluta = $archivoJava->ruta();
+            $inicioValidacion = microtime(true);
             $validacion = $validador->verificarFirmaDetallada($rutaAbsoluta, $originalTemporal);
+            $validacionMs = (int) round((microtime(true) - $inicioValidacion) * 1000);
             if (! $validacion->esAceptable()) {
                 return response()->json([
                     'message' => $validacion->error ?: 'La firma no superó la validación criptográfica e integral.',
@@ -69,9 +76,17 @@ final class FirmarSolicitudDeposito
             $firmaMetadata['proposito'] = 'solicitud_deposito';
             $firmaMetadata['pdf_sha256'] = hash_file('sha256', $rutaAbsoluta);
             $archivoFirmado = new UploadedFile($rutaAbsoluta, 'solicitud-firmada.pdf', 'application/pdf', null, true);
+            $inicioAlmacenamiento = microtime(true);
             $rutaGuardada = $almacenamiento->guardarSubidoComo($archivoFirmado, $ruta);
             abort_unless($rutaGuardada === $ruta, 500, 'No se pudo guardar la solicitud firmada.');
             $guardado = true;
+            abort_unless(
+                $almacenamiento->existe($ruta)
+                    && hash_equals($firmaMetadata['pdf_sha256'], $almacenamiento->sha256($ruta)),
+                500,
+                'El PDF firmado no superó la verificación de integridad en R2.',
+            );
+            $almacenamientoMs = (int) round((microtime(true) - $inicioAlmacenamiento) * 1000);
 
             $rutaAnterior = DB::transaction(function () use (
                 $id,
@@ -110,7 +125,9 @@ final class FirmarSolicitudDeposito
                 'solicitud_id' => $id,
                 'version' => $versionEsperada,
                 'sha256' => $firmaMetadata['pdf_sha256'],
-                'objeto_verificado' => $almacenamiento->existe($ruta),
+                'firma_ms' => $firmaMs,
+                'validacion_ms' => $validacionMs,
+                'almacenamiento_ms' => $almacenamientoMs,
             ]);
 
             if (is_string($rutaAnterior) && $rutaAnterior !== '' && $rutaAnterior !== $ruta) {

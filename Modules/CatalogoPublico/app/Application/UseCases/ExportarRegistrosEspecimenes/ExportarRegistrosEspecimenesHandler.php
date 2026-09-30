@@ -34,7 +34,7 @@ final class ExportarRegistrosEspecimenesHandler
 
         $occurrenceIDs = array_map(fn (DatosEspecimenProveedor $d) => $d->occurrenceId, $datosEspecimenes);
 
-        $divulgables = $this->repoDivulgable->buscarPorOccurrenceIDs($occurrenceIDs);
+        $divulgables = $this->repoDivulgable->buscarPublicadosPorOccurrenceIDs($occurrenceIDs);
 
         $divulgablesPorEspecimenId = [];
         foreach ($divulgables as $divulgable) {

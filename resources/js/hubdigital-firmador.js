@@ -1,8 +1,23 @@
 /** La interfaz entrega las credenciales temporales al firmador Java del servidor. */
 window.hubDigitalFirmador = (config) => ({
+    dialogo: false,
     estado: 'listo',
     progreso: '',
     error: '',
+
+    abrirDialogo() {
+        this.estado = 'listo';
+        this.error = '';
+        this.dialogo = true;
+        this.$nextTick(() => this.$refs.certificado?.focus());
+    },
+
+    cerrarDialogo() {
+        if (this.estado === 'procesando') return;
+        this.dialogo = false;
+        this.limpiarCamposCredenciales();
+        this.$nextTick(() => this.$refs.abrirFirma?.focus());
+    },
 
     async firmar() {
         if (this.estado === 'procesando') return;

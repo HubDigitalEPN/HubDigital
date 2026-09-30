@@ -5,27 +5,31 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Modules\CatalogoPublico\Infrastructure\Adapters\InventarioGestionColeccionEspecimenAdapter;
-use Modules\CatalogoPublico\Tests\Integration\IntegrationTestCase;
+use Tests\PostgresIntegrationTestCase;
 
-uses(IntegrationTestCase::class);
+uses(PostgresIntegrationTestCase::class);
 
 /**
  * Siembra una jerarquía taxonómica mínima en taxonomia.taxones y retorna el id del taxón hoja.
- * Retorna [familyId, genusId, speciesId].
+ * Retorna [familyId, genusId, speciesId, familyName, genusName, speciesName].
  */
 function crearJerarquiaTaxonomica(string $family, string $genus, string $species): array
 {
     $familyId = (string) Str::uuid();
     $genusId = (string) Str::uuid();
     $speciesId = (string) Str::uuid();
+    $sufijo = ' QA-'.Str::uuid();
+    $familyName = $family.$sufijo;
+    $genusName = $genus.$sufijo;
+    $speciesName = $species.$sufijo;
 
     DB::table('taxonomia.taxones')->insert([
-        ['id' => $familyId, 'nombre_cientifico' => $family, 'rango' => 'familia', 'padre_id' => null, 'created_at' => now(), 'updated_at' => now()],
-        ['id' => $genusId, 'nombre_cientifico' => $genus, 'rango' => 'genero', 'padre_id' => $familyId, 'created_at' => now(), 'updated_at' => now()],
-        ['id' => $speciesId, 'nombre_cientifico' => $species, 'rango' => 'especie', 'padre_id' => $genusId, 'created_at' => now(), 'updated_at' => now()],
+        ['id' => $familyId, 'nombre_cientifico' => $familyName, 'rango' => 'familia', 'padre_id' => null, 'created_at' => now(), 'updated_at' => now()],
+        ['id' => $genusId, 'nombre_cientifico' => $genusName, 'rango' => 'genero', 'padre_id' => $familyId, 'created_at' => now(), 'updated_at' => now()],
+        ['id' => $speciesId, 'nombre_cientifico' => $speciesName, 'rango' => 'especie', 'padre_id' => $genusId, 'created_at' => now(), 'updated_at' => now()],
     ]);
 
-    return [$familyId, $genusId, $speciesId];
+    return [$familyId, $genusId, $speciesId, $familyName, $genusName, $speciesName];
 }
 
 function crearEspecimenEnTaxonomia(string $taxonId, array $overrides = []): string
@@ -34,9 +38,9 @@ function crearEspecimenEnTaxonomia(string $taxonId, array $overrides = []): stri
 
     DB::table('taxonomia.especimenes')->insert(array_merge([
         'id' => $id,
-        'codigo_catalogo' => 'TEST-'.substr($id, 0, 8),
+        'codigo_catalogo' => 'TEST-'.$id,
         'taxon_id' => $taxonId,
-        'occurrence_id' => 'OCC-'.substr($id, 0, 8),
+        'occurrence_id' => 'OCC-'.$id,
         'localidad' => 'Pichincha',
         'fecha_colecta' => '2024-01-15',
         'colector' => 'Dr. Entomólogo',
@@ -49,10 +53,11 @@ function crearEspecimenEnTaxonomia(string $taxonId, array $overrides = []): stri
 }
 
 test('traduce correctamente los campos básicos del Supplier al lenguaje del Customer', function (): void {
-    [, , $speciesId] = crearJerarquiaTaxonomica('Formicidae', 'Atta', 'Atta cephalotes');
+    [, , $speciesId, , , $speciesName] = crearJerarquiaTaxonomica('Formicidae', 'Atta', 'Atta cephalotes');
+    $occurrenceId = 'QA-'.Str::uuid();
 
     crearEspecimenEnTaxonomia($speciesId, [
-        'occurrence_id' => 'EPN-0012',
+        'occurrence_id' => $occurrenceId,
         'colector' => 'Ana Torres',
         'individual_count' => 3,
         'disposition' => 'Holotype',
@@ -65,12 +70,12 @@ test('traduce correctamente los campos básicos del Supplier al lenguaje del Cus
     ]);
 
     $adapter = app(InventarioGestionColeccionEspecimenAdapter::class);
-    $datos = $adapter->buscarPorOccurrenceId('EPN-0012');
+    $datos = $adapter->buscarPorOccurrenceId($occurrenceId);
 
     expect($datos)->not->toBeNull()
         ->and($datos->especimenId)->not->toBeEmpty()
-        ->and($datos->occurrenceId)->toBe('EPN-0012')
-        ->and($datos->scientificName)->toBe('Atta cephalotes')
+        ->and($datos->occurrenceId)->toBe($occurrenceId)
+        ->and($datos->scientificName)->toBe($speciesName)
         ->and($datos->individualCount)->toBe(3)
         ->and($datos->typeStatus)->toBe('Holotype')        // ACL: disposition → typeStatus
         ->and($datos->recordedBy)->toBe('Ana Torres')      // ACL: colector → recordedBy
@@ -78,34 +83,36 @@ test('traduce correctamente los campos básicos del Supplier al lenguaje del Cus
         ->and($datos->specimenNotes)->toBe('Obrera recolectada')
         ->and($datos->country)->toBe('Ecuador')
         ->and($datos->localityName)->toBe('Reserva Yasuní')
-        ->and($datos->decimalLatitude)->toBeCloseTo(-0.6753, 4)
-        ->and($datos->decimalLongitude)->toBeCloseTo(-76.3981, 4);
+        ->and($datos->decimalLatitude)->toBe(-0.6753)
+        ->and($datos->decimalLongitude)->toBe(-76.3981);
 });
 
 test('resuelve familia y género recorriendo la jerarquía taxonómica', function (): void {
-    [, , $speciesId] = crearJerarquiaTaxonomica('Apidae', 'Bombus', 'Bombus atratus');
+    [, , $speciesId, $familyName, $genusName] = crearJerarquiaTaxonomica('Apidae', 'Bombus', 'Bombus atratus');
+    $occurrenceId = 'QA-'.Str::uuid();
 
     crearEspecimenEnTaxonomia($speciesId, [
-        'occurrence_id' => 'EPN-002',
+        'occurrence_id' => $occurrenceId,
         'colector' => 'Carlos Mena',
         'occurrence_status' => 'loaned',
     ]);
 
     $adapter = app(InventarioGestionColeccionEspecimenAdapter::class);
-    $datos = $adapter->buscarPorOccurrenceId('EPN-002');
+    $datos = $adapter->buscarPorOccurrenceId($occurrenceId);
 
     expect($datos)->not->toBeNull()
-        ->and($datos->family)->toBe('Apidae')
-        ->and($datos->genus)->toBe('Bombus');
+        ->and($datos->family)->toBe($familyName)
+        ->and($datos->genus)->toBe($genusName);
 });
 
 test('especimenId coincide con el id de taxonomia.especimenes', function (): void {
     [, , $speciesId] = crearJerarquiaTaxonomica('Vespidae', 'Polistes', 'Polistes versicolor');
 
-    $id = crearEspecimenEnTaxonomia($speciesId, ['occurrence_id' => 'EPN-UUID-CHECK']);
+    $occurrenceId = 'QA-'.Str::uuid();
+    $id = crearEspecimenEnTaxonomia($speciesId, ['occurrence_id' => $occurrenceId]);
 
     $adapter = app(InventarioGestionColeccionEspecimenAdapter::class);
-    $datos = $adapter->buscarPorOccurrenceId('EPN-UUID-CHECK');
+    $datos = $adapter->buscarPorOccurrenceId($occurrenceId);
 
     expect($datos)->not->toBeNull()
         ->and($datos->especimenId)->toBe($id);
@@ -114,45 +121,41 @@ test('especimenId coincide con el id de taxonomia.especimenes', function (): voi
 test('retorna null si el occurrenceId no existe en taxonomia', function (): void {
     $adapter = app(InventarioGestionColeccionEspecimenAdapter::class);
 
-    expect($adapter->buscarPorOccurrenceId('NO-EXISTE'))->toBeNull();
+    expect($adapter->buscarPorOccurrenceId('QA-NO-EXISTE-'.Str::uuid()))->toBeNull();
 });
 
 test('obtenerTodos omite especímenes sin occurrence_id', function (): void {
     [, , $speciesId] = crearJerarquiaTaxonomica('Nymphalidae', 'Morpho', 'Morpho menelaus');
 
     // Sin occurrence_id (debe ser ignorado)
-    crearEspecimenEnTaxonomia($speciesId, ['occurrence_id' => null]);
+    $sinOccurrenceId = crearEspecimenEnTaxonomia($speciesId, ['occurrence_id' => null]);
 
     // Con occurrence_id (debe aparecer)
-    crearEspecimenEnTaxonomia($speciesId, ['occurrence_id' => 'EPN-005']);
+    $conOccurrenceId = crearEspecimenEnTaxonomia($speciesId);
 
     $adapter = app(InventarioGestionColeccionEspecimenAdapter::class);
     $todos = $adapter->obtenerTodos();
 
-    $occurrenceIds = array_column($todos, null);
-    $encontrado = array_filter($todos, fn ($d) => $d->occurrenceId === 'EPN-005');
+    $ids = array_map(fn ($dato) => $dato->especimenId, $todos);
 
-    expect($encontrado)->toHaveCount(1);
-
-    foreach ($todos as $dato) {
-        expect($dato->occurrenceId)->not->toBeNull()->and($dato->occurrenceId)->not->toBe('');
-    }
+    expect($ids)->toContain($conOccurrenceId)->not->toContain($sinOccurrenceId);
 });
 
 test('traduce los nuevos campos de divulgación y resuelve sampling_protocol vía muestra', function (): void {
     [, , $speciesId] = crearJerarquiaTaxonomica('Formicidae', 'Camponotus', 'Camponotus femoratus');
+    $occurrenceId = 'QA-'.Str::uuid();
 
     $muestraId = (string) Str::uuid();
     DB::table('taxonomia.muestras_colecta')->insert([
         'id' => $muestraId,
-        'codigo_muestra' => 'M-TEST-001',
+        'codigo_muestra' => 'M-TEST-'.Str::uuid(),
         'sampling_protocol' => 'Trampa Winkler',
         'created_at' => now(),
         'updated_at' => now(),
     ]);
 
     crearEspecimenEnTaxonomia($speciesId, [
-        'occurrence_id' => 'EPN-NEWFIELDS',
+        'occurrence_id' => $occurrenceId,
         'muestra_id' => $muestraId,
         'state_province' => 'Napo',
         'fecha_colecta' => '2024-03-20',
@@ -163,7 +166,7 @@ test('traduce los nuevos campos de divulgación y resuelve sampling_protocol ví
     ]);
 
     $adapter = app(InventarioGestionColeccionEspecimenAdapter::class);
-    $datos = $adapter->buscarPorOccurrenceId('EPN-NEWFIELDS');
+    $datos = $adapter->buscarPorOccurrenceId($occurrenceId);
 
     expect($datos)->not->toBeNull()
         ->and($datos->samplingProtocol)->toBe('Trampa Winkler')
@@ -171,20 +174,21 @@ test('traduce los nuevos campos de divulgación y resuelve sampling_protocol ví
         ->and($datos->eventDate)->toContain('2024-03-20')
         ->and($datos->caste)->toBe('obrera')
         ->and($datos->lifeStage)->toBe('adulto')
-        ->and($datos->elevationMinM)->toBeCloseTo(1200.0, 1)
-        ->and($datos->elevationMaxM)->toBeCloseTo(1500.0, 1);
+        ->and($datos->elevationMinM)->toBe(1200.0)
+        ->and($datos->elevationMaxM)->toBe(1500.0);
 });
 
 test('usa present como occurrenceStatus por defecto cuando el Supplier no tiene valor', function (): void {
     [, , $speciesId] = crearJerarquiaTaxonomica('Formicidae', 'Solenopsis', 'Solenopsis invicta');
+    $occurrenceId = 'QA-'.Str::uuid();
 
     crearEspecimenEnTaxonomia($speciesId, [
-        'occurrence_id' => 'EPN-DEFAULT',
+        'occurrence_id' => $occurrenceId,
         'occurrence_status' => null,
     ]);
 
     $adapter = app(InventarioGestionColeccionEspecimenAdapter::class);
-    $datos = $adapter->buscarPorOccurrenceId('EPN-DEFAULT');
+    $datos = $adapter->buscarPorOccurrenceId($occurrenceId);
 
     expect($datos->occurrenceStatus)->toBe('present');
 });

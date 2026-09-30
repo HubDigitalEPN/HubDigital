@@ -176,9 +176,20 @@ final class EloquentSolicitudDepositoRepository implements SolicitudDepositoRepo
      */
     public function eliminarBorradoresDe(string $investigadorId): void
     {
-        SolicitudDepositoEloquentModel::where('investigador_id', $investigadorId)
+        $borradores = SolicitudDepositoEloquentModel::where('investigador_id', $investigadorId)
             ->where('estado', EstadoSolicitudDeposito::EnBorrador->value)
-            ->delete();
+            ->get();
+        foreach ($borradores as $borrador) {
+            foreach (($borrador->documentos_cargados ?? []) as $ruta) {
+                if (is_string($ruta) && $ruta !== '') {
+                    app(\Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos::class)->eliminar($ruta);
+                }
+            }
+            if (is_string($borrador->solicitud_firmada_ruta) && $borrador->solicitud_firmada_ruta !== '') {
+                app(\Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos::class)->eliminar($borrador->solicitud_firmada_ruta);
+            }
+            $borrador->delete();
+        }
     }
 
     /**

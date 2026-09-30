@@ -3,7 +3,6 @@
 use Illuminate\Support\Facades\Route;
 use Modules\CatalogoPublico\Presentation\Http\Controllers\AdministrarAsistente;
 use Modules\CatalogoPublico\Presentation\Http\Controllers\AnalisisDiversidadCurador;
-use Modules\CatalogoPublico\Presentation\Http\Controllers\CompararEspecies;
 use Modules\CatalogoPublico\Presentation\Http\Controllers\GestionImagenesTaxonomicas;
 use Modules\CatalogoPublico\Presentation\Http\Controllers\PortalCatalogo;
 use Modules\CatalogoPublico\Presentation\Http\Controllers\PortalEstadisticas;
@@ -11,7 +10,7 @@ use Modules\CatalogoPublico\Presentation\Http\Controllers\ServirImagenCatalogo;
 use Modules\CatalogoPublico\Presentation\Http\Controllers\SincronizarEspecimenes;
 use Modules\CatalogoPublico\Presentation\Http\Controllers\TablaEspecimenesDivulgados;
 
-Route::middleware(['auth', 'verified'])
+Route::middleware(['auth', 'verified', 'role:curador'])
     ->prefix('divulgacion')
     ->name('divulgacion.')
     ->group(function () {
@@ -25,9 +24,9 @@ Route::middleware(['auth', 'verified'])
 Route::prefix('portal')
     ->name('portal.')
     ->group(function () {
-        Route::get('/', PortalCatalogo::class)->name('catalogo');
+        Route::get('/', fn () => redirect()->route('portal.estadisticas'))->name('inicio');
         Route::get('/estadisticas', PortalEstadisticas::class)->name('estadisticas');
-        Route::get('/comparar-especies', CompararEspecies::class)->name('comparar-especies');
+        Route::get('/catalogo', PortalCatalogo::class)->name('catalogo');
         Route::get('/lista-especies.csv', [PortalEstadisticas::class, 'descargarLista'])->name('lista-especies');
         Route::get('/imagenes/{objeto}', ServirImagenCatalogo::class)
             ->where('objeto', '[A-Za-z0-9_-]+')

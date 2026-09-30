@@ -5,10 +5,9 @@
             <div class="flex flex-wrap items-start justify-between gap-5">
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-[0.15em] text-science-blue">Colección biológica · análisis público</p>
-                    <h1 class="mt-2 font-display text-3xl font-bold tracking-tight text-blue-navy sm:text-4xl">Explorar la colección</h1>
+                    <h1 class="mt-2 font-display text-3xl font-bold tracking-tight text-blue-navy sm:text-4xl">Mapa y estadísticas</h1>
                     <p class="mt-3 max-w-2xl text-sm leading-6 text-text-secondary">Distribución taxonómica, tiempo y geografía de los registros publicados. Los puntos del mapa representan cuadrículas agrupadas, no sitios de colecta exactos.</p>
                 </div>
-                <div class="flex flex-wrap gap-2"><a href="{{ route('portal.catalogo') }}" class="inline-flex min-h-11 items-center rounded-md border border-blue-navy/20 bg-white px-4 text-sm font-semibold text-blue-navy hover:border-science-blue">Ver registros y filtros →</a><a href="{{ route('portal.comparar-especies') }}" class="inline-flex min-h-11 items-center rounded-md border border-science-blue bg-white px-4 text-sm font-semibold text-science-blue hover:bg-sky-50">Comparar especies →</a></div>
             </div>
             <form method="get" action="{{ route('portal.estadisticas') }}" class="mt-7 grid gap-3 rounded-xl border border-blue-navy/10 bg-[#f8fbfe] p-4 sm:grid-cols-[minmax(0,1fr)_9rem_9rem_auto] sm:items-end" aria-label="Filtros de estadísticas">
                 <label class="text-xs font-semibold text-blue-navy">Provincia
@@ -34,10 +33,10 @@
         @php $r = $datos['resumen']; @endphp
         <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             @foreach([
-                ['Registros públicos', $r->registros, 'bg-blue-50 text-science-blue'],
-                ['Con identificación de especie', $r->identificados, 'bg-emerald-50 text-bio-green'],
-                ['Con fecha visible', $r->fechados, 'bg-amber-50 text-amber-700'],
-                ['Con ubicación visible', $r->georreferenciados, 'bg-sky-50 text-sky-700'],
+                ['Registros públicos', $r['registros'], 'bg-blue-50 text-science-blue'],
+                ['Con identificación de especie', $r['identificados'], 'bg-emerald-50 text-bio-green'],
+                ['Con fecha visible', $r['fechados'], 'bg-amber-50 text-amber-700'],
+                ['Con ubicación visible', $r['georreferenciados'], 'bg-sky-50 text-sky-700'],
             ] as [$etiqueta, $valor, $color])
                 <div class="rounded-xl border border-blue-navy/10 bg-white p-5 shadow-sm">
                     <span class="inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide {{ $color }}">{{ $etiqueta }}</span>
@@ -52,7 +51,7 @@
                     <div><h2 id="titulo-mapa-coleccion" class="font-display text-lg font-bold text-blue-navy">Mapa de registros</h2><p class="text-xs text-text-secondary">Cuadrículas de 0,25° · Mantén Mayús y arrastra para buscar registros de un área</p></div>
                     <div class="flex gap-2"><button id="alternar-mapa" type="button" class="rounded-md border border-blue-navy/15 px-3 py-2 text-xs font-semibold text-blue-navy">Mostrar presencia</button><button id="ampliar-mapa" type="button" class="rounded-md border border-blue-navy/15 px-3 py-2 text-xs font-semibold text-blue-navy">Pantalla completa</button></div>
                 </div>
-                @if($datos['mapa']->isEmpty())
+                @if($datos['mapa'] === [])
                     <div class="flex h-80 items-center justify-center text-sm text-text-secondary">No hay coordenadas públicas para estos filtros.</div>
                 @else
                     <div id="mapa-coleccion" class="h-[420px] w-full bg-sky-50"></div>
@@ -63,14 +62,14 @@
                 <div class="flex items-center justify-between gap-3"><h2 id="titulo-filos" class="font-display text-lg font-bold text-blue-navy">Composición taxonómica</h2><span class="text-xs text-text-secondary">Por filo</span></div>
                 <div class="mt-5 space-y-3">
                     @foreach($datos['filos'] as $filo => $cantidad)
-                        @php $proporcion = $r->registros > 0 ? $cantidad / $r->registros * 100 : 0; @endphp
+                        @php $proporcion = $r['registros'] > 0 ? $cantidad / $r['registros'] * 100 : 0; @endphp
                         <div>
                             <div class="mb-1 flex justify-between gap-3 text-xs"><span class="font-semibold text-blue-navy">{{ $filo }}</span><span class="tabular-nums text-text-secondary">{{ number_format($cantidad, 0, ',', '.') }} · {{ number_format($proporcion, 1, ',', '.') }} %</span></div>
                             <div class="h-2 overflow-hidden rounded-full bg-[#e5edf4]"><div class="h-full rounded-full {{ $filo === 'Sin filo' ? 'bg-amber-500' : 'bg-science-blue' }}" style="width: {{ min(100, $proporcion) }}%"></div></div>
                         </div>
                     @endforeach
                 </div>
-                <p class="mt-5 border-t border-blue-navy/10 pt-4 text-xs leading-5 text-text-secondary">«Sin filo» señala ejemplares pendientes de identificación curatorial; se incluyen en el total sin inventar una clasificación.</p>
+                <p class="mt-5 border-t border-blue-navy/10 pt-4 text-xs leading-5 text-text-secondary">Solo se muestran ejemplares cuya clasificación por filo está confirmada.</p>
             </section>
         </div>
 
@@ -91,13 +90,12 @@
             </div>
             <div class="grid gap-x-8 px-5 py-4 sm:grid-cols-2">
                 @forelse($datos['especies'] as $especie)
-                    <a href="{{ route('portal.catalogo', ['nivel' => 'species', 'taxon' => $especie->nombre]) }}" class="flex justify-between gap-3 border-b border-blue-navy/5 py-2 text-sm hover:text-science-blue"><span class="italic">{{ $especie->nombre }}</span><span class="tabular-nums text-text-secondary">{{ number_format($especie->total, 0, ',', '.') }}</span></a>
+                    <a href="{{ route('portal.catalogo', ['nivel' => 'species', 'taxon' => $especie['nombre']]) }}" class="flex justify-between gap-3 border-b border-blue-navy/5 py-2 text-sm hover:text-science-blue"><span class="italic">{{ $especie['nombre'] }}</span><span class="tabular-nums text-text-secondary">{{ number_format($especie['total'], 0, ',', '.') }}</span></a>
                 @empty
                     <p class="py-4 text-sm text-text-secondary">No hay especies identificadas para esta selección.</p>
                 @endforelse
             </div>
         </section>
-        <p class="mt-4 text-xs text-text-secondary">La hoja importada no incluyó fotografías publicadas. La comparación visual de ejemplares y las guías de campo ilustradas estarán disponibles cuando el curador agregue imágenes con sus créditos.</p>
         <p class="mt-5 text-xs leading-5 text-text-secondary">Los gráficos cuentan registros de la colección, no estiman abundancia silvestre. La selección temporal excluye fechas vacías y la cartografía omite coordenadas restringidas.</p>
     </div>
 </div>

@@ -56,10 +56,13 @@ test('el nivel HIGH permanece inactivo sin evidencia final suficiente', function
 });
 
 test('una corrección de geografía sustituye el filtro público anterior', function (): void {
+    $phylum = (string) Str::uuid();
     $taxon = (string) Str::uuid();
     $specimen = (string) Str::uuid();
+    DB::table('taxonomia.taxones')->insert(['id' => $phylum, 'nombre_cientifico' => 'Filo QA '.substr($phylum, 0, 8),
+        'rango' => 'phylum', 'autor' => 'Prueba', 'anio_descripcion' => 2026]);
     DB::table('taxonomia.taxones')->insert(['id' => $taxon, 'nombre_cientifico' => 'Dynastes',
-        'rango' => 'genero', 'autor' => 'Prueba', 'anio_descripcion' => 2026]);
+        'rango' => 'genero', 'autor' => 'Prueba', 'anio_descripcion' => 2026, 'padre_id' => $phylum]);
     DB::table('taxonomia.especimenes')->insert(['id' => $specimen, 'codigo_catalogo' => 'MEPN-FOURTH-1',
         'occurrence_id' => 'MEPN-FOURTH-1', 'taxon_id' => $taxon, 'localidad' => 'Quito',
         'locality_name' => 'Quito', 'state_province' => 'Pichincha', 'country' => 'Ecuador',

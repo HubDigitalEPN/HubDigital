@@ -20,4 +20,7 @@ interface EspecimenDivulgableRepositoryInterface
      * @return list<EspecimenDivulgable>
      */
     public function buscarPorOccurrenceIDs(array $occurrenceIDs): array;
+
+    /** @param list<string> $occurrenceIDs @return list<EspecimenDivulgable> */
+    public function buscarPublicadosPorOccurrenceIDs(array $occurrenceIDs): array;
 }

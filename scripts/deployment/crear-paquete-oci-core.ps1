@@ -196,6 +196,22 @@ if ($rutasProhibidas) {
     throw "Hay archivos sensibles no ignorados. No se agrego nada a Git: $($rutasProhibidas -join ', ')"
 }
 
+# El flujo Pest de deposito firma y verifica con el certificado real autorizado.
+# Confirmar los insumos antes de instalar dependencias, sin imprimir la clave ni el P12.
+$directorioCertificadoPruebas = Join-Path $Proyecto '.local\secrets'
+$certificadoPruebas = Join-Path $directorioCertificadoPruebas 'HERNAN AUGUSTO TROYA PROANO 1707514251-241025084137.p12'
+$credencialesPruebas = Join-Path $directorioCertificadoPruebas 'credencialesp12 .txt'
+if (-not (Test-Path -LiteralPath $certificadoPruebas -PathType Leaf) -or
+    -not (Test-Path -LiteralPath $credencialesPruebas -PathType Leaf)) {
+    throw 'Falta el P12 real autorizado o su archivo de credenciales en .local/secrets. La suite Pest no puede validar la firma de deposito.'
+}
+$textoCredencialesPruebas = [System.IO.File]::ReadAllText($credencialesPruebas)
+if ((Get-Item -LiteralPath $certificadoPruebas).Length -eq 0 -or
+    $textoCredencialesPruebas -notmatch '(?im)^\s*clave\s+\S+\s*$') {
+    throw 'El P12 real o la linea de clave de sus credenciales locales esta vacia o ilegible.'
+}
+$textoCredencialesPruebas = $null
+
 $headAntesValidacion = (Get-SalidaGit -Argumentos @('rev-parse', 'HEAD') | Select-Object -First 1).Trim()
 $huellasAntesValidacion = @(Get-HuellasCodigo)
 

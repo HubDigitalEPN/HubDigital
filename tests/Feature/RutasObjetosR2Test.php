@@ -31,15 +31,27 @@ function imagenPublicadaR2DePrueba(): array
 {
     $ahora = now();
     $contenido = 'imagen-r2-qa';
+    $phylumId = (string) Str::uuid();
     $taxonId = (string) Str::uuid();
     $especimenId = (string) Str::uuid();
     $occurrenceId = 'QA-R2-'.Str::lower(Str::random(12));
     $ruta = 'divulgacion/imagenes/qa-r2-'.Str::lower(Str::random(12)).'.jpg';
 
     DB::table('taxonomia.taxones')->insert([
+        'id' => $phylumId,
+        'nombre_cientifico' => 'Filo QA '.substr($phylumId, 0, 8),
+        'rango' => 'phylum',
+        'autor' => 'QA',
+        'anio_descripcion' => 2026,
+        'estado' => 'activo',
+        'created_at' => $ahora,
+        'updated_at' => $ahora,
+    ]);
+    DB::table('taxonomia.taxones')->insert([
         'id' => $taxonId,
         'nombre_cientifico' => 'Taxon QA '.Str::random(8),
         'rango' => 'species',
+        'padre_id' => $phylumId,
         'autor' => 'QA',
         'anio_descripcion' => 2026,
         'estado' => 'activo',

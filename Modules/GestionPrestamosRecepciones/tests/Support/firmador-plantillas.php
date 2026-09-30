@@ -32,6 +32,15 @@ if ($modo === 'generar') {
     $solicitud = (object) [
         'numero' => 'PRUEBA-DEPOSITO-001', 'tipo_tramite' => 'Deposito',
         'solicitud_documento_version' => 1, 'localidad' => 'Localidad sintetica',
+        'created_at' => \Carbon\CarbonImmutable::parse('2026-01-01'),
+        'solicitud_oficio' => 'PRUEBA-001',
+        'solicitud_nombre_permiso' => 'Depositante de prueba',
+        'solicitud_cedula' => '1700000000',
+        'solicitud_cargo' => 'Investigador de prueba',
+        'solicitud_grupo' => 'Insectos',
+        'solicitud_proyecto' => 'Proyecto sintético',
+        'solicitud_institucion' => 'Institución sintética',
+        'solicitud_correo' => 'depositante@example.test',
     ];
     $registros = collect(array_map(static fn (int $indice): object => (object) [
         'nombre_corregido' => null, 'nombre_cientifico' => 'Insecta especie '.$indice,

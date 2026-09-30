@@ -4,14 +4,12 @@ declare(strict_types=1);
 
 use App\Enums\RolUsuario;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Modules\GestionPrestamosRecepciones\Domain\Events\DevolucionRegistrada;
 use Modules\GestionPrestamosRecepciones\Domain\Events\ProrrogaSolicitada;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrestamoId;
-use Tests\TestCase;
+use Tests\DatabaseFeatureTestCase;
 
-uses(TestCase::class, RefreshDatabase::class);
+uses(DatabaseFeatureTestCase::class);
 
 it('avisa a los curadores en la campana cuando se solicita una prórroga', function () {
     $curador = User::factory()->create(['rol' => RolUsuario::CURADOR]);
@@ -55,8 +53,9 @@ it('avisa al administrador porque posee facultades curatoriales', function () {
         ->and($notificacion->data['tipo'])->toBe('prestamo_prorroga_solicitada');
 });
 
-it('no falla cuando no hay curadores registrados', function () {
+it('no envía el aviso curatorial a un depositante', function () {
+    $depositante = User::factory()->depositante()->create();
     event(new ProrrogaSolicitada(PrestamoId::generate(), 'investigador-1', new DateTimeImmutable));
 
-    expect(DB::table('notifications')->count())->toBe(0);
+    expect($depositante->notifications()->count())->toBe(0);
 });

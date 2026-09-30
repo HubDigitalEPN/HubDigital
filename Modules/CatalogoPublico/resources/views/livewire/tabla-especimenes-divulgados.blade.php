@@ -3,7 +3,7 @@
     <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <h1 class="font-display text-2xl font-bold text-blue-navy">Catálogo divulgado</h1>
-            <p class="text-sm text-text-secondary">Especímenes publicados en el catálogo público</p>
+            <p class="text-sm text-text-secondary">Registros públicos y registros reservados para revisión curatorial.</p>
         </div>
         <flux:button
             :href="route('divulgacion.sincronizar')"
@@ -23,7 +23,7 @@
 
     {{-- Barra de filtros --}}
     <div class="rounded-lg border border-border bg-surface shadow-sm p-4">
-        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
             <flux:input
                 wire:model.live.debounce.300ms="busquedaCatalogo"
                 label="N.º de catálogo"
@@ -62,6 +62,11 @@
                     <flux:select.option value="{{ $col }}">{{ $col }}</flux:select.option>
                 @endforeach
             </flux:select>
+            <flux:select wire:model.live="publicacion" label="Publicación" size="sm">
+                <flux:select.option value="todos">Todos</flux:select.option>
+                <flux:select.option value="publicos">Públicos</flux:select.option>
+                <flux:select.option value="curaduria">Solo curaduría · filo pendiente</flux:select.option>
+            </flux:select>
         </div>
         @if($this->tieneFiltros())
             <div class="mt-3 flex justify-end">
@@ -79,6 +84,7 @@
                 <tr>
                     <th class="px-4 py-3 text-left font-medium text-white">N.º de catálogo</th>
                     <th class="px-4 py-3 text-left font-medium text-white">Nombre científico</th>
+                    <th class="px-4 py-3 text-left font-medium text-white">Publicación</th>
                     <th class="px-4 py-3 text-left font-medium text-white hidden md:table-cell">Colector</th>
                     <th class="px-4 py-3 text-left font-medium text-white hidden lg:table-cell">Familia</th>
                     <th class="px-4 py-3 text-left font-medium text-white hidden xl:table-cell">Estado</th>
@@ -94,8 +100,11 @@
                         </td>
                         <td class="px-4 py-3">
                             <span class="font-serif italic text-sm text-text-primary">
-                                {{ $especimen->scientific_name ?? '—' }}
+                                {{ $especimen->scientific_name ?: ($especimen->taxon_verbatim ?: 'Identificación pendiente') }}
                             </span>
+                        </td>
+                        <td class="px-4 py-3 text-xs font-semibold {{ $especimen->publicado ? 'text-bio-green' : 'text-amber-700' }}">
+                            {{ $especimen->publicado ? 'Público' : 'Solo curaduría · filo pendiente' }}
                         </td>
                         <td class="px-4 py-3 hidden md:table-cell text-xs text-text-secondary">
                             {{ $especimen->colector ?? '—' }}
@@ -128,7 +137,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="px-4 py-12 text-center">
+                        <td colspan="8" class="px-4 py-12 text-center">
                             <div class="flex flex-col items-center gap-2 text-text-secondary">
                                 <flux:icon name="table-cells" class="size-8 opacity-40" />
                                 <span class="text-sm">No hay especímenes divulgados aún.</span>

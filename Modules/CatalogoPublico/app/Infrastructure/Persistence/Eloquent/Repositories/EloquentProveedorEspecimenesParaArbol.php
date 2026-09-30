@@ -20,6 +20,7 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
     {
         $query = DB::table('taxonomia.especimenes as te')
             ->join('divulgacion.especimenes_divulgables as ed', 'ed.especimen_id', '=', 'te.id')
+            ->where('ed.publicado', true)
             ->leftJoin('taxonomia.taxones as tx', 'tx.id', '=', 'te.taxon_id')
             ->leftJoin('taxonomia.localidades as loc', 'loc.id', '=', 'te.localidad_id');
 
@@ -42,7 +43,8 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
     public function obtenerTodos(?FiltrosBusqueda $filtros = null): array
     {
         $query = DB::table('taxonomia.especimenes as te')
-            ->join('divulgacion.especimenes_divulgables as ed', 'ed.especimen_id', '=', 'te.id');
+            ->join('divulgacion.especimenes_divulgables as ed', 'ed.especimen_id', '=', 'te.id')
+            ->where('ed.publicado', true);
 
         if ($filtros !== null && ! $filtros->estaVacio()) {
             $query = $this->aplicarFiltros($query, $filtros);

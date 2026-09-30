@@ -3,83 +3,59 @@
 <head>
     <meta charset="utf-8">
     <style>
-        @page { margin: 32px 42px 46px; }
-        body { color: #17213b; font: 10px DejaVu Sans, sans-serif; line-height: 1.45; }
-        h1 { color: #12385a; font-size: 17px; margin: 5px 0 2px; text-align: center; }
-        h2 { border-bottom: 1px solid #93aa99; color: #24543f; font-size: 11px; margin: 16px 0 7px; padding-bottom: 3px; }
-        table { border-collapse: collapse; width: 100%; }
-        td, th { border: 1px solid #cbd5d1; padding: 5px; vertical-align: top; }
-        th { background: #edf4ef; color: #12385a; text-align: left; }
-        .brand { border-bottom: 3px solid #2f6b4f; padding-bottom: 9px; text-align: center; }
-        .muted { color: #56636b; }
-        .declaration { background: #f3f7f4; border: 1px solid #b7c9bc; margin-top: 15px; padding: 9px; }
-        .hash { color: #56636b; font: 7px DejaVu Sans Mono, monospace; word-break: break-all; }
-        .firma-persona { border: 1px solid #93aa99; margin-top: 13px; padding: 8px; page-break-inside: avoid; }
-        .firma-persona .titulo { color: #12385a; font-size: 10px; font-weight: bold; margin-bottom: 5px; }
-        .firma-persona .marcadores { height: 94px; position: relative; width: 100%; }
-        .firma-persona .marcador-bloque,
-        .firma-persona .marcador-zona { color: #fff; display: block; font-size: 1px; line-height: 1px; position: absolute; text-decoration: none; }
-        .firma-persona .marcador-bloque { bottom: 0; left: 0; right: 0; top: 0; }
-        .firma-persona .marcador-zona { bottom: 6px; left: 6px; right: 6px; top: 6px; }
-        .firma-persona .nombre { border-top: 1px solid #596963; font-weight: bold; margin: 3px 0 0; padding-top: 4px; text-align: center; }
-        .firma-persona .rol { color: #56636b; margin: 1px 0 0; text-align: center; }
-        .footer { bottom: -29px; color: #64716b; font-size: 7px; left: 0; position: fixed; right: 0; text-align: center; }
+        @page { margin: 70px 68px 65px; }
+        body { color: #182536; font: 11px DejaVu Sans, sans-serif; line-height: 1.7; }
+        .oficio { text-align: right; margin-bottom: 26px; }
+        .destinatario { margin-bottom: 30px; line-height: 1.45; }
+        .cuerpo { text-align: justify; margin: 16px 0 30px; }
+        .firma { margin-top: 28px; position: relative; height: 116px; }
+        .firma a { display: block; position: absolute; color: #fff; font-size: 1px; line-height: 1px; text-decoration: none; }
+        .firma .bloque { inset: 0; }
+        .firma .zona { left: 8px; right: 8px; top: 8px; bottom: 8px; }
+        .firmante { border-top: 1px solid #334155; padding-top: 8px; }
+        .meta { color: #64748b; font-size: 8px; margin-top: 42px; }
     </style>
 </head>
 <body>
-    <div class="brand">
-        <strong>ESCUELA POLITÉCNICA NACIONAL</strong><br>
-        Departamento de Biología · Museo de Historia Natural Gustavo Orcés V.<br>
-        <span class="muted">Laboratorio de Invertebrados · Colección Entomológica</span>
-    </div>
-    <h1>Solicitud de {{ mb_strtolower($solicitud->tipo_tramite) }} de invertebrados</h1>
-    <p style="text-align:center" class="muted">Expediente {{ $solicitud->numero }} · versión {{ $solicitud->solicitud_documento_version ?? 1 }}</p>
-
-    <h2>1. Datos de depósito de material MEPN · columnas A–J (consultor)</h2>
-    <table>
-        @foreach(array_slice($datosMepn, 0, 10, true) as $campo => $valor)
-            <tr><th style="width:38%">{{ $campo }}</th><td>{{ $valor !== null && $valor !== '' ? $valor : 'No indicado' }}</td></tr>
-        @endforeach
-    </table>
-
-    <h2>2. Seguimiento interno MEPN · columnas K–O (recepción y curaduría)</h2>
-    <table>
-        @foreach(array_slice($datosMepn, 10, 5, true) as $campo => $valor)
-            <tr><th style="width:38%">{{ $campo }}</th><td>{{ $valor !== null && $valor !== '' ? $valor : 'Se completará internamente' }}</td></tr>
-        @endforeach
-    </table>
-
-    <h2>3. Anexo de registros biológicos normalizados (Darwin Core)</h2>
-    <table>
-        <thead><tr><th>#</th><th>Nombre científico</th><th>Catálogo / ocurrencia</th><th>Localidad</th><th>Fecha</th></tr></thead>
-        <tbody>
-        @foreach($registros as $registro)
-            @php($dwc = $registro->datos_dwc ?? [])
-            <tr>
-                <td>{{ $loop->iteration }}</td>
-                <td><em>{{ $registro->nombre_corregido ?: $registro->nombre_cientifico }}</em></td>
-                <td>{{ $dwc['catalogNumber'] ?? $dwc['occurrenceID'] ?? 'Por asignar' }}</td>
-                <td>{{ $dwc['locality'] ?? $solicitud->localidad }}</td>
-                <td>{{ $dwc['eventDate'] ?? 'No indicada' }}</td>
-            </tr>
-        @endforeach
-        </tbody>
-    </table>
-
-    <div class="declaration">
-        <strong>Declaración del solicitante.</strong> Declaro que la información registrada es verídica, que el material tiene procedencia lícita y que los permisos y documentos incorporados al expediente son auténticos. Solicito al Laboratorio de Invertebrados de la EPN evaluar el material bajo sus procedimientos de ingreso, revisión, custodia y devolución o incorporación, según corresponda.
-    </div>
-    <p class="hash">Huella del expediente: {{ $huellaExpediente }}</p>
-    <div class="firma-persona">
-        <div class="titulo">Firma electrónica del depositante</div>
-        <div class="marcadores">
-            <a class="marcador-bloque" href="{{ $perfilFirma['bloque'] }}">HUBDIGITAL BLOQUE NOMINAL {{ $perfilFirma['rol'] }}</a>
-            <a class="marcador-zona" href="{{ $perfilFirma['zona'] }}">HUBDIGITAL ZONA FIRMA {{ $perfilFirma['rol'] }}</a>
-        </div>
-        <p class="nombre">{{ trim(($depositante?->first_name ?? '').' '.($depositante?->last_name ?? '')) ?: 'Depositante responsable' }}</p>
-        <p class="rol">Depositante / solicitante del expediente {{ $solicitud->numero }}</p>
+    <div class="oficio">
+        @if($solicitud->solicitud_oficio)
+            <div>No. oficio: {{ $solicitud->solicitud_oficio }}</div>
+        @endif
+        <div>Quito, {{ $solicitud->created_at?->locale('es')->translatedFormat('j \\d\\e F \\d\\e Y') }}</div>
     </div>
 
-    <div class="footer">Documento generado por HubDigital. La copia oficial firmada se conserva en almacenamiento privado con huella SHA-256 y trazabilidad de validación.</div>
+    <div class="destinatario">
+        <strong>Dr. Adrian Troya</strong><br>
+        Jefe<br>
+        Laboratorio de Invertebrados<br>
+        Departamento de Biología<br>
+        Escuela Politécnica Nacional
+    </div>
+
+    <p>De mis consideraciones,</p>
+
+    <p class="cuerpo">
+        Yo, <strong>{{ $solicitud->solicitud_nombre_permiso }}</strong>, con número de cédula de identidad
+        <strong>{{ $solicitud->solicitud_cedula }}</strong>, en mi calidad de
+        <strong>{{ $solicitud->solicitud_cargo }}</strong>, solicito autorice la recepción de los especímenes de
+        <strong>{{ $solicitud->solicitud_grupo }}</strong>, que fueron recolectados en el proyecto
+        <strong>{{ $solicitud->solicitud_proyecto }}</strong>, cuyos detalles indico en tabla compartida,
+        vía Google Drive, conforme requisitos establecidos en la página web del Laboratorio.
+    </p>
+
+    <p>Sin otro particular, me suscribo de usted.</p>
+    <p>Atentamente,</p>
+
+    <div class="firma">
+        <a class="bloque" href="{{ $perfilFirma['bloque'] }}">HUBDIGITAL BLOQUE NOMINAL {{ $perfilFirma['rol'] }}</a>
+        <a class="zona" href="{{ $perfilFirma['zona'] }}">HUBDIGITAL ZONA FIRMA {{ $perfilFirma['rol'] }}</a>
+    </div>
+    <div class="firmante">
+        <strong>{{ $solicitud->solicitud_nombre_permiso }}</strong><br>
+        {{ $solicitud->solicitud_institucion }}<br>
+        {{ $solicitud->solicitud_correo }}
+    </div>
+
+    <div class="meta">Solicitud {{ $solicitud->numero }} · versión {{ $solicitud->solicitud_documento_version ?? 1 }}. El ejemplar oficial es el PDF con firma electrónica validada.</div>
 </body>
 </html>

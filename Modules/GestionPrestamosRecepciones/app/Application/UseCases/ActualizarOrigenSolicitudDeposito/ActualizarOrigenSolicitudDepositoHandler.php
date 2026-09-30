@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Modules\GestionPrestamosRecepciones\Application\UseCases\ActualizarOrigenSolicitudDeposito;
 
 use App\Support\CatalogoLocalidadesEcuador;
-use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
 use Modules\GestionPrestamosRecepciones\Application\Exceptions\SolicitudNoEncontradaException;
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
@@ -26,8 +25,7 @@ final class ActualizarOrigenSolicitudDepositoHandler
     {
         $output = null;
         $eventos = [];
-        $rutaFirmaAnterior = null;
-        $this->transactionManager->executeTransactional(function () use ($input, &$output, &$eventos, &$rutaFirmaAnterior): void {
+        $this->transactionManager->executeTransactional(function () use ($input, &$output, &$eventos): void {
             $id = SolicitudDepositoId::from($input->solicitudId);
             $solicitud = $this->repo->buscarPorIdParaActualizar($id);
             if ($solicitud === null) {
@@ -57,23 +55,15 @@ final class ActualizarOrigenSolicitudDepositoHandler
             $modelo = SolicitudDepositoEloquentModel::query()->findOrFail($input->solicitudId);
             $cambios = [];
             if ($cambio) {
-                $rutaFirmaAnterior = $modelo->solicitud_firmada_ruta;
                 $metadata = $modelo->extraccion_metadatos ?? [];
                 unset($metadata['ejecucion_id'], $metadata['confirmacion_humana']);
                 $cambios += ['extraccion_metadatos' => $metadata,
-                    'extraccion_estado' => 'pendiente', 'documentos_procesados' => [],
-                    'solicitud_documento_version' => (int) $modelo->solicitud_documento_version + 1,
-                    'solicitud_firmada_ruta' => null, 'solicitud_firmada_sha256' => null,
-                    'solicitud_firmada_en' => null, 'solicitud_firma_metadata' => []];
+                    'extraccion_estado' => 'pendiente', 'documentos_procesados' => []];
             }
             if ($cambios !== []) $modelo->forceFill($cambios)->save();
             $eventos = $solicitud->pullEvents();
             $output = ActualizarOrigenSolicitudDepositoOutput::fromEntity($solicitud);
         });
-        if (is_string($rutaFirmaAnterior) && $rutaFirmaAnterior !== '') {
-            try { app(AlmacenamientoDepositos::class)->eliminar($rutaFirmaAnterior); }
-            catch (\Throwable $error) { report($error); }
-        }
         foreach ($eventos as $event) {
             $this->eventPublisher->publish($event);
         }

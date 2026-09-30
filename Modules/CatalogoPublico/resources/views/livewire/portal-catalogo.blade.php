@@ -1,4 +1,8 @@
-<div>
+<div x-data="{
+    mostrarArthropoda: false,
+    abrirArthropoda() { this.mostrarArthropoda = true; this.$nextTick(() => this.$refs.cerrarArthropoda?.focus()); },
+    cerrarArthropoda() { this.mostrarArthropoda = false; this.$nextTick(() => this.$refs.abrirArthropoda?.focus()); },
+}">
     {{-- =====================================================================
          NAV BAR TAXONÓMICO — siempre visible, permite explorar por nivel
          ===================================================================== --}}
@@ -6,7 +10,7 @@
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <nav class="flex items-end gap-1 overflow-x-auto scrollbar-hide" aria-label="Catálogo por nivel taxonómico">
                 <a
-                    href="/portal"
+                    href="{{ route('portal.catalogo') }}"
                     wire:navigate
                     class="shrink-0 px-3 py-2 -mb-px text-xs font-medium transition-colors border-b-2 border-transparent text-text-secondary hover:text-text-primary hover:border-border"
                 >
@@ -81,7 +85,7 @@
     @endif
 
     <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6 lg:px-8">
-        <div class="flex flex-wrap items-center gap-4"><p class="text-sm text-text-secondary">Elige cómo explorar la colección:</p><a href="{{ route('portal.estadisticas') }}" class="text-sm font-semibold text-science-blue hover:underline">Mapa y estadísticas →</a><a href="{{ route('portal.comparar-especies') }}" class="text-sm font-semibold text-science-blue hover:underline">Comparar especies →</a></div>
+        <a href="{{ route('portal.estadisticas') }}" class="text-sm font-semibold text-science-blue hover:underline">Mapa y estadísticas →</a>
         <div class="inline-flex rounded-lg border border-border bg-surface p-1" role="group" aria-label="Presentación del catálogo">
             <button type="button" wire:click="cambiarVista('tarjetas')" aria-pressed="{{ $vista === 'tarjetas' ? 'true' : 'false' }}"
                 @class(['rounded-md px-3 py-1.5 text-sm font-medium', 'bg-science-blue text-white' => $vista === 'tarjetas', 'text-text-secondary hover:text-text-primary' => $vista !== 'tarjetas'])>Tarjetas</button>
@@ -91,7 +95,7 @@
     </div>
 
     @if($vista === 'registros')
-        @if($nivelActual === '' && ! $mostrarSinFilo)
+        @if($nivelActual === '')
             <x-catalogopublico::filtro-catalogo
                 :preparaciones="$preparacionesDisponibles"
                 :biomas="$biomasDisponibles"
@@ -104,21 +108,12 @@
             <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
                 <div>
                     <h1 class="font-display text-2xl font-bold text-blue-navy">
-                        {{ $mostrarSinFilo ? 'Registros pendientes de identificar el filo' : ($taxonActual !== '' ? 'Registros de '.$taxonActual : 'Registros del catálogo') }}
+                        {{ $taxonActual !== '' ? 'Registros de '.$taxonActual : 'Registros del catálogo' }}
                     </h1>
                     <p class="mt-1 text-sm text-text-secondary">{{ number_format($totalRegistrosVista) }} registros · página {{ $paginaActual }} de {{ $ultimaPagina }}</p>
                 </div>
-                @if($nivelActual === '' && ! $mostrarSinFilo && $totalRegistrosVista > 0)
+                @if($nivelActual === '' && $totalRegistrosVista > 0)
                     <button type="button" wire:click="descargarResultados" wire:loading.attr="disabled" wire:target="descargarResultados" class="rounded-md border border-science-blue px-4 py-2 text-sm font-semibold text-science-blue hover:bg-sky-50 disabled:opacity-50">Descargar resultados CSV</button>
-                @endif
-                @if($mostrarSinFilo)
-                    <button type="button" wire:click="navegar('', '')" class="text-sm font-medium text-science-blue hover:underline">
-                        Ver todos los registros
-                    </button>
-                @elseif($sinFilo > 0)
-                    <button type="button" wire:click="verSinFilo" class="text-sm font-medium text-science-blue hover:underline">
-                        Ver {{ number_format($sinFilo) }} registros sin filo
-                    </button>
                 @endif
             </div>
             @if($totalRegistrosVista === 0)
@@ -172,19 +167,6 @@
                 <h1 class="font-display text-2xl font-bold text-white">
                     Catálogo del laboratorio de invertebrados
                 </h1>
-                @if($totalGlobal > 0)
-                    <p class="mt-3 text-sm text-white/70">
-                        <strong class="text-white tabular-nums">{{ number_format($totalGlobal) }}</strong>
-                        registros publicados; identificados en
-                        <strong class="text-white tabular-nums">{{ count($hijos) }}</strong>
-                        {{ count($hijos) === 1 ? 'filo' : 'filos' }}
-                    </p>
-                @endif
-                @if($sinFilo > 0)
-                    <button type="button" wire:click="verSinFilo" class="mt-3 text-sm font-medium text-white underline decoration-white/60 underline-offset-4 hover:decoration-white">
-                        Ver {{ number_format($sinFilo) }} registros cuyo filo está pendiente de identificar
-                    </button>
-                @endif
             </div>
         </div>
 
@@ -197,11 +179,6 @@
         />
 
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-            <details class="mb-6 rounded-lg border border-border bg-surface p-4 text-sm text-text-secondary">
-                <summary class="cursor-pointer font-semibold text-science-blue">¿Qué es Arthropoda?</summary>
-                <p class="mt-2">Arthropoda es el filo de los artrópodos: animales invertebrados con exoesqueleto y apéndices articulados. Incluye insectos, arácnidos, crustáceos y miriápodos. En este catálogo, cada tarjeta de filo permite seguir explorando sus grupos o ver directamente sus registros.</p>
-                <a href="https://nationalzoo.si.edu/conservation/news/house-hunters-amazing-arthropods" target="_blank" rel="noopener noreferrer" class="mt-2 inline-block text-science-blue underline">Conocer más · Smithsonian</a>
-            </details>
             @if(count($hijos) === 0)
                 <div role="status" class="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-surface px-6 py-12 text-center">
                     <flux:icon name="magnifying-glass" class="size-6 text-text-secondary" />
@@ -218,27 +195,23 @@
                         $stats = $descendientes[$clave] ?? [];
                         $numEspecimenes = $conteos[$clave] ?? 0;
                     @endphp
-                    <button
-                        wire:click="navegar('{{ $hijo['nivel'] }}', '{{ $hijo['taxon'] }}')"
-                        class="group text-left rounded-lg border border-border bg-surface shadow-sm hover:border-science-blue/40 hover:shadow-md transition-all overflow-hidden"
-                    >
-                        {{-- Cuerpo de la tarjeta --}}
-                        <div class="p-4">
-                            <div class="flex items-start justify-between gap-2">
-                                <div class="min-w-0">
-                                    <div class="font-serif italic text-lg text-text-primary group-hover:text-science-blue transition-colors truncate">
-                                        {{ $hijo['taxon'] }}
-                                    </div>
-                                    <div class="text-xs text-text-secondary mt-0.5">
-                                        {{ $etiquetas[$hijo['nivel']] ?? $hijo['nivel'] }}
-                                    </div>
+                    <article class="rounded-lg border border-border bg-surface p-4 shadow-sm transition-all hover:border-science-blue/40 hover:shadow-md">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-2">
+                                    <button type="button" wire:click="navegar('{{ $hijo['nivel'] }}', '{{ $hijo['taxon'] }}')" class="truncate font-serif text-lg italic text-text-primary transition-colors hover:text-science-blue">{{ $hijo['taxon'] }}</button>
+                                    @if($hijo['taxon'] === 'Arthropoda')
+                                        <button type="button" x-ref="abrirArthropoda" x-on:click="abrirArthropoda()" class="inline-flex size-6 shrink-0 items-center justify-center rounded-full border border-science-blue text-xs font-bold text-science-blue hover:bg-science-blue hover:text-white" aria-label="¿Qué es Arthropoda?" title="¿Qué es Arthropoda?">?</button>
+                                    @endif
                                 </div>
-                                <flux:icon name="chevron-right" class="size-4 text-text-secondary shrink-0 mt-1 group-hover:text-science-blue transition-colors" />
+                                <div class="mt-0.5 text-xs text-text-secondary">{{ $etiquetas[$hijo['nivel']] ?? $hijo['nivel'] }}</div>
                             </div>
+                            <button type="button" wire:click="navegar('{{ $hijo['nivel'] }}', '{{ $hijo['taxon'] }}')" class="shrink-0 text-text-secondary hover:text-science-blue" aria-label="Explorar {{ $hijo['taxon'] }}"><flux:icon name="chevron-right" class="mt-1 size-4" /></button>
+                        </div>
 
                             {{-- Resumen de descendientes --}}
                             @if(!empty($stats) || $numEspecimenes > 0)
-                                <div class="mt-3 pt-3 border-t border-border flex flex-wrap gap-x-3 gap-y-1 text-xs text-text-secondary">
+                                <div class="mt-3 flex flex-wrap gap-x-3 gap-y-1 border-t border-border pt-3 text-xs text-text-secondary">
                                     @foreach($etiquetasDescendientes as $nivelStat => $etiquetaStat)
                                         @if(isset($stats[$nivelStat]) && $stats[$nivelStat] > 0)
                                             <span>
@@ -255,8 +228,7 @@
                                     @endif
                                 </div>
                             @endif
-                        </div>
-                    </button>
+                    </article>
                 @endforeach
             </div>
             @endif
@@ -1123,5 +1095,25 @@
     >
         <span class="inline-block size-3 rounded-full border-2 border-science-blue border-t-transparent animate-spin"></span>
         Cargando…
+    </div>
+
+    <div x-show="mostrarArthropoda" x-cloak x-on:keydown.escape.window="if (mostrarArthropoda) cerrarArthropoda()" class="fixed inset-0 z-50 flex items-center justify-center bg-blue-navy/75 p-4" role="presentation">
+        <section role="dialog" aria-modal="true" aria-labelledby="titulo-arthropoda" x-on:click.outside="cerrarArthropoda()" class="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-xl bg-surface p-5 text-text-primary shadow-2xl sm:p-7">
+            <div class="flex items-start justify-between gap-3">
+                <div><p class="text-xs font-semibold uppercase tracking-widest text-bio-green">Guía de clasificación</p><h2 id="titulo-arthropoda" class="mt-1 font-display text-2xl font-bold text-text-primary">¿Qué es <em>Arthropoda</em>?</h2></div>
+                <button type="button" x-ref="cerrarArthropoda" x-on:click="cerrarArthropoda()" class="rounded-md border border-border px-3 py-1 text-xl text-text-primary" aria-label="Cerrar explicación">×</button>
+            </div>
+            <p class="mt-4 text-sm leading-7"><em>Arthropoda</em> es un <strong>filo</strong>, un grupo taxonómico amplio que reúne animales con cuerpo segmentado, apéndices articulados y un exoesqueleto externo. Para crecer, muchos mudan ese exoesqueleto. Un filo no es una especie: dentro de él se organizan clases, órdenes, familias, géneros y especies.</p>
+            <div class="mt-4 grid gap-3 sm:grid-cols-3">
+                <div class="rounded-lg border border-border bg-bg-main p-3"><strong class="text-sm">Insectos</strong><p class="mt-1 text-xs leading-5 text-text-secondary">Generalmente tienen seis patas y tres regiones corporales. Aquí se incluyen escarabajos, mariposas y hormigas.</p></div>
+                <div class="rounded-lg border border-border bg-bg-main p-3"><strong class="text-sm">Arácnidos</strong><p class="mt-1 text-xs leading-5 text-text-secondary">Las arañas y escorpiones suelen tener ocho patas; no son insectos, aunque pertenecen al mismo filo.</p></div>
+                <div class="rounded-lg border border-border bg-bg-main p-3"><strong class="text-sm">Otros artrópodos</strong><p class="mt-1 text-xs leading-5 text-text-secondary">Crustáceos y miriápodos también forman parte del filo y muestran distintas adaptaciones.</p></div>
+            </div>
+            <div class="mt-5 grid gap-4 sm:grid-cols-2">
+                <figure><img loading="lazy" class="h-40 w-full rounded-lg object-cover" alt="Mariposa monarca sobre una flor, ejemplo de insecto artrópodo" src="https://commons.wikimedia.org/wiki/Special:Redirect/file/Monarch_butterfly_on_a_flower.jpg"><figcaption class="mt-1 text-xs text-text-secondary">Mariposa monarca · <a class="underline" href="https://commons.wikimedia.org/wiki/File:Monarch_butterfly_on_a_flower.jpg" target="_blank" rel="noopener noreferrer">Mcandrewa, CC BY-SA 4.0</a></figcaption></figure>
+                <figure><img loading="lazy" class="h-40 w-full rounded-lg object-cover" alt="Araña en su telaraña, ejemplo de arácnido artrópodo" src="https://commons.wikimedia.org/wiki/Special:Redirect/file/Spider_on_a_web.jpg"><figcaption class="mt-1 text-xs text-text-secondary">Araña · <a class="underline" href="https://commons.wikimedia.org/wiki/File:Spider_on_a_web.jpg" target="_blank" rel="noopener noreferrer">Louise Docker, CC BY 2.0</a></figcaption></figure>
+            </div>
+            <p class="mt-4 rounded-lg border-l-4 border-bio-green bg-bg-main p-3 text-sm leading-6">Las fotografías ilustran el filo y <strong>no representan ejemplares del laboratorio</strong>. Cada tarjeta del catálogo muestra los registros clasificados bajo ese filo; al abrirla puedes seguir la jerarquía taxonómica.</p>
+        </section>
     </div>
 </div>

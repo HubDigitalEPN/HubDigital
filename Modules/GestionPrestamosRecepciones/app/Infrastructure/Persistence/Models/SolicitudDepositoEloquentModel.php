@@ -72,6 +72,14 @@ final class SolicitudDepositoEloquentModel extends Model
         'solicitud_firmada_en',
         'solicitud_firma_metadata',
         'solicitud_documento_version',
+        'solicitud_nombre_permiso',
+        'solicitud_cedula',
+        'solicitud_cargo',
+        'solicitud_grupo',
+        'solicitud_proyecto',
+        'solicitud_institucion',
+        'solicitud_correo',
+        'solicitud_oficio',
     ];
 
     protected $casts = [
