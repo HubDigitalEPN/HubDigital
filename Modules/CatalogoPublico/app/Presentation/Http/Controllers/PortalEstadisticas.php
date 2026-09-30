@@ -17,12 +17,11 @@ final class PortalEstadisticas
 {
     public function __invoke(Request $request): View
     {
-        $filtros = $request->validate([
-            'provincia' => ['nullable', 'string', 'max:120'],
-            'desde' => ['nullable', 'integer', 'between:1800,2100'],
-            'hasta' => ['nullable', 'integer', 'between:1800,2100'],
-        ]);
+        $filtros = $request->validate($this->reglasFiltros());
         $this->validarPeriodo($filtros);
+        if (isset($filtros['colector'])) {
+            $filtros['colector'] = trim($filtros['colector']);
+        }
         $filtros = array_filter($filtros, static fn ($valor) => $valor !== null && $valor !== '');
         $provincias = $this->cachear('portal:provincias:v4', static fn () => DB::table('taxonomia.especimenes as e')
             ->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
@@ -31,24 +30,40 @@ final class PortalEstadisticas
             ->whereNotNull('e.state_province')
             ->where('e.state_province', '<>', '')
             ->distinct()->orderBy('e.state_province')->pluck('e.state_province')->all());
+        $filosDisponibles = DB::table('taxonomia.taxones')
+            ->where('rango', 'phylum')->orderBy('nombre_cientifico')
+            ->get(['id', 'nombre_cientifico'])->map(static fn (object $fila): array => (array) $fila)->all();
+        $metodosDisponibles = $this->cachear('portal:metodos-opciones:v1', static fn () => DB::table('taxonomia.muestras_colecta as m')
+            ->join('taxonomia.especimenes as e', 'e.muestra_id', '=', 'm.id')
+            ->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
+            ->where('d.publicado', true)->where('d.sampling_protocol_visible', true)
+            ->whereNotNull('m.sampling_protocol')->where('m.sampling_protocol', '<>', '')
+            ->distinct()->orderBy('m.sampling_protocol')->pluck('m.sampling_protocol')->all());
 
         if (isset($filtros['provincia']) && ! in_array($filtros['provincia'], $provincias, true)) {
             $filtros['provincia'] = '';
         }
+        if (isset($filtros['filo']) && ! in_array($filtros['filo'], array_column($filosDisponibles, 'id'), true)) {
+            $filtros['filo'] = '';
+        }
+        if (isset($filtros['metodo']) && ! in_array($filtros['metodo'], $metodosDisponibles, true)) {
+            $filtros['metodo'] = '';
+        }
 
-        $datos = $this->cachear('portal:estadisticas:v4:'.sha1(json_encode($filtros)), fn () => $this->resumir($filtros));
+        $datos = $this->cachear('portal:estadisticas:v6:'.sha1(json_encode($filtros)), fn () => $this->resumir($filtros));
 
-        return view('catalogopublico::portal-estadisticas', compact('datos', 'filtros', 'provincias'));
+        return view('catalogopublico::portal-estadisticas', compact('datos', 'filtros', 'provincias', 'filosDisponibles', 'metodosDisponibles'));
     }
 
     public function descargarLista(Request $request): StreamedResponse
     {
-        $filtros = $request->validate([
-            'provincia' => ['nullable', 'string', 'max:120'],
-            'desde' => ['nullable', 'integer', 'between:1800,2100'],
-            'hasta' => ['nullable', 'integer', 'between:1800,2100'],
-        ]);
+        $filtros = $request->validate($this->reglasFiltros());
         $this->validarPeriodo($filtros);
+        if (isset($filtros['colector'])) {
+            $filtros['colector'] = trim($filtros['colector']);
+        }
+        $filtros = array_filter($filtros, static fn ($valor) => $valor !== null && $valor !== '');
+        $filtros = $this->normalizarOpciones($filtros);
         $consulta = $this->consulta($filtros)
             ->join('taxonomia.taxones as t', 't.id', '=', 'e.taxon_id')
             ->where('t.rango', 'especie')->where('d.scientific_name_visible', true)
@@ -79,13 +94,73 @@ final class PortalEstadisticas
             $query->where('d.state_province_visible', true)->where('e.state_province', $filtros['provincia']);
         }
         if (isset($filtros['desde'])) {
-            $query->whereYear('e.fecha_colecta', '>=', (int) $filtros['desde']);
+            $query->where('d.event_date_visible', true)->whereYear('e.fecha_colecta', '>=', (int) $filtros['desde']);
         }
         if (isset($filtros['hasta'])) {
-            $query->whereYear('e.fecha_colecta', '<=', (int) $filtros['hasta']);
+            $query->where('d.event_date_visible', true)->whereYear('e.fecha_colecta', '<=', (int) $filtros['hasta']);
+        }
+        if (! empty($filtros['filo'])) {
+            $query->whereRaw('e.taxon_id IN (WITH RECURSIVE descendientes AS (SELECT id FROM taxonomia.taxones WHERE id = ? UNION SELECT t.id FROM taxonomia.taxones t JOIN descendientes d ON t.padre_id = d.id) SELECT id FROM descendientes)', [$filtros['filo']]);
+        }
+        if (! empty($filtros['colector'])) {
+            $literal = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], trim($filtros['colector']));
+            $query->where('d.recorded_by_visible', true)->where('e.colector', 'ILIKE', '%'.$literal.'%');
+        }
+        if (! empty($filtros['metodo'])) {
+            $query->where('d.sampling_protocol_visible', true)
+                ->whereExists(static fn (Builder $subconsulta) => $subconsulta->selectRaw('1')->from('taxonomia.muestras_colecta as metodo')
+                    ->whereColumn('metodo.id', 'e.muestra_id')->where('metodo.sampling_protocol', $filtros['metodo']));
+        }
+        if (($filtros['identificacion'] ?? '') === 'especie') {
+            $query->where('d.scientific_name_visible', true)
+                ->whereExists(static fn (Builder $subconsulta) => $subconsulta->selectRaw('1')->from('taxonomia.taxones as identificacion')->whereColumn('identificacion.id', 'e.taxon_id')->where('identificacion.rango', 'especie'));
+        }
+        if (($filtros['identificacion'] ?? '') === 'superior') {
+            $query->where('d.scientific_name_visible', true)
+                ->whereExists(static fn (Builder $subconsulta) => $subconsulta->selectRaw('1')->from('taxonomia.taxones as identificacion')->whereColumn('identificacion.id', 'e.taxon_id')->where('identificacion.rango', '<>', 'especie'));
+        }
+        if (($filtros['ubicacion'] ?? '') === '1') {
+            $query->where('d.decimal_latitude_visible', true)->where('d.decimal_longitude_visible', true)
+                ->whereNotNull('e.decimal_latitude')->whereNotNull('e.decimal_longitude');
         }
 
         return $query;
+    }
+
+    private function reglasFiltros(): array
+    {
+        return [
+            'provincia' => ['nullable', 'string', 'max:120'],
+            'desde' => ['nullable', 'integer', 'between:1800,2100'],
+            'hasta' => ['nullable', 'integer', 'between:1800,2100'],
+            'filo' => ['nullable', 'uuid'],
+            'colector' => ['nullable', 'string', 'max:120'],
+            'metodo' => ['nullable', 'string', 'max:255'],
+            'identificacion' => ['nullable', 'in:especie,superior'],
+            'ubicacion' => ['nullable', 'in:1'],
+        ];
+    }
+
+    private function normalizarOpciones(array $filtros): array
+    {
+        if (isset($filtros['provincia']) && ! DB::table('taxonomia.especimenes as e')
+            ->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
+            ->where('d.publicado', true)->where('d.state_province_visible', true)
+            ->where('e.state_province', $filtros['provincia'])->exists()) {
+            unset($filtros['provincia']);
+        }
+        if (isset($filtros['filo']) && ! DB::table('taxonomia.taxones')->where('id', $filtros['filo'])->where('rango', 'phylum')->exists()) {
+            unset($filtros['filo']);
+        }
+        if (isset($filtros['metodo']) && ! DB::table('taxonomia.muestras_colecta as m')
+            ->join('taxonomia.especimenes as e', 'e.muestra_id', '=', 'm.id')
+            ->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
+            ->where('d.publicado', true)->where('d.sampling_protocol_visible', true)
+            ->where('m.sampling_protocol', $filtros['metodo'])->exists()) {
+            unset($filtros['metodo']);
+        }
+
+        return $filtros;
     }
 
     private function validarPeriodo(array $filtros): void
@@ -142,18 +217,26 @@ final class PortalEstadisticas
             }
             $filos[$filo] = ($filos[$filo] ?? 0) + (int) $fila->total;
         }
+        unset($filos['Sin filo']);
         arsort($filos);
 
         $anios = (clone $base)->whereNotNull('e.fecha_colecta')->where('d.event_date_visible', true)
             ->selectRaw('EXTRACT(YEAR FROM e.fecha_colecta)::integer AS anio, COUNT(*) AS total')
             ->groupByRaw('1')->orderBy('anio')->get()->map(static fn (object $fila): array => (array) $fila)->all();
         $provincias = (clone $base)->where('d.state_province_visible', true)
-            ->whereNotNull('e.state_province')->selectRaw('e.state_province AS provincia, COUNT(*) AS total')
+            ->whereNotNull('e.state_province')->where('e.state_province', '<>', '')
+            ->selectRaw('e.state_province AS provincia, COUNT(*) AS total')
             ->groupBy('e.state_province')->orderByDesc('total')->limit(12)->get()->map(static fn (object $fila): array => (array) $fila)->all();
         $especies = (clone $base)->join('taxonomia.taxones as t', 't.id', '=', 'e.taxon_id')
             ->where('t.rango', 'especie')->where('d.scientific_name_visible', true)
             ->selectRaw('t.nombre_cientifico AS nombre, COUNT(*) AS total')
             ->groupBy('t.nombre_cientifico')->orderByDesc('total')->limit(20)->get()->map(static fn (object $fila): array => (array) $fila)->all();
+        $metodos = (clone $base)->join('taxonomia.muestras_colecta as m', 'm.id', '=', 'e.muestra_id')
+            ->where('d.sampling_protocol_visible', true)->whereNotNull('m.sampling_protocol')
+            ->where('m.sampling_protocol', '<>', '')
+            ->selectRaw('m.sampling_protocol AS metodo, COUNT(*) AS total')
+            ->groupBy('m.sampling_protocol')->orderByDesc('total')->limit(5)
+            ->get()->map(static fn (object $fila): array => (array) $fila)->all();
 
         // Celdas de 0,25 grados: el navegador recibe centenares de círculos,
         // nunca las decenas de miles de coordenadas individuales.
@@ -169,6 +252,7 @@ final class PortalEstadisticas
             'anios' => $anios,
             'provincias' => $provincias,
             'especies' => $especies,
+            'metodos' => $metodos,
             'mapa' => $mapa,
         ];
     }
