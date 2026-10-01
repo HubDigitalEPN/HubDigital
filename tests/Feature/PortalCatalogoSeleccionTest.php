@@ -151,3 +151,153 @@ test('el árbol del chat permite escribir directamente el código o nombre que s
     expect($asistente->responder($f['codigos'][0], $handler)['datos']['total'])->toBe(1)
         ->and($asistente->responder(mb_strtolower($f['prefijo'].' alfa'), $handler)['datos']['total'])->toBe(2);
 });
+
+test('otras regiones se ocultan de toda selección pública y la marca se recalcula al corregir coordenadas', function (): void {
+    $f = seleccionPortalFixture();
+    DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->update(['decimal_latitude' => 40, 'decimal_longitude' => -3]);
+    DB::table('taxonomia.especimenes')->where('id', $f['ids'][1])->update(['decimal_latitude' => -0.75, 'decimal_longitude' => -90.3]);
+    expect(DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->value('coordenadas_otras_regiones'))->toBeTrue();
+    $repo = app(EloquentProveedorEspecimenesParaArbol::class);
+    $filtros = FiltrosBusqueda::desde(['filtroFiloId' => $f['filo']]);
+    expect($repo->paginaPublica($filtros, 1)['ids'])->toEqualCanonicalizing([$f['ids'][1], $f['ids'][2]])
+        ->and($repo->cursorParaCsv($filtros)->pluck('occurrence_id')->all())->not->toContain($f['codigos'][0])
+        ->and(app(ConsultaCatalogoPublico::class)->responder('Busca '.$f['codigos'][0])['datos']['total'])->toBe(0);
+    $datos = app(PortalEstadisticas::class)->datosParaVista(['filo' => $f['filo']]);
+    expect(array_sum(array_column($datos['mapa'], 'total')))->toBe(2);
+    DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->update(['decimal_latitude' => -0.25, 'decimal_longitude' => -78.5]);
+    expect($repo->paginaPublica($filtros, 1)['total'])->toBe(3);
+});
+
+test('los marcadores curatoriales y fechas implausibles conservan el registro sin inflar métricas', function (): void {
+    $f = seleccionPortalFixture();
+    DB::table('taxonomia.taxones')->where('id', $f['taxones'][0])->update(['nombre_cientifico' => 'dañada dañada']);
+    DB::table('taxonomia.especimenes')->whereIn('id', [$f['ids'][0], $f['ids'][1]])->update(['state_province' => 'dañada', 'fecha_colecta' => '0190-01-08']);
+    $datos = app(PortalEstadisticas::class)->datosParaVista(['filo' => $f['filo']]);
+    expect((int) $datos['resumen']['registros'])->toBe(3)
+        ->and((int) $datos['resumen']['identificados'])->toBe(1)
+        ->and((int) $datos['resumen']['fechados'])->toBe(1)
+        ->and(array_column($datos['riqueza'], 'provincia'))->toBe(['Napo'])
+        ->and(array_column($datos['decadas'], 'decada'))->not->toContain(190);
+    Livewire::withQueryParams(['vista' => 'registros', 'fc' => $f['codigos'][0]])->test(PortalCatalogo::class)
+        ->assertSee($f['codigos'][0])->assertSee('dañada dañada')->assertSee('Fecha original por revisar');
+});
+
+test('la jerarquía es visible y removible en mapa y su CSV conserva exactamente los mismos registros', function (): void {
+    $f = seleccionPortalFixture();
+    $componente = Livewire::withQueryParams(['vista' => 'mapa', 'nivel' => 'species', 'taxon' => $f['prefijo'].' alfa'])
+        ->test(PortalCatalogo::class)->assertSee($f['prefijo'].' alfa')
+        ->assertViewHas('hayFiltrosActivos', true)->assertViewHas('datosMapa', fn ($d) => (int) $d['resumen']['registros'] === 2)
+        ->call('cambiarVista', 'registros')->assertSee('Descargar resultados CSV');
+    $csv = $componente->instance()->descargarResultados(app(EloquentProveedorEspecimenesParaArbol::class));
+    ob_start(); $csv->sendContent(); $contenido = ob_get_clean();
+    expect($contenido)->toContain($f['codigos'][0], $f['codigos'][1])->not->toContain($f['codigos'][2]);
+    $componente->call('limpiarFiltros')->assertSet('nivel', '')->assertSet('taxon', '')->assertViewHas('hayFiltrosActivos', false);
+});
+
+test('un borrador inválido conserva la selección aplicada hasta que el visitante corrige los límites', function (): void {
+    $f = seleccionPortalFixture();
+    Livewire::withQueryParams(['vista' => 'mapa', 'fph' => $f['filo']])->test(PortalCatalogo::class)
+        ->set('borradorFiltros.filtroFechaDesde', '2025-01-01')->set('borradorFiltros.filtroFechaHasta', '2000-01-01')
+        ->call('aplicarBorrador')->assertHasErrors(['filtroFechaHasta'])
+        ->assertSet('filtroFechaDesde', '')->assertSet('filtroFechaHasta', '')
+        ->assertViewHas('datosMapa', fn ($d) => (int) $d['resumen']['registros'] === 3)
+        ->set('borradorFiltros.filtroFechaHasta', '2025-12-31')->call('aplicarBorrador')->assertHasNoErrors()
+        ->assertViewHas('datosMapa', fn ($d) => (int) $d['resumen']['registros'] === 2);
+});
+
+test('cada indicador filtra conservando la vista del mapa', function (): void {
+    $f = seleccionPortalFixture();
+    $casos = [
+        ['seleccionarFilo', [$f['prefijo']], 3], ['seleccionarProvincia', ['Pichincha'], 2],
+        ['seleccionarDecada', [1980], 1], ['seleccionarMes', [6], 1],
+        ['seleccionarAltitud', [0, 499], 1], ['seleccionarMetodo', ['Red '.$f['prefijo']], 3],
+    ];
+    foreach ($casos as [$accion, $parametros, $cantidad]) {
+        Livewire::withQueryParams(['vista' => 'mapa', 'ft' => $f['prefijo']])->test(PortalCatalogo::class)
+            ->call($accion, ...$parametros)->assertSet('vista', 'mapa')
+            ->assertViewHas('datosMapa', fn ($d) => (int) $d['resumen']['registros'] === $cantidad && array_sum(array_column($d['mapa'], 'total')) === $cantidad);
+    }
+});
+
+test('el detalle de cuadrícula recorre grupos y pagina doce registros respetando sus campos reservados', function (): void {
+    $f = seleccionPortalFixture();
+    $original = (array) DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->first();
+    unset($original['coordenadas_otras_regiones'], $original['busqueda_global']);
+    for ($i = 0; $i < 13; $i++) {
+        $id = (string) Str::uuid();
+        DB::table('taxonomia.especimenes')->insert(array_replace($original, ['id' => $id, 'occurrence_id' => $f['codigos'][0].'-'.$i, 'codigo_catalogo' => $f['codigos'][0].'-'.$i]));
+        DB::table('divulgacion.especimenes_divulgables')->insert(['id' => (string) Str::uuid(), 'especimen_id' => $id, 'publicado' => true]);
+    }
+    DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->update(['colector' => 'COLECTOR-RESERVADO-QA']);
+    DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $f['ids'][0])->update(['recorded_by_visible' => false]);
+    $componente = Livewire::withQueryParams(['vista' => 'mapa', 'fph' => $f['filo']])->test(PortalCatalogo::class)
+        ->call('abrirCelda', -0.25, -78.5)->assertDispatched('abrir-detalle-celda')->assertSet('vistaCelda', 'grupos');
+    expect($componente->instance()->detalleCelda['total'])->toBe(15);
+    $componente->call('navegarCelda', $f['filo'])->call('navegarCelda', $f['taxones'][0])->assertDontSee('COLECTOR-RESERVADO-QA');
+    expect($componente->instance()->detalleCelda['registros'])->toHaveCount(12);
+    $primera = array_column($componente->instance()->detalleCelda['registros'], 'occurrence_id');
+    $componente->call('paginarCelda', 2)->assertSet('paginaCelda', 2);
+    $segunda = array_column($componente->instance()->detalleCelda['registros'], 'occurrence_id');
+    expect($segunda)->toHaveCount(3)->and(array_intersect($primera, $segunda))->toBe([]);
+    $componente->call('volverCelda', 0)->call('cambiarVistaCelda', 'registros')->assertSet('paginaCelda', 1)
+        ->call('cerrarCelda')->assertSet('celdaMapa', null);
+});
+
+test('el chatbot aplica códigos en frases y listas y conserva la consulta en el enlace', function (): void {
+    $f = seleccionPortalFixture();
+    $chat = app(ConsultaCatalogoPublico::class);
+    foreach (['Busca el espécimen '.$f['codigos'][0], 'Busca '.strtolower($f['codigos'][0]), $f['codigos'][0].', '.$f['codigos'][1]] as $i => $pregunta) {
+        $respuesta = $chat->responder($pregunta);
+        expect($respuesta['datos']['total'])->toBe($i === 2 ? 2 : 1);
+        parse_str(parse_url($respuesta['opciones'][0]['url'], PHP_URL_QUERY), $query);
+        expect($query['fc'])->toBe($respuesta['entidades']['codigo']);
+        $this->get($respuesta['opciones'][0]['url'])->assertOk()->assertSee($f['codigos'][0]);
+    }
+    expect($chat->responder('Busca MEPN-INV-999999999')['datos']['total'])->toBe(0);
+});
+
+test('el chat comparte mes localidad fechas e identificación con el portal y conserva seguimiento selectivo', function (): void {
+    $f = seleccionPortalFixture();
+    DB::table('taxonomia.especimenes')->whereIn('id', $f['ids'])->update(['locality_name' => 'Playa de Oro']);
+    $chat = app(ConsultaCatalogoPublico::class);
+    $respuesta = $chat->responder('Busca registros de '.$f['prefijo'].' alfa en Pichincha, Playa de Oro, durante junio de 1985, con coordenadas públicas e identificación a especie');
+    expect($respuesta['datos']['total'])->toBe(1)
+        ->and($respuesta['entidades'])->toMatchArray(['mes' => '6', 'localidad' => 'Playa de Oro', 'desde' => '1985-06-01', 'hasta' => '1985-06-30', 'identificacion' => 'especie', 'ubicacion' => '1']);
+    $this->get($respuesta['opciones'][0]['url'])->assertOk()->assertSee($f['codigos'][0])->assertDontSee($f['codigos'][1]);
+    $seguimiento = $chat->responder('¿Y solo los que tienen coordenadas públicas?', ['taxon' => $f['prefijo'].' alfa', 'mes' => '6']);
+    expect($seguimiento['datos']['total'])->toBe(1)->and($seguimiento['entidades']['taxon'])->toBe($f['prefijo'].' alfa');
+    $cambio = $chat->responder('No busco mariposas, busco escarabajos de Esmeraldas.', ['taxon' => $f['prefijo'].' alfa']);
+    expect($cambio['entidades']['taxon'])->toBe('Coleoptera');
+});
+
+test('la ayuda explica los filtros solicitados y mantiene las preguntas del portal fuera de fuentes generales', function (): void {
+    $f = seleccionPortalFixture();
+    $asistente = app(\Modules\CatalogoPublico\Application\UseCases\ConsultarChatBot\AsistentePortal::class);
+    $handler = app(\Modules\CatalogoPublico\Application\UseCases\ConsultarChatBot\ConsultarChatBotHandler::class);
+    $respuesta = $asistente->responder('Dame los pasos para filtrar por taxón '.$f['prefijo'].' alfa, provincia Pichincha y mes enero.', $handler);
+    expect($respuesta['intent'])->toBe('portal.filtros')
+        ->and($respuesta['texto'])->toContain($f['prefijo'].' alfa', 'Pichincha', 'Mes de colecta = 1', 'Tarjetas', 'Indicador');
+    foreach (['como vusco espesimenes en el catalgo', '¿Dónde puedo consultar los ejemplares de la colección?', '¿Por qué no aparecen puntos en el mapa?'] as $pregunta) {
+        expect($asistente->responder($pregunta, $handler)['intent'])->toBe('portal.filtros');
+    }
+    expect($asistente->responder('¿Qué es la guía de movilización?', $handler)['intent'])->toBe('documentos_permisos')
+        ->and($asistente->responder('¿Son registros o especies distintas?', $handler)['intent'])->toBe('portal.conteos');
+});
+
+test('el modal asocia las fotos a su registro y curaduría permite filtrar los registros ocultos por región', function (): void {
+    $f = seleccionPortalFixture();
+    DB::table('divulgacion.imagenes_taxonomicas')->insert([
+        'id' => (string) Str::uuid(), 'occurrence_id' => $f['codigos'][0],
+        'ruta' => 'divulgacion/imagenes/qa-celda-'.Str::uuid().'.jpg', 'disco' => 'r2',
+        'nombre_original' => 'ejemplar.jpg', 'autor_nombre' => 'QA', 'autor_apellido' => 'Portal', 'autor_nombre_completo' => 'QA Portal',
+    ]);
+    $componente = Livewire::withQueryParams(['vista' => 'mapa', 'fph' => $f['filo']])->test(PortalCatalogo::class)
+        ->call('abrirCelda', -0.25, -78.5)->call('cambiarVistaCelda', 'registros')->assertSee('ejemplar.jpg');
+    expect(array_keys($componente->instance()->detalleCelda['imagenes']))->toBe([$f['codigos'][0]]);
+    DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->update(['decimal_latitude' => 40.4, 'decimal_longitude' => -3.7]);
+    Livewire::actingAs(\App\Models\User::factory()->curador()->create())
+        ->test(\Modules\CatalogoPublico\Presentation\Http\Controllers\TablaEspecimenesDivulgados::class)
+        ->set('busquedaTaxonomia', $f['prefijo'])->set('regionCoordenadas', 'otras')
+        ->assertSee($f['codigos'][0])->assertDontSee($f['codigos'][1])->assertDontSee($f['codigos'][2])
+        ->assertSee('Coordenadas de otras regiones')->assertSee('Solo curaduría');
+});

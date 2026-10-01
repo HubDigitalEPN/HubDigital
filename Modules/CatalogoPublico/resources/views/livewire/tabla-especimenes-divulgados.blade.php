@@ -65,7 +65,12 @@
             <flux:select wire:model.live="publicacion" label="Publicación" size="sm">
                 <flux:select.option value="todos">Todos</flux:select.option>
                 <flux:select.option value="publicos">Públicos</flux:select.option>
-                <flux:select.option value="curaduria">Solo curaduría · filo pendiente</flux:select.option>
+                <flux:select.option value="curaduria">Solo curaduría</flux:select.option>
+            </flux:select>
+            <flux:select wire:model.live="regionCoordenadas" label="Región de coordenadas" size="sm">
+                <flux:select.option value="">Todas</flux:select.option>
+                <flux:select.option value="otras">Otras regiones · revisar</flux:select.option>
+                <flux:select.option value="ecuador">Sin alerta de otras regiones</flux:select.option>
             </flux:select>
         </div>
         @if($this->tieneFiltros())
@@ -85,6 +90,7 @@
                     <th class="px-4 py-3 text-left font-medium text-white">N.º de catálogo</th>
                     <th class="px-4 py-3 text-left font-medium text-white">Nombre científico</th>
                     <th class="px-4 py-3 text-left font-medium text-white">Publicación</th>
+                    <th class="px-4 py-3 text-left font-medium text-white">Revisión de datos</th>
                     <th class="px-4 py-3 text-left font-medium text-white hidden md:table-cell">Colector</th>
                     <th class="px-4 py-3 text-left font-medium text-white hidden lg:table-cell">Familia</th>
                     <th class="px-4 py-3 text-left font-medium text-white hidden xl:table-cell">Estado</th>
@@ -103,8 +109,13 @@
                                 {{ $especimen->scientific_name ?: ($especimen->taxon_verbatim ?: 'Identificación pendiente') }}
                             </span>
                         </td>
-                        <td class="px-4 py-3 text-xs font-semibold {{ $especimen->publicado ? 'text-bio-green' : 'text-amber-700' }}">
-                            {{ $especimen->publicado ? 'Público' : 'Solo curaduría · filo pendiente' }}
+                        <td class="px-4 py-3 text-xs font-semibold {{ $especimen->publicado && ! $especimen->coordenadas_otras_regiones ? 'text-bio-green' : 'text-amber-700' }}">
+                            {{ $especimen->publicado && ! $especimen->coordenadas_otras_regiones ? 'Público' : 'Solo curaduría' }}
+                        </td>
+                        <td class="px-4 py-3 text-xs text-amber-800">
+                            @if($especimen->coordenadas_otras_regiones)<span class="block">Coordenadas de otras regiones · oculto al portal</span>@endif
+                            @if($especimen->fecha_colecta && ((int) substr($especimen->fecha_colecta, 0, 4) < 1800 || $especimen->fecha_colecta > date('Y-m-d')))<span class="block">Fecha original por revisar: {{ $especimen->fecha_colecta }}</span>@endif
+                            @if(preg_match('/dañad[oa]|danad[oa]|ilegible/iu', $especimen->scientific_name ?? ''))<span class="block">Identificación dañada · no cuenta como especie</span>@endif
                         </td>
                         <td class="px-4 py-3 hidden md:table-cell text-xs text-text-secondary">
                             {{ $especimen->colector ?? '—' }}
@@ -137,7 +148,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="8" class="px-4 py-12 text-center">
+                        <td colspan="9" class="px-4 py-12 text-center">
                             <div class="flex flex-col items-center gap-2 text-text-secondary">
                                 <flux:icon name="table-cells" class="size-8 opacity-40" />
                                 <span class="text-sm">No hay especímenes divulgados aún.</span>

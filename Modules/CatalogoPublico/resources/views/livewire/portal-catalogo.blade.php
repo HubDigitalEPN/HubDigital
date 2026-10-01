@@ -96,6 +96,9 @@
             :biomas="$biomasDisponibles" :hay-filtros-activos="$hayFiltrosActivos"
         />
         <div class="collection-main">
+    @if($taxon !== '')
+        <div class="collection-selection" role="status"><span>Selección: <strong>{{ $taxon }}</strong></span><button type="button" wire:click="quitarTaxon">Quitar taxón ×</button></div>
+    @endif
     <nav class="collection-view-bar" aria-label="Vista de la Colección Biológica">
         <div class="collection-view-switch">
             <button type="button" wire:loading.attr="disabled" wire:click="cambiarVista('tarjetas')" aria-label="Vista de tarjetas" title="Tarjetas" aria-pressed="{{ $vista === 'tarjetas' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg><span class="sr-only">Tarjetas</span></button>
@@ -103,10 +106,11 @@
             <button type="button" wire:loading.attr="disabled" wire:click="cambiarVista('mapa')" aria-label="Vista de mapa y análisis" title="Mapa y análisis" aria-pressed="{{ $vista === 'mapa' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2zM9 3v16m6-14v16"/></svg><span class="sr-only">Mapa y análisis</span></button>
         </div>
     </nav>
-            <p class="collection-loading" wire:loading wire:target="cambiarVista,actualizarFiltros,limpiarFiltros" role="status">Actualizando vista…</p>
+            <p class="collection-loading" wire:loading wire:target="cambiarVista,aplicarBorrador,limpiarFiltros" role="status">Actualizando vista…</p>
 
     @if($vista === 'mapa')
         @include('catalogopublico::dashboard-coleccion')
+        @include('catalogopublico::components.detalle-celda-mapa')
     @elseif($vista === 'registros')
         <div class="mx-auto max-w-7xl px-4 pb-10 pt-4 sm:px-6 lg:px-8">
             <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
@@ -116,7 +120,7 @@
                     </h1>
                     <p class="mt-1 text-sm text-text-secondary">{{ number_format($totalRegistrosVista) }} registros · página {{ $paginaActual }} de {{ $ultimaPagina }}</p>
                 </div>
-                @if($nivelActual === '' && $totalRegistrosVista > 0)
+                @if($totalRegistrosVista > 0)
                     <button type="button" wire:click="descargarResultados" wire:loading.attr="disabled" wire:target="descargarResultados" class="rounded-md border border-science-blue px-4 py-2 text-sm font-semibold text-science-blue hover:bg-sky-50 disabled:opacity-50">Descargar resultados CSV</button>
                 @endif
             </div>
@@ -138,8 +142,12 @@
                             @foreach($registrosVista as $registro)
                                 <tr>
                                     <td class="whitespace-nowrap px-4 py-3 font-medium text-text-primary">{{ $registro->occurrence_id ?: 'Reservado' }}</td>
-                                    <td class="px-4 py-3 italic text-text-primary">{{ $registro->scientific_name ?: 'Identificación pendiente' }}</td>
-                                    <td class="whitespace-nowrap px-4 py-3 text-text-secondary">{{ $registro->event_date ? \Carbon\CarbonImmutable::parse($registro->event_date)->format('d/m/Y') : '—' }}</td>
+                                    <td class="px-4 py-3 italic text-text-primary">{{ $registro->scientific_name ?: 'Identificación pendiente' }}
+                                        @if(preg_match('/dañad[oa]|danad[oa]|ilegible/iu', $registro->scientific_name ?? ''))<span class="block text-xs not-italic">Dato original por revisar; excluido de riqueza e identificación a especie.</span>@endif
+                                    </td>
+                                    <td class="px-4 py-3 text-text-secondary">{{ $registro->event_date ? \Carbon\CarbonImmutable::parse($registro->event_date)->format('d/m/Y') : '—' }}
+                                        @if($registro->event_date && ((int) substr($registro->event_date, 0, 4) < 1800 || $registro->event_date > date('Y-m-d')))<span class="block text-xs">Fecha original por revisar; excluida de indicadores temporales.</span>@endif
+                                    </td>
                                     <td class="px-4 py-3 text-text-secondary">{{ $registro->locality_visible ? ($registro->locality_excel ?: '—') : 'Reservada' }}</td>
                                     <td class="px-4 py-3 text-text-secondary">
                                         {{ $registro->locality_visible ? ($registro->locality_inec ?: 'Sin correspondencia confirmada') : 'Reservada' }}

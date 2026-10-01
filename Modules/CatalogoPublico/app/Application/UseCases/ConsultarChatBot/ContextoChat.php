@@ -30,8 +30,8 @@ final class ContextoChat
             'expires_at' => time() + 1800,
             'node_id' => isset($result['node_id']) ? (int) $result['node_id'] : ($previous['node_id'] ?? null),
             'variants' => array_slice($previous['variants'] ?? [], -3),
-            'entities' => ($result['fuente'] ?? null) === 'catalogo'
-                ? array_intersect_key($result['entidades'] ?? [], array_flip(['taxon', 'provincia', 'localidad', 'pais']))
+            'entities' => in_array($result['fuente'] ?? null, ['catalogo', 'portal'], true)
+                ? array_intersect_key($result['entidades'] ?? [], array_flip(['taxon', 'provincia', 'localidad', 'pais', 'codigo', 'mes', 'desde', 'hasta', 'ubicacion', 'identificacion']))
                 : [],
         ];
         if (isset($result['variant_id']) && $result['variant_id'] !== null) {

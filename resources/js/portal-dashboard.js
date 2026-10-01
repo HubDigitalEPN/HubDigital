@@ -70,6 +70,9 @@ const registrarDashboard = () => {
         let capa = null;
         return {
         observador: null,
+        maximizado: false,
+        enfocarTrasCambio: false,
+        alPantallaCompleta: null,
         filoActivo: '',
         colores: ['#17699b', '#d17d28', '#568c59', '#8c62a5', '#b94e6b', '#71828d', '#a18a29', '#3f8d90'],
 
@@ -107,19 +110,59 @@ const registrarDashboard = () => {
                     this.observador = new ResizeObserver(() => mapa?.invalidateSize());
                     this.observador.observe(this.$refs.mapa);
                 }
+                this.alPantallaCompleta = () => {
+                    if (!document.fullscreenElement && this.maximizado) this.minimizar();
+                };
+                document.addEventListener('fullscreenchange', this.alPantallaCompleta);
             });
         },
 
         destroy() {
             this.observador?.disconnect();
+            document.removeEventListener('fullscreenchange', this.alPantallaCompleta);
+            document.documentElement.classList.remove('atlas-map-expanded');
             mapa?.remove();
             mapa = null;
             capa = null;
         },
 
         encuadrar() {
-            const puntos = celdas.filter(c => c.lat !== null && c.lon !== null && Number.isFinite(Number(c.lat)) && Number.isFinite(Number(c.lon)) && Math.abs(Number(c.lat)) <= 90 && Math.abs(Number(c.lon)) <= 180).map(c => [Number(c.lat), Number(c.lon)]);
-            mapa?.fitBounds(puntos.length ? L.latLngBounds(puntos) : [[-5.1, -81.3], [1.9, -75]], {padding: [24, 24], maxZoom: 9});
+            mapa?.fitBounds([[-5.1, -92.1], [1.9, -75]], {padding: [20, 20], maxZoom: 7});
+        },
+
+        actualizar(datos) {
+            celdas = datos.celdas;
+            filos = datos.filos;
+            this.pintar(celdas, filos);
+            if (this.enfocarTrasCambio) this.$nextTick(() => {
+                this.$refs.panelMapa.scrollIntoView({block: 'start', behavior: 'instant'});
+                this.$refs.mapa.focus({preventScroll: true});
+                this.enfocarTrasCambio = false;
+            });
+        },
+
+        recordarAccion(evento) {
+            const boton = evento.target.closest('button[wire\\:click]');
+            if (boton && /^(seleccionar|filtrar|explorarEspecie)/.test(boton.getAttribute('wire:click'))) {
+                this.enfocarTrasCambio = true;
+                this.$refs.panelMapa.scrollIntoView({block: 'start', behavior: 'instant'});
+                this.$refs.mapa.focus({preventScroll: true});
+            }
+        },
+
+        async alternarTamano() {
+            if (this.maximizado) return this.minimizar();
+            this.maximizado = true;
+            document.documentElement.classList.add('atlas-map-expanded');
+            try { await document.documentElement.requestFullscreen?.(); } catch { /* La vista fija sigue ocupando el viewport. */ }
+            this.$nextTick(() => mapa?.invalidateSize());
+        },
+
+        minimizar() {
+            this.maximizado = false;
+            document.documentElement.classList.remove('atlas-map-expanded');
+            if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+            this.$nextTick(() => { mapa?.invalidateSize(); this.$refs.maximizar.focus({preventScroll: true}); });
         },
 
         color(filo, filos) {
@@ -148,16 +191,17 @@ const registrarDashboard = () => {
                     radius: Math.min(17, 4 + Math.sqrt(cantidad) * .7),
                     color: '#163a55', weight: 1, fillColor: this.color(dominante, filos), fillOpacity: .8,
                 }).addTo(capa);
-                const detalle = document.createElement('div');
-                const titulo = document.createElement('strong');
-                titulo.textContent = `${cantidad.toLocaleString('es-EC')} registros en la cuadrícula`;
-                detalle.append(titulo);
-                for (const [nombre, total] of entradas.slice(0, 6)) {
-                    const linea = document.createElement('div');
-                    linea.textContent = `${nombre}: ${Number(total).toLocaleString('es-EC')}`;
-                    detalle.append(linea);
+                const abrir = () => this.$wire.abrirCelda(lat, lon);
+                marcador.on('click', abrir);
+                const elemento = marcador.getElement();
+                if (elemento) {
+                    elemento.setAttribute('tabindex', '0');
+                    elemento.setAttribute('role', 'button');
+                    elemento.setAttribute('aria-label', `Ver ${cantidad.toLocaleString('es-EC')} registros en la cuadrícula ${lat}, ${lon}`);
+                    elemento.addEventListener('keydown', evento => {
+                        if (evento.key === 'Enter' || evento.key === ' ') { evento.preventDefault(); abrir(); }
+                    });
                 }
-                marcador.bindPopup(detalle);
             }
         },
         };

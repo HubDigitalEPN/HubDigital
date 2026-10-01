@@ -6,6 +6,9 @@ namespace Modules\CatalogoPublico\Application\UseCases\ConsultarChatBot;
 
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
+use Modules\CatalogoPublico\Domain\ValueObjects\FiltrosBusqueda;
+use Modules\CatalogoPublico\Infrastructure\CalidadDatoPublico;
+use Modules\CatalogoPublico\Infrastructure\Persistence\Eloquent\Repositories\EloquentProveedorEspecimenesParaArbol;
 
 /** Lista blanca de consultas determinísticas sobre ejemplares divulgables. */
 final class ConsultaCatalogoPublico
@@ -19,7 +22,7 @@ final class ConsultaCatalogoPublico
         }
         $normal = $this->texto->normalizar($pregunta);
         $correction = (bool) preg_match('/^(perdon|corrijo|quise decir|queria decir|no )\b/', $normal);
-        $followup = (bool) preg_match('/^(?:y\s+de\s+|y\s+)?cuantos?\b|^y\s+de\s+|^donde\s+los\s+encontraron\b/', $normal);
+        $followup = (bool) preg_match('/^(?:y\s+de\s+|y\s+)?cuantos?\b|^y\s+|^donde\s+los\s+encontraron\b|\b(?:esa especie|ese taxon|esos registros)\b/', $normal);
         $queryText = $pregunta;
         if ($correction && str_starts_with($normal, 'no ')) {
             // Conserva mayúsculas del nombre o localidad: el detector las usa para acotar entidades.
@@ -28,15 +31,19 @@ final class ConsultaCatalogoPublico
         }
         $entities = $this->detector->extraer($queryText);
         if (($correction || $followup) && $contexto !== []) {
-            $previous = array_intersect_key($contexto, array_flip(['taxon', 'provincia', 'localidad', 'pais']));
+            $previous = array_intersect_key($contexto, array_flip(['taxon', 'provincia', 'localidad', 'pais', 'codigo', 'mes', 'desde', 'hasta', 'ubicacion', 'identificacion']));
+            if (isset($entities['taxon']) || isset($entities['codigo'])) unset($previous['taxon'], $previous['codigo']);
             if (isset($entities['provincia']) || isset($entities['localidad']) || isset($entities['pais'])) {
                 unset($previous['provincia'], $previous['localidad'], $previous['pais']);
             }
             $entities = array_replace($previous, $entities);
         }
-        $options = [['label' => 'Abrir catálogo para ver más', 'url' => route('portal.catalogo')]];
+        $options = [['label' => 'Abrir catálogo para ver más', 'url' => route('portal.catalogo', $this->parametros($entities))]];
+        if (preg_match('/\b(?:sin|no tienen|no tengan)\s+coordenadas\b|\b(?:excepto|excluye|excluir)\b/', $normal)) {
+            return $this->resultado('La exclusión solicitada no está disponible en los filtros de esta consulta. No he calculado un conteo parcial. Puedes reformular con los criterios que deseas incluir.', 'catalogo.aclaracion', $entities, 0, [], $options);
+        }
         if (isset($entities['codigo'])) {
-            return $this->porCodigo($entities['codigo'], $options);
+            return $this->porCodigo($entities, $options);
         }
         if ($entities === [] && preg_match('/(?:que|cuales)\s+familias\s+(?:tienen|hay|existen)/', $normal)) {
             return $this->familias($options);
@@ -47,28 +54,7 @@ final class ConsultaCatalogoPublico
         if ($entities === [] && ! preg_match('/\bcuant[oa]s?\s+(?:registros|especimenes|ejemplares|especies)\s+(?:tienen|hay|estan)/', $normal)) {
             return null;
         }
-        $query = $this->publicos();
-        if (isset($entities['taxon'])) {
-            $query->where('d.scientific_name_visible', true);
-            $query->whereRaw('e.taxon_id IN (
-                WITH RECURSIVE taxa AS (
-                    SELECT id FROM taxonomia.taxones WHERE lower(nombre_cientifico) = lower(?)
-                    UNION
-                    SELECT t.id FROM taxonomia.taxones t JOIN taxa a ON t.padre_id = a.id
-                ) SELECT id FROM taxa)', [$entities['taxon']]);
-        }
-        if (isset($entities['provincia'])) {
-            $query->where('d.state_province_visible', true)
-                ->whereRaw('lower(e.state_province) = lower(?)', [$entities['provincia']]);
-        }
-        if (isset($entities['localidad'])) {
-            $query->where('d.locality_name_visible', true)
-                ->whereRaw('lower(e.locality_name) = lower(?)', [$entities['localidad']]);
-        }
-        if (isset($entities['pais'])) {
-            $query->where('d.country_visible', true)
-                ->whereRaw('lower(e.country) = lower(?)', [$entities['pais']]);
-        }
+        $query = $this->seleccion($entities);
         if (preg_match('/^donde\s+los\s+encontraron\b/', $normal) && $entities !== []) {
             return $this->localidades($query, $entities, $options);
         }
@@ -82,7 +68,7 @@ final class ConsultaCatalogoPublico
             return $this->resultado('No encontré registros publicados'.$de.' en el catálogo. Esto no confirma si existen ejemplares no divulgados.'.$hint, 'catalogo.count', $entities, 0, [], $options);
         }
         if (preg_match('/\bespecies\b/', $normal)) {
-            $query->where('t.rango', 'especie')->where('d.scientific_name_visible', true);
+            $query->where('t.rango', 'especie')->whereRaw(CalidadDatoPublico::textoValido('t.nombre_cientifico'))->where('d.scientific_name_visible', true);
             $rows = (clone $query)->select('t.nombre_cientifico')->distinct()->orderBy('t.nombre_cientifico')->limit(8)->pluck('nombre_cientifico')->all();
             $count = (clone $query)->distinct()->count('t.nombre_cientifico');
             $text = 'Hay '.$count.' '.($count === 1 ? 'especie publicada' : 'especies publicadas').$de.'. '.implode('; ', $rows).($count > 8 ? '; se muestran las primeras 8.' : '.');
@@ -101,9 +87,9 @@ final class ConsultaCatalogoPublico
     private function publicos(): Builder
     {
         return DB::table('taxonomia.especimenes as e')
-            ->join('taxonomia.taxones as t', 't.id', '=', 'e.taxon_id')
+            ->leftJoin('taxonomia.taxones as t', 't.id', '=', 'e.taxon_id')
             ->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
-            ->where('d.publicado', true);
+            ->where('d.publicado', true)->where('e.coordenadas_otras_regiones', false);
     }
 
     /** Solo propone nombres que aparecen en registros públicos; nunca cambia el filtro en silencio. */
@@ -115,13 +101,13 @@ final class ConsultaCatalogoPublico
                 SELECT t.nombre_cientifico AS nombre FROM taxonomia.especimenes e
                 JOIN taxonomia.taxones t ON t.id = e.taxon_id
                 JOIN divulgacion.especimenes_divulgables d ON d.especimen_id = e.id
-                WHERE d.publicado = true AND d.scientific_name_visible = true AND d.occurrence_id_visible = true
+                WHERE d.publicado = true AND e.coordenadas_otras_regiones = false AND d.scientific_name_visible = true AND d.occurrence_id_visible = true
                 UNION
                 SELECT p.nombre_cientifico AS nombre FROM taxonomia.especimenes e
                 JOIN taxonomia.taxones t ON t.id = e.taxon_id
                 JOIN taxonomia.taxones p ON p.id = t.padre_id
                 JOIN divulgacion.especimenes_divulgables d ON d.especimen_id = e.id
-                WHERE d.publicado = true AND d.scientific_name_visible = true AND d.occurrence_id_visible = true
+                WHERE d.publicado = true AND e.coordenadas_otras_regiones = false AND d.scientific_name_visible = true AND d.occurrence_id_visible = true
             )
             SELECT nombre FROM nombres WHERE similarity(lower(nombre), lower(?)) >= 0.45
               AND lower(nombre) <> lower(?) ORDER BY similarity(lower(nombre), lower(?)) DESC, nombre LIMIT 10
@@ -131,15 +117,43 @@ final class ConsultaCatalogoPublico
         return array_slice(array_map(static fn ($row) => $row->nombre, $matches), 0, 3);
     }
 
-    private function porCodigo(string $code, array $options): array
+    private function porCodigo(array $entities, array $options): array
     {
-        $rows = $this->publicos()->where('d.occurrence_id_visible', true)->where('d.scientific_name_visible', true)
-            ->whereRaw('(lower(e.occurrence_id) = lower(?) OR lower(e.codigo_catalogo) = lower(?))', [$code, $code])
-            ->select('e.occurrence_id', 't.nombre_cientifico')->orderBy('e.occurrence_id')->limit(10)->get();
+        $query = $this->seleccion($entities)->where('d.occurrence_id_visible', true);
+        $total = (clone $query)->count();
+        $rows = $query
+            ->select('e.occurrence_id')->selectRaw('CASE WHEN d.scientific_name_visible THEN t.nombre_cientifico END AS nombre_cientifico')->orderBy('e.occurrence_id')->limit(10)->get();
         $items = $rows->map(static fn ($row) => $row->occurrence_id.' — '.$row->nombre_cientifico)->all();
         $text = $rows->isEmpty() ? 'No encontré registros públicos con ese código en el catálogo.'
-            : 'Encontré '.count($items).' '.(count($items) === 1 ? 'registro publicado' : 'registros publicados').': '.implode('; ', $items).'.';
-        return $this->resultado($text, 'catalogo.code', ['codigo' => $code], count($items), $items, $options);
+            : 'Encontré '.$total.' '.($total === 1 ? 'registro publicado' : 'registros publicados').': '.implode('; ', $items).($total > 10 ? '; se muestran los primeros 10.' : '.');
+        return $this->resultado($text, 'catalogo.code', $entities, $total, $items, $options);
+    }
+
+    /** La URL y el conteo comparten el mismo contrato de selección del portal. */
+    public function parametros(array $entities): array
+    {
+        return array_filter([
+            'vista' => 'registros', 'fpais' => $entities['pais'] ?? null, 'fc' => $entities['codigo'] ?? null,
+            'ft' => $entities['taxon'] ?? null, 'fprov' => $entities['provincia'] ?? null,
+            'fg' => isset($entities['localidad']) ? [$entities['localidad']] : null,
+            'fmes' => $entities['mes'] ?? null, 'ffd' => $entities['desde'] ?? null,
+            'ffh' => $entities['hasta'] ?? null, 'fgeo' => $entities['ubicacion'] ?? null,
+            'fid' => $entities['identificacion'] ?? null,
+        ], static fn ($valor) => $valor !== null && $valor !== '');
+    }
+
+    private function seleccion(array $entities): Builder
+    {
+        $filtros = FiltrosBusqueda::desde([
+            'filtroPais' => $entities['pais'] ?? '',
+            'filtroCatalogo' => $entities['codigo'] ?? '', 'filtroTaxon' => $entities['taxon'] ?? '',
+            'filtroProvincia' => $entities['provincia'] ?? '', 'filtroGeografias' => isset($entities['localidad']) ? [$entities['localidad']] : [],
+            'filtroMes' => $entities['mes'] ?? '', 'filtroFechaDesde' => $entities['desde'] ?? '',
+            'filtroFechaHasta' => $entities['hasta'] ?? '', 'filtroSoloUbicacion' => $entities['ubicacion'] ?? '',
+            'filtroIdentificacion' => $entities['identificacion'] ?? '',
+        ]);
+        $seleccion = app(EloquentProveedorEspecimenesParaArbol::class)->consultaPublica($filtros)->select('te.id');
+        return $this->publicos()->whereIn('e.id', $seleccion);
     }
 
     private function localidades(Builder $query, array $entities, array $options): array
@@ -163,7 +177,7 @@ final class ConsultaCatalogoPublico
                 FROM taxonomia.especimenes e
                 JOIN taxonomia.taxones t ON t.id = e.taxon_id
                 JOIN divulgacion.especimenes_divulgables d ON d.especimen_id = e.id
-                WHERE d.publicado = true AND d.occurrence_id_visible = true AND d.scientific_name_visible = true
+                WHERE d.publicado = true AND e.coordenadas_otras_regiones = false AND d.occurrence_id_visible = true AND d.scientific_name_visible = true
                   AND d.family_visible = true AND e.occurrence_id IS NOT NULL
                 UNION ALL
                 SELECT l.especimen_id, p.id, p.padre_id, p.rango, p.nombre_cientifico, l.profundidad + 1
@@ -193,7 +207,7 @@ final class ConsultaCatalogoPublico
             JOIN taxonomia.especimenes e ON e.taxon_id = x.id
             JOIN divulgacion.especimenes_divulgables v ON v.especimen_id = e.id
             JOIN taxonomia.taxones g ON g.id = x.genero_id
-            WHERE x.rango = 'especie' AND v.publicado = true AND v.occurrence_id_visible = true
+            WHERE x.rango = 'especie' AND v.publicado = true AND e.coordenadas_otras_regiones = false AND v.occurrence_id_visible = true
               AND v.scientific_name_visible = true AND v.genus_visible = true
               AND e.occurrence_id IS NOT NULL
             ORDER BY g.nombre_cientifico LIMIT 10
@@ -206,6 +220,12 @@ final class ConsultaCatalogoPublico
 
     private function resultado(string $text, string $intent, array $entities, int $total, array $rows, array $options): array
     {
+        $criterios = [];
+        foreach (['mes' => 'mes', 'desde' => 'desde', 'hasta' => 'hasta', 'ubicacion' => 'coordenadas públicas', 'identificacion' => 'identificación'] as $clave => $etiqueta) {
+            if (isset($entities[$clave])) $criterios[] = $etiqueta.': '.($clave === 'ubicacion' ? 'sí' : $entities[$clave]);
+        }
+        if ($criterios !== []) $text .= ' Filtros aplicados: '.implode('; ', $criterios).'.';
+        if (isset($entities['localidad_preferida'])) $text .= ' '.$entities['localidad_preferida'].' es una preferencia; no la apliqué como restricción obligatoria.';
         return ['texto' => $text, 'opciones' => $options, 'intent' => $intent, 'fuente' => 'catalogo',
             'confianza' => 'HIGH', 'confianza_valor' => 1.0, 'entidades' => $entities,
             'datos' => ['total' => $total, 'filas' => $rows]];

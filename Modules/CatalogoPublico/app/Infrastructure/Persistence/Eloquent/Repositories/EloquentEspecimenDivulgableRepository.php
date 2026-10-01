@@ -105,7 +105,7 @@ final class EloquentEspecimenDivulgableRepository implements EspecimenDivulgable
             ->whereIn('taxonomia.especimenes.occurrence_id', $occurrenceIDs)
             ->select('divulgacion.especimenes_divulgables.*');
         if ($soloPublicados) {
-            $consulta->where('divulgacion.especimenes_divulgables.publicado', true);
+            $consulta->where('divulgacion.especimenes_divulgables.publicado', true)->where('taxonomia.especimenes.coordenadas_otras_regiones', false);
         }
         $models = $consulta->get();
 

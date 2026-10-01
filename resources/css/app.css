@@ -1346,3 +1346,6 @@ body:has(.hub-app-sidebar) { --color-accent: #174a9a; --color-accent-foreground:
     .hub-depositos-ui .hub-wizard-document-grid > div:first-child { grid-column: 1 / -1; }
     .hub-depositos-ui .hub-wizard-document-grid > * + * { margin-top: 0 !important; }
 }
+
+.portal-publico :is(a[href], button:not(:disabled), summary, select, [role="button"], [role="tab"], input[type="checkbox"], input[type="radio"], label:has(input[type="checkbox"]), label:has(input[type="radio"]), .leaflet-interactive) { cursor:pointer; }
+.portal-publico :is(button:disabled, [aria-disabled="true"]) { cursor:not-allowed; }

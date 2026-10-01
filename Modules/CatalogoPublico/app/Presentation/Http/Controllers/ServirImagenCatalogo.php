@@ -49,7 +49,7 @@ final class ServirImagenCatalogo
         return DB::table('divulgacion.imagenes_taxonomicas as imagen')
             ->join('taxonomia.especimenes as especimen', 'especimen.occurrence_id', '=', 'imagen.occurrence_id')
             ->join('divulgacion.especimenes_divulgables as divulgable', 'divulgable.especimen_id', '=', 'especimen.id')
-            ->where('divulgable.publicado', true)
+            ->where('divulgable.publicado', true)->where('especimen.coordenadas_otras_regiones', false)
             ->where('imagen.ruta', $ruta)
             ->where('imagen.disco', 'r2')
             ->first(['imagen.sha256']);

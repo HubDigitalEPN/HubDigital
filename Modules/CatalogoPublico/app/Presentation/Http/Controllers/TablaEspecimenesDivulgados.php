@@ -70,6 +70,14 @@ final class TablaEspecimenesDivulgados extends Component
         'lifeStageVisible' => 'life_stage_visible',
     ];
 
+    #[Url(as: 'region')]
+    public string $regionCoordenadas = '';
+
+    public function updatedRegionCoordenadas(): void
+    {
+        $this->resetPage();
+    }
+
     public function abrirConfiguracion(string $occurrenceID): void
     {
         $this->occurrenceIDActivo = $occurrenceID;
@@ -170,6 +178,7 @@ final class TablaEspecimenesDivulgados extends Component
         $this->fechaHasta = '';
         $this->colector = '';
         $this->publicacion = 'todos';
+        $this->regionCoordenadas = '';
         $this->resetPage();
     }
 
@@ -180,7 +189,7 @@ final class TablaEspecimenesDivulgados extends Component
             || $this->fechaDesde !== ''
             || $this->fechaHasta !== ''
             || $this->colector !== ''
-            || $this->publicacion !== 'todos';
+            || $this->publicacion !== 'todos' || $this->regionCoordenadas !== '';
     }
 
     /**
@@ -218,6 +227,8 @@ final class TablaEspecimenesDivulgados extends Component
                 'tx_species.nombre_cientifico as scientific_name',
                 'te.taxon_verbatim',
                 'ed.publicado',
+                'te.coordenadas_otras_regiones',
+                'te.fecha_colecta',
                 DB::raw('te.disposition as type_status'),
                 'te.colector',
                 'tx_genus.nombre_cientifico as genus',
@@ -238,10 +249,12 @@ final class TablaEspecimenesDivulgados extends Component
             ]);
 
         if ($this->publicacion === 'publicos') {
-            $query->where('ed.publicado', true);
+            $query->where('ed.publicado', true)->where('te.coordenadas_otras_regiones', false);
         } elseif ($this->publicacion === 'curaduria') {
-            $query->where('ed.publicado', false);
+            $query->where(fn ($q) => $q->where('ed.publicado', false)->orWhere('te.coordenadas_otras_regiones', true));
         }
+
+        if (in_array($this->regionCoordenadas, ['ecuador', 'otras'], true)) $query->where('te.coordenadas_otras_regiones', $this->regionCoordenadas === 'otras');
 
         if ($this->busquedaCatalogo !== '') {
             $query->where('te.occurrence_id', 'ILIKE', '%'.$this->busquedaCatalogo.'%');

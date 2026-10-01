@@ -30,7 +30,7 @@ final class JerarquiaDeEspecimenAdapter implements ProveedorJerarquiaDeEspecimen
                 FROM taxonomia.especimenes te
                 JOIN divulgacion.especimenes_divulgables ed ON ed.especimen_id = te.id
                 JOIN taxonomia.taxones tx ON tx.id = te.taxon_id
-                WHERE te.occurrence_id = ? AND ed.publicado = true
+                WHERE te.occurrence_id = ? AND ed.publicado = true AND te.coordenadas_otras_regiones = false
                 UNION ALL
                 SELECT p.id, p.rango, p.nombre_cientifico, p.padre_id, c.profundidad + 1
                 FROM cadena c

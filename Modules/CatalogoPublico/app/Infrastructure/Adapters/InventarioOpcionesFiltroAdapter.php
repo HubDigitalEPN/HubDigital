@@ -13,7 +13,7 @@ final class InventarioOpcionesFiltroAdapter implements ProveedorOpcionesFiltroPo
     {
         return DB::table('taxonomia.especimenes as e')
             ->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
-            ->where('d.publicado', true)
+            ->where('d.publicado', true)->where('e.coordenadas_otras_regiones', false)
             ->whereNotNull('e.preparations')
             ->where('e.preparations', '<>', '')
             ->distinct()
@@ -28,7 +28,7 @@ final class InventarioOpcionesFiltroAdapter implements ProveedorOpcionesFiltroPo
     {
         return DB::table('taxonomia.especimenes as e')
             ->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
-            ->where('d.publicado', true)
+            ->where('d.publicado', true)->where('e.coordenadas_otras_regiones', false)
             ->whereNotNull('e.biome')
             ->where('e.biome', '<>', '')
             ->distinct()
@@ -44,7 +44,7 @@ final class InventarioOpcionesFiltroAdapter implements ProveedorOpcionesFiltroPo
         return DB::table('taxonomia.muestras_colecta as m')
             ->join('taxonomia.especimenes as e', 'e.muestra_id', '=', 'm.id')
             ->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
-            ->where('d.publicado', true)
+            ->where('d.publicado', true)->where('e.coordenadas_otras_regiones', false)
             ->where('d.sampling_protocol_visible', true)
             ->whereNotNull('m.sampling_protocol')
             ->where('m.sampling_protocol', '<>', '')
@@ -60,7 +60,7 @@ final class InventarioOpcionesFiltroAdapter implements ProveedorOpcionesFiltroPo
     {
         return DB::table('taxonomia.especimenes as e')
             ->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
-            ->where('d.publicado', true)
+            ->where('d.publicado', true)->where('e.coordenadas_otras_regiones', false)
             ->where('d.recorded_by_visible', true)
             ->whereNotNull('e.colector')
             ->where('e.colector', '<>', '')

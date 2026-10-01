@@ -1,6 +1,6 @@
 @props(['tipo', 'datos'])
 @php $indice = config('indices_portal.'.$tipo); @endphp
-<div class="atlas-panel-tools" x-data="portalPanel(@js($tipo), @js($indice['titulo']), @js($datos))" x-on:keydown.escape.stop="if (abierto) cerrar()" x-on:click.outside="abierto = false">
+<div wire:key="panel-{{ $tipo }}-{{ sha1(json_encode($datos)) }}" class="atlas-panel-tools" x-data="portalPanel(@js($tipo), @js($indice['titulo']), @js($datos))" x-on:keydown.escape.stop="if (abierto) cerrar()" x-on:click.outside="abierto = false">
     <button type="button" class="atlas-icon-button" x-ref="boton" aria-haspopup="menu" :aria-expanded="abierto.toString()" aria-controls="menu-{{ $tipo }}" aria-label="Opciones de {{ $indice['titulo'] }}"
         x-on:click="abierto = !abierto; if (abierto) $nextTick(() => $refs.menu.querySelector('button').focus())"
         x-on:keydown.arrow-down.prevent="abierto = true; $nextTick(() => $refs.menu.querySelector('button').focus())">
@@ -13,13 +13,13 @@
         @if($tipo === 'mapa')<button type="button" role="menuitem" x-on:click="geojson()">Cuadrículas GeoJSON · SIG</button>@endif
         <button type="button" role="menuitem" x-on:click="enlace()">Copiar enlace con filtros</button>
         <button type="button" role="menuitem" x-on:click="cita()">Descargar cita y consulta</button>
-        <button type="button" role="menuitem" x-on:click="indice()">Índice</button>
+        <button type="button" role="menuitem" x-on:click="indice()">Indicador</button>
     </div>
     <span class="sr-only" role="status" x-text="aviso"></span>
     <dialog class="atlas-index-dialog" x-ref="indice" aria-labelledby="indice-titulo-{{ $tipo }}" x-on:close="$refs.boton.focus()" x-on:click="if ($event.target === $el) $el.close()">
         <div class="atlas-index-content">
-            <header><h2 id="indice-titulo-{{ $tipo }}">Índice · {{ $indice['titulo'] }}</h2><button type="button" autofocus x-on:click="$refs.indice.close()" aria-label="Cerrar explicación">×</button></header>
-            <figure><img src="{{ asset('images/indices/'.$tipo.'.png') }}" alt="{{ $indice['foto'] }}" width="1448" height="1086" loading="lazy"><figcaption>Imagen ilustrativa creada con IA para este indicador.</figcaption></figure>
+            <header><h2 id="indice-titulo-{{ $tipo }}">Indicador · {{ $indice['titulo'] }}</h2><button type="button" autofocus x-on:click="$refs.indice.close()" aria-label="Cerrar explicación">×</button></header>
+            <figure><img src="{{ asset('images/indices/'.($indice['imagen'] ?? $tipo).'.png') }}" alt="{{ $indice['foto'] }}" width="1448" height="1086" loading="lazy"></figure>
             @foreach($indice['parrafos'] as $parrafo)<p>{{ $parrafo }}</p>@endforeach
         </div>
     </dialog>

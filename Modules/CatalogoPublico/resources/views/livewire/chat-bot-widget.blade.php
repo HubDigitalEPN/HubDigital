@@ -35,9 +35,7 @@
                 @forelse($mensajes as $indice => $mensaje)
                     @if($mensaje['rol'] === 'visitante')
                         <div class="flex justify-end" wire:key="chat-user-{{ $indice }}">
-                            <div class="max-w-[86%] whitespace-pre-wrap break-words rounded-2xl rounded-br-sm bg-blue-navy px-3.5 py-2.5 text-sm leading-5 text-white shadow-sm">
-                                {{ $mensaje['texto'] }}
-                            </div>
+                            <div class="max-w-[86%] whitespace-pre-wrap break-words rounded-2xl rounded-br-sm bg-blue-navy px-3.5 py-2.5 text-sm leading-5 text-white shadow-sm">{{ $mensaje['texto'] }}</div>
                         </div>
                     @else
                         <div class="flex items-end gap-2" wire:key="chat-assistant-{{ $indice }}">

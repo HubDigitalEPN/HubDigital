@@ -3,7 +3,7 @@
 <head>
     @include('partials.head', ['title' => $title])
 </head>
-<body class="flex min-h-screen flex-col bg-white text-text-primary antialiased">
+<body class="portal-publico flex min-h-screen flex-col bg-white text-text-primary antialiased">
     <x-estado-conectividad />
     <a href="#contenido-principal" class="sr-only z-[100] rounded-md bg-white px-4 py-3 font-semibold text-blue-navy focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:ring-2 focus:ring-science-blue">
         Saltar al contenido principal

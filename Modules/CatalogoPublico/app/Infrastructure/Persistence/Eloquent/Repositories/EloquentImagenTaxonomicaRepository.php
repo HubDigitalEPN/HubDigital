@@ -87,7 +87,7 @@ final class EloquentImagenTaxonomicaRepository implements ImagenTaxonomicaReposi
             $sql = <<<'SQL'
                 SELECT te.occurrence_id
                 FROM taxonomia.especimenes te
-                JOIN divulgacion.especimenes_divulgables ed ON ed.especimen_id = te.id AND ed.publicado = true
+                JOIN divulgacion.especimenes_divulgables ed ON ed.especimen_id = te.id AND ed.publicado = true AND te.coordenadas_otras_regiones = false
                 JOIN taxonomia.taxones tx_species ON tx_species.id = te.taxon_id
                 LEFT JOIN taxonomia.taxones tx_genus ON tx_genus.id = tx_species.padre_id
                 WHERE tx_species.rango = 'especie'
@@ -112,7 +112,7 @@ final class EloquentImagenTaxonomicaRepository implements ImagenTaxonomicaReposi
             )
             SELECT te.occurrence_id
             FROM taxonomia.especimenes te
-            JOIN divulgacion.especimenes_divulgables ed ON ed.especimen_id = te.id AND ed.publicado = true
+            JOIN divulgacion.especimenes_divulgables ed ON ed.especimen_id = te.id AND ed.publicado = true AND te.coordenadas_otras_regiones = false
             WHERE te.taxon_id IN (SELECT id FROM descendientes)
         SQL;
 

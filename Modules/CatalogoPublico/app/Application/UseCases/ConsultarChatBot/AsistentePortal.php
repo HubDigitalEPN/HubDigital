@@ -70,6 +70,19 @@ final class AsistentePortal
             return app(FuentesPublicasChat::class)->responder($pregunta);
         }
 
+        if (preg_match('/guia de moviliz|permiso de moviliz/', $normal)) {
+            return ['texto' => 'En el trámite de depósito, revisa la sección Documentos. Allí puedes adjuntar la autorización de recolección y la guía de movilización cuando correspondan; el formulario indica los requisitos de tu caso. La guía es un documento del traslado del material.',
+                'fuente' => 'portal', 'intent' => 'documentos_permisos',
+                'opciones' => [['label' => 'Consultar depósitos', 'url' => route('depositos.portal')]]];
+        }
+        if (preg_match('/\bregistros\b.*\bespecies\b.*\bdistintas\b|\bdiferencia\b.*\bregistros\b/', $normal)) {
+            return ['texto' => 'Un registro corresponde a una entrada del catálogo; varios registros pueden pertenecer a la misma especie. Especies distintas cuenta cada nombre científico válido una vez. Los puntos del mapa agrupan registros por cuadrícula, no especies ni abundancia natural.',
+                'fuente' => 'portal', 'intent' => 'portal.conteos', 'opciones' => $opciones];
+        }
+        if (preg_match('/paso a paso|(?:indica|dame).*pasos|como (?:busco|buscar|vusco|filtro)|donde puedo consultar.*(?:ejemplares|coleccion)/', $normal)) {
+            return $this->ayudaFiltros($pregunta);
+        }
+
         if (preg_match('/prestam|solicitante|pedir especimen/', $normal)) {
             return [
                 'texto' => 'Para solicitar especimenes en prestamo, entra con tu cuenta y activa el rol Solicitante desde Configuracion. Luego abre Mis solicitudes y registra el material que necesitas.',
@@ -90,15 +103,14 @@ final class AsistentePortal
             ];
         }
 
-        if (preg_match('/filtro|filtrar|leyenda|mapa|dashboard|indice|exportar|geojson/i', $normal)
+        if (preg_match('/filtro|filtrar|leyenda|mapa|dashboard|indice|indicador|exportar|geojson/i', $normal)
             && ! preg_match('/cuant|registros de|especies de/', $normal)) {
-            return ['texto' => 'Abre Filtros de investigación, elige los criterios y pulsa Aplicar filtros en la barra inferior. La misma selección actualiza tarjetas, registros y todos los paneles del mapa. Limpiar elimina los filtros. Seleccionar un filo, provincia o década también filtra el análisis. El mapa solo ubica coordenadas públicas válidas; la leyenda explica sus colores. En el menú de tres puntos de cada panel puedes descargar datos, conservar el enlace con filtros y abrir Índice para conocer el cálculo y sus límites.',
-                'opciones' => [['label' => 'Abrir mapa y análisis', 'url' => route('portal.catalogo', ['vista' => 'mapa'])]],
-                'fuente' => 'portal', 'intent' => 'portal.filtros'];
+            return $this->ayudaFiltros($pregunta);
         }
         $consultaCientifica = (bool) preg_match('/\b(tienen|cuant[oa]s?|busca|buscar|existe|registros|especies|familias|generos|ejemplares|especimenes|catalogo)\b/', $normal)
             || (bool) preg_match('/^[\p{L}][\p{L}\d_.:-]*(?:\s+[\p{L}][\p{L}.-]*)?$/u', trim($pregunta))
-            || ($contextoCatalogo !== [] && (bool) preg_match('/^(?:y\s+de\s+|y\s+)?cuantos?|^y\s+de\s+|^(?:perdon|corrijo|quise decir|queria decir|no\s+)|^donde\s+los\s+encontraron/i', $normal));
+            || (bool) preg_match('/\b[A-Za-z]+-[A-Za-z0-9-]*\d\b/', $pregunta)
+            || ($contextoCatalogo !== [] && (bool) preg_match('/^(?:y\s+de\s+|y\s+)?cuantos?|^y\s+|^(?:perdon|corrijo|quise decir|queria decir|no\s+)|^donde\s+los\s+encontraron/i', $normal));
         if ($consultaCientifica && ($publica = $this->consultaCatalogo->responder($pregunta, $contextoCatalogo)) !== null) {
             return $publica;
         }
@@ -133,7 +145,22 @@ final class AsistentePortal
             }
         }
 
+        if (preg_match('/portal|catalogo|coleccion|ejemplares|coordenadas|catalgo|espesimenes/', $normal)) return $this->ayudaFiltros($pregunta);
         return app(FuentesPublicasChat::class)->responder($pregunta);
+    }
+
+    private function ayudaFiltros(string $pregunta): array
+    {
+        $entidades = app(DetectorEntidadesChat::class)->extraer($pregunta);
+        $criterios = [];
+        foreach (['codigo' => 'N.º de catálogo', 'taxon' => 'Taxón', 'provincia' => 'Provincia', 'localidad' => 'Localidad', 'pais' => 'País', 'desde' => 'Desde', 'hasta' => 'Hasta', 'mes' => 'Mes de colecta', 'ubicacion' => 'Solo coordenadas públicas', 'identificacion' => 'Identificación'] as $clave => $etiqueta) {
+            if (isset($entidades[$clave])) $criterios[] = $etiqueta.' = '.($clave === 'ubicacion' ? 'sí' : $entidades[$clave]);
+        }
+        $texto = "1. Abre Colección Biológica y Filtros de investigación. No necesitas cuenta.\n2. ".($criterios === [] ? 'Elige los criterios de tu consulta.' : 'Configura: '.implode('; ', $criterios).'.');
+        if (isset($entidades['localidad_preferida'])) $texto .= ' Localidad = '.$entidades['localidad_preferida'].' es opcional según tu preferencia; agrégala si quieres restringir los resultados a ese sitio.';
+        $texto .= "\n3. Pulsa Aplicar filtros. Si un intervalo es inválido, corrígelo: se conserva la selección anterior.\n4. Usa los botones Tarjetas, Registros y Mapa y análisis: todos conservan la misma selección.\n5. En Registros puedes descargar el CSV; en los tres puntos de cada panel, Indicador explica el cálculo. Limpiar restablece toda la selección.";
+        return ['texto' => $texto, 'fuente' => 'portal', 'intent' => 'portal.filtros', 'entidades' => $entidades,
+            'opciones' => [['label' => 'Abrir consulta en el mapa', 'url' => route('portal.catalogo', array_replace($this->consultaCatalogo->parametros($entidades), ['vista' => 'mapa']))]]];
     }
 
     /** @return array{texto:string,opciones:array} */

@@ -29,10 +29,14 @@ final class FuentesPublicasChat
         if (! config('chatbot.public_sources', true)) {
             return $this->sinFuente();
         }
+        if (preg_match('/\b(?:clima|llover|lluvia|temperatura|pronostico|tiempo)\b.*\b(?:hoy|manana|ahora|semana)\b|\b(?:hoy|manana)\b.*\b(?:clima|llover|lluvia|temperatura|tiempo)\b/', $normal)) {
+            return ['texto' => 'No dispongo de un servicio meteorológico en tiempo real para dar ese pronóstico. Puedo explicar conceptos generales del clima o ayudarte con los registros de la colección.',
+                'opciones' => [['label' => 'Menú del portal', 'pregunta' => 'menú']], 'fuente' => 'unknown', 'intent' => 'general.sin_actualidad'];
+        }
 
         $tema = preg_replace('/^[¿?\s]*(?:(?:qu[eé]|cu[aá]l(?:es)?)\s+(?:es|son)\s+|(?:explica(?:me)?|cu[eé]ntame|habla(?:me)?)\s+(?:sobre\s+)?)(?:(?:el|la|los|las|un|una)\s+)?/iu', '', trim($pregunta));
         $tema = mb_substr(trim((string) $tema, " \t\n\r?¿"), 0, 160);
-        $clave = 'portal:fuente-publica:v1:'.hash('sha256', mb_strtolower($tema));
+        $clave = 'portal:fuente-publica:v2:'.hash('sha256', mb_strtolower($tema));
         try {
             $guardada = Cache::get($clave);
             if (is_array($guardada)) return $guardada;
@@ -57,6 +61,10 @@ final class FuentesPublicasChat
                 $extracto = trim(strip_tags((string) ($pagina['extract'] ?? '')));
                 $url = (string) ($pagina['fullurl'] ?? '');
                 if ($extracto === '' || ! str_starts_with($url, 'https://es.wikipedia.org/wiki/')) continue;
+                $tokens = app(TextoChat::class)->tokens($tema);
+                $tituloTokens = app(TextoChat::class)->tokens((string) ($pagina['title'] ?? ''));
+                // No basta con ser el primer resultado: exige coincidencia temática en el título.
+                if ($tokens === [] || count(array_intersect($tokens, $tituloTokens)) < max(1, (int) ceil(count($tituloTokens) / 2))) continue;
                 $resultado = ['texto' => 'Encontré información sobre «'.($pagina['title'] ?? $tema).'» en Wikipedia: '.Str::limit($extracto, 1000).
                     '\n\nEsta es una referencia enciclopédica externa; no son datos de la colección ni una verificación de actualidad.',
                     'opciones' => [['label' => 'Leer fuente: Wikipedia', 'url' => $url], ['label' => 'Volver al menú del portal', 'pregunta' => 'menú']],

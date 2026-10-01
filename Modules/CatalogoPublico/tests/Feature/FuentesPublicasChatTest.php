@@ -36,3 +36,14 @@ test('una fuente caída o sin extracto ofrece un estado honesto y el cálculo b�
         ->and($fuentes->responder('2,5 + 0,5')['texto'])->toBe('El resultado es 3.');
     Http::assertNothingSent();
 });
+
+test('un pronóstico no se transforma en una película y una fuente ajena al tema se descarta', function (): void {
+    config()->set('cache.default', 'array');
+    Http::fake(['*' => Http::response(['query' => ['pages' => [
+        ['title' => 'Al filo del mañana', 'index' => 1, 'extract' => 'Una película de ciencia ficción.', 'fullurl' => 'https://es.wikipedia.org/wiki/Al_filo_del_ma%C3%B1ana'],
+    ]]])]);
+    $fuentes = new FuentesPublicasChat;
+    expect($fuentes->responder('¿Va a llover mañana en Quito?')['intent'])->toBe('general.sin_actualidad');
+    Http::assertNothingSent();
+    expect($fuentes->responder('Qué es la estacionalidad ecológica')['intent'])->toBe('general.sin_fuente');
+});

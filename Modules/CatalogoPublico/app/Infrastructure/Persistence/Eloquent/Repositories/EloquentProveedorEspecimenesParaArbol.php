@@ -7,6 +7,7 @@ namespace Modules\CatalogoPublico\Infrastructure\Persistence\Eloquent\Repositori
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\LazyCollection;
+use Modules\CatalogoPublico\Infrastructure\CalidadDatoPublico;
 use Modules\CatalogoPublico\Application\Ports\ProveedorEspecimenesParaArbolPort;
 use Modules\CatalogoPublico\Domain\ValueObjects\EspecimenParaArbol;
 use Modules\CatalogoPublico\Domain\ValueObjects\FiltrosBusqueda;
@@ -20,7 +21,7 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
     {
         $query = DB::table('taxonomia.especimenes as te')
             ->join('divulgacion.especimenes_divulgables as ed', 'ed.especimen_id', '=', 'te.id')
-            ->where('ed.publicado', true);
+            ->where('ed.publicado', true)->where('te.coordenadas_otras_regiones', false);
         $this->aplicarFiltros($query, $filtros);
         $rangos = ['phylum' => 'phylum', 'class' => 'clase', 'order' => 'orden', 'family' => 'familia', 'genus' => 'genero', 'species' => 'especie'];
         if (isset($rangos[$nivel]) && $taxon !== '') {
@@ -70,17 +71,11 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
     }
 
     /** Filas filtradas y en orden estable para una descarga CSV de memoria acotada. */
-    public function cursorParaCsv(FiltrosBusqueda $filtros): LazyCollection
+    public function cursorParaCsv(FiltrosBusqueda $filtros, string $nivel = '', string $taxon = ''): LazyCollection
     {
-        $query = DB::table('taxonomia.especimenes as te')
-            ->join('divulgacion.especimenes_divulgables as ed', 'ed.especimen_id', '=', 'te.id')
-            ->where('ed.publicado', true)
+        $query = $this->consultaPublica($filtros, $nivel, $taxon)
             ->leftJoin('taxonomia.taxones as tx', 'tx.id', '=', 'te.taxon_id')
             ->leftJoin('taxonomia.localidades as loc', 'loc.id', '=', 'te.localidad_id');
-
-        if (! $filtros->estaVacio()) {
-            $query = $this->aplicarFiltros($query, $filtros);
-        }
 
         return $query->select([
             'te.occurrence_id', 'te.codigo_catalogo', 'te.fecha_colecta',
@@ -98,7 +93,7 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
     {
         $query = DB::table('taxonomia.especimenes as te')
             ->join('divulgacion.especimenes_divulgables as ed', 'ed.especimen_id', '=', 'te.id')
-            ->where('ed.publicado', true);
+            ->where('ed.publicado', true)->where('te.coordenadas_otras_regiones', false);
 
         if ($filtros !== null && ! $filtros->estaVacio()) {
             $query = $this->aplicarFiltros($query, $filtros);
@@ -212,7 +207,7 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
             $query->where('ed.occurrence_id_visible', true);
             $placeholders = implode(',', array_fill(0, count($filtros->codigosCatalogo), '?'));
             $valores = array_map('strtolower', $filtros->codigosCatalogo);
-            $query->whereRaw("LOWER(te.codigo_catalogo) = ANY(ARRAY[{$placeholders}])", $valores);
+            $query->whereRaw("(LOWER(te.codigo_catalogo) = ANY(ARRAY[{$placeholders}]) OR LOWER(te.occurrence_id) = ANY(ARRAY[{$placeholders}]))", [...$valores, ...$valores]);
         }
 
         // Tipo de colección (preparations) — multi-select
@@ -241,12 +236,13 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
         if ($filtros->geografias !== []) {
             $query->where('ed.locality_name_visible', true);
             $ids = $this->resolverDescendientesGeografia($filtros->geografias);
-            if ($ids === []) {
-                $query->whereRaw('1 = 0');
-            } else {
-                $query->whereIn('te.localidad_id', $ids);
-            }
+            $query->where(function (Builder $geografia) use ($ids, $filtros): void {
+                $geografia->whereIn('te.localidad_id', $ids);
+                foreach ($filtros->geografias as $nombre) $geografia->orWhereRaw('lower(te.locality_name) = lower(?)', [$nombre]);
+            });
         }
+
+        if ($filtros->pais !== null) $query->where('ed.country_visible', true)->whereRaw('lower(te.country) = lower(?)', [$filtros->pais]);
 
         if ($filtros->provincia !== null) {
             $query->where('ed.state_province_visible', true)->where('te.state_province', $filtros->provincia);
@@ -281,7 +277,7 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
                     $subquery->selectRaw('1')->from('taxonomia.taxones as identificacion')
                         ->whereColumn('identificacion.id', 'te.taxon_id');
                     if ($filtros->identificacion === 'especie') {
-                        $subquery->where('identificacion.rango', 'especie');
+                        $subquery->where('identificacion.rango', 'especie')->whereRaw(CalidadDatoPublico::textoValido('identificacion.nombre_cientifico'));
                     } else {
                         $subquery->where('identificacion.rango', '<>', 'especie');
                     }
@@ -294,10 +290,10 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
         }
         if ($filtros->datosCompletos) {
             $query->where('ed.scientific_name_visible', true)->where('ed.event_date_visible', true)
-                ->whereNotNull('te.fecha_colecta')
+                ->whereRaw(CalidadDatoPublico::fechaValida('te.fecha_colecta'))
                 ->whereExists(static fn (Builder $subquery) => $subquery->selectRaw('1')
                     ->from('taxonomia.taxones as apto')->whereColumn('apto.id', 'te.taxon_id')
-                    ->where('apto.rango', 'especie'));
+                    ->where('apto.rango', 'especie')->whereRaw(CalidadDatoPublico::textoValido('apto.nombre_cientifico')));
         }
 
         // Método de recolección — JOIN con muestras_colecta

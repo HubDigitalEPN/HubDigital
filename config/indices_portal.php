@@ -1,6 +1,39 @@
 <?php
 
 return [
+    'estacionalidad' => [
+        'titulo' => 'Estacionalidad de colecta',
+        'subtitulo' => 'Registros por mes · todos los años seleccionados',
+        'nota' => 'Permite elegir meses para revisar el muestreo. No estima actividad ni abundancia natural.',
+        'imagen' => 'decadas',
+        'foto' => 'Documentación temporal de colectas en el laboratorio.',
+        'parrafos' => [
+            'Agrupa los registros por el mes inicial de su fecha de colecta pública. Solo usa fechas entre 1800 y la fecha actual; los valores fuera de este intervalo permanecen en el registro original para revisión curatorial.',
+            'Seleccionar un mes filtra todos los indicadores y el mapa. Los años seleccionados se mantienen. La cantidad depende del esfuerzo de muestreo y de los datos publicados; no demuestra estacionalidad biológica.',
+        ],
+    ],
+    'altitud' => [
+        'titulo' => 'Cobertura altitudinal',
+        'subtitulo' => 'Registros por intervalo de elevación pública',
+        'nota' => 'Una colecta cuyo intervalo cruza varias franjas aparece en cada una; las barras no se suman.',
+        'imagen' => 'riqueza',
+        'foto' => 'Muestreo de invertebrados en ambientes de distinta elevación.',
+        'parrafos' => [
+            'Cuenta los registros cuyo intervalo de elevación pública se solapa con cada franja. Cuando solo existe un extremo se usa ese valor. Las franjas van de −500 a 9000 metros; los datos sin elevación quedan fuera de este indicador.',
+            'Permite localizar material documentado para comparar ambientes a distintas altitudes. Seleccionar una franja aplica exactamente el mismo criterio de solapamiento a la colección. Los intervalos amplios pueden figurar en más de una barra: no deben sumarse para obtener el total.',
+        ],
+    ],
+    'metodos' => [
+        'titulo' => 'Métodos de muestreo',
+        'subtitulo' => 'Material disponible según técnica de colecta',
+        'nota' => 'Filtra por técnica para revisar la comparabilidad del material. No se conoce el esfuerzo de cada muestreo.',
+        'imagen' => 'mapa',
+        'foto' => 'Material de campo para documentar métodos de colecta.',
+        'parrafos' => [
+            'Agrupa los registros por el protocolo de colecta autorizado para publicación. Se omiten campos vacíos y marcadores curatoriales de daño o falta de información.',
+            'Seleccionar una técnica mantiene los demás filtros y permite revisar su distribución, periodos y material asociado. El conteo expresa registros disponibles, no eficiencia de captura: comparar técnicas requiere conocer su esfuerzo de muestreo.',
+        ],
+    ],
     'mapa' => [
         'titulo' => 'Distribución de los registros',
         'foto' => 'Trabajo de campo con GPS y cuaderno para registrar ubicaciones.',
