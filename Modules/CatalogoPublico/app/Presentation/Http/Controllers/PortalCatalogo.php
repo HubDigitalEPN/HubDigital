@@ -221,10 +221,131 @@ final class PortalCatalogo extends Component
 
     public function cambiarVista(string $vista): void
     {
-        if (in_array($vista, ['tarjetas', 'registros'], true)) {
+        if (in_array($vista, ['tarjetas', 'registros', 'mapa'], true)) {
             $this->vista = $vista;
             $this->pagina = 1;
         }
+    }
+
+    public function actualizarFiltros(): void
+    {
+        $this->pagina = 1;
+    }
+
+    public function seleccionarProvincia(string $provincia): void
+    {
+        if (in_array($provincia, $this->provinciasDisponibles, true)) {
+            $this->filtroProvincia = $provincia;
+            $this->pagina = 1;
+        }
+    }
+
+    public function seleccionarDecada(int $decada): void
+    {
+        if ($decada >= 1800 && $decada <= 2090 && $decada % 10 === 0) {
+            $this->filtroFechaDesde = $decada.'-01-01';
+            $this->filtroFechaHasta = ($decada + 9).'-12-31';
+            $this->pagina = 1;
+        }
+    }
+
+    public function seleccionarFilo(string $nombre): void
+    {
+        foreach ($this->filosDisponibles as $filo) {
+            if ($filo['nombre_cientifico'] === $nombre) {
+                $this->filtroFiloId = $this->filtroFiloId === $filo['id'] ? '' : $filo['id'];
+                $this->pagina = 1;
+                return;
+            }
+        }
+    }
+
+    public function seleccionarArea(float $latMin, float $latMax, float $lonMin, float $lonMax): void
+    {
+        if ($latMin < -90 || $latMax > 90 || $lonMin < -180 || $lonMax > 180 || $latMin >= $latMax || $lonMin >= $lonMax) {
+            return;
+        }
+        $this->filtroLatMin = (string) $latMin;
+        $this->filtroLatMax = (string) $latMax;
+        $this->filtroLonMin = (string) $lonMin;
+        $this->filtroLonMax = (string) $lonMax;
+        $this->vista = 'registros';
+        $this->pagina = 1;
+    }
+
+    public function filtrarCompletos(): void
+    {
+        $this->filtroDatosCompletos = '1';
+        $this->pagina = 1;
+        $this->vista = 'registros';
+    }
+
+    public function verGeorreferenciados(): void
+    {
+        $this->filtroSoloUbicacion = '1';
+        $this->pagina = 1;
+        $this->vista = 'registros';
+    }
+
+    public function explorarEspecie(string $nombre): void
+    {
+        if (mb_strlen($nombre) > 120 || $nombre === '') {
+            return;
+        }
+        $this->filtroTaxon = $nombre;
+        $this->nivel = '';
+        $this->taxon = '';
+        $this->pagina = 1;
+        $this->vista = 'registros';
+    }
+
+    #[Computed]
+    public function provinciasDisponibles(): array
+    {
+        return DB::table('taxonomia.especimenes as e')
+            ->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
+            ->where('d.publicado', true)->where('d.state_province_visible', true)
+            ->whereNotNull('e.state_province')->where('e.state_province', '<>', '')
+            ->distinct()->orderBy('e.state_province')->pluck('e.state_province')->all();
+    }
+
+    #[Computed]
+    public function filosDisponibles(): array
+    {
+        return DB::table('taxonomia.taxones')->where('rango', 'phylum')
+            ->orderBy('nombre_cientifico')->get(['id', 'nombre_cientifico'])
+            ->map(static fn (object $fila): array => (array) $fila)->all();
+    }
+
+    private function filtrosAnalisis(FiltrosBusqueda $filtros): array
+    {
+        return array_filter([
+            'codigo' => $this->filtroCatalogo,
+            'preparaciones' => $this->filtroPreparaciones,
+            'taxon' => $this->filtroTaxon,
+            'provincia' => $this->filtroProvincia,
+            'geografias' => $this->filtroGeografias,
+            'filo' => $this->filtroFiloId,
+            'desde_fecha' => $filtros->fechaDesde?->format('Y-m-d'),
+            'hasta_fecha' => $filtros->fechaHasta?->format('Y-m-d'),
+            'mes' => $this->filtroMes,
+            'identificacion' => $this->filtroIdentificacion,
+            'ubicacion' => $this->filtroSoloUbicacion,
+            'aptitud' => $this->filtroDatosCompletos === '1' ? 'completos' : '',
+            'colector' => $this->filtroColector,
+            'metodos' => $this->filtroMetodos,
+            'lat_min' => $filtros->latMin,
+            'lat_max' => $filtros->latMax,
+            'lon_min' => $filtros->lonMin,
+            'lon_max' => $filtros->lonMax,
+            'elev_desde' => $filtros->elevDesde,
+            'elev_hasta' => $filtros->elevHasta,
+            'biomas' => $this->filtroBiomas,
+            'habitat' => $this->filtroHabitat,
+            'tipo' => $this->filtroTipo,
+            'casta' => $this->filtroCasta,
+            'estadio' => $this->filtroEstadio,
+        ], static fn ($valor) => $valor !== null && $valor !== '' && $valor !== []);
     }
 
     public function cambiarPagina(int $pagina): void
@@ -350,6 +471,60 @@ final class PortalCatalogo extends Component
         }, 'registros-catalogo.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
+    public function descargarAnalisis(string $tipo): StreamedResponse
+    {
+        if (! in_array($tipo, ['mapa', 'filos', 'riqueza', 'decadas', 'calidad', 'raras'], true)) {
+            abort(404);
+        }
+        $datos = app(PortalEstadisticas::class)->datosParaVista($this->filtrosAnalisis($this->filtrosActuales()));
+        [$nombre, $cabecera, $filas] = match ($tipo) {
+            'mapa' => ['cuadriculas-coleccion.csv', ['Latitud', 'Longitud', 'Filo', 'Registros'], array_merge([], ...array_map(
+                static fn (array $celda): array => array_map(
+                    static fn (string $filo, int $cantidad): array => [$celda['lat'], $celda['lon'], $filo, $cantidad],
+                    array_keys($celda['filos']), array_values($celda['filos']),
+                ), $datos['mapa'],
+            ))],
+            'filos' => ['filos-coleccion.csv', ['Filo', 'Registros'], array_map(
+                static fn (string $filo, int $cantidad): array => [$filo, $cantidad],
+                array_keys($datos['filos']), array_values($datos['filos']),
+            )],
+            'riqueza' => ['riqueza-por-provincia.csv', ['Provincia', 'Especies', 'Registros'], array_map(
+                static fn (array $fila): array => [$fila['provincia'], $fila['especies'], $fila['registros']], $datos['riqueza'],
+            )],
+            'decadas' => ['cobertura-por-decada.csv', ['Década', 'Especies', 'Registros'], array_map(
+                static fn (array $fila): array => [$fila['decada'], $fila['especies'], $fila['registros']], $datos['decadas'],
+            )],
+            'calidad' => ['completitud-coleccion.csv', ['Registros', 'Identificados a especie', 'Con fecha', 'Con coordenadas', 'Con los tres campos'], [[
+                $datos['resumen']['registros'], $datos['resumen']['identificados'], $datos['resumen']['fechados'],
+                $datos['resumen']['georreferenciados'], $datos['resumen']['aptos'],
+            ]]],
+            'raras' => ['especies-pocos-registros.csv', ['Especie', 'Registros'], array_map(
+                static fn (array $fila): array => [$fila['nombre'], $fila['total']], $datos['raras'],
+            )],
+        };
+
+        return response()->streamDownload(static function () use ($cabecera, $filas): void {
+            $salida = fopen('php://output', 'wb');
+            fwrite($salida, "\xEF\xBB\xBF");
+            fputcsv($salida, $cabecera, ';', '"', '');
+            foreach ($filas as $fila) {
+                fputcsv($salida, array_map(static function (mixed $valor): string {
+                    $texto = (string) $valor;
+                    return preg_match('/^\s*[=+@]/u', $texto) || preg_match('/^\s*-(?!\d+(?:[.,]\d+)?\s*$)/u', $texto)
+                        ? "'".$texto : $texto;
+                }, $fila), ';', '"', '');
+            }
+            fclose($salida);
+        }, $nombre, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    public function descargarListaEspecies(): StreamedResponse
+    {
+        return app(PortalEstadisticas::class)->descargarListaConFiltros(
+            $this->filtrosAnalisis($this->filtrosActuales()),
+        );
+    }
+
     private function filtrosActuales(): FiltrosBusqueda
     {
         return FiltrosBusqueda::desde([
@@ -390,6 +565,22 @@ final class PortalCatalogo extends Component
         ConsultarGaleriaTaxonHandler $galeriaHandler,
     ): View {
         $filtros = $this->filtrosActuales();
+        $datosMapa = $this->vista === 'mapa'
+            ? app(PortalEstadisticas::class)->datosParaVista($this->filtrosAnalisis($filtros))
+            : null;
+
+        if ($this->vista === 'mapa') {
+            return view('catalogopublico::livewire.portal-catalogo', [
+                'datosMapa' => $datosMapa,
+                'claveFiltrosMapa' => sha1(json_encode([$filtros, $datosMapa['mapa'], $datosMapa['filos']])),
+                'provinciasDisponibles' => $this->provinciasDisponibles,
+                'filosDisponibles' => $this->filosDisponibles,
+                'preparacionesDisponibles' => $this->preparacionesDisponibles,
+                'metodosRecoleccionDisponibles' => $this->metodosRecoleccionDisponibles,
+                'biomasDisponibles' => $this->biomasDisponibles,
+                'hayFiltrosActivos' => ! $filtros->estaVacio(),
+            ]);
+        }
 
         $output = ($handler)(new ConstruirArbolTaxonomicoInput($filtros->estaVacio() ? null : $filtros));
 
@@ -455,6 +646,9 @@ final class PortalCatalogo extends Component
             : [];
 
         return view('catalogopublico::livewire.portal-catalogo', [
+            'datosMapa' => $datosMapa,
+            'provinciasDisponibles' => $this->provinciasDisponibles,
+            'filosDisponibles' => $this->filosDisponibles,
             'ruta' => $ruta,
             'portadas' => $this->cargarPortadas(),
             'galeriaEspecie' => $galeriaEspecie,

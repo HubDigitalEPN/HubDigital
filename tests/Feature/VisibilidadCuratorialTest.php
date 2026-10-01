@@ -6,6 +6,8 @@ use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Livewire\Livewire;
+use Modules\CatalogoPublico\Presentation\Http\Controllers\PortalCatalogo;
 
 test('un ejemplar sin filo queda en curaduría y entra al CSV público al confirmar su linaje', function (): void {
     $ahora = now();
@@ -56,14 +58,40 @@ test('un ejemplar sin filo queda en curaduría y entra al CSV público al confir
 });
 
 test('Colección Biológica responde como primera pantalla pública', function (): void {
-    $this->get(route('portal.inicio'))->assertRedirect(route('portal.estadisticas'));
-    $this->get(route('portal.estadisticas'))
+    $this->get(route('portal.inicio'))->assertRedirect(route('portal.catalogo', ['vista' => 'mapa']));
+    $this->get(route('portal.estadisticas'))->assertRedirect(route('portal.catalogo', ['vista' => 'mapa']));
+    $this->get(route('portal.catalogo', ['vista' => 'mapa']))
         ->assertOk()
         ->assertSee('Colección Biológica')
         ->assertSee('Filtros de investigación')
-        ->assertSee('Riqueza documentada por provincia')
-        ->assertDontSee('data-ayuda="lista"', false);
+        ->assertSee('Riqueza por provincia')
+        ->assertSee('Vista de registros');
     $this->get('/portal/comparar-especies')->assertNotFound();
+});
+
+test('las tres vistas se alternan en el mismo componente y conservan la selección', function (): void {
+    $taxonSinCoincidencias = 'QA-SIN-RESULTADOS-'.Str::uuid();
+
+    Livewire::test(PortalCatalogo::class)
+        ->assertSee('Catálogo del laboratorio de invertebrados')
+        ->assertDontSee('Volver al árbol')
+        ->set('filtroTaxon', $taxonSinCoincidencias)
+        ->call('cambiarVista', 'mapa')->assertSet('vista', 'mapa')->assertSet('filtroTaxon', $taxonSinCoincidencias)
+        ->assertSee('Riqueza por provincia')
+        ->assertSee('No hay especies con provincia pública en esta selección.')
+        ->assertSee('No hay fechas e identificaciones a especie visibles.')
+        ->assertDontSee('Catálogo del laboratorio de invertebrados')->assertDontSee('Volver al árbol')
+        ->call('cambiarVista', 'registros')->assertSet('vista', 'registros')->assertSet('filtroTaxon', $taxonSinCoincidencias)
+        ->assertSee('Registros del catálogo')->assertDontSee('Riqueza por provincia')->assertDontSee('Volver al árbol')
+        ->call('cambiarVista', 'tarjetas')->assertSet('vista', 'tarjetas')->assertSet('filtroTaxon', $taxonSinCoincidencias)
+        ->assertSee('Catálogo del laboratorio de invertebrados')->assertDontSee('Riqueza por provincia')
+        ->call('explorarNivel', 'phylum')->assertSet('explorar', 'phylum')
+        ->assertSee('Volver al árbol')->assertDontSee('Catálogo del laboratorio de invertebrados')
+        ->call('cambiarVista', 'mapa')->assertSet('explorar', 'phylum')->assertSet('filtroTaxon', $taxonSinCoincidencias)
+        ->assertSee('Riqueza por provincia')->assertDontSee('Volver al árbol')
+        ->call('cambiarVista', 'tarjetas')->assertSet('explorar', 'phylum')->assertSet('filtroTaxon', $taxonSinCoincidencias)
+        ->assertSee('Volver al árbol')
+        ->call('volverAlArbol')->assertSee('Catálogo del laboratorio de invertebrados')->assertDontSee('Volver al árbol');
 });
 
 test('los filtros públicos se aplican también a la lista CSV y respetan la ubicación visible', function (): void {
@@ -110,12 +138,15 @@ test('los filtros públicos se aplican también a la lista CSV y respetan la ubi
     $filtros = ['filo' => $filo, 'provincia' => 'Pichincha', 'colector' => $colector,
         'desde' => 2025, 'hasta' => 2025, 'mes' => 6, 'aptitud' => 'completos',
         'identificacion' => 'especie', 'ubicacion' => '1', 'metodo' => $metodo];
-    $this->get(route('portal.estadisticas', $filtros))->assertOk()
-        ->assertSee($conUbicacion)->assertDontSee($sinUbicacion)->assertDontSee($metodoRestringido)
-        ->assertSee('fprov=Pichincha')->assertSee('fmes=6');
+    $redireccion = $this->get(route('portal.estadisticas', $filtros))->assertRedirect();
+    $destino = $redireccion->baseResponse->headers->get('Location');
+    expect($destino)->toContain('fprov=Pichincha', 'fmes=6', 'vista=mapa');
+    $this->get($destino)->assertOk()
+        ->assertSee($conUbicacion)->assertDontSee($sinUbicacion)->assertDontSee($metodoRestringido);
     $csv = $this->get(route('portal.lista-especies', $filtros))->assertOk()->streamedContent();
     expect($csv)->toContain($conUbicacion)->not->toContain($sinUbicacion)->not->toContain($metodoRestringido);
-    $this->get(route('portal.estadisticas', ['taxon' => $conUbicacion, 'mes' => 6]))
+    $taxonRedireccion = $this->get(route('portal.estadisticas', ['taxon' => $conUbicacion, 'mes' => 6]))->assertRedirect();
+    $this->get($taxonRedireccion->baseResponse->headers->get('Location'))
         ->assertOk()->assertSee($conUbicacion)->assertDontSee($sinUbicacion);
     $this->get(route('portal.catalogo', [
         'vista' => 'registros', 'fph' => $filo, 'fprov' => 'Pichincha',

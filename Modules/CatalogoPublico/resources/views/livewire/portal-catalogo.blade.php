@@ -3,6 +3,7 @@
     abrirArthropoda() { this.mostrarArthropoda = true; this.$nextTick(() => this.$refs.cerrarArthropoda?.focus()); },
     cerrarArthropoda() { this.mostrarArthropoda = false; this.$nextTick(() => this.$refs.abrirArthropoda?.focus()); },
 }">
+    @if($vista === 'tarjetas')
     {{-- =====================================================================
          NAV BAR TAXONÓMICO — siempre visible, permite explorar por nivel
          ===================================================================== --}}
@@ -84,41 +85,27 @@
         </div>
     @endif
 
-    <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6 lg:px-8">
-        <div class="inline-flex flex-wrap rounded-lg border border-border bg-surface p-1" role="group" aria-label="Vista de la Colección Biológica">
-            <button type="button" wire:click="cambiarVista('tarjetas')" aria-pressed="{{ $vista === 'tarjetas' ? 'true' : 'false' }}"
-                @class(['inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium', 'bg-science-blue text-white' => $vista === 'tarjetas', 'text-text-secondary hover:text-text-primary' => $vista !== 'tarjetas'])><span aria-hidden="true">▦</span> Tarjetas</button>
-            <button type="button" wire:click="cambiarVista('registros')" aria-pressed="{{ $vista === 'registros' ? 'true' : 'false' }}"
-                @class(['inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium', 'bg-science-blue text-white' => $vista === 'registros', 'text-text-secondary hover:text-text-primary' => $vista !== 'registros'])><span aria-hidden="true">☷</span> Registros</button>
-            @php
-                $filtrosMapa = array_filter([
-                    'taxon' => $filtroTaxon ?: null,
-                    'provincia' => $filtroProvincia ?: null,
-                    'filo' => $filtroFiloId ?: null,
-                    'desde' => preg_match('/^\d{4}-\d{2}-\d{2}$/', $filtroFechaDesde) ? substr($filtroFechaDesde, 0, 4) : null,
-                    'hasta' => preg_match('/^\d{4}-\d{2}-\d{2}$/', $filtroFechaHasta) ? substr($filtroFechaHasta, 0, 4) : null,
-                    'mes' => $filtroMes ?: null,
-                    'identificacion' => $filtroIdentificacion ?: null,
-                    'ubicacion' => $filtroSoloUbicacion === '1' ? '1' : null,
-                    'aptitud' => $filtroDatosCompletos === '1' ? 'completos' : null,
-                    'colector' => $filtroColector ?: null,
-                    'metodo' => count($filtroMetodos) === 1 ? $filtroMetodos[0] : null,
-                ], static fn ($valor) => $valor !== null && $valor !== '');
-            @endphp
-            <a href="{{ route('portal.estadisticas', $filtrosMapa) }}" class="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-text-secondary hover:text-text-primary"><span aria-hidden="true">◉</span> Mapa y análisis</a>
+    @endif {{-- fin breadcrumb del modo árbol --}}
+    @endif {{-- fin navegación de tarjetas --}}
+    <nav class="collection-view-bar" aria-label="Vista de la Colección Biológica">
+        <div class="collection-view-switch">
+            <button type="button" wire:click="cambiarVista('tarjetas')" aria-label="Vista de tarjetas" title="Tarjetas" aria-pressed="{{ $vista === 'tarjetas' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg><span class="sr-only">Tarjetas</span></button>
+            <button type="button" wire:click="cambiarVista('registros')" aria-label="Vista de registros" title="Registros" aria-pressed="{{ $vista === 'registros' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h3m4 0h9M4 12h3m4 0h9M4 18h3m4 0h9"/></svg><span class="sr-only">Registros</span></button>
+            <button type="button" wire:click="cambiarVista('mapa')" aria-label="Vista de mapa y análisis" title="Mapa y análisis" aria-pressed="{{ $vista === 'mapa' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2zM9 3v16m6-14v16"/></svg><span class="sr-only">Mapa y análisis</span></button>
         </div>
-    </div>
+    </nav>
 
-    @if($vista === 'registros')
-        @if($nivelActual === '')
-            <x-catalogopublico::filtro-catalogo
-                :preparaciones="$preparacionesDisponibles"
-                :biomas="$biomasDisponibles"
-                :metodos-recoleccion="$metodosRecoleccionDisponibles"
-                :colectores="$colectoresDisponibles"
-                :filtros-activos="$filtrosActivos"
-            />
-        @endif
+    <div class="collection-workspace">
+        <x-catalogopublico::filtro-investigacion
+            :provincias="$provinciasDisponibles" :filos="$filosDisponibles"
+            :preparaciones="$preparacionesDisponibles" :metodos="$metodosRecoleccionDisponibles"
+            :biomas="$biomasDisponibles" :hay-filtros-activos="$hayFiltrosActivos"
+        />
+        <div class="collection-main">
+
+    @if($vista === 'mapa')
+        @include('catalogopublico::dashboard-coleccion')
+    @elseif($vista === 'registros')
         <div class="mx-auto max-w-7xl px-4 pb-10 pt-4 sm:px-6 lg:px-8">
             <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
                 <div>
@@ -173,10 +160,12 @@
             @endif
         </div>
 
+    @else
+    @if($nivelExplorar === '')
     {{-- =====================================================================
          RAÍZ — presentación del catálogo + grid de filos
          ===================================================================== --}}
-    @elseif($nivelActual === '')
+    @if($nivelActual === '')
         <div class="bg-blue-navy">
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
                 <h1 class="font-display text-2xl font-bold text-white">
@@ -185,13 +174,6 @@
             </div>
         </div>
 
-        <x-catalogopublico::filtro-catalogo
-            :preparaciones="$preparacionesDisponibles"
-            :biomas="$biomasDisponibles"
-            :metodos-recoleccion="$metodosRecoleccionDisponibles"
-            :colectores="$colectoresDisponibles"
-            :filtros-activos="$filtrosActivos"
-        />
 
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
             @if(count($hijos) === 0)
@@ -460,7 +442,6 @@
          ===================================================================== --}}
     @elseif($nivelActual === 'species')
         @assets
-        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
         @endassets
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
             <div class="flex gap-8">
@@ -1102,6 +1083,9 @@
     </div>
 
     @endif {{-- fin modo árbol / explorar --}}
+    @endif {{-- fin vista mapa / registros / tarjetas --}}
+        </div>
+    </div>
 
     {{-- Indicador de carga --}}
     <div

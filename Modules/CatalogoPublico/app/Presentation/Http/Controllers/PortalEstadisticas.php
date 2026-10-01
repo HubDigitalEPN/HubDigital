@@ -5,17 +5,17 @@ declare(strict_types=1);
 namespace Modules\CatalogoPublico\Presentation\Http\Controllers;
 
 use Illuminate\Database\Query\Builder;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
-use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class PortalEstadisticas
 {
-    public function __invoke(Request $request): View
+    public function __invoke(Request $request): RedirectResponse
     {
         $filtros = $request->validate($this->reglasFiltros());
         $this->validarPeriodo($filtros);
@@ -23,28 +23,27 @@ final class PortalEstadisticas
             $filtros['colector'] = trim($filtros['colector']);
         }
         $filtros = array_filter($filtros, static fn ($valor) => $valor !== null && $valor !== '');
-        $provincias = $this->cachear('portal:provincias:v4', static fn () => DB::table('taxonomia.especimenes as e')
-            ->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
-            ->where('d.publicado', true)
-            ->where('d.state_province_visible', true)
-            ->whereNotNull('e.state_province')
-            ->where('e.state_province', '<>', '')
-            ->distinct()->orderBy('e.state_province')->pluck('e.state_province')->all());
-        $filosDisponibles = DB::table('taxonomia.taxones')
-            ->where('rango', 'phylum')->orderBy('nombre_cientifico')
-            ->get(['id', 'nombre_cientifico'])->map(static fn (object $fila): array => (array) $fila)->all();
-
-        if (isset($filtros['provincia']) && ! in_array($filtros['provincia'], $provincias, true)) {
-            $filtros['provincia'] = '';
-        }
-        if (isset($filtros['filo']) && ! in_array($filtros['filo'], array_column($filosDisponibles, 'id'), true)) {
-            $filtros['filo'] = '';
-        }
         $filtros = $this->normalizarOpciones($filtros);
+        return redirect()->route('portal.catalogo', array_filter([
+            'vista' => 'mapa',
+            'ft' => $filtros['taxon'] ?? null,
+            'fprov' => $filtros['provincia'] ?? null,
+            'fph' => $filtros['filo'] ?? null,
+            'ffd' => isset($filtros['desde']) ? $filtros['desde'].'-01-01' : null,
+            'ffh' => isset($filtros['hasta']) ? $filtros['hasta'].'-12-31' : null,
+            'fmes' => $filtros['mes'] ?? null,
+            'fid' => $filtros['identificacion'] ?? null,
+            'fgeo' => $filtros['ubicacion'] ?? null,
+            'fap' => ($filtros['aptitud'] ?? null) === 'completos' ? '1' : null,
+            'fco' => $filtros['colector'] ?? null,
+            'fm' => isset($filtros['metodo']) ? [$filtros['metodo']] : null,
+        ], static fn ($valor) => $valor !== null && $valor !== ''));
+    }
 
-        $datos = $this->cachear('portal:estadisticas:v7:'.sha1(json_encode($filtros)), fn () => $this->resumir($filtros));
-
-        return view('catalogopublico::portal-estadisticas', compact('datos', 'filtros', 'provincias', 'filosDisponibles'));
+    /** Agregados de la misma selección que usan tarjetas y registros. */
+    public function datosParaVista(array $filtros): array
+    {
+        return $this->cachear('portal:estadisticas:v8:'.sha1(json_encode($filtros)), fn () => $this->resumir($filtros));
     }
 
     public function descargarLista(Request $request): StreamedResponse
@@ -56,6 +55,11 @@ final class PortalEstadisticas
         }
         $filtros = array_filter($filtros, static fn ($valor) => $valor !== null && $valor !== '');
         $filtros = $this->normalizarOpciones($filtros);
+        return $this->descargarListaConFiltros($filtros);
+    }
+
+    public function descargarListaConFiltros(array $filtros): StreamedResponse
+    {
         $consulta = $this->consulta($filtros)
             ->join('taxonomia.taxones as t', 't.id', '=', 'e.taxon_id')
             ->where('t.rango', 'especie')->where('d.scientific_name_visible', true)
@@ -82,14 +86,35 @@ final class PortalEstadisticas
         $query = DB::table('taxonomia.especimenes as e')
             ->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
             ->where('d.publicado', true);
+        if (! empty($filtros['codigo'])) {
+            $codigos = array_slice(array_values(array_filter(array_map('trim', explode(',', (string) $filtros['codigo'])))), 0, 25);
+            $query->where('d.occurrence_id_visible', true)->whereIn(DB::raw('LOWER(e.codigo_catalogo)'), array_map('mb_strtolower', $codigos));
+        }
+        if (! empty($filtros['preparaciones'])) {
+            $query->whereIn(DB::raw('LOWER(e.preparations)'), array_map('mb_strtolower', $filtros['preparaciones']));
+        }
         if (! empty($filtros['provincia'])) {
             $query->where('d.state_province_visible', true)->where('e.state_province', $filtros['provincia']);
+        }
+        if (! empty($filtros['geografias'])) {
+            $nombres = array_slice(array_values(array_filter(array_map('trim', $filtros['geografias']))), 0, 10);
+            if ($nombres !== []) {
+                $condiciones = implode(' OR ', array_fill(0, count($nombres), 'nombre_canonico ILIKE ?'));
+                $ids = array_column(DB::select("WITH RECURSIVE descendientes AS (SELECT id FROM taxonomia.localidades WHERE {$condiciones} UNION ALL SELECT l.id FROM taxonomia.localidades l JOIN descendientes d ON l.padre_id = d.id) SELECT id::text FROM descendientes", array_map(static fn (string $nombre): string => '%'.$nombre.'%', $nombres)), 'id');
+                $ids === [] ? $query->whereRaw('1 = 0') : $query->whereIn('e.localidad_id', $ids);
+            }
         }
         if (isset($filtros['desde'])) {
             $query->where('d.event_date_visible', true)->whereYear('e.fecha_colecta', '>=', (int) $filtros['desde']);
         }
         if (isset($filtros['hasta'])) {
             $query->where('d.event_date_visible', true)->whereYear('e.fecha_colecta', '<=', (int) $filtros['hasta']);
+        }
+        if (! empty($filtros['desde_fecha'])) {
+            $query->where('d.event_date_visible', true)->whereRaw('COALESCE(e.fecha_colecta_fin, e.fecha_colecta) >= ?', [$filtros['desde_fecha']]);
+        }
+        if (! empty($filtros['hasta_fecha'])) {
+            $query->where('d.event_date_visible', true)->whereDate('e.fecha_colecta', '<=', $filtros['hasta_fecha']);
         }
         if (! empty($filtros['filo'])) {
             $query->whereRaw('e.taxon_id IN (WITH RECURSIVE descendientes AS (SELECT id FROM taxonomia.taxones WHERE id = ? UNION SELECT t.id FROM taxonomia.taxones t JOIN descendientes d ON t.padre_id = d.id) SELECT id FROM descendientes)', [$filtros['filo']]);
@@ -110,6 +135,36 @@ final class PortalEstadisticas
             $query->where('d.sampling_protocol_visible', true)
                 ->whereExists(static fn (Builder $subconsulta) => $subconsulta->selectRaw('1')->from('taxonomia.muestras_colecta as metodo')
                     ->whereColumn('metodo.id', 'e.muestra_id')->where('metodo.sampling_protocol', $filtros['metodo']));
+        }
+        if (! empty($filtros['metodos'])) {
+            $metodos = array_map('mb_strtolower', $filtros['metodos']);
+            $query->where('d.sampling_protocol_visible', true)->whereExists(static fn (Builder $subconsulta) => $subconsulta->selectRaw('1')
+                ->from('taxonomia.muestras_colecta as metodo')->whereColumn('metodo.id', 'e.muestra_id')
+                ->whereIn(DB::raw('LOWER(metodo.sampling_protocol)'), $metodos));
+        }
+        if (isset($filtros['lat_min'], $filtros['lat_max'])) {
+            $query->where('d.decimal_latitude_visible', true)->whereBetween('e.decimal_latitude', [$filtros['lat_min'], $filtros['lat_max']]);
+        }
+        if (isset($filtros['lon_min'], $filtros['lon_max'])) {
+            $query->where('d.decimal_longitude_visible', true)->whereBetween('e.decimal_longitude', [$filtros['lon_min'], $filtros['lon_max']]);
+        }
+        if (isset($filtros['elev_desde'])) {
+            $query->where('d.elevation_visible', true)->whereRaw('COALESCE(e.elevation_max_m, e.elevation_min_m) >= ?', [$filtros['elev_desde']]);
+        }
+        if (isset($filtros['elev_hasta'])) {
+            $query->where('d.elevation_visible', true)->whereRaw('COALESCE(e.elevation_min_m, e.elevation_max_m) <= ?', [$filtros['elev_hasta']]);
+        }
+        if (! empty($filtros['biomas'])) {
+            $query->whereIn(DB::raw('LOWER(e.biome)'), array_map('mb_strtolower', $filtros['biomas']));
+        }
+        if (! empty($filtros['habitat'])) {
+            $query->where(static fn (Builder $q) => $q->where('e.habitat', 'ILIKE', '%'.$filtros['habitat'].'%')
+                ->orWhere('e.microhabitat', 'ILIKE', '%'.$filtros['habitat'].'%'));
+        }
+        foreach (['tipo' => ['type_status', 'type_status_visible'], 'casta' => ['caste', 'caste_visible'], 'estadio' => ['life_stage', 'life_stage_visible']] as $clave => [$columna, $visibilidad]) {
+            if (! empty($filtros[$clave])) {
+                $query->where('d.'.$visibilidad, true)->where('e.'.$columna, 'ILIKE', '%'.$filtros[$clave].'%');
+            }
         }
         if (($filtros['identificacion'] ?? '') === 'especie') {
             $query->where('d.scientific_name_visible', true)

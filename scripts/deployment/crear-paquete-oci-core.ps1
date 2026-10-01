@@ -295,11 +295,22 @@ Invoke-Comando -Programa 'git.exe' -Argumentos @('-C', $Proyecto, 'diff', $upstr
 
 $archivosJson = @($archivosCambiados | Where-Object { $_ -match '\.json$' })
 if ($archivosJson) {
+    if (-not (Get-Command 'node.exe' -ErrorAction SilentlyContinue)) {
+        throw 'No se encontro node.exe en PATH para validar los archivos JSON.'
+    }
+    # package-lock.json contiene una clave raiz vacia valida que ConvertFrom-Json
+    # no puede representar como propiedad en Windows PowerShell.
+    # Usar un archivo evita que Windows PowerShell altere las comillas de node -e.
+    $rutaValidadorJson = Join-Path $directorioScript 'validar-json.cjs'
+    if (-not (Test-Path -LiteralPath $rutaValidadorJson -PathType Leaf)) {
+        throw "No se encontro el validador JSON: $rutaValidadorJson"
+    }
     Write-Host "`n==> Validando archivos JSON" -ForegroundColor Cyan
     foreach ($archivo in $archivosJson) {
         $rutaJson = Join-Path $Proyecto $archivo
         if (Test-Path -LiteralPath $rutaJson -PathType Leaf) {
-            $null = Get-Content -Raw -LiteralPath $rutaJson | ConvertFrom-Json
+            & node.exe $rutaValidadorJson $rutaJson
+            if ($LASTEXITCODE -ne 0) { throw "JSON invalido: $archivo (codigo $LASTEXITCODE)." }
             Write-Host "  OK $archivo"
         }
     }

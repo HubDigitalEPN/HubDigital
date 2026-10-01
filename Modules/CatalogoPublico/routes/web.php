@@ -24,7 +24,7 @@ Route::middleware(['auth', 'verified', 'role:curador'])
 Route::prefix('portal')
     ->name('portal.')
     ->group(function () {
-        Route::get('/', fn () => redirect()->route('portal.estadisticas'))->name('inicio');
+        Route::get('/', fn () => redirect()->route('portal.catalogo', ['vista' => 'mapa']))->name('inicio');
         Route::get('/estadisticas', PortalEstadisticas::class)->name('estadisticas');
         Route::get('/catalogo', PortalCatalogo::class)->name('catalogo');
         Route::get('/lista-especies.csv', [PortalEstadisticas::class, 'descargarLista'])->name('lista-especies');

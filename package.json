@@ -12,6 +12,7 @@
         "chart.js": "^4.4.1",
         "concurrently": "^9.0.1",
         "laravel-vite-plugin": "^3.0.0",
+        "leaflet": "^1.9.4",
         "tailwindcss": "^4.0.7",
         "vite": "^8.0.0"
     },

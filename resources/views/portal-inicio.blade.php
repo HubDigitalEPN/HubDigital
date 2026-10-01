@@ -13,7 +13,7 @@
 
                         <div class="portal-responsive-actions portal-home-actions mt-8">
                             <a
-                                href="{{ route('portal.estadisticas') }}"
+                                href="{{ route('portal.catalogo', ['vista' => 'mapa']) }}"
                                 class="inline-flex min-h-12 items-center justify-center gap-3 rounded-md bg-science-blue px-5 py-3 text-sm font-semibold !text-white shadow-sm transition hover:bg-[#1266b8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-science-blue focus-visible:ring-offset-2"
                             >
                                 Ver Colección Biológica
@@ -47,7 +47,7 @@
                         <p class="mt-5 max-w-2xl text-base leading-8 text-white/75">
                             El catálogo conecta ejemplares, identificaciones y localidades para consultar la diversidad de invertebrados y apoyar la investigación. Los registros publicados conservan su contexto científico y curatorial.
                         </p>
-                        <a href="{{ route('portal.estadisticas') }}" class="mt-7 inline-flex min-h-12 items-center justify-center gap-3 rounded-md bg-white px-5 py-3 text-sm font-semibold !text-blue-navy transition hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-blue-navy">
+                        <a href="{{ route('portal.catalogo', ['vista' => 'mapa']) }}" class="mt-7 inline-flex min-h-12 items-center justify-center gap-3 rounded-md bg-white px-5 py-3 text-sm font-semibold !text-blue-navy transition hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-blue-navy">
                             Consultar el catálogo digital
                             <svg viewBox="0 0 24 24" aria-hidden="true" class="size-4 fill-none stroke-current stroke-2"><path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round" /></svg>
                         </a>
