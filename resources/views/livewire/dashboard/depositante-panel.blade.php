@@ -12,7 +12,7 @@
 
     <nav class="hub-curator-shortcuts hub-depositor-shortcuts" aria-label="Accesos principales">
         <a href="{{ route('prestamos.investigador.mis-depositos') }}" wire:navigate><flux:icon name="archive-box" class="size-6" /><span><strong>Mis depósitos</strong><small>Solicitudes y documentos</small></span></a>
-        <a href="{{ route('portal.estadisticas') }}"><flux:icon name="magnifying-glass" class="size-6" /><span><strong>Explorar colección</strong><small>Mapa y estadísticas</small></span></a>
+        <a href="{{ route('portal.estadisticas') }}"><flux:icon name="magnifying-glass" class="size-6" /><span><strong>Explorar colección</strong><small>Colección Biológica</small></span></a>
         <a href="{{ route('depositos.portal') }}"><flux:icon name="book-open" class="size-6" /><span><strong>Guía de depósitos</strong><small>Requisitos del trámite</small></span></a>
         <button type="button" x-on:click="$flux.modal('account-settings').show()"><flux:icon name="cog-6-tooth" class="size-6" /><span><strong>Configuración</strong><small>Cuenta y cambio de rol</small></span></button>
     </nav>

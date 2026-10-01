@@ -2,26 +2,26 @@
     const iniciar = () => {
         const datos = window.portalEstadisticasDatos;
         if (!datos) return;
-
-        const azul = '#1d6e9f';
-        const azulClaro = '#83abc8';
+        const filtros = document.getElementById('filtros-estadisticas');
+        const colores = ['#17699b', '#d17d28', '#568c59', '#8c62a5', '#b94e6b', '#71828d', '#a18a29', '#3f8d90'];
+        const filos = Object.keys(datos.filos);
+        const colorFilo = filo => filo === 'Sin filo' ? '#74818c' : colores[Math.max(0, filos.indexOf(filo)) % colores.length];
         const aviso = document.getElementById('aviso-estadisticas');
-        let temporizadorAviso;
+        let timeout;
         const informar = mensaje => {
             if (!aviso) return;
             aviso.textContent = mensaje;
             aviso.hidden = false;
-            clearTimeout(temporizadorAviso);
-            temporizadorAviso = setTimeout(() => { aviso.hidden = true; }, 4500);
+            clearTimeout(timeout);
+            timeout = setTimeout(() => { aviso.hidden = true; }, 4200);
         };
-
-        const csvCampo = valor => {
+        const escaparCsv = valor => {
             let texto = String(valor ?? '');
-            if (/^[\s]*[=+\-@]/.test(texto)) texto = "'" + texto;
+            if (/^\s*[=+@]/.test(texto) || (/^\s*-/.test(texto) && !/^\s*-\d+(?:[.,]\d+)?\s*$/.test(texto))) texto = "'" + texto;
             return '"' + texto.replaceAll('"', '""') + '"';
         };
-        const descargarCsv = (nombre, encabezados, filas) => {
-            const contenido = '\uFEFF' + [encabezados, ...filas].map(fila => fila.map(csvCampo).join(';')).join('\r\n');
+        const descargarCsv = (nombre, cabecera, filas) => {
+            const contenido = '\uFEFF' + [cabecera, ...filas].map(fila => fila.map(escaparCsv).join(';')).join('\r\n');
             const url = URL.createObjectURL(new Blob([contenido], {type: 'text/csv;charset=utf-8'}));
             const enlace = document.createElement('a');
             enlace.href = url;
@@ -32,39 +32,31 @@
             setTimeout(() => URL.revokeObjectURL(url), 1000);
         };
         const exportaciones = {
-            mapa: ['cuadriculas-publicas.csv', ['Latitud de cuadrícula', 'Longitud de cuadrícula', 'Registros'], datos.mapa.map(p => [p.lat, p.lon, p.total])],
-            filos: ['registros-por-filo.csv', ['Filo', 'Registros'], Object.entries(datos.filos).map(([filo, total]) => [filo, total])],
-            anios: ['registros-por-anio.csv', ['Año de colecta', 'Registros'], datos.anios.map(p => [p.anio, p.total])],
-            provincias: ['registros-por-provincia.csv', ['Provincia', 'Registros'], datos.provincias.map(p => [p.provincia, p.total])],
-            calidad: ['documentacion-visible.csv', ['Indicador', 'Registros', 'Porcentaje'], [
-                ['Con identificación de especie', datos.resumen.identificados],
-                ['Con fecha visible', datos.resumen.fechados],
-                ['Con ubicación visible', datos.resumen.georreferenciados],
-            ].map(([etiqueta, valor]) => [etiqueta, valor, Number(datos.resumen.registros) ? (Number(valor) / Number(datos.resumen.registros) * 100).toFixed(1) : '0.0'])],
-            metodos: ['metodos-de-colecta.csv', ['Método de colecta', 'Registros'], datos.metodos.map(p => [p.metodo, p.total])],
+            mapa: ['cuadriculas-por-filo.csv', ['Latitud de cuadrícula', 'Longitud de cuadrícula', 'Filo', 'Registros'], datos.mapa.flatMap(p => Object.entries(p.filos).map(([filo, n]) => [p.lat, p.lon, filo, n]))],
+            filos: ['composicion-taxonomica.csv', ['Filo', 'Registros'], Object.entries(datos.filos).map(([filo, n]) => [filo, n])],
+            riqueza: ['riqueza-documentada.csv', ['Provincia', 'Especies', 'Registros'], datos.riqueza.map(p => [p.provincia, p.especies, p.registros])],
+            decadas: ['cobertura-temporal.csv', ['Década', 'Especies', 'Registros'], datos.decadas.map(p => [p.decada, p.especies, p.registros])],
+            aptitud: ['completitud-analisis.csv', ['Registros', 'Con especie fecha y coordenadas visibles'], [[datos.resumen.registros, datos.resumen.aptos]]],
+            raras: ['especies-pocos-registros.csv', ['Especie', 'Registros'], datos.raras.map(p => [p.nombre, p.total])],
         };
-
         const cerrarMenus = () => document.querySelectorAll('.atlas-menu').forEach(menu => {
             menu.hidden = true;
             menu.closest('.atlas-panel')?.querySelector('[data-menu-trigger]')?.setAttribute('aria-expanded', 'false');
         });
-        document.querySelectorAll('[data-menu-trigger]').forEach(disparador => disparador.addEventListener('click', evento => {
+        document.querySelectorAll('[data-menu-trigger]').forEach(boton => boton.addEventListener('click', evento => {
             evento.stopPropagation();
-            const menu = disparador.closest('.atlas-panel')?.querySelector('.atlas-menu');
+            const menu = boton.closest('.atlas-panel')?.querySelector('.atlas-menu');
             if (!menu) return;
             const abrir = menu.hidden;
             cerrarMenus();
             menu.hidden = !abrir;
-            disparador.setAttribute('aria-expanded', String(abrir));
+            boton.setAttribute('aria-expanded', String(abrir));
             if (abrir) menu.querySelector('button')?.focus();
         }));
-        document.addEventListener('click', evento => {
-            if (!evento.target.closest('.atlas-menu')) cerrarMenus();
-        });
+        document.addEventListener('click', evento => { if (!evento.target.closest('.atlas-menu, [data-menu-trigger]')) cerrarMenus(); });
         document.addEventListener('keydown', evento => {
             if (evento.key === 'Escape') {
-                const abierto = document.querySelector('.atlas-menu:not([hidden])');
-                abierto?.closest('.atlas-panel')?.querySelector('[data-menu-trigger]')?.focus();
+                document.querySelector('.atlas-menu:not([hidden])')?.closest('.atlas-panel')?.querySelector('[data-menu-trigger]')?.focus();
                 cerrarMenus();
             }
         });
@@ -78,15 +70,13 @@
             if (evento.key === 'Home') { evento.preventDefault(); opciones[0]?.focus(); }
             if (evento.key === 'End') { evento.preventDefault(); opciones.at(-1)?.focus(); }
         }));
-
         const modal = document.getElementById('ayuda-estadisticas');
         let retornoFoco;
         document.querySelectorAll('[data-ayuda]').forEach(boton => boton.addEventListener('click', () => {
-            const clave = boton.dataset.ayuda;
-            const plantilla = document.getElementById('guia-' + clave);
+            const plantilla = document.getElementById('guia-' + boton.dataset.ayuda);
             if (!modal || !plantilla) return;
             retornoFoco = boton;
-            modal.querySelector('#titulo-ayuda-estadisticas').textContent = plantilla.dataset.titulo || 'Ayuda';
+            modal.querySelector('#titulo-ayuda-estadisticas').textContent = plantilla.dataset.titulo;
             modal.querySelector('#contenido-ayuda-estadisticas').replaceChildren(plantilla.content.cloneNode(true));
             modal.showModal();
             modal.querySelector('.atlas-help-close').focus();
@@ -95,15 +85,65 @@
         modal?.addEventListener('click', evento => { if (evento.target === modal) modal.close(); });
         modal?.addEventListener('close', () => retornoFoco?.focus());
 
+        const urlRegistros = new URL(datos.catalogoUrl, window.location.origin);
+        urlRegistros.searchParams.set('vista', 'registros');
+        if (datos.seleccion.taxon) urlRegistros.searchParams.set('ft', datos.seleccion.taxon);
+        if (datos.seleccion.provincia) urlRegistros.searchParams.set('fprov', datos.seleccion.provincia);
+        if (datos.seleccion.filo) urlRegistros.searchParams.set('fph', datos.seleccion.filo);
+        if (datos.seleccion.desde) urlRegistros.searchParams.set('ffd', datos.seleccion.desde + '-01-01');
+        if (datos.seleccion.hasta) urlRegistros.searchParams.set('ffh', datos.seleccion.hasta + '-12-31');
+        if (datos.seleccion.mes) urlRegistros.searchParams.set('fmes', datos.seleccion.mes);
+        if (datos.seleccion.identificacion) urlRegistros.searchParams.set('fid', datos.seleccion.identificacion);
+        if (datos.seleccion.ubicacion) urlRegistros.searchParams.set('fgeo', datos.seleccion.ubicacion);
+        if (datos.seleccion.aptitud === 'completos') urlRegistros.searchParams.set('fap', '1');
+        if (datos.seleccion.colector) urlRegistros.searchParams.set('fco', datos.seleccion.colector);
+        if (datos.seleccion.metodo) urlRegistros.searchParams.set('fm[0]', datos.seleccion.metodo);
+        const filtrarCompletos = () => {
+            if (!filtros) return;
+            filtros.elements.aptitud.value = 'completos';
+            filtros.requestSubmit();
+        };
+        document.querySelector('[data-filter-ready]')?.addEventListener('click', filtrarCompletos);
         let mapa;
-        let circulos = [];
-        let volumen = true;
-        const vistaEcuador = () => mapa?.fitBounds([[-5.1, -81.3], [1.9, -75.0]], {padding: [16, 16], maxZoom: 7});
-        const alternarMapa = () => {
-            volumen = !volumen;
-            circulos.forEach(({circulo, total}) => circulo.setRadius(volumen ? Math.min(19, 4 + Math.sqrt(total) * .8) : 5));
-            document.querySelector('[data-action="toggle-map"]')?.replaceChildren(document.createTextNode(volumen ? 'Mostrar presencia' : 'Mostrar volumen'));
-            informar(volumen ? 'El tamaño indica la cantidad de registros.' : 'Los círculos muestran presencia por cuadrícula.');
+        let puntos = [];
+        let filoActivo = '';
+        const ecuador = () => mapa?.fitBounds([[-5.1, -81.3], [1.9, -75]], {padding: [14, 14], maxZoom: 7});
+        const pintarPuntos = () => {
+            puntos.forEach(p => p.remove());
+            puntos = [];
+            if (!mapa) return;
+            datos.mapa.forEach(celda => {
+                const lat = Number(celda.lat), lon = Number(celda.lon);
+                if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) return;
+                const composicion = Object.entries(celda.filos).sort((a, b) => Number(b[1]) - Number(a[1]));
+                const total = filoActivo ? Number(celda.filos[filoActivo] || 0) : Number(celda.total);
+                if (!total) return;
+                const filo = filoActivo || composicion[0]?.[0] || 'Sin filo';
+                const punto = L.circleMarker([lat, lon], {
+                    radius: Math.min(17, 4 + Math.sqrt(total) * .7),
+                    color: '#17394f', weight: .9, fillColor: colorFilo(filo), fillOpacity: .76,
+                }).addTo(mapa);
+                const detalle = document.createElement('div');
+                const titulo = document.createElement('strong');
+                titulo.textContent = total.toLocaleString('es-EC') + ' registros en la cuadrícula';
+                detalle.append(titulo);
+                (filoActivo ? [[filoActivo, total]] : composicion).forEach(([nombre, n]) => {
+                    const linea = document.createElement('div');
+                    linea.textContent = nombre + ': ' + Number(n).toLocaleString('es-EC');
+                    detalle.append(linea);
+                });
+                punto.bindPopup(detalle);
+                puntos.push(punto);
+            });
+        };
+        const marcarLeyenda = () => document.querySelectorAll('[data-filo-mapa]').forEach(boton => {
+            boton.setAttribute('aria-pressed', String(boton.dataset.filoMapa === filoActivo));
+        });
+        const cambiarFilo = filo => {
+            filoActivo = filoActivo === filo ? '' : filo;
+            marcarLeyenda();
+            pintarPuntos();
+            informar(filoActivo ? 'Mapa filtrado visualmente por ' + filoActivo + '.' : 'Mapa con todos los filos.');
         };
         if (window.L) {
             mapa = L.map('mapa-coleccion', {scrollWheelZoom: false, preferCanvas: true, boxZoom: true});
@@ -111,116 +151,97 @@
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', maxZoom: 18,
             }).addTo(mapa);
             L.control.scale({imperial: false}).addTo(mapa);
-            vistaEcuador();
-            circulos = datos.mapa.filter(p => Number.isFinite(Number(p.lat)) && Number.isFinite(Number(p.lon)) && Number(p.lat) >= -90 && Number(p.lat) <= 90 && Number(p.lon) >= -180 && Number(p.lon) <= 180).map(p => {
-                const total = Number(p.total) || 0;
-                const circulo = L.circleMarker([Number(p.lat), Number(p.lon)], {
-                    radius: Math.min(19, 4 + Math.sqrt(total) * .8), color: '#164c72', weight: 1,
-                    fillColor: azul, fillOpacity: .62,
-                }).addTo(mapa);
-                circulo.bindPopup(total.toLocaleString('es-EC') + ' registros en esta cuadrícula');
-                return {circulo, total};
-            });
+            ecuador();
+            pintarPuntos();
             mapa.on('boxzoomend', evento => {
-                const limites = evento.boxZoomBounds;
-                if (!limites) return;
-                const url = new URL(datos.catalogoUrl, window.location.origin);
-                url.searchParams.set('vista', 'registros');
-                url.searchParams.set('flat', limites.getSouth().toFixed(6));
-                url.searchParams.set('flax', limites.getNorth().toFixed(6));
-                url.searchParams.set('flon', limites.getWest().toFixed(6));
-                url.searchParams.set('flox', limites.getEast().toFixed(6));
+                const b = evento.boxZoomBounds;
+                if (!b) return;
+                const url = new URL(urlRegistros);
+                url.searchParams.set('flat', b.getSouth().toFixed(6));
+                url.searchParams.set('flax', b.getNorth().toFixed(6));
+                url.searchParams.set('flon', b.getWest().toFixed(6));
+                url.searchParams.set('flox', b.getEast().toFixed(6));
                 window.location.assign(url.toString());
             });
         } else {
             const contenedor = document.getElementById('mapa-coleccion');
-            if (contenedor) {
-                contenedor.style.display = 'grid';
-                contenedor.style.placeItems = 'center';
-                contenedor.textContent = 'No se pudo cargar el mapa. Recarga la página para intentarlo nuevamente.';
-            }
+            if (contenedor) contenedor.textContent = 'No se pudo cargar el mapa. Recarga la página.';
         }
+        const leyenda = document.getElementById('leyenda-mapa');
+        if (leyenda) {
+            [...filos, ...(datos.mapa.some(p => p.filos['Sin filo']) ? ['Sin filo'] : [])].forEach(filo => {
+                const boton = document.createElement('button');
+                boton.type = 'button';
+                boton.dataset.filoMapa = filo;
+                boton.setAttribute('aria-pressed', 'false');
+                const punto = document.createElement('span');
+                punto.className = 'atlas-legend-dot';
+                punto.style.backgroundColor = colorFilo(filo);
+                boton.append(punto, document.createTextNode(filo));
+                boton.addEventListener('click', () => cambiarFilo(filo));
+                leyenda.append(boton);
+            });
+        }
+        document.querySelectorAll('.atlas-taxon-row[data-filo-mapa]').forEach(boton => boton.addEventListener('click', () => cambiarFilo(boton.dataset.filoMapa)));
 
         const graficos = [];
-        document.querySelectorAll('[data-metodo]').forEach(boton => boton.addEventListener('click', () => {
-            const filtros = document.getElementById('filtros-estadisticas');
-            const selector = filtros?.elements.namedItem('metodo');
-            if (!selector) return;
-            selector.value = boton.dataset.metodo;
-            filtros.requestSubmit();
-        }));
         if (window.HubDigitalChart) {
             const Chart = window.HubDigitalChart;
-            const filtros = document.getElementById('filtros-estadisticas');
             Chart.defaults.font.family = 'system-ui, sans-serif';
-            Chart.defaults.color = '#53687a';
+            Chart.defaults.color = '#52677a';
             const comun = {responsive: true, maintainAspectRatio: false, animation: false,
-                plugins: {legend: {display: false}, tooltip: {callbacks: {label: contexto => Number(contexto.raw).toLocaleString('es-EC') + ' registros'}}}};
-            const anios = document.getElementById('grafico-anios');
-            if (anios) graficos.push(new Chart(anios, {type: 'bar', data: {labels: datos.anios.map(p => p.anio), datasets: [{data: datos.anios.map(p => Number(p.total)), backgroundColor: azul, hoverBackgroundColor: '#0d456d', maxBarThickness: 24}]}, options: {...comun, onClick: (_, elementos) => {
-                if (!elementos.length || !filtros) return;
-                const anio = datos.anios[elementos[0].index]?.anio;
-                if (!anio) return;
-                filtros.elements.desde.value = anio;
-                filtros.elements.hasta.value = anio;
-                filtros.requestSubmit();
-            }, scales: {x: {grid: {display: false}, ticks: {maxTicksLimit: 6, font: {size: 10}}}, y: {beginAtZero: true, grid: {color: '#e5edf3'}, ticks: {precision: 0, font: {size: 10}}}}}}));
-            const provincias = document.getElementById('grafico-provincias');
-            if (provincias) graficos.push(new Chart(provincias, {type: 'bar', data: {labels: datos.provincias.map(p => p.provincia), datasets: [{data: datos.provincias.map(p => Number(p.total)), backgroundColor: azulClaro, hoverBackgroundColor: azul, maxBarThickness: 15}]}, options: {...comun, indexAxis: 'y', onClick: (_, elementos) => {
-                if (!elementos.length || !filtros) return;
-                const provincia = datos.provincias[elementos[0].index]?.provincia;
-                if (!provincia) return;
-                filtros.elements.provincia.value = provincia;
-                filtros.requestSubmit();
-            }, scales: {x: {beginAtZero: true, grid: {color: '#e5edf3'}, ticks: {precision: 0, font: {size: 10}}}, y: {grid: {display: false}, ticks: {font: {size: 9}}}}}}));
+                plugins: {legend: {display: false}, tooltip: {callbacks: {label: c => Number(c.raw).toLocaleString('es-EC') + ' especies'}}}};
+            const riqueza = document.getElementById('grafico-riqueza');
+            if (riqueza) graficos.push(new Chart(riqueza, {type: 'bar',
+                data: {labels: datos.riqueza.map(p => p.provincia), datasets: [{data: datos.riqueza.map(p => Number(p.especies)), backgroundColor: '#508bb1'}]},
+                options: {...comun, indexAxis: 'y', onClick: (_, elementos) => {
+                    if (!elementos.length || !filtros) return;
+                    filtros.elements.provincia.value = datos.riqueza[elementos[0].index].provincia;
+                    filtros.requestSubmit();
+                }, scales: {x: {beginAtZero: true, ticks: {precision: 0}}, y: {ticks: {font: {size: 10}}}}}
+            }));
+            const decadas = document.getElementById('grafico-decadas');
+            if (decadas) graficos.push(new Chart(decadas, {type: 'bar',
+                data: {labels: datos.decadas.map(p => p.decada), datasets: [{data: datos.decadas.map(p => Number(p.especies)), backgroundColor: '#27789e'}]},
+                options: {...comun, onClick: (_, elementos) => {
+                    if (!elementos.length || !filtros) return;
+                    const anio = Number(datos.decadas[elementos[0].index].decada);
+                    filtros.elements.desde.value = anio;
+                    filtros.elements.hasta.value = anio + 9;
+                    filtros.requestSubmit();
+                }, scales: {x: {grid: {display: false}}, y: {beginAtZero: true, ticks: {precision: 0}}}}
+            }));
         }
-        [['grafico-anios', datos.anios.length, 'No hay fechas visibles para estos filtros.'],
-            ['grafico-provincias', datos.provincias.length, 'No hay provincias visibles para estos filtros.']]
-            .forEach(([id, cantidad, mensaje]) => {
-                if (cantidad > 0 && window.HubDigitalChart) return;
-                const lienzo = document.getElementById(id);
-                if (!lienzo) return;
-                lienzo.hidden = true;
-                const vacio = document.createElement('p');
-                vacio.className = 'atlas-chart-empty';
-                vacio.textContent = window.HubDigitalChart ? mensaje : 'No se pudo cargar el gráfico. Recarga la página para intentarlo nuevamente.';
-                lienzo.parentElement.appendChild(vacio);
-            });
-
-        document.querySelectorAll('.atlas-menu [data-action]').forEach(boton => boton.addEventListener('click', async () => {
+        [['grafico-riqueza', datos.riqueza.length], ['grafico-decadas', datos.decadas.length]].forEach(([id, n]) => {
+            if (n && window.HubDigitalChart) return;
+            const lienzo = document.getElementById(id);
+            if (!lienzo) return;
+            lienzo.hidden = true;
+            const vacio = document.createElement('p');
+            vacio.className = 'atlas-chart-empty';
+            vacio.textContent = n ? 'No se pudo cargar el gráfico.' : 'No hay datos visibles en esta selección.';
+            lienzo.parentElement.append(vacio);
+        });
+        document.querySelectorAll('.atlas-menu [data-action]').forEach(boton => boton.addEventListener('click', () => {
             const panel = boton.closest('.atlas-panel');
             const clave = panel?.dataset.panel;
-            const accion = boton.dataset.action;
             cerrarMenus();
             panel?.querySelector('[data-menu-trigger]')?.focus();
-            if (!clave) return;
-            if (accion === 'reset-map') { vistaEcuador(); informar('Mapa centrado en Ecuador.'); }
-            if (accion === 'toggle-map') alternarMapa();
-            if (accion === 'download') {
+            if (boton.dataset.action === 'download') {
                 if (clave === 'lista') window.location.assign(datos.listaUrl);
                 else if (exportaciones[clave]) descargarCsv(...exportaciones[clave]);
             }
-            if (accion === 'copy') {
-                const url = new URL(window.location.href);
-                url.hash = 'panel-' + clave;
-                try {
-                    await navigator.clipboard.writeText(url.toString());
-                    informar('Enlace al panel copiado.');
-                } catch {
-                    informar('No fue posible copiar el enlace en este navegador.');
-                }
+            if (boton.dataset.action === 'open-records') window.location.assign(urlRegistros.toString());
+            if (boton.dataset.action === 'open-mapped-records') {
+                const url = new URL(urlRegistros);
+                url.searchParams.set('fgeo', '1');
+                window.location.assign(url.toString());
             }
-            if (accion === 'fullscreen') {
-                try {
-                    if (document.fullscreenElement === panel) await document.exitFullscreen();
-                    else if (panel.requestFullscreen) await panel.requestFullscreen();
-                    else informar('Este navegador no permite ampliar el panel.');
-                } catch { informar('No fue posible ampliar el panel.'); }
-            }
+            if (boton.dataset.action === 'filter-ready') filtrarCompletos();
         }));
-        document.addEventListener('fullscreenchange', () => {
-            setTimeout(() => { mapa?.invalidateSize(); graficos.forEach(grafico => grafico.resize()); }, 100);
-        });
+        document.addEventListener('toggle', evento => {
+            if (evento.target.matches('.atlas-filter-drawer') && mapa) setTimeout(() => mapa.invalidateSize(), 100);
+        }, true);
     };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar, {once: true});
     else iniciar();

@@ -85,12 +85,27 @@
     @endif
 
     <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6 lg:px-8">
-        <a href="{{ route('portal.estadisticas') }}" class="text-sm font-semibold text-science-blue hover:underline">Mapa y estadísticas →</a>
-        <div class="inline-flex rounded-lg border border-border bg-surface p-1" role="group" aria-label="Presentación del catálogo">
+        <div class="inline-flex flex-wrap rounded-lg border border-border bg-surface p-1" role="group" aria-label="Vista de la Colección Biológica">
             <button type="button" wire:click="cambiarVista('tarjetas')" aria-pressed="{{ $vista === 'tarjetas' ? 'true' : 'false' }}"
-                @class(['rounded-md px-3 py-1.5 text-sm font-medium', 'bg-science-blue text-white' => $vista === 'tarjetas', 'text-text-secondary hover:text-text-primary' => $vista !== 'tarjetas'])>Tarjetas</button>
+                @class(['inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium', 'bg-science-blue text-white' => $vista === 'tarjetas', 'text-text-secondary hover:text-text-primary' => $vista !== 'tarjetas'])><span aria-hidden="true">▦</span> Tarjetas</button>
             <button type="button" wire:click="cambiarVista('registros')" aria-pressed="{{ $vista === 'registros' ? 'true' : 'false' }}"
-                @class(['rounded-md px-3 py-1.5 text-sm font-medium', 'bg-science-blue text-white' => $vista === 'registros', 'text-text-secondary hover:text-text-primary' => $vista !== 'registros'])>Registros</button>
+                @class(['inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium', 'bg-science-blue text-white' => $vista === 'registros', 'text-text-secondary hover:text-text-primary' => $vista !== 'registros'])><span aria-hidden="true">☷</span> Registros</button>
+            @php
+                $filtrosMapa = array_filter([
+                    'taxon' => $filtroTaxon ?: null,
+                    'provincia' => $filtroProvincia ?: null,
+                    'filo' => $filtroFiloId ?: null,
+                    'desde' => preg_match('/^\d{4}-\d{2}-\d{2}$/', $filtroFechaDesde) ? substr($filtroFechaDesde, 0, 4) : null,
+                    'hasta' => preg_match('/^\d{4}-\d{2}-\d{2}$/', $filtroFechaHasta) ? substr($filtroFechaHasta, 0, 4) : null,
+                    'mes' => $filtroMes ?: null,
+                    'identificacion' => $filtroIdentificacion ?: null,
+                    'ubicacion' => $filtroSoloUbicacion === '1' ? '1' : null,
+                    'aptitud' => $filtroDatosCompletos === '1' ? 'completos' : null,
+                    'colector' => $filtroColector ?: null,
+                    'metodo' => count($filtroMetodos) === 1 ? $filtroMetodos[0] : null,
+                ], static fn ($valor) => $valor !== null && $valor !== '');
+            @endphp
+            <a href="{{ route('portal.estadisticas', $filtrosMapa) }}" class="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-text-secondary hover:text-text-primary"><span aria-hidden="true">◉</span> Mapa y análisis</a>
         </div>
     </div>
 

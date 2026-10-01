@@ -923,6 +923,56 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
         if (! empty($filtros['paraRevision'])) {
             $query->where('estado_revision', 'pendiente')->whereNotNull('motivo_revision');
         }
+        // Colas de control sobre TODO el inventario, no solo los registros publicados.
+        // Son condiciones SQL para conservar el total y la paginación correctos.
+        switch ($filtros['incidencia'] ?? null) {
+            case 'duplicados':
+                $query->where(function (Builder $q): void {
+                    foreach (['codigo_catalogo', 'catalog_number', 'occurrence_id'] as $indice => $columna) {
+                        $metodo = $indice === 0 ? 'whereIn' : 'orWhereIn';
+                        $q->{$metodo}('taxonomia.especimenes.'.$columna, static function ($sub) use ($columna): void {
+                            $sub->select($columna)->from('taxonomia.especimenes')
+                                ->whereNotNull($columna)->where($columna, '<>', '')
+                                ->groupBy($columna)->havingRaw('COUNT(*) > 1');
+                        });
+                    }
+                });
+                break;
+            case 'coordenadas':
+                // La migración histórica no guardó bitácora fila a fila. Estas son
+                // las trazas verificables disponibles para revisar sus efectos.
+                $query->where(function (Builder $q): void {
+                    $q->whereNotNull('coord_verbatim')
+                        ->orWhere('motivo_revision', 'ILIKE', '%coordenad%');
+                });
+                break;
+            case 'ec_publicar':
+                $query->whereNotExists(static function ($sub): void {
+                    $sub->selectRaw('1')->from('divulgacion.especimenes_divulgables as publicado')
+                        ->whereColumn('publicado.especimen_id', 'taxonomia.especimenes.id')
+                        ->where('publicado.publicado', true);
+                });
+                break;
+            case 'fechas':
+                $query->where(function (Builder $q): void {
+                    $q->where('fecha_colecta', '>', now()->toDateString())
+                        ->orWhere('fecha_colecta_fin', '>', now()->toDateString())
+                        ->orWhere('fecha_colecta', '<', '1800-01-01')
+                        ->orWhere('fecha_colecta_fin', '<', '1800-01-01')
+                        ->orWhereColumn('fecha_colecta_fin', '<', 'fecha_colecta')
+                        ->orWhere(function (Builder $sinFecha): void {
+                            $sinFecha->whereNull('fecha_colecta')->whereNotNull('fecha_verbatim');
+                        })->orWhere('motivo_revision', 'ILIKE', '%fecha%');
+                });
+                break;
+            case 'taxonomia':
+                $query->where(function (Builder $q): void {
+                    $q->whereNull('taxon_id')
+                        ->orWhereRaw("NOT EXISTS (SELECT 1 FROM taxonomia.taxones AS especie WHERE especie.id = taxonomia.especimenes.taxon_id AND especie.rango = 'especie')")
+                        ->orWhereRaw("NOT EXISTS (WITH RECURSIVE ancestro AS (SELECT id, padre_id, rango FROM taxonomia.taxones WHERE id = taxonomia.especimenes.taxon_id UNION SELECT t.id, t.padre_id, t.rango FROM taxonomia.taxones t JOIN ancestro a ON t.id = a.padre_id) SELECT 1 FROM ancestro WHERE rango = 'phylum')");
+                });
+                break;
+        }
     }
 
     /**

@@ -88,13 +88,14 @@ final class EspecimenIndex extends Component
         'fEstado' => 'nullable|string|in:disponible,en_prestamo',
         'fEstadoRevision' => 'nullable|string|in:pendiente,confirmada,descartada',
         'fMotivoRevision' => 'nullable|string|max:200',
+        'fIncidencia' => 'nullable|string|in:duplicados,coordenadas,ec_publicar,fechas,taxonomia',
     ];
 
     /** Campos cuyo cambio invalida la página actual y obliga a volver a la 1. */
     private const CAMPOS_FILTRO = [
         'q', 'fTaxon', 'fFamilia', 'fCodigoCatalogo', 'fOccurrenceId', 'fCatalogNumber',
         'fLocalidad', 'fColector', 'fFechaDesde', 'fFechaHasta', 'fEstado',
-        'fEstadoRevision', 'fMotivoRevision', 'fParaRevision', 'perPage',
+        'fEstadoRevision', 'fMotivoRevision', 'fParaRevision', 'fIncidencia', 'perPage',
     ];
 
     // ── Búsqueda y paginación ─────────────────────────────────────────────────
@@ -136,6 +137,8 @@ final class EspecimenIndex extends Component
     public string $fEstadoRevision = '';
 
     public string $fMotivoRevision = '';
+
+    public string $fIncidencia = '';
 
     public bool $fParaRevision = false;
 
@@ -564,7 +567,7 @@ final class EspecimenIndex extends Component
         $this->reset(
             'q', 'fTaxon', 'fFamilia', 'fCodigoCatalogo', 'fOccurrenceId', 'fCatalogNumber',
             'fLocalidad', 'fColector', 'fFechaDesde', 'fFechaHasta',
-            'fEstado', 'fEstadoRevision', 'fMotivoRevision', 'fParaRevision',
+            'fEstado', 'fEstadoRevision', 'fMotivoRevision', 'fParaRevision', 'fIncidencia',
         );
 
         match ($nombre) {
@@ -572,6 +575,11 @@ final class EspecimenIndex extends Component
             'sin_coords' => [$this->fParaRevision = true, $this->fMotivoRevision = 'coordenadas'],
             'fechas_raras' => [$this->fParaRevision = true, $this->fMotivoRevision = 'fecha'],
             'sin_occurrence_id' => [$this->fParaRevision = true, $this->fMotivoRevision = 'occurrence_id ausente'],
+            'duplicados' => $this->fIncidencia = 'duplicados',
+            'coordenadas' => $this->fIncidencia = 'coordenadas',
+            'no_publicados' => $this->fIncidencia = 'ec_publicar',
+            'fechas' => $this->fIncidencia = 'fechas',
+            'taxonomia' => $this->fIncidencia = 'taxonomia',
             'todos' => null,
             default => null,
         };
@@ -598,7 +606,7 @@ final class EspecimenIndex extends Component
             'errorMessage', 'successMessage', 'page',
             'q', 'fTaxon', 'fFamilia', 'fCodigoCatalogo', 'fOccurrenceId', 'fCatalogNumber',
             'fLocalidad', 'fColector', 'fFechaDesde', 'fFechaHasta',
-            'fEstado', 'fEstadoRevision', 'fMotivoRevision', 'fParaRevision',
+            'fEstado', 'fEstadoRevision', 'fMotivoRevision', 'fParaRevision', 'fIncidencia',
         );
         $this->resetValidation();
     }
@@ -1417,6 +1425,7 @@ final class EspecimenIndex extends Component
             estadoRevision: $this->nullableString($this->fEstadoRevision),
             motivoRevision: $this->nullableString($this->fMotivoRevision),
             paraRevision: $this->fParaRevision,
+            incidencia: $this->nullableString($this->fIncidencia),
             page: $page,
             perPage: in_array($this->perPage, self::TAMANOS_PAGINA, true) ? $this->perPage : 50,
             // Sin filtros = catálogo completo paginado: esta pantalla es la hoja
@@ -1448,6 +1457,7 @@ final class EspecimenIndex extends Component
             'fEstado' => 'Estado físico',
             'fEstadoRevision' => 'Estado revisión',
             'fMotivoRevision' => 'Motivo revisión',
+            'fIncidencia' => 'Control curatorial',
         ];
 
         $activos = [];

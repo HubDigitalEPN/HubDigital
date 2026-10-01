@@ -5,7 +5,7 @@
         <a href="{{ route('prestamos.investigador.mis-solicitudes') }}" wire:navigate><flux:icon name="document-text" class="size-6" /><span><strong>Solicitudes</strong><small>Consulta y seguimiento</small></span></a>
         <a href="{{ route('prestamos.investigador.mis-actas') }}" wire:navigate><flux:icon name="document-check" class="size-6" /><span><strong>Mis actas</strong><small>Firma y documentos</small></span></a>
         <a href="{{ route('prestamos.investigador.mis-prestamos') }}" wire:navigate><flux:icon name="archive-box" class="size-6" /><span><strong>Préstamos</strong><small>Material bajo custodia</small></span></a>
-        <a href="{{ route('portal.estadisticas') }}"><flux:icon name="magnifying-glass" class="size-6" /><span><strong>Explorar colección</strong><small>Mapa y estadísticas</small></span></a>
+        <a href="{{ route('portal.estadisticas') }}"><flux:icon name="magnifying-glass" class="size-6" /><span><strong>Explorar colección</strong><small>Colección Biológica</small></span></a>
     </nav>
     <div class="hub-curator-grid">
         <section class="hub-curator-card hub-curator-card--main" aria-labelledby="solicitudes-title">

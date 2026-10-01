@@ -171,10 +171,13 @@
         <div>
             <flux:heading size="xl" level="1" class="font-display text-blue-navy font-bold">Especímenes</flux:heading>
             <p class="text-xs text-text-secondary mt-1">
-                Hoja de inventario del catálogo. Ordena por cualquier columna y ajusta cuáles ver.
+                Hoja de inventario completa, incluidos los especímenes no publicados. Ordena y edita cualquier ficha autorizada.
             </p>
         </div>
         <div class="flex flex-wrap gap-2">
+            <flux:button icon="eye" variant="ghost" :href="route('divulgacion.index')" wire:navigate>
+                Administrar publicación
+            </flux:button>
             <flux:button icon="clipboard-document-check" variant="ghost"
                          :href="route('inventario.taxonomia.revision')" wire:navigate>
                 Centro de revisión
@@ -190,6 +193,21 @@
 
     {{-- ── Barra de herramientas ───────────────────────────────────────────── --}}
     <div class="rounded-lg border border-border bg-surface shadow-sm">
+        <div class="flex flex-wrap items-center gap-2 border-b border-border px-3 py-3" aria-label="Colas de control curatorial">
+            <span class="mr-1 text-xs font-semibold text-text-secondary">Revisar:</span>
+            @foreach([
+                ['duplicados', 'IDs repetidos'],
+                ['coordenadas', 'Trazas de coordenadas'],
+                ['no_publicados', 'No publicados'],
+                ['fechas', 'Fechas incorrectas'],
+                ['taxonomia', 'Taxonomía incompleta'],
+                ['todos', 'Todos'],
+            ] as [$clave, $etiqueta])
+                @php $valorIncidencia = ['no_publicados' => 'ec_publicar', 'todos' => ''][$clave] ?? $clave; @endphp
+                <button type="button" wire:click="preset('{{ $clave }}')" class="rounded-full border px-3 py-1.5 text-xs font-medium transition-colors {{ $fIncidencia === $valorIncidencia ? 'border-science-blue bg-science-blue/10 text-blue-navy' : 'border-border hover:bg-bg-main' }}">{{ $etiqueta }}</button>
+            @endforeach
+        </div>
+        <p class="px-3 pt-2 text-xs text-text-secondary">IDs repetidos compara código de catálogo, catalogNumber y occurrenceID. Trazas de coordenadas muestra valores originales o avisos conservados; la migración anterior no registró cada fila modificada.</p>
         <div class="flex flex-col gap-3 p-3 lg:flex-row lg:items-center">
             {{-- Búsqueda rápida: una sola caja contra códigos, taxón, colector y localidad. --}}
             <div class="relative flex-1 min-w-0">
@@ -325,6 +343,18 @@
                         <flux:label>Motivo revisión contiene</flux:label>
                         <flux:input wire:model="fMotivoRevision" wire:keydown.enter="buscar" placeholder="Ej. coordenadas, fecha" />
                         <flux:error name="fMotivoRevision" />
+                    </flux:field>
+
+                    <flux:field>
+                        <flux:label>Control curatorial</flux:label>
+                        <flux:select wire:model.live="fIncidencia">
+                            <option value="">— Todos —</option>
+                            <option value="duplicados">Código, catalogNumber u occurrenceID repetidos</option>
+                            <option value="coordenadas">Trazas de coordenadas</option>
+                            <option value="ec_publicar">No publicados</option>
+                            <option value="fechas">Fechas incorrectas o pendientes</option>
+                            <option value="taxonomia">Sin especie o filo enlazado</option>
+                        </flux:select>
                     </flux:field>
 
                     <flux:field class="sm:col-span-2 lg:col-span-3">

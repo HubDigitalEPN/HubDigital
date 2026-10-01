@@ -61,6 +61,8 @@ final readonly class BuscarEspecimenesInput
         public ?string $ordenarPor = null,
         /** 'asc' | 'desc'. Cualquier otro valor cae a 'asc' en el repositorio. */
         public string $ordenDireccion = 'asc',
+        /** Cola de control curatorial; se combina con los demás filtros. */
+        public ?string $incidencia = null,
     ) {}
 
     public function tieneFiltros(): bool
@@ -78,6 +80,7 @@ final readonly class BuscarEspecimenesInput
             || $this->estado !== null
             || $this->estadoRevision !== null
             || $this->motivoRevision !== null
-            || $this->paraRevision;
+            || $this->paraRevision
+            || $this->incidencia !== null;
     }
 }

@@ -172,8 +172,12 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
             if ($ids === []) {
                 $query->whereRaw('1 = 0');
             } else {
-                $query->whereIn('te.taxon_id', $ids);
+                $query->where('ed.scientific_name_visible', true)->whereIn('te.taxon_id', $ids);
             }
+        }
+
+        if ($filtros->filoId !== null) {
+            $query->whereRaw('te.taxon_id IN (WITH RECURSIVE descendientes AS (SELECT id FROM taxonomia.taxones WHERE id = ? UNION SELECT t.id FROM taxonomia.taxones t JOIN descendientes d ON t.padre_id = d.id) SELECT id FROM descendientes)', [$filtros->filoId]);
         }
 
         // Geografía — CTE recursivo pre-resuelto
@@ -184,6 +188,10 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
             } else {
                 $query->whereIn('te.localidad_id', $ids);
             }
+        }
+
+        if ($filtros->provincia !== null) {
+            $query->where('ed.state_province_visible', true)->where('te.state_province', $filtros->provincia);
         }
 
         // Colector — búsqueda parcial case-insensitive
@@ -197,15 +205,46 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
 
         // Fecha de recolección — solapamiento de rangos
         if ($filtros->fechaHasta !== null) {
+            $query->where('ed.event_date_visible', true);
             $query->whereRaw('te.fecha_colecta <= ?', [$filtros->fechaHasta->format('Y-m-d')]);
         }
         if ($filtros->fechaDesde !== null) {
+            $query->where('ed.event_date_visible', true);
             $query->whereRaw('COALESCE(te.fecha_colecta_fin, te.fecha_colecta) >= ?', [$filtros->fechaDesde->format('Y-m-d')]);
+        }
+        if ($filtros->mes !== null) {
+            $query->where('ed.event_date_visible', true)->whereMonth('te.fecha_colecta', $filtros->mes);
+        }
+
+        if ($filtros->identificacion !== null) {
+            $query->where('ed.scientific_name_visible', true)
+                ->whereExists(static function (Builder $subquery) use ($filtros): void {
+                    $subquery->selectRaw('1')->from('taxonomia.taxones as identificacion')
+                        ->whereColumn('identificacion.id', 'te.taxon_id');
+                    if ($filtros->identificacion === 'especie') {
+                        $subquery->where('identificacion.rango', 'especie');
+                    } else {
+                        $subquery->where('identificacion.rango', '<>', 'especie');
+                    }
+                });
+        }
+
+        if ($filtros->soloUbicacion || $filtros->datosCompletos) {
+            $query->where('ed.decimal_latitude_visible', true)->where('ed.decimal_longitude_visible', true)
+                ->whereNotNull('te.decimal_latitude')->whereNotNull('te.decimal_longitude');
+        }
+        if ($filtros->datosCompletos) {
+            $query->where('ed.scientific_name_visible', true)->where('ed.event_date_visible', true)
+                ->whereNotNull('te.fecha_colecta')
+                ->whereExists(static fn (Builder $subquery) => $subquery->selectRaw('1')
+                    ->from('taxonomia.taxones as apto')->whereColumn('apto.id', 'te.taxon_id')
+                    ->where('apto.rango', 'especie'));
         }
 
         // Método de recolección — JOIN con muestras_colecta
         if ($filtros->metodosRecoleccion !== []) {
             $query->join('taxonomia.muestras_colecta as mc', 'mc.id', '=', 'te.muestra_id');
+            $query->where('ed.sampling_protocol_visible', true);
             $placeholders = implode(',', array_fill(0, count($filtros->metodosRecoleccion), '?'));
             $valores = array_map('strtolower', $filtros->metodosRecoleccion);
             $query->whereRaw("LOWER(mc.sampling_protocol) = ANY(ARRAY[{$placeholders}])", $valores);

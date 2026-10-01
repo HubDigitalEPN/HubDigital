@@ -55,12 +55,14 @@ test('un ejemplar sin filo queda en curaduría y entra al CSV público al confir
     expect($csvDespues)->toContain($nombre);
 });
 
-test('mapa y estadísticas responde como primera pantalla pública', function (): void {
+test('Colección Biológica responde como primera pantalla pública', function (): void {
     $this->get(route('portal.inicio'))->assertRedirect(route('portal.estadisticas'));
     $this->get(route('portal.estadisticas'))
         ->assertOk()
-        ->assertSee('Mapa y estadísticas')
-        ->assertSee('Registros públicos');
+        ->assertSee('Colección Biológica')
+        ->assertSee('Filtros de investigación')
+        ->assertSee('Riqueza documentada por provincia')
+        ->assertDontSee('data-ayuda="lista"', false);
     $this->get('/portal/comparar-especies')->assertNotFound();
 });
 
@@ -106,9 +108,19 @@ test('los filtros públicos se aplican también a la lista CSV y respetan la ubi
     Cache::forget('portal:provincias:v4');
     Cache::forget('portal:metodos-opciones:v1');
     $filtros = ['filo' => $filo, 'provincia' => 'Pichincha', 'colector' => $colector,
-        'desde' => 2025, 'hasta' => 2025, 'identificacion' => 'especie', 'ubicacion' => '1', 'metodo' => $metodo];
+        'desde' => 2025, 'hasta' => 2025, 'mes' => 6, 'aptitud' => 'completos',
+        'identificacion' => 'especie', 'ubicacion' => '1', 'metodo' => $metodo];
     $this->get(route('portal.estadisticas', $filtros))->assertOk()
-        ->assertSee($conUbicacion)->assertDontSee($sinUbicacion)->assertDontSee($metodoRestringido);
+        ->assertSee($conUbicacion)->assertDontSee($sinUbicacion)->assertDontSee($metodoRestringido)
+        ->assertSee('fprov=Pichincha')->assertSee('fmes=6');
     $csv = $this->get(route('portal.lista-especies', $filtros))->assertOk()->streamedContent();
     expect($csv)->toContain($conUbicacion)->not->toContain($sinUbicacion)->not->toContain($metodoRestringido);
+    $this->get(route('portal.estadisticas', ['taxon' => $conUbicacion, 'mes' => 6]))
+        ->assertOk()->assertSee($conUbicacion)->assertDontSee($sinUbicacion);
+    $this->get(route('portal.catalogo', [
+        'vista' => 'registros', 'fph' => $filo, 'fprov' => 'Pichincha',
+        'ffd' => '2025-01-01', 'ffh' => '2025-12-31', 'fmes' => '6',
+        'fid' => 'especie', 'fgeo' => '1', 'fap' => '1', 'fco' => $colector, 'fm' => [$metodo],
+    ]))->assertOk()->assertSee($conUbicacion)
+        ->assertDontSee($sinUbicacion)->assertDontSee($metodoRestringido);
 });

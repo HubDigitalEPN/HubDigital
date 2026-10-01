@@ -28,6 +28,12 @@ final readonly class FiltrosBusqueda
         public readonly ?string $tipo,
         public readonly ?string $casta,
         public readonly ?string $estadio,
+        public readonly ?string $provincia,
+        public readonly ?string $filoId,
+        public readonly ?int $mes,
+        public readonly ?string $identificacion,
+        public readonly bool $soloUbicacion,
+        public readonly bool $datosCompletos,
     ) {}
 
     public static function vacio(): self
@@ -52,6 +58,12 @@ final readonly class FiltrosBusqueda
             tipo: null,
             casta: null,
             estadio: null,
+            provincia: null,
+            filoId: null,
+            mes: null,
+            identificacion: null,
+            soloUbicacion: false,
+            datosCompletos: false,
         );
     }
 
@@ -131,6 +143,12 @@ final readonly class FiltrosBusqueda
             tipo: $textoOpcional('filtroTipo'),
             casta: $textoOpcional('filtroCasta'),
             estadio: $textoOpcional('filtroEstadio'),
+            provincia: $textoOpcional('filtroProvincia'),
+            filoId: preg_match('/^[0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$/', (string) ($datos['filtroFiloId'] ?? '')) ? (string) $datos['filtroFiloId'] : null,
+            mes: filter_var($datos['filtroMes'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 12]]) ?: null,
+            identificacion: in_array(($datos['filtroIdentificacion'] ?? ''), ['especie', 'superior'], true) ? (string) $datos['filtroIdentificacion'] : null,
+            soloUbicacion: ($datos['filtroSoloUbicacion'] ?? '') === '1',
+            datosCompletos: ($datos['filtroDatosCompletos'] ?? '') === '1',
         );
     }
 
@@ -154,6 +172,12 @@ final readonly class FiltrosBusqueda
             && $this->habitat === null
             && $this->tipo === null
             && $this->casta === null
-            && $this->estadio === null;
+            && $this->estadio === null
+            && $this->provincia === null
+            && $this->filoId === null
+            && $this->mes === null
+            && $this->identificacion === null
+            && ! $this->soloUbicacion
+            && ! $this->datosCompletos;
     }
 }

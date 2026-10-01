@@ -5,6 +5,7 @@
             <p>Colecciones, investigación y patrimonio natural en un mismo lugar.</p>
         </div>
         <div class="hub-curator-heading__actions">
+            <a href="{{ route('inventario.taxonomia.especimenes') }}" wire:navigate class="hub-curator-button hub-curator-button--outline"><flux:icon name="rectangle-stack" class="size-4" /> Control de especímenes</a>
             <a href="{{ route('prestamos.curador.depositos', ['vista' => 'actas']) }}" wire:navigate class="hub-curator-button hub-curator-button--outline"><flux:icon name="document-text" class="size-4" /> Actas pendientes</a>
             <a href="{{ route('prestamos.curador.depositos') }}" wire:navigate class="hub-curator-button hub-curator-button--primary"><flux:icon name="plus" class="size-4" /> Revisar ingresos</a>
         </div>

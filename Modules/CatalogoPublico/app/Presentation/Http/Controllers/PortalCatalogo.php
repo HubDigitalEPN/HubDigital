@@ -151,6 +151,24 @@ final class PortalCatalogo extends Component
     #[Url(as: 'fes')]
     public string $filtroEstadio = '';
 
+    #[Url(as: 'fprov')]
+    public string $filtroProvincia = '';
+
+    #[Url(as: 'fph')]
+    public string $filtroFiloId = '';
+
+    #[Url(as: 'fmes')]
+    public string $filtroMes = '';
+
+    #[Url(as: 'fid')]
+    public string $filtroIdentificacion = '';
+
+    #[Url(as: 'fgeo')]
+    public string $filtroSoloUbicacion = '';
+
+    #[Url(as: 'fap')]
+    public string $filtroDatosCompletos = '';
+
     // ─── Servicio de opciones (no serializado entre requests) ─────────────────
 
     private ProveedorOpcionesFiltroPort $opcionesFiltro;
@@ -275,6 +293,12 @@ final class PortalCatalogo extends Component
         $this->filtroTipo = '';
         $this->filtroCasta = '';
         $this->filtroEstadio = '';
+        $this->filtroProvincia = '';
+        $this->filtroFiloId = '';
+        $this->filtroMes = '';
+        $this->filtroIdentificacion = '';
+        $this->filtroSoloUbicacion = '';
+        $this->filtroDatosCompletos = '';
     }
 
     // ─── Exportación ─────────────────────────────────────────────────────────
@@ -348,6 +372,12 @@ final class PortalCatalogo extends Component
             'filtroTipo' => $this->filtroTipo,
             'filtroCasta' => $this->filtroCasta,
             'filtroEstadio' => $this->filtroEstadio,
+            'filtroProvincia' => $this->filtroProvincia,
+            'filtroFiloId' => $this->filtroFiloId,
+            'filtroMes' => $this->filtroMes,
+            'filtroIdentificacion' => $this->filtroIdentificacion,
+            'filtroSoloUbicacion' => $this->filtroSoloUbicacion,
+            'filtroDatosCompletos' => $this->filtroDatosCompletos,
         ]);
     }
 
@@ -405,6 +435,12 @@ final class PortalCatalogo extends Component
             'filtroTipo' => $this->filtroTipo,
             'filtroCasta' => $this->filtroCasta,
             'filtroEstadio' => $this->filtroEstadio,
+            'filtroProvincia' => $this->filtroProvincia,
+            'filtroFiloId' => $this->filtroFiloId,
+            'filtroMes' => $this->filtroMes,
+            'filtroIdentificacion' => $this->filtroIdentificacion,
+            'filtroSoloUbicacion' => $this->filtroSoloUbicacion,
+            'filtroDatosCompletos' => $this->filtroDatosCompletos,
         ];
 
         $galeriaEspecie = $this->nivel === 'species' && $this->vista === 'tarjetas'

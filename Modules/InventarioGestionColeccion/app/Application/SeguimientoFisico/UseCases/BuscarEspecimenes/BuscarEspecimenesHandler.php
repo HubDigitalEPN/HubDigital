@@ -72,6 +72,7 @@ final class BuscarEspecimenesHandler
             'estadoRevision' => $input->estadoRevision,
             'motivoRevision' => $input->motivoRevision,
             'paraRevision' => $input->paraRevision,
+            'incidencia' => $input->incidencia,
             'limit' => $limit,
             'offset' => $offset,
         ];
