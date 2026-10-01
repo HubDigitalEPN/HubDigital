@@ -9,7 +9,7 @@ export default defineConfig({
     build: {
         outDir: '../../public/build-catalogopublico',
         emptyOutDir: true,
-        manifest: true,
+        manifest: 'manifest.json',
     },
     plugins: [
         laravel({

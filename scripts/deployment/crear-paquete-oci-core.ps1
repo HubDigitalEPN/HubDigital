@@ -399,13 +399,31 @@ if ($php) {
 
 if (-not $OmitirCompilacion) {
     if (-not (Get-Command 'npm.cmd' -ErrorAction SilentlyContinue)) { throw 'No se encontro npm.cmd en PATH.' }
-    Invoke-Comando -Programa 'npm.cmd' -Argumentos @('ci') -Descripcion 'Instalando dependencias frontend exactas desde package-lock.json' -DirectorioTrabajo $Proyecto
-    Invoke-Comando -Programa 'npm.cmd' -Argumentos @('run', 'build') -Descripcion 'Compilando y validando JavaScript, CSS y Tailwind con Vite' -DirectorioTrabajo $Proyecto
+    # Cada modulo conserva su build independiente y su propio lock. Revisar solo
+    # la raiz dejaba sin validar los Vite declarados por los tres modulos.
+    $proyectosFrontend = @($Proyecto) + @(Get-ChildItem -LiteralPath (Join-Path $Proyecto 'Modules') -Directory |
+        Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName 'package.json') -PathType Leaf } |
+        Sort-Object Name | ForEach-Object { $_.FullName })
+    foreach ($proyectoFrontend in $proyectosFrontend) {
+        $nombreFrontend = Split-Path -Leaf $proyectoFrontend
+        if (-not (Test-Path -LiteralPath (Join-Path $proyectoFrontend 'package-lock.json') -PathType Leaf)) {
+            throw "Falta package-lock.json en $nombreFrontend. No se pueden validar dependencias reproducibles."
+        }
+        Invoke-Comando -Programa 'npm.cmd' -Argumentos @('ci', '--include=dev', '--include=optional', '--no-audit') -Descripcion "Instalando dependencias frontend exactas: $nombreFrontend" -DirectorioTrabajo $proyectoFrontend
+        # npm ci puede terminar correctamente aunque anuncie vulnerabilidades.
+        # audit exige una respuesta satisfactoria del registro, incluye las
+        # herramientas de desarrollo afectadas y bloquea antes de publicar.
+        Invoke-Comando -Programa 'npm.cmd' -Argumentos @('audit', '--audit-level=low', '--include=dev', '--include=optional') -Descripcion "Comprobando vulnerabilidades de dependencias: $nombreFrontend" -DirectorioTrabajo $proyectoFrontend
+        Invoke-Comando -Programa 'npm.cmd' -Argumentos @('run', 'build') -Descripcion "Compilando y validando JavaScript y CSS con Vite: $nombreFrontend" -DirectorioTrabajo $proyectoFrontend
+    }
 }
 
 $requeridos = @(
     'vendor/autoload.php', 'vendor/livewire/flux/dist/manifest.json',
     'public/build/manifest.json', 'deploy/oracle/scripts/stage-linux-candidate.sh',
+    'public/build-catalogopublico/manifest.json',
+    'public/build-gestionprestamosrecepciones/manifest.json',
+    'public/build-inventariogestioncoleccion/manifest.json',
     'deploy/oracle/scripts/verify-source-identity.sh',
     'deploy/oracle/scripts/verify-deposit-pdf.php',
     'bootstrap/app.php', 'bootstrap/providers.php', 'bootstrap/cache/.gitignore',
@@ -541,6 +559,10 @@ $rutasFuente = @(Get-SalidaGit -Argumentos @('-c', 'core.quotepath=false', 'ls-f
         $ruta -notmatch '(^|/)\.(git|ai|agents|tools|local)(/|$)' -and
         $ruta -notmatch '\.(key|pem|p12|pfx|pass)$'
 } | Sort-Object)
+# Los manifiestos compilados de modulos estan ignorados por Git, pero OCI
+# tambien debe comprobarlos al preparar y activar la release.
+$manifiestosModulos = @($requeridos | Where-Object { $_ -like 'public/build-*/manifest.json' })
+$rutasFuente = @(($rutasFuente + $manifiestosModulos) | Sort-Object -Unique)
 $lineasFuente = @($rutasFuente | ForEach-Object {
     $huella = (Get-FileHash -LiteralPath (Join-Path $Proyecto $_) -Algorithm SHA256).Hash.ToLowerInvariant()
     "$huella  $_"

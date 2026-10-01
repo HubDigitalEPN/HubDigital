@@ -5,7 +5,7 @@ export default defineConfig({
     build: {
         outDir: '../../public/build-inventariogestioncoleccion',
         emptyOutDir: true,
-        manifest: true,
+        manifest: 'manifest.json',
     },
     plugins: [
         laravel({
