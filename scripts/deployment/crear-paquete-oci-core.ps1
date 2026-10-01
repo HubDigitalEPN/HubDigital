@@ -5,6 +5,8 @@ Valida, publica en Git y crea un paquete de despliegue OCI para HubDigital.
 Publica exclusivamente en main de HubDigitalEPN/HubDigital. Antes de publicar
 exige todas las pruebas y compilaciones. Las opciones de omision se conservan
 para mostrar un error claro: ya no pueden producir un paquete para main.
+Solicita un token de HubDigital de forma oculta, o usa HUBDIGITAL_GITHUB_TOKEN
+si ya existe en el entorno. No consulta el gestor global de credenciales de Git.
 
 .EXAMPLE
 crear-paquete-oci -DescripcionCambio "actualiza solicitudes de deposito"
@@ -51,6 +53,56 @@ function Invoke-Comando {
     }
     finally {
         if ($DirectorioTrabajo) { Pop-Location }
+    }
+}
+
+function Get-TokenGitHubHubDigital {
+    $token = $env:HUBDIGITAL_GITHUB_TOKEN
+    if ([string]::IsNullOrWhiteSpace($token)) {
+        if (-not [Environment]::UserInteractive) {
+            throw 'Falta HUBDIGITAL_GITHUB_TOKEN. Ejecute el paquete interactivamente o entregue el token en esa variable de entorno.'
+        }
+        $tokenSeguro = Read-Host 'Token GitHub con escritura en HubDigitalEPN/HubDigital' -AsSecureString
+        $puntero = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($tokenSeguro)
+        try {
+            $token = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($puntero)
+        }
+        finally {
+            [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($puntero)
+        }
+    }
+    if ([string]::IsNullOrWhiteSpace($token)) { throw 'El token GitHub de HubDigital no puede estar vacio.' }
+    return $token.Trim()
+}
+
+function Invoke-GitOficial {
+    param(
+        [Parameter(Mandatory)] [string[]]$Argumentos,
+        [Parameter(Mandatory)] [string]$Descripcion
+    )
+
+    # Solo estas operaciones de origin reciben la credencial de HubDigital.
+    # La configuracion de Git Credential Manager de otros repositorios no se toca.
+    $nombres = @('GIT_CONFIG_COUNT', 'GIT_CONFIG_KEY_0', 'GIT_CONFIG_VALUE_0',
+        'GIT_TERMINAL_PROMPT', 'GIT_TRACE_REDACT')
+    $anteriores = @{}
+    foreach ($nombre in $nombres) {
+        $anteriores[$nombre] = [Environment]::GetEnvironmentVariable($nombre, 'Process')
+    }
+    try {
+        $env:GIT_CONFIG_COUNT = '1'
+        $env:GIT_CONFIG_KEY_0 = "http.$($repositorioGit).git.extraHeader"
+        $env:GIT_CONFIG_VALUE_0 = "AUTHORIZATION: basic $autorizacionGit"
+        $env:GIT_TERMINAL_PROMPT = '0'
+        $env:GIT_TRACE_REDACT = '1'
+        # El valor vacio en -c desactiva los helpers heredados. En PowerShell
+        # 5.1, una variable de entorno vacia se elimina y no sirve para esto.
+        Invoke-Comando -Programa 'git.exe' -Argumentos (@('-c', 'credential.helper=') + $Argumentos) -Descripcion $Descripcion
+    }
+    finally {
+        foreach ($nombre in $nombres) {
+            [Environment]::SetEnvironmentVariable($nombre, $anteriores[$nombre], 'Process')
+        }
     }
 }
 
@@ -168,7 +220,28 @@ if ($OmitirCompilacion -or $OmitirPruebasPHP -or $SinPostgres) {
     throw 'Publicar en main exige compilacion Java/Vite y pruebas PHP/PostgreSQL y Gherkin completas. No se admiten opciones de omision.'
 }
 
-Invoke-Comando -Programa 'git.exe' -Argumentos @('-C', $Proyecto, 'fetch', $remoto, 'refs/heads/main:refs/remotes/origin/main') -Descripcion "Actualizando $upstream sin borrar ramas"
+Write-Host "`n==> Comprobando acceso de escritura al repositorio oficial antes de las pruebas" -ForegroundColor Cyan
+$tokenGitHub = Get-TokenGitHubHubDigital
+Remove-Item Env:HUBDIGITAL_GITHUB_TOKEN -ErrorAction SilentlyContinue
+$cabecerasGitHub = @{
+    Authorization = "Bearer $tokenGitHub"
+    Accept = 'application/vnd.github+json'
+}
+try {
+    $cuentaGitHub = Invoke-RestMethod -Uri 'https://api.github.com/user' -Headers $cabecerasGitHub -ErrorAction Stop
+    $repositorioOficial = Invoke-RestMethod -Uri 'https://api.github.com/repos/HubDigitalEPN/HubDigital' -Headers $cabecerasGitHub -ErrorAction Stop
+}
+catch {
+    throw 'No se pudo autenticar el token o consultar HubDigitalEPN/HubDigital. Compruebe que el token siga vigente y tenga acceso al repositorio oficial.'
+}
+if ($repositorioOficial.full_name -ne 'HubDigitalEPN/HubDigital') {
+    throw 'El token GitHub no corresponde al repositorio oficial HubDigitalEPN/HubDigital.'
+}
+$autorizacionGit = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes("$($cuentaGitHub.login):$tokenGitHub"))
+$tokenGitHub = $null
+$cabecerasGitHub = $null
+
+Invoke-GitOficial -Argumentos @('-C', $Proyecto, 'fetch', $remoto, 'refs/heads/main:refs/remotes/origin/main') -Descripcion "Actualizando $upstream sin borrar ramas"
 & git.exe -C $Proyecto merge-base --is-ancestor $upstream HEAD
 if ($LASTEXITCODE -ne 0) {
     throw 'main contiene trabajo que no esta en esta rama. Integralo en la rama de trabajo antes de reintentar; no se sobrescribira main.'
@@ -185,6 +258,9 @@ if ($mainExiste) {
     & git.exe -C $Proyecto merge-base --is-ancestor $mainAnterior HEAD
     if ($LASTEXITCODE -ne 0) { throw 'main local contiene trabajo distinto. No se movera ni se publicara hasta integrarlo en esta rama.' }
 }
+
+Invoke-GitOficial -Argumentos @('-C', $Proyecto, 'push', '--dry-run', $remoto, 'HEAD:refs/heads/main') -Descripcion 'Comprobando que origin/main acepta esta cuenta sin publicar cambios'
+Write-Host "Cuenta GitHub con escritura comprobada para HubDigital: $($cuentaGitHub.login)" -ForegroundColor Green
 
 $archivosRastreadosCambiados = @(Get-SalidaGit -Argumentos @('diff', '--name-only', $upstream))
 $archivosNuevos = @(Get-SalidaGit -Argumentos @('ls-files', '--others', '--exclude-standard'))
@@ -389,8 +465,8 @@ $estadoDespuesCommit = @(Get-SalidaGit -Argumentos @('status', '--porcelain=v1',
 if ($estadoDespuesCommit) { throw 'Quedaron cambios fuera del commit. Se detiene antes de publicar para no crear un paquete distinto de Git.' }
 
 $commit = (Get-SalidaGit -Argumentos @('rev-parse', 'HEAD') | Select-Object -First 1).Trim()
-Invoke-Comando -Programa 'git.exe' -Argumentos @('-C', $Proyecto, 'push', $remoto, 'HEAD:refs/heads/main') -Descripcion "Publicando el trabajo validado en $upstream sin force"
-Invoke-Comando -Programa 'git.exe' -Argumentos @('-C', $Proyecto, 'fetch', $remoto, 'refs/heads/main:refs/remotes/origin/main') -Descripcion 'Verificando el commit publicado'
+Invoke-GitOficial -Argumentos @('-C', $Proyecto, 'push', $remoto, 'HEAD:refs/heads/main') -Descripcion "Publicando el trabajo validado en $upstream sin force"
+Invoke-GitOficial -Argumentos @('-C', $Proyecto, 'fetch', $remoto, 'refs/heads/main:refs/remotes/origin/main') -Descripcion 'Verificando el commit publicado'
 $commitRemoto = (Get-SalidaGit -Argumentos @('rev-parse', $upstream) | Select-Object -First 1).Trim()
 if ($commit -ne $commitRemoto) { throw 'El commit local y el remoto no coinciden. No se crea el paquete.' }
 if ($rama -ne 'main') {
