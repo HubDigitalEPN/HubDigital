@@ -1,6 +1,6 @@
 @props(['provincias' => [], 'filos' => [], 'preparaciones' => [], 'metodos' => [], 'biomas' => [], 'hayFiltrosActivos' => false])
 
-<details class="research-sidebar" x-init="$el.open = window.matchMedia('(min-width: 701px)').matches" wire:ignore.self>
+<details class="research-sidebar" x-data="portalFiltros" wire:ignore.self>
     <summary title="Mostrar u ocultar filtros">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M7 12h10M10 17h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
         <span>Filtros de investigación</span>
@@ -9,6 +9,7 @@
     </summary>
     <form wire:submit="actualizarFiltros" class="research-filter-form" aria-label="Filtros de investigación">
         <p class="research-filter-note">La selección se aplica a tarjetas, registros y análisis.</p>
+        @if($errors->any())<p class="research-filter-error" role="alert">{{ $errors->first() }}</p>@endif
         <label><span>N.º de catálogo</span><input type="search" wire:model="filtroCatalogo" placeholder="MEPN-INV-1, MEPN-INV-2" maxlength="240"></label>
         <label><span>Taxón</span><input type="search" wire:model="filtroTaxon" placeholder="Género o especie" maxlength="120"></label>
         <label><span>Filo</span><select wire:model="filtroFiloId"><option value="">Todos los filos</option>@foreach($filos as $filo)<option value="{{ $filo['id'] }}">{{ $filo['nombre_cientifico'] }}</option>@endforeach</select></label>
@@ -49,6 +50,6 @@
                 <div class="research-filter-pair"><label><span>Elevación desde</span><input type="number" wire:model="filtroElevDesde" placeholder="m s. n. m."></label><label><span>Hasta</span><input type="number" wire:model="filtroElevHasta" placeholder="m s. n. m."></label></div>
             </div>
         </details>
-        <div class="research-filter-actions"><button type="submit">Aplicar filtros</button><button type="button" wire:click="limpiarFiltros">Limpiar</button></div>
+        <div class="research-filter-actions" x-ref="acciones"><button type="submit" wire:loading.attr="disabled">Aplicar filtros</button><button type="button" wire:click="limpiarFiltros" wire:loading.attr="disabled">Limpiar</button><span wire:loading role="status">Actualizando…</span></div>
     </form>
 </details>

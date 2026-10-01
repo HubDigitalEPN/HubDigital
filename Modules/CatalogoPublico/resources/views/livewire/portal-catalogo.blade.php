@@ -87,13 +87,7 @@
 
     @endif {{-- fin breadcrumb del modo árbol --}}
     @endif {{-- fin navegación de tarjetas --}}
-    <nav class="collection-view-bar" aria-label="Vista de la Colección Biológica">
-        <div class="collection-view-switch">
-            <button type="button" wire:click="cambiarVista('tarjetas')" aria-label="Vista de tarjetas" title="Tarjetas" aria-pressed="{{ $vista === 'tarjetas' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg><span class="sr-only">Tarjetas</span></button>
-            <button type="button" wire:click="cambiarVista('registros')" aria-label="Vista de registros" title="Registros" aria-pressed="{{ $vista === 'registros' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h3m4 0h9M4 12h3m4 0h9M4 18h3m4 0h9"/></svg><span class="sr-only">Registros</span></button>
-            <button type="button" wire:click="cambiarVista('mapa')" aria-label="Vista de mapa y análisis" title="Mapa y análisis" aria-pressed="{{ $vista === 'mapa' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2zM9 3v16m6-14v16"/></svg><span class="sr-only">Mapa y análisis</span></button>
-        </div>
-    </nav>
+
 
     <div class="collection-workspace">
         <x-catalogopublico::filtro-investigacion
@@ -102,6 +96,14 @@
             :biomas="$biomasDisponibles" :hay-filtros-activos="$hayFiltrosActivos"
         />
         <div class="collection-main">
+    <nav class="collection-view-bar" aria-label="Vista de la Colección Biológica">
+        <div class="collection-view-switch">
+            <button type="button" wire:loading.attr="disabled" wire:click="cambiarVista('tarjetas')" aria-label="Vista de tarjetas" title="Tarjetas" aria-pressed="{{ $vista === 'tarjetas' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg><span class="sr-only">Tarjetas</span></button>
+            <button type="button" wire:loading.attr="disabled" wire:click="cambiarVista('registros')" aria-label="Vista de registros" title="Registros" aria-pressed="{{ $vista === 'registros' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h3m4 0h9M4 12h3m4 0h9M4 18h3m4 0h9"/></svg><span class="sr-only">Registros</span></button>
+            <button type="button" wire:loading.attr="disabled" wire:click="cambiarVista('mapa')" aria-label="Vista de mapa y análisis" title="Mapa y análisis" aria-pressed="{{ $vista === 'mapa' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2zM9 3v16m6-14v16"/></svg><span class="sr-only">Mapa y análisis</span></button>
+        </div>
+    </nav>
+            <p class="collection-loading" wire:loading wire:target="cambiarVista,actualizarFiltros,limpiarFiltros" role="status">Actualizando vista…</p>
 
     @if($vista === 'mapa')
         @include('catalogopublico::dashboard-coleccion')

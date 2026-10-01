@@ -15,6 +15,60 @@ use Modules\CatalogoPublico\Domain\ValueObjects\RangoTaxonomico;
 
 final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimenesParaArbolPort
 {
+    /** Única selección pública para árbol, tabla, mapa y exportaciones. */
+    public function consultaPublica(FiltrosBusqueda $filtros, string $nivel = '', string $taxon = ''): Builder
+    {
+        $query = DB::table('taxonomia.especimenes as te')
+            ->join('divulgacion.especimenes_divulgables as ed', 'ed.especimen_id', '=', 'te.id')
+            ->where('ed.publicado', true);
+        $this->aplicarFiltros($query, $filtros);
+        $rangos = ['phylum' => 'phylum', 'class' => 'clase', 'order' => 'orden', 'family' => 'familia', 'genus' => 'genero', 'species' => 'especie'];
+        if (isset($rangos[$nivel]) && $taxon !== '') {
+            $query->where('ed.scientific_name_visible', true)->whereRaw('te.taxon_id IN (WITH RECURSIVE seleccion AS (SELECT id FROM taxonomia.taxones WHERE rango = ? AND nombre_cientifico = ? UNION SELECT t.id FROM taxonomia.taxones t JOIN seleccion s ON t.padre_id = s.id) SELECT id FROM seleccion)', [$rangos[$nivel], $taxon]);
+        }
+
+        return $query;
+    }
+
+    public function paginaPublica(FiltrosBusqueda $filtros, int $pagina, string $nivel = '', string $taxon = ''): array
+    {
+        $query = $this->consultaPublica($filtros, $nivel, $taxon);
+        $total = (clone $query)->count('te.id');
+        $ultima = max(1, (int) ceil($total / 50));
+        $actual = min(max(1, $pagina), $ultima);
+        $ids = $query->orderBy('te.fila_origen_excel')->orderBy('te.id')
+            ->offset(($actual - 1) * 50)->limit(50)->pluck('te.id')->all();
+
+        return ['ids' => $ids, 'total' => $total, 'pagina' => $actual, 'ultima' => $ultima];
+    }
+
+    /** Tarjetas iniciales: una fila por taxón, sin materializar todos los ejemplares. */
+    public function resumenRaiz(FiltrosBusqueda $filtros): array
+    {
+        $filas = $this->consultaPublica($filtros)->where('ed.genus_visible', true)
+            ->where('ed.scientific_name_visible', true)->whereNotNull('te.occurrence_id')->where('te.occurrence_id', '<>', '')
+            ->selectRaw('te.taxon_id, COUNT(*) AS total')->groupBy('te.taxon_id')->get();
+        $jerarquias = $this->resolverJerarquiasPorTaxon($filas->pluck('taxon_id')->filter()->all());
+        $hijos = $conteos = $distintos = [];
+        $rangos = ['clase' => 'class', 'orden' => 'order', 'familia' => 'family', 'genero' => 'genus', 'especie' => 'species'];
+        foreach ($filas as $fila) {
+            $jerarquia = $jerarquias[$fila->taxon_id] ?? [];
+            $filo = $jerarquia['phylum'] ?? '';
+            if ($filo === '') continue;
+            $clave = 'phylum:'.$filo;
+            $hijos[$filo] = ['nivel' => 'phylum', 'taxon' => $filo, 'padre' => 'root'];
+            $conteos[$clave] = ($conteos[$clave] ?? 0) + (int) $fila->total;
+            foreach ($rangos as $bd => $nivel) {
+                if (! empty($jerarquia[$bd])) $distintos[$clave][$nivel][$jerarquia[$bd]] = true;
+            }
+        }
+        ksort($hijos, SORT_NATURAL | SORT_FLAG_CASE);
+        $descendientes = [];
+        foreach ($distintos as $clave => $niveles) $descendientes[$clave] = array_map('count', $niveles);
+
+        return ['hijos' => array_values($hijos), 'conteos' => $conteos, 'descendientes' => $descendientes];
+    }
+
     /** Filas filtradas y en orden estable para una descarga CSV de memoria acotada. */
     public function cursorParaCsv(FiltrosBusqueda $filtros): LazyCollection
     {
@@ -66,12 +120,13 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
         $jerarquiasPorTaxon = $this->resolverJerarquiasPorTaxon($taxonIds);
 
         $result = [];
+        $jerarquias = [];
 
         foreach ($filas as $fila) {
             $porRango = $jerarquiasPorTaxon[$fila->taxon_id] ?? [];
 
             try {
-                $jerarquia = JerarquiaTaxonomica::parcial(
+                $jerarquia = $jerarquias[$fila->taxon_id ?? ''] ??= JerarquiaTaxonomica::parcial(
                     phylum: $porRango[RangoTaxonomico::Phylum->rangoBD()] ?? '',
                     class: $porRango[RangoTaxonomico::Class_->rangoBD()] ?? '',
                     order: $porRango[RangoTaxonomico::Order->rangoBD()] ?? '',
@@ -154,6 +209,7 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
     {
         // N.° de catálogo — multi-valor separado por coma, comparación exacta case-insensitive
         if ($filtros->codigosCatalogo !== []) {
+            $query->where('ed.occurrence_id_visible', true);
             $placeholders = implode(',', array_fill(0, count($filtros->codigosCatalogo), '?'));
             $valores = array_map('strtolower', $filtros->codigosCatalogo);
             $query->whereRaw("LOWER(te.codigo_catalogo) = ANY(ARRAY[{$placeholders}])", $valores);
@@ -177,11 +233,13 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
         }
 
         if ($filtros->filoId !== null) {
+            $query->where('ed.scientific_name_visible', true);
             $query->whereRaw('te.taxon_id IN (WITH RECURSIVE descendientes AS (SELECT id FROM taxonomia.taxones WHERE id = ? UNION SELECT t.id FROM taxonomia.taxones t JOIN descendientes d ON t.padre_id = d.id) SELECT id FROM descendientes)', [$filtros->filoId]);
         }
 
         // Geografía — CTE recursivo pre-resuelto
         if ($filtros->geografias !== []) {
+            $query->where('ed.locality_name_visible', true);
             $ids = $this->resolverDescendientesGeografia($filtros->geografias);
             if ($ids === []) {
                 $query->whereRaw('1 = 0');
@@ -196,6 +254,7 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
 
         // Colector — búsqueda parcial case-insensitive
         if ($filtros->colectores !== []) {
+            $query->where('ed.recorded_by_visible', true);
             $query->where(function (Builder $q) use ($filtros): void {
                 foreach ($filtros->colectores as $colector) {
                     $q->orWhere('te.colector', 'ILIKE', '%'.$colector.'%');
@@ -231,7 +290,7 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
 
         if ($filtros->soloUbicacion || $filtros->datosCompletos) {
             $query->where('ed.decimal_latitude_visible', true)->where('ed.decimal_longitude_visible', true)
-                ->whereNotNull('te.decimal_latitude')->whereNotNull('te.decimal_longitude');
+                ->whereBetween('te.decimal_latitude', [-90, 90])->whereBetween('te.decimal_longitude', [-180, 180]);
         }
         if ($filtros->datosCompletos) {
             $query->where('ed.scientific_name_visible', true)->where('ed.event_date_visible', true)
@@ -262,9 +321,11 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
 
         // Elevación — solapamiento de rangos
         if ($filtros->elevDesde !== null) {
+            $query->where('ed.elevation_visible', true);
             $query->whereRaw('COALESCE(te.elevation_max_m, te.elevation_min_m) >= ?', [$filtros->elevDesde]);
         }
         if ($filtros->elevHasta !== null) {
+            $query->where('ed.elevation_visible', true);
             $query->whereRaw('COALESCE(te.elevation_min_m, te.elevation_max_m) <= ?', [$filtros->elevHasta]);
         }
 

@@ -13,20 +13,28 @@
 
     <div class="atlas-stage">
         <section class="atlas-panel atlas-map-panel" aria-labelledby="titulo-mapa">
-            <div class="atlas-panel-header"><div><h2 id="titulo-mapa">Distribución de los registros</h2><p class="atlas-panel-subtitle">Cuadrículas de 0,25° · Tamaño según número de registros · Mayús + arrastrar para seleccionar un área</p></div><div class="atlas-panel-actions"><button class="atlas-panel-link" type="button" x-on:click="encuadrar()">Ver Ecuador</button><button class="atlas-panel-link" type="button" wire:click="descargarAnalisis('mapa')" title="Descargar cuadrículas en CSV">CSV</button></div></div>
+            <div class="atlas-panel-header"><div><h2 id="titulo-mapa">Distribución de los registros</h2><p class="atlas-panel-subtitle">Cuadrículas de 0,25° · Tamaño según número de registros · Mayús + arrastrar para seleccionar un área</p></div><x-catalogopublico::menu-analisis tipo="mapa" :datos="$datosMapa['mapa']" /></div>
             <div class="atlas-map-shell">
                 <div class="atlas-map" x-ref="mapa" wire:ignore role="region" aria-label="Mapa de registros publicados por cuadrícula"></div>
                 @if($datosMapa['mapa'] === [])<p class="atlas-map-message">Esta selección no tiene coordenadas públicas. Ajusta los filtros o explora los registros.</p>@endif
+            </div>
+            <div class="atlas-map-legend" aria-label="Leyenda del mapa">
+                <strong>Filo predominante</strong>
+                @foreach($datosMapa['filos'] as $filo => $cantidad)
+                    <span><i class="atlas-legend-dot" style="background:{{ $paleta[$loop->index % count($paleta)] }}"></i>{{ $filo }}</span>
+                @endforeach
+                <span><i class="atlas-legend-dot" style="background:#71828d"></i>Sin filo público</span>
+                <small>Círculo mayor = más registros en la cuadrícula. Los colores coinciden con la composición taxonómica.</small>
             </div>
             <div class="atlas-map-footer"><span>Los puntos representan registros documentados, no ausencia o abundancia natural.</span><button type="button" wire:click="verGeorreferenciados">Ver registros ubicados →</button></div>
         </section>
 
         <section class="atlas-panel atlas-taxa-panel" aria-labelledby="titulo-filos">
-            <div class="atlas-panel-header"><div><h2 id="titulo-filos">Composición taxonómica</h2><p class="atlas-panel-subtitle">Selecciona un filo para destacarlo en el mapa</p></div><button class="atlas-panel-link" type="button" wire:click="descargarAnalisis('filos')" title="Descargar filos en CSV">CSV</button></div>
+            <div class="atlas-panel-header"><div><h2 id="titulo-filos">Composición taxonómica</h2><p class="atlas-panel-subtitle">Selecciona un filo para filtrar todos los paneles</p></div><x-catalogopublico::menu-analisis tipo="filos" :datos="$datosMapa['filos']" /></div>
             <div class="atlas-taxon-body">
                 @forelse($datosMapa['filos'] as $filo => $cantidad)
                     @php $porcentaje = (int) $cantidad / $total * 100; $color = $paleta[$loop->index % count($paleta)]; @endphp
-                    <button class="atlas-taxon-row" type="button" x-on:click="seleccionarFilo(@js($filo))" :aria-pressed="filoActivo === @js($filo) ? 'true' : 'false'">
+                    <button class="atlas-taxon-row" type="button" wire:click="seleccionarFilo(@js($filo))" wire:loading.attr="disabled" aria-pressed="{{ $filtroFiloId !== '' ? 'true' : 'false' }}">
                         <span class="atlas-taxon-name"><i class="atlas-legend-dot" style="background:{{ $color }}"></i>{{ $filo }}</span>
                         <span class="atlas-taxon-count">{{ number_format((int) $cantidad, 0, ',', '.') }} <small>({{ number_format($porcentaje, 1, ',', '.') }} %)</small></span>
                         <span class="atlas-bar" aria-hidden="true"><span style="width:{{ min(100, $porcentaje) }}%;background:{{ $color }}"></span></span>
@@ -41,7 +49,7 @@
 
     <div class="atlas-analysis-row atlas-analysis-row--three" role="group" aria-label="Distribución, tiempo y calidad">
         <section class="atlas-panel" aria-labelledby="titulo-riqueza">
-            <div class="atlas-panel-header"><div><h2 id="titulo-riqueza">Riqueza por provincia</h2><p class="atlas-panel-subtitle">Especies distintas documentadas · diez principales</p></div><button class="atlas-panel-link" type="button" wire:click="descargarAnalisis('riqueza')" title="Descargar riqueza en CSV">CSV</button></div>
+            <div class="atlas-panel-header"><div><h2 id="titulo-riqueza">Riqueza por provincia</h2><p class="atlas-panel-subtitle">Especies distintas documentadas · diez principales</p></div><x-catalogopublico::menu-analisis tipo="riqueza" :datos="$datosMapa['riqueza']" /></div>
             <div class="atlas-ranked-chart">
                 @forelse($datosMapa['riqueza'] as $fila)
                     <button class="atlas-ranked-row" type="button" wire:click='seleccionarProvincia(@json($fila["provincia"]))' title="Filtrar por {{ $fila['provincia'] }}">
@@ -53,7 +61,7 @@
             <p class="atlas-panel-note">Riqueza observada en la colección; depende del esfuerzo de muestreo.</p>
         </section>
         <section class="atlas-panel" aria-labelledby="titulo-decadas">
-            <div class="atlas-panel-header"><div><h2 id="titulo-decadas">Cobertura temporal</h2><p class="atlas-panel-subtitle">Especies distintas por década de colecta</p></div><button class="atlas-panel-link" type="button" wire:click="descargarAnalisis('decadas')" title="Descargar décadas en CSV">CSV</button></div>
+            <div class="atlas-panel-header"><div><h2 id="titulo-decadas">Cobertura temporal</h2><p class="atlas-panel-subtitle">Especies distintas por década de colecta</p></div><x-catalogopublico::menu-analisis tipo="decadas" :datos="$datosMapa['decadas']" /></div>
             <div class="atlas-ranked-chart atlas-ranked-chart--time">
                 @forelse($datosMapa['decadas'] as $fila)
                     <button class="atlas-ranked-row" type="button" wire:click="seleccionarDecada({{ (int) $fila['decada'] }})" title="Filtrar la década de {{ $fila['decada'] }}">
@@ -65,7 +73,7 @@
             <p class="atlas-panel-note">Selecciona una década para actualizar toda la vista.</p>
         </section>
         <section class="atlas-panel" aria-labelledby="titulo-calidad">
-            <div class="atlas-panel-header"><div><h2 id="titulo-calidad">Calidad para análisis</h2><p class="atlas-panel-subtitle">Completitud de los registros seleccionados</p></div><button class="atlas-panel-link" type="button" wire:click="descargarAnalisis('calidad')" title="Descargar completitud en CSV">CSV</button></div>
+            <div class="atlas-panel-header"><div><h2 id="titulo-calidad">Calidad para análisis</h2><p class="atlas-panel-subtitle">Completitud de los registros seleccionados</p></div><x-catalogopublico::menu-analisis tipo="calidad" :datos="$datosMapa['resumen']" /></div>
             <div class="atlas-quality">
                 <div class="atlas-quality-number">{{ number_format((int) $resumen['aptos'], 0, ',', '.') }} <small>de {{ number_format((int) $resumen['registros'], 0, ',', '.') }}</small></div>
                 <p class="atlas-quality-caption">tienen identificación a especie, fecha y coordenadas públicas a la vez.</p>
@@ -80,7 +88,7 @@
 
     <div class="atlas-analysis-row atlas-analysis-row--two" role="group" aria-label="Especies prioritarias y más documentadas">
         <section class="atlas-panel" aria-labelledby="titulo-raras">
-            <div class="atlas-panel-header"><div><h2 id="titulo-raras">Especies con pocos registros</h2><p class="atlas-panel-subtitle">Una a tres ocurrencias: posibles vacíos para revisar</p></div><button class="atlas-panel-link" type="button" wire:click="descargarAnalisis('raras')" title="Descargar especies con pocos registros en CSV">CSV</button></div>
+            <div class="atlas-panel-header"><div><h2 id="titulo-raras">Especies con pocos registros</h2><p class="atlas-panel-subtitle">Una a tres ocurrencias: posibles vacíos para revisar</p></div><x-catalogopublico::menu-analisis tipo="raras" :datos="$datosMapa['raras']" /></div>
             <div class="atlas-species-list">
                 @forelse($datosMapa['raras'] as $especie)<button type="button" class="atlas-species-row" wire:click='explorarEspecie(@json($especie["nombre"]))'><em>{{ $especie['nombre'] }}</em><strong>{{ $especie['total'] }}</strong></button>
                 @empty<p class="atlas-chart-empty">No hay especies con una a tres ocurrencias en esta selección.</p>@endforelse
@@ -88,7 +96,7 @@
             <p class="atlas-panel-note">Pocos ejemplares publicados no implican rareza ni amenaza en la naturaleza.</p>
         </section>
         <section class="atlas-panel" aria-labelledby="titulo-especies">
-            <div class="atlas-panel-header"><div><h2 id="titulo-especies">Especies más documentadas</h2><p class="atlas-panel-subtitle">Veinte especies con más registros en la selección</p></div><button class="atlas-panel-link" type="button" wire:click="descargarListaEspecies" title="Descargar lista completa de especies en CSV">Lista completa CSV</button></div>
+            <div class="atlas-panel-header"><div><h2 id="titulo-especies">Especies más documentadas</h2><p class="atlas-panel-subtitle">Veinte especies con más registros en la selección</p></div><x-catalogopublico::menu-analisis tipo="especies" :datos="$datosMapa['especies']" /></div>
             <div class="atlas-species-list atlas-species-list--columns">
                 @forelse($datosMapa['especies'] as $especie)<button type="button" class="atlas-species-row" wire:click='explorarEspecie(@json($especie["nombre"]))'><em>{{ $especie['nombre'] }}</em><strong>{{ number_format((int) $especie['total'], 0, ',', '.') }}</strong></button>
                 @empty<p class="atlas-chart-empty">No hay especies identificadas en esta selección.</p>@endforelse

@@ -229,6 +229,22 @@ final class PortalCatalogo extends Component
 
     public function actualizarFiltros(): void
     {
+        $this->validate([
+            'filtroFechaDesde' => ['nullable', 'date_format:Y-m-d'],
+            'filtroFechaHasta' => array_filter(['nullable', 'date_format:Y-m-d', $this->filtroFechaDesde !== '' ? 'after_or_equal:filtroFechaDesde' : null]),
+            'filtroLatMin' => ['nullable', 'required_with:filtroLatMax', 'numeric', 'between:-90,90'],
+            'filtroLatMax' => ['nullable', 'required_with:filtroLatMin', 'numeric', 'between:-90,90', 'gte:filtroLatMin'],
+            'filtroLonMin' => ['nullable', 'required_with:filtroLonMax', 'numeric', 'between:-180,180'],
+            'filtroLonMax' => ['nullable', 'required_with:filtroLonMin', 'numeric', 'between:-180,180', 'gte:filtroLonMin'],
+            'filtroElevDesde' => ['nullable', 'numeric'],
+            'filtroElevHasta' => array_filter(['nullable', 'numeric', $this->filtroElevDesde !== '' ? 'gte:filtroElevDesde' : null]),
+        ], [
+            '*.required_with' => 'Completa ambos límites del rango espacial.',
+            '*.between' => 'La coordenada está fuera del rango permitido.',
+            '*.gte' => 'El límite superior debe ser mayor o igual al inferior.',
+            '*.after_or_equal' => 'La fecha final debe ser posterior o igual a la inicial.',
+            '*.date_format' => 'Usa una fecha válida con año, mes y día.',
+        ]);
         $this->pagina = 1;
     }
 
@@ -242,9 +258,9 @@ final class PortalCatalogo extends Component
 
     public function seleccionarDecada(int $decada): void
     {
-        if ($decada >= 1800 && $decada <= 2090 && $decada % 10 === 0) {
-            $this->filtroFechaDesde = $decada.'-01-01';
-            $this->filtroFechaHasta = ($decada + 9).'-12-31';
+        if ($decada >= 0 && $decada <= 2090 && $decada % 10 === 0) {
+            $this->filtroFechaDesde = sprintf('%04d-01-01', $decada);
+            $this->filtroFechaHasta = sprintf('%04d-12-31', $decada + 9);
             $this->pagina = 1;
         }
     }
@@ -320,6 +336,8 @@ final class PortalCatalogo extends Component
     private function filtrosAnalisis(FiltrosBusqueda $filtros): array
     {
         return array_filter([
+            'nivel' => $this->nivel,
+            'taxon_navegado' => $this->taxon,
             'codigo' => $this->filtroCatalogo,
             'preparaciones' => $this->filtroPreparaciones,
             'taxon' => $this->filtroTaxon,
@@ -394,6 +412,7 @@ final class PortalCatalogo extends Component
 
     public function limpiarFiltros(): void
     {
+        $this->resetValidation();
         $this->pagina = 1;
         $this->filtroCatalogo = '';
         $this->filtroPreparaciones = [];
@@ -579,6 +598,33 @@ final class PortalCatalogo extends Component
                 'metodosRecoleccionDisponibles' => $this->metodosRecoleccionDisponibles,
                 'biomasDisponibles' => $this->biomasDisponibles,
                 'hayFiltrosActivos' => ! $filtros->estaVacio(),
+            ]);
+        }
+
+        if ($this->vista === 'registros') {
+            $pagina = app(EloquentProveedorEspecimenesParaArbol::class)->paginaPublica($filtros, $this->pagina, $this->nivel, $this->taxon);
+            return view('catalogopublico::livewire.portal-catalogo', [
+                'datosMapa' => null,
+                'provinciasDisponibles' => $this->provinciasDisponibles,
+                'filosDisponibles' => $this->filosDisponibles,
+                'preparacionesDisponibles' => $this->preparacionesDisponibles,
+                'metodosRecoleccionDisponibles' => $this->metodosRecoleccionDisponibles,
+                'biomasDisponibles' => $this->biomasDisponibles,
+                'hayFiltrosActivos' => ! $filtros->estaVacio(),
+                'nivelActual' => $this->nivel, 'taxonActual' => $this->taxon,
+                'registrosVista' => $this->cargarDetallesPorEspecimenIds($pagina['ids'], $proveedor, $repoDivulgable),
+                'totalRegistrosVista' => $pagina['total'], 'paginaActual' => $pagina['pagina'], 'ultimaPagina' => $pagina['ultima'],
+            ]);
+        }
+
+        if ($this->vista === 'tarjetas' && $this->nivel === '' && $this->explorar === '') {
+            $resumenRaiz = app(EloquentProveedorEspecimenesParaArbol::class)->resumenRaiz($filtros);
+            return view('catalogopublico::livewire.portal-catalogo', $resumenRaiz + [
+                'provinciasDisponibles' => $this->provinciasDisponibles, 'filosDisponibles' => $this->filosDisponibles,
+                'preparacionesDisponibles' => $this->preparacionesDisponibles, 'metodosRecoleccionDisponibles' => $this->metodosRecoleccionDisponibles,
+                'biomasDisponibles' => $this->biomasDisponibles, 'hayFiltrosActivos' => ! $filtros->estaVacio(),
+                'nivelActual' => '', 'taxonActual' => '', 'nivelExplorar' => '', 'ruta' => [],
+                'nivelesNavegacion' => self::NIVEL_ETIQUETA, 'etiquetasDescendientes' => self::DESCENDANT_LABELS, 'etiquetas' => self::NIVEL_ETIQUETA,
             ]);
         }
 

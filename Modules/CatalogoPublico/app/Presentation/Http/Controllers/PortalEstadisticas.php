@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use Modules\CatalogoPublico\Domain\ValueObjects\FiltrosBusqueda;
+use Modules\CatalogoPublico\Infrastructure\Persistence\Eloquent\Repositories\EloquentProveedorEspecimenesParaArbol;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class PortalEstadisticas
@@ -43,7 +45,7 @@ final class PortalEstadisticas
     /** Agregados de la misma selección que usan tarjetas y registros. */
     public function datosParaVista(array $filtros): array
     {
-        return $this->cachear('portal:estadisticas:v8:'.sha1(json_encode($filtros)), fn () => $this->resumir($filtros));
+        return $this->cachear('portal:estadisticas:v9:'.sha1(json_encode($filtros)), fn () => $this->resumir($filtros));
     }
 
     public function descargarLista(Request $request): StreamedResponse
@@ -61,8 +63,8 @@ final class PortalEstadisticas
     public function descargarListaConFiltros(array $filtros): StreamedResponse
     {
         $consulta = $this->consulta($filtros)
-            ->join('taxonomia.taxones as t', 't.id', '=', 'e.taxon_id')
-            ->where('t.rango', 'especie')->where('d.scientific_name_visible', true)
+            ->join('taxonomia.taxones as t', 't.id', '=', 'te.taxon_id')
+            ->where('t.rango', 'especie')->where('ed.scientific_name_visible', true)
             ->selectRaw('t.nombre_cientifico AS especie, COUNT(*) AS registros')
             ->groupBy('t.nombre_cientifico')->orderBy('t.nombre_cientifico');
 
@@ -83,110 +85,18 @@ final class PortalEstadisticas
 
     private function consulta(array $filtros): Builder
     {
-        $query = DB::table('taxonomia.especimenes as e')
-            ->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
-            ->where('d.publicado', true);
-        if (! empty($filtros['codigo'])) {
-            $codigos = array_slice(array_values(array_filter(array_map('trim', explode(',', (string) $filtros['codigo'])))), 0, 25);
-            $query->where('d.occurrence_id_visible', true)->whereIn(DB::raw('LOWER(e.codigo_catalogo)'), array_map('mb_strtolower', $codigos));
+        $datos = [];
+        foreach (['codigo' => 'filtroCatalogo', 'preparaciones' => 'filtroPreparaciones', 'taxon' => 'filtroTaxon', 'provincia' => 'filtroProvincia', 'geografias' => 'filtroGeografias', 'filo' => 'filtroFiloId', 'mes' => 'filtroMes', 'identificacion' => 'filtroIdentificacion', 'ubicacion' => 'filtroSoloUbicacion', 'colector' => 'filtroColector', 'metodos' => 'filtroMetodos', 'lat_min' => 'filtroLatMin', 'lat_max' => 'filtroLatMax', 'lon_min' => 'filtroLonMin', 'lon_max' => 'filtroLonMax', 'elev_desde' => 'filtroElevDesde', 'elev_hasta' => 'filtroElevHasta', 'biomas' => 'filtroBiomas', 'habitat' => 'filtroHabitat', 'tipo' => 'filtroTipo', 'casta' => 'filtroCasta', 'estadio' => 'filtroEstadio'] as $clave => $propiedad) {
+            if (isset($filtros[$clave])) $datos[$propiedad] = $filtros[$clave];
         }
-        if (! empty($filtros['preparaciones'])) {
-            $query->whereIn(DB::raw('LOWER(e.preparations)'), array_map('mb_strtolower', $filtros['preparaciones']));
-        }
-        if (! empty($filtros['provincia'])) {
-            $query->where('d.state_province_visible', true)->where('e.state_province', $filtros['provincia']);
-        }
-        if (! empty($filtros['geografias'])) {
-            $nombres = array_slice(array_values(array_filter(array_map('trim', $filtros['geografias']))), 0, 10);
-            if ($nombres !== []) {
-                $condiciones = implode(' OR ', array_fill(0, count($nombres), 'nombre_canonico ILIKE ?'));
-                $ids = array_column(DB::select("WITH RECURSIVE descendientes AS (SELECT id FROM taxonomia.localidades WHERE {$condiciones} UNION ALL SELECT l.id FROM taxonomia.localidades l JOIN descendientes d ON l.padre_id = d.id) SELECT id::text FROM descendientes", array_map(static fn (string $nombre): string => '%'.$nombre.'%', $nombres)), 'id');
-                $ids === [] ? $query->whereRaw('1 = 0') : $query->whereIn('e.localidad_id', $ids);
-            }
-        }
-        if (isset($filtros['desde'])) {
-            $query->where('d.event_date_visible', true)->whereYear('e.fecha_colecta', '>=', (int) $filtros['desde']);
-        }
-        if (isset($filtros['hasta'])) {
-            $query->where('d.event_date_visible', true)->whereYear('e.fecha_colecta', '<=', (int) $filtros['hasta']);
-        }
-        if (! empty($filtros['desde_fecha'])) {
-            $query->where('d.event_date_visible', true)->whereRaw('COALESCE(e.fecha_colecta_fin, e.fecha_colecta) >= ?', [$filtros['desde_fecha']]);
-        }
-        if (! empty($filtros['hasta_fecha'])) {
-            $query->where('d.event_date_visible', true)->whereDate('e.fecha_colecta', '<=', $filtros['hasta_fecha']);
-        }
-        if (! empty($filtros['filo'])) {
-            $query->whereRaw('e.taxon_id IN (WITH RECURSIVE descendientes AS (SELECT id FROM taxonomia.taxones WHERE id = ? UNION SELECT t.id FROM taxonomia.taxones t JOIN descendientes d ON t.padre_id = d.id) SELECT id FROM descendientes)', [$filtros['filo']]);
-        }
-        if (! empty($filtros['taxon'])) {
-            $literal = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], trim($filtros['taxon']));
-            $query->where('d.scientific_name_visible', true)
-                ->whereRaw('e.taxon_id IN (WITH RECURSIVE descendientes AS (SELECT id FROM taxonomia.taxones WHERE nombre_cientifico ILIKE ? UNION SELECT t.id FROM taxonomia.taxones t JOIN descendientes d ON t.padre_id = d.id) SELECT id FROM descendientes)', ['%'.$literal.'%']);
-        }
-        if (! empty($filtros['mes'])) {
-            $query->where('d.event_date_visible', true)->whereMonth('e.fecha_colecta', (int) $filtros['mes']);
-        }
-        if (! empty($filtros['colector'])) {
-            $literal = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], trim($filtros['colector']));
-            $query->where('d.recorded_by_visible', true)->where('e.colector', 'ILIKE', '%'.$literal.'%');
-        }
-        if (! empty($filtros['metodo'])) {
-            $query->where('d.sampling_protocol_visible', true)
-                ->whereExists(static fn (Builder $subconsulta) => $subconsulta->selectRaw('1')->from('taxonomia.muestras_colecta as metodo')
-                    ->whereColumn('metodo.id', 'e.muestra_id')->where('metodo.sampling_protocol', $filtros['metodo']));
-        }
-        if (! empty($filtros['metodos'])) {
-            $metodos = array_map('mb_strtolower', $filtros['metodos']);
-            $query->where('d.sampling_protocol_visible', true)->whereExists(static fn (Builder $subconsulta) => $subconsulta->selectRaw('1')
-                ->from('taxonomia.muestras_colecta as metodo')->whereColumn('metodo.id', 'e.muestra_id')
-                ->whereIn(DB::raw('LOWER(metodo.sampling_protocol)'), $metodos));
-        }
-        if (isset($filtros['lat_min'], $filtros['lat_max'])) {
-            $query->where('d.decimal_latitude_visible', true)->whereBetween('e.decimal_latitude', [$filtros['lat_min'], $filtros['lat_max']]);
-        }
-        if (isset($filtros['lon_min'], $filtros['lon_max'])) {
-            $query->where('d.decimal_longitude_visible', true)->whereBetween('e.decimal_longitude', [$filtros['lon_min'], $filtros['lon_max']]);
-        }
-        if (isset($filtros['elev_desde'])) {
-            $query->where('d.elevation_visible', true)->whereRaw('COALESCE(e.elevation_max_m, e.elevation_min_m) >= ?', [$filtros['elev_desde']]);
-        }
-        if (isset($filtros['elev_hasta'])) {
-            $query->where('d.elevation_visible', true)->whereRaw('COALESCE(e.elevation_min_m, e.elevation_max_m) <= ?', [$filtros['elev_hasta']]);
-        }
-        if (! empty($filtros['biomas'])) {
-            $query->whereIn(DB::raw('LOWER(e.biome)'), array_map('mb_strtolower', $filtros['biomas']));
-        }
-        if (! empty($filtros['habitat'])) {
-            $query->where(static fn (Builder $q) => $q->where('e.habitat', 'ILIKE', '%'.$filtros['habitat'].'%')
-                ->orWhere('e.microhabitat', 'ILIKE', '%'.$filtros['habitat'].'%'));
-        }
-        foreach (['tipo' => ['type_status', 'type_status_visible'], 'casta' => ['caste', 'caste_visible'], 'estadio' => ['life_stage', 'life_stage_visible']] as $clave => [$columna, $visibilidad]) {
-            if (! empty($filtros[$clave])) {
-                $query->where('d.'.$visibilidad, true)->where('e.'.$columna, 'ILIKE', '%'.$filtros[$clave].'%');
-            }
-        }
-        if (($filtros['identificacion'] ?? '') === 'especie') {
-            $query->where('d.scientific_name_visible', true)
-                ->whereExists(static fn (Builder $subconsulta) => $subconsulta->selectRaw('1')->from('taxonomia.taxones as identificacion')->whereColumn('identificacion.id', 'e.taxon_id')->where('identificacion.rango', 'especie'));
-        }
-        if (($filtros['identificacion'] ?? '') === 'superior') {
-            $query->where('d.scientific_name_visible', true)
-                ->whereExists(static fn (Builder $subconsulta) => $subconsulta->selectRaw('1')->from('taxonomia.taxones as identificacion')->whereColumn('identificacion.id', 'e.taxon_id')->where('identificacion.rango', '<>', 'especie'));
-        }
-        if (($filtros['ubicacion'] ?? '') === '1') {
-            $query->where('d.decimal_latitude_visible', true)->where('d.decimal_longitude_visible', true)
-                ->whereNotNull('e.decimal_latitude')->whereNotNull('e.decimal_longitude');
-        }
-        if (($filtros['aptitud'] ?? '') === 'completos') {
-            $query->where('d.scientific_name_visible', true)->where('d.event_date_visible', true)
-                ->where('d.decimal_latitude_visible', true)->where('d.decimal_longitude_visible', true)
-                ->whereNotNull('e.fecha_colecta')->whereNotNull('e.decimal_latitude')->whereNotNull('e.decimal_longitude')
-                ->whereExists(static fn (Builder $subconsulta) => $subconsulta->selectRaw('1')->from('taxonomia.taxones as apto')
-                    ->whereColumn('apto.id', 'e.taxon_id')->where('apto.rango', 'especie'));
-        }
+        $datos['filtroFechaDesde'] = $filtros['desde_fecha'] ?? (isset($filtros['desde']) ? $filtros['desde'].'-01-01' : '');
+        $datos['filtroFechaHasta'] = $filtros['hasta_fecha'] ?? (isset($filtros['hasta']) ? $filtros['hasta'].'-12-31' : '');
+        $datos['filtroDatosCompletos'] = ($filtros['aptitud'] ?? '') === 'completos' ? '1' : '';
+        if (isset($filtros['metodo'])) $datos['filtroMetodos'] = [$filtros['metodo']];
 
-        return $query;
+        return app(EloquentProveedorEspecimenesParaArbol::class)->consultaPublica(
+            FiltrosBusqueda::desde($datos), $filtros['nivel'] ?? '', $filtros['taxon_navegado'] ?? '',
+        );
     }
 
     private function reglasFiltros(): array
@@ -260,12 +170,12 @@ final class PortalEstadisticas
     private function resumir(array $filtros): array
     {
         $base = $this->consulta($filtros);
-        $resumen = (array) (clone $base)->leftJoin('taxonomia.taxones as t', 't.id', '=', 'e.taxon_id')
-            ->selectRaw("COUNT(*) AS registros, COUNT(*) FILTER (WHERE t.rango = 'especie' AND d.scientific_name_visible) AS identificados, COUNT(*) FILTER (WHERE e.fecha_colecta IS NOT NULL AND d.event_date_visible) AS fechados, COUNT(*) FILTER (WHERE e.decimal_latitude IS NOT NULL AND e.decimal_longitude IS NOT NULL AND d.decimal_latitude_visible AND d.decimal_longitude_visible) AS georreferenciados, COUNT(*) FILTER (WHERE t.rango = 'especie' AND d.scientific_name_visible AND e.fecha_colecta IS NOT NULL AND d.event_date_visible AND e.decimal_latitude IS NOT NULL AND e.decimal_longitude IS NOT NULL AND d.decimal_latitude_visible AND d.decimal_longitude_visible) AS aptos")
+        $resumen = (array) (clone $base)->leftJoin('taxonomia.taxones as t', 't.id', '=', 'te.taxon_id')
+            ->selectRaw("COUNT(*) AS registros, COUNT(*) FILTER (WHERE t.rango = 'especie' AND ed.scientific_name_visible) AS identificados, COUNT(*) FILTER (WHERE te.fecha_colecta IS NOT NULL AND ed.event_date_visible) AS fechados, COUNT(*) FILTER (WHERE te.decimal_latitude BETWEEN -90 AND 90 AND te.decimal_longitude BETWEEN -180 AND 180 AND ed.decimal_latitude_visible AND ed.decimal_longitude_visible) AS georreferenciados, COUNT(*) FILTER (WHERE t.rango = 'especie' AND ed.scientific_name_visible AND te.fecha_colecta IS NOT NULL AND ed.event_date_visible AND te.decimal_latitude BETWEEN -90 AND 90 AND te.decimal_longitude BETWEEN -180 AND 180 AND ed.decimal_latitude_visible AND ed.decimal_longitude_visible) AS aptos")
             ->first();
 
-        $porTaxon = (clone $base)->where('d.scientific_name_visible', true)->selectRaw('e.taxon_id, COUNT(*) AS total')
-            ->groupBy('e.taxon_id')->get();
+        $porTaxon = (clone $base)->where('ed.scientific_name_visible', true)->selectRaw('te.taxon_id, COUNT(*) AS total')
+            ->groupBy('te.taxon_id')->get();
         $taxones = DB::table('taxonomia.taxones')->select('id', 'padre_id', 'rango', 'nombre_cientifico')
             ->get()->keyBy('id');
         $filos = [];
@@ -285,33 +195,33 @@ final class PortalEstadisticas
         unset($filos['Sin filo']);
         arsort($filos);
 
-        $especies = (clone $base)->join('taxonomia.taxones as t', 't.id', '=', 'e.taxon_id')
-            ->where('t.rango', 'especie')->where('d.scientific_name_visible', true)
+        $especies = (clone $base)->join('taxonomia.taxones as t', 't.id', '=', 'te.taxon_id')
+            ->where('t.rango', 'especie')->where('ed.scientific_name_visible', true)
             ->selectRaw('t.nombre_cientifico AS nombre, COUNT(*) AS total')
             ->groupBy('t.nombre_cientifico')->orderByDesc('total')->limit(20)->get()->map(static fn (object $fila): array => (array) $fila)->all();
-        $riqueza = (clone $base)->join('taxonomia.taxones as riqueza_t', 'riqueza_t.id', '=', 'e.taxon_id')
-            ->where('riqueza_t.rango', 'especie')->where('d.scientific_name_visible', true)
-            ->where('d.state_province_visible', true)->whereNotNull('e.state_province')->where('e.state_province', '<>', '')
-            ->selectRaw('e.state_province AS provincia, COUNT(DISTINCT riqueza_t.nombre_cientifico) AS especies, COUNT(*) AS registros')
-            ->groupBy('e.state_province')->orderByDesc('especies')->limit(10)->get()->map(static fn (object $fila): array => (array) $fila)->all();
-        $decadas = (clone $base)->join('taxonomia.taxones as decada_t', 'decada_t.id', '=', 'e.taxon_id')
-            ->where('decada_t.rango', 'especie')->where('d.scientific_name_visible', true)
-            ->where('d.event_date_visible', true)->whereNotNull('e.fecha_colecta')
-            ->selectRaw('FLOOR(EXTRACT(YEAR FROM e.fecha_colecta) / 10)::integer * 10 AS decada, COUNT(DISTINCT decada_t.nombre_cientifico) AS especies, COUNT(*) AS registros')
+        $riqueza = (clone $base)->join('taxonomia.taxones as riqueza_t', 'riqueza_t.id', '=', 'te.taxon_id')
+            ->where('riqueza_t.rango', 'especie')->where('ed.scientific_name_visible', true)
+            ->where('ed.state_province_visible', true)->whereNotNull('te.state_province')->where('te.state_province', '<>', '')
+            ->selectRaw('te.state_province AS provincia, COUNT(DISTINCT riqueza_t.nombre_cientifico) AS especies, COUNT(*) AS registros')
+            ->groupBy('te.state_province')->orderByDesc('especies')->limit(10)->get()->map(static fn (object $fila): array => (array) $fila)->all();
+        $decadas = (clone $base)->join('taxonomia.taxones as decada_t', 'decada_t.id', '=', 'te.taxon_id')
+            ->where('decada_t.rango', 'especie')->where('ed.scientific_name_visible', true)
+            ->where('ed.event_date_visible', true)->whereNotNull('te.fecha_colecta')
+            ->selectRaw('FLOOR(EXTRACT(YEAR FROM te.fecha_colecta) / 10)::integer * 10 AS decada, COUNT(DISTINCT decada_t.nombre_cientifico) AS especies, COUNT(*) AS registros')
             ->groupByRaw('1')->orderBy('decada')->get()->map(static fn (object $fila): array => (array) $fila)->all();
-        $raras = (clone $base)->join('taxonomia.taxones as rara_t', 'rara_t.id', '=', 'e.taxon_id')
-            ->where('rara_t.rango', 'especie')->where('d.scientific_name_visible', true)
+        $raras = (clone $base)->join('taxonomia.taxones as rara_t', 'rara_t.id', '=', 'te.taxon_id')
+            ->where('rara_t.rango', 'especie')->where('ed.scientific_name_visible', true)
             ->selectRaw('rara_t.nombre_cientifico AS nombre, COUNT(*) AS total')
             ->groupBy('rara_t.nombre_cientifico')->havingRaw('COUNT(*) <= 3')
             ->orderBy('total')->orderBy('nombre')->limit(12)->get()->map(static fn (object $fila): array => (array) $fila)->all();
 
         // Celdas de 0,25 grados: el navegador recibe centenares de círculos,
         // nunca las decenas de miles de coordenadas individuales.
-        $mapaPorTaxon = (clone $base)->where('d.decimal_latitude_visible', true)
-            ->where('d.decimal_longitude_visible', true)
-            ->whereNotNull('e.decimal_latitude')->whereNotNull('e.decimal_longitude')
-            ->whereBetween('e.decimal_latitude', [-90, 90])->whereBetween('e.decimal_longitude', [-180, 180])
-            ->selectRaw('ROUND((e.decimal_latitude * 4)::numeric) / 4 AS lat, ROUND((e.decimal_longitude * 4)::numeric) / 4 AS lon, e.taxon_id, d.scientific_name_visible, COUNT(*) AS total')
+        $mapaPorTaxon = (clone $base)->where('ed.decimal_latitude_visible', true)
+            ->where('ed.decimal_longitude_visible', true)
+            ->whereNotNull('te.decimal_latitude')->whereNotNull('te.decimal_longitude')
+            ->whereBetween('te.decimal_latitude', [-90, 90])->whereBetween('te.decimal_longitude', [-180, 180])
+            ->selectRaw('ROUND((te.decimal_latitude * 4)::numeric) / 4 AS lat, ROUND((te.decimal_longitude * 4)::numeric) / 4 AS lon, te.taxon_id, ed.scientific_name_visible, COUNT(*) AS total')
             ->groupByRaw('1, 2, 3, 4')->get();
         $celdas = [];
         foreach ($mapaPorTaxon as $fila) {

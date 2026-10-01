@@ -14,6 +14,14 @@ final class DetectorEntidadesChat
     /** @return array{taxon?:string,provincia?:string,localidad?:string,pais?:string,codigo?:string} */
     public function extraer(string $pregunta): array
     {
+        $identificador = trim($pregunta);
+        if (preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{2,80}$/', $identificador) && preg_match('/[0-9._:-]/', $identificador)) {
+            return ['codigo' => $identificador];
+        }
+        if (preg_match('/^[\p{L}]+(?:\s+[\p{L}.-]+)?$/u', $identificador)) {
+            $taxonDirecto = DB::table('taxonomia.taxones')->whereRaw('lower(nombre_cientifico) = lower(?)', [$identificador])->value('nombre_cientifico');
+            if ($taxonDirecto !== null) return ['taxon' => $taxonDirecto];
+        }
         if (preg_match('/\b(?:buscar|c[oó]digo|catalogo)\s+([A-Za-z0-9][A-Za-z0-9._:-]{2,80})/iu', $pregunta, $match)
             && ! in_array($this->texto->normalizar($match[1]), ['especimenes', 'especies', 'registros', 'taxones', 'familias'], true)
             && (preg_match('/[0-9._:-]/', $match[1]) || DB::table('taxonomia.especimenes as e')

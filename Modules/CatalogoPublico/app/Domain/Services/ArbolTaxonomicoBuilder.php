@@ -54,9 +54,9 @@ final class ArbolTaxonomicoBuilder
                 if ($taxon === '') {
                     continue;
                 }
-                $nodo = NodoTaxonomico::crear($rango, $taxon, $padreAnterior);
-
-                if (! isset($nodosMapa[$nodo->clave()])) {
+                $clave = $rango->value.'::'.$taxon;
+                if (! isset($nodosMapa[$clave])) {
+                    $nodo = NodoTaxonomico::crear($rango, $taxon, $padreAnterior);
                     $nodosMapa[$nodo->clave()] = $nodo;
                 }
 
@@ -76,14 +76,13 @@ final class ArbolTaxonomicoBuilder
             if ($especimen->jerarquia->scientificName === '') {
                 continue;
             }
-            $nodoEspecie = NodoEspecie::desdeJerarquia($especimen->jerarquia);
-
-            if (! isset($especiesMapa[$nodoEspecie->especie])) {
+            $nombre = $especimen->jerarquia->scientificName;
+            if (! isset($especiesMapa[$nombre])) {
+                $nodoEspecie = NodoEspecie::desdeJerarquia($especimen->jerarquia);
                 $especiesMapa[$nodoEspecie->especie] = $nodoEspecie;
             }
-
-            $especimenesPorEspecie[$nodoEspecie->especie][] = $especimen->occurrenceID;
-            $especimenesPorNodo['species:'.$nodoEspecie->especie][] = $especimen->especimenId;
+            $especimenesPorEspecie[$nombre][] = $especimen->occurrenceID;
+            $especimenesPorNodo['species:'.$nombre][] = $especimen->especimenId;
         }
 
         // Cada nodo procede de un registro visible: conserva los identificados solo

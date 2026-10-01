@@ -20,7 +20,7 @@
                     </span>
                     <div class="min-w-0">
                         <p class="text-sm font-semibold leading-tight">Asistente HubDigital</p>
-                        <p class="text-xs text-white/75">Depósitos y catálogo público</p>
+                        <p class="text-xs text-white/75">Portal, colección y fuentes públicas</p>
                     </div>
                 </div>
                 <button type="button" wire:click="nuevaConversacion" class="ml-auto shrink-0 cursor-pointer rounded-lg px-2 py-1 text-xs font-semibold text-white/90 hover:bg-white/15" title="Borrar el contexto de este chat">Nueva conversación</button>
@@ -50,7 +50,7 @@
                                     <div class="mt-2.5 flex flex-wrap gap-1.5">
                                         @foreach($mensaje['opciones'] as $opcion)
                                             @if(isset($opcion['pregunta']))
-                                                <button type="button" wire:click="sugerir(@js($opcion['pregunta']))"
+                                                <button type="button" wire:click="sugerir(@js($opcion['pregunta']))" wire:loading.attr="disabled" wire:target="enviar,sugerir"
                                                     class="cursor-pointer rounded-full border border-science-blue/25 bg-[#F5F8FC] px-2.5 py-1.5 text-xs font-medium text-science-blue transition hover:border-science-blue hover:bg-science-blue/10">
                                                     {{ $opcion['label'] }}
                                                 </button>
@@ -80,12 +80,12 @@
                     <div class="flex items-end gap-2">
                         <span class="mb-1 flex size-7 shrink-0 items-center justify-center rounded-full bg-science-blue/10 text-science-blue" aria-hidden="true"><flux:icon name="sparkles" class="size-4" /></span>
                         <div class="max-w-[88%] rounded-2xl rounded-bl-sm border border-blue-navy/10 bg-white px-3.5 py-2.5 text-sm leading-5 text-blue-navy shadow-sm">
-                            ¡Hola! Cuéntame qué necesitas sobre depósitos o el catálogo público.
+                            ¡Hola! Puedo ayudarte con el portal, consultar cantidades de la colección y buscar información general en fuentes públicas. Escribe tu pregunta o explora el menú.
                         </div>
                     </div>
                     <div class="flex flex-wrap gap-1.5 pl-9">
-                        @foreach(['¿Qué documentos necesito?', 'Quiero hacer un depósito', 'Buscar especímenes'] as $sugerencia)
-                            <button type="button" wire:click="sugerir(@js($sugerencia))"
+                        @foreach(['Menú', '¿Cuántas especies hay en la colección?', '¿Cómo aplico los filtros del mapa?'] as $sugerencia)
+                            <button type="button" wire:click="sugerir(@js($sugerencia))" wire:loading.attr="disabled" wire:target="enviar,sugerir"
                                 class="cursor-pointer rounded-full border border-science-blue/25 bg-white px-2.5 py-1.5 text-xs font-medium text-science-blue transition hover:border-science-blue hover:bg-science-blue/10">{{ $sugerencia }}</button>
                         @endforeach
                     </div>

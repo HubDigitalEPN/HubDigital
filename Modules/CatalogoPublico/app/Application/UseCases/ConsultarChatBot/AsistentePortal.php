@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Modules\CatalogoPublico\Application\UseCases\ConsultarChatBot;
 
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Modules\CatalogoPublico\Domain\ValueObjects\ChatBotMensajes;
 
@@ -27,23 +25,10 @@ final class AsistentePortal
         if (($social = $this->conversacion->responder($pregunta)) !== null) {
             return $social;
         }
-        $consultaCientifica = (bool) preg_match('/\b(tienen|cuantos?|busca|buscar|existe|registros|especies|familias|generos|ejemplares|especimenes|catalogo)\b/', $normal)
-            || ($contextoCatalogo !== [] && (bool) preg_match('/^(?:y\s+de\s+|y\s+)?cuantos?|^y\s+de\s+|^(?:perdon|corrijo|quise decir|queria decir|no\s+)|^donde\s+los\s+encontraron/i', $normal));
-        if ($consultaCientifica && ($publica = $this->consultaCatalogo->responder($pregunta, $contextoCatalogo)) !== null) {
-            return $publica;
-        }
-        if (($compuesta = $this->conocimiento->responderCompuesta($pregunta)) !== null) {
-            return $compuesta;
-        }
-        $conocida = $this->conocimiento->responder($pregunta, $nodoAnterior, $variantesRecientes);
-        if ($conocida !== null) {
-            return $conocida;
-        }
-
         if (preg_match('/^(menu|ayuda|que puedo hacer|que necesitas)/', $normal)) {
             return $this->menuPrincipal();
         }
-        if (preg_match('/^(buscar un especimen|buscar especimen)$/', $normal)) {
+        if (preg_match('/^buscar (?:un )?especimen(?:es)?[?.]*$/', $normal)) {
             return ['texto' => '¿Qué dato tienes para buscar en los registros publicados?', 'opciones' => [
                 ['label' => 'Código de catálogo', 'pregunta' => 'Tengo el código'],
                 ['label' => 'Género o especie', 'pregunta' => 'Sé el nombre científico'],
@@ -81,6 +66,10 @@ final class AsistentePortal
             ]];
         }
 
+        if (preg_match('/^(?:cuanto es|calcula|cuanto da)\s+-?\d|^-?\d+\s*[+*\/-]/', $normal)) {
+            return app(FuentesPublicasChat::class)->responder($pregunta);
+        }
+
         if (preg_match('/prestam|solicitante|pedir especimen/', $normal)) {
             return [
                 'texto' => 'Para solicitar especimenes en prestamo, entra con tu cuenta y activa el rol Solicitante desde Configuracion. Luego abre Mis solicitudes y registra el material que necesitas.',
@@ -99,6 +88,26 @@ final class AsistentePortal
                     ['label' => 'Consultar la colección', 'pregunta' => 'Consultar la colección'],
                 ],
             ];
+        }
+
+        if (preg_match('/filtro|filtrar|leyenda|mapa|dashboard|indice|exportar|geojson/i', $normal)
+            && ! preg_match('/cuant|registros de|especies de/', $normal)) {
+            return ['texto' => 'Abre Filtros de investigación, elige los criterios y pulsa Aplicar filtros en la barra inferior. La misma selección actualiza tarjetas, registros y todos los paneles del mapa. Limpiar elimina los filtros. Seleccionar un filo, provincia o década también filtra el análisis. El mapa solo ubica coordenadas públicas válidas; la leyenda explica sus colores. En el menú de tres puntos de cada panel puedes descargar datos, conservar el enlace con filtros y abrir Índice para conocer el cálculo y sus límites.',
+                'opciones' => [['label' => 'Abrir mapa y análisis', 'url' => route('portal.catalogo', ['vista' => 'mapa'])]],
+                'fuente' => 'portal', 'intent' => 'portal.filtros'];
+        }
+        $consultaCientifica = (bool) preg_match('/\b(tienen|cuant[oa]s?|busca|buscar|existe|registros|especies|familias|generos|ejemplares|especimenes|catalogo)\b/', $normal)
+            || (bool) preg_match('/^[\p{L}][\p{L}\d_.:-]*(?:\s+[\p{L}][\p{L}.-]*)?$/u', trim($pregunta))
+            || ($contextoCatalogo !== [] && (bool) preg_match('/^(?:y\s+de\s+|y\s+)?cuantos?|^y\s+de\s+|^(?:perdon|corrijo|quise decir|queria decir|no\s+)|^donde\s+los\s+encontraron/i', $normal));
+        if ($consultaCientifica && ($publica = $this->consultaCatalogo->responder($pregunta, $contextoCatalogo)) !== null) {
+            return $publica;
+        }
+        if (($compuesta = $this->conocimiento->responderCompuesta($pregunta)) !== null) {
+            return $compuesta;
+        }
+        $conocida = $this->conocimiento->responder($pregunta, $nodoAnterior, $variantesRecientes);
+        if ($conocida !== null) {
+            return $conocida;
         }
 
         $preguntaBiologica = (bool) preg_match('/^(que (son|es|hacen|funcion)|para que sirven|por que|como viven|cual es la funcion)/', $normal)
@@ -124,32 +133,7 @@ final class AsistentePortal
             }
         }
 
-        if (! preg_match('/\b(artr[oó]pod|insect|invertebr|hormig|maripos|ara[nñ]|escarabaj|crust[aá]ce|molusc|biodivers|ecolog|taxonom|animal|especie|abej|avisp|cole[oó]pter|lepid[oó]pter)\w*/iu', $pregunta)
-            && ! preg_match('/\b[A-Z][a-z]{2,}\s+[a-z]{3,}\b/u', $pregunta)) {
-            return $this->menuPrincipal($pregunta);
-        }
-
-        $biologiaLocal = $this->biologiaLocal($normal);
-        if ($biologiaLocal !== null) {
-            return $biologiaLocal;
-        }
-
-        if (! config('chatbot.use_external_biology', false)) {
-            return ['texto' => 'Puedo responder sobre grupos comunes de invertebrados y consultar los registros publicados. Indica el grupo o un nombre científico para precisar la respuesta.', 'opciones' => [
-                ['label' => 'Artrópodos', 'pregunta' => '¿Qué son los artrópodos?'],
-                ['label' => 'Insectos', 'pregunta' => '¿Qué son los insectos?'],
-                ['label' => 'Buscar espécimen', 'pregunta' => 'Buscar un espécimen'],
-            ]];
-        }
-
-        $libre = $this->consultarWikipedia($pregunta);
-        if ($libre !== null) {
-            $respuesta = $this->modeloLocal->resumir($pregunta, $libre['extracto']) ?? $libre['extracto'];
-
-            return ['texto' => $respuesta.' Fuente externa: '.$libre['url'], 'opciones' => $opciones];
-        }
-
-        return $this->menuPrincipal($pregunta);
+        return app(FuentesPublicasChat::class)->responder($pregunta);
     }
 
     /** @return array{texto:string,opciones:array} */
@@ -249,56 +233,4 @@ final class AsistentePortal
         ];
     }
 
-    /** @return array{extracto:string,url:string}|null */
-    private function consultarWikipedia(string $pregunta): ?array
-    {
-        $tema = preg_replace('/^[\\s\\x{00bf}\\?]*(?:qu[e\\x{00e9}]|cu[a\\x{00e1}]l(?:es)?|c[o\\x{00f3}]mo|d[o\\x{00f3}]nde)\\s+(?:son|es|se|viven|hacen)?\\s*(?:los|las|el|la|un|una)?\\s*/iu', '', trim($pregunta));
-        $tema = trim((string) $tema, " \\t\\n\\r\\0\\x0B?\\x{00bf}");
-
-        $clave = 'chatbot:fuente:'.hash('sha256', Str::lower($tema));
-        $enCache = Cache::get($clave);
-        if (is_array($enCache) && isset($enCache['extracto'], $enCache['url'])) {
-            return $enCache;
-        }
-
-        try {
-            $resultado = Http::withHeaders([
-                'User-Agent' => 'HubDigital/1.0 (consulta educativa; contacto: hubdigital.epn@kintiflow.com)',
-            ])->timeout(4)->get('https://es.wikipedia.org/w/api.php', [
-                'action' => 'query',
-                'generator' => 'search',
-                'gsrsearch' => Str::limit($tema !== '' ? $tema : trim($pregunta), 160, ''),
-                'gsrlimit' => 5,
-                'prop' => 'extracts|info',
-                'exintro' => 1,
-                'explaintext' => 1,
-                'exchars' => 800,
-                'inprop' => 'url',
-                'format' => 'json',
-                'formatversion' => 2,
-            ]);
-
-            if (! $resultado->successful()) {
-                return null;
-            }
-
-            $paginas = (array) $resultado->json('query.pages', []);
-            $raiz = mb_substr(Str::lower(Str::ascii($tema)), 0, 5);
-            $pagina = collect($paginas)->first(static fn (mixed $item): bool => is_array($item)
-                && $raiz !== '' && str_starts_with(Str::lower(Str::ascii((string) ($item['title'] ?? ''))), $raiz))
-                ?? ($paginas[0] ?? []);
-            $resumen = trim((string) ($pagina['extract'] ?? ''));
-            $enlace = (string) ($pagina['fullurl'] ?? '');
-            if ($resumen === '' || ! str_starts_with($enlace, 'https://es.wikipedia.org/')) {
-                return null;
-            }
-
-            $fuente = ['extracto' => Str::limit($resumen, 760), 'url' => $enlace];
-            Cache::put($clave, $fuente, now()->addDay());
-
-            return $fuente;
-        } catch (\Throwable) {
-            return null;
-        }
-    }
 }

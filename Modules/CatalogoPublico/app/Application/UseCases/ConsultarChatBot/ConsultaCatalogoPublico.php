@@ -44,11 +44,12 @@ final class ConsultaCatalogoPublico
         if (isset($entities['taxon']) && preg_match('/\bgeneros\b/', $normal)) {
             return $this->generos($entities['taxon'], $options);
         }
-        if ($entities === [] && ! preg_match('/\bcuantos?\s+(?:registros|especimenes|ejemplares)\s+(?:tienen|hay|estan)/', $normal)) {
+        if ($entities === [] && ! preg_match('/\bcuant[oa]s?\s+(?:registros|especimenes|ejemplares|especies)\s+(?:tienen|hay|estan)/', $normal)) {
             return null;
         }
         $query = $this->publicos();
         if (isset($entities['taxon'])) {
+            $query->where('d.scientific_name_visible', true);
             $query->whereRaw('e.taxon_id IN (
                 WITH RECURSIVE taxa AS (
                     SELECT id FROM taxonomia.taxones WHERE lower(nombre_cientifico) = lower(?)
@@ -81,15 +82,16 @@ final class ConsultaCatalogoPublico
             return $this->resultado('No encontré registros publicados'.$de.' en el catálogo. Esto no confirma si existen ejemplares no divulgados.'.$hint, 'catalogo.count', $entities, 0, [], $options);
         }
         if (preg_match('/\bespecies\b/', $normal)) {
+            $query->where('t.rango', 'especie')->where('d.scientific_name_visible', true);
             $rows = (clone $query)->select('t.nombre_cientifico')->distinct()->orderBy('t.nombre_cientifico')->limit(8)->pluck('nombre_cientifico')->all();
-            $count = (clone $query)->distinct()->count('t.id');
+            $count = (clone $query)->distinct()->count('t.nombre_cientifico');
             $text = 'Hay '.$count.' '.($count === 1 ? 'especie publicada' : 'especies publicadas').$de.'. '.implode('; ', $rows).($count > 8 ? '; se muestran las primeras 8.' : '.');
             return $this->resultado($text, 'catalogo.species', $entities, $count, $rows, $options);
         }
         if (preg_match('/\b(cuantos?|numero|total|tienen|existe|hay registros)\b/', $normal)) {
             return $this->resultado('Hay '.$total.' '.($total === 1 ? 'registro publicado' : 'registros publicados').$de.' en el catálogo.', 'catalogo.count', $entities, $total, [], $options);
         }
-        $rows = (clone $query)->select('e.occurrence_id', 't.nombre_cientifico')
+        $rows = (clone $query)->where('d.occurrence_id_visible', true)->where('d.scientific_name_visible', true)->select('e.occurrence_id', 't.nombre_cientifico')
             ->orderBy('e.occurrence_id')->limit(10)->get()
             ->map(static fn ($row) => $row->occurrence_id.' — '.$row->nombre_cientifico)->all();
         $text = 'Encontré '.$total.' '.($total === 1 ? 'registro publicado' : 'registros publicados').$de.'. Primeros resultados: '.implode('; ', $rows).($total > 10 ? '; se muestran los primeros 10.' : '.');
@@ -101,8 +103,7 @@ final class ConsultaCatalogoPublico
         return DB::table('taxonomia.especimenes as e')
             ->join('taxonomia.taxones as t', 't.id', '=', 'e.taxon_id')
             ->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
-            ->where('d.publicado', true)->where('t.rango', 'especie')->where('d.occurrence_id_visible', true)
-            ->where('d.scientific_name_visible', true)->whereNotNull('e.occurrence_id');
+            ->where('d.publicado', true);
     }
 
     /** Solo propone nombres que aparecen en registros públicos; nunca cambia el filtro en silencio. */
@@ -132,7 +133,8 @@ final class ConsultaCatalogoPublico
 
     private function porCodigo(string $code, array $options): array
     {
-        $rows = $this->publicos()->whereRaw('lower(e.occurrence_id) = lower(?)', [$code])
+        $rows = $this->publicos()->where('d.occurrence_id_visible', true)->where('d.scientific_name_visible', true)
+            ->whereRaw('(lower(e.occurrence_id) = lower(?) OR lower(e.codigo_catalogo) = lower(?))', [$code, $code])
             ->select('e.occurrence_id', 't.nombre_cientifico')->orderBy('e.occurrence_id')->limit(10)->get();
         $items = $rows->map(static fn ($row) => $row->occurrence_id.' — '.$row->nombre_cientifico)->all();
         $text = $rows->isEmpty() ? 'No encontré registros públicos con ese código en el catálogo.'
@@ -162,15 +164,15 @@ final class ConsultaCatalogoPublico
                 JOIN taxonomia.taxones t ON t.id = e.taxon_id
                 JOIN divulgacion.especimenes_divulgables d ON d.especimen_id = e.id
                 WHERE d.publicado = true AND d.occurrence_id_visible = true AND d.scientific_name_visible = true
-                  AND d.family_visible = true AND e.occurrence_id IS NOT NULL AND t.rango = 'especie'
+                  AND d.family_visible = true AND e.occurrence_id IS NOT NULL
                 UNION ALL
                 SELECT l.especimen_id, p.id, p.padre_id, p.rango, p.nombre_cientifico, l.profundidad + 1
                 FROM linaje l JOIN taxonomia.taxones p ON p.id = l.padre_id WHERE l.profundidad < 15
             )
-            SELECT nombre_cientifico FROM linaje WHERE rango = 'familia'
-            GROUP BY nombre_cientifico ORDER BY nombre_cientifico LIMIT 10
+            SELECT nombre_cientifico, COUNT(DISTINCT especimen_id) AS registros FROM linaje WHERE rango = 'familia'
+            GROUP BY nombre_cientifico ORDER BY registros DESC, nombre_cientifico LIMIT 10
             SQL;
-        $rows = array_map(static fn ($row) => $row->nombre_cientifico, DB::select($sql));
+        $rows = array_map(static fn ($row) => $row->nombre_cientifico.' ('.$row->registros.' registros)', DB::select($sql));
         $text = $rows === [] ? 'No encontré familias con registros publicados.'
             : 'Estas familias tienen registros publicados: '.implode('; ', $rows).'. Puedes abrir el catálogo para ver más.';
         return $this->resultado($text, 'catalogo.families', [], count($rows), $rows, $options);
