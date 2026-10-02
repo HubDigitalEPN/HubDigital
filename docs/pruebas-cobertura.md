@@ -1,5 +1,22 @@
 # Distribución de las pruebas
 
+## Cartografía, selección y QA3 — 2 de octubre de 2026
+
+La tarea autoriza al agente a ejecutar y reintentar `crear-paquete-oci` hasta crear el artefacto. Las suites se ejecutan exclusivamente dentro de ese comando. La revisión de regresión y UX/UI corresponde a Dot; Codex realiza revisión estática. Véase el [plan y contraste](portal-cartografia-qa3-20261002.md).
+
+| Contrato | Cobertura centralizada |
+| --- | --- |
+| Coordenadas exactas WGS84, rechazo de puntos inválidos, tamaños por cantidad, selección por filo y GeoJSON sin alterar el dato | `tests/Frontend/portal-map-model.test.mjs`, con `node --test` dentro del paquete después de Vite y antes de publicar |
+| Provincia/localidad homónima, acentos, límites ISO/diarios, elevación/enlaces, referencias de códigos, cambios de mes y ayuda pública | `tests/Feature/PortalChatContratoSeleccionTest.php` y `tests/Unit/FiltrosLenguajeChatTest.php`; detalles en `Modules/CatalogoPublico/docs/chat-qa3-contratos.md` |
+| Propósito excluyente/restaurable, único h1 de recuperación y controles de contraseña vinculados al campo y al estado inicial | `tests/Feature/Auth/PortalFormularioSemanticaTest.php`, renderizado HTTP dentro de Pest; no certifica apariencia ni interacciones de navegador |
+| Recursos de ilustración de bajo peso, elección por linaje, fallback sin morfología inventada y cuatro representantes Formicidae | `Modules/CatalogoPublico/tests/Unit/IlustracionTaxonomicaTest.php` |
+| Fotos heredadas de etiqueta ambigua conservadas sin atribución pública ni acceso al objeto | `tests/Feature/RutasObjetosR2Test.php` |
+| Identidad UUID con códigos repetidos entre especies, paginación de 12, ubicación exacta/árbol, métodos preservados, notas curatoriales y permisos de taxones | `tests/Feature/PortalCartografiaRealTest.php`, selección existente en `PortalCatalogoSeleccionTest.php` y pruebas unitarias `FilaCatalogoMapperTest.php` / `ImportarCatalogoInvertebradosTest.php` ampliadas |
+
+La recuperación del protocolo original se documenta en [procedencia y recuperación](portal-protocolos-recuperacion-2026-10-02.md). Se versiona un derivado compacto de la fuente Excel, leído en bloques durante la migración; la publicación del paquete no ejecuta las migraciones de la VM de OCI.
+
+Los casos de coordenadas originales reemplazan el contrato anterior de centros de cuadrícula: el mapa y GeoJSON ahora usan latitud/longitud de los registros, con agrupación únicamente de ubicaciones coincidentes. Se conserva la privacidad y la referencia original de precisión. No se agregan escenarios Gherkin equivalentes a estas entradas, flujos y resultados de Pest/Node. Los contratos Behat de negocio existentes permanecen activos sin reducir aserciones ni etiquetas.
+
 Pest conserva las comprobaciones de componentes, las pruebas de persistencia y los recorridos completos que ya tiene implementados. Gherkin, ejecutado por Behat, añade contratos de negocio y recorridos entre componentes con resultados que Pest todavía no comprueba.
 
 Un duplicado tiene las mismas entradas, el mismo recorrido y el mismo resultado comprobado. Usar un mismo componente para preparar datos no convierte dos recorridos distintos en un duplicado. Antes de añadir un escenario, revisar las pruebas activas de `phpunit.xml` y los escenarios `@listo` de Behat.
@@ -67,7 +84,7 @@ Las pruebas de selección también distinguen coordenadas reservadas o fuera de 
 
 La revisión complementaria de navegador cubre puntos visibles, leyenda, comportamiento de Leaflet al reemplazar el panel, foco y Escape de los menús y diálogos, flujo del texto alrededor de cada imagen, botones inferiores al desplazar y contraer filtros, tamaños de pantalla y descargas. El recorrido del chatbot incluye preguntas escritas, ramas mediante botones y reinicio de conversación. Esa evidencia visual complementa las aserciones de datos y no sustituye las suites del paquete. La base de la vista previa local no contiene ejemplares públicos: la concordancia de conteos se comprueba con las fixtures de Pest; los puntos reales se inspeccionan en una vista previa de los estilos sobre el portal de desarrollo.
 
-Las opciones del menú se apoyan en los [formatos de descarga de GBIF](https://techdocs.gbif.org/en/data-use/download-formats) y en los [formatos vectoriales admitidos por QGIS](https://docs.qgis.org/3.44/en/docs/user_manual/managing_data_source/supported_data.html). CSV conserva tablas, JSON incluye los datos del panel y su consulta, GeoJSON exporta centros de cuadrícula con conteos para SIG, y el enlace y la cita conservan filtros y fecha. Los centros redondeados no son coordenadas individuales. El menú denomina estas explicaciones «Indicador». Estacionalidad de colecta, cobertura altitudinal y métodos de recolección reemplazan los paneles de calidad, especies escasas y especies más documentadas; reutilizan imágenes existentes como apoyo visual. Los intervalos altitudinales cuentan registros solapados y no deben sumarse.
+Las opciones del menú se apoyan en los [formatos de descarga de GBIF](https://techdocs.gbif.org/en/data-use/download-formats) y en los [formatos vectoriales admitidos por QGIS](https://docs.qgis.org/3.44/en/docs/user_manual/managing_data_source/supported_data.html). CSV conserva tablas, JSON incluye los datos del panel y su consulta, GeoJSON exporta ubicaciones públicas originales WGS84 con conteos para SIG, y el enlace y la cita conservan filtros y fecha. Agrupar coordenadas coincidentes no implica redondear ni verificar una ubicación estimada como GPS. El menú denomina estas explicaciones «Indicador». Estacionalidad de colecta, cobertura altitudinal y métodos de recolección reemplazan los paneles de calidad, especies escasas y especies más documentadas; reutilizan imágenes existentes como apoyo visual. Los intervalos altitudinales cuentan registros solapados y no deben sumarse.
 
 ### Revisión Dot y mapa público — octubre de 2026
 

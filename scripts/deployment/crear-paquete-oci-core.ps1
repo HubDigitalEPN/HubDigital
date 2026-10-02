@@ -416,6 +416,14 @@ if (-not $OmitirCompilacion) {
         Invoke-Comando -Programa 'npm.cmd' -Argumentos @('audit', '--audit-level=low', '--include=dev', '--include=optional') -Descripcion "Comprobando vulnerabilidades de dependencias: $nombreFrontend" -DirectorioTrabajo $proyectoFrontend
         Invoke-Comando -Programa 'npm.cmd' -Argumentos @('run', 'build') -Descripcion "Compilando y validando JavaScript y CSS con Vite: $nombreFrontend" -DirectorioTrabajo $proyectoFrontend
     }
+
+    # Contratos del mapa sin navegador: precisión WGS84, tamaños por cantidad,
+    # árbol y caché limitada. Se ejecutan aquí una sola vez y bloquean publicación.
+    $directorioPruebasFrontend = Join-Path $Proyecto 'tests\Frontend'
+    $pruebasFrontend = @(Get-ChildItem -LiteralPath $directorioPruebasFrontend -Filter '*.test.mjs' -File |
+        Sort-Object Name | ForEach-Object { $_.FullName })
+    if ($pruebasFrontend.Count -eq 0) { throw 'Faltan los contratos JavaScript del mapa cartografico.' }
+    Invoke-Comando -Programa 'node.exe' -Argumentos (@('--test') + $pruebasFrontend) -Descripcion 'Validando contratos del mapa y arbol taxonomico con Node' -DirectorioTrabajo $Proyecto
 }
 
 $requeridos = @(
@@ -424,6 +432,18 @@ $requeridos = @(
     'public/build-catalogopublico/manifest.json',
     'public/build-gestionprestamosrecepciones/manifest.json',
     'public/build-inventariogestioncoleccion/manifest.json',
+    'Modules/CatalogoPublico/app/Application/Services/IlustracionTaxonomica.php',
+    'Modules/CatalogoPublico/app/Infrastructure/NormalizacionGeografica.php',
+    'Modules/CatalogoPublico/app/Infrastructure/ProtocoloColectaPublico.php',
+    'Modules/CatalogoPublico/database/migrations/2026_10_02_000012_restore_original_sampling_protocol.php',
+    'Modules/CatalogoPublico/database/migrations/2026_10_02_000013_add_portal_lookup_indexes.php',
+    'Modules/CatalogoPublico/database/migrations/2026_10_02_000014_add_portal_cache_revision.php',
+    'resources/data/coleccion-principal-protocolos-20260925.csv.gz',
+    'Modules/CatalogoPublico/resources/views/components/ayuda-taxon.blade.php',
+    'Modules/CatalogoPublico/resources/views/components/nodo-arbol-mapa.blade.php',
+    'Modules/CatalogoPublico/resources/views/components/registro-mapa.blade.php',
+    'public/images/taxonomia/formicidae.webp',
+    'public/images/taxonomia/invertebrados.svg',
     'deploy/oracle/scripts/verify-source-identity.sh',
     'deploy/oracle/scripts/verify-deposit-pdf.php',
     'bootstrap/app.php', 'bootstrap/providers.php', 'bootstrap/cache/.gitignore',

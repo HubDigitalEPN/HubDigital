@@ -1,8 +1,4 @@
-<div x-data="{
-    mostrarArthropoda: false,
-    abrirArthropoda() { this.mostrarArthropoda = true; this.$nextTick(() => this.$refs.cerrarArthropoda?.focus()); },
-    cerrarArthropoda() { this.mostrarArthropoda = false; this.$nextTick(() => this.$refs.abrirArthropoda?.focus()); },
-}">
+<div x-data="portalCatalogo">
     @if($vista === 'tarjetas')
     {{-- =====================================================================
          NAV BAR TAXONÓMICO — siempre visible, permite explorar por nivel
@@ -143,7 +139,7 @@
                                 <tr>
                                     <td class="whitespace-nowrap px-4 py-3 font-medium text-text-primary">{{ $registro->occurrence_id ?: 'Reservado' }}</td>
                                     <td class="px-4 py-3 italic text-text-primary">{{ $registro->scientific_name ?: 'Identificación pendiente' }}
-                                        @if(preg_match('/dañad[oa]|danad[oa]|ilegible/iu', $registro->scientific_name ?? ''))<span class="block text-xs not-italic">Dato original por revisar; excluido de riqueza e identificación a especie.</span>@endif
+                                        @if($registro->taxon_en_revision ?? false)<span class="block text-xs not-italic">Dato original por revisar; excluido de riqueza e identificación a especie.</span>@endif
                                     </td>
                                     <td class="px-4 py-3 text-text-secondary">{{ $registro->event_date ? \Carbon\CarbonImmutable::parse($registro->event_date)->format('d/m/Y') : '—' }}
                                         @if($registro->event_date && ((int) substr($registro->event_date, 0, 4) < 1800 || $registro->event_date > date('Y-m-d')))<span class="block text-xs">Fecha original por revisar; excluida de indicadores temporales.</span>@endif
@@ -207,9 +203,7 @@
                             <div class="min-w-0">
                                 <div class="flex items-center gap-2">
                                     <button type="button" wire:click="navegar('{{ $hijo['nivel'] }}', '{{ $hijo['taxon'] }}')" class="truncate font-serif text-lg italic text-text-primary transition-colors hover:text-science-blue">{{ $hijo['taxon'] }}</button>
-                                    @if($hijo['taxon'] === 'Arthropoda')
-                                        <button type="button" x-ref="abrirArthropoda" x-on:click="abrirArthropoda()" class="inline-flex size-6 shrink-0 items-center justify-center rounded-full border border-science-blue text-xs font-bold text-science-blue hover:bg-science-blue hover:text-white" aria-label="¿Qué es Arthropoda?" title="¿Qué es Arthropoda?">?</button>
-                                    @endif
+                                    <x-catalogopublico::ayuda-taxon :nombre="$hijo['taxon']" :nivel="$hijo['nivel']" :registros="$numEspecimenes" :stats="$stats" :jerarquia="array_column($ruta, 'taxon', 'nivel')" />
                                 </div>
                                 <div class="mt-0.5 text-xs text-text-secondary">{{ $etiquetas[$hijo['nivel']] ?? $hijo['nivel'] }}</div>
                             </div>
@@ -275,30 +269,35 @@
 
                 {{-- Contenido principal --}}
                 <div class="flex-1 min-w-0">
+                    @php
+                        // El linaje publicado puede omitir rangos entre un taxón y sus especies.
+                        $taxonesPagina = array_merge($hijos, array_map(static fn (array $especie): array => [
+                            'nivel' => 'species', 'taxon' => $especie['especie'], 'padre' => $especie['padre'],
+                        ], $especiesActuales));
+                    @endphp
                     <div class="mb-4 flex items-center justify-between">
                         <h2 class="font-display text-xl font-semibold text-blue-navy font-serif italic">
                             {{ $taxonActual }}
                         </h2>
                         <span class="text-xs text-text-secondary">
-                            {{ count($hijos) }} {{ count($hijos) === 1 ? strtolower($etiquetas[$nivelHijo] ?? $nivelHijo) : strtolower($etiquetas[$nivelHijo] ?? $nivelHijo).'s' }}
+                            {{ number_format($totalTarjetas) }} {{ $totalTarjetas === 1 ? 'taxón' : 'taxones' }}
                         </span>
                     </div>
 
-                    @if(count($hijos) === 0)
+                    @if($taxonesPagina === [])
                         <div class="flex items-center justify-center rounded-lg border border-dashed border-border bg-surface py-12 text-sm text-text-secondary">
                             Sin taxones visibles en este nivel.
                         </div>
                     @else
                         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                            @foreach($hijos as $hijo)
+                            @foreach($taxonesPagina as $hijo)
                                 @php
                                     $clave = $hijo['nivel'].':'.$hijo['taxon'];
                                     $stats = $descendientes[$clave] ?? [];
                                     $numEspecimenes = $conteos[$clave] ?? 0;
                                 @endphp
-                                <button
-                                    wire:click="navegar('{{ $hijo['nivel'] }}', '{{ $hijo['taxon'] }}')"
-                                    class="group text-left rounded-lg border border-border bg-surface shadow-sm hover:border-science-blue/40 hover:shadow-md transition-all overflow-hidden"
+                                <article
+                                    class="collection-taxon-card group text-left rounded-lg border border-border bg-surface shadow-sm hover:border-science-blue/40 hover:shadow-md transition-all"
                                 >
                                     {{-- Imagen (solo para género; filo/clase/orden/familia son tarjetas simples) --}}
                                     @if($hijo['nivel'] === 'genus')
@@ -316,14 +315,14 @@
                                     <div class="p-3.5">
                                         <div class="flex items-start justify-between gap-2">
                                             <div class="min-w-0">
-                                                <div class="font-serif italic text-base text-text-primary group-hover:text-science-blue transition-colors truncate">
+                                                <button type="button" wire:click="navegar('{{ $hijo['nivel'] }}', '{{ $hijo['taxon'] }}')" class="collection-taxon-main font-serif italic text-base text-text-primary group-hover:text-science-blue transition-colors">
                                                     {{ $hijo['taxon'] }}
-                                                </div>
+                                                </button>
                                                 <div class="text-xs text-text-secondary mt-0.5">
                                                     {{ $etiquetas[$hijo['nivel']] ?? $hijo['nivel'] }}
                                                 </div>
                                             </div>
-                                            <flux:icon name="chevron-right" class="size-4 text-text-secondary shrink-0 mt-0.5 group-hover:text-science-blue transition-colors" />
+                                            <x-catalogopublico::ayuda-taxon :nombre="$hijo['taxon']" :nivel="$hijo['nivel']" :registros="$numEspecimenes" :stats="$stats" :jerarquia="array_column($ruta, 'taxon', 'nivel')" />
                                         </div>
 
                                         @if(!empty($stats) || $numEspecimenes > 0)
@@ -345,7 +344,7 @@
                                             </div>
                                         @endif
                                     </div>
-                                </button>
+                                </article>
                             @endforeach
                         </div>
                     @endif
@@ -392,7 +391,7 @@
                             <span class="text-base font-normal text-text-secondary">· Género</span>
                         </h2>
                         <span class="text-xs text-text-secondary">
-                            {{ count($especiesActuales) }} {{ count($especiesActuales) === 1 ? 'especie' : 'especies' }}
+                            {{ number_format($totalTarjetas) }} {{ $totalTarjetas === 1 ? 'especie' : 'especies' }}
                         </span>
                     </div>
 
@@ -407,9 +406,8 @@
                                     $numEspecimenes = $conteos['species:'.$especie['especie']] ?? 0;
                                     $portadaEspecie = $portadas['species:'.$especie['especie']] ?? null;
                                 @endphp
-                                <button
-                                    wire:click="navegar('species', '{{ $especie['especie'] }}')"
-                                    class="group w-full text-left rounded-lg border border-border bg-surface shadow-sm px-4 py-3.5 hover:border-science-blue/40 hover:shadow transition-all flex items-center gap-4"
+                                <article
+                                    class="collection-taxon-card group w-full text-left rounded-lg border border-border bg-surface shadow-sm px-4 py-3.5 hover:border-science-blue/40 hover:shadow transition-all flex flex-wrap items-center gap-4"
                                 >
                                     {{-- Imagen por defecto de la especie (si tiene) --}}
                                     @if($portadaEspecie)
@@ -423,9 +421,9 @@
                                     @endif
 
                                     <div class="min-w-0 flex-1">
-                                        <div class="font-serif italic text-base text-text-primary group-hover:text-science-blue transition-colors">
+                                        <button type="button" wire:click="navegar('species', '{{ $especie['especie'] }}')" class="collection-taxon-main font-serif italic text-base text-text-primary group-hover:text-science-blue transition-colors">
                                             {{ $especie['especie'] }}
-                                        </div>
+                                        </button>
                                         <div class="text-xs text-text-secondary mt-0.5">
                                             <span class="italic">{{ $especie['genus'] }}</span>
                                             {{ $especie['specificEpithet'] }}
@@ -437,9 +435,9 @@
                                                 {{ $numEspecimenes }} {{ $numEspecimenes === 1 ? 'registro' : 'registros' }}
                                             </span>
                                         @endif
-                                        <flux:icon name="chevron-right" class="size-4 text-text-secondary group-hover:text-science-blue transition-colors" />
+                                        <x-catalogopublico::ayuda-taxon :nombre="$especie['especie']" nivel="species" :registros="$numEspecimenes" :jerarquia="array_merge(array_column($ruta, 'taxon', 'nivel'), $especie)" />
                                     </div>
-                                </button>
+                                </article>
                             @endforeach
                         </div>
                     @endif
@@ -489,7 +487,7 @@
                         </h2>
                         <div class="flex items-center gap-3">
                             <span class="text-xs text-text-secondary tabular-nums">
-                                {{ count($especimenes) }} {{ count($especimenes) === 1 ? 'registro' : 'registros' }}
+                                {{ number_format($totalEspecimenes) }} {{ $totalEspecimenes === 1 ? 'registro' : 'registros' }}
                             </span>
                             @if(count($especimenes) > 0)
                                 <button
@@ -516,7 +514,11 @@
                     {{-- ══════════════════════════════════
                          IMAGEN DESTACADA DE LA ESPECIE (portada por defecto)
                          ══════════════════════════════════ --}}
-                    @php $portadaEspecie = collect($galeriaEspecie)->firstWhere('esPortada', true); @endphp
+                    @php
+                        $portadaEspecie = collect($galeriaEspecie)->firstWhere('esPortada', true);
+                        $jerarquiaEspecie = array_column($ruta, 'taxon', 'nivel');
+                        $ilustracionEspecie = \Modules\CatalogoPublico\Application\Services\IlustracionTaxonomica::paraTaxon($jerarquiaEspecie);
+                    @endphp
                     <section class="mb-6">
                         <div class="mb-3 flex items-center gap-2">
                             <h3 class="text-sm font-semibold text-text-primary flex items-center gap-2">
@@ -526,10 +528,7 @@
                         </div>
 
                         @if(! $portadaEspecie)
-                            <div class="flex items-center justify-center rounded-lg border border-dashed border-border bg-bg-main py-10 text-sm text-text-secondary gap-2">
-                                <flux:icon name="photo" class="size-5 text-border" />
-                                Especie sin imagen destacada
-                            </div>
+                            <figure class="collection-species-illustration"><img src="{{ $ilustracionEspecie['url'] }}" alt="{{ $ilustracionEspecie['alt'] }}" width="480" height="320" loading="lazy" decoding="async"><figcaption>Ilustración representativa de {{ $ilustracionEspecie['grupo'] }} · {{ $taxonActual }} no tiene una fotografía destacada publicada.</figcaption></figure>
                         @else
                             <button
                                 type="button"
@@ -553,17 +552,7 @@
                          MAPA DE DISTRIBUCIÓN
                          ══════════════════════════════════ --}}
                     @php
-                        $puntosGeo = collect($especimenes)
-                            ->filter(fn($e) => $e->decimal_latitude !== null && $e->decimal_longitude !== null)
-                            ->map(fn($e) => [
-                                'lat'             => (float) $e->decimal_latitude,
-                                'lon'             => (float) $e->decimal_longitude,
-                                'occurrence_id'   => $e->occurrence_id,
-                                'scientific_name' => $e->scientific_name,
-                                'locality'        => collect([$e->locality_name, $e->country])->filter()->implode(' · '),
-                                'precision'       => $e->coordinate_reference,
-                            ])
-                            ->values();
+                        $puntosGeo = collect($puntosEspecie);
                     @endphp
 
                     <section class="mb-6">
@@ -625,13 +614,16 @@
                                         }).addTo(this.mapa);
 
                                         const marcadores = this.puntos.map(p => {
-                                            const m = L.marker([p.lat, p.lon]).addTo(this.mapa);
+                                            const m = L.circleMarker([p.lat, p.lon], {
+                                                radius: Math.min(17, 4 + Math.sqrt(Number(p.total) || 1) * .7),
+                                                color: '#0e4975', weight: 1, fillColor: '#17699b', fillOpacity: .8,
+                                            }).addTo(this.mapa);
                                             const popup = L.DomUtil.create('div');
                                             const nombre = L.DomUtil.create('p', '', popup);
-                                            nombre.textContent = p.scientific_name || 'Identificación pendiente';
+                                            nombre.textContent = @js($taxonActual);
                                             nombre.style.fontWeight = '600';
                                             const codigo = L.DomUtil.create('p', '', popup);
-                                            codigo.textContent = p.occurrence_id || '';
+                                            codigo.textContent = `${Number(p.total).toLocaleString('es-EC')} registros con estas coordenadas públicas`;
                                             if (p.locality) {
                                                 const lugar = L.DomUtil.create('p', '', popup);
                                                 lugar.textContent = p.locality;
@@ -642,6 +634,18 @@
                                                 precision.style.fontSize = '11px';
                                             }
                                             m.bindPopup(popup);
+                                            const permitirTeclado = () => {
+                                                const elemento = m.getElement();
+                                                if (!elemento) return;
+                                                elemento.setAttribute('tabindex', '0');
+                                                elemento.setAttribute('role', 'button');
+                                                elemento.setAttribute('aria-label', `Consultar ${Number(p.total).toLocaleString('es-EC')} registros en ${p.lat}, ${p.lon}`);
+                                                elemento.addEventListener('keydown', evento => {
+                                                    if (evento.key === 'Enter' || evento.key === ' ') { evento.preventDefault(); m.openPopup(); }
+                                                });
+                                            };
+                                            m.once('add', permitirTeclado);
+                                            if (m.getElement()) permitirTeclado();
                                             return m;
                                         });
 
@@ -703,8 +707,8 @@
                                     $numImagenes = count($imagenesEspecimen);
                                 @endphp
                                 <article
-                                    x-data="{ abierto: false }"
-                                    class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden"
+                                    x-data="{ abierto: false }" wire:key="ejemplar-{{ $especimen->especimen_id }}"
+                                    class="collection-specimen-card rounded-lg border border-border bg-surface shadow-sm"
                                 >
                                     <div class="flex">
 
@@ -713,7 +717,7 @@
                                             <button
                                                 type="button"
                                                 @click="abierto = !abierto"
-                                                class="group/thumb relative hidden sm:block w-28 shrink-0 bg-bg-main border-r border-border overflow-hidden"
+                                                class="collection-specimen-thumbnail group/thumb relative w-28 shrink-0 bg-bg-main border-r border-border overflow-hidden"
                                                 title="Ver {{ $numImagenes }} {{ $numImagenes === 1 ? 'imagen' : 'imágenes' }}"
                                             >
                                                 <img src="{{ $imagenesEspecimen[0]['url'] }}" alt="{{ $especimen->occurrence_id }}" class="h-full w-full object-cover" loading="lazy" />
@@ -725,7 +729,7 @@
                                                 </span>
                                             </button>
                                         @else
-                                            <div class="hidden sm:flex w-28 shrink-0 flex-col items-center justify-center gap-1.5 bg-bg-main border-r border-border py-4">
+                                            <div class="collection-specimen-thumbnail w-28 shrink-0 flex-col items-center justify-center gap-1.5 bg-bg-main border-r border-border py-4">
                                                 <flux:icon name="photo" class="size-7 text-border" />
                                                 <span class="text-xs text-border leading-none">Sin imagen</span>
                                             </div>
@@ -773,9 +777,10 @@
                                             <p class="mb-3 font-serif italic text-base text-text-primary">
                                                 {{ $especimen->scientific_name }}
                                             </p>
+                                            @if($especimen->taxon_en_revision ?? false)<p class="atlas-data-warning">Dato original por revisar; excluido de riqueza e identificación a especie.</p>@endif
 
                                             {{-- Metadatos como lista de definición --}}
-                                            <dl class="grid grid-cols-1 gap-x-8 gap-y-1.5 text-xs sm:grid-cols-2">
+                                            <dl class="collection-specimen-metadata text-xs">
                                                 @if($especimen->locality_visible)
                                                     <div class="min-w-0">
                                                         <dt class="mb-1 font-semibold text-text-secondary">Localidad del Excel</dt>
@@ -1008,7 +1013,7 @@
                     @if(count($taxonesExplorados) === 0)
                         Ningún taxón divulgado en este nivel.
                     @else
-                        <strong class="text-text-primary tabular-nums">{{ number_format(count($taxonesExplorados)) }}</strong>
+                        <strong class="text-text-primary tabular-nums">{{ number_format($totalTarjetas) }}</strong>
                         {{ $nivelesPluralNavegacion[$nivelExplorar] ?? $nivelExplorar }} en la colección
                     @endif
                 </p>
@@ -1034,9 +1039,8 @@
                         $stats = $descendientes[$clave] ?? [];
                         $numEspecimenes = $conteos[$clave] ?? 0;
                     @endphp
-                    <button
-                        wire:click="navegar('{{ $nodo['nivel'] }}', '{{ $nodo['taxon'] }}')"
-                        class="group text-left rounded-lg border border-border bg-surface shadow-sm hover:border-science-blue/40 hover:shadow-md transition-all overflow-hidden"
+                    <article
+                        class="collection-taxon-card group text-left rounded-lg border border-border bg-surface shadow-sm hover:border-science-blue/40 hover:shadow-md transition-all"
                     >
                         {{-- Imagen (solo para género; filo/clase/orden/familia son tarjetas simples) --}}
                         @if($nodo['nivel'] === 'genus')
@@ -1054,9 +1058,9 @@
                         <div class="p-3.5">
                             <div class="flex items-start justify-between gap-2">
                                 <div class="min-w-0">
-                                    <div class="font-serif italic text-base text-text-primary group-hover:text-science-blue transition-colors truncate">
+                                    <button type="button" wire:click="navegar('{{ $nodo['nivel'] }}', '{{ $nodo['taxon'] }}')" class="collection-taxon-main font-serif italic text-base text-text-primary group-hover:text-science-blue transition-colors">
                                         {{ $nodo['taxon'] }}
-                                    </div>
+                                    </button>
                                     <div class="text-xs text-text-secondary mt-0.5">
                                         {{ $etiquetas[$nodo['nivel']] ?? $nodo['nivel'] }}
                                         @if($nodo['nivel'] !== 'phylum')
@@ -1064,7 +1068,7 @@
                                         @endif
                                     </div>
                                 </div>
-                                <flux:icon name="chevron-right" class="size-4 text-text-secondary shrink-0 mt-0.5 group-hover:text-science-blue transition-colors" />
+                                <x-catalogopublico::ayuda-taxon :nombre="$nodo['taxon']" :nivel="$nodo['nivel']" :registros="$numEspecimenes" :stats="$stats" :jerarquia="array_column($ruta, 'taxon', 'nivel')" />
                             </div>
 
                             @if(!empty($stats) || $numEspecimenes > 0)
@@ -1086,13 +1090,21 @@
                                 </div>
                             @endif
                         </div>
-                    </button>
+                    </article>
                 @endforeach
             </div>
         @endif
     </div>
 
     @endif {{-- fin modo árbol / explorar --}}
+    @php $totalPaginado = $nivelActual === 'species' && $nivelExplorar === '' ? $totalEspecimenes : $totalTarjetas; @endphp
+    @if($totalPaginado > 12)
+        <nav class="collection-card-pagination" aria-label="Páginas de tarjetas">
+            <button type="button" wire:click="cambiarPagina({{ $paginaActual - 1 }})" wire:loading.attr="disabled" @disabled($paginaActual <= 1)>Anterior</button>
+            <span>Página {{ $paginaActual }} de {{ $ultimaPagina }} · 12 por página · {{ number_format($totalPaginado) }} en total</span>
+            <button type="button" wire:click="cambiarPagina({{ $paginaActual + 1 }})" wire:loading.attr="disabled" @disabled($paginaActual >= $ultimaPagina)>Siguiente</button>
+        </nav>
+    @endif
     @endif {{-- fin vista mapa / registros / tarjetas --}}
         </div>
     </div>
@@ -1106,23 +1118,22 @@
         Cargando…
     </div>
 
-    <div x-show="mostrarArthropoda" x-cloak x-on:keydown.escape.window="if (mostrarArthropoda) cerrarArthropoda()" class="fixed inset-0 z-50 flex items-center justify-center bg-blue-navy/75 p-4" role="presentation">
-        <section role="dialog" aria-modal="true" aria-labelledby="titulo-arthropoda" x-on:click.outside="cerrarArthropoda()" class="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-xl bg-surface p-5 text-text-primary shadow-2xl sm:p-7">
-            <div class="flex items-start justify-between gap-3">
-                <div><p class="text-xs font-semibold uppercase tracking-widest text-bio-green">Guía de clasificación</p><h2 id="titulo-arthropoda" class="mt-1 font-display text-2xl font-bold text-text-primary">¿Qué es <em>Arthropoda</em>?</h2></div>
-                <button type="button" x-ref="cerrarArthropoda" x-on:click="cerrarArthropoda()" class="rounded-md border border-border px-3 py-1 text-xl text-text-primary" aria-label="Cerrar explicación">×</button>
+    <dialog class="collection-taxon-dialog" x-ref="ayudaTaxon" wire:ignore.self aria-labelledby="titulo-ayuda-taxon"
+        x-on:keydown.escape.stop.prevent="cerrarTaxon()" x-on:cancel.stop.prevent="cerrarTaxon()"
+        x-on:close="restaurarTaxon()" x-on:click="if ($event.target === $el) cerrarTaxon()">
+        <template x-if="taxonAyuda">
+            <div class="collection-taxon-explanation">
+                <header><h2 id="titulo-ayuda-taxon">¿Qué es <em x-text="taxonAyuda.nombre"></em>?</h2><button type="button" autofocus x-on:click="cerrarTaxon()" aria-label="Cerrar explicación">×</button></header>
+                <p><strong x-text="taxonAyuda.nivel"></strong> · <em x-text="taxonAyuda.nombre"></em></p>
+                <p x-text="descripciones[taxonAyuda.nombre] || 'Este nombre científico identifica un taxón del nivel ' + taxonAyuda.nivel.toLowerCase() + ' en la clasificación de la colección.'"></p>
+                <p>Un <strong>taxón</strong> es cualquier grupo de la clasificación que posee un nombre científico: puede ser un reino, filo, clase, orden, familia, género o especie. Los niveles superiores reúnen otros taxones; no equivalen a una especie.</p>
+                <figure><img :src="taxonAyuda.ilustracion.url" :alt="taxonAyuda.ilustracion.alt" width="480" height="320" loading="lazy"><figcaption>Ilustración representativa del grupo; no es una fotografía del ejemplar ni permite identificar la especie.</figcaption></figure>
+                <p><strong x-text="taxonAyuda.registros.toLocaleString('es-EC')"></strong> registros públicos de este taxón en la selección actual.</p>
+                <ul class="collection-taxon-descendants" x-show="Object.keys(taxonAyuda.stats).length > 0">
+                    <template x-for="([nivel, cantidad]) in Object.entries(taxonAyuda.stats)" :key="nivel"><li><strong x-text="Number(cantidad).toLocaleString('es-EC')"></strong> <span x-text="etiquetasStats[nivel] || nivel"></span></li></template>
+                </ul>
+                <p>Abre la tarjeta para consultar sus taxones descendientes y los datos publicados de los ejemplares. Las cantidades describen material de la colección, no abundancia en la naturaleza.</p>
             </div>
-            <p class="mt-4 text-sm leading-7"><em>Arthropoda</em> es un <strong>filo</strong>, un grupo taxonómico amplio que reúne animales con cuerpo segmentado, apéndices articulados y un exoesqueleto externo. Para crecer, muchos mudan ese exoesqueleto. Un filo no es una especie: dentro de él se organizan clases, órdenes, familias, géneros y especies.</p>
-            <div class="mt-4 grid gap-3 sm:grid-cols-3">
-                <div class="rounded-lg border border-border bg-bg-main p-3"><strong class="text-sm">Insectos</strong><p class="mt-1 text-xs leading-5 text-text-secondary">Generalmente tienen seis patas y tres regiones corporales. Aquí se incluyen escarabajos, mariposas y hormigas.</p></div>
-                <div class="rounded-lg border border-border bg-bg-main p-3"><strong class="text-sm">Arácnidos</strong><p class="mt-1 text-xs leading-5 text-text-secondary">Las arañas y escorpiones suelen tener ocho patas; no son insectos, aunque pertenecen al mismo filo.</p></div>
-                <div class="rounded-lg border border-border bg-bg-main p-3"><strong class="text-sm">Otros artrópodos</strong><p class="mt-1 text-xs leading-5 text-text-secondary">Crustáceos y miriápodos también forman parte del filo y muestran distintas adaptaciones.</p></div>
-            </div>
-            <div class="mt-5 grid gap-4 sm:grid-cols-2">
-                <figure><img loading="lazy" class="h-40 w-full rounded-lg object-cover" alt="Mariposa monarca sobre una flor, ejemplo de insecto artrópodo" src="https://commons.wikimedia.org/wiki/Special:Redirect/file/Monarch_butterfly_on_a_flower.jpg"><figcaption class="mt-1 text-xs text-text-secondary">Mariposa monarca · <a class="underline" href="https://commons.wikimedia.org/wiki/File:Monarch_butterfly_on_a_flower.jpg" target="_blank" rel="noopener noreferrer">Mcandrewa, CC BY-SA 4.0</a></figcaption></figure>
-                <figure><img loading="lazy" class="h-40 w-full rounded-lg object-cover" alt="Araña en su telaraña, ejemplo de arácnido artrópodo" src="https://commons.wikimedia.org/wiki/Special:Redirect/file/Spider_on_a_web.jpg"><figcaption class="mt-1 text-xs text-text-secondary">Araña · <a class="underline" href="https://commons.wikimedia.org/wiki/File:Spider_on_a_web.jpg" target="_blank" rel="noopener noreferrer">Louise Docker, CC BY 2.0</a></figcaption></figure>
-            </div>
-            <p class="mt-4 rounded-lg border-l-4 border-bio-green bg-bg-main p-3 text-sm leading-6">Las fotografías ilustran el filo y <strong>no representan ejemplares del laboratorio</strong>. Cada tarjeta del catálogo muestra los registros clasificados bajo ese filo; al abrirla puedes seguir la jerarquía taxonómica.</p>
-        </section>
-    </div>
+        </template>
+    </dialog>
 </div>

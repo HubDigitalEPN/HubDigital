@@ -22,25 +22,63 @@ final class ConsultaCatalogoPublico
         }
         $normal = $this->texto->normalizar($pregunta);
         $correction = (bool) preg_match('/^(perdon|corrijo|quise decir|queria decir|no )\b/', $normal);
-        $followup = (bool) preg_match('/^(?:y\s+de\s+|y\s+)?cuantos?\b|^y\s+|^donde\s+los\s+encontraron\b|\b(?:esa especie|ese taxon|esos registros)\b/', $normal);
+        $followup = (bool) preg_match('/^(?:y\s+de\s+|y\s+)?cuantos?\b|^(?:y|solo|dame solo|quita|quitar|elimina)\s+|^donde\s+los\s+encontraron\b|\b(?:esa especie|ese taxon|esos registros|de esos dos registros)\b/', $normal);
         $queryText = $pregunta;
         if ($correction && str_starts_with($normal, 'no ')) {
             // Conserva mayúsculas del nombre o localidad: el detector las usa para acotar entidades.
-            $clauses = preg_split('/\s*(?:[,;]|\bpero\b|\bsino\b)\s*/iu', $pregunta) ?: [];
+            $clauses = preg_split('/\s*(?:[,;.]|\bpero\b|\bsino\b)\s*/iu', rtrim($pregunta, '.')) ?: [];
             if (count($clauses) > 1) $queryText = (string) end($clauses);
         }
         $entities = $this->detector->extraer($queryText);
         if (($correction || $followup) && $contexto !== []) {
-            $previous = array_intersect_key($contexto, array_flip(['taxon', 'provincia', 'localidad', 'pais', 'codigo', 'mes', 'desde', 'hasta', 'ubicacion', 'identificacion']));
+            $previous = array_intersect_key($contexto, array_flip(['taxon', 'provincia', 'localidad', 'pais', 'codigo', 'mes', 'desde', 'hasta', 'fecha_precision', 'ubicacion', 'identificacion', 'elev_desde', 'elev_hasta']));
             if (isset($entities['taxon']) || isset($entities['codigo'])) unset($previous['taxon'], $previous['codigo']);
             if (isset($entities['provincia']) || isset($entities['localidad']) || isset($entities['pais'])) {
                 unset($previous['provincia'], $previous['localidad'], $previous['pais']);
             }
+            $quitarMes = (bool) preg_match('/\b(?:sin|quita(?:r)?|elimina(?:r)?)\s+(?:el\s+)?filtro\s+de\s+mes\b/', $normal);
+            if ((isset($entities['mes']) || $quitarMes) && ! isset($entities['desde']) && ! isset($entities['hasta'])
+                && ($previous['fecha_precision'] ?? 'mes') === 'mes'
+                && isset($previous['mes'], $previous['desde'], $previous['hasta'])) {
+                $inicio = \DateTimeImmutable::createFromFormat('!Y-m-d', $previous['desde']);
+                // Un mes con año genera límites de calendario; cambiarlo conserva el año pedido.
+                if ($inicio !== false && $inicio->format('Y-m-d') === $previous['desde']
+                    && $inicio->format('d') === '01' && $inicio->format('Y-m-t') === $previous['hasta']
+                    && (int) $inicio->format('n') === (int) $previous['mes']) {
+                    $nuevoInicio = $inicio->setDate((int) $inicio->format('Y'), $quitarMes ? 1 : (int) $entities['mes'], 1);
+                    $previous['desde'] = $nuevoInicio->format('Y-m-d');
+                    $previous['hasta'] = $quitarMes ? $inicio->format('Y').'-12-31' : $nuevoInicio->format('Y-m-t');
+                    $previous['fecha_precision'] = $quitarMes ? 'explicita' : 'mes';
+                }
+            }
+            if (isset($entities['mes'])) unset($previous['mes']);
+            if (isset($entities['desde']) || isset($entities['hasta'])) unset($previous['desde'], $previous['hasta'], $previous['fecha_precision']);
+            if (isset($entities['elev_desde']) || isset($entities['elev_hasta'])) unset($previous['elev_desde'], $previous['elev_hasta']);
+            if ($quitarMes) unset($previous['mes']);
             $entities = array_replace($previous, $entities);
+        }
+        if (preg_match('/\b(primero|primer|segundo|tercero|ultimo)\b.*\b(?:registros?|codigos?|de esos|de los)\b/', $normal, $referencia)) {
+            $codigos = array_values(array_filter(array_map('trim', explode(',', (string) ($contexto['codigo'] ?? '')))));
+            $posicion = ['primero' => 0, 'primer' => 0, 'segundo' => 1, 'tercero' => 2, 'ultimo' => count($codigos) - 1][$referencia[1]];
+            if (! isset($codigos[$posicion])) {
+                return $this->aclaracion('No tengo una lista de códigos suficiente para resolver esa posición. Indica el código del registro que quieres consultar.', $contexto);
+            }
+            $entities['codigo'] = $codigos[$posicion];
+            unset($entities['taxon']);
+        }
+        if (isset($entities['error_consulta'])) return $this->aclaracion($entities['error_consulta'], $contexto);
+        if (preg_match('/\bo\b/', $normal)) {
+            return $this->aclaracion('La unión de alternativas con «o» no está disponible en esta consulta. No he calculado un conteo parcial. Elige una alternativa o consulta cada una por separado.', $contexto);
+        }
+        if (preg_match('/\b(?:hembras?|machos?|femenin[oa]s?|masculin[oa]s?|sexo)\b/', $normal)) {
+            return $this->aclaracion('El filtro por sexo no está disponible en esta consulta. No he calculado un conteo parcial; indica otros criterios o consulta al laboratorio sobre ese dato.', $contexto);
+        }
+        if (preg_match('/\b(?:preservad[oa]s?|conservad[oa]s?|alcohol|etanol|formol)\b/', $normal)) {
+            return $this->aclaracion('No puedo traducir esa condición de preservación a un filtro confirmado. No he calculado un conteo parcial. Revisa Preparación en el catálogo y elige el valor disponible.', $contexto);
         }
         $options = [['label' => 'Abrir catálogo para ver más', 'url' => route('portal.catalogo', $this->parametros($entities))]];
         if (preg_match('/\b(?:sin|no tienen|no tengan)\s+coordenadas\b|\b(?:excepto|excluye|excluir)\b/', $normal)) {
-            return $this->resultado('La exclusión solicitada no está disponible en los filtros de esta consulta. No he calculado un conteo parcial. Puedes reformular con los criterios que deseas incluir.', 'catalogo.aclaracion', $entities, 0, [], $options);
+            return $this->aclaracion('La exclusión solicitada no está disponible en los filtros de esta consulta. No he calculado un conteo parcial. Puedes reformular con los criterios que deseas incluir.', $contexto);
         }
         if (isset($entities['codigo'])) {
             return $this->porCodigo($entities, $options);
@@ -51,7 +89,7 @@ final class ConsultaCatalogoPublico
         if (isset($entities['taxon']) && preg_match('/\bgeneros\b/', $normal)) {
             return $this->generos($entities['taxon'], $options);
         }
-        if ($entities === [] && ! preg_match('/\bcuant[oa]s?\s+(?:registros|especimenes|ejemplares|especies)\s+(?:tienen|hay|estan)/', $normal)) {
+        if ($entities === [] && ! preg_match('/\bcuant[oa]s?\s+(?:registros|especimenes|ejemplares|especies)\s+(?:public[oa]s?\s+)?(?:tienen|hay|estan)/', $normal)) {
             return null;
         }
         $query = $this->seleccion($entities);
@@ -139,6 +177,7 @@ final class ConsultaCatalogoPublico
             'fmes' => $entities['mes'] ?? null, 'ffd' => $entities['desde'] ?? null,
             'ffh' => $entities['hasta'] ?? null, 'fgeo' => $entities['ubicacion'] ?? null,
             'fid' => $entities['identificacion'] ?? null,
+            'fed' => $entities['elev_desde'] ?? null, 'feh' => $entities['elev_hasta'] ?? null,
         ], static fn ($valor) => $valor !== null && $valor !== '');
     }
 
@@ -151,6 +190,7 @@ final class ConsultaCatalogoPublico
             'filtroMes' => $entities['mes'] ?? '', 'filtroFechaDesde' => $entities['desde'] ?? '',
             'filtroFechaHasta' => $entities['hasta'] ?? '', 'filtroSoloUbicacion' => $entities['ubicacion'] ?? '',
             'filtroIdentificacion' => $entities['identificacion'] ?? '',
+            'filtroElevDesde' => $entities['elev_desde'] ?? '', 'filtroElevHasta' => $entities['elev_hasta'] ?? '',
         ]);
         $seleccion = app(EloquentProveedorEspecimenesParaArbol::class)->consultaPublica($filtros)->select('te.id');
         return $this->publicos()->whereIn('e.id', $seleccion);
@@ -221,7 +261,7 @@ final class ConsultaCatalogoPublico
     private function resultado(string $text, string $intent, array $entities, int $total, array $rows, array $options): array
     {
         $criterios = [];
-        foreach (['mes' => 'mes', 'desde' => 'desde', 'hasta' => 'hasta', 'ubicacion' => 'coordenadas públicas', 'identificacion' => 'identificación'] as $clave => $etiqueta) {
+        foreach (['codigo' => 'código', 'taxon' => 'taxón', 'provincia' => 'provincia', 'localidad' => 'localidad', 'pais' => 'país', 'mes' => 'mes', 'desde' => 'desde', 'hasta' => 'hasta', 'ubicacion' => 'coordenadas públicas', 'identificacion' => 'identificación', 'elev_desde' => 'elevación desde (m)', 'elev_hasta' => 'elevación hasta (m)'] as $clave => $etiqueta) {
             if (isset($entities[$clave])) $criterios[] = $etiqueta.': '.($clave === 'ubicacion' ? 'sí' : $entities[$clave]);
         }
         if ($criterios !== []) $text .= ' Filtros aplicados: '.implode('; ', $criterios).'.';
@@ -229,5 +269,12 @@ final class ConsultaCatalogoPublico
         return ['texto' => $text, 'opciones' => $options, 'intent' => $intent, 'fuente' => 'catalogo',
             'confianza' => 'HIGH', 'confianza_valor' => 1.0, 'entidades' => $entities,
             'datos' => ['total' => $total, 'filas' => $rows]];
+    }
+
+    private function aclaracion(string $texto, array $contexto): array
+    {
+        return ['texto' => $texto, 'intent' => 'catalogo.aclaracion', 'fuente' => 'aclaracion',
+            'entidades' => $contexto, 'datos' => ['total' => null, 'filas' => []],
+            'opciones' => [['label' => 'Abrir catálogo', 'url' => route('portal.catalogo', $this->parametros($contexto))]]];
     }
 }

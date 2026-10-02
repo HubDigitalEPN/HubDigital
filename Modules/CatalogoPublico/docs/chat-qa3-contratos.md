@@ -1,0 +1,15 @@
+# Contratos de consulta del chat — QA3
+
+La revisión estática del informe `qa_portal_parte3.md` identifica causas concretas en el detector, la selección determinística y el orden de resolución de ayuda. Las cifras del sitio descritas en el informe son evidencia de aquella sesión; las pruebas agregadas usan sus propios registros y no dependen de esos totales.
+
+| Hallazgo | Causa encontrada | Cambio y cobertura Pest |
+|---|---|---|
+| QA3-003 | Los nombres de provincia y localidad se reconocían por separado y se aplicaban simultáneamente al compartir el mismo texto. | La provincia/país tiene prioridad sobre la localidad homónima, salvo mención explícita de localidad o sitio. Las dos preguntas exactas y un sitio compuesto distinto están en `PortalChatContratoSeleccionTest.php`. |
+| QA3-004 | La normalización eliminaba guiones ISO; el único análisis temporal convertía meses/años en intervalos completos. | `FiltrosLenguajeChat` valida días reales, límites ISO y naturales, intervalos invertidos y comparadores estrictos antes/después. `FiltrosLenguajeChatTest.php` comprueba precisión y fechas imposibles; el Feature contrasta conteos/enlaces con un registro fuera de los días pedidos. |
+| QA3-005 | Las entidades geográficas usaban igualdad sensible a tildes. | El detector compara con acentos normalizados; la selección utiliza el contrato público común. El Feature conserva los originales Peru/Perú y Yasuní/Yasuni y exige resultados equivalentes. |
+| QA3-006 | La elevación no estaba representada en las entidades ni en los parámetros; otros calificadores se descartaban. | Elevación se transmite a `fed/feh` y a `FiltrosBusqueda`. Sexo y preservación no confirmada exigen aclaración antes de contar, con `datos.total = null`. |
+| QA3-007 | Una sola entidad reemplazaba a las demás alternativas. | Las disyunciones explícitas con «o» se declaran no admitidas y piden elegir; los tests cubren taxones, provincias y meses sin dar conteos parciales. |
+| QA3-008 | El seguimiento se reconocía mediante unas pocas frases y la ayuda ocurría después de intentar reutilizar la selección. | Resolver primero/segundo/tercero/último en el orden de la lista de códigos; añadir y retirar mes manteniendo taxón/provincia; priorizar ayuda pública; conservar la última selección válida al pedir aclaración. |
+| QA3-012 | CSV, acceso y equivalencia registros/especies no tenían reconocimiento explícito de esas formulaciones. | La ayuda responde directamente, conserva la selección para CSV/mapa y diferencia registros, riqueza y taxón. También admite el conteo global público sin exigir taxón. |
+
+La cobertura nueva es de contratos de datos y selección, se ejecuta dentro de la suite completa de `crear-paquete-oci`, y complementa las iteraciones anteriores sin retirar sus pruebas. No se agrega Gherkin duplicado. Las revisiones de regresión visual, teclado y diseño corresponden a Dots según la instrucción del usuario. El agente realizó únicamente lectura de código, rutas, contratos, cambios y pruebas propuestas; la ejecución queda a cargo del paquete completo.

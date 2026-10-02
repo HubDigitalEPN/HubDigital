@@ -6,6 +6,8 @@ namespace Modules\CatalogoPublico\Infrastructure\Adapters;
 
 use Illuminate\Support\Facades\DB;
 use Modules\CatalogoPublico\Application\Ports\ProveedorOpcionesFiltroPort;
+use Modules\CatalogoPublico\Infrastructure\ProtocoloColectaPublico;
+use Modules\CatalogoPublico\Infrastructure\CalidadDatoPublico;
 
 final class InventarioOpcionesFiltroAdapter implements ProveedorOpcionesFiltroPort
 {
@@ -41,16 +43,16 @@ final class InventarioOpcionesFiltroAdapter implements ProveedorOpcionesFiltroPo
 
     public function obtenerMetodosRecoleccion(): array
     {
-        return DB::table('taxonomia.muestras_colecta as m')
-            ->join('taxonomia.especimenes as e', 'e.muestra_id', '=', 'm.id')
+        $protocolo = ProtocoloColectaPublico::sql('e', 'm');
+        return DB::table('taxonomia.especimenes as e')
+            ->leftJoin('taxonomia.muestras_colecta as m', 'm.id', '=', 'e.muestra_id')
             ->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
             ->where('d.publicado', true)->where('e.coordenadas_otras_regiones', false)
             ->where('d.sampling_protocol_visible', true)
-            ->whereNotNull('m.sampling_protocol')
-            ->where('m.sampling_protocol', '<>', '')
+            ->whereRaw(CalidadDatoPublico::textoValido($protocolo))
             ->distinct()
-            ->orderBy('m.sampling_protocol')
-            ->pluck('m.sampling_protocol')
+            ->selectRaw($protocolo.' AS metodo')->orderBy('metodo')
+            ->pluck('metodo')
             ->map(fn ($v) => (string) $v)
             ->values()
             ->all();

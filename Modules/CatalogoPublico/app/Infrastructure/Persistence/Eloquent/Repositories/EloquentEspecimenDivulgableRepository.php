@@ -88,6 +88,20 @@ final class EloquentEspecimenDivulgableRepository implements EspecimenDivulgable
         return $this->buscarListaPorOccurrenceIDs($occurrenceIDs, true);
     }
 
+    public function buscarPublicadosPorEspecimenIds(array $especimenIds): array
+    {
+        if ($especimenIds === []) return [];
+        return EspecimenDivulgableEloquentModel::query()
+            ->join('taxonomia.especimenes as e', 'e.id', '=', 'divulgacion.especimenes_divulgables.especimen_id')
+            ->whereIn('e.id', $especimenIds)->where('e.coordenadas_otras_regiones', false)
+            ->where('divulgacion.especimenes_divulgables.publicado', true)
+            ->get(['divulgacion.especimenes_divulgables.*'])
+            ->map(fn (EspecimenDivulgableEloquentModel $model) => EspecimenDivulgable::reconstituir(
+                id: EspecimenDivulgableId::fromString($model->id), especimenId: $model->especimen_id,
+                configuracion: $this->buildConfiguracion($model),
+            ))->all();
+    }
+
     /** @param list<string> $occurrenceIDs @return list<EspecimenDivulgable> */
     private function buscarListaPorOccurrenceIDs(array $occurrenceIDs, bool $soloPublicados): array
     {

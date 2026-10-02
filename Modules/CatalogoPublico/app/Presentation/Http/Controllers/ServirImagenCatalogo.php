@@ -50,6 +50,9 @@ final class ServirImagenCatalogo
             ->join('taxonomia.especimenes as especimen', 'especimen.occurrence_id', '=', 'imagen.occurrence_id')
             ->join('divulgacion.especimenes_divulgables as divulgable', 'divulgable.especimen_id', '=', 'especimen.id')
             ->where('divulgable.publicado', true)->where('especimen.coordenadas_otras_regiones', false)
+            // La imagen heredada se vinculó por etiqueta. Una etiqueta repetida
+            // no identifica al dueño; se conserva el objeto para revisión curatorial.
+            ->whereRaw('(SELECT COUNT(*) FROM taxonomia.especimenes identidad WHERE identidad.occurrence_id = imagen.occurrence_id) = 1')
             ->where('imagen.ruta', $ruta)
             ->where('imagen.disco', 'r2')
             ->first(['imagen.sha256']);

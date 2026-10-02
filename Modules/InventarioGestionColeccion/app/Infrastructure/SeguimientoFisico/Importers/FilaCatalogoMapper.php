@@ -295,6 +295,7 @@ final class FilaCatalogoMapper
             recordCreatedBy: $recordCreatedBy,
             responsibleResearcherExport: $responsibleResearcherExport,
             endemicVerbatim: $endemicVerbatim,
+            samplingProtocol: $this->limpiar($normalizada['sampling_protocol'] ?? $normalizada['tecnica_colecta'] ?? $normalizada['collection_method'] ?? null),
         );
     }
 

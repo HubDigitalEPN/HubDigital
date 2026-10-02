@@ -5,11 +5,12 @@ declare(strict_types=1);
 namespace Modules\CatalogoPublico\Application\UseCases\ConsultarChatBot;
 
 use Illuminate\Support\Facades\DB;
+use Modules\CatalogoPublico\Infrastructure\NormalizacionGeografica;
 
 /** Reconoce entidades contra el esquema real; los filtros públicos se aplican en ConsultaCatalogoPublico. */
 final class DetectorEntidadesChat
 {
-    public function __construct(private readonly TextoChat $texto) {}
+    public function __construct(private readonly TextoChat $texto, private readonly FiltrosLenguajeChat $filtrosLenguaje) {}
 
     /** @return array{taxon?:string,provincia?:string,localidad?:string,pais?:string,codigo?:string} */
     public function extraer(string $pregunta): array
@@ -26,7 +27,7 @@ final class DetectorEntidadesChat
         }
 
         // Los sitios compuestos (Playa de Oro) no se pueden resolver palabra a palabra.
-        $palabras = preg_split('/[^\p{L}\p{N}]+/u', mb_strtolower($pregunta), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $palabras = preg_split('/\s+/', $normal, -1, PREG_SPLIT_NO_EMPTY) ?: [];
         $candidatos = [];
         foreach ($palabras as $i => $palabra) {
             for ($n = 1; $n <= min(6, count($palabras) - $i); $n++) $candidatos[] = implode(' ', array_slice($palabras, $i, $n));
@@ -34,34 +35,35 @@ final class DetectorEntidadesChat
         foreach (['provincia' => ['state_province', 'state_province_visible'], 'localidad' => ['locality_name', 'locality_name_visible'], 'pais' => ['country', 'country_visible']] as $clave => [$campo, $visible]) {
             $nombres = DB::table('taxonomia.especimenes as e')->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
                 ->where('d.publicado', true)->where('e.coordenadas_otras_regiones', false)->where('d.'.$visible, true)
-                ->whereIn(DB::raw('lower(e.'.$campo.')'), $candidatos)->distinct()->pluck('e.'.$campo)->all();
-            usort($nombres, static fn ($a, $b) => mb_strlen($b) <=> mb_strlen($a));
+                ->whereIn(DB::raw(NormalizacionGeografica::sql('e.'.$campo)), array_unique($candidatos))->distinct()->pluck('e.'.$campo)->all();
+            usort($nombres, static fn ($a, $b) => (mb_strlen($b) <=> mb_strlen($a)) ?: strcmp($a, $b));
             if ($nombres !== []) $resultado[$clave] = $nombres[0];
+        }
+        // Un lugar usado como provincia/país no agrega otro predicado por coincidir con una localidad.
+        if (isset($resultado['localidad'])) {
+            $localidad = preg_replace('/^(?:provincia|pais)\s+(?:de\s+)?/', '', $this->texto->normalizar($resultado['localidad']));
+            foreach (['provincia', 'pais'] as $clave) {
+                if (isset($resultado[$clave]) && $localidad === $this->texto->normalizar($resultado[$clave])) {
+                    $sitioExplicito = preg_match('/\b(?:localidad|sitio)\s+(?:de\s+)?'.preg_quote($localidad, '/').'\b/', $normal);
+                    if (! $sitioExplicito) unset($resultado['localidad']);
+                    elseif (! preg_match('/\b'.$clave.'\s+(?:de\s+)?'.preg_quote($localidad, '/').'\b/', $normal)) unset($resultado[$clave]);
+                    break;
+                }
+            }
         }
         if (isset($resultado['taxon']) && ! DB::table('taxonomia.taxones')->whereRaw('lower(nombre_cientifico) = lower(?)', [$resultado['taxon']])->exists()) {
             foreach (['provincia', 'localidad', 'pais'] as $clave) {
-                if (isset($resultado[$clave]) && str_starts_with(mb_strtolower($resultado[$clave]), mb_strtolower($resultado['taxon']))) {
+                if (isset($resultado[$clave]) && str_starts_with($this->texto->normalizar($resultado[$clave]), $this->texto->normalizar($resultado['taxon']))) {
                     unset($resultado['taxon']);
                     break;
                 }
             }
         }
-        $meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-        foreach ($meses as $indice => $mes) {
-            if (preg_match('/\b'.$mes.'\b/', $normal)) {
-                $resultado['mes'] = (string) ($indice + 1);
-                if (preg_match('/\b'.$mes.'\s+(?:de\s+)?(\d{4})\b/', $normal, $anio)) {
-                    $inicio = new \DateTimeImmutable(sprintf('%04d-%02d-01', (int) $anio[1], $indice + 1));
-                    $resultado['desde'] = $inicio->format('Y-m-d');
-                    $resultado['hasta'] = $inicio->format('Y-m-t');
-                }
-                break;
-            }
+        $temporales = $this->filtrosLenguaje->extraer($pregunta);
+        if (isset($temporales['desde']) || isset($temporales['hasta'])) {
+            $temporales['fecha_precision'] = isset($temporales['mes']) ? 'mes' : 'explicita';
         }
-        if (! isset($resultado['desde']) && preg_match('/\b(?:en|durante|del|de)\s+(?:el\s+)?(?:ano\s+)?((?:18|19|20)\d{2})\b/', $normal, $anio)) {
-            $resultado['desde'] = $anio[1].'-01-01';
-            $resultado['hasta'] = $anio[1].'-12-31';
-        }
+        $resultado = array_replace($resultado, $temporales);
         if (preg_match('/\b(?:con|tienen|tengan)\s+coordenadas(?:\s+publicas)?\b/', $normal)) $resultado['ubicacion'] = '1';
         if (preg_match('/identifica(?:cion|dos|das)\s+(?:a|hasta)\s+especie/', $normal)) $resultado['identificacion'] = 'especie';
         if (isset($resultado['localidad']) && preg_match('/preferiblemente|de preferencia/', $normal)) {

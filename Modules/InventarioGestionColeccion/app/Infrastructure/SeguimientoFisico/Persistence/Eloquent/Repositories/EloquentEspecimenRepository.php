@@ -128,6 +128,7 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
                 'record_created_by' => $especimen->recordCreatedBy(),
                 'responsible_researcher_export' => $especimen->responsibleResearcherExport(),
                 'endemic_verbatim' => $especimen->endemicVerbatim(),
+                'sampling_protocol' => $especimen->samplingProtocol(),
             ]
         );
 
@@ -1225,6 +1226,7 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
                 'record_created_by' => $especimen->recordCreatedBy(),
                 'responsible_researcher_export' => $especimen->responsibleResearcherExport(),
                 'endemic_verbatim' => $especimen->endemicVerbatim(),
+                'sampling_protocol' => $especimen->samplingProtocol(),
                 'created_at' => $ahora,
                 'updated_at' => $ahora,
             ];
@@ -1390,6 +1392,7 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
             recordCreatedBy: $model->record_created_by,
             responsibleResearcherExport: $model->responsible_researcher_export,
             endemicVerbatim: $model->endemic_verbatim,
+            samplingProtocol: $model->sampling_protocol,
         );
     }
 }

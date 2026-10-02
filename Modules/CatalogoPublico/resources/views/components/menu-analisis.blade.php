@@ -10,13 +10,13 @@
         x-on:keydown.arrow-down.prevent="mover($event)" x-on:keydown.arrow-up.prevent="mover($event)" x-on:keydown.home.prevent="mover($event)" x-on:keydown.end.prevent="mover($event)" x-on:focusout="if (!$el.contains($event.relatedTarget)) abierto = false">
         <button type="button" role="menuitem" wire:click="{{ $tipo === 'especies' ? 'descargarListaEspecies' : "descargarAnalisis('$tipo')" }}" x-on:click="cerrar()">{{ $tipo === 'especies' ? 'Lista completa CSV' : 'Descargar CSV' }}</button>
         <button type="button" role="menuitem" x-on:click="json()">Datos del panel JSON</button>
-        @if($tipo === 'mapa')<button type="button" role="menuitem" x-on:click="geojson()">Cuadrículas GeoJSON · SIG</button>@endif
+        @if($tipo === 'mapa')<button type="button" role="menuitem" x-on:click="geojson()">Coordenadas GeoJSON · SIG</button>@endif
         <button type="button" role="menuitem" x-on:click="enlace()">Copiar enlace con filtros</button>
         <button type="button" role="menuitem" x-on:click="cita()">Descargar cita y consulta</button>
         <button type="button" role="menuitem" x-on:click="indice()">Indicador</button>
     </div>
     <span class="sr-only" role="status" x-text="aviso"></span>
-    <dialog class="atlas-index-dialog" x-ref="indice" aria-labelledby="indice-titulo-{{ $tipo }}" x-on:close="$refs.boton.focus()" x-on:click="if ($event.target === $el) $el.close()">
+    <dialog class="atlas-index-dialog" x-ref="indice" aria-labelledby="indice-titulo-{{ $tipo }}" x-on:keydown.escape.stop.prevent="$el.close()" x-on:cancel.stop.prevent="$el.close()" x-on:close="$refs.boton.focus()" x-on:click="if ($event.target === $el) $el.close()">
         <div class="atlas-index-content">
             <header><h2 id="indice-titulo-{{ $tipo }}">Indicador · {{ $indice['titulo'] }}</h2><button type="button" autofocus x-on:click="$refs.indice.close()" aria-label="Cerrar explicación">×</button></header>
             <figure><img src="{{ asset('images/indices/'.($indice['imagen'] ?? $tipo).'.png') }}" alt="{{ $indice['foto'] }}" width="1448" height="1086" loading="lazy"></figure>

@@ -74,6 +74,15 @@ final class InMemoryEspecimenDivulgableRepository implements EspecimenDivulgable
         return $this->buscarPorOccurrenceIDs($occurrenceIDs);
     }
 
+    public function buscarPublicadosPorEspecimenIds(array $especimenIds): array
+    {
+        $result = [];
+        foreach ($especimenIds as $id) {
+            if (isset($this->porEspecimenId[$id])) $result[] = $this->copiar($this->porEspecimenId[$id]);
+        }
+        return $result;
+    }
+
     /**
      * Reconstituye una entidad fresca para no compartir la identidad mutable
      * con el llamador (espejo del comportamiento del repositorio Eloquent).

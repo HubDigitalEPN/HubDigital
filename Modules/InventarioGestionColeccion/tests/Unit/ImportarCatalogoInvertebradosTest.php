@@ -78,6 +78,19 @@ test('agrupa filas con mismo oldCode en una sola muestra', function (): void {
         ->and($muestraRepo->contarTodas())->toBe(2);
 });
 
+test('conserva cada técnica original cuando oldCode comparte muestras o está vacío', function (): void {
+    [$importer, $especimenRepo] = bootstrapImporter();
+    $resultado = $importer->ejecutar(new ArrayFuenteCatalogo([
+        ['occurrenceID' => 'PROTO-1', 'oldCode' => 'QA-COMPARTIDA', 'samplingProtocol' => 'fogging'],
+        ['occurrenceID' => 'PROTO-2', 'oldCode' => 'QA-COMPARTIDA', 'samplingProtocol' => 'Winkler'],
+        ['occurrenceID' => 'PROTO-3', 'samplingProtocol' => 'hand'],
+    ]));
+    expect($resultado->especimenesPersistidos)->toBe(3)
+        ->and($especimenRepo->buscarPorCodigoCatalogo('PROTO-1')->samplingProtocol())->toBe('fogging')
+        ->and($especimenRepo->buscarPorCodigoCatalogo('PROTO-2')->samplingProtocol())->toBe('Winkler')
+        ->and($especimenRepo->buscarPorCodigoCatalogo('PROTO-3')->samplingProtocol())->toBe('hand');
+});
+
 test('marca para revisión las filas con warnings y agrega motivos', function (): void {
     [$importer, $especimenRepo] = bootstrapImporter();
 

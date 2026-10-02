@@ -10,6 +10,12 @@ function mapearFila(array $fila): FilaMapeada
     return (new FilaCatalogoMapper)->mapear($fila);
 }
 
+test('el protocolo de colecta original se conserva aunque el ejemplar no tenga oldCode', function (): void {
+    $fila = mapearFila(['occurrenceID' => 'PROTO-QA', 'samplingProtocol' => '  leaf_litter_sifter  ']);
+    expect($fila->samplingProtocol)->toBe('leaf_litter_sifter')->and($fila->oldCode)->toBeNull();
+    expect(mapearFila(['occurrenceID' => 'PROTO-QA', 'samplingProtocol' => '  '])->samplingProtocol)->toBeNull();
+});
+
 test('camelCase del Excel se normaliza a snake_case', function (): void {
     $fila = mapearFila([
         'occurrenceID' => 'MEPN:INV:1',

@@ -18,24 +18,22 @@
                 autocomplete="email"
             />
 
-            <flux:input
+            <x-auth-password
                 name="password"
                 :label="__('Nueva contraseña')"
-                type="password"
+                description="nueva contraseña"
                 required
                 autocomplete="new-password"
                 :placeholder="__('Nueva contraseña')"
-                viewable
             />
 
-            <flux:input
+            <x-auth-password
                 name="password_confirmation"
                 :label="__('Confirmar contraseña')"
-                type="password"
+                description="confirmación de contraseña"
                 required
                 autocomplete="new-password"
                 :placeholder="__('Confirmar contraseña')"
-                viewable
             />
 
             <div class="flex items-center justify-end">

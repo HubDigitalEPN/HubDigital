@@ -44,6 +44,7 @@ final class MapeadorFilaEspecimen
             'occurrenceId' => $e->occurrenceId(),
             'catalogNumber' => $e->catalogNumber(),
             'oldCode' => $e->oldCode(),
+            'samplingProtocol' => $e->samplingProtocol(),
             'cardexLiquidCollectionCode' => $e->cardexLiquidCollectionCode(),
             'individualCount' => $e->individualCount(),
             'individualCountVerbatim' => $e->individualCountVerbatim(),

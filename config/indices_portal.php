@@ -38,9 +38,9 @@ return [
         'titulo' => 'Distribución de los registros',
         'foto' => 'Trabajo de campo con GPS y cuaderno para registrar ubicaciones.',
         'parrafos' => [
-            'Este indicador muestra dónde se documentaron los ejemplares de la selección aplicada. Cada círculo reúne registros con coordenadas públicas en una cuadrícula de 0,25 grados. Permite localizar concentraciones de registros y planificar la revisión de zonas con poca documentación.',
-            'La latitud y la longitud se multiplican por cuatro, se redondean al entero más cercano y se dividen por cuatro. Los registros con el mismo par redondeado se suman. El radio del círculo aumenta con la raíz cuadrada del conteo hasta un máximo visual; el color identifica el filo predominante en esa cuadrícula. El detalle del punto conserva los conteos por filo.',
-            'Las cuadrículas son angulares y su área varía con la latitud. Los centros redondeados no son sitios exactos de colecta. Solo aparecen coordenadas públicas válidas: un registro sin coordenadas puede contarse en composición taxonómica sin tener un punto en el mapa. La ausencia de puntos no demuestra ausencia de organismos, y muchos registros no equivalen a abundancia natural.',
+            'Este indicador muestra las coordenadas públicas de los ejemplares de la selección aplicada sobre la cartografía de OpenStreetMap. Conserva visibles países, relieve, ciudades y demás elementos de la base cartográfica en las áreas con y sin registros.',
+            'Cada círculo azul se ubica en la latitud y longitud WGS84 almacenadas, sin desplazarlo a un centro de cuadrícula. Solo se agrupan registros que comparten exactamente el mismo par de coordenadas. El radio aumenta con la raíz cuadrada del número de registros hasta un máximo visual. Al seleccionar el punto puedes explorar su árbol taxonómico y consultar hasta doce ejemplares por página.',
+            'La precisión de una ubicación depende del dato original y de su referencia pública: conservar la coordenada no convierte una ubicación aproximada o recuperada en una medición GPS exacta. Solo aparecen coordenadas públicas válidas. Los registros sin coordenadas pueden contarse en composición taxonómica. La ausencia de puntos no demuestra ausencia de organismos y el número de registros no equivale a abundancia natural.',
         ],
     ],
     'filos' => [
@@ -49,7 +49,7 @@ return [
         'parrafos' => [
             'La composición taxonómica describe cómo se distribuyen los registros seleccionados entre filos, grandes grupos del árbol de clasificación biológica. Sirve para reconocer los grupos mejor representados y orientar el estudio o la digitalización de la colección.',
             'Para cada registro con identificación pública se recorre su linaje hasta encontrar el filo. Se cuentan los registros del grupo y se calcula su porcentaje como cien multiplicado por ese conteo, dividido para el total de registros de la selección. El denominador incluye registros cuya identificación está reservada, de modo que los porcentajes visibles pueden sumar menos de cien.',
-            'Seleccionar un filo aplica ese filtro a todos los paneles y al mapa. El color del mapa representa el filo predominante de cada cuadrícula; los grupos sin coordenadas públicas no pueden ubicarse. Este indicador cuenta registros, no especies distintas ni individuos censados en la naturaleza, y no es un índice de Shannon o Simpson.',
+            'Seleccionar un filo aplica ese filtro a todos los paneles y al mapa. Un taxón es cualquier grupo con un nombre científico, sea reino, filo, clase, orden, familia, género o especie. Las fotografías públicas del panel corresponden a la selección; cuando faltan, se muestran ilustraciones representativas etiquetadas. Este indicador cuenta registros, no especies distintas ni individuos censados en la naturaleza, y no es un índice de Shannon o Simpson.',
         ],
     ],
     'riqueza' => [

@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Modules\CatalogoPublico\Infrastructure\CalidadDatoPublico;
+use Modules\CatalogoPublico\Infrastructure\Adapters\StorageImagenesAdapter;
+use Modules\CatalogoPublico\Infrastructure\ProtocoloColectaPublico;
 use Modules\CatalogoPublico\Domain\ValueObjects\FiltrosBusqueda;
 use Modules\CatalogoPublico\Infrastructure\Persistence\Eloquent\Repositories\EloquentProveedorEspecimenesParaArbol;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -46,7 +48,53 @@ final class PortalEstadisticas
     /** Agregados de la misma selección que usan tarjetas y registros. */
     public function datosParaVista(array $filtros): array
     {
-        return $this->cachear('portal:estadisticas:v10:'.sha1(json_encode($filtros)), fn () => $this->resumir($filtros));
+        return $this->cachear('portal:estadisticas:v11:'.$this->revisionDatos().':'.sha1(json_encode($filtros)), fn () => $this->resumir($filtros));
+    }
+
+    /** Distribución completa sin hidratar tarjetas ni calcular los otros indicadores. */
+    public function puntosParaMapa(array $filtros): array
+    {
+        return $this->cachear('portal:puntos:v1:'.$this->revisionDatos().':'.sha1(json_encode($filtros)), function () use ($filtros): array {
+            $taxones = DB::table('taxonomia.taxones')->get(['id', 'padre_id', 'rango', 'nombre_cientifico'])->keyBy('id');
+            return $this->agruparPuntos($this->consulta($filtros), $taxones);
+        });
+    }
+
+    private function revisionDatos(): int
+    {
+        return (int) DB::table('divulgacion.portal_cache_revision')->where('id', 1)->value('version');
+    }
+
+    /** Un punto mantiene la latitud y longitud almacenadas; solo agrupa coincidencias exactas. */
+    private function agruparPuntos(Builder $base, \Illuminate\Support\Collection $taxones): array
+    {
+        $filas = (clone $base)->where('ed.decimal_latitude_visible', true)->where('ed.decimal_longitude_visible', true)
+            ->whereBetween('te.decimal_latitude', [-90, 90])->whereBetween('te.decimal_longitude', [-180, 180])
+            ->selectRaw('te.decimal_latitude AS lat, te.decimal_longitude AS lon, te.taxon_id, ed.scientific_name_visible, COUNT(*) AS total')
+            ->groupBy('te.decimal_latitude', 'te.decimal_longitude', 'te.taxon_id', 'ed.scientific_name_visible')->cursor();
+        $puntos = $filosPorTaxon = [];
+        foreach ($filas as $fila) {
+            $id = $fila->scientific_name_visible ? $fila->taxon_id : null;
+            $filo = 'Sin filo';
+            if ($id && isset($filosPorTaxon[$id])) $filo = $filosPorTaxon[$id];
+            else {
+                $origen = $id;
+                for ($paso = 0; $paso < 30 && $id && isset($taxones[$id]); $paso++) {
+                    if ($taxones[$id]->rango === 'phylum') { $filo = $taxones[$id]->nombre_cientifico; break; }
+                    $id = $taxones[$id]->padre_id;
+                }
+                if ($origen) $filosPorTaxon[$origen] = $filo;
+            }
+            $clave = $fila->lat.':'.$fila->lon;
+            $puntos[$clave] ??= ['lat' => (float) $fila->lat, 'lon' => (float) $fila->lon, 'total' => 0, 'filos' => [], 'taxones' => []];
+            $puntos[$clave]['total'] += (int) $fila->total;
+            $puntos[$clave]['filos'][$filo] = ($puntos[$clave]['filos'][$filo] ?? 0) + (int) $fila->total;
+            if ($fila->scientific_name_visible && $fila->taxon_id) $puntos[$clave]['taxones'][$fila->taxon_id] = true;
+        }
+        foreach ($puntos as &$punto) $punto['taxones'] = count($punto['taxones']);
+        unset($punto);
+        uasort($puntos, static fn (array $a, array $b): int => $b['total'] <=> $a['total']);
+        return array_values($puntos);
     }
 
     public function descargarLista(Request $request): StreamedResponse
@@ -128,11 +176,11 @@ final class PortalEstadisticas
         if (isset($filtros['filo']) && ! DB::table('taxonomia.taxones')->where('id', $filtros['filo'])->where('rango', 'phylum')->exists()) {
             unset($filtros['filo']);
         }
-        if (isset($filtros['metodo']) && ! DB::table('taxonomia.muestras_colecta as m')
-            ->join('taxonomia.especimenes as e', 'e.muestra_id', '=', 'm.id')
+        if (isset($filtros['metodo']) && ! DB::table('taxonomia.especimenes as e')
+            ->leftJoin('taxonomia.muestras_colecta as m', 'm.id', '=', 'e.muestra_id')
             ->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
             ->where('d.publicado', true)->where('e.coordenadas_otras_regiones', false)->where('d.sampling_protocol_visible', true)
-            ->where('m.sampling_protocol', $filtros['metodo'])->exists()) {
+            ->whereRaw('lower('.ProtocoloColectaPublico::sql('e', 'm').') = lower(?)', [$filtros['metodo']])->exists()) {
             unset($filtros['metodo']);
         }
 
@@ -218,50 +266,38 @@ final class PortalEstadisticas
             ->groupBy('rara_t.nombre_cientifico')->havingRaw('COUNT(*) <= 3')
             ->orderBy('total')->orderBy('nombre')->limit(12)->get()->map(static fn (object $fila): array => (array) $fila)->all();
 
-        // Celdas de 0,25 grados: el navegador recibe centenares de círculos,
-        // nunca las decenas de miles de coordenadas individuales.
-        $mapaPorTaxon = (clone $base)->where('ed.decimal_latitude_visible', true)
-            ->where('ed.decimal_longitude_visible', true)
-            ->whereNotNull('te.decimal_latitude')->whereNotNull('te.decimal_longitude')
-            ->whereBetween('te.decimal_latitude', [-90, 90])->whereBetween('te.decimal_longitude', [-180, 180])
-            ->selectRaw('ROUND((te.decimal_latitude * 4)::numeric) / 4 AS lat, ROUND((te.decimal_longitude * 4)::numeric) / 4 AS lon, te.taxon_id, ed.scientific_name_visible, COUNT(*) AS total')
-            ->groupByRaw('1, 2, 3, 4')->get();
-        $celdas = [];
-        foreach ($mapaPorTaxon as $fila) {
-            $id = $fila->scientific_name_visible ? $fila->taxon_id : null;
-            $filo = 'Sin filo';
-            for ($paso = 0; $paso < 20 && $id && isset($taxones[$id]); $paso++) {
-                $taxon = $taxones[$id];
-                if ($taxon->rango === 'phylum') {
-                    $filo = $taxon->nombre_cientifico;
-                    break;
-                }
-                $id = $taxon->padre_id;
-            }
-            $clave = $fila->lat.':'.$fila->lon;
-            $celdas[$clave] ??= ['lat' => $fila->lat, 'lon' => $fila->lon, 'total' => 0, 'filos' => []];
-            $celdas[$clave]['total'] += (int) $fila->total;
-            $celdas[$clave]['filos'][$filo] = ($celdas[$clave]['filos'][$filo] ?? 0) + (int) $fila->total;
-        }
-        uasort($celdas, static fn (array $a, array $b): int => $b['total'] <=> $a['total']);
-        $mapa = array_values($celdas);
+        $mapa = $this->agruparPuntos($base, $taxones);
 
         $estacionalidad = (clone $base)->where('ed.event_date_visible', true)
             ->whereRaw(CalidadDatoPublico::fechaValida('te.fecha_colecta'))
             ->selectRaw('EXTRACT(MONTH FROM te.fecha_colecta)::integer AS mes, COUNT(*) AS registros')
             ->groupByRaw('1')->orderBy('mes')->get()->map(static fn (object $fila): array => (array) $fila)->all();
-        $altitud = [];
-        foreach ([[-500, -1], [0, 499], [500, 999], [1000, 1499], [1500, 1999], [2000, 2499], [2500, 2999], [3000, 3999], [4000, 9000]] as [$desde, $hasta]) {
-            $cantidad = (clone $base)->where('ed.elevation_visible', true)
-                ->whereRaw('COALESCE(te.elevation_max_m, te.elevation_min_m) >= ?', [$desde])
-                ->whereRaw('COALESCE(te.elevation_min_m, te.elevation_max_m) <= ?', [$hasta])->count();
+        $altitud = $agregadosAltitud = $limitesAltitud = [];
+        $rangosAltitud = [[-500, -1], [0, 499], [500, 999], [1000, 1499], [1500, 1999], [2000, 2499], [2500, 2999], [3000, 3999], [4000, 9000]];
+        foreach ($rangosAltitud as $i => [$desde, $hasta]) {
+            $agregadosAltitud[] = "COUNT(*) FILTER (WHERE COALESCE(te.elevation_max_m, te.elevation_min_m) >= ? AND COALESCE(te.elevation_min_m, te.elevation_max_m) <= ?) AS rango_{$i}";
+            array_push($limitesAltitud, $desde, $hasta);
+        }
+        $conteosAltitud = (clone $base)->where('ed.elevation_visible', true)->selectRaw(implode(', ', $agregadosAltitud), $limitesAltitud)->first();
+        foreach ($rangosAltitud as $i => [$desde, $hasta]) {
+            $cantidad = (int) $conteosAltitud->{'rango_'.$i};
             if ($cantidad > 0) $altitud[] = ['desde' => $desde, 'hasta' => $hasta, 'registros' => $cantidad];
         }
-        $metodos = (clone $base)->join('taxonomia.muestras_colecta as metodo_panel', 'metodo_panel.id', '=', 'te.muestra_id')
-            ->where('ed.sampling_protocol_visible', true)->whereRaw(CalidadDatoPublico::textoValido('metodo_panel.sampling_protocol'))
-            ->selectRaw('metodo_panel.sampling_protocol AS metodo, COUNT(*) AS registros')
-            ->groupBy('metodo_panel.sampling_protocol')->orderByDesc('registros')->orderBy('metodo')->get()
+        $protocolo = ProtocoloColectaPublico::sql('te', 'metodo_panel');
+        $metodos = (clone $base)->leftJoin('taxonomia.muestras_colecta as metodo_panel', 'metodo_panel.id', '=', 'te.muestra_id')
+            ->where('ed.sampling_protocol_visible', true)->whereRaw(CalidadDatoPublico::textoValido($protocolo))
+            ->selectRaw($protocolo.' AS metodo, COUNT(*) AS registros')
+            ->groupByRaw($protocolo)->orderByDesc('registros')->orderBy('metodo')->get()
             ->map(static fn (object $fila): array => (array) $fila)->all();
+        $mosaico = (clone $base)->join('divulgacion.imagenes_taxonomicas as foto', 'foto.occurrence_id', '=', 'te.occurrence_id')
+            ->leftJoin('taxonomia.taxones as foto_taxon', 'foto_taxon.id', '=', 'te.taxon_id')
+            ->where('ed.scientific_name_visible', true)
+            ->whereRaw('(SELECT COUNT(*) FROM taxonomia.especimenes identidad WHERE identidad.occurrence_id = te.occurrence_id) = 1')
+            ->orderByDesc('foto.created_at')->orderBy('foto.id')->limit(4)
+            ->get(['foto.ruta', 'foto.nombre_original', 'foto_taxon.nombre_cientifico as taxon', 'te.occurrence_id', 'ed.occurrence_id_visible'])
+            ->map(static fn (object $fila): array => ['url' => StorageImagenesAdapter::urlPublica($fila->ruta),
+                'nombre' => $fila->nombre_original, 'taxon' => $fila->taxon,
+                'occurrence_id' => $fila->occurrence_id_visible ? $fila->occurrence_id : null])->all();
 
         return [
             'resumen' => $resumen,
@@ -274,6 +310,7 @@ final class PortalEstadisticas
             'estacionalidad' => $estacionalidad,
             'altitud' => $altitud,
             'metodos' => $metodos,
+            'mosaico' => $mosaico,
         ];
     }
 }

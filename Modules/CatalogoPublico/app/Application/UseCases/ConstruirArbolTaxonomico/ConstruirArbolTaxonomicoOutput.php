@@ -54,4 +54,10 @@ final readonly class ConstruirArbolTaxonomicoOutput
             especimenesSinFilo: $arbol->especimenesSinFilo,
         );
     }
+
+    /** Vista de navegación agregada; los ejemplares se consultan aparte por UUID y página. */
+    public static function desdeResumen(array $resumen): self
+    {
+        return new self($resumen['nodos'], $resumen['especies'], [], [], [], []);
+    }
 }

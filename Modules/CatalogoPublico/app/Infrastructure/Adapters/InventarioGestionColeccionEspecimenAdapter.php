@@ -61,7 +61,7 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
                 e.life_stage,
                 e.elevation_min_m,
                 e.elevation_max_m,
-                mc.sampling_protocol,
+                COALESCE(NULLIF(btrim(e.sampling_protocol), \'\'), NULLIF(btrim(mc.sampling_protocol), \'\')) AS sampling_protocol,
                 t.nombre_cientifico,
                 tr.family,
                 tr.genus
@@ -127,7 +127,7 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
                 e.life_stage,
                 e.elevation_min_m,
                 e.elevation_max_m,
-                mc.sampling_protocol,
+                COALESCE(NULLIF(btrim(e.sampling_protocol), \'\'), NULLIF(btrim(mc.sampling_protocol), \'\')) AS sampling_protocol,
                 t.nombre_cientifico,
                 tr.family,
                 tr.genus
@@ -205,7 +205,7 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
                 'e.life_stage',
                 'e.elevation_min_m',
                 'e.elevation_max_m',
-                'mc.sampling_protocol',
+                DB::raw("COALESCE(NULLIF(btrim(e.sampling_protocol), ''), NULLIF(btrim(mc.sampling_protocol), '')) AS sampling_protocol"),
                 't.nombre_cientifico',
             ]);
 
@@ -357,7 +357,7 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
                 'e.life_stage',
                 'e.elevation_min_m',
                 'e.elevation_max_m',
-                'mc.sampling_protocol',
+                DB::raw("COALESCE(NULLIF(btrim(e.sampling_protocol), ''), NULLIF(btrim(mc.sampling_protocol), '')) AS sampling_protocol"),
                 't.nombre_cientifico',
                 DB::raw('NULL as family'),  // jerarquía completa no requerida en detalle de especie
                 DB::raw('NULL as genus'),
@@ -418,7 +418,7 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
                 'e.life_stage',
                 'e.elevation_min_m',
                 'e.elevation_max_m',
-                'mc.sampling_protocol',
+                DB::raw("COALESCE(NULLIF(btrim(e.sampling_protocol), ''), NULLIF(btrim(mc.sampling_protocol), '')) AS sampling_protocol"),
                 't.nombre_cientifico',
                 DB::raw('NULL as family'),
                 DB::raw('NULL as genus'),
@@ -447,7 +447,7 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
             ->whereIn('e.id', $especimenIds)
             ->select([
                 'e.*',
-                'mc.sampling_protocol',
+                DB::raw("COALESCE(NULLIF(btrim(e.sampling_protocol), ''), NULLIF(btrim(mc.sampling_protocol), '')) AS sampling_protocol"),
                 'loc.referencia_inec',
                 'inec.nombre as localidad_inec',
                 DB::raw("COALESCE(t.nombre_cientifico, 'Identificación pendiente') as nombre_cientifico"),
@@ -471,7 +471,7 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
             typeStatus: $fila->disposition,      // ACL: disposition del Supplier → typeStatus del Customer
             typeNotes: null,                      // sin campo equivalente en el Supplier
             specimenNotes: $fila->specimen_notes,
-            samplingProtocol: $fila->sampling_protocol ?? null, // ACL: muestras_colecta.sampling_protocol
+            samplingProtocol: $fila->sampling_protocol ?? null, // Prioridad del protocolo original por ejemplar.
             recordedBy: $fila->colector,          // ACL: colector del Supplier → recordedBy del Customer
             occurrenceStatus: $fila->occurrence_status ?? 'present',
             family: $fila->family,

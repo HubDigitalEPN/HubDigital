@@ -203,6 +203,7 @@ final class ImportarCatalogoInvertebrados
                         recordCreatedBy: $mapeada->recordCreatedBy,
                         responsibleResearcherExport: $mapeada->responsibleResearcherExport,
                         endemicVerbatim: $mapeada->endemicVerbatim,
+                        samplingProtocol: $mapeada->samplingProtocol,
                     );
 
                     if ($mapeada->requiereRevision()) {

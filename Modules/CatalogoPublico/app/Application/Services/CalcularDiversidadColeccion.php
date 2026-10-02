@@ -6,6 +6,7 @@ namespace Modules\CatalogoPublico\Application\Services;
 
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
+use Modules\CatalogoPublico\Infrastructure\CalidadDatoPublico;
 
 /** Índices de ejemplares identificados a especie y con conteo individual positivo. */
 final class CalcularDiversidadColeccion
@@ -30,6 +31,7 @@ final class CalcularDiversidadColeccion
         $query = DB::table('taxonomia.especimenes as e')
             ->join('taxonomia.taxones as t', 't.id', '=', 'e.taxon_id')
             ->where('t.rango', 'especie')
+            ->whereRaw(CalidadDatoPublico::textoValido('t.nombre_cientifico'))
             ->where('e.individual_count', '>', 0);
         if (! empty($filtros['provincia'])) {
             $query->where('e.state_province', $filtros['provincia']);

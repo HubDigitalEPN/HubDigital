@@ -1,10 +1,36 @@
 import L from 'leaflet';
-import contexto from '../data/ecuador-contexto.json';
+import {crearGeojsonMapa, prepararPuntosMapa} from './portal-map-model';
 
 // El mapa del panel y los mapas de especie usan la misma copia local de Leaflet.
 window.L = L;
 
 const registrarDashboard = () => {
+    window.Alpine.data('portalCatalogo', () => ({
+        taxonAyuda: null,
+        invocadorAyuda: null,
+        etiquetasStats: {kingdom: 'reinos', phylum: 'filos', class: 'clases', order: 'órdenes', family: 'familias', genus: 'géneros', species: 'especies'},
+        descripciones: {
+            Annelida: 'Animales de cuerpo alargado y segmentado, como lombrices y sanguijuelas.',
+            Arthropoda: 'Animales con cuerpo segmentado, apéndices articulados y exoesqueleto. Incluye insectos, arácnidos, crustáceos y miriápodos.',
+            Mollusca: 'Animales de cuerpo blando, como caracoles, bivalvos y cefalópodos; muchos presentan una concha.',
+            Nematoda: 'Gusanos de cuerpo cilíndrico no segmentado; comprende formas de vida libre y parásitas.',
+            Nematomorpha: 'Gusanos delgados y alargados, conocidos como gusanos crin de caballo; sus larvas parasitan artrópodos.',
+        },
+        abrirTaxon(invocador, datos) {
+            this.invocadorAyuda = invocador;
+            this.taxonAyuda = datos;
+            this.$nextTick(() => {
+                if (!this.$refs.ayudaTaxon.open) this.$refs.ayudaTaxon.showModal();
+                this.$refs.ayudaTaxon.querySelector('button')?.focus({preventScroll: true});
+            });
+        },
+        cerrarTaxon() { this.$refs.ayudaTaxon.close(); },
+        restaurarTaxon() {
+            this.invocadorAyuda?.focus({preventScroll: true});
+            this.taxonAyuda = null;
+        },
+    }));
+
     window.Alpine.data('portalFiltros', () => ({
         observador: null,
         actualizar: null,
@@ -50,7 +76,7 @@ const registrarDashboard = () => {
         },
         json() { this.descargar(JSON.stringify({...this.metadatos(), datos}, null, 2), 'json', 'application/json;charset=utf-8'); },
         geojson() {
-            this.descargar(JSON.stringify({type: 'FeatureCollection', ...this.metadatos(), resolucion_grados: 0.25, features: datos.map(c => ({type: 'Feature', geometry: {type: 'Point', coordinates: [Number(c.lon), Number(c.lat)]}, properties: {registros: c.total, filos: c.filos, ubicacion: 'Centro de cuadrícula redondeada; no es una coordenada individual'}}))}, null, 2), 'geojson', 'application/geo+json');
+            this.descargar(JSON.stringify(crearGeojsonMapa(datos, this.metadatos()), null, 2), 'geojson', 'application/geo+json');
         },
         cita() {
             const m = this.metadatos();
@@ -72,7 +98,6 @@ const registrarDashboard = () => {
         observador: null,
         maximizado: false,
         enfocarTrasCambio: false,
-        alPantallaCompleta: null,
         filoActivo: '',
         colores: ['#17699b', '#d17d28', '#568c59', '#8c62a5', '#b94e6b', '#71828d', '#a18a29', '#3f8d90'],
 
@@ -85,16 +110,6 @@ const registrarDashboard = () => {
                     maxZoom: 18,
                 }).addTo(mapa);
                 L.control.scale({imperial: false}).addTo(mapa);
-                L.geoJSON(contexto, {
-                    style: feature => ({
-                        color: feature.properties.name === 'Ecuador' ? '#61879b' : '#b8c9ce',
-                        weight: feature.properties.name === 'Ecuador' ? 1.6 : 1,
-                        fillColor: feature.properties.name === 'Ecuador' ? '#d6e8df' : '#eef1ed',
-                        fillOpacity: .72,
-                        interactive: false,
-                    }),
-                }).addTo(mapa);
-                mapa.attributionControl.addAttribution('Límites: Natural Earth (dominio público)');
                 mapa.createPane('registros').style.zIndex = '450';
                 capa = L.featureGroup().addTo(mapa);
                 this.encuadrar();
@@ -110,16 +125,11 @@ const registrarDashboard = () => {
                     this.observador = new ResizeObserver(() => mapa?.invalidateSize());
                     this.observador.observe(this.$refs.mapa);
                 }
-                this.alPantallaCompleta = () => {
-                    if (!document.fullscreenElement && this.maximizado) this.minimizar();
-                };
-                document.addEventListener('fullscreenchange', this.alPantallaCompleta);
             });
         },
 
         destroy() {
             this.observador?.disconnect();
-            document.removeEventListener('fullscreenchange', this.alPantallaCompleta);
             document.documentElement.classList.remove('atlas-map-expanded');
             mapa?.remove();
             mapa = null;
@@ -127,13 +137,15 @@ const registrarDashboard = () => {
         },
 
         encuadrar() {
-            mapa?.fitBounds([[-5.1, -92.1], [1.9, -75]], {padding: [20, 20], maxZoom: 7});
+            const limites = L.latLngBounds(prepararPuntosMapa(celdas, this.filoActivo).map(({lat, lon}) => [lat, lon]));
+            mapa?.fitBounds(limites?.isValid() ? limites : [[-5.1, -92.1], [1.9, -75]], {padding: [24, 24], maxZoom: 10});
         },
 
         actualizar(datos) {
             celdas = datos.celdas;
             filos = datos.filos;
             this.pintar(celdas, filos);
+            this.encuadrar();
             if (this.enfocarTrasCambio) this.$nextTick(() => {
                 this.$refs.panelMapa.scrollIntoView({block: 'start', behavior: 'instant'});
                 this.$refs.mapa.focus({preventScroll: true});
@@ -150,18 +162,16 @@ const registrarDashboard = () => {
             }
         },
 
-        async alternarTamano() {
+        alternarTamano() {
             if (this.maximizado) return this.minimizar();
             this.maximizado = true;
             document.documentElement.classList.add('atlas-map-expanded');
-            try { await document.documentElement.requestFullscreen?.(); } catch { /* La vista fija sigue ocupando el viewport. */ }
             this.$nextTick(() => mapa?.invalidateSize());
         },
 
         minimizar() {
             this.maximizado = false;
             document.documentElement.classList.remove('atlas-map-expanded');
-            if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
             this.$nextTick(() => { mapa?.invalidateSize(); this.$refs.maximizar.focus({preventScroll: true}); });
         },
 
@@ -175,29 +185,32 @@ const registrarDashboard = () => {
             this.pintar(celdas, filos);
         },
 
+        async abrirUbicacion(lat, lon, total, invocador) {
+            window.dispatchEvent(new CustomEvent('iniciar-detalle-celda', {detail: {lat, lon, total, invocador}}));
+            try {
+                await this.$wire.abrirCelda(lat, lon);
+                window.dispatchEvent(new CustomEvent('finalizar-detalle-celda'));
+            } catch {
+                window.dispatchEvent(new CustomEvent('error-detalle-celda'));
+            }
+        },
+
         pintar(celdas, filos) {
             if (!capa) return;
             capa.clearLayers();
-            for (const celda of celdas) {
-                const lat = Number(celda.lat);
-                const lon = Number(celda.lon);
-                if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) continue;
-                const entradas = Object.entries(celda.filos || {}).sort((a, b) => Number(b[1]) - Number(a[1]));
-                const cantidad = this.filoActivo ? Number(celda.filos?.[this.filoActivo] || 0) : Number(celda.total);
-                if (cantidad <= 0) continue;
-                const dominante = this.filoActivo || entradas[0]?.[0] || 'Sin filo';
+            for (const {lat, lon, cantidad, radio} of prepararPuntosMapa(celdas, this.filoActivo)) {
                 const marcador = L.circleMarker([lat, lon], {
                     pane: 'registros',
-                    radius: Math.min(17, 4 + Math.sqrt(cantidad) * .7),
-                    color: '#163a55', weight: 1, fillColor: this.color(dominante, filos), fillOpacity: .8,
+                    radius: radio,
+                    color: '#0e4975', weight: 1, fillColor: '#17699b', fillOpacity: .8,
                 }).addTo(capa);
-                const abrir = () => this.$wire.abrirCelda(lat, lon);
-                marcador.on('click', abrir);
                 const elemento = marcador.getElement();
+                const abrir = () => this.abrirUbicacion(lat, lon, cantidad, elemento);
+                marcador.on('click', abrir);
                 if (elemento) {
                     elemento.setAttribute('tabindex', '0');
                     elemento.setAttribute('role', 'button');
-                    elemento.setAttribute('aria-label', `Ver ${cantidad.toLocaleString('es-EC')} registros en la cuadrícula ${lat}, ${lon}`);
+                    elemento.setAttribute('aria-label', `Ver ${cantidad.toLocaleString('es-EC')} registros con coordenadas ${lat}, ${lon}`);
                     elemento.addEventListener('keydown', evento => {
                         if (evento.key === 'Enter' || evento.key === ' ') { evento.preventDefault(); abrir(); }
                     });

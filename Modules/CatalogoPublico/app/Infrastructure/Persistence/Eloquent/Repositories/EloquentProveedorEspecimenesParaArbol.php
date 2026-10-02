@@ -8,6 +8,8 @@ use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\LazyCollection;
 use Modules\CatalogoPublico\Infrastructure\CalidadDatoPublico;
+use Modules\CatalogoPublico\Infrastructure\NormalizacionGeografica;
+use Modules\CatalogoPublico\Infrastructure\ProtocoloColectaPublico;
 use Modules\CatalogoPublico\Application\Ports\ProveedorEspecimenesParaArbolPort;
 use Modules\CatalogoPublico\Domain\ValueObjects\EspecimenParaArbol;
 use Modules\CatalogoPublico\Domain\ValueObjects\FiltrosBusqueda;
@@ -25,6 +27,8 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
         $this->aplicarFiltros($query, $filtros);
         $rangos = ['phylum' => 'phylum', 'class' => 'clase', 'order' => 'orden', 'family' => 'familia', 'genus' => 'genero', 'species' => 'especie'];
         if (isset($rangos[$nivel]) && $taxon !== '') {
+            if ($nivel === 'family') $query->where('ed.family_visible', true);
+            if ($nivel === 'genus') $query->where('ed.genus_visible', true);
             $query->where('ed.scientific_name_visible', true)->whereRaw('te.taxon_id IN (WITH RECURSIVE seleccion AS (SELECT id FROM taxonomia.taxones WHERE rango = ? AND nombre_cientifico = ? UNION SELECT t.id FROM taxonomia.taxones t JOIN seleccion s ON t.padre_id = s.id) SELECT id FROM seleccion)', [$rangos[$nivel], $taxon]);
         }
 
@@ -35,10 +39,10 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
     {
         $query = $this->consultaPublica($filtros, $nivel, $taxon);
         $total = (clone $query)->count('te.id');
-        $ultima = max(1, (int) ceil($total / 50));
+        $ultima = max(1, (int) ceil($total / 12));
         $actual = min(max(1, $pagina), $ultima);
         $ids = $query->orderBy('te.fila_origen_excel')->orderBy('te.id')
-            ->offset(($actual - 1) * 50)->limit(50)->pluck('te.id')->all();
+            ->offset(($actual - 1) * 12)->limit(12)->pluck('te.id')->all();
 
         return ['ids' => $ids, 'total' => $total, 'pagina' => $actual, 'ultima' => $ultima];
     }
@@ -46,28 +50,61 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
     /** Tarjetas iniciales: una fila por taxón, sin materializar todos los ejemplares. */
     public function resumenRaiz(FiltrosBusqueda $filtros): array
     {
-        $filas = $this->consultaPublica($filtros)->where('ed.genus_visible', true)
-            ->where('ed.scientific_name_visible', true)->whereNotNull('te.occurrence_id')->where('te.occurrence_id', '<>', '')
-            ->selectRaw('te.taxon_id, COUNT(*) AS total')->groupBy('te.taxon_id')->get();
-        $jerarquias = $this->resolverJerarquiasPorTaxon($filas->pluck('taxon_id')->filter()->all());
-        $hijos = $conteos = $distintos = [];
-        $rangos = ['clase' => 'class', 'orden' => 'order', 'familia' => 'family', 'genero' => 'genus', 'especie' => 'species'];
+        $resumen = $this->resumenJerarquia($filtros);
+        $hijos = array_values(array_filter($resumen['nodos'], static fn (array $n): bool => $n['nivel'] === 'phylum'));
+        $conteos = array_intersect_key($resumen['conteos'], array_fill_keys(array_map(static fn (array $n): string => 'phylum:'.$n['taxon'], $hijos), true));
+        return ['hijos' => $hijos,
+            'conteos' => $conteos, 'descendientes' => $resumen['descendientes']];
+    }
+
+    /** Navegación agregada por taxón: evita hidratar la colección completa en una VM pequeña. */
+    public function resumenJerarquia(FiltrosBusqueda $filtros): array
+    {
+        $filas = $this->consultaPublica($filtros)->where('ed.scientific_name_visible', true)
+            ->selectRaw('te.taxon_id, ed.family_visible, ed.genus_visible, COUNT(*) AS total')
+            ->groupBy('te.taxon_id', 'ed.family_visible', 'ed.genus_visible')->get();
+        $taxones = DB::table('taxonomia.taxones')->get(['id', 'padre_id', 'nombre_cientifico', 'rango'])->keyBy('id');
+        $rangos = ['phylum' => 'phylum', 'clase' => 'class', 'orden' => 'order', 'familia' => 'family', 'genero' => 'genus', 'especie' => 'species'];
+        $nodos = $especies = $conteos = $distintos = $rutas = [];
+        $total = $this->consultaPublica($filtros)->count('te.id');
         foreach ($filas as $fila) {
-            $jerarquia = $jerarquias[$fila->taxon_id] ?? [];
-            $filo = $jerarquia['phylum'] ?? '';
-            if ($filo === '') continue;
-            $clave = 'phylum:'.$filo;
-            $hijos[$filo] = ['nivel' => 'phylum', 'taxon' => $filo, 'padre' => 'root'];
-            $conteos[$clave] = ($conteos[$clave] ?? 0) + (int) $fila->total;
-            foreach ($rangos as $bd => $nivel) {
-                if (! empty($jerarquia[$bd])) $distintos[$clave][$nivel][$jerarquia[$bd]] = true;
+            $ruta = [];
+            $id = $fila->taxon_id;
+            $visitados = [];
+            while ($id && isset($taxones[$id]) && ! isset($visitados[$id]) && count($visitados) < 30) {
+                $visitados[$id] = true;
+                $t = $taxones[$id];
+                if (isset($rangos[$t->rango]) && ($t->rango !== 'familia' || $fila->family_visible)
+                    && ($t->rango !== 'genero' || $fila->genus_visible)) {
+                    array_unshift($ruta, ['nivel' => $rangos[$t->rango], 'taxon' => $t->nombre_cientifico]);
+                }
+                $id = $t->padre_id;
+            }
+            if ($ruta === [] || $ruta[0]['nivel'] !== 'phylum') continue;
+            $padre = 'root';
+            $genus = '';
+            foreach ($ruta as $i => $nodo) {
+                $clave = $nodo['nivel'].':'.$nodo['taxon'];
+                $conteos[$clave] = ($conteos[$clave] ?? 0) + (int) $fila->total;
+                $rutas[$clave] = array_slice($ruta, 0, $i + 1);
+                if ($nodo['nivel'] === 'species') {
+                    $especies[$clave] = ['especie' => $nodo['taxon'], 'genus' => $genus, 'specificEpithet' => '', 'padre' => $padre];
+                } else {
+                    $nodos[$clave] = $nodo + ['padre' => $padre];
+                    if ($nodo['nivel'] === 'genus') $genus = $nodo['taxon'];
+                }
+                foreach (array_slice($ruta, $i + 1) as $desc) $distintos[$clave][$desc['nivel']][$desc['taxon']] = true;
+                $padre = $nodo['taxon'];
             }
         }
-        ksort($hijos, SORT_NATURAL | SORT_FLAG_CASE);
+        $ordenar = static fn (array $a, array $b): int => strnatcasecmp($a['taxon'] ?? $a['especie'], $b['taxon'] ?? $b['especie']);
+        uasort($nodos, $ordenar);
+        uasort($especies, $ordenar);
         $descendientes = [];
         foreach ($distintos as $clave => $niveles) $descendientes[$clave] = array_map('count', $niveles);
 
-        return ['hijos' => array_values($hijos), 'conteos' => $conteos, 'descendientes' => $descendientes];
+        return ['nodos' => array_values($nodos), 'especies' => array_values($especies), 'conteos' => $conteos,
+            'descendientes' => $descendientes, 'rutas' => $rutas, 'total' => $total];
     }
 
     /** Filas filtradas y en orden estable para una descarga CSV de memoria acotada. */
@@ -238,14 +275,14 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
             $ids = $this->resolverDescendientesGeografia($filtros->geografias);
             $query->where(function (Builder $geografia) use ($ids, $filtros): void {
                 $geografia->whereIn('te.localidad_id', $ids);
-                foreach ($filtros->geografias as $nombre) $geografia->orWhereRaw('lower(te.locality_name) = lower(?)', [$nombre]);
+                foreach ($filtros->geografias as $nombre) $geografia->orWhereRaw(NormalizacionGeografica::sql('te.locality_name').' = ?', [NormalizacionGeografica::normalizar($nombre)]);
             });
         }
 
-        if ($filtros->pais !== null) $query->where('ed.country_visible', true)->whereRaw('lower(te.country) = lower(?)', [$filtros->pais]);
+        if ($filtros->pais !== null) $query->where('ed.country_visible', true)->whereRaw(NormalizacionGeografica::sql('te.country').' = ?', [NormalizacionGeografica::normalizar($filtros->pais)]);
 
         if ($filtros->provincia !== null) {
-            $query->where('ed.state_province_visible', true)->where('te.state_province', $filtros->provincia);
+            $query->where('ed.state_province_visible', true)->whereRaw(NormalizacionGeografica::sql('te.state_province').' = ?', [NormalizacionGeografica::normalizar($filtros->provincia)]);
         }
 
         // Colector — búsqueda parcial case-insensitive
@@ -298,11 +335,12 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
 
         // Método de recolección — JOIN con muestras_colecta
         if ($filtros->metodosRecoleccion !== []) {
-            $query->join('taxonomia.muestras_colecta as mc', 'mc.id', '=', 'te.muestra_id');
+            $query->leftJoin('taxonomia.muestras_colecta as mc', 'mc.id', '=', 'te.muestra_id');
             $query->where('ed.sampling_protocol_visible', true);
             $placeholders = implode(',', array_fill(0, count($filtros->metodosRecoleccion), '?'));
             $valores = array_map('strtolower', $filtros->metodosRecoleccion);
-            $query->whereRaw("LOWER(mc.sampling_protocol) = ANY(ARRAY[{$placeholders}])", $valores);
+            $protocolo = ProtocoloColectaPublico::sql();
+            $query->whereRaw("LOWER({$protocolo}) = ANY(ARRAY[{$placeholders}])", $valores);
         }
 
         // Coordenadas — bounding box
@@ -374,8 +412,8 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
     /** @return list<string> UUIDs de las localidades buscadas y todos sus descendientes */
     private function resolverDescendientesGeografia(array $nombres): array
     {
-        $conditions = implode(' OR ', array_fill(0, count($nombres), 'nombre_canonico ILIKE ?'));
-        $params = array_map(static fn ($n) => '%'.$n.'%', $nombres);
+        $conditions = implode(' OR ', array_fill(0, count($nombres), NormalizacionGeografica::sql('nombre_canonico').' LIKE ?'));
+        $params = array_map(static fn ($n) => '%'.NormalizacionGeografica::normalizar($n).'%', $nombres);
 
         $sql = <<<SQL
             WITH RECURSIVE descendientes AS (

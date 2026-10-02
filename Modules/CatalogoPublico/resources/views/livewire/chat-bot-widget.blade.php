@@ -1,19 +1,19 @@
 <div
     class="portal-chat-shell pointer-events-none fixed inset-x-0 bottom-4 z-[9999] flex justify-end px-4 sm:bottom-6 sm:px-6"
     x-data="{ abierto: false }"
-    x-on:keydown.escape.window="if (abierto) { abierto = false; $nextTick(() => $refs.trigger.focus()) }"
+    x-on:keydown.escape.window="if (abierto && !$event.defaultPrevented && !document.querySelector('dialog[open]')) { $event.preventDefault(); abierto = false; $nextTick(() => $refs.trigger.focus()) }"
     x-on:chat-respuesta.window="$nextTick(() => { $refs.messages.scrollTop = $refs.messages.scrollHeight; $refs.input.focus() })"
 >
-    <div class="pointer-events-auto flex w-full max-w-[25rem] flex-col items-end gap-2">
+    <div class="pointer-events-none flex w-full max-w-[25rem] flex-col items-end gap-2">
         <section
             id="chat-bot-panel"
             x-cloak
             x-show="abierto"
             x-transition.opacity.duration.100ms
             aria-label="Asistente HubDigital"
-            class="flex h-[min(34rem,calc(100dvh-2rem))] w-full flex-col overflow-hidden rounded-xl border border-blue-navy/15 bg-white shadow-2xl sm:h-[min(34rem,calc(100dvh-7rem))]"
+            class="pointer-events-auto flex h-[min(34rem,calc(100dvh-2rem))] w-full flex-col overflow-hidden rounded-xl border border-blue-navy/15 bg-white shadow-2xl sm:h-[min(34rem,calc(100dvh-7rem))]"
         >
-            <header class="flex min-h-14 items-center justify-between gap-2 bg-blue-navy px-4 py-2 text-white">
+            <header class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 bg-blue-navy px-3 py-2 text-white sm:px-4">
                 <div class="flex min-w-0 items-center gap-2.5">
                     <span class="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/10" aria-hidden="true">
                         <flux:icon name="chat-bubble-left-right" class="size-5" />
@@ -23,12 +23,13 @@
                         <p class="text-xs text-white/75">Portal, colección y fuentes públicas</p>
                     </div>
                 </div>
-                <button type="button" wire:click="nuevaConversacion" class="ml-auto shrink-0 cursor-pointer rounded-lg px-2 py-1 text-xs font-semibold text-white/90 hover:bg-white/15" title="Borrar el contexto de este chat">Nueva conversación</button>
                 <button type="button" x-on:click="abierto = false; $nextTick(() => $refs.trigger.focus())"
                     class="flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-lg text-white transition hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
                     aria-label="Cerrar chat">
                     <flux:icon name="x-mark" class="size-5" />
                 </button>
+                <button type="button" wire:click="nuevaConversacion" wire:loading.attr="disabled" wire:target="nuevaConversacion"
+                    class="col-span-2 justify-self-start cursor-pointer rounded-lg px-2 py-1 text-xs font-semibold text-white/90 hover:bg-white/15 focus-visible:ring-2 focus-visible:ring-white" title="Borrar el contexto de este chat">Nueva conversación</button>
             </header>
 
             <div x-ref="messages" class="min-h-0 flex-1 space-y-3 overflow-y-auto bg-[#F5F8FC] px-3 py-4" aria-live="polite" aria-relevant="additions text">
@@ -109,7 +110,7 @@
         <button x-ref="trigger" id="chat-bot-trigger" type="button"
             x-on:click="abierto = true; $nextTick(() => $refs.input.focus())"
             x-show="!abierto"
-            class="flex size-14 cursor-pointer items-center justify-center rounded-full bg-blue-navy text-white shadow-lg transition hover:bg-[#244872] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-science-blue focus-visible:ring-offset-2"
+            class="pointer-events-auto flex size-11 cursor-pointer items-center justify-center rounded-full bg-blue-navy text-white shadow-lg transition hover:bg-[#244872] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-science-blue focus-visible:ring-offset-2 sm:size-14"
             aria-controls="chat-bot-panel" aria-label="Abrir asistente HubDigital" :aria-expanded="abierto.toString()">
             <flux:icon name="chat-bubble-left-right" class="size-6" />
         </button>

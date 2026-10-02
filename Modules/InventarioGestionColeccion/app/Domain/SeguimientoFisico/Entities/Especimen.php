@@ -117,6 +117,7 @@ class Especimen
         private ?string $recordCreatedBy = null,
         private ?string $responsibleResearcherExport = null,
         private ?string $endemicVerbatim = null,
+        private ?string $samplingProtocol = null,
     ) {}
 
     /**
@@ -205,6 +206,7 @@ class Especimen
         ?string $responsibleResearcherExport = null,
         ?string $endemicVerbatim = null,
         ?EstadoCustodia $estadoCustodia = null,
+        ?string $samplingProtocol = null,
     ): self {
         $localidad = trim($localidad);
         $localityName = self::limpiarTexto($localityName) ?? $localidad;
@@ -303,6 +305,7 @@ class Especimen
             recordCreatedBy: self::limpiarTexto($recordCreatedBy),
             responsibleResearcherExport: self::limpiarTexto($responsibleResearcherExport),
             endemicVerbatim: self::limpiarTexto($endemicVerbatim),
+            samplingProtocol: self::limpiarTexto($samplingProtocol),
         );
     }
 
@@ -395,6 +398,7 @@ class Especimen
         ?string $recordCreatedBy = null,
         ?string $responsibleResearcherExport = null,
         ?string $endemicVerbatim = null,
+        ?string $samplingProtocol = null,
     ): self {
         return new self(
             id: $id,
@@ -482,6 +486,7 @@ class Especimen
             recordCreatedBy: $recordCreatedBy,
             responsibleResearcherExport: $responsibleResearcherExport,
             endemicVerbatim: $endemicVerbatim,
+            samplingProtocol: $samplingProtocol,
         );
     }
 
@@ -1052,6 +1057,11 @@ class Especimen
     public function responsibleResearcherExport(): ?string
     {
         return $this->responsibleResearcherExport;
+    }
+
+    public function samplingProtocol(): ?string
+    {
+        return $this->samplingProtocol;
     }
 
     public function endemicVerbatim(): ?string

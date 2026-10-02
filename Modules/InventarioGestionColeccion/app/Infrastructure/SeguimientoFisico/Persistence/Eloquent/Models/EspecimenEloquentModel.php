@@ -102,6 +102,7 @@ class EspecimenEloquentModel extends Model
         'record_created_by',
         'responsible_researcher_export',
         'endemic_verbatim',
+        'sampling_protocol',
     ];
 
     protected $casts = [

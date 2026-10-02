@@ -94,6 +94,7 @@ final readonly class FilaMapeada
         public ?string $recordCreatedBy = null,
         public ?string $responsibleResearcherExport = null,
         public ?string $endemicVerbatim = null,
+        public ?string $samplingProtocol = null,
     ) {}
 
     public function requiereRevision(): bool

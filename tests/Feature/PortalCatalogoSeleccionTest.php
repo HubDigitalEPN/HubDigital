@@ -277,9 +277,12 @@ test('la ayuda explica los filtros solicitados y mantiene las preguntas del port
     $respuesta = $asistente->responder('Dame los pasos para filtrar por taxón '.$f['prefijo'].' alfa, provincia Pichincha y mes enero.', $handler);
     expect($respuesta['intent'])->toBe('portal.filtros')
         ->and($respuesta['texto'])->toContain($f['prefijo'].' alfa', 'Pichincha', 'Mes de colecta = 1', 'Tarjetas', 'Indicador');
-    foreach (['como vusco espesimenes en el catalgo', '¿Dónde puedo consultar los ejemplares de la colección?', '¿Por qué no aparecen puntos en el mapa?'] as $pregunta) {
+    foreach (['como vusco espesimenes en el catalgo', '¿Dónde puedo consultar los ejemplares de la colección?'] as $pregunta) {
         expect($asistente->responder($pregunta, $handler)['intent'])->toBe('portal.filtros');
     }
+    $mapa = $asistente->responder('¿Por qué no aparecen puntos en el mapa?', $handler);
+    expect($mapa['intent'])->toBe('portal.mapa_ayuda')
+        ->and($mapa['texto'])->toContain('latitud y longitud públicas y válidas', 'filtros', 'URL');
     expect($asistente->responder('¿Qué es la guía de movilización?', $handler)['intent'])->toBe('documentos_permisos')
         ->and($asistente->responder('¿Son registros o especies distintas?', $handler)['intent'])->toBe('portal.conteos');
 });

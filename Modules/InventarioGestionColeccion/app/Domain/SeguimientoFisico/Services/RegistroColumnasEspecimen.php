@@ -58,6 +58,7 @@ final class RegistroColumnasEspecimen
             self::col('codigoCatalogo', 'Código catálogo', self::GRUPO_IDENTIFICACION, self::PRIORIDAD_RECOMENDADA, true, null),
             self::col('occurrenceId', 'occurrenceID', self::GRUPO_IDENTIFICACION, self::PRIORIDAD_RECOMENDADA, false, 'occurrenceID'),
             self::col('catalogNumber', 'catalogNumber', self::GRUPO_IDENTIFICACION, self::PRIORIDAD_OPCIONAL, false, 'catalogNumber'),
+            self::col('samplingProtocol', 'Protocolo de colecta original', self::GRUPO_REGISTRO, self::PRIORIDAD_RECOMENDADA, false, 'samplingProtocol'),
             self::col('oldCode', 'oldCode (muestra)', self::GRUPO_IDENTIFICACION, self::PRIORIDAD_OPCIONAL, false, null),
             self::col('cardexLiquidCollectionCode', 'Cardex líquido', self::GRUPO_IDENTIFICACION, self::PRIORIDAD_OPCIONAL, false, null),
             self::col('filaOrigenExcel', 'Fila origen Excel', self::GRUPO_IDENTIFICACION, self::PRIORIDAD_OPCIONAL, false, null),
@@ -235,6 +236,7 @@ final class RegistroColumnasEspecimen
 
             // Gestión curatorial y administrativa
             'preparations' => self::campoEdit(self::TIPO_TEXTO, 120),
+            'samplingProtocol' => self::campoEdit(self::TIPO_TEXTO, 255),
             'disposition' => self::campoEdit(self::TIPO_TEXTO, 120),
             'occurrenceStatus' => self::campoEdit(self::TIPO_TEXTO, 120),
             'actaRecepcion' => self::campoEdit(self::TIPO_TEXTO, 120),

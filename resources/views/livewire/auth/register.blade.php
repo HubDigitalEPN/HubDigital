@@ -9,7 +9,7 @@
     {{-- Fortify centraliza validación, normalización, hash y evento Registered. --}}
     <form id="hub-register-form" method="POST" action="{{ route('register.store') }}" class="flex flex-col gap-3" novalidate
         x-data="{
-            role: @js(strtolower(old('rol', 'PRESTAMISTA'))),
+            role: @js(strtoupper(old('rol', 'PRESTAMISTA'))),
             turnstileVerified: {{ config('services.turnstile.enabled') ? 'false' : 'true' }}
         }"
         x-on:hub-register-turnstile-passed.window="turnstileVerified = true"
@@ -20,66 +20,64 @@
         @endif
 
         {{-- Selector de rol público. Los roles internos nunca se aceptan aquí. --}}
-        <div class="flex flex-col gap-2">
-        <p class="text-sm font-medium text-text-primary">¿Cuál es tu propósito?</p>
+        <fieldset class="flex flex-col gap-2">
+        <legend class="text-sm font-medium text-text-primary">¿Cuál es tu propósito?</legend>
 
         <div class="grid grid-cols-2 gap-3">
 
             {{-- Prestamista --}}
-            <button
-                type="button"
-                x-on:click="role = 'prestamista'"
-                x-bind:class="role === 'prestamista'
+            <label
+                x-bind:class="role === 'PRESTAMISTA'
                     ? 'border-science-blue bg-science-blue/5'
                     : 'border-border bg-surface hover:border-science-blue/40'"
-                class="flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border-2 p-3 transition-all duration-150"
+                class="flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border-2 p-3 transition-all duration-150 focus-within:ring-2 focus-within:ring-science-blue"
             >
+                <input type="radio" name="rol" value="PRESTAMISTA" x-model="role" class="sr-only" @checked(strtoupper(old('rol', 'PRESTAMISTA')) === 'PRESTAMISTA')>
                 <div
-                    x-bind:class="role === 'prestamista' ? 'bg-science-blue/15' : 'bg-bg-main'"
+                    x-bind:class="role === 'PRESTAMISTA' ? 'bg-science-blue/15' : 'bg-bg-main'"
                     class="flex h-8 w-8 items-center justify-center rounded-lg"
                 >
                     <flux:icon name="magnifying-glass" variant="outline"
-                        x-bind:class="role === 'prestamista' ? 'text-science-blue' : 'text-text-secondary'"
+                        x-bind:class="role === 'PRESTAMISTA' ? 'text-science-blue' : 'text-text-secondary'"
                         class="size-5" />
                 </div>
                 <div class="text-center">
                     <p class="text-sm font-semibold leading-tight"
-                       x-bind:class="role === 'prestamista' ? 'text-science-blue' : 'text-text-primary'">
+                       x-bind:class="role === 'PRESTAMISTA' ? 'text-science-blue' : 'text-text-primary'">
                         Solicitante
                     </p>
                     <p class="mt-0.5 text-xs leading-snug text-text-secondary">
                         Solicito préstamos de especímenes
                     </p>
                 </div>
-            </button>
+            </label>
 
             {{-- Depositante --}}
-            <button
-                type="button"
-                x-on:click="role = 'depositante'"
-                x-bind:class="role === 'depositante'
+            <label
+                x-bind:class="role === 'DEPOSITANTE'
                     ? 'border-science-blue bg-science-blue/5'
                     : 'border-border bg-surface hover:border-science-blue/40'"
-                class="flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border-2 p-3 transition-all duration-150"
+                class="flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border-2 p-3 transition-all duration-150 focus-within:ring-2 focus-within:ring-science-blue"
             >
+                <input type="radio" name="rol" value="DEPOSITANTE" x-model="role" class="sr-only" @checked(strtoupper(old('rol', 'PRESTAMISTA')) === 'DEPOSITANTE')>
                 <div
-                    x-bind:class="role === 'depositante' ? 'bg-science-blue/15' : 'bg-bg-main'"
+                    x-bind:class="role === 'DEPOSITANTE' ? 'bg-science-blue/15' : 'bg-bg-main'"
                     class="flex h-8 w-8 items-center justify-center rounded-lg"
                 >
                     <flux:icon name="building-library" variant="outline"
-                        x-bind:class="role === 'depositante' ? 'text-science-blue' : 'text-text-secondary'"
+                        x-bind:class="role === 'DEPOSITANTE' ? 'text-science-blue' : 'text-text-secondary'"
                         class="size-5" />
                 </div>
                 <div class="text-center">
                     <p class="text-sm font-semibold leading-tight"
-                       x-bind:class="role === 'depositante' ? 'text-science-blue' : 'text-text-primary'">
+                       x-bind:class="role === 'DEPOSITANTE' ? 'text-science-blue' : 'text-text-primary'">
                         Depositante
                     </p>
                     <p class="mt-0.5 text-xs leading-snug text-text-secondary">
                         Deposito material biológico
                     </p>
                 </div>
-            </button>
+            </label>
 
         </div>
 
@@ -89,8 +87,7 @@
                 {{ $message }}
             </p>
         @enderror
-            <input type="hidden" name="rol" x-bind:value="role.toUpperCase()">
-        </div>
+        </fieldset>
 
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <flux:field>
@@ -134,7 +131,7 @@
         {{-- Datos del depositante: solo cuando el propósito es depositar material biológico.
              Alimentan el Acta recepción-depósito oficial (MEPN). --}}
         <div
-            x-show="role === 'depositante'"
+            x-show="role === 'DEPOSITANTE'"
             x-collapse
             class="grid grid-cols-1 gap-3 sm:grid-cols-2"
         >
@@ -166,24 +163,21 @@
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <flux:field>
                 <flux:label class="font-medium text-text-primary">Contraseña</flux:label>
-                <flux:input
+                <x-auth-password
                     name="password"
-                    type="password"
                     placeholder="Mínimo 8 caracteres"
                     autocomplete="new-password"
-                    viewable
                 />
                 <flux:error name="password" />
             </flux:field>
 
             <flux:field>
                 <flux:label class="font-medium text-text-primary">Confirmar contraseña</flux:label>
-                <flux:input
+                <x-auth-password
                     name="password_confirmation"
-                    type="password"
+                    description="confirmación de contraseña"
                     placeholder="Repite tu contraseña"
                     autocomplete="new-password"
-                    viewable
                 />
                 <flux:error name="password_confirmation" />
             </flux:field>

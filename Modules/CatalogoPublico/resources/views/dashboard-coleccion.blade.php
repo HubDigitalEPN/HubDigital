@@ -13,18 +13,15 @@
     </header>
 
     <div class="atlas-stage">
-        <section x-ref="panelMapa" class="atlas-panel atlas-map-panel" :class="{'atlas-map-maximized': maximizado}" x-on:keydown.escape.window="if (maximizado) minimizar()" aria-labelledby="titulo-mapa">
-            <div class="atlas-panel-header"><div><h2 id="titulo-mapa">Distribución de los registros</h2><p class="atlas-panel-subtitle">Cuadrículas de 0,25° · Tamaño según número de registros · Mayús + arrastrar para seleccionar un área</p></div><button type="button" class="atlas-icon-button" x-ref="maximizar" x-on:click="alternarTamano()" :aria-label="maximizado ? 'Minimizar mapa' : 'Maximizar mapa'" :title="maximizado ? 'Minimizar mapa' : 'Maximizar mapa'" :aria-pressed="maximizado.toString()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path x-show="!maximizado" d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/><path x-show="maximizado" d="M3 8h5V3m8 0v5h5M8 21v-5H3m18 0h-5v5"/></svg></button><x-catalogopublico::menu-analisis tipo="mapa" :datos="$datosMapa['mapa']" /></div>
+        <section x-ref="panelMapa" class="atlas-panel atlas-map-panel" :class="{'atlas-map-maximized': maximizado}" x-on:keydown.escape.window="if (maximizado && !$event.defaultPrevented && !document.querySelector('dialog[open]') && document.querySelector('#chat-bot-trigger')?.getAttribute('aria-expanded') !== 'true' && !$event.target.closest('#chat-bot-panel')) minimizar()" aria-labelledby="titulo-mapa">
+            <div class="atlas-panel-header"><div><h2 id="titulo-mapa">Distribución de los registros</h2><p class="atlas-panel-subtitle">Coordenadas públicas WGS84 · Tamaño según número de registros · Mayús + arrastrar para seleccionar un área</p></div><button type="button" class="atlas-icon-button" x-ref="maximizar" x-on:click="alternarTamano()" :aria-label="maximizado ? 'Minimizar mapa' : 'Maximizar mapa'" :title="maximizado ? 'Minimizar mapa' : 'Maximizar mapa'" :aria-pressed="maximizado.toString()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path x-show="!maximizado" d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/><path x-show="maximizado" d="M3 8h5V3m8 0v5h5M8 21v-5H3m18 0h-5v5"/></svg></button><x-catalogopublico::menu-analisis tipo="mapa" :datos="$datosMapa['mapa']" /></div>
             <div class="atlas-map-shell">
-                <div class="atlas-map" x-ref="mapa" tabindex="-1" wire:ignore role="region" aria-label="Mapa de registros publicados por cuadrícula"></div>
+                <div class="atlas-map" x-ref="mapa" tabindex="-1" wire:ignore role="region" aria-label="Mapa cartográfico de registros publicados en sus coordenadas"></div>
                 @if($datosMapa['mapa'] === [])<p class="atlas-map-message">Esta selección no tiene coordenadas públicas. Ajusta los filtros o explora los registros.</p>@endif
             </div>
             <div class="atlas-map-legend" aria-label="Leyenda del mapa">
-                <strong>Filo predominante</strong>
-                @foreach($datosMapa['filos'] as $filo => $cantidad)
-                    <span><i class="atlas-legend-dot" style="background:{{ $paleta[$loop->index % count($paleta)] }}"></i>{{ $filo }}</span>
-                @endforeach
-                <span><i class="atlas-legend-dot" style="background:#71828d"></i>Sin filo público</span>
+                <span><i class="atlas-legend-dot" style="background:#17699b"></i>Registros en la misma latitud y longitud</span>
+                <small>La posición conserva la coordenada publicada. Su precisión y origen constan en el detalle del ejemplar; una referencia aproximada no indica una colecta exacta.</small>
             </div>
         </section>
 
@@ -42,6 +39,25 @@
                     <p class="atlas-chart-empty">La selección no contiene filos identificados.</p>
                 @endforelse
             </div>
+            @if(($datosMapa['mosaico'] ?? []) !== [])
+                <div class="atlas-taxon-mosaic" aria-label="Fotografías públicas de la selección">
+                    @foreach(array_slice($datosMapa['mosaico'], 0, 4) as $foto)
+                        <figure><a href="{{ $foto['url'] }}" target="_blank" rel="noopener noreferrer" aria-label="Ampliar fotografía de {{ $foto['taxon'] ?? $foto['nombre'] }}"><img src="{{ $foto['url'] }}" alt="{{ $foto['taxon'] ?? $foto['nombre'] }} — fotografía pública de la colección" width="240" height="180" loading="lazy" decoding="async"></a><figcaption>{{ $foto['taxon'] ?? $foto['nombre'] }}</figcaption></figure>
+                    @endforeach
+                </div>
+            @else
+                @php
+                    $nombreFiloMosaico = collect($filosDisponibles)->firstWhere('id', $filtroFiloId)['nombre_cientifico'] ?? '';
+                    $taxonMosaico = ['nombre' => $taxon ?: $filtroTaxon ?: $nombreFiloMosaico];
+                    $ilustracionesMosaico = \Modules\CatalogoPublico\Application\Services\IlustracionTaxonomica::mosaicoParaTaxon($taxonMosaico);
+                @endphp
+                <div class="atlas-taxon-mosaic" aria-label="Ilustraciones representativas de la selección">
+                    @foreach($ilustracionesMosaico as $ilustracionMosaico)
+                        <figure><img src="{{ $ilustracionMosaico['url'] }}" alt="{{ $ilustracionMosaico['alt'] }}" width="240" height="180" loading="lazy" decoding="async"><figcaption>{{ $ilustracionMosaico['grupo'] }} · ilustración</figcaption></figure>
+                    @endforeach
+                </div>
+                <p class="atlas-mosaic-note">Representaciones orientativas del grupo mientras no hay fotografías públicas de esta selección.</p>
+            @endif
             <p class="atlas-taxa-note">La proporción usa todos los registros seleccionados; algunos aún no tienen filo confirmado.</p>
         </section>
     </div>

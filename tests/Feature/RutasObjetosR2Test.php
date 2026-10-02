@@ -143,6 +143,20 @@ test('una imagen de otras regiones permanece almacenada pero no se sirve al port
     expect(DB::table('divulgacion.imagenes_taxonomicas')->where('ruta', $imagen['ruta'])->exists())->toBeTrue();
 });
 
+test('una foto con etiqueta compartida no se atribuye a otro ejemplar ni consulta R2', function (): void {
+    $imagen = imagenPublicadaR2DePrueba();
+    $original = (array) DB::table('taxonomia.especimenes')->where('id', $imagen['especimen_id'])->first();
+    unset($original['coordenadas_otras_regiones'], $original['busqueda_global']);
+    $original['id'] = (string) Str::uuid();
+    $original['codigo_catalogo'] = 'QA-ETIQUETA-'.Str::upper(Str::random(12));
+    DB::table('taxonomia.especimenes')->insert($original);
+    Http::fake();
+
+    $this->get(route('portal.imagen', ['objeto' => $imagen['objeto']]))->assertNotFound();
+    Http::assertNothingSent();
+    expect(DB::table('divulgacion.imagenes_taxonomicas')->where('ruta', $imagen['ruta'])->exists())->toBeTrue();
+});
+
 test('la descarga de acta exige ability, rol, entidad vigente y una ruta no manipulada', function (): void {
     $ahora = now();
     $entidadId = (string) Str::uuid();

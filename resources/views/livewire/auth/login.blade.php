@@ -50,12 +50,10 @@
                     </a>
                 @endif
             </div>
-            <flux:input
+            <x-auth-password
                 name="password"
-                type="password"
                 placeholder="••••••••"
                 autocomplete="current-password"
-                viewable
             />
             <flux:error name="password" />
         </flux:field>

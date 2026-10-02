@@ -718,7 +718,12 @@ final class PortalCatalogo extends Component
 
         if ($this->vista === 'tarjetas' && $this->nivel === '' && $this->explorar === '') {
             $resumenRaiz = app(EloquentProveedorEspecimenesParaArbol::class)->resumenRaiz($filtros);
+            $totalTarjetas = count($resumenRaiz['hijos']);
+            $ultimaPagina = max(1, (int) ceil($totalTarjetas / 12));
+            $paginaActual = min(max(1, $this->pagina), $ultimaPagina);
+            $resumenRaiz['hijos'] = array_slice($resumenRaiz['hijos'], ($paginaActual - 1) * 12, 12);
             return view('catalogopublico::livewire.portal-catalogo', $resumenRaiz + [
+                'totalTarjetas' => $totalTarjetas, 'paginaActual' => $paginaActual, 'ultimaPagina' => $ultimaPagina, 'totalEspecimenes' => 0,
                 'provinciasDisponibles' => $this->provinciasDisponibles, 'filosDisponibles' => $this->filosDisponibles,
                 'preparacionesDisponibles' => $this->preparacionesDisponibles, 'metodosRecoleccionDisponibles' => $this->metodosRecoleccionDisponibles,
                 'biomasDisponibles' => $this->biomasDisponibles, 'hayFiltrosActivos' => ! $filtros->estaVacio() || $this->taxon !== '',
@@ -727,29 +732,39 @@ final class PortalCatalogo extends Component
             ]);
         }
 
-        $output = ($handler)(new ConstruirArbolTaxonomicoInput($filtros->estaVacio() ? null : $filtros));
-
-        $totalGlobal = count($output->especimenIds);
-        $conteos = $this->calcularConteos($output);
-        $ruta = $this->resolverRuta($output);
-        $hijos = $this->resolverHijos($output);
-        $especiesActuales = $this->nivel === 'genus' ? $this->resolverEspecies($output) : [];
-        $hermanos = $this->nivel !== '' ? $this->resolverHermanos($output) : [];
-        $especimenes = $this->nivel === 'species' && $this->vista === 'tarjetas'
-            ? $this->cargarDetallesEspecimenes($output->especimenesPorEspecie[$this->taxon] ?? [], $proveedor, $repoDivulgable)
-            : [];
-
-        $idsParaVista = $this->nivel === ''
-            ? $output->especimenIds
-            : ($output->especimenesPorNodo[$this->nivel.':'.$this->taxon] ?? []);
-        $totalRegistrosVista = count($idsParaVista);
-        $ultimaPagina = max(1, (int) ceil($totalRegistrosVista / 50));
+        $repositorio = app(EloquentProveedorEspecimenesParaArbol::class);
+        $resumen = $repositorio->resumenJerarquia($filtros);
+        $output = ConstruirArbolTaxonomicoOutput::desdeResumen($resumen);
+        $totalGlobal = $resumen['total'];
+        $conteos = $resumen['conteos'];
+        $ruta = array_map(static fn (array $nodo): array => $nodo + ['etiqueta' => self::NIVEL_ETIQUETA[$nodo['nivel']]], $resumen['rutas'][$this->nivel.':'.$this->taxon] ?? []);
+        $padre = $this->taxon === '' ? 'root' : $this->taxon;
+        $hijos = array_values(array_filter($resumen['nodos'], static fn (array $nodo): bool => $nodo['padre'] === $padre));
+        $especiesActuales = array_values(array_filter($resumen['especies'], static fn (array $nodo): bool => $nodo['padre'] === $padre));
+        $hermanos = array_slice($this->nivel !== '' ? $this->resolverHermanos($output) : [], 0, 12);
+        $taxonesExplorados = $this->explorar !== '' ? $this->resolverTaxonesParaExplorar($output, $this->explorar) : [];
+        $especimenes = $registrosVista = [];
+        $totalRegistrosVista = $totalEspecimenes = $conteos[$this->nivel.':'.$this->taxon] ?? $totalGlobal;
+        $totalTarjetas = $this->nivel === 'species' ? $totalEspecimenes : ($this->explorar !== '' ? count($taxonesExplorados) : count($hijos) + count($especiesActuales));
+        $ultimaPagina = max(1, (int) ceil($totalTarjetas / 12));
         $paginaActual = min(max(1, $this->pagina), $ultimaPagina);
-        $registrosVista = $this->vista === 'registros' && $this->explorar === ''
-            ? $this->cargarDetallesPorEspecimenIds(array_slice($idsParaVista, ($paginaActual - 1) * 50, 50), $proveedor, $repoDivulgable)
-            : [];
-
-        $descendientes = $this->calcularDescendientes($output);
+        if ($this->nivel === 'species' && $this->vista === 'tarjetas') {
+            $paginaEspecie = $repositorio->paginaPublica($filtros, $this->pagina, $this->nivel, $this->taxon);
+            $especimenes = $this->cargarDetallesPorEspecimenIds($paginaEspecie['ids'], $proveedor, $repoDivulgable);
+            $totalRegistrosVista = $totalEspecimenes = $totalTarjetas = $paginaEspecie['total'];
+            $paginaActual = $paginaEspecie['pagina'];
+            $ultimaPagina = $paginaEspecie['ultima'];
+        } elseif ($this->explorar !== '') {
+            $taxonesExplorados = array_slice($taxonesExplorados, ($paginaActual - 1) * 12, 12);
+        } else {
+            $tarjetas = array_merge(array_map(static fn (array $n): array => ['tipo' => 'nodo', 'nodo' => $n], $hijos), array_map(static fn (array $n): array => ['tipo' => 'especie', 'nodo' => $n], $especiesActuales));
+            $tarjetas = array_slice($tarjetas, ($paginaActual - 1) * 12, 12);
+            $hijos = array_values(array_map(static fn (array $n): array => $n['nodo'], array_filter($tarjetas, static fn (array $n): bool => $n['tipo'] === 'nodo')));
+            $especiesActuales = array_values(array_map(static fn (array $n): array => $n['nodo'], array_filter($tarjetas, static fn (array $n): bool => $n['tipo'] === 'especie')));
+        }
+        $puntosEspecie = $this->nivel === 'species'
+            ? app(PortalEstadisticas::class)->puntosParaMapa($this->filtrosAnalisis($filtros)) : [];
+        $descendientes = $resumen['descendientes'];
 
         $filtrosActivos = [
             'filtroCatalogo' => $this->filtroCatalogo,
@@ -803,15 +818,16 @@ final class PortalCatalogo extends Component
             'especiesActuales' => $especiesActuales,
             'hermanos' => $hermanos,
             'especimenes' => $especimenes,
+            'totalEspecimenes' => $totalEspecimenes,
+            'totalTarjetas' => $totalTarjetas,
+            'puntosEspecie' => $puntosEspecie,
             'registrosVista' => $registrosVista,
             'totalRegistrosVista' => $totalRegistrosVista,
             'paginaActual' => $paginaActual,
             'ultimaPagina' => $ultimaPagina,
             'conteos' => $conteos,
             'descendientes' => $descendientes,
-            'taxonesExplorados' => $this->explorar !== ''
-                ? $this->resolverTaxonesParaExplorar($output, $this->explorar)
-                : [],
+            'taxonesExplorados' => $taxonesExplorados,
             'totalGlobal' => $totalGlobal,
             'nivelActual' => $this->nivel,
             'taxonActual' => $this->taxon,
@@ -861,6 +877,7 @@ final class PortalCatalogo extends Component
 
         return DB::table('divulgacion.imagenes_taxonomicas')
             ->whereIn('occurrence_id', $occurrenceIDs)
+            ->whereRaw('(SELECT COUNT(*) FROM taxonomia.especimenes identidad WHERE identidad.occurrence_id = divulgacion.imagenes_taxonomicas.occurrence_id) = 1')
             ->orderBy('created_at')
             ->get(['occurrence_id', 'ruta', 'disco', 'nombre_original'])
             ->groupBy('occurrence_id')
@@ -975,26 +992,6 @@ final class PortalCatalogo extends Component
             ->all();
     }
 
-    /**
-     * Carga los detalles de los especímenes aplicando la configuración de visibilidad
-     * de divulgación: cada campo se anula cuando su flag está desactivado, de modo que
-     * la tarjeta del portal solo muestra lo que el curador habilitó.
-     *
-     * @param  list<string>  $occurrenceIDs
-     * @return list<object>
-     */
-    private function cargarDetallesEspecimenes(
-        array $occurrenceIDs,
-        ProveedorEspecimenesPort $proveedor,
-        EspecimenDivulgableRepositoryInterface $repoDivulgable,
-    ): array {
-        if ($occurrenceIDs === []) {
-            return [];
-        }
-
-        return $this->aplicarVisibilidad($proveedor->buscarPorOccurrenceIds($occurrenceIDs), $repoDivulgable);
-    }
-
     /** @param list<string> $especimenIds @return list<object> */
     private function cargarDetallesPorEspecimenIds(
         array $especimenIds,
@@ -1013,7 +1010,7 @@ final class PortalCatalogo extends Component
 
         // Config de visibilidad indexada por especimenId (FK estable compartida con el DTO).
         $configPorEspecimen = [];
-        foreach ($repoDivulgable->buscarPublicadosPorOccurrenceIDs(array_map(fn (DatosEspecimenProveedor $dto): string => $dto->occurrenceId, $datos)) as $divulgable) {
+        foreach ($repoDivulgable->buscarPublicadosPorEspecimenIds(array_map(fn (DatosEspecimenProveedor $dto): string => $dto->especimenId, $datos)) as $divulgable) {
             $configPorEspecimen[$divulgable->especimenId()] = $divulgable;
         }
 
@@ -1026,8 +1023,10 @@ final class PortalCatalogo extends Component
                 $g = fn (bool $visible, mixed $valor): mixed => $visible ? $valor : null;
 
                 return (object) [
+                    'especimen_id' => $dto->especimenId,
                     'occurrence_id' => $g($ver(fn (EspecimenDivulgable $d) => $d->occurrenceIDVisible()), $dto->occurrenceId),
                     'scientific_name' => $g($ver(fn (EspecimenDivulgable $d) => $d->scientificNameVisible()), $dto->scientificName),
+                    'taxon_en_revision' => $ver(fn (EspecimenDivulgable $d) => $d->scientificNameVisible()) && ! CalidadDatoPublico::esTextoValido($dto->scientificName),
                     'individual_count' => $g($ver(fn (EspecimenDivulgable $d) => $d->individualCountVisible()), $dto->individualCount),
                     'type_status' => $g($ver(fn (EspecimenDivulgable $d) => $d->typeStatusVisible()), $dto->typeStatus),
                     'type_notes' => $g($ver(fn (EspecimenDivulgable $d) => $d->typeNotesVisible()), $dto->typeNotes),

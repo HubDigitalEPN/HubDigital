@@ -1,0 +1,15 @@
+# Recuperación del protocolo original de colecta
+
+La revisión del importador confirmó que `samplingProtocol` no se trasladaba desde el Excel al inventario. La columna sí existe en la hoja `Colección_principal`: contiene 33.082 valores entre 49.696 filas. Entre los valores más frecuentes están `fogging` (18.420), `hand` (5.169) y `pitfall` (4.184). Son recuentos de la fuente, no una medición del portal desplegado.
+
+Fuente versionada: `docs/Catálogo lab invertebrados EPN (25-sep-2026).xlsx`, SHA-256 registrado en `docs/coleccion-principal-curacion-2026-09-29.md`: `8ad5eae2eb4935d8629c9b42384b7eb5806f9be109de469dd9ccb5db44bd7114`.
+
+El derivado `resources/data/coleccion-principal-protocolos-20260925.csv.gz` conserva únicamente `fila_origen_excel`, `occurrence_id`, `old_code` y `sampling_protocol`. La numeración omite la cabecera y las filas completamente vacías, igual que el importador. Ocupa 203.018 bytes; se lee secuencialmente en lotes de 500 filas durante la migración. La integridad del derivado queda incluida en el manifiesto del paquete OCI.
+
+La recuperación resuelve el UUID del espécimen usando la fila de origen, que tiene un índice UNIQUE, y además exige coincidencia exacta de `occurrence_id` y `old_code`, incluidos sus valores nulos. Nunca busca solo por número de catálogo. Una fila que no cumple los tres criterios queda sin modificar. No sobrescribe un `sampling_protocol` ya registrado, no cambia `muestra_id` y no altera taxonomía, geografía, permisos ni publicación.
+
+El protocolo original del espécimen prevalece sobre el de una muestra agrupada; el segundo se conserva y sirve de respaldo únicamente si el primero está vacío. Esto evita atribuir a todas las filas una técnica de una muestra que pudo agruparse por un `oldCode` compartido. Las nuevas importaciones conservan el protocolo por ejemplar. El panel, sus filtros y las tarjetas consultan el mismo valor efectivo y respetan `sampling_protocol_visible`.
+
+La lectura de la fuente y el contraste de código se realizaron de forma estática. Las pruebas y migraciones se ejecutan exclusivamente mediante `crear-paquete-oci`; la migración de la base de OCI se aplica durante el despliegue antes de activar la release. Este documento no afirma que los 33.082 valores ya estén recuperados en el servidor.
+
+Los agregados y puntos del mapa usan una revisión de datos almacenada en una fila de PostgreSQL. Los triggers incrementan esa revisión por sentencia de cambio de ejemplares, taxones, muestras, fotos o marcas de divulgación. Cada consulta usa la revisión vigente en la clave de caché y sus resultados expiran a los 300 segundos; un cambio de permisos o coordenadas no reutiliza la selección anterior. Las tarjetas y el modal hidratan como máximo 12 ejemplares por página; el árbol envía únicamente los ancestros y 12 ramas. Los índices parciales cubren punto geográfico y orden estable del taxón; los índices de nombres geográficos comparan variantes de tildes sin modificar la fuente. No se introdujeron particiones ni se midió la latencia en la VM.

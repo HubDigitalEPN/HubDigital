@@ -28,6 +28,28 @@ final class AsistentePortal
         if (preg_match('/^(menu|ayuda|que puedo hacer|que necesitas)/', $normal)) {
             return $this->menuPrincipal();
         }
+        // La ayuda cambia de intención antes de que se reutilice un código o taxón anterior.
+        if (preg_match('/\b(?:catalogo|coleccion)\s+public[oa]\b/', $normal)
+            && preg_match('/cuenta|registrar(?:me)?|registro|iniciar sesion|acceso|consultar/', $normal)
+            && ! preg_match('/\bcuant[oa]s?\b|\bbusca\b/', $normal)) {
+            return ['texto' => 'No necesitas crear una cuenta ni iniciar sesión para consultar el catálogo público, aplicar filtros o descargar sus resultados. La cuenta se utiliza para los trámites y las funciones que requieren un rol autorizado.',
+                'fuente' => 'portal', 'intent' => 'portal.acceso_publico',
+                'opciones' => [['label' => 'Abrir catálogo público', 'url' => route('portal.catalogo')]]];
+        }
+        if (preg_match('/\bcsv\b|(?:descarg|export).*resultad/', $normal)) {
+            return ['texto' => 'Aplica los filtros en el catálogo, cambia a Registros y pulsa Descargar resultados CSV. La descarga conserva toda la selección filtrada, incluidas las filas de otras páginas. No necesitas una cuenta.',
+                'fuente' => 'portal', 'intent' => 'portal.csv', 'entidades' => $contextoCatalogo,
+                'opciones' => [['label' => 'Abrir registros filtrados', 'url' => route('portal.catalogo', $this->consultaCatalogo->parametros($contextoCatalogo))]]];
+        }
+        if (preg_match('/\bregistros\b.*\bespecies\b.*\bdistintas\b|\bdiferencia\b.*\bregistros\b|\b(?:lo mismo|iguales)\b.*\b(?:registros|especies)\b/', $normal)) {
+            return ['texto' => 'No son lo mismo. Un registro corresponde a una entrada del catálogo; varios registros pueden pertenecer a la misma especie. La riqueza de especies cuenta cada identificación científica válida de especie una vez. Taxón es cualquier nivel taxonómico con un nombre científico, como Arthropoda, Formicidae u Homo sapiens. El tamaño de los puntos del mapa expresa cantidad de registros, no abundancia natural.',
+                'fuente' => 'portal', 'intent' => 'portal.conteos', 'opciones' => $opciones];
+        }
+        if (preg_match('/\bmapa\b/', $normal) && preg_match('/no aparecen|sin puntos|faltan puntos/', $normal)) {
+            return ['texto' => 'El mapa solo representa registros con latitud y longitud públicas y válidas dentro de la selección actual. Comprueba los filtros y el número de registros con coordenadas y vuelve a abrir el mapa para revisar la selección. Si ese número es mayor que cero y siguen sin verse, indícame los filtros activos, la URL y cualquier mensaje de error; con esa información se puede revisar la carga del mapa.',
+                'fuente' => 'portal', 'intent' => 'portal.mapa_ayuda', 'entidades' => $contextoCatalogo,
+                'opciones' => [['label' => 'Abrir mapa de la selección', 'url' => route('portal.catalogo', array_replace($this->consultaCatalogo->parametros($contextoCatalogo), ['vista' => 'mapa']))]]];
+        }
         if (preg_match('/^buscar (?:un )?especimen(?:es)?[?.]*$/', $normal)) {
             return ['texto' => '¿Qué dato tienes para buscar en los registros publicados?', 'opciones' => [
                 ['label' => 'Código de catálogo', 'pregunta' => 'Tengo el código'],
@@ -75,10 +97,6 @@ final class AsistentePortal
                 'fuente' => 'portal', 'intent' => 'documentos_permisos',
                 'opciones' => [['label' => 'Consultar depósitos', 'url' => route('depositos.portal')]]];
         }
-        if (preg_match('/\bregistros\b.*\bespecies\b.*\bdistintas\b|\bdiferencia\b.*\bregistros\b/', $normal)) {
-            return ['texto' => 'Un registro corresponde a una entrada del catálogo; varios registros pueden pertenecer a la misma especie. Especies distintas cuenta cada nombre científico válido una vez. Los puntos del mapa agrupan registros por cuadrícula, no especies ni abundancia natural.',
-                'fuente' => 'portal', 'intent' => 'portal.conteos', 'opciones' => $opciones];
-        }
         if (preg_match('/paso a paso|(?:indica|dame).*pasos|como (?:busco|buscar|vusco|filtro)|donde puedo consultar.*(?:ejemplares|coleccion)/', $normal)) {
             return $this->ayudaFiltros($pregunta);
         }
@@ -103,13 +121,16 @@ final class AsistentePortal
             ];
         }
 
-        if (preg_match('/filtro|filtrar|leyenda|mapa|dashboard|indice|indicador|exportar|geojson/i', $normal)
+        $operacionContexto = $contextoCatalogo !== [] && (bool) preg_match('/^(?:y|solo|dame solo|quita|quitar|elimina)\s+/', $normal);
+        if (! $operacionContexto && preg_match('/filtro|filtrar|leyenda|mapa|dashboard|indice|indicador|exportar|geojson/i', $normal)
             && ! preg_match('/cuant|registros de|especies de/', $normal)) {
             return $this->ayudaFiltros($pregunta);
         }
         $consultaCientifica = (bool) preg_match('/\b(tienen|cuant[oa]s?|busca|buscar|existe|registros|especies|familias|generos|ejemplares|especimenes|catalogo)\b/', $normal)
             || (bool) preg_match('/^[\p{L}][\p{L}\d_.:-]*(?:\s+[\p{L}][\p{L}.-]*)?$/u', trim($pregunta))
             || (bool) preg_match('/\b[A-Za-z]+-[A-Za-z0-9-]*\d\b/', $pregunta)
+            || (bool) preg_match('/^(?:perdon|corrijo|quise decir|queria decir|no\s+).*\b(?:quiero|sino|pero|decir)\b/', $normal)
+            || $operacionContexto
             || ($contextoCatalogo !== [] && (bool) preg_match('/^(?:y\s+de\s+|y\s+)?cuantos?|^y\s+|^(?:perdon|corrijo|quise decir|queria decir|no\s+)|^donde\s+los\s+encontraron/i', $normal));
         if ($consultaCientifica && ($publica = $this->consultaCatalogo->responder($pregunta, $contextoCatalogo)) !== null) {
             return $publica;
@@ -153,7 +174,11 @@ final class AsistentePortal
     {
         $entidades = app(DetectorEntidadesChat::class)->extraer($pregunta);
         $criterios = [];
-        foreach (['codigo' => 'N.º de catálogo', 'taxon' => 'Taxón', 'provincia' => 'Provincia', 'localidad' => 'Localidad', 'pais' => 'País', 'desde' => 'Desde', 'hasta' => 'Hasta', 'mes' => 'Mes de colecta', 'ubicacion' => 'Solo coordenadas públicas', 'identificacion' => 'Identificación'] as $clave => $etiqueta) {
+        if (isset($entidades['error_consulta'])) {
+            return ['texto' => $entidades['error_consulta'].' No he preparado una consulta parcial.', 'fuente' => 'aclaracion',
+                'intent' => 'catalogo.aclaracion', 'opciones' => [['label' => 'Abrir catálogo', 'url' => route('portal.catalogo')]]];
+        }
+        foreach (['codigo' => 'N.º de catálogo', 'taxon' => 'Taxón', 'provincia' => 'Provincia', 'localidad' => 'Localidad', 'pais' => 'País', 'desde' => 'Desde', 'hasta' => 'Hasta', 'mes' => 'Mes de colecta', 'ubicacion' => 'Solo coordenadas públicas', 'identificacion' => 'Identificación', 'elev_desde' => 'Elevación desde (m)', 'elev_hasta' => 'Elevación hasta (m)'] as $clave => $etiqueta) {
             if (isset($entidades[$clave])) $criterios[] = $etiqueta.' = '.($clave === 'ubicacion' ? 'sí' : $entidades[$clave]);
         }
         $texto = "1. Abre Colección Biológica y Filtros de investigación. No necesitas cuenta.\n2. ".($criterios === [] ? 'Elige los criterios de tu consulta.' : 'Configura: '.implode('; ', $criterios).'.');
