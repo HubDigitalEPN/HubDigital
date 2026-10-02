@@ -24,57 +24,50 @@ final class ExportarRegistrosEspecimenesHandler
     {
         $nombreArchivo = NombreArchivoExportacion::generar($input->especieNombre, new DateTimeImmutable);
 
-        $datosEspecimenes = $this->proveedorEspecimenes->buscarPorNombreCientifico($input->especieNombre);
-
-        if ($datosEspecimenes === []) {
-            $contenido = $this->generadorXlsx->generar(RegistroExportable::encabezados(), []);
-
-            return ExportarRegistrosEspecimenesOutput::fromPrimitives($nombreArchivo->valor(), $contenido);
-        }
-
-        $occurrenceIDs = array_map(fn (DatosEspecimenProveedor $d) => $d->occurrenceId, $datosEspecimenes);
-
-        $divulgables = $this->repoDivulgable->buscarPublicadosPorOccurrenceIDs($occurrenceIDs);
-
-        $divulgablesPorEspecimenId = [];
-        foreach ($divulgables as $divulgable) {
-            $divulgablesPorEspecimenId[$divulgable->especimenId()] = $divulgable;
-        }
-
-        $registros = [];
-        foreach ($datosEspecimenes as $datoEspecimen) {
-            $divulgable = $divulgablesPorEspecimenId[$datoEspecimen->especimenId] ?? null;
-            if ($divulgable === null) {
-                continue;
-            }
-
-            $registros[] = RegistroExportable::desde(
-                occurrenceID: $datoEspecimen->occurrenceId,
-                scientificName: $datoEspecimen->scientificName,
-                typeStatus: $datoEspecimen->typeStatus,
-                occurrenceStatus: $datoEspecimen->occurrenceStatus,
-                individualCount: $datoEspecimen->individualCount,
-                localityName: $datoEspecimen->localityName,
-                country: $datoEspecimen->country,
-                decimalLatitude: $datoEspecimen->decimalLatitude,
-                decimalLongitude: $datoEspecimen->decimalLongitude,
-                recordedBy: $datoEspecimen->recordedBy,
-                samplingProtocol: $datoEspecimen->samplingProtocol,
-                typeNotes: $datoEspecimen->typeNotes,
-                specimenNotes: $datoEspecimen->specimenNotes,
-                stateProvince: $datoEspecimen->stateProvince,
-                elevationMinM: $datoEspecimen->elevationMinM,
-                elevationMaxM: $datoEspecimen->elevationMaxM,
-                eventDate: $datoEspecimen->eventDate,
-                caste: $datoEspecimen->caste,
-                lifeStage: $datoEspecimen->lifeStage,
-                visibilidad: $divulgable->configuracion(),
-            );
-        }
-
-        $filas = array_map(fn (RegistroExportable $r) => $r->toArray(), $registros);
-        $contenido = $this->generadorXlsx->generar(RegistroExportable::encabezados(), $filas);
-
+        $contenido = $this->generadorXlsx->generar(RegistroExportable::encabezados(), $this->filasPublicas($input));
         return ExportarRegistrosEspecimenesOutput::fromPrimitives($nombreArchivo->valor(), $contenido);
+    }
+
+    /** Los UUID de la selección se hidratan por lotes y se escriben secuencialmente. */
+    private function filasPublicas(ExportarRegistrosEspecimenesInput $input): \Generator
+    {
+        $lotes = $input->especimenIds === null
+            ? [null] : array_chunk($input->especimenIds, 500);
+        foreach ($lotes as $ids) {
+            $datosEspecimenes = $ids === null ? $this->proveedorEspecimenes->buscarPorNombreCientifico($input->especieNombre)
+                : $this->proveedorEspecimenes->buscarPorEspecimenIds($ids);
+            $divulgablesPorEspecimenId = [];
+            foreach ($this->repoDivulgable->buscarPublicadosPorEspecimenIds(array_map(fn (DatosEspecimenProveedor $d): string => $d->especimenId, $datosEspecimenes)) as $divulgable)
+                $divulgablesPorEspecimenId[$divulgable->especimenId()] = $divulgable;
+            foreach ($datosEspecimenes as $datoEspecimen) {
+                $divulgable = $divulgablesPorEspecimenId[$datoEspecimen->especimenId] ?? null;
+                if ($divulgable === null) {
+                    continue;
+                }
+
+                yield RegistroExportable::desde(
+                    occurrenceID: $datoEspecimen->occurrenceId,
+                    scientificName: $datoEspecimen->scientificName,
+                    typeStatus: $datoEspecimen->typeStatus,
+                    occurrenceStatus: $datoEspecimen->occurrenceStatus,
+                    individualCount: $datoEspecimen->individualCount,
+                    localityName: $datoEspecimen->localityName,
+                    country: $datoEspecimen->country,
+                    decimalLatitude: $datoEspecimen->decimalLatitude,
+                    decimalLongitude: $datoEspecimen->decimalLongitude,
+                    recordedBy: $datoEspecimen->recordedBy,
+                    samplingProtocol: $datoEspecimen->samplingProtocol,
+                    typeNotes: $datoEspecimen->typeNotes,
+                    specimenNotes: $datoEspecimen->specimenNotes,
+                    stateProvince: $datoEspecimen->stateProvince,
+                    elevationMinM: $datoEspecimen->elevationMinM,
+                    elevationMaxM: $datoEspecimen->elevationMaxM,
+                    eventDate: $datoEspecimen->eventDate,
+                    caste: $datoEspecimen->caste,
+                    lifeStage: $datoEspecimen->lifeStage,
+                    visibilidad: $divulgable->configuracion(),
+                )->toArray();
+            }
+        }
     }
 }

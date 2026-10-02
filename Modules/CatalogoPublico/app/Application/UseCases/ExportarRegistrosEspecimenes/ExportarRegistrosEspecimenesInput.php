@@ -8,5 +8,6 @@ final readonly class ExportarRegistrosEspecimenesInput
 {
     public function __construct(
         public readonly string $especieNombre,
+        public readonly ?array $especimenIds = null,
     ) {}
 }

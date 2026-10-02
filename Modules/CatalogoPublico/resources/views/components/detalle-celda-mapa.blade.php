@@ -17,12 +17,8 @@
         @php
             $detalle = $this->detalleCelda;
             $seleccionado = $detalle['seleccionado'] ?? null;
-            $ramas = [];
             $idsArbol = array_fill_keys(array_map('strval', array_column($detalle['arbol'] ?? [], 'id')), true);
-            foreach ($detalle['arbol'] ?? [] as $nodoArbol) {
-                $padreArbol = isset($idsArbol[(string) ($nodoArbol['padre_id'] ?? '')]) ? (string) $nodoArbol['padre_id'] : 'raiz';
-                $ramas[$padreArbol][] = $nodoArbol;
-            }
+            $seleccionadoFueraArbol = $seleccionado && ! isset($idsArbol[(string) $seleccionado['id']]);
             $ilustracion = $seleccionado ? ($seleccionado['ilustracion'] ?? \Modules\CatalogoPublico\Application\Services\IlustracionTaxonomica::paraTaxon($seleccionado['jerarquia'] ?? [])) : null;
         @endphp
         <div x-show="!cargando && !error">
@@ -33,39 +29,42 @@
                     <button type="button" wire:click="cambiarVistaCelda('registros')" wire:loading.attr="disabled" aria-label="Todos los registros, 12 por página" title="Todos los registros, 12 por página" aria-pressed="{{ $vistaCelda === 'registros' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18"/></svg></button>
                 </div>
             </div>
-            <p class="atlas-cell-status" wire:loading wire:target="navegarCelda,volverCelda,paginarCelda,cambiarVistaCelda" role="status">Actualizando selección…</p>
+            <p class="atlas-cell-status" wire:loading wire:target="navegarCelda,volverCelda,paginarCelda,paginarArbolCelda,cambiarVistaCelda" role="status">Actualizando selección…</p>
             <div class="atlas-cell-content">
                 @if($vistaCelda === 'grupos' && ($detalle['arbol'] ?? []) !== [])
                     <div class="atlas-taxonomic-layout">
                         <section class="atlas-tree-section" aria-labelledby="titulo-arbol-mapa">
-                            <h3 id="titulo-arbol-mapa">Árbol taxonómico</h3><p class="atlas-tree-hint">Selecciona una rama o especie para ver su información.</p>
-                            <div class="atlas-tree-scroll" tabindex="0" aria-label="Jerarquía taxonómica con desplazamiento horizontal">
-                                <ul class="atlas-taxonomic-tree" aria-label="Taxones de esta ubicación">
-                                    @foreach($ramas['raiz'] ?? [] as $raizArbol)
-                                        @include('catalogopublico::components.nodo-arbol-mapa', ['nodo' => $raizArbol])
-                                    @endforeach
-                                </ul>
+                            <h3 id="titulo-arbol-mapa">Árbol taxonómico</h3>
+                            <p class="atlas-tree-hint">Vista de conjunto de {{ number_format((int) ($detalle['arbol_registros_total'] ?? $detalle['total']), 0, ',', '.') }} registros de esta ubicación. Selecciona un taxón para ver su información.</p>
+                            <p id="nota-dendrograma-mapa" class="atlas-dendrogram-note">Jerarquía taxonómica publicada, sin escala temporal. Miniaturas: representaciones generadas del grupo.</p>
+                            <div class="atlas-tree-scroll" tabindex="0" role="region" aria-label="Gráfico de la jerarquía taxonómica con desplazamiento vertical" aria-describedby="nota-dendrograma-mapa">
+                                <x-catalogopublico::dendrograma-mapa :arbol="$detalle['arbol']" :seleccionado="$seleccionado['id'] ?? null" />
                             </div>
-                            @if(($detalle['grupos'] ?? []) !== [])
-                                <nav class="atlas-cell-pagination" aria-label="Páginas de ramas del árbol">
-                                    <button type="button" wire:click="paginarCelda({{ $detalle['pagina'] - 1 }})" wire:loading.attr="disabled" @disabled($detalle['pagina'] <= 1)>Anterior</button>
-                                    <span>Ramas · {{ $detalle['pagina'] }} / {{ $detalle['ultima'] }} · hasta 12 por página</span>
-                                    <button type="button" wire:click="paginarCelda({{ $detalle['pagina'] + 1 }})" wire:loading.attr="disabled" @disabled($detalle['pagina'] >= $detalle['ultima'])>Siguiente</button>
+                            @if(($detalle['arbol_hojas_total'] ?? 0) > 0)
+                                <nav class="atlas-cell-pagination" aria-label="Páginas de taxones terminales del dendrograma">
+                                    <button type="button" wire:click="paginarArbolCelda({{ $detalle['arbol_pagina'] - 1 }})" wire:loading.attr="disabled" @disabled($detalle['arbol_pagina'] <= 1)>Anterior</button>
+                                    <span>{{ number_format((int) $detalle['arbol_hojas_total'], 0, ',', '.') }} taxones terminales · {{ $detalle['arbol_pagina'] }} / {{ $detalle['arbol_ultima'] }} · hasta 12 por página</span>
+                                    <button type="button" wire:click="paginarArbolCelda({{ $detalle['arbol_pagina'] + 1 }})" wire:loading.attr="disabled" @disabled($detalle['arbol_pagina'] >= $detalle['arbol_ultima'])>Siguiente</button>
                                 </nav>
                             @endif
+                            @if($seleccionadoFueraArbol)<p class="atlas-dendrogram-note" role="status">{{ $seleccionado['nombre'] }} está en otra página del árbol. Su ficha permanece abierta.</p>@endif
                             @if($detalle['directos'] > 0 && ($detalle['grupos'] ?? []) !== [])<button type="button" class="atlas-panel-link" wire:click="cambiarVistaCelda('registros')">Incluye {{ $detalle['directos'] }} registros sin agrupación adicional pública. Ver registros.</button>@endif
                         </section>
                         <aside class="atlas-taxon-information" aria-labelledby="titulo-info-taxon">
                             <h3 id="titulo-info-taxon">{{ $seleccionado['nombre'] ?? 'Información del taxón' }}</h3>
                             @if($seleccionado)
-                                <p class="atlas-tree-hint">{{ ucfirst($seleccionado['rango']) }} · {{ number_format((int) $seleccionado['total'], 0, ',', '.') }} registros públicos en esta ubicación</p>
+                                <p class="atlas-tree-hint">{{ \Modules\CatalogoPublico\Application\Services\DendrogramaTaxonomico::etiquetaRango($seleccionado['rango']) }} · {{ number_format((int) $seleccionado['total'], 0, ',', '.') }} registros públicos en esta ubicación</p>
                                 @if(($detalle['informacion']['autor'] ?? '') !== '' || ($detalle['informacion']['anio_descripcion'] ?? null) !== null)
                                     <dl class="atlas-taxon-authorship">
                                         @if(($detalle['informacion']['autor'] ?? '') !== '')<div><dt>Autoría taxonómica</dt><dd>{{ $detalle['informacion']['autor'] }}</dd></div>@endif
                                         @if(($detalle['informacion']['anio_descripcion'] ?? null) !== null)<div><dt>Año de descripción</dt><dd>{{ $detalle['informacion']['anio_descripcion'] }}</dd></div>@endif
                                     </dl>
                                 @endif
-                                <figure class="atlas-taxon-illustration"><img src="{{ $ilustracion['url'] }}" alt="{{ $ilustracion['alt'] }}" width="480" height="320" loading="lazy" decoding="async"><figcaption>Ilustración representativa de {{ $ilustracion['grupo'] }}. Los datos siguientes corresponden a ejemplares publicados de la base de datos.</figcaption></figure>
+                                @if(in_array($seleccionado['rango'], ['especie', 'species'], true))
+                                    <x-catalogopublico::representacion-especie :nombre="$seleccionado['nombre']" :jerarquia="$seleccionado['jerarquia'] ?? []" :ilustracion="$ilustracion" />
+                                @else
+                                    <figure class="atlas-taxon-illustration"><img src="{{ $ilustracion['url'] }}" alt="{{ $ilustracion['alt'] }}" width="320" height="320" loading="lazy" decoding="async"><figcaption>@if($ilustracion['morfologia'] ?? false)Representación fotorrealista generada de {{ $ilustracion['grupo'] }}; no reproduce un ejemplar.@else Diagrama taxonómico orientativo; no hay una representación morfológica disponible.@endif Los datos siguientes corresponden a ejemplares publicados de la base de datos.</figcaption></figure>
+                                @endif
                                 @if($detalle['registros'] !== [])
                                     <div x-data="{ registroActivo: 0 }" wire:key="informacion-taxon-{{ $seleccionado['id'] }}-{{ $detalle['pagina'] }}">
                                         <label class="atlas-record-selector">Ejemplar de la selección<select x-model.number="registroActivo">
@@ -81,7 +80,7 @@
                                     <p class="atlas-tree-hint">Abre una especie para consultar las fechas, localidades, métodos de colecta y demás campos públicos de sus ejemplares.</p>
                                 @endif
                             @else
-                                <p class="atlas-tree-hint">El árbol reúne {{ number_format((int) $detalle['total'], 0, ',', '.') }} registros con esta latitud y longitud. Selecciona un taxón para consultar sus datos y su ilustración.</p>
+                                <p class="atlas-tree-hint">El árbol reúne {{ number_format((int) $detalle['total'], 0, ',', '.') }} registros con esta latitud y longitud. Selecciona un taxón para consultar sus datos y su representación.</p>
                             @endif
                         </aside>
                     </div>

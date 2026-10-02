@@ -24,5 +24,5 @@ interface ImagenTaxonomicaRepositoryInterface
      *
      * @return list<ImagenTaxonomica>
      */
-    public function listarPorSubarbol(RangoTaxonomico $nivel, string $valorTaxon): array;
+    public function listarPorSubarbol(RangoTaxonomico $nivel, string $valorTaxon, int $limite = 12, ?ImagenTaxonomicaId $preferida = null): array;
 }

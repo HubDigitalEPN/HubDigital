@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Livewire\Livewire;
 use Modules\CatalogoPublico\Application\UseCases\ConsultarChatBot\AsistentePortal;
 use Modules\CatalogoPublico\Application\UseCases\ConsultarChatBot\ConsultarChatBotHandler;
 use Modules\CatalogoPublico\Application\UseCases\ConsultarChatBot\ConsultaCatalogoPublico;
 use Modules\CatalogoPublico\Application\UseCases\ConsultarChatBot\ContextoChat;
 use Modules\CatalogoPublico\Application\UseCases\ConsultarChatBot\DetectorEntidadesChat;
+use Modules\CatalogoPublico\Application\UseCases\ConsultarChatBot\EnlaceSeleccionCatalogo;
+use Modules\CatalogoPublico\Presentation\Http\Controllers\ChatBotWidget;
+use Modules\CatalogoPublico\Presentation\Http\Controllers\PortalCatalogo;
 use Tests\DatabaseFeatureTestCase;
 
 uses(DatabaseFeatureTestCase::class);
@@ -44,6 +48,34 @@ function parametrosEnlaceChat(array $respuesta): array
 {
     parse_str((string) parse_url($respuesta['opciones'][0]['url'], PHP_URL_QUERY), $parametros);
     return $parametros;
+}
+
+function seleccionChatRenderizada(object $catalogo): array
+{
+    expect(preg_match('/\bdata-catalogo-seleccion="([^"]*)"/u', $catalogo->html(), $atributo))->toBe(1);
+
+    return json_decode(html_entity_decode($atributo[1], ENT_QUOTES | ENT_HTML5, 'UTF-8'), true, flags: JSON_THROW_ON_ERROR);
+}
+
+function jerarquiaGenerosChat(): array
+{
+    registrosParaContratoChat();
+    $genero = DB::table('taxonomia.taxones')->where('nombre_cientifico', 'Chatobius')->first();
+    $reino = (string) Str::uuid(); $clase = (string) Str::uuid(); $orden = (string) Str::uuid(); $familia = (string) Str::uuid();
+    $otroGenero = (string) Str::uuid(); $otraEspecie = (string) Str::uuid();
+    DB::table('taxonomia.taxones')->insert([
+        ['id' => $reino, 'padre_id' => null, 'rango' => 'reino', 'nombre_cientifico' => 'Chatanimalia'],
+        ['id' => $clase, 'padre_id' => $genero->padre_id, 'rango' => 'clase', 'nombre_cientifico' => 'Chatinsecta'],
+        ['id' => $orden, 'padre_id' => $clase, 'rango' => 'orden', 'nombre_cientifico' => 'Chathymenoptera'],
+        ['id' => $familia, 'padre_id' => $orden, 'rango' => 'familia', 'nombre_cientifico' => 'Chatformicidae'],
+        ['id' => $otroGenero, 'padre_id' => $familia, 'rango' => 'genero', 'nombre_cientifico' => 'Chatoterus'],
+        ['id' => $otraEspecie, 'padre_id' => $otroGenero, 'rango' => 'especie', 'nombre_cientifico' => 'Chatoterus gamma'],
+    ]);
+    DB::table('taxonomia.taxones')->where('id', $genero->padre_id)->update(['nombre_cientifico' => 'Chatarthropoda', 'padre_id' => $reino]);
+    DB::table('taxonomia.taxones')->where('id', $genero->id)->update(['padre_id' => $familia]);
+    DB::table('taxonomia.especimenes')->where('codigo_catalogo', 'QA3-CHAT-4')->update(['taxon_id' => $otraEspecie]);
+
+    return ['familia' => $familia];
 }
 
 test('consultar una provincia no añade una localidad homónima ni una nota con provincia de', function (): void {
@@ -201,3 +233,198 @@ test('una aclaración conserva la selección válida y una pregunta de acceso li
     $contexto->guardar($contexto->obtener(), ['fuente' => 'portal', 'intent' => 'portal.acceso_publico']);
     expect($contexto->obtener()['entities'])->toBe([]);
 });
+
+test('una conversación nueva exporta la selección aplicada de la página y conserva el taxón navegado entre vistas', function (): void {
+    registrosParaContratoChat();
+    $seleccion = ['nivel' => 'genus', 'taxon' => 'Chatobius', 'fprov' => 'Pichincha',
+        'ffd' => '2000-05-01', 'ffh' => '2000-05-04', 'fed' => '1000', 'feh' => '2000'];
+    $catalogo = Livewire::withQueryParams($seleccion + ['vista' => 'mapa'])->test(PortalCatalogo::class);
+    $chat = Livewire::test(ChatBotWidget::class)->call('nuevaConversacion');
+    expect(app(ContextoChat::class)->obtener())->toBe([])
+        ->and(seleccionChatRenderizada($catalogo))->toEqual($seleccion);
+    $chat->set('pregunta', '¿Cómo descargo los resultados filtrados en CSV?')->call('enviar', seleccionChatRenderizada($catalogo));
+    expect(parametrosEnlaceChat($chat->get('mensajes')[1]))->toMatchArray($seleccion + ['vista' => 'registros'])
+        ->not->toHaveKey('pagina');
+
+    $catalogo->call('cambiarVista', 'registros');
+    expect(seleccionChatRenderizada($catalogo))->toEqual($seleccion);
+    $chat->call('sugerir', '¿Por qué no aparecen puntos en el mapa?', seleccionChatRenderizada($catalogo));
+    expect(parametrosEnlaceChat($chat->get('mensajes')[3]))->toMatchArray($seleccion + ['vista' => 'mapa']);
+});
+
+test('el enlace de ayuda usa filtros aplicados y no borradores inválidos ni una consulta anterior del chat', function (): void {
+    registrosParaContratoChat();
+    $catalogo = Livewire::withQueryParams(['ft' => 'Chatobius', 'fprov' => 'Pichincha', 'vista' => 'registros'])->test(PortalCatalogo::class);
+    $aplicada = ['ft' => 'Chatobius', 'fprov' => 'Pichincha'];
+    $catalogo->set('borradorFiltros.filtroProvincia', 'Esmeraldas')
+        ->set('borradorFiltros.filtroFechaDesde', '2001-01-01')->set('borradorFiltros.filtroFechaHasta', '2000-01-01');
+    expect(seleccionChatRenderizada($catalogo))->toEqual($aplicada);
+    $catalogo->call('aplicarBorrador')->assertHasErrors('filtroFechaHasta');
+    expect(seleccionChatRenderizada($catalogo))->toEqual($aplicada);
+
+    app(ContextoChat::class)->guardar([], ['fuente' => 'catalogo', 'entidades' => ['codigo' => 'QA3-CHAT-4']]);
+    $chat = Livewire::test(ChatBotWidget::class)->set('pregunta', 'Descargar resultados CSV')->call('enviar', seleccionChatRenderizada($catalogo));
+    expect(parametrosEnlaceChat($chat->get('mensajes')[1]))->toEqual($aplicada + ['vista' => 'registros']);
+
+    $catalogo->set('borradorFiltros.filtroFechaDesde', '')->set('borradorFiltros.filtroFechaHasta', '')
+        ->call('aplicarBorrador')->assertHasNoErrors();
+    $chat->call('sugerir', 'Descargar resultados CSV', seleccionChatRenderizada($catalogo));
+    expect(parametrosEnlaceChat($chat->get('mensajes')[3]))->toMatchArray(['ft' => 'Chatobius', 'fprov' => 'Esmeraldas', 'vista' => 'registros'])
+        ->not->toHaveKey('fc');
+    $catalogo->call('limpiarFiltros');
+    $chat->call('sugerir', 'Descargar resultados CSV', seleccionChatRenderizada($catalogo));
+    expect(parametrosEnlaceChat($chat->get('mensajes')[5]))->toBe(['vista' => 'registros']);
+});
+
+test('los enlaces de selección admiten solo parámetros públicos y conservan los filtros que el chat no interpreta', function (): void {
+    $seleccion = ['fp' => ['Alcohol'], 'fm' => ['Trampa de caída'], 'fb' => ['Bosque'], 'fg' => ['Quito', 'Yasuní'],
+        'fco' => 'Colectora', 'fh' => 'Hojarasca', 'fsti' => 'Holotype', 'fca' => 'Worker', 'fes' => 'Adult',
+        'flat' => '-1', 'flax' => '0', 'flon' => '-79', 'flox' => '-78', 'fgeo' => '1', 'fap' => '1'];
+    $catalogo = Livewire::withQueryParams($seleccion + ['vista' => 'registros'])->test(PortalCatalogo::class);
+    expect(seleccionChatRenderizada($catalogo))->toEqual($seleccion);
+    $respuesta = app(AsistentePortal::class)->responder('¿Cómo descargo CSV?', app(ConsultarChatBotHandler::class),
+        seleccionPortal: $seleccion + ['vista' => 'mapa', 'pagina' => 9, 'especimenes' => [['id' => 'privado']], 'borradorFiltros' => ['fprov' => 'Napo']]);
+    expect(parametrosEnlaceChat($respuesta))->toEqual($seleccion + ['vista' => 'registros'])
+        ->and(EnlaceSeleccionCatalogo::limpiar(['ft' => ['id' => 'privado'], 'fg' => ['Quito', ['id' => 'privado']]]))->toBe(['fg' => ['Quito']]);
+});
+
+test('las variantes de fechas naturales conservan ambos días y el operador antes del año', function (): void {
+    registrosParaContratoChat();
+    $catalogo = app(ConsultaCatalogoPublico::class);
+    $respuesta = $catalogo->responder('Busca Chatobius en Pichincha desde el 1 de mayo de 2000 hasta el 4 de mayo de 2000');
+    expect($respuesta['datos']['total'])->toBe(1)
+        ->and(parametrosEnlaceChat($respuesta))->toMatchArray(['ffd' => '2000-05-01', 'ffh' => '2000-05-04'])
+        ->not->toHaveKey('fmes');
+    foreach (['desde el 1 de mayo de 2000 hasta el próximo martes', 'desde el 1 de mayo de 2000 y el 4 de mayo de 2000'] as $intervalo) {
+        $incompleta = $catalogo->responder('Busca Chatobius '.$intervalo);
+        expect($incompleta['intent'])->toBe('catalogo.aclaracion')->and($incompleta['datos']['total'])->toBeNull();
+    }
+    DB::table('taxonomia.especimenes')->where('codigo_catalogo', 'QA3-CHAT-1')->update(['fecha_colecta' => '1949-12-31']);
+    DB::table('taxonomia.especimenes')->where('codigo_catalogo', 'QA3-CHAT-2')->update(['fecha_colecta' => '1950-01-01']);
+    $antes = $catalogo->responder('Busca Chatobius colectados antes del 1950');
+    expect($antes['datos']['total'])->toBe(1)
+        ->and(parametrosEnlaceChat($antes))->toMatchArray(['ffh' => '1949-12-31'])->not->toHaveKey('ffd');
+});
+
+test('los géneros de todos los niveles superiores usan la provincia fechas y elevación del enlace', function (): void {
+    jerarquiaGenerosChat();
+    $catalogo = app(ConsultaCatalogoPublico::class);
+    foreach (['Chatanimalia', 'Chatarthropoda', 'Chatinsecta', 'Chathymenoptera', 'Chatformicidae'] as $raiz) {
+        $respuesta = $catalogo->responder('¿Qué géneros hay dentro de '.$raiz.' en Pichincha desde 2000-05-01 hasta 2000-05-04 entre 1000 y 2000 metros de altitud?');
+        expect($respuesta['intent'])->toBe('catalogo.genera')->and($respuesta['datos'])->toBe(['total' => 1, 'filas' => ['Chatobius']])
+            ->and($respuesta['entidades'])->toMatchArray(['taxon' => $raiz, 'provincia' => 'Pichincha', 'desde' => '2000-05-01', 'hasta' => '2000-05-04', 'elev_desde' => '1000', 'elev_hasta' => '2000'])
+            ->and(parametrosEnlaceChat($respuesta))->toMatchArray(['ft' => $raiz, 'fprov' => 'Pichincha', 'ffd' => '2000-05-01', 'ffh' => '2000-05-04', 'fed' => '1000', 'feh' => '2000']);
+    }
+    expect($catalogo->responder('¿Qué géneros hay dentro de Chatarthropoda en Esmeraldas?')['datos'])->toBe(['total' => 1, 'filas' => ['Chatoterus']])
+        ->and($catalogo->responder('¿Qué géneros hay dentro de Chatarthropoda en Ecuador?')['datos'])->toBe(['total' => 1, 'filas' => ['Chatoterus']]);
+    $registro = DB::table('taxonomia.especimenes')->where('codigo_catalogo', 'QA3-CHAT-1')->value('id');
+    DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $registro)->update(['occurrence_id_visible' => false]);
+    $pregunta = '¿Qué géneros hay dentro de Chatformicidae desde 2000-05-01 hasta 2000-05-04?';
+    expect($catalogo->responder($pregunta)['datos'])->toBe(['total' => 1, 'filas' => ['Chatobius']]);
+    DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $registro)->update(['genus_visible' => false]);
+    expect($catalogo->responder($pregunta)['datos'])->toBe(['total' => 0, 'filas' => []]);
+});
+
+test('el total de géneros incluye identificaciones al género y no se limita a los diez nombres mostrados', function (): void {
+    $jerarquia = jerarquiaGenerosChat();
+    foreach (range('a', 'j') as $sufijo) {
+        $genero = (string) Str::uuid(); $registro = (string) Str::uuid();
+        DB::table('taxonomia.taxones')->insert(['id' => $genero, 'padre_id' => $jerarquia['familia'], 'rango' => 'genero', 'nombre_cientifico' => 'Chatogenus'.$sufijo]);
+        DB::table('taxonomia.especimenes')->insert(['id' => $registro, 'taxon_id' => $genero, 'codigo_catalogo' => 'QA-GENERO-'.$sufijo, 'occurrence_id' => 'QA-GENERO-'.$sufijo]);
+        DB::table('divulgacion.especimenes_divulgables')->insert(['id' => (string) Str::uuid(), 'especimen_id' => $registro]);
+    }
+    $respuesta = app(ConsultaCatalogoPublico::class)->responder('¿Cuántos géneros hay dentro de Chatarthropoda?');
+    expect($respuesta['datos']['total'])->toBe(12)->and($respuesta['datos']['filas'])->toHaveCount(10)
+        ->and($respuesta['texto'])->toContain('se muestran los primeros 10');
+});
+
+test('una consulta global explícita deja el código o taxón anterior y conserva el historial de mensajes', function (): void {
+    registrosParaContratoChat();
+    $asistente = app(AsistentePortal::class); $handler = app(ConsultarChatBotHandler::class);
+    foreach ([['codigo' => 'QA3-CHAT-1'], ['taxon' => 'Chatobius alpha', 'provincia' => 'Pichincha', 'mes' => '5']] as $contexto) {
+        foreach (['¿Cuántos registros públicos hay en la colección?' => 4, '¿Cuántas especies distintas hay en toda la colección?' => 2] as $pregunta => $total) {
+            $respuesta = $asistente->responder($pregunta, $handler, contextoCatalogo: $contexto);
+            expect($respuesta['datos']['total'])->toBe($total)->and($respuesta['entidades'])->toBe([])
+                ->and(parametrosEnlaceChat($respuesta))->toBe(['vista' => 'registros']);
+        }
+    }
+    $chat = Livewire::test(ChatBotWidget::class)->set('pregunta', 'Busca QA3-CHAT-1')->call('enviar');
+    expect(app(ContextoChat::class)->obtener()['entities']['codigo'])->toBe('QA3-CHAT-1');
+    $chat->set('pregunta', '¿Cuántos registros públicos hay en la colección?')->call('enviar');
+    expect($chat->get('mensajes'))->toHaveCount(4)->and($chat->get('mensajes')[1]['texto'])->toContain('QA3-CHAT-1')
+        ->and($chat->get('mensajes')[3]['texto'])->toContain('4 registros publicados')
+        ->and(app(ContextoChat::class)->obtener()['entities'])->toBe([]);
+    $referida = $asistente->responder('¿Cuántas especies de ese taxón hay en la colección?', $handler, contextoCatalogo: ['taxon' => 'Chatobius alpha']);
+    expect($referida['datos']['total'])->toBe(1)->and($referida['entidades'])->toBe(['taxon' => 'Chatobius alpha']);
+});
+
+test('retirar un filtro reconocido conserva los demás predicados del contexto y del enlace', function (string $pregunta, array $contexto, array $esperadas, int $total): void {
+    registrosParaContratoChat();
+    $respuesta = app(AsistentePortal::class)->responder($pregunta, app(ConsultarChatBotHandler::class), contextoCatalogo: $contexto);
+    expect($respuesta['datos']['total'])->toBe($total)->and($respuesta['entidades'])->toEqual($esperadas)
+        ->and(parametrosEnlaceChat($respuesta))->toEqual(app(ConsultaCatalogoPublico::class)->parametros($esperadas));
+    app(ContextoChat::class)->guardar(['entities' => $contexto], $respuesta);
+    expect(app(ContextoChat::class)->obtener()['entities'])->toEqual($esperadas);
+})->with([
+    ['Quita el filtro de provincia', ['taxon' => 'Chatobius', 'provincia' => 'Pichincha', 'mes' => '5'], ['taxon' => 'Chatobius', 'mes' => '5'], 3],
+    ['Elimina el filtro de país', ['taxon' => 'Chatobius', 'pais' => 'Ecuador', 'mes' => '5'], ['taxon' => 'Chatobius', 'mes' => '5'], 3],
+    ['Quita el filtro de localidad', ['taxon' => 'Chatobius', 'localidad' => 'Quito'], ['taxon' => 'Chatobius'], 4],
+    ['Quita el filtro de código', ['codigo' => 'QA3-CHAT-1', 'provincia' => 'Pichincha', 'mes' => '5'], ['provincia' => 'Pichincha', 'mes' => '5'], 2],
+    ['Quita el filtro de taxón', ['taxon' => 'Chatobius alpha'], [], 4],
+    ['Sin filtro de mes', ['taxon' => 'Chatobius', 'mes' => '5', 'desde' => '2000-05-01', 'hasta' => '2000-05-31', 'fecha_precision' => 'mes'], ['taxon' => 'Chatobius', 'desde' => '2000-01-01', 'hasta' => '2000-12-31', 'fecha_precision' => 'explicita'], 4],
+    ['Quita el filtro de fechas', ['taxon' => 'Chatobius', 'desde' => '2000-05-01', 'hasta' => '2000-05-04', 'fecha_precision' => 'explicita'], ['taxon' => 'Chatobius'], 4],
+    ['Quita el filtro de fecha inicial', ['taxon' => 'Chatobius', 'desde' => '2000-05-04', 'hasta' => '2000-05-05', 'fecha_precision' => 'explicita'], ['taxon' => 'Chatobius', 'hasta' => '2000-05-05'], 4],
+    ['Quita el filtro de fecha final', ['taxon' => 'Chatobius', 'desde' => '2000-05-04', 'hasta' => '2000-05-05', 'fecha_precision' => 'explicita'], ['taxon' => 'Chatobius', 'desde' => '2000-05-04'], 2],
+    ['Quita el filtro de elevación', ['taxon' => 'Chatobius', 'elev_desde' => '1000', 'elev_hasta' => '2000'], ['taxon' => 'Chatobius'], 4],
+    ['Quita el filtro de coordenadas', ['taxon' => 'Chatobius', 'ubicacion' => '1'], ['taxon' => 'Chatobius'], 4],
+    ['Quita el filtro de identificación', ['taxon' => 'Chatobius', 'identificacion' => 'superior'], ['taxon' => 'Chatobius'], 4],
+]);
+
+test('una retirada desconocida ambigua o sin filtro previo pide aclaración sin cambiar la selección', function (): void {
+    registrosParaContratoChat();
+    $contexto = ['taxon' => 'Chatobius', 'provincia' => 'Pichincha'];
+    foreach ([['Quita el filtro de método de recolección', $contexto], ['Quita el filtro de provincia Pichincha', $contexto],
+        ['Quita el filtro de provincia', ['taxon' => 'Chatobius']], ['Quita el filtro de provincia', []]] as [$pregunta, $anterior]) {
+        $respuesta = app(AsistentePortal::class)->responder($pregunta, app(ConsultarChatBotHandler::class), contextoCatalogo: $anterior);
+        expect($respuesta['intent'])->toBe('catalogo.aclaracion')->and($respuesta['datos']['total'])->toBeNull()
+            ->and($respuesta['entidades'])->toBe($anterior);
+    }
+});
+
+test('añadir o reemplazar una dimensión geográfica conserva las otras restricciones explícitas', function (string $pregunta, array $contexto, array $esperadas, int $total): void {
+    registrosParaContratoChat();
+    $respuesta = app(AsistentePortal::class)->responder($pregunta, app(ConsultarChatBotHandler::class), contextoCatalogo: $contexto);
+    expect($respuesta['datos']['total'])->toBe($total)->and($respuesta['entidades'])->toEqual($esperadas)
+        ->and(parametrosEnlaceChat($respuesta))->toEqual(app(ConsultaCatalogoPublico::class)->parametros($esperadas));
+})->with([
+    ['Solo los de Ecuador', ['taxon' => 'Chatobius', 'provincia' => 'Pichincha'], ['taxon' => 'Chatobius', 'provincia' => 'Pichincha', 'pais' => 'Ecuador'], 0],
+    ['Y en Pichincha', ['taxon' => 'Chatobius', 'localidad' => 'Quito'], ['taxon' => 'Chatobius', 'localidad' => 'Quito', 'provincia' => 'Pichincha'], 1],
+    ['Solo los de la localidad de Quito', ['taxon' => 'Chatobius', 'provincia' => 'Pichincha', 'pais' => 'Peru'], ['taxon' => 'Chatobius', 'provincia' => 'Pichincha', 'pais' => 'Peru', 'localidad' => 'Quito'], 1],
+    ['Y en Pichincha', ['taxon' => 'Chatobius', 'provincia' => 'Esmeraldas', 'pais' => 'Ecuador'], ['taxon' => 'Chatobius', 'pais' => 'Ecuador', 'provincia' => 'Pichincha'], 0],
+]);
+
+test('una corrección geográfica retira solo el valor previo negado y conserva el resto de la selección', function (string $pregunta, array $contexto, array $esperadas, int $total): void {
+    registrosParaContratoChat();
+    $respuesta = app(AsistentePortal::class)->responder($pregunta, app(ConsultarChatBotHandler::class), contextoCatalogo: $contexto);
+    expect($respuesta['datos']['total'])->toBe($total)
+        ->and($respuesta['entidades'])->toEqual($esperadas)
+        ->and(parametrosEnlaceChat($respuesta))->toEqual(app(ConsultaCatalogoPublico::class)->parametros($esperadas));
+    app(ContextoChat::class)->guardar(['entities' => $contexto], $respuesta);
+    expect(app(ContextoChat::class)->obtener()['entities'])->toEqual($esperadas);
+})->with([
+    ['No Pichincha, Quito',
+        ['taxon' => 'Chatobius', 'provincia' => 'Pichincha', 'pais' => 'Perú', 'mes' => '2', 'desde' => '2000-02-01', 'hasta' => '2000-02-29', 'fecha_precision' => 'explicita'],
+        ['taxon' => 'Chatobius', 'pais' => 'Perú', 'mes' => '2', 'desde' => '2000-02-01', 'hasta' => '2000-02-29', 'fecha_precision' => 'explicita', 'localidad' => 'Quito'], 1],
+    ['No la provincia de Pichincha, Perú',
+        ['taxon' => 'Chatobius', 'provincia' => 'Pichincha', 'localidad' => 'Pichincha', 'pais' => 'Ecuador'],
+        ['taxon' => 'Chatobius', 'localidad' => 'Pichincha', 'pais' => 'Peru'], 1],
+    ['No la localidad de Pichincha, Perú',
+        ['taxon' => 'Chatobius', 'provincia' => 'Pichincha', 'localidad' => 'Pichincha', 'pais' => 'Ecuador'],
+        ['taxon' => 'Chatobius', 'provincia' => 'Pichincha', 'pais' => 'Peru'], 3],
+    ['No Perú, Quito',
+        ['taxon' => 'Chatobius', 'provincia' => 'Pichincha', 'pais' => 'Perú', 'mes' => '2'],
+        ['taxon' => 'Chatobius', 'provincia' => 'Pichincha', 'mes' => '2', 'localidad' => 'Quito'], 1],
+    ['No Esmeraldas, Quito',
+        ['taxon' => 'Chatobius', 'provincia' => 'Pichincha', 'pais' => 'Peru'],
+        ['taxon' => 'Chatobius', 'provincia' => 'Pichincha', 'pais' => 'Peru', 'localidad' => 'Quito'], 1],
+]);

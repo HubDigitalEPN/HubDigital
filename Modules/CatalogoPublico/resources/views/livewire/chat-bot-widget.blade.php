@@ -1,6 +1,6 @@
 <div
     class="portal-chat-shell pointer-events-none fixed inset-x-0 bottom-4 z-[9999] flex justify-end px-4 sm:bottom-6 sm:px-6"
-    x-data="{ abierto: false }"
+    x-data="{ abierto: false, seleccionCatalogo() { const catalogo = document.querySelector('[data-catalogo-seleccion]'); return catalogo ? JSON.parse(catalogo.dataset.catalogoSeleccion) : null } }"
     x-on:keydown.escape.window="if (abierto && !$event.defaultPrevented && !document.querySelector('dialog[open]')) { $event.preventDefault(); abierto = false; $nextTick(() => $refs.trigger.focus()) }"
     x-on:chat-respuesta.window="$nextTick(() => { $refs.messages.scrollTop = $refs.messages.scrollHeight; $refs.input.focus() })"
 >
@@ -49,7 +49,7 @@
                                     <div class="mt-2.5 flex flex-wrap gap-1.5">
                                         @foreach($mensaje['opciones'] as $opcion)
                                             @if(isset($opcion['pregunta']))
-                                                <button type="button" wire:click="sugerir(@js($opcion['pregunta']))" wire:loading.attr="disabled" wire:target="enviar,sugerir"
+                                                <button type="button" wire:click="sugerir(@js($opcion['pregunta']), seleccionCatalogo())" wire:loading.attr="disabled" wire:target="enviar,sugerir"
                                                     class="cursor-pointer rounded-full border border-science-blue/25 bg-[#F5F8FC] px-2.5 py-1.5 text-xs font-medium text-science-blue transition hover:border-science-blue hover:bg-science-blue/10">
                                                     {{ $opcion['label'] }}
                                                 </button>
@@ -84,7 +84,7 @@
                     </div>
                     <div class="flex flex-wrap gap-1.5 pl-9">
                         @foreach(['Menú', '¿Cuántas especies hay en la colección?', '¿Cómo aplico los filtros del mapa?'] as $sugerencia)
-                            <button type="button" wire:click="sugerir(@js($sugerencia))" wire:loading.attr="disabled" wire:target="enviar,sugerir"
+                            <button type="button" wire:click="sugerir(@js($sugerencia), seleccionCatalogo())" wire:loading.attr="disabled" wire:target="enviar,sugerir"
                                 class="cursor-pointer rounded-full border border-science-blue/25 bg-white px-2.5 py-1.5 text-xs font-medium text-science-blue transition hover:border-science-blue hover:bg-science-blue/10">{{ $sugerencia }}</button>
                         @endforeach
                     </div>
@@ -94,7 +94,7 @@
 
             <p wire:offline class="border-t border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900" role="status">Sin conexión. Cuando vuelva, puedes reenviar tu pregunta.</p>
 
-            <form wire:submit="enviar" class="flex items-end gap-2 border-t border-blue-navy/10 bg-white p-3">
+            <form wire:submit="enviar(seleccionCatalogo())" class="flex items-end gap-2 border-t border-blue-navy/10 bg-white p-3">
                 <input x-ref="input" type="text" wire:model="pregunta" maxlength="500" required
                     placeholder="Escribe tu pregunta…" aria-label="Escribe tu pregunta al asistente"
                     class="min-h-11 min-w-0 flex-1 rounded-xl border border-blue-navy/20 bg-white px-3 text-sm text-blue-navy placeholder:text-text-secondary focus:border-science-blue focus:outline-none focus:ring-2 focus:ring-science-blue/20" />

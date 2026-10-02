@@ -27,6 +27,9 @@ trait ExploraCeldaMapa
     #[Locked]
     public int $paginaCelda = 1;
 
+    #[Locked]
+    public int $paginaArbolCelda = 1;
+
     public function abrirCelda(float $latitud, float $longitud): void
     {
         if (! is_finite($latitud) || ! is_finite($longitud) || abs($latitud) > 90 || abs($longitud) > 180) return;
@@ -34,6 +37,7 @@ trait ExploraCeldaMapa
         $this->rutaCelda = [];
         $this->vistaCelda = 'grupos';
         $this->paginaCelda = 1;
+        $this->paginaArbolCelda = 1;
         unset($this->detalleCelda);
         $this->dispatch('abrir-detalle-celda');
     }
@@ -42,6 +46,9 @@ trait ExploraCeldaMapa
     {
         $this->celdaMapa = null;
         $this->rutaCelda = [];
+        $this->vistaCelda = 'grupos';
+        $this->paginaCelda = 1;
+        $this->paginaArbolCelda = 1;
         unset($this->detalleCelda);
     }
 
@@ -67,12 +74,19 @@ trait ExploraCeldaMapa
     {
         $this->rutaCelda = array_slice($this->rutaCelda, 0, max(0, $profundidad));
         $this->paginaCelda = 1;
+        if ($profundidad <= 0) $this->paginaArbolCelda = 1;
         unset($this->detalleCelda);
     }
 
     public function paginarCelda(int $pagina): void
     {
         $this->paginaCelda = max(1, min($pagina, $this->detalleCelda['ultima']));
+        unset($this->detalleCelda);
+    }
+
+    public function paginarArbolCelda(int $pagina): void
+    {
+        $this->paginaArbolCelda = max(1, min($pagina, $this->detalleCelda['arbol_ultima']));
         unset($this->detalleCelda);
     }
 
@@ -93,10 +107,7 @@ trait ExploraCeldaMapa
         $taxones = DB::table('taxonomia.taxones')->get(['id', 'padre_id', 'nombre_cientifico', 'rango', 'autor', 'anio_descripcion'])->keyBy('id');
         $filas = (clone $base)->selectRaw('te.taxon_id, ed.scientific_name_visible, ed.family_visible, ed.genus_visible, COUNT(*) AS total')
             ->groupBy('te.taxon_id', 'ed.scientific_name_visible', 'ed.family_visible', 'ed.genus_visible')->get();
-        $seleccion = array_column($this->rutaCelda, 'id');
-        $grupos = $nodos = $rutasDisponibles = $idsTaxones = [];
-        $incluyeReservados = false;
-        $directos = $total = 0;
+        $filasConRuta = $variantes = [];
         foreach ($filas as $fila) {
             $ruta = [];
             $id = $fila->scientific_name_visible ? $fila->taxon_id : null;
@@ -105,31 +116,70 @@ trait ExploraCeldaMapa
                 $visitados[$id] = true;
                 $t = $taxones[$id];
                 if (($t->rango !== 'familia' || $fila->family_visible) && ($t->rango !== 'genero' || $fila->genus_visible)) {
-                    array_unshift($ruta, ['id' => $id, 'nombre' => $t->nombre_cientifico, 'rango' => $t->rango]);
+                    array_unshift($ruta, ['taxon_id' => $id, 'nombre' => $t->nombre_cientifico, 'rango' => $t->rango]);
                 }
                 $id = $t->padre_id;
             }
+            $prefijo = [];
+            foreach ($ruta as &$nodo) {
+                $prefijo[] = $nodo['taxon_id'];
+                $nodo['firma_ruta'] = sha1(implode(':', $prefijo));
+                $variantes[$nodo['taxon_id']][$nodo['firma_ruta']] = true;
+            }
+            unset($nodo);
+            $filasConRuta[] = ['fila' => $fila, 'ruta' => $ruta];
+        }
+        $nodos = $rutasDisponibles = [];
+        foreach ($filasConRuta as &$entrada) {
+            foreach ($entrada['ruta'] as &$nodo) {
+                // Un mismo taxón puede tener distintos padres públicos según los
+                // permisos del ejemplar. Su UUID se conserva separado de la rama.
+                $nodo['id'] = count($variantes[$nodo['taxon_id']]) === 1
+                    ? $nodo['taxon_id'] : $nodo['taxon_id'].':'.$nodo['firma_ruta'];
+                unset($nodo['firma_ruta']);
+            }
+            unset($nodo);
+            $ruta = $entrada['ruta'];
             foreach ($ruta as $i => $nodo) {
                 $idNodo = $nodo['id'];
                 $nodos[$idNodo] ??= $nodo + ['padre_id' => $ruta[$i - 1]['id'] ?? null, 'total' => 0];
-                $nodos[$idNodo]['total'] += (int) $fila->total;
+                $nodos[$idNodo]['total'] += (int) $entrada['fila']->total;
                 $rutasDisponibles[$idNodo] = array_slice($ruta, 0, $i + 1);
             }
+        }
+        unset($entrada);
+        // Releer la ruta vigente también retira nombres cuyos permisos cambiaron
+        // mientras el diálogo estaba abierto.
+        $idRuta = $this->rutaCelda === [] ? null : end($this->rutaCelda)['id'];
+        $this->rutaCelda = $idRuta ? ($rutasDisponibles[$idRuta] ?? []) : [];
+        $seleccion = array_column($this->rutaCelda, 'id');
+        $grupos = $taxonesPorVisibilidad = [];
+        $directos = $total = 0;
+        foreach ($filasConRuta as $entrada) {
+            $fila = $entrada['fila'];
+            $ruta = $entrada['ruta'];
             if (array_slice(array_column($ruta, 'id'), 0, count($seleccion)) !== $seleccion) continue;
             $total += (int) $fila->total;
-            if ($fila->scientific_name_visible) $idsTaxones[] = $fila->taxon_id;
-            else $incluyeReservados = true;
+            if ($fila->scientific_name_visible) {
+                $permisos = (int) $fila->family_visible.':'.(int) $fila->genus_visible;
+                $taxonesPorVisibilidad[$permisos][] = $fila->taxon_id;
+            }
             $hijo = $ruta[count($seleccion)] ?? null;
             if ($hijo === null) { $directos += (int) $fila->total; continue; }
             $grupos[$hijo['id']] ??= $hijo + ['total' => 0];
             $grupos[$hijo['id']]['total'] += (int) $fila->total;
         }
         if ($seleccion !== []) {
-            if (in_array('familia', array_column($this->rutaCelda, 'rango'), true)) $base->where('ed.family_visible', true);
-            if (in_array('genero', array_column($this->rutaCelda, 'rango'), true)) $base->where('ed.genus_visible', true);
-            $base->where(function (Builder $query) use ($idsTaxones, $incluyeReservados): void {
-                $query->where(fn (Builder $q) => $q->where('ed.scientific_name_visible', true)->whereIn('te.taxon_id', array_unique($idsTaxones)));
-                if ($incluyeReservados) $query->orWhere('ed.scientific_name_visible', false);
+            // El conteo y los UUID paginados usan los mismos grupos de permisos,
+            // incluso cuando un linaje omite familia o género por privacidad.
+            $base->where(function (Builder $query) use ($taxonesPorVisibilidad): void {
+                $query->whereRaw('1 = 0');
+                foreach ($taxonesPorVisibilidad as $permisos => $ids) {
+                    [$familia, $genero] = explode(':', $permisos);
+                    $query->orWhere(fn (Builder $q) => $q->where('ed.scientific_name_visible', true)
+                        ->where('ed.family_visible', (bool) $familia)->where('ed.genus_visible', (bool) $genero)
+                        ->whereIn('te.taxon_id', array_unique($ids)));
+                }
             });
         }
         uasort($grupos, static fn (array $a, array $b): int => strnatcasecmp($a['nombre'], $b['nombre']));
@@ -144,29 +194,49 @@ trait ExploraCeldaMapa
             $registros = $this->cargarDetallesPorEspecimenIds($ids, app(ProveedorEspecimenesPort::class), app(EspecimenDivulgableRepositoryInterface::class));
             $imagenes = $this->cargarImagenesPorEspecimen(array_values(array_filter(array_column($registros, 'occurrence_id'))));
         }
+        // Vista de conjunto desde abrir el punto: como máximo doce hojas reales
+        // y sus ancestros publicados, reutilizando los agregados ya obtenidos.
+        $padres = array_fill_keys(array_filter(array_column($nodos, 'padre_id')), true);
+        $hojas = array_diff_key($nodos, $padres);
+        uasort($hojas, static fn (array $a, array $b): int => strnatcasecmp($a['nombre'], $b['nombre']) ?: strcmp($a['id'], $b['id']));
+        $arbol_hojas_total = count($hojas);
+        $arbol_ultima = max(1, (int) ceil($arbol_hojas_total / 12));
+        $arbol_pagina = min(max(1, $this->paginaArbolCelda), $arbol_ultima);
+        $arbol_registros_total = (int) $filas->sum('total');
         $arbol = [];
-        foreach ($seleccion as $id) if (isset($nodos[$id])) $arbol[$id] = $nodos[$id];
-        foreach ($grupos as $id => $grupo) $arbol[$id] = $nodos[$id];
+        foreach (array_slice($hojas, ($arbol_pagina - 1) * 12, 12, true) as $id => $hoja) {
+            foreach ($rutasDisponibles[$id] as $nodo) $arbol[$nodo['id']] = $nodos[$nodo['id']];
+        }
         $idSeleccionado = $seleccion === [] ? null : end($seleccion);
         $seleccionado = $idSeleccionado ? ($nodos[$idSeleccionado] ?? null) : null;
-        if ($seleccionado && $totalGrupos === 0) {
-            $hermanos = array_filter($nodos, static fn (array $n): bool => $n['padre_id'] === $seleccionado['padre_id'] && $n['id'] !== $seleccionado['id']);
-            uasort($hermanos, static fn (array $a, array $b): int => strnatcasecmp($a['nombre'], $b['nombre']));
-            foreach (array_slice($hermanos, 0, 12, true) as $id => $nodo) $arbol[$id] = $nodo;
-        }
         $rutas = array_intersect_key($rutasDisponibles, $arbol);
         $informacion = null;
         if ($seleccionado) {
-            $rangos = ['reino' => 'kingdom', 'phylum' => 'phylum', 'clase' => 'class', 'orden' => 'order', 'familia' => 'family', 'genero' => 'genus', 'especie' => 'species'];
+            $idTaxonSeleccionado = $seleccionado['taxon_id'];
+            $rangos = ['reino' => 'kingdom', 'subreino' => 'subkingdom', 'filo' => 'phylum', 'subfilo' => 'subphylum',
+                'clase' => 'class', 'subclase' => 'subclass', 'orden' => 'order', 'suborden' => 'suborder', 'infraorden' => 'infraorder',
+                'superfamilia' => 'superfamily', 'familia' => 'family', 'subfamilia' => 'subfamily', 'tribu' => 'tribe', 'subtribu' => 'subtribe',
+                'genero' => 'genus', 'género' => 'genus', 'subgenero' => 'subgenus', 'subgénero' => 'subgenus',
+                'especie' => 'species', 'subespecie' => 'subspecies', 'variedad' => 'variety'];
             $jerarquia = [];
-            foreach ($this->rutaCelda as $nodo) if (isset($rangos[$nodo['rango']])) $jerarquia[$rangos[$nodo['rango']]] = $nodo['nombre'];
+            $ancestros = [];
+            foreach ($this->rutaCelda as $nodo) {
+                $rangoFuente = mb_strtolower(trim($nodo['rango']));
+                $rango = $rangos[$rangoFuente] ?? $rangoFuente;
+                $jerarquia[$rango] = $nodo['nombre'];
+                $ancestros[] = ['rango' => $rango, 'nombre' => $nodo['nombre']];
+            }
+            // La lista conserva también rangos repetidos/desconocidos sin inventarlos.
+            // Solo procede de la ruta pública seleccionada, incluyendo sus omisiones.
+            $jerarquia['ancestros'] = $ancestros;
             $seleccionado['jerarquia'] = $jerarquia;
             $seleccionado['ilustracion'] = IlustracionTaxonomica::paraTaxon($jerarquia + ['nombre' => $seleccionado['nombre'], 'ancestros' => $this->rutaCelda]);
             $informacion = ['taxon' => $seleccionado['nombre'], 'rango' => $seleccionado['rango'], 'cantidad' => $total,
-                'jerarquia' => $jerarquia, 'autor' => $taxones[$idSeleccionado]->autor,
-                'anio_descripcion' => $taxones[$idSeleccionado]->anio_descripcion];
+                'jerarquia' => $jerarquia, 'autor' => $taxones[$idTaxonSeleccionado]->autor,
+                'anio_descripcion' => $taxones[$idTaxonSeleccionado]->anio_descripcion];
         }
         $arbol = array_values($arbol);
-        return compact('total', 'grupos', 'totalGrupos', 'directos', 'registros', 'imagenes', 'pagina', 'ultima', 'arbol', 'rutas', 'seleccionado', 'informacion');
+        return compact('total', 'grupos', 'totalGrupos', 'directos', 'registros', 'imagenes', 'pagina', 'ultima', 'arbol', 'rutas',
+            'arbol_hojas_total', 'arbol_pagina', 'arbol_ultima', 'arbol_registros_total', 'seleccionado', 'informacion');
     }
 }

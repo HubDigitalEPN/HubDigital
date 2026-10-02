@@ -17,7 +17,7 @@ final class AsistentePortal
     ) {}
 
     /** @return array{texto:string, opciones:array, node_id?:int, variant_id?:int|null} */
-    public function responder(string $pregunta, ConsultarChatBotHandler $catalogo, ?int $nodoAnterior = null, array $variantesRecientes = [], array $contextoCatalogo = []): array
+    public function responder(string $pregunta, ConsultarChatBotHandler $catalogo, ?int $nodoAnterior = null, array $variantesRecientes = [], array $contextoCatalogo = [], ?array $seleccionPortal = null): array
     {
         $normal = preg_replace('/^[\s\x{00bf}?]+/u', '', Str::lower(Str::ascii(trim($pregunta)))) ?? '';
         $opciones = $this->opcionesBase();
@@ -39,7 +39,7 @@ final class AsistentePortal
         if (preg_match('/\bcsv\b|(?:descarg|export).*resultad/', $normal)) {
             return ['texto' => 'Aplica los filtros en el catálogo, cambia a Registros y pulsa Descargar resultados CSV. La descarga conserva toda la selección filtrada, incluidas las filas de otras páginas. No necesitas una cuenta.',
                 'fuente' => 'portal', 'intent' => 'portal.csv', 'entidades' => $contextoCatalogo,
-                'opciones' => [['label' => 'Abrir registros filtrados', 'url' => route('portal.catalogo', $this->consultaCatalogo->parametros($contextoCatalogo))]]];
+                'opciones' => [['label' => 'Abrir registros filtrados', 'url' => $this->enlaceSeleccion($contextoCatalogo, $seleccionPortal, 'registros')]]];
         }
         if (preg_match('/\bregistros\b.*\bespecies\b.*\bdistintas\b|\bdiferencia\b.*\bregistros\b|\b(?:lo mismo|iguales)\b.*\b(?:registros|especies)\b/', $normal)) {
             return ['texto' => 'No son lo mismo. Un registro corresponde a una entrada del catálogo; varios registros pueden pertenecer a la misma especie. La riqueza de especies cuenta cada identificación científica válida de especie una vez. Taxón es cualquier nivel taxonómico con un nombre científico, como Arthropoda, Formicidae u Homo sapiens. El tamaño de los puntos del mapa expresa cantidad de registros, no abundancia natural.',
@@ -48,7 +48,7 @@ final class AsistentePortal
         if (preg_match('/\bmapa\b/', $normal) && preg_match('/no aparecen|sin puntos|faltan puntos/', $normal)) {
             return ['texto' => 'El mapa solo representa registros con latitud y longitud públicas y válidas dentro de la selección actual. Comprueba los filtros y el número de registros con coordenadas y vuelve a abrir el mapa para revisar la selección. Si ese número es mayor que cero y siguen sin verse, indícame los filtros activos, la URL y cualquier mensaje de error; con esa información se puede revisar la carga del mapa.',
                 'fuente' => 'portal', 'intent' => 'portal.mapa_ayuda', 'entidades' => $contextoCatalogo,
-                'opciones' => [['label' => 'Abrir mapa de la selección', 'url' => route('portal.catalogo', array_replace($this->consultaCatalogo->parametros($contextoCatalogo), ['vista' => 'mapa']))]]];
+                'opciones' => [['label' => 'Abrir mapa de la selección', 'url' => $this->enlaceSeleccion($contextoCatalogo, $seleccionPortal, 'mapa')]]];
         }
         if (preg_match('/^buscar (?:un )?especimen(?:es)?[?.]*$/', $normal)) {
             return ['texto' => '¿Qué dato tienes para buscar en los registros publicados?', 'opciones' => [
@@ -121,7 +121,8 @@ final class AsistentePortal
             ];
         }
 
-        $operacionContexto = $contextoCatalogo !== [] && (bool) preg_match('/^(?:y|solo|dame solo|quita|quitar|elimina)\s+/', $normal);
+        $operacionContexto = ($contextoCatalogo !== [] && (bool) preg_match('/^(?:y|solo|dame solo|quita|quitar|elimina)\s+/', $normal))
+            || (bool) preg_match('/^(?:y\s+)?(?:quita(?:r)?|elimina(?:r)?|sin)\s+(?:el\s+)?filtro\b/', $normal);
         if (! $operacionContexto && preg_match('/filtro|filtrar|leyenda|mapa|dashboard|indice|indicador|exportar|geojson/i', $normal)
             && ! preg_match('/cuant|registros de|especies de/', $normal)) {
             return $this->ayudaFiltros($pregunta);
@@ -168,6 +169,15 @@ final class AsistentePortal
 
         if (preg_match('/portal|catalogo|coleccion|ejemplares|coordenadas|catalgo|espesimenes/', $normal)) return $this->ayudaFiltros($pregunta);
         return app(FuentesPublicasChat::class)->responder($pregunta);
+    }
+
+    private function enlaceSeleccion(array $contextoCatalogo, ?array $seleccionPortal, string $vista): string
+    {
+        $parametros = $seleccionPortal === null
+            ? $this->consultaCatalogo->parametros($contextoCatalogo)
+            : EnlaceSeleccionCatalogo::limpiar($seleccionPortal);
+
+        return route('portal.catalogo', array_replace($parametros, ['vista' => $vista]));
     }
 
     private function ayudaFiltros(string $pregunta): array

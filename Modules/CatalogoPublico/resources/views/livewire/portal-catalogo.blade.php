@@ -1,4 +1,4 @@
-<div x-data="portalCatalogo">
+<div x-data="portalCatalogo" data-catalogo-seleccion="{{ json_encode($this->seleccionPublicaChat) }}">
     @if($vista === 'tarjetas')
     {{-- =====================================================================
          NAV BAR TAXONÓMICO — siempre visible, permite explorar por nivel
@@ -6,13 +6,13 @@
     <div class="border-b border-border bg-surface">
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <nav class="flex items-end gap-1 overflow-x-auto scrollbar-hide" aria-label="Catálogo por nivel taxonómico">
-                <a
-                    href="{{ route('portal.catalogo') }}"
-                    wire:navigate
+                <button
+                    type="button"
+                    wire:click="navegar('', '')"
                     class="shrink-0 px-3 py-2 -mb-px text-xs font-medium transition-colors border-b-2 border-transparent text-text-secondary hover:text-text-primary hover:border-border"
                 >
                     Catálogo
-                </a>
+                </button>
                 <span class="shrink-0 self-end h-4 w-px bg-border mb-2 mx-1"></span>
                 @foreach(array_filter($nivelesNavegacion, fn ($k) => $k !== '', ARRAY_FILTER_USE_KEY) as $nivelNav => $etiquetaNav)
                     <button
@@ -123,7 +123,8 @@
             @if($totalRegistrosVista === 0)
                 <p class="rounded-lg border border-border bg-surface p-8 text-center text-text-secondary">No hay registros públicos para esta selección.</p>
             @else
-                <div class="overflow-x-auto rounded-lg border border-border bg-surface shadow-sm">
+                <p id="indicacion-tabla-registros" class="collection-table-hint">Desliza la tabla horizontalmente para ver todas las columnas. Con teclado, enfoca la tabla y usa las flechas izquierda y derecha.</p>
+                <div class="collection-table-scroll overflow-x-auto rounded-lg border border-border bg-surface shadow-sm" role="region" tabindex="0" aria-label="Registros de la colección con desplazamiento horizontal" aria-describedby="indicacion-tabla-registros">
                     <table class="w-full min-w-[850px] text-left text-sm">
                         <thead class="border-b border-border bg-bg-main text-text-secondary">
                             <tr>
@@ -196,7 +197,7 @@
                     @php
                         $clave = $hijo['nivel'].':'.$hijo['taxon'];
                         $stats = $descendientes[$clave] ?? [];
-                        $numEspecimenes = $conteos[$clave] ?? 0;
+                        $numEspecimenes = $hijo['total'] ?? $conteos[$clave] ?? 0;
                     @endphp
                     <article class="rounded-lg border border-border bg-surface p-4 shadow-sm transition-all hover:border-science-blue/40 hover:shadow-md">
                         <div class="flex items-start justify-between gap-2">
@@ -253,16 +254,17 @@
                             <div class="space-y-0.5">
                                 @foreach($hermanos as $hermano)
                                     <button
-                                        wire:click="navegar('{{ $hermano['nivel'] }}', '{{ $hermano['taxon'] }}')"
+                                        type="button" wire:click="navegar(@js($hermano['nivel']), @js($hermano['taxon']))" wire:loading.attr="disabled" wire:target="navegar,cambiarPaginaHermanos"
                                         class="w-full text-left flex items-center justify-between gap-2 rounded px-2 py-1.5 text-sm text-text-secondary hover:text-science-blue hover:bg-science-blue/5 transition-colors"
                                     >
                                         <span class="font-serif italic truncate">{{ $hermano['taxon'] }}</span>
                                         <span class="tabular-nums text-xs shrink-0">
-                                            {{ number_format($conteos[$hermano['nivel'].':'.$hermano['taxon']] ?? 0) }}
+                                            {{ number_format((int) ($hermano['total'] ?? 0)) }}
                                         </span>
                                     </button>
                                 @endforeach
                             </div>
+                            <x-catalogopublico::paginacion-hermanos :total="$totalHermanos" :pagina="$paginaHermanosActual" :ultima="$ultimaPaginaHermanos" />
                         </div>
                     </aside>
                 @endif
@@ -273,6 +275,7 @@
                         // El linaje publicado puede omitir rangos entre un taxón y sus especies.
                         $taxonesPagina = array_merge($hijos, array_map(static fn (array $especie): array => [
                             'nivel' => 'species', 'taxon' => $especie['especie'], 'padre' => $especie['padre'],
+                            'total' => $especie['total'] ?? $conteos['species:'.$especie['especie']] ?? 0,
                         ], $especiesActuales));
                     @endphp
                     <div class="mb-4 flex items-center justify-between">
@@ -294,7 +297,7 @@
                                 @php
                                     $clave = $hijo['nivel'].':'.$hijo['taxon'];
                                     $stats = $descendientes[$clave] ?? [];
-                                    $numEspecimenes = $conteos[$clave] ?? 0;
+                                    $numEspecimenes = $hijo['total'] ?? $conteos[$clave] ?? 0;
                                 @endphp
                                 <article
                                     class="collection-taxon-card group text-left rounded-lg border border-border bg-surface shadow-sm hover:border-science-blue/40 hover:shadow-md transition-all"
@@ -369,16 +372,17 @@
                             <div class="space-y-0.5">
                                 @foreach($hermanos as $hermano)
                                     <button
-                                        wire:click="navegar('{{ $hermano['nivel'] }}', '{{ $hermano['taxon'] }}')"
+                                        type="button" wire:click="navegar(@js($hermano['nivel']), @js($hermano['taxon']))" wire:loading.attr="disabled" wire:target="navegar,cambiarPaginaHermanos"
                                         class="w-full text-left flex items-center justify-between gap-2 rounded px-2 py-1.5 text-sm text-text-secondary hover:text-science-blue hover:bg-science-blue/5 transition-colors"
                                     >
                                         <span class="font-serif italic truncate">{{ $hermano['taxon'] }}</span>
                                         <span class="tabular-nums text-xs shrink-0">
-                                            {{ number_format($conteos[$hermano['nivel'].':'.$hermano['taxon']] ?? 0) }}
+                                            {{ number_format((int) ($hermano['total'] ?? 0)) }}
                                         </span>
                                     </button>
                                 @endforeach
                             </div>
+                            <x-catalogopublico::paginacion-hermanos :total="$totalHermanos" :pagina="$paginaHermanosActual" :ultima="$ultimaPaginaHermanos" />
                         </div>
                     </aside>
                 @endif
@@ -403,7 +407,7 @@
                         <div class="space-y-2">
                             @foreach($especiesActuales as $especie)
                                 @php
-                                    $numEspecimenes = $conteos['species:'.$especie['especie']] ?? 0;
+                                    $numEspecimenes = $especie['total'] ?? $conteos['species:'.$especie['especie']] ?? 0;
                                     $portadaEspecie = $portadas['species:'.$especie['especie']] ?? null;
                                 @endphp
                                 <article
@@ -464,16 +468,17 @@
                             <div class="space-y-0.5">
                                 @foreach($hermanos as $hermano)
                                     <button
-                                        wire:click="navegar('{{ $hermano['nivel'] }}', '{{ $hermano['taxon'] }}')"
+                                        type="button" wire:click="navegar(@js($hermano['nivel']), @js($hermano['taxon']))" wire:loading.attr="disabled" wire:target="navegar,cambiarPaginaHermanos"
                                         class="w-full text-left flex items-center justify-between gap-2 rounded px-2 py-1.5 text-xs text-text-secondary hover:text-science-blue hover:bg-science-blue/5 transition-colors"
                                     >
                                         <span class="font-serif italic truncate">{{ $hermano['taxon'] }}</span>
                                         <span class="tabular-nums shrink-0">
-                                            {{ $conteos['species:'.$hermano['taxon']] ?? 0 }}
+                                            {{ number_format((int) ($hermano['total'] ?? 0)) }}
                                         </span>
                                     </button>
                                 @endforeach
                             </div>
+                            <x-catalogopublico::paginacion-hermanos :total="$totalHermanos" :pagina="$paginaHermanosActual" :ultima="$ultimaPaginaHermanos" />
                         </div>
                     </aside>
                 @endif
@@ -528,11 +533,11 @@
                         </div>
 
                         @if(! $portadaEspecie)
-                            <figure class="collection-species-illustration"><img src="{{ $ilustracionEspecie['url'] }}" alt="{{ $ilustracionEspecie['alt'] }}" width="480" height="320" loading="lazy" decoding="async"><figcaption>Ilustración representativa de {{ $ilustracionEspecie['grupo'] }} · {{ $taxonActual }} no tiene una fotografía destacada publicada.</figcaption></figure>
+                            <x-catalogopublico::representacion-especie :nombre="$taxonActual" :jerarquia="$jerarquiaEspecie" :ilustracion="$ilustracionEspecie" />
                         @else
                             <button
                                 type="button"
-                                @click="$dispatch('lightbox-open', { url: '{{ $portadaEspecie['url'] }}', alt: @js($taxonActual), filename: @js(str_replace(' ', '_', (string) $taxonActual)) })"
+                                @click="$dispatch('lightbox-open', { url: @js($portadaEspecie['url']), alt: @js($taxonActual), nombreArchivo: @js($portadaEspecie['nombreArchivo']), invocador: $event.currentTarget })"
                                 class="group/portada block max-w-xs overflow-hidden rounded-lg border border-bio-green ring-2 ring-bio-green/30 bg-surface shadow-sm cursor-zoom-in text-left"
                                 title="Ver imagen completa"
                             >
@@ -576,98 +581,12 @@
                         @else
                             <div
                                 wire:ignore
-                                x-data="{
-                                    puntos: {{ Js::from($puntosGeo) }},
-                                    mapa: null,
-                                    errorMapa: false,
-                                    init() {
-                                        this.$nextTick(() => this.inicializarMapa());
-                                    },
-                                    destroy() {
-                                        if (this.mapa) {
-                                            this.mapa.remove();
-                                            this.mapa = null;
-                                        }
-                                    },
-                                    inicializarMapa() {
-                                        if (typeof L === 'undefined') {
-                                            if (!window.__hubLeafletPromise) {
-                                                window.__hubLeafletPromise = new Promise((resolve, reject) => {
-                                                    const script = document.createElement('script');
-                                                    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-                                                    script.onload = resolve;
-                                                    script.onerror = reject;
-                                                    document.head.appendChild(script);
-                                                });
-                                            }
-                                            window.__hubLeafletPromise.then(() => this.$nextTick(() => this.inicializarMapa()))
-                                                .catch(() => { this.errorMapa = true; });
-                                            return;
-                                        }
-
-                                        this.mapa = L.map(this.$refs.mapaContainer, {
-                                            scrollWheelZoom: false,
-                                        });
-                                        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                                            attribution: '&copy; <a href=\'https://www.openstreetmap.org/copyright\'>OpenStreetMap</a>',
-                                            maxZoom: 18,
-                                        }).addTo(this.mapa);
-
-                                        const marcadores = this.puntos.map(p => {
-                                            const m = L.circleMarker([p.lat, p.lon], {
-                                                radius: Math.min(17, 4 + Math.sqrt(Number(p.total) || 1) * .7),
-                                                color: '#0e4975', weight: 1, fillColor: '#17699b', fillOpacity: .8,
-                                            }).addTo(this.mapa);
-                                            const popup = L.DomUtil.create('div');
-                                            const nombre = L.DomUtil.create('p', '', popup);
-                                            nombre.textContent = @js($taxonActual);
-                                            nombre.style.fontWeight = '600';
-                                            const codigo = L.DomUtil.create('p', '', popup);
-                                            codigo.textContent = `${Number(p.total).toLocaleString('es-EC')} registros con estas coordenadas públicas`;
-                                            if (p.locality) {
-                                                const lugar = L.DomUtil.create('p', '', popup);
-                                                lugar.textContent = p.locality;
-                                            }
-                                            if (p.precision) {
-                                                const precision = L.DomUtil.create('p', '', popup);
-                                                precision.textContent = p.precision;
-                                                precision.style.fontSize = '11px';
-                                            }
-                                            m.bindPopup(popup);
-                                            const permitirTeclado = () => {
-                                                const elemento = m.getElement();
-                                                if (!elemento) return;
-                                                elemento.setAttribute('tabindex', '0');
-                                                elemento.setAttribute('role', 'button');
-                                                elemento.setAttribute('aria-label', `Consultar ${Number(p.total).toLocaleString('es-EC')} registros en ${p.lat}, ${p.lon}`);
-                                                elemento.addEventListener('keydown', evento => {
-                                                    if (evento.key === 'Enter' || evento.key === ' ') { evento.preventDefault(); m.openPopup(); }
-                                                });
-                                            };
-                                            m.once('add', permitirTeclado);
-                                            if (m.getElement()) permitirTeclado();
-                                            return m;
-                                        });
-
-                                        if (marcadores.length === 1) {
-                                            this.mapa.setView([this.puntos[0].lat, this.puntos[0].lon], 10);
-                                        } else {
-                                            const grupo = L.featureGroup(marcadores);
-                                            this.mapa.fitBounds(grupo.getBounds().pad(0.2));
-                                        }
-
-                                        // Con wire:navigate el contenedor puede tener
-                                        // dimensiones aún no estables; forzamos el
-                                        // recálculo tras el primer paint.
-                                        requestAnimationFrame(() => {
-                                            if (this.mapa) this.mapa.invalidateSize();
-                                        });
-
-                                    }
-                                }"
+                                wire:key="mapa-especie-{{ $claveMapaEspecie }}"
+                                data-taxon-id="{{ $idTaxonActual }}"
+                                x-data="portalMapaEspecie(@js($puntosEspecie), @js($taxonActual))"
                                 class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden"
                             >
-                                <p x-show="errorMapa" x-cloak class="p-4 text-sm text-text-secondary">No se pudo cargar el mapa. Recarga la página para intentarlo nuevamente.</p>
+                                <p x-show="errorMapa" x-cloak class="p-4 text-sm text-text-secondary" role="status">No se pudo cargar la cartografía. Los datos públicos de esta selección siguen disponibles.</p>
                                 <div x-ref="mapaContainer" class="h-72 sm:h-96 w-full"></div>
                             </div>
                         @endif
@@ -881,7 +800,7 @@
                                                         @foreach($imagenesEspecimen as $indice => $img)
                                                             <button
                                                                 type="button"
-                                                                @click="$dispatch('lightbox-open', { url: '{{ $img['url'] }}', alt: @js($especimen->occurrence_id), filename: @js($especimen->occurrence_id.'_'.($indice + 1)) })"
+                                                                @click="$dispatch('lightbox-open', { url: @js($img['url']), alt: @js($especimen->occurrence_id), nombreArchivo: @js($img['nombre']), invocador: $event.currentTarget })"
                                                                 class="group/thumb-galeria overflow-hidden rounded-lg border border-border bg-bg-main cursor-zoom-in"
                                                                 title="Ver imagen completa"
                                                             >
@@ -912,89 +831,7 @@
         {{-- ══════════════════════════════════
              LIGHTBOX — visor de imagen completa
              ══════════════════════════════════ --}}
-        <div
-            x-data="{
-                abierto: false,
-                url: '',
-                alt: '',
-                filename: 'imagen',
-                extension() {
-                    const limpia = (this.url || '').split('?')[0].split('#')[0];
-                    const punto = limpia.lastIndexOf('.');
-                    if (punto === -1) return 'jpg';
-                    const ext = limpia.substring(punto + 1).toLowerCase();
-                    return ext.length <= 5 ? ext : 'jpg';
-                },
-                nombreDescarga() {
-                    return (this.filename || 'imagen') + '.' + this.extension();
-                },
-            }"
-            x-on:lightbox-open.window="
-                url = $event.detail.url;
-                alt = $event.detail.alt || '';
-                filename = $event.detail.filename || 'imagen';
-                abierto = true;
-            "
-            x-on:keydown.escape.window="abierto = false"
-            x-show="abierto"
-            x-cloak
-            class="fixed inset-0 z-[10000] flex items-center justify-center"
-            role="dialog"
-            aria-modal="true"
-        >
-            <div
-                x-show="abierto"
-                x-transition:enter="transition ease-out duration-200"
-                x-transition:enter-start="opacity-0"
-                x-transition:enter-end="opacity-100"
-                x-transition:leave="transition ease-in duration-150"
-                x-transition:leave-start="opacity-100"
-                x-transition:leave-end="opacity-0"
-                @click="abierto = false"
-                class="absolute inset-0 bg-blue-navy/85 backdrop-blur-sm cursor-zoom-out"
-            ></div>
-
-            <div
-                x-show="abierto"
-                x-transition:enter="transition ease-out duration-200"
-                x-transition:enter-start="opacity-0 scale-95"
-                x-transition:enter-end="opacity-100 scale-100"
-                x-transition:leave="transition ease-in duration-150"
-                x-transition:leave-start="opacity-100 scale-100"
-                x-transition:leave-end="opacity-0 scale-95"
-                class="relative z-10 flex max-h-[92vh] max-w-[92vw] flex-col items-center gap-3"
-                @click.stop
-            >
-                <div class="absolute -top-3 right-0 flex items-center gap-2 -translate-y-full">
-                    <a
-                        :href="url"
-                        :download="nombreDescarga()"
-                        class="inline-flex items-center gap-1.5 rounded-lg bg-surface px-3 py-2 text-sm font-medium text-text-primary shadow-lg transition-colors hover:bg-bg-main"
-                        title="Descargar imagen"
-                    >
-                        <flux:icon name="arrow-down-tray" class="size-4" />
-                        <span class="hidden sm:inline">Descargar</span>
-                    </a>
-                    <button
-                        type="button"
-                        @click="abierto = false"
-                        class="inline-flex size-9 items-center justify-center rounded-lg bg-surface text-text-primary shadow-lg transition-colors hover:bg-error hover:text-white"
-                        aria-label="Cerrar"
-                        title="Cerrar (Esc)"
-                    >
-                        <flux:icon name="x-mark" class="size-5" />
-                    </button>
-                </div>
-
-                <img
-                    :src="url"
-                    :alt="alt"
-                    class="max-h-[92vh] max-w-[92vw] rounded-lg object-contain shadow-2xl"
-                />
-
-                <p x-show="alt" x-text="alt" class="rounded-full bg-surface/90 px-3 py-1 text-xs font-mono text-text-secondary shadow"></p>
-            </div>
-        </div>
+        @include('catalogopublico::components.visor-imagen')
     @endif
 
     @else
@@ -1037,7 +874,7 @@
                     @php
                         $clave = $nodo['nivel'].':'.$nodo['taxon'];
                         $stats = $descendientes[$clave] ?? [];
-                        $numEspecimenes = $conteos[$clave] ?? 0;
+                        $numEspecimenes = $nodo['total'] ?? $conteos[$clave] ?? 0;
                     @endphp
                     <article
                         class="collection-taxon-card group text-left rounded-lg border border-border bg-surface shadow-sm hover:border-science-blue/40 hover:shadow-md transition-all"
@@ -1068,7 +905,7 @@
                                         @endif
                                     </div>
                                 </div>
-                                <x-catalogopublico::ayuda-taxon :nombre="$nodo['taxon']" :nivel="$nodo['nivel']" :registros="$numEspecimenes" :stats="$stats" :jerarquia="array_column($ruta, 'taxon', 'nivel')" />
+                                <x-catalogopublico::ayuda-taxon :nombre="$nodo['taxon']" :nivel="$nodo['nivel']" :registros="$numEspecimenes" :stats="$stats" :jerarquia="$nodo['jerarquia'] ?? array_column($ruta, 'taxon', 'nivel')" />
                             </div>
 
                             @if(!empty($stats) || $numEspecimenes > 0)
@@ -1127,7 +964,8 @@
                 <p><strong x-text="taxonAyuda.nivel"></strong> · <em x-text="taxonAyuda.nombre"></em></p>
                 <p x-text="descripciones[taxonAyuda.nombre] || 'Este nombre científico identifica un taxón del nivel ' + taxonAyuda.nivel.toLowerCase() + ' en la clasificación de la colección.'"></p>
                 <p>Un <strong>taxón</strong> es cualquier grupo de la clasificación que posee un nombre científico: puede ser un reino, filo, clase, orden, familia, género o especie. Los niveles superiores reúnen otros taxones; no equivalen a una especie.</p>
-                <figure><img :src="taxonAyuda.ilustracion.url" :alt="taxonAyuda.ilustracion.alt" width="480" height="320" loading="lazy"><figcaption>Ilustración representativa del grupo; no es una fotografía del ejemplar ni permite identificar la especie.</figcaption></figure>
+                <template x-if="taxonAyuda.representacion"><div x-html="taxonAyuda.representacion"></div></template>
+                <template x-if="!taxonAyuda.representacion"><figure><img :src="taxonAyuda.ilustracion.url" :alt="taxonAyuda.ilustracion.alt" width="320" height="320" loading="lazy"><figcaption x-text="taxonAyuda.ilustracion.morfologia ? 'Representación fotorrealista generada del grupo; no es una fotografía del ejemplar ni permite identificar la especie.' : 'Diagrama taxonómico orientativo; no hay una representación morfológica disponible.'"></figcaption></figure></template>
                 <p><strong x-text="taxonAyuda.registros.toLocaleString('es-EC')"></strong> registros públicos de este taxón en la selección actual.</p>
                 <ul class="collection-taxon-descendants" x-show="Object.keys(taxonAyuda.stats).length > 0">
                     <template x-for="([nivel, cantidad]) in Object.entries(taxonAyuda.stats)" :key="nivel"><li><strong x-text="Number(cantidad).toLocaleString('es-EC')"></strong> <span x-text="etiquetasStats[nivel] || nivel"></span></li></template>

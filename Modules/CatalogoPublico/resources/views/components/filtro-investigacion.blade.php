@@ -12,10 +12,31 @@
         <label><span>País</span><input type="search" wire:model="borradorFiltros.filtroPais" placeholder="País publicado" maxlength="120"></label>
         @if($errors->any())<p class="research-filter-error" role="alert">{{ $errors->first() }}</p>@endif
         <label><span>N.º de catálogo</span><input type="search" wire:model="borradorFiltros.filtroCatalogo" aria-invalid="{{ $errors->has('filtroCatalogo') ? 'true' : 'false' }}" aria-describedby="error-filtroCatalogo" placeholder="MEPN-INV-1, MEPN-INV-2" maxlength="240"></label>
-        <label><span>Taxón</span><input type="search" wire:model="borradorFiltros.filtroTaxon" aria-invalid="{{ $errors->has('filtroTaxon') ? 'true' : 'false' }}" aria-describedby="error-filtroTaxon" placeholder="Género o especie" maxlength="120"></label>
+        <label><span>Taxón</span><input type="search" wire:model="borradorFiltros.filtroTaxon" aria-invalid="{{ $errors->has('filtroTaxon') ? 'true' : 'false' }}" aria-describedby="error-filtroTaxon" placeholder="Nombre científico en cualquier rango" maxlength="120"></label>
         <label><span>Filo</span><select wire:model="borradorFiltros.filtroFiloId" aria-invalid="{{ $errors->has('filtroFiloId') ? 'true' : 'false' }}" aria-describedby="error-filtroFiloId"><option value="">Todos los filos</option>@foreach($filos as $filo)<option value="{{ $filo['id'] }}">{{ $filo['nombre_cientifico'] }}</option>@endforeach</select></label>
         <label><span>Provincia</span><select wire:model="borradorFiltros.filtroProvincia" aria-invalid="{{ $errors->has('filtroProvincia') ? 'true' : 'false' }}" aria-describedby="error-filtroProvincia"><option value="">Todas las provincias</option>@foreach($provincias as $provincia)<option value="{{ $provincia }}">{{ $provincia }}</option>@endforeach</select></label>
-        <label><span>Localidad</span><input type="search" wire:model="borradorFiltros.filtroGeografias.0" aria-invalid="{{ $errors->has('filtroGeografias') ? 'true' : 'false' }}" aria-describedby="error-filtroGeografias" placeholder="Cantón, parroquia o sitio" maxlength="120"></label>
+        <fieldset class="research-localities" x-data="{
+            localidades: $wire.entangle('borradorFiltros.filtroGeografias'),
+            agregarLocalidad() {
+                const grupo = this.$el.closest('.research-localities');
+                this.localidades = [...(this.localidades.length ? this.localidades : ['']), ''];
+                this.$nextTick(() => { const campos = grupo.querySelectorAll('input'); campos[campos.length - 1]?.focus(); });
+            },
+            quitarLocalidad(indice) {
+                const grupo = this.$el.closest('.research-localities');
+                this.localidades = this.localidades.filter((_, i) => i !== indice);
+                this.$nextTick(() => { const campos = grupo.querySelectorAll('input'); campos[Math.min(indice, campos.length - 1)]?.focus(); });
+            }
+        }">
+            <legend>Localidades</legend>
+            <template x-for="(localidad, indice) in (localidades.length ? localidades : [''])" :key="indice">
+                <div class="research-locality-row">
+                    <label><span x-text="'Localidad ' + (indice + 1)"></span><input type="search" x-model="localidades[indice]" aria-invalid="{{ $errors->has('filtroGeografias') ? 'true' : 'false' }}" aria-describedby="error-filtroGeografias" placeholder="Cantón, parroquia o sitio" maxlength="120"></label>
+                    <button type="button" x-on:click="quitarLocalidad(indice)" :aria-label="'Quitar localidad ' + (indice + 1)" title="Quitar localidad">×</button>
+                </div>
+            </template>
+            <button type="button" class="research-add-locality" x-on:click="agregarLocalidad()">Añadir localidad</button>
+        </fieldset>
 
         <details class="research-filter-section" open>
             <summary>Fecha y calidad del dato</summary>
@@ -48,7 +69,7 @@
                 <p>Usa estos límites o selecciona un área en el mapa.</p>
                 <div class="research-filter-pair"><label><span>Latitud mín.</span><input type="number" step="any" min="-90" max="90" wire:model="borradorFiltros.filtroLatMin" aria-invalid="{{ $errors->has('filtroLatMin') ? 'true' : 'false' }}" aria-describedby="error-filtroLatMin"></label><label><span>Latitud máx.</span><input type="number" step="any" min="-90" max="90" wire:model="borradorFiltros.filtroLatMax" aria-invalid="{{ $errors->has('filtroLatMax') ? 'true' : 'false' }}" aria-describedby="error-filtroLatMax"></label></div>
                 <div class="research-filter-pair"><label><span>Longitud mín.</span><input type="number" step="any" min="-180" max="180" wire:model="borradorFiltros.filtroLonMin" aria-invalid="{{ $errors->has('filtroLonMin') ? 'true' : 'false' }}" aria-describedby="error-filtroLonMin"></label><label><span>Longitud máx.</span><input type="number" step="any" min="-180" max="180" wire:model="borradorFiltros.filtroLonMax" aria-invalid="{{ $errors->has('filtroLonMax') ? 'true' : 'false' }}" aria-describedby="error-filtroLonMax"></label></div>
-                <div class="research-filter-pair"><label><span>Elevación desde</span><input type="number" wire:model="borradorFiltros.filtroElevDesde" aria-invalid="{{ $errors->has('filtroElevDesde') ? 'true' : 'false' }}" aria-describedby="error-filtroElevDesde" placeholder="m s. n. m."></label><label><span>Hasta</span><input type="number" wire:model="borradorFiltros.filtroElevHasta" aria-invalid="{{ $errors->has('filtroElevHasta') ? 'true' : 'false' }}" aria-describedby="error-filtroElevHasta" placeholder="m s. n. m."></label></div>
+                <div class="research-filter-pair"><label><span>Elevación desde</span><input type="number" wire:model="borradorFiltros.filtroElevDesde" aria-invalid="{{ $errors->has('filtroElevDesde') ? 'true' : 'false' }}" aria-describedby="error-filtroElevDesde" placeholder="m s. n. m."></label><label><span>Elevación hasta</span><input type="number" wire:model="borradorFiltros.filtroElevHasta" aria-invalid="{{ $errors->has('filtroElevHasta') ? 'true' : 'false' }}" aria-describedby="error-filtroElevHasta" placeholder="m s. n. m."></label></div>
             </div>
         </details>
         @foreach($errors->messages() as $campo => $mensajesError)

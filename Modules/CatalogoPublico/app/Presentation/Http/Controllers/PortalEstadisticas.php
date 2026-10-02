@@ -14,6 +14,7 @@ use Illuminate\Validation\ValidationException;
 use Modules\CatalogoPublico\Infrastructure\CalidadDatoPublico;
 use Modules\CatalogoPublico\Infrastructure\Adapters\StorageImagenesAdapter;
 use Modules\CatalogoPublico\Infrastructure\ProtocoloColectaPublico;
+use Modules\CatalogoPublico\Infrastructure\NormalizacionGeografica;
 use Modules\CatalogoPublico\Domain\ValueObjects\FiltrosBusqueda;
 use Modules\CatalogoPublico\Infrastructure\Persistence\Eloquent\Repositories\EloquentProveedorEspecimenesParaArbol;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -48,7 +49,7 @@ final class PortalEstadisticas
     /** Agregados de la misma selección que usan tarjetas y registros. */
     public function datosParaVista(array $filtros): array
     {
-        return $this->cachear('portal:estadisticas:v11:'.$this->revisionDatos().':'.sha1(json_encode($filtros)), fn () => $this->resumir($filtros));
+        return $this->cachear('portal:estadisticas:v12:'.$this->revisionDatos().':'.sha1(json_encode($filtros)), fn () => $this->resumir($filtros));
     }
 
     /** Distribución completa sin hidratar tarjetas ni calcular los otros indicadores. */
@@ -170,7 +171,7 @@ final class PortalEstadisticas
         if (isset($filtros['provincia']) && ! DB::table('taxonomia.especimenes as e')
             ->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
             ->where('d.publicado', true)->where('e.coordenadas_otras_regiones', false)->where('d.state_province_visible', true)
-            ->where('e.state_province', $filtros['provincia'])->exists()) {
+            ->whereRaw(NormalizacionGeografica::sql('e.state_province').' = ?', [NormalizacionGeografica::normalizar($filtros['provincia'])])->exists()) {
             unset($filtros['provincia']);
         }
         if (isset($filtros['filo']) && ! DB::table('taxonomia.taxones')->where('id', $filtros['filo'])->where('rango', 'phylum')->exists()) {
@@ -311,6 +312,39 @@ final class PortalEstadisticas
             'altitud' => $altitud,
             'metodos' => $metodos,
             'mosaico' => $mosaico,
+            'taxon_mosaico' => $this->taxonParaMosaico($base, $taxones, $filtros),
         ];
+    }
+
+    /** Linaje del taxón seleccionado, respaldado por un ejemplar de la selección pública. */
+    private function taxonParaMosaico(Builder $base, \Illuminate\Support\Collection $taxones, array $filtros): array
+    {
+        $nombre = trim((string) ($filtros['taxon_navegado'] ?? '')) ?: trim((string) ($filtros['taxon'] ?? ''));
+        if ($nombre !== '') {
+            $candidatos = $taxones->filter(static fn (object $t): bool => mb_strtolower($t->nombre_cientifico) === mb_strtolower($nombre));
+            if ($candidatos->count() !== 1) return [];
+            $elegido = $candidatos->first();
+        } elseif (! empty($filtros['filo']) && isset($taxones[$filtros['filo']])) {
+            $elegido = $taxones[$filtros['filo']];
+        } else {
+            return [];
+        }
+        $consulta = (clone $base)->where('ed.scientific_name_visible', true)
+            ->whereRaw('te.taxon_id IN (WITH RECURSIVE seleccion AS (SELECT id FROM taxonomia.taxones WHERE id = ? UNION SELECT t.id FROM taxonomia.taxones t JOIN seleccion s ON t.padre_id = s.id) SELECT id FROM seleccion)', [$elegido->id]);
+        if ($elegido->rango === 'familia') $consulta->where('ed.family_visible', true);
+        if ($elegido->rango === 'genero') $consulta->where('ed.genus_visible', true);
+        $ejemplar = $consulta->orderByDesc('ed.family_visible')->orderByDesc('ed.genus_visible')->orderBy('te.id')
+            ->first(['ed.family_visible', 'ed.genus_visible']);
+        if ($ejemplar === null) return [];
+        $rangos = ['reino' => 'kingdom', 'phylum' => 'phylum', 'clase' => 'class', 'orden' => 'order', 'familia' => 'family', 'genero' => 'genus', 'especie' => 'species'];
+        $linaje = ['nombre' => $elegido->nombre_cientifico];
+        $id = $elegido->id; $visitados = [];
+        while ($id && isset($taxones[$id]) && ! isset($visitados[$id]) && count($visitados) < 30) {
+            $visitados[$id] = true; $nodo = $taxones[$id];
+            if (isset($rangos[$nodo->rango]) && ($nodo->rango !== 'familia' || $ejemplar->family_visible)
+                && ($nodo->rango !== 'genero' || $ejemplar->genus_visible)) $linaje[$rangos[$nodo->rango]] = $nodo->nombre_cientifico;
+            $id = $nodo->padre_id;
+        }
+        return $linaje;
     }
 }

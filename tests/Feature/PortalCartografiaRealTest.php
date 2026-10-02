@@ -7,6 +7,10 @@ use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Modules\CatalogoPublico\Domain\ValueObjects\FiltrosBusqueda;
 use Modules\CatalogoPublico\Infrastructure\Persistence\Eloquent\Repositories\EloquentProveedorEspecimenesParaArbol;
+use Modules\CatalogoPublico\Application\Services\IlustracionTaxonomica;
+use Modules\CatalogoPublico\Application\UseCases\ExportarRegistrosEspecimenes\ExportarRegistrosEspecimenesHandler;
+use Modules\CatalogoPublico\Application\UseCases\ExportarRegistrosEspecimenes\ExportarRegistrosEspecimenesInput;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 use Modules\CatalogoPublico\Presentation\Http\Controllers\PortalCatalogo;
 use Modules\CatalogoPublico\Presentation\Http\Controllers\PortalEstadisticas;
 
@@ -72,6 +76,79 @@ test('tarjetas y tabla cargan doce UUID por página sin duplicarlos ni perder el
     }
 });
 
+test('el rail pagina hermanos y sus conteos en el padre público sin ampliar los registros de la ficha', function (): void {
+    $f = cartografiaRealFixture();
+    $familia = (string) Str::uuid(); $generoId = (string) Str::uuid(); $otroGeneroId = (string) Str::uuid();
+    $genero = $f['prefijo'].'Genus'; $familiaNombre = $f['prefijo'].'Familia';
+    $principal = $genero.' carinulata'; $hermana = $genero.' crenata';
+    foreach ([[$familia, $f['filo'], $familiaNombre, 'familia'], [$generoId, $familia, $genero, 'genero'],
+        [$otroGeneroId, $familia, $f['prefijo'].'OtroGenero', 'genero']] as [$id, $padre, $nombre, $rango]) {
+        DB::table('taxonomia.taxones')->insert(['id' => $id, 'padre_id' => $padre, 'nombre_cientifico' => $nombre, 'rango' => $rango]);
+    }
+    foreach ($f['taxones'] as $i => $id) DB::table('taxonomia.taxones')->where('id', $id)->update([
+        'padre_id' => $generoId, 'nombre_cientifico' => $i === 0 ? $principal : $hermana,
+    ]);
+    $original = (array) DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->first();
+    unset($original['coordenadas_otras_regiones'], $original['busqueda_global']);
+    $insertar = static function (string $taxonId, string $colector = 'QA', array $flags = []) use ($original): string {
+        $id = (string) Str::uuid(); $codigo = 'QA-HERMANOS-'.Str::uuid();
+        DB::table('taxonomia.especimenes')->insert(array_replace($original, [
+            'id' => $id, 'codigo_catalogo' => $codigo, 'occurrence_id' => $codigo, 'taxon_id' => $taxonId, 'colector' => $colector,
+        ]));
+        DB::table('divulgacion.especimenes_divulgables')->insert(array_replace([
+            'id' => (string) Str::uuid(), 'especimen_id' => $id, 'publicado' => true,
+        ], $flags));
+        return $id;
+    };
+    $idsPrincipal = [$f['ids'][0], $f['ids'][1]];
+    for ($i = 0; $i < 11; $i++) $idsPrincipal[] = $insertar($f['taxones'][0]);
+    $insertar($f['taxones'][1], 'OTRO COLECTOR');
+    $insertar($f['taxones'][1], 'QA', ['genus_visible' => false]);
+    for ($i = 0; $i < 13; $i++) {
+        $id = (string) Str::uuid();
+        DB::table('taxonomia.taxones')->insert(['id' => $id, 'padre_id' => $generoId,
+            'nombre_cientifico' => $genero.' zeta'.sprintf('%02d', $i), 'rango' => 'especie']);
+        $insertar($id);
+    }
+    $especieReservada = (string) Str::uuid();
+    DB::table('taxonomia.taxones')->insert(['id' => $especieReservada, 'padre_id' => $generoId,
+        'nombre_cientifico' => $genero.' reservada', 'rango' => 'especie']);
+    $insertar($especieReservada, 'QA', ['scientific_name_visible' => false]);
+    $especieOtroGenero = (string) Str::uuid();
+    DB::table('taxonomia.taxones')->insert(['id' => $especieOtroGenero, 'padre_id' => $otroGeneroId,
+        'nombre_cientifico' => $f['prefijo'].'OtroGenero vecina', 'rango' => 'especie']);
+    $insertar($especieOtroGenero);
+    $insertar($especieOtroGenero, 'QA', ['family_visible' => false]);
+    $generoReservado = (string) Str::uuid();
+    DB::table('taxonomia.taxones')->insert(['id' => $generoReservado, 'padre_id' => $familia,
+        'nombre_cientifico' => $f['prefijo'].'GeneroReservado', 'rango' => 'genero']);
+    $insertar($generoReservado, 'QA', ['genus_visible' => false]);
+
+    $componente = Livewire::withQueryParams(['vista' => 'tarjetas', 'fph' => $f['filo'], 'nivel' => 'species', 'taxon' => $principal])
+        ->test(PortalCatalogo::class)->assertViewHas('totalEspecimenes', 13)
+        ->assertViewHas('totalHermanos', 14)->assertViewHas('ultimaPaginaHermanos', 2)
+        ->assertViewHas('hermanos', fn ($nodos) => count($nodos) === 12 && $nodos[0]['taxon'] === $hermana && $nodos[0]['total'] === 2)
+        ->assertViewHas('conteos', fn ($conteos) => ! isset($conteos['species:'.$hermana]))
+        ->assertViewHas('especimenes', fn ($filas) => array_diff(array_column($filas, 'especimen_id'), $idsPrincipal) === [])
+        ->assertDontSee($genero.' reservada')->assertDontSee($f['prefijo'].'OtroGenero vecina');
+    $componente->call('cambiarPagina', 2)->assertViewHas('paginaActual', 2)->assertViewHas('especimenes', fn ($filas) => count($filas) === 1);
+    $idPaginaPrincipal = $componente->viewData('especimenes')[0]->especimen_id;
+    $primeraHermanos = array_column($componente->viewData('hermanos'), 'taxon');
+    $componente->call('cambiarPaginaHermanos', 2)->assertViewHas('paginaHermanosActual', 2)
+        ->assertViewHas('hermanos', fn ($nodos) => count($nodos) === 2 && array_intersect($primeraHermanos, array_column($nodos, 'taxon')) === [])
+        ->assertViewHas('paginaActual', 2)->assertViewHas('especimenes', fn ($filas) => count($filas) === 1 && $filas[0]->especimen_id === $idPaginaPrincipal);
+    $componente->set('filtroColector', 'QA')->assertViewHas('paginaHermanosActual', 1)
+        ->assertViewHas('hermanos', fn ($nodos) => $nodos[0]['taxon'] === $hermana && $nodos[0]['total'] === 1)
+        ->assertViewHas('totalEspecimenes', 13);
+    $componente->call('navegar', 'species', $hermana)->assertViewHas('paginaActual', 1)->assertViewHas('paginaHermanosActual', 1)
+        ->assertViewHas('totalEspecimenes', 2)
+        ->assertViewHas('especimenes', fn ($filas) => count($filas) === 2 && array_column($filas, 'scientific_name') === [$hermana, $hermana])
+        ->assertViewHas('hermanos', fn ($nodos) => $nodos[0]['taxon'] === $principal && $nodos[0]['total'] === 13);
+    $componente->call('navegar', 'genus', $genero)->assertViewHas('hermanos', fn ($nodos) => count($nodos) === 1
+        && $nodos[0]['taxon'] === $f['prefijo'].'OtroGenero' && $nodos[0]['total'] === 1)
+        ->assertDontSee($f['prefijo'].'GeneroReservado');
+});
+
 test('el mapa conserva coordenadas exactas y un punto vecino no entra en el modal', function (): void {
     $f = cartografiaRealFixture();
     DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->update(['decimal_latitude' => -0.2561234, 'decimal_longitude' => -78.5134567]);
@@ -82,6 +159,20 @@ test('el mapa conserva coordenadas exactas y un punto vecino no entra en el moda
         ->call('abrirCelda', -0.2561234, -78.5134567)->call('cambiarVistaCelda', 'registros');
     expect($componente->instance()->detalleCelda['total'])->toBe(1)
         ->and(array_column($componente->instance()->detalleCelda['registros'], 'especimen_id'))->toBe([$f['ids'][0]]);
+});
+
+test('la identidad del mapa de especie cambia al navegar y al modificar su selección', function (): void {
+    $f = cartografiaRealFixture();
+    $componente = Livewire::withQueryParams(['vista' => 'tarjetas', 'fph' => $f['filo'], 'nivel' => 'species', 'taxon' => $f['prefijo'].' alfa'])
+        ->test(PortalCatalogo::class)->assertViewHas('idTaxonActual', $f['taxones'][0]);
+    $claveAlfa = $componente->viewData('claveMapaEspecie');
+    expect($componente->viewData('puntosEspecie'))->toBe([['lat' => -0.25, 'lon' => -78.5, 'total' => 2, 'filos' => [$f['prefijo'] => 2], 'taxones' => 1]]);
+    $componente->call('navegar', 'species', $f['prefijo'].' beta')->assertViewHas('idTaxonActual', $f['taxones'][1]);
+    expect($componente->viewData('claveMapaEspecie'))->not->toBe($claveAlfa)
+        ->and(array_column($componente->viewData('puntosEspecie'), 'lat'))->toBe([-2.5]);
+    $componente->call('navegar', 'species', $f['prefijo'].' alfa')->set('filtroCatalogo', $f['codigos'][0]);
+    expect($componente->viewData('claveMapaEspecie'))->not->toBe($claveAlfa)
+        ->and(array_sum(array_column($componente->viewData('puntosEspecie'), 'total')))->toBe(1);
 });
 
 test('el árbol conserva ancestros y ramas hermanas y selecciona su información pública', function (): void {
@@ -96,6 +187,266 @@ test('el árbol conserva ancestros y ramas hermanas y selecciona su información
         ->and($detalle['seleccionado']['ilustracion']['representativa'])->toBeTrue();
     $componente->call('navegarCelda', $f['taxones'][1]);
     expect($componente->instance()->detalleCelda['seleccionado']['nombre'])->toBe($f['prefijo'].' beta');
+});
+
+test('un punto de una sola especie conserva su cadena real sin fabricar bifurcaciones', function (): void {
+    $f = cartografiaRealFixture();
+    $componente = Livewire::withQueryParams(['vista' => 'mapa', 'fph' => $f['filo']])->test(PortalCatalogo::class)
+        ->call('abrirCelda', -0.25, -78.5);
+    $detalle = $componente->instance()->detalleCelda;
+    expect($detalle['arbol_hojas_total'])->toBe(1)->and($detalle['arbol_ultima'])->toBe(1)
+        ->and($detalle['arbol_registros_total'])->toBe(2)->and($detalle['arbol'])->toHaveCount(2)
+        ->and(array_column($detalle['arbol'], 'taxon_id'))->toBe([$f['filo'], $f['taxones'][0]])
+        ->and(array_column($detalle['arbol'], 'padre_id'))->toBe([null, $f['filo']]);
+});
+
+test('abrir un punto ofrece doce linajes completos por página y permite seleccionar directamente su especie propia', function (): void {
+    $f = cartografiaRealFixture();
+    $reino = (string) Str::uuid(); $familia = (string) Str::uuid(); $genero = (string) Str::uuid();
+    $suborden = (string) Str::uuid(); $subfamilia = (string) Str::uuid(); $tribu = (string) Str::uuid();
+    DB::table('taxonomia.taxones')->insert([
+        ['id' => $reino, 'padre_id' => null, 'nombre_cientifico' => $f['prefijo'].' Reino', 'rango' => 'reino'],
+        ['id' => $suborden, 'padre_id' => $f['filo'], 'nombre_cientifico' => $f['prefijo'].' Suborden', 'rango' => 'suborden'],
+        ['id' => $familia, 'padre_id' => $suborden, 'nombre_cientifico' => $f['prefijo'].' Familia', 'rango' => 'familia'],
+        ['id' => $subfamilia, 'padre_id' => $familia, 'nombre_cientifico' => $f['prefijo'].' Subfamilia', 'rango' => 'subfamilia'],
+        ['id' => $tribu, 'padre_id' => $subfamilia, 'nombre_cientifico' => $f['prefijo'].' Tribu', 'rango' => 'tribu'],
+        ['id' => $genero, 'padre_id' => $tribu, 'nombre_cientifico' => $f['prefijo'].' Genero', 'rango' => 'genero'],
+    ]);
+    DB::table('taxonomia.taxones')->where('id', $f['filo'])->update(['padre_id' => $reino]);
+    DB::table('taxonomia.taxones')->whereIn('id', $f['taxones'])->update(['padre_id' => $genero]);
+    DB::table('taxonomia.especimenes')->whereIn('id', $f['ids'])->update(['colector' => $f['prefijo']]);
+    DB::table('taxonomia.especimenes')->where('id', $f['ids'][2])->update(['decimal_latitude' => -0.25, 'decimal_longitude' => -78.5]);
+    DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $f['ids'][1])->update(['family_visible' => false, 'genus_visible' => false]);
+    $original = (array) DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->first();
+    unset($original['coordenadas_otras_regiones'], $original['busqueda_global']);
+    $taxonesReales = [$reino, $f['filo'], $suborden, $familia, $subfamilia, $tribu, $genero, ...$f['taxones']];
+    $especimenPorTaxon = [];
+    foreach (range(0, 11) as $i) {
+        $taxonId = (string) Str::uuid(); $id = (string) Str::uuid(); $codigo = 'QA-LINAJE-'.Str::uuid();
+        DB::table('taxonomia.taxones')->insert(['id' => $taxonId, 'padre_id' => $genero,
+            'nombre_cientifico' => $f['prefijo'].' '.($i === 11 ? 'RESERVADA' : 'zeta'.sprintf('%02d', $i)), 'rango' => 'especie']);
+        DB::table('taxonomia.especimenes')->insert(array_replace($original, ['id' => $id, 'taxon_id' => $taxonId,
+            'codigo_catalogo' => $codigo, 'occurrence_id' => $codigo]));
+        DB::table('divulgacion.especimenes_divulgables')->insert(['id' => (string) Str::uuid(), 'especimen_id' => $id,
+            'publicado' => true, 'scientific_name_visible' => $i !== 11]);
+        if ($i !== 11) { $taxonesReales[] = $taxonId; $especimenPorTaxon[$taxonId] = $id; }
+    }
+    $componente = Livewire::withQueryParams(['vista' => 'mapa', 'fco' => $f['prefijo']])->test(PortalCatalogo::class)
+        ->call('abrirCelda', -0.25, -78.5);
+    $detalle = $componente->instance()->detalleCelda;
+    $hojas = static function (array $arbol): array {
+        $padres = array_filter(array_column($arbol, 'padre_id'));
+        return array_values(array_filter($arbol, static fn (array $n): bool => ! in_array($n['id'], $padres, true)));
+    };
+    expect($detalle['seleccionado'])->toBeNull()->and($detalle['registros'])->toBe([])
+        ->and($detalle['arbol_hojas_total'])->toBe(14)->and($detalle['arbol_ultima'])->toBe(2)
+        ->and($detalle['arbol_registros_total'])->toBe(15)->and($detalle['arbol_pagina'])->toBe(1)
+        ->and($hojas($detalle['arbol']))->toHaveCount(12)
+        ->and(array_values(array_unique(array_column($detalle['arbol'], 'rango'))))->toEqualCanonicalizing(['reino', 'phylum', 'suborden', 'familia', 'subfamilia', 'tribu', 'genero', 'especie'])
+        ->and(array_diff(array_column($detalle['arbol'], 'taxon_id'), $taxonesReales))->toBe([]);
+    $idsVisibles = array_column($detalle['arbol'], 'id');
+    foreach ($detalle['arbol'] as $nodo) {
+        if ($nodo['padre_id'] !== null) expect($idsVisibles)->toContain($nodo['padre_id']);
+        expect(end($detalle['rutas'][$nodo['id']])['taxon_id'])->toBe($nodo['taxon_id']);
+    }
+    $ramasAlfa = array_values(array_filter($detalle['arbol'], static fn (array $n): bool => $n['taxon_id'] === $f['taxones'][0]));
+    expect($ramasAlfa)->toHaveCount(2)->and($ramasAlfa[0]['id'])->not->toBe($ramasAlfa[1]['id']);
+    $idsRutaPrivada = [$reino, $f['filo'], $suborden, $subfamilia, $tribu, $f['taxones'][0]];
+    // El padre visual puede tener una variante de ruta; taxon_id es el UUID fuente.
+    $privada = collect($ramasAlfa)->first(static fn (array $n): bool =>
+        array_column($detalle['rutas'][$n['id']], 'taxon_id') === $idsRutaPrivada);
+    expect($privada)->not->toBeNull();
+    $rutaPrivada = $detalle['rutas'][$privada['id']];
+    $padrePrivado = collect($detalle['arbol'])->firstWhere('id', $privada['padre_id']);
+    expect($padrePrivado)->not->toBeNull()
+        ->and($padrePrivado['taxon_id'])->toBe($tribu)
+        ->and(array_column($rutaPrivada, 'taxon_id'))->not->toContain($familia, $genero)
+        ->and(array_column($rutaPrivada, 'nombre'))->not->toContain($f['prefijo'].' Familia', $f['prefijo'].' Genero');
+    $idFueraDePagina = collect($detalle['arbol'])->firstWhere('taxon_id', $f['taxones'][1])['id'];
+    $componente->call('navegarCelda', $privada['id']);
+    $seleccion = $componente->instance()->detalleCelda;
+    expect($seleccion['informacion']['cantidad'])->toBe(1)
+        ->and($seleccion['seleccionado']['jerarquia'])->toBe($seleccion['informacion']['jerarquia'])
+        ->and($seleccion['informacion']['jerarquia'])->not->toHaveKey('family')->not->toHaveKey('familia')
+        ->not->toHaveKey('genus')->not->toHaveKey('genero')->not->toHaveKey('género')
+        ->and(array_column($seleccion['informacion']['jerarquia']['ancestros'], 'rango'))
+        ->toBe(['kingdom', 'phylum', 'suborder', 'subfamily', 'tribe', 'species'])
+        ->not->toContain('family', 'familia', 'genus', 'genero', 'género')
+        ->and(array_column($seleccion['informacion']['jerarquia']['ancestros'], 'nombre'))
+        ->toBe(array_column($rutaPrivada, 'nombre'))->not->toContain($f['prefijo'].' Familia', $f['prefijo'].' Genero')
+        ->and(array_column($seleccion['rutas'][$privada['id']], 'taxon_id'))->toBe($idsRutaPrivada)
+        ->and($seleccion['informacion']['jerarquia']['suborder'])->toBe($f['prefijo'].' Suborden')
+        ->and($seleccion['informacion']['jerarquia']['subfamily'])->toBe($f['prefijo'].' Subfamilia')
+        ->and($seleccion['informacion']['jerarquia']['tribe'])->toBe($f['prefijo'].' Tribu')
+        ->and(array_column($seleccion['registros'], 'especimen_id'))->toBe([$f['ids'][1]])
+        ->and($seleccion['arbol_hojas_total'])->toBe(14);
+    $primerasHojas = array_column($hojas($detalle['arbol']), 'id');
+    $componente->call('paginarArbolCelda', 2);
+    $segunda = $componente->instance()->detalleCelda;
+    expect($segunda['arbol_pagina'])->toBe(2)->and($hojas($segunda['arbol']))->toHaveCount(2)
+        ->and(array_intersect($primerasHojas, array_column($hojas($segunda['arbol']), 'id')))->toBe([])
+        ->and(array_column($segunda['registros'], 'especimen_id'))->toBe([$f['ids'][1]])
+        ->and($segunda['rutas'])->not->toHaveKey($idFueraDePagina);
+    $componente->call('navegarCelda', $idFueraDePagina);
+    expect($componente->instance()->detalleCelda['seleccionado']['id'])->toBe($privada['id']);
+    $hoja = $hojas($segunda['arbol'])[0];
+    $componente->call('navegarCelda', $hoja['id']);
+    $propia = $componente->instance()->detalleCelda;
+    expect($propia['seleccionado']['taxon_id'])->toBe($hoja['taxon_id'])
+        ->and($propia['informacion']['taxon'])->toBe($hoja['nombre'])->and($propia['informacion']['cantidad'])->toBe(1)
+        ->and(array_column($propia['registros'], 'especimen_id'))->toBe([$especimenPorTaxon[$hoja['taxon_id']]])
+        ->and(array_column($propia['informacion']['jerarquia']['ancestros'], 'nombre'))->toBe(array_column($propia['rutas'][$hoja['id']], 'nombre'))
+        ->and($propia['informacion']['jerarquia']['suborder'])->toBe($f['prefijo'].' Suborden')
+        ->and($propia['informacion']['jerarquia']['subfamily'])->toBe($f['prefijo'].' Subfamilia')
+        ->and($propia['informacion']['jerarquia']['tribe'])->toBe($f['prefijo'].' Tribu')
+        ->and($propia['arbol_pagina'])->toBe(2);
+    $componente->call('volverCelda', 0);
+    expect($componente->instance()->detalleCelda['arbol_pagina'])->toBe(1)
+        ->and($componente->instance()->detalleCelda['seleccionado'])->toBeNull();
+    $componente->call('paginarArbolCelda', 2)->call('cerrarCelda')->assertSet('paginaArbolCelda', 1)
+        ->call('abrirCelda', -0.25, -78.5);
+    expect($componente->instance()->detalleCelda['arbol_pagina'])->toBe(1);
+});
+
+test('las ramas del mismo taxón con permisos distintos conservan sus conteos y UUID propios', function (): void {
+    $f = cartografiaRealFixture();
+    $familia = (string) Str::uuid(); $genero = (string) Str::uuid();
+    DB::table('taxonomia.taxones')->insert([
+        ['id' => $familia, 'padre_id' => $f['filo'], 'nombre_cientifico' => $f['prefijo'].' familia', 'rango' => 'familia'],
+        ['id' => $genero, 'padre_id' => $familia, 'nombre_cientifico' => $f['prefijo'].' genero', 'rango' => 'genero'],
+    ]);
+    DB::table('taxonomia.taxones')->where('id', $f['taxones'][0])->update(['padre_id' => $genero]);
+    DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $f['ids'][1])
+        ->update(['family_visible' => false, 'genus_visible' => false]);
+    $componente = Livewire::withQueryParams(['vista' => 'mapa', 'fph' => $f['filo']])->test(PortalCatalogo::class)
+        ->call('abrirCelda', -0.25, -78.5)->call('navegarCelda', $f['filo']);
+    $detalle = $componente->instance()->detalleCelda;
+    $ramaReservada = collect($detalle['grupos'])->firstWhere('taxon_id', $f['taxones'][0]);
+    expect($detalle['total'])->toBe(2)->and($ramaReservada['total'])->toBe(1);
+    $componente->call('navegarCelda', $ramaReservada['id']);
+    $detalle = $componente->instance()->detalleCelda;
+    expect($detalle['total'])->toBe(1)
+        ->and($detalle['seleccionado']['taxon_id'])->toBe($f['taxones'][0])
+        ->and($detalle['seleccionado']['total'])->toBe(1)
+        ->and($detalle['informacion']['cantidad'])->toBe(1)
+        ->and($detalle['seleccionado']['jerarquia'])->toBe($detalle['informacion']['jerarquia'])
+        ->and($detalle['informacion']['jerarquia'])->not->toHaveKey('family')->not->toHaveKey('familia')
+        ->not->toHaveKey('genus')->not->toHaveKey('genero')->not->toHaveKey('género')
+        ->and(array_column($detalle['rutas'][$ramaReservada['id']], 'taxon_id'))->toBe([$f['filo'], $f['taxones'][0]])
+        ->not->toContain($familia, $genero)
+        ->and(array_column($detalle['informacion']['jerarquia']['ancestros'], 'rango'))->toBe(['phylum', 'species'])
+        ->not->toContain('family', 'familia', 'genus', 'genero', 'género')
+        ->and(array_column($detalle['informacion']['jerarquia']['ancestros'], 'nombre'))->toBe([$f['prefijo'], $f['prefijo'].' alfa'])
+        ->not->toContain($f['prefijo'].' familia', $f['prefijo'].' genero')
+        ->and(array_column($detalle['registros'], 'especimen_id'))->toBe([$f['ids'][1]])
+        ->and(get_object_vars($detalle['registros'][0]))->not->toHaveKey('family')->not->toHaveKey('familia')
+        ->not->toHaveKey('genus')->not->toHaveKey('genero')->not->toHaveKey('género')
+        ->and(array_values(get_object_vars($detalle['registros'][0])))->not->toContain($f['prefijo'].' familia', $f['prefijo'].' genero');
+    $componente->call('navegarCelda', $f['filo'])->call('navegarCelda', $familia)->call('navegarCelda', $genero);
+    $ramaPublica = collect($componente->instance()->detalleCelda['grupos'])->firstWhere('taxon_id', $f['taxones'][0]);
+    expect($ramaPublica['id'])->not->toBe($ramaReservada['id'])->and($ramaPublica['total'])->toBe(1);
+    $componente->call('navegarCelda', $ramaPublica['id']);
+    $detalle = $componente->instance()->detalleCelda;
+    expect($detalle['total'])->toBe(1)->and($detalle['seleccionado']['total'])->toBe(1)
+        ->and($detalle['informacion']['jerarquia']['family'])->toBe($f['prefijo'].' familia')
+        ->and($detalle['informacion']['jerarquia']['genus'])->toBe($f['prefijo'].' genero')
+        ->and(array_column($detalle['registros'], 'especimen_id'))->toBe([$f['ids'][0]]);
+    $tarjetas = Livewire::withQueryParams(['vista' => 'tarjetas', 'fph' => $f['filo']])->test(PortalCatalogo::class)
+        ->call('navegar', 'phylum', $f['prefijo'])->assertViewHas('totalTarjetas', 3)
+        ->assertViewHas('especiesActuales', fn ($especies) => collect($especies)->firstWhere('id', $f['taxones'][0])['total'] === 1);
+    $tarjetas->call('navegar', 'genus', $f['prefijo'].' genero')->assertViewHas('totalTarjetas', 1)
+        ->assertViewHas('totalRegistrosVista', 1)->assertViewHas('especiesActuales', fn ($especies) => count($especies) === 1 && $especies[0]['total'] === 1);
+    $tarjetas->call('cambiarVista', 'registros')->assertViewHas('totalRegistrosVista', 1)
+        ->assertViewHas('registrosVista', fn ($registros) => array_column($registros, 'especimen_id') === [$f['ids'][0]]);
+    $repo = app(EloquentProveedorEspecimenesParaArbol::class);
+    expect($repo->cursorParaCsv(FiltrosBusqueda::desde(['filtroFiloId' => $f['filo']]), 'genus', $f['prefijo'].' genero')->pluck('occurrence_id')->all())->toBe([$f['codigos'][0]]);
+    foreach ([$f['prefijo'].' familia', $f['prefijo'].' genero'] as $nombre)
+        expect($repo->paginaPublica(FiltrosBusqueda::desde(['filtroTaxon' => $nombre]), 1)['ids'])->toBe([$f['ids'][0]]);
+    $tarjetas->call('cambiarVista', 'tarjetas')->call('explorarNivel', 'species')->assertViewHas('totalTarjetas', 2);
+    $alfa = collect($tarjetas->viewData('taxonesExplorados'))->firstWhere('taxon', $f['prefijo'].' alfa');
+    expect($alfa['jerarquia']['family'])->toBe($f['prefijo'].' familia')->and($alfa['jerarquia']['genus'])->toBe($f['prefijo'].' genero');
+    $tarjetas->call('cambiarPagina', 99)->call('volverAlArbol')->assertSet('pagina', 1);
+    DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $f['ids'][1])->update(['genus_visible' => true]);
+    $tarjetas->call('explorarNivel', 'genus')->assertViewHas('totalTarjetas', 1)
+        ->assertViewHas('conteos', fn ($conteos) => $conteos['genus:'.$f['prefijo'].' genero'] === 2);
+    $generoExplorado = $tarjetas->viewData('taxonesExplorados')[0];
+    expect($generoExplorado['taxon'])->toBe($f['prefijo'].' genero')->and($generoExplorado)->not->toHaveKey('total');
+});
+
+test('el mosaico resuelve el grupo del género desde su linaje público y retira ancestros reservados', function (): void {
+    $f = cartografiaRealFixture();
+    $familia = DB::table('taxonomia.taxones')->where('rango', 'familia')->where('nombre_cientifico', 'Formicidae')->value('id');
+    if ($familia === null) {
+        $familia = (string) Str::uuid();
+        DB::table('taxonomia.taxones')->insert(['id' => $familia, 'padre_id' => $f['filo'], 'nombre_cientifico' => 'Formicidae', 'rango' => 'familia']);
+    }
+    $genero = (string) Str::uuid();
+    DB::table('taxonomia.taxones')->insert(['id' => $genero, 'padre_id' => $familia, 'nombre_cientifico' => $f['prefijo'].' genero', 'rango' => 'genero']);
+    DB::table('taxonomia.taxones')->where('id', $f['taxones'][0])->update(['padre_id' => $genero]);
+    $filtros = ['taxon_navegado' => '', 'taxon' => $f['prefijo'].' genero'];
+    $estadisticas = app(PortalEstadisticas::class);
+    $linaje = $estadisticas->datosParaVista($filtros)['taxon_mosaico'];
+    expect($linaje['genus'])->toBe($f['prefijo'].' genero')->and($linaje['family'])->toBe('Formicidae')
+        ->and(IlustracionTaxonomica::paraTaxon($linaje)['grupo'])->toBe('Formicidae');
+    DB::table('divulgacion.especimenes_divulgables')->whereIn('especimen_id', [$f['ids'][0], $f['ids'][1]])->update(['family_visible' => false]);
+    expect($estadisticas->datosParaVista($filtros)['taxon_mosaico'])->not->toHaveKey('family');
+    DB::table('divulgacion.especimenes_divulgables')->whereIn('especimen_id', [$f['ids'][0], $f['ids'][1]])->update(['genus_visible' => false]);
+    expect($estadisticas->datosParaVista($filtros)['taxon_mosaico'])->toBe([]);
+});
+
+test('galería y portadas limitan imágenes y conservan originales sin atribuir códigos ambiguos', function (): void {
+    $f = cartografiaRealFixture(); $imagenes = [];
+    for ($i = 1; $i <= 15; $i++) {
+        $imagenes[] = ['id' => (string) Str::uuid(), 'occurrence_id' => $f['codigos'][0], 'nombre_original' => sprintf('vista-%02d.jpg', $i),
+            'ruta' => 'divulgacion/imagenes/cartografia-'.Str::uuid().'.jpg', 'disco' => 'r2',
+            'autor_nombre' => 'QA', 'autor_apellido' => 'Portal', 'autor_nombre_completo' => 'QA Portal',
+            'created_at' => '2026-10-01 00:00:00', 'updated_at' => '2026-10-01 00:00:00'];
+    }
+    DB::table('divulgacion.imagenes_taxonomicas')->insert($imagenes);
+    DB::table('divulgacion.imagenes_por_defecto')->insert(['id' => (string) Str::uuid(), 'nivel' => 'species',
+        'valor_taxon' => $f['prefijo'].' alfa', 'imagen_id' => $imagenes[14]['id']]);
+    $componente = Livewire::withQueryParams(['vista' => 'tarjetas', 'fph' => $f['filo'], 'nivel' => 'species', 'taxon' => $f['prefijo'].' alfa'])
+        ->test(PortalCatalogo::class)->assertViewHas('galeriaEspecie', fn ($galeria) => count($galeria) === 12 && $galeria[0]['imagenId'] === $imagenes[14]['id'] && $galeria[0]['esPortada'])
+        ->assertViewHas('imagenesPorEspecimen', fn ($fotos) => count($fotos[$f['codigos'][0]]) === 12);
+    DB::table('taxonomia.especimenes')->where('id', $f['ids'][2])->update(['occurrence_id' => $f['codigos'][0]]);
+    $componente->call('cambiarPagina', 1)->assertViewHas('galeriaEspecie', [])
+        ->assertViewHas('imagenesPorEspecimen', []);
+    $componente->call('navegar', 'phylum', $f['prefijo'])->assertViewHas('portadas', []);
+    expect(DB::table('divulgacion.imagenes_taxonomicas')->whereIn('id', array_column($imagenes, 'id'))->count())->toBe(15);
+});
+
+test('XLSX conserva la selección UUID y permisos sin convertir textos de colecta en fórmulas', function (): void {
+    $f = cartografiaRealFixture();
+    DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->update(['colector' => '=1+1', 'country' => 'PAIS-RESERVADO']);
+    DB::table('taxonomia.especimenes')->where('id', $f['ids'][2])->update(['occurrence_id' => $f['codigos'][0], 'colector' => '=1+1']);
+    DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $f['ids'][0])->update(['occurrence_id_visible' => false, 'country_visible' => false]);
+    $componente = Livewire::withQueryParams(['vista' => 'tarjetas', 'fph' => $f['filo'], 'nivel' => 'species', 'taxon' => $f['prefijo'].' alfa', 'fco' => '=1+1'])
+        ->test(PortalCatalogo::class)->assertViewHas('totalRegistrosVista', 1);
+    ob_start();
+    $componente->instance()->descargarDatos()->sendContent();
+    $contenido = ob_get_clean();
+    $archivo = tempnam(sys_get_temp_dir(), 'pest-portal-xlsx-');
+    try {
+        file_put_contents($archivo, $contenido);
+        $lector = IOFactory::createReader('Xlsx');
+        $lector->setReadDataOnly(true);
+        $libro = $lector->load($archivo);
+        $hoja = $libro->getActiveSheet();
+        $filas = $hoja->toArray();
+        expect($filas)->toHaveCount(2)->and($filas[0][0])->toBe('occurrenceID')->and($filas[1][0])->toBe('')
+            ->and($filas[1][1])->toBe($f['prefijo'].' alfa')->and($filas[1][6])->toBe('')
+            ->and($filas[1][9])->toBe('=1+1')->and($hoja->getCell('J2')->getDataType())->toBe('inlineStr');
+        $libro->disconnectWorksheets();
+        DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $f['ids'][0])->update(['scientific_name_visible' => false]);
+        $reservado = app(ExportarRegistrosEspecimenesHandler::class)->handle(new ExportarRegistrosEspecimenesInput($f['prefijo'].' alfa', [$f['ids'][0]]));
+        file_put_contents($archivo, $reservado->contenidoXlsx);
+        $libro = $lector->load($archivo);
+        expect($libro->getActiveSheet()->getCell('A2')->getValue())->toBe('')
+            ->and($libro->getActiveSheet()->getCell('B2')->getValue())->toBe('');
+        $libro->disconnectWorksheets();
+    } finally {
+        unlink($archivo);
+    }
 });
 
 test('QA3-002 las notas de reubicación se conservan sin contar como especie o provincia', function (): void {
@@ -136,6 +487,16 @@ test('la comparación geográfica une variantes de tilde y preserva los valores 
     expect(DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->value('country'))->toBe('Perú');
 });
 
+test('la ruta de estadísticas conserva un alias de provincia al redirigir al mapa', function (): void {
+    $f = cartografiaRealFixture(); $provincia = 'Manabí '.$f['prefijo']; $alias = 'MANABI '.$f['prefijo'];
+    DB::table('taxonomia.especimenes')->whereIn('id', [$f['ids'][0], $f['ids'][1]])->update(['state_province' => $provincia]);
+    $this->get(route('portal.estadisticas', ['provincia' => $alias, 'filo' => $f['filo']]))
+        ->assertRedirect(route('portal.catalogo', ['vista' => 'mapa', 'fprov' => $alias, 'fph' => $f['filo']]));
+    Livewire::withQueryParams(['vista' => 'mapa', 'fprov' => $alias, 'fph' => $f['filo']])->test(PortalCatalogo::class)
+        ->assertViewHas('datosMapa', fn ($datos) => (int) $datos['resumen']['registros'] === 2);
+    expect(DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->value('state_province'))->toBe($provincia);
+});
+
 test('cambiar divulgación invalida inmediatamente los puntos y estadísticas cacheados', function (): void {
     $f = cartografiaRealFixture(); $estadisticas = app(PortalEstadisticas::class);
     expect(array_sum(array_column($estadisticas->datosParaVista(['filo' => $f['filo']])['mapa'], 'total')))->toBe(3);
@@ -159,6 +520,54 @@ test('la recuperación exige las tres identidades de fuente y conserva correccio
     expect(DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->value('sampling_protocol'))->toBe('fogging')
         ->and(DB::table('taxonomia.especimenes')->where('id', $f['ids'][1])->value('sampling_protocol'))->toBeNull()
         ->and(DB::table('taxonomia.especimenes')->where('id', $f['ids'][2])->value('sampling_protocol'))->toBe('Corrección curatorial');
+});
+
+test('recuperar la localidad original solo rellena ausentes de la fila fuente exacta y es idempotente', function (): void {
+    expect(DB::transactionLevel())->toBeGreaterThan(0);
+    DB::table('taxonomia.especimenes')->whereIn('fila_origen_excel', [1, 2, 3, 4, 302, 309])->update(['fila_origen_excel' => null]);
+    $f = cartografiaRealFixture();
+    DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->update([
+        'fila_origen_excel' => 1, 'occurrence_id' => 'MEPN-INV-1', 'old_code' => '560', 'localidad_verbatim' => null,
+        'localidad' => 'Localidad corregida', 'locality_name' => 'Sitio curado', 'sampling_protocol' => 'Método corregido',
+    ]);
+    // El código público homónimo no permite recuperar una fila con otra identidad.
+    DB::table('taxonomia.especimenes')->where('id', $f['ids'][1])->update([
+        'fila_origen_excel' => 2, 'occurrence_id' => 'MEPN-INV-1', 'old_code' => 'OTRA-FUENTE', 'localidad_verbatim' => '',
+    ]);
+    DB::table('taxonomia.especimenes')->where('id', $f['ids'][2])->update([
+        'fila_origen_excel' => 3, 'occurrence_id' => 'MEPN-INV-2', 'old_code' => '561', 'localidad_verbatim' => 'Texto corregido por curatoría',
+    ]);
+    $vacio = (string) Str::uuid();
+    DB::table('taxonomia.especimenes')->insert([
+        'id' => $vacio, 'codigo_catalogo' => 'QA-LOCALIDAD-'.Str::uuid(), 'taxon_id' => $f['taxones'][0],
+        'fila_origen_excel' => 4, 'occurrence_id' => 'MEPN-INV-2', 'old_code' => '420', 'localidad_verbatim' => '',
+        'localidad' => 'Otro sitio curado', 'decimal_latitude' => -0.75, 'decimal_longitude' => -78.75,
+    ]);
+    $sinOldCode = (string) Str::uuid();
+    $oldCodeDiscordante = (string) Str::uuid();
+    foreach ([[$sinOldCode, 302, 'MEPN-INV-150', null], [$oldCodeDiscordante, 309, 'MEPN-INV-153', 'OTRA-FUENTE']] as [$id, $origen, $occurrence, $oldCode]) {
+        DB::table('taxonomia.especimenes')->insert([
+            'id' => $id, 'codigo_catalogo' => 'QA-LOCALIDAD-'.Str::uuid(), 'taxon_id' => $f['taxones'][0],
+            'fila_origen_excel' => $origen, 'occurrence_id' => $occurrence, 'old_code' => $oldCode,
+            'localidad' => 'Sitio curado', 'localidad_verbatim' => null,
+        ]);
+    }
+    $ids = [...$f['ids'], $vacio, $sinOldCode, $oldCodeDiscordante];
+    $campos = ['id', 'occurrence_id', 'old_code', 'localidad', 'locality_name', 'country', 'state_province',
+        'decimal_latitude', 'decimal_longitude', 'sampling_protocol'];
+    $antes = DB::table('taxonomia.especimenes')->whereIn('id', $ids)->orderBy('id')->get($campos)->toArray();
+    $migracion = require base_path('Modules/CatalogoPublico/database/migrations/2026_10_02_000015_restore_original_locality_verbatim.php');
+    $migracion->up();
+    $primera = DB::table('taxonomia.especimenes')->whereIn('id', $ids)->orderBy('id')->pluck('localidad_verbatim', 'id')->all();
+    expect($primera[$f['ids'][0]])->toBe('Parque Nacional Yasuní, Onkonegare')
+        ->and($primera[$f['ids'][1]])->toBe('')
+        ->and($primera[$f['ids'][2]])->toBe('Texto corregido por curatoría')
+        ->and($primera[$vacio])->toBe('Parque Nacional Yasuní, Afluente Río Rumiyacu, Bloque 31 (Petrobras), Localidad 1 (ex Apaika 2), Cononaco')
+        ->and($primera[$sinOldCode])->toBe('Parque Nacional Yasuní, Estación de Biodiversidad Tiputini')
+        ->and($primera[$oldCodeDiscordante])->toBeNull();
+    $migracion->up();
+    expect(DB::table('taxonomia.especimenes')->whereIn('id', $ids)->orderBy('id')->pluck('localidad_verbatim', 'id')->all())->toBe($primera)
+        ->and(DB::table('taxonomia.especimenes')->whereIn('id', $ids)->orderBy('id')->get($campos)->toArray())->toEqual($antes);
 });
 
 test('una jerarquía parcial muestra sus especies debajo del filo sin inventar rangos intermedios', function (): void {

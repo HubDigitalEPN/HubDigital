@@ -6,9 +6,11 @@ it('elige el ancestro morfológico más específico sin atribuir un dibujo a un 
     $imagen = IlustracionTaxonomica::paraTaxon([
         'species' => 'Camponotus femoratus', 'family' => 'Formicidae', 'order' => 'Hymenoptera', 'phylum' => 'Arthropoda',
     ]);
-    expect($imagen['url'])->toBe('/images/taxonomia/formicidae.webp')
+    expect(parse_url($imagen['url'], PHP_URL_PATH))->toBe('/images/taxonomia/formicidae.webp')
+        ->and(parse_url($imagen['url'], PHP_URL_QUERY))->toBe('v=20261002-foto1')
         ->and($imagen['grupo'])->toBe('Formicidae')
         ->and($imagen['representativa'])->toBeTrue()
+        ->and($imagen['alt'])->toContain('Representación fotorrealista generada')
         ->and($imagen['alt'])->toContain('No es una fotografía');
 });
 
@@ -30,7 +32,10 @@ it('el mosaico de hormigas ofrece cuatro ilustraciones explícitas y distintas',
     expect($imagenes)->toHaveCount(4)
         ->and(array_unique(array_column($imagenes, 'url')))->toHaveCount(4);
     foreach ($imagenes as $imagen) {
+        $ruta = dirname(__DIR__, 4).'/public'.parse_url($imagen['url'], PHP_URL_PATH);
         expect($imagen['representativa'])->toBeTrue()
-            ->and(is_file(dirname(__DIR__, 4).'/public'.$imagen['url']))->toBeTrue();
+            ->and($imagen['alt'])->toContain('Representación fotorrealista generada')
+            ->and(is_file($ruta))->toBeTrue()
+            ->and(filesize($ruta))->toBeLessThan(20000);
     }
 });

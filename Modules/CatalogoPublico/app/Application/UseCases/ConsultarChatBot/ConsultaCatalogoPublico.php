@@ -21,22 +21,44 @@ final class ConsultaCatalogoPublico
             return null;
         }
         $normal = $this->texto->normalizar($pregunta);
+        $retirarFiltro = $this->filtroPorRetirar($normal);
+        if ($retirarFiltro === 'no_soportado') {
+            return $this->aclaracion('No puedo retirar ese filtro del chat de forma confirmada. Indica uno de estos criterios: taxón, código, provincia, país, localidad, mes, fechas, elevación, coordenadas o identificación. Para otros filtros, usa el formulario del catálogo.', $contexto);
+        }
+        $camposPorFiltro = ['taxon' => ['taxon'], 'codigo' => ['codigo'], 'provincia' => ['provincia'], 'pais' => ['pais'],
+            'localidad' => ['localidad'], 'mes' => ['mes'], 'fechas' => ['desde', 'hasta', 'fecha_precision'],
+            'desde' => ['desde', 'fecha_precision'], 'hasta' => ['hasta', 'fecha_precision'],
+            'elevacion' => ['elev_desde', 'elev_hasta'], 'ubicacion' => ['ubicacion'], 'identificacion' => ['identificacion']];
+        if ($retirarFiltro !== null && array_intersect(array_keys($contexto), $camposPorFiltro[$retirarFiltro]) === []) {
+            return $this->aclaracion('La consulta anterior no tiene ese filtro aplicado. Indica qué criterio quieres retirar o escribe una nueva consulta.', $contexto);
+        }
+        $coleccionExplicita = (bool) preg_match('/\b(?:cuant[oa]s?|numero|total)\b/', $normal)
+            && preg_match('/\b(?:registros|especimenes|ejemplares|especies)\b/', $normal)
+            && preg_match('/\b(?:en|de)\s+(?:toda\s+)?(?:(?:la\s+)?coleccion|(?:el\s+)?catalogo)\b/', $normal)
+            && ! preg_match('/\b(?:esa especie|ese taxon|esos registros|esos ejemplares|estos registros)\b/', $normal);
         $correction = (bool) preg_match('/^(perdon|corrijo|quise decir|queria decir|no )\b/', $normal);
         $followup = (bool) preg_match('/^(?:y\s+de\s+|y\s+)?cuantos?\b|^(?:y|solo|dame solo|quita|quitar|elimina)\s+|^donde\s+los\s+encontraron\b|\b(?:esa especie|ese taxon|esos registros|de esos dos registros)\b/', $normal);
         $queryText = $pregunta;
+        $geografiasNegadas = [];
         if ($correction && str_starts_with($normal, 'no ')) {
             // Conserva mayúsculas del nombre o localidad: el detector las usa para acotar entidades.
             $clauses = preg_split('/\s*(?:[,;.]|\bpero\b|\bsino\b)\s*/iu', rtrim($pregunta, '.')) ?: [];
-            if (count($clauses) > 1) $queryText = (string) end($clauses);
+            if (count($clauses) > 1) {
+                $queryText = (string) array_pop($clauses);
+                foreach ($clauses as $clausula) {
+                    $geografiasNegadas = array_merge($geografiasNegadas, $this->geografiasNegadas($clausula, $contexto));
+                }
+            }
         }
-        $entities = $this->detector->extraer($queryText);
-        if (($correction || $followup) && $contexto !== []) {
+        $entities = $retirarFiltro === null ? $this->detector->extraer($queryText) : [];
+        if (($correction || $followup || $retirarFiltro !== null) && ! $coleccionExplicita && $contexto !== []) {
             $previous = array_intersect_key($contexto, array_flip(['taxon', 'provincia', 'localidad', 'pais', 'codigo', 'mes', 'desde', 'hasta', 'fecha_precision', 'ubicacion', 'identificacion', 'elev_desde', 'elev_hasta']));
             if (isset($entities['taxon']) || isset($entities['codigo'])) unset($previous['taxon'], $previous['codigo']);
-            if (isset($entities['provincia']) || isset($entities['localidad']) || isset($entities['pais'])) {
-                unset($previous['provincia'], $previous['localidad'], $previous['pais']);
+            foreach ($geografiasNegadas as $geografia) unset($previous[$geografia]);
+            foreach (['provincia', 'localidad', 'pais'] as $geografia) {
+                if (isset($entities[$geografia])) unset($previous[$geografia]);
             }
-            $quitarMes = (bool) preg_match('/\b(?:sin|quita(?:r)?|elimina(?:r)?)\s+(?:el\s+)?filtro\s+de\s+mes\b/', $normal);
+            $quitarMes = $retirarFiltro === 'mes';
             if ((isset($entities['mes']) || $quitarMes) && ! isset($entities['desde']) && ! isset($entities['hasta'])
                 && ($previous['fecha_precision'] ?? 'mes') === 'mes'
                 && isset($previous['mes'], $previous['desde'], $previous['hasta'])) {
@@ -55,6 +77,9 @@ final class ConsultaCatalogoPublico
             if (isset($entities['desde']) || isset($entities['hasta'])) unset($previous['desde'], $previous['hasta'], $previous['fecha_precision']);
             if (isset($entities['elev_desde']) || isset($entities['elev_hasta'])) unset($previous['elev_desde'], $previous['elev_hasta']);
             if ($quitarMes) unset($previous['mes']);
+            if ($retirarFiltro !== null && ! $quitarMes) {
+                foreach ($camposPorFiltro[$retirarFiltro] as $campo) unset($previous[$campo]);
+            }
             $entities = array_replace($previous, $entities);
         }
         if (preg_match('/\b(primero|primer|segundo|tercero|ultimo)\b.*\b(?:registros?|codigos?|de esos|de los)\b/', $normal, $referencia)) {
@@ -87,9 +112,9 @@ final class ConsultaCatalogoPublico
             return $this->familias($options);
         }
         if (isset($entities['taxon']) && preg_match('/\bgeneros\b/', $normal)) {
-            return $this->generos($entities['taxon'], $options);
+            return $this->generos($entities, $options);
         }
-        if ($entities === [] && ! preg_match('/\bcuant[oa]s?\s+(?:registros|especimenes|ejemplares|especies)\s+(?:public[oa]s?\s+)?(?:tienen|hay|estan)/', $normal)) {
+        if ($entities === [] && $retirarFiltro === null && ! $coleccionExplicita && ! preg_match('/\bcuant[oa]s?\s+(?:registros|especimenes|ejemplares|especies)\s+(?:public[oa]s?\s+)?(?:tienen|hay|estan)/', $normal)) {
             return null;
         }
         $query = $this->seleccion($entities);
@@ -122,12 +147,41 @@ final class ConsultaCatalogoPublico
         return $this->resultado($text, 'catalogo.search', $entities, $total, $rows, $options);
     }
 
+    /** Retira solo los valores previos mencionados en una cláusula geográfica negada. */
+    private function geografiasNegadas(string $clausula, array $contexto): array
+    {
+        $negado = $this->texto->normalizar($clausula);
+        if (! preg_match('/^no\b/', $negado)) return [];
+        $dimensiones = ['provincia', 'localidad', 'pais'];
+        $explicitas = array_filter($dimensiones, static fn (string $campo): bool => (bool) preg_match('/\b'.$campo.'\b/', $negado));
+        $campos = [];
+        foreach ($dimensiones as $campo) {
+            if ($explicitas !== [] && ! in_array($campo, $explicitas, true)) continue;
+            $valor = $this->texto->normalizar((string) ($contexto[$campo] ?? ''));
+            if ($valor !== '' && preg_match('/\b'.preg_quote($valor, '/').'\b/', $negado)) $campos[] = $campo;
+        }
+
+        return $campos;
+    }
+
     private function publicos(): Builder
     {
         return DB::table('taxonomia.especimenes as e')
             ->leftJoin('taxonomia.taxones as t', 't.id', '=', 'e.taxon_id')
             ->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
             ->where('d.publicado', true)->where('e.coordenadas_otras_regiones', false);
+    }
+
+    private function filtroPorRetirar(string $normal): ?string
+    {
+        if (! preg_match('/^(?:y\s+)?(?:quita(?:r)?|elimina(?:r)?|sin)\s+(?:el\s+)?filtro(?:\s+de|\s+por)?\s+(.+)$/', $normal, $m)) return null;
+
+        return ['taxon' => 'taxon', 'nombre cientifico' => 'taxon', 'codigo' => 'codigo', 'codigo de catalogo' => 'codigo',
+            'provincia' => 'provincia', 'pais' => 'pais', 'localidad' => 'localidad', 'mes' => 'mes', 'mes de colecta' => 'mes',
+            'fecha' => 'fechas', 'fechas' => 'fechas', 'rango de fechas' => 'fechas', 'fecha de colecta' => 'fechas',
+            'fecha inicial' => 'desde', 'fecha desde' => 'desde', 'fecha final' => 'hasta', 'fecha hasta' => 'hasta',
+            'elevacion' => 'elevacion', 'altitud' => 'elevacion', 'coordenadas' => 'ubicacion', 'coordenadas publicas' => 'ubicacion',
+            'ubicacion' => 'ubicacion', 'identificacion' => 'identificacion'][$m[1]] ?? 'no_soportado';
     }
 
     /** Solo propone nombres que aparecen en registros públicos; nunca cambia el filtro en silencio. */
@@ -232,30 +286,30 @@ final class ConsultaCatalogoPublico
         return $this->resultado($text, 'catalogo.families', [], count($rows), $rows, $options);
     }
 
-    private function generos(string $family, array $options): array
+    private function generos(array $entities, array $options): array
     {
-        $sql = <<<'SQL'
-            WITH RECURSIVE descendientes AS (
-                SELECT id, rango, nombre_cientifico, NULL::uuid AS genero_id, 0 AS profundidad
-                FROM taxonomia.taxones WHERE lower(nombre_cientifico) = lower(?) AND rango = 'familia'
+        // Parte de la misma selección pública que el enlace; cada identificación
+        // se recorre una vez aunque tenga miles de ejemplares en la colección.
+        $seleccion = $this->seleccion($entities)->where('d.scientific_name_visible', true)->where('d.genus_visible', true)
+            ->select('e.taxon_id')->distinct();
+        $sqlSeleccion = $seleccion->toSql();
+        $sql = <<<SQL
+            WITH RECURSIVE linaje AS (
+                SELECT t.id, t.rango, t.nombre_cientifico, t.padre_id, 0 AS profundidad
+                FROM ({$sqlSeleccion}) seleccion JOIN taxonomia.taxones t ON t.id = seleccion.taxon_id
                 UNION ALL
-                SELECT t.id, t.rango, t.nombre_cientifico,
-                       CASE WHEN t.rango = 'genero' THEN t.id ELSE d.genero_id END, d.profundidad + 1
-                FROM taxonomia.taxones t JOIN descendientes d ON t.padre_id = d.id WHERE d.profundidad < 15
+                SELECT t.id, t.rango, t.nombre_cientifico, t.padre_id, l.profundidad + 1
+                FROM linaje l JOIN taxonomia.taxones t ON t.id = l.padre_id WHERE l.profundidad < 15
             )
-            SELECT DISTINCT g.nombre_cientifico FROM descendientes x
-            JOIN taxonomia.especimenes e ON e.taxon_id = x.id
-            JOIN divulgacion.especimenes_divulgables v ON v.especimen_id = e.id
-            JOIN taxonomia.taxones g ON g.id = x.genero_id
-            WHERE x.rango = 'especie' AND v.publicado = true AND e.coordenadas_otras_regiones = false AND v.occurrence_id_visible = true
-              AND v.scientific_name_visible = true AND v.genus_visible = true
-              AND e.occurrence_id IS NOT NULL
-            ORDER BY g.nombre_cientifico LIMIT 10
+            SELECT DISTINCT nombre_cientifico FROM linaje WHERE rango = 'genero'
             SQL;
-        $rows = array_map(static fn ($row) => $row->nombre_cientifico, DB::select($sql, [$family]));
-        $text = $rows === [] ? 'No encontré géneros publicados dentro de '.$family.'.'
-            : 'Géneros publicados dentro de '.$family.': '.implode('; ', $rows).'.';
-        return $this->resultado($text, 'catalogo.genera', ['taxon' => $family], count($rows), $rows, $options);
+        $generos = DB::query()->fromRaw('('.$sql.') AS generos_publicos', $seleccion->getBindings());
+        $total = (clone $generos)->count();
+        $rows = (clone $generos)->orderBy('nombre_cientifico')->limit(10)->pluck('nombre_cientifico')->all();
+        $taxon = $entities['taxon'];
+        $text = $rows === [] ? 'No encontré géneros publicados dentro de '.$taxon.'.'
+            : 'Géneros publicados dentro de '.$taxon.' ('.$total.'): '.implode('; ', $rows).($total > 10 ? '; se muestran los primeros 10.' : '.');
+        return $this->resultado($text, 'catalogo.genera', $entities, $total, $rows, $options);
     }
 
     private function resultado(string $text, string $intent, array $entities, int $total, array $rows, array $options): array

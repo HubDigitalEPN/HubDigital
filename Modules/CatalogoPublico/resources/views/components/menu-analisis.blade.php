@@ -1,6 +1,6 @@
 @props(['tipo', 'datos'])
 @php $indice = config('indices_portal.'.$tipo); @endphp
-<div wire:key="panel-{{ $tipo }}-{{ sha1(json_encode($datos)) }}" class="atlas-panel-tools" x-data="portalPanel(@js($tipo), @js($indice['titulo']), @js($datos))" x-on:keydown.escape.stop="if (abierto) cerrar()" x-on:click.outside="abierto = false">
+<div wire:key="panel-{{ $tipo }}-{{ sha1(json_encode($datos)) }}" class="atlas-panel-tools" x-data="portalPanel(@js($tipo), @js($indice['titulo']), @js($datos))" x-on:keydown.escape="if (abierto) { $event.stopPropagation(); $event.preventDefault(); cerrar() }" x-on:click.outside="abierto = false">
     <button type="button" class="atlas-icon-button" x-ref="boton" aria-haspopup="menu" :aria-expanded="abierto.toString()" aria-controls="menu-{{ $tipo }}" aria-label="Opciones de {{ $indice['titulo'] }}"
         x-on:click="abierto = !abierto; if (abierto) $nextTick(() => $refs.menu.querySelector('button').focus())"
         x-on:keydown.arrow-down.prevent="abierto = true; $nextTick(() => $refs.menu.querySelector('button').focus())">

@@ -1,0 +1,136 @@
+<?php
+
+namespace Modules\CatalogoPublico\Application\Services;
+
+/** Geometría de la jerarquía pública recibida; no infiere filogenia ni consulta la colección. */
+final class DendrogramaTaxonomico
+{
+    private const RANGOS = [
+        'kingdom' => 'Reino', 'reino' => 'Reino', 'subkingdom' => 'Subreino', 'subreino' => 'Subreino',
+        'phylum' => 'Filo', 'filo' => 'Filo', 'subphylum' => 'Subfilo', 'subfilo' => 'Subfilo',
+        'class' => 'Clase', 'clase' => 'Clase', 'subclass' => 'Subclase', 'subclase' => 'Subclase',
+        'order' => 'Orden', 'orden' => 'Orden', 'suborder' => 'Suborden', 'suborden' => 'Suborden',
+        'infraorder' => 'Infraorden', 'infraorden' => 'Infraorden',
+        'superfamily' => 'Superfamilia', 'superfamilia' => 'Superfamilia',
+        'family' => 'Familia', 'familia' => 'Familia', 'subfamily' => 'Subfamilia', 'subfamilia' => 'Subfamilia',
+        'tribe' => 'Tribu', 'tribu' => 'Tribu', 'subtribe' => 'Subtribu', 'subtribu' => 'Subtribu',
+        'genus' => 'Género', 'genero' => 'Género', 'género' => 'Género',
+        'subgenus' => 'Subgénero', 'subgenero' => 'Subgénero', 'subgénero' => 'Subgénero',
+        'species' => 'Especie', 'especie' => 'Especie', 'subspecies' => 'Subespecie', 'subespecie' => 'Subespecie',
+        'variety' => 'Variedad', 'variedad' => 'Variedad',
+    ];
+
+    public static function etiquetaRango(string $rango): string
+    {
+        $clave = mb_strtolower(trim($rango));
+
+        return self::RANGOS[$clave] ?? ($clave === '' ? 'Taxón' : mb_convert_case($rango, MB_CASE_TITLE));
+    }
+
+    public static function calcular(array $arbol, ?string $seleccionado = null): array
+    {
+        $nodos = [];
+        foreach ($arbol as $nodo) {
+            if (! is_array($nodo) || (! is_string($nodo['id'] ?? null) && ! is_int($nodo['id'] ?? null))) {
+                continue;
+            }
+            $id = (string) $nodo['id'];
+            if ($id === '' || isset($nodos[$id])) {
+                continue;
+            }
+            $padre = is_string($nodo['padre_id'] ?? null) || is_int($nodo['padre_id'] ?? null) ? (string) $nodo['padre_id'] : null;
+            $nodos[$id] = array_merge($nodo, [
+                'id' => $id, 'padre_id' => $padre,
+                'nombre' => (string) ($nodo['nombre'] ?? ''), 'rango' => (string) ($nodo['rango'] ?? ''),
+                'total' => max(0, (int) ($nodo['total'] ?? 0)),
+            ]);
+        }
+        // Un padre no publicado nunca se reconstruye a partir del nombre o de un UUID.
+        foreach ($nodos as &$nodo) {
+            if (! isset($nodos[$nodo['padre_id'] ?? ''])) {
+                $nodo['padre_id'] = null;
+            }
+        }
+        unset($nodo);
+        // Evitar ciclos en un payload inválido sin fabricar una relación entre sus miembros.
+        foreach (array_keys($nodos) as $id) {
+            $ruta = $indices = [];
+            $cursor = $id;
+            while ($cursor !== null) {
+                if (isset($indices[$cursor])) {
+                    foreach (array_slice($ruta, $indices[$cursor]) as $idCiclico) {
+                        $nodos[$idCiclico]['padre_id'] = null;
+                    }
+                    break;
+                }
+                $indices[$cursor] = count($ruta);
+                $ruta[] = $cursor;
+                $cursor = $nodos[$cursor]['padre_id'];
+            }
+        }
+        $hijos = $raices = [];
+        foreach ($nodos as $id => $nodo) {
+            if ($nodo['padre_id'] === null) {
+                $raices[] = (string) $id;
+            } else {
+                $hijos[$nodo['padre_id']][] = (string) $id;
+            }
+        }
+        $profundidadMaxima = 0;
+        foreach ($nodos as $nodo) {
+            $profundidad = 0;
+            $cursor = $nodo['padre_id'];
+            while ($cursor !== null) {
+                $profundidad++;
+                $cursor = $nodos[$cursor]['padre_id'];
+            }
+            $profundidadMaxima = max($profundidadMaxima, $profundidad);
+        }
+        // Cada hijo avanza: un tope por nivel haría coincidir género y especies profundas.
+        $pasoHorizontal = min(30, 240 / max(1, $profundidadMaxima));
+        $linajeSeleccionado = [];
+        $cursor = $seleccionado;
+        while ($cursor !== null && isset($nodos[$cursor])) {
+            $linajeSeleccionado[$cursor] = true;
+            $cursor = $nodos[$cursor]['padre_id'];
+        }
+        $posiciones = [];
+        $y = 12;
+        $visitar = function (string $id, int $profundidad, array $ancestros) use (&$visitar, &$posiciones, &$y, $nodos, $hijos, $linajeSeleccionado, $seleccionado, $pasoHorizontal): void {
+            $nodo = $nodos[$id];
+            $hoja = ($hijos[$id] ?? []) === [];
+            $ancestros[] = ['nombre' => $nodo['nombre'], 'rango' => $nodo['rango']];
+            $imagen = $hoja ? IlustracionTaxonomica::paraTaxon(['ancestros' => $ancestros]) : null;
+            $alto = $hoja || mb_strlen($nodo['nombre']) > 32 ? 60 : 48;
+            $posiciones[$id] = array_merge($nodo, [
+                'x' => round(26 + $profundidad * $pasoHorizontal, 2), 'y' => $y + $alto / 2,
+                'superior' => $y, 'alto' => $alto, 'profundidad' => $profundidad,
+                'etiqueta' => self::etiquetaRango($nodo['rango']), 'hoja' => $hoja,
+                'padre_nombre' => $nodos[$nodo['padre_id'] ?? '']['nombre'] ?? null,
+                'seleccionado' => $id === $seleccionado, 'en_linaje' => isset($linajeSeleccionado[$id]),
+                'miniatura' => ($imagen['morfologia'] ?? false) ? $imagen : null,
+            ]);
+            $y += $alto;
+            foreach ($hijos[$id] ?? [] as $hijo) {
+                $visitar($hijo, $profundidad + 1, $ancestros);
+            }
+        };
+        foreach ($raices as $id) {
+            $visitar($id, 0, []);
+        }
+        $ramas = [];
+        foreach ($posiciones as $id => $nodo) {
+            $padre = $posiciones[$nodo['padre_id'] ?? ''] ?? null;
+            if ($padre === null) {
+                continue;
+            }
+            $ramas[] = [
+                'padre_id' => $padre['id'], 'hijo_id' => (string) $id,
+                'trazo' => 'M'.$padre['x'].' '.$padre['y'].' C'.$padre['x'].' '.$nodo['y'].' '.$padre['x'].' '.$nodo['y'].' '.$nodo['x'].' '.$nodo['y'],
+                'activa' => $nodo['en_linaje'], 'hoja' => $nodo['hoja'],
+            ];
+        }
+
+        return ['ancho' => 640, 'alto' => max(72, $y + 12), 'nodos' => array_values($posiciones), 'ramas' => $ramas];
+    }
+}

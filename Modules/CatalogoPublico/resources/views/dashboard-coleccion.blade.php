@@ -48,15 +48,15 @@
             @else
                 @php
                     $nombreFiloMosaico = collect($filosDisponibles)->firstWhere('id', $filtroFiloId)['nombre_cientifico'] ?? '';
-                    $taxonMosaico = ['nombre' => $taxon ?: $filtroTaxon ?: $nombreFiloMosaico];
+                    $taxonMosaico = ($datosMapa['taxon_mosaico'] ?? []) ?: ['nombre' => $taxon ?: $filtroTaxon ?: $nombreFiloMosaico];
                     $ilustracionesMosaico = \Modules\CatalogoPublico\Application\Services\IlustracionTaxonomica::mosaicoParaTaxon($taxonMosaico);
                 @endphp
-                <div class="atlas-taxon-mosaic" aria-label="Ilustraciones representativas de la selección">
+                <div class="atlas-taxon-mosaic" aria-label="Representaciones generadas de los grupos de la selección">
                     @foreach($ilustracionesMosaico as $ilustracionMosaico)
-                        <figure><img src="{{ $ilustracionMosaico['url'] }}" alt="{{ $ilustracionMosaico['alt'] }}" width="240" height="180" loading="lazy" decoding="async"><figcaption>{{ $ilustracionMosaico['grupo'] }} · ilustración</figcaption></figure>
+                        <figure><img src="{{ $ilustracionMosaico['url'] }}" alt="{{ $ilustracionMosaico['alt'] }}" width="320" height="320" loading="lazy" decoding="async"><figcaption>{{ $ilustracionMosaico['grupo'] }} · {{ ($ilustracionMosaico['morfologia'] ?? false) ? 'representación generada' : 'diagrama taxonómico' }}</figcaption></figure>
                     @endforeach
                 </div>
-                <p class="atlas-mosaic-note">Representaciones orientativas del grupo mientras no hay fotografías públicas de esta selección.</p>
+                <p class="atlas-mosaic-note">Representaciones fotorrealistas generadas del grupo mientras no hay fotografías públicas; no identifican especies ni reproducen ejemplares. Para grupos sin morfología disponible se muestra un diagrama.</p>
             @endif
             <p class="atlas-taxa-note">La proporción usa todos los registros seleccionados; algunos aún no tienen filo confirmado.</p>
         </section>

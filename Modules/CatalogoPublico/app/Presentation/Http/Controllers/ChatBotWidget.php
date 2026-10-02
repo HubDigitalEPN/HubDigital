@@ -22,7 +22,7 @@ final class ChatBotWidget extends Component
     /** @var list<array{rol: 'visitante'|'chatbot', texto: string, referencias?: list<string>}> */
     public array $mensajes = [];
 
-    public function enviar(AsistentePortal $asistente, ConsultarChatBotHandler $handler, ContextoChat $contexto, AnaliticaChat $analitica): void
+    public function enviar(AsistentePortal $asistente, ConsultarChatBotHandler $handler, ContextoChat $contexto, AnaliticaChat $analitica, ?array $seleccionPortal = null): void
     {
         $pregunta = trim($this->pregunta);
 
@@ -53,7 +53,7 @@ final class ChatBotWidget extends Component
         $start = microtime(true);
         try {
             $previous = $contexto->obtener();
-            $output = $asistente->responder($pregunta, $handler, $previous['node_id'] ?? null, $previous['variants'] ?? [], $previous['entities'] ?? []);
+            $output = $asistente->responder($pregunta, $handler, $previous['node_id'] ?? null, $previous['variants'] ?? [], $previous['entities'] ?? [], $seleccionPortal);
             $output['fuente'] ??= 'legacy';
             $contexto->guardar($previous, $output);
         } catch (QueryException $error) {
@@ -92,10 +92,10 @@ final class ChatBotWidget extends Component
         $this->dispatch('chat-respuesta');
     }
 
-    public function sugerir(string $pregunta, AsistentePortal $asistente, ConsultarChatBotHandler $handler, ContextoChat $contexto, AnaliticaChat $analitica): void
+    public function sugerir(string $pregunta, AsistentePortal $asistente, ConsultarChatBotHandler $handler, ContextoChat $contexto, AnaliticaChat $analitica, ?array $seleccionPortal = null): void
     {
         $this->pregunta = $pregunta;
-        $this->enviar($asistente, $handler, $contexto, $analitica);
+        $this->enviar($asistente, $handler, $contexto, $analitica, $seleccionPortal);
     }
 
     public function nuevaConversacion(ContextoChat $contexto): void

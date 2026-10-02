@@ -58,15 +58,15 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
     }
 
     /** Navegación agregada por taxón: evita hidratar la colección completa en una VM pequeña. */
-    public function resumenJerarquia(FiltrosBusqueda $filtros): array
+    public function resumenJerarquia(FiltrosBusqueda $filtros, string $nivel = '', string $taxon = ''): array
     {
-        $filas = $this->consultaPublica($filtros)->where('ed.scientific_name_visible', true)
+        $filas = $this->consultaPublica($filtros, $nivel, $taxon)->where('ed.scientific_name_visible', true)
             ->selectRaw('te.taxon_id, ed.family_visible, ed.genus_visible, COUNT(*) AS total')
             ->groupBy('te.taxon_id', 'ed.family_visible', 'ed.genus_visible')->get();
         $taxones = DB::table('taxonomia.taxones')->get(['id', 'padre_id', 'nombre_cientifico', 'rango'])->keyBy('id');
         $rangos = ['phylum' => 'phylum', 'clase' => 'class', 'orden' => 'order', 'familia' => 'family', 'genero' => 'genus', 'especie' => 'species'];
         $nodos = $especies = $conteos = $distintos = $rutas = [];
-        $total = $this->consultaPublica($filtros)->count('te.id');
+        $total = $this->consultaPublica($filtros, $nivel, $taxon)->count('te.id');
         foreach ($filas as $fila) {
             $ruta = [];
             $id = $fila->taxon_id;
@@ -76,7 +76,7 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
                 $t = $taxones[$id];
                 if (isset($rangos[$t->rango]) && ($t->rango !== 'familia' || $fila->family_visible)
                     && ($t->rango !== 'genero' || $fila->genus_visible)) {
-                    array_unshift($ruta, ['nivel' => $rangos[$t->rango], 'taxon' => $t->nombre_cientifico]);
+                    array_unshift($ruta, ['id' => $id, 'nivel' => $rangos[$t->rango], 'taxon' => $t->nombre_cientifico]);
                 }
                 $id = $t->padre_id;
             }
@@ -85,12 +85,18 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
             $genus = '';
             foreach ($ruta as $i => $nodo) {
                 $clave = $nodo['nivel'].':'.$nodo['taxon'];
+                $claveRama = $clave.':padre:'.$padre;
                 $conteos[$clave] = ($conteos[$clave] ?? 0) + (int) $fila->total;
-                $rutas[$clave] = array_slice($ruta, 0, $i + 1);
+                $rutaPublica = array_slice($ruta, 0, $i + 1);
+                $rutaAnterior = $rutas[$clave] ?? [];
+                if (count($rutaPublica) > count($rutaAnterior) || (count($rutaPublica) === count($rutaAnterior)
+                    && strcmp(implode(':', array_column($rutaPublica, 'id')), implode(':', array_column($rutaAnterior, 'id'))) < 0)) $rutas[$clave] = $rutaPublica;
                 if ($nodo['nivel'] === 'species') {
-                    $especies[$clave] = ['especie' => $nodo['taxon'], 'genus' => $genus, 'specificEpithet' => '', 'padre' => $padre];
+                    $especies[$claveRama] ??= ['id' => $nodo['id'], 'especie' => $nodo['taxon'], 'genus' => $genus, 'specificEpithet' => '', 'padre' => $padre, 'total' => 0];
+                    $especies[$claveRama]['total'] += (int) $fila->total;
                 } else {
-                    $nodos[$clave] = $nodo + ['padre' => $padre];
+                    $nodos[$claveRama] ??= $nodo + ['padre' => $padre, 'total' => 0];
+                    $nodos[$claveRama]['total'] += (int) $fila->total;
                     if ($nodo['nivel'] === 'genus') $genus = $nodo['taxon'];
                 }
                 foreach (array_slice($ruta, $i + 1) as $desc) $distintos[$clave][$desc['nivel']][$desc['taxon']] = true;
@@ -254,14 +260,20 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
             $query->whereRaw("LOWER(te.preparations) = ANY(ARRAY[{$placeholders}])", $valores);
         }
 
-        // Taxonomía — CTE recursivo pre-resuelto
+        // Cada coincidencia textual conserva los permisos del rango que inició
+        // la búsqueda; una familia reservada no puede inferirse por sus conteos.
         if ($filtros->taxonNombre !== null) {
-            $ids = $this->resolverDescendientesTaxon($filtros->taxonNombre);
-            if ($ids === []) {
-                $query->whereRaw('1 = 0');
-            } else {
-                $query->where('ed.scientific_name_visible', true)->whereIn('te.taxon_id', $ids);
-            }
+            $query->where('ed.scientific_name_visible', true)->whereRaw(<<<'SQL'
+                EXISTS (
+                    WITH RECURSIVE seleccion AS (
+                        SELECT id, rango AS rango_raiz FROM taxonomia.taxones WHERE nombre_cientifico ILIKE ?
+                        UNION
+                        SELECT t.id, s.rango_raiz FROM taxonomia.taxones t JOIN seleccion s ON t.padre_id = s.id
+                    ) SELECT 1 FROM seleccion s WHERE s.id = te.taxon_id
+                        AND (s.rango_raiz <> 'familia' OR ed.family_visible)
+                        AND (s.rango_raiz <> 'genero' OR ed.genus_visible)
+                )
+                SQL, ['%'.$filtros->taxonNombre.'%']);
         }
 
         if ($filtros->filoId !== null) {
@@ -392,23 +404,6 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
         return $query;
     }
 
-    /** @return list<string> UUIDs del taxón buscado y todos sus descendientes */
-    private function resolverDescendientesTaxon(string $nombre): array
-    {
-        $sql = <<<'SQL'
-            WITH RECURSIVE descendientes AS (
-                SELECT id FROM taxonomia.taxones
-                WHERE nombre_cientifico ILIKE ?
-                UNION ALL
-                SELECT t.id FROM taxonomia.taxones t
-                JOIN descendientes d ON t.padre_id = d.id
-            )
-            SELECT id::text FROM descendientes
-        SQL;
-
-        return array_column(DB::select($sql, ['%'.$nombre.'%']), 'id');
-    }
-
     /** @return list<string> UUIDs de las localidades buscadas y todos sus descendientes */
     private function resolverDescendientesGeografia(array $nombres): array
     {
@@ -419,7 +414,7 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
             WITH RECURSIVE descendientes AS (
                 SELECT id FROM taxonomia.localidades
                 WHERE {$conditions}
-                UNION ALL
+                UNION
                 SELECT l.id FROM taxonomia.localidades l
                 JOIN descendientes d ON l.padre_id = d.id
             )

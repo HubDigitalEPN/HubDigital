@@ -22,8 +22,8 @@ final class ConsultarGaleriaTaxonHandler
     {
         $nivel = RangoTaxonomico::desde($input->nivel);
 
-        $imagenes = $this->repoImagenes->listarPorSubarbol($nivel, $input->valorTaxon);
         $defecto = $this->repoDefectos->obtener($nivel, $input->valorTaxon);
+        $imagenes = $this->repoImagenes->listarPorSubarbol($nivel, $input->valorTaxon, 12, $defecto?->imagenId());
 
         // R8: la portada por defecto se devuelve primero; el resto se ordena
         // alfabéticamente por nombre para agrupar visualmente las vistas.

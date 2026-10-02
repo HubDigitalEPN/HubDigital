@@ -64,12 +64,9 @@ final class FilaCatalogoMapper
 
         // Fuente de la localidad: puede venir como una sola celda separada por comas
         // en orden geográfico ("País, Provincia, Localidad, …").
-        $fuenteLocalidad = $this->limpiar(
-            $normalizada['localidad_verbatim']
-            ?? $normalizada['verbatim_locality']
-            ?? $normalizada['locality_name']
-            ?? null
-        );
+        $fuenteLocalidad = $this->limpiar($normalizada['localidad_verbatim'] ?? null)
+            ?? $this->limpiar($normalizada['verbatim_locality'] ?? null)
+            ?? $localityName;
         // Segmentos normalizados (por si viene "País, Provincia, Localidad, …").
         $partes = $this->partesLocalidad($fuenteLocalidad);
         // Verbatim: cadena normalizada, cada segmento con su propia caja. Se

@@ -8,7 +8,7 @@ interface GeneradorXlsxPort
 {
     /**
      * @param  list<string>  $encabezados
-     * @param  list<array<string,string>>  $filas
+     * @param  iterable<array<string,string>>  $filas
      */
-    public function generar(array $encabezados, array $filas): string;
+    public function generar(array $encabezados, iterable $filas): string;
 }

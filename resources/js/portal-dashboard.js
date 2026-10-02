@@ -1,5 +1,6 @@
 import L from 'leaflet';
 import {crearGeojsonMapa, prepararPuntosMapa} from './portal-map-model';
+import {nombreDescargaImagen} from './portal-image-model';
 
 // El mapa del panel y los mapas de especie usan la misma copia local de Leaflet.
 window.L = L;
@@ -54,6 +55,23 @@ const registrarDashboard = () => {
         },
     }));
 
+    window.Alpine.data('portalVisorImagen', () => ({
+        url: '',
+        alt: '',
+        filename: 'imagen',
+        invocador: null,
+        abrir(datos) {
+            this.invocador = datos.invocador || document.activeElement;
+            this.url = datos.url;
+            this.alt = datos.alt || '';
+            this.filename = nombreDescargaImagen(datos.nombreArchivo);
+            if (!this.$el.open) this.$el.showModal();
+            this.$nextTick(() => this.$refs.cerrar.focus({preventScroll: true}));
+        },
+        cerrar() { this.$el.close(); },
+        restaurarFoco() { this.invocador?.focus({preventScroll: true}); },
+    }));
+
     window.Alpine.data('portalPanel', (tipo, titulo, datos) => ({
         abierto: false,
         aviso: '',
@@ -90,6 +108,60 @@ const registrarDashboard = () => {
         indice() { this.abierto = false; this.$refs.indice.showModal(); },
     }));
 
+    window.Alpine.data('portalMapaEspecie', (puntos, nombreTaxon) => {
+        let mapa = null;
+        let observador = null;
+        return {
+            errorMapa: false,
+            init() {
+                this.$nextTick(() => {
+                    if (!this.$refs.mapaContainer || mapa) return;
+                    const ubicaciones = prepararPuntosMapa(puntos);
+                    if (ubicaciones.length === 0) return;
+                    mapa = L.map(this.$refs.mapaContainer, {scrollWheelZoom: false, zoomControl: false});
+                    L.control.zoom({zoomInTitle: 'Acercar', zoomOutTitle: 'Alejar'}).addTo(mapa);
+                    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                        maxZoom: 18,
+                    }).on('tileerror', () => { this.errorMapa = true; })
+                        .on('tileload', () => { this.errorMapa = false; }).addTo(mapa);
+                    mapa.fitBounds(L.latLngBounds(ubicaciones.map(({lat, lon}) => [lat, lon])), {padding: [24, 24], maxZoom: 10});
+                    for (const {lat, lon, cantidad, radio} of ubicaciones) {
+                        const marcador = L.circleMarker([lat, lon], {
+                            radius: radio, color: '#0e4975', weight: 1, fillColor: '#17699b', fillOpacity: .8,
+                        }).addTo(mapa);
+                        const popup = L.DomUtil.create('div');
+                        const nombre = L.DomUtil.create('p', '', popup);
+                        nombre.textContent = nombreTaxon;
+                        nombre.style.fontWeight = '600';
+                        const cantidadPublica = L.DomUtil.create('p', '', popup);
+                        cantidadPublica.textContent = `${cantidad.toLocaleString('es-EC')} registros con coordenadas públicas ${lat}, ${lon}`;
+                        marcador.bindPopup(popup);
+                        const elemento = marcador.getElement();
+                        if (elemento) {
+                            elemento.setAttribute('tabindex', '0');
+                            elemento.setAttribute('role', 'button');
+                            elemento.setAttribute('aria-label', `Consultar ${cantidad.toLocaleString('es-EC')} registros de ${nombreTaxon} en ${lat}, ${lon}`);
+                            elemento.addEventListener('keydown', evento => {
+                                if (evento.key === 'Enter' || evento.key === ' ') { evento.preventDefault(); marcador.openPopup(); }
+                            });
+                        }
+                    }
+                    if (window.ResizeObserver) {
+                        observador = new ResizeObserver(() => mapa?.invalidateSize());
+                        observador.observe(this.$refs.mapaContainer);
+                    }
+                    requestAnimationFrame(() => mapa?.invalidateSize());
+                });
+            },
+            destroy() {
+                observador?.disconnect();
+                mapa?.remove();
+                mapa = null;
+            },
+        };
+    });
+
     window.Alpine.data('portalDashboard', (celdas, filos) => {
         // Leaflet administra objetos mutables propios; no deben convertirse en proxies Alpine.
         let mapa = null;
@@ -104,7 +176,8 @@ const registrarDashboard = () => {
         init() {
             this.$nextTick(() => {
                 if (!this.$refs.mapa || mapa) return;
-                mapa = L.map(this.$refs.mapa, {scrollWheelZoom: false, boxZoom: true});
+                mapa = L.map(this.$refs.mapa, {scrollWheelZoom: false, boxZoom: true, zoomControl: false});
+                L.control.zoom({zoomInTitle: 'Acercar', zoomOutTitle: 'Alejar'}).addTo(mapa);
                 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
                     maxZoom: 18,

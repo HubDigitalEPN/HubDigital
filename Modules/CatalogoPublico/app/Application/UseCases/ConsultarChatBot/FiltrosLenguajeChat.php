@@ -12,6 +12,8 @@ final class FiltrosLenguajeChat
 {
     private const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 
+    private const PAREJAS_FECHA = ['desde' => 'hasta', 'del' => 'al', 'entre' => 'y'];
+
     public function extraer(string $pregunta): array
     {
         // La normalización de palabras elimina los guiones; las fechas se leen antes de ella.
@@ -20,19 +22,32 @@ final class FiltrosLenguajeChat
         $meses = implode('|', self::MESES);
         $fecha = '\d{4}-\d{2}-\d{2}';
         $fechasConsumidas = [];
+        $rangoNaturalCompleto = false;
 
         if (preg_match('/\b(desde|del|entre)\s+('.$fecha.')\s+(hasta|al|y)\s+('.$fecha.')\b/', $texto, $m)) {
-            $parejas = ['desde' => 'hasta', 'del' => 'al', 'entre' => 'y'];
             $filtros = ['desde' => $m[2], 'hasta' => $m[4]];
             $fechasConsumidas = [$m[2], $m[4]];
-            if ($parejas[$m[1]] !== $m[3]) {
+            if (self::PAREJAS_FECHA[$m[1]] !== $m[3]) {
                 $filtros['error_consulta'] = 'Los límites de fecha necesitan una pareja clara: desde … hasta, del … al o entre … y. Corrige el intervalo antes de consultar.';
             }
-        } elseif (preg_match('/\b(?:del|desde|entre)\s+(\d{1,2})\s+(?:al|hasta|y)\s+(\d{1,2})\s+(?:de\s+)?('.$meses.')\s+(?:de\s+)?(\d{4})\b/', $texto, $m)) {
-            $mes = array_search($m[3], self::MESES, true) + 1;
-            $filtros = ['desde' => sprintf('%04d-%02d-%02d', (int) $m[4], $mes, (int) $m[1]),
-                'hasta' => sprintf('%04d-%02d-%02d', (int) $m[4], $mes, (int) $m[2])];
-        } elseif (preg_match('/\b(?:antes|despues)\s+de\s+('.$fecha.'|\d{4})\b/', $texto, $m)) {
+        } elseif (preg_match('/\b(desde|del|entre)\s+(?:el\s+)?(\d{1,2})\s+de\s+('.$meses.')\s+(?:de\s+)?(\d{4})\s+(hasta|al|y)\s+(?:el\s+)?(\d{1,2})\s+de\s+('.$meses.')\s+(?:de\s+)?(\d{4})\b/', $texto, $m)) {
+            $rangoNaturalCompleto = true;
+            $mesDesde = array_search($m[3], self::MESES, true) + 1;
+            $mesHasta = array_search($m[7], self::MESES, true) + 1;
+            $filtros = ['desde' => sprintf('%04d-%02d-%02d', (int) $m[4], $mesDesde, (int) $m[2]),
+                'hasta' => sprintf('%04d-%02d-%02d', (int) $m[8], $mesHasta, (int) $m[6])];
+            if (self::PAREJAS_FECHA[$m[1]] !== $m[5]) {
+                $filtros['error_consulta'] = 'Los límites de fecha necesitan una pareja clara: desde … hasta, del … al o entre … y. Corrige el intervalo antes de consultar.';
+            }
+        } elseif (preg_match('/\b(del|desde|entre)\s+(\d{1,2})\s+(al|hasta|y)\s+(\d{1,2})\s+(?:de\s+)?('.$meses.')\s+(?:de\s+)?(\d{4})\b/', $texto, $m)) {
+            $rangoNaturalCompleto = true;
+            $mes = array_search($m[5], self::MESES, true) + 1;
+            $filtros = ['desde' => sprintf('%04d-%02d-%02d', (int) $m[6], $mes, (int) $m[2]),
+                'hasta' => sprintf('%04d-%02d-%02d', (int) $m[6], $mes, (int) $m[4])];
+            if (self::PAREJAS_FECHA[$m[1]] !== $m[3]) {
+                $filtros['error_consulta'] = 'Los límites de fecha necesitan una pareja clara: desde … hasta, del … al o entre … y. Corrige el intervalo antes de consultar.';
+            }
+        } elseif (preg_match('/\b(?:antes|despues)\s+(?:de(?:\s+el)?|del)\s+('.$fecha.'|\d{4})\b/', $texto, $m)) {
             $antes = str_starts_with($m[0], 'antes');
             if (strlen($m[1]) === 10) $fechasConsumidas[] = $m[1];
             $limite = strlen($m[1]) === 4 ? $m[1].($antes ? '-01-01' : '-12-31') : $m[1];
@@ -65,7 +80,12 @@ final class FiltrosLenguajeChat
         if (array_diff($fechasMencionadas[0], $fechasConsumidas) !== []) {
             $filtros['error_consulta'] = 'No pude interpretar todos los límites de fecha. Indica desde AAAA-MM-DD hasta AAAA-MM-DD.';
         }
-        if (($filtros === [] && preg_match('/\b(?:antes|despues)\s+de\b|\b(?:desde|hasta)\s+(?:'.$meses.')\b/', $texto))
+        $diaNatural = '\s+(?:el\s+)?\d{1,2}\s+de\s+(?:'.$meses.')\s+(?:de\s+)?\d{4}\b';
+        if (! $rangoNaturalCompleto && (preg_match('/\b(?:desde|entre|hasta|al)'.$diaNatural.'/', $texto)
+            || preg_match('/\bdel'.$diaNatural.'.*\b(?:al|hasta|y)\b/', $texto))) {
+            $filtros['error_consulta'] = 'No pude interpretar todos los límites de fecha. Indica desde AAAA-MM-DD hasta AAAA-MM-DD.';
+        }
+        if (($filtros === [] && preg_match('/\b(?:antes|despues)\s+(?:de|del)\b|\b(?:desde|hasta)\s+(?:'.$meses.')\b/', $texto))
             || (preg_match('/\bdesde\s+\d{4}-\d{2}-\d{2}\b.*\bhasta\b/', $texto) && ! isset($filtros['hasta']))) {
             $filtros['error_consulta'] = 'No pude interpretar todos los límites de fecha. Indica desde AAAA-MM-DD hasta AAAA-MM-DD.';
         }

@@ -52,7 +52,7 @@ final class InMemoryImagenTaxonomicaRepository implements ImagenTaxonomicaReposi
     }
 
     /** @return list<ImagenTaxonomica> */
-    public function listarPorSubarbol(RangoTaxonomico $nivel, string $valorTaxon): array
+    public function listarPorSubarbol(RangoTaxonomico $nivel, string $valorTaxon, int $limite = 12, ?ImagenTaxonomicaId $preferida = null): array
     {
         $result = [];
 
@@ -62,7 +62,12 @@ final class InMemoryImagenTaxonomicaRepository implements ImagenTaxonomicaReposi
             }
         }
 
-        return $result;
+        usort($result, static function (ImagenTaxonomica $a, ImagenTaxonomica $b) use ($preferida): int {
+            $prioridadA = $preferida !== null && $a->id()->equals($preferida);
+            $prioridadB = $preferida !== null && $b->id()->equals($preferida);
+            return ($prioridadB <=> $prioridadA) ?: strnatcasecmp($a->archivo()->nombreOriginal, $b->archivo()->nombreOriginal);
+        });
+        return array_slice($result, 0, max(1, min(12, $limite)));
     }
 
     public function buscarPorNombreArchivo(string $nombreArchivo): ?ImagenTaxonomica

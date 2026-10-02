@@ -18,6 +18,7 @@ use Modules\CatalogoPublico\Application\Ports\ProveedorOpcionesFiltroPort;
 use Modules\CatalogoPublico\Application\UseCases\ConstruirArbolTaxonomico\ConstruirArbolTaxonomicoHandler;
 use Modules\CatalogoPublico\Application\UseCases\ConstruirArbolTaxonomico\ConstruirArbolTaxonomicoInput;
 use Modules\CatalogoPublico\Application\UseCases\ConstruirArbolTaxonomico\ConstruirArbolTaxonomicoOutput;
+use Modules\CatalogoPublico\Application\UseCases\ConsultarChatBot\EnlaceSeleccionCatalogo;
 use Modules\CatalogoPublico\Application\UseCases\ConsultarGaleriaTaxon\ConsultarGaleriaTaxonHandler;
 use Modules\CatalogoPublico\Application\UseCases\ConsultarGaleriaTaxon\ConsultarGaleriaTaxonInput;
 use Modules\CatalogoPublico\Application\UseCases\ExportarRegistrosEspecimenes\ExportarRegistrosEspecimenesHandler;
@@ -174,6 +175,8 @@ final class PortalCatalogo extends Component
     #[Url(as: 'pagina', history: true)]
     public int $pagina = 1;
 
+    public int $paginaHermanos = 1;
+
     // ─── Filtros (URL-persistidos) ────────────────────────────────────────────
 
     #[Url(as: 'fc', history: true)]
@@ -302,6 +305,7 @@ final class PortalCatalogo extends Component
         $this->taxon = $taxon;
         $this->explorar = '';
         $this->pagina = 1;
+        $this->paginaHermanos = 1;
     }
 
     public function cambiarVista(string $vista): void
@@ -332,6 +336,7 @@ final class PortalCatalogo extends Component
         ]);
         $this->resetValidation();
         $this->pagina = 1;
+        $this->paginaHermanos = 1;
     }
 
     public function seleccionarProvincia(string $provincia): void
@@ -458,6 +463,11 @@ final class PortalCatalogo extends Component
         $this->pagina = max(1, $pagina);
     }
 
+    public function cambiarPaginaHermanos(int $pagina): void
+    {
+        $this->paginaHermanos = max(1, $pagina);
+    }
+
     public function explorarNivel(string $nivel): void
     {
         $this->explorar = $nivel;
@@ -469,6 +479,7 @@ final class PortalCatalogo extends Component
     public function volverAlArbol(): void
     {
         $this->explorar = '';
+        $this->pagina = 1;
     }
 
     // ─── Acciones de filtrado ─────────────────────────────────────────────────
@@ -538,8 +549,11 @@ final class PortalCatalogo extends Component
 
     public function descargarDatos(): StreamedResponse
     {
+        if ($this->nivel !== 'species' || $this->taxon === '') abort(404);
+        $ids = app(EloquentProveedorEspecimenesParaArbol::class)->consultaPublica($this->filtrosActuales(), $this->nivel, $this->taxon)
+            ->orderBy('te.fila_origen_excel')->orderBy('te.id')->pluck('te.id')->all();
         $output = $this->exportarHandler->handle(
-            new ExportarRegistrosEspecimenesInput($this->taxon)
+            new ExportarRegistrosEspecimenesInput($this->taxon, $ids)
         );
 
         return response()->streamDownload(
@@ -595,7 +609,7 @@ final class PortalCatalogo extends Component
             'estacionalidad' => ['colecta-por-mes.csv', ['Mes', 'Registros'], array_map(static fn ($fila) => [$fila['mes'], $fila['registros']], $datos['estacionalidad'])],
             'altitud' => ['cobertura-altitudinal.csv', ['Desde (m)', 'Hasta (m)', 'Registros'], array_map(static fn ($fila) => [$fila['desde'], $fila['hasta'], $fila['registros']], $datos['altitud'])],
             'metodos' => ['metodos-colecta.csv', ['Metodo', 'Registros'], array_map(static fn ($fila) => [$fila['metodo'], $fila['registros']], $datos['metodos'])],
-            'mapa' => ['cuadriculas-coleccion.csv', ['Latitud', 'Longitud', 'Filo', 'Registros'], array_merge([], ...array_map(
+            'mapa' => ['coordenadas-coleccion.csv', ['Latitud', 'Longitud', 'Filo', 'Registros'], array_merge([], ...array_map(
                 static fn (array $celda): array => array_map(
                     static fn (string $filo, int $cantidad): array => [$celda['lat'], $celda['lon'], $filo, $cantidad],
                     array_keys($celda['filos']), array_values($celda['filos']),
@@ -674,6 +688,12 @@ final class PortalCatalogo extends Component
         ]);
     }
 
+    #[Computed]
+    public function seleccionPublicaChat(): array
+    {
+        return EnlaceSeleccionCatalogo::parametros($this->filtrosActuales(), $this->nivel, $this->taxon);
+    }
+
     // ─── Render ───────────────────────────────────────────────────────────────
 
     public function render(
@@ -733,7 +753,7 @@ final class PortalCatalogo extends Component
         }
 
         $repositorio = app(EloquentProveedorEspecimenesParaArbol::class);
-        $resumen = $repositorio->resumenJerarquia($filtros);
+        $resumen = $repositorio->resumenJerarquia($filtros, $this->nivel, $this->taxon);
         $output = ConstruirArbolTaxonomicoOutput::desdeResumen($resumen);
         $totalGlobal = $resumen['total'];
         $conteos = $resumen['conteos'];
@@ -741,8 +761,13 @@ final class PortalCatalogo extends Component
         $padre = $this->taxon === '' ? 'root' : $this->taxon;
         $hijos = array_values(array_filter($resumen['nodos'], static fn (array $nodo): bool => $nodo['padre'] === $padre));
         $especiesActuales = array_values(array_filter($resumen['especies'], static fn (array $nodo): bool => $nodo['padre'] === $padre));
-        $hermanos = array_slice($this->nivel !== '' ? $this->resolverHermanos($output) : [], 0, 12);
-        $taxonesExplorados = $this->explorar !== '' ? $this->resolverTaxonesParaExplorar($output, $this->explorar) : [];
+        if ($this->valoresFiltros() !== $this->filtrosAntes) $this->paginaHermanos = 1;
+        $hermanos = $this->resolverHermanos($repositorio, $filtros, $ruta);
+        $totalHermanos = count($hermanos);
+        $ultimaPaginaHermanos = max(1, (int) ceil($totalHermanos / 12));
+        $paginaHermanosActual = min(max(1, $this->paginaHermanos), $ultimaPaginaHermanos);
+        $hermanos = array_slice($hermanos, ($paginaHermanosActual - 1) * 12, 12);
+        $taxonesExplorados = $this->explorar !== '' ? $this->resolverTaxonesParaExplorar($output, $this->explorar, $resumen['rutas']) : [];
         $especimenes = $registrosVista = [];
         $totalRegistrosVista = $totalEspecimenes = $conteos[$this->nivel.':'.$this->taxon] ?? $totalGlobal;
         $totalTarjetas = $this->nivel === 'species' ? $totalEspecimenes : ($this->explorar !== '' ? count($taxonesExplorados) : count($hijos) + count($especiesActuales));
@@ -764,6 +789,8 @@ final class PortalCatalogo extends Component
         }
         $puntosEspecie = $this->nivel === 'species'
             ? app(PortalEstadisticas::class)->puntosParaMapa($this->filtrosAnalisis($filtros)) : [];
+        $idTaxonActual = $ruta === [] ? '' : ($ruta[array_key_last($ruta)]['id'] ?? '');
+        $claveMapaEspecie = sha1(json_encode([$idTaxonActual, $filtros, $puntosEspecie]));
         $descendientes = $resumen['descendientes'];
 
         $filtrosActivos = [
@@ -811,16 +838,21 @@ final class PortalCatalogo extends Component
             'provinciasDisponibles' => $this->provinciasDisponibles,
             'filosDisponibles' => $this->filosDisponibles,
             'ruta' => $ruta,
-            'portadas' => $this->cargarPortadas(),
+            'portadas' => $this->cargarPortadas(array_merge($hijos, $especiesActuales, $taxonesExplorados)),
             'galeriaEspecie' => $galeriaEspecie,
             'imagenesPorEspecimen' => $imagenesPorEspecimen,
             'hijos' => $hijos,
             'especiesActuales' => $especiesActuales,
             'hermanos' => $hermanos,
+            'totalHermanos' => $totalHermanos,
+            'paginaHermanosActual' => $paginaHermanosActual,
+            'ultimaPaginaHermanos' => $ultimaPaginaHermanos,
             'especimenes' => $especimenes,
             'totalEspecimenes' => $totalEspecimenes,
             'totalTarjetas' => $totalTarjetas,
             'puntosEspecie' => $puntosEspecie,
+            'idTaxonActual' => $idTaxonActual,
+            'claveMapaEspecie' => $claveMapaEspecie,
             'registrosVista' => $registrosVista,
             'totalRegistrosVista' => $totalRegistrosVista,
             'paginaActual' => $paginaActual,
@@ -851,11 +883,28 @@ final class PortalCatalogo extends Component
      *
      * @return array<string, string>
      */
-    private function cargarPortadas(): array
+    private function cargarPortadas(array $tarjetas): array
     {
+        $claves = [];
+        foreach ($tarjetas as $tarjeta) {
+            $nivel = $tarjeta['nivel'] ?? (isset($tarjeta['especie']) ? 'species' : '');
+            if (! in_array($nivel, ['genus', 'species'], true)) continue;
+            $taxon = $tarjeta['taxon'] ?? $tarjeta['especie'];
+            $claves[$nivel.':'.$taxon] = [$nivel, $taxon];
+        }
+        if ($claves === []) return [];
         return DB::table('divulgacion.imagenes_por_defecto as d')
             ->join('divulgacion.imagenes_taxonomicas as i', 'i.id', '=', 'd.imagen_id')
+            ->join('taxonomia.especimenes as e', 'e.occurrence_id', '=', 'i.occurrence_id')
+            ->join('divulgacion.especimenes_divulgables as ed', 'ed.especimen_id', '=', 'e.id')
+            ->where('ed.publicado', true)->where('e.coordenadas_otras_regiones', false)->where('ed.scientific_name_visible', true)
+            ->where(fn ($q) => $q->where('d.nivel', '<>', 'genus')->orWhere('ed.genus_visible', true))
+            ->whereRaw('(SELECT COUNT(*) FROM taxonomia.especimenes identidad WHERE identidad.occurrence_id = i.occurrence_id) = 1')
+            ->where(function ($q) use ($claves): void {
+                foreach ($claves as [$nivel, $taxon]) $q->orWhere(fn ($par) => $par->where('d.nivel', $nivel)->where('d.valor_taxon', $taxon));
+            })
             ->select('d.nivel', 'd.valor_taxon', 'i.ruta', 'i.disco')
+            ->limit(12)
             ->get()
             ->mapWithKeys(fn ($r): array => [
                 $r->nivel.':'.$r->valor_taxon => StorageImagenesAdapter::urlPublica($r->ruta),
@@ -875,10 +924,11 @@ final class PortalCatalogo extends Component
             return [];
         }
 
-        return DB::table('divulgacion.imagenes_taxonomicas')
+        $consulta = DB::table('divulgacion.imagenes_taxonomicas')
             ->whereIn('occurrence_id', $occurrenceIDs)
             ->whereRaw('(SELECT COUNT(*) FROM taxonomia.especimenes identidad WHERE identidad.occurrence_id = divulgacion.imagenes_taxonomicas.occurrence_id) = 1')
-            ->orderBy('created_at')
+            ->selectRaw('occurrence_id, ruta, disco, nombre_original, ROW_NUMBER() OVER (PARTITION BY occurrence_id ORDER BY created_at, id) AS posicion');
+        return DB::query()->fromSub($consulta, 'fotos_publicas')->where('posicion', '<=', 12)->orderBy('occurrence_id')->orderBy('posicion')
             ->get(['occurrence_id', 'ruta', 'disco', 'nombre_original'])
             ->groupBy('occurrence_id')
             ->map(fn ($grupo): array => $grupo->map(fn ($r): array => [
@@ -960,36 +1010,24 @@ final class PortalCatalogo extends Component
             ->all();
     }
 
-    /** @return list<array{nivel: string, taxon: string, esEspecie: bool}> */
-    private function resolverHermanos(ConstruirArbolTaxonomicoOutput $output): array
+    /** @return list<array{nivel: string, taxon: string, esEspecie: bool, total: int}> */
+    private function resolverHermanos(EloquentProveedorEspecimenesParaArbol $repositorio, FiltrosBusqueda $filtros, array $ruta): array
     {
-        if ($this->nivel === 'species') {
-            $nodoEspecie = collect($output->especies)
-                ->first(fn ($e) => $e['especie'] === $this->taxon);
-
-            if (! $nodoEspecie) {
-                return [];
-            }
-
-            return collect($output->especies)
-                ->filter(fn ($e) => $e['padre'] === $nodoEspecie['padre'] && $e['especie'] !== $this->taxon)
-                ->map(fn ($e) => ['nivel' => 'species', 'taxon' => $e['especie'], 'esEspecie' => true])
-                ->values()
-                ->all();
+        if ($this->nivel === '' || $ruta === []) return [];
+        $padre = count($ruta) > 1 ? $ruta[count($ruta) - 2] : ['nivel' => '', 'taxon' => 'root'];
+        // El contexto lateral conserva filtros y permisos del padre público;
+        // nunca reemplaza la selección exacta de registros de la ficha principal.
+        $contexto = $repositorio->resumenJerarquia($filtros, $padre['nivel'], $padre['nivel'] !== '' ? $padre['taxon'] : '');
+        $esEspecie = $this->nivel === 'species';
+        $candidatos = $esEspecie ? $contexto['especies'] : $contexto['nodos'];
+        $hermanos = [];
+        foreach ($candidatos as $nodo) {
+            $nivel = $esEspecie ? 'species' : $nodo['nivel'];
+            $taxon = $esEspecie ? $nodo['especie'] : $nodo['taxon'];
+            if ($nivel !== $this->nivel || $nodo['padre'] !== $padre['taxon'] || $taxon === $this->taxon) continue;
+            $hermanos[] = ['nivel' => $nivel, 'taxon' => $taxon, 'esEspecie' => $esEspecie, 'total' => (int) $nodo['total']];
         }
-
-        $nodo = collect($output->nodosJerarquicos)
-            ->first(fn ($n) => $n['nivel'] === $this->nivel && $n['taxon'] === $this->taxon);
-
-        if (! $nodo) {
-            return [];
-        }
-
-        return collect($output->nodosJerarquicos)
-            ->filter(fn ($n) => $n['nivel'] === $this->nivel && $n['padre'] === $nodo['padre'] && $n['taxon'] !== $this->taxon)
-            ->map(fn ($n) => ['nivel' => $n['nivel'], 'taxon' => $n['taxon'], 'esEspecie' => false])
-            ->values()
-            ->all();
+        return $hermanos;
     }
 
     /** @param list<string> $especimenIds @return list<object> */
@@ -1056,11 +1094,20 @@ final class PortalCatalogo extends Component
     }
 
     /** @return list<array{nivel: string, taxon: string, padre: string}> */
-    private function resolverTaxonesParaExplorar(ConstruirArbolTaxonomicoOutput $output, string $nivel): array
+    private function resolverTaxonesParaExplorar(ConstruirArbolTaxonomicoOutput $output, string $nivel, array $rutas = []): array
     {
+        $jerarquia = static function (array $nodo) use ($rutas): array {
+            // Explorer reúne el taxón completo; el total de una rama concreta
+            // se sustituye por el conteo global que ya recibe la vista.
+            unset($nodo['total']);
+            $nodo['jerarquia'] = array_column($rutas[$nodo['nivel'].':'.$nodo['taxon']] ?? [], 'taxon', 'nivel');
+            return $nodo;
+        };
         if ($nivel === 'species') {
             return collect($output->especies)
                 ->map(fn ($e) => ['nivel' => 'species', 'taxon' => $e['especie'], 'padre' => $e['padre']])
+                ->unique('taxon')
+                ->map($jerarquia)
                 ->sortBy('taxon')
                 ->values()
                 ->all();
@@ -1068,6 +1115,8 @@ final class PortalCatalogo extends Component
 
         return collect($output->nodosJerarquicos)
             ->filter(fn ($n) => $n['nivel'] === $nivel)
+            ->unique('taxon')
+            ->map($jerarquia)
             ->sortBy('taxon')
             ->values()
             ->all();

@@ -87,8 +87,8 @@ final readonly class RegistroExportable
             : null;
 
         return new self(
-            occurrenceID: $occurrenceID,
-            scientificName: $scientificName,
+            occurrenceID: $visibilidad->occurrenceIDVisible ? $occurrenceID : '',
+            scientificName: $visibilidad->scientificNameVisible ? $scientificName : '',
             typeStatus: $aplicar($visibilidad->typeStatusVisible, $typeStatus),
             occurrenceStatus: $aplicar($visibilidad->occurrenceStatusVisible, $occurrenceStatus),
             individualCount: $aplicar($visibilidad->individualCountVisible, $individualCount),

@@ -5,6 +5,8 @@ namespace Modules\CatalogoPublico\Application\Services;
 /** Assets compartidos: una especie nueva no requiere generar archivos ni cargar la colección. */
 final class IlustracionTaxonomica
 {
+    private const VERSION_RECURSOS = '20261002-foto1';
+
     private const GRUPOS = [
         'formicidae' => ['formicidae', 'Formicidae'],
         'coleoptera' => ['coleoptera', 'Coleoptera'],
@@ -75,9 +77,9 @@ final class IlustracionTaxonomica
     private static function descripcion(string $archivo, string $grupo, bool $morfologia = true): array
     {
         return [
-            'url' => '/images/taxonomia/'.$archivo,
+            'url' => '/images/taxonomia/'.$archivo.($morfologia ? '?v='.self::VERSION_RECURSOS : ''),
             'alt' => $morfologia
-                ? 'Ilustración orientativa de '.$grupo.'. No es una fotografía ni una identificación de la especie.'
+                ? 'Representación fotorrealista generada de '.$grupo.'. No es una fotografía de un ejemplar ni una identificación de la especie.'
                 : 'Diagrama taxonómico de invertebrados. Este taxón aún no dispone de una ilustración morfológica específica.',
             'grupo' => $grupo,
             'representativa' => true,

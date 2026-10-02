@@ -52,3 +52,16 @@ test('no pisa un country explícito de su propia columna (no daña "PE")', funct
         ->and($r->stateProvince)->toBe('Cusco')
         ->and($r->localityName)->toBe('Machu picchu');
 });
+
+test('los verbatim vacíos de Excel permiten conservar la localidad completa y su sitio específico', function (): void {
+    $fila = ['localidad_verbatim' => '  ', 'verbatimLocality' => '',
+        'localityName' => 'Parque Nacional Yasuní, Onkonegare', 'country' => 'Ecuador', 'stateProvince' => 'Orellana'];
+    $r = mapearLocalidad($fila);
+    expect($r->localidadVerbatim)->toBe('Parque nacional yasuní, Onkonegare')
+        ->and($r->localityName)->toBe('Onkonegare')->and($r->localidad)->toBe('Onkonegare')
+        ->and($r->country)->toBe('Ecuador')->and($r->stateProvince)->toBe('Orellana');
+    $prioritario = mapearLocalidad(array_replace($fila, ['verbatimLocality' => 'Ecuador, Napo, Tena']));
+    expect($prioritario->localidadVerbatim)->toBe('Ecuador, Napo, Tena');
+    $explicito = mapearLocalidad(array_replace($fila, ['localidad_verbatim' => 'Ecuador, Manabí, Portoviejo', 'verbatimLocality' => 'Ecuador, Napo, Tena']));
+    expect($explicito->localidadVerbatim)->toBe('Ecuador, Manabí, Portoviejo');
+});
