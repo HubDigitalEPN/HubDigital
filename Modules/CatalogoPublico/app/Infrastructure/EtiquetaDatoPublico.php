@@ -5,6 +5,20 @@ namespace Modules\CatalogoPublico\Infrastructure;
 /** Traduce la presentación de valores conocidos; conserva el dato original. */
 final class EtiquetaDatoPublico
 {
+    public static function tipo(?string $valor): string
+    {
+        return match (strtolower(trim($valor ?? ''))) {
+            'holotype' => 'Holotipo',
+            'paratype' => 'Paratipo',
+            'allotype' => 'Alotipo',
+            'syntype' => 'Sintipo',
+            'lectotype' => 'Lectotipo',
+            'paralectotype' => 'Paralectotipo',
+            'neotype' => 'Neotipo',
+            default => self::estado($valor),
+        };
+    }
+
     public static function estado(?string $valor): string
     {
         return match (strtolower(trim($valor ?? ''))) {

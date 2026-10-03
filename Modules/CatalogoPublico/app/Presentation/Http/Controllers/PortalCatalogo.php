@@ -11,6 +11,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Illuminate\Validation\ValidationException;
 use Modules\CatalogoPublico\Infrastructure\CalidadDatoPublico;
+use Modules\CatalogoPublico\Infrastructure\NormalizacionGeografica;
 use Livewire\Component;
 use Modules\CatalogoPublico\Application\Ports\DatosEspecimenProveedor;
 use Modules\CatalogoPublico\Application\Ports\ProveedorEspecimenesPort;
@@ -523,7 +524,9 @@ final class PortalCatalogo extends Component
             ->where('d.publicado', true)->where('e.coordenadas_otras_regiones', false)->where('d.state_province_visible', true)
             ->whereRaw(CalidadDatoPublico::textoValido('e.state_province'))
             ->whereNotNull('e.state_province')->where('e.state_province', '<>', '')
-            ->distinct()->orderBy('e.state_province')->pluck('e.state_province')->all();
+            ->distinct()->orderBy('e.state_province')->pluck('e.state_province')
+            ->filter(static fn (string $provincia): bool => NormalizacionGeografica::contieneNombre($provincia))
+            ->values()->all();
     }
 
     #[Computed]
@@ -531,6 +534,8 @@ final class PortalCatalogo extends Component
     {
         return DB::table('taxonomia.taxones')->where('rango', 'phylum')
             ->orderBy('nombre_cientifico')->get(['id', 'nombre_cientifico'])
+            ->filter(static fn (object $fila): bool => NormalizacionGeografica::contieneNombre($fila->nombre_cientifico))
+            ->values()
             ->map(static fn (object $fila): array => (array) $fila)->all();
     }
 

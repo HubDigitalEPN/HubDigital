@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Modules\CatalogoPublico\Application\Ports\ProveedorOpcionesFiltroPort;
 use Modules\CatalogoPublico\Infrastructure\ProtocoloColectaPublico;
 use Modules\CatalogoPublico\Infrastructure\CalidadDatoPublico;
+use Modules\CatalogoPublico\Infrastructure\NormalizacionGeografica;
 
 final class InventarioOpcionesFiltroAdapter implements ProveedorOpcionesFiltroPort
 {
@@ -22,6 +23,7 @@ final class InventarioOpcionesFiltroAdapter implements ProveedorOpcionesFiltroPo
             ->orderBy('e.preparations')
             ->pluck('e.preparations')
             ->map(fn ($v) => (string) $v)
+            ->filter(static fn (string $valor): bool => NormalizacionGeografica::contieneNombre($valor))
             ->values()
             ->all();
     }
@@ -37,6 +39,7 @@ final class InventarioOpcionesFiltroAdapter implements ProveedorOpcionesFiltroPo
             ->orderBy('e.biome')
             ->pluck('e.biome')
             ->map(fn ($v) => (string) $v)
+            ->filter(static fn (string $valor): bool => NormalizacionGeografica::contieneNombre($valor))
             ->values()
             ->all();
     }
@@ -54,6 +57,7 @@ final class InventarioOpcionesFiltroAdapter implements ProveedorOpcionesFiltroPo
             ->selectRaw($protocolo.' AS metodo')->orderBy('metodo')
             ->pluck('metodo')
             ->map(fn ($v) => (string) $v)
+            ->filter(static fn (string $valor): bool => NormalizacionGeografica::contieneNombre($valor))
             ->values()
             ->all();
     }
@@ -70,6 +74,7 @@ final class InventarioOpcionesFiltroAdapter implements ProveedorOpcionesFiltroPo
             ->orderBy('e.colector')
             ->pluck('e.colector')
             ->map(fn ($v) => (string) $v)
+            ->filter(static fn (string $valor): bool => NormalizacionGeografica::contieneNombre($valor))
             ->values()
             ->all();
     }

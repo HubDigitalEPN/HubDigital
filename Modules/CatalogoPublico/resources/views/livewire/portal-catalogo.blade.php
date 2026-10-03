@@ -670,7 +670,7 @@
                                                 </code>
                                                 @if($especimen->type_status)
                                                     <flux:badge color="{{ $typeBadgeColor }}" size="sm">
-                                                        {{ $especimen->type_status }}
+                                                        {{ \Modules\CatalogoPublico\Infrastructure\EtiquetaDatoPublico::tipo($especimen->type_status) }}
                                                     </flux:badge>
                                                 @endif
                                                 @if($especimen->occurrence_status)

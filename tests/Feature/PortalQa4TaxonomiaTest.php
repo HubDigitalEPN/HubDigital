@@ -275,3 +275,68 @@ test('QA4-007 los ciclos y cadenas superiores a treinta nodos conservan material
         ->and(array_column($detalle['registros'], 'especimen_id'))->toEqualCanonicalizing($ids);
     foreach ($detalle['registros'] as $fila) expect($fila->taxon_en_revision)->toBeTrue();
 });
+
+test('las opciones de filtros excluyen vacíos Unicode conservando material, nombres, permisos y alias', function (): void {
+    $seleccion = 'QaProvincias'.Str::lower(Str::random(20));
+    $filo = qa4TaxonPublico($seleccion, 'phylum');
+    $filoInvisible = qa4TaxonPublico("\u{00A0}", 'phylum');
+    $especie = qa4TaxonPublico($seleccion.' valida', 'especie', $filo);
+    $vacios = ["\u{00A0}", "\t \u{2009}\u{202F}", " \u{FEFF}\u{200B}"];
+    $idsVacios = [];
+    foreach ($vacios as $texto) {
+        $id = qa4RegistroPublico($especie, $seleccion, $texto);
+        $idsVacios[] = $id;
+        DB::table('taxonomia.especimenes')->where('id', $id)->update(['preparations' => $texto, 'biome' => $texto, 'sampling_protocol' => $texto]);
+        // El colector invisible no contiene el identificador del conjunto principal.
+        qa4RegistroPublico($especie, $texto, $texto);
+    }
+    $provincia = 'Manabí '.$seleccion;
+    $idValido = qa4RegistroPublico($especie, $seleccion, $provincia);
+    $reales = ['preparations' => 'Alcohol '.$seleccion, 'biome' => 'Chocó '.$seleccion, 'sampling_protocol' => 'Trampa de caída '.$seleccion];
+    DB::table('taxonomia.especimenes')->where('id', $idValido)->update($reales);
+    $reservada = 'Reservada '.$seleccion;
+    $idReservado = qa4RegistroPublico($especie, $seleccion, $reservada, ['state_province_visible' => false]);
+    $biomaSinAcento = 'Choco '.$seleccion;
+    DB::table('taxonomia.especimenes')->where('id', $idReservado)->update(['biome' => $biomaSinAcento]);
+    $sinFilo = qa4TaxonPublico($seleccion.' sinFilo', 'especie');
+    $privada = 'No publicada '.$seleccion;
+    $idNoPublicado = qa4RegistroPublico($sinFilo, $seleccion, $privada);
+    $otraRegion = 'Otra región '.$seleccion;
+    $idOtraRegion = qa4RegistroPublico($especie, $seleccion, $otraRegion);
+    $excluidas = ['preparations' => 'Preparación excluida '.$seleccion, 'biome' => 'Bioma excluido '.$seleccion, 'sampling_protocol' => 'Método excluido '.$seleccion];
+    DB::table('taxonomia.especimenes')->where('id', $idNoPublicado)->update($excluidas);
+    DB::table('taxonomia.especimenes')->where('id', $idOtraRegion)->update($excluidas + ['decimal_latitude' => 51.5, 'decimal_longitude' => -0.1]);
+    expect(DB::table('taxonomia.especimenes')->where('id', $idOtraRegion)->value('coordenadas_otras_regiones'))->toBeTrue();
+    $colectorVisible = 'Cárdenas '.Str::uuid();
+    qa4RegistroPublico($especie, $colectorVisible, $provincia);
+    $colectorOculto = 'Colector reservado '.Str::uuid();
+    $idCamposOcultos = qa4RegistroPublico($especie, $colectorOculto, $provincia, ['recorded_by_visible' => false, 'sampling_protocol_visible' => false]);
+    $metodoOculto = 'Técnica reservada '.$seleccion;
+    DB::table('taxonomia.especimenes')->where('id', $idCamposOcultos)->update(['sampling_protocol' => $metodoOculto]);
+    $componente = Livewire::withQueryParams(['vista' => 'registros', 'fco' => $seleccion])->test(PortalCatalogo::class)
+        ->assertViewHas('totalRegistrosVista', 5)
+        ->assertViewHas('provinciasDisponibles', fn (array $opciones): bool => in_array($provincia, $opciones, true)
+            && ! in_array($reservada, $opciones, true) && ! in_array($privada, $opciones, true) && ! in_array($otraRegion, $opciones, true)
+            && count(array_filter($opciones, fn (string $p): bool => ! \Modules\CatalogoPublico\Infrastructure\NormalizacionGeografica::contieneNombre($p))) === 0
+            && array_values($opciones) === $opciones);
+    foreach (['preparacionesDisponibles' => 'preparations', 'biomasDisponibles' => 'biome', 'metodosRecoleccionDisponibles' => 'sampling_protocol'] as $propiedad => $campo) {
+        $opciones = $componente->instance()->{$propiedad};
+        expect($opciones)->toContain($reales[$campo])->not->toContain(...$vacios)->not->toContain($excluidas[$campo]);
+        expect(array_values($opciones))->toBe($opciones);
+    }
+    expect($componente->instance()->biomasDisponibles)->toContain($biomaSinAcento)
+        ->and($componente->instance()->metodosRecoleccionDisponibles)->not->toContain($metodoOculto)
+        ->and($componente->instance()->colectoresDisponibles)->toContain($colectorVisible)->not->toContain(...$vacios)->not->toContain($colectorOculto);
+    $filos = $componente->instance()->filosDisponibles;
+    expect(array_column($filos, 'id'))->toContain($filo)->not->toContain($filoInvisible)
+        ->and(collect($filos)->firstWhere('id', $filo)['nombre_cientifico'])->toBe($seleccion);
+    $repo = app(EloquentProveedorEspecimenesParaArbol::class);
+    expect($repo->paginaPublica(FiltrosBusqueda::desde(['filtroColector' => $seleccion, 'filtroProvincia' => 'MANABI '.$seleccion]), 1)['ids'])->toBe([$idValido]);
+    expect($repo->paginaPublica(FiltrosBusqueda::desde(['filtroColector' => $seleccion,
+        'filtroPreparaciones' => [$reales['preparations']], 'filtroBiomas' => [$reales['biome']],
+        'filtroMetodos' => [$reales['sampling_protocol']]]), 1)['ids'])->toBe([$idValido]);
+    foreach ($idsVacios as $i => $id) {
+        foreach (['state_province', 'preparations', 'biome', 'sampling_protocol'] as $campo) expect(DB::table('taxonomia.especimenes')->where('id', $id)->value($campo))->toBe($vacios[$i]);
+    }
+    foreach ($reales + ['state_province' => $provincia] as $campo => $texto) expect(DB::table('taxonomia.especimenes')->where('id', $idValido)->value($campo))->toBe($texto);
+});

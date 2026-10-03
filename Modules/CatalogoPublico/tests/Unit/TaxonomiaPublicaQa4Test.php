@@ -2,6 +2,16 @@
 
 use Modules\CatalogoPublico\Application\Services\IlustracionTaxonomica;
 use Modules\CatalogoPublico\Infrastructure\CalidadDatoPublico;
+use Modules\CatalogoPublico\Infrastructure\NormalizacionGeografica;
+
+it('detecta nombres geográficos visibles sin confundir separadores Unicode con provincias', function (): void {
+    foreach ([null, '', " \t\n", "\u{00A0}", "\u{2009}\u{202F}", "\u{FEFF}\u{200B}"] as $texto) {
+        expect(NormalizacionGeografica::contieneNombre($texto))->toBeFalse();
+    }
+    foreach (['Manabí', 'GALAPAGOS', "\u{00A0}Galápagos\u{00A0}", 'São Paulo', '東京'] as $texto) {
+        expect(NormalizacionGeografica::contieneNombre($texto))->toBeTrue();
+    }
+});
 
 it('QA4 no rellena mosaicos vacíos ni Mollusca con grupos ajenos a sus linajes', function (): void {
     expect(IlustracionTaxonomica::mosaicoParaTaxon([])[0]['morfologia'])->toBeFalse()
