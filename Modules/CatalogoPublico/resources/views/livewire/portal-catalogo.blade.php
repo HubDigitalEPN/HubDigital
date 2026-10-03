@@ -445,7 +445,7 @@
                                                 {{ $numEspecimenes }} {{ $numEspecimenes === 1 ? 'registro' : 'registros' }}
                                             </span>
                                         @endif
-                                        <x-catalogopublico::ayuda-taxon :nombre="$especie['especie']" nivel="species" :registros="$numEspecimenes" :jerarquia="array_merge(array_column($ruta, 'taxon', 'nivel'), $especie)" />
+                                        <x-catalogopublico::ayuda-taxon :nombre="$especie['especie']" nivel="species" :registros="$numEspecimenes" :jerarquia="array_column($ruta, 'taxon', 'nivel')" />
                                     </div>
                                 </article>
                             @endforeach
@@ -462,7 +462,7 @@
         @assets
         @endassets
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-            <div class="flex gap-8">
+            <div class="collection-species-layout">
 
                 {{-- Rail de especies hermanas --}}
                 @if(count($hermanos) > 0)
@@ -490,7 +490,7 @@
                 @endif
 
                 {{-- Registros de registros --}}
-                <div class="flex-1 min-w-0">
+                <div class="collection-species-content">
                     <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <h2 class="font-display text-xl font-semibold text-blue-navy">
                             <span class="font-serif italic">{{ $taxonActual }}</span>
@@ -590,7 +590,7 @@
                                 wire:key="mapa-especie-{{ $claveMapaEspecie }}"
                                 data-taxon-id="{{ $idTaxonActual }}"
                                 x-data="portalMapaEspecie(@js($puntosEspecie), @js($taxonActual))"
-                                class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden"
+                                class="collection-species-map rounded-lg border border-border bg-surface shadow-sm overflow-hidden"
                             >
                                 <p x-show="errorMapa" x-cloak class="p-4 text-sm text-text-secondary" role="status">No se pudo cargar la cartografía. Los datos públicos de esta selección siguen disponibles.</p>
                                 <div x-ref="mapaContainer" class="h-72 sm:h-96 w-full"></div>
@@ -603,7 +603,7 @@
                             No hay registros públicos para esta especie en la selección actual.
                         </div>
                     @else
-                        <div class="space-y-3">
+                        <div class="collection-specimen-list space-y-3">
                             @foreach($especimenes as $especimen)
                                 @php
                                     $typeBadgeColor = match(strtolower($especimen->type_status ?? '')) {

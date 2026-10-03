@@ -47,7 +47,7 @@
 .atlas-menu[hidden] { display:none; }
 .atlas-menu button { display:block; width:100%; padding:.55rem .65rem; border:0; background:#fff; text-align:left; color:var(--ink); font-size:.78rem; }
 .atlas-menu button:hover { background:#edf4f9; }
-.atlas-map { height:365px; background:#dfeef7; }
+.atlas-map { height:365px; background:#dfeef7; isolation:isolate; }
 .atlas-map-empty { position:absolute; z-index:400; left:50%; bottom:2.5rem; transform:translateX(-50%); width:max-content; max-width:90%; padding:.5rem .8rem; border:1px solid var(--line); background:#fff; box-shadow:0 3px 10px #142c4320; font-size:.78rem; }
 .atlas-map-footer { display:flex; align-items:center; justify-content:space-between; gap:.5rem; padding:.45rem .75rem; color:var(--muted); font-size:.7rem; line-height:1.3; }
 .atlas-map-footer button { border:0; background:transparent; color:var(--blue); font-size:.71rem; font-weight:700; text-decoration:underline; }
@@ -405,7 +405,14 @@
 @media(max-width:600px) { .atlas-cell-grid { grid-template-columns:1fr; } .atlas-cell-content { padding:.8rem; } .atlas-cell-pagination { flex-wrap:wrap; } }
 
 /* Las fichas se adaptan al espacio disponible entre ambos filtros y el rail. */
-.collection-specimen-card { container-type:inline-size; min-width:0; overflow-wrap:anywhere; }
+.collection-species-layout { display:block; width:100%; min-width:0; }
+.collection-species-content, .collection-specimen-list { width:100%; min-width:0; }
+.collection-species-map { position:relative; isolation:isolate; }
+@media(min-width:1024px) {
+  .collection-species-layout { display:flex; gap:2rem; }
+  .collection-species-content { flex:1; width:auto; }
+}
+.collection-specimen-card { width:100%; box-sizing:border-box; container-type:inline-size; min-width:0; overflow-wrap:anywhere; }
 .collection-specimen-thumbnail { display:none; border-radius:.4rem 0 0 .4rem; }
 .collection-specimen-metadata { display:grid; grid-template-columns:minmax(0,1fr); gap:.7rem 1.25rem; }
 .collection-specimen-metadata > div { display:block; min-width:0; }

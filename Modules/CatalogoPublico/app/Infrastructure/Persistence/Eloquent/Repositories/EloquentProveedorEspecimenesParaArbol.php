@@ -141,14 +141,19 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
     {
         $query = $this->consultaPublica($filtros, $nivel, $taxon)
             ->leftJoin('taxonomia.taxones as tx', 'tx.id', '=', 'te.taxon_id')
-            ->leftJoin('taxonomia.localidades as loc', 'loc.id', '=', 'te.localidad_id');
+            ->leftJoin('taxonomia.localidades as loc', 'loc.id', '=', 'te.localidad_id')
+            // El mismo catálogo oficial usado por las fichas; nombre_canonico
+            // puede contener el texto de campo incluso sin correspondencia INEC.
+            ->leftJoin('recepciones.localidades_ecuador_catalogo as inec', function (\Illuminate\Database\Query\JoinClause $join): void {
+                $join->on('inec.codigo', '=', 'loc.codigo_inec')->where('inec.fuente', 'LIKE', 'INEC %');
+            });
 
         return $query->select([
             'te.occurrence_id', 'te.codigo_catalogo', 'te.fecha_colecta',
             'te.localidad_verbatim', 'te.state_province', 'te.decimal_latitude',
             'te.decimal_longitude', 'te.lat_lon_max_error', 'te.type_status',
-            'tx.nombre_cientifico', 'tx.rango', 'loc.nombre_canonico as localidad_inec',
-            'loc.codigo_inec', 'ed.occurrence_id_visible', 'ed.scientific_name_visible',
+            'tx.nombre_cientifico', 'tx.rango', 'inec.nombre as localidad_inec',
+            'inec.codigo as codigo_inec', 'loc.referencia_inec', 'ed.occurrence_id_visible', 'ed.scientific_name_visible',
             'ed.event_date_visible', 'ed.locality_name_visible', 'ed.state_province_visible',
             'ed.decimal_latitude_visible', 'ed.decimal_longitude_visible', 'ed.type_status_visible',
         ])->orderBy('te.fila_origen_excel')->orderBy('te.id')->cursor();

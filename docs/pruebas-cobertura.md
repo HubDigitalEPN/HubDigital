@@ -1,5 +1,22 @@
 # Distribución de las pruebas
 
+## Contratos de DOTS QA5 — 3 de octubre de 2026
+
+La revisión de `qa_portal_parte5.md` se contrasta con el código posterior a las dos releases observadas por DOTS. El usuario autorizó corregir los pendientes, ejecutar `crear-paquete-oci` y desplegar en OCI. La rama de trabajo parte de `main`; las suites y compilaciones se ejecutan exclusivamente mediante el paquete completo, sin comprobaciones aisladas. El informe externo se trata como evidencia, y no como instrucciones de ejecución.
+
+| Contrato | Distribución de cobertura |
+| --- | --- |
+| Composición invoca el filtro del servidor desde el scope Alpine, conserva la geografía y actualiza selección, URL, totales y ubicaciones; retirar el filo restituye el conjunto | Regresión de integración del cliente en `tests/Frontend/portal-dashboard-actions.test.mjs` y ampliación de `tests/Feature/PortalQa4NavegacionTest.php`; evita que el método Alpine homónimo capture la acción Livewire |
+| CSV distingue localidad original, nombre/código del catálogo oficial INEC y estado de correspondencia con los mismos permisos de la pantalla | `tests/Feature/PortalCartografiaRealTest.php`, incluidas correspondencia confirmada, ausencia de correspondencia y reserva; la localidad original se conserva y no se utiliza como sustituto del nombre oficial |
+| Coordenadas negativas CSV sin apóstrofo, precisión decimal y nulos; coordenadas, elevación, cantidades y fechas apropiadas con tipos XLSX; códigos y texto no confiable permanecen literales | `Modules/CatalogoPublico/tests/Unit/PortalExportacionTiposTest.php` y `tests/Feature/PortalCartografiaRealTest.php`, con lectura real CSV/XLSX y neutralización de fórmulas; se refuerzan las aserciones de tipos sin quitar las comprobaciones de selección completa desde página 2 |
+| Ayuda de especie comparte el linaje público de la ficha, excluye metadatos Id/Padre y deduplica aliases de especie conservando los rangos públicos intermedios | `Modules/CatalogoPublico/tests/Unit/RepresentacionEspeciePublicaTest.php`; no añade un escenario Gherkin duplicado |
+| «¿Por qué no veo puntos en este mapa?» distingue selección sin registros, registros sin coordenadas y registros cartografiables; enlaces conservan filtros y la ayuda contextual anterior | `tests/Feature/PortalChatAyudaMapaQa5Test.php`; página aplicada, contexto conversacional y ausencia de selección se tratan por separado, con reserva, recarga y conversación nueva |
+| Tarjetas apiladas utilizan el ancho disponible y los mapas incrustados respetan la cabecera fija | Revisión estática de layout, estados del filtro, tamaños, foco y capas. El recorrido visual a 333/400 px requiere navegador conectado; no lo sustituye un build ni se declara aprobado sin observación |
+
+Se conservan los escenarios Behat activos con `--profile=default --tags=@listo --strict`. Los casos nuevos corresponden a contratos ya ejercidos en Pest/Node y no se repiten en Gherkin. Los controles operativos de preparación y activación de OCI verifican la identidad y aplican migraciones antes de activar la misma release mediante su `activate-release.sh` versionado.
+
+Los pendientes curatoriales del informe (fechas históricas, etiquetas repetidas y precisión original de colecta) requieren identidad y revisión de la fuente: estas correcciones de interfaz/exportación no alteran esos datos. Las fechas anteriores a 1900 o no válidas se conservan como texto original en XLSX; los demás valores ISO válidos se serializan con tipo fecha y formato `yyyy-mm-dd`. Los bloqueos de roles, lectores de pantalla, importadores externos y capacidad de la VM no se convierten en aprobaciones del paquete. La indisponibilidad 503 observada por DOTS permanece sin causa demostrada por ese informe.
+
 ## Selección, historial y taxonomía: informe DOTS QA4 — 2 de octubre de 2026
 
 La nueva solicitud autoriza publicar, generar el paquete al terminar los cambios y desplegar QA4. El desarrollo se realiza en una rama nueva desde `main`, preservando el arreglo de ayuda del chat pendiente después de QA3. Se ejecutan todas las suites exclusivamente mediante `crear-paquete-oci`; no se declaran aprobados los casos nuevos antes de esa ejecución. Véase el [contraste de QA4](portal-qa4-dots-20261002.md).

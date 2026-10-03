@@ -15,6 +15,20 @@ final class ConsultaCatalogoPublico
 {
     public function __construct(private readonly DetectorEntidadesChat $detector, private readonly TextoChat $texto) {}
 
+    /** Cuenta la misma población pública del mapa sin revelar coordenadas reservadas. */
+    public function diagnosticoMapa(array $entrada): ?array
+    {
+        $seleccion = SeleccionPaginaChat::desde($entrada);
+        if ($seleccion === null) return null;
+        $query = app(EloquentProveedorEspecimenesParaArbol::class)->consultaPublica($seleccion->filtros,
+            $seleccion->parametros['nivel'] ?? '', $seleccion->parametros['taxon'] ?? '');
+        $total = (clone $query)->count('te.id');
+        $coordenadas = $query->where('ed.decimal_latitude_visible', true)->where('ed.decimal_longitude_visible', true)
+            ->whereBetween('te.decimal_latitude', [-90, 90])->whereBetween('te.decimal_longitude', [-180, 180])->count('te.id');
+
+        return ['total' => $total, 'con_coordenadas' => $coordenadas];
+    }
+
     public function responder(string $pregunta, array $contexto = [], ?array $seleccionPortal = null): ?array
     {
         if (! config('chatbot.specimen_search', true)) {

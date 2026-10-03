@@ -111,6 +111,48 @@ test('composición por UUID y por nombre coincide con el desplegable de filo y m
         ->call('cambiarVista', 'tarjetas')->assertViewHas('conteos', fn ($conteos): bool => $conteos['phylum:Mollusca'] === 8);
 });
 
+test('composición conserva ubicación URL y coordenadas al alternar dos filos y recargar la selección', function (): void {
+    $f = qa4NavegacionFixture();
+    $anelidos = DB::table('taxonomia.taxones')->where('rango', 'phylum')->where('nombre_cientifico', 'Annelida')->value('id');
+    if ($anelidos === null) {
+        $anelidos = (string) Str::uuid();
+        DB::table('taxonomia.taxones')->insert(['id' => $anelidos, 'nombre_cientifico' => 'Annelida', 'rango' => 'phylum', 'autor' => 'QA', 'anio_descripcion' => 2026]);
+    }
+    foreach (range(0, 2) as $indice) {
+        $id = (string) Str::uuid();
+        $codigo = 'QA5-COMP-'.Str::upper(Str::random(18));
+        DB::table('taxonomia.especimenes')->insert([
+            'id' => $id, 'taxon_id' => $anelidos, 'codigo_catalogo' => $codigo, 'occurrence_id' => $codigo,
+            'state_province' => $indice < 2 ? $f['provincia'] : 'FueraQA'.Str::lower(Str::random(20)),
+            'country' => 'Ecuador', 'localidad' => 'Isla QA', 'locality_name' => 'Isla QA',
+            'decimal_latitude' => -1.1, 'decimal_longitude' => -79.2,
+            'fecha_colecta' => '2000-05-15',
+        ]);
+        DB::table('divulgacion.especimenes_divulgables')->insert(['id' => (string) Str::uuid(), 'especimen_id' => $id, 'publicado' => true]);
+    }
+    $entrada = ['vista' => 'mapa', 'fprov' => $f['provincia'], 'fpais' => 'Ecuador'];
+    $portal = Livewire::withQueryParams($entrada)->test(PortalCatalogo::class)
+        ->assertViewHas('datosMapa', fn ($datos): bool => (int) $datos['resumen']['registros'] === 10 && count($datos['mapa']) === 2);
+    foreach ([[$f['filo'], 'Mollusca', 8, -0.63194, -76.14416], [$anelidos, 'Annelida', 2, -1.1, -79.2]] as [$id, $nombre, $cantidad, $lat, $lon]) {
+        $comprobarMapa = static fn ($datos): bool => (int) $datos['resumen']['registros'] === $cantidad
+            && (int) $datos['resumen']['georreferenciados'] === $cantidad && $datos['filos'] === [$nombre => $cantidad]
+            && count($datos['mapa']) === 1 && array_sum(array_column($datos['mapa'], 'total')) === $cantidad
+            && (float) $datos['mapa'][0]['lat'] === $lat && (float) $datos['mapa'][0]['lon'] === $lon;
+        $portal->call('seleccionarFilo', $id)->assertSet('filtroFiloId', $id)
+            ->assertSet('borradorFiltros.filtroFiloId', $id)->assertSet('filtroProvincia', $f['provincia'])->assertSet('filtroPais', 'Ecuador')
+            ->assertDispatched('catalogo-estado-url', fn ($evento, $parametros): bool => $parametros['estado']['fph'] === $id
+                && $parametros['estado']['fprov'] === $f['provincia'] && $parametros['estado']['fpais'] === 'Ecuador')
+            ->assertViewHas('datosMapa', $comprobarMapa);
+        Livewire::withQueryParams($entrada + ['fph' => $id])->test(PortalCatalogo::class)
+            ->assertSet('filtroFiloId', $id)->assertSet('borradorFiltros.filtroFiloId', $id)->assertViewHas('datosMapa', $comprobarMapa);
+        $portal->call('seleccionarFilo', $id)->assertSet('filtroFiloId', '')
+            ->assertDispatched('catalogo-estado-url', fn ($evento, $parametros): bool => $parametros['estado']['fph'] === ''
+                && $parametros['estado']['fprov'] === $f['provincia'] && $parametros['estado']['fpais'] === 'Ecuador')
+            ->assertViewHas('datosMapa', fn ($datos): bool => (int) $datos['resumen']['registros'] === 10
+                && count($datos['mapa']) === 2 && array_sum(array_column($datos['mapa'], 'total')) === 10);
+    }
+});
+
 test('restaurar una selección elimina filtros abandonados y rechaza los tipos inválidos sin perder los demás', function (): void {
     $f = qa4NavegacionFixture();
     Livewire::withQueryParams(['vista' => 'registros', 'fprov' => $f['provincia'], 'fc' => $f['codigos'][0], 'fpais' => 'Ecuador'])->test(PortalCatalogo::class)

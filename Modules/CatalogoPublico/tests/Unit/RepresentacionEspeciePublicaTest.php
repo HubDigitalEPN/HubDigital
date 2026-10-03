@@ -179,3 +179,36 @@ it('la fuente pública de ancestros prevalece y no reconstruye una familia ausen
         ->and($dom->query('//img[@src]')->length)->toBe(0)
         ->and($dom->query('//dl/div[dt="Género"]/dd')->item(0)->textContent)->toBe('Neoponera');
 });
+
+it('la ayuda de especie excluye metadatos y conserva los seis rangos públicos una sola vez', function (string $nombre, array $linaje, bool $conFoto) {
+    $uuid = 'e8975101-989e-4148-848a-c25a8be34049';
+    $entrada = $linaje + ['id' => $uuid, 'padre' => 'Metadato padre', 'especie' => $nombre,
+        'species' => $nombre, 'nota' => 'Metadato de colecta', 'total' => 8];
+    $dom = representacionEspeciePublicaDom($nombre, $entrada);
+
+    expect($dom->query('//figure[@data-representacion-taxon]/details/summary')->item(0)->textContent)->toContain('6 rangos')
+        ->and($dom->query('//figure[@data-representacion-taxon]/details/dl/div')->length)->toBe(6)
+        ->and($dom->query('//dl/div[dt="Especie"]')->length)->toBe(1)
+        ->and($dom->query('//dl/div[dt="Especie"]/dd')->item(0)->textContent)->toBe($nombre)
+        ->and($dom->query('//dl//dt[text()="Id" or text()="Padre" or text()="Nota" or text()="Total"]')->length)->toBe(0)
+        ->and($dom->query('//dl')->item(0)->textContent)->not->toContain($uuid, 'Metadato')
+        ->and($dom->query('//img[@src]')->length)->toBe($conFoto ? 1 : 0);
+    foreach ($linaje as $ancestro) expect($dom->query('//dl//dd[text()="'.$ancestro.'"]')->length)->toBe(1);
+})->with([
+    'Aulacomya sin fotografía' => ['Aulacomya atra', ['phylum' => 'Mollusca', 'class' => 'Bivalvia', 'order' => 'Mytiloida', 'family' => 'Mytilidae', 'genus' => 'Aulacomya'], false],
+    'Atta con fotografía identificada' => ['Atta cephalotes', ['phylum' => 'Arthropoda', 'class' => 'Insecta', 'order' => 'Hymenoptera', 'family' => 'Formicidae', 'genus' => 'Atta'], true],
+]);
+
+it('el linaje explícito descarta pseudorrangos y deduplica aliases sin reconstruir datos reservados', function () {
+    $dom = representacionEspeciePublicaDom('Taxon alpha', ['family' => 'Familia reservada', 'ancestros' => [
+        ['rango' => 'reino', 'nombre' => 'Animalia'], ['rango' => 'kingdom', 'nombre' => 'Animalia'],
+        ['rango' => 'id', 'nombre' => 'UUID técnico'], ['rango' => 'padre', 'nombre' => 'Padre técnico'],
+        ['rango' => 'especie', 'nombre' => 'Taxon alpha'], ['rango' => 'species', 'nombre' => 'Taxon alpha'],
+        ['rango' => 'species', 'nombre' => 'Otra especie'],
+    ]]);
+
+    expect($dom->query('//dl/div')->length)->toBe(2)
+        ->and($dom->query('//dl/div[dt="Reino"]')->length)->toBe(1)
+        ->and($dom->query('//dl/div[dt="Especie"]')->length)->toBe(1)
+        ->and($dom->query('//dl')->item(0)->textContent)->not->toContain('técnico', 'reservada', 'Otra especie');
+});

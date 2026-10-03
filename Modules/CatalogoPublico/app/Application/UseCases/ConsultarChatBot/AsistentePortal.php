@@ -45,10 +45,8 @@ final class AsistentePortal
             return ['texto' => 'No son lo mismo. Un registro corresponde a una entrada del catálogo; varios registros pueden pertenecer a la misma especie. La riqueza de especies cuenta cada identificación científica válida de especie una vez. Taxón es cualquier nivel taxonómico con un nombre científico, como Arthropoda, Formicidae u Homo sapiens. El tamaño de los puntos del mapa expresa cantidad de registros, no abundancia natural.',
                 'fuente' => 'portal', 'intent' => 'portal.conteos', 'opciones' => $opciones];
         }
-        if (preg_match('/\bmapa\b/', $normal) && preg_match('/no aparecen|sin puntos|faltan puntos/', $normal)) {
-            return ['texto' => 'El mapa solo representa registros con latitud y longitud públicas y válidas dentro de la selección actual. Comprueba los filtros y el número de registros con coordenadas y vuelve a abrir el mapa para revisar la selección. Si ese número es mayor que cero y siguen sin verse, indícame los filtros activos, la URL y cualquier mensaje de error; con esa información se puede revisar la carga del mapa.',
-                'fuente' => 'portal', 'intent' => 'portal.mapa_ayuda', 'entidades' => $contextoCatalogo,
-                'opciones' => [['label' => 'Abrir mapa de la selección', 'url' => $this->enlaceSeleccion($contextoCatalogo, $seleccionPortal, 'mapa')]]];
+        if (preg_match('/\bmapa\b/', $normal) && preg_match('/no aparecen|no (?:veo|se ven|se muestran)\s+(?:los\s+)?puntos|sin puntos|faltan puntos/', $normal)) {
+            return $this->ayudaPuntosMapa($contextoCatalogo, $seleccionPortal);
         }
         if (preg_match('/^buscar (?:un )?especimen(?:es)?[?.]*$/', $normal)) {
             return ['texto' => '¿Qué dato tienes para buscar en los registros publicados?', 'opciones' => [
@@ -178,6 +176,37 @@ final class AsistentePortal
             : EnlaceSeleccionCatalogo::limpiar($seleccionPortal);
 
         return route('portal.catalogo', array_replace($parametros, ['vista' => $vista]));
+    }
+
+    private function ayudaPuntosMapa(array $contextoCatalogo, ?array $seleccionPortal): array
+    {
+        $entrada = $seleccionPortal ?? ($contextoCatalogo !== [] ? $this->consultaCatalogo->parametros($contextoCatalogo) : null);
+        $entidades = $seleccionPortal === null ? $contextoCatalogo : [];
+        $texto = 'El mapa solo representa registros con latitud y longitud públicas y válidas. ';
+        $datos = null;
+        if ($entrada === null) {
+            $texto .= 'No tengo una selección aplicada ni una consulta pública anterior. Abre el catálogo y comprueba los filtros y el número de registros con coordenadas. Si ese número es mayor que cero y siguen sin verse, comparte la URL y cualquier mensaje de error para revisar la carga del mapa.';
+        } else {
+            $datos = $this->consultaCatalogo->diagnosticoMapa($entrada);
+            if ($datos === null) {
+                return ['texto' => 'La selección recibida contiene criterios inválidos. Revisa los filtros del catálogo; no he calculado un diagnóstico parcial.',
+                    'fuente' => 'aclaracion', 'intent' => 'catalogo.aclaracion', 'entidades' => $entidades,
+                    'opciones' => [['label' => 'Abrir catálogo', 'url' => route('portal.catalogo')]]];
+            }
+            $poblacion = $seleccionPortal === null ? 'la consulta pública anterior' : 'la selección aplicada de la página';
+            if ($datos['total'] === 0) {
+                $texto .= 'No hay registros publicados en '.$poblacion.'. Por eso no hay puntos que mostrar; revisa los filtros, incluida la selección espacial si la aplicaste.';
+            } elseif ($datos['con_coordenadas'] === 0) {
+                $texto .= 'Hay '.$datos['total'].' '.($datos['total'] === 1 ? 'registro publicado' : 'registros publicados').' en '.$poblacion.', pero ninguno tiene ambas coordenadas públicas y válidas. Por eso no aparecen puntos. Puedes consultar los registros sin cambiar la selección.';
+            } else {
+                $texto .= 'Hay '.$datos['total'].' '.($datos['total'] === 1 ? 'registro publicado' : 'registros publicados').' en '.$poblacion.' y '.$datos['con_coordenadas'].' con coordenadas públicas y válidas. Si los puntos siguen sin verse, vuelve a abrir el mapa y comparte la URL y cualquier mensaje de error para revisar su carga.';
+            }
+            $texto .= ' La selección aplicada se conserva en el enlace al mapa.';
+        }
+
+        return ['texto' => $texto, 'fuente' => 'portal', 'intent' => 'portal.mapa_ayuda', 'entidades' => $entidades,
+            'datos' => $datos,
+            'opciones' => [['label' => 'Abrir mapa de la selección', 'url' => $this->enlaceSeleccion($contextoCatalogo, $seleccionPortal, 'mapa')]]];
     }
 
     private function ayudaFiltros(string $pregunta, array $contextoCatalogo, ?array $seleccionPortal): array

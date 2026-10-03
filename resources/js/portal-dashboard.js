@@ -236,7 +236,6 @@ const registrarDashboard = () => {
         observador: null,
         maximizado: false,
         enfocarTrasCambio: false,
-        filoActivo: '',
         zoomMapa: 0,
         colores: ['#17699b', '#d17d28', '#568c59', '#8c62a5', '#b94e6b', '#71828d', '#a18a29', '#3f8d90'],
 
@@ -289,7 +288,7 @@ const registrarDashboard = () => {
         actualizar(datos) {
             celdas = datos.celdas;
             filos = datos.filos;
-            agrupador = crearAgrupadorMapa(celdas, this.filoActivo);
+            agrupador = crearAgrupadorMapa(celdas);
             this.encuadrar();
             this.programarPintado();
             if (this.enfocarTrasCambio) this.$nextTick(() => {
@@ -301,7 +300,7 @@ const registrarDashboard = () => {
 
         recordarAccion(evento) {
             const boton = evento.target.closest('button[wire\\:click]');
-            if (boton && /^(seleccionar|filtrar|explorarEspecie)/.test(boton.getAttribute('wire:click'))) {
+            if (boton && /^(?:\$wire\.)?(seleccionar|filtrar|explorarEspecie)/.test(boton.getAttribute('wire:click'))) {
                 this.enfocarTrasCambio = true;
                 this.$refs.panelMapa.scrollIntoView({block: 'start', behavior: 'instant'});
                 this.$refs.mapa.focus({preventScroll: true});
@@ -324,12 +323,6 @@ const registrarDashboard = () => {
         color(filo, filos) {
             if (filo === 'Sin filo') return '#71828d';
             return this.colores[Math.max(0, Object.keys(filos).indexOf(filo)) % this.colores.length];
-        },
-
-        seleccionarFilo(filo) {
-            this.filoActivo = this.filoActivo === filo ? '' : filo;
-            agrupador = crearAgrupadorMapa(celdas, this.filoActivo);
-            this.programarPintado();
         },
 
         async abrirUbicacion(lat, lon, total, invocador) {

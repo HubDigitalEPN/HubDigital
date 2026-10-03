@@ -27,6 +27,8 @@ use Modules\CatalogoPublico\Application\UseCases\ExportarRegistrosEspecimenes\Ex
 use Modules\CatalogoPublico\Domain\Entities\EspecimenDivulgable;
 use Modules\CatalogoPublico\Domain\Repositories\EspecimenDivulgableRepositoryInterface;
 use Modules\CatalogoPublico\Domain\ValueObjects\FiltrosBusqueda;
+use Modules\CatalogoPublico\Domain\ValueObjects\LocalidadInecPublica;
+use Modules\CatalogoPublico\Domain\ValueObjects\NumeroExportacion;
 use Modules\CatalogoPublico\Infrastructure\Adapters\StorageImagenesAdapter;
 use Modules\CatalogoPublico\Infrastructure\Persistence\Eloquent\Repositories\EloquentProveedorEspecimenesParaArbol;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -687,7 +689,7 @@ final class PortalCatalogo extends Component
         return response()->streamDownload(static function () use ($repositorio, $filtros, $nivel, $taxon): void {
             $salida = fopen('php://output', 'wb');
             fwrite($salida, "\xEF\xBB\xBF");
-            fputcsv($salida, ['N.º catálogo', 'Taxón', 'Fecha', 'Localidad del Excel', 'Localidad INEC', 'Código INEC', 'Provincia', 'Latitud', 'Longitud', 'Precisión', 'Tipo'], ';', '"', '');
+            fputcsv($salida, ['N.º catálogo', 'Taxón', 'Fecha', 'Localidad del Excel', 'Localidad INEC', 'Código INEC', 'Provincia', 'Latitud', 'Longitud', 'Precisión', 'Tipo', 'Referencia INEC'], ';', '"', '');
             $celda = static function (mixed $valor): string {
                 $texto = (string) ($valor ?? '');
 
@@ -696,19 +698,29 @@ final class PortalCatalogo extends Component
             foreach ($repositorio->cursorParaCsv($filtros, $nivel, $taxon) as $fila) {
                 $localidad = (bool) $fila->locality_name_visible;
                 $coordenadas = (bool) $fila->decimal_latitude_visible && (bool) $fila->decimal_longitude_visible;
-                fputcsv($salida, array_map($celda, [
+                $localidadInec = LocalidadInecPublica::desde($fila->localidad_inec, $fila->referencia_inec);
+                $valores = array_map($celda, [
                     $fila->occurrence_id_visible ? ($fila->occurrence_id ?: $fila->codigo_catalogo) : null,
                     $fila->scientific_name_visible ? $fila->nombre_cientifico : null,
                     $fila->event_date_visible ? $fila->fecha_colecta : null,
                     $localidad ? $fila->localidad_verbatim : null,
-                    $localidad ? $fila->localidad_inec : null,
+                    $localidad ? $localidadInec->nombre : null,
                     $localidad ? $fila->codigo_inec : null,
                     $fila->state_province_visible ? $fila->state_province : null,
-                    $coordenadas ? $fila->decimal_latitude : null,
-                    $coordenadas ? $fila->decimal_longitude : null,
+                    null,
+                    null,
                     $coordenadas ? $fila->lat_lon_max_error : null,
                     $fila->type_status_visible ? $fila->type_status : null,
-                ]), ';', '"', '');
+                    $localidad ? $localidadInec->referencia : null,
+                ]);
+                $latitud = $coordenadas ? NumeroExportacion::decimal($fila->decimal_latitude, -90, 90) : null;
+                $longitud = $coordenadas ? NumeroExportacion::decimal($fila->decimal_longitude, -180, 180) : null;
+                // Un par incompleto o inválido no se presenta como coordenada pública.
+                if ($latitud !== null && $longitud !== null) {
+                    $valores[7] = $latitud;
+                    $valores[8] = $longitud;
+                }
+                fputcsv($salida, $valores, ';', '"', '');
             }
             fclose($salida);
         }, 'registros-catalogo.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);

@@ -637,8 +637,9 @@ test('QA4 exporta la selección completa desde la segunda página conservando Un
         ->and(array_column($datosCsv, 0))->toEqualCanonicalizing($codigosEsperados)
         ->and(array_unique(array_column($datosCsv, 3)))->toBe(['Río Ñambí; sector norte']);
     foreach ($datosCsv as $fila) {
-        expect((float) ltrim($fila[7], "'"))->toBe(-0.25)
-            ->and((float) ltrim($fila[8], "'"))->toBe(-78.5);
+        expect(is_numeric($fila[7]))->toBeTrue()->and(is_numeric($fila[8]))->toBeTrue()
+            ->and((float) $fila[7])->toBe(-0.25)
+            ->and((float) $fila[8])->toBe(-78.5);
     }
 
     ob_start();
@@ -656,10 +657,73 @@ test('QA4 exporta la selección completa desde la segunda página conservando Un
         foreach ($datosXlsx as $fila) {
             expect((float) $fila[7])->toBe(-0.25)->and((float) $fila[8])->toBe(-78.5);
         }
+        foreach (range(2, 15) as $fila) {
+            expect($libro->getActiveSheet()->getCell('H'.$fila)->getDataType())->toBe('n')
+                ->and($libro->getActiveSheet()->getCell('I'.$fila)->getDataType())->toBe('n');
+        }
         $libro->disconnectWorksheets();
     } finally {
         unlink($archivo);
     }
+});
+
+test('QA5 CSV comparte localidad INEC y estado con pantalla sin publicar datos reservados', function (): void {
+    $f = cartografiaRealFixture();
+    $codigoInec = '01'.random_int(1000000000, 9999999999);
+    $localidadConfirmada = (string) Str::uuid();
+    $localidadSinMatch = (string) Str::uuid();
+    DB::table('recepciones.localidades_ecuador_catalogo')->insert([
+        'codigo' => $codigoInec, 'provincia_codigo' => '01', 'nombre' => 'Referencia oficial '.$f['prefijo'],
+        'busqueda' => $f['prefijo'], 'fuente' => 'INEC QA5',
+    ]);
+    DB::table('taxonomia.localidades')->insert([
+        ['id' => $localidadConfirmada, 'nombre_canonico' => 'Texto de campo distinto', 'rango' => 'sitio',
+            'codigo_inec' => $codigoInec, 'referencia_inec' => 'Localidad cercana (aproximada)'],
+        ['id' => $localidadSinMatch, 'nombre_canonico' => 'Original sin homologación', 'rango' => 'sitio',
+            'codigo_inec' => null, 'referencia_inec' => null],
+    ]);
+    foreach ([0, 1, 2] as $i) DB::table('taxonomia.especimenes')->where('id', $f['ids'][$i])->update([
+        'localidad_id' => $i === 1 ? $localidadSinMatch : $localidadConfirmada,
+        'localidad_verbatim' => $i === 1 ? '=1+1' : 'Localidad original Ñambí',
+    ]);
+    DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $f['ids'][2])->update(['locality_name_visible' => false]);
+    $componente = Livewire::withQueryParams(['vista' => 'registros', 'fph' => $f['filo']])->test(PortalCatalogo::class);
+    $pantalla = collect($componente->viewData('registrosVista'))->keyBy('especimen_id');
+    ob_start();
+    $componente->instance()->descargarResultados(app(EloquentProveedorEspecimenesParaArbol::class))->sendContent();
+    $csv = ob_get_clean();
+    $filas = array_map(static fn (string $linea): array => str_getcsv($linea, ';', '"', ''),
+        explode("\n", rtrim(substr($csv, 3), "\r\n")));
+    $cabecera = array_shift($filas);
+    $datos = array_column($filas, null, 0);
+    expect($filas)->toHaveCount(3)->and($cabecera[11])->toBe('Referencia INEC')
+        ->and($datos[$f['codigos'][0]][3])->toBe('Localidad original Ñambí')
+        ->and($datos[$f['codigos'][0]][4])->toBe($pantalla[$f['ids'][0]]->locality_inec)
+        ->and($datos[$f['codigos'][0]][5])->toBe($codigoInec)
+        ->and($datos[$f['codigos'][0]][11])->toBe($pantalla[$f['ids'][0]]->locality_inec_reference)
+        ->and($datos[$f['codigos'][1]][3])->toBe("'=1+1")
+        ->and($datos[$f['codigos'][1]][4])->toBe('')->and($datos[$f['codigos'][1]][5])->toBe('')
+        ->and($datos[$f['codigos'][1]][11])->toBe('Sin correspondencia confirmada')
+        ->and($pantalla[$f['ids'][1]]->locality_inec)->toBeNull();
+    foreach ([3, 4, 5, 11] as $columna) expect($datos[$f['codigos'][2]][$columna])->toBe('');
+});
+
+test('QA5 CSV conserva ceros precisión y nulos sin neutralizar números válidos', function (): void {
+    $f = cartografiaRealFixture();
+    DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->update(['decimal_latitude' => 0, 'decimal_longitude' => -78.1234567]);
+    DB::table('taxonomia.especimenes')->where('id', $f['ids'][1])->update(['decimal_latitude' => null, 'decimal_longitude' => null]);
+    DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $f['ids'][2])->update(['decimal_latitude_visible' => false]);
+    $componente = Livewire::withQueryParams(['vista' => 'registros', 'fph' => $f['filo']])->test(PortalCatalogo::class);
+    ob_start();
+    $componente->instance()->descargarResultados(app(EloquentProveedorEspecimenesParaArbol::class))->sendContent();
+    $csv = ob_get_clean();
+    $filas = array_map(static fn (string $linea): array => str_getcsv($linea, ';', '"', ''),
+        explode("\n", rtrim(substr($csv, 3), "\r\n")));
+    $datos = array_column(array_slice($filas, 1), null, 0);
+    expect(is_numeric($datos[$f['codigos'][0]][7]))->toBeTrue()
+        ->and((float) $datos[$f['codigos'][0]][7])->toBe(0.0)
+        ->and((float) $datos[$f['codigos'][0]][8])->toBe(-78.1234567);
+    foreach ([1, 2] as $i) expect($datos[$f['codigos'][$i]][7])->toBe('')->and($datos[$f['codigos'][$i]][8])->toBe('');
 });
 
 test('QA3-002 las notas de reubicación se conservan sin contar como especie o provincia', function (): void {

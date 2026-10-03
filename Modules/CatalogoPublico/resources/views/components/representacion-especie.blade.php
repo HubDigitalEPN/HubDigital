@@ -1,20 +1,6 @@
 @props(['nombre', 'jerarquia' => [], 'ilustracion' => null, 'contexto' => 'ficha-especie'])
 @php
-    // Conservar toda la clasificación pública recibida, incluidos rangos intermedios.
-    $fuenteLinajeRepresentacion = is_array($jerarquia['ancestros'] ?? null) ? $jerarquia['ancestros'] : $jerarquia;
-    $linajeRepresentacion = [];
-    $incluyeEspecieRepresentacion = false;
-    foreach ($fuenteLinajeRepresentacion as $claveRepresentacion => $datoRepresentacion) {
-        $rangoRepresentacion = is_array($datoRepresentacion) ? ($datoRepresentacion['rango'] ?? $datoRepresentacion['nivel'] ?? null) : $claveRepresentacion;
-        $nombreRepresentacion = is_array($datoRepresentacion) ? ($datoRepresentacion['nombre'] ?? $datoRepresentacion['taxon'] ?? null) : $datoRepresentacion;
-        if (! is_string($rangoRepresentacion) || ! is_string($nombreRepresentacion) || trim($nombreRepresentacion) === '') continue;
-        $etiquetaRepresentacion = \Modules\CatalogoPublico\Application\Services\DendrogramaTaxonomico::etiquetaRango($rangoRepresentacion);
-        $linajeRepresentacion[] = ['rango' => $etiquetaRepresentacion, 'nombre' => $nombreRepresentacion];
-        $incluyeEspecieRepresentacion = $incluyeEspecieRepresentacion || ($etiquetaRepresentacion === 'Especie' && $nombreRepresentacion === $nombre);
-    }
-    if (! $incluyeEspecieRepresentacion) {
-        $linajeRepresentacion[] = ['rango' => 'Especie', 'nombre' => $nombre];
-    }
+    $linajeRepresentacion = \Modules\CatalogoPublico\Application\Services\DendrogramaTaxonomico::linajePublico($jerarquia, $nombre);
     $imagenRepresentacion = $ilustracion ?? \Modules\CatalogoPublico\Application\Services\IlustracionTaxonomica::paraTaxon(['species' => $nombre, 'ancestros' => $linajeRepresentacion]);
     $tieneMorfologiaRepresentacion = ($imagenRepresentacion['foto_real'] ?? false) && ($imagenRepresentacion['morfologia'] ?? false) && is_string($imagenRepresentacion['url'] ?? null) && $imagenRepresentacion['url'] !== '';
 @endphp

@@ -9,15 +9,19 @@ final class DendrogramaTaxonomico
         'kingdom' => 'Reino', 'reino' => 'Reino', 'subkingdom' => 'Subreino', 'subreino' => 'Subreino',
         'phylum' => 'Filo', 'filo' => 'Filo', 'subphylum' => 'Subfilo', 'subfilo' => 'Subfilo',
         'class' => 'Clase', 'clase' => 'Clase', 'subclass' => 'Subclase', 'subclase' => 'Subclase',
+        'superclass' => 'Superclase', 'superclase' => 'Superclase', 'infraclass' => 'Infraclase', 'infraclase' => 'Infraclase',
         'order' => 'Orden', 'orden' => 'Orden', 'suborder' => 'Suborden', 'suborden' => 'Suborden',
+        'superorder' => 'Superorden', 'superorden' => 'Superorden',
         'infraorder' => 'Infraorden', 'infraorden' => 'Infraorden',
         'superfamily' => 'Superfamilia', 'superfamilia' => 'Superfamilia',
         'family' => 'Familia', 'familia' => 'Familia', 'subfamily' => 'Subfamilia', 'subfamilia' => 'Subfamilia',
+        'epifamily' => 'Epifamilia', 'epifamilia' => 'Epifamilia', 'supertribe' => 'Supertribu', 'supertribu' => 'Supertribu',
         'tribe' => 'Tribu', 'tribu' => 'Tribu', 'subtribe' => 'Subtribu', 'subtribu' => 'Subtribu',
         'genus' => 'Género', 'genero' => 'Género', 'género' => 'Género',
         'subgenus' => 'Subgénero', 'subgenero' => 'Subgénero', 'subgénero' => 'Subgénero',
         'species' => 'Especie', 'especie' => 'Especie', 'subspecies' => 'Subespecie', 'subespecie' => 'Subespecie',
-        'variety' => 'Variedad', 'variedad' => 'Variedad',
+        'variety' => 'Variedad', 'variedad' => 'Variedad', 'form' => 'Forma', 'forma' => 'Forma',
+        'group' => 'Grupo', 'grupo' => 'Grupo',
     ];
 
     public static function etiquetaRango(string $rango): string
@@ -25,6 +29,30 @@ final class DendrogramaTaxonomico
         $clave = mb_strtolower(trim($rango));
 
         return self::RANGOS[$clave] ?? ($clave === '' ? 'Taxón' : mb_convert_case($rango, MB_CASE_TITLE));
+    }
+
+    /** Solo nombres de rangos públicos; los metadatos de un registro no forman parte del linaje. */
+    public static function linajePublico(array $jerarquia, string $especie): array
+    {
+        $fuente = is_array($jerarquia['ancestros'] ?? null) ? $jerarquia['ancestros'] : $jerarquia;
+        $linaje = $vistos = [];
+        $incluyeEspecie = false;
+        foreach ($fuente as $clave => $dato) {
+            $rango = is_array($dato) ? ($dato['rango'] ?? $dato['nivel'] ?? null) : $clave;
+            $nombre = is_array($dato) ? ($dato['nombre'] ?? $dato['taxon'] ?? null) : $dato;
+            if (! is_string($rango) || ! is_string($nombre) || trim($nombre) === '') continue;
+            $etiqueta = self::RANGOS[mb_strtolower(trim($rango))] ?? null;
+            if ($etiqueta === null || ($etiqueta === 'Especie' && trim($nombre) !== trim($especie))) continue;
+            $nombre = trim($nombre);
+            $identidad = $etiqueta."\0".$nombre;
+            if (isset($vistos[$identidad])) continue;
+            $vistos[$identidad] = true;
+            $linaje[] = ['rango' => $etiqueta, 'nombre' => $nombre];
+            $incluyeEspecie = $incluyeEspecie || $etiqueta === 'Especie';
+        }
+        if (! $incluyeEspecie) $linaje[] = ['rango' => 'Especie', 'nombre' => $especie];
+
+        return $linaje;
     }
 
     public static function calcular(array $arbol, ?string $seleccionado = null): array

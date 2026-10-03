@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Modules\CatalogoPublico\Application\Ports\DatosEspecimenProveedor;
 use Modules\CatalogoPublico\Application\Ports\FiltrosPendientes;
 use Modules\CatalogoPublico\Application\Ports\ProveedorEspecimenesPort;
+use Modules\CatalogoPublico\Domain\ValueObjects\LocalidadInecPublica;
 
 /**
  * ACL — Anti-Corruption Layer entre CatalogoPublico (Customer) e InventarioGestionColeccion (Supplier).
@@ -464,6 +465,8 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
 
     private function traducir(mixed $fila): DatosEspecimenProveedor
     {
+        $localidadInec = LocalidadInecPublica::desde($fila->localidad_inec ?? null, $fila->referencia_inec ?? null);
+
         return new DatosEspecimenProveedor(
             especimenId: $fila->id,
             occurrenceId: $fila->occurrence_id,
@@ -489,8 +492,8 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
             elevationMinM: $fila->elevation_min_m !== null ? (float) $fila->elevation_min_m : null,
             elevationMaxM: $fila->elevation_max_m !== null ? (float) $fila->elevation_max_m : null,
             localityExcel: $fila->localidad_verbatim ?? null,
-            localityInec: $fila->localidad_inec ?? null,
-            localityInecReference: $fila->referencia_inec ?? null,
+            localityInec: $localidadInec->nombre,
+            localityInecReference: $localidadInec->referencia,
             coordinateReference: $fila->lat_lon_max_error ?? null,
         );
     }
