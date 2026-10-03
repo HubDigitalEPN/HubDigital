@@ -87,6 +87,7 @@
         {{ $slot }}
     </main>
 
+    @unless(request()->routeIs('portal.catalogo', 'portal.estadisticas'))
     <footer class="border-t-4 border-bio-green bg-[#102B4E] text-white/75">
         @php($versionPortal = app(\App\Support\InformacionRelease::class)->obtener())
         <div class="portal-container mx-auto grid gap-10 py-12 lg:grid-cols-[1.15fr_0.7fr_0.9fr]">
@@ -129,6 +130,7 @@
             </div>
         </div>
     </footer>
+    @endunless
 
     @if(config('chatbot.enabled', true))
         @livewire(\Modules\CatalogoPublico\Presentation\Http\Controllers\ChatBotWidget::class)

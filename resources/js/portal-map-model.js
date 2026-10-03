@@ -21,6 +21,102 @@ export function prepararPuntosMapa(puntos, filoActivo = '') {
     });
 }
 
+export const ZOOM_UBICACIONES_ORIGINALES = 9;
+const RADIO_AGRUPACION_PIXELES = 44;
+
+/** Proyección visual EPSG:3857; nunca sustituye la coordenada fuente WGS84. */
+function proyectarMercator({lat, lon}) {
+    const latitudVisual = Math.max(-85.0511287798, Math.min(85.0511287798, lat));
+    const seno = Math.sin(latitudVisual * Math.PI / 180);
+    return {x: (lon + 180) / 360, y: .5 - Math.log((1 + seno) / (1 - seno)) / (4 * Math.PI)};
+}
+
+/** El índice de vecindad sirve para buscar cercanía; no dibuja ni redondea cuadrículas. */
+function subdividirPorCercania(miembros, zoom) {
+    const escala = 256 * 2 ** zoom;
+    const indice = new Map();
+    const grupos = [];
+    for (const punto of miembros) {
+        const x = punto.x * escala; const y = punto.y * escala;
+        const celdaX = Math.floor(x / RADIO_AGRUPACION_PIXELES);
+        const celdaY = Math.floor(y / RADIO_AGRUPACION_PIXELES);
+        let elegido = null; let distancia = RADIO_AGRUPACION_PIXELES ** 2;
+        for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+            for (const candidato of indice.get(`${celdaX + dx}:${celdaY + dy}`) ?? []) {
+                const grupo = grupos[candidato];
+                const d = (x - grupo.x) ** 2 + (y - grupo.y) ** 2;
+                if (d <= distancia && (elegido === null || d < distancia || candidato < elegido)) {
+                    elegido = candidato; distancia = d;
+                }
+            }
+        }
+        if (elegido === null) {
+            elegido = grupos.length;
+            grupos.push({x, y, miembros: []});
+            const clave = `${celdaX}:${celdaY}`;
+            if (!indice.has(clave)) indice.set(clave, []);
+            indice.get(clave).push(elegido);
+        }
+        grupos[elegido].miembros.push(punto);
+    }
+    return grupos.map(grupo => grupo.miembros);
+}
+
+function representarGrupo(miembros) {
+    const puntos = miembros.map(punto => punto.original);
+    if (puntos.length === 1) return {tipo: 'ubicacion', ...puntos[0], ubicaciones: 1, puntos};
+    let sur = Infinity; let oeste = Infinity; let norte = -Infinity; let este = -Infinity; let cantidad = 0;
+    for (const punto of puntos) {
+        sur = Math.min(sur, punto.lat); norte = Math.max(norte, punto.lat);
+        oeste = Math.min(oeste, punto.lon); este = Math.max(este, punto.lon);
+        cantidad += punto.cantidad;
+    }
+    // El símbolo del grupo se ancla a un miembro real y no anuncia una colecta
+    // en un centro calculado. Solo sus puntos originales pueden abrir detalles.
+    return {tipo: 'grupo', ancla: {lat: puntos[0].lat, lon: puntos[0].lon},
+        cantidad, ubicaciones: puntos.length, limites: [[sur, oeste], [norte, este]], puntos};
+}
+
+/**
+ * Jerarquía visual reutilizable: cada nivel subdivide el anterior, sin fusionar
+ * ubicaciones ya separadas. Se cachean como máximo nueve niveles del cliente.
+ */
+export function crearAgrupadorMapa(puntos, filoActivo = '') {
+    const porCoordenada = new Map();
+    for (const punto of prepararPuntosMapa(Array.isArray(puntos) ? puntos : [], filoActivo)) {
+        const clave = `${punto.lat}:${punto.lon}`;
+        const anterior = porCoordenada.get(clave);
+        if (anterior) {
+            anterior.cantidad += punto.cantidad;
+            anterior.radio = radioRegistros(anterior.cantidad);
+        } else porCoordenada.set(clave, {...punto});
+    }
+    const originales = [...porCoordenada.values()].sort((a, b) => a.lon - b.lon || a.lat - b.lat);
+    const proyectados = originales.map(original => ({original, ...proyectarMercator(original)}));
+    const particiones = [];
+    const niveles = new Map();
+    const detalle = originales.map(original => ({tipo: 'ubicacion', ...original, ubicaciones: 1, puntos: [original]}));
+    return {
+        originales,
+        paraZoom(zoom) {
+            const nivel = Number.isFinite(Number(zoom)) ? Math.max(0, Math.floor(Number(zoom))) : 0;
+            if (nivel >= ZOOM_UBICACIONES_ORIGINALES) return detalle;
+            if (niveles.has(nivel)) return niveles.get(nivel);
+            for (let actual = particiones.length; actual <= nivel; actual++) {
+                const anteriores = actual === 0 ? [proyectados] : particiones[actual - 1];
+                particiones[actual] = anteriores.flatMap(miembros => subdividirPorCercania(miembros, actual));
+            }
+            const resultado = particiones[nivel].map(representarGrupo);
+            niveles.set(nivel, resultado);
+            return resultado;
+        },
+    };
+}
+
+export function etiquetaAgrupacionMapa(grupo) {
+    return `Agrupación de ${grupo.ubicaciones.toLocaleString('es-EC')} ubicaciones originales · ${grupo.cantidad.toLocaleString('es-EC')} registros. Acercar para separarlas; el símbolo no representa una nueva coordenada de colecta.`;
+}
+
 export function crearGeojsonMapa(puntos, metadatos = {}) {
     return {
         ...metadatos,

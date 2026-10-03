@@ -50,16 +50,19 @@ test('QA4-005 el mosaico geográfico y el filo explícito usan los mismos ocho m
     expect((int) $implicita['resumen']['registros'])->toBe(8)->and($implicita['filos'])->toBe(['Mollusca' => 8])
         ->and($implicita['mosaico'])->toBe([])->and($implicita['ilustraciones_mosaico'])->toHaveCount(1)
         ->and($implicita['ilustraciones_mosaico'][0]['morfologia'])->toBeFalse()
-        ->and($implicita['ilustraciones_mosaico'][0]['url'])->toBe('/images/taxonomia/invertebrados.svg')
+        ->and($implicita['ilustraciones_mosaico'][0]['url'])->toBeNull()
         ->and(array_column($implicita['ilustraciones_mosaico'], 'grupo'))->not->toContain('Formicidae', 'Coleoptera', 'Lepidoptera', 'Araneae')
-        ->and($explicita['ilustraciones_mosaico'])->toBe($implicita['ilustraciones_mosaico'])
+        ->and($explicita['ilustraciones_mosaico'][0]['foto_real'])->toBeTrue()
+        ->and($explicita['ilustraciones_mosaico'][0]['phylum'])->toBe('Mollusca')
+        ->and(array_column($explicita['ilustraciones_mosaico'], 'grupo'))->not->toContain('Formicidae', 'Coleoptera', 'Lepidoptera', 'Araneae')
         ->and((int) $explicita['resumen']['registros'])->toBe(8);
     $repo = app(EloquentProveedorEspecimenesParaArbol::class);
     expect($repo->paginaPublica(FiltrosBusqueda::desde(['filtroProvincia' => 'Galápagos', 'filtroColector' => $seleccion]), 1)['ids'])
         ->toEqualCanonicalizing($ids);
     $vacia = $estadisticas->datosParaVista(['provincia' => 'Provincia inexistente '.$seleccion, 'colector' => $seleccion]);
     expect((int) $vacia['resumen']['registros'])->toBe(0)
-        ->and($vacia['ilustraciones_mosaico'][0]['morfologia'])->toBeFalse();
+        ->and($vacia['ilustraciones_mosaico'][0]['morfologia'])->toBeFalse()
+        ->and($vacia['ilustraciones_mosaico'][0]['url'])->toBeNull();
     foreach ([$ids[0], $fuera] as $i => $id) {
         DB::table('divulgacion.imagenes_taxonomicas')->insert([
             'id' => (string) Str::uuid(), 'occurrence_id' => DB::table('taxonomia.especimenes')->where('id', $id)->value('occurrence_id'),
@@ -98,6 +101,103 @@ test('QA4-005 cuatro hormigas requieren un linaje Formicidae público de la sele
     expect(DB::table('divulgacion.especimenes_divulgables')->whereIn('especimen_id', $ids)->where('publicado', true)->count())->toBe(0)
         ->and(DB::table('divulgacion.especimenes_divulgables')->whereIn('especimen_id', $ids)->where('publicado', false)->count())->toBe(4);
     expect((int) $estadisticas->datosParaVista(['colector' => $seleccion])['resumen']['registros'])->toBe(0);
+});
+
+test('la navegación de especie conserva sus registros y solo admite fotografías identificadas de esa misma especie', function (): void {
+    $colector = 'QaFotografias'.Str::lower(Str::random(20));
+    $reino = qa4TaxonPublico('Animalia', 'reino');
+    $filo = qa4TaxonPublico('Arthropoda', 'phylum');
+    $clase = qa4TaxonPublico('Insecta', 'clase', $filo);
+    $orden = qa4TaxonPublico('Hymenoptera', 'orden', $clase);
+    $familia = qa4TaxonPublico('Formicidae', 'familia', $orden);
+    $generoConFoto = qa4TaxonPublico('Atta', 'genero', $familia);
+    $generoSinFoto = qa4TaxonPublico('Camponotus', 'genero', $familia);
+    $conFoto = qa4TaxonPublico('Atta cephalotes', 'especie', $generoConFoto);
+    $sinFoto = qa4TaxonPublico('Camponotus femoratus', 'especie', $generoSinFoto);
+    // El helper puede reutilizar taxones del inventario local. Este positivo
+    // controla el linaje científico completo, incluida la raíz, dentro de la
+    // transacción que revierte el caso; no modifica el inventario desplegado.
+    foreach ([$reino => null, $filo => $reino, $clase => $filo, $orden => $clase,
+        $familia => $orden, $generoConFoto => $familia, $generoSinFoto => $familia,
+        $conFoto => $generoConFoto, $sinFoto => $generoSinFoto] as $id => $padre) {
+        DB::table('taxonomia.taxones')->where('id', $id)->update(['padre_id' => $padre]);
+    }
+    $idConFoto = qa4RegistroPublico($conFoto, $colector, 'Pichincha');
+    $idSinFoto = qa4RegistroPublico($sinFoto, $colector, 'Pichincha');
+    $directa = app(PortalEstadisticas::class)->datosParaVista([
+        'nivel' => 'species', 'taxon_navegado' => 'Atta cephalotes', 'colector' => $colector,
+    ]);
+    expect((int) $directa['resumen']['registros'])->toBe(1)
+        ->and($directa['taxon_mosaico'])->toMatchArray([
+            'kingdom' => 'Animalia', 'phylum' => 'Arthropoda', 'class' => 'Insecta',
+            'order' => 'Hymenoptera', 'family' => 'Formicidae', 'genus' => 'Atta', 'species' => 'Atta cephalotes',
+        ])
+        ->and($directa['ilustraciones_mosaico'][0]['foto_real'])->toBeTrue();
+    $componente = Livewire::withQueryParams(['vista' => 'mapa', 'fco' => $colector])->test(PortalCatalogo::class)
+        ->call('navegar', 'species', 'Atta cephalotes')
+        ->assertSet('nivel', 'species')->assertSet('taxon', 'Atta cephalotes')
+        ->assertViewHas('datosMapa', fn (array $datos): bool => (int) $datos['resumen']['registros'] === 1
+            && $datos['taxon_mosaico']['species'] === 'Atta cephalotes'
+            && array_unique(array_column($datos['ilustraciones_mosaico'], 'species')) === ['Atta cephalotes']
+            && $datos['ilustraciones_mosaico'][0]['foto_real'] === true);
+    $componente->call('abrirCelda', -0.4, -90.3)->call('cambiarVistaCelda', 'registros');
+    expect(array_column($componente->instance()->detalleCelda['registros'], 'especimen_id'))->toBe([$idConFoto]);
+    $componente->call('navegar', 'species', 'Camponotus femoratus')
+        ->assertViewHas('datosMapa', fn (array $datos): bool => (int) $datos['resumen']['registros'] === 1
+            && $datos['taxon_mosaico']['species'] === 'Camponotus femoratus'
+            && $datos['ilustraciones_mosaico'][0]['url'] === null
+            && $datos['ilustraciones_mosaico'][0]['foto_real'] === false);
+    $componente->call('abrirCelda', -0.4, -90.3)->call('cambiarVistaCelda', 'registros');
+    expect(array_column($componente->instance()->detalleCelda['registros'], 'especimen_id'))->toBe([$idSinFoto]);
+});
+
+test('el mosaico resuelve el rango y UUID de la selección sin usar homónimos ajenos ni ampliar permisos', function (): void {
+    $seleccion = 'QaIdentidadFoto'.Str::lower(Str::random(20));
+    $nombre = $seleccion.' alpha';
+    $filo = qa4TaxonPublico($seleccion, 'phylum');
+    $familia = qa4TaxonPublico($seleccion.' Familia uno', 'familia', $filo);
+    $familiaAjena = qa4TaxonPublico($seleccion.' Familia dos', 'familia', $filo);
+    // Mismo nombre en otro rango: la navegación científica sí conoce el rango especie.
+    $genero = qa4TaxonPublico($nombre, 'genero', $familia);
+    $generoAjeno = qa4TaxonPublico($seleccion.' Genero dos', 'genero', $familiaAjena);
+    $especie = qa4TaxonPublico($nombre, 'especie', $genero);
+    // La restricción fuente es nombre+rango. La variante de caja conserva otro UUID
+    // permitido por ella, pero es un homónimo para la comparación exacta sin distinguir caja.
+    $homonima = qa4TaxonPublico(mb_strtoupper($nombre), 'especie', $generoAjeno);
+    $id = qa4RegistroPublico($especie, $seleccion, 'Provincia '.$seleccion);
+    $idAjeno = qa4RegistroPublico($homonima, 'Fuera'.Str::lower(Str::random(20)), 'Provincia '.$seleccion);
+    $estadisticas = app(PortalEstadisticas::class);
+    $filtros = ['colector' => $seleccion, 'nivel' => 'species', 'taxon_navegado' => $nombre];
+    $datos = $estadisticas->datosParaVista($filtros);
+    expect((int) $datos['resumen']['registros'])->toBe(1)
+        ->and($datos['taxon_mosaico']['species'])->toBe($nombre)
+        ->and($datos['taxon_mosaico']['genus'])->toBe($nombre)
+        ->and($datos['taxon_mosaico']['family'])->toBe($seleccion.' Familia uno')
+        ->and(array_column($datos['taxon_mosaico']['ancestros'], 'nombre'))->not->toContain($seleccion.' Familia dos', $seleccion.' Genero dos');
+    expect(app(EloquentProveedorEspecimenesParaArbol::class)
+        ->paginaPublica(FiltrosBusqueda::desde(['filtroColector' => $seleccion]), 1, 'species', $nombre)['ids'])->toBe([$id]);
+
+    DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $id)->update(['family_visible' => false, 'genus_visible' => false]);
+    $reservada = $estadisticas->datosParaVista($filtros);
+    expect($reservada['taxon_mosaico']['species'])->toBe($nombre)
+        ->and($reservada['taxon_mosaico'])->not->toHaveKey('family')->not->toHaveKey('genus')
+        ->and(array_column($reservada['taxon_mosaico']['ancestros'], 'nombre'))->not->toContain($seleccion.' Familia uno');
+
+    // Ahora solo las dos hojas homónimas comparten el nombre buscado, con material
+    // público en la misma selección. No se elige arbitrariamente uno de sus UUID.
+    DB::table('taxonomia.taxones')->where('id', $genero)->update(['nombre_cientifico' => $seleccion.' Genero uno']);
+    DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $id)->update(['family_visible' => true, 'genus_visible' => true]);
+    $aislada = $estadisticas->datosParaVista(['colector' => $seleccion, 'taxon' => $nombre]);
+    expect((int) $aislada['resumen']['registros'])->toBe(1)
+        ->and($aislada['taxon_mosaico']['species'])->toBe($nombre)
+        ->and($aislada['taxon_mosaico']['family'])->toBe($seleccion.' Familia uno');
+    DB::table('taxonomia.especimenes')->where('id', $idAjeno)->update(['colector' => $seleccion]);
+    $ambigua = $estadisticas->datosParaVista(['colector' => $seleccion, 'taxon' => $nombre]);
+    expect((int) $ambigua['resumen']['registros'])->toBe(2)
+        ->and($ambigua['taxon_mosaico'])->toBe([])
+        ->and($ambigua['ilustraciones_mosaico'])->toHaveCount(1)
+        ->and($ambigua['ilustraciones_mosaico'][0]['foto_real'])->toBeFalse()
+        ->and($ambigua['ilustraciones_mosaico'][0]['url'])->toBeNull();
 });
 
 test('QA4-007 la nota fuente conserva su material sin convertirse en rango, especie, hermano ni ayuda científica', function (): void {

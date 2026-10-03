@@ -1,10 +1,39 @@
 import L from 'leaflet';
-import {crearGeojsonMapa, prepararPuntosMapa} from './portal-map-model';
+import {crearGeojsonMapa, prepararPuntosMapa, crearAgrupadorMapa, etiquetaAgrupacionMapa, ZOOM_UBICACIONES_ORIGINALES} from './portal-map-model';
 import {nombreDescargaImagen} from './portal-image-model';
 import {crearHistorialCatalogo} from './portal-history-model';
 
 // El mapa del panel y los mapas de especie usan la misma copia local de Leaflet.
 window.L = L;
+
+/** Un grupo solo acerca el mapa a sus miembros; nunca abre una coordenada inventada. */
+function agregarAgrupacionMapa(capa, mapa, grupo) {
+    const boton = L.DomUtil.create('button', 'atlas-map-cluster-button');
+    boton.type = 'button';
+    const etiqueta = etiquetaAgrupacionMapa(grupo);
+    boton.setAttribute('aria-label', etiqueta);
+    boton.title = etiqueta;
+    const numero = L.DomUtil.create('span', 'atlas-map-cluster-number', boton);
+    numero.textContent = grupo.ubicaciones.toLocaleString('es-EC');
+    numero.setAttribute('aria-hidden', 'true');
+    const unidad = L.DomUtil.create('span', 'atlas-map-cluster-unit', boton);
+    unidad.textContent = 'ubic.';
+    unidad.setAttribute('aria-hidden', 'true');
+    L.DomEvent.disableClickPropagation(boton);
+    boton.addEventListener('click', evento => {
+        evento.preventDefault();
+        const zoomAnterior = mapa.getZoom();
+        mapa.fitBounds(grupo.limites, {padding: [16, 16], maxZoom: Math.min(ZOOM_UBICACIONES_ORIGINALES, zoomAnterior + 2), animate: false});
+        // En un contenedor muy estrecho fitBounds puede conservar el zoom.
+        if (mapa.getZoom() <= zoomAnterior) mapa.setZoom(Math.min(ZOOM_UBICACIONES_ORIGINALES, zoomAnterior + 1), {animate: false});
+        // El botón se reemplaza al subdividir: el foco no queda en un nodo eliminado.
+        mapa.getContainer().focus({preventScroll: true});
+    });
+    return L.marker([grupo.ancla.lat, grupo.ancla.lon], {
+        pane: 'registros', interactive: false, keyboard: false,
+        icon: L.divIcon({html: boton, className: 'atlas-map-cluster', iconSize: [48, 48], iconAnchor: [24, 24]}),
+    }).addTo(capa);
+}
 
 // Una entrada del catálogo sin snapshot puede visitarse desde otra página.
 // En ese caso no existe un componente que restaurar: abrir el enlace completo.
@@ -201,11 +230,14 @@ const registrarDashboard = () => {
         // Leaflet administra objetos mutables propios; no deben convertirse en proxies Alpine.
         let mapa = null;
         let capa = null;
+        let agrupador = crearAgrupadorMapa(celdas);
+        let pintadoPendiente = null;
         return {
         observador: null,
         maximizado: false,
         enfocarTrasCambio: false,
         filoActivo: '',
+        zoomMapa: 0,
         colores: ['#17699b', '#d17d28', '#568c59', '#8c62a5', '#b94e6b', '#71828d', '#a18a29', '#3f8d90'],
 
         init() {
@@ -221,7 +253,9 @@ const registrarDashboard = () => {
                 mapa.createPane('registros').style.zIndex = '450';
                 capa = L.featureGroup().addTo(mapa);
                 this.encuadrar();
-                this.pintar(celdas, filos);
+                this.pintar();
+                // El zoom solo utiliza el índice cliente; no solicita datos a Livewire.
+                mapa.on('zoomend', () => this.programarPintado());
                 mapa.on('boxzoomend', ({boxZoomBounds: limites}) => {
                     if (!limites) return;
                     this.$wire.seleccionarArea(
@@ -238,22 +272,26 @@ const registrarDashboard = () => {
 
         destroy() {
             this.observador?.disconnect();
+            if (pintadoPendiente !== null) cancelAnimationFrame(pintadoPendiente);
+            pintadoPendiente = null;
             document.documentElement.classList.remove('atlas-map-expanded');
             mapa?.remove();
             mapa = null;
             capa = null;
+            agrupador = null;
         },
 
         encuadrar() {
-            const limites = L.latLngBounds(prepararPuntosMapa(celdas, this.filoActivo).map(({lat, lon}) => [lat, lon]));
+            const limites = L.latLngBounds((agrupador?.originales ?? []).map(({lat, lon}) => [lat, lon]));
             mapa?.fitBounds(limites?.isValid() ? limites : [[-5.1, -92.1], [1.9, -75]], {padding: [24, 24], maxZoom: 10});
         },
 
         actualizar(datos) {
             celdas = datos.celdas;
             filos = datos.filos;
-            this.pintar(celdas, filos);
+            agrupador = crearAgrupadorMapa(celdas, this.filoActivo);
             this.encuadrar();
+            this.programarPintado();
             if (this.enfocarTrasCambio) this.$nextTick(() => {
                 this.$refs.panelMapa.scrollIntoView({block: 'start', behavior: 'instant'});
                 this.$refs.mapa.focus({preventScroll: true});
@@ -290,7 +328,8 @@ const registrarDashboard = () => {
 
         seleccionarFilo(filo) {
             this.filoActivo = this.filoActivo === filo ? '' : filo;
-            this.pintar(celdas, filos);
+            agrupador = crearAgrupadorMapa(celdas, this.filoActivo);
+            this.programarPintado();
         },
 
         async abrirUbicacion(lat, lon, total, invocador) {
@@ -303,10 +342,24 @@ const registrarDashboard = () => {
             }
         },
 
-        pintar(celdas, filos) {
-            if (!capa) return;
+        programarPintado() {
+            if (pintadoPendiente !== null || !mapa) return;
+            pintadoPendiente = requestAnimationFrame(() => {
+                pintadoPendiente = null;
+                this.pintar();
+            });
+        },
+
+        pintar() {
+            if (!capa || !mapa || !agrupador) return;
+            this.zoomMapa = mapa.getZoom();
             capa.clearLayers();
-            for (const {lat, lon, cantidad, radio} of prepararPuntosMapa(celdas, this.filoActivo)) {
+            for (const nodo of agrupador.paraZoom(this.zoomMapa)) {
+                if (nodo.tipo === 'grupo') {
+                    agregarAgrupacionMapa(capa, mapa, nodo);
+                    continue;
+                }
+                const {lat, lon, cantidad, radio} = nodo;
                 const marcador = L.circleMarker([lat, lon], {
                     pane: 'registros',
                     radius: radio,
@@ -314,11 +367,15 @@ const registrarDashboard = () => {
                 }).addTo(capa);
                 const elemento = marcador.getElement();
                 const abrir = () => this.abrirUbicacion(lat, lon, cantidad, elemento);
+                const descripcion = `Ubicación original: ${cantidad.toLocaleString('es-EC')} registros con coordenadas ${lat}, ${lon}. Abrir detalle.`;
+                const tooltip = L.DomUtil.create('span');
+                tooltip.textContent = descripcion;
+                marcador.bindTooltip(tooltip);
                 marcador.on('click', abrir);
                 if (elemento) {
                     elemento.setAttribute('tabindex', '0');
                     elemento.setAttribute('role', 'button');
-                    elemento.setAttribute('aria-label', `Ver ${cantidad.toLocaleString('es-EC')} registros con coordenadas ${lat}, ${lon}`);
+                    elemento.setAttribute('aria-label', descripcion);
                     elemento.addEventListener('keydown', evento => {
                         if (evento.key === 'Enter' || evento.key === ' ') { evento.preventDefault(); abrir(); }
                     });

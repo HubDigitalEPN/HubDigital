@@ -14,14 +14,15 @@
 
     <div class="atlas-stage">
         <section x-ref="panelMapa" class="atlas-panel atlas-map-panel" :class="{'atlas-map-maximized': maximizado}" x-on:keydown.escape.window="if (maximizado && !$event.defaultPrevented && !document.querySelector('dialog[open]') && document.querySelector('#chat-bot-trigger')?.getAttribute('aria-expanded') !== 'true' && !$event.target.closest('#chat-bot-panel')) minimizar()" aria-labelledby="titulo-mapa">
-            <div class="atlas-panel-header"><div><h2 id="titulo-mapa">Distribución de los registros</h2><p class="atlas-panel-subtitle">Coordenadas públicas WGS84 · Tamaño según número de registros · Mayús + arrastrar para seleccionar un área</p></div><button type="button" class="atlas-icon-button" x-ref="maximizar" x-on:click="alternarTamano()" :aria-label="maximizado ? 'Minimizar mapa' : 'Maximizar mapa'" :title="maximizado ? 'Minimizar mapa' : 'Maximizar mapa'" :aria-pressed="maximizado.toString()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path x-show="!maximizado" d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/><path x-show="maximizado" d="M3 8h5V3m8 0v5h5M8 21v-5H3m18 0h-5v5"/></svg></button><x-catalogopublico::menu-analisis tipo="mapa" :datos="$datosMapa['mapa']" /></div>
+            <div class="atlas-panel-header"><div><h2 id="titulo-mapa">Distribución de los registros</h2><p class="atlas-panel-subtitle">Agrupaciones azules al alejar · Ubicaciones originales al acercar · Mayús + arrastrar para seleccionar un área</p></div><button type="button" class="atlas-icon-button" x-ref="maximizar" x-on:click="alternarTamano()" :aria-label="maximizado ? 'Minimizar mapa' : 'Maximizar mapa'" :title="maximizado ? 'Minimizar mapa' : 'Maximizar mapa'" :aria-pressed="maximizado.toString()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path x-show="!maximizado" d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/><path x-show="maximizado" d="M3 8h5V3m8 0v5h5M8 21v-5H3m18 0h-5v5"/></svg></button><x-catalogopublico::menu-analisis tipo="mapa" :datos="$datosMapa['mapa']" /></div>
             <div class="atlas-map-shell">
-                <div class="atlas-map" x-ref="mapa" tabindex="-1" wire:ignore role="region" aria-label="Mapa cartográfico de registros publicados en sus coordenadas"></div>
+                <div class="atlas-map" x-ref="mapa" tabindex="-1" wire:ignore role="region" aria-label="Mapa cartográfico de registros públicos: las agrupaciones se separan al acercar hasta mostrar las coordenadas originales"></div>
                 @if($datosMapa['mapa'] === [])<p class="atlas-map-message">Esta selección no tiene coordenadas públicas. Ajusta los filtros o explora los registros.</p>@endif
             </div>
             <div class="atlas-map-legend" aria-label="Leyenda del mapa">
-                <span><i class="atlas-legend-dot" style="background:#17699b"></i>Registros en la misma latitud y longitud</span>
-                <small>El radio crece con la cantidad de registros hasta un máximo de 17 px; no representa abundancia natural ni esfuerzo de muestreo. La posición conserva la coordenada publicada. Su precisión y origen constan en el detalle del ejemplar; una referencia aproximada no indica una colecta exacta.</small>
+                <span><i class="atlas-legend-cluster" aria-hidden="true">n</i>Agrupación de ubicaciones cercanas; el número indica ubicaciones originales, y su ayuda muestra los registros. Pulsa o presiona Enter para acercar.</span>
+                <span><i class="atlas-legend-dot" style="background:#17699b"></i>Ubicación original WGS84: registros en la misma latitud y longitud. Pulsa para consultar sus datos.</span>
+                <small>Al acercar se separan los grupos; su símbolo no es una nueva coordenada de colecta. Los círculos de ubicaciones originales crecen con los registros hasta 17 px; no representan abundancia natural ni esfuerzo de muestreo. Las descargas conservan todas las coordenadas originales. La precisión y el origen constan en cada ejemplar; una referencia aproximada no indica una colecta exacta.</small>
             </div>
         </section>
 
@@ -42,23 +43,14 @@
             @if(($datosMapa['mosaico'] ?? []) !== [])
                 <div class="atlas-taxon-mosaic" aria-label="Fotografías públicas de la selección">
                     @foreach(array_slice($datosMapa['mosaico'], 0, 4) as $foto)
-                        <figure><a href="{{ $foto['url'] }}" target="_blank" rel="noopener noreferrer" aria-label="Ampliar fotografía de {{ $foto['taxon'] ?? $foto['nombre'] }}"><img src="{{ $foto['url'] }}" alt="{{ $foto['taxon'] ?? $foto['nombre'] }} — fotografía pública de la colección" width="240" height="180" loading="lazy" decoding="async"></a><figcaption>{{ $foto['taxon'] ?? $foto['nombre'] }}</figcaption></figure>
+                        <figure><a href="{{ $foto['url'] }}" target="_blank" rel="noopener noreferrer" aria-label="Ampliar fotografía de {{ $foto['taxon'] ?? $foto['nombre'] }}"><img src="{{ $foto['url'] }}" alt="{{ $foto['taxon'] ?? $foto['nombre'] }} — fotografía pública de la colección" width="240" height="180" loading="lazy" decoding="async"></a><figcaption>@if(($foto['family'] ?? '') !== ''){{ $foto['family'] }} — @endif @if(($foto['genus'] ?? '') !== '')<em>{{ $foto['genus'] }}</em> — @endif <em>{{ $foto['species'] ?? $foto['taxon'] ?? $foto['nombre'] }}</em>@if(($foto['credito_ecuador'] ?? false) && ($foto['autor'] ?? '') !== '')<details class="collection-representation-lineage"><summary>Autoría de la fotografía</summary><p>{{ $foto['autor'] }}</p></details>@endif</figcaption></figure>
                     @endforeach
                 </div>
             @else
-                @php $ilustracionesMosaico = array_slice($datosMapa['ilustraciones_mosaico'] ?? [], 0, 4); @endphp
-                <div class="atlas-taxon-mosaic" aria-label="Representaciones generadas de los grupos de la selección">
-                    @foreach($ilustracionesMosaico as $ilustracionMosaico)
-                        <figure><img src="{{ $ilustracionMosaico['url'] }}" alt="{{ $ilustracionMosaico['alt'] }}" width="320" height="320" loading="lazy" decoding="async"><figcaption>{{ $ilustracionMosaico['grupo'] }} · {{ ($ilustracionMosaico['morfologia'] ?? false) ? 'representación generada' : 'diagrama taxonómico' }}</figcaption></figure>
-                    @endforeach
-                </div>
-                @if($ilustracionesMosaico !== [])
-                    <p class="atlas-mosaic-note">Representaciones fotorrealistas generadas de grupos presentes en la selección mientras no hay fotografías públicas; no identifican especies ni reproducen ejemplares. Para grupos sin morfología disponible se muestra un diagrama.</p>
-                @else
-                    <p class="atlas-mosaic-note">No hay representaciones disponibles para los grupos publicados en esta selección.</p>
-                @endif
+                @php $ilustracionesMosaico = array_values(array_filter(array_slice($datosMapa['ilustraciones_mosaico'] ?? [], 0, 4), static fn (array $imagen): bool => ($imagen['foto_real'] ?? false) && ($imagen['morfologia'] ?? false) && is_string($imagen['url'] ?? null) && $imagen['url'] !== '')); @endphp
+                <x-catalogopublico::fotografia-mosaico :taxon="$datosMapa['taxon_mosaico'] ?? []" :fotos="$ilustracionesMosaico" :descripcion-inicial="$datosMapa['descripcion_mosaico'] ?? ''" contexto="composicion" />
             @endif
-            <p class="atlas-taxa-note">La proporción usa todos los registros seleccionados; algunos aún no tienen filo confirmado.</p>
+            @if(($datosMapa['mosaico'] ?? []) !== [] && ($datosMapa['descripcion_mosaico'] ?? '') !== '')<p class="atlas-taxa-note">{{ $datosMapa['descripcion_mosaico'] }}</p>@endif
         </section>
     </div>
 

@@ -161,6 +161,136 @@ test('el mapa conserva coordenadas exactas y un punto vecino no entra en el moda
         ->and(array_column($componente->instance()->detalleCelda['registros'], 'especimen_id'))->toBe([$f['ids'][0]]);
 });
 
+test('el icono registros del modal muestra una tabla completa de doce filas con la misma selección y permisos', function (): void {
+    $f = cartografiaRealFixture();
+    $latitud = -0.2561234; $longitud = -78.5134567;
+    DB::table('taxonomia.especimenes')->whereIn('id', [$f['ids'][0], $f['ids'][1]])->update([
+        'decimal_latitude' => $latitud, 'decimal_longitude' => $longitud,
+    ]);
+    $original = (array) DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->first();
+    unset($original['coordenadas_otras_regiones'], $original['busqueda_global']);
+    $idsEsperados = [$f['ids'][0], $f['ids'][1]];
+    $insertar = static function (array $cambios, bool $publicado = true) use ($original): string {
+        $id = (string) Str::uuid(); $codigo = 'QA-TABLA-MODAL-'.Str::uuid();
+        DB::table('taxonomia.especimenes')->insert(array_replace($original, [
+            'id' => $id, 'codigo_catalogo' => $codigo, 'occurrence_id' => $codigo,
+        ], $cambios));
+        DB::table('divulgacion.especimenes_divulgables')->insert([
+            'id' => (string) Str::uuid(), 'especimen_id' => $id, 'publicado' => $publicado,
+        ]);
+        return $id;
+    };
+    for ($i = 0; $i < 11; $i++) $idsEsperados[] = $insertar(['fila_origen_excel' => $i + 3]);
+    // Otro taxón, otra provincia, un punto vecino y material no publicado no pertenecen a esta tabla.
+    DB::table('taxonomia.especimenes')->where('id', $f['ids'][2])->update([
+        'decimal_latitude' => $latitud, 'decimal_longitude' => $longitud, 'state_province' => 'Pichincha',
+    ]);
+    $taxonSinFilo = (string) Str::uuid();
+    DB::table('taxonomia.taxones')->insert([
+        'id' => $taxonSinFilo, 'nombre_cientifico' => $f['prefijo'].' sin publicación', 'rango' => 'especie',
+    ]);
+    // La publicación se deriva por trigger de un filo confirmado, no del valor insertado.
+    $noPublicado = $insertar(['taxon_id' => $taxonSinFilo], false);
+    expect((bool) DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $noPublicado)->value('publicado'))->toBeFalse();
+    $excluidos = [$f['ids'][2], $insertar(['state_province' => 'Napo']),
+        $insertar(['decimal_latitude' => $latitud + 0.0001]), $noPublicado];
+    DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->update([
+        'fila_origen_excel' => 1, 'colector' => 'COLECTOR-PRIVADO-TABLA', 'specimen_notes' => 'NOTA-PRIVADA-TABLA',
+        'locality_name' => 'LOCALIDAD-PRIVADA-TABLA', 'localidad_verbatim' => 'ORIGINAL-PRIVADO-TABLA',
+        'elevation_min_m' => 9123, 'elevation_max_m' => 9234,
+    ]);
+    DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $f['ids'][0])->update([
+        'recorded_by_visible' => false, 'specimen_notes_visible' => false,
+        'locality_name_visible' => false, 'elevation_visible' => false, 'occurrence_id_visible' => false,
+    ]);
+    $notaPublica = '<script>alert("nota pública")</script>'."\n".'Río Ñambí';
+    DB::table('taxonomia.especimenes')->where('id', $f['ids'][1])->update([
+        'fila_origen_excel' => 2, 'country' => 'Ecuador', 'locality_name' => 'Localidad registrada Ñambí',
+        'localidad_verbatim' => 'Localidad original Ñambí', 'lat_lon_max_error' => 'Referencia GPS original',
+        'elevation_min_m' => 0, 'elevation_max_m' => 120, 'individual_count' => 0,
+        'disposition' => 'paratype', 'specimen_notes' => $notaPublica, 'occurrence_status' => 'present',
+        'caste' => 'obrera', 'life_stage' => 'adult',
+    ]);
+    foreach ([0, 1] as $i) DB::table('divulgacion.imagenes_taxonomicas')->insert([
+        'id' => (string) Str::uuid(), 'occurrence_id' => $f['codigos'][$i],
+        'ruta' => 'divulgacion/imagenes/tabla-modal-'.Str::uuid().'.jpg', 'disco' => 'r2',
+        'nombre_original' => $i === 0 ? 'foto-codigo-reservado.jpg' : 'foto-publica-tabla.jpg',
+        'autor_nombre' => 'QA', 'autor_apellido' => 'Portal', 'autor_nombre_completo' => 'QA Portal',
+    ]);
+
+    $leerDom = static function (string $html): DOMXPath {
+        $anterior = libxml_use_internal_errors(true);
+        try {
+            $documento = new DOMDocument;
+            $documento->loadHTML('<?xml encoding="UTF-8">'.$html);
+            return new DOMXPath($documento);
+        } finally {
+            libxml_clear_errors();
+            libxml_use_internal_errors($anterior);
+        }
+    };
+    $celdasFila = static function (DOMXPath $dom, string $id): array {
+        $titulos = array_map(fn (DOMNode $n): string => trim($n->textContent), iterator_to_array($dom->query('//table[@class="atlas-record-table"]/thead/tr/th')));
+        $celdas = $dom->query('//table[@class="atlas-record-table"]/tbody/tr[@*[name()="wire:key"]="registro-tabla-mapa-'.$id.'"]/*');
+        return array_combine($titulos, array_map(fn (DOMNode $n): string => trim($n->textContent), iterator_to_array($celdas)));
+    };
+    $componente = Livewire::withQueryParams(['vista' => 'mapa', 'fph' => $f['filo'], 'fprov' => 'Pichincha'])
+        ->test(PortalCatalogo::class)->call('abrirCelda', $latitud, $longitud)
+        ->call('navegarCelda', $f['taxones'][0])->call('cambiarVistaCelda', 'registros')
+        ->assertSet('filtroFiloId', $f['filo'])->assertSet('filtroProvincia', 'Pichincha')
+        ->assertSet('paginaCelda', 1)->assertSet('vistaCelda', 'registros');
+    $detalle = $componente->instance()->detalleCelda;
+    expect($detalle['total'])->toBe(13)->and($detalle['ultima'])->toBe(2)
+        ->and($detalle['seleccionado']['taxon_id'])->toBe($f['taxones'][0]);
+    $dom = $leerDom($componente->html());
+    $tabla = $dom->query('//dialog//table[@class="atlas-record-table"]')->item(0);
+    expect($dom->query('//dialog//table[@class="atlas-record-table"]/tbody/tr')->length)->toBe(12)
+        ->and($dom->query('//dialog//article[contains(@class,"atlas-record-card")]')->length)->toBe(0)
+        ->and($dom->query('//dialog//div[@class="collection-view-switch"]/button')->length)->toBe(2)
+        ->and($dom->query('//dialog//div[@class="atlas-record-table-scroll" and @role="region" and @tabindex="0"]')->length)->toBe(1);
+    foreach (['COLECTOR-PRIVADO-TABLA', 'NOTA-PRIVADA-TABLA', 'LOCALIDAD-PRIVADA-TABLA', 'ORIGINAL-PRIVADO-TABLA', $f['codigos'][0]] as $reservado) {
+        expect($tabla->textContent)->not->toContain($reservado);
+    }
+    $publicos = $celdasFila($dom, $f['ids'][1]);
+    expect($publicos)->toMatchArray([
+        'Código de catálogo' => $f['codigos'][1], 'Identificación científica' => $f['prefijo'].' alfa',
+        'Fecha original' => '2025-01-10', 'Colector' => 'QA', 'País' => 'Ecuador', 'Provincia' => 'Pichincha',
+        'Localidad registrada' => 'Localidad registrada Ñambí', 'Localidad original' => 'Localidad original Ñambí',
+        'Latitud' => (string) $latitud, 'Longitud' => (string) $longitud,
+        'Referencia de coordenadas' => 'Referencia GPS original', 'Elevación mín. (m)' => '0', 'Elevación máx. (m)' => '120',
+        'Método de colecta' => 'Red '.$f['prefijo'], 'Individuos' => '0', 'Condición de tipo' => 'Paratipo',
+        'Notas del espécimen' => $notaPublica, 'Estado' => 'Presente', 'Casta' => 'obrera', 'Estadio' => 'Adulto',
+    ])->toHaveKeys(['Localidad INEC', 'Referencia INEC', 'Notas de tipo', 'Fotografías publicadas']);
+    $privados = $celdasFila($dom, $f['ids'][0]);
+    expect($privados['Colector'])->toBe('—')->and($privados['Localidad registrada'])->toBe('—')
+        ->and($privados['Notas del espécimen'])->toBe('—')->and($privados['Elevación mín. (m)'])->toBe('—')
+        ->and($dom->query('//table[@class="atlas-record-table"]//script')->length)->toBe(0)
+        ->and($dom->query('//table[@class="atlas-record-table"]//a[@title="foto-publica-tabla.jpg"]')->length)->toBe(1)
+        ->and($dom->query('//table[@class="atlas-record-table"]//a[@title="foto-codigo-reservado.jpg"]')->length)->toBe(0);
+    $primera = array_column($detalle['registros'], 'especimen_id');
+    $componente->call('paginarCelda', 2)->assertSet('paginaCelda', 2)->assertSet('pagina', 1);
+    $segunda = array_column($componente->instance()->detalleCelda['registros'], 'especimen_id');
+    expect($leerDom($componente->html())->query('//dialog//table[@class="atlas-record-table"]/tbody/tr')->length)->toBe(1)
+        ->and(array_intersect($primera, $segunda))->toBe([])
+        ->and(array_diff($idsEsperados, [...$primera, ...$segunda]))->toBe([])
+        ->and(array_intersect($excluidos, [...$primera, ...$segunda]))->toBe([]);
+    $componente->call('paginarCelda', 999)->assertSet('paginaCelda', 2)
+        ->call('cambiarVistaCelda', 'grupos')->assertSet('vistaCelda', 'grupos')->assertSet('paginaCelda', 1);
+    $domArbol = $leerDom($componente->html());
+    expect($domArbol->query('//dialog//table[@class="atlas-record-table"]')->length)->toBe(0)
+        ->and($domArbol->query('//dialog//aside[contains(@class,"atlas-taxon-information")]')->length)->toBe(1)
+        ->and($domArbol->query('//dialog//section[contains(@class,"atlas-tree-section")]//svg')->length)->toBe(1)
+        ->and($componente->instance()->detalleCelda['seleccionado']['taxon_id'])->toBe($f['taxones'][0]);
+    // Sin filtro de filo ni taxón, el material no publicado del mismo punto sigue excluido.
+    $sinFiltroTaxonomico = Livewire::withQueryParams(['vista' => 'mapa', 'fprov' => 'Pichincha'])
+        ->test(PortalCatalogo::class)->call('abrirCelda', $latitud, $longitud)->call('cambiarVistaCelda', 'registros');
+    expect($sinFiltroTaxonomico->instance()->detalleCelda['total'])->toBe(14);
+    $idsSinFiltro = array_column($sinFiltroTaxonomico->instance()->detalleCelda['registros'], 'especimen_id');
+    $sinFiltroTaxonomico->call('paginarCelda', 2);
+    $idsSinFiltro = [...$idsSinFiltro, ...array_column($sinFiltroTaxonomico->instance()->detalleCelda['registros'], 'especimen_id')];
+    expect($idsSinFiltro)->toHaveCount(14)->not->toContain($noPublicado);
+});
+
 test('la identidad del mapa de especie cambia al navegar y al modificar su selección', function (): void {
     $f = cartografiaRealFixture();
     $componente = Livewire::withQueryParams(['vista' => 'tarjetas', 'fph' => $f['filo'], 'nivel' => 'species', 'taxon' => $f['prefijo'].' alfa'])
@@ -184,7 +314,9 @@ test('el árbol conserva ancestros y ramas hermanas y selecciona su información
     expect(array_column($detalle['arbol'], 'id'))->toContain($f['filo'], $f['taxones'][0], $f['taxones'][1])
         ->and($detalle['seleccionado']['nombre'])->toBe($f['prefijo'].' alfa')
         ->and($detalle['informacion']['cantidad'])->toBe(1)
-        ->and($detalle['seleccionado']['ilustracion']['representativa'])->toBeTrue();
+        ->and($detalle['seleccionado']['ilustracion']['representativa'])->toBeFalse()
+        ->and($detalle['seleccionado']['ilustracion']['foto_real'])->toBeFalse()
+        ->and($detalle['seleccionado']['ilustracion']['url'])->toBeNull();
     $componente->call('navegarCelda', $f['taxones'][1]);
     expect($componente->instance()->detalleCelda['seleccionado']['nombre'])->toBe($f['prefijo'].' beta');
 });
@@ -373,7 +505,7 @@ test('las ramas del mismo taxón con permisos distintos conservan sus conteos y 
     expect($generoExplorado['taxon'])->toBe($f['prefijo'].' genero')->and($generoExplorado)->not->toHaveKey('total');
 });
 
-test('el mosaico resuelve el grupo del género desde su linaje público y retira ancestros reservados', function (): void {
+test('el mosaico conserva la identidad del género sin fotografía propia y retira ancestros reservados', function (): void {
     $f = cartografiaRealFixture();
     $familia = DB::table('taxonomia.taxones')->where('rango', 'familia')->where('nombre_cientifico', 'Formicidae')->value('id');
     if ($familia === null) {
@@ -386,12 +518,30 @@ test('el mosaico resuelve el grupo del género desde su linaje público y retira
     $filtros = ['taxon_navegado' => '', 'taxon' => $f['prefijo'].' genero'];
     $estadisticas = app(PortalEstadisticas::class);
     $linaje = $estadisticas->datosParaVista($filtros)['taxon_mosaico'];
+    $rangosPublicos = array_fill_keys(['kingdom', 'phylum', 'class', 'order', 'family', 'genus', 'species'], true);
+    $fotografia = IlustracionTaxonomica::paraTaxon($linaje);
     expect($linaje['genus'])->toBe($f['prefijo'].' genero')->and($linaje['family'])->toBe('Formicidae')
-        ->and(IlustracionTaxonomica::paraTaxon($linaje)['grupo'])->toBe('Formicidae');
+        ->and($fotografia['foto_real'])->toBeFalse()->and($fotografia['morfologia'])->toBeFalse()
+        ->and($fotografia['representativa'])->toBeFalse()->and($fotografia['url'])->toBeNull()
+        ->and($fotografia['grupo'])->toBe('')->and($fotografia['species'])->toBe('')
+        ->and($fotografia['taxon_consulta'])->toBe(array_intersect_key($linaje, $rangosPublicos))
+        ->not->toHaveKey('species');
     DB::table('divulgacion.especimenes_divulgables')->whereIn('especimen_id', [$f['ids'][0], $f['ids'][1]])->update(['family_visible' => false]);
-    expect($estadisticas->datosParaVista($filtros)['taxon_mosaico'])->not->toHaveKey('family');
+    $linajeSinFamilia = $estadisticas->datosParaVista($filtros)['taxon_mosaico'];
+    $fotografiaSinFamilia = IlustracionTaxonomica::paraTaxon($linajeSinFamilia);
+    expect($linajeSinFamilia)->not->toHaveKey('family')
+        ->and($linajeSinFamilia['genus'])->toBe($f['prefijo'].' genero')
+        ->and($fotografiaSinFamilia['url'])->toBeNull()->and($fotografiaSinFamilia['foto_real'])->toBeFalse()
+        ->and($fotografiaSinFamilia['taxon_consulta'])->toBe(array_intersect_key($linajeSinFamilia, $rangosPublicos))
+        ->not->toHaveKey('family')->not->toHaveKey('species')
+        ->and(array_column($linajeSinFamilia['ancestros'], 'nombre'))->not->toContain('Formicidae');
     DB::table('divulgacion.especimenes_divulgables')->whereIn('especimen_id', [$f['ids'][0], $f['ids'][1]])->update(['genus_visible' => false]);
-    expect($estadisticas->datosParaVista($filtros)['taxon_mosaico'])->toBe([]);
+    $sinGenero = $estadisticas->datosParaVista($filtros);
+    expect($sinGenero['taxon_mosaico'])->toBe([])
+        ->and($sinGenero['ilustraciones_mosaico'])->toHaveCount(1)
+        ->and($sinGenero['ilustraciones_mosaico'][0]['url'])->toBeNull()
+        ->and($sinGenero['ilustraciones_mosaico'][0]['foto_real'])->toBeFalse()
+        ->and($sinGenero['ilustraciones_mosaico'][0]['taxon_consulta'])->toBe([]);
 });
 
 test('galería y portadas limitan imágenes y conservan originales sin atribuir códigos ambiguos', function (): void {

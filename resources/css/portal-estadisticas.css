@@ -378,6 +378,25 @@
 .atlas-record-photos a { flex:0 0 100%; }
 .atlas-record-photos img { width:100%; height:180px; object-fit:contain; background:#f3f7fa; border-radius:.4rem; }
 .atlas-photo-empty { color:#506b80; font-size:.75rem; }
+.atlas-record-table-section { min-width:0; }
+.atlas-record-table-section h3 { margin:0 0 .4rem; font:700 1.1rem Georgia,serif; overflow-wrap:anywhere; }
+.atlas-record-table-summary, .atlas-record-table-hint { margin:0 0 .7rem; color:#506b80; font-size:.8rem; line-height:1.5; }
+.atlas-record-table-scroll { max-width:100%; max-height:58dvh; overflow:auto; border:1px solid #c5d5e0; border-radius:.4rem; overscroll-behavior:contain; }
+.atlas-record-table-scroll:focus-visible { outline:2px solid #17699b; outline-offset:2px; }
+.atlas-record-table { width:max-content; min-width:100%; border-collapse:separate; border-spacing:0; text-align:left; font-size:.8rem; line-height:1.5; }
+.atlas-record-table th, .atlas-record-table td { min-width:9rem; max-width:17rem; padding:.65rem .8rem; vertical-align:top; border-bottom:1px solid #dce5ec; border-right:1px solid #e4ebf0; overflow-wrap:anywhere; }
+.atlas-record-table-value { display:block; max-width:24rem; white-space:pre-wrap; }
+.atlas-record-table thead th { position:sticky; top:0; z-index:2; background:#eaf2f8; color:#18354d; font-weight:700; }
+.atlas-record-table tbody th { position:sticky; left:0; z-index:1; background:#fff; font-weight:600; }
+.atlas-record-table thead th:first-child { left:0; z-index:3; }
+.atlas-record-table tbody tr:nth-child(even) > * { background:#f6f9fb; }
+.atlas-record-table td.atlas-record-table-number { min-width:7rem; font-variant-numeric:tabular-nums; }
+.atlas-record-table td.atlas-record-table-notes { min-width:17rem; max-width:24rem; }
+.atlas-record-table .atlas-data-warning { margin:.4rem 0 0; }
+.atlas-record-table-photos { display:flex; flex-wrap:wrap; gap:.4rem; width:13rem; }
+.atlas-record-table-photos a { display:block; }
+.atlas-record-table-photos a:focus-visible { outline:2px solid #17699b; outline-offset:2px; }
+.atlas-record-table-photos img { display:block; width:96px; height:72px; object-fit:contain; background:#fff; border:1px solid #dce5ec; border-radius:.2rem; }
 .atlas-cell-pagination { display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-top:1.5rem; font-size:.85rem; }
 .atlas-cell-pagination button { padding:.6rem 1rem; border:1px solid #b4cad9; border-radius:.3rem; }
 .atlas-cell-pagination button:disabled { opacity:.45; }
@@ -497,3 +516,12 @@
 .atlas-record-selector select { display:block; width:100%; margin-top:.35rem; padding:.65rem .5rem; border:1px solid #b4cad9; border-radius:.3rem; background:#fff; color:#18354d; }
 @media(max-width:900px) { .atlas-taxonomic-layout { grid-template-columns:minmax(0,1fr); } .atlas-taxon-information { border-left:0; border-top:1px solid #dce5ec; padding:1.25rem 0 0; } .atlas-tree-scroll { max-height:45dvh; } }
 @media(max-width:600px) { .collection-taxon-explanation { padding:1rem; } .atlas-cell-header { padding:1rem .8rem; } .atlas-cell-toolbar { padding:.7rem .8rem; } .atlas-cell-pagination button { padding:.5rem .7rem; } .collection-card-pagination span { order:-1; flex-basis:100%; } }
+
+/* Agrupaciones visuales del mapa; nunca sustituyen coordenadas originales. */
+.atlas-map-cluster { background:transparent; border:0; pointer-events:auto; }
+.atlas-map-cluster-button { display:flex; flex-direction:column; align-items:center; justify-content:center; width:48px; height:48px; padding:0; border:3px solid #fff; border-radius:50%; background:#17699b; color:#fff; box-shadow:0 0 0 1px #0e4975,0 2px 7px #102d4840; line-height:1.1; cursor:zoom-in; pointer-events:auto; }
+.atlas-map-cluster-button:hover { background:#0e4975; }
+.atlas-map-cluster-button:focus-visible { outline:3px solid #102d48; outline-offset:3px; }
+.atlas-map-cluster-number { font:700 15px/1.1 system-ui,sans-serif; }
+.atlas-map-cluster-unit { margin-top:2px; font:600 10px/1 system-ui,sans-serif; }
+.atlas-legend-cluster { display:inline-flex; flex:none; align-items:center; justify-content:center; width:22px; height:22px; margin-right:.3rem; border:2px solid #fff; border-radius:50%; background:#17699b; color:#fff; box-shadow:0 0 0 1px #0e4975; font-style:normal; font-weight:700; }

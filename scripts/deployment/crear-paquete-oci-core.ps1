@@ -420,7 +420,7 @@ if (-not $OmitirCompilacion) {
     # Contratos JavaScript sin navegador: precisión WGS84, tamaños por cantidad
     # nombres de fotografías e historial atómico. Árbol y caché están en Pest.
     $directorioPruebasFrontend = Join-Path $Proyecto 'tests\Frontend'
-    foreach ($contratoPortal in @('portal-map-model.test.mjs', 'portal-image-model.test.mjs', 'portal-selection-history.test.mjs')) {
+    foreach ($contratoPortal in @('portal-map-model.test.mjs', 'portal-image-model.test.mjs', 'portal-selection-history.test.mjs', 'portal-photo-model.test.mjs')) {
         if (-not (Test-Path -LiteralPath (Join-Path $directorioPruebasFrontend $contratoPortal) -PathType Leaf)) {
             throw "Falta el contrato JavaScript del portal: $contratoPortal"
         }
@@ -438,6 +438,7 @@ $requeridos = @(
     'public/build-gestionprestamosrecepciones/manifest.json',
     'public/build-inventariogestioncoleccion/manifest.json',
     'Modules/CatalogoPublico/app/Application/Services/IlustracionTaxonomica.php',
+    'Modules/CatalogoPublico/app/Application/Services/FotografiasTaxonomicas.php',
     'Modules/CatalogoPublico/app/Application/Services/DendrogramaTaxonomico.php',
     'Modules/CatalogoPublico/app/Application/UseCases/ConsultarChatBot/EnlaceSeleccionCatalogo.php',
     'Modules/CatalogoPublico/app/Application/UseCases/ConsultarChatBot/SeleccionPaginaChat.php',
@@ -457,12 +458,19 @@ $requeridos = @(
     'Modules/CatalogoPublico/resources/views/components/nodo-arbol-mapa.blade.php',
     'Modules/CatalogoPublico/resources/views/components/dendrograma-mapa.blade.php',
     'Modules/CatalogoPublico/resources/views/components/registro-mapa.blade.php',
+    'Modules/CatalogoPublico/resources/views/components/tabla-registros-mapa.blade.php',
     'Modules/CatalogoPublico/resources/views/components/avisos-curatoriales.blade.php',
     'Modules/CatalogoPublico/resources/views/components/representacion-especie.blade.php',
+    'Modules/CatalogoPublico/resources/views/components/fotografia-taxonomica.blade.php',
+    'Modules/CatalogoPublico/resources/views/components/fotografia-mosaico.blade.php',
     'Modules/CatalogoPublico/resources/views/components/paginacion-hermanos.blade.php',
     'Modules/CatalogoPublico/resources/views/components/visor-imagen.blade.php',
-    'public/images/taxonomia/formicidae.webp',
-    'public/images/taxonomia/invertebrados.svg',
+    'public/images/taxonomia/fotografias/linepithema-humile.webp',
+    'public/images/taxonomia/fotografias/dolichoderus-bispinosus.webp',
+    'public/images/taxonomia/fotografias/atta-cephalotes.webp',
+    'public/images/taxonomia/fotografias/paratrechina-longicornis.webp',
+    'resources/js/portal-photo-model.js',
+    'resources/js/portal-photos.js',
     'deploy/oracle/scripts/verify-source-identity.sh',
     'deploy/oracle/scripts/verify-deposit-pdf.php',
     'bootstrap/app.php', 'bootstrap/providers.php', 'bootstrap/cache/.gitignore',

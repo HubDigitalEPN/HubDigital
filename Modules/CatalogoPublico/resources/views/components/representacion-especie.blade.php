@@ -1,4 +1,4 @@
-@props(['nombre', 'jerarquia' => [], 'ilustracion' => null])
+@props(['nombre', 'jerarquia' => [], 'ilustracion' => null, 'contexto' => 'ficha-especie'])
 @php
     // Conservar toda la clasificación pública recibida, incluidos rangos intermedios.
     $fuenteLinajeRepresentacion = is_array($jerarquia['ancestros'] ?? null) ? $jerarquia['ancestros'] : $jerarquia;
@@ -16,13 +16,15 @@
         $linajeRepresentacion[] = ['rango' => 'Especie', 'nombre' => $nombre];
     }
     $imagenRepresentacion = $ilustracion ?? \Modules\CatalogoPublico\Application\Services\IlustracionTaxonomica::paraTaxon(['species' => $nombre, 'ancestros' => $linajeRepresentacion]);
-    $tieneMorfologiaRepresentacion = (bool) ($imagenRepresentacion['morfologia'] ?? false);
+    $tieneMorfologiaRepresentacion = ($imagenRepresentacion['foto_real'] ?? false) && ($imagenRepresentacion['morfologia'] ?? false) && is_string($imagenRepresentacion['url'] ?? null) && $imagenRepresentacion['url'] !== '';
 @endphp
-<figure class="collection-taxonomic-representation" data-representacion-taxon="{{ $nombre }}" aria-label="Representación y clasificación pública de {{ $nombre }}">
+<figure class="collection-taxonomic-representation" data-representacion-taxon="{{ $nombre }}" aria-label="Fotografía disponible y clasificación pública de {{ $nombre }}">
+    <figcaption><strong class="collection-representation-name">{{ $nombre }}</strong></figcaption>
     @if($tieneMorfologiaRepresentacion)
-        <img class="collection-representation-portrait" src="{{ $imagenRepresentacion['url'] }}" alt="{{ $imagenRepresentacion['alt'] }}" width="320" height="320" loading="lazy" decoding="async">
+        <x-catalogopublico::fotografia-taxonomica :imagen="$imagenRepresentacion" :taxon="$jerarquia" :retrato="true" />
+    @else
+        <x-catalogopublico::fotografia-mosaico :taxon="$imagenRepresentacion['taxon_consulta'] ?? ['species' => $nombre, 'ancestros' => $linajeRepresentacion]" :fotos="[]" :limite="1" :retrato="true" :contexto="$contexto" />
     @endif
-    <figcaption><strong class="collection-representation-name">{{ $nombre }}</strong><span>@if($tieneMorfologiaRepresentacion)Representación fotorrealista generada de {{ $imagenRepresentacion['grupo'] }}; no identifica la especie ni reproduce el ejemplar.@else No hay una ilustración morfológica disponible; se muestra su linaje público real.@endif</span></figcaption>
     <details class="collection-representation-lineage" @if(!$tieneMorfologiaRepresentacion) open @endif>
         <summary>Clasificación pública <span>{{ count($linajeRepresentacion) }} rangos</span></summary>
         <dl>

@@ -15,15 +15,27 @@ it('detecta nombres geográficos visibles sin confundir separadores Unicode con 
 
 it('QA4 no rellena mosaicos vacíos ni Mollusca con grupos ajenos a sus linajes', function (): void {
     expect(IlustracionTaxonomica::mosaicoParaTaxon([])[0]['morfologia'])->toBeFalse()
+        ->and(IlustracionTaxonomica::mosaicoParaTaxon([])[0]['url'])->toBeNull()
         ->and(IlustracionTaxonomica::mosaicoParaSeleccion([['phylum' => 'Mollusca', 'total' => 8]])[0]['morfologia'])->toBeFalse()
         ->and(array_column(IlustracionTaxonomica::mosaicoParaSeleccion([['phylum' => 'Mollusca', 'class' => 'Gastropoda']]), 'grupo'))->toBe(['Gastropoda']);
+    $seleccionExplicita = IlustracionTaxonomica::mosaicoParaSeleccion([], ['phylum' => 'Mollusca']);
+    expect($seleccionExplicita[0]['foto_real'])->toBeTrue()->and($seleccionExplicita[0]['phylum'])->toBe('Mollusca')
+        ->and(array_column($seleccionExplicita, 'grupo'))->not->toContain('Formicidae', 'Coleoptera', 'Araneae');
 });
 
 it('QA4 limita el mosaico a cuatro grupos realmente presentes y conserva cuatro hormigas', function (): void {
-    $seleccion = [['order' => 'Coleoptera'], ['class' => 'Gastropoda'], ['order' => 'Diptera'], ['order' => 'Hemiptera'], ['order' => 'Isopoda']];
+    $seleccion = [['order' => 'Orthoptera'], ['class' => 'Gastropoda'], ['order' => 'Phasmatodea'], ['order' => 'Hemiptera'], ['phylum' => 'Nematoda']];
     $imagenes = IlustracionTaxonomica::mosaicoParaSeleccion($seleccion);
     expect($imagenes)->toHaveCount(4)->and(array_column($imagenes, 'grupo'))->not->toContain('Formicidae', 'Araneae', 'Lepidoptera')
         ->and(IlustracionTaxonomica::mosaicoParaSeleccion([['family' => 'Formicidae']]))->toHaveCount(4);
+});
+
+it('la selección de especie restringe el mosaico y no toma fotografías de una familia conocida cuando falta la propia', function () {
+    $linajes = [['family' => 'Formicidae', 'species' => 'Camponotus femoratus']];
+    $conocida = IlustracionTaxonomica::mosaicoParaSeleccion($linajes, ['species' => 'Atta cephalotes']);
+    expect($conocida)->not->toBeEmpty()->and(array_unique(array_column($conocida, 'species')))->toBe(['Atta cephalotes']);
+    $sinFoto = IlustracionTaxonomica::mosaicoParaSeleccion($linajes, ['family' => 'Formicidae', 'species' => 'Camponotus femoratus']);
+    expect($sinFoto)->toHaveCount(1)->and($sinFoto[0]['url'])->toBeNull()->and($sinFoto[0]['foto_real'])->toBeFalse();
 });
 
 it('QA4 conserva el prefijo real y excluye marcadores, sus hijos y ciclos con límite de treinta nodos', function (): void {

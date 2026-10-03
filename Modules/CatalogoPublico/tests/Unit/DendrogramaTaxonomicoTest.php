@@ -41,7 +41,7 @@ it('representa diez rangos y bifurcaciones reales con geometría compacta y sele
         ->and($ramas['especie-2']['padre_id'])->toBe('rango-8')
         ->and($ramas['especie-2']['activa'])->toBeTrue()
         ->and($ramas['especie-1']['activa'])->toBeFalse()
-        ->and($nodos['especie-1']['miniatura']['grupo'])->toBe('Formicidae');
+        ->and($nodos['especie-1']['miniatura'])->toBeNull();
     foreach ($fuente as $nodo) {
         $dibujado = $nodos[$nodo['id']];
         expect($dibujado['nombre'])->toBe($nodo['nombre'])

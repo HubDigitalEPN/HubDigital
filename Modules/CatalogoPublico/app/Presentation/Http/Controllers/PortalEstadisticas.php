@@ -49,7 +49,7 @@ final class PortalEstadisticas
     /** Agregados de la misma selección que usan tarjetas y registros. */
     public function datosParaVista(array $filtros): array
     {
-        return $this->cachear('portal:estadisticas:v13:'.$this->revisionDatos().':'.sha1(json_encode($filtros)), fn () => $this->resumir($filtros));
+        return $this->cachear('portal:estadisticas:v15:'.$this->revisionDatos().':'.sha1(json_encode($filtros)), fn () => $this->resumir($filtros));
     }
 
     /** Distribución completa sin hidratar tarjetas ni calcular los otros indicadores. */
@@ -290,10 +290,30 @@ final class PortalEstadisticas
             ->where('ed.scientific_name_visible', true)
             ->whereRaw('(SELECT COUNT(*) FROM taxonomia.especimenes identidad WHERE identidad.occurrence_id = te.occurrence_id) = 1')
             ->orderByDesc('foto.created_at')->orderBy('foto.id')->limit(4)
-            ->get(['foto.ruta', 'foto.nombre_original', 'foto_taxon.nombre_cientifico as taxon', 'te.occurrence_id', 'ed.occurrence_id_visible'])
-            ->map(static fn (object $fila): array => ['url' => StorageImagenesAdapter::urlPublica($fila->ruta),
-                'nombre' => $fila->nombre_original, 'taxon' => $fila->taxon,
-                'occurrence_id' => $fila->occurrence_id_visible ? $fila->occurrence_id : null])->all();
+            ->get(['foto.ruta', 'foto.nombre_original', 'foto.autor_nombre_completo', 'foto_taxon.nombre_cientifico as taxon',
+                'te.taxon_id', 'te.country', 'ed.country_visible', 'ed.family_visible', 'ed.genus_visible', 'te.occurrence_id', 'ed.occurrence_id_visible'])
+            ->map(function (object $fila) use ($taxones): array {
+                $linaje = $this->linajePublicoParaMosaico($fila->taxon_id, $taxones, (bool) $fila->family_visible, (bool) $fila->genus_visible);
+                $creditoEcuador = (bool) $fila->country_visible && mb_strtolower(trim((string) $fila->country)) === 'ecuador';
+                return ['url' => StorageImagenesAdapter::urlPublica($fila->ruta),
+                    'nombre' => $fila->nombre_original, 'taxon' => $fila->taxon,
+                    'family' => $linaje['family'] ?? null, 'genus' => $linaje['genus'] ?? null, 'species' => $linaje['species'] ?? null,
+                    'autor' => $creditoEcuador ? $fila->autor_nombre_completo : null, 'credito_ecuador' => $creditoEcuador,
+                    'occurrence_id' => $fila->occurrence_id_visible ? $fila->occurrence_id : null];
+            })->all();
+
+        $taxonMosaico = $this->taxonParaMosaico($porTaxon, $taxones, $filtros);
+        $taxonSolicitado = trim((string) ($filtros['taxon_navegado'] ?? '')) ?: trim((string) ($filtros['taxon'] ?? ''));
+        $linajesMosaico = (function () use ($porTaxon, $taxones): \Generator {
+            foreach ($porTaxon as $fila) {
+                yield $this->linajePublicoParaMosaico($fila->taxon_id, $taxones, (bool) $fila->family_visible, (bool) $fila->genus_visible) + ['total' => (int) $fila->total];
+            }
+        })();
+        $fotografiasMosaico = \Modules\CatalogoPublico\Application\Services\IlustracionTaxonomica::mosaicoParaSeleccion(
+            // Un nombre ambiguo o sin material público no se sustituye por fotos de otros grupos.
+            $taxonSolicitado !== '' && $taxonMosaico === [] ? [] : $linajesMosaico,
+            $taxonMosaico,
+        );
 
         return [
             'resumen' => $resumen,
@@ -307,55 +327,68 @@ final class PortalEstadisticas
             'altitud' => $altitud,
             'metodos' => $metodos,
             'mosaico' => $mosaico,
-            'taxon_mosaico' => $this->taxonParaMosaico($base, $taxones, $filtros),
-            'ilustraciones_mosaico' => \Modules\CatalogoPublico\Application\Services\IlustracionTaxonomica::mosaicoParaSeleccion(
-                (function () use ($porTaxon, $taxones): \Generator {
-                    foreach ($porTaxon as $fila) {
-                        yield $this->linajePublicoParaMosaico($fila->taxon_id, $taxones, (bool) $fila->family_visible, (bool) $fila->genus_visible) + ['total' => (int) $fila->total];
-                    }
-                })(),
-            ),
+            'taxon_mosaico' => $taxonMosaico,
+            'ilustraciones_mosaico' => $fotografiasMosaico,
+            'descripcion_mosaico' => $mosaico !== []
+                ? 'Fotografías publicadas de '.implode(', ', array_values(array_unique(array_filter(array_column($mosaico, 'taxon'))))).'. Las imágenes corresponden a ejemplares de la selección actual; su clasificación y sus datos públicos se consultan en el catálogo.'
+                : \Modules\CatalogoPublico\Application\Services\IlustracionTaxonomica::describirMosaico($fotografiasMosaico),
         ];
     }
 
-    /** Linaje del taxón seleccionado, respaldado por un ejemplar de la selección pública. */
-    private function taxonParaMosaico(Builder $base, \Illuminate\Support\Collection $taxones, array $filtros): array
+    /** Resuelve identidad y permisos dentro del agregado público ya seleccionado. */
+    private function taxonParaMosaico(\Illuminate\Support\Collection $porTaxon, \Illuminate\Support\Collection $taxones, array $filtros): array
     {
-        $nombre = trim((string) ($filtros['taxon_navegado'] ?? '')) ?: trim((string) ($filtros['taxon'] ?? ''));
-        if ($nombre !== '') {
-            $candidatos = $taxones->filter(static fn (object $t): bool => mb_strtolower($t->nombre_cientifico) === mb_strtolower($nombre));
-            if ($candidatos->count() !== 1) return [];
-            $elegido = $candidatos->first();
-        } elseif (! empty($filtros['filo']) && isset($taxones[$filtros['filo']])) {
-            $elegido = $taxones[$filtros['filo']];
-        } else {
-            return [];
+        $navegado = trim((string) ($filtros['taxon_navegado'] ?? ''));
+        $nombre = $navegado ?: trim((string) ($filtros['taxon'] ?? ''));
+        $rangos = ['phylum' => 'phylum', 'class' => 'clase', 'order' => 'orden', 'family' => 'familia', 'genus' => 'genero', 'species' => 'especie'];
+        $rango = $navegado !== '' ? ($rangos[$filtros['nivel'] ?? ''] ?? null) : null;
+        $filoId = $nombre === '' ? ($filtros['filo'] ?? null) : null;
+        if ($nombre === '' && $filoId === null) return [];
+
+        $candidatos = [];
+        foreach ($porTaxon as $fila) {
+            $familia = (bool) $fila->family_visible;
+            $genero = (bool) $fila->genus_visible;
+            foreach ($this->rutaPublicaParaMosaico($fila->taxon_id, $taxones, $familia, $genero) as $nodo) {
+                if ($nombre !== '') {
+                    if (($rango !== null && $nodo['rango'] !== $rango)
+                        || mb_strtolower($nodo['nombre']) !== mb_strtolower($nombre)) continue;
+                } elseif ($nodo['id'] !== $filoId || $nodo['rango'] !== 'phylum') continue;
+
+                // Variantes de permisos del mismo UUID no crean otro taxón. Dos UUID
+                // compatibles dentro de la selección siguen siendo ambiguos.
+                $permisos = ($familia ? 2 : 0) + ($genero ? 1 : 0);
+                if (! isset($candidatos[$nodo['id']]) || $permisos > $candidatos[$nodo['id']]['permisos']) {
+                    $candidatos[$nodo['id']] = ['permisos' => $permisos,
+                        'linaje' => $this->linajePublicoParaMosaico($nodo['id'], $taxones, $familia, $genero)];
+                }
+                if (count($candidatos) > 1) return [];
+            }
         }
-        $consulta = (clone $base)->where('ed.scientific_name_visible', true)
-            ->whereRaw('te.taxon_id IN (WITH RECURSIVE seleccion AS (SELECT id FROM taxonomia.taxones WHERE id = ? UNION SELECT t.id FROM taxonomia.taxones t JOIN seleccion s ON t.padre_id = s.id) SELECT id FROM seleccion)', [$elegido->id]);
-        if ($elegido->rango === 'familia') $consulta->where('ed.family_visible', true);
-        if ($elegido->rango === 'genero') $consulta->where('ed.genus_visible', true);
-        $ejemplar = $consulta->orderByDesc('ed.family_visible')->orderByDesc('ed.genus_visible')->orderBy('te.id')
-            ->first(['ed.family_visible', 'ed.genus_visible']);
-        if ($ejemplar === null) return [];
-        return $this->linajePublicoParaMosaico($elegido->id, $taxones, (bool) $ejemplar->family_visible, (bool) $ejemplar->genus_visible);
+        return $candidatos === [] ? [] : reset($candidatos)['linaje'];
+    }
+
+    /** Ruta real acotada, con el mismo prefijo confirmado y las mismas banderas del mosaico. */
+    private function rutaPublicaParaMosaico(?string $id, \Illuminate\Support\Collection $taxones, bool $familia, bool $genero): array
+    {
+        $fuente = []; $visitados = [];
+        while ($id && isset($taxones[$id]) && ! isset($visitados[$id]) && count($visitados) < 30) {
+            $visitados[$id] = true; $nodo = $taxones[$id];
+            array_unshift($fuente, ['id' => $id, 'rango' => $nodo->rango, 'nombre' => $nodo->nombre_cientifico]);
+            $id = $nodo->padre_id;
+        }
+        if ($id && isset($taxones[$id])) return []; // Ciclo o cadena que excede treinta nodos.
+        return array_values(array_filter(CalidadDatoPublico::rutaConfirmada($fuente), static fn (array $nodo): bool =>
+            ($nodo['rango'] !== 'familia' || $familia) && ($nodo['rango'] !== 'genero' || $genero)));
     }
 
     private function linajePublicoParaMosaico(?string $id, \Illuminate\Support\Collection $taxones, bool $familia, bool $genero): array
     {
         $rangos = ['reino' => 'kingdom', 'phylum' => 'phylum', 'clase' => 'class', 'orden' => 'order', 'familia' => 'family', 'genero' => 'genus', 'especie' => 'species'];
-        $fuente = []; $visitados = [];
-        while ($id && isset($taxones[$id]) && ! isset($visitados[$id]) && count($visitados) < 30) {
-            $visitados[$id] = true; $nodo = $taxones[$id];
-            array_unshift($fuente, ['rango' => $nodo->rango, 'nombre' => $nodo->nombre_cientifico]);
-            $id = $nodo->padre_id;
-        }
-        if ($id && isset($taxones[$id])) return []; // Ciclo o cadena que excede treinta nodos.
         $linaje = [];
-        foreach (CalidadDatoPublico::rutaConfirmada($fuente) as $nodo) {
-            if (($nodo['rango'] === 'familia' && ! $familia) || ($nodo['rango'] === 'genero' && ! $genero)) continue;
+        foreach ($this->rutaPublicaParaMosaico($id, $taxones, $familia, $genero) as $nodo) {
             if (isset($rangos[$nodo['rango']])) $linaje[$rangos[$nodo['rango']]] = $nodo['nombre'];
-            $linaje['ancestros'][] = $nodo;
+            $linaje['ancestros'][] = ['rango' => $nodo['rango'], 'nombre' => $nodo['nombre']];
             $linaje['nombre'] = $nodo['nombre'];
         }
         return $linaje;

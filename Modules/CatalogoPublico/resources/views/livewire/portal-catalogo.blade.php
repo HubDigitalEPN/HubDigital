@@ -534,7 +534,7 @@
                         <div class="mb-3 flex items-center gap-2">
                             <h3 class="text-sm font-semibold text-text-primary flex items-center gap-2">
                                 <flux:icon name="photo" class="size-4 text-text-secondary" />
-                                Imagen de la especie
+                                {{ $portadaEspecie ? 'Fotografía publicada de la especie' : 'Fotografía de referencia identificada' }}
                             </h3>
                         </div>
 
@@ -600,7 +600,7 @@
 
                     @if(count($especimenes) === 0)
                         <div class="flex items-center justify-center rounded-lg border border-dashed border-border bg-surface py-12 text-sm text-text-secondary">
-                            No hay registros registrados para esta especie.
+                            No hay registros públicos para esta especie en la selección actual.
                         </div>
                     @else
                         <div class="space-y-3">
@@ -971,7 +971,7 @@
                 <p x-text="descripciones[taxonAyuda.nombre] || 'Este nombre científico identifica un taxón del nivel ' + taxonAyuda.nivel.toLowerCase() + ' en la clasificación de la colección.'"></p>
                 <p>Un <strong>taxón</strong> es cualquier grupo de la clasificación que posee un nombre científico: puede ser un reino, filo, clase, orden, familia, género o especie. Los niveles superiores reúnen otros taxones; no equivalen a una especie.</p>
                 <template x-if="taxonAyuda.representacion"><div x-html="taxonAyuda.representacion"></div></template>
-                <template x-if="!taxonAyuda.representacion"><figure><img :src="taxonAyuda.ilustracion.url" :alt="taxonAyuda.ilustracion.alt" width="320" height="320" loading="lazy"><figcaption x-text="taxonAyuda.ilustracion.morfologia ? 'Representación fotorrealista generada del grupo; no es una fotografía del ejemplar ni permite identificar la especie.' : 'Diagrama taxonómico orientativo; no hay una representación morfológica disponible.'"></figcaption></figure></template>
+                <template x-if="!taxonAyuda.representacion"><div x-html="taxonAyuda.fotografia"></div></template>
                 <p><strong x-text="taxonAyuda.registros.toLocaleString('es-EC')"></strong> registros públicos de este taxón en la selección actual.</p>
                 <ul class="collection-taxon-descendants" x-show="Object.keys(taxonAyuda.stats).length > 0">
                     <template x-for="([nivel, cantidad]) in Object.entries(taxonAyuda.stats)" :key="nivel"><li><strong x-text="Number(cantidad).toLocaleString('es-EC')"></strong> <span x-text="etiquetasStats[nivel] || nivel"></span></li></template>
