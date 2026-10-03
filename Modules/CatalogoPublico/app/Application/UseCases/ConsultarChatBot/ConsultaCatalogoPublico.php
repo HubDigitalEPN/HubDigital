@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Modules\CatalogoPublico\Application\UseCases\ConsultarChatBot;
 
+use Modules\CatalogoPublico\Infrastructure\ElegibilidadGeograficaPortal;
+
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 use Modules\CatalogoPublico\Domain\ValueObjects\FiltrosBusqueda;
@@ -192,7 +194,7 @@ final class ConsultaCatalogoPublico
         return DB::table('taxonomia.especimenes as e')
             ->leftJoin('taxonomia.taxones as t', 't.id', '=', 'e.taxon_id')
             ->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
-            ->where('d.publicado', true)->where('e.coordenadas_otras_regiones', false);
+            ->where('d.publicado', true)->whereRaw(ElegibilidadGeograficaPortal::sql('e', 'd'));
     }
 
     private function filtroPorRetirar(string $normal): ?string
@@ -216,17 +218,18 @@ final class ConsultaCatalogoPublico
                 SELECT t.nombre_cientifico AS nombre FROM taxonomia.especimenes e
                 JOIN taxonomia.taxones t ON t.id = e.taxon_id
                 JOIN divulgacion.especimenes_divulgables d ON d.especimen_id = e.id
-                WHERE d.publicado = true AND e.coordenadas_otras_regiones = false AND d.scientific_name_visible = true AND d.occurrence_id_visible = true
+                WHERE d.publicado = true AND __ELEGIBILIDAD_GEOGRAFICA__ AND d.scientific_name_visible = true AND d.occurrence_id_visible = true
                 UNION
                 SELECT p.nombre_cientifico AS nombre FROM taxonomia.especimenes e
                 JOIN taxonomia.taxones t ON t.id = e.taxon_id
                 JOIN taxonomia.taxones p ON p.id = t.padre_id
                 JOIN divulgacion.especimenes_divulgables d ON d.especimen_id = e.id
-                WHERE d.publicado = true AND e.coordenadas_otras_regiones = false AND d.scientific_name_visible = true AND d.occurrence_id_visible = true
+                WHERE d.publicado = true AND __ELEGIBILIDAD_GEOGRAFICA__ AND d.scientific_name_visible = true AND d.occurrence_id_visible = true
             )
             SELECT nombre FROM nombres WHERE similarity(lower(nombre), lower(?)) >= 0.45
               AND lower(nombre) <> lower(?) ORDER BY similarity(lower(nombre), lower(?)) DESC, nombre LIMIT 10
             SQL;
+        $sql = str_replace('__ELEGIBILIDAD_GEOGRAFICA__', ElegibilidadGeograficaPortal::sql('e', 'd'), $sql);
         $matches = array_filter(DB::select($sql, [$name, $name, $name]), static fn ($row) =>
             levenshtein(mb_strtolower($name), mb_strtolower($row->nombre)) <= 2);
         return array_slice(array_map(static fn ($row) => $row->nombre, $matches), 0, 3);

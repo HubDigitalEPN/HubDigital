@@ -49,6 +49,7 @@ test('el catálogo separa taxón y geografía y solo usa campos públicos', func
             'locality_name' => $public ? 'Quito' : 'Guayaquil',
             'state_province' => $public ? 'Pichincha' : 'Guayas',
             'fecha_colecta' => '2026-09-26', 'colector' => 'Prueba',
+            'decimal_latitude' => -0.5, 'decimal_longitude' => -78.5,
         ]);
         if ($public) {
             DB::table('divulgacion.especimenes_divulgables')->insert(['id' => (string) Str::uuid(), 'especimen_id' => $id]);

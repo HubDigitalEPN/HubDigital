@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Modules\CatalogoPublico\Infrastructure\Adapters;
 
+use Modules\CatalogoPublico\Infrastructure\ElegibilidadGeograficaPortal;
+
 use Illuminate\Support\Facades\DB;
 use Modules\CatalogoPublico\Application\Ports\ProveedorOpcionesFiltroPort;
 use Modules\CatalogoPublico\Infrastructure\ProtocoloColectaPublico;
@@ -16,7 +18,7 @@ final class InventarioOpcionesFiltroAdapter implements ProveedorOpcionesFiltroPo
     {
         return DB::table('taxonomia.especimenes as e')
             ->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
-            ->where('d.publicado', true)->where('e.coordenadas_otras_regiones', false)
+            ->where('d.publicado', true)->whereRaw(ElegibilidadGeograficaPortal::sql('e', 'd'))
             ->whereNotNull('e.preparations')
             ->where('e.preparations', '<>', '')
             ->distinct()
@@ -32,7 +34,7 @@ final class InventarioOpcionesFiltroAdapter implements ProveedorOpcionesFiltroPo
     {
         return DB::table('taxonomia.especimenes as e')
             ->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
-            ->where('d.publicado', true)->where('e.coordenadas_otras_regiones', false)
+            ->where('d.publicado', true)->whereRaw(ElegibilidadGeograficaPortal::sql('e', 'd'))
             ->whereNotNull('e.biome')
             ->where('e.biome', '<>', '')
             ->distinct()
@@ -50,7 +52,7 @@ final class InventarioOpcionesFiltroAdapter implements ProveedorOpcionesFiltroPo
         return DB::table('taxonomia.especimenes as e')
             ->leftJoin('taxonomia.muestras_colecta as m', 'm.id', '=', 'e.muestra_id')
             ->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
-            ->where('d.publicado', true)->where('e.coordenadas_otras_regiones', false)
+            ->where('d.publicado', true)->whereRaw(ElegibilidadGeograficaPortal::sql('e', 'd'))
             ->where('d.sampling_protocol_visible', true)
             ->whereRaw(CalidadDatoPublico::textoValido($protocolo))
             ->distinct()
@@ -66,7 +68,7 @@ final class InventarioOpcionesFiltroAdapter implements ProveedorOpcionesFiltroPo
     {
         return DB::table('taxonomia.especimenes as e')
             ->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
-            ->where('d.publicado', true)->where('e.coordenadas_otras_regiones', false)
+            ->where('d.publicado', true)->whereRaw(ElegibilidadGeograficaPortal::sql('e', 'd'))
             ->where('d.recorded_by_visible', true)
             ->whereNotNull('e.colector')
             ->where('e.colector', '<>', '')

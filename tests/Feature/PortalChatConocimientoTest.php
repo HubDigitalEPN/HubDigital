@@ -75,6 +75,7 @@ test('las consultas científicas cuentan únicamente ejemplares divulgables', fu
             'id' => $id, 'codigo_catalogo' => 'CHAT-QA-'.$index.'-'.substr($id, 0, 8),
             'occurrence_id' => 'CHAT-QA-'.$index.'-'.substr($id, 0, 8),
             'taxon_id' => $species, 'localidad' => 'Prueba', 'fecha_colecta' => '2026-09-26', 'colector' => 'Prueba',
+            'decimal_latitude' => -0.5, 'decimal_longitude' => -78.5,
         ]);
     }
     DB::table('divulgacion.especimenes_divulgables')->insert([

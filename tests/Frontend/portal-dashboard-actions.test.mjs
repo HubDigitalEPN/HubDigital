@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
 import {crearAgrupadorMapa, crearGeojsonMapa, prepararPuntosMapa, etiquetaAgrupacionMapa, ZOOM_UBICACIONES_ORIGINALES} from '../../resources/js/portal-map-model.js';
+import {colorFilo, composicionFilos, fondoFilos} from '../../resources/js/portal-map-model.js';
 
 const fuenteDashboard = readFileSync(new URL('../../resources/js/portal-dashboard.js', import.meta.url), 'utf8');
 const plantillaDashboard = readFileSync(new URL('../../Modules/CatalogoPublico/resources/views/dashboard-coleccion.blade.php', import.meta.url), 'utf8');
@@ -13,7 +14,7 @@ function dashboardConMapa(celdas) {
     const marcadores = [];
     const cuadros = new Map();
     let siguienteCuadro = 0;
-    const nodo = () => ({setAttribute() {}, addEventListener() {}});
+    const nodo = () => ({style: {}, atributos: {}, eventos: {}, setAttribute(clave, valor) {this.atributos[clave] = valor;}, addEventListener(clave, manejador) {this.eventos[clave] = manejador;}});
     const mapa = {getZoom: () => 10, on() {}, fitBounds() {}, createPane: () => ({style: {}}), invalidateSize() {}, remove() {}};
     const capa = {addTo() { return this; }, clearLayers() { marcadores.length = 0; }};
     const control = () => ({addTo() {}});
@@ -21,16 +22,19 @@ function dashboardConMapa(celdas) {
         map: () => mapa, control: {zoom: control, scale: control}, tileLayer: control,
         featureGroup: () => capa, latLngBounds: puntos => ({isValid: () => puntos.length > 0}),
         DomUtil: {create: nodo},
-        circleMarker(coordenadas) {
+        divIcon: opciones => opciones,
+        marker(coordenadas, opciones) { return L.circleMarker(coordenadas, opciones); },
+        circleMarker(coordenadas, opciones) {
+            const elemento = nodo();
             const marcador = {
-                addTo() { marcadores.push({coordenadas}); return this; },
-                getElement: nodo, bindTooltip() {}, on() {},
+                addTo() { marcadores.push({coordenadas, opciones, elemento}); return this; },
+                getElement: () => elemento, bindTooltip() {}, on() {},
             };
             return marcador;
         },
     };
     const contexto = {
-        L, crearAgrupadorMapa, crearGeojsonMapa, prepararPuntosMapa, etiquetaAgrupacionMapa, ZOOM_UBICACIONES_ORIGINALES,
+        L, crearAgrupadorMapa, crearGeojsonMapa, prepararPuntosMapa, etiquetaAgrupacionMapa, ZOOM_UBICACIONES_ORIGINALES, colorFilo, composicionFilos, fondoFilos,
         window: {Alpine: {data: (nombre, fabrica) => registros.set(nombre, fabrica)}, addEventListener() {}},
         document: {documentElement: {classList: {add() {}, remove() {}}}},
         requestAnimationFrame: tarea => { const id = ++siguienteCuadro; cuadros.set(id, tarea); return id; },
@@ -92,6 +96,27 @@ test('composición llega a Livewire por UUID y el mapa reemplaza la población a
         assert.equal(marcadores.length, 2);
     }
     assert.deepEqual(llamadas, ['id-mollusca', 'id-mollusca', 'id-annelida', 'id-annelida']);
+});
+
+test('una ubicación compartida muestra todos sus colores y abre las coordenadas originales con teclado', () => {
+    const celdas = [{lat: -0.63194, lon: -76.14416, total: 8, filos: {Arthropoda: 6, Mollusca: 2}}];
+    const {dashboard, marcadores, pintar} = dashboardConMapa(celdas);
+    assert.equal(marcadores.length, 1);
+    const mixto = marcadores[0];
+    assert.equal(mixto.opciones.icon.className, 'atlas-map-mixed');
+    assert.match(mixto.elemento.style.background, /#17699b/);
+    assert.match(mixto.elemento.style.background, /#d17d28/);
+    assert.match(mixto.elemento.atributos['aria-label'], /Mollusca: 2/);
+    const aperturas = [];
+    dashboard.abrirUbicacion = (...datos) => aperturas.push(datos.slice(0, 3));
+    let evitado = false;
+    mixto.elemento.eventos.keydown({key: 'Enter', preventDefault() {evitado = true;}});
+    assert.equal(evitado, true);
+    assert.deepEqual(Array.from(aperturas[0]), [-0.63194, -76.14416, 8]);
+    dashboard.actualizar({celdas: [{...celdas[0], total: 2, filos: {Mollusca: 2}}], filos: {Mollusca: 2}});
+    pintar();
+    assert.equal(marcadores[0].opciones.fillColor, '#d17d28');
+    assert.deepEqual(Array.from(marcadores[0].coordenadas), [-0.63194, -76.14416]);
 });
 
 test('una acción explícita de composición conserva el foco del mapa durante su actualización', () => {

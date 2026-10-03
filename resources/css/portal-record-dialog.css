@@ -1,0 +1,22 @@
+.portal-record-row { cursor: pointer; }
+.portal-record-row:hover { background: #f1f7fc; }
+.portal-record-row:focus-visible, .portal-record-open:focus-visible { outline: 3px solid #1265a8; outline-offset: -3px; }
+.collection-specimen-card[tabindex="0"] { cursor: pointer; }
+.collection-specimen-card[tabindex="0"]:focus-visible { outline: 3px solid #1265a8; outline-offset: 3px; }
+.portal-record-open { color: #13558c; text-decoration: underline; white-space: nowrap; }
+.portal-record-dialog { width: min(960px, calc(100vw - 32px)); max-height: calc(100dvh - 40px); margin: auto; padding: 20px 24px; border: 1px solid #cbd5e1; border-radius: 16px; background: #fff; color: #183247; overflow: auto; }
+.portal-record-dialog::backdrop { background: rgba(15, 34, 51, .54); }
+.portal-record-dialog-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
+.portal-record-dialog-header h2 { font-size: 1.1rem; font-weight: 700; }
+.portal-record-dialog-header button { width: 36px; height: 36px; border-radius: 50%; background: #edf3f8; font-size: 1.5rem; }
+.portal-record-dialog .atlas-record-card { padding: 0; border: 0; box-shadow: none; }
+.portal-record-dialog .atlas-record-card h3 { font-size: 1.05rem; margin-bottom: 3px; }
+.portal-record-dialog .atlas-record-card > p { margin: 3px 0 10px; }
+.portal-record-dialog .atlas-record-card dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px 20px; margin-top: 10px; }
+.portal-record-dialog .atlas-record-card dl > div { min-width: 0; border: 0; padding: 0; }
+.portal-record-dialog .atlas-record-card dt { font-size: .72rem; color: #52667a; }
+.portal-record-dialog .atlas-record-card dd { font-size: .85rem; overflow-wrap: anywhere; line-height: 1.4; margin: 0; }
+.portal-record-dialog .atlas-record-photos { float: right; max-width: 170px; margin: 0 0 12px 20px; }
+.portal-record-dialog .atlas-record-photos img { max-height: 120px; width: 100%; object-fit: contain; }
+@media (max-width: 650px) { .portal-record-dialog { padding: 16px; } .portal-record-dialog .atlas-record-photos { float: none; max-width: none; margin: 0 0 12px; } .portal-record-dialog .atlas-record-card dl { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } }
+@media (max-width: 380px) { .portal-record-dialog .atlas-record-card dl { grid-template-columns: minmax(0, 1fr); } }

@@ -11,6 +11,8 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Illuminate\Validation\ValidationException;
 use Modules\CatalogoPublico\Infrastructure\CalidadDatoPublico;
+use Modules\CatalogoPublico\Infrastructure\ElegibilidadGeograficaPortal;
+use Modules\CatalogoPublico\Application\Services\ColumnasRegistroPublico;
 use Modules\CatalogoPublico\Infrastructure\NormalizacionGeografica;
 use Livewire\Component;
 use Modules\CatalogoPublico\Application\Ports\DatosEspecimenProveedor;
@@ -48,6 +50,50 @@ final class PortalCatalogo extends Component
     public int $versionNavegacion = 0;
 
     public string $avisoSeleccionUrl = '';
+
+    #[Locked]
+    public ?string $registroFichaId = null;
+
+    #[Computed]
+    public function columnasPublicas(): array
+    {
+        return app(ColumnasRegistroPublico::class)->visibles();
+    }
+
+    #[Computed]
+    public function filtrosAplicados(): array
+    {
+        return $this->valoresFiltros();
+    }
+
+    public function abrirFichaRegistro(string $id): void
+    {
+        if (! \Illuminate\Support\Str::isUuid($id)) abort(404);
+        $consulta = app(EloquentProveedorEspecimenesParaArbol::class)->consultaPublica($this->filtrosActuales(), $this->nivel, $this->taxon);
+        if (! $consulta->where('te.id', $id)->exists()) abort(404);
+        $this->registroFichaId = $id;
+        unset($this->fichaRegistro);
+        $this->dispatch('abrir-ficha-registro');
+    }
+
+    public function cerrarFichaRegistro(): void
+    {
+        $this->registroFichaId = null;
+        unset($this->fichaRegistro);
+    }
+
+    #[Computed]
+    public function fichaRegistro(): ?array
+    {
+        if ($this->registroFichaId === null) return null;
+        $consulta = app(EloquentProveedorEspecimenesParaArbol::class)->consultaPublica($this->filtrosActuales(), $this->nivel, $this->taxon);
+        if (! $consulta->where('te.id', $this->registroFichaId)->exists()) return null;
+        $registros = $this->cargarDetallesPorEspecimenIds([$this->registroFichaId], app(ProveedorEspecimenesPort::class), app(EspecimenDivulgableRepositoryInterface::class));
+        $registro = $registros[0] ?? null;
+        if ($registro === null) return null;
+        $imagenes = $this->cargarImagenesPorEspecimen(array_values(array_filter([$registro->occurrence_id])));
+        return ['registro' => $registro, 'fotos' => $imagenes[$registro->occurrence_id ?? ''] ?? []];
+    }
 
     // Un contrato plano compartido por montaje, enlaces copiados y Atrás/Adelante.
     // El borrador, los diálogos y el chat nunca forman parte del historial público.
@@ -98,12 +144,15 @@ final class PortalCatalogo extends Component
                 $this->{$prefijo.'Max'} = '';
             }
         }
+        $this->sincronizarCoordenadasSimples();
     }
 
     public function aplicarBorrador(): void
     {
         $anteriores = $this->valoresFiltros();
         foreach ($anteriores as $propiedad => $valor) $this->{$propiedad} = $this->borradorFiltros[$propiedad] ?? $valor;
+        if ($this->filtroLatitud !== $anteriores['filtroLatitud']) $this->filtroLatMin = $this->filtroLatMax = $this->filtroLatitud;
+        if ($this->filtroLongitud !== $anteriores['filtroLongitud']) $this->filtroLonMin = $this->filtroLonMax = $this->filtroLongitud;
         try {
             $this->actualizarFiltros();
         } catch (ValidationException $error) {
@@ -111,6 +160,7 @@ final class PortalCatalogo extends Component
             throw $error;
         }
         $this->cerrarCelda();
+        $this->cerrarFichaRegistro();
     }
 
     public function dehydrate(): void
@@ -158,6 +208,13 @@ final class PortalCatalogo extends Component
                 $this->{$propiedad} = is_scalar($valor) ? mb_substr((string) $valor, 0, 2000) : $defectos[$propiedad];
             }
         }
+        $this->sincronizarCoordenadasSimples();
+    }
+
+    private function sincronizarCoordenadasSimples(): void
+    {
+        $this->filtroLatitud = $this->filtroLatMin !== '' && $this->filtroLatMin === $this->filtroLatMax ? $this->filtroLatMin : '';
+        $this->filtroLongitud = $this->filtroLonMin !== '' && $this->filtroLonMin === $this->filtroLonMax ? $this->filtroLonMin : '';
     }
 
     private function validarSeleccionUrl(): void
@@ -215,6 +272,7 @@ final class PortalCatalogo extends Component
         $this->paginaHermanos = 1;
         $this->borradorFiltros = $this->valoresFiltros();
         $this->cerrarCelda();
+        $this->cerrarFichaRegistro();
     }
 
     public function quitarTaxon(): void
@@ -329,6 +387,10 @@ final class PortalCatalogo extends Component
 
     public string $filtroLonMax = '';
 
+    public string $filtroLatitud = '';
+
+    public string $filtroLongitud = '';
+
     public string $filtroElevDesde = '';
 
     public string $filtroElevHasta = '';
@@ -407,6 +469,7 @@ final class PortalCatalogo extends Component
         $this->pagina = 1;
         $this->paginaHermanos = 1;
         $this->validarSeleccionUrl();
+        $this->cerrarFichaRegistro();
     }
 
     public function cambiarVista(string $vista): void
@@ -414,6 +477,7 @@ final class PortalCatalogo extends Component
         if (in_array($vista, ['tarjetas', 'registros', 'mapa'], true)) {
             $this->vista = $vista;
             $this->pagina = 1;
+            $this->cerrarFichaRegistro();
         }
     }
 
@@ -422,6 +486,8 @@ final class PortalCatalogo extends Component
         $this->validate([
             'filtroFechaDesde' => ['nullable', 'date_format:Y-m-d'],
             'filtroFechaHasta' => array_filter(['nullable', 'date_format:Y-m-d', $this->filtroFechaDesde !== '' ? 'after_or_equal:filtroFechaDesde' : null]),
+            'filtroLatitud' => ['nullable', 'numeric', 'between:-90,90'],
+            'filtroLongitud' => ['nullable', 'numeric', 'between:-180,180'],
             'filtroLatMin' => ['nullable', 'required_with:filtroLatMax', 'numeric', 'between:-90,90'],
             'filtroLatMax' => ['nullable', 'required_with:filtroLatMin', 'numeric', 'between:-90,90', 'gte:filtroLatMin'],
             'filtroLonMin' => ['nullable', 'required_with:filtroLonMax', 'numeric', 'between:-180,180'],
@@ -438,6 +504,7 @@ final class PortalCatalogo extends Component
         $this->resetValidation();
         $this->pagina = 1;
         $this->paginaHermanos = 1;
+        $this->sincronizarCoordenadasSimples();
     }
 
     public function seleccionarProvincia(string $provincia): void
@@ -460,6 +527,12 @@ final class PortalCatalogo extends Component
     public function identificadorFilo(string $identificador): ?string
     {
         $identificador = trim($identificador);
+        // Un enlace UUID de un filo conocido conserva su selección vacía aunque
+        // ya no aparezca entre las opciones con material público elegible.
+        if (\Illuminate\Support\Str::isUuid($identificador)) {
+            $filo = DB::table('taxonomia.taxones')->where('id', $identificador)->where('rango', 'phylum')->first(['id', 'nombre_cientifico']);
+            return $filo && CalidadDatoPublico::esTextoValido($filo->nombre_cientifico) ? (string) $filo->id : null;
+        }
         $coincidencias = [];
         foreach ($this->filosDisponibles as $filo) {
             if (strcasecmp($filo['id'], $identificador) === 0) return $filo['id'];
@@ -478,6 +551,16 @@ final class PortalCatalogo extends Component
         $this->pagina = 1;
         $this->paginaHermanos = 1;
         $this->cerrarCelda();
+        $this->cerrarFichaRegistro();
+    }
+
+    public function quitarFiltroFilo(): void
+    {
+        $this->filtroFiloId = '';
+        $this->borradorFiltros['filtroFiloId'] = '';
+        $this->pagina = $this->paginaHermanos = 1;
+        $this->cerrarCelda();
+        $this->cerrarFichaRegistro();
     }
 
     public function seleccionarArea(float $latMin, float $latMax, float $lonMin, float $lonMax): void
@@ -489,6 +572,7 @@ final class PortalCatalogo extends Component
         $this->filtroLatMax = (string) $latMax;
         $this->filtroLonMin = (string) $lonMin;
         $this->filtroLonMax = (string) $lonMax;
+        $this->sincronizarCoordenadasSimples();
         $this->pagina = 1;
     }
 
@@ -523,7 +607,7 @@ final class PortalCatalogo extends Component
     {
         return DB::table('taxonomia.especimenes as e')
             ->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
-            ->where('d.publicado', true)->where('e.coordenadas_otras_regiones', false)->where('d.state_province_visible', true)
+            ->where('d.publicado', true)->whereRaw(ElegibilidadGeograficaPortal::sql('e', 'd'))->where('d.state_province_visible', true)
             ->whereRaw(CalidadDatoPublico::textoValido('e.state_province'))
             ->whereNotNull('e.state_province')->where('e.state_province', '<>', '')
             ->distinct()->orderBy('e.state_province')->pluck('e.state_province')
@@ -534,11 +618,7 @@ final class PortalCatalogo extends Component
     #[Computed]
     public function filosDisponibles(): array
     {
-        return DB::table('taxonomia.taxones')->where('rango', 'phylum')
-            ->orderBy('nombre_cientifico')->get(['id', 'nombre_cientifico'])
-            ->filter(static fn (object $fila): bool => NormalizacionGeografica::contieneNombre($fila->nombre_cientifico))
-            ->values()
-            ->map(static fn (object $fila): array => (array) $fila)->all();
+        return app(EloquentProveedorEspecimenesParaArbol::class)->filosPublicosDisponibles();
     }
 
     private function filtrosAnalisis(FiltrosBusqueda $filtros): array
@@ -616,6 +696,9 @@ final class PortalCatalogo extends Component
         $this->filtroLatMax = (string) ($datos['filtroLatMax'] ?? '');
         $this->filtroLonMin = (string) ($datos['filtroLonMin'] ?? '');
         $this->filtroLonMax = (string) ($datos['filtroLonMax'] ?? '');
+        if (array_key_exists('filtroLatitud', $datos)) $this->filtroLatMin = $this->filtroLatMax = (string) $datos['filtroLatitud'];
+        if (array_key_exists('filtroLongitud', $datos)) $this->filtroLonMin = $this->filtroLonMax = (string) $datos['filtroLongitud'];
+        $this->sincronizarCoordenadasSimples();
         $this->filtroElevDesde = (string) ($datos['filtroElevDesde'] ?? '');
         $this->filtroElevHasta = (string) ($datos['filtroElevHasta'] ?? '');
         $this->filtroBiomas = (array) ($datos['filtroBiomas'] ?? []);
@@ -623,6 +706,8 @@ final class PortalCatalogo extends Component
         $this->filtroTipo = (string) ($datos['filtroTipo'] ?? '');
         $this->filtroCasta = (string) ($datos['filtroCasta'] ?? '');
         $this->filtroEstadio = (string) ($datos['filtroEstadio'] ?? '');
+        $this->cerrarCelda();
+        $this->cerrarFichaRegistro();
     }
 
     public function limpiarFiltros(): void
@@ -644,6 +729,8 @@ final class PortalCatalogo extends Component
         $this->filtroLatMax = '';
         $this->filtroLonMin = '';
         $this->filtroLonMax = '';
+        $this->filtroLatitud = '';
+        $this->filtroLongitud = '';
         $this->filtroElevDesde = '';
         $this->filtroElevHasta = '';
         $this->filtroBiomas = [];
@@ -660,6 +747,7 @@ final class PortalCatalogo extends Component
         $this->filtroDatosCompletos = '';
         $this->borradorFiltros = $this->valoresFiltros();
         $this->cerrarCelda();
+        $this->cerrarFichaRegistro();
     }
 
     // ─── Exportación ─────────────────────────────────────────────────────────
@@ -831,7 +919,7 @@ final class PortalCatalogo extends Component
     ): View {
         $filtros = $this->filtrosActuales();
         $datosMapa = $this->vista === 'mapa'
-            ? app(PortalEstadisticas::class)->datosParaVista($this->filtrosAnalisis($filtros))
+            ? app(PortalEstadisticas::class)->datosParaVista($this->filtrosAnalisis($filtros), $this->filtroFiloId !== '')
             : null;
 
         if ($this->vista === 'mapa') {
@@ -850,6 +938,8 @@ final class PortalCatalogo extends Component
         if ($this->vista === 'registros') {
             $pagina = app(EloquentProveedorEspecimenesParaArbol::class)->paginaPublica($filtros, $this->pagina, $this->nivel, $this->taxon);
             $this->pagina = $pagina['pagina'];
+            $registrosVista = $this->cargarDetallesPorEspecimenIds($pagina['ids'], $proveedor, $repoDivulgable);
+            $imagenesRegistrosVista = $this->cargarImagenesPorEspecimen(array_values(array_filter(array_column($registrosVista, 'occurrence_id'))));
             return view('catalogopublico::livewire.portal-catalogo', [
                 'datosMapa' => null,
                 'provinciasDisponibles' => $this->provinciasDisponibles,
@@ -859,7 +949,7 @@ final class PortalCatalogo extends Component
                 'biomasDisponibles' => $this->biomasDisponibles,
                 'hayFiltrosActivos' => ! $filtros->estaVacio() || $this->taxon !== '',
                 'nivelActual' => $this->nivel, 'taxonActual' => $this->taxon,
-                'registrosVista' => $this->cargarDetallesPorEspecimenIds($pagina['ids'], $proveedor, $repoDivulgable),
+                'registrosVista' => $registrosVista, 'imagenesRegistrosVista' => $imagenesRegistrosVista,
                 'totalRegistrosVista' => $pagina['total'], 'paginaActual' => $pagina['pagina'], 'ultimaPagina' => $pagina['ultima'],
             ]);
         }
@@ -867,10 +957,10 @@ final class PortalCatalogo extends Component
         if ($this->vista === 'tarjetas' && $this->nivel === '' && $this->explorar === '') {
             $resumenRaiz = app(EloquentProveedorEspecimenesParaArbol::class)->resumenRaiz($filtros);
             $totalTarjetas = count($resumenRaiz['hijos']);
-            $ultimaPagina = max(1, (int) ceil($totalTarjetas / 12));
+            $ultimaPagina = max(1, (int) ceil($totalTarjetas / EloquentProveedorEspecimenesParaArbol::TAMANO_PAGINA));
             $paginaActual = min(max(1, $this->pagina), $ultimaPagina);
             $this->pagina = $paginaActual;
-            $resumenRaiz['hijos'] = array_slice($resumenRaiz['hijos'], ($paginaActual - 1) * 12, 12);
+            $resumenRaiz['hijos'] = array_slice($resumenRaiz['hijos'], ($paginaActual - 1) * EloquentProveedorEspecimenesParaArbol::TAMANO_PAGINA, EloquentProveedorEspecimenesParaArbol::TAMANO_PAGINA);
             return view('catalogopublico::livewire.portal-catalogo', $resumenRaiz + [
                 'totalTarjetas' => $totalTarjetas, 'paginaActual' => $paginaActual, 'ultimaPagina' => $ultimaPagina, 'totalEspecimenes' => 0,
                 'provinciasDisponibles' => $this->provinciasDisponibles, 'filosDisponibles' => $this->filosDisponibles,
@@ -894,14 +984,14 @@ final class PortalCatalogo extends Component
         if ($this->valoresFiltros() !== $this->filtrosAntes) $this->paginaHermanos = 1;
         $hermanos = $this->resolverHermanos($repositorio, $filtros, $ruta);
         $totalHermanos = count($hermanos);
-        $ultimaPaginaHermanos = max(1, (int) ceil($totalHermanos / 12));
+        $ultimaPaginaHermanos = max(1, (int) ceil($totalHermanos / EloquentProveedorEspecimenesParaArbol::TAMANO_PAGINA));
         $paginaHermanosActual = min(max(1, $this->paginaHermanos), $ultimaPaginaHermanos);
-        $hermanos = array_slice($hermanos, ($paginaHermanosActual - 1) * 12, 12);
+        $hermanos = array_slice($hermanos, ($paginaHermanosActual - 1) * EloquentProveedorEspecimenesParaArbol::TAMANO_PAGINA, EloquentProveedorEspecimenesParaArbol::TAMANO_PAGINA);
         $taxonesExplorados = $this->explorar !== '' ? $this->resolverTaxonesParaExplorar($output, $this->explorar, $resumen['rutas']) : [];
         $especimenes = $registrosVista = [];
         $totalRegistrosVista = $totalEspecimenes = $conteos[$this->nivel.':'.$this->taxon] ?? $totalGlobal;
         $totalTarjetas = $this->nivel === 'species' ? $totalEspecimenes : ($this->explorar !== '' ? count($taxonesExplorados) : count($hijos) + count($especiesActuales));
-        $ultimaPagina = max(1, (int) ceil($totalTarjetas / 12));
+        $ultimaPagina = max(1, (int) ceil($totalTarjetas / EloquentProveedorEspecimenesParaArbol::TAMANO_PAGINA));
         $paginaActual = min(max(1, $this->pagina), $ultimaPagina);
         if ($this->nivel === 'species' && $this->vista === 'tarjetas') {
             $paginaEspecie = $repositorio->paginaPublica($filtros, $this->pagina, $this->nivel, $this->taxon);
@@ -910,10 +1000,10 @@ final class PortalCatalogo extends Component
             $paginaActual = $paginaEspecie['pagina'];
             $ultimaPagina = $paginaEspecie['ultima'];
         } elseif ($this->explorar !== '') {
-            $taxonesExplorados = array_slice($taxonesExplorados, ($paginaActual - 1) * 12, 12);
+            $taxonesExplorados = array_slice($taxonesExplorados, ($paginaActual - 1) * EloquentProveedorEspecimenesParaArbol::TAMANO_PAGINA, EloquentProveedorEspecimenesParaArbol::TAMANO_PAGINA);
         } else {
             $tarjetas = array_merge(array_map(static fn (array $n): array => ['tipo' => 'nodo', 'nodo' => $n], $hijos), array_map(static fn (array $n): array => ['tipo' => 'especie', 'nodo' => $n], $especiesActuales));
-            $tarjetas = array_slice($tarjetas, ($paginaActual - 1) * 12, 12);
+            $tarjetas = array_slice($tarjetas, ($paginaActual - 1) * EloquentProveedorEspecimenesParaArbol::TAMANO_PAGINA, EloquentProveedorEspecimenesParaArbol::TAMANO_PAGINA);
             $hijos = array_values(array_map(static fn (array $n): array => $n['nodo'], array_filter($tarjetas, static fn (array $n): bool => $n['tipo'] === 'nodo')));
             $especiesActuales = array_values(array_map(static fn (array $n): array => $n['nodo'], array_filter($tarjetas, static fn (array $n): bool => $n['tipo'] === 'especie')));
         }
@@ -1030,7 +1120,7 @@ final class PortalCatalogo extends Component
             ->join('divulgacion.imagenes_taxonomicas as i', 'i.id', '=', 'd.imagen_id')
             ->join('taxonomia.especimenes as e', 'e.occurrence_id', '=', 'i.occurrence_id')
             ->join('divulgacion.especimenes_divulgables as ed', 'ed.especimen_id', '=', 'e.id')
-            ->where('ed.publicado', true)->where('e.coordenadas_otras_regiones', false)->where('ed.scientific_name_visible', true)
+            ->where('ed.publicado', true)->whereRaw(ElegibilidadGeograficaPortal::sql('e', 'ed'))->where('ed.scientific_name_visible', true)
             ->where(fn ($q) => $q->where('d.nivel', '<>', 'genus')->orWhere('ed.genus_visible', true))
             ->whereRaw('(SELECT COUNT(*) FROM taxonomia.especimenes identidad WHERE identidad.occurrence_id = i.occurrence_id) = 1')
             ->where(function ($q) use ($claves): void {

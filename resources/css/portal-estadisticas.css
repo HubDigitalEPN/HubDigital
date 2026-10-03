@@ -236,7 +236,12 @@
 .research-sidebar:not([open]) .research-filter-actions { display:none; }
 .research-filter-actions span { font-size:.72rem; }
 .research-filter-actions button:disabled, .collection-view-switch button:disabled { opacity:.6; cursor:wait; }
-.collection-loading { position:fixed; z-index:900; top:5rem; right:1rem; padding:.5rem 1rem; background:#fff; color:#164d77; box-shadow:0 2px 12px #163a5530; }
+.collection-loading { position:fixed; z-index:1200; inset:0; pointer-events:none; }
+.collection-loading-indicator { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); display:grid; place-items:center; width:3rem; height:3rem; border:1px solid #d8e5ed; border-radius:50%; background:#ffffffed; box-shadow:0 2px 12px #163a5530; }
+.research-filter-form .research-filter-active { outline:2px solid #1977b4; outline-offset:3px; border-radius:.3rem; }
+.research-filter-active > span, .research-filter-active > legend { color:#155d91; }
+.atlas-show-all { align-self:flex-start; margin:.65rem .9rem 0; padding:.25rem 0; color:#155d91; text-decoration:underline; text-underline-offset:3px; font-size:.8rem; }
+.atlas-show-all:focus-visible { outline:2px solid #1977b4; outline-offset:3px; }
 .research-filter-actions button { min-height:2.3rem; border:1px solid #113f66; border-radius:.35rem; padding:.45rem .7rem; background:#113f66; color:#fff; font-size:.76rem; font-weight:700; cursor:pointer; }
 .research-filter-actions button + button { border-color:#cbd9e5; background:#fff; color:#164d77; }
 .research-filter-actions button:hover { filter:brightness(1.1); }
@@ -526,9 +531,11 @@
 
 /* Agrupaciones visuales del mapa; nunca sustituyen coordenadas originales. */
 .atlas-map-cluster { background:transparent; border:0; pointer-events:auto; }
-.atlas-map-cluster-button { display:flex; flex-direction:column; align-items:center; justify-content:center; width:48px; height:48px; padding:0; border:3px solid #fff; border-radius:50%; background:#17699b; color:#fff; box-shadow:0 0 0 1px #0e4975,0 2px 7px #102d4840; line-height:1.1; cursor:zoom-in; pointer-events:auto; }
-.atlas-map-cluster-button:hover { background:#0e4975; }
+.atlas-map-cluster-button { display:flex; flex-direction:column; align-items:center; justify-content:center; width:48px; height:48px; padding:0; border:3px solid #fff; border-radius:50%; color:#102d48; box-shadow:0 0 0 1px #102d4870,0 2px 7px #102d4840; line-height:1.1; cursor:zoom-in; pointer-events:auto; }
+.atlas-map-cluster-button:hover { filter:brightness(1.08); }
 .atlas-map-cluster-button:focus-visible { outline:3px solid #102d48; outline-offset:3px; }
-.atlas-map-cluster-number { font:700 15px/1.1 system-ui,sans-serif; }
-.atlas-map-cluster-unit { margin-top:2px; font:600 10px/1 system-ui,sans-serif; }
+.atlas-map-cluster-number { padding:2px 4px 0; background:#fffffff2; border-radius:4px 4px 0 0; font:700 15px/1.1 system-ui,sans-serif; }
+.atlas-map-cluster-unit { padding:0 4px 2px; background:#fffffff2; border-radius:0 0 4px 4px; font:600 10px/1 system-ui,sans-serif; }
+.atlas-map-mixed { border:1px solid #102d4870; border-radius:50%; opacity:.9; cursor:pointer; }
+.atlas-map-mixed:focus-visible { outline:3px solid #102d48; outline-offset:3px; }
 .atlas-legend-cluster { display:inline-flex; flex:none; align-items:center; justify-content:center; width:22px; height:22px; margin-right:.3rem; border:2px solid #fff; border-radius:50%; background:#17699b; color:#fff; box-shadow:0 0 0 1px #0e4975; font-style:normal; font-weight:700; }

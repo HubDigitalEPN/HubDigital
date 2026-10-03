@@ -96,6 +96,7 @@
             :provincias="$provinciasDisponibles" :filos="$filosDisponibles"
             :preparaciones="$preparacionesDisponibles" :metodos="$metodosRecoleccionDisponibles"
             :biomas="$biomasDisponibles" :hay-filtros-activos="$hayFiltrosActivos"
+            :aplicados="$this->filtrosAplicados"
         />
         <div class="collection-main">
     @if($taxon !== '')
@@ -108,8 +109,11 @@
             <button type="button" wire:loading.attr="disabled" wire:click="cambiarVista('mapa')" aria-label="Vista de mapa y análisis" title="Mapa y análisis" aria-pressed="{{ $vista === 'mapa' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2zM9 3v16m6-14v16"/></svg><span class="sr-only">Mapa y análisis</span></button>
         </div>
     </nav>
-            <p class="collection-loading" wire:loading wire:target="cambiarVista,aplicarBorrador,limpiarFiltros" role="status">Actualizando vista…</p>
+            <div class="collection-loading" wire:loading.delay wire:target="cambiarVista,aplicarBorrador,limpiarFiltros,seleccionarFilo,quitarFiltroFilo,seleccionarProvincia,seleccionarDecada,seleccionarMes,seleccionarElevacion,seleccionarMetodo,seleccionarArea,explorarNivel,navegar,cambiarPagina,cambiarPaginaHermanos,abrirFichaRegistro">
+                <span class="collection-loading-indicator" role="status"><span class="atlas-spinner" aria-hidden="true"></span><span class="sr-only">Actualizando selección</span></span>
+            </div>
 
+    @include('catalogopublico::components.ficha-registro-publico')
     @if($vista === 'mapa')
         @include('catalogopublico::dashboard-coleccion')
         @include('catalogopublico::components.detalle-celda-mapa')
@@ -129,40 +133,7 @@
             @if($totalRegistrosVista === 0)
                 <p class="rounded-lg border border-border bg-surface p-8 text-center text-text-secondary">No hay registros públicos para esta selección.</p>
             @else
-                <p id="indicacion-tabla-registros" class="collection-table-hint">Desliza la tabla horizontalmente para ver todas las columnas. Con teclado, enfoca la tabla y usa las flechas izquierda y derecha.</p>
-                <div class="collection-table-scroll overflow-x-auto rounded-lg border border-border bg-surface shadow-sm" role="region" tabindex="0" aria-label="Registros de la colección con desplazamiento horizontal" aria-describedby="indicacion-tabla-registros">
-                    <table class="w-full min-w-[850px] text-left text-sm">
-                        <thead class="border-b border-border bg-bg-main text-text-secondary">
-                            <tr>
-                                <th scope="col" class="px-4 py-3 font-semibold">N.º de catálogo</th>
-                                <th scope="col" class="px-4 py-3 font-semibold">Identificación</th>
-                                <th scope="col" class="px-4 py-3 font-semibold">Fecha de recolección</th>
-                                <th scope="col" class="px-4 py-3 font-semibold">Localidad del Excel</th>
-                                <th scope="col" class="px-4 py-3 font-semibold">Localidad INEC cercana o exacta</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-border">
-                            @foreach($registrosVista as $registro)
-                                <tr>
-                                    <td class="whitespace-nowrap px-4 py-3 font-medium text-text-primary">{{ $registro->occurrence_id ?: 'Reservado' }}</td>
-                                    <td class="px-4 py-3 italic text-text-primary">{{ $registro->scientific_name ?: 'Identificación pendiente' }}
-                                        @if($registro->taxon_en_revision ?? false)<span class="block text-xs not-italic">Dato original por revisar; excluido de riqueza e identificación a especie.</span>@endif
-                                    </td>
-                                    <td class="px-4 py-3 text-text-secondary">{{ $registro->event_date ? \Carbon\CarbonImmutable::parse($registro->event_date)->format('d/m/Y') : '—' }}
-                                        @if($registro->event_date && ((int) substr($registro->event_date, 0, 4) < 1800 || $registro->event_date > date('Y-m-d')))<span class="block text-xs">Fecha original por revisar; excluida de indicadores temporales.</span>@endif
-                                    </td>
-                                    <td class="px-4 py-3 text-text-secondary">{{ $registro->locality_visible ? ($registro->locality_excel ?: '—') : 'Reservada' }}</td>
-                                    <td class="px-4 py-3 text-text-secondary">
-                                        {{ $registro->locality_visible ? ($registro->locality_inec ?: 'Sin correspondencia confirmada') : 'Reservada' }}
-                                        @if($registro->locality_inec && $registro->locality_inec_reference)
-                                            <span class="block text-xs">{{ $registro->locality_inec_reference }}</span>
-                                        @endif
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
+                <x-catalogopublico::tabla-registros-mapa :registros="$registrosVista" :imagenes="$imagenesRegistrosVista" :total="$totalRegistrosVista" contexto="catalogo" :mostrar-titulo="false" />
                 <nav class="mt-5 flex items-center justify-between gap-3" aria-label="Páginas de registros">
                     <button type="button" wire:click="cambiarPagina({{ $paginaActual - 1 }})" @disabled($paginaActual <= 1)
                         class="rounded-lg border border-border px-4 py-2 text-sm text-science-blue disabled:cursor-not-allowed disabled:opacity-40">Anterior</button>
@@ -210,7 +181,7 @@
                             <div class="min-w-0">
                                 <div class="flex items-center gap-2">
                                     <button type="button" wire:click="navegar('{{ $hijo['nivel'] }}', '{{ $hijo['taxon'] }}')" class="truncate font-serif text-lg italic text-text-primary transition-colors hover:text-science-blue">{{ $hijo['taxon'] }}</button>
-                                    <x-catalogopublico::ayuda-taxon :nombre="$hijo['taxon']" :nivel="$hijo['nivel']" :registros="$numEspecimenes" :stats="$stats" :jerarquia="array_column($ruta, 'taxon', 'nivel')" />
+                                    <x-catalogopublico::ayuda-taxon :nombre="$hijo['taxon']" :nivel="$hijo['nivel']" :registros="$numEspecimenes" :stats="$stats" :jerarquia="array_column($ruta, 'taxon', 'nivel')" :foto-publica="$portadas[$hijo['nivel'].':'.$hijo['taxon']] ?? null" />
                                 </div>
                                 <div class="mt-0.5 text-xs text-text-secondary">{{ $etiquetas[$hijo['nivel']] ?? $hijo['nivel'] }}</div>
                             </div>
@@ -331,7 +302,7 @@
                                                     {{ $etiquetas[$hijo['nivel']] ?? $hijo['nivel'] }}
                                                 </div>
                                             </div>
-                                            <x-catalogopublico::ayuda-taxon :nombre="$hijo['taxon']" :nivel="$hijo['nivel']" :registros="$numEspecimenes" :stats="$stats" :jerarquia="array_column($ruta, 'taxon', 'nivel')" />
+                                            <x-catalogopublico::ayuda-taxon :nombre="$hijo['taxon']" :nivel="$hijo['nivel']" :registros="$numEspecimenes" :stats="$stats" :jerarquia="array_column($ruta, 'taxon', 'nivel')" :foto-publica="$portadas[$hijo['nivel'].':'.$hijo['taxon']] ?? null" />
                                         </div>
 
                                         @if(!empty($stats) || $numEspecimenes > 0)
@@ -445,7 +416,7 @@
                                                 {{ $numEspecimenes }} {{ $numEspecimenes === 1 ? 'registro' : 'registros' }}
                                             </span>
                                         @endif
-                                        <x-catalogopublico::ayuda-taxon :nombre="$especie['especie']" nivel="species" :registros="$numEspecimenes" :jerarquia="array_column($ruta, 'taxon', 'nivel')" />
+                                        <x-catalogopublico::ayuda-taxon :nombre="$especie['especie']" nivel="species" :registros="$numEspecimenes" :jerarquia="array_column($ruta, 'taxon', 'nivel')" :foto-publica="$portadaEspecie" />
                                     </div>
                                 </article>
                             @endforeach
@@ -634,6 +605,10 @@
                                 <article
                                     x-data="{ abierto: false }" wire:key="ejemplar-{{ $especimen->especimen_id }}"
                                     class="collection-specimen-card rounded-lg border border-border bg-surface shadow-sm"
+                                    tabindex="0" aria-label="Abrir ficha de {{ $especimen->occurrence_id ?: 'registro público' }}"
+                                    x-on:click="if (!$event.target.closest('button,a,input,select')) $wire.abrirFichaRegistro(@js($especimen->especimen_id))"
+                                    x-on:keydown.enter.self.prevent="$wire.abrirFichaRegistro(@js($especimen->especimen_id))"
+                                    x-on:keydown.space.self.prevent="$wire.abrirFichaRegistro(@js($especimen->especimen_id))"
                                 >
                                     <div class="flex">
 
@@ -641,7 +616,7 @@
                                         @if($numImagenes > 0)
                                             <button
                                                 type="button"
-                                                @click="abierto = !abierto"
+                                                x-on:click="$wire.abrirFichaRegistro(@js($especimen->especimen_id))"
                                                 class="collection-specimen-thumbnail group/thumb relative w-28 shrink-0 bg-bg-main border-r border-border overflow-hidden"
                                                 title="Ver {{ $numImagenes }} {{ $numImagenes === 1 ? 'imagen' : 'imágenes' }}"
                                             >
@@ -911,7 +886,7 @@
                                         @endif
                                     </div>
                                 </div>
-                                <x-catalogopublico::ayuda-taxon :nombre="$nodo['taxon']" :nivel="$nodo['nivel']" :registros="$numEspecimenes" :stats="$stats" :jerarquia="$nodo['jerarquia'] ?? array_column($ruta, 'taxon', 'nivel')" />
+                                <x-catalogopublico::ayuda-taxon :nombre="$nodo['taxon']" :nivel="$nodo['nivel']" :registros="$numEspecimenes" :stats="$stats" :jerarquia="$nodo['jerarquia'] ?? array_column($ruta, 'taxon', 'nivel')" :foto-publica="$portadas[$nodo['nivel'].':'.$nodo['taxon']] ?? null" />
                             </div>
 
                             @if(!empty($stats) || $numEspecimenes > 0)
@@ -941,10 +916,10 @@
 
     @endif {{-- fin modo árbol / explorar --}}
     @php $totalPaginado = $nivelActual === 'species' && $nivelExplorar === '' ? $totalEspecimenes : $totalTarjetas; @endphp
-    @if($totalPaginado > 12)
+    @if($totalPaginado > 6)
         <nav class="collection-card-pagination" aria-label="Páginas de tarjetas">
             <button type="button" wire:click="cambiarPagina({{ $paginaActual - 1 }})" wire:loading.attr="disabled" @disabled($paginaActual <= 1)>Anterior</button>
-            <span>Página {{ $paginaActual }} de {{ $ultimaPagina }} · 12 por página · {{ number_format($totalPaginado) }} en total</span>
+            <span>Página {{ $paginaActual }} de {{ $ultimaPagina }} · 6 por página · {{ number_format($totalPaginado) }} en total</span>
             <button type="button" wire:click="cambiarPagina({{ $paginaActual + 1 }})" wire:loading.attr="disabled" @disabled($paginaActual >= $ultimaPagina)>Siguiente</button>
         </nav>
     @endif
@@ -967,16 +942,12 @@
         <template x-if="taxonAyuda">
             <div class="collection-taxon-explanation">
                 <header><h2 id="titulo-ayuda-taxon">¿Qué es <em x-text="taxonAyuda.nombre"></em>?</h2><button type="button" autofocus x-on:click="cerrarTaxon()" aria-label="Cerrar explicación">×</button></header>
-                <p><strong x-text="taxonAyuda.nivel"></strong> · <em x-text="taxonAyuda.nombre"></em></p>
-                <p x-text="descripciones[taxonAyuda.nombre] || 'Este nombre científico identifica un taxón del nivel ' + taxonAyuda.nivel.toLowerCase() + ' en la clasificación de la colección.'"></p>
-                <p>Un <strong>taxón</strong> es cualquier grupo de la clasificación que posee un nombre científico: puede ser un reino, filo, clase, orden, familia, género o especie. Los niveles superiores reúnen otros taxones; no equivalen a una especie.</p>
-                <template x-if="taxonAyuda.representacion"><div x-html="taxonAyuda.representacion"></div></template>
-                <template x-if="!taxonAyuda.representacion"><div x-html="taxonAyuda.fotografia"></div></template>
+                <div class="collection-taxon-help-photograph" x-html="taxonAyuda.fotografia"></div>
+                <p x-show="descripciones[taxonAyuda.nombre]" x-text="descripciones[taxonAyuda.nombre]"></p>
                 <p><strong x-text="taxonAyuda.registros.toLocaleString('es-EC')"></strong> registros públicos de este taxón en la selección actual.</p>
                 <ul class="collection-taxon-descendants" x-show="Object.keys(taxonAyuda.stats).length > 0">
                     <template x-for="([nivel, cantidad]) in Object.entries(taxonAyuda.stats)" :key="nivel"><li><strong x-text="Number(cantidad).toLocaleString('es-EC')"></strong> <span x-text="etiquetasStats[nivel] || nivel"></span></li></template>
                 </ul>
-                <p>Abre la tarjeta para consultar sus taxones descendientes y los datos publicados de los ejemplares. Las cantidades describen material de la colección, no abundancia en la naturaleza.</p>
             </div>
         </template>
     </dialog>

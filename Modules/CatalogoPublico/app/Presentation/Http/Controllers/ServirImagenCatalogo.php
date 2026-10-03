@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Modules\CatalogoPublico\Presentation\Http\Controllers;
 
+use Modules\CatalogoPublico\Infrastructure\ElegibilidadGeograficaPortal;
+
 use Illuminate\Support\Facades\DB;
 use Modules\CatalogoPublico\Infrastructure\Adapters\StorageImagenesAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
@@ -49,7 +51,7 @@ final class ServirImagenCatalogo
         return DB::table('divulgacion.imagenes_taxonomicas as imagen')
             ->join('taxonomia.especimenes as especimen', 'especimen.occurrence_id', '=', 'imagen.occurrence_id')
             ->join('divulgacion.especimenes_divulgables as divulgable', 'divulgable.especimen_id', '=', 'especimen.id')
-            ->where('divulgable.publicado', true)->where('especimen.coordenadas_otras_regiones', false)
+            ->where('divulgable.publicado', true)->whereRaw(ElegibilidadGeograficaPortal::sql('especimen', 'divulgable'))
             // La imagen heredada se vinculó por etiqueta. Una etiqueta repetida
             // no identifica al dueño; se conserva el objeto para revisión curatorial.
             ->whereRaw('(SELECT COUNT(*) FROM taxonomia.especimenes identidad WHERE identidad.occurrence_id = imagen.occurrence_id) = 1')

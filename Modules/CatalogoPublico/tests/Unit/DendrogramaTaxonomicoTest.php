@@ -21,7 +21,7 @@ function nodosDendrogramaPublico(): array
     return $nodos;
 }
 
-it('representa diez rangos y bifurcaciones reales con geometría compacta y selección coherente', function () {
+it('representa diez rangos en columnas y centra las bifurcaciones reales con hojas a la derecha', function () {
     $fuente = nodosDendrogramaPublico();
     $grafico = DendrogramaTaxonomico::calcular(array_reverse($fuente), 'especie-2');
     $nodos = array_column($grafico['nodos'], null, 'id');
@@ -29,8 +29,8 @@ it('representa diez rangos y bifurcaciones reales con geometría compacta y sele
 
     expect($grafico['nodos'])->toHaveCount(11)
         ->and($grafico['ramas'])->toHaveCount(10)
-        ->and($grafico['ancho'])->toBe(640)
-        ->and($grafico['alto'])->toBeLessThan(600)
+        ->and($grafico['ancho'])->toBe(1616)
+        ->and($grafico['alto'])->toBe(176)
         ->and($nodos['rango-4']['etiqueta'])->toBe('Suborden')
         ->and($nodos['rango-6']['etiqueta'])->toBe('Subfamilia')
         ->and($nodos['rango-7']['etiqueta'])->toBe('Tribu')
@@ -41,21 +41,40 @@ it('representa diez rangos y bifurcaciones reales con geometría compacta y sele
         ->and($ramas['especie-2']['padre_id'])->toBe('rango-8')
         ->and($ramas['especie-2']['activa'])->toBeTrue()
         ->and($ramas['especie-1']['activa'])->toBeFalse()
-        ->and($nodos['especie-1']['miniatura'])->toBeNull();
+        ->and($nodos['especie-1']['miniatura'])->toBeNull()
+        ->and($nodos['especie-1']['x'])->toBe($nodos['especie-2']['x'])
+        ->and($nodos['rango-8']['y'])->toEqual(($nodos['especie-1']['y'] + $nodos['especie-2']['y']) / 2);
     foreach ($fuente as $nodo) {
         $dibujado = $nodos[$nodo['id']];
         expect($dibujado['nombre'])->toBe($nodo['nombre'])
             ->and($dibujado['rango'])->toBe($nodo['rango'])
             ->and($dibujado['total'])->toBe($nodo['total'])
-            ->and($dibujado['x'])->toBeLessThan(320)
+            ->and($dibujado['x'] + $dibujado['ancho_nodo'])->toBeLessThan($grafico['ancho'])
             ->and($dibujado['y'])->toBeGreaterThan(0)
-            ->and($dibujado['y'])->toBeLessThan($grafico['alto']);
+            ->and($dibujado['y'])->toBeLessThan($grafico['alto'])
+            ->and($dibujado['mostrar_total'])->toBe($nodo['rango'] === 'especie');
         if ($nodo['padre_id'] !== null) {
             expect($ramas[$nodo['id']]['padre_id'])->toBe($nodo['padre_id'])
-                ->and($nodos[$nodo['padre_id']]['x'])->toBeLessThan($dibujado['x'])
-                ->and($nodos[$nodo['padre_id']]['y'])->toBeLessThan($dibujado['y']);
+                ->and($nodos[$nodo['padre_id']]['x'] + $nodos[$nodo['padre_id']]['ancho_nodo'])->toBeLessThan($dibujado['x']);
         }
     }
+});
+
+it('alinea terminales de distintas profundidades sin atribuir conteos de especie a un rango incompleto', function () {
+    $grafico = DendrogramaTaxonomico::calcular([
+        ['id' => 'raiz', 'padre_id' => null, 'nombre' => 'Animalia', 'rango' => 'reino', 'total' => 5],
+        ['id' => 'genero', 'padre_id' => 'raiz', 'nombre' => 'Taxon', 'rango' => 'genero', 'total' => 4],
+        ['id' => 'especie', 'padre_id' => 'genero', 'nombre' => 'Taxon alpha', 'rango' => 'species', 'total' => 4],
+        ['id' => 'parcial', 'padre_id' => 'raiz', 'nombre' => 'Filo público', 'rango' => 'phylum', 'total' => 1],
+    ]);
+    $nodos = array_column($grafico['nodos'], null, 'id');
+    expect($nodos['especie']['x'])->toBe($nodos['parcial']['x'])
+        ->and($nodos['genero']['y'])->toBe($nodos['especie']['y'])
+        ->and($nodos['raiz']['y'])->toEqual(($nodos['especie']['y'] + $nodos['parcial']['y']) / 2)
+        ->and($nodos['especie']['mostrar_total'])->toBeTrue()
+        ->and($nodos['parcial']['mostrar_total'])->toBeFalse()
+        ->and($nodos['parcial']['total'])->toBe(1)
+        ->and(array_column($grafico['nodos'], 'id'))->toBe(['raiz', 'genero', 'especie', 'parcial']);
 });
 
 it('una sola especie conserva una cadena sin bifurcaciones ni ancestros inferidos', function () {
@@ -112,6 +131,11 @@ it('el gráfico renderiza controles nativos y relaciones públicas con nombres e
             ->and($dom->query('//button[@data-taxon-id="especie-1"]')->item(0)->getAttribute('aria-label'))->toContain('Taxón padre: Neoponera')
             ->and($dom->query('//button[@data-taxon-id="especie-2"]//strong')->item(0)->textContent)->toBe($nodos[10]['nombre'])
             ->and($dom->query('//script')->length)->toBe(0)
+            ->and($dom->query('//img')->length)->toBe(0)
+            ->and($dom->query('//button[@data-rango="especie"]//small/span')->length)->toBe(2)
+            ->and($dom->query('//button[@data-rango!="especie"]//small/span')->length)->toBe(0)
+            ->and($dom->query('//button[@data-taxon-id="rango-0"]')->item(0)->getAttribute('aria-label'))->not->toContain('registros')
+            ->and($dom->query('//button[@data-taxon-id="rango-0"]')->item(0)->getAttribute('title'))->not->toContain('registros')
             ->and($dom->query('//svg[@aria-hidden="true"]')->length)->toBe(1);
     } finally {
         libxml_clear_errors();

@@ -32,6 +32,25 @@
     @if($successMessage)<flux:callout variant="success" dismissible>{{ $successMessage }}</flux:callout>@endif
     @if($errorMessage)<flux:callout variant="danger" dismissible>{{ $errorMessage }}</flux:callout>@endif
 
+    <section class="rounded-lg border border-border bg-surface p-4 shadow-sm" aria-labelledby="columnas-portal-titulo">
+        <flux:heading id="columnas-portal-titulo" size="lg" level="2">Columnas del portal público</flux:heading>
+        <p class="mt-1 text-sm text-text-secondary">Selecciona las columnas que verán los visitantes en las tablas de registros y ubicaciones. Todas se muestran inicialmente; se conservan los permisos de publicación de cada dato.</p>
+        <form wire:submit="guardarColumnasPublicas" class="mt-4 space-y-4">
+            <fieldset class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <legend class="sr-only">Columnas públicas visibles</legend>
+                @foreach($columnasPortal as $columna)
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" wire:model="columnasPublicas" value="{{ $columna['clave'] }}" class="size-4 accent-blue-700">{{ $columna['etiqueta'] }}</label>
+                @endforeach
+            </fieldset>
+            @error('columnasPublicas')<p class="text-sm text-error" role="alert">{{ $message }}</p>@enderror
+            <div class="flex flex-wrap gap-3">
+                <flux:button type="submit" variant="primary" wire:loading.attr="disabled">Guardar columnas públicas</flux:button>
+                <flux:button type="button" wire:click="mostrarTodasPublicas" wire:loading.attr="disabled">Mostrar todas</flux:button>
+                <span wire:loading wire:target="guardarColumnasPublicas,mostrarTodasPublicas" class="text-sm text-text-secondary" role="status">Guardando…</span>
+            </div>
+        </form>
+    </section>
+
     {{-- Leyenda --}}
     <div class="rounded-lg border border-border bg-surface shadow-sm p-4">
         <div class="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-2">Significado de cada prioridad</div>

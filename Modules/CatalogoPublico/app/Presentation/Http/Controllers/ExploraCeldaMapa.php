@@ -165,7 +165,7 @@ trait ExploraCeldaMapa
         foreach ($filasConRuta as $entrada) {
             $fila = $entrada['fila'];
             $ruta = $entrada['ruta'];
-            if (array_slice(array_column($ruta, 'id'), 0, count($seleccion)) !== $seleccion) continue;
+            if ($this->vistaCelda !== 'registros' && array_slice(array_column($ruta, 'id'), 0, count($seleccion)) !== $seleccion) continue;
             $total += (int) $fila->total;
             if ($entrada['curatorial']) {
                 $clave = $fila->taxon_id.':'.implode(':', array_column($ruta, 'id'));
@@ -183,7 +183,7 @@ trait ExploraCeldaMapa
             $grupos[$hijo['id']] ??= $hijo + ['total' => 0];
             $grupos[$hijo['id']]['total'] += (int) $fila->total;
         }
-        if ($seleccion !== []) {
+        if ($seleccion !== [] && $this->vistaCelda !== 'registros') {
             // El conteo y los UUID paginados usan los mismos grupos de permisos,
             // incluso cuando un linaje omite familia o género por privacidad.
             $base->where(function (Builder $query) use ($taxonesPorVisibilidad): void {
@@ -199,26 +199,27 @@ trait ExploraCeldaMapa
         uasort($grupos, static fn (array $a, array $b): int => strnatcasecmp($a['nombre'], $b['nombre']));
         $totalGrupos = count($grupos);
         $mostrarRegistros = $this->vistaCelda === 'registros' || $grupos === [];
-        $ultima = max(1, (int) ceil(($mostrarRegistros ? $total : $totalGrupos) / 12));
+        $tamanoPagina = EloquentProveedorEspecimenesParaArbol::TAMANO_PAGINA;
+        $ultima = max(1, (int) ceil(($mostrarRegistros ? $total : $totalGrupos) / $tamanoPagina));
         $pagina = min($this->paginaCelda, $ultima);
-        $grupos = array_slice($grupos, $mostrarRegistros ? 0 : ($pagina - 1) * 12, 12, true);
+        $grupos = array_slice($grupos, $mostrarRegistros ? 0 : ($pagina - 1) * $tamanoPagina, $tamanoPagina, true);
         $registros = $imagenes = [];
         if ($mostrarRegistros) {
-            $ids = (clone $base)->orderBy('te.fila_origen_excel')->orderBy('te.id')->offset(($pagina - 1) * 12)->limit(12)->pluck('te.id')->all();
+            $ids = (clone $base)->orderBy('te.fila_origen_excel')->orderBy('te.id')->offset(($pagina - 1) * $tamanoPagina)->limit($tamanoPagina)->pluck('te.id')->all();
             $registros = $this->cargarDetallesPorEspecimenIds($ids, app(ProveedorEspecimenesPort::class), app(EspecimenDivulgableRepositoryInterface::class));
             $imagenes = $this->cargarImagenesPorEspecimen(array_values(array_filter(array_column($registros, 'occurrence_id'))));
         }
-        // Vista de conjunto desde abrir el punto: como máximo doce hojas reales
+        // Vista de conjunto desde abrir el punto: como máximo seis hojas reales
         // y sus ancestros publicados, reutilizando los agregados ya obtenidos.
         $padres = array_fill_keys(array_filter(array_column($nodos, 'padre_id')), true);
         $hojas = array_diff_key($nodos, $padres);
         uasort($hojas, static fn (array $a, array $b): int => strnatcasecmp($a['nombre'], $b['nombre']) ?: strcmp($a['id'], $b['id']));
         $arbol_hojas_total = count($hojas);
-        $arbol_ultima = max(1, (int) ceil($arbol_hojas_total / 12));
+        $arbol_ultima = max(1, (int) ceil($arbol_hojas_total / $tamanoPagina));
         $arbol_pagina = min(max(1, $this->paginaArbolCelda), $arbol_ultima);
         $arbol_registros_total = (int) $filas->sum('total');
         $arbol = [];
-        foreach (array_slice($hojas, ($arbol_pagina - 1) * 12, 12, true) as $id => $hoja) {
+        foreach (array_slice($hojas, ($arbol_pagina - 1) * $tamanoPagina, $tamanoPagina, true) as $id => $hoja) {
             foreach ($rutasDisponibles[$id] as $nodo) $arbol[$nodo['id']] = $nodos[$nodo['id']];
         }
         $idSeleccionado = $seleccion === [] ? null : end($seleccion);

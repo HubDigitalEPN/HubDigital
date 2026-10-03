@@ -1,5 +1,6 @@
 import L from 'leaflet';
 import {crearGeojsonMapa, prepararPuntosMapa, crearAgrupadorMapa, etiquetaAgrupacionMapa, ZOOM_UBICACIONES_ORIGINALES} from './portal-map-model';
+import {colorFilo, composicionFilos, fondoFilos} from './portal-map-model';
 import {nombreDescargaImagen} from './portal-image-model';
 import {crearHistorialCatalogo} from './portal-history-model';
 
@@ -10,6 +11,7 @@ window.L = L;
 function agregarAgrupacionMapa(capa, mapa, grupo) {
     const boton = L.DomUtil.create('button', 'atlas-map-cluster-button');
     boton.type = 'button';
+    boton.style.background = fondoFilos(grupo.filos);
     const etiqueta = etiquetaAgrupacionMapa(grupo);
     boton.setAttribute('aria-label', etiqueta);
     boton.title = etiqueta;
@@ -83,7 +85,7 @@ const registrarDashboard = () => {
         },
         abrirTaxon(invocador, datos) {
             this.invocadorAyuda = invocador;
-            this.taxonAyuda = datos;
+            this.taxonAyuda = {...datos, fotografia: datos.fotografia || ''};
             this.$nextTick(() => {
                 if (!this.$refs.ayudaTaxon.open) this.$refs.ayudaTaxon.showModal();
                 this.$refs.ayudaTaxon.querySelector('button')?.focus({preventScroll: true});
@@ -93,6 +95,7 @@ const registrarDashboard = () => {
         restaurarTaxon() {
             this.invocadorAyuda?.focus({preventScroll: true});
             this.taxonAyuda = null;
+            this.invocadorAyuda = null;
         },
     }});
 
@@ -321,8 +324,7 @@ const registrarDashboard = () => {
         },
 
         color(filo, filos) {
-            if (filo === 'Sin filo') return '#71828d';
-            return this.colores[Math.max(0, Object.keys(filos).indexOf(filo)) % this.colores.length];
+            return colorFilo(filo);
         },
 
         async abrirUbicacion(lat, lon, total, invocador) {
@@ -353,19 +355,25 @@ const registrarDashboard = () => {
                     continue;
                 }
                 const {lat, lon, cantidad, radio} = nodo;
-                const marcador = L.circleMarker([lat, lon], {
+                const partes = composicionFilos(nodo.filos);
+                const marcador = partes.length > 1 ? L.marker([lat, lon], {
+                    pane: 'registros', keyboard: false,
+                    icon: L.divIcon({html: '', className: 'atlas-map-mixed', iconSize: [radio * 2, radio * 2], iconAnchor: [radio, radio]}),
+                }).addTo(capa) : L.circleMarker([lat, lon], {
                     pane: 'registros',
                     radius: radio,
-                    color: '#0e4975', weight: 1, fillColor: '#17699b', fillOpacity: .8,
+                    color: colorFilo(partes[0]?.filo), weight: 1, fillColor: colorFilo(partes[0]?.filo), fillOpacity: .85,
                 }).addTo(capa);
                 const elemento = marcador.getElement();
                 const abrir = () => this.abrirUbicacion(lat, lon, cantidad, elemento);
-                const descripcion = `Ubicación original: ${cantidad.toLocaleString('es-EC')} registros con coordenadas ${lat}, ${lon}. Abrir detalle.`;
+                const composicion = partes.map(({filo, cantidad}) => `${filo}: ${cantidad.toLocaleString('es-EC')}`).join(', ');
+                const descripcion = `Ubicación original: ${cantidad.toLocaleString('es-EC')} registros con coordenadas ${lat}, ${lon}.${composicion ? ' ' + composicion + '.' : ''} Abrir detalle.`;
                 const tooltip = L.DomUtil.create('span');
                 tooltip.textContent = descripcion;
                 marcador.bindTooltip(tooltip);
                 marcador.on('click', abrir);
                 if (elemento) {
+                    if (partes.length > 1) elemento.style.background = fondoFilos(nodo.filos);
                     elemento.setAttribute('tabindex', '0');
                     elemento.setAttribute('role', 'button');
                     elemento.setAttribute('aria-label', descripcion);

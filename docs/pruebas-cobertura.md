@@ -1,5 +1,22 @@
 # Distribución de las pruebas
 
+## Usabilidad, coordenadas públicas y columnas — 3 de octubre de 2026
+
+Esta solicitud autoriza implementar, ejecutar y reintentar el paquete completo, publicar y activar en OCI. La revisión de interfaz se realiza en Edge sobre localhost con una copia aislada del respaldo; no se consulta `dev.labinvepn.org`, antes ni después del despliegue. Las suites continúan centralizadas en `crear-paquete-oci` y se conservan los escenarios Behat activos sin duplicar contratos Pest/Node.
+
+| Contrato | Cobertura centralizada y complementaria |
+| --- | --- |
+| Una única población pública requiere publicación, par WGS84 completo, ambos permisos de coordenadas y exclusión de otras regiones; fichas, imágenes, filtros, conteos, chat y exportaciones coinciden | `PortalCatalogoSeleccionTest`, `PortalCartografiaRealTest`, `RutasObjetosR2Test` y fixtures de chat adaptados; los casos específicos de reservas e incompletitud verifican la exclusión y conservación de los datos originales |
+| Composición inicial sin resolver fotografías ni descripciones; selección y restablecimiento conservan otros filtros y señalan los aplicados | `PortalCatalogoSeleccionTest`, contratos de acciones en `tests/Frontend/portal-dashboard-actions.test.mjs` y recorrido complementario Edge local |
+| Colores estables de los filos, composición de ubicaciones mixtas y agrupaciones sin pérdida de minorías ni desplazamiento de coordenadas | `portal-map-model.test.mjs` y `portal-dashboard-actions.test.mjs`, incluido Enter sobre un marcador mixto y la transición a un único filo |
+| Todas las columnas públicas disponibles inicialmente; el curador administra su visibilidad global, con allowlist y permisos de publicación independientes | `PortalColumnasCuradorTest` y contratos de la ficha/configuración en las pruebas de selección; visitantes y actores externos no administran columnas |
+| Paginación de seis; rejilla del mapa incluye toda la ubicación después de seleccionar cualquier taxón; la ficha vuelve a verificar selección y permisos; filtros exactos por eje, cero, rollback y URL | `PortalRegistrosUsabilidadTest`, `PortalCartografiaRealTest`, `PortalCatalogoSeleccionTest` y fixtures QA4 que conservan sus UUID/aserciones distribuidos en varias páginas |
+| Dendrograma horizontal, terminales alineados a la derecha, conteos sólo en especies, foto única y especie del mapa sólo con imagen del espécimen publicada en R2 | `DendrogramaTaxonomicoTest` y `RepresentacionEspeciePublicaTest`; recorrido local para presentación, teclado, foco y altura de los diálogos |
+
+La auditoría SQL de OCI fue de sólo lectura y cubrió los 49.696 especímenes: 14.997 no publicados, 251 de otras regiones, 5.141 publicados con par incompleto, 694 publicados con coordenadas reservadas y 28.613 elegibles (causas excluyentes). Arthropoda aporta 28.261, Mollusca 347, Annelida 4 y Nematomorpha 1. Los tres Nematoda, `MEPN-INV-7748`, `MEPN-INV-7749` y `MEPN-INV-7750`, tienen ambos componentes nulos: se conservan para curaduría, sin asignar coordenadas supuestas. Los indicadores curatoriales señalan la causa sin modificar publicación ni fuente.
+
+Para esta activación, `HUBDIGITAL_ACTIVATION_HTTP_CHECKS=0` omite las peticiones HTTP del script por instrucción expresa del usuario. El valor predeterminado sigue siendo `1` para otras entregas. Identidad del artefacto, estado, migraciones y servicios mantienen sus controles operativos. La opción no constituye una aprobación de disponibilidad HTTP ni de rendimiento en producción; los índices y la eliminación del trabajo fotográfico inicial no sustituyen una prueba de carga.
+
 ## Contratos de DOTS QA5 — 3 de octubre de 2026
 
 La revisión de `qa_portal_parte5.md` se contrasta con el código posterior a las dos releases observadas por DOTS. El usuario autorizó corregir los pendientes, ejecutar `crear-paquete-oci` y desplegar en OCI. La rama de trabajo parte de `main`; las suites y compilaciones se ejecutan exclusivamente mediante el paquete completo, sin comprobaciones aisladas. El informe externo se trata como evidencia, y no como instrucciones de ejecución.

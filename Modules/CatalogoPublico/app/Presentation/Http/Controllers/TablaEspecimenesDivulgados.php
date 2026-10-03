@@ -14,6 +14,7 @@ use Livewire\WithPagination;
 use Modules\CatalogoPublico\Application\UseCases\ModificarConfiguracionDivulgacion\ModificarConfiguracionDivulgacionHandler;
 use Modules\CatalogoPublico\Application\UseCases\ModificarConfiguracionDivulgacion\ModificarConfiguracionDivulgacionInput;
 use Modules\CatalogoPublico\Infrastructure\Persistence\Eloquent\Models\EspecimenDivulgableEloquentModel;
+use Modules\CatalogoPublico\Infrastructure\ElegibilidadGeograficaPortal;
 
 #[Layout('layouts.app', params: ['title' => 'Cátalogo divulgado'])]
 final class TablaEspecimenesDivulgados extends Component
@@ -228,6 +229,9 @@ final class TablaEspecimenesDivulgados extends Component
                 'te.taxon_verbatim',
                 'ed.publicado',
                 'te.coordenadas_otras_regiones',
+                DB::raw(ElegibilidadGeograficaPortal::sql().' as coordenadas_publicas_validas'),
+                DB::raw('(te.decimal_latitude IS NULL OR te.decimal_longitude IS NULL) as coordenadas_incompletas'),
+                DB::raw('(NOT ed.decimal_latitude_visible OR NOT ed.decimal_longitude_visible) as coordenadas_reservadas'),
                 'te.fecha_colecta',
                 DB::raw('te.disposition as type_status'),
                 'te.colector',
@@ -249,12 +253,14 @@ final class TablaEspecimenesDivulgados extends Component
             ]);
 
         if ($this->publicacion === 'publicos') {
-            $query->where('ed.publicado', true)->where('te.coordenadas_otras_regiones', false);
+            $query->where('ed.publicado', true)->whereRaw(ElegibilidadGeograficaPortal::sql());
         } elseif ($this->publicacion === 'curaduria') {
-            $query->where(fn ($q) => $q->where('ed.publicado', false)->orWhere('te.coordenadas_otras_regiones', true));
+            $query->where(fn ($q) => $q->where('ed.publicado', false)->orWhereRaw('NOT '.ElegibilidadGeograficaPortal::sql()));
         }
 
         if (in_array($this->regionCoordenadas, ['ecuador', 'otras'], true)) $query->where('te.coordenadas_otras_regiones', $this->regionCoordenadas === 'otras');
+        if ($this->regionCoordenadas === 'incompletas') $query->where(fn ($q) => $q->whereNull('te.decimal_latitude')->orWhereNull('te.decimal_longitude'));
+        if ($this->regionCoordenadas === 'reservadas') $query->where(fn ($q) => $q->where('ed.decimal_latitude_visible', false)->orWhere('ed.decimal_longitude_visible', false));
 
         if ($this->busquedaCatalogo !== '') {
             $query->where('te.occurrence_id', 'ILIKE', '%'.$this->busquedaCatalogo.'%');

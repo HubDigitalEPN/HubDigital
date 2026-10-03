@@ -46,8 +46,8 @@ it('la ficha conserva su nombre y clasificación y solo muestra una fotografía 
         ->and($primera->query('//figure[@data-representacion-taxon]/details/summary')->item(0)->textContent)->toContain('Clasificación pública')
         ->and($primera->query('//figure[@data-representacion-taxon]/details')->item(0)->hasAttribute('open'))->toBeTrue()
         ->and($primera->query('//p[contains(text(),"No hay una fotografía identificada disponible") ]')->length)->toBe(1)
-        ->and($segunda->query('//details/summary[contains(text(),"Fuente y licencia")]')->length)->toBe(1)
-        ->and($segunda->query('//figure[@data-fotografia-taxonomica="Atta cephalotes"]//figcaption')->item(0)->textContent)->toContain('Formicidae', 'Atta', 'Atta cephalotes', 'fuente externa')
+        ->and($segunda->query('//details/summary[contains(text(),"Fuente y licencia")]')->length)->toBe(0)
+        ->and($segunda->query('//figure[@data-fotografia-taxonomica="Atta cephalotes"]//figcaption')->item(0)->textContent)->toContain('Formicidae', 'Atta', 'Atta cephalotes', 'Referencia fotográfica')
         ->and($segunda->query('//figure[@data-fotografia-taxonomica]//a[@target="_blank"]')->length)->toBe(2);
     foreach ($linaje as $ancestro) {
         expect($primera->query('//dl//dd[text()="'.$ancestro.'"]')->length)->toBe(1);
@@ -69,6 +69,59 @@ it('cambiar la identidad o el contexto sustituye el estado cliente de fotografí
         ->and($ayuda->getAttribute('wire:key'))->not->toBe($primero->getAttribute('wire:key'))
         ->and($primero->getAttribute('x-data'))->toContain('Camponotus femoratus')->not->toContain('Camponotus sericeiventris')
         ->and($otraEspecie->getAttribute('x-data'))->toContain('Camponotus sericeiventris')->not->toContain('Camponotus femoratus');
+});
+
+it('la fotografía compacta conserva el crédito y omite clasificación, nombre repetido y bloques explicativos', function () {
+    $imagen = \Modules\CatalogoPublico\Application\Services\IlustracionTaxonomica::paraTaxon([
+        'species' => 'Atta cephalotes', 'genus' => 'Atta', 'family' => 'Formicidae',
+    ]);
+    $dom = fotografiaPublicaDom(view('catalogopublico::components.fotografia-taxonomica', [
+        'imagen' => $imagen, 'compacto' => true, 'retrato' => true,
+    ])->render());
+    expect($dom->query('//img')->length)->toBe(1)
+        ->and($dom->query('//figcaption//em')->length)->toBe(0)
+        ->and($dom->query('//figcaption/p')->length)->toBe(0)
+        ->and($dom->query('//details')->length)->toBe(0)
+        ->and($dom->query('//small[contains(@class,"collection-photograph-credit")]')->item(0)->textContent)->toContain($imagen['autor'])
+        ->and($dom->query('//a[@href="'.$imagen['fuente'].'"]')->length)->toBe(1)
+        ->and($dom->query('//a[@href="'.$imagen['licencia_url'].'"]')->length)->toBe(1);
+});
+
+it('la ayuda de especie prefiere la portada del ejemplar y no crea un proveedor externo ni clasificación duplicada', function () {
+    $dom = fotografiaPublicaDom(view('catalogopublico::components.ayuda-taxon', [
+        'nombre' => 'Atta cephalotes', 'nivel' => 'species', 'registros' => 2,
+        'jerarquia' => ['family' => 'Formicidae', 'genus' => 'Atta'],
+        'fotoPublica' => 'https://r2.example.test/ejemplares/atta-publicada.webp',
+    ])->render());
+    $accion = $dom->query('//button')->item(0)->getAttribute('x-on:click.prevent.stop');
+    expect($dom->query('//button[@type="button"]')->length)->toBe(1)
+        ->and($accion)->toContain('r2.example.test', 'data-fotografia-ejemplar')
+        ->not->toContain('portalFotografias', 'collection-taxonomic-representation', 'Clasificaci');
+});
+
+it('el retrato del ejemplar no inventa imagen ni mensaje al faltar la fotografía y escapa el nombre público', function () {
+    expect(trim(view('catalogopublico::components.fotografia-ejemplar', ['url' => null, 'nombre' => 'Taxon alpha'])->render()))->toBe('');
+    $nombre = 'Taxon <script>alert(1)</script> & alpha';
+    $dom = fotografiaPublicaDom(view('catalogopublico::components.fotografia-ejemplar', [
+        'url' => 'https://r2.example.test/ejemplar.webp', 'nombre' => $nombre,
+    ])->render());
+    expect($dom->query('//img')->length)->toBe(1)
+        ->and($dom->query('//img')->item(0)->getAttribute('src'))->toBe('https://r2.example.test/ejemplar.webp')
+        ->and($dom->query('//img')->item(0)->getAttribute('alt'))->toBe('Fotografía publicada de '.$nombre)
+        ->and($dom->query('//script')->length)->toBe(0)
+        ->and($dom->query('//figcaption')->length)->toBe(0);
+});
+
+it('la ayuda y la referencia de rama usan una sola foto compacta sin estados de ausencia ni explicación global', function () {
+    $dom = fotografiaPublicaDom(view('catalogopublico::components.fotografia-mosaico', [
+        'taxon' => ['phylum' => 'Arthropoda'], 'fotos' => [], 'contexto' => 'ayuda-taxon',
+        'limite' => 1, 'retrato' => true, 'compacto' => true,
+    ])->render());
+    expect($dom->query('//template[@*[name()="x-for"]]')->item(0)->getAttribute('x-for'))->toBe('foto in fotos.slice(0, 1)')
+        ->and($dom->query('//details')->length)->toBe(0)
+        ->and($dom->query('//p')->length)->toBe(0)
+        ->and($dom->query('//figure')->length)->toBe(1)
+        ->and($dom->query('//small[contains(@class,"collection-photograph-credit")]')->length)->toBe(1);
 });
 
 it('sin morfología conocida conserva el linaje recibido y no reconstruye rangos ausentes', function () {
@@ -127,16 +180,17 @@ it('la autoría visible se reserva a referencias verificadas en Ecuador y siempr
     $domEcuador = fotografiaTaxonomicaPublicaDom($ecuador);
     $domInternacional = fotografiaTaxonomicaPublicaDom($internacional);
     expect($ecuador['credito_ecuador'])->toBeTrue()->and($internacional['credito_ecuador'])->toBeFalse()
-        ->and($domEcuador->query('//p[contains(text(),"Autoría:")]')->length)->toBe(1)
+        ->and($domEcuador->query('//small[contains(@class,"collection-photograph-credit")]/span')->length)->toBe(1)
         ->and($domEcuador->query('//figcaption')->item(0)->textContent)->toContain($ecuador['autor'], 'Ecuador')
-        ->and($domInternacional->query('//p[contains(text(),"Autoría:")]')->length)->toBe(0)
+        ->and($domInternacional->query('//small[contains(@class,"collection-photograph-credit")]/span')->length)->toBe(0)
         ->and($domInternacional->query('//figcaption')->item(0)->textContent)->not->toContain('Autor de la fuente internacional');
     foreach ([[$domEcuador, $ecuador], [$domInternacional, $internacional]] as [$dom, $imagen]) {
         expect($dom->query('//img')->length)->toBe(1)
             ->and($dom->query('//a[@href="'.$imagen['fuente'].'"]')->length)->toBe(1)
             ->and($dom->query('//a[@href="'.$imagen['licencia_url'].'"]')->length)->toBe(1)
             ->and($dom->query('//a[@href="'.$imagen['licencia_url'].'"]')->item(0)->textContent)->toBe($imagen['licencia'])
-            ->and($dom->query('//details')->item(0)->textContent)->toContain($imagen['cambios']);
+            ->and($dom->query('//small[contains(@class,"collection-photograph-credit")]')->item(0)->getAttribute('data-cambios'))->toBe($imagen['cambios'])
+            ->and($dom->query('//details')->length)->toBe(0);
     }
 });
 

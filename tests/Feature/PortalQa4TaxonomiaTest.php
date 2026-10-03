@@ -57,8 +57,13 @@ test('QA4-005 el mosaico geográfico y el filo explícito usan los mismos ocho m
         ->and(array_column($explicita['ilustraciones_mosaico'], 'grupo'))->not->toContain('Formicidae', 'Coleoptera', 'Lepidoptera', 'Araneae')
         ->and((int) $explicita['resumen']['registros'])->toBe(8);
     $repo = app(EloquentProveedorEspecimenesParaArbol::class);
-    expect($repo->paginaPublica(FiltrosBusqueda::desde(['filtroProvincia' => 'Galápagos', 'filtroColector' => $seleccion]), 1)['ids'])
-        ->toEqualCanonicalizing($ids);
+    $filtros = FiltrosBusqueda::desde(['filtroProvincia' => 'Galápagos', 'filtroColector' => $seleccion]);
+    $primeraPagina = $repo->paginaPublica($filtros, 1);
+    $segundaPagina = $repo->paginaPublica($filtros, 2);
+    expect($primeraPagina['ids'])->toHaveCount(6)->and($primeraPagina['total'])->toBe(8)
+        ->and($segundaPagina['ids'])->toHaveCount(2)
+        ->and(array_intersect($primeraPagina['ids'], $segundaPagina['ids']))->toBe([])
+        ->and([...$primeraPagina['ids'], ...$segundaPagina['ids']])->toEqualCanonicalizing($ids);
     $vacia = $estadisticas->datosParaVista(['provincia' => 'Provincia inexistente '.$seleccion, 'colector' => $seleccion]);
     expect((int) $vacia['resumen']['registros'])->toBe(0)
         ->and($vacia['ilustraciones_mosaico'][0]['morfologia'])->toBeFalse()
@@ -133,7 +138,8 @@ test('la navegación de especie conserva sus registros y solo admite fotografía
             'order' => 'Hymenoptera', 'family' => 'Formicidae', 'genus' => 'Atta', 'species' => 'Atta cephalotes',
         ])
         ->and($directa['ilustraciones_mosaico'][0]['foto_real'])->toBeTrue();
-    $componente = Livewire::withQueryParams(['vista' => 'mapa', 'fco' => $colector])->test(PortalCatalogo::class)
+    $componente = Livewire::withQueryParams(['vista' => 'mapa', 'fco' => $colector, 'fph' => $filo])->test(PortalCatalogo::class)
+        ->assertSet('filtroFiloId', $filo)
         ->call('navegar', 'species', 'Atta cephalotes')
         ->assertSet('nivel', 'species')->assertSet('taxon', 'Atta cephalotes')
         ->assertViewHas('datosMapa', fn (array $datos): bool => (int) $datos['resumen']['registros'] === 1

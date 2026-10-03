@@ -19,6 +19,10 @@ uses(DatabaseFeatureTestCase::class);
 function seleccionCompletaChatQa4(): array
 {
     jerarquiaGenerosChat();
+    // Los cuatro registros siguen siendo geográficamente públicos. Sólo el primero
+    // cae en los límites QA4; los demás no dependen de coordenadas ausentes para salir.
+    DB::table('taxonomia.especimenes')->whereIn('codigo_catalogo', ['QA3-CHAT-2', 'QA3-CHAT-3', 'QA3-CHAT-4'])
+        ->update(['decimal_latitude' => -2, 'decimal_longitude' => -77]);
     DB::table('taxonomia.especimenes')->where('codigo_catalogo', 'QA3-CHAT-1')->update([
         'preparations' => 'Alcohol QA4', 'colector' => 'Colectora QA4', 'sampling_protocol' => 'Red QA4',
         'decimal_latitude' => -0.5, 'decimal_longitude' => -78.5, 'biome' => 'Bosque QA4',
@@ -60,8 +64,14 @@ test('el conteo contextual usa la página aplicada completa aunque el chat y el 
         ->and($chat->get('mensajes')[7]['texto'])->not->toContain('Pulsa Aplicar filtros');
 });
 
-test('cada dimensión pública aplicada participa en el conteo y en su enlace aunque no exista en el parser', function (array $filtros, int $total): void {
+test('cada dimensión pública aplicada participa en el conteo y en su enlace aunque no exista en el parser', function (array $filtros, int $total, array $datosNoAptos = []): void {
     seleccionCompletaChatQa4();
+    // Aptitud debe distinguir una fecha pública disponible de tres fechas ausentes;
+    // este estado pertenece sólo a ese dataset y no modifica los casos de mes/fecha.
+    if ($datosNoAptos !== []) {
+        DB::table('taxonomia.especimenes')->whereIn('codigo_catalogo', ['QA3-CHAT-2', 'QA3-CHAT-3', 'QA3-CHAT-4'])
+            ->update($datosNoAptos);
+    }
     $respuesta = app(AsistentePortal::class)->responder('¿Cuántos registros hay en esta selección?', app(ConsultarChatBotHandler::class),
         contextoCatalogo: ['codigo' => 'QA3-CHAT-4'], seleccionPortal: $filtros);
     expect($respuesta['intent'])->toBe('catalogo.count')
@@ -78,8 +88,9 @@ test('cada dimensión pública aplicada participa en el conteo y en su enlace au
     'estadio' => [['fes' => 'Adult'], 1],
     'latitud' => [['flat' => '-1', 'flax' => '0'], 1],
     'longitud' => [['flon' => '-79', 'flox' => '-78'], 1],
-    'aptitud' => [['fap' => '1'], 1],
-    'coordenadas públicas' => [['fgeo' => '1'], 1],
+    'aptitud' => [['fap' => '1'], 1, ['fecha_colecta' => null]],
+    // El par público válido ya es una condición global del portal: conserva los cuatro.
+    'coordenadas públicas' => [['fgeo' => '1'], 4],
     'código' => [['fc' => 'QA3-CHAT-1'], 1],
     'nombre científico' => [['ft' => 'Chatoterus'], 1],
     'localidad' => [['fg' => ['Quito']], 1],
@@ -163,7 +174,8 @@ test('los géneros y familias globales cuentan todas las identificaciones válid
             ['id' => $familia, 'padre_id' => $orden, 'rango' => 'familia', 'nombre_cientifico' => 'Chatfamilia'.$sufijo],
             ['id' => $genero, 'padre_id' => $familia, 'rango' => 'genero', 'nombre_cientifico' => 'Chatgenero'.$sufijo],
         ]);
-        DB::table('taxonomia.especimenes')->insert(['id' => $registro, 'taxon_id' => $genero, 'codigo_catalogo' => 'QA4-RANGO-'.$sufijo, 'occurrence_id' => 'QA4-RANGO-'.$sufijo]);
+        DB::table('taxonomia.especimenes')->insert(['id' => $registro, 'taxon_id' => $genero, 'codigo_catalogo' => 'QA4-RANGO-'.$sufijo, 'occurrence_id' => 'QA4-RANGO-'.$sufijo,
+            'decimal_latitude' => -0.5, 'decimal_longitude' => -78.5]);
         DB::table('divulgacion.especimenes_divulgables')->insert(['id' => (string) Str::uuid(), 'especimen_id' => $registro]);
     }
     foreach (['géneros' => ['catalogo.genera', 13], 'familias' => ['catalogo.families', 12]] as $unidad => [$intent, $total]) {
@@ -190,7 +202,8 @@ test('las formulaciones exactas QA4 de géneros globales y familias por filo res
         foreach ([1, 2] as $i) {
             $registro = (string) Str::uuid();
             DB::table('taxonomia.especimenes')->insert(['id' => $registro, 'taxon_id' => $genero,
-                'codigo_catalogo' => 'QA4-'.$filo.'-'.$i, 'occurrence_id' => 'QA4-'.$filo.'-'.$i]);
+                'codigo_catalogo' => 'QA4-'.$filo.'-'.$i, 'occurrence_id' => 'QA4-'.$filo.'-'.$i,
+                'decimal_latitude' => -0.5, 'decimal_longitude' => -78.5]);
             DB::table('divulgacion.especimenes_divulgables')->insert(['id' => (string) Str::uuid(), 'especimen_id' => $registro]);
         }
     }
@@ -220,7 +233,8 @@ test('los agregados taxonómicos respetan permisos por registro y no confirman h
         ['id' => $especie, 'padre_id' => $genero, 'rango' => 'especie', 'nombre_cientifico' => 'Chatnota alpha'],
     ]);
     $registro = (string) Str::uuid();
-    DB::table('taxonomia.especimenes')->insert(['id' => $registro, 'taxon_id' => $especie, 'codigo_catalogo' => 'QA4-CURATORIAL', 'occurrence_id' => 'QA4-CURATORIAL']);
+    DB::table('taxonomia.especimenes')->insert(['id' => $registro, 'taxon_id' => $especie, 'codigo_catalogo' => 'QA4-CURATORIAL', 'occurrence_id' => 'QA4-CURATORIAL',
+        'decimal_latitude' => -0.5, 'decimal_longitude' => -78.5]);
     DB::table('divulgacion.especimenes_divulgables')->insert(['id' => (string) Str::uuid(), 'especimen_id' => $registro]);
     $consulta = app(ConsultaCatalogoPublico::class);
     expect($consulta->responder('¿Cuántos géneros hay en toda la colección?')['datos']['total'])->toBe(2)
@@ -253,7 +267,8 @@ test('una nota solo en la hoja conserva sus padres confirmados en diversidad y r
     foreach ([1, 2] as $i) {
         $registro = (string) Str::uuid(); $registros[] = $registro;
         DB::table('taxonomia.especimenes')->insert(['id' => $registro, 'taxon_id' => $hoja,
-            'codigo_catalogo' => 'QA4-HOJA-'.$i, 'occurrence_id' => 'QA4-HOJA-'.$i, 'colector' => 'Hoja QA4']);
+            'codigo_catalogo' => 'QA4-HOJA-'.$i, 'occurrence_id' => 'QA4-HOJA-'.$i, 'colector' => 'Hoja QA4',
+            'decimal_latitude' => -0.5, 'decimal_longitude' => -78.5]);
         DB::table('divulgacion.especimenes_divulgables')->insert(['id' => (string) Str::uuid(), 'especimen_id' => $registro]);
     }
     $consulta = app(ConsultaCatalogoPublico::class);

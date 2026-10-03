@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Modules\CatalogoPublico\Presentation\Http\Controllers;
 
+use Modules\CatalogoPublico\Infrastructure\ElegibilidadGeograficaPortal;
+
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -47,15 +49,15 @@ final class PortalEstadisticas
     }
 
     /** Agregados de la misma selección que usan tarjetas y registros. */
-    public function datosParaVista(array $filtros): array
+    public function datosParaVista(array $filtros, bool $incluirContenidoTaxon = true): array
     {
-        return $this->cachear('portal:estadisticas:v15:'.$this->revisionDatos().':'.sha1(json_encode($filtros)), fn () => $this->resumir($filtros));
+        return $this->cachear('portal:estadisticas:v16:'.(int) $incluirContenidoTaxon.':'.$this->revisionDatos().':'.sha1(json_encode($filtros)), fn () => $this->resumir($filtros, $incluirContenidoTaxon));
     }
 
     /** Distribución completa sin hidratar tarjetas ni calcular los otros indicadores. */
     public function puntosParaMapa(array $filtros): array
     {
-        return $this->cachear('portal:puntos:v2:'.$this->revisionDatos().':'.sha1(json_encode($filtros)), function () use ($filtros): array {
+        return $this->cachear('portal:puntos:v3:'.$this->revisionDatos().':'.sha1(json_encode($filtros)), function () use ($filtros): array {
             $taxones = DB::table('taxonomia.taxones')->get(['id', 'padre_id', 'rango', 'nombre_cientifico'])->keyBy('id');
             return $this->agruparPuntos($this->consulta($filtros), $taxones);
         });
@@ -169,7 +171,7 @@ final class PortalEstadisticas
     {
         if (isset($filtros['provincia']) && ! DB::table('taxonomia.especimenes as e')
             ->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
-            ->where('d.publicado', true)->where('e.coordenadas_otras_regiones', false)->where('d.state_province_visible', true)
+            ->where('d.publicado', true)->whereRaw(ElegibilidadGeograficaPortal::sql('e', 'd'))->where('d.state_province_visible', true)
             ->whereRaw(NormalizacionGeografica::sql('e.state_province').' = ?', [NormalizacionGeografica::normalizar($filtros['provincia'])])->exists()) {
             unset($filtros['provincia']);
         }
@@ -179,7 +181,7 @@ final class PortalEstadisticas
         if (isset($filtros['metodo']) && ! DB::table('taxonomia.especimenes as e')
             ->leftJoin('taxonomia.muestras_colecta as m', 'm.id', '=', 'e.muestra_id')
             ->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
-            ->where('d.publicado', true)->where('e.coordenadas_otras_regiones', false)->where('d.sampling_protocol_visible', true)
+            ->where('d.publicado', true)->whereRaw(ElegibilidadGeograficaPortal::sql('e', 'd'))->where('d.sampling_protocol_visible', true)
             ->whereRaw('lower('.ProtocoloColectaPublico::sql('e', 'm').') = lower(?)', [$filtros['metodo']])->exists()) {
             unset($filtros['metodo']);
         }
@@ -216,7 +218,7 @@ final class PortalEstadisticas
         return $resultado;
     }
 
-    private function resumir(array $filtros): array
+    private function resumir(array $filtros, bool $incluirContenidoTaxon): array
     {
         $base = $this->consulta($filtros);
         $taxones = DB::table('taxonomia.taxones')->select('id', 'padre_id', 'rango', 'nombre_cientifico')->get()->keyBy('id');
@@ -285,35 +287,38 @@ final class PortalEstadisticas
             ->selectRaw($protocolo.' AS metodo, COUNT(*) AS registros')
             ->groupByRaw($protocolo)->orderByDesc('registros')->orderBy('metodo')->get()
             ->map(static fn (object $fila): array => (array) $fila)->all();
-        $mosaico = (clone $base)->join('divulgacion.imagenes_taxonomicas as foto', 'foto.occurrence_id', '=', 'te.occurrence_id')
-            ->leftJoin('taxonomia.taxones as foto_taxon', 'foto_taxon.id', '=', 'te.taxon_id')
-            ->where('ed.scientific_name_visible', true)
-            ->whereRaw('(SELECT COUNT(*) FROM taxonomia.especimenes identidad WHERE identidad.occurrence_id = te.occurrence_id) = 1')
-            ->orderByDesc('foto.created_at')->orderBy('foto.id')->limit(4)
-            ->get(['foto.ruta', 'foto.nombre_original', 'foto.autor_nombre_completo', 'foto_taxon.nombre_cientifico as taxon',
-                'te.taxon_id', 'te.country', 'ed.country_visible', 'ed.family_visible', 'ed.genus_visible', 'te.occurrence_id', 'ed.occurrence_id_visible'])
-            ->map(function (object $fila) use ($taxones): array {
-                $linaje = $this->linajePublicoParaMosaico($fila->taxon_id, $taxones, (bool) $fila->family_visible, (bool) $fila->genus_visible);
-                $creditoEcuador = (bool) $fila->country_visible && mb_strtolower(trim((string) $fila->country)) === 'ecuador';
-                return ['url' => StorageImagenesAdapter::urlPublica($fila->ruta),
-                    'nombre' => $fila->nombre_original, 'taxon' => $fila->taxon,
-                    'family' => $linaje['family'] ?? null, 'genus' => $linaje['genus'] ?? null, 'species' => $linaje['species'] ?? null,
-                    'autor' => $creditoEcuador ? $fila->autor_nombre_completo : null, 'credito_ecuador' => $creditoEcuador,
-                    'occurrence_id' => $fila->occurrence_id_visible ? $fila->occurrence_id : null];
-            })->all();
+        $mosaico = $taxonMosaico = $fotografiasMosaico = [];
+        if ($incluirContenidoTaxon) {
+            $mosaico = (clone $base)->join('divulgacion.imagenes_taxonomicas as foto', 'foto.occurrence_id', '=', 'te.occurrence_id')
+                ->leftJoin('taxonomia.taxones as foto_taxon', 'foto_taxon.id', '=', 'te.taxon_id')
+                ->where('ed.scientific_name_visible', true)
+                ->whereRaw('(SELECT COUNT(*) FROM taxonomia.especimenes identidad WHERE identidad.occurrence_id = te.occurrence_id) = 1')
+                ->orderByDesc('foto.created_at')->orderBy('foto.id')->limit(4)
+                ->get(['foto.ruta', 'foto.nombre_original', 'foto.autor_nombre_completo', 'foto_taxon.nombre_cientifico as taxon',
+                    'te.taxon_id', 'te.country', 'ed.country_visible', 'ed.family_visible', 'ed.genus_visible', 'te.occurrence_id', 'ed.occurrence_id_visible'])
+                ->map(function (object $fila) use ($taxones): array {
+                    $linaje = $this->linajePublicoParaMosaico($fila->taxon_id, $taxones, (bool) $fila->family_visible, (bool) $fila->genus_visible);
+                    $creditoEcuador = (bool) $fila->country_visible && mb_strtolower(trim((string) $fila->country)) === 'ecuador';
+                    return ['url' => StorageImagenesAdapter::urlPublica($fila->ruta),
+                        'nombre' => $fila->nombre_original, 'taxon' => $fila->taxon,
+                        'family' => $linaje['family'] ?? null, 'genus' => $linaje['genus'] ?? null, 'species' => $linaje['species'] ?? null,
+                        'autor' => $creditoEcuador ? $fila->autor_nombre_completo : null, 'credito_ecuador' => $creditoEcuador,
+                        'occurrence_id' => $fila->occurrence_id_visible ? $fila->occurrence_id : null];
+                })->all();
 
-        $taxonMosaico = $this->taxonParaMosaico($porTaxon, $taxones, $filtros);
-        $taxonSolicitado = trim((string) ($filtros['taxon_navegado'] ?? '')) ?: trim((string) ($filtros['taxon'] ?? ''));
-        $linajesMosaico = (function () use ($porTaxon, $taxones): \Generator {
-            foreach ($porTaxon as $fila) {
-                yield $this->linajePublicoParaMosaico($fila->taxon_id, $taxones, (bool) $fila->family_visible, (bool) $fila->genus_visible) + ['total' => (int) $fila->total];
-            }
-        })();
-        $fotografiasMosaico = \Modules\CatalogoPublico\Application\Services\IlustracionTaxonomica::mosaicoParaSeleccion(
-            // Un nombre ambiguo o sin material público no se sustituye por fotos de otros grupos.
-            $taxonSolicitado !== '' && $taxonMosaico === [] ? [] : $linajesMosaico,
-            $taxonMosaico,
-        );
+            $taxonMosaico = $this->taxonParaMosaico($porTaxon, $taxones, $filtros);
+            $taxonSolicitado = trim((string) ($filtros['taxon_navegado'] ?? '')) ?: trim((string) ($filtros['taxon'] ?? ''));
+            $linajesMosaico = (function () use ($porTaxon, $taxones): \Generator {
+                foreach ($porTaxon as $fila) {
+                    yield $this->linajePublicoParaMosaico($fila->taxon_id, $taxones, (bool) $fila->family_visible, (bool) $fila->genus_visible) + ['total' => (int) $fila->total];
+                }
+            })();
+            $fotografiasMosaico = \Modules\CatalogoPublico\Application\Services\IlustracionTaxonomica::mosaicoParaSeleccion(
+                // Un nombre ambiguo o sin material público no se sustituye por fotos de otros grupos.
+                $taxonSolicitado !== '' && $taxonMosaico === [] ? [] : $linajesMosaico,
+                $taxonMosaico,
+            );
+        }
 
         return [
             'resumen' => $resumen,
@@ -329,9 +334,9 @@ final class PortalEstadisticas
             'mosaico' => $mosaico,
             'taxon_mosaico' => $taxonMosaico,
             'ilustraciones_mosaico' => $fotografiasMosaico,
-            'descripcion_mosaico' => $mosaico !== []
+            'descripcion_mosaico' => ! $incluirContenidoTaxon ? '' : ($mosaico !== []
                 ? 'Fotografías publicadas de '.implode(', ', array_values(array_unique(array_filter(array_column($mosaico, 'taxon'))))).'. Las imágenes corresponden a ejemplares de la selección actual; su clasificación y sus datos públicos se consultan en el catálogo.'
-                : \Modules\CatalogoPublico\Application\Services\IlustracionTaxonomica::describirMosaico($fotografiasMosaico),
+                : \Modules\CatalogoPublico\Application\Services\IlustracionTaxonomica::describirMosaico($fotografiasMosaico)),
         ];
     }
 

@@ -12,12 +12,44 @@ export function radioRegistros(cantidad) {
     return Math.min(17, 4 + Math.sqrt(Number.isFinite(total) && total > 0 ? total : 0) * .7);
 }
 
+export const COLORES_FILOS = Object.freeze({
+    Arthropoda: '#17699b', Mollusca: '#d17d28', Annelida: '#568c59',
+    Nematoda: '#8c62a5', Nematomorpha: '#b94e6b',
+});
+
+export function colorFilo(filo) { return COLORES_FILOS[filo] ?? '#71828d'; }
+
+/** Las proporciones preservan los grupos minoritarios en ubicaciones compartidas. */
+export function composicionFilos(filos = {}) {
+    return Object.entries(filos).filter(([, cantidad]) => Number.isFinite(Number(cantidad)) && Number(cantidad) > 0)
+        .map(([filo, cantidad]) => ({filo, cantidad: Number(cantidad), color: colorFilo(filo)}))
+        .sort((a, b) => a.filo.localeCompare(b.filo));
+}
+
+export function fondoFilos(filos = {}) {
+    const partes = composicionFilos(filos);
+    if (partes.length < 2) return partes[0]?.color ?? colorFilo('Sin filo');
+    const total = partes.reduce((suma, parte) => suma + parte.cantidad, 0);
+    let acumulado = 0;
+    return `conic-gradient(${partes.map(parte => {
+        const inicio = acumulado / total * 100;
+        acumulado += parte.cantidad;
+        return `${parte.color} ${inicio}% ${acumulado / total * 100}%`;
+    }).join(', ')})`;
+}
+
+function sumarFilos(destino, fuente = {}) {
+    for (const {filo, cantidad} of composicionFilos(fuente)) destino[filo] = (destino[filo] ?? 0) + cantidad;
+    return destino;
+}
+
 export function prepararPuntosMapa(puntos, filoActivo = '') {
     return puntos.flatMap(punto => {
         const coordenadas = coordenadasPublicas(punto);
         const cantidad = Number(filoActivo ? punto?.filos?.[filoActivo] || 0 : punto?.total);
         if (!coordenadas || !Number.isFinite(cantidad) || cantidad <= 0) return [];
-        return [{...coordenadas, cantidad, radio: radioRegistros(cantidad)}];
+        const filos = filoActivo ? {[filoActivo]: cantidad} : sumarFilos({}, punto.filos);
+        return [{...coordenadas, cantidad, radio: radioRegistros(cantidad), filos}];
     });
 }
 
@@ -66,15 +98,17 @@ function representarGrupo(miembros) {
     const puntos = miembros.map(punto => punto.original);
     if (puntos.length === 1) return {tipo: 'ubicacion', ...puntos[0], ubicaciones: 1, puntos};
     let sur = Infinity; let oeste = Infinity; let norte = -Infinity; let este = -Infinity; let cantidad = 0;
+    const filos = {};
     for (const punto of puntos) {
         sur = Math.min(sur, punto.lat); norte = Math.max(norte, punto.lat);
         oeste = Math.min(oeste, punto.lon); este = Math.max(este, punto.lon);
         cantidad += punto.cantidad;
+        sumarFilos(filos, punto.filos);
     }
     // El símbolo del grupo se ancla a un miembro real y no anuncia una colecta
     // en un centro calculado. Solo sus puntos originales pueden abrir detalles.
     return {tipo: 'grupo', ancla: {lat: puntos[0].lat, lon: puntos[0].lon},
-        cantidad, ubicaciones: puntos.length, limites: [[sur, oeste], [norte, este]], puntos};
+        cantidad, filos, ubicaciones: puntos.length, limites: [[sur, oeste], [norte, este]], puntos};
 }
 
 /**
@@ -89,6 +123,7 @@ export function crearAgrupadorMapa(puntos, filoActivo = '') {
         if (anterior) {
             anterior.cantidad += punto.cantidad;
             anterior.radio = radioRegistros(anterior.cantidad);
+            sumarFilos(anterior.filos, punto.filos);
         } else porCoordenada.set(clave, {...punto});
     }
     const originales = [...porCoordenada.values()].sort((a, b) => a.lon - b.lon || a.lat - b.lat);

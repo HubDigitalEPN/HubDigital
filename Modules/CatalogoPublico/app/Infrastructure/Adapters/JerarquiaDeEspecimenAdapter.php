@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Modules\CatalogoPublico\Application\Ports\ProveedorJerarquiaDeEspecimenPort;
 use Modules\CatalogoPublico\Domain\ValueObjects\JerarquiaTaxonomica;
 use Modules\CatalogoPublico\Domain\ValueObjects\RangoTaxonomico;
+use Modules\CatalogoPublico\Infrastructure\ElegibilidadGeograficaPortal;
 
 final class JerarquiaDeEspecimenAdapter implements ProveedorJerarquiaDeEspecimenPort
 {
@@ -30,7 +31,7 @@ final class JerarquiaDeEspecimenAdapter implements ProveedorJerarquiaDeEspecimen
                 FROM taxonomia.especimenes te
                 JOIN divulgacion.especimenes_divulgables ed ON ed.especimen_id = te.id
                 JOIN taxonomia.taxones tx ON tx.id = te.taxon_id
-                WHERE te.occurrence_id = ? AND ed.publicado = true AND te.coordenadas_otras_regiones = false
+                WHERE te.occurrence_id = ? AND ed.publicado = true AND __ELEGIBILIDAD_GEOGRAFICA__
                 UNION ALL
                 SELECT p.id, p.rango, p.nombre_cientifico, p.padre_id, c.profundidad + 1
                 FROM cadena c
@@ -42,6 +43,7 @@ final class JerarquiaDeEspecimenAdapter implements ProveedorJerarquiaDeEspecimen
             WHERE rango = ANY(?)
         SQL;
 
+        $sql = str_replace('__ELEGIBILIDAD_GEOGRAFICA__', ElegibilidadGeograficaPortal::sql(), $sql);
         $filas = DB::select($sql, [$occurrenceID, '{'.implode(',', $rangosCanonicos).'}']);
 
         if ($filas === []) {

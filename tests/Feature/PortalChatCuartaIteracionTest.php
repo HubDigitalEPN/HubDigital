@@ -66,7 +66,8 @@ test('una corrección de geografía sustituye el filtro público anterior', func
     DB::table('taxonomia.especimenes')->insert(['id' => $specimen, 'codigo_catalogo' => 'MEPN-FOURTH-1',
         'occurrence_id' => 'MEPN-FOURTH-1', 'taxon_id' => $taxon, 'localidad' => 'Quito',
         'locality_name' => 'Quito', 'state_province' => 'Pichincha', 'country' => 'Ecuador',
-        'fecha_colecta' => '2026-09-26', 'colector' => 'Prueba']);
+        'fecha_colecta' => '2026-09-26', 'colector' => 'Prueba',
+        'decimal_latitude' => -0.5, 'decimal_longitude' => -78.5]);
     DB::table('divulgacion.especimenes_divulgables')->insert(['id' => (string) Str::uuid(),
         'especimen_id' => $specimen]);
     $result = app(ConsultaCatalogoPublico::class)->responder('No Pichincha, Quito',

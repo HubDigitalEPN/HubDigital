@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Modules\CatalogoPublico\Domain\ValueObjects\FiltrosBusqueda;
@@ -11,6 +12,8 @@ use Modules\CatalogoPublico\Infrastructure\Persistence\Eloquent\Repositories\Elo
 use Modules\CatalogoPublico\Presentation\Http\Controllers\PortalCatalogo;
 use Modules\CatalogoPublico\Presentation\Http\Controllers\PortalEstadisticas;
 use Modules\CatalogoPublico\Application\UseCases\ConsultarChatBot\ConsultaCatalogoPublico;
+use Modules\CatalogoPublico\Infrastructure\Persistence\Eloquent\Repositories\EloquentEspecimenDivulgableRepository;
+use Modules\CatalogoPublico\Presentation\Http\Controllers\TablaEspecimenesDivulgados;
 
 uses(Tests\DatabaseFeatureTestCase::class);
 
@@ -113,12 +116,12 @@ test('la selección desde un panel actualiza el mapa y limpiar restaura los cont
         ->call('limpiarFiltros')->assertSet('filtroFiloId', '')->assertSet('filtroProvincia', '')->assertSet('filtroFechaDesde', '');
 });
 
-test('coordenadas reservadas o inválidas no entran en el mapa ni en la selección georreferenciada', function (): void {
+test('coordenadas reservadas o inválidas excluyen el registro de todo el portal', function (): void {
     $f = seleccionPortalFixture();
     DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $f['ids'][0])->update(['decimal_latitude_visible' => false]);
     DB::table('taxonomia.especimenes')->where('id', $f['ids'][1])->update(['decimal_latitude' => 91]);
     $datos = app(PortalEstadisticas::class)->datosParaVista(['filo' => $f['filo']]);
-    expect((int) $datos['resumen']['registros'])->toBe(3)
+    expect((int) $datos['resumen']['registros'])->toBe(1)
         ->and((int) $datos['resumen']['georreferenciados'])->toBe(1)
         ->and((int) $datos['resumen']['aptos'])->toBe(1)
         ->and(array_sum(array_column($datos['mapa'], 'total')))->toBe(1);
@@ -126,6 +129,109 @@ test('coordenadas reservadas o inválidas no entran en el mapa ni en la selecci�
         'filtroFiloId' => $f['filo'], 'filtroSoloUbicacion' => '1',
     ]), 1);
     expect($pagina['ids'])->toBe([$f['ids'][2]]);
+});
+
+test('el par de coordenadas públicas define la misma población del portal y conserva los excluidos en curaduría', function (): void {
+    $f = seleccionPortalFixture();
+    $original = (array) DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->first();
+    unset($original['coordenadas_otras_regiones'], $original['busqueda_global']);
+    $excluidos = $instantaneas = [];
+    $casos = [
+        [['decimal_latitude' => null, 'decimal_longitude' => null], []],
+        [['decimal_latitude' => null], []],
+        [['decimal_longitude' => null], []],
+        [['decimal_latitude' => 91], []],
+        [['decimal_longitude' => -181], []],
+        [[], ['decimal_latitude_visible' => false]],
+        [[], ['decimal_longitude_visible' => false]],
+    ];
+    foreach ($casos as $i => [$coordenadas, $visibilidad]) {
+        $id = (string) Str::uuid();
+        $codigo = $f['codigos'][0].'-EXCLUIDO-'.$i;
+        DB::table('taxonomia.especimenes')->insert(array_replace($original, [
+            'id' => $id, 'codigo_catalogo' => $codigo, 'occurrence_id' => $codigo,
+        ], $coordenadas));
+        DB::table('divulgacion.especimenes_divulgables')->insert(array_replace([
+            'id' => (string) Str::uuid(), 'especimen_id' => $id, 'publicado' => true,
+        ], $visibilidad));
+        $excluidos[$id] = $codigo;
+        $instantaneas[$id] = (array) DB::table('taxonomia.especimenes')->where('id', $id)->first();
+    }
+    $filtros = FiltrosBusqueda::desde(['filtroFiloId' => $f['filo']]);
+    $repo = app(EloquentProveedorEspecimenesParaArbol::class);
+    expect($repo->paginaPublica($filtros, 1)['ids'])->toEqualCanonicalizing($f['ids'])
+        ->and(array_sum($repo->resumenRaiz($filtros)['conteos']))->toBe(3)
+        ->and($repo->cursorParaCsv($filtros)->pluck('occurrence_id')->all())->toEqualCanonicalizing($f['codigos']);
+    $publicados = app(EloquentEspecimenDivulgableRepository::class)->buscarPublicadosPorEspecimenIds([...$f['ids'], ...array_keys($excluidos)]);
+    expect(array_map(static fn ($registro) => $registro->especimenId(), $publicados))->toEqualCanonicalizing($f['ids']);
+    $datos = app(PortalEstadisticas::class)->datosParaVista(['filo' => $f['filo']], false);
+    expect((int) $datos['resumen']['registros'])->toBe(3)
+        ->and(array_sum(array_column($datos['mapa'], 'total')))->toBe(3)
+        ->and(array_sum($datos['filos']))->toBe(3);
+    $chat = app(ConsultaCatalogoPublico::class);
+    expect($chat->responder('¿Cuántos registros de '.$f['prefijo'].' hay?')['datos']['total'])->toBe(3);
+    foreach ($excluidos as $codigo) {
+        expect($chat->responder('Busca '.$codigo)['datos']['total'])->toBe(0);
+    }
+    foreach (['tarjetas', 'registros'] as $vista) {
+        $componente = Livewire::withQueryParams(['vista' => $vista, 'fph' => $f['filo'], 'nivel' => 'species', 'taxon' => $f['prefijo'].' alfa'])
+            ->test(PortalCatalogo::class)->assertViewHas('totalRegistrosVista', 2);
+        foreach ($excluidos as $codigo) $componente->assertDontSee($codigo);
+    }
+    $curador = \App\Models\User::factory()->curador()->create();
+    $curaduria = Livewire::actingAs($curador)->test(TablaEspecimenesDivulgados::class)
+        ->set('busquedaTaxonomia', $f['prefijo'])->set('publicacion', 'curaduria')
+        ->assertViewHas('especimenes', fn ($registros) => $registros->total() === 7)
+        ->assertSee('Sin par de coordenadas')->assertSee('revisar fuente')->assertSee('Coordenadas reservadas');
+    foreach ($excluidos as $codigo) $curaduria->assertSee($codigo);
+    $curaduria->set('regionCoordenadas', 'incompletas')->assertViewHas('especimenes', fn ($registros) => $registros->total() === 3);
+    $curaduria->set('regionCoordenadas', 'reservadas')->assertViewHas('especimenes', fn ($registros) => $registros->total() === 2);
+    $curaduria->set('regionCoordenadas', '')->set('publicacion', 'publicos')
+        ->assertViewHas('especimenes', fn ($registros) => $registros->total() === 3);
+    foreach ($instantaneas as $id => $antes) {
+        expect((array) DB::table('taxonomia.especimenes')->where('id', $id)->first())->toBe($antes)
+            ->and(DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $id)->value('publicado'))->toBeTrue();
+    }
+});
+
+test('el panel inicial calcula agregados sin consultar imágenes ni resolver referencias taxonómicas', function (): void {
+    $f = seleccionPortalFixture();
+    Http::fake();
+    $estadisticas = app(PortalEstadisticas::class);
+    DB::enableQueryLog();
+    DB::flushQueryLog();
+    try {
+        $inicial = $estadisticas->datosParaVista(['filo' => $f['filo']], false);
+        $consultasIniciales = array_column(DB::getQueryLog(), 'query');
+        expect(implode("\n", $consultasIniciales))->not->toContain('imagenes_taxonomicas')
+            ->and($inicial['mosaico'])->toBe([])->and($inicial['taxon_mosaico'])->toBe([])
+            ->and($inicial['ilustraciones_mosaico'])->toBe([])->and($inicial['descripcion_mosaico'])->toBe('')
+            ->and((int) $inicial['resumen']['registros'])->toBe(3);
+        Http::assertNothingSent();
+        DB::flushQueryLog();
+        $seleccionado = $estadisticas->datosParaVista(['filo' => $f['filo']], true);
+        expect(implode("\n", array_column(DB::getQueryLog(), 'query')))->toContain('imagenes_taxonomicas')
+            ->and($seleccionado['resumen'])->toBe($inicial['resumen'])->and($seleccionado['mapa'])->toBe($inicial['mapa']);
+    } finally {
+        DB::disableQueryLog();
+        DB::flushQueryLog();
+    }
+});
+
+test('las opciones de filo omiten ramas sin material geográfico público e invalidan su caché al reservarlas', function (): void {
+    $f = seleccionPortalFixture();
+    $repo = app(EloquentProveedorEspecimenesParaArbol::class);
+    expect(array_column($repo->filosPublicosDisponibles(), 'id'))->toContain($f['filo']);
+    DB::table('taxonomia.especimenes')->whereIn('id', $f['ids'])->update(['decimal_latitude' => null, 'decimal_longitude' => null]);
+    expect(array_column($repo->filosPublicosDisponibles(), 'id'))->not->toContain($f['filo']);
+    DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->update(['decimal_latitude' => -0.25, 'decimal_longitude' => -78.5]);
+    expect(array_column($repo->filosPublicosDisponibles(), 'id'))->toContain($f['filo']);
+    DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $f['ids'][0])->update(['decimal_longitude_visible' => false]);
+    expect(array_column($repo->filosPublicosDisponibles(), 'id'))->not->toContain($f['filo']);
+    DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $f['ids'][0])->update(['decimal_longitude_visible' => true, 'scientific_name_visible' => false]);
+    expect(array_column($repo->filosPublicosDisponibles(), 'id'))->not->toContain($f['filo']);
+    DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $f['ids'][0])->update(['scientific_name_visible' => true]);
+    expect(array_column($repo->filosPublicosDisponibles(), 'id'))->toContain($f['filo']);
 });
 
 test('un rango incompleto muestra el error y limpiar permite volver a aplicar', function (): void {
@@ -179,7 +285,9 @@ test('los marcadores curatoriales y fechas implausibles conservan el registro si
         ->and(array_column($datos['riqueza'], 'provincia'))->toBe(['Napo'])
         ->and(array_column($datos['decadas'], 'decada'))->not->toContain(190);
     Livewire::withQueryParams(['vista' => 'registros', 'fc' => $f['codigos'][0]])->test(PortalCatalogo::class)
-        ->assertSee($f['codigos'][0])->assertSee('dañada dañada')->assertSee('Fecha original por revisar');
+        ->assertSee($f['codigos'][0])->assertSee('dañada dañada')->assertSee('0190-01-08')
+        ->assertSee('Fecha original pendiente de revisión')
+        ->assertSee('no se interpreta como una fecha de colecta confirmada');
 });
 
 test('la jerarquía es visible y removible en mapa y su CSV conserva exactamente los mismos registros', function (): void {
@@ -219,7 +327,7 @@ test('cada indicador filtra conservando la vista del mapa', function (): void {
     }
 });
 
-test('el detalle de cuadrícula recorre grupos y pagina doce registros respetando sus campos reservados', function (): void {
+test('el detalle de cuadrícula recorre grupos y pagina seis registros respetando sus campos reservados', function (): void {
     $f = seleccionPortalFixture();
     $original = (array) DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->first();
     unset($original['coordenadas_otras_regiones'], $original['busqueda_global']);
@@ -234,11 +342,15 @@ test('el detalle de cuadrícula recorre grupos y pagina doce registros respetand
         ->call('abrirCelda', -0.25, -78.5)->assertDispatched('abrir-detalle-celda')->assertSet('vistaCelda', 'grupos');
     expect($componente->instance()->detalleCelda['total'])->toBe(15);
     $componente->call('navegarCelda', $f['filo'])->call('navegarCelda', $f['taxones'][0])->assertDontSee('COLECTOR-RESERVADO-QA');
-    expect($componente->instance()->detalleCelda['registros'])->toHaveCount(12);
+    expect($componente->instance()->detalleCelda['registros'])->toHaveCount(6);
     $primera = array_column($componente->instance()->detalleCelda['registros'], 'occurrence_id');
     $componente->call('paginarCelda', 2)->assertSet('paginaCelda', 2);
     $segunda = array_column($componente->instance()->detalleCelda['registros'], 'occurrence_id');
-    expect($segunda)->toHaveCount(3)->and(array_intersect($primera, $segunda))->toBe([]);
+    expect($segunda)->toHaveCount(6)->and(array_intersect($primera, $segunda))->toBe([]);
+    $componente->call('paginarCelda', 3)->assertSet('paginaCelda', 3);
+    $tercera = array_column($componente->instance()->detalleCelda['registros'], 'occurrence_id');
+    expect($tercera)->toHaveCount(3)->and(array_intersect([...$primera, ...$segunda], $tercera))->toBe([])
+        ->and(count(array_unique([...$primera, ...$segunda, ...$tercera])))->toBe(15);
     $componente->call('volverCelda', 0)->call('cambiarVistaCelda', 'registros')->assertSet('paginaCelda', 1)
         ->call('cerrarCelda')->assertSet('celdaMapa', null);
 });

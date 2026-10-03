@@ -39,7 +39,8 @@ function registrosParaContratoChat(): void
         DB::table('taxonomia.especimenes')->insert(['id' => $id, 'codigo_catalogo' => $codigo, 'occurrence_id' => $codigo,
             'taxon_id' => $taxon, 'localidad' => $localidad, 'locality_name' => $localidad,
             'state_province' => $provincia, 'country' => $pais, 'fecha_colecta' => $fecha,
-            'elevation_min_m' => $elevacion, 'elevation_max_m' => $elevacion, 'colector' => 'Prueba']);
+            'elevation_min_m' => $elevacion, 'elevation_max_m' => $elevacion, 'colector' => 'Prueba',
+            'decimal_latitude' => -0.5, 'decimal_longitude' => -78.5]);
         DB::table('divulgacion.especimenes_divulgables')->insert(['id' => (string) Str::uuid(), 'especimen_id' => $id]);
     }
 }
@@ -125,7 +126,8 @@ test('las variantes geográficas con acentos conservan la unión y los valores o
         $id = (string) Str::uuid();
         DB::table('taxonomia.especimenes')->insert(['id' => $id, 'codigo_catalogo' => 'QA3-CHAT-YASUN-'.($indice + 1),
             'occurrence_id' => 'QA3-CHAT-YASUN-'.($indice + 1), 'taxon_id' => DB::table('taxonomia.taxones')->where('nombre_cientifico', 'Chatobius alpha')->value('id'),
-            'localidad' => $localidad, 'locality_name' => $localidad, 'fecha_colecta' => '2000-05-05', 'colector' => 'Prueba']);
+            'localidad' => $localidad, 'locality_name' => $localidad, 'fecha_colecta' => '2000-05-05', 'colector' => 'Prueba',
+            'decimal_latitude' => -0.5, 'decimal_longitude' => -78.5]);
         DB::table('divulgacion.especimenes_divulgables')->insert(['id' => (string) Str::uuid(), 'especimen_id' => $id]);
     }
     foreach (['Yasuní', 'Yasuni', ' YASUNÍ '] as $localidad) {
@@ -287,14 +289,15 @@ test('la ayuda del mapa de esta selección conserva exactamente la consulta de l
     foreach (range(1, 13) as $i) {
         $registro = (string) Str::uuid();
         DB::table('taxonomia.especimenes')->insert(['id' => $registro, 'taxon_id' => $especie,
-            'codigo_catalogo' => 'QA3-FICHA-MANUAL-'.$i, 'occurrence_id' => 'QA3-FICHA-MANUAL-'.$i]);
+            'codigo_catalogo' => 'QA3-FICHA-MANUAL-'.$i, 'occurrence_id' => 'QA3-FICHA-MANUAL-'.$i,
+            'decimal_latitude' => -0.5, 'decimal_longitude' => -78.5]);
         DB::table('divulgacion.especimenes_divulgables')->insert(['id' => (string) Str::uuid(), 'especimen_id' => $registro, 'publicado' => true]);
     }
     $seleccion = ['ft' => 'Formicidae', 'nivel' => 'species', 'taxon' => 'Neoponera carinulata'];
     $catalogo = Livewire::withQueryParams($seleccion + ['vista' => 'tarjetas', 'pagina' => 2])->test(PortalCatalogo::class)
         ->assertSet('nivel', 'species')->assertSet('taxon', 'Neoponera carinulata')
         ->assertViewHas('totalRegistrosVista', 13)->assertViewHas('paginaActual', 2)
-        ->assertViewHas('especimenes', fn ($filas) => count($filas) === 1);
+        ->assertViewHas('especimenes', fn ($filas) => count($filas) === 6);
     $chat = Livewire::test(ChatBotWidget::class)->call('nuevaConversacion');
     expect(seleccionChatRenderizada($catalogo))->toEqual($seleccion);
 
@@ -416,7 +419,8 @@ test('el total de géneros incluye identificaciones al género y no se limita a 
     foreach (range('a', 'j') as $sufijo) {
         $genero = (string) Str::uuid(); $registro = (string) Str::uuid();
         DB::table('taxonomia.taxones')->insert(['id' => $genero, 'padre_id' => $jerarquia['familia'], 'rango' => 'genero', 'nombre_cientifico' => 'Chatogenus'.$sufijo]);
-        DB::table('taxonomia.especimenes')->insert(['id' => $registro, 'taxon_id' => $genero, 'codigo_catalogo' => 'QA-GENERO-'.$sufijo, 'occurrence_id' => 'QA-GENERO-'.$sufijo]);
+        DB::table('taxonomia.especimenes')->insert(['id' => $registro, 'taxon_id' => $genero, 'codigo_catalogo' => 'QA-GENERO-'.$sufijo, 'occurrence_id' => 'QA-GENERO-'.$sufijo,
+            'decimal_latitude' => -0.5, 'decimal_longitude' => -78.5]);
         DB::table('divulgacion.especimenes_divulgables')->insert(['id' => (string) Str::uuid(), 'especimen_id' => $registro]);
     }
     $respuesta = app(ConsultaCatalogoPublico::class)->responder('¿Cuántos géneros hay dentro de Chatarthropoda?');

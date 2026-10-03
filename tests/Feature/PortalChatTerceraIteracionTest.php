@@ -67,6 +67,7 @@ test('el catálogo combina taxón y geografía visibles, responde por código y 
         'id' => $specimen, 'codigo_catalogo' => 'MEPN-CHAT-881', 'occurrence_id' => 'MEPN-CHAT-881',
         'taxon_id' => $species, 'localidad' => 'Quito', 'locality_name' => 'Quito',
         'state_province' => 'Pichincha', 'country' => 'Ecuador', 'fecha_colecta' => '2026-09-26', 'colector' => 'Prueba',
+        'decimal_latitude' => -0.5, 'decimal_longitude' => -78.5,
     ]);
     DB::table('divulgacion.especimenes_divulgables')->insert(['id' => (string) Str::uuid(), 'especimen_id' => $specimen]);
     $catalog = app(ConsultaCatalogoPublico::class);

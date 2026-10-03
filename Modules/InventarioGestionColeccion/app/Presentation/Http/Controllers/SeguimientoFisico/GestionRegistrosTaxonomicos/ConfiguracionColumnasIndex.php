@@ -7,6 +7,7 @@ namespace Modules\InventarioGestionColeccion\Presentation\Http\Controllers\Segui
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use Modules\CatalogoPublico\Application\Services\ColumnasRegistroPublico;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarPrioridadColumna\ActualizarPrioridadColumnaHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarPrioridadColumna\ActualizarPrioridadColumnaInput;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\RegistroColumnasEspecimen;
@@ -24,17 +25,22 @@ final class ConfiguracionColumnasIndex extends Component
      */
     public array $pantallas = [];
 
+    public array $columnasPublicas = [];
+
     public ?string $successMessage = null;
 
     public ?string $errorMessage = null;
 
     public function mount(ResolverPrioridadColumnas $resolver): void
     {
+        $this->autorizarColumnasPublicas();
         $this->recargar($resolver);
     }
 
     public function recargar(ResolverPrioridadColumnas $resolver): void
     {
+        $this->autorizarColumnasPublicas();
+        $this->columnasPublicas = array_column(array_filter(app(ColumnasRegistroPublico::class)->todas(), static fn (array $columna): bool => $columna['visible']), 'clave');
         $this->pantallas = [
             'especimenes' => array_map(
                 fn ($c) => ['clave' => $c['clave'], 'etiqueta' => $c['etiqueta'], 'grupo' => $c['grupo'], 'prioridad' => $c['prioridad']],
@@ -54,6 +60,7 @@ final class ConfiguracionColumnasIndex extends Component
         string $clave,
         string $prioridad,
     ): void {
+        $this->autorizarColumnasPublicas();
         try {
             $handler->handle(new ActualizarPrioridadColumnaInput(
                 pantalla: $pantalla,
@@ -73,10 +80,33 @@ final class ConfiguracionColumnasIndex extends Component
     public function render(): View
     {
         return view('inventariogestioncoleccion::admin.taxonomia.columnas.config', [
+            'columnasPortal' => app(ColumnasRegistroPublico::class)->todas(),
             'pantallasMeta' => [
                 'especimenes' => ['titulo' => 'Especímenes', 'descripcion' => 'Columnas de la pantalla principal del catálogo.'],
                 'muestras' => ['titulo' => 'Muestras de colecta', 'descripcion' => 'Columnas de la bandeja de muestras.'],
             ],
         ]);
+    }
+
+    public function guardarColumnasPublicas(ColumnasRegistroPublico $columnas): void
+    {
+        $this->autorizarColumnasPublicas();
+        $columnas->actualizar($this->columnasPublicas);
+        $this->successMessage = 'Columnas del portal público actualizadas.';
+        $this->errorMessage = null;
+    }
+
+    public function mostrarTodasPublicas(ColumnasRegistroPublico $columnas): void
+    {
+        $this->autorizarColumnasPublicas();
+        $this->columnasPublicas = array_column($columnas->todas(), 'clave');
+        $this->guardarColumnasPublicas($columnas);
+    }
+
+    private function autorizarColumnasPublicas(): void
+    {
+        $usuario = auth()->user();
+        if ($usuario !== null) $usuario->unsetRelation('roles');
+        abort_unless($usuario?->esCurador(), 403);
     }
 }

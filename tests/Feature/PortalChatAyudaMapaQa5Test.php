@@ -19,10 +19,14 @@ function seleccionMapaChatQa5(): array
         'fg' => ['Playa de oro'], 'ffd' => '2000-05-01', 'ffh' => '2000-05-05'];
 }
 
-test('la pregunta exacta de puntos ausentes diagnostica cero, sin coordenadas y con coordenadas conservando la selección', function (string $caso, int $total, int $coordenadas, string $texto): void {
+test('la pregunta exacta de puntos ausentes excluye material sin coordenadas públicas conservando la selección', function (string $caso, int $total, int $coordenadas, string $texto): void {
     registrosParaContratoChat();
     $seleccion = seleccionMapaChatQa5();
-    if ($caso !== 'sin coordenadas') {
+    if ($caso === 'sin coordenadas') {
+        DB::table('taxonomia.especimenes')->where('codigo_catalogo', 'QA3-CHAT-4')->update([
+            'decimal_latitude' => null, 'decimal_longitude' => null,
+        ]);
+    } else {
         DB::table('taxonomia.especimenes')->where('codigo_catalogo', 'QA3-CHAT-4')->update([
             'decimal_latitude' => -0.5, 'decimal_longitude' => -78.5,
         ]);
@@ -51,7 +55,7 @@ test('la pregunta exacta de puntos ausentes diagnostica cero, sin coordenadas y 
         && (int) $datos['resumen']['georreferenciados'] === $coordenadas);
 })->with([
     'cero espacial' => ['cero espacial', 0, 0, 'No hay registros publicados'],
-    'uno sin coordenadas' => ['sin coordenadas', 1, 0, 'ninguno tiene ambas coordenadas públicas y válidas'],
+    'material sin coordenadas excluido' => ['sin coordenadas', 0, 0, 'No hay registros publicados'],
     'uno con coordenadas' => ['con coordenadas', 1, 1, '1 con coordenadas públicas y válidas'],
 ]);
 
@@ -69,7 +73,7 @@ test('el diagnóstico conserva el filtro de coordenadas y no cuenta coordenadas 
         ->and($respuesta['texto'])->not->toContain('-0.5', '-78.5');
 })->with([
     'visible con filtro' => [true, true, 1, 1],
-    'longitud reservada' => [false, false, 1, 0],
+    'longitud reservada' => [false, false, 0, 0],
     'longitud reservada con filtro' => [true, false, 0, 0],
 ]);
 
@@ -80,12 +84,12 @@ test('una selección vacía prevalece sobre el chat anterior y la ausencia de p�
     $contexto = ['codigo' => 'QA3-CHAT-4'];
 
     $global = $asistente->responder($pregunta, $handler, contextoCatalogo: $contexto, seleccionPortal: []);
-    expect($global['datos'])->toBe(['total' => 4, 'con_coordenadas' => 0])
+    expect($global['datos'])->toBe(['total' => 4, 'con_coordenadas' => 4])
         ->and($global['entidades'])->toBe([])
         ->and(parametrosEnlaceChat($global))->toBe(['vista' => 'mapa']);
 
     $anterior = $asistente->responder($pregunta, $handler, contextoCatalogo: $contexto);
-    expect($anterior['datos'])->toBe(['total' => 1, 'con_coordenadas' => 0])
+    expect($anterior['datos'])->toBe(['total' => 1, 'con_coordenadas' => 1])
         ->and($anterior['texto'])->toContain('consulta pública anterior')
         ->and($anterior['entidades'])->toBe($contexto)
         ->and(parametrosEnlaceChat($anterior))->toBe(['vista' => 'mapa', 'fc' => 'QA3-CHAT-4']);
@@ -104,7 +108,7 @@ test('recargar el catálogo e iniciar una conversación nueva conserva la ayuda 
     app(ContextoChat::class)->guardar([], ['fuente' => 'catalogo', 'entidades' => ['codigo' => 'QA3-CHAT-1']]);
     $chat->set('pregunta', '¿Por qué no veo puntos en este mapa?')->call('enviar', seleccionChatRenderizada($catalogo));
     $primera = $chat->get('mensajes')[1];
-    expect($primera['texto'])->toContain('Hay 1 registro publicado', 'ninguno tiene ambas coordenadas públicas y válidas')
+    expect($primera['texto'])->toContain('Hay 1 registro publicado', '1 con coordenadas públicas y válidas')
         ->and(parametrosEnlaceChat($primera))->toEqual($seleccion + ['vista' => 'mapa'])
         ->and(app(ContextoChat::class)->obtener()['entities'])->toBe([]);
 

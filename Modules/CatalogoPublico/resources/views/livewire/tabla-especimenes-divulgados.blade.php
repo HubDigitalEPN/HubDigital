@@ -70,6 +70,8 @@
             <flux:select wire:model.live="regionCoordenadas" label="Región de coordenadas" size="sm">
                 <flux:select.option value="">Todas</flux:select.option>
                 <flux:select.option value="otras">Otras regiones · revisar</flux:select.option>
+                <flux:select.option value="incompletas">Sin par de coordenadas · revisar</flux:select.option>
+                <flux:select.option value="reservadas">Coordenadas reservadas</flux:select.option>
                 <flux:select.option value="ecuador">Sin alerta de otras regiones</flux:select.option>
             </flux:select>
         </div>
@@ -109,11 +111,14 @@
                                 {{ $especimen->scientific_name ?: ($especimen->taxon_verbatim ?: 'Identificación pendiente') }}
                             </span>
                         </td>
-                        <td class="px-4 py-3 text-xs font-semibold {{ $especimen->publicado && ! $especimen->coordenadas_otras_regiones ? 'text-bio-green' : 'text-amber-700' }}">
-                            {{ $especimen->publicado && ! $especimen->coordenadas_otras_regiones ? 'Público' : 'Solo curaduría' }}
+                        <td class="px-4 py-3 text-xs font-semibold {{ $especimen->publicado && $especimen->coordenadas_publicas_validas ? 'text-bio-green' : 'text-amber-700' }}">
+                            {{ $especimen->publicado && $especimen->coordenadas_publicas_validas ? 'Público' : 'Solo curaduría' }}
                         </td>
                         <td class="px-4 py-3 text-xs text-amber-800">
                             @if($especimen->coordenadas_otras_regiones)<span class="block">Coordenadas de otras regiones · oculto al portal</span>@endif
+                            @if($especimen->coordenadas_incompletas)<span class="block">Sin par de coordenadas · revisar fuente · oculto al portal</span>@endif
+                            @if($especimen->coordenadas_reservadas)<span class="block">Coordenadas reservadas · oculto al portal</span>@endif
+                            @if(! $especimen->coordenadas_publicas_validas && ! $especimen->coordenadas_incompletas && ! $especimen->coordenadas_reservadas && ! $especimen->coordenadas_otras_regiones)<span class="block">Coordenadas fuera del rango válido · revisar fuente · oculto al portal</span>@endif
                             @if($especimen->fecha_colecta && ((int) substr($especimen->fecha_colecta, 0, 4) < 1800 || $especimen->fecha_colecta > date('Y-m-d')))<span class="block">Fecha original por revisar: {{ $especimen->fecha_colecta }}</span>@endif
                             @if(preg_match('/dañad[oa]|danad[oa]|ilegible/iu', $especimen->scientific_name ?? ''))<span class="block">Identificación dañada · no cuenta como especie</span>@endif
                         </td>

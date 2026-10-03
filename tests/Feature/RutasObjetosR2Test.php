@@ -64,6 +64,8 @@ function imagenPublicadaR2DePrueba(): array
         'occurrence_id' => $occurrenceId,
         'taxon_id' => $taxonId,
         'localidad' => 'Coleccion de pruebas aislada',
+        'decimal_latitude' => -0.25,
+        'decimal_longitude' => -78.5,
         'fecha_colecta' => '2026-09-20',
         'colector' => 'QA',
         'estado' => 'disponible',
@@ -142,6 +144,27 @@ test('una imagen de otras regiones permanece almacenada pero no se sirve al port
     Http::assertNothingSent();
     expect(DB::table('divulgacion.imagenes_taxonomicas')->where('ruta', $imagen['ruta'])->exists())->toBeTrue();
 });
+
+test('una foto de un ejemplar sin par público válido conserva su objeto y no consulta R2', function (array $coordenadas, array $visibilidad): void {
+    $imagen = imagenPublicadaR2DePrueba();
+    DB::table('taxonomia.especimenes')->where('id', $imagen['especimen_id'])->update($coordenadas);
+    if ($visibilidad !== []) {
+        DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $imagen['especimen_id'])->update($visibilidad);
+    }
+    Http::fake();
+
+    $this->get(route('portal.imagen', ['objeto' => $imagen['objeto']]))->assertNotFound();
+    Http::assertNothingSent();
+    expect(DB::table('divulgacion.imagenes_taxonomicas')->where('ruta', $imagen['ruta'])->exists())->toBeTrue();
+})->with([
+    'sin coordenadas' => [['decimal_latitude' => null, 'decimal_longitude' => null], []],
+    'solo latitud' => [['decimal_longitude' => null], []],
+    'solo longitud' => [['decimal_latitude' => null], []],
+    'latitud inválida' => [['decimal_latitude' => 91], []],
+    'longitud inválida' => [['decimal_longitude' => -181], []],
+    'latitud reservada' => [['decimal_latitude' => -0.25], ['decimal_latitude_visible' => false]],
+    'longitud reservada' => [['decimal_longitude' => -78.5], ['decimal_longitude_visible' => false]],
+]);
 
 test('una foto con etiqueta compartida no se atribuye a otro ejemplar ni consulta R2', function (): void {
     $imagen = imagenPublicadaR2DePrueba();

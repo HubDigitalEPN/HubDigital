@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Modules\CatalogoPublico\Infrastructure\Persistence\Eloquent\Repositories;
 
+use Modules\CatalogoPublico\Infrastructure\ElegibilidadGeograficaPortal;
+
 use DateTimeImmutable;
 use Modules\CatalogoPublico\Domain\Entities\ImagenTaxonomica;
 use Modules\CatalogoPublico\Domain\Repositories\ImagenTaxonomicaRepositoryInterface;
@@ -57,7 +59,7 @@ final class EloquentImagenTaxonomicaRepository implements ImagenTaxonomicaReposi
             $query->selectRaw('1')->from('taxonomia.especimenes as te')
                 ->join('divulgacion.especimenes_divulgables as ed', 'ed.especimen_id', '=', 'te.id')
                 ->whereColumn('te.occurrence_id', 'divulgacion.imagenes_taxonomicas.occurrence_id')
-                ->where('ed.publicado', true)->where('te.coordenadas_otras_regiones', false)->where('ed.scientific_name_visible', true)
+                ->where('ed.publicado', true)->whereRaw(ElegibilidadGeograficaPortal::sql('te', 'ed'))->where('ed.scientific_name_visible', true)
                 ->whereRaw('(SELECT COUNT(*) FROM taxonomia.especimenes identidad WHERE identidad.occurrence_id = te.occurrence_id) = 1');
             if ($nivel === RangoTaxonomico::Family) $query->where('ed.family_visible', true);
             if ($nivel === RangoTaxonomico::Genus) $query->where('ed.genus_visible', true);

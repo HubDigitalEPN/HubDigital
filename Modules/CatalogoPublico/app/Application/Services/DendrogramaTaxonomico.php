@@ -114,8 +114,10 @@ final class DendrogramaTaxonomico
             }
             $profundidadMaxima = max($profundidadMaxima, $profundidad);
         }
-        // Cada hijo avanza: un tope por nivel haría coincidir género y especies profundas.
-        $pasoHorizontal = min(30, 240 / max(1, $profundidadMaxima));
+        // Cada rango tiene su propia columna y todas las hojas terminan a la derecha.
+        $pasoHorizontal = 148;
+        $ancho = max(960, 24 + $profundidadMaxima * $pasoHorizontal + 236 + 24);
+        $xHojas = $ancho - 260;
         $linajeSeleccionado = [];
         $cursor = $seleccionado;
         while ($cursor !== null && isset($nodos[$cursor])) {
@@ -124,27 +126,32 @@ final class DendrogramaTaxonomico
         }
         $posiciones = [];
         $y = 12;
-        $visitar = function (string $id, int $profundidad, array $ancestros) use (&$visitar, &$posiciones, &$y, $nodos, $hijos, $linajeSeleccionado, $seleccionado, $pasoHorizontal): void {
+        $visitar = function (string $id, int $profundidad) use (&$visitar, &$posiciones, &$y, $nodos, $hijos, $linajeSeleccionado, $seleccionado, $pasoHorizontal, $xHojas): float {
             $nodo = $nodos[$id];
             $hoja = ($hijos[$id] ?? []) === [];
-            $ancestros[] = ['nombre' => $nodo['nombre'], 'rango' => $nodo['rango']];
-            $imagen = $hoja ? IlustracionTaxonomica::paraTaxon(['ancestros' => $ancestros]) : null;
-            $alto = $hoja || mb_strlen($nodo['nombre']) > 32 ? 60 : 48;
+            $alto = 64;
+            // Reservar el lugar del padre conserva el orden de tabulación de la jerarquía.
+            $posiciones[$id] = [];
+            $centros = [];
+            foreach ($hijos[$id] ?? [] as $hijo) {
+                $centros[] = $visitar($hijo, $profundidad + 1);
+            }
+            $centro = (float) ($hoja ? $y + $alto / 2 : (min($centros) + max($centros)) / 2);
+            if ($hoja) $y += 76;
             $posiciones[$id] = array_merge($nodo, [
-                'x' => round(26 + $profundidad * $pasoHorizontal, 2), 'y' => $y + $alto / 2,
-                'superior' => $y, 'alto' => $alto, 'profundidad' => $profundidad,
+                'x' => $hoja ? $xHojas : 24 + $profundidad * $pasoHorizontal, 'y' => $centro,
+                'superior' => $centro - $alto / 2, 'alto' => $alto, 'ancho_nodo' => $hoja ? 236 : 132, 'profundidad' => $profundidad,
                 'etiqueta' => self::etiquetaRango($nodo['rango']), 'hoja' => $hoja,
+                'mostrar_total' => in_array(mb_strtolower(trim($nodo['rango'])), ['species', 'especie'], true),
                 'padre_nombre' => $nodos[$nodo['padre_id'] ?? '']['nombre'] ?? null,
                 'seleccionado' => $id === $seleccionado, 'en_linaje' => isset($linajeSeleccionado[$id]),
-                'miniatura' => ($imagen['morfologia'] ?? false) ? $imagen : null,
+                'miniatura' => null,
             ]);
-            $y += $alto;
-            foreach ($hijos[$id] ?? [] as $hijo) {
-                $visitar($hijo, $profundidad + 1, $ancestros);
-            }
+
+            return $centro;
         };
         foreach ($raices as $id) {
-            $visitar($id, 0, []);
+            $visitar($id, 0);
         }
         $ramas = [];
         foreach ($posiciones as $id => $nodo) {
@@ -152,13 +159,15 @@ final class DendrogramaTaxonomico
             if ($padre === null) {
                 continue;
             }
+            $salida = $padre['x'] + $padre['ancho_nodo'];
+            $codo = round(($salida + $nodo['x']) / 2, 2);
             $ramas[] = [
                 'padre_id' => $padre['id'], 'hijo_id' => (string) $id,
-                'trazo' => 'M'.$padre['x'].' '.$padre['y'].' C'.$padre['x'].' '.$nodo['y'].' '.$padre['x'].' '.$nodo['y'].' '.$nodo['x'].' '.$nodo['y'],
+                'trazo' => 'M'.$salida.' '.$padre['y'].' H'.$codo.' V'.$nodo['y'].' H'.$nodo['x'],
                 'activa' => $nodo['en_linaje'], 'hoja' => $nodo['hoja'],
             ];
         }
 
-        return ['ancho' => 640, 'alto' => max(72, $y + 12), 'nodos' => array_values($posiciones), 'ramas' => $ramas];
+        return ['ancho' => $ancho, 'alto' => max(100, $y + 12), 'nodos' => array_values($posiciones), 'ramas' => $ramas];
     }
 }

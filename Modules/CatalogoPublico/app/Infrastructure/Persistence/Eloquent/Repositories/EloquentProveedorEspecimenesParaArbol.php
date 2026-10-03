@@ -6,8 +6,11 @@ namespace Modules\CatalogoPublico\Infrastructure\Persistence\Eloquent\Repositori
 
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\LazyCollection;
 use Modules\CatalogoPublico\Infrastructure\CalidadDatoPublico;
+use Modules\CatalogoPublico\Infrastructure\ElegibilidadGeograficaPortal;
 use Modules\CatalogoPublico\Infrastructure\NormalizacionGeografica;
 use Modules\CatalogoPublico\Infrastructure\ProtocoloColectaPublico;
 use Modules\CatalogoPublico\Application\Ports\ProveedorEspecimenesParaArbolPort;
@@ -18,12 +21,36 @@ use Modules\CatalogoPublico\Domain\ValueObjects\RangoTaxonomico;
 
 final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimenesParaArbolPort
 {
+    public const int TAMANO_PAGINA = 6;
+
+    /** Los filtros ofrecen los mismos filos que las tarjetas públicas, sin ramas vacías. */
+    public function filosPublicosDisponibles(): array
+    {
+        $revision = (int) DB::table('divulgacion.portal_cache_revision')->where('id', 1)->value('version');
+        $clave = 'portal:filos-publicos:v1:'.$revision;
+        try {
+            $guardado = Cache::get($clave);
+            if (is_array($guardado)) return $guardado;
+        } catch (\Throwable $error) {
+            Log::warning('Caché de filos no disponible', ['operacion' => 'leer', 'tipo' => $error::class]);
+        }
+        $filos = array_map(static fn (array $nodo): array => [
+            'id' => $nodo['id'], 'nombre_cientifico' => $nodo['taxon'],
+        ], $this->resumenRaiz(FiltrosBusqueda::desde([]))['hijos']);
+        try {
+            Cache::put($clave, $filos, 300);
+        } catch (\Throwable $error) {
+            Log::warning('Caché de filos no disponible', ['operacion' => 'guardar', 'tipo' => $error::class]);
+        }
+        return $filos;
+    }
+
     /** Única selección pública para árbol, tabla, mapa y exportaciones. */
     public function consultaPublica(FiltrosBusqueda $filtros, string $nivel = '', string $taxon = ''): Builder
     {
         $query = DB::table('taxonomia.especimenes as te')
             ->join('divulgacion.especimenes_divulgables as ed', 'ed.especimen_id', '=', 'te.id')
-            ->where('ed.publicado', true)->where('te.coordenadas_otras_regiones', false);
+            ->where('ed.publicado', true)->whereRaw(ElegibilidadGeograficaPortal::sql());
         $this->aplicarFiltros($query, $filtros);
         $rangos = ['phylum' => 'phylum', 'class' => 'clase', 'order' => 'orden', 'family' => 'familia', 'genus' => 'genero', 'species' => 'especie'];
         if (isset($rangos[$nivel]) && $taxon !== '') {
@@ -39,10 +66,10 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
     {
         $query = $this->consultaPublica($filtros, $nivel, $taxon);
         $total = (clone $query)->count('te.id');
-        $ultima = max(1, (int) ceil($total / 12));
+        $ultima = max(1, (int) ceil($total / self::TAMANO_PAGINA));
         $actual = min(max(1, $pagina), $ultima);
         $ids = $query->orderBy('te.fila_origen_excel')->orderBy('te.id')
-            ->offset(($actual - 1) * 12)->limit(12)->pluck('te.id')->all();
+            ->offset(($actual - 1) * self::TAMANO_PAGINA)->limit(self::TAMANO_PAGINA)->pluck('te.id')->all();
 
         return ['ids' => $ids, 'total' => $total, 'pagina' => $actual, 'ultima' => $ultima];
     }
@@ -164,7 +191,7 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
     {
         $query = DB::table('taxonomia.especimenes as te')
             ->join('divulgacion.especimenes_divulgables as ed', 'ed.especimen_id', '=', 'te.id')
-            ->where('ed.publicado', true)->where('te.coordenadas_otras_regiones', false);
+            ->where('ed.publicado', true)->whereRaw(ElegibilidadGeograficaPortal::sql());
 
         if ($filtros !== null && ! $filtros->estaVacio()) {
             $query = $this->aplicarFiltros($query, $filtros);

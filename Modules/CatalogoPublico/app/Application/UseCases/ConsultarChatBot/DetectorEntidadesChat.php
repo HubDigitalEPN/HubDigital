@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Modules\CatalogoPublico\Application\UseCases\ConsultarChatBot;
 
+use Modules\CatalogoPublico\Infrastructure\ElegibilidadGeograficaPortal;
+
 use Illuminate\Support\Facades\DB;
 use Modules\CatalogoPublico\Infrastructure\NormalizacionGeografica;
 
@@ -34,7 +36,7 @@ final class DetectorEntidadesChat
         }
         foreach (['provincia' => ['state_province', 'state_province_visible'], 'localidad' => ['locality_name', 'locality_name_visible'], 'pais' => ['country', 'country_visible']] as $clave => [$campo, $visible]) {
             $nombres = DB::table('taxonomia.especimenes as e')->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
-                ->where('d.publicado', true)->where('e.coordenadas_otras_regiones', false)->where('d.'.$visible, true)
+                ->where('d.publicado', true)->whereRaw(ElegibilidadGeograficaPortal::sql('e', 'd'))->where('d.'.$visible, true)
                 ->whereIn(DB::raw(NormalizacionGeografica::sql('e.'.$campo)), array_unique($candidatos))->distinct()->pluck('e.'.$campo)->all();
             usort($nombres, static fn ($a, $b) => (mb_strlen($b) <=> mb_strlen($a)) ?: strcmp($a, $b));
             if ($nombres !== []) $resultado[$clave] = $nombres[0];
@@ -87,7 +89,7 @@ final class DetectorEntidadesChat
             && ! in_array($this->texto->normalizar($match[1]), ['especimenes', 'especies', 'registros', 'taxones', 'familias'], true)
             && (preg_match('/[0-9._:-]/', $match[1]) || DB::table('taxonomia.especimenes as e')
                 ->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
-                ->where('d.publicado', true)->where('e.coordenadas_otras_regiones', false)
+                ->where('d.publicado', true)->whereRaw(ElegibilidadGeograficaPortal::sql('e', 'd'))
                 ->where('d.occurrence_id_visible', true)->whereRaw('lower(e.occurrence_id) = lower(?)', [$match[1]])->exists())) {
             return ['codigo' => $match[1]];
         }
@@ -110,7 +112,7 @@ final class DetectorEntidadesChat
             // La geografía solo se reconoce si hay registros divulgables con el campo visible.
             $geografia = DB::table('taxonomia.especimenes as e')
                 ->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
-                ->where('d.publicado', true)->where('e.coordenadas_otras_regiones', false)
+                ->where('d.publicado', true)->whereRaw(ElegibilidadGeograficaPortal::sql('e', 'd'))
                 ->where(function ($query) use ($principal): void {
                     $query->where(fn ($q) => $q->where('d.state_province_visible', true)->whereRaw('lower(e.state_province) = lower(?)', [$principal]))
                         ->orWhere(fn ($q) => $q->where('d.locality_name_visible', true)->whereRaw('lower(e.locality_name) = lower(?)', [$principal]))

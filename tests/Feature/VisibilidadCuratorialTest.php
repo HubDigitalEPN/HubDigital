@@ -30,6 +30,7 @@ test('un ejemplar sin filo queda en curaduría y entra al CSV público al confir
         'id' => $especimen, 'codigo_catalogo' => $codigo,
         'occurrence_id' => $ocurrencia, 'taxon_id' => $taxon,
         'localidad' => 'Localidad de verificación curatorial',
+        'decimal_latitude' => -0.25, 'decimal_longitude' => -78.5,
         'fecha_colecta' => '2026-09-20', 'colector' => 'QA',
         'estado' => 'disponible', 'created_at' => $ahora, 'updated_at' => $ahora,
     ]);

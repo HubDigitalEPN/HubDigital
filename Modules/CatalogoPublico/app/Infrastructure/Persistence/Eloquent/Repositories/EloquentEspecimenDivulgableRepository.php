@@ -9,6 +9,7 @@ use Modules\CatalogoPublico\Domain\Repositories\EspecimenDivulgableRepositoryInt
 use Modules\CatalogoPublico\Domain\ValueObjects\ConfiguracionVisibilidad;
 use Modules\CatalogoPublico\Domain\ValueObjects\EspecimenDivulgableId;
 use Modules\CatalogoPublico\Infrastructure\Persistence\Eloquent\Models\EspecimenDivulgableEloquentModel;
+use Modules\CatalogoPublico\Infrastructure\ElegibilidadGeograficaPortal;
 
 final class EloquentEspecimenDivulgableRepository implements EspecimenDivulgableRepositoryInterface
 {
@@ -93,7 +94,7 @@ final class EloquentEspecimenDivulgableRepository implements EspecimenDivulgable
         if ($especimenIds === []) return [];
         return EspecimenDivulgableEloquentModel::query()
             ->join('taxonomia.especimenes as e', 'e.id', '=', 'divulgacion.especimenes_divulgables.especimen_id')
-            ->whereIn('e.id', $especimenIds)->where('e.coordenadas_otras_regiones', false)
+            ->whereIn('e.id', $especimenIds)->whereRaw(ElegibilidadGeograficaPortal::sql('e', 'divulgacion.especimenes_divulgables'))
             ->where('divulgacion.especimenes_divulgables.publicado', true)
             ->get(['divulgacion.especimenes_divulgables.*'])
             ->map(fn (EspecimenDivulgableEloquentModel $model) => EspecimenDivulgable::reconstituir(
@@ -119,7 +120,8 @@ final class EloquentEspecimenDivulgableRepository implements EspecimenDivulgable
             ->whereIn('taxonomia.especimenes.occurrence_id', $occurrenceIDs)
             ->select('divulgacion.especimenes_divulgables.*');
         if ($soloPublicados) {
-            $consulta->where('divulgacion.especimenes_divulgables.publicado', true)->where('taxonomia.especimenes.coordenadas_otras_regiones', false);
+            $consulta->where('divulgacion.especimenes_divulgables.publicado', true)
+                ->whereRaw(ElegibilidadGeograficaPortal::sql('taxonomia.especimenes', 'divulgacion.especimenes_divulgables'));
         }
         $models = $consulta->get();
 

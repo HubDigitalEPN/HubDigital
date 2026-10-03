@@ -55,7 +55,7 @@ test('QA3-001 las tarjetas usan UUID y excluyen otro taxón con el mismo código
     $componente->call('cambiarVista', 'mapa')->assertViewHas('datosMapa', fn ($d) => (int) $d['resumen']['registros'] === 2);
 });
 
-test('tarjetas y tabla cargan doce UUID por página sin duplicarlos ni perder el resto', function (): void {
+test('tarjetas y tabla cargan seis UUID por página sin duplicarlos ni perder el resto', function (): void {
     $f = cartografiaRealFixture();
     $original = (array) DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->first();
     unset($original['coordenadas_otras_regiones'], $original['busqueda_global']);
@@ -66,13 +66,15 @@ test('tarjetas y tabla cargan doce UUID por página sin duplicarlos ni perder el
     }
     foreach (['tarjetas' => 'especimenes', 'registros' => 'registrosVista'] as $vista => $clave) {
         $componente = Livewire::withQueryParams(['vista' => $vista, 'fph' => $f['filo'], 'nivel' => 'species', 'taxon' => $f['prefijo'].' alfa'])->test(PortalCatalogo::class)
-            ->assertViewHas('totalRegistrosVista', 25)->assertViewHas('ultimaPagina', 3)->assertViewHas($clave, fn ($filas) => count($filas) === 12);
-        $primera = array_column($componente->viewData($clave), 'especimen_id');
-        $componente->call('cambiarPagina', 2)->assertViewHas($clave, fn ($filas) => count($filas) === 12);
-        $segunda = array_column($componente->viewData($clave), 'especimen_id');
-        $componente->call('cambiarPagina', 3)->assertViewHas($clave, fn ($filas) => count($filas) === 1);
-        expect(array_intersect($primera, $segunda))->toBe([])
-            ->and(count(array_unique([...$primera, ...$segunda, ...array_column($componente->viewData($clave), 'especimen_id')])))->toBe(25);
+            ->assertViewHas('totalRegistrosVista', 25)->assertViewHas('ultimaPagina', 5)->assertViewHas($clave, fn ($filas) => count($filas) === 6);
+        $vistos = [];
+        foreach (range(1, 5) as $pagina) {
+            $componente->call('cambiarPagina', $pagina)->assertViewHas($clave, fn ($filas) => count($filas) === ($pagina === 5 ? 1 : 6));
+            $actuales = array_column($componente->viewData($clave), 'especimen_id');
+            expect(array_intersect($vistos, $actuales))->toBe([]);
+            $vistos = [...$vistos, ...$actuales];
+        }
+        expect(count(array_unique($vistos)))->toBe(25);
     }
 });
 
@@ -126,17 +128,23 @@ test('el rail pagina hermanos y sus conteos en el padre público sin ampliar los
 
     $componente = Livewire::withQueryParams(['vista' => 'tarjetas', 'fph' => $f['filo'], 'nivel' => 'species', 'taxon' => $principal])
         ->test(PortalCatalogo::class)->assertViewHas('totalEspecimenes', 13)
-        ->assertViewHas('totalHermanos', 14)->assertViewHas('ultimaPaginaHermanos', 2)
-        ->assertViewHas('hermanos', fn ($nodos) => count($nodos) === 12 && $nodos[0]['taxon'] === $hermana && $nodos[0]['total'] === 2)
+        ->assertViewHas('totalHermanos', 14)->assertViewHas('ultimaPaginaHermanos', 3)
+        ->assertViewHas('hermanos', fn ($nodos) => count($nodos) === 6 && $nodos[0]['taxon'] === $hermana && $nodos[0]['total'] === 2)
         ->assertViewHas('conteos', fn ($conteos) => ! isset($conteos['species:'.$hermana]))
         ->assertViewHas('especimenes', fn ($filas) => array_diff(array_column($filas, 'especimen_id'), $idsPrincipal) === [])
         ->assertDontSee($genero.' reservada')->assertDontSee($f['prefijo'].'OtroGenero vecina');
-    $componente->call('cambiarPagina', 2)->assertViewHas('paginaActual', 2)->assertViewHas('especimenes', fn ($filas) => count($filas) === 1);
+    $componente->call('cambiarPagina', 3)->assertViewHas('paginaActual', 3)->assertViewHas('especimenes', fn ($filas) => count($filas) === 1);
     $idPaginaPrincipal = $componente->viewData('especimenes')[0]->especimen_id;
     $primeraHermanos = array_column($componente->viewData('hermanos'), 'taxon');
     $componente->call('cambiarPaginaHermanos', 2)->assertViewHas('paginaHermanosActual', 2)
+        ->assertViewHas('hermanos', fn ($nodos) => count($nodos) === 6)
+        ->assertViewHas('paginaActual', 3)->assertViewHas('especimenes', fn ($filas) => count($filas) === 1 && $filas[0]->especimen_id === $idPaginaPrincipal);
+    $intermediaHermanos = array_column($componente->viewData('hermanos'), 'taxon');
+    $componente->call('cambiarPaginaHermanos', 3)->assertViewHas('paginaHermanosActual', 3)
         ->assertViewHas('hermanos', fn ($nodos) => count($nodos) === 2 && array_intersect($primeraHermanos, array_column($nodos, 'taxon')) === [])
-        ->assertViewHas('paginaActual', 2)->assertViewHas('especimenes', fn ($filas) => count($filas) === 1 && $filas[0]->especimen_id === $idPaginaPrincipal);
+        ->assertViewHas('paginaActual', 3)->assertViewHas('especimenes', fn ($filas) => count($filas) === 1 && $filas[0]->especimen_id === $idPaginaPrincipal);
+    expect(array_intersect($primeraHermanos, $intermediaHermanos))->toBe([])
+        ->and(count(array_unique([...$primeraHermanos, ...$intermediaHermanos, ...array_column($componente->viewData('hermanos'), 'taxon')])))->toBe(14);
     $componente->set('filtroColector', 'QA')->assertViewHas('paginaHermanosActual', 1)
         ->assertViewHas('hermanos', fn ($nodos) => $nodos[0]['taxon'] === $hermana && $nodos[0]['total'] === 1)
         ->assertViewHas('totalEspecimenes', 13);
@@ -161,7 +169,7 @@ test('el mapa conserva coordenadas exactas y un punto vecino no entra en el moda
         ->and(array_column($componente->instance()->detalleCelda['registros'], 'especimen_id'))->toBe([$f['ids'][0]]);
 });
 
-test('el icono registros del modal muestra una tabla completa de doce filas con la misma selección y permisos', function (): void {
+test('el icono registros del modal muestra toda la ubicación en páginas de seis con campos y permisos completos', function (): void {
     $f = cartografiaRealFixture();
     $latitud = -0.2561234; $longitud = -78.5134567;
     DB::table('taxonomia.especimenes')->whereIn('id', [$f['ids'][0], $f['ids'][1]])->update([
@@ -169,7 +177,7 @@ test('el icono registros del modal muestra una tabla completa de doce filas con 
     ]);
     $original = (array) DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->first();
     unset($original['coordenadas_otras_regiones'], $original['busqueda_global']);
-    $idsEsperados = [$f['ids'][0], $f['ids'][1]];
+    $idsEsperados = [$f['ids'][0], $f['ids'][1], $f['ids'][2]];
     $insertar = static function (array $cambios, bool $publicado = true) use ($original): string {
         $id = (string) Str::uuid(); $codigo = 'QA-TABLA-MODAL-'.Str::uuid();
         DB::table('taxonomia.especimenes')->insert(array_replace($original, [
@@ -181,7 +189,8 @@ test('el icono registros del modal muestra una tabla completa de doce filas con 
         return $id;
     };
     for ($i = 0; $i < 11; $i++) $idsEsperados[] = $insertar(['fila_origen_excel' => $i + 3]);
-    // Otro taxón, otra provincia, un punto vecino y material no publicado no pertenecen a esta tabla.
+    // La especie beta del mismo punto también pertenece a la rejilla aunque
+    // el árbol conserve seleccionada alfa. Los demás filtros siguen vigentes.
     DB::table('taxonomia.especimenes')->where('id', $f['ids'][2])->update([
         'decimal_latitude' => $latitud, 'decimal_longitude' => $longitud, 'state_province' => 'Pichincha',
     ]);
@@ -192,7 +201,7 @@ test('el icono registros del modal muestra una tabla completa de doce filas con 
     // La publicación se deriva por trigger de un filo confirmado, no del valor insertado.
     $noPublicado = $insertar(['taxon_id' => $taxonSinFilo], false);
     expect((bool) DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $noPublicado)->value('publicado'))->toBeFalse();
-    $excluidos = [$f['ids'][2], $insertar(['state_province' => 'Napo']),
+    $excluidos = [$insertar(['state_province' => 'Napo']),
         $insertar(['decimal_latitude' => $latitud + 0.0001]), $noPublicado];
     DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->update([
         'fila_origen_excel' => 1, 'colector' => 'COLECTOR-PRIVADO-TABLA', 'specimen_notes' => 'NOTA-PRIVADA-TABLA',
@@ -240,11 +249,11 @@ test('el icono registros del modal muestra una tabla completa de doce filas con 
         ->assertSet('filtroFiloId', $f['filo'])->assertSet('filtroProvincia', 'Pichincha')
         ->assertSet('paginaCelda', 1)->assertSet('vistaCelda', 'registros');
     $detalle = $componente->instance()->detalleCelda;
-    expect($detalle['total'])->toBe(13)->and($detalle['ultima'])->toBe(2)
+    expect($detalle['total'])->toBe(14)->and($detalle['ultima'])->toBe(3)
         ->and($detalle['seleccionado']['taxon_id'])->toBe($f['taxones'][0]);
     $dom = $leerDom($componente->html());
     $tabla = $dom->query('//dialog//table[@class="atlas-record-table"]')->item(0);
-    expect($dom->query('//dialog//table[@class="atlas-record-table"]/tbody/tr')->length)->toBe(12)
+    expect($dom->query('//dialog//table[@class="atlas-record-table"]/tbody/tr')->length)->toBe(6)
         ->and($dom->query('//dialog//article[contains(@class,"atlas-record-card")]')->length)->toBe(0)
         ->and($dom->query('//dialog//div[@class="collection-view-switch"]/button')->length)->toBe(2)
         ->and($dom->query('//dialog//div[@class="atlas-record-table-scroll" and @role="region" and @tabindex="0"]')->length)->toBe(1);
@@ -270,11 +279,16 @@ test('el icono registros del modal muestra una tabla completa de doce filas con 
     $primera = array_column($detalle['registros'], 'especimen_id');
     $componente->call('paginarCelda', 2)->assertSet('paginaCelda', 2)->assertSet('pagina', 1);
     $segunda = array_column($componente->instance()->detalleCelda['registros'], 'especimen_id');
-    expect($leerDom($componente->html())->query('//dialog//table[@class="atlas-record-table"]/tbody/tr')->length)->toBe(1)
+    expect($leerDom($componente->html())->query('//dialog//table[@class="atlas-record-table"]/tbody/tr')->length)->toBe(6);
+    $componente->call('paginarCelda', 3)->assertSet('paginaCelda', 3);
+    $tercera = array_column($componente->instance()->detalleCelda['registros'], 'especimen_id');
+    expect($leerDom($componente->html())->query('//dialog//table[@class="atlas-record-table"]/tbody/tr')->length)->toBe(2)
         ->and(array_intersect($primera, $segunda))->toBe([])
-        ->and(array_diff($idsEsperados, [...$primera, ...$segunda]))->toBe([])
-        ->and(array_intersect($excluidos, [...$primera, ...$segunda]))->toBe([]);
-    $componente->call('paginarCelda', 999)->assertSet('paginaCelda', 2)
+        ->and(array_intersect([...$primera, ...$segunda], $tercera))->toBe([])
+        ->and(array_diff($idsEsperados, [...$primera, ...$segunda, ...$tercera]))->toBe([])
+        ->and([...$primera, ...$segunda, ...$tercera])->toContain($f['ids'][2])
+        ->and(array_intersect($excluidos, [...$primera, ...$segunda, ...$tercera]))->toBe([]);
+    $componente->call('paginarCelda', 999)->assertSet('paginaCelda', 3)
         ->call('cambiarVistaCelda', 'grupos')->assertSet('vistaCelda', 'grupos')->assertSet('paginaCelda', 1);
     $domArbol = $leerDom($componente->html());
     expect($domArbol->query('//dialog//table[@class="atlas-record-table"]')->length)->toBe(0)
@@ -286,9 +300,12 @@ test('el icono registros del modal muestra una tabla completa de doce filas con 
         ->test(PortalCatalogo::class)->call('abrirCelda', $latitud, $longitud)->call('cambiarVistaCelda', 'registros');
     expect($sinFiltroTaxonomico->instance()->detalleCelda['total'])->toBe(14);
     $idsSinFiltro = array_column($sinFiltroTaxonomico->instance()->detalleCelda['registros'], 'especimen_id');
-    $sinFiltroTaxonomico->call('paginarCelda', 2);
-    $idsSinFiltro = [...$idsSinFiltro, ...array_column($sinFiltroTaxonomico->instance()->detalleCelda['registros'], 'especimen_id')];
-    expect($idsSinFiltro)->toHaveCount(14)->not->toContain($noPublicado);
+    foreach ([2, 3] as $pagina) {
+        $sinFiltroTaxonomico->call('paginarCelda', $pagina);
+        $idsSinFiltro = [...$idsSinFiltro, ...array_column($sinFiltroTaxonomico->instance()->detalleCelda['registros'], 'especimen_id')];
+    }
+    expect($idsSinFiltro)->toHaveCount(14)->not->toContain($noPublicado)
+        ->and(array_unique($idsSinFiltro))->toHaveCount(14);
 });
 
 test('la identidad del mapa de especie cambia al navegar y al modificar su selección', function (): void {
@@ -332,7 +349,7 @@ test('un punto de una sola especie conserva su cadena real sin fabricar bifurcac
         ->and(array_column($detalle['arbol'], 'padre_id'))->toBe([null, $f['filo']]);
 });
 
-test('abrir un punto ofrece doce linajes completos por página y permite seleccionar directamente su especie propia', function (): void {
+test('abrir un punto ofrece seis linajes completos por página y permite seleccionar directamente su especie propia', function (): void {
     $f = cartografiaRealFixture();
     $reino = (string) Str::uuid(); $familia = (string) Str::uuid(); $genero = (string) Str::uuid();
     $suborden = (string) Str::uuid(); $subfamilia = (string) Str::uuid(); $tribu = (string) Str::uuid();
@@ -371,9 +388,9 @@ test('abrir un punto ofrece doce linajes completos por página y permite selecci
         return array_values(array_filter($arbol, static fn (array $n): bool => ! in_array($n['id'], $padres, true)));
     };
     expect($detalle['seleccionado'])->toBeNull()->and($detalle['registros'])->toBe([])
-        ->and($detalle['arbol_hojas_total'])->toBe(14)->and($detalle['arbol_ultima'])->toBe(2)
+        ->and($detalle['arbol_hojas_total'])->toBe(14)->and($detalle['arbol_ultima'])->toBe(3)
         ->and($detalle['arbol_registros_total'])->toBe(15)->and($detalle['arbol_pagina'])->toBe(1)
-        ->and($hojas($detalle['arbol']))->toHaveCount(12)
+        ->and($hojas($detalle['arbol']))->toHaveCount(6)
         ->and(array_values(array_unique(array_column($detalle['arbol'], 'rango'))))->toEqualCanonicalizing(['reino', 'phylum', 'suborden', 'familia', 'subfamilia', 'tribu', 'genero', 'especie'])
         ->and(array_diff(array_column($detalle['arbol'], 'taxon_id'), $taxonesReales))->toBe([]);
     $idsVisibles = array_column($detalle['arbol'], 'id');
@@ -414,11 +431,18 @@ test('abrir un punto ofrece doce linajes completos por página y permite selecci
         ->and($seleccion['arbol_hojas_total'])->toBe(14);
     $primerasHojas = array_column($hojas($detalle['arbol']), 'id');
     $componente->call('paginarArbolCelda', 2);
+    $intermedia = $componente->instance()->detalleCelda;
+    $hojasIntermedias = array_column($hojas($intermedia['arbol']), 'id');
+    expect($intermedia['arbol_pagina'])->toBe(2)->and($hojasIntermedias)->toHaveCount(6)
+        ->and(array_intersect($primerasHojas, $hojasIntermedias))->toBe([])
+        ->and(array_column($intermedia['registros'], 'especimen_id'))->toBe([$f['ids'][1]]);
+    $componente->call('paginarArbolCelda', 3);
     $segunda = $componente->instance()->detalleCelda;
-    expect($segunda['arbol_pagina'])->toBe(2)->and($hojas($segunda['arbol']))->toHaveCount(2)
+    expect($segunda['arbol_pagina'])->toBe(3)->and($hojas($segunda['arbol']))->toHaveCount(2)
         ->and(array_intersect($primerasHojas, array_column($hojas($segunda['arbol']), 'id')))->toBe([])
         ->and(array_column($segunda['registros'], 'especimen_id'))->toBe([$f['ids'][1]])
         ->and($segunda['rutas'])->not->toHaveKey($idFueraDePagina);
+    expect(count(array_unique([...$primerasHojas, ...$hojasIntermedias, ...array_column($hojas($segunda['arbol']), 'id')])))->toBe(14);
     $componente->call('navegarCelda', $idFueraDePagina);
     expect($componente->instance()->detalleCelda['seleccionado']['id'])->toBe($privada['id']);
     $hoja = $hojas($segunda['arbol'])[0];
@@ -431,7 +455,7 @@ test('abrir un punto ofrece doce linajes completos por página y permite selecci
         ->and($propia['informacion']['jerarquia']['suborder'])->toBe($f['prefijo'].' Suborden')
         ->and($propia['informacion']['jerarquia']['subfamily'])->toBe($f['prefijo'].' Subfamilia')
         ->and($propia['informacion']['jerarquia']['tribe'])->toBe($f['prefijo'].' Tribu')
-        ->and($propia['arbol_pagina'])->toBe(2);
+        ->and($propia['arbol_pagina'])->toBe(3);
     $componente->call('volverCelda', 0);
     expect($componente->instance()->detalleCelda['arbol_pagina'])->toBe(1)
         ->and($componente->instance()->detalleCelda['seleccionado'])->toBeNull();
@@ -624,7 +648,7 @@ test('QA4 exporta la selección completa desde la segunda página conservando Un
         'fph' => $f['filo'], 'fprov' => 'Pichincha', 'fco' => 'QA',
         'ffd' => '2025-01-01', 'ffh' => '2025-01-31', 'pagina' => 2,
     ])->test(PortalCatalogo::class)->assertViewHas('totalRegistrosVista', 14)
-        ->assertViewHas('especimenes', fn ($filas) => count($filas) === 2);
+        ->assertViewHas('especimenes', fn ($filas) => count($filas) === 6);
 
     ob_start();
     $componente->instance()->descargarResultados(app(EloquentProveedorEspecimenesParaArbol::class))->sendContent();
@@ -708,7 +732,7 @@ test('QA5 CSV comparte localidad INEC y estado con pantalla sin publicar datos r
     foreach ([3, 4, 5, 11] as $columna) expect($datos[$f['codigos'][2]][$columna])->toBe('');
 });
 
-test('QA5 CSV conserva ceros precisión y nulos sin neutralizar números válidos', function (): void {
+test('QA5 CSV conserva ceros y precisión y excluye pares incompletos o reservados', function (): void {
     $f = cartografiaRealFixture();
     DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->update(['decimal_latitude' => 0, 'decimal_longitude' => -78.1234567]);
     DB::table('taxonomia.especimenes')->where('id', $f['ids'][1])->update(['decimal_latitude' => null, 'decimal_longitude' => null]);
@@ -723,7 +747,7 @@ test('QA5 CSV conserva ceros precisión y nulos sin neutralizar números válido
     expect(is_numeric($datos[$f['codigos'][0]][7]))->toBeTrue()
         ->and((float) $datos[$f['codigos'][0]][7])->toBe(0.0)
         ->and((float) $datos[$f['codigos'][0]][8])->toBe(-78.1234567);
-    foreach ([1, 2] as $i) expect($datos[$f['codigos'][$i]][7])->toBe('')->and($datos[$f['codigos'][$i]][8])->toBe('');
+    expect($datos)->toHaveCount(1)->not->toHaveKey($f['codigos'][1])->not->toHaveKey($f['codigos'][2]);
 });
 
 test('QA3-002 las notas de reubicación se conservan sin contar como especie o provincia', function (): void {

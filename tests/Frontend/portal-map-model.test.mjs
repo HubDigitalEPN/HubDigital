@@ -1,6 +1,29 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {coordenadasPublicas, radioRegistros, prepararPuntosMapa, crearGeojsonMapa, crearAgrupadorMapa, etiquetaAgrupacionMapa, ZOOM_UBICACIONES_ORIGINALES} from '../../resources/js/portal-map-model.js';
+import {colorFilo, composicionFilos, fondoFilos} from '../../resources/js/portal-map-model.js';
+
+test('el color de cada filo permanece estable y los símbolos mixtos conservan también la minoría', () => {
+    const puntos = [
+        {lat: -1, lon: -78, total: 5, filos: {Arthropoda: 4, Mollusca: 1}},
+        {lat: -1, lon: -78, total: 2, filos: {Annelida: 2}},
+        {lat: -1.0001, lon: -78.0001, total: 1, filos: {Nematomorpha: 1}},
+    ];
+    const mapa = crearAgrupadorMapa(puntos);
+    const ubicacion = mapa.originales.find(punto => punto.lat === -1);
+    assert.deepEqual(ubicacion.filos, {Arthropoda: 4, Mollusca: 1, Annelida: 2});
+    const grupo = mapa.paraZoom(0)[0];
+    assert.deepEqual(grupo.filos, {Nematomorpha: 1, Arthropoda: 4, Mollusca: 1, Annelida: 2});
+    assert.equal(composicionFilos(grupo.filos).reduce((total, parte) => total + parte.cantidad, 0), 8);
+    assert.match(fondoFilos(ubicacion.filos), /#d17d28/);
+    assert.match(fondoFilos(ubicacion.filos), /#568c59/);
+    const filtrado = crearAgrupadorMapa(puntos, 'Mollusca');
+    assert.equal(fondoFilos(filtrado.originales[0].filos), colorFilo('Mollusca'));
+    assert.equal(colorFilo('Mollusca'), '#d17d28');
+    assert.equal(colorFilo('Nematoda'), '#8c62a5');
+    assert.equal(colorFilo('Sin filo'), '#71828d');
+    assert.deepEqual(puntos[0].filos, {Arthropoda: 4, Mollusca: 1});
+});
 
 test('las coordenadas y GeoJSON conservan la ubicación registrada, fuera del centro de cuadrícula', () => {
     const punto = {lat: '-1.35686', lon: '-79.897321', total: 72, filos: {Mollusca: 72}, taxones: 2};
