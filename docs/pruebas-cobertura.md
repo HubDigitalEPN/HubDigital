@@ -2,7 +2,7 @@
 
 ## Usabilidad, coordenadas públicas y columnas — 3 de octubre de 2026
 
-Esta solicitud autoriza implementar, ejecutar y reintentar el paquete completo, publicar y activar en OCI. La revisión de interfaz se realiza en Edge sobre localhost con una copia aislada del respaldo; no se consulta `dev.labinvepn.org`, antes ni después del despliegue. Las suites continúan centralizadas en `crear-paquete-oci` y se conservan los escenarios Behat activos sin duplicar contratos Pest/Node.
+Esta solicitud autoriza implementar, ejecutar y reintentar el paquete completo, publicar y activar en OCI. La revisión manual de interfaz se realiza en Edge sobre localhost con una copia aislada del respaldo; el agente no realiza pruebas manuales contra `dev.labinvepn.org`, antes ni después del despliegue. Las comprobaciones originales del script de activación, incluidas sus peticiones HTTP locales y públicas, se conservan y se ejecutan al activar. Las suites continúan centralizadas en `crear-paquete-oci` y se conservan los escenarios Behat activos sin duplicar contratos Pest/Node.
 
 | Contrato | Cobertura centralizada y complementaria |
 | --- | --- |
@@ -15,7 +15,7 @@ Esta solicitud autoriza implementar, ejecutar y reintentar el paquete completo, 
 
 La auditoría SQL de OCI fue de sólo lectura y cubrió los 49.696 especímenes: 14.997 no publicados, 251 de otras regiones, 5.141 publicados con par incompleto, 694 publicados con coordenadas reservadas y 28.613 elegibles (causas excluyentes). Arthropoda aporta 28.261, Mollusca 347, Annelida 4 y Nematomorpha 1. Los tres Nematoda, `MEPN-INV-7748`, `MEPN-INV-7749` y `MEPN-INV-7750`, tienen ambos componentes nulos: se conservan para curaduría, sin asignar coordenadas supuestas. Los indicadores curatoriales señalan la causa sin modificar publicación ni fuente.
 
-Para esta activación, `HUBDIGITAL_ACTIVATION_HTTP_CHECKS=0` omite las peticiones HTTP del script por instrucción expresa del usuario. El valor predeterminado sigue siendo `1` para otras entregas. Identidad del artefacto, estado, migraciones y servicios mantienen sus controles operativos. La opción no constituye una aprobación de disponibilidad HTTP ni de rendimiento en producción; los índices y la eliminación del trabajo fotográfico inicial no sustituyen una prueba de carga.
+El script `activate-release.sh` se restaura íntegramente a su versión anterior a los cambios de usabilidad. La restricción de pruebas manuales del agente no permite omitir las verificaciones originales de activación. Estas comprobaciones verifican disponibilidad e integridad operativa; los índices y la eliminación del trabajo fotográfico inicial no sustituyen una prueba de carga.
 
 ## Contratos de DOTS QA5 — 3 de octubre de 2026
 

@@ -9,11 +9,6 @@ if [[ "${EUID}" -ne 0 ]]; then
 fi
 
 release_id="${1:-}"
-http_checks="${HUBDIGITAL_ACTIVATION_HTTP_CHECKS:-1}"
-[[ "${http_checks}" == 0 || "${http_checks}" == 1 ]] || {
-    echo 'HUBDIGITAL_ACTIVATION_HTTP_CHECKS debe ser 0 o 1.' >&2
-    exit 64
-}
 [[ "${release_id}" =~ ^[0-9a-f]{16}$ ]] || {
     echo 'Uso: sudo activate-release.sh <id-de-16-hex>' >&2
     exit 64
@@ -111,7 +106,7 @@ if [[ "${nginx_source}" == *hubdigital.conf ]]; then
 else
     local_check=(curl --fail --silent --show-error --max-time 15 --resolve dev.labinvepn.org:80:127.0.0.1 http://dev.labinvepn.org/depositos)
 fi
-if ! artisan up --no-interaction || { [[ "${http_checks}" == 1 ]] && ! "${local_check[@]}" >/dev/null; }; then
+if ! artisan up --no-interaction || ! "${local_check[@]}" >/dev/null; then
     artisan down --retry=60 --no-interaction || true
     echo 'Fallo de comprobacion local; no se inician worker ni scheduler.' >&2
     exit 1
@@ -151,12 +146,8 @@ check_public_url() {
     echo "OK ${url}: HTTP ${status}"
 }
 
-if [[ "${http_checks}" == 1 ]]; then
-    check_public_url 'https://dev.labinvepn.org/' || verification_failed=1
-    check_public_url 'https://dev.labinvepn.org/depositos' || verification_failed=1
-else
-    echo 'Consultas HTTP omitidas por indicacion expresa del operador; se verifican identidad, migraciones y servicios.'
-fi
+check_public_url 'https://dev.labinvepn.org/' || verification_failed=1
+check_public_url 'https://dev.labinvepn.org/depositos' || verification_failed=1
 
 # Comprueba el artefacto Java de ESTA release y el camino real de admisión PDF
 # de Laravel. La autoprueba firma, altera y rechaza PDFs sintéticos; la prueba
@@ -236,11 +227,7 @@ if [[ -r "${release_dir}/SOURCE-METADATA.json" ]]; then
     install -m 0644 -o root -g www-data "${public_status}" "${release_dir}/RELEASE-STATUS.json"
     rm -f -- "${public_status}"
 fi
-if [[ "${http_checks}" == 1 ]]; then
-    echo 'Verificacion final OK: release, URLs publicas, servicios, Java, admision PDF y asistente del portal en el estado esperado.'
-else
-    echo 'Verificacion operativa OK: release, servicios, Java, admision PDF y asistente. Consultas HTTP omitidas.'
-fi
+echo 'Verificacion final OK: release, URLs publicas, servicios, Java, admision PDF y asistente del portal en el estado esperado.'
 echo "Release activa en el origen directo: ${release_id}. Worker limitado a ${validation_queue}; scheduler detenido."
 
 echo
