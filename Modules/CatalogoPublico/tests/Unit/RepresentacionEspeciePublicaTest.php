@@ -95,6 +95,23 @@ it('la fotografía identificada no reconstruye ancestros retirados del linaje p�
         ->and($dom->query('//figure[@data-fotografia-taxonomica]//em')->length)->toBe(1)
         ->and($dom->query('//dl//dt[text()="Familia" or text()="Género"]')->length)->toBe(0)
         ->and($dom->query('//dl/div[dt="Especie"]/dd')->item(0)->textContent)->toBe('Atta cephalotes');
+
+    $generoOmitido = representacionEspeciePublicaDom('Atta cephalotes', [
+        'ancestros' => [
+            ['rango' => 'reino', 'nombre' => 'Animalia'],
+            ['rango' => 'familia', 'nombre' => 'Formicidae'],
+        ],
+    ]);
+    expect($generoOmitido->query('//img')->length)->toBe(1)
+        ->and(parse_url($generoOmitido->query('//img')->item(0)->getAttribute('src'), PHP_URL_PATH))
+        ->toBe('/images/taxonomia/fotografias/atta-cephalotes.webp')
+        ->and($generoOmitido->query('//figure[@data-fotografia-taxonomica="Atta cephalotes"]/figcaption')->item(0)->textContent)
+        ->toContain('Formicidae', 'Atta cephalotes')->not->toContain('género Atta')
+        ->and($generoOmitido->query('//figure[@data-fotografia-taxonomica="Atta cephalotes"]/figcaption/p[2]')->item(0)->textContent)
+        ->toBe('Fotografía identificada de Atta cephalotes.')
+        ->and($generoOmitido->query('//dl/div[dt="Familia"]/dd')->item(0)->textContent)->toBe('Formicidae')
+        ->and($generoOmitido->query('//dl//dt[text()="Género"]')->length)->toBe(0)
+        ->and($generoOmitido->query('//dl/div[dt="Especie"]/dd')->item(0)->textContent)->toBe('Atta cephalotes');
 });
 
 it('la autoría visible se reserva a referencias verificadas en Ecuador y siempre conserva fuente y licencia', function () {

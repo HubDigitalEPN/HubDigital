@@ -134,7 +134,10 @@ final class IlustracionTaxonomica
             $foto['family'] = '';
             $foto['descripcion'] = 'Fotografía identificada de '.$foto['species'].'.';
         }
-        if (isset($linaje['species']) && ! isset($linaje['genus'])) $foto['genus'] = '';
+        if (isset($linaje['species']) && ! isset($linaje['genus'])) {
+            $foto['genus'] = '';
+            $foto['descripcion'] = 'Fotografía identificada de '.$foto['species'].'.';
+        }
         return $foto + [
             'url' => '/images/taxonomia/fotografias/'.$foto['archivo'].'.webp?v='.self::VERSION_RECURSOS,
             'alt' => 'Fotografía de '.$foto['species'].($foto['family'] !== '' ? ' ('.$foto['family'].')' : '').'.',
