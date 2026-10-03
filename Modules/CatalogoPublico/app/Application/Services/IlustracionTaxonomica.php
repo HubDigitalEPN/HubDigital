@@ -66,12 +66,24 @@ final class IlustracionTaxonomica
         if ($imagen['grupo'] === 'Formicidae') {
             return array_map(static fn (int $variante) => self::descripcion('formicidae-'.$variante.'.webp', 'Formicidae'), range(1, 4));
         }
-        $nombre = mb_strtolower(trim((string) ($taxon['nombre'] ?? $taxon['phylum'] ?? $taxon['taxon'] ?? '')));
-        if (! $imagen['morfologia'] && in_array($nombre, ['arthropoda', 'animalia', ''], true)) {
-            return array_map(static fn (string $grupo) => self::paraTaxon(['nombre' => $grupo]), ['Formicidae', 'Coleoptera', 'Lepidoptera', 'Araneae']);
-        }
-
         return [$imagen];
+    }
+
+    /** Hasta cuatro grupos presentes en la selección; nunca un surtido global supuesto. */
+    public static function mosaicoParaSeleccion(iterable $linajes): array
+    {
+        $grupos = [];
+        foreach ($linajes as $linaje) {
+            $imagen = self::paraTaxon($linaje);
+            if (! $imagen['morfologia']) continue;
+            $clave = $imagen['grupo'];
+            $grupos[$clave] ??= ['imagen' => $imagen, 'total' => 0];
+            $grupos[$clave]['total'] += (int) ($linaje['total'] ?? 1);
+        }
+        if ($grupos === []) return self::mosaicoParaTaxon([]);
+        if (count($grupos) === 1 && isset($grupos['Formicidae'])) return self::mosaicoParaTaxon(['family' => 'Formicidae']);
+        uasort($grupos, static fn (array $a, array $b): int => $b['total'] <=> $a['total'] ?: strcmp($a['imagen']['grupo'], $b['imagen']['grupo']));
+        return array_column(array_slice($grupos, 0, 4), 'imagen');
     }
 
     private static function descripcion(string $archivo, string $grupo, bool $morfologia = true): array

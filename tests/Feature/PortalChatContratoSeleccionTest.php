@@ -276,6 +276,92 @@ test('el enlace de ayuda usa filtros aplicados y no borradores inválidos ni una
     expect(parametrosEnlaceChat($chat->get('mensajes')[5]))->toBe(['vista' => 'registros']);
 });
 
+test('la ayuda del mapa de esta selección conserva exactamente la consulta de la ficha manual', function (): void {
+    $jerarquia = jerarquiaGenerosChat();
+    DB::table('taxonomia.taxones')->where('id', $jerarquia['familia'])->update(['nombre_cientifico' => 'Formicidae']);
+    $genero = (string) Str::uuid(); $especie = (string) Str::uuid();
+    DB::table('taxonomia.taxones')->insert([
+        ['id' => $genero, 'padre_id' => $jerarquia['familia'], 'rango' => 'genero', 'nombre_cientifico' => 'Neoponera'],
+        ['id' => $especie, 'padre_id' => $genero, 'rango' => 'especie', 'nombre_cientifico' => 'Neoponera carinulata'],
+    ]);
+    foreach (range(1, 13) as $i) {
+        $registro = (string) Str::uuid();
+        DB::table('taxonomia.especimenes')->insert(['id' => $registro, 'taxon_id' => $especie,
+            'codigo_catalogo' => 'QA3-FICHA-MANUAL-'.$i, 'occurrence_id' => 'QA3-FICHA-MANUAL-'.$i]);
+        DB::table('divulgacion.especimenes_divulgables')->insert(['id' => (string) Str::uuid(), 'especimen_id' => $registro, 'publicado' => true]);
+    }
+    $seleccion = ['ft' => 'Formicidae', 'nivel' => 'species', 'taxon' => 'Neoponera carinulata'];
+    $catalogo = Livewire::withQueryParams($seleccion + ['vista' => 'tarjetas', 'pagina' => 2])->test(PortalCatalogo::class)
+        ->assertSet('nivel', 'species')->assertSet('taxon', 'Neoponera carinulata')
+        ->assertViewHas('totalRegistrosVista', 13)->assertViewHas('paginaActual', 2)
+        ->assertViewHas('especimenes', fn ($filas) => count($filas) === 1);
+    $chat = Livewire::test(ChatBotWidget::class)->call('nuevaConversacion');
+    expect(seleccionChatRenderizada($catalogo))->toEqual($seleccion);
+
+    $chat->set('pregunta', '¿Cómo uso el mapa de esta selección?')->call('enviar', seleccionChatRenderizada($catalogo));
+    $respuesta = $chat->get('mensajes')[1];
+    expect($chat->get('mensajes'))->toHaveCount(2)
+        ->and($respuesta['texto'])->toContain('La selección aplicada se conserva')
+        ->not->toContain('Pulsa Aplicar filtros')
+        ->and(parametrosEnlaceChat($respuesta))->toEqual($seleccion + ['vista' => 'mapa']);
+});
+
+test('las instrucciones para una consulta explícita nueva no heredan la selección aplicada ni el contexto anterior', function (): void {
+    registrosParaContratoChat();
+    $respuesta = app(AsistentePortal::class)->responder('¿Cómo filtro Chatobius en Esmeraldas en el mapa?', app(ConsultarChatBotHandler::class),
+        contextoCatalogo: ['codigo' => 'QA3-CHAT-1', 'provincia' => 'Pichincha'],
+        seleccionPortal: ['ft' => 'Formicidae', 'nivel' => 'species', 'taxon' => 'Neoponera carinulata', 'fm' => ['Fogging']]);
+    expect($respuesta['intent'])->toBe('portal.filtros')
+        ->and($respuesta['entidades'])->toBe(['taxon' => 'Chatobius', 'provincia' => 'Esmeraldas'])
+        ->and(parametrosEnlaceChat($respuesta))->toEqual(['vista' => 'mapa', 'ft' => 'Chatobius', 'fprov' => 'Esmeraldas']);
+});
+
+test('la referencia al mapa distingue una página sin filtros de la ausencia de catálogo', function (): void {
+    $asistente = app(AsistentePortal::class);
+    $handler = app(ConsultarChatBotHandler::class);
+    $pregunta = '¿Cómo uso el mapa de esta selección?';
+    $contexto = ['taxon' => 'Chatobius', 'provincia' => 'Pichincha'];
+
+    $sinFiltros = $asistente->responder($pregunta, $handler, contextoCatalogo: $contexto, seleccionPortal: []);
+    expect(parametrosEnlaceChat($sinFiltros))->toBe(['vista' => 'mapa'])
+        ->and($sinFiltros['entidades'])->toBe([]);
+
+    $sinPagina = $asistente->responder($pregunta, $handler, contextoCatalogo: $contexto);
+    expect(parametrosEnlaceChat($sinPagina))->toBe(['vista' => 'mapa', 'ft' => 'Chatobius', 'fprov' => 'Pichincha'])
+        ->and($sinPagina['entidades'])->toBe($contexto);
+
+    $sinSeleccion = $asistente->responder($pregunta, $handler);
+    expect($sinSeleccion['intent'])->toBe('portal.filtros')
+        ->and(parametrosEnlaceChat($sinSeleccion))->toBe(['vista' => 'mapa'])
+        ->and($sinSeleccion['texto'])->toContain('Elige los criterios de tu consulta')
+        ->not->toContain('La selección aplicada se conserva');
+});
+
+test('repetir la ayuda del mapa fuera del catálogo conserva la consulta pública hasta iniciar una conversación nueva', function (): void {
+    registrosParaContratoChat();
+    $contexto = app(ContextoChat::class);
+    $seleccion = ['taxon' => 'Chatobius', 'provincia' => 'Pichincha'];
+    $chat = Livewire::test(ChatBotWidget::class)->call('nuevaConversacion');
+    $chat->set('pregunta', 'Busca Chatobius en Pichincha')->call('enviar');
+    expect($contexto->obtener()['entities'])->toBe($seleccion);
+
+    $pregunta = '¿Cómo uso el mapa de esta selección?';
+    $chat->set('pregunta', $pregunta)->call('enviar');
+    $primeraAyuda = $chat->get('mensajes')[3];
+    expect(parametrosEnlaceChat($primeraAyuda))->toBe(['vista' => 'mapa', 'ft' => 'Chatobius', 'fprov' => 'Pichincha'])
+        ->and($contexto->obtener()['entities'])->toBe($seleccion)
+        ->and($primeraAyuda['texto'])->toContain('La selección aplicada se conserva')
+        ->not->toContain('Pulsa Aplicar filtros');
+
+    $chat->set('pregunta', $pregunta)->call('enviar');
+    expect($chat->get('mensajes')[5]['opciones'][0]['url'])->toBe($primeraAyuda['opciones'][0]['url'])
+        ->and($contexto->obtener()['entities'])->toBe($seleccion);
+
+    $chat->call('nuevaConversacion');
+    expect($contexto->obtener())->toBe([])
+        ->and($chat->get('mensajes'))->toBe([]);
+});
+
 test('los enlaces de selección admiten solo parámetros públicos y conservan los filtros que el chat no interpreta', function (): void {
     $seleccion = ['fp' => ['Alcohol'], 'fm' => ['Trampa de caída'], 'fb' => ['Bosque'], 'fg' => ['Quito', 'Yasuní'],
         'fco' => 'Colectora', 'fh' => 'Hojarasca', 'fsti' => 'Holotype', 'fca' => 'Worker', 'fes' => 'Adult',

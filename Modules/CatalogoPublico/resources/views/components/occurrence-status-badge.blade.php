@@ -1,11 +1,11 @@
 @props(['status'])
 
 @php
-    $status = strtolower($status ?? '');
-    [$color, $label] = match($status) {
-        'present'  => ['success', 'Presente'],
-        'absent'   => ['warning', 'Ausente'],
-        default    => ['zinc',    ucfirst($status ?: 'Desconocido')],
+    $label = \Modules\CatalogoPublico\Infrastructure\EtiquetaDatoPublico::estado($status);
+    $color = match(strtolower(trim($status ?? ''))) {
+        'present', 'in_collection', 'in collection' => 'success',
+        'absent' => 'warning',
+        default => 'zinc',
     };
 @endphp
 

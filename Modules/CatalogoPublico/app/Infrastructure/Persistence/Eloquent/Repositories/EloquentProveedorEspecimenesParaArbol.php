@@ -54,7 +54,8 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
         $hijos = array_values(array_filter($resumen['nodos'], static fn (array $n): bool => $n['nivel'] === 'phylum'));
         $conteos = array_intersect_key($resumen['conteos'], array_fill_keys(array_map(static fn (array $n): string => 'phylum:'.$n['taxon'], $hijos), true));
         return ['hijos' => $hijos,
-            'conteos' => $conteos, 'descendientes' => $resumen['descendientes']];
+            'conteos' => $conteos, 'descendientes' => $resumen['descendientes'],
+            'curatoriales' => $resumen['curatoriales'], 'curatoriales_total' => $resumen['curatoriales_total']];
     }
 
     /** Navegación agregada por taxón: evita hidratar la colección completa en una VM pequeña. */
@@ -64,21 +65,40 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
             ->selectRaw('te.taxon_id, ed.family_visible, ed.genus_visible, COUNT(*) AS total')
             ->groupBy('te.taxon_id', 'ed.family_visible', 'ed.genus_visible')->get();
         $taxones = DB::table('taxonomia.taxones')->get(['id', 'padre_id', 'nombre_cientifico', 'rango'])->keyBy('id');
+        $idsValidos = array_fill_keys(CalidadDatoPublico::taxonesConLinajeValido($taxones), true);
         $rangos = ['phylum' => 'phylum', 'clase' => 'class', 'orden' => 'order', 'familia' => 'family', 'genero' => 'genus', 'especie' => 'species'];
         $nodos = $especies = $conteos = $distintos = $rutas = [];
+        $curatoriales = [];
+        $curatoriales_total = 0;
         $total = $this->consultaPublica($filtros, $nivel, $taxon)->count('te.id');
         foreach ($filas as $fila) {
-            $ruta = [];
+            $fuente = [];
             $id = $fila->taxon_id;
             $visitados = [];
             while ($id && isset($taxones[$id]) && ! isset($visitados[$id]) && count($visitados) < 30) {
                 $visitados[$id] = true;
                 $t = $taxones[$id];
-                if (isset($rangos[$t->rango]) && ($t->rango !== 'familia' || $fila->family_visible)
-                    && ($t->rango !== 'genero' || $fila->genus_visible)) {
-                    array_unshift($ruta, ['id' => $id, 'nivel' => $rangos[$t->rango], 'taxon' => $t->nombre_cientifico]);
-                }
+                array_unshift($fuente, ['id' => $id, 'rango' => $t->rango, 'taxon' => $t->nombre_cientifico]);
                 $id = $t->padre_id;
+            }
+            // Un ciclo o padre conocido pendiente invalida el recorrido completo;
+            // el límite no convierte una cadena truncada en clasificación confirmada.
+            $confirmada = $id && isset($taxones[$id]) ? [] : CalidadDatoPublico::rutaConfirmada($fuente, 'taxon');
+            if ($confirmada !== [] && ! isset($idsValidos[$confirmada[0]['id']])) $confirmada = [];
+            $ruta = [];
+            foreach ($confirmada as $nodo) {
+                if (isset($rangos[$nodo['rango']]) && ($nodo['rango'] !== 'familia' || $fila->family_visible)
+                    && ($nodo['rango'] !== 'genero' || $fila->genus_visible)) {
+                    $ruta[] = ['id' => $nodo['id'], 'nivel' => $rangos[$nodo['rango']], 'taxon' => $nodo['taxon']];
+                }
+            }
+            if ($fuente !== [] && ! isset($idsValidos[$fila->taxon_id])) {
+                $padre = $ruta === [] ? 'root' : end($ruta)['taxon'];
+                $clave = $fila->taxon_id.':'.implode(':', array_column($ruta, 'id'));
+                $curatoriales[$clave] ??= ['id' => $fila->taxon_id, 'nota' => $taxones[$fila->taxon_id]->nombre_cientifico,
+                    'padre' => $padre, 'ruta' => $ruta, 'total' => 0];
+                $curatoriales[$clave]['total'] += (int) $fila->total;
+                $curatoriales_total += (int) $fila->total;
             }
             if ($ruta === [] || $ruta[0]['nivel'] !== 'phylum') continue;
             $padre = 'root';
@@ -108,9 +128,12 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
         uasort($especies, $ordenar);
         $descendientes = [];
         foreach ($distintos as $clave => $niveles) $descendientes[$clave] = array_map('count', $niveles);
+        uasort($curatoriales, static fn (array $a, array $b): int => $b['total'] <=> $a['total'] ?: strnatcasecmp($a['nota'], $b['nota']));
+        $curatoriales = array_values(array_slice($curatoriales, 0, 12));
 
         return ['nodos' => array_values($nodos), 'especies' => array_values($especies), 'conteos' => $conteos,
-            'descendientes' => $descendientes, 'rutas' => $rutas, 'total' => $total];
+            'descendientes' => $descendientes, 'rutas' => $rutas, 'total' => $total,
+            'curatoriales' => $curatoriales, 'curatoriales_total' => $curatoriales_total];
     }
 
     /** Filas filtradas y en orden estable para una descarga CSV de memoria acotada. */
@@ -215,29 +238,38 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
         // `raiz` para pivotear luego por taxón de origen y rango.
         $sql = <<<'SQL'
             WITH RECURSIVE cadena AS (
-                SELECT tx.id AS raiz, tx.id, tx.rango, tx.nombre_cientifico, tx.padre_id, 0 AS profundidad
+                SELECT tx.id AS raiz, tx.id, tx.rango, tx.nombre_cientifico, tx.padre_id, 0 AS profundidad, ARRAY[tx.id] AS camino
                 FROM taxonomia.taxones tx
                 WHERE tx.id = ANY(?)
                 UNION ALL
-                SELECT c.raiz, p.id, p.rango, p.nombre_cientifico, p.padre_id, c.profundidad + 1
+                SELECT c.raiz, p.id, p.rango, p.nombre_cientifico, p.padre_id, c.profundidad + 1, c.camino || p.id
                 FROM cadena c
                 JOIN taxonomia.taxones p ON p.id = c.padre_id
-                WHERE c.profundidad < 20
+                WHERE c.profundidad < 29 AND NOT p.id = ANY(c.camino)
             )
-            SELECT raiz::text AS raiz, rango, nombre_cientifico
+            SELECT raiz::text AS raiz, rango, nombre_cientifico,
+                (padre_id = ANY(camino) OR (profundidad = 29 AND EXISTS (SELECT 1 FROM taxonomia.taxones pendiente WHERE pendiente.id = cadena.padre_id))) AS sin_confirmar
             FROM cadena
-            WHERE rango = ANY(?)
+            ORDER BY raiz, profundidad DESC
         SQL;
 
         $filas = DB::select($sql, [
             '{'.implode(',', $taxonIds).'}',
-            '{'.implode(',', $rangosCanonicos).'}',
         ]);
 
         /** @var array<string, array<string, string>> */
         $porTaxon = [];
+        $porRaiz = [];
+        $sinConfirmar = [];
         foreach ($filas as $fila) {
-            $porTaxon[$fila->raiz][$fila->rango] = $fila->nombre_cientifico;
+            $porRaiz[$fila->raiz][] = ['rango' => $fila->rango, 'nombre' => $fila->nombre_cientifico];
+            if ($fila->sin_confirmar) $sinConfirmar[$fila->raiz] = true;
+        }
+        foreach ($porRaiz as $raiz => $ruta) {
+            if (isset($sinConfirmar[$raiz])) continue;
+            foreach (CalidadDatoPublico::rutaConfirmada($ruta) as $nodo) {
+                if (in_array($nodo['rango'], $rangosCanonicos, true)) $porTaxon[$raiz][$nodo['rango']] = $nodo['nombre'];
+            }
         }
 
         return $porTaxon;
@@ -326,7 +358,8 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
                     $subquery->selectRaw('1')->from('taxonomia.taxones as identificacion')
                         ->whereColumn('identificacion.id', 'te.taxon_id');
                     if ($filtros->identificacion === 'especie') {
-                        $subquery->where('identificacion.rango', 'especie')->whereRaw(CalidadDatoPublico::textoValido('identificacion.nombre_cientifico'));
+                        $subquery->where('identificacion.rango', 'especie')->whereRaw(CalidadDatoPublico::textoValido('identificacion.nombre_cientifico'))
+                            ->whereRaw('NOT '.CalidadDatoPublico::revisionTaxonomicaSql('identificacion.id'));
                     } else {
                         $subquery->where('identificacion.rango', '<>', 'especie');
                     }
@@ -342,7 +375,8 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
                 ->whereRaw(CalidadDatoPublico::fechaValida('te.fecha_colecta'))
                 ->whereExists(static fn (Builder $subquery) => $subquery->selectRaw('1')
                     ->from('taxonomia.taxones as apto')->whereColumn('apto.id', 'te.taxon_id')
-                    ->where('apto.rango', 'especie')->whereRaw(CalidadDatoPublico::textoValido('apto.nombre_cientifico')));
+                    ->where('apto.rango', 'especie')->whereRaw(CalidadDatoPublico::textoValido('apto.nombre_cientifico'))
+                    ->whereRaw('NOT '.CalidadDatoPublico::revisionTaxonomicaSql('apto.id')));
         }
 
         // Método de recolección — JOIN con muestras_colecta

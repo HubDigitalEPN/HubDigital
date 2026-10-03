@@ -1,12 +1,47 @@
 import L from 'leaflet';
 import {crearGeojsonMapa, prepararPuntosMapa} from './portal-map-model';
 import {nombreDescargaImagen} from './portal-image-model';
+import {crearHistorialCatalogo} from './portal-history-model';
 
 // El mapa del panel y los mapas de especie usan la misma copia local de Leaflet.
 window.L = L;
 
+// Una entrada del catálogo sin snapshot puede visitarse desde otra página.
+// En ese caso no existe un componente que restaurar: abrir el enlace completo.
+window.addEventListener('popstate', evento => {
+    const entrada = evento.state?.portalCatalogo;
+    if (entrada?.ruta === window.location.pathname && !evento.state?.alpine?.snapshotIdx
+        && !document.querySelector('[data-catalogo-historial]')) window.location.reload();
+});
+
 const registrarDashboard = () => {
-    window.Alpine.data('portalCatalogo', () => ({
+    window.Alpine.data('portalCatalogo', () => {
+        let historial = null;
+        let alVolver = null;
+        return {
+        errorHistorial: '',
+        init() {
+            const raizCatalogo = this.$el;
+            const configuracion = JSON.parse(raizCatalogo.dataset.catalogoHistorial);
+            historial = crearHistorialCatalogo({
+                history: window.history, location: window.location, ...configuracion,
+                restaurar: (estado, secuencia) => this.$wire.restaurarSeleccionUrl(estado, secuencia),
+                onError: () => { this.errorHistorial = 'No se pudo restaurar la selección. Recarga la página para abrir el enlace actual.'; },
+            });
+            alVolver = evento => {
+                // wire:navigate gestiona los saltos entre páginas cuando guarda un snapshot.
+                if (evento.state?.alpine?.snapshotIdx) return;
+                this.errorHistorial = '';
+                historial.volver(window.location.href);
+                raizCatalogo.querySelectorAll('dialog[open]').forEach(dialogo => dialogo.close());
+            };
+            window.addEventListener('popstate', alVolver);
+        },
+        actualizarHistorial(evento) { historial?.recibir(evento.estado, evento.restauracion, evento.version); },
+        destroy() {
+            historial?.destroy();
+            window.removeEventListener('popstate', alVolver);
+        },
         taxonAyuda: null,
         invocadorAyuda: null,
         etiquetasStats: {kingdom: 'reinos', phylum: 'filos', class: 'clases', order: 'órdenes', family: 'familias', genus: 'géneros', species: 'especies'},
@@ -30,7 +65,7 @@ const registrarDashboard = () => {
             this.invocadorAyuda?.focus({preventScroll: true});
             this.taxonAyuda = null;
         },
-    }));
+    }});
 
     window.Alpine.data('portalFiltros', () => ({
         observador: null,

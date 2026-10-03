@@ -215,6 +215,18 @@ jq --arg activated_at "$(date --utc +%FT%TZ)" --arg worker_queue "${validation_q
     '. + {activado_local_en:$activated_at, worker_queue:$worker_queue, estado:"activo_local_validacion"}' "${state_file}" > "${state_file}.tmp"
 chmod 0600 "${state_file}.tmp"
 mv "${state_file}.tmp" "${state_file}"
+
+# La aplicación no necesita acceso al estado protegido ni al entorno del host.
+# Publicamos únicamente la identidad del artefacto que acaba de activarse y
+# su fecha; este archivo de estado no altera los manifiestos del código.
+if [[ -r "${release_dir}/SOURCE-METADATA.json" ]]; then
+    public_status="$(mktemp /run/hubdigital/release-status.XXXXXX)"
+    jq --slurpfile source "${release_dir}/SOURCE-METADATA.json" \
+        '{release_id: .release_id, git_commit: $source[0].git_commit, activated_at_utc: .activado_local_en}' \
+        "${state_file}" > "${public_status}"
+    install -m 0644 -o root -g www-data "${public_status}" "${release_dir}/RELEASE-STATUS.json"
+    rm -f -- "${public_status}"
+fi
 echo 'Verificacion final OK: release, URLs publicas, servicios, Java, admision PDF y asistente del portal en el estado esperado.'
 echo "Release activa en el origen directo: ${release_id}. Worker limitado a ${validation_queue}; scheduler detenido."
 

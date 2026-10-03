@@ -8,9 +8,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Illuminate\Validation\ValidationException;
 use Modules\CatalogoPublico\Infrastructure\CalidadDatoPublico;
-use Livewire\Attributes\Url;
 use Livewire\Component;
 use Modules\CatalogoPublico\Application\Ports\DatosEspecimenProveedor;
 use Modules\CatalogoPublico\Application\Ports\ProveedorEspecimenesPort;
@@ -39,6 +39,26 @@ final class PortalCatalogo extends Component
 
     private array $filtrosAntes = [];
 
+    private int $restauracionHistorial = 0;
+
+    #[Locked]
+    public int $versionNavegacion = 0;
+
+    public string $avisoSeleccionUrl = '';
+
+    // Un contrato plano compartido por montaje, enlaces copiados y Atrás/Adelante.
+    // El borrador, los diálogos y el chat nunca forman parte del historial público.
+    private const array PROPIEDADES_URL = [
+        'nivel' => 'nivel', 'taxon' => 'taxon', 'explorar' => 'explorar', 'vista' => 'vista', 'pagina' => 'pagina',
+        'fc' => 'filtroCatalogo', 'fp' => 'filtroPreparaciones', 'ft' => 'filtroTaxon', 'fg' => 'filtroGeografias',
+        'fco' => 'filtroColector', 'ffd' => 'filtroFechaDesde', 'ffh' => 'filtroFechaHasta', 'fm' => 'filtroMetodos',
+        'flat' => 'filtroLatMin', 'flax' => 'filtroLatMax', 'flon' => 'filtroLonMin', 'flox' => 'filtroLonMax',
+        'fed' => 'filtroElevDesde', 'feh' => 'filtroElevHasta', 'fb' => 'filtroBiomas', 'fh' => 'filtroHabitat',
+        'fsti' => 'filtroTipo', 'fca' => 'filtroCasta', 'fes' => 'filtroEstadio', 'fpais' => 'filtroPais',
+        'fprov' => 'filtroProvincia', 'fph' => 'filtroFiloId', 'fmes' => 'filtroMes', 'fid' => 'filtroIdentificacion',
+        'fgeo' => 'filtroSoloUbicacion', 'fap' => 'filtroDatosCompletos',
+    ];
+
     public function hydrate(): void
     {
         $this->filtrosAntes = $this->valoresFiltros();
@@ -46,16 +66,14 @@ final class PortalCatalogo extends Component
 
     public function mount(): void
     {
+        $this->aplicarEstadoUrl(request()->query());
+        $this->validarSeleccionUrl();
         $paginaSolicitada = $this->pagina;
         try {
             $this->actualizarFiltros();
         } catch (ValidationException $error) {
             // Una URL inválida no debe convertirse en una selección vacía engañosa.
-            foreach (array_keys($error->errors()) as $propiedad) $this->{$propiedad} = '';
-            foreach (['filtroLat', 'filtroLon'] as $prefijo) {
-                $this->{$prefijo.'Min'} = '';
-                $this->{$prefijo.'Max'} = '';
-            }
+            $this->limpiarEntradasUrlInvalidas($error->errors());
             $this->setErrorBag($error->errors());
         }
         $this->pagina = max(1, $paginaSolicitada);
@@ -66,6 +84,17 @@ final class PortalCatalogo extends Component
     private function valoresFiltros(): array
     {
         return array_filter(get_object_vars($this), static fn (string $clave): bool => preg_match('/^filtro[A-Z]/', $clave) === 1, ARRAY_FILTER_USE_KEY);
+    }
+
+    private function limpiarEntradasUrlInvalidas(array $errores): void
+    {
+        foreach (array_keys($errores) as $propiedad) $this->{$propiedad} = '';
+        foreach (['filtroLat', 'filtroLon'] as $prefijo) {
+            if (isset($errores[$prefijo.'Min']) || isset($errores[$prefijo.'Max'])) {
+                $this->{$prefijo.'Min'} = '';
+                $this->{$prefijo.'Max'} = '';
+            }
+        }
     }
 
     public function aplicarBorrador(): void
@@ -84,6 +113,105 @@ final class PortalCatalogo extends Component
     public function dehydrate(): void
     {
         if (! $this->getErrorBag()->any() && $this->valoresFiltros() !== $this->filtrosAntes) $this->borradorFiltros = $this->valoresFiltros();
+    }
+
+    public function rendered(View $view, string $html): void
+    {
+        // Render ya resolvió la página; SupportEvents captura antes del hook dehydrate del componente.
+        $this->dispatch('catalogo-estado-url', estado: $this->estadoParaUrl(), restauracion: $this->restauracionHistorial, version: $this->versionNavegacion);
+    }
+
+    private function estadoParaUrl(): array
+    {
+        $estado = [];
+        foreach (self::PROPIEDADES_URL as $alias => $propiedad) $estado[$alias] = $this->{$propiedad};
+
+        return $estado;
+    }
+
+    #[Computed]
+    public function historialCatalogo(): array
+    {
+        $valoresIniciales = get_class_vars(self::class);
+        $defectos = [];
+        foreach (self::PROPIEDADES_URL as $alias => $propiedad) $defectos[$alias] = $valoresIniciales[$propiedad];
+
+        return ['estado' => $this->estadoParaUrl(), 'defectos' => $defectos, 'version' => $this->versionNavegacion];
+    }
+
+    private function aplicarEstadoUrl(array $parametros): void
+    {
+        $defectos = get_class_vars(self::class);
+        foreach (self::PROPIEDADES_URL as $alias => $propiedad) {
+            $valor = $parametros[$alias] ?? $defectos[$propiedad];
+            if (is_array($defectos[$propiedad])) {
+                $this->{$propiedad} = is_array($valor) ? array_values(array_filter(array_map(
+                    static fn (mixed $item): string => is_scalar($item) ? mb_substr((string) $item, 0, 2000) : '',
+                    array_slice($valor, 0, 100),
+                ), static fn (string $item): bool => $item !== '')) : [];
+            } elseif ($propiedad === 'pagina') {
+                $this->pagina = is_scalar($valor) && filter_var($valor, FILTER_VALIDATE_INT) !== false ? max(1, (int) $valor) : 1;
+            } else {
+                $this->{$propiedad} = is_scalar($valor) ? mb_substr((string) $valor, 0, 2000) : $defectos[$propiedad];
+            }
+        }
+    }
+
+    private function validarSeleccionUrl(): void
+    {
+        $this->avisoSeleccionUrl = '';
+        if (! in_array($this->vista, ['tarjetas', 'registros', 'mapa'], true)) $this->vista = 'tarjetas';
+        if ($this->explorar !== '' && ! isset(self::NIVEL_PLURAL[$this->explorar])) $this->explorar = '';
+        if ($this->explorar !== '') {
+            $this->nivel = $this->taxon = '';
+        } elseif ($this->nivel !== '' || $this->taxon !== '') {
+            $rangos = ['phylum' => 'phylum', 'class' => 'clase', 'order' => 'orden', 'family' => 'familia', 'genus' => 'genero', 'species' => 'especie'];
+            $niveles = [];
+            if (CalidadDatoPublico::esTextoValido($this->taxon)) {
+                $rangosPresentes = DB::table('taxonomia.taxones')->where('nombre_cientifico', $this->taxon)
+                    ->whereIn('rango', array_values($rangos))->distinct()->pluck('rango')->all();
+                $repositorio = app(EloquentProveedorEspecimenesParaArbol::class);
+                foreach ($rangos as $nivel => $rango) {
+                    if (in_array($rango, $rangosPresentes, true)
+                        && $repositorio->consultaPublica(FiltrosBusqueda::desde([]), $nivel, $this->taxon)->exists()) $niveles[] = $nivel;
+                }
+            }
+            if (! in_array($this->nivel, $niveles, true)) {
+                if (count($niveles) === 1) {
+                    $this->nivel = $niveles[0];
+                    $this->avisoSeleccionUrl = 'El rango del enlace se ajustó al taxón publicado en la colección. Se conservaron los filtros.';
+                } else {
+                    $this->nivel = $this->taxon = '';
+                    $this->avisoSeleccionUrl = 'El enlace no identifica un taxón público inequívoco. Se conservan los filtros para consultar los registros.';
+                }
+                $this->pagina = 1;
+            }
+        }
+        if ($this->filtroFiloId !== '') {
+            $id = $this->identificadorFilo($this->filtroFiloId);
+            if ($id === null) $this->avisoSeleccionUrl = 'El filo del enlace no corresponde a una opción disponible. Se conservaron los demás filtros.';
+            $this->filtroFiloId = $id ?? '';
+        }
+    }
+
+    /** Restaura la selección completa en un único request, nunca propiedad a propiedad. */
+    public function restaurarSeleccionUrl(array $parametros, int $restauracion = 0): void
+    {
+        $this->restauracionHistorial = max(0, $restauracion);
+        $this->versionNavegacion = max($this->versionNavegacion, $this->restauracionHistorial);
+        $this->aplicarEstadoUrl($parametros);
+        $this->validarSeleccionUrl();
+        $pagina = $this->pagina;
+        try {
+            $this->actualizarFiltros();
+        } catch (ValidationException $error) {
+            $this->limpiarEntradasUrlInvalidas($error->errors());
+            $this->setErrorBag($error->errors());
+        }
+        $this->pagina = $pagina;
+        $this->paginaHermanos = 1;
+        $this->borradorFiltros = $this->valoresFiltros();
+        $this->cerrarCelda();
     }
 
     public function quitarTaxon(): void
@@ -160,101 +288,70 @@ final class PortalCatalogo extends Component
 
     // ─── Navegación ──────────────────────────────────────────────────────────
 
-    #[Url(as: 'nivel', history: true)]
     public string $nivel = '';
 
-    #[Url(as: 'taxon', history: true)]
     public string $taxon = '';
 
-    #[Url(as: 'explorar', history: true)]
     public string $explorar = '';
 
-    #[Url(as: 'vista', history: true)]
     public string $vista = 'tarjetas';
 
-    #[Url(as: 'pagina', history: true)]
     public int $pagina = 1;
 
     public int $paginaHermanos = 1;
 
     // ─── Filtros (URL-persistidos) ────────────────────────────────────────────
 
-    #[Url(as: 'fc', history: true)]
     public string $filtroCatalogo = '';
 
-    #[Url(as: 'fp', history: true)]
     public array $filtroPreparaciones = [];
 
-    #[Url(as: 'ft', history: true)]
     public string $filtroTaxon = '';
 
-    #[Url(as: 'fg', history: true)]
     public array $filtroGeografias = [];
 
-    #[Url(as: 'fco', history: true)]
     public string $filtroColector = '';
 
-    #[Url(as: 'ffd', history: true)]
     public string $filtroFechaDesde = '';
 
-    #[Url(as: 'ffh', history: true)]
     public string $filtroFechaHasta = '';
 
-    #[Url(as: 'fm', history: true)]
     public array $filtroMetodos = [];
 
-    #[Url(as: 'flat', history: true)]
     public string $filtroLatMin = '';
 
-    #[Url(as: 'flax', history: true)]
     public string $filtroLatMax = '';
 
-    #[Url(as: 'flon', history: true)]
     public string $filtroLonMin = '';
 
-    #[Url(as: 'flox', history: true)]
     public string $filtroLonMax = '';
 
-    #[Url(as: 'fed', history: true)]
     public string $filtroElevDesde = '';
 
-    #[Url(as: 'feh', history: true)]
     public string $filtroElevHasta = '';
 
-    #[Url(as: 'fb', history: true)]
     public array $filtroBiomas = [];
 
-    #[Url(as: 'fh', history: true)]
     public string $filtroHabitat = '';
 
-    #[Url(as: 'fsti', history: true)]
     public string $filtroTipo = '';
 
-    #[Url(as: 'fca', history: true)]
     public string $filtroCasta = '';
 
-    #[Url(as: 'fes', history: true)]
     public string $filtroEstadio = '';
 
-    #[Url(as: 'fpais', history: true)]
     public string $filtroPais = '';
 
-    #[Url(as: 'fprov', history: true)]
     public string $filtroProvincia = '';
 
-    #[Url(as: 'fph', history: true)]
     public string $filtroFiloId = '';
 
-    #[Url(as: 'fmes', history: true)]
     public string $filtroMes = '';
 
-    #[Url(as: 'fid', history: true)]
     public string $filtroIdentificacion = '';
 
-    #[Url(as: 'fgeo', history: true)]
     public string $filtroSoloUbicacion = '';
 
-    #[Url(as: 'fap', history: true)]
     public string $filtroDatosCompletos = '';
 
     // ─── Servicio de opciones (no serializado entre requests) ─────────────────
@@ -306,6 +403,7 @@ final class PortalCatalogo extends Component
         $this->explorar = '';
         $this->pagina = 1;
         $this->paginaHermanos = 1;
+        $this->validarSeleccionUrl();
     }
 
     public function cambiarVista(string $vista): void
@@ -356,15 +454,27 @@ final class PortalCatalogo extends Component
         }
     }
 
-    public function seleccionarFilo(string $nombre): void
+    public function identificadorFilo(string $identificador): ?string
     {
+        $identificador = trim($identificador);
+        $coincidencias = [];
         foreach ($this->filosDisponibles as $filo) {
-            if ($filo['nombre_cientifico'] === $nombre) {
-                $this->filtroFiloId = $this->filtroFiloId === $filo['id'] ? '' : $filo['id'];
-                $this->pagina = 1;
-                return;
-            }
+            if (strcasecmp($filo['id'], $identificador) === 0) return $filo['id'];
+            if (mb_strtolower(trim($filo['nombre_cientifico'])) === mb_strtolower($identificador)) $coincidencias[] = $filo['id'];
         }
+
+        return count($coincidencias) === 1 ? $coincidencias[0] : null;
+    }
+
+    public function seleccionarFilo(string $identificador): void
+    {
+        $id = $this->identificadorFilo($identificador);
+        if ($id === null) return;
+        $this->filtroFiloId = $this->filtroFiloId === $id ? '' : $id;
+        $this->borradorFiltros['filtroFiloId'] = $this->filtroFiloId;
+        $this->pagina = 1;
+        $this->paginaHermanos = 1;
+        $this->cerrarCelda();
     }
 
     public function seleccionarArea(float $latMin, float $latMax, float $lonMin, float $lonMax): void
@@ -722,6 +832,7 @@ final class PortalCatalogo extends Component
 
         if ($this->vista === 'registros') {
             $pagina = app(EloquentProveedorEspecimenesParaArbol::class)->paginaPublica($filtros, $this->pagina, $this->nivel, $this->taxon);
+            $this->pagina = $pagina['pagina'];
             return view('catalogopublico::livewire.portal-catalogo', [
                 'datosMapa' => null,
                 'provinciasDisponibles' => $this->provinciasDisponibles,
@@ -741,6 +852,7 @@ final class PortalCatalogo extends Component
             $totalTarjetas = count($resumenRaiz['hijos']);
             $ultimaPagina = max(1, (int) ceil($totalTarjetas / 12));
             $paginaActual = min(max(1, $this->pagina), $ultimaPagina);
+            $this->pagina = $paginaActual;
             $resumenRaiz['hijos'] = array_slice($resumenRaiz['hijos'], ($paginaActual - 1) * 12, 12);
             return view('catalogopublico::livewire.portal-catalogo', $resumenRaiz + [
                 'totalTarjetas' => $totalTarjetas, 'paginaActual' => $paginaActual, 'ultimaPagina' => $ultimaPagina, 'totalEspecimenes' => 0,
@@ -749,6 +861,7 @@ final class PortalCatalogo extends Component
                 'biomasDisponibles' => $this->biomasDisponibles, 'hayFiltrosActivos' => ! $filtros->estaVacio() || $this->taxon !== '',
                 'nivelActual' => '', 'taxonActual' => '', 'nivelExplorar' => '', 'ruta' => [],
                 'nivelesNavegacion' => self::NIVEL_ETIQUETA, 'etiquetasDescendientes' => self::DESCENDANT_LABELS, 'etiquetas' => self::NIVEL_ETIQUETA,
+                'nivelesPluralNavegacion' => self::NIVEL_PLURAL,
             ]);
         }
 
@@ -792,6 +905,7 @@ final class PortalCatalogo extends Component
         $idTaxonActual = $ruta === [] ? '' : ($ruta[array_key_last($ruta)]['id'] ?? '');
         $claveMapaEspecie = sha1(json_encode([$idTaxonActual, $filtros, $puntosEspecie]));
         $descendientes = $resumen['descendientes'];
+        $this->pagina = $paginaActual;
 
         $filtrosActivos = [
             'filtroCatalogo' => $this->filtroCatalogo,
@@ -835,6 +949,8 @@ final class PortalCatalogo extends Component
 
         return view('catalogopublico::livewire.portal-catalogo', [
             'datosMapa' => $datosMapa,
+            'curatoriales_total' => $resumen['curatoriales_total'] ?? 0,
+            'curatoriales' => $resumen['curatoriales'] ?? [],
             'provinciasDisponibles' => $this->provinciasDisponibles,
             'filosDisponibles' => $this->filosDisponibles,
             'ruta' => $ruta,
@@ -1064,7 +1180,7 @@ final class PortalCatalogo extends Component
                     'especimen_id' => $dto->especimenId,
                     'occurrence_id' => $g($ver(fn (EspecimenDivulgable $d) => $d->occurrenceIDVisible()), $dto->occurrenceId),
                     'scientific_name' => $g($ver(fn (EspecimenDivulgable $d) => $d->scientificNameVisible()), $dto->scientificName),
-                    'taxon_en_revision' => $ver(fn (EspecimenDivulgable $d) => $d->scientificNameVisible()) && ! CalidadDatoPublico::esTextoValido($dto->scientificName),
+                    'taxon_en_revision' => $ver(fn (EspecimenDivulgable $d) => $d->scientificNameVisible()) && ($dto->taxonomiaEnRevision || ! CalidadDatoPublico::esTextoValido($dto->scientificName)),
                     'individual_count' => $g($ver(fn (EspecimenDivulgable $d) => $d->individualCountVisible()), $dto->individualCount),
                     'type_status' => $g($ver(fn (EspecimenDivulgable $d) => $d->typeStatusVisible()), $dto->typeStatus),
                     'type_notes' => $g($ver(fn (EspecimenDivulgable $d) => $d->typeNotesVisible()), $dto->typeNotes),

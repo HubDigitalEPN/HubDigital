@@ -88,6 +88,7 @@
     </main>
 
     <footer class="border-t-4 border-bio-green bg-[#102B4E] text-white/75">
+        @php($versionPortal = app(\App\Support\InformacionRelease::class)->obtener())
         <div class="portal-container mx-auto grid gap-10 py-12 lg:grid-cols-[1.15fr_0.7fr_0.9fr]">
             <div>
                 <div class="flex items-center gap-3">
@@ -106,6 +107,12 @@
                     <li><a href="{{ route('home') }}" class="!text-white/75 hover:!text-white">Inicio</a></li>
                     <li><a href="{{ route('portal.catalogo', ['vista' => 'mapa']) }}" class="!text-white/75 hover:!text-white">Colección Biológica</a></li>
                     <li><a href="{{ route('depositos.portal') }}" class="!text-white/75 hover:!text-white">Depósitos</a></li>
+                    <li><a href="{{ route('portal.version') }}" class="!text-white/75 hover:!text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white" aria-label="Consultar la versión del portal para informar un problema">
+                        Versión del portal
+                        @if($versionPortal['disponible'])
+                            · {{ $versionPortal['version'] }}
+                        @endif
+                    </a></li>
                 </ul>
             </div>
 

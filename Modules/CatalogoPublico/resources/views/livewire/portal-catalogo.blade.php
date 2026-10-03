@@ -1,4 +1,9 @@
-<div x-data="portalCatalogo" data-catalogo-seleccion="{{ json_encode($this->seleccionPublicaChat) }}">
+<div x-data="portalCatalogo" data-catalogo-seleccion="{{ json_encode($this->seleccionPublicaChat) }}" data-catalogo-historial="{{ json_encode($this->historialCatalogo) }}" x-on:catalogo-estado-url.window="actualizarHistorial($event.detail)">
+    @if($avisoSeleccionUrl !== '')<p role="status" class="mx-auto max-w-7xl px-4 py-3 text-sm text-text-secondary">{{ $avisoSeleccionUrl }}</p>@endif
+    <div x-cloak x-show="errorHistorial" class="mx-auto max-w-7xl px-4 py-3 text-sm text-text-secondary">
+        <p x-text="errorHistorial" role="alert"></p>
+        <button type="button" class="mt-2 underline text-science-blue" x-on:click="window.location.reload()">Recargar la selección del enlace actual</button>
+    </div>
     @if($vista === 'tarjetas')
     {{-- =====================================================================
          NAV BAR TAXONÓMICO — siempre visible, permite explorar por nivel
@@ -33,6 +38,7 @@
     {{-- =====================================================================
          MODO ÁRBOL — navegación jerárquica taxon a taxon
          ===================================================================== --}}
+    <x-catalogopublico::avisos-curatoriales :total="$curatoriales_total ?? 0" :notas="$curatoriales ?? []" />
     @if($nivelExplorar === '')
 
     {{-- BREADCRUMB — aparece en todos los niveles excepto raíz --}}
@@ -249,7 +255,7 @@
                     <aside class="hidden lg:block w-52 shrink-0">
                         <div class="rounded-lg border border-border bg-surface shadow-sm p-3 sticky top-4">
                             <h4 class="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-2 px-1">
-                                Otros {{ strtolower($etiquetas[$nivelActual] ?? $nivelActual) }}s
+                                {{ in_array($nivelActual, ['class', 'family'], true) ? 'Otras' : 'Otros' }} {{ $nivelesPluralNavegacion[$nivelActual] ?? 'taxones' }}
                             </h4>
                             <div class="space-y-0.5">
                                 @foreach($hermanos as $hermano)
@@ -771,7 +777,7 @@
                                                 @if($especimen->life_stage)
                                                     <div class="flex gap-2">
                                                         <dt class="w-24 shrink-0 text-text-secondary">Estadio</dt>
-                                                        <dd class="text-text-primary">{{ $especimen->life_stage }}</dd>
+                                                        <dd class="text-text-primary">{{ \Modules\CatalogoPublico\Infrastructure\EtiquetaDatoPublico::etapa($especimen->life_stage) }}</dd>
                                                     </div>
                                                 @endif
                                             </dl>
@@ -844,7 +850,7 @@
         <div class="mb-6 flex items-center justify-between gap-4">
             <div>
                 <h2 class="font-display text-xl font-semibold text-blue-navy capitalize">
-                    {{ $etiquetas[$nivelExplorar] ?? $nivelExplorar }}s divulgados
+                    {{ ucfirst($nivelesPluralNavegacion[$nivelExplorar] ?? 'taxones') }} {{ in_array($nivelExplorar, ['class', 'family', 'species'], true) ? 'divulgadas' : 'divulgados' }}
                 </h2>
                 <p class="mt-0.5 text-sm text-text-secondary">
                     @if(count($taxonesExplorados) === 0)

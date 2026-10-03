@@ -12,6 +12,7 @@ use Modules\CatalogoPublico\Application\Ports\ProveedorEspecimenesPort;
 use Modules\CatalogoPublico\Application\Services\IlustracionTaxonomica;
 use Modules\CatalogoPublico\Domain\Repositories\EspecimenDivulgableRepositoryInterface;
 use Modules\CatalogoPublico\Infrastructure\Persistence\Eloquent\Repositories\EloquentProveedorEspecimenesParaArbol;
+use Modules\CatalogoPublico\Infrastructure\CalidadDatoPublico;
 
 trait ExploraCeldaMapa
 {
@@ -105,21 +106,24 @@ trait ExploraCeldaMapa
     {
         $base = $this->consultaCelda();
         $taxones = DB::table('taxonomia.taxones')->get(['id', 'padre_id', 'nombre_cientifico', 'rango', 'autor', 'anio_descripcion'])->keyBy('id');
+        $idsValidos = array_fill_keys(CalidadDatoPublico::taxonesConLinajeValido($taxones), true);
         $filas = (clone $base)->selectRaw('te.taxon_id, ed.scientific_name_visible, ed.family_visible, ed.genus_visible, COUNT(*) AS total')
             ->groupBy('te.taxon_id', 'ed.scientific_name_visible', 'ed.family_visible', 'ed.genus_visible')->get();
         $filasConRuta = $variantes = [];
         foreach ($filas as $fila) {
-            $ruta = [];
+            $fuente = [];
             $id = $fila->scientific_name_visible ? $fila->taxon_id : null;
             $visitados = [];
             while ($id && isset($taxones[$id]) && ! isset($visitados[$id]) && count($visitados) < 30) {
                 $visitados[$id] = true;
                 $t = $taxones[$id];
-                if (($t->rango !== 'familia' || $fila->family_visible) && ($t->rango !== 'genero' || $fila->genus_visible)) {
-                    array_unshift($ruta, ['taxon_id' => $id, 'nombre' => $t->nombre_cientifico, 'rango' => $t->rango]);
-                }
+                array_unshift($fuente, ['taxon_id' => $id, 'nombre' => $t->nombre_cientifico, 'rango' => $t->rango]);
                 $id = $t->padre_id;
             }
+            $confirmada = $id && isset($taxones[$id]) ? [] : CalidadDatoPublico::rutaConfirmada($fuente);
+            if ($confirmada !== [] && ! isset($idsValidos[$confirmada[0]['taxon_id']])) $confirmada = [];
+            $ruta = array_values(array_filter($confirmada, static fn (array $n): bool =>
+                ($n['rango'] !== 'familia' || $fila->family_visible) && ($n['rango'] !== 'genero' || $fila->genus_visible)));
             $prefijo = [];
             foreach ($ruta as &$nodo) {
                 $prefijo[] = $nodo['taxon_id'];
@@ -127,7 +131,8 @@ trait ExploraCeldaMapa
                 $variantes[$nodo['taxon_id']][$nodo['firma_ruta']] = true;
             }
             unset($nodo);
-            $filasConRuta[] = ['fila' => $fila, 'ruta' => $ruta];
+            $filasConRuta[] = ['fila' => $fila, 'ruta' => $ruta,
+                'curatorial' => $fuente !== [] && ! isset($idsValidos[$fila->taxon_id])];
         }
         $nodos = $rutasDisponibles = [];
         foreach ($filasConRuta as &$entrada) {
@@ -154,12 +159,21 @@ trait ExploraCeldaMapa
         $this->rutaCelda = $idRuta ? ($rutasDisponibles[$idRuta] ?? []) : [];
         $seleccion = array_column($this->rutaCelda, 'id');
         $grupos = $taxonesPorVisibilidad = [];
+        $curatoriales = [];
+        $curatoriales_total = 0;
         $directos = $total = 0;
         foreach ($filasConRuta as $entrada) {
             $fila = $entrada['fila'];
             $ruta = $entrada['ruta'];
             if (array_slice(array_column($ruta, 'id'), 0, count($seleccion)) !== $seleccion) continue;
             $total += (int) $fila->total;
+            if ($entrada['curatorial']) {
+                $clave = $fila->taxon_id.':'.implode(':', array_column($ruta, 'id'));
+                $curatoriales[$clave] ??= ['id' => $fila->taxon_id, 'nota' => $taxones[$fila->taxon_id]->nombre_cientifico,
+                    'padre' => $ruta === [] ? 'root' : end($ruta)['nombre'], 'ruta' => $ruta, 'total' => 0];
+                $curatoriales[$clave]['total'] += (int) $fila->total;
+                $curatoriales_total += (int) $fila->total;
+            }
             if ($fila->scientific_name_visible) {
                 $permisos = (int) $fila->family_visible.':'.(int) $fila->genus_visible;
                 $taxonesPorVisibilidad[$permisos][] = $fila->taxon_id;
@@ -236,7 +250,10 @@ trait ExploraCeldaMapa
                 'anio_descripcion' => $taxones[$idTaxonSeleccionado]->anio_descripcion];
         }
         $arbol = array_values($arbol);
+        uasort($curatoriales, static fn (array $a, array $b): int => $b['total'] <=> $a['total'] ?: strnatcasecmp($a['nota'], $b['nota']));
+        $curatoriales = array_values(array_slice($curatoriales, 0, 12));
         return compact('total', 'grupos', 'totalGrupos', 'directos', 'registros', 'imagenes', 'pagina', 'ultima', 'arbol', 'rutas',
-            'arbol_hojas_total', 'arbol_pagina', 'arbol_ultima', 'arbol_registros_total', 'seleccionado', 'informacion');
+            'arbol_hojas_total', 'arbol_pagina', 'arbol_ultima', 'arbol_registros_total', 'seleccionado', 'informacion',
+            'curatoriales', 'curatoriales_total');
     }
 }

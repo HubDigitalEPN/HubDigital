@@ -15,12 +15,13 @@ final class ConsultaCatalogoPublico
 {
     public function __construct(private readonly DetectorEntidadesChat $detector, private readonly TextoChat $texto) {}
 
-    public function responder(string $pregunta, array $contexto = []): ?array
+    public function responder(string $pregunta, array $contexto = [], ?array $seleccionPortal = null): ?array
     {
         if (! config('chatbot.specimen_search', true)) {
             return null;
         }
         $normal = $this->texto->normalizar($pregunta);
+        $referenciaSeleccion = (bool) preg_match('/\b(?:(?:esta|esa|mi)\s+seleccion|seleccion\s+(?:actual|aplicada))\b/', $normal);
         $retirarFiltro = $this->filtroPorRetirar($normal);
         if ($retirarFiltro === 'no_soportado') {
             return $this->aclaracion('No puedo retirar ese filtro del chat de forma confirmada. Indica uno de estos criterios: taxón, código, provincia, país, localidad, mes, fechas, elevación, coordenadas o identificación. Para otros filtros, usa el formulario del catálogo.', $contexto);
@@ -33,7 +34,7 @@ final class ConsultaCatalogoPublico
             return $this->aclaracion('La consulta anterior no tiene ese filtro aplicado. Indica qué criterio quieres retirar o escribe una nueva consulta.', $contexto);
         }
         $coleccionExplicita = (bool) preg_match('/\b(?:cuant[oa]s?|numero|total)\b/', $normal)
-            && preg_match('/\b(?:registros|especimenes|ejemplares|especies)\b/', $normal)
+            && preg_match('/\b(?:registros|especimenes|ejemplares|especies|generos|familias)\b/', $normal)
             && preg_match('/\b(?:en|de)\s+(?:toda\s+)?(?:(?:la\s+)?coleccion|(?:el\s+)?catalogo)\b/', $normal)
             && ! preg_match('/\b(?:esa especie|ese taxon|esos registros|esos ejemplares|estos registros)\b/', $normal);
         $correction = (bool) preg_match('/^(perdon|corrijo|quise decir|queria decir|no )\b/', $normal);
@@ -51,7 +52,7 @@ final class ConsultaCatalogoPublico
             }
         }
         $entities = $retirarFiltro === null ? $this->detector->extraer($queryText) : [];
-        if (($correction || $followup || $retirarFiltro !== null) && ! $coleccionExplicita && $contexto !== []) {
+        if (($correction || $followup || $retirarFiltro !== null) && ! $coleccionExplicita && ! $referenciaSeleccion && $contexto !== []) {
             $previous = array_intersect_key($contexto, array_flip(['taxon', 'provincia', 'localidad', 'pais', 'codigo', 'mes', 'desde', 'hasta', 'fecha_precision', 'ubicacion', 'identificacion', 'elev_desde', 'elev_hasta']));
             if (isset($entities['taxon']) || isset($entities['codigo'])) unset($previous['taxon'], $previous['codigo']);
             foreach ($geografiasNegadas as $geografia) unset($previous[$geografia]);
@@ -101,18 +102,30 @@ final class ConsultaCatalogoPublico
         if (preg_match('/\b(?:preservad[oa]s?|conservad[oa]s?|alcohol|etanol|formol)\b/', $normal)) {
             return $this->aclaracion('No puedo traducir esa condición de preservación a un filtro confirmado. No he calculado un conteo parcial. Revisa Preparación en el catálogo y elige el valor disponible.', $contexto);
         }
-        $options = [['label' => 'Abrir catálogo para ver más', 'url' => route('portal.catalogo', $this->parametros($entities))]];
         if (preg_match('/\b(?:sin|no tienen|no tengan)\s+coordenadas\b|\b(?:excepto|excluye|excluir)\b/', $normal)) {
             return $this->aclaracion('La exclusión solicitada no está disponible en los filtros de esta consulta. No he calculado un conteo parcial. Puedes reformular con los criterios que deseas incluir.', $contexto);
         }
+        if ($referenciaSeleccion) {
+            if ($entities !== [] || $coleccionExplicita) {
+                return $this->aclaracion('Confirma si quieres contar la selección aplicada o preparar una consulta nueva con esos criterios. No he calculado un conteo parcial.', $contexto);
+            }
+            $entrada = $seleccionPortal ?? ($contexto !== [] ? $this->parametros($contexto) : null);
+            if ($entrada === null) return $this->aclaracion('No tengo una selección aplicada ni una consulta pública anterior. Abre el catálogo y aplica los filtros o escribe qué quieres contar.', $contexto);
+            $seleccion = SeleccionPaginaChat::desde($entrada);
+            if ($seleccion === null) return $this->aclaracion('La selección recibida contiene criterios inválidos. Revisa los filtros del catálogo; no he calculado un conteo parcial.', $contexto);
+
+            return $this->contarSeleccion($normal, $seleccion, $seleccionPortal === null ? $contexto : [], $seleccionPortal !== null);
+        }
+        $options = [['label' => 'Abrir catálogo para ver más', 'url' => route('portal.catalogo', $this->parametros($entities))]];
+        if (preg_match('/\bfamilias\b/', $normal)) {
+            if (preg_match('/\bmas\s+registros\b/', $normal)) return $this->familias($entities, $options);
+            return $this->taxonesPorRango($this->seleccion($entities), $entities, $options, 'familia');
+        }
+        if (preg_match('/\bgeneros\b/', $normal)) {
+            return $this->taxonesPorRango($this->seleccion($entities), $entities, $options, 'genero');
+        }
         if (isset($entities['codigo'])) {
             return $this->porCodigo($entities, $options);
-        }
-        if ($entities === [] && preg_match('/(?:que|cuales)\s+familias\s+(?:tienen|hay|existen)/', $normal)) {
-            return $this->familias($options);
-        }
-        if (isset($entities['taxon']) && preg_match('/\bgeneros\b/', $normal)) {
-            return $this->generos($entities, $options);
         }
         if ($entities === [] && $retirarFiltro === null && ! $coleccionExplicita && ! preg_match('/\bcuant[oa]s?\s+(?:registros|especimenes|ejemplares|especies)\s+(?:public[oa]s?\s+)?(?:tienen|hay|estan)/', $normal)) {
             return null;
@@ -131,11 +144,7 @@ final class ConsultaCatalogoPublico
             return $this->resultado('No encontré registros publicados'.$de.' en el catálogo. Esto no confirma si existen ejemplares no divulgados.'.$hint, 'catalogo.count', $entities, 0, [], $options);
         }
         if (preg_match('/\bespecies\b/', $normal)) {
-            $query->where('t.rango', 'especie')->whereRaw(CalidadDatoPublico::textoValido('t.nombre_cientifico'))->where('d.scientific_name_visible', true);
-            $rows = (clone $query)->select('t.nombre_cientifico')->distinct()->orderBy('t.nombre_cientifico')->limit(8)->pluck('nombre_cientifico')->all();
-            $count = (clone $query)->distinct()->count('t.nombre_cientifico');
-            $text = 'Hay '.$count.' '.($count === 1 ? 'especie publicada' : 'especies publicadas').$de.'. '.implode('; ', $rows).($count > 8 ? '; se muestran las primeras 8.' : '.');
-            return $this->resultado($text, 'catalogo.species', $entities, $count, $rows, $options);
+            return $this->taxonesPorRango($query->where('t.rango', 'especie'), $entities, $options, 'especie');
         }
         if (preg_match('/\b(cuantos?|numero|total|tienen|existe|hay registros)\b/', $normal)) {
             return $this->resultado('Hay '.$total.' '.($total === 1 ? 'registro publicado' : 'registros publicados').$de.' en el catálogo.', 'catalogo.count', $entities, $total, [], $options);
@@ -263,53 +272,104 @@ final class ConsultaCatalogoPublico
         return $this->resultado($text, 'catalogo.localities', $entities, count($items), $items, $options);
     }
 
-    private function familias(array $options): array
+    private function contarSeleccion(string $normal, SeleccionPaginaChat $seleccion, array $entities, bool $pagina): array
     {
-        $sql = <<<'SQL'
-            WITH RECURSIVE linaje AS (
-                SELECT e.id AS especimen_id, t.id AS taxon_id, t.padre_id, t.rango, t.nombre_cientifico, 0 AS profundidad
-                FROM taxonomia.especimenes e
-                JOIN taxonomia.taxones t ON t.id = e.taxon_id
-                JOIN divulgacion.especimenes_divulgables d ON d.especimen_id = e.id
-                WHERE d.publicado = true AND e.coordenadas_otras_regiones = false AND d.occurrence_id_visible = true AND d.scientific_name_visible = true
-                  AND d.family_visible = true AND e.occurrence_id IS NOT NULL
-                UNION ALL
-                SELECT l.especimen_id, p.id, p.padre_id, p.rango, p.nombre_cientifico, l.profundidad + 1
-                FROM linaje l JOIN taxonomia.taxones p ON p.id = l.padre_id WHERE l.profundidad < 15
-            )
-            SELECT nombre_cientifico, COUNT(DISTINCT especimen_id) AS registros FROM linaje WHERE rango = 'familia'
-            GROUP BY nombre_cientifico ORDER BY registros DESC, nombre_cientifico LIMIT 10
-            SQL;
-        $rows = array_map(static fn ($row) => $row->nombre_cientifico.' ('.$row->registros.' registros)', DB::select($sql));
-        $text = $rows === [] ? 'No encontré familias con registros publicados.'
-            : 'Estas familias tienen registros publicados: '.implode('; ', $rows).'. Puedes abrir el catálogo para ver más.';
-        return $this->resultado($text, 'catalogo.families', [], count($rows), $rows, $options);
+        preg_match_all('/\b(registros|especimenes|ejemplares|especies|generos|familias)\b/', $normal, $unidades);
+        $unidades = array_unique(array_map(static fn (string $unidad): string => in_array($unidad, ['especimenes', 'ejemplares'], true) ? 'registros' : $unidad, $unidades[1]));
+        if (count($unidades) !== 1) return $this->aclaracion('Indica qué unidad quieres contar en la selección: registros, especies, géneros o familias.', $entities);
+        $unidad = reset($unidades);
+        $ids = app(EloquentProveedorEspecimenesParaArbol::class)->consultaPublica($seleccion->filtros,
+            $seleccion->parametros['nivel'] ?? '', $seleccion->parametros['taxon'] ?? '')->select('te.id');
+        $query = $this->publicos()->whereIn('e.id', $ids);
+        $options = [['label' => 'Abrir registros de la selección', 'url' => route('portal.catalogo', $seleccion->parametros + ['vista' => 'registros'])]];
+        $poblacion = $pagina ? 'en la selección aplicada de la página' : 'en la consulta pública anterior';
+        if (in_array($unidad, ['generos', 'familias'], true)) {
+            return $this->taxonesPorRango($query, $entities, $options, $unidad === 'generos' ? 'genero' : 'familia', $poblacion);
+        }
+        if ($unidad === 'especies') {
+            return $this->taxonesPorRango($query->where('t.rango', 'especie'), $entities, $options, 'especie', $poblacion);
+        }
+        $total = $query->count('e.id');
+        return $this->resultado('Hay '.$total.' '.($total === 1 ? 'registro publicado' : 'registros publicados').' '.$poblacion.'.', 'catalogo.count', $entities, $total, [], $options);
     }
 
-    private function generos(array $entities, array $options): array
+    private function familias(array $entities, array $options): array
+    {
+        // Agrupa ejemplares antes del recorrido: no materializa la colección ni
+        // repite el linaje una vez por cada registro.
+        $seleccion = $this->seleccion($entities)->where('d.scientific_name_visible', true)->where('d.family_visible', true)
+            ->select('e.taxon_id')->selectRaw('COUNT(*) AS registros')->groupBy('e.taxon_id');
+        $sqlSeleccion = $seleccion->toSql();
+        $nombreValido = CalidadDatoPublico::textoValido('nombre_cientifico');
+        $linajeConfirmado = $this->linajeConfirmado();
+        $sql = <<<SQL
+            WITH RECURSIVE linaje AS (
+                SELECT t.id AS raiz, t.id, t.padre_id, t.rango, t.nombre_cientifico, s.registros, ARRAY[t.id] AS camino, 0 AS profundidad
+                FROM ({$sqlSeleccion}) s JOIN taxonomia.taxones t ON t.id = s.taxon_id
+                UNION ALL
+                SELECT l.raiz, p.id, p.padre_id, p.rango, p.nombre_cientifico, l.registros, l.camino || p.id, l.profundidad + 1
+                FROM linaje l JOIN taxonomia.taxones p ON p.id = l.padre_id
+                WHERE l.profundidad < 29 AND NOT p.id = ANY(l.camino)
+            )
+            SELECT nombre_cientifico, SUM(registros) AS registros FROM linaje WHERE rango = 'familia' AND {$nombreValido} AND {$linajeConfirmado}
+            GROUP BY nombre_cientifico ORDER BY registros DESC, nombre_cientifico LIMIT 10
+            SQL;
+        $rows = array_map(static fn ($row) => $row->nombre_cientifico.' ('.$row->registros.' registros)', DB::select($sql, $seleccion->getBindings()));
+        $text = $rows === [] ? 'No encontré familias con registros publicados.'
+            : 'Estas familias tienen registros publicados: '.implode('; ', $rows).'. Puedes abrir el catálogo para ver más.';
+        return $this->resultado($text, 'catalogo.families', $entities, count($rows), $rows, $options);
+    }
+
+    private function taxonesPorRango(Builder $query, array $entities, array $options, string $rango, ?string $poblacion = null): array
     {
         // Parte de la misma selección pública que el enlace; cada identificación
         // se recorre una vez aunque tenga miles de ejemplares en la colección.
-        $seleccion = $this->seleccion($entities)->where('d.scientific_name_visible', true)->where('d.genus_visible', true)
+        $visible = match ($rango) { 'familia' => 'd.family_visible', 'genero' => 'd.genus_visible', default => 'd.scientific_name_visible' };
+        $seleccion = $query->where('d.scientific_name_visible', true)->where($visible, true)
             ->select('e.taxon_id')->distinct();
         $sqlSeleccion = $seleccion->toSql();
+        $nombreValido = CalidadDatoPublico::textoValido('nombre_cientifico');
+        $linajeConfirmado = $this->linajeConfirmado();
         $sql = <<<SQL
             WITH RECURSIVE linaje AS (
-                SELECT t.id, t.rango, t.nombre_cientifico, t.padre_id, 0 AS profundidad
+                SELECT t.id AS raiz, t.id, t.rango, t.nombre_cientifico, t.padre_id, ARRAY[t.id] AS camino, 0 AS profundidad
                 FROM ({$sqlSeleccion}) seleccion JOIN taxonomia.taxones t ON t.id = seleccion.taxon_id
                 UNION ALL
-                SELECT t.id, t.rango, t.nombre_cientifico, t.padre_id, l.profundidad + 1
-                FROM linaje l JOIN taxonomia.taxones t ON t.id = l.padre_id WHERE l.profundidad < 15
+                SELECT l.raiz, t.id, t.rango, t.nombre_cientifico, t.padre_id, l.camino || t.id, l.profundidad + 1
+                FROM linaje l JOIN taxonomia.taxones t ON t.id = l.padre_id
+                WHERE l.profundidad < 29 AND NOT t.id = ANY(l.camino)
             )
-            SELECT DISTINCT nombre_cientifico FROM linaje WHERE rango = 'genero'
+            SELECT DISTINCT nombre_cientifico FROM linaje WHERE rango = ? AND {$nombreValido} AND {$linajeConfirmado}
             SQL;
-        $generos = DB::query()->fromRaw('('.$sql.') AS generos_publicos', $seleccion->getBindings());
-        $total = (clone $generos)->count();
-        $rows = (clone $generos)->orderBy('nombre_cientifico')->limit(10)->pluck('nombre_cientifico')->all();
-        $taxon = $entities['taxon'];
-        $text = $rows === [] ? 'No encontré géneros publicados dentro de '.$taxon.'.'
-            : 'Géneros publicados dentro de '.$taxon.' ('.$total.'): '.implode('; ', $rows).($total > 10 ? '; se muestran los primeros 10.' : '.');
-        return $this->resultado($text, 'catalogo.genera', $entities, $total, $rows, $options);
+        $taxones = DB::query()->fromRaw('('.$sql.') AS taxones_publicos', [...$seleccion->getBindings(), $rango]);
+        $total = (clone $taxones)->count();
+        $limite = $rango === 'especie' ? 8 : 10;
+        $rows = (clone $taxones)->orderBy('nombre_cientifico')->limit($limite)->pluck('nombre_cientifico')->all();
+        $plural = match ($rango) { 'familia' => 'familias', 'genero' => 'géneros', default => 'especies' };
+        $singular = match ($rango) { 'familia' => 'familia', 'genero' => 'género', default => 'especie' };
+        $poblacion ??= isset($entities['taxon']) ? 'dentro de '.$entities['taxon'] : 'en el catálogo público';
+        $text = 'Hay '.$total.' '.($total === 1 ? $singular.($rango === 'genero' ? ' publicado' : ' publicada') : $plural.($rango === 'genero' ? ' publicados' : ' publicadas')).' '.$poblacion.'. Se cuenta cada nombre científico válido de '.$singular.' una vez entre las identificaciones de registros divulgados.';
+        if ($rows !== []) $text .= ' '.implode('; ', $rows).($total > $limite ? '; se muestran '.($rango === 'genero' ? 'los primeros ' : 'las primeras ').$limite.'.' : '.');
+        $intent = match ($rango) { 'familia' => 'catalogo.families', 'genero' => 'catalogo.genera', default => 'catalogo.species' };
+        return $this->resultado($text, $intent, $entities, $total, $rows, $options);
+    }
+
+    /** Confirma candidato y ancestros; una nota inferior no invalida sus padres. */
+    private function linajeConfirmado(): string
+    {
+        $nombreValido = CalidadDatoPublico::textoValido('ancestro.nombre_cientifico');
+
+        return <<<SQL
+            NOT EXISTS (
+                SELECT 1 FROM linaje ancestro WHERE ancestro.raiz = linaje.raiz AND (
+                    (ancestro.profundidad >= linaje.profundidad AND NOT {$nombreValido})
+                    OR ancestro.padre_id = ANY(ancestro.camino)
+                    OR (ancestro.profundidad = 29 AND EXISTS (
+                        SELECT 1 FROM taxonomia.taxones pendiente WHERE pendiente.id = ancestro.padre_id
+                    ))
+                )
+            )
+            SQL;
     }
 
     private function resultado(string $text, string $intent, array $entities, int $total, array $rows, array $options): array

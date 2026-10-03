@@ -1,0 +1,39 @@
+# Correcciones del informe DOTS QA4
+
+## Alcance y evidencia
+
+La nueva solicitud del 2 de octubre de 2026 autoriza corregir el informe `qa_portal_parte4.md`, publicar en `origin/main`, generar el paquete después de terminar los cambios y desplegar esa misma identidad. Sustituye, para esta tarea, las restricciones anteriores de no generar otro paquete y dejar el despliegue exclusivamente a DOTS. Se conserva su control externo independiente. No se ejecutan suites aisladas.
+
+Se leyó el informe como evidencia de fallos y propuestas, distinguiéndolo de las instrucciones del usuario. Los archivos vinculados bajo `parte4/` no están adjuntos; no se declaran examinadas esas capturas, trazas o descargas. El informe documenta 202 casos: 165 aprobados, 9 fallidos, 5 bloqueados y 23 no verificables. Los fallos se agrupan en siete hallazgos. El acceso SSH de lectura confirma que la release activa parte del commit `0091625add5ccbe44b85de5e23a4f1378697f1fd`; todavía no contiene QA4 ni la ayuda del chat pendiente tras el paquete anterior.
+
+DOTS contrastó 782 pares de coordenadas, correspondientes a 28.613 registros, con un error de renderizado inferior a medio píxel CSS. La geometría original WGS84 se conserva. Esa evidencia de proyección no certifica que todas las localidades históricas sean ubicaciones GPS precisas. Tampoco se inventan puntos o se corrige una localidad científica desde una imagen representativa.
+
+## Plan de acción y contratos
+
+| Hallazgo | Causa contrastada con el código | Cambio y resultado esperado |
+| --- | --- | --- |
+| QA4-001, conteo de selección | El asistente no entrega la selección aplicada completa a la consulta de catálogo | Usar filtros públicos y rango/UUID de la página al preguntar por la selección, incluidos elevación, ubicación y fechas; conservarlos en el enlace y respetar una petición global explícita |
+| QA4-002, ayuda del mapa | La ayuda general pierde el DTO de selección; fuera del catálogo vacía el contexto después de responder | Integrar el arreglo pendiente: enlazar la misma selección sin volver a aplicar borradores, distinguir página vacía de página ausente y conservar el contexto cuando se repite la ayuda |
+| QA4-003, Atrás/Adelante | Livewire hace `pushState` individual por propiedad | Guardar y restaurar rango, taxón, vista, filtros y página en una única entrada; rechazar o normalizar tuplas inválidas sin fabricar nombres científicos |
+| QA4-004, unidad taxonómica | La intención de géneros globales requiere un taxón y familias se confunde con registros | Contar nombres científicos distintos dentro del rango, con linaje comprobado por UUID, permisos y selección efectiva; indicar si el resultado corresponde a géneros, familias o registros |
+| QA4-005, mosaico geográfico | Sin taxón explícito se eligen cuatro grupos de artrópodos por defecto | Elegir representantes acotados desde linajes públicos de los registros realmente seleccionados; priorizar fotos publicadas y ofrecer un fallback honesto del grupo |
+| QA4-006, composición por filo | La gráfica envía el nombre y el desplegable utiliza UUID | Resolver un único identificador y sincronizar filtro, estado pulsado, conteos y URL; conservar compatibilidad con enlaces anteriores inequívocos |
+| QA4-007, notas como taxones | Las métricas filtran texto dañado pero las tarjetas y rutas jerárquicas no comparten todo el criterio | Detener la clasificación científica desde el primer nivel no confirmado; conservar el material y el texto original accesibles para revisión, sin contarlos como clases, familias, géneros o especies válidas |
+
+Las mejoras adicionales comprenden estados y etapas en español sin modificar valores fuente; plurales científicos correctos; explicación del límite visual del radio de los círculos; e identificación pública de release con fecha registrada de compilación y activación. `/version` entrega únicamente campos públicos del artefacto; no ejecuta Git, no lee `.env` ni expone el estado protegido de OCI. La fecha de despliegue solo se muestra si corresponde al mismo commit. La unidad de diversidad por nombre científico se conserva explícitamente y es coherente con el catálogo y sus indicadores; no se certifica desambiguación de homónimos por autor o linaje sin un fixture curatorial de ese caso.
+
+El contraste con el ciclo de Livewire confirma que los eventos se capturan antes del `dehydrate()` del componente. La selección completa se emite desde `rendered()`, después de resolver la página y antes de esa captura; la sincronización del borrador permanece en `dehydrate()`. Las fixtures también respetan la publicación automática vigente: un filo confirmado dentro de veinte saltos publica el material. Retirarlo en un caso de prueba requiere perder ese linaje, en lugar de forzar una bandera que el trigger recalcula. La revisión de seguridad de la clasificación sigue limitada a treinta nodos y rechaza ciclos o rutas incompletas, aunque el material esté publicado.
+
+La revisión de exportaciones contrasta sus contratos con Pest antes de añadir casos: selección completa frente a página de doce, privacidad de columnas/fotos, Unicode y neutralización de fórmulas. No se repiten casos cubiertos ni se convierten descargas no recuperadas por DOTS en supuestos fallos de contenido. Se incorpora un contrato nuevo que lee realmente CSV/XLSX desde la segunda página de una selección de catorce ejemplares, donde solo dos son visibles: ambos archivos deben contener todos los códigos seleccionados, excluir la especie hermana y preservar Unicode, separador dentro de localidad y coordenadas originales. La cobertura previa de privacidad, fórmulas y fotos ambiguas se conserva.
+
+## Rendimiento y recursos
+
+La VM declara 954 MiB de RAM y, durante el acceso de lectura, 350 MiB disponibles. Es una instantánea, no una prueba de carga. La lectura de configuración confirma PHP `memory_limit=192M`, OPcache 64 MB, FPM `pm.max_children=2` y `pm.max_requests=300`; PostgreSQL `max_connections=20`, `shared_buffers=96MB`, `work_mem=2MB`, `maintenance_work_mem=64MB`. Los cambios conservan consultas agregadas, páginas de doce, selección SQL pública y límites de imágenes/grafo; no hidratan la colección completa ni introducen particiones sin una necesidad demostrada. Las duraciones de herramientas que reporta DOTS incluyen automatización y no equivalen por sí mismas al tiempo HTTP o de renderizado.
+
+## Validación y publicación
+
+Primero se revisan estáticamente rutas, privacidad, SQL, coordinación de estados y accesibilidad de los cambios. Las nuevas pruebas se incorporan a Pest/Node, conservando los escenarios Behat de negocio y sin duplicarlos. Su ejecución, compilaciones, dependencias, migraciones y controles de paquete corresponden exclusivamente a la ejecución completa de `crear-paquete-oci` al finalizar el desarrollo. Ante un fallo se corrige la causa y se reintenta el comando completo, sin omitir suites ni debilitar aserciones.
+
+El despliegue deberá conservar el commit publicado y sus manifiestos, preparar la release con respaldo antes de migrar y activarla mediante los scripts versionados. Los recorridos de navegador complementarios se centran en presentación, foco, navegación real y coherencia visible, sin relanzar las suites bajo otro nombre. Se registrarán por separado la evidencia del paquete, la activación y lo no verificable: cuentas de rol, comunicaciones reales, dispositivos físicos y tecnologías de asistencia no disponibles.
+
+Estado al cerrar el desarrollo: correcciones y revisión estática en `feat/portal-qa4-dots-20261002`. También se contrastaron padres confirmados de hojas curatoriales, ciclos, el límite de treinta nodos y filtros de identificación/completitud. Las pruebas nuevas, la publicación y el despliegue permanecen pendientes de la ejecución final del paquete; sus resultados y la navegación posterior se registrarán con la identidad efectivamente generada.

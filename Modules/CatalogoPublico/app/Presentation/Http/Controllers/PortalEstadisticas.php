@@ -49,13 +49,13 @@ final class PortalEstadisticas
     /** Agregados de la misma selección que usan tarjetas y registros. */
     public function datosParaVista(array $filtros): array
     {
-        return $this->cachear('portal:estadisticas:v12:'.$this->revisionDatos().':'.sha1(json_encode($filtros)), fn () => $this->resumir($filtros));
+        return $this->cachear('portal:estadisticas:v13:'.$this->revisionDatos().':'.sha1(json_encode($filtros)), fn () => $this->resumir($filtros));
     }
 
     /** Distribución completa sin hidratar tarjetas ni calcular los otros indicadores. */
     public function puntosParaMapa(array $filtros): array
     {
-        return $this->cachear('portal:puntos:v1:'.$this->revisionDatos().':'.sha1(json_encode($filtros)), function () use ($filtros): array {
+        return $this->cachear('portal:puntos:v2:'.$this->revisionDatos().':'.sha1(json_encode($filtros)), function () use ($filtros): array {
             $taxones = DB::table('taxonomia.taxones')->get(['id', 'padre_id', 'rango', 'nombre_cientifico'])->keyBy('id');
             return $this->agruparPuntos($this->consulta($filtros), $taxones);
         });
@@ -74,23 +74,21 @@ final class PortalEstadisticas
             ->selectRaw('te.decimal_latitude AS lat, te.decimal_longitude AS lon, te.taxon_id, ed.scientific_name_visible, COUNT(*) AS total')
             ->groupBy('te.decimal_latitude', 'te.decimal_longitude', 'te.taxon_id', 'ed.scientific_name_visible')->cursor();
         $puntos = $filosPorTaxon = [];
+        $idsValidos = array_fill_keys(CalidadDatoPublico::taxonesConLinajeValido($taxones), true);
         foreach ($filas as $fila) {
             $id = $fila->scientific_name_visible ? $fila->taxon_id : null;
             $filo = 'Sin filo';
             if ($id && isset($filosPorTaxon[$id])) $filo = $filosPorTaxon[$id];
             else {
                 $origen = $id;
-                for ($paso = 0; $paso < 30 && $id && isset($taxones[$id]); $paso++) {
-                    if ($taxones[$id]->rango === 'phylum') { $filo = $taxones[$id]->nombre_cientifico; break; }
-                    $id = $taxones[$id]->padre_id;
-                }
+                $filo = $this->linajePublicoParaMosaico($id, $taxones, false, false)['phylum'] ?? 'Sin filo';
                 if ($origen) $filosPorTaxon[$origen] = $filo;
             }
             $clave = $fila->lat.':'.$fila->lon;
             $puntos[$clave] ??= ['lat' => (float) $fila->lat, 'lon' => (float) $fila->lon, 'total' => 0, 'filos' => [], 'taxones' => []];
             $puntos[$clave]['total'] += (int) $fila->total;
             $puntos[$clave]['filos'][$filo] = ($puntos[$clave]['filos'][$filo] ?? 0) + (int) $fila->total;
-            if ($fila->scientific_name_visible && $fila->taxon_id) $puntos[$clave]['taxones'][$fila->taxon_id] = true;
+            if ($fila->scientific_name_visible && isset($idsValidos[$fila->taxon_id])) $puntos[$clave]['taxones'][$fila->taxon_id] = true;
         }
         foreach ($puntos as &$punto) $punto['taxones'] = count($punto['taxones']);
         unset($punto);
@@ -115,6 +113,7 @@ final class PortalEstadisticas
         $consulta = $this->consulta($filtros)
             ->join('taxonomia.taxones as t', 't.id', '=', 'te.taxon_id')
             ->where('t.rango', 'especie')->whereRaw(CalidadDatoPublico::textoValido('t.nombre_cientifico'))->where('ed.scientific_name_visible', true)
+            ->whereIn('t.id', CalidadDatoPublico::taxonesConLinajeValido(DB::table('taxonomia.taxones')->get(['id', 'padre_id', 'nombre_cientifico'])))
             ->selectRaw('t.nombre_cientifico AS especie, COUNT(*) AS registros')
             ->groupBy('t.nombre_cientifico')->orderBy('t.nombre_cientifico');
 
@@ -220,28 +219,20 @@ final class PortalEstadisticas
     private function resumir(array $filtros): array
     {
         $base = $this->consulta($filtros);
-        $especieValida = CalidadDatoPublico::textoValido('t.nombre_cientifico');
+        $taxones = DB::table('taxonomia.taxones')->select('id', 'padre_id', 'rango', 'nombre_cientifico')->get()->keyBy('id');
+        $idsValidos = CalidadDatoPublico::taxonesConLinajeValido($taxones);
+        $especieValida = CalidadDatoPublico::textoValido('t.nombre_cientifico').' AND t.id = ANY(?::uuid[])';
+        $idsPg = '{'.implode(',', $idsValidos).'}';
         $fechaValida = CalidadDatoPublico::fechaValida('te.fecha_colecta');
         $resumen = (array) (clone $base)->leftJoin('taxonomia.taxones as t', 't.id', '=', 'te.taxon_id')
-            ->selectRaw("COUNT(*) AS registros, COUNT(*) FILTER (WHERE t.rango = 'especie' AND {$especieValida} AND ed.scientific_name_visible) AS identificados, COUNT(*) FILTER (WHERE {$fechaValida} AND ed.event_date_visible) AS fechados, COUNT(*) FILTER (WHERE te.decimal_latitude BETWEEN -90 AND 90 AND te.decimal_longitude BETWEEN -180 AND 180 AND ed.decimal_latitude_visible AND ed.decimal_longitude_visible) AS georreferenciados, COUNT(*) FILTER (WHERE t.rango = 'especie' AND {$especieValida} AND ed.scientific_name_visible AND {$fechaValida} AND ed.event_date_visible AND te.decimal_latitude BETWEEN -90 AND 90 AND te.decimal_longitude BETWEEN -180 AND 180 AND ed.decimal_latitude_visible AND ed.decimal_longitude_visible) AS aptos")
+            ->selectRaw("COUNT(*) AS registros, COUNT(*) FILTER (WHERE t.rango = 'especie' AND {$especieValida} AND ed.scientific_name_visible) AS identificados, COUNT(*) FILTER (WHERE {$fechaValida} AND ed.event_date_visible) AS fechados, COUNT(*) FILTER (WHERE te.decimal_latitude BETWEEN -90 AND 90 AND te.decimal_longitude BETWEEN -180 AND 180 AND ed.decimal_latitude_visible AND ed.decimal_longitude_visible) AS georreferenciados, COUNT(*) FILTER (WHERE t.rango = 'especie' AND {$especieValida} AND ed.scientific_name_visible AND {$fechaValida} AND ed.event_date_visible AND te.decimal_latitude BETWEEN -90 AND 90 AND te.decimal_longitude BETWEEN -180 AND 180 AND ed.decimal_latitude_visible AND ed.decimal_longitude_visible) AS aptos", [$idsPg, $idsPg])
             ->first();
 
-        $porTaxon = (clone $base)->where('ed.scientific_name_visible', true)->selectRaw('te.taxon_id, COUNT(*) AS total')
-            ->groupBy('te.taxon_id')->get();
-        $taxones = DB::table('taxonomia.taxones')->select('id', 'padre_id', 'rango', 'nombre_cientifico')
-            ->get()->keyBy('id');
+        $porTaxon = (clone $base)->where('ed.scientific_name_visible', true)->selectRaw('te.taxon_id, ed.family_visible, ed.genus_visible, COUNT(*) AS total')
+            ->groupBy('te.taxon_id', 'ed.family_visible', 'ed.genus_visible')->get();
         $filos = [];
         foreach ($porTaxon as $fila) {
-            $id = $fila->taxon_id;
-            $filo = 'Sin filo';
-            for ($paso = 0; $paso < 20 && $id && isset($taxones[$id]); $paso++) {
-                $taxon = $taxones[$id];
-                if ($taxon->rango === 'phylum') {
-                    $filo = $taxon->nombre_cientifico;
-                    break;
-                }
-                $id = $taxon->padre_id;
-            }
+            $filo = $this->linajePublicoParaMosaico($fila->taxon_id, $taxones, (bool) $fila->family_visible, (bool) $fila->genus_visible)['phylum'] ?? 'Sin filo';
             $filos[$filo] = ($filos[$filo] ?? 0) + (int) $fila->total;
         }
         unset($filos['Sin filo']);
@@ -249,20 +240,24 @@ final class PortalEstadisticas
 
         $especies = (clone $base)->join('taxonomia.taxones as t', 't.id', '=', 'te.taxon_id')
             ->where('t.rango', 'especie')->whereRaw(CalidadDatoPublico::textoValido('t.nombre_cientifico'))->where('ed.scientific_name_visible', true)
+            ->whereIn('t.id', $idsValidos)
             ->selectRaw('t.nombre_cientifico AS nombre, COUNT(*) AS total')
             ->groupBy('t.nombre_cientifico')->orderByDesc('total')->limit(20)->get()->map(static fn (object $fila): array => (array) $fila)->all();
         $riqueza = (clone $base)->join('taxonomia.taxones as riqueza_t', 'riqueza_t.id', '=', 'te.taxon_id')
             ->where('riqueza_t.rango', 'especie')->whereRaw(CalidadDatoPublico::textoValido('riqueza_t.nombre_cientifico'))->where('ed.scientific_name_visible', true)
+            ->whereIn('riqueza_t.id', $idsValidos)
             ->whereRaw(CalidadDatoPublico::textoValido('te.state_province'))->where('ed.state_province_visible', true)->whereNotNull('te.state_province')->where('te.state_province', '<>', '')
             ->selectRaw('te.state_province AS provincia, COUNT(DISTINCT riqueza_t.nombre_cientifico) AS especies, COUNT(*) AS registros')
             ->groupBy('te.state_province')->orderByDesc('especies')->limit(10)->get()->map(static fn (object $fila): array => (array) $fila)->all();
         $decadas = (clone $base)->join('taxonomia.taxones as decada_t', 'decada_t.id', '=', 'te.taxon_id')
             ->where('decada_t.rango', 'especie')->whereRaw(CalidadDatoPublico::textoValido('decada_t.nombre_cientifico'))->where('ed.scientific_name_visible', true)
+            ->whereIn('decada_t.id', $idsValidos)
             ->whereRaw(CalidadDatoPublico::fechaValida('te.fecha_colecta'))->where('ed.event_date_visible', true)->whereNotNull('te.fecha_colecta')
             ->selectRaw('FLOOR(EXTRACT(YEAR FROM te.fecha_colecta) / 10)::integer * 10 AS decada, COUNT(DISTINCT decada_t.nombre_cientifico) AS especies, COUNT(*) AS registros')
             ->groupByRaw('1')->orderBy('decada')->get()->map(static fn (object $fila): array => (array) $fila)->all();
         $raras = (clone $base)->join('taxonomia.taxones as rara_t', 'rara_t.id', '=', 'te.taxon_id')
             ->where('rara_t.rango', 'especie')->whereRaw(CalidadDatoPublico::textoValido('rara_t.nombre_cientifico'))->where('ed.scientific_name_visible', true)
+            ->whereIn('rara_t.id', $idsValidos)
             ->selectRaw('rara_t.nombre_cientifico AS nombre, COUNT(*) AS total')
             ->groupBy('rara_t.nombre_cientifico')->havingRaw('COUNT(*) <= 3')
             ->orderBy('total')->orderBy('nombre')->limit(12)->get()->map(static fn (object $fila): array => (array) $fila)->all();
@@ -313,6 +308,13 @@ final class PortalEstadisticas
             'metodos' => $metodos,
             'mosaico' => $mosaico,
             'taxon_mosaico' => $this->taxonParaMosaico($base, $taxones, $filtros),
+            'ilustraciones_mosaico' => \Modules\CatalogoPublico\Application\Services\IlustracionTaxonomica::mosaicoParaSeleccion(
+                (function () use ($porTaxon, $taxones): \Generator {
+                    foreach ($porTaxon as $fila) {
+                        yield $this->linajePublicoParaMosaico($fila->taxon_id, $taxones, (bool) $fila->family_visible, (bool) $fila->genus_visible) + ['total' => (int) $fila->total];
+                    }
+                })(),
+            ),
         ];
     }
 
@@ -336,14 +338,25 @@ final class PortalEstadisticas
         $ejemplar = $consulta->orderByDesc('ed.family_visible')->orderByDesc('ed.genus_visible')->orderBy('te.id')
             ->first(['ed.family_visible', 'ed.genus_visible']);
         if ($ejemplar === null) return [];
+        return $this->linajePublicoParaMosaico($elegido->id, $taxones, (bool) $ejemplar->family_visible, (bool) $ejemplar->genus_visible);
+    }
+
+    private function linajePublicoParaMosaico(?string $id, \Illuminate\Support\Collection $taxones, bool $familia, bool $genero): array
+    {
         $rangos = ['reino' => 'kingdom', 'phylum' => 'phylum', 'clase' => 'class', 'orden' => 'order', 'familia' => 'family', 'genero' => 'genus', 'especie' => 'species'];
-        $linaje = ['nombre' => $elegido->nombre_cientifico];
-        $id = $elegido->id; $visitados = [];
+        $fuente = []; $visitados = [];
         while ($id && isset($taxones[$id]) && ! isset($visitados[$id]) && count($visitados) < 30) {
             $visitados[$id] = true; $nodo = $taxones[$id];
-            if (isset($rangos[$nodo->rango]) && ($nodo->rango !== 'familia' || $ejemplar->family_visible)
-                && ($nodo->rango !== 'genero' || $ejemplar->genus_visible)) $linaje[$rangos[$nodo->rango]] = $nodo->nombre_cientifico;
+            array_unshift($fuente, ['rango' => $nodo->rango, 'nombre' => $nodo->nombre_cientifico]);
             $id = $nodo->padre_id;
+        }
+        if ($id && isset($taxones[$id])) return []; // Ciclo o cadena que excede treinta nodos.
+        $linaje = [];
+        foreach (CalidadDatoPublico::rutaConfirmada($fuente) as $nodo) {
+            if (($nodo['rango'] === 'familia' && ! $familia) || ($nodo['rango'] === 'genero' && ! $genero)) continue;
+            if (isset($rangos[$nodo['rango']])) $linaje[$rangos[$nodo['rango']]] = $nodo['nombre'];
+            $linaje['ancestros'][] = $nodo;
+            $linaje['nombre'] = $nodo['nombre'];
         }
         return $linaje;
     }

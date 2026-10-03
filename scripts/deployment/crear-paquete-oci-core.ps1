@@ -418,9 +418,9 @@ if (-not $OmitirCompilacion) {
     }
 
     # Contratos JavaScript sin navegador: precisión WGS84, tamaños por cantidad
-    # y nombres de fotografías. Árbol y caché se comprueban en Pest.
+    # nombres de fotografías e historial atómico. Árbol y caché están en Pest.
     $directorioPruebasFrontend = Join-Path $Proyecto 'tests\Frontend'
-    foreach ($contratoPortal in @('portal-map-model.test.mjs', 'portal-image-model.test.mjs')) {
+    foreach ($contratoPortal in @('portal-map-model.test.mjs', 'portal-image-model.test.mjs', 'portal-selection-history.test.mjs')) {
         if (-not (Test-Path -LiteralPath (Join-Path $directorioPruebasFrontend $contratoPortal) -PathType Leaf)) {
             throw "Falta el contrato JavaScript del portal: $contratoPortal"
         }
@@ -428,7 +428,7 @@ if (-not $OmitirCompilacion) {
     $pruebasFrontend = @(Get-ChildItem -LiteralPath $directorioPruebasFrontend -Filter '*.test.mjs' -File |
         Sort-Object Name | ForEach-Object { $_.FullName })
     if ($pruebasFrontend.Count -eq 0) { throw 'Faltan los contratos JavaScript del mapa cartografico.' }
-    Invoke-Comando -Programa 'node.exe' -Argumentos (@('--test') + $pruebasFrontend) -Descripcion 'Validando contratos JavaScript del mapa y fotografias del portal con Node' -DirectorioTrabajo $Proyecto
+    Invoke-Comando -Programa 'node.exe' -Argumentos (@('--test') + $pruebasFrontend) -Descripcion 'Validando contratos JavaScript del mapa, fotografias e historial del portal con Node' -DirectorioTrabajo $Proyecto
 }
 
 $requeridos = @(
@@ -440,6 +440,11 @@ $requeridos = @(
     'Modules/CatalogoPublico/app/Application/Services/IlustracionTaxonomica.php',
     'Modules/CatalogoPublico/app/Application/Services/DendrogramaTaxonomico.php',
     'Modules/CatalogoPublico/app/Application/UseCases/ConsultarChatBot/EnlaceSeleccionCatalogo.php',
+    'Modules/CatalogoPublico/app/Application/UseCases/ConsultarChatBot/SeleccionPaginaChat.php',
+    'Modules/CatalogoPublico/app/Infrastructure/EtiquetaDatoPublico.php',
+    'app/Support/InformacionRelease.php',
+    'app/Http/Controllers/VersionPortalController.php',
+    'resources/js/portal-history-model.js',
     'Modules/CatalogoPublico/app/Infrastructure/NormalizacionGeografica.php',
     'Modules/CatalogoPublico/app/Infrastructure/ProtocoloColectaPublico.php',
     'Modules/CatalogoPublico/database/migrations/2026_10_02_000012_restore_original_sampling_protocol.php',
@@ -452,6 +457,7 @@ $requeridos = @(
     'Modules/CatalogoPublico/resources/views/components/nodo-arbol-mapa.blade.php',
     'Modules/CatalogoPublico/resources/views/components/dendrograma-mapa.blade.php',
     'Modules/CatalogoPublico/resources/views/components/registro-mapa.blade.php',
+    'Modules/CatalogoPublico/resources/views/components/avisos-curatoriales.blade.php',
     'Modules/CatalogoPublico/resources/views/components/representacion-especie.blade.php',
     'Modules/CatalogoPublico/resources/views/components/paginacion-hermanos.blade.php',
     'Modules/CatalogoPublico/resources/views/components/visor-imagen.blade.php',
@@ -606,6 +612,7 @@ $metadataFuente = [ordered]@{
     repository = $repositorioGit
     git_branch = 'main'
     git_commit = $commit
+    built_at_utc = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
     git_tree = (Get-SalidaGit -Argumentos @('rev-parse', ($commit + '^{tree}')) | Select-Object -First 1).Trim()
     source_manifest_sha256 = (Get-FileHash -LiteralPath $fuenteManifest -Algorithm SHA256).Hash.ToLowerInvariant()
     java_jar_sha256 = (Get-FileHash -LiteralPath $destinoJar -Algorithm SHA256).Hash.ToLowerInvariant()

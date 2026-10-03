@@ -449,6 +449,69 @@ test('XLSX conserva la selección UUID y permisos sin convertir textos de colect
     }
 });
 
+test('QA4 exporta la selección completa desde la segunda página conservando Unicode y coordenadas originales', function (): void {
+    $f = cartografiaRealFixture();
+    $original = (array) DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->first();
+    unset($original['coordenadas_otras_regiones'], $original['busqueda_global']);
+    $codigosEsperados = [$f['codigos'][0], $f['codigos'][1]];
+    DB::table('taxonomia.especimenes')->whereIn('id', [$f['ids'][0], $f['ids'][1]])
+        ->update(['localidad_verbatim' => 'Río Ñambí; sector norte', 'locality_name' => 'Río Ñambí; sector norte']);
+    for ($i = 0; $i < 12; $i++) {
+        $id = (string) Str::uuid();
+        $codigo = 'QA-EXPORT-'.Str::uuid();
+        $codigosEsperados[] = $codigo;
+        DB::table('taxonomia.especimenes')->insert(array_replace($original, [
+            'id' => $id, 'codigo_catalogo' => $codigo, 'occurrence_id' => $codigo,
+            'localidad_verbatim' => 'Río Ñambí; sector norte', 'locality_name' => 'Río Ñambí; sector norte',
+        ]));
+        DB::table('divulgacion.especimenes_divulgables')->insert([
+            'id' => (string) Str::uuid(), 'especimen_id' => $id, 'publicado' => true,
+        ]);
+    }
+
+    $componente = Livewire::withQueryParams([
+        'vista' => 'tarjetas', 'nivel' => 'species', 'taxon' => $f['prefijo'].' alfa',
+        'fph' => $f['filo'], 'fprov' => 'Pichincha', 'fco' => 'QA',
+        'ffd' => '2025-01-01', 'ffh' => '2025-01-31', 'pagina' => 2,
+    ])->test(PortalCatalogo::class)->assertViewHas('totalRegistrosVista', 14)
+        ->assertViewHas('especimenes', fn ($filas) => count($filas) === 2);
+
+    ob_start();
+    $componente->instance()->descargarResultados(app(EloquentProveedorEspecimenesParaArbol::class))->sendContent();
+    $csv = ob_get_clean();
+    expect(str_starts_with($csv, "\xEF\xBB\xBF"))->toBeTrue();
+    $filasCsv = array_map(static fn (string $linea): array => str_getcsv($linea, ';', '"', ''),
+        explode("\n", rtrim(substr($csv, 3), "\r\n")));
+    $datosCsv = array_slice($filasCsv, 1);
+    expect($datosCsv)->toHaveCount(14)
+        ->and(array_column($datosCsv, 0))->toEqualCanonicalizing($codigosEsperados)
+        ->and(array_unique(array_column($datosCsv, 3)))->toBe(['Río Ñambí; sector norte']);
+    foreach ($datosCsv as $fila) {
+        expect((float) ltrim($fila[7], "'"))->toBe(-0.25)
+            ->and((float) ltrim($fila[8], "'"))->toBe(-78.5);
+    }
+
+    ob_start();
+    $componente->instance()->descargarDatos()->sendContent();
+    $contenido = ob_get_clean();
+    $archivo = tempnam(sys_get_temp_dir(), 'pest-qa4-export-');
+    try {
+        file_put_contents($archivo, $contenido);
+        $libro = IOFactory::load($archivo);
+        $datosXlsx = array_slice($libro->getActiveSheet()->toArray(), 1);
+        expect($datosXlsx)->toHaveCount(14)
+            ->and(array_column($datosXlsx, 0))->toEqualCanonicalizing($codigosEsperados)
+            ->and(array_unique(array_column($datosXlsx, 1)))->toBe([$f['prefijo'].' alfa'])
+            ->and(array_unique(array_column($datosXlsx, 5)))->toBe(['Río Ñambí; sector norte']);
+        foreach ($datosXlsx as $fila) {
+            expect((float) $fila[7])->toBe(-0.25)->and((float) $fila[8])->toBe(-78.5);
+        }
+        $libro->disconnectWorksheets();
+    } finally {
+        unlink($archivo);
+    }
+});
+
 test('QA3-002 las notas de reubicación se conservan sin contar como especie o provincia', function (): void {
     $f = cartografiaRealFixture(); $nota = 'muestra reubicada dentro de 1269 muestrareubicadadentrode1269';
     DB::table('taxonomia.taxones')->where('id', $f['taxones'][0])->update(['nombre_cientifico' => $nota]);

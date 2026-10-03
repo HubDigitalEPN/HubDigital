@@ -447,6 +447,7 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
             ->whereIn('e.id', $especimenIds)
             ->select([
                 'e.*',
+                DB::raw(\Modules\CatalogoPublico\Infrastructure\CalidadDatoPublico::revisionTaxonomicaSql('e.taxon_id').' AS taxonomia_en_revision'),
                 DB::raw("COALESCE(NULLIF(btrim(e.sampling_protocol), ''), NULLIF(btrim(mc.sampling_protocol), '')) AS sampling_protocol"),
                 'loc.referencia_inec',
                 'inec.nombre as localidad_inec',
@@ -474,6 +475,7 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
             samplingProtocol: $fila->sampling_protocol ?? null, // Prioridad del protocolo original por ejemplar.
             recordedBy: $fila->colector,          // ACL: colector del Supplier → recordedBy del Customer
             occurrenceStatus: $fila->occurrence_status ?? 'present',
+            taxonomiaEnRevision: (bool) ($fila->taxonomia_en_revision ?? false),
             family: $fila->family,
             genus: $fila->genus,
             country: $fila->country,

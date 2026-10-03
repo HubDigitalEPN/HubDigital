@@ -21,7 +21,7 @@
             </div>
             <div class="atlas-map-legend" aria-label="Leyenda del mapa">
                 <span><i class="atlas-legend-dot" style="background:#17699b"></i>Registros en la misma latitud y longitud</span>
-                <small>La posición conserva la coordenada publicada. Su precisión y origen constan en el detalle del ejemplar; una referencia aproximada no indica una colecta exacta.</small>
+                <small>El radio crece con la cantidad de registros hasta un máximo de 17 px; no representa abundancia natural ni esfuerzo de muestreo. La posición conserva la coordenada publicada. Su precisión y origen constan en el detalle del ejemplar; una referencia aproximada no indica una colecta exacta.</small>
             </div>
         </section>
 
@@ -29,8 +29,8 @@
             <div class="atlas-panel-header"><div><h2 id="titulo-filos">Composición taxonómica</h2><p class="atlas-panel-subtitle">Selecciona un filo para filtrar todos los paneles</p></div><x-catalogopublico::menu-analisis tipo="filos" :datos="$datosMapa['filos']" /></div>
             <div class="atlas-taxon-body">
                 @forelse($datosMapa['filos'] as $filo => $cantidad)
-                    @php $porcentaje = (int) $cantidad / $total * 100; $color = $paleta[$loop->index % count($paleta)]; @endphp
-                    <button class="atlas-taxon-row" type="button" wire:click='seleccionarFilo(@json($filo))' wire:loading.attr="disabled" aria-pressed="{{ (collect($filosDisponibles)->firstWhere('id', $filtroFiloId)['nombre_cientifico'] ?? '') === $filo ? 'true' : 'false' }}">
+                    @php $porcentaje = (int) $cantidad / $total * 100; $color = $paleta[$loop->index % count($paleta)]; $idFiloCategoria = $this->identificadorFilo($filo); @endphp
+                    <button class="atlas-taxon-row" type="button" wire:click="seleccionarFilo(@js($idFiloCategoria ?? ''))" wire:loading.attr="disabled" wire:target="seleccionarFilo" @disabled($idFiloCategoria === null) aria-pressed="{{ $idFiloCategoria !== null && $filtroFiloId === $idFiloCategoria ? 'true' : 'false' }}" aria-label="{{ $idFiloCategoria === null ? $filo.' sin identificador confirmado para filtrar' : ($filtroFiloId === $idFiloCategoria ? 'Quitar filtro de filo '.$filo : 'Filtrar por filo '.$filo) }}">
                         <span class="atlas-taxon-name"><i class="atlas-legend-dot" style="background:{{ $color }}"></i>{{ $filo }}</span>
                         <span class="atlas-taxon-count">{{ number_format((int) $cantidad, 0, ',', '.') }} <small>({{ number_format($porcentaje, 1, ',', '.') }} %)</small></span>
                         <span class="atlas-bar" aria-hidden="true"><span style="width:{{ min(100, $porcentaje) }}%;background:{{ $color }}"></span></span>
@@ -46,17 +46,17 @@
                     @endforeach
                 </div>
             @else
-                @php
-                    $nombreFiloMosaico = collect($filosDisponibles)->firstWhere('id', $filtroFiloId)['nombre_cientifico'] ?? '';
-                    $taxonMosaico = ($datosMapa['taxon_mosaico'] ?? []) ?: ['nombre' => $taxon ?: $filtroTaxon ?: $nombreFiloMosaico];
-                    $ilustracionesMosaico = \Modules\CatalogoPublico\Application\Services\IlustracionTaxonomica::mosaicoParaTaxon($taxonMosaico);
-                @endphp
+                @php $ilustracionesMosaico = array_slice($datosMapa['ilustraciones_mosaico'] ?? [], 0, 4); @endphp
                 <div class="atlas-taxon-mosaic" aria-label="Representaciones generadas de los grupos de la selección">
                     @foreach($ilustracionesMosaico as $ilustracionMosaico)
                         <figure><img src="{{ $ilustracionMosaico['url'] }}" alt="{{ $ilustracionMosaico['alt'] }}" width="320" height="320" loading="lazy" decoding="async"><figcaption>{{ $ilustracionMosaico['grupo'] }} · {{ ($ilustracionMosaico['morfologia'] ?? false) ? 'representación generada' : 'diagrama taxonómico' }}</figcaption></figure>
                     @endforeach
                 </div>
-                <p class="atlas-mosaic-note">Representaciones fotorrealistas generadas del grupo mientras no hay fotografías públicas; no identifican especies ni reproducen ejemplares. Para grupos sin morfología disponible se muestra un diagrama.</p>
+                @if($ilustracionesMosaico !== [])
+                    <p class="atlas-mosaic-note">Representaciones fotorrealistas generadas de grupos presentes en la selección mientras no hay fotografías públicas; no identifican especies ni reproducen ejemplares. Para grupos sin morfología disponible se muestra un diagrama.</p>
+                @else
+                    <p class="atlas-mosaic-note">No hay representaciones disponibles para los grupos publicados en esta selección.</p>
+                @endif
             @endif
             <p class="atlas-taxa-note">La proporción usa todos los registros seleccionados; algunos aún no tienen filo confirmado.</p>
         </section>

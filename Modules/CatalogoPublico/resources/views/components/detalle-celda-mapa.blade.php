@@ -31,6 +31,7 @@
             </div>
             <p class="atlas-cell-status" wire:loading wire:target="navegarCelda,volverCelda,paginarCelda,paginarArbolCelda,cambiarVistaCelda" role="status">Actualizando selección…</p>
             <div class="atlas-cell-content">
+                <x-catalogopublico::avisos-curatoriales :total="$detalle['curatoriales_total'] ?? 0" :notas="$detalle['curatoriales'] ?? []" accion="cambiarVistaCelda('registros')" />
                 @if($vistaCelda === 'grupos' && ($detalle['arbol'] ?? []) !== [])
                     <div class="atlas-taxonomic-layout">
                         <section class="atlas-tree-section" aria-labelledby="titulo-arbol-mapa">

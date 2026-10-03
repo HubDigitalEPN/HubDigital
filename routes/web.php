@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AdminBootstrapController;
 use App\Http\Controllers\PushSubscriptionController;
+use App\Http\Controllers\VersionPortalController;
 use App\Livewire\ActivarRol;
 use App\Livewire\Administracion\CentroAdministracion;
 use App\Livewire\Administracion\ConfiguracionSistema;
@@ -18,6 +19,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/archivo/imagen/{id}', \App\Http\Controllers\ServirImagenArchivo::class)->middleware(['auth', 'verified'])->name('archivo.imagen');
 
 Route::view('/', 'portal-inicio')->name('home');
+Route::get('/version', VersionPortalController::class)->name('portal.version');
 
 Route::middleware(['guest', 'throttle:10,1'])->group(function (): void {
     Route::get('/instalacion/administrador', [AdminBootstrapController::class, 'create'])

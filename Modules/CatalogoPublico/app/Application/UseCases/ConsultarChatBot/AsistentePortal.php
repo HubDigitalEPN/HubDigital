@@ -98,7 +98,7 @@ final class AsistentePortal
                 'opciones' => [['label' => 'Consultar depósitos', 'url' => route('depositos.portal')]]];
         }
         if (preg_match('/paso a paso|(?:indica|dame).*pasos|como (?:busco|buscar|vusco|filtro)|donde puedo consultar.*(?:ejemplares|coleccion)/', $normal)) {
-            return $this->ayudaFiltros($pregunta);
+            return $this->ayudaFiltros($pregunta, $contextoCatalogo, $seleccionPortal);
         }
 
         if (preg_match('/prestam|solicitante|pedir especimen/', $normal)) {
@@ -125,7 +125,7 @@ final class AsistentePortal
             || (bool) preg_match('/^(?:y\s+)?(?:quita(?:r)?|elimina(?:r)?|sin)\s+(?:el\s+)?filtro\b/', $normal);
         if (! $operacionContexto && preg_match('/filtro|filtrar|leyenda|mapa|dashboard|indice|indicador|exportar|geojson/i', $normal)
             && ! preg_match('/cuant|registros de|especies de/', $normal)) {
-            return $this->ayudaFiltros($pregunta);
+            return $this->ayudaFiltros($pregunta, $contextoCatalogo, $seleccionPortal);
         }
         $consultaCientifica = (bool) preg_match('/\b(tienen|cuant[oa]s?|busca|buscar|existe|registros|especies|familias|generos|ejemplares|especimenes|catalogo)\b/', $normal)
             || (bool) preg_match('/^[\p{L}][\p{L}\d_.:-]*(?:\s+[\p{L}][\p{L}.-]*)?$/u', trim($pregunta))
@@ -133,7 +133,7 @@ final class AsistentePortal
             || (bool) preg_match('/^(?:perdon|corrijo|quise decir|queria decir|no\s+).*\b(?:quiero|sino|pero|decir)\b/', $normal)
             || $operacionContexto
             || ($contextoCatalogo !== [] && (bool) preg_match('/^(?:y\s+de\s+|y\s+)?cuantos?|^y\s+|^(?:perdon|corrijo|quise decir|queria decir|no\s+)|^donde\s+los\s+encontraron/i', $normal));
-        if ($consultaCientifica && ($publica = $this->consultaCatalogo->responder($pregunta, $contextoCatalogo)) !== null) {
+        if ($consultaCientifica && ($publica = $this->consultaCatalogo->responder($pregunta, $contextoCatalogo, $seleccionPortal)) !== null) {
             return $publica;
         }
         if (($compuesta = $this->conocimiento->responderCompuesta($pregunta)) !== null) {
@@ -167,7 +167,7 @@ final class AsistentePortal
             }
         }
 
-        if (preg_match('/portal|catalogo|coleccion|ejemplares|coordenadas|catalgo|espesimenes/', $normal)) return $this->ayudaFiltros($pregunta);
+        if (preg_match('/portal|catalogo|coleccion|ejemplares|coordenadas|catalgo|espesimenes/', $normal)) return $this->ayudaFiltros($pregunta, $contextoCatalogo, $seleccionPortal);
         return app(FuentesPublicasChat::class)->responder($pregunta);
     }
 
@@ -180,7 +180,7 @@ final class AsistentePortal
         return route('portal.catalogo', array_replace($parametros, ['vista' => $vista]));
     }
 
-    private function ayudaFiltros(string $pregunta): array
+    private function ayudaFiltros(string $pregunta, array $contextoCatalogo, ?array $seleccionPortal): array
     {
         $entidades = app(DetectorEntidadesChat::class)->extraer($pregunta);
         $criterios = [];
@@ -191,11 +191,24 @@ final class AsistentePortal
         foreach (['codigo' => 'N.º de catálogo', 'taxon' => 'Taxón', 'provincia' => 'Provincia', 'localidad' => 'Localidad', 'pais' => 'País', 'desde' => 'Desde', 'hasta' => 'Hasta', 'mes' => 'Mes de colecta', 'ubicacion' => 'Solo coordenadas públicas', 'identificacion' => 'Identificación', 'elev_desde' => 'Elevación desde (m)', 'elev_hasta' => 'Elevación hasta (m)'] as $clave => $etiqueta) {
             if (isset($entidades[$clave])) $criterios[] = $etiqueta.' = '.($clave === 'ubicacion' ? 'sí' : $entidades[$clave]);
         }
-        $texto = "1. Abre Colección Biológica y Filtros de investigación. No necesitas cuenta.\n2. ".($criterios === [] ? 'Elige los criterios de tu consulta.' : 'Configura: '.implode('; ', $criterios).'.');
+        $normal = Str::lower(Str::ascii($pregunta));
+        // Una referencia a la selección actual conserva la página aplicada. Los
+        // criterios escritos para una consulta nueva no heredan esa selección.
+        $usarSeleccionActual = $entidades === [] && (bool) preg_match('/\b(?:(?:esta|esa|mi)\s+seleccion|seleccion\s+(?:actual|aplicada))\b/', $normal);
+        $haySeleccionActual = $usarSeleccionActual && ($seleccionPortal !== null || $contextoCatalogo !== []);
+        $texto = "1. Abre Colección Biológica y Filtros de investigación. No necesitas cuenta.\n2. ".($haySeleccionActual
+            ? 'La selección aplicada se conserva al abrir su mapa. Cambia los filtros solo si deseas preparar otra consulta.'
+            : ($criterios === [] ? 'Elige los criterios de tu consulta.' : 'Configura: '.implode('; ', $criterios).'.'));
         if (isset($entidades['localidad_preferida'])) $texto .= ' Localidad = '.$entidades['localidad_preferida'].' es opcional según tu preferencia; agrégala si quieres restringir los resultados a ese sitio.';
-        $texto .= "\n3. Pulsa Aplicar filtros. Si un intervalo es inválido, corrígelo: se conserva la selección anterior.\n4. Usa los botones Tarjetas, Registros y Mapa y análisis: todos conservan la misma selección.\n5. En Registros puedes descargar el CSV; en los tres puntos de cada panel, Indicador explica el cálculo. Limpiar restablece toda la selección.";
-        return ['texto' => $texto, 'fuente' => 'portal', 'intent' => 'portal.filtros', 'entidades' => $entidades,
-            'opciones' => [['label' => 'Abrir consulta en el mapa', 'url' => route('portal.catalogo', array_replace($this->consultaCatalogo->parametros($entidades), ['vista' => 'mapa']))]]];
+        $texto .= $haySeleccionActual
+            ? "\n3. Abre el enlace al mapa de esta selección."
+            : "\n3. Pulsa Aplicar filtros. Si un intervalo es inválido, corrígelo: se conserva la selección anterior.";
+        $texto .= "\n4. Usa los botones Tarjetas, Registros y Mapa y análisis: todos conservan la misma selección.\n5. En Registros puedes descargar el CSV; en los tres puntos de cada panel, Indicador explica el cálculo. Limpiar restablece toda la selección.";
+        return ['texto' => $texto, 'fuente' => 'portal', 'intent' => 'portal.filtros',
+            'entidades' => $usarSeleccionActual && $seleccionPortal === null ? $contextoCatalogo : $entidades,
+            'opciones' => [['label' => 'Abrir consulta en el mapa', 'url' => $usarSeleccionActual
+                ? $this->enlaceSeleccion($contextoCatalogo, $seleccionPortal, 'mapa')
+                : route('portal.catalogo', array_replace($this->consultaCatalogo->parametros($entidades), ['vista' => 'mapa']))]]];
     }
 
     /** @return array{texto:string,opciones:array} */
