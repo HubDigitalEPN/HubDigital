@@ -143,7 +143,7 @@ test('los filtros públicos se aplican también a la lista CSV y respetan la ubi
     $destino = $redireccion->baseResponse->headers->get('Location');
     expect($destino)->toContain('fprov=Pichincha', 'fmes=6', 'vista=mapa');
     $this->get($destino)->assertOk()
-        ->assertSee('1 registros públicos')->assertSee($metodo)->assertDontSee($sinUbicacion)->assertDontSee($metodoRestringido);
+        ->assertSee('1 registro público')->assertSee(\Modules\CatalogoPublico\Infrastructure\ProtocoloColectaPublico::clave($metodo))->assertSee($metodo)->assertDontSee($sinUbicacion)->assertDontSee($metodoRestringido);
     $csv = $this->get(route('portal.lista-especies', $filtros))->assertOk()->streamedContent();
     expect($csv)->toContain($conUbicacion)->not->toContain($sinUbicacion)->not->toContain($metodoRestringido);
     $taxonRedireccion = $this->get(route('portal.estadisticas', ['taxon' => $conUbicacion, 'mes' => 6]))->assertRedirect();

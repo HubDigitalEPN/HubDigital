@@ -233,7 +233,7 @@ final class TablaEspecimenesDivulgados extends Component
                 DB::raw('(te.decimal_latitude IS NULL OR te.decimal_longitude IS NULL) as coordenadas_incompletas'),
                 DB::raw('(NOT ed.decimal_latitude_visible OR NOT ed.decimal_longitude_visible) as coordenadas_reservadas'),
                 'te.fecha_colecta',
-                DB::raw('te.disposition as type_status'),
+                'te.type_status',
                 'te.colector',
                 'tx_genus.nombre_cientifico as genus',
                 'te.occurrence_status',

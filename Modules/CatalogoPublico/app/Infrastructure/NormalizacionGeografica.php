@@ -24,4 +24,31 @@ final class NormalizacionGeografica
             'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ü' => 'u', 'ñ' => 'n',
         ]);
     }
+
+    /** Una opción por clave del filtro; las grafías de la colección se conservan. */
+    public static function nombresDisponibles(array $nombres): array
+    {
+        $opciones = [];
+        foreach ($nombres as $nombre) {
+            if (! is_string($nombre) || ! self::contieneNombre($nombre)) continue;
+            $clave = self::normalizar($nombre);
+            $opciones[$clave] ??= match ($clave) {
+                'narino' => 'Nariño', 'choco' => 'Chocó',
+                default => trim($nombre),
+            };
+        }
+        ksort($opciones, SORT_NATURAL);
+        return array_values($opciones);
+    }
+
+    /** Resuelve grafías equivalentes contra opciones realmente publicadas. */
+    public static function nombreDisponible(string $valor, array $opciones): ?string
+    {
+        if (! self::contieneNombre($valor)) return null;
+        $clave = self::normalizar($valor);
+        foreach ($opciones as $opcion) {
+            if (is_string($opcion) && self::normalizar($opcion) === $clave) return $opcion;
+        }
+        return null;
+    }
 }

@@ -8,28 +8,6 @@ use InvalidArgumentException;
 
 final readonly class RegistroExportable
 {
-    private const array ENCABEZADOS = [
-        'occurrenceID',
-        'scientificName',
-        'typeStatus',
-        'occurrenceStatus',
-        'individualCount',
-        'localityName',
-        'country',
-        'decimalLatitude',
-        'decimalLongitude',
-        'recordedBy',
-        'samplingProtocol',
-        'typeNotes',
-        'specimenNotes',
-        'stateProvince',
-        'minimumElevationInMeters',
-        'maximumElevationInMeters',
-        'eventDate',
-        'caste',
-        'lifeStage',
-    ];
-
     private function __construct(
         public readonly string $occurrenceID,
         public readonly string $scientificName,
@@ -50,6 +28,11 @@ final readonly class RegistroExportable
         public readonly ?string $eventDate,
         public readonly ?string $caste,
         public readonly ?string $lifeStage,
+        public readonly ?string $disposition,
+        public readonly ?string $georeferenceRemarks,
+        public readonly ?string $localityExcel,
+        public readonly ?string $localityInec,
+        public readonly ?string $localityInecReference,
     ) {}
 
     public static function desde(
@@ -73,6 +56,11 @@ final readonly class RegistroExportable
         ?string $caste,
         ?string $lifeStage,
         ConfiguracionVisibilidad $visibilidad,
+        ?string $disposition = null,
+        ?string $georeferenceRemarks = null,
+        ?string $localityExcel = null,
+        ?string $localityInec = null,
+        ?string $localityInecReference = null,
     ): self {
         if (trim($occurrenceID) === '') {
             throw new InvalidArgumentException('El occurrenceID no puede estar vacío en un registro exportable.');
@@ -85,6 +73,10 @@ final readonly class RegistroExportable
         $aplicar = static fn (bool $visible, mixed $valor): ?string => ($visible && $valor !== null && $valor !== '')
             ? (string) $valor
             : null;
+        $coordenadasVisibles = $visibilidad->decimalLatitudeVisible && $visibilidad->decimalLongitudeVisible;
+        $latitud = NumeroExportacion::decimal($decimalLatitude, -90, 90);
+        $longitud = NumeroExportacion::decimal($decimalLongitude, -180, 180);
+        $parValido = $coordenadasVisibles && $latitud !== null && $longitud !== null;
 
         return new self(
             occurrenceID: $visibilidad->occurrenceIDVisible ? $occurrenceID : '',
@@ -94,8 +86,8 @@ final readonly class RegistroExportable
             individualCount: $aplicar($visibilidad->individualCountVisible, $individualCount),
             localityName: $aplicar($visibilidad->localityNameVisible, $localityName),
             country: $aplicar($visibilidad->countryVisible, $country),
-            decimalLatitude: $aplicar($visibilidad->decimalLatitudeVisible, $decimalLatitude),
-            decimalLongitude: $aplicar($visibilidad->decimalLongitudeVisible, $decimalLongitude),
+            decimalLatitude: $parValido ? $latitud : null,
+            decimalLongitude: $parValido ? $longitud : null,
             recordedBy: $aplicar($visibilidad->recordedByVisible, $recordedBy),
             samplingProtocol: $aplicar($visibilidad->samplingProtocolVisible, $samplingProtocol),
             typeNotes: $aplicar($visibilidad->typeNotesVisible, $typeNotes),
@@ -106,13 +98,19 @@ final readonly class RegistroExportable
             eventDate: $aplicar($visibilidad->eventDateVisible, $eventDate),
             caste: $aplicar($visibilidad->casteVisible, $caste),
             lifeStage: $aplicar($visibilidad->lifeStageVisible, $lifeStage),
+            // Mantiene la barrera de divulgación que protegía disposition en el perfil anterior.
+            disposition: $aplicar($visibilidad->typeStatusVisible, $disposition),
+            georeferenceRemarks: $aplicar($coordenadasVisibles, $georeferenceRemarks),
+            localityExcel: $aplicar($visibilidad->localityNameVisible, $localityExcel),
+            localityInec: $aplicar($visibilidad->localityNameVisible, $localityInec),
+            localityInecReference: $aplicar($visibilidad->localityNameVisible, $localityInecReference),
         );
     }
 
     /** @return list<string> */
     public static function encabezados(): array
     {
-        return self::ENCABEZADOS;
+        return PerfilExportacionPublica::ENCABEZADOS_XLSX;
     }
 
     /** @return array<string, string> null → '' para celdas vacías en el XLSX */
@@ -138,6 +136,14 @@ final readonly class RegistroExportable
             'eventDate' => $this->eventDate ?? '',
             'caste' => $this->caste ?? '',
             'lifeStage' => $this->lifeStage ?? '',
+            'disposition' => $this->disposition ?? '',
+            'georeferenceRemarks' => $this->georeferenceRemarks ?? '',
+            // No hay una distancia métrica curada en la fuente. Una nota no permite inferirla.
+            'coordinateUncertaintyInMeters' => '',
+            'localityExcel' => $this->localityExcel ?? '',
+            'localityInec' => $this->localityInec ?? '',
+            'localityInecReference' => $this->localityInecReference ?? '',
+            'exportProfile' => PerfilExportacionPublica::IDENTIFICADOR,
         ];
     }
 }

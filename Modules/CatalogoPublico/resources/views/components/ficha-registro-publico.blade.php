@@ -6,7 +6,9 @@
         <h2 id="titulo-ficha-publica">Ficha del registro</h2>
         <button type="button" autofocus x-on:click="$refs.fichaPublica.close()" aria-label="Cerrar ficha del registro">×</button>
     </header>
-    @php($ficha = $this->fichaRegistro)
+    @php
+        $ficha = $this->fichaRegistro;
+    @endphp
     @if($ficha)
         @include('catalogopublico::components.registro-mapa', ['registro' => $ficha['registro'], 'fotos' => array_slice($ficha['fotos'], 0, 1), 'permitirFicha' => false])
     @else

@@ -35,6 +35,25 @@ final class FilaCatalogoMapper
     {
         $normalizada = $this->normalizarClaves($fila);
         $warnings = [];
+        $notaTaxonomia = ReconciliacionCientificaQa6::notaTaxonomia($normalizada);
+        if ($notaTaxonomia !== null) {
+            $normalizada['taxonomic_notes'] = ReconciliacionCientificaQa6::agregarNota($normalizada['taxonomic_notes'] ?? null, $notaTaxonomia);
+            $warnings[] = 'QA6-002: clasificación fuente incompatible; linaje reconciliado con fuente científica documentada';
+        }
+        $conflictoRagua = ReconciliacionCientificaQa6::conflictoRagua($normalizada);
+        if ($conflictoRagua) {
+            $nota = ReconciliacionCientificaQa6::NOTA_RAGUA.' Fuente: '.ReconciliacionCientificaQa6::FUENTE_RAGUA;
+            $normalizada['specimen_notes'] = ReconciliacionCientificaQa6::agregarNota($normalizada['specimen_notes'] ?? null, $nota);
+            $normalizada['locality_notes'] = ReconciliacionCientificaQa6::agregarNota($normalizada['locality_notes'] ?? null, $nota);
+            // El campo verbatim tiene límite de 255 caracteres: no concatenar ni truncar originales.
+            if (trim($normalizada['coord_verbatim'] ?? '') === '') {
+                $normalizada['coord_verbatim'] = $normalizada['decimal_latitude'].' / '.$normalizada['decimal_longitude'];
+            }
+            $normalizada['verbatim_latitude'] ??= $normalizada['decimal_latitude'];
+            $normalizada['verbatim_longitude'] ??= $normalizada['decimal_longitude'];
+            $normalizada['decimal_latitude'] = $normalizada['decimal_longitude'] = null;
+            $warnings[] = ReconciliacionCientificaQa6::NOTA_RAGUA;
+        }
 
         // Identificadores
         $occurrenceId = $this->limpiar($normalizada['occurrence_id'] ?? null);
@@ -73,6 +92,7 @@ final class FilaCatalogoMapper
         // preserva entera para trazabilidad y para agrupar en la bandeja de
         // revisión ("YASUNÍ" y "yasuní" caen en el mismo grupo).
         $localidadVerbatim = $partes === [] ? null : implode(', ', $partes);
+        if ($conflictoRagua) $localidadVerbatim = $fuenteLocalidad;
 
         // Valores explícitos de sus propias columnas (se dejan crudos: no se
         // normalizan para no dañar códigos como "USA").

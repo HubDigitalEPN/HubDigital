@@ -46,6 +46,8 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
                 e.colector,
                 e.individual_count,
                 e.disposition,
+                e.type_status,
+                e.type_notes,
                 e.occurrence_status,
                 e.specimen_notes,
                 e.country,
@@ -112,6 +114,8 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
                 e.colector,
                 e.individual_count,
                 e.disposition,
+                e.type_status,
+                e.type_notes,
                 e.occurrence_status,
                 e.specimen_notes,
                 e.country,
@@ -190,6 +194,8 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
                 'e.colector',
                 'e.individual_count',
                 'e.disposition',
+                'e.type_status',
+                'e.type_notes',
                 'e.occurrence_status',
                 'e.specimen_notes',
                 'e.country',
@@ -342,6 +348,8 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
                 'e.colector',
                 'e.individual_count',
                 'e.disposition',
+                'e.type_status',
+                'e.type_notes',
                 'e.occurrence_status',
                 'e.specimen_notes',
                 'e.country',
@@ -363,7 +371,7 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
                 DB::raw('NULL as family'),  // jerarquía completa no requerida en detalle de especie
                 DB::raw('NULL as genus'),
             ])
-            ->orderByRaw('e.disposition IS NULL')
+            ->orderByRaw('e.type_status IS NULL')
             ->orderBy('e.occurrence_id')
             ->get();
 
@@ -403,6 +411,8 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
                 'e.colector',
                 'e.individual_count',
                 'e.disposition',
+                'e.type_status',
+                'e.type_notes',
                 'e.occurrence_status',
                 'e.specimen_notes',
                 'e.country',
@@ -472,8 +482,9 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
             occurrenceId: $fila->occurrence_id,
             scientificName: $fila->nombre_cientifico,
             individualCount: (int) ($fila->individual_count ?? 0),
-            typeStatus: $fila->disposition,      // ACL: disposition del Supplier → typeStatus del Customer
-            typeNotes: null,                      // sin campo equivalente en el Supplier
+            typeStatus: $fila->type_status ?? null, // Estado nomenclatural, separado de la disposición del material.
+            typeNotes: $fila->type_notes ?? null,
+            disposition: $fila->disposition ?? null,
             specimenNotes: $fila->specimen_notes,
             samplingProtocol: $fila->sampling_protocol ?? null, // Prioridad del protocolo original por ejemplar.
             recordedBy: $fila->colector,          // ACL: colector del Supplier → recordedBy del Customer

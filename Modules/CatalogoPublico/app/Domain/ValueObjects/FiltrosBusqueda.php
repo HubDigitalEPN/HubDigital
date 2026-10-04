@@ -35,6 +35,7 @@ final readonly class FiltrosBusqueda
         public readonly bool $soloUbicacion,
         public readonly bool $datosCompletos,
         public readonly ?string $pais = null,
+        public readonly ?string $disposicion = null,
     ) {}
 
     public static function vacio(): self
@@ -141,7 +142,8 @@ final readonly class FiltrosBusqueda
             elevHasta: $elevHasta,
             biomas: $normalizarArray($datos['filtroBiomas'] ?? []),
             habitat: $textoOpcional('filtroHabitat'),
-            tipo: $textoOpcional('filtroTipo'),
+            tipo: CondicionMaterialPublica::tipoFiltro($textoOpcional('filtroTipo')),
+            disposicion: CondicionMaterialPublica::disposicionFiltro($textoOpcional('filtroDisposicion')),
             casta: $textoOpcional('filtroCasta'),
             estadio: $textoOpcional('filtroEstadio'),
             provincia: $textoOpcional('filtroProvincia'),
@@ -173,6 +175,7 @@ final readonly class FiltrosBusqueda
             && $this->biomas === []
             && $this->habitat === null
             && $this->tipo === null
+            && $this->disposicion === null
             && $this->casta === null
             && $this->estadio === null
             && $this->provincia === null

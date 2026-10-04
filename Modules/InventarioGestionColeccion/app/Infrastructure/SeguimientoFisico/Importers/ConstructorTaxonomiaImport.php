@@ -83,6 +83,7 @@ final class ConstructorTaxonomiaImport
      */
     public function resolverDeFila(array $fila): ?TaxonId
     {
+        $fila = ReconciliacionCientificaQa6::taxonomia($fila);
         $padreId = null;
         $taxonesCreados = [];
 

@@ -8,7 +8,7 @@
 <div class="atlas atlas-dashboard" wire:key="dashboard-mapa" x-on:atlas-datos="actualizar($event.detail)" x-on:click.capture="recordarAccion($event)" x-data="portalDashboard(@js($datosMapa['mapa']), @js($datosMapa['filos']))">
     <span hidden wire:key="mapa-datos-{{ $claveFiltrosMapa }}" x-init="$dispatch('atlas-datos', {celdas: @js($datosMapa['mapa']), filos: @js($datosMapa['filos'])})"></span>
     <header class="atlas-dashboard-header">
-        <div><h1>Colección Biológica</h1><p>Distribución, cobertura y calidad de {{ number_format((int) $resumen['registros'], 0, ',', '.') }} registros públicos de invertebrados.</p></div>
+        <div><h1>Colección Biológica</h1><p>Distribución, cobertura y calidad de {{ number_format((int) $resumen['registros'], 0, ',', '.') }} {{ (int) $resumen['registros'] === 1 ? 'registro público' : 'registros públicos' }} de invertebrados.</p></div>
     </header>
 
     <div class="atlas-stage">

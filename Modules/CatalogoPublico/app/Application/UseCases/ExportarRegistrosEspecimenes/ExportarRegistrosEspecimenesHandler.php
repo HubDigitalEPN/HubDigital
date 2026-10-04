@@ -66,6 +66,11 @@ final class ExportarRegistrosEspecimenesHandler
                     caste: $datoEspecimen->caste,
                     lifeStage: $datoEspecimen->lifeStage,
                     visibilidad: $divulgable->configuracion(),
+                    disposition: $datoEspecimen->disposition,
+                    georeferenceRemarks: $datoEspecimen->coordinateReference,
+                    localityExcel: $datoEspecimen->localityExcel,
+                    localityInec: $datoEspecimen->localityInec,
+                    localityInecReference: $datoEspecimen->localityInecReference,
                 )->toArray();
             }
         }

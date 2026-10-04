@@ -30,7 +30,7 @@ return [
         'imagen' => 'mapa',
         'foto' => 'Material de campo para documentar métodos de colecta.',
         'parrafos' => [
-            'Agrupa los registros por el protocolo de colecta autorizado para publicación. Se omiten campos vacíos y marcadores curatoriales de daño o falta de información.',
+            'Agrupa los registros por una misma clave del protocolo de colecta, sin distinguir mayúsculas y minúsculas ni espacios al inicio o al final. Por ejemplo, Beating y beating forman una sola categoría; cada barra y su filtro usan exactamente esa población. El método original se conserva en las fichas y exportaciones de registros. Se omiten campos vacíos y marcadores curatoriales de daño o falta de información.',
             'Seleccionar una técnica mantiene los demás filtros y permite revisar su distribución, periodos y material asociado. El conteo expresa registros disponibles, no eficiencia de captura: comparar técnicas requiere conocer su esfuerzo de muestreo.',
         ],
     ],
@@ -39,8 +39,10 @@ return [
         'foto' => 'Trabajo de campo con GPS y cuaderno para registrar ubicaciones.',
         'parrafos' => [
             'Este indicador muestra las coordenadas públicas de los ejemplares de la selección aplicada sobre la cartografía de OpenStreetMap. Conserva visibles países, relieve, ciudades y demás elementos de la base cartográfica en las áreas con y sin registros.',
-            'Cada círculo azul se ubica en la latitud y longitud WGS84 almacenadas, sin desplazarlo a un centro de cuadrícula. Solo se agrupan registros que comparten exactamente el mismo par de coordenadas. El radio aumenta con la raíz cuadrada del número de registros hasta un máximo visual. Al seleccionar el punto puedes explorar su árbol taxonómico y consultar hasta doce ejemplares por página.',
-            'La precisión de una ubicación depende del dato original y de su referencia pública: conservar la coordenada no convierte una ubicación aproximada o recuperada en una medición GPS exacta. Solo aparecen coordenadas públicas válidas. Los registros sin coordenadas pueden contarse en composición taxonómica. La ausencia de puntos no demuestra ausencia de organismos y el número de registros no equivale a abundancia natural.',
+            'Al alejar el mapa aparecen clústeres de pantalla que reúnen varias ubicaciones cercanas. Su número indica cuántas ubicaciones originales contienen, no cuántos ejemplares. Al pulsarlos se acerca el mapa y se separan sus miembros; el clúster no es una coordenada de colecta.',
+            'Al acercar aparecen los puntos en sus latitudes y longitudes WGS84 originales, sin desplazarlos a un centro de cuadrícula. Un punto reúne únicamente registros que comparten exactamente ese par de coordenadas. Su tamaño expresa la cantidad de registros, con un máximo visual. Selecciona el punto para explorar el árbol taxonómico y consultar seis taxones terminales o seis ejemplares por página.',
+            'El color identifica el filo: azul para Arthropoda, naranja para Mollusca, verde para Annelida, violeta para Nematoda y rosa para Nematomorpha; gris indica un filo no disponible. Si una ubicación o un clúster contiene varios filos, sus segmentos muestran la composición. El detalle accesible del punto informa los filos y sus conteos. Seleccionar un filo en Composición taxonómica filtra todos los paneles y el mapa.',
+            'La precisión de una ubicación depende del dato original y de su referencia pública: conservar la coordenada no convierte una ubicación aproximada o recuperada en una medición GPS exacta. La selección pública exige ambas coordenadas válidas y visibles; los registros sin ese par o con coordenadas reservadas quedan fuera de los paneles públicos. La ausencia de puntos no demuestra ausencia de organismos y el número de registros no equivale a abundancia natural.',
         ],
     ],
     'filos' => [

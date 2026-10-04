@@ -1,7 +1,9 @@
 @props(['taxon' => [], 'fotos' => [], 'descripcionInicial' => '', 'limite' => 4, 'retrato' => false, 'contexto' => 'mosaico', 'compacto' => false])
-@php($fotosPublicas = array_values(array_filter(array_slice($fotos, 0, 4), static fn (array $foto): bool => ($foto['foto_real'] ?? false) && ($foto['morfologia'] ?? false) && is_string($foto['url'] ?? null) && $foto['url'] !== '')))
-@php($limiteFotografias = max(1, min(4, (int) $limite)))
-@php($claveFotografias = hash('sha256', serialize([$contexto, $taxon, $fotosPublicas, $limiteFotografias, (bool) $retrato, (bool) $compacto])))
+@php
+    $fotosPublicas = array_values(array_filter(array_slice($fotos, 0, 4), static fn (array $foto): bool => ($foto['foto_real'] ?? false) && ($foto['morfologia'] ?? false) && is_string($foto['url'] ?? null) && $foto['url'] !== ''));
+    $limiteFotografias = max(1, min(4, (int) $limite));
+    $claveFotografias = hash('sha256', serialize([$contexto, $taxon, $fotosPublicas, $limiteFotografias, (bool) $retrato, (bool) $compacto]));
+@endphp
 <div wire:key="fotografias-{{ $claveFotografias }}" x-data="portalFotografias(@js($taxon), @js($fotosPublicas))" :aria-busy="cargando.toString()">
     @if($contexto === 'composicion')
         <div class="collection-loading" x-show="cargando" x-cloak><span class="collection-loading-indicator" role="status"><span class="atlas-spinner" aria-hidden="true"></span><span class="sr-only">Buscando fotografías de la selección</span></span></div>

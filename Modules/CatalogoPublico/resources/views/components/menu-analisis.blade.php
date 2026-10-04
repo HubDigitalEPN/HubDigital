@@ -19,7 +19,10 @@
     <dialog class="atlas-index-dialog" x-ref="indice" aria-labelledby="indice-titulo-{{ $tipo }}" x-on:keydown.escape.stop.prevent="$el.close()" x-on:cancel.stop.prevent="$el.close()" x-on:close="$refs.boton.focus()" x-on:click="if ($event.target === $el) $el.close()">
         <div class="atlas-index-content">
             <header><h2 id="indice-titulo-{{ $tipo }}">Indicador · {{ $indice['titulo'] }}</h2><button type="button" autofocus x-on:click="$refs.indice.close()" aria-label="Cerrar explicación">×</button></header>
-            <figure><img src="{{ asset('images/indices/'.($indice['imagen'] ?? $tipo).'.png') }}" alt="{{ $indice['foto'] }}" width="1448" height="1086" loading="lazy"></figure>
+            <figure>
+                <img src="{{ asset('images/indices/'.($indice['imagen'] ?? $tipo).'-640.webp') }}" srcset="{{ asset('images/indices/'.($indice['imagen'] ?? $tipo).'-320.webp') }} 320w, {{ asset('images/indices/'.($indice['imagen'] ?? $tipo).'-640.webp') }} 640w" sizes="(max-width: 480px) calc(94vw - 32px), 300px" alt="Ilustración generada: {{ $indice['foto'] }}" width="640" height="480" loading="lazy" decoding="async">
+                <figcaption>Ilustración generada con IA para explicar el indicador; no es una fotografía de un ejemplar de la colección.</figcaption>
+            </figure>
             @foreach($indice['parrafos'] as $parrafo)<p>{{ $parrafo }}</p>@endforeach
         </div>
     </dialog>

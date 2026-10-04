@@ -4,7 +4,7 @@
         $valor = $aplicados[$campo] ?? '';
         return is_array($valor) ? array_any($valor, static fn ($item) => trim((string) $item) !== '') : trim((string) $valor) !== '';
     };
-    $colectaActiva = array_any(['filtroColector', 'filtroPreparaciones', 'filtroMetodos', 'filtroBiomas', 'filtroHabitat', 'filtroTipo', 'filtroCasta', 'filtroEstadio'], $activo);
+    $colectaActiva = array_any(['filtroColector', 'filtroPreparaciones', 'filtroMetodos', 'filtroBiomas', 'filtroHabitat', 'filtroTipo', 'filtroDisposicion', 'filtroCasta', 'filtroEstadio'], $activo);
 @endphp
 
 <details class="research-sidebar" x-data="portalFiltros" wire:ignore.self>
@@ -62,6 +62,7 @@
                 @if($biomas !== [])<fieldset @class(['research-filter-active' => $activo('filtroBiomas')])><legend>Bioma</legend><div class="research-check-list">@foreach($biomas as $bioma)<label><input type="checkbox" wire:model="borradorFiltros.filtroBiomas" aria-invalid="{{ $errors->has('filtroBiomas') ? 'true' : 'false' }}" aria-describedby="error-filtroBiomas" value="{{ $bioma }}">{{ $bioma }}</label>@endforeach</div></fieldset>@endif
                 <label @class(['research-filter-active' => $activo('filtroHabitat')])><span>Hábitat o microhábitat</span><input type="search" wire:model="borradorFiltros.filtroHabitat" aria-invalid="{{ $errors->has('filtroHabitat') ? 'true' : 'false' }}" aria-describedby="error-filtroHabitat" placeholder="Bosque, hojarasca…" maxlength="120"></label>
                 <label @class(['research-filter-active' => $activo('filtroTipo')])><span>Condición de tipo</span><input type="search" wire:model="borradorFiltros.filtroTipo" aria-invalid="{{ $errors->has('filtroTipo') ? 'true' : 'false' }}" aria-describedby="error-filtroTipo" placeholder="Holotype, paratype…" maxlength="120"></label>
+                <label @class(['research-filter-active' => $activo('filtroDisposicion')])><span>Disposición del material</span><input type="search" wire:model="borradorFiltros.filtroDisposicion" aria-invalid="{{ $errors->has('filtroDisposicion') ? 'true' : 'false' }}" aria-describedby="error-filtroDisposicion" placeholder="En la colección, prestado…" maxlength="120"><small>La disposición y el estado nomenclatural se consultan por separado.</small></label>
                 <label @class(['research-filter-active' => $activo('filtroCasta')])><span>Casta</span><input type="search" wire:model="borradorFiltros.filtroCasta" aria-invalid="{{ $errors->has('filtroCasta') ? 'true' : 'false' }}" aria-describedby="error-filtroCasta" placeholder="Worker, queen…" maxlength="120"></label>
                 <label @class(['research-filter-active' => $activo('filtroEstadio')])><span>Estadio de vida</span><input type="search" wire:model="borradorFiltros.filtroEstadio" aria-invalid="{{ $errors->has('filtroEstadio') ? 'true' : 'false' }}" aria-describedby="error-filtroEstadio" placeholder="Adult, larva…" maxlength="120"></label>
             </div>

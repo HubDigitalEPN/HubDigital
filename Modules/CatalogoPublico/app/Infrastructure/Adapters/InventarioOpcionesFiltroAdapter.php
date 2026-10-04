@@ -48,7 +48,7 @@ final class InventarioOpcionesFiltroAdapter implements ProveedorOpcionesFiltroPo
 
     public function obtenerMetodosRecoleccion(): array
     {
-        $protocolo = ProtocoloColectaPublico::sql('e', 'm');
+        $protocolo = ProtocoloColectaPublico::claveSql('e', 'm');
         return DB::table('taxonomia.especimenes as e')
             ->leftJoin('taxonomia.muestras_colecta as m', 'm.id', '=', 'e.muestra_id')
             ->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')

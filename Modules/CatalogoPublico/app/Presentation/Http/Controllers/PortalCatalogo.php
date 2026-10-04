@@ -14,6 +14,9 @@ use Modules\CatalogoPublico\Infrastructure\CalidadDatoPublico;
 use Modules\CatalogoPublico\Infrastructure\ElegibilidadGeograficaPortal;
 use Modules\CatalogoPublico\Application\Services\ColumnasRegistroPublico;
 use Modules\CatalogoPublico\Infrastructure\NormalizacionGeografica;
+use Modules\CatalogoPublico\Infrastructure\ProtocoloColectaPublico;
+use Modules\CatalogoPublico\Infrastructure\ConsultaMapaNoDisponible;
+use Modules\CatalogoPublico\Domain\ValueObjects\PerfilExportacionPublica;
 use Livewire\Component;
 use Modules\CatalogoPublico\Application\Ports\DatosEspecimenProveedor;
 use Modules\CatalogoPublico\Application\Ports\ProveedorEspecimenesPort;
@@ -103,7 +106,7 @@ final class PortalCatalogo extends Component
         'fco' => 'filtroColector', 'ffd' => 'filtroFechaDesde', 'ffh' => 'filtroFechaHasta', 'fm' => 'filtroMetodos',
         'flat' => 'filtroLatMin', 'flax' => 'filtroLatMax', 'flon' => 'filtroLonMin', 'flox' => 'filtroLonMax',
         'fed' => 'filtroElevDesde', 'feh' => 'filtroElevHasta', 'fb' => 'filtroBiomas', 'fh' => 'filtroHabitat',
-        'fsti' => 'filtroTipo', 'fca' => 'filtroCasta', 'fes' => 'filtroEstadio', 'fpais' => 'filtroPais',
+        'fsti' => 'filtroTipo', 'fd' => 'filtroDisposicion', 'fca' => 'filtroCasta', 'fes' => 'filtroEstadio', 'fpais' => 'filtroPais',
         'fprov' => 'filtroProvincia', 'fph' => 'filtroFiloId', 'fmes' => 'filtroMes', 'fid' => 'filtroIdentificacion',
         'fgeo' => 'filtroSoloUbicacion', 'fap' => 'filtroDatosCompletos',
     ];
@@ -159,6 +162,7 @@ final class PortalCatalogo extends Component
             foreach ($anteriores as $propiedad => $valor) $this->{$propiedad} = $valor;
             throw $error;
         }
+        $this->borradorFiltros['filtroProvincia'] = $this->filtroProvincia;
         $this->cerrarCelda();
         $this->cerrarFichaRegistro();
     }
@@ -189,7 +193,7 @@ final class PortalCatalogo extends Component
         $defectos = [];
         foreach (self::PROPIEDADES_URL as $alias => $propiedad) $defectos[$alias] = $valoresIniciales[$propiedad];
 
-        return ['estado' => $this->estadoParaUrl(), 'defectos' => $defectos, 'version' => $this->versionNavegacion];
+        return ['estado' => $this->estadoParaUrl(), 'defectos' => $defectos, 'propiedades' => self::PROPIEDADES_URL, 'version' => $this->versionNavegacion];
     }
 
     private function aplicarEstadoUrl(array $parametros): void
@@ -297,6 +301,7 @@ final class PortalCatalogo extends Component
 
     public function seleccionarMetodo(string $metodo): void
     {
+        $metodo = ProtocoloColectaPublico::clave($metodo);
         if (! in_array($metodo, $this->metodosRecoleccionDisponibles, true)) return;
         $this->filtroMetodos = [$metodo];
         $this->pagina = 1;
@@ -401,6 +406,8 @@ final class PortalCatalogo extends Component
 
     public string $filtroTipo = '';
 
+    public string $filtroDisposicion = '';
+
     public string $filtroCasta = '';
 
     public string $filtroEstadio = '';
@@ -483,6 +490,8 @@ final class PortalCatalogo extends Component
 
     public function actualizarFiltros(): void
     {
+        $this->filtroMetodos = array_values(array_unique(array_map(ProtocoloColectaPublico::clave(...), $this->filtroMetodos)));
+        $this->filtroProvincia = NormalizacionGeografica::nombreDisponible($this->filtroProvincia, $this->provinciasDisponibles) ?? $this->filtroProvincia;
         $this->validate([
             'filtroFechaDesde' => ['nullable', 'date_format:Y-m-d'],
             'filtroFechaHasta' => array_filter(['nullable', 'date_format:Y-m-d', $this->filtroFechaDesde !== '' ? 'after_or_equal:filtroFechaDesde' : null]),
@@ -509,8 +518,10 @@ final class PortalCatalogo extends Component
 
     public function seleccionarProvincia(string $provincia): void
     {
-        if (in_array($provincia, $this->provinciasDisponibles, true)) {
-            $this->filtroProvincia = $provincia;
+        $opcion = NormalizacionGeografica::nombreDisponible($provincia, $this->provinciasDisponibles);
+        if ($opcion !== null) {
+            $this->filtroProvincia = $opcion;
+            $this->borradorFiltros['filtroProvincia'] = $opcion;
             $this->pagina = 1;
         }
     }
@@ -605,7 +616,7 @@ final class PortalCatalogo extends Component
     #[Computed]
     public function provinciasDisponibles(): array
     {
-        return DB::table('taxonomia.especimenes as e')
+        $nombres = DB::table('taxonomia.especimenes as e')
             ->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
             ->where('d.publicado', true)->whereRaw(ElegibilidadGeograficaPortal::sql('e', 'd'))->where('d.state_province_visible', true)
             ->whereRaw(CalidadDatoPublico::textoValido('e.state_province'))
@@ -613,6 +624,7 @@ final class PortalCatalogo extends Component
             ->distinct()->orderBy('e.state_province')->pluck('e.state_province')
             ->filter(static fn (string $provincia): bool => NormalizacionGeografica::contieneNombre($provincia))
             ->values()->all();
+        return NormalizacionGeografica::nombresDisponibles($nombres);
     }
 
     #[Computed]
@@ -650,6 +662,7 @@ final class PortalCatalogo extends Component
             'biomas' => $this->filtroBiomas,
             'habitat' => $this->filtroHabitat,
             'tipo' => $this->filtroTipo,
+            'disposicion' => $this->filtroDisposicion,
             'casta' => $this->filtroCasta,
             'estadio' => $this->filtroEstadio,
         ], static fn ($valor) => $valor !== null && $valor !== '' && $valor !== []);
@@ -704,6 +717,7 @@ final class PortalCatalogo extends Component
         $this->filtroBiomas = (array) ($datos['filtroBiomas'] ?? []);
         $this->filtroHabitat = (string) ($datos['filtroHabitat'] ?? '');
         $this->filtroTipo = (string) ($datos['filtroTipo'] ?? '');
+        $this->filtroDisposicion = (string) ($datos['filtroDisposicion'] ?? '');
         $this->filtroCasta = (string) ($datos['filtroCasta'] ?? '');
         $this->filtroEstadio = (string) ($datos['filtroEstadio'] ?? '');
         $this->cerrarCelda();
@@ -736,6 +750,7 @@ final class PortalCatalogo extends Component
         $this->filtroBiomas = [];
         $this->filtroHabitat = '';
         $this->filtroTipo = '';
+        $this->filtroDisposicion = '';
         $this->filtroCasta = '';
         $this->filtroEstadio = '';
         $this->filtroProvincia = '';
@@ -764,7 +779,7 @@ final class PortalCatalogo extends Component
         return response()->streamDownload(
             fn () => print ($output->contenidoXlsx),
             $output->nombreArchivo,
-            ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+            ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'X-HubDigital-Export-Profile' => PerfilExportacionPublica::IDENTIFICADOR],
         );
     }
 
@@ -777,7 +792,7 @@ final class PortalCatalogo extends Component
         return response()->streamDownload(static function () use ($repositorio, $filtros, $nivel, $taxon): void {
             $salida = fopen('php://output', 'wb');
             fwrite($salida, "\xEF\xBB\xBF");
-            fputcsv($salida, ['N.º catálogo', 'Taxón', 'Fecha', 'Localidad del Excel', 'Localidad INEC', 'Código INEC', 'Provincia', 'Latitud', 'Longitud', 'Precisión', 'Tipo', 'Referencia INEC'], ';', '"', '');
+            fputcsv($salida, PerfilExportacionPublica::ENCABEZADOS_CSV, ';', '"', '');
             $celda = static function (mixed $valor): string {
                 $texto = (string) ($valor ?? '');
 
@@ -800,6 +815,8 @@ final class PortalCatalogo extends Component
                     $coordenadas ? $fila->lat_lon_max_error : null,
                     $fila->type_status_visible ? $fila->type_status : null,
                     $localidad ? $localidadInec->referencia : null,
+                    $fila->type_status_visible ? $fila->disposition : null,
+                    PerfilExportacionPublica::IDENTIFICADOR,
                 ]);
                 $latitud = $coordenadas ? NumeroExportacion::decimal($fila->decimal_latitude, -90, 90) : null;
                 $longitud = $coordenadas ? NumeroExportacion::decimal($fila->decimal_longitude, -180, 180) : null;
@@ -811,7 +828,7 @@ final class PortalCatalogo extends Component
                 fputcsv($salida, $valores, ';', '"', '');
             }
             fclose($salida);
-        }, 'registros-catalogo.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+        }, 'registros-catalogo.csv', ['Content-Type' => 'text/csv; charset=UTF-8', 'X-HubDigital-Export-Profile' => PerfilExportacionPublica::IDENTIFICADOR]);
     }
 
     public function descargarAnalisis(string $tipo): StreamedResponse
@@ -891,6 +908,7 @@ final class PortalCatalogo extends Component
             'filtroBiomas' => $this->filtroBiomas,
             'filtroHabitat' => $this->filtroHabitat,
             'filtroTipo' => $this->filtroTipo,
+            'filtroDisposicion' => $this->filtroDisposicion,
             'filtroCasta' => $this->filtroCasta,
             'filtroEstadio' => $this->filtroEstadio,
             'filtroProvincia' => $this->filtroProvincia,
@@ -918,14 +936,22 @@ final class PortalCatalogo extends Component
         ConsultarGaleriaTaxonHandler $galeriaHandler,
     ): View {
         $filtros = $this->filtrosActuales();
-        $datosMapa = $this->vista === 'mapa'
-            ? app(PortalEstadisticas::class)->datosParaVista($this->filtrosAnalisis($filtros), $this->filtroFiloId !== '')
-            : null;
+        $datosMapa = null;
+        $errorMapa = false;
+        if ($this->vista === 'mapa') {
+            try {
+                $datosMapa = app(PortalEstadisticas::class)->datosParaVista($this->filtrosAnalisis($filtros), $this->filtroFiloId !== '');
+            } catch (ConsultaMapaNoDisponible $error) {
+                report($error);
+                $errorMapa = true;
+            }
+        }
 
         if ($this->vista === 'mapa') {
             return view('catalogopublico::livewire.portal-catalogo', [
                 'datosMapa' => $datosMapa,
-                'claveFiltrosMapa' => sha1(json_encode([$filtros, $datosMapa['mapa'], $datosMapa['filos']])),
+                'errorMapa' => $errorMapa,
+                'claveFiltrosMapa' => sha1(json_encode([$filtros, $datosMapa['mapa'] ?? [], $datosMapa['filos'] ?? []])),
                 'provinciasDisponibles' => $this->provinciasDisponibles,
                 'filosDisponibles' => $this->filosDisponibles,
                 'preparacionesDisponibles' => $this->preparacionesDisponibles,
@@ -1032,6 +1058,7 @@ final class PortalCatalogo extends Component
             'filtroBiomas' => $this->filtroBiomas,
             'filtroHabitat' => $this->filtroHabitat,
             'filtroTipo' => $this->filtroTipo,
+            'filtroDisposicion' => $this->filtroDisposicion,
             'filtroCasta' => $this->filtroCasta,
             'filtroEstadio' => $this->filtroEstadio,
             'filtroProvincia' => $this->filtroProvincia,
@@ -1290,6 +1317,8 @@ final class PortalCatalogo extends Component
                     'taxon_en_revision' => $ver(fn (EspecimenDivulgable $d) => $d->scientificNameVisible()) && ($dto->taxonomiaEnRevision || ! CalidadDatoPublico::esTextoValido($dto->scientificName)),
                     'individual_count' => $g($ver(fn (EspecimenDivulgable $d) => $d->individualCountVisible()), $dto->individualCount),
                     'type_status' => $g($ver(fn (EspecimenDivulgable $d) => $d->typeStatusVisible()), $dto->typeStatus),
+                    'type_status_visible' => $ver(fn (EspecimenDivulgable $d) => $d->typeStatusVisible()),
+                    'disposition' => $g($ver(fn (EspecimenDivulgable $d) => $d->typeStatusVisible()), $dto->disposition),
                     'type_notes' => $g($ver(fn (EspecimenDivulgable $d) => $d->typeNotesVisible()), $dto->typeNotes),
                     'specimen_notes' => $g($ver(fn (EspecimenDivulgable $d) => $d->specimenNotesVisible()), $dto->specimenNotes),
                     'sampling_protocol' => $g($ver(fn (EspecimenDivulgable $d) => $d->samplingProtocolVisible()), $dto->samplingProtocol),

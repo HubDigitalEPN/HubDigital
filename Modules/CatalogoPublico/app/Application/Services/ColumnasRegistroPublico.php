@@ -32,6 +32,7 @@ final class ColumnasRegistroPublico
         'sampling_protocol' => ['samplingProtocol', 'Método de colecta'],
         'individual_count' => ['individualCount', 'Individuos'],
         'type_status' => ['typeStatus', 'Condición de tipo'],
+        'disposition' => ['disposition', 'Disposición'],
         'type_notes' => ['typeNotes', 'Notas de tipo'],
         'specimen_notes' => ['specimenNotes', 'Notas del espécimen'],
         'occurrence_status' => ['occurrenceStatus', 'Estado'],

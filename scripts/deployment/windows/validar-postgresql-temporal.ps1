@@ -13,6 +13,7 @@ $raizRepositorio = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $P
 $archivoClave = Join-Path $raizRepositorio '.local\secrets\postgres-test-password.clixml'
 $basePruebas = 'hubdigital'
 $postgresYaActivo = (Get-Service -Name $servicio -ErrorAction Stop).Status -eq 'Running'
+$postgresIniciadoPorPaquete = $false
 
 function Invoke-ServicioElevado {
     param([Parameter(Mandatory)] [ValidateSet('start', 'stop')] [string]$Accion)
@@ -38,6 +39,14 @@ foreach ($programa in @('pg_isready.exe', 'psql.exe', 'createdb.exe')) {
     if (-not (Test-Path -LiteralPath (Join-Path $pgBin $programa) -PathType Leaf)) { throw "No se encontro $programa en PostgreSQL 16." }
 }
 
+# La misma instancia puede estar iniciada mediante pg_ctl sin servicio Windows activo.
+# No iniciar ni detener el servicio por el simple hecho de usar esa instancia.
+# La contraseña y la base siguen comprobándose después mediante psql y la suite completa.
+if (-not $postgresYaActivo) {
+    & (Join-Path $pgBin 'pg_isready.exe') -h 127.0.0.1 -p 5432 -U postgres *> $null
+    $postgresYaActivo = $LASTEXITCODE -eq 0
+}
+
 $segura = Import-Clixml -LiteralPath $archivoClave
 $puntero = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($segura)
 try { $clave = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($puntero) }
@@ -45,7 +54,10 @@ finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($puntero) }
 
 $codigoPruebas = 1
 try {
-    if (-not $postgresYaActivo) { Invoke-ServicioElevado -Accion start }
+    if (-not $postgresYaActivo) {
+        Invoke-ServicioElevado -Accion start
+        $postgresIniciadoPorPaquete = $true
+    }
     $listo = $false
     for ($intento = 0; $intento -lt 30; $intento++) {
         & (Join-Path $pgBin 'pg_isready.exe') -h 127.0.0.1 -p 5432 -U postgres *> $null
@@ -96,11 +108,11 @@ try {
 finally {
     foreach ($nombre in @('PGPASSWORD','DB_PASSWORD','TEST_DB_PASSWORD','APP_KEY')) { Remove-Item "Env:$nombre" -ErrorAction SilentlyContinue }
     $clave = $null
-    if (-not $postgresYaActivo) {
+    if ($postgresIniciadoPorPaquete) {
         Invoke-ServicioElevado -Accion stop
         Start-Sleep -Seconds 2
         Assert-PuertoCerrado
-    } else {
+    } elseif ($postgresYaActivo) {
         Write-Host 'PostgreSQL ya estaba encendido y permanece encendido.' -ForegroundColor Green
     }
 }

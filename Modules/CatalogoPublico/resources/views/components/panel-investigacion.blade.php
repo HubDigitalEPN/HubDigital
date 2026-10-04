@@ -15,7 +15,7 @@
                     'metodos' => [$filaPanel['metodo'], 'seleccionarMetodo('.json_encode($filaPanel['metodo']).')'],
                 };
             @endphp
-            <button type="button" class="atlas-ranked-row" wire:click="{{ $accionPanel }}" wire:loading.attr="disabled" title="Filtrar: {{ $etiquetaPanel }}">
+            <button type="button" class="atlas-ranked-row" wire:click="{{ $accionPanel }}" wire:loading.attr="disabled" title="Filtrar: {{ $etiquetaPanel }}{{ $tipoPanel === 'metodos' ? ' · Valores originales: '.implode(', ', $filaPanel['fuentes'] ?? []) : '' }}" aria-label="Filtrar {{ $etiquetaPanel }}: {{ number_format((int) $filaPanel['registros'], 0, ',', '.') }} {{ (int) $filaPanel['registros'] === 1 ? 'registro' : 'registros' }}{{ $tipoPanel === 'metodos' ? '. Valores originales: '.implode(', ', $filaPanel['fuentes'] ?? []) : '' }}">
                 <span>{{ $etiquetaPanel }}</span><strong>{{ number_format((int) $filaPanel['registros'], 0, ',', '.') }}</strong>
                 <i aria-hidden="true"><b style="width:{{ $filaPanel['registros'] / $maxPanel * 100 }}%"></b></i>
             </button>

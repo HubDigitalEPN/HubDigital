@@ -23,11 +23,12 @@ function domRegistrosPublicos(string $html): DOMXPath
     }
 }
 
-test('la tabla pública muestra todas las columnas permitidas por defecto y aplica la selección del curador sin saltar flags', function (): void {
+test('la tabla pública ofrece todas las columnas permitidas y aplica la selección del curador sin saltar flags', function (): void {
     registrosParaContratoChat();
     DB::table('taxonomia.columnas_portal_publico')->delete();
     $servicio = app(ColumnasRegistroPublico::class);
-    expect($servicio->visibles())->toHaveCount(23);
+    expect($servicio->visibles())->toHaveCount(24)
+        ->and(array_column($servicio->visibles(), 'campo'))->toContain('disposition');
     $id = DB::table('taxonomia.especimenes')->where('codigo_catalogo', 'QA3-CHAT-1')->value('id');
     DB::table('taxonomia.especimenes')->where('id', $id)->update(['colector' => 'COLECTOR-RESERVADO-FICHA',
         'locality_name' => 'LOCALIDAD-PUBLICA-FICHA', 'localidad_verbatim' => 'ORIGINAL-PUBLICO-FICHA']);
@@ -35,7 +36,8 @@ test('la tabla pública muestra todas las columnas permitidas por defecto y apli
 
     $catalogo = Livewire::withQueryParams(['vista' => 'registros', 'fc' => 'QA3-CHAT-1'])->test(PortalCatalogo::class);
     $dom = domRegistrosPublicos($catalogo->html());
-    expect($dom->query('//table[@class="atlas-record-table"]/thead/tr/th')->length)->toBe(25)
+    expect($dom->query('//table[@class="atlas-record-table"]/thead/tr/th')->length)->toBe(26)
+        ->and($dom->query('//table[@class="atlas-record-table"]/thead/tr/th[normalize-space(.)="Disposición"]')->length)->toBe(1)
         ->and($dom->query('//dialog[contains(@class,"portal-record-dialog")]')->length)->toBe(1);
 
     $servicio->actualizar(['occurrence_id', 'scientific_name', 'recorded_by']);

@@ -48,6 +48,22 @@ final class AsistentePortal
         if (preg_match('/\bmapa\b/', $normal) && preg_match('/no aparecen|no (?:veo|se ven|se muestran)\s+(?:los\s+)?puntos|sin puntos|faltan puntos/', $normal)) {
             return $this->ayudaPuntosMapa($contextoCatalogo, $seleccionPortal);
         }
+        // Atiende ambas partes sin enviar la instrucción de uso al detector de entidades.
+        if (preg_match('/^(?<conteo>.+?)(?:\s+(?:y|adem[aá]s)\s+|;\s*)(?<ayuda>¿?c[oó]mo\b.+\bmapa\b.*)$/iu', trim($pregunta), $partes)
+            && preg_match('/\b(?:cu[aá]nt[oa]s?|cantidad|n[uú]mero|total)\b/iu', $partes['conteo'])) {
+            $publica = $this->consultaCatalogo->responder(trim($partes['conteo']), $contextoCatalogo, $seleccionPortal);
+            if ($publica !== null) {
+                $publica['texto'] .= "\n\n".$this->instruccionesMapa();
+                if (($publica['fuente'] ?? '') === 'catalogo') {
+                    $referenciaSeleccion = preg_match('/\b(?:(?:esta|esa|mi)\s+seleccion|seleccion\s+(?:actual|aplicada))\b/', Str::lower(Str::ascii($partes['conteo'])));
+                    $url = $referenciaSeleccion
+                        ? $this->enlaceSeleccion($contextoCatalogo, $seleccionPortal, 'mapa')
+                        : route('portal.catalogo', array_replace($this->consultaCatalogo->parametros($publica['entidades'] ?? []), ['vista' => 'mapa']));
+                    $publica['opciones'][] = ['label' => 'Abrir mapa de esta consulta', 'url' => $url];
+                }
+                return $publica;
+            }
+        }
         if (preg_match('/^buscar (?:un )?especimen(?:es)?[?.]*$/', $normal)) {
             return ['texto' => '¿Qué dato tienes para buscar en los registros publicados?', 'opciones' => [
                 ['label' => 'Código de catálogo', 'pregunta' => 'Tengo el código'],
@@ -178,6 +194,11 @@ final class AsistentePortal
         return route('portal.catalogo', array_replace($parametros, ['vista' => $vista]));
     }
 
+    private function instruccionesMapa(): string
+    {
+        return 'Cómo usar el mapa: abre Mapa y análisis. Al alejar, los clústeres reúnen varias ubicaciones y muestran su número; púlsalos para acercar. Cada punto original reúne registros con el mismo par de coordenadas. Su tamaño expresa registros y sus colores, filos. Abre un punto para consultar el árbol taxonómico y seis ejemplares por página. Las coordenadas aproximadas conservan sus advertencias; los conteos no equivalen a abundancia natural.';
+    }
+
     private function ayudaPuntosMapa(array $contextoCatalogo, ?array $seleccionPortal): array
     {
         $entrada = $seleccionPortal ?? ($contextoCatalogo !== [] ? $this->consultaCatalogo->parametros($contextoCatalogo) : null);
@@ -233,6 +254,7 @@ final class AsistentePortal
             ? "\n3. Abre el enlace al mapa de esta selección."
             : "\n3. Pulsa Aplicar filtros. Si un intervalo es inválido, corrígelo: se conserva la selección anterior.";
         $texto .= "\n4. Usa los botones Tarjetas, Registros y Mapa y análisis: todos conservan la misma selección.\n5. En Registros puedes descargar el CSV; en los tres puntos de cada panel, Indicador explica el cálculo. Limpiar restablece toda la selección.";
+        if (preg_match('/\bmapa\b/', $normal)) $texto .= "\n\n".$this->instruccionesMapa();
         return ['texto' => $texto, 'fuente' => 'portal', 'intent' => 'portal.filtros',
             'entidades' => $usarSeleccionActual && $seleccionPortal === null ? $contextoCatalogo : $entidades,
             'opciones' => [['label' => 'Abrir consulta en el mapa', 'url' => $usarSeleccionActual

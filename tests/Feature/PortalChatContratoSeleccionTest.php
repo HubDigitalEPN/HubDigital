@@ -366,10 +366,11 @@ test('repetir la ayuda del mapa fuera del catálogo conserva la consulta públic
 });
 
 test('los enlaces de selección admiten solo parámetros públicos y conservan los filtros que el chat no interpreta', function (): void {
-    $seleccion = ['fp' => ['Alcohol'], 'fm' => ['Trampa de caída'], 'fb' => ['Bosque'], 'fg' => ['Quito', 'Yasuní'],
-        'fco' => 'Colectora', 'fh' => 'Hojarasca', 'fsti' => 'Holotype', 'fca' => 'Worker', 'fes' => 'Adult',
+    $entrada = ['fp' => ['Alcohol'], 'fm' => ['Trampa de caída'], 'fb' => ['Bosque'], 'fg' => ['Quito', 'Yasuní'],
+        'fco' => 'Colectora', 'fh' => 'Hojarasca', 'fsti' => 'Holotype', 'fd' => 'En préstamo', 'fca' => 'Worker', 'fes' => 'Adult',
         'flat' => '-1', 'flax' => '0', 'flon' => '-79', 'flox' => '-78', 'fgeo' => '1', 'fap' => '1'];
-    $catalogo = Livewire::withQueryParams($seleccion + ['vista' => 'registros'])->test(PortalCatalogo::class);
+    $seleccion = array_replace($entrada, ['fm' => ['trampa de caída'], 'fd' => 'on_loan']);
+    $catalogo = Livewire::withQueryParams($entrada + ['vista' => 'registros'])->test(PortalCatalogo::class);
     expect(seleccionChatRenderizada($catalogo))->toEqual($seleccion);
     $respuesta = app(AsistentePortal::class)->responder('¿Cómo descargo CSV?', app(ConsultarChatBotHandler::class),
         seleccionPortal: $seleccion + ['vista' => 'mapa', 'pagina' => 9, 'especimenes' => [['id' => 'privado']], 'borradorFiltros' => ['fprov' => 'Napo']]);

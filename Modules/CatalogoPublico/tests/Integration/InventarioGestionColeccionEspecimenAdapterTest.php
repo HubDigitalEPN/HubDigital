@@ -60,7 +60,9 @@ test('traduce correctamente los campos básicos del Supplier al lenguaje del Cus
         'occurrence_id' => $occurrenceId,
         'colector' => 'Ana Torres',
         'individual_count' => 3,
-        'disposition' => 'Holotype',
+        'type_status' => 'Holotype',
+        'type_notes' => 'Designación nomenclatural documentada',
+        'disposition' => 'in_collection',
         'occurrence_status' => 'present',
         'specimen_notes' => 'Obrera recolectada',
         'country' => 'Ecuador',
@@ -77,7 +79,9 @@ test('traduce correctamente los campos básicos del Supplier al lenguaje del Cus
         ->and($datos->occurrenceId)->toBe($occurrenceId)
         ->and($datos->scientificName)->toBe($speciesName)
         ->and($datos->individualCount)->toBe(3)
-        ->and($datos->typeStatus)->toBe('Holotype')        // ACL: disposition → typeStatus
+        ->and($datos->typeStatus)->toBe('Holotype')
+        ->and($datos->typeNotes)->toBe('Designación nomenclatural documentada')
+        ->and($datos->disposition)->toBe('in_collection')
         ->and($datos->recordedBy)->toBe('Ana Torres')      // ACL: colector → recordedBy
         ->and($datos->occurrenceStatus)->toBe('present')
         ->and($datos->specimenNotes)->toBe('Obrera recolectada')
@@ -191,4 +195,22 @@ test('usa present como occurrenceStatus por defecto cuando el Supplier no tiene 
     $datos = $adapter->buscarPorOccurrenceId($occurrenceId);
 
     expect($datos->occurrenceStatus)->toBe('present');
+});
+
+test('QA6 conserva el tipo desconocido y la disposición sin convertirlos en tipo nomenclatural', function (): void {
+    [, , $speciesId] = crearJerarquiaTaxonomica('Formicidae', 'Camponotus', 'Camponotus contrato QA6');
+    $occurrenceId = 'QA6-'.Str::uuid();
+    $id = crearEspecimenEnTaxonomia($speciesId, [
+        'occurrence_id' => $occurrenceId, 'type_status' => null, 'disposition' => 'in_collection',
+        'lat_lon_max_error' => 'Coordenadas recuperadas del Excel; precisión pendiente de revisión.',
+    ]);
+    $adapter = app(InventarioGestionColeccionEspecimenAdapter::class);
+    foreach ([$adapter->buscarPorOccurrenceId($occurrenceId), $adapter->buscarPorEspecimenIds([$id])[0],
+        $adapter->buscarPorOccurrenceIds([$occurrenceId])[0]] as $datos) {
+        expect($datos->typeStatus)->toBeNull()->and($datos->disposition)->toBe('in_collection')
+            ->and($datos->coordinateReference)->toBe('Coordenadas recuperadas del Excel; precisión pendiente de revisión.');
+    }
+    DB::table('taxonomia.especimenes')->where('id', $id)->update(['type_status' => 'Estado curatorial no catalogado', 'disposition' => null]);
+    $datos = $adapter->buscarPorOccurrenceId($occurrenceId);
+    expect($datos->typeStatus)->toBe('Estado curatorial no catalogado')->and($datos->disposition)->toBeNull();
 });

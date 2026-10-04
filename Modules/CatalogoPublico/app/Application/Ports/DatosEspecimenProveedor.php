@@ -34,5 +34,6 @@ final readonly class DatosEspecimenProveedor
         public ?string $localityInecReference = null,
         public ?string $coordinateReference = null,
         public bool $taxonomiaEnRevision = false,
+        public ?string $disposition = null,
     ) {}
 }

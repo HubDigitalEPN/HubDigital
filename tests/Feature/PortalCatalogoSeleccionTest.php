@@ -116,6 +116,31 @@ test('la selección desde un panel actualiza el mapa y limpiar restaura los cont
         ->call('limpiarFiltros')->assertSet('filtroFiloId', '')->assertSet('filtroProvincia', '')->assertSet('filtroFechaDesde', '');
 });
 
+test('QA6 provincia canónica conserva URL, borrador y selección de riqueza sin duplicar especies entre grafías', function (): void {
+    $f = seleccionPortalFixture();
+    foreach (['Narino', 'Nariño', 'NARIÑO'] as $i => $grafia) {
+        DB::table('taxonomia.especimenes')->where('id', $f['ids'][$i])->update(['state_province' => $grafia]);
+    }
+    $datos = app(PortalEstadisticas::class)->datosParaVista(['filo' => $f['filo']]);
+    expect($datos['riqueza'])->toHaveCount(1)
+        ->and($datos['riqueza'][0]['provincia'])->toBe('Nariño')
+        ->and((int) $datos['riqueza'][0]['registros'])->toBe(3)
+        ->and((int) $datos['riqueza'][0]['especies'])->toBe(2);
+
+    Livewire::withQueryParams(['vista' => 'mapa', 'fprov' => 'Narino', 'fph' => $f['filo']])->test(PortalCatalogo::class)
+        ->assertSet('filtroProvincia', 'Nariño')->assertSet('borradorFiltros.filtroProvincia', 'Nariño')
+        ->assertViewHas('datosMapa', fn ($d) => (int) $d['resumen']['registros'] === 3)
+        ->assertDispatched('catalogo-estado-url', fn ($evento, $parametros): bool => $parametros['estado']['fprov'] === 'Nariño')
+        ->call('seleccionarProvincia', '  NARINO  ')->assertSet('filtroProvincia', 'Nariño')
+        ->assertSet('borradorFiltros.filtroProvincia', 'Nariño')
+        ->set('borradorFiltros.filtroProvincia', 'Narino')->call('aplicarBorrador')
+        ->assertSet('filtroProvincia', 'Nariño')->assertSet('borradorFiltros.filtroProvincia', 'Nariño')
+        ->call('restaurarSeleccionUrl', ['vista' => 'registros', 'fprov' => 'NARIÑO', 'fph' => $f['filo']])
+        ->assertSet('filtroProvincia', 'Nariño')->assertSet('borradorFiltros.filtroProvincia', 'Nariño')
+        ->assertViewHas('totalRegistrosVista', 3);
+    expect(DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->value('state_province'))->toBe('Narino');
+});
+
 test('coordenadas reservadas o inválidas excluyen el registro de todo el portal', function (): void {
     $f = seleccionPortalFixture();
     DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $f['ids'][0])->update(['decimal_latitude_visible' => false]);

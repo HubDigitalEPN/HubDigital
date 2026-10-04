@@ -31,7 +31,7 @@ function seleccionCompletaChatQa4(): array
 
     return ['nivel' => 'species', 'taxon' => 'Chatobius alpha', 'fc' => 'QA3-CHAT-1', 'ft' => 'Chatarthropoda',
         'fp' => ['Alcohol QA4'], 'fg' => ['Pichincha'], 'fco' => 'Colectora QA4',
-        'ffd' => '2000-05-01', 'ffh' => '2000-05-04', 'fm' => ['Red QA4'],
+        'ffd' => '2000-05-01', 'ffh' => '2000-05-04', 'fm' => ['red qa4'],
         'flat' => '-1', 'flax' => '0', 'flon' => '-79', 'flox' => '-78', 'fed' => '1000', 'feh' => '2000',
         'fb' => ['Bosque QA4'], 'fh' => 'Hojarasca QA4', 'fsti' => 'Holotype', 'fca' => 'Worker', 'fes' => 'Adult',
         'fpais' => 'Peru', 'fprov' => 'Pichincha',
@@ -41,7 +41,8 @@ function seleccionCompletaChatQa4(): array
 
 test('el conteo contextual usa la página aplicada completa aunque el chat y el borrador tengan otras consultas', function (): void {
     $seleccion = seleccionCompletaChatQa4();
-    $catalogo = Livewire::withQueryParams($seleccion + ['vista' => 'mapa', 'pagina' => 2])->test(PortalCatalogo::class);
+    $entradaHistorica = array_replace($seleccion, ['fm' => ['Red QA4']]);
+    $catalogo = Livewire::withQueryParams($entradaHistorica + ['vista' => 'mapa', 'pagina' => 2])->test(PortalCatalogo::class);
     $catalogo->set('borradorFiltros.filtroMetodos', ['Otra técnica pendiente']);
     $chat = Livewire::test(ChatBotWidget::class)->call('nuevaConversacion');
     $chat->set('pregunta', 'Busca Chatoterus')->call('enviar');

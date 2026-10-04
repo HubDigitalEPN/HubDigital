@@ -1,0 +1,27 @@
+# Remediación de la revisión 6
+
+Fuente: `C:\HT\LABINVEPN\rev 6\qa_portal_parte6.md` y sus cuatro archivos de evidencia. La rama `fix/portal-remediacion-qa6-20261003` parte de `main` en `fec1581f`, con el trabajo previo conservado. El usuario autorizó terminar las correcciones, recorrer localhost con Microsoft Edge, ejecutar y reintentar el paquete completo, desplegar su misma identidad en OCI y recorrer `dev.labinvepn.org` con Edge.
+
+| Hallazgo | Tratamiento |
+| --- | --- |
+| QA6-001: mapa Camponotus/Ecuador/Orellana bloqueado | El slowlog histórico localiza cuatro muestras en ejecución SQL del agregado de especies. Se reutilizan conteos existentes; riqueza y décadas agrupan dimensiones sin volver a unir todo el catálogo taxonómico. Las consultas PostgreSQL tienen un presupuesto por etapas, logs de duración y un estado de error distinto de cero registros. Livewire cancela la espera cliente a los treinta segundos y ofrece reintento con la selección conservada. |
+| QA6-002: Anastrepha bajo Coleoptera | Migración auditable acotada a identidad de origen; relación del género con Diptera/Tephritidae y guardia de reimportación. No reidentifica físicamente el ejemplar. |
+| QA6-003: Ragua con país y coordenadas incompatibles | Conservación de evidencia original y cuarentena geográfica. Se retira el par estructurado y la asociación INEC incompatible; no se inventa un país de colecta ni una coordenada. El registro queda pendiente de curaduría y fuera de la selección pública. |
+| QA6-004: disposición usada como condición nomenclatural | Pantalla, filtros y descargas separan `typeStatus` de `disposition`; desconocido permanece vacío en intercambio y «No informado» en lectura humana. Permisos conservados. |
+| QA6-005: XLSX pierde advertencias de coordenadas | Perfil público 2.0 con `georeferenceRemarks`, procedencia de localidad e incertidumbre desconocida vacía; conserva los primeros campos del contrato. |
+| QA6-006: variantes de método generan categorías incoherentes | Una misma clave canónica en agregado, filtros y selección, conservando las fuentes originales por ejemplar. |
+| QA6-007: ayuda del mapa desactualizada | Describe clústeres, ubicaciones exactas, colores por filo y paginación de seis registros. |
+
+También se corrigen singular/plural y formato es-EC, H1, opciones Nariño/Chocó y riqueza por clave, respuesta compuesta del chat y columnas principales con acceso a todos los campos. Los siete índices usan imágenes WebP de 320/640 píxeles y declaran su procedencia generada; se conservan sus originales. La revisión visual inicial encontró una interacción entre directivas PHP inline y bloques Blade: los componentes afectados pasan a bloques completos. La ayuda estrecha muestra imagen y texto en una columna; la tabla contiene sus etiquetas accesibles absolutas en el área desplazable, evitando ensanchar toda la página.
+
+La revisión estática final también acota el temporizador de Livewire a peticiones activas: cancelar al navegar limpia la espera y no produce un aviso tardío. Su contrato de cancelación externa y respuesta terminada se incorpora a las pruebas JavaScript del paquete.
+
+La evidencia histórica de rendimiento y sus límites están en `qa6-diagnostico-mapa.md`; los contratos de intercambio en `qa6-contratos-exportacion.md`; las decisiones científicas en `qa6-taxonomia-geografia.md`; los cambios visuales en `qa6-ux-metodos-chat.md` y `qa6-indices-imagenes.md`. La distribución de pruebas se documenta en `pruebas-cobertura.md`.
+
+Las suites y compilaciones sólo se ejecutan mediante `crear-paquete-oci`, sin omisiones ni comprobaciones equivalentes aisladas. Los recorridos Edge complementan su cobertura con navegación, presentación, foco y estados reales. Para localhost se restaura el respaldo de OCI del 3 de octubre en una base distinta `ui_qa6`, con 49.696 especímenes; `hubdigital` continúa siendo la base del paquete. La migración de la copia es preparación del entorno, no aprobación de pruebas.
+
+Los resultados ejecutados, capturas y bitácoras se guardan fuera del repositorio en `C:\HT\LABINVEPN\qa6-work`, de forma que registrar evidencias después del paquete no modifique su commit ni sus manifiestos. El paquete deberá terminar correctamente antes de publicar y desplegar; OCI deberá aplicar migraciones antes de activar mediante los scripts versionados. Este documento describe los cambios y no declara por anticipado aprobadas esas etapas.
+
+La curación del lugar real de Ragua, la revisión física de identificaciones y los casos externos no verificables del informe no se convierten en aprobaciones técnicas. Los límites de concurrencia del origen y la tolerancia cartográfica subpíxel tampoco quedan acreditados por una sola navegación ni por el paquete.
+
+Antes del paquete se completó el recorrido complementario en Microsoft Edge 150.0.4078.83 sobre localhost: ruta exacta Camponotus/Ecuador/Orellana (64 registros), ficha/cierre por Escape/mapa, vistas de 333/400 píxeles, ayuda y foco, descarga XLSX, linaje Anastrepha y advertencia Naesiotus. El mapa global mostró 28.612 registros públicos después de la cuarentena. La ruta exacta registró 3,8 segundos en los agregados locales; no es una medida de concurrencia ni de OCI. Un 503 simulado exclusivamente dentro del navegador confirmó mensaje recuperable y reintento que conserva especie, país y provincia. Las capturas y el historial de correcciones iniciales se conservan en la carpeta de evidencia; sólo los recorridos finales corregidos acreditan ese estado.

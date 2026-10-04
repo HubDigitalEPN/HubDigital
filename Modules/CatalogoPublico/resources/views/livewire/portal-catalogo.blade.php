@@ -1,8 +1,15 @@
 <div x-data="portalCatalogo" data-catalogo-seleccion="{{ json_encode($this->seleccionPublicaChat) }}" data-catalogo-historial="{{ json_encode($this->historialCatalogo) }}" x-on:catalogo-estado-url.window="actualizarHistorial($event.detail)">
+    @php
+        $etiquetaConteo = static fn (string $nivel, int $cantidad, string $plural): string => $cantidad === 1 ? (['kingdom' => 'reino', 'phylum' => 'filo', 'class' => 'clase', 'order' => 'orden', 'family' => 'familia', 'genus' => 'género', 'species' => 'especie'][$nivel] ?? $plural) : $plural;
+    @endphp
     @if($avisoSeleccionUrl !== '')<p role="status" class="mx-auto max-w-7xl px-4 py-3 text-sm text-text-secondary">{{ $avisoSeleccionUrl }}</p>@endif
     <div x-cloak x-show="errorHistorial" class="mx-auto max-w-7xl px-4 py-3 text-sm text-text-secondary">
         <p x-text="errorHistorial" role="alert"></p>
         <button type="button" class="mt-2 underline text-science-blue" x-on:click="window.location.reload()">Recargar la selección del enlace actual</button>
+    </div>
+    <div x-cloak x-show="errorConsulta" class="mx-auto max-w-7xl px-4 py-3 text-sm text-text-secondary">
+        <p x-text="errorConsulta" role="alert"></p>
+        <a :href="enlaceReintento" class="mt-2 inline-block underline text-science-blue">Reintentar la selección</a>
     </div>
     @if($vista === 'tarjetas')
     {{-- =====================================================================
@@ -75,11 +82,11 @@
 
                     @if($nivelActual === 'species' && $taxonActual !== '')
                         <span class="ml-auto text-xs text-text-secondary tabular-nums hidden sm:block">
-                            {{ $conteos['species:'.$taxonActual] ?? 0 }} registros
+                            {{ number_format($conteos['species:'.$taxonActual] ?? 0, 0, ',', '.') }} {{ (int) ($conteos['species:'.$taxonActual] ?? 0) === 1 ? 'registro' : 'registros' }}
                         </span>
                     @elseif($nivelActual !== '' && $taxonActual !== '')
                         <span class="ml-auto text-xs text-text-secondary tabular-nums hidden sm:block">
-                            {{ number_format($conteos[$nivelActual.':'.$taxonActual] ?? 0) }} registros
+                            {{ number_format($conteos[$nivelActual.':'.$taxonActual] ?? 0, 0, ',', '.') }} {{ (int) ($conteos[$nivelActual.':'.$taxonActual] ?? 0) === 1 ? 'registro' : 'registros' }}
                         </span>
                     @endif
                 </nav>
@@ -109,14 +116,23 @@
             <button type="button" wire:loading.attr="disabled" wire:click="cambiarVista('mapa')" aria-label="Vista de mapa y análisis" title="Mapa y análisis" aria-pressed="{{ $vista === 'mapa' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2zM9 3v16m6-14v16"/></svg><span class="sr-only">Mapa y análisis</span></button>
         </div>
     </nav>
-            <div class="collection-loading" wire:loading.delay wire:target="cambiarVista,aplicarBorrador,limpiarFiltros,seleccionarFilo,quitarFiltroFilo,seleccionarProvincia,seleccionarDecada,seleccionarMes,seleccionarElevacion,seleccionarMetodo,seleccionarArea,explorarNivel,navegar,cambiarPagina,cambiarPaginaHermanos,abrirFichaRegistro">
+            <div class="collection-loading" wire:loading.delay wire:target="cambiarVista,aplicarBorrador,limpiarFiltros,seleccionarFilo,quitarFiltroFilo,seleccionarProvincia,seleccionarDecada,seleccionarMes,seleccionarAltitud,seleccionarMetodo,seleccionarArea,explorarNivel,navegar,cambiarPagina,cambiarPaginaHermanos,abrirFichaRegistro">
                 <span class="collection-loading-indicator" role="status"><span class="atlas-spinner" aria-hidden="true"></span><span class="sr-only">Actualizando selección</span></span>
             </div>
 
     @include('catalogopublico::components.ficha-registro-publico')
     @if($vista === 'mapa')
+        @if($errorMapa ?? false)
+            <section class="mx-auto max-w-7xl px-4 py-8" aria-labelledby="mapa-error-titulo">
+                <h1 id="mapa-error-titulo" class="font-display text-2xl font-bold text-blue-navy">No se pudo cargar el mapa</h1>
+                <p class="mt-3" role="alert">La consulta no pudo completarse en el tiempo disponible. Tus filtros se conservan; puedes reintentar o consultar los registros.</p>
+                <button type="button" wire:click="$refresh" class="mt-4 underline text-science-blue">Reintentar mapa</button>
+                <button type="button" wire:click="cambiarVista('registros')" class="mt-4 ml-4 underline text-science-blue">Ver registros de la selección</button>
+            </section>
+        @else
         @include('catalogopublico::dashboard-coleccion')
         @include('catalogopublico::components.detalle-celda-mapa')
+        @endif
     @elseif($vista === 'registros')
         <div class="mx-auto max-w-7xl px-4 pb-10 pt-4 sm:px-6 lg:px-8">
             <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
@@ -124,12 +140,13 @@
                     <h1 class="font-display text-2xl font-bold text-blue-navy">
                         {{ $taxonActual !== '' ? 'Registros de '.$taxonActual : 'Registros del catálogo' }}
                     </h1>
-                    <p class="mt-1 text-sm text-text-secondary">{{ number_format($totalRegistrosVista) }} registros · página {{ $paginaActual }} de {{ $ultimaPagina }}</p>
+                    <p class="mt-1 text-sm text-text-secondary">{{ number_format($totalRegistrosVista, 0, ',', '.') }} {{ $totalRegistrosVista === 1 ? 'registro' : 'registros' }} · página {{ $paginaActual }} de {{ $ultimaPagina }}</p>
                 </div>
                 @if($totalRegistrosVista > 0)
                     <button type="button" wire:click="descargarResultados" wire:loading.attr="disabled" wire:target="descargarResultados" class="rounded-md border border-science-blue px-4 py-2 text-sm font-semibold text-science-blue hover:bg-sky-50 disabled:opacity-50">Descargar resultados CSV</button>
                 @endif
             </div>
+            @if($totalRegistrosVista > 0)<p class="mb-4 text-xs text-text-secondary">El CSV incluye toda la selección, también otras páginas. Conserva códigos, identificación, localidad, coordenadas, condición de tipo y disposición. Las fotografías y los campos adicionales se consultan en la ficha; el formato XLSX de especie conserva más campos públicos y las referencias geográficas. Perfil de intercambio: <code>{{ \Modules\CatalogoPublico\Domain\ValueObjects\PerfilExportacionPublica::IDENTIFICADOR }}</code>.</p>@endif
             @if($totalRegistrosVista === 0)
                 <p class="rounded-lg border border-border bg-surface p-8 text-center text-text-secondary">No hay registros públicos para esta selección.</p>
             @else
@@ -194,14 +211,14 @@
                                     @foreach($etiquetasDescendientes as $nivelStat => $etiquetaStat)
                                         @if(isset($stats[$nivelStat]) && $stats[$nivelStat] > 0)
                                             <span>
-                                                <strong class="text-text-primary tabular-nums">{{ number_format($stats[$nivelStat]) }}</strong>
-                                                {{ $etiquetaStat }}
+                                                <strong class="text-text-primary tabular-nums">{{ number_format($stats[$nivelStat], 0, ',', '.') }}</strong>
+                                                {{ $etiquetaConteo($nivelStat, (int) $stats[$nivelStat], $etiquetaStat) }}
                                             </span>
                                         @endif
                                     @endforeach
                                     @if($numEspecimenes > 0)
                                         <span class="text-bio-green font-medium">
-                                            <strong class="tabular-nums">{{ number_format($numEspecimenes) }}</strong>
+                                            <strong class="tabular-nums">{{ number_format($numEspecimenes, 0, ',', '.') }}</strong>
                                             {{ $numEspecimenes === 1 ? 'registro' : 'registros' }}
                                         </span>
                                     @endif
@@ -236,7 +253,7 @@
                                     >
                                         <span class="font-serif italic truncate">{{ $hermano['taxon'] }}</span>
                                         <span class="tabular-nums text-xs shrink-0">
-                                            {{ number_format((int) ($hermano['total'] ?? 0)) }}
+                                            {{ number_format((int) ($hermano['total'] ?? 0), 0, ',', '.') }}
                                         </span>
                                     </button>
                                 @endforeach
@@ -256,11 +273,11 @@
                         ], $especiesActuales));
                     @endphp
                     <div class="mb-4 flex items-center justify-between">
-                        <h2 class="font-display text-xl font-semibold text-blue-navy font-serif italic">
+                        <h1 class="font-display text-xl font-semibold text-blue-navy font-serif italic">
                             {{ $taxonActual }}
-                        </h2>
+                        </h1>
                         <span class="text-xs text-text-secondary">
-                            {{ number_format($totalTarjetas) }} {{ $totalTarjetas === 1 ? 'taxón' : 'taxones' }}
+                            {{ number_format($totalTarjetas, 0, ',', '.') }} {{ $totalTarjetas === 1 ? 'taxón' : 'taxones' }}
                         </span>
                     </div>
 
@@ -310,14 +327,14 @@
                                                 @foreach($etiquetasDescendientes as $nivelStat => $etiquetaStat)
                                                     @if(isset($stats[$nivelStat]) && $stats[$nivelStat] > 0)
                                                         <span>
-                                                            <strong class="text-text-primary tabular-nums">{{ number_format($stats[$nivelStat]) }}</strong>
-                                                            {{ $etiquetaStat }}
+                                                            <strong class="text-text-primary tabular-nums">{{ number_format($stats[$nivelStat], 0, ',', '.') }}</strong>
+                                                            {{ $etiquetaConteo($nivelStat, (int) $stats[$nivelStat], $etiquetaStat) }}
                                                         </span>
                                                     @endif
                                                 @endforeach
                                                 @if($numEspecimenes > 0)
                                                     <span class="text-bio-green font-medium">
-                                                        <strong class="tabular-nums">{{ number_format($numEspecimenes) }}</strong>
+                                                        <strong class="tabular-nums">{{ number_format($numEspecimenes, 0, ',', '.') }}</strong>
                                                         {{ $numEspecimenes === 1 ? 'registro' : 'registros' }}
                                                     </span>
                                                 @endif
@@ -354,7 +371,7 @@
                                     >
                                         <span class="font-serif italic truncate">{{ $hermano['taxon'] }}</span>
                                         <span class="tabular-nums text-xs shrink-0">
-                                            {{ number_format((int) ($hermano['total'] ?? 0)) }}
+                                            {{ number_format((int) ($hermano['total'] ?? 0), 0, ',', '.') }}
                                         </span>
                                     </button>
                                 @endforeach
@@ -367,12 +384,12 @@
                 {{-- Lista de especies --}}
                 <div class="flex-1 min-w-0">
                     <div class="mb-4 flex items-center justify-between">
-                        <h2 class="font-display text-xl font-semibold text-blue-navy">
+                        <h1 class="font-display text-xl font-semibold text-blue-navy">
                             <span class="font-serif italic">{{ $taxonActual }}</span>
                             <span class="text-base font-normal text-text-secondary">· Género</span>
-                        </h2>
+                        </h1>
                         <span class="text-xs text-text-secondary">
-                            {{ number_format($totalTarjetas) }} {{ $totalTarjetas === 1 ? 'especie' : 'especies' }}
+                            {{ number_format($totalTarjetas, 0, ',', '.') }} {{ $totalTarjetas === 1 ? 'especie' : 'especies' }}
                         </span>
                     </div>
 
@@ -413,7 +430,7 @@
                                     <div class="flex items-center gap-3 shrink-0">
                                         @if($numEspecimenes > 0)
                                             <span class="text-xs text-bio-green font-medium tabular-nums">
-                                                {{ $numEspecimenes }} {{ $numEspecimenes === 1 ? 'registro' : 'registros' }}
+                                                {{ number_format($numEspecimenes, 0, ',', '.') }} {{ $numEspecimenes === 1 ? 'registro' : 'registros' }}
                                             </span>
                                         @endif
                                         <x-catalogopublico::ayuda-taxon :nombre="$especie['especie']" nivel="species" :registros="$numEspecimenes" :jerarquia="array_column($ruta, 'taxon', 'nivel')" :foto-publica="$portadaEspecie" />
@@ -450,7 +467,7 @@
                                     >
                                         <span class="font-serif italic truncate">{{ $hermano['taxon'] }}</span>
                                         <span class="tabular-nums shrink-0">
-                                            {{ number_format((int) ($hermano['total'] ?? 0)) }}
+                                            {{ number_format((int) ($hermano['total'] ?? 0), 0, ',', '.') }}
                                         </span>
                                     </button>
                                 @endforeach
@@ -463,13 +480,13 @@
                 {{-- Registros de registros --}}
                 <div class="collection-species-content">
                     <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <h2 class="font-display text-xl font-semibold text-blue-navy">
+                        <h1 class="font-display text-xl font-semibold text-blue-navy">
                             <span class="font-serif italic">{{ $taxonActual }}</span>
                             <span class="text-base font-normal text-text-secondary">· Especie</span>
-                        </h2>
+                        </h1>
                         <div class="flex items-center gap-3">
                             <span class="text-xs text-text-secondary tabular-nums">
-                                {{ number_format($totalEspecimenes) }} {{ $totalEspecimenes === 1 ? 'registro' : 'registros' }}
+                                {{ number_format($totalEspecimenes, 0, ',', '.') }} {{ $totalEspecimenes === 1 ? 'registro' : 'registros' }}
                             </span>
                             @if(count($especimenes) > 0)
                                 <button
@@ -482,7 +499,7 @@
                                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-3.5">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
                                         </svg>
-                                        Descargar datos
+                                        Descargar datos XLSX
                                     </span>
                                     <span wire:loading wire:target="descargarDatos" class="flex items-center gap-1.5">
                                         <span class="inline-block size-3 rounded-full border-2 border-current border-t-transparent animate-spin"></span>
@@ -492,6 +509,7 @@
                             @endif
                         </div>
                     </div>
+                    @if(count($especimenes) > 0)<p class="mb-4 text-xs text-text-secondary">El XLSX incluye todos los registros filtrados de esta especie, también otras páginas, con números, fechas y campos públicos de referencia geográfica. Conserva por separado condición de tipo, disposición y advertencias de coordenadas; no incluye fotografías. Perfil de intercambio: <code>{{ \Modules\CatalogoPublico\Domain\ValueObjects\PerfilExportacionPublica::IDENTIFICADOR }}</code>.</p>@endif
 
                     {{-- ══════════════════════════════════
                          IMAGEN DESTACADA DE LA ESPECIE (portada por defecto)
@@ -587,16 +605,16 @@
                                     $lat = $especimen->decimal_latitude;
                                     $lon = $especimen->decimal_longitude;
                                     $coordStr = ($lat !== null && $lon !== null)
-                                        ? number_format(abs((float) $lat), 5).'°'.($lat >= 0 ? 'N' : 'S')
-                                          .' · '.number_format(abs((float) $lon), 5).'°'.($lon >= 0 ? 'E' : 'O')
+                                        ? number_format(abs((float) $lat), 5, ',', '.').'°'.($lat >= 0 ? 'N' : 'S')
+                                          .' · '.number_format(abs((float) $lon), 5, ',', '.').'°'.($lon >= 0 ? 'E' : 'O')
                                         : null;
                                     $elevMin = $especimen->elevation_min_m ?? null;
                                     $elevMax = $especimen->elevation_max_m ?? null;
                                     $elevStr = match (true) {
                                         $elevMin !== null && $elevMax !== null && (float) $elevMin !== (float) $elevMax
-                                            => number_format((float) $elevMin).'–'.number_format((float) $elevMax).' m',
-                                        $elevMin !== null => number_format((float) $elevMin).' m',
-                                        $elevMax !== null => number_format((float) $elevMax).' m',
+                                            => number_format((float) $elevMin, 0, ',', '.').'–'.number_format((float) $elevMax, 0, ',', '.').' m',
+                                        $elevMin !== null => number_format((float) $elevMin, 0, ',', '.').' m',
+                                        $elevMax !== null => number_format((float) $elevMax, 0, ',', '.').' m',
                                         default           => null,
                                     };
                                     $imagenesEspecimen = $imagenesPorEspecimen[$especimen->occurrence_id] ?? [];
@@ -644,9 +662,14 @@
                                                     {{ $especimen->occurrence_id }}
                                                 </code>
                                                 @if($especimen->type_status)
-                                                    <flux:badge color="{{ $typeBadgeColor }}" size="sm">
+                                                    <flux:badge color="{{ $typeBadgeColor }}" size="sm" title="Condición de tipo">
                                                         {{ \Modules\CatalogoPublico\Infrastructure\EtiquetaDatoPublico::tipo($especimen->type_status) }}
                                                     </flux:badge>
+                                                @elseif($especimen->type_status_visible ?? false)
+                                                    <span class="text-xs text-text-secondary">Condición de tipo: No informado</span>
+                                                @endif
+                                                @if(($especimen->disposition ?? '') !== '')
+                                                    <span class="text-xs text-text-secondary">Disposición: {{ \Modules\CatalogoPublico\Infrastructure\EtiquetaDatoPublico::disposicion($especimen->disposition) }}</span>
                                                 @endif
                                                 @if($especimen->occurrence_status)
                                                     <x-catalogopublico::occurrence-status-badge
@@ -824,15 +847,15 @@
         {{-- Encabezado --}}
         <div class="mb-6 flex items-center justify-between gap-4">
             <div>
-                <h2 class="font-display text-xl font-semibold text-blue-navy capitalize">
+                <h1 class="font-display text-xl font-semibold text-blue-navy capitalize">
                     {{ ucfirst($nivelesPluralNavegacion[$nivelExplorar] ?? 'taxones') }} {{ in_array($nivelExplorar, ['class', 'family', 'species'], true) ? 'divulgadas' : 'divulgados' }}
-                </h2>
+                </h1>
                 <p class="mt-0.5 text-sm text-text-secondary">
                     @if(count($taxonesExplorados) === 0)
                         Ningún taxón divulgado en este nivel.
                     @else
-                        <strong class="text-text-primary tabular-nums">{{ number_format($totalTarjetas) }}</strong>
-                        {{ $nivelesPluralNavegacion[$nivelExplorar] ?? $nivelExplorar }} en la colección
+                        <strong class="text-text-primary tabular-nums">{{ number_format($totalTarjetas, 0, ',', '.') }}</strong>
+                        {{ $etiquetaConteo($nivelExplorar, (int) $totalTarjetas, $nivelesPluralNavegacion[$nivelExplorar] ?? $nivelExplorar) }} en la colección
                     @endif
                 </p>
             </div>
@@ -894,14 +917,14 @@
                                     @foreach($etiquetasDescendientes as $nivelStat => $etiquetaStat)
                                         @if(isset($stats[$nivelStat]) && $stats[$nivelStat] > 0)
                                             <span>
-                                                <strong class="text-text-primary tabular-nums">{{ number_format($stats[$nivelStat]) }}</strong>
-                                                {{ $etiquetaStat }}
+                                                <strong class="text-text-primary tabular-nums">{{ number_format($stats[$nivelStat], 0, ',', '.') }}</strong>
+                                                {{ $etiquetaConteo($nivelStat, (int) $stats[$nivelStat], $etiquetaStat) }}
                                             </span>
                                         @endif
                                     @endforeach
                                     @if($numEspecimenes > 0)
                                         <span class="text-bio-green font-medium">
-                                            <strong class="tabular-nums">{{ number_format($numEspecimenes) }}</strong>
+                                            <strong class="tabular-nums">{{ number_format($numEspecimenes, 0, ',', '.') }}</strong>
                                             {{ $numEspecimenes === 1 ? 'registro' : 'registros' }}
                                         </span>
                                     @endif
@@ -919,7 +942,7 @@
     @if($totalPaginado > 6)
         <nav class="collection-card-pagination" aria-label="Páginas de tarjetas">
             <button type="button" wire:click="cambiarPagina({{ $paginaActual - 1 }})" wire:loading.attr="disabled" @disabled($paginaActual <= 1)>Anterior</button>
-            <span>Página {{ $paginaActual }} de {{ $ultimaPagina }} · 6 por página · {{ number_format($totalPaginado) }} en total</span>
+            <span>Página {{ $paginaActual }} de {{ $ultimaPagina }} · 6 por página · {{ number_format($totalPaginado, 0, ',', '.') }} en total</span>
             <button type="button" wire:click="cambiarPagina({{ $paginaActual + 1 }})" wire:loading.attr="disabled" @disabled($paginaActual >= $ultimaPagina)>Siguiente</button>
         </nav>
     @endif
@@ -944,9 +967,9 @@
                 <header><h2 id="titulo-ayuda-taxon">¿Qué es <em x-text="taxonAyuda.nombre"></em>?</h2><button type="button" autofocus x-on:click="cerrarTaxon()" aria-label="Cerrar explicación">×</button></header>
                 <div class="collection-taxon-help-photograph" x-html="taxonAyuda.fotografia"></div>
                 <p x-show="descripciones[taxonAyuda.nombre]" x-text="descripciones[taxonAyuda.nombre]"></p>
-                <p><strong x-text="taxonAyuda.registros.toLocaleString('es-EC')"></strong> registros públicos de este taxón en la selección actual.</p>
+                <p><strong x-text="taxonAyuda.registros.toLocaleString('es-EC')"></strong> <span x-text="Number(taxonAyuda.registros) === 1 ? 'registro público' : 'registros públicos'"></span> de este taxón en la selección actual.</p>
                 <ul class="collection-taxon-descendants" x-show="Object.keys(taxonAyuda.stats).length > 0">
-                    <template x-for="([nivel, cantidad]) in Object.entries(taxonAyuda.stats)" :key="nivel"><li><strong x-text="Number(cantidad).toLocaleString('es-EC')"></strong> <span x-text="etiquetasStats[nivel] || nivel"></span></li></template>
+                    <template x-for="([nivel, cantidad]) in Object.entries(taxonAyuda.stats)" :key="nivel"><li><strong x-text="Number(cantidad).toLocaleString('es-EC')"></strong> <span x-text="Number(cantidad) === 1 ? ({kingdom: 'reino', phylum: 'filo', class: 'clase', order: 'orden', family: 'familia', genus: 'género', species: 'especie'}[nivel] || nivel) : (etiquetasStats[nivel] || nivel)"></span></li></template>
                 </ul>
             </div>
         </template>

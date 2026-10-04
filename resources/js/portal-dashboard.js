@@ -3,6 +3,7 @@ import {crearGeojsonMapa, prepararPuntosMapa, crearAgrupadorMapa, etiquetaAgrupa
 import {colorFilo, composicionFilos, fondoFilos} from './portal-map-model';
 import {nombreDescargaImagen} from './portal-image-model';
 import {crearHistorialCatalogo} from './portal-history-model';
+import {enlaceRecuperacionCatalogo, vigilarPeticionCatalogo} from './portal-request-model';
 
 // El mapa del panel y los mapas de especie usan la misma copia local de Leaflet.
 window.L = L;
@@ -49,11 +50,20 @@ const registrarDashboard = () => {
     window.Alpine.data('portalCatalogo', () => {
         let historial = null;
         let alVolver = null;
+        let soltarInterceptor = null;
         return {
         errorHistorial: '',
+        errorConsulta: '',
+        enlaceReintento: '',
         init() {
             const raizCatalogo = this.$el;
             const configuracion = JSON.parse(raizCatalogo.dataset.catalogoHistorial);
+            soltarInterceptor = this.$wire.$interceptRequest(interceptor => {
+                const actual = JSON.parse(raizCatalogo.dataset.catalogoHistorial);
+                this.enlaceReintento = enlaceRecuperacionCatalogo(window.location.href, actual, interceptor.request);
+                this.errorConsulta = '';
+                vigilarPeticionCatalogo(interceptor, mensaje => { this.errorConsulta = mensaje; });
+            });
             historial = crearHistorialCatalogo({
                 history: window.history, location: window.location, ...configuracion,
                 restaurar: (estado, secuencia) => this.$wire.restaurarSeleccionUrl(estado, secuencia),
@@ -71,6 +81,7 @@ const registrarDashboard = () => {
         actualizarHistorial(evento) { historial?.recibir(evento.estado, evento.restauracion, evento.version); },
         destroy() {
             historial?.destroy();
+            soltarInterceptor?.();
             window.removeEventListener('popstate', alVolver);
         },
         taxonAyuda: null,
@@ -202,13 +213,13 @@ const registrarDashboard = () => {
                         nombre.textContent = nombreTaxon;
                         nombre.style.fontWeight = '600';
                         const cantidadPublica = L.DomUtil.create('p', '', popup);
-                        cantidadPublica.textContent = `${cantidad.toLocaleString('es-EC')} registros con coordenadas públicas ${lat}, ${lon}`;
+                        cantidadPublica.textContent = `${cantidad.toLocaleString('es-EC')} ${cantidad === 1 ? 'registro' : 'registros'} con coordenadas públicas ${lat}, ${lon}`;
                         marcador.bindPopup(popup);
                         const elemento = marcador.getElement();
                         if (elemento) {
                             elemento.setAttribute('tabindex', '0');
                             elemento.setAttribute('role', 'button');
-                            elemento.setAttribute('aria-label', `Consultar ${cantidad.toLocaleString('es-EC')} registros de ${nombreTaxon} en ${lat}, ${lon}`);
+                            elemento.setAttribute('aria-label', `Consultar ${cantidad.toLocaleString('es-EC')} ${cantidad === 1 ? 'registro' : 'registros'} de ${nombreTaxon} en ${lat}, ${lon}`);
                             elemento.addEventListener('keydown', evento => {
                                 if (evento.key === 'Enter' || evento.key === ' ') { evento.preventDefault(); marcador.openPopup(); }
                             });
@@ -367,7 +378,7 @@ const registrarDashboard = () => {
                 const elemento = marcador.getElement();
                 const abrir = () => this.abrirUbicacion(lat, lon, cantidad, elemento);
                 const composicion = partes.map(({filo, cantidad}) => `${filo}: ${cantidad.toLocaleString('es-EC')}`).join(', ');
-                const descripcion = `Ubicación original: ${cantidad.toLocaleString('es-EC')} registros con coordenadas ${lat}, ${lon}.${composicion ? ' ' + composicion + '.' : ''} Abrir detalle.`;
+                const descripcion = `Ubicación original: ${cantidad.toLocaleString('es-EC')} ${cantidad === 1 ? 'registro' : 'registros'} con coordenadas ${lat}, ${lon}.${composicion ? ' ' + composicion + '.' : ''} Abrir detalle.`;
                 const tooltip = L.DomUtil.create('span');
                 tooltip.textContent = descripcion;
                 marcador.bindTooltip(tooltip);

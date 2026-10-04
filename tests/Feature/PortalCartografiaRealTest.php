@@ -217,7 +217,7 @@ test('el icono registros del modal muestra toda la ubicación en páginas de sei
         'fila_origen_excel' => 2, 'country' => 'Ecuador', 'locality_name' => 'Localidad registrada Ñambí',
         'localidad_verbatim' => 'Localidad original Ñambí', 'lat_lon_max_error' => 'Referencia GPS original',
         'elevation_min_m' => 0, 'elevation_max_m' => 120, 'individual_count' => 0,
-        'disposition' => 'paratype', 'specimen_notes' => $notaPublica, 'occurrence_status' => 'present',
+        'type_status' => 'paratype', 'disposition' => 'in_collection', 'specimen_notes' => $notaPublica, 'occurrence_status' => 'present',
         'caste' => 'obrera', 'life_stage' => 'adult',
     ]);
     foreach ([0, 1] as $i) DB::table('divulgacion.imagenes_taxonomicas')->insert([
@@ -267,7 +267,7 @@ test('el icono registros del modal muestra toda la ubicación en páginas de sei
         'Localidad registrada' => 'Localidad registrada Ñambí', 'Localidad original' => 'Localidad original Ñambí',
         'Latitud' => (string) $latitud, 'Longitud' => (string) $longitud,
         'Referencia de coordenadas' => 'Referencia GPS original', 'Elevación mín. (m)' => '0', 'Elevación máx. (m)' => '120',
-        'Método de colecta' => 'Red '.$f['prefijo'], 'Individuos' => '0', 'Condición de tipo' => 'Paratipo',
+        'Método de colecta' => 'Red '.$f['prefijo'], 'Individuos' => '0', 'Condición de tipo' => 'Paratipo', 'Disposición' => 'En la colección',
         'Notas del espécimen' => $notaPublica, 'Estado' => 'Presente', 'Casta' => 'obrera', 'Estadio' => 'Adulto',
     ])->toHaveKeys(['Localidad INEC', 'Referencia INEC', 'Notas de tipo', 'Fotografías publicadas']);
     $privados = $celdasFila($dom, $f['ids'][0]);
@@ -768,7 +768,7 @@ test('el panel usa el protocolo original sin muestra y respeta su marca de visib
     DB::table('taxonomia.especimenes')->where('id', $f['ids'][2])->update(['sampling_protocol' => 'METODO-RESERVADO-QA']);
     DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $f['ids'][2])->update(['sampling_protocol_visible' => false]);
     $datos = app(PortalEstadisticas::class)->datosParaVista(['filo' => $f['filo']]);
-    expect(array_column($datos['metodos'], 'metodo'))->toEqualCanonicalizing(['Winkler QA', 'pitfall QA'])
+    expect(array_column($datos['metodos'], 'metodo'))->toEqualCanonicalizing(['winkler qa', 'pitfall qa'])
         ->and(array_sum(array_column($datos['metodos'], 'registros')))->toBe(2);
     $ids = app(EloquentProveedorEspecimenesParaArbol::class)->paginaPublica(FiltrosBusqueda::desde(['filtroFiloId' => $f['filo'], 'filtroMetodos' => ['Winkler QA']]), 1)['ids'];
     expect($ids)->toBe([$f['ids'][0]]);

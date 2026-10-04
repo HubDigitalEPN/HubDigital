@@ -178,7 +178,7 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
         return $query->select([
             'te.occurrence_id', 'te.codigo_catalogo', 'te.fecha_colecta',
             'te.localidad_verbatim', 'te.state_province', 'te.decimal_latitude',
-            'te.decimal_longitude', 'te.lat_lon_max_error', 'te.type_status',
+            'te.decimal_longitude', 'te.lat_lon_max_error', 'te.type_status', 'te.disposition',
             'tx.nombre_cientifico', 'tx.rango', 'inec.nombre as localidad_inec',
             'inec.codigo as codigo_inec', 'loc.referencia_inec', 'ed.occurrence_id_visible', 'ed.scientific_name_visible',
             'ed.event_date_visible', 'ed.locality_name_visible', 'ed.state_province_visible',
@@ -416,9 +416,9 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
             $query->leftJoin('taxonomia.muestras_colecta as mc', 'mc.id', '=', 'te.muestra_id');
             $query->where('ed.sampling_protocol_visible', true);
             $placeholders = implode(',', array_fill(0, count($filtros->metodosRecoleccion), '?'));
-            $valores = array_map('strtolower', $filtros->metodosRecoleccion);
-            $protocolo = ProtocoloColectaPublico::sql();
-            $query->whereRaw("LOWER({$protocolo}) = ANY(ARRAY[{$placeholders}])", $valores);
+            $valores = array_map(ProtocoloColectaPublico::clave(...), $filtros->metodosRecoleccion);
+            $protocolo = ProtocoloColectaPublico::claveSql();
+            $query->whereRaw("{$protocolo} = ANY(ARRAY[{$placeholders}])", $valores);
         }
 
         // Coordenadas — bounding box
@@ -457,6 +457,12 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
         if ($filtros->tipo !== null) {
             $query->where('ed.type_status_visible', true)
                 ->where('te.type_status', 'ILIKE', '%'.$filtros->tipo.'%');
+        }
+        if ($filtros->disposicion !== null) {
+            $query->where('ed.type_status_visible', true)
+                ->whereRaw("LOWER(REPLACE(btrim(te.disposition), '_', ' ')) ILIKE ?", [
+                    '%'.mb_strtolower(str_replace('_', ' ', $filtros->disposicion)).'%',
+                ]);
         }
         if ($filtros->casta !== null) {
             $query->where('ed.caste_visible', true)

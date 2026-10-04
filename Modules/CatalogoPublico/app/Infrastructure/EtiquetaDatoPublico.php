@@ -15,7 +15,22 @@ final class EtiquetaDatoPublico
             'lectotype' => 'Lectotipo',
             'paralectotype' => 'Paralectotipo',
             'neotype' => 'Neotipo',
-            default => self::estado($valor),
+            '' => 'No informado',
+            default => (string) $valor,
+        };
+    }
+
+    public static function disposicion(?string $valor): string
+    {
+        return match (strtolower(str_replace('_', ' ', trim($valor ?? '')))) {
+            'in collection' => 'En la colección',
+            'on loan' => 'En préstamo',
+            'missing' => 'Desaparecido',
+            'used up' => 'Consumido',
+            'destroyed' => 'Destruido',
+            'deaccessioned' => 'Dado de baja',
+            '' => 'No informado',
+            default => (string) $valor,
         };
     }
 

@@ -5,18 +5,20 @@
     $columnas = array_column($this->columnasPublicas, 'etiqueta', 'campo');
     $camposNumericos = ['decimal_latitude', 'decimal_longitude', 'elevation_min_m', 'elevation_max_m', 'individual_count'];
     $camposExtensos = ['locality_inec_reference', 'coordinate_reference', 'type_notes', 'specimen_notes'];
+    $camposPrincipales = ['occurrence_id', 'scientific_name', 'event_date', 'country', 'state_province', 'locality_name', 'decimal_latitude', 'decimal_longitude', 'coordinate_reference'];
     $etiquetaRegion = $contexto === 'catalogo' ? 'Registros de la colección con desplazamiento horizontal' : 'Tabla de registros de la ubicación con desplazamiento horizontal y vertical';
 @endphp
 
-<section class="atlas-record-table-section" aria-label="Registros públicos" x-data>
+<section class="atlas-record-table-section" aria-label="Registros públicos" x-data="{ todasLasColumnas: false }">
     @if($mostrarTitulo)<h3>Registros{{ $seleccion ? ' de '.$seleccion : ($contexto === 'mapa' ? ' de esta ubicación' : ' del catálogo') }}</h3>@endif
+    <p class="atlas-record-table-hint">@if(isset($columnas['occurrence_id']))El código permanece visible al desplazarte. @endif<button type="button" class="underline text-science-blue" x-on:click="todasLasColumnas = !todasLasColumnas" :aria-pressed="todasLasColumnas.toString()" x-text="todasLasColumnas ? 'Mostrar columnas principales' : 'Mostrar todos los campos'">Mostrar todos los campos</button></p>
     <div class="atlas-record-table-scroll" role="region" tabindex="0" aria-label="{{ $etiquetaRegion }}">
         <table class="atlas-record-table">
-            <caption class="sr-only">Información pública completa de los registros de esta ubicación y selección</caption>
+            <caption class="sr-only">Registros públicos de esta selección. El botón Mostrar todos los campos permite ampliar las columnas.</caption>
             <thead>
                 <tr>
-                    @foreach($columnas as $campo => $etiqueta)<th scope="col">{{ $etiqueta }}</th>@endforeach
-                    <th scope="col">Fotografías publicadas</th>
+                    @foreach($columnas as $campo => $etiqueta)<th scope="col" @if(!in_array($campo, $camposPrincipales, true)) x-show="todasLasColumnas" x-cloak @endif>{{ $etiqueta }}</th>@endforeach
+                    <th scope="col" x-show="todasLasColumnas" x-cloak>Fotografías publicadas</th>
                     <th scope="col">Ficha</th>
                 </tr>
             </thead>
@@ -32,6 +34,7 @@
                                 $valorOriginal = $registro->{$campo} ?? null;
                                 $valor = match ($campo) {
                                     'type_status' => \Modules\CatalogoPublico\Infrastructure\EtiquetaDatoPublico::tipo($valorOriginal),
+                                    'disposition' => \Modules\CatalogoPublico\Infrastructure\EtiquetaDatoPublico::disposicion($valorOriginal),
                                     'occurrence_status' => \Modules\CatalogoPublico\Infrastructure\EtiquetaDatoPublico::estado($valorOriginal),
                                     'life_stage' => \Modules\CatalogoPublico\Infrastructure\EtiquetaDatoPublico::etapa($valorOriginal),
                                     default => $valorOriginal,
@@ -41,9 +44,9 @@
                             @if($campo === 'occurrence_id')
                                 <th scope="row">{{ $valor ?: 'Código reservado' }}</th>
                             @else
-                                <td class="{{ $claseCelda }}">
+                                <td class="{{ $claseCelda }}" @if(!in_array($campo, $camposPrincipales, true)) x-show="todasLasColumnas" x-cloak @endif>
                                     @if($valorOriginal === null || $valorOriginal === '')
-                                        <span aria-label="Sin dato público disponible">—</span>
+                                        @if($campo === 'type_status' && ($registro->type_status_visible ?? false))<span>No informado</span>@else<span aria-label="Sin dato público disponible">—</span>@endif
                                     @elseif($campo === 'scientific_name')
                                         <em>{{ $valor }}</em>
                                     @else
@@ -54,8 +57,10 @@
                                 </td>
                             @endif
                         @endforeach
-                        <td>
-                            @php($fotos = $imagenes[$registro->occurrence_id ?? ''] ?? [])
+                        <td x-show="todasLasColumnas" x-cloak>
+                            @php
+                                $fotos = $imagenes[$registro->occurrence_id ?? ''] ?? [];
+                            @endphp
                             @if($fotos !== [])
                                 <div class="atlas-record-table-photos">
                                     @foreach($fotos as $foto)

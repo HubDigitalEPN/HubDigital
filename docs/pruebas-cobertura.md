@@ -1,5 +1,24 @@
 # Distribución de las pruebas
 
+## Remediación QA6 — 3 de octubre de 2026
+
+El usuario autorizó para esta tarea la secuencia Edge en localhost, `crear-paquete-oci` completo, despliegue de la misma identidad en OCI y Edge en `dev.labinvepn.org`, con corrección y reintento ante fallos. Esta autorización reemplaza la limitación de navegación pública de la tarea anterior. El arranque de PostgreSQL/Laravel/Vite y la migración local preparan el entorno visual; no sustituyen ni repiten suites, builds o comprobaciones aisladas del paquete.
+
+| Contrato | Cobertura y alcance |
+| --- | --- |
+| Linaje Anastrepha Diptera/Tephritidae auditable, mismo UUID en lectura y filtros; conflicto Ragua acotado por identidad compuesta, originales conservados y prevención de reimportación | `PortalQa6CienciaTest`, `ReconciliacionCientificaQa6Test`; no reidentifican físicamente material ni inventan coordenadas |
+| Disposición separada de condición nomenclatural; aliases, búsqueda y población entre pantalla, CSV y XLSX; notas de coordenadas, procedencia e incertidumbre desconocida vacía | `PortalContratosExportacionQa6Test`, `PortalContratoExportacionQa6Test`; perfil público 2.0 y permisos conservados |
+| Claves iguales en agregado, barra, checkbox y recarga, incluidos los tres pares de métodos con geografía previa | `PortalMetodosQa6Test`; métodos fuente individuales conservados y variantes públicas incluidas en agregado |
+| Consulta compuesta de cantidad y uso del mapa mantiene ambas respuestas y enlace de la selección | `PortalChatCompuestoQa6Test`; complementa los contratos anteriores de contexto |
+| Error de mapa distinto de cero registros, reintento explícito y regreso a registros con filtros; cancelación cliente tras treinta segundos sin reintento automático | `PortalMapaRecuperacionQa6Test`, `portal-request-model.test.mjs`; SQL PostgreSQL acotado y tiempos por etapa para diagnóstico real |
+| Rankings de especies y rareza derivados de los conteos públicos existentes, sumando UUID y permisos antes del umbral; riqueza/décadas sin cruce del catálogo taxonómico completo | `ResumenEspeciesPublicasQa6Test`, `ResumenDistribucionPublicaQa6Test` y `PortalDistribucionPublicaQa6Test`, junto a los contratos existentes; diagnóstico en `qa6-diagnostico-mapa.md`, sin atribuir un plan SQL histórico no observado |
+| Nariño/Chocó con una opción por clave de filtro y valores fuente conservados | `NormalizacionGeograficaQa6Test`; presentación, sin fusionar registros científicos |
+| Ayuda de clústeres/ubicaciones originales y seis registros; H1, singular/plural, columnas principales y todos los campos, imágenes responsivas y procedencia | Revisión estática y recorridos complementarios Edge de foco, tamaños, textos y navegación; evidencia de ejecución fuera del código fuente para conservar la identidad del paquete |
+
+No se agregan escenarios Gherkin que repitan entradas, flujo y resultado de Pest/Node. Se mantienen los contratos activos `@listo`, sus pasos y comprobaciones exclusivas; se corrige la descripción del campo nomenclatural en el escenario existente. La aceptación de las suites se reserva a la ejecución completa del paquete.
+
+El validador Windows admite la instancia PostgreSQL ya iniciada mediante `pg_ctl` y la conserva al terminar; las pruebas completas siguen usando la base local de pruebas. Edge usa una base distinta `ui_qa6`, restaurada del respaldo de OCI, para que las suites no alteren su colección. Los fallos SQL del almacén de caché dentro del presupuesto usan un savepoint y conservan la conexión del agregado; su caso se comprueba en `PortalMapaRecuperacionQa6Test` mediante el paquete.
+
 ## Usabilidad, coordenadas públicas y columnas — 3 de octubre de 2026
 
 Esta solicitud autoriza implementar, ejecutar y reintentar el paquete completo, publicar y activar en OCI. La revisión manual de interfaz se realiza en Edge sobre localhost con una copia aislada del respaldo; el agente no realiza pruebas manuales contra `dev.labinvepn.org`, antes ni después del despliegue. Las comprobaciones originales del script de activación, incluidas sus peticiones HTTP locales y públicas, se conservan y se ejecutan al activar. Las suites continúan centralizadas en `crear-paquete-oci` y se conservan los escenarios Behat activos sin duplicar contratos Pest/Node.
@@ -9,7 +28,7 @@ Esta solicitud autoriza implementar, ejecutar y reintentar el paquete completo, 
 | Una única población pública requiere publicación, par WGS84 completo, ambos permisos de coordenadas y exclusión de otras regiones; fichas, imágenes, filtros, conteos, chat y exportaciones coinciden | `PortalCatalogoSeleccionTest`, `PortalCartografiaRealTest`, `RutasObjetosR2Test` y fixtures de chat adaptados; los casos específicos de reservas e incompletitud verifican la exclusión y conservación de los datos originales |
 | Composición inicial sin resolver fotografías ni descripciones; selección y restablecimiento conservan otros filtros y señalan los aplicados | `PortalCatalogoSeleccionTest`, contratos de acciones en `tests/Frontend/portal-dashboard-actions.test.mjs` y recorrido complementario Edge local |
 | Colores estables de los filos, composición de ubicaciones mixtas y agrupaciones sin pérdida de minorías ni desplazamiento de coordenadas | `portal-map-model.test.mjs` y `portal-dashboard-actions.test.mjs`, incluido Enter sobre un marcador mixto y la transición a un único filo |
-| Todas las columnas públicas disponibles inicialmente; el curador administra su visibilidad global, con allowlist y permisos de publicación independientes | `PortalColumnasCuradorTest` y contratos de la ficha/configuración en las pruebas de selección; visitantes y actores externos no administran columnas |
+| Columnas principales inicialmente y botón para todos los campos; el curador administra su visibilidad global, con allowlist y permisos de publicación independientes | `PortalColumnasCuradorTest` y contratos de la ficha/configuración en las pruebas de selección; visitantes y actores externos no administran columnas |
 | Paginación de seis; rejilla del mapa incluye toda la ubicación después de seleccionar cualquier taxón; la ficha vuelve a verificar selección y permisos; filtros exactos por eje, cero, rollback y URL | `PortalRegistrosUsabilidadTest`, `PortalCartografiaRealTest`, `PortalCatalogoSeleccionTest` y fixtures QA4 que conservan sus UUID/aserciones distribuidos en varias páginas |
 | Dendrograma horizontal, terminales alineados a la derecha, conteos sólo en especies, foto única y especie del mapa sólo con imagen del espécimen publicada en R2 | `DendrogramaTaxonomicoTest` y `RepresentacionEspeciePublicaTest`; recorrido local para presentación, teclado, foco y altura de los diálogos |
 

@@ -427,11 +427,14 @@ test('las opciones de filtros excluyen vacíos Unicode conservando material, nom
             && array_values($opciones) === $opciones);
     foreach (['preparacionesDisponibles' => 'preparations', 'biomasDisponibles' => 'biome', 'metodosRecoleccionDisponibles' => 'sampling_protocol'] as $propiedad => $campo) {
         $opciones = $componente->instance()->{$propiedad};
-        expect($opciones)->toContain($reales[$campo])->not->toContain(...$vacios)->not->toContain($excluidas[$campo]);
+        $clave = $campo === 'sampling_protocol'
+            ? \Modules\CatalogoPublico\Infrastructure\ProtocoloColectaPublico::clave(...)
+            : static fn (string $valor): string => $valor;
+        expect($opciones)->toContain($clave($reales[$campo]))->not->toContain(...array_map($clave, $vacios))->not->toContain($clave($excluidas[$campo]));
         expect(array_values($opciones))->toBe($opciones);
     }
     expect($componente->instance()->biomasDisponibles)->toContain($biomaSinAcento)
-        ->and($componente->instance()->metodosRecoleccionDisponibles)->not->toContain($metodoOculto)
+        ->and($componente->instance()->metodosRecoleccionDisponibles)->not->toContain(\Modules\CatalogoPublico\Infrastructure\ProtocoloColectaPublico::clave($metodoOculto))
         ->and($componente->instance()->colectoresDisponibles)->toContain($colectorVisible)->not->toContain(...$vacios)->not->toContain($colectorOculto);
     $filos = $componente->instance()->filosDisponibles;
     expect(array_column($filos, 'id'))->toContain($filo)->not->toContain($filoInvisible)

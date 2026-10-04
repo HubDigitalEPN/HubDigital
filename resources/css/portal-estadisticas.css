@@ -323,7 +323,7 @@
 .atlas-index-content > p { margin:0 0 1rem; font-size:.95rem; line-height:1.7; }
 @media(max-width:480px) {
   .atlas-index-content { padding:1rem; }
-  .atlas-index-content figure { width:45%; margin-left:.8rem; }
+  .atlas-index-content figure { float:none; width:100%; margin:0 0 1rem; }
   .atlas-dashboard-header { clear:both; }
   .research-filter-actions { padding-right:4.5rem; }
 }
@@ -386,7 +386,7 @@
 .atlas-record-table-section { min-width:0; }
 .atlas-record-table-section h3 { margin:0 0 .4rem; font:700 1.1rem Georgia,serif; overflow-wrap:anywhere; }
 .atlas-record-table-summary, .atlas-record-table-hint { margin:0 0 .7rem; color:#506b80; font-size:.8rem; line-height:1.5; }
-.atlas-record-table-scroll { max-width:100%; max-height:58dvh; overflow:auto; border:1px solid #c5d5e0; border-radius:.4rem; overscroll-behavior:contain; }
+.atlas-record-table-scroll { position:relative; max-width:100%; max-height:58dvh; overflow:auto; border:1px solid #c5d5e0; border-radius:.4rem; overscroll-behavior:contain; }
 .atlas-record-table-scroll:focus-visible { outline:2px solid #17699b; outline-offset:2px; }
 .atlas-record-table { width:max-content; min-width:100%; border-collapse:separate; border-spacing:0; text-align:left; font-size:.8rem; line-height:1.5; }
 .atlas-record-table th, .atlas-record-table td { min-width:9rem; max-width:17rem; padding:.65rem .8rem; vertical-align:top; border-bottom:1px solid #dce5ec; border-right:1px solid #e4ebf0; overflow-wrap:anywhere; }

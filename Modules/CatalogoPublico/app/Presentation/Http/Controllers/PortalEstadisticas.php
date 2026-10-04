@@ -5,7 +5,11 @@ declare(strict_types=1);
 namespace Modules\CatalogoPublico\Presentation\Http\Controllers;
 
 use Modules\CatalogoPublico\Infrastructure\ElegibilidadGeograficaPortal;
+use Modules\CatalogoPublico\Infrastructure\PresupuestoConsultaPortal;
+use Modules\CatalogoPublico\Application\Services\ResumenEspeciesPublicas;
+use Modules\CatalogoPublico\Application\Services\ResumenDistribucionPublica;
 
+use Illuminate\Database\DeadlockException;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -23,6 +27,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class PortalEstadisticas
 {
+    private ?PresupuestoConsultaPortal $presupuesto = null;
+
     public function __invoke(Request $request): RedirectResponse
     {
         $filtros = $request->validate($this->reglasFiltros());
@@ -51,7 +57,21 @@ final class PortalEstadisticas
     /** Agregados de la misma selección que usan tarjetas y registros. */
     public function datosParaVista(array $filtros, bool $incluirContenidoTaxon = true): array
     {
-        return $this->cachear('portal:estadisticas:v16:'.(int) $incluirContenidoTaxon.':'.$this->revisionDatos().':'.sha1(json_encode($filtros)), fn () => $this->resumir($filtros, $incluirContenidoTaxon));
+        $firma = sha1(json_encode($filtros));
+        $this->presupuesto = new PresupuestoConsultaPortal($firma);
+        try {
+            return $this->presupuesto->ejecutar(fn (): array => $this->cachear(
+                'portal:estadisticas:v19:'.(int) $incluirContenidoTaxon.':'.$this->revisionDatos().':'.$firma,
+                fn (): array => $this->resumir($filtros, $incluirContenidoTaxon),
+            ));
+        } finally {
+            $this->presupuesto = null;
+        }
+    }
+
+    private function medir(string $etapa, callable $calcular): mixed
+    {
+        return $this->presupuesto !== null ? $this->presupuesto->etapa($etapa, $calcular) : $calcular();
     }
 
     /** Distribución completa sin hidratar tarjetas ni calcular los otros indicadores. */
@@ -112,10 +132,11 @@ final class PortalEstadisticas
 
     public function descargarListaConFiltros(array $filtros): StreamedResponse
     {
+        $idsValidos = CalidadDatoPublico::taxonesConLinajeValido(DB::table('taxonomia.taxones')->get(['id', 'padre_id', 'nombre_cientifico']));
         $consulta = $this->consulta($filtros)
             ->join('taxonomia.taxones as t', 't.id', '=', 'te.taxon_id')
             ->where('t.rango', 'especie')->whereRaw(CalidadDatoPublico::textoValido('t.nombre_cientifico'))->where('ed.scientific_name_visible', true)
-            ->whereIn('t.id', CalidadDatoPublico::taxonesConLinajeValido(DB::table('taxonomia.taxones')->get(['id', 'padre_id', 'nombre_cientifico'])))
+            ->whereRaw('t.id = ANY(?::uuid[])', ['{'.implode(',', $idsValidos).'}'])
             ->selectRaw('t.nombre_cientifico AS especie, COUNT(*) AS registros')
             ->groupBy('t.nombre_cientifico')->orderBy('t.nombre_cientifico');
 
@@ -137,7 +158,7 @@ final class PortalEstadisticas
     private function consulta(array $filtros): Builder
     {
         $datos = [];
-        foreach (['codigo' => 'filtroCatalogo', 'preparaciones' => 'filtroPreparaciones', 'taxon' => 'filtroTaxon', 'pais' => 'filtroPais', 'provincia' => 'filtroProvincia', 'geografias' => 'filtroGeografias', 'filo' => 'filtroFiloId', 'mes' => 'filtroMes', 'identificacion' => 'filtroIdentificacion', 'ubicacion' => 'filtroSoloUbicacion', 'colector' => 'filtroColector', 'metodos' => 'filtroMetodos', 'lat_min' => 'filtroLatMin', 'lat_max' => 'filtroLatMax', 'lon_min' => 'filtroLonMin', 'lon_max' => 'filtroLonMax', 'elev_desde' => 'filtroElevDesde', 'elev_hasta' => 'filtroElevHasta', 'biomas' => 'filtroBiomas', 'habitat' => 'filtroHabitat', 'tipo' => 'filtroTipo', 'casta' => 'filtroCasta', 'estadio' => 'filtroEstadio'] as $clave => $propiedad) {
+        foreach (['codigo' => 'filtroCatalogo', 'preparaciones' => 'filtroPreparaciones', 'taxon' => 'filtroTaxon', 'pais' => 'filtroPais', 'provincia' => 'filtroProvincia', 'geografias' => 'filtroGeografias', 'filo' => 'filtroFiloId', 'mes' => 'filtroMes', 'identificacion' => 'filtroIdentificacion', 'ubicacion' => 'filtroSoloUbicacion', 'colector' => 'filtroColector', 'metodos' => 'filtroMetodos', 'lat_min' => 'filtroLatMin', 'lat_max' => 'filtroLatMax', 'lon_min' => 'filtroLonMin', 'lon_max' => 'filtroLonMax', 'elev_desde' => 'filtroElevDesde', 'elev_hasta' => 'filtroElevHasta', 'biomas' => 'filtroBiomas', 'habitat' => 'filtroHabitat', 'tipo' => 'filtroTipo', 'disposicion' => 'filtroDisposicion', 'casta' => 'filtroCasta', 'estadio' => 'filtroEstadio'] as $clave => $propiedad) {
             if (isset($filtros[$clave])) $datos[$propiedad] = $filtros[$clave];
         }
         $datos['filtroFechaDesde'] = $filtros['desde_fecha'] ?? (isset($filtros['desde']) ? $filtros['desde'].'-01-01' : '');
@@ -182,9 +203,10 @@ final class PortalEstadisticas
             ->leftJoin('taxonomia.muestras_colecta as m', 'm.id', '=', 'e.muestra_id')
             ->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
             ->where('d.publicado', true)->whereRaw(ElegibilidadGeograficaPortal::sql('e', 'd'))->where('d.sampling_protocol_visible', true)
-            ->whereRaw('lower('.ProtocoloColectaPublico::sql('e', 'm').') = lower(?)', [$filtros['metodo']])->exists()) {
+            ->whereRaw(ProtocoloColectaPublico::claveSql('e', 'm').' = ?', [ProtocoloColectaPublico::clave($filtros['metodo'])])->exists()) {
             unset($filtros['metodo']);
         }
+        if (isset($filtros['metodo'])) $filtros['metodo'] = ProtocoloColectaPublico::clave($filtros['metodo']);
 
         return $filtros;
     }
@@ -200,17 +222,23 @@ final class PortalEstadisticas
     private function cachear(string $clave, callable $calcular): array
     {
         try {
-            $guardado = Cache::get($clave);
+            $guardado = $this->operacionCache(static fn () => Cache::get($clave));
             if (is_array($guardado)) {
                 return $guardado;
             }
+        } catch (DeadlockException $error) {
+            // Laravel puede invalidar el savepoint tras un conflicto de
+            // concurrencia: el presupuesto debe revertir la transacción exterior.
+            throw $error;
         } catch (\Throwable $error) {
             Log::warning('Caché de estadísticas no disponible', ['operacion' => 'leer', 'tipo' => $error::class]);
         }
 
         $resultado = $calcular();
         try {
-            Cache::put($clave, $resultado, 300);
+            $this->operacionCache(static fn () => Cache::put($clave, $resultado, 300));
+        } catch (DeadlockException $error) {
+            throw $error;
         } catch (\Throwable $error) {
             Log::warning('Caché de estadísticas no disponible', ['operacion' => 'guardar', 'tipo' => $error::class]);
         }
@@ -218,20 +246,28 @@ final class PortalEstadisticas
         return $resultado;
     }
 
+    /** Un fallo SQL de caché revierte su savepoint antes de continuar el agregado. */
+    private function operacionCache(callable $operacion): mixed
+    {
+        return DB::connection()->transactionLevel() > 0
+            ? DB::transaction(static fn () => $operacion())
+            : $operacion();
+    }
+
     private function resumir(array $filtros, bool $incluirContenidoTaxon): array
     {
         $base = $this->consulta($filtros);
-        $taxones = DB::table('taxonomia.taxones')->select('id', 'padre_id', 'rango', 'nombre_cientifico')->get()->keyBy('id');
+        $taxones = $this->medir('taxonomia', fn () => DB::table('taxonomia.taxones')->select('id', 'padre_id', 'rango', 'nombre_cientifico')->get()->keyBy('id'));
         $idsValidos = CalidadDatoPublico::taxonesConLinajeValido($taxones);
         $especieValida = CalidadDatoPublico::textoValido('t.nombre_cientifico').' AND t.id = ANY(?::uuid[])';
         $idsPg = '{'.implode(',', $idsValidos).'}';
         $fechaValida = CalidadDatoPublico::fechaValida('te.fecha_colecta');
-        $resumen = (array) (clone $base)->leftJoin('taxonomia.taxones as t', 't.id', '=', 'te.taxon_id')
+        $resumen = (array) $this->medir('resumen', fn () => (clone $base)->leftJoin('taxonomia.taxones as t', 't.id', '=', 'te.taxon_id')
             ->selectRaw("COUNT(*) AS registros, COUNT(*) FILTER (WHERE t.rango = 'especie' AND {$especieValida} AND ed.scientific_name_visible) AS identificados, COUNT(*) FILTER (WHERE {$fechaValida} AND ed.event_date_visible) AS fechados, COUNT(*) FILTER (WHERE te.decimal_latitude BETWEEN -90 AND 90 AND te.decimal_longitude BETWEEN -180 AND 180 AND ed.decimal_latitude_visible AND ed.decimal_longitude_visible) AS georreferenciados, COUNT(*) FILTER (WHERE t.rango = 'especie' AND {$especieValida} AND ed.scientific_name_visible AND {$fechaValida} AND ed.event_date_visible AND te.decimal_latitude BETWEEN -90 AND 90 AND te.decimal_longitude BETWEEN -180 AND 180 AND ed.decimal_latitude_visible AND ed.decimal_longitude_visible) AS aptos", [$idsPg, $idsPg])
-            ->first();
+            ->first());
 
-        $porTaxon = (clone $base)->where('ed.scientific_name_visible', true)->selectRaw('te.taxon_id, ed.family_visible, ed.genus_visible, COUNT(*) AS total')
-            ->groupBy('te.taxon_id', 'ed.family_visible', 'ed.genus_visible')->get();
+        $porTaxon = $this->medir('porTaxon', fn () => (clone $base)->where('ed.scientific_name_visible', true)->selectRaw('te.taxon_id, ed.family_visible, ed.genus_visible, COUNT(*) AS total')
+            ->groupBy('te.taxon_id', 'ed.family_visible', 'ed.genus_visible')->get());
         $filos = [];
         foreach ($porTaxon as $fila) {
             $filo = $this->linajePublicoParaMosaico($fila->taxon_id, $taxones, (bool) $fila->family_visible, (bool) $fila->genus_visible)['phylum'] ?? 'Sin filo';
@@ -240,56 +276,54 @@ final class PortalEstadisticas
         unset($filos['Sin filo']);
         arsort($filos);
 
-        $especies = (clone $base)->join('taxonomia.taxones as t', 't.id', '=', 'te.taxon_id')
-            ->where('t.rango', 'especie')->whereRaw(CalidadDatoPublico::textoValido('t.nombre_cientifico'))->where('ed.scientific_name_visible', true)
-            ->whereIn('t.id', $idsValidos)
-            ->selectRaw('t.nombre_cientifico AS nombre, COUNT(*) AS total')
-            ->groupBy('t.nombre_cientifico')->orderByDesc('total')->limit(20)->get()->map(static fn (object $fila): array => (array) $fila)->all();
-        $riqueza = (clone $base)->join('taxonomia.taxones as riqueza_t', 'riqueza_t.id', '=', 'te.taxon_id')
-            ->where('riqueza_t.rango', 'especie')->whereRaw(CalidadDatoPublico::textoValido('riqueza_t.nombre_cientifico'))->where('ed.scientific_name_visible', true)
-            ->whereIn('riqueza_t.id', $idsValidos)
-            ->whereRaw(CalidadDatoPublico::textoValido('te.state_province'))->where('ed.state_province_visible', true)->whereNotNull('te.state_province')->where('te.state_province', '<>', '')
-            ->selectRaw('te.state_province AS provincia, COUNT(DISTINCT riqueza_t.nombre_cientifico) AS especies, COUNT(*) AS registros')
-            ->groupBy('te.state_province')->orderByDesc('especies')->limit(10)->get()->map(static fn (object $fila): array => (array) $fila)->all();
-        $decadas = (clone $base)->join('taxonomia.taxones as decada_t', 'decada_t.id', '=', 'te.taxon_id')
-            ->where('decada_t.rango', 'especie')->whereRaw(CalidadDatoPublico::textoValido('decada_t.nombre_cientifico'))->where('ed.scientific_name_visible', true)
-            ->whereIn('decada_t.id', $idsValidos)
-            ->whereRaw(CalidadDatoPublico::fechaValida('te.fecha_colecta'))->where('ed.event_date_visible', true)->whereNotNull('te.fecha_colecta')
-            ->selectRaw('FLOOR(EXTRACT(YEAR FROM te.fecha_colecta) / 10)::integer * 10 AS decada, COUNT(DISTINCT decada_t.nombre_cientifico) AS especies, COUNT(*) AS registros')
-            ->groupByRaw('1')->orderBy('decada')->get()->map(static fn (object $fila): array => (array) $fila)->all();
-        $raras = (clone $base)->join('taxonomia.taxones as rara_t', 'rara_t.id', '=', 'te.taxon_id')
-            ->where('rara_t.rango', 'especie')->whereRaw(CalidadDatoPublico::textoValido('rara_t.nombre_cientifico'))->where('ed.scientific_name_visible', true)
-            ->whereIn('rara_t.id', $idsValidos)
-            ->selectRaw('rara_t.nombre_cientifico AS nombre, COUNT(*) AS total')
-            ->groupBy('rara_t.nombre_cientifico')->havingRaw('COUNT(*) <= 3')
-            ->orderBy('total')->orderBy('nombre')->limit(12)->get()->map(static fn (object $fila): array => (array) $fila)->all();
+        $conteosEspecies = $this->medir('especies', fn (): array => ResumenEspeciesPublicas::desde($porTaxon, $taxones, $idsValidos));
+        $especies = $conteosEspecies['especies'];
+        $provinciaClave = NormalizacionGeografica::sql('te.state_province');
+        $riqueza = $this->medir('riqueza', fn (): array => ResumenDistribucionPublica::riqueza(
+            (clone $base)->where('ed.scientific_name_visible', true)->where('ed.state_province_visible', true)
+                ->whereRaw(CalidadDatoPublico::textoValido('te.state_province'))
+                ->selectRaw("te.taxon_id, {$provinciaClave} AS provincia_clave, MIN(te.state_province) AS provincia, COUNT(*) AS registros")
+                ->groupBy('te.taxon_id')->groupByRaw($provinciaClave)->get(),
+            $taxones, $idsValidos,
+        ));
+        $decada = 'FLOOR(EXTRACT(YEAR FROM te.fecha_colecta) / 10)::integer * 10';
+        $decadas = $this->medir('decadas', fn (): array => ResumenDistribucionPublica::decadas(
+            (clone $base)->where('ed.scientific_name_visible', true)->where('ed.event_date_visible', true)
+                ->whereRaw(CalidadDatoPublico::fechaValida('te.fecha_colecta'))
+                ->selectRaw("te.taxon_id, {$decada} AS decada, COUNT(*) AS registros")
+                ->groupBy('te.taxon_id')->groupByRaw($decada)->get(),
+            $taxones, $idsValidos,
+        ));
+        $raras = $conteosEspecies['raras'];
 
-        $mapa = $this->agruparPuntos($base, $taxones);
+        $mapa = $this->medir('puntos', fn () => $this->agruparPuntos($base, $taxones));
 
-        $estacionalidad = (clone $base)->where('ed.event_date_visible', true)
+        $estacionalidad = $this->medir('estacionalidad', fn () => (clone $base)->where('ed.event_date_visible', true)
             ->whereRaw(CalidadDatoPublico::fechaValida('te.fecha_colecta'))
             ->selectRaw('EXTRACT(MONTH FROM te.fecha_colecta)::integer AS mes, COUNT(*) AS registros')
-            ->groupByRaw('1')->orderBy('mes')->get()->map(static fn (object $fila): array => (array) $fila)->all();
+            ->groupByRaw('1')->orderBy('mes')->get()->map(static fn (object $fila): array => (array) $fila)->all());
         $altitud = $agregadosAltitud = $limitesAltitud = [];
         $rangosAltitud = [[-500, -1], [0, 499], [500, 999], [1000, 1499], [1500, 1999], [2000, 2499], [2500, 2999], [3000, 3999], [4000, 9000]];
         foreach ($rangosAltitud as $i => [$desde, $hasta]) {
             $agregadosAltitud[] = "COUNT(*) FILTER (WHERE COALESCE(te.elevation_max_m, te.elevation_min_m) >= ? AND COALESCE(te.elevation_min_m, te.elevation_max_m) <= ?) AS rango_{$i}";
             array_push($limitesAltitud, $desde, $hasta);
         }
-        $conteosAltitud = (clone $base)->where('ed.elevation_visible', true)->selectRaw(implode(', ', $agregadosAltitud), $limitesAltitud)->first();
+        $conteosAltitud = $this->medir('conteosAltitud', fn () => (clone $base)->where('ed.elevation_visible', true)->selectRaw(implode(', ', $agregadosAltitud), $limitesAltitud)->first());
         foreach ($rangosAltitud as $i => [$desde, $hasta]) {
             $cantidad = (int) $conteosAltitud->{'rango_'.$i};
             if ($cantidad > 0) $altitud[] = ['desde' => $desde, 'hasta' => $hasta, 'registros' => $cantidad];
         }
-        $protocolo = ProtocoloColectaPublico::sql('te', 'metodo_panel');
-        $metodos = (clone $base)->leftJoin('taxonomia.muestras_colecta as metodo_panel', 'metodo_panel.id', '=', 'te.muestra_id')
+        $protocoloFuente = ProtocoloColectaPublico::sql('te', 'metodo_panel');
+        $protocolo = ProtocoloColectaPublico::claveSql('te', 'metodo_panel');
+        $metodos = $this->medir('metodos', fn () => (clone $base)->leftJoin('taxonomia.muestras_colecta as metodo_panel', 'metodo_panel.id', '=', 'te.muestra_id')
             ->where('ed.sampling_protocol_visible', true)->whereRaw(CalidadDatoPublico::textoValido($protocolo))
-            ->selectRaw($protocolo.' AS metodo, COUNT(*) AS registros')
+            ->selectRaw($protocolo.' AS metodo, COUNT(*) AS registros, JSON_AGG(DISTINCT '.$protocoloFuente.' ORDER BY '.$protocoloFuente.') AS fuentes')
             ->groupByRaw($protocolo)->orderByDesc('registros')->orderBy('metodo')->get()
-            ->map(static fn (object $fila): array => (array) $fila)->all();
+            ->map(static fn (object $fila): array => ['metodo' => $fila->metodo, 'registros' => (int) $fila->registros,
+                'fuentes' => json_decode($fila->fuentes, true, flags: JSON_THROW_ON_ERROR)])->all());
         $mosaico = $taxonMosaico = $fotografiasMosaico = [];
         if ($incluirContenidoTaxon) {
-            $mosaico = (clone $base)->join('divulgacion.imagenes_taxonomicas as foto', 'foto.occurrence_id', '=', 'te.occurrence_id')
+            $mosaico = $this->medir('mosaico', fn () => (clone $base)->join('divulgacion.imagenes_taxonomicas as foto', 'foto.occurrence_id', '=', 'te.occurrence_id')
                 ->leftJoin('taxonomia.taxones as foto_taxon', 'foto_taxon.id', '=', 'te.taxon_id')
                 ->where('ed.scientific_name_visible', true)
                 ->whereRaw('(SELECT COUNT(*) FROM taxonomia.especimenes identidad WHERE identidad.occurrence_id = te.occurrence_id) = 1')
@@ -304,7 +338,7 @@ final class PortalEstadisticas
                         'family' => $linaje['family'] ?? null, 'genus' => $linaje['genus'] ?? null, 'species' => $linaje['species'] ?? null,
                         'autor' => $creditoEcuador ? $fila->autor_nombre_completo : null, 'credito_ecuador' => $creditoEcuador,
                         'occurrence_id' => $fila->occurrence_id_visible ? $fila->occurrence_id : null];
-                })->all();
+                })->all());
 
             $taxonMosaico = $this->taxonParaMosaico($porTaxon, $taxones, $filtros);
             $taxonSolicitado = trim((string) ($filtros['taxon_navegado'] ?? '')) ?: trim((string) ($filtros['taxon'] ?? ''));

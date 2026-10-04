@@ -8,7 +8,7 @@
     x-on:close="cargando = false; $wire.cerrarCelda(); anterior?.focus({preventScroll: true})"
     x-on:click="if ($event.target === $el) $el.close()">
     <header class="atlas-cell-header">
-        <div><h2 id="titulo-detalle-celda">Registros de la ubicación</h2><p x-show="punto" x-text="punto ? Number(punto.total).toLocaleString('es-EC') + ' registros · latitud ' + punto.lat + ' · longitud ' + punto.lon : ''"></p></div>
+        <div><h2 id="titulo-detalle-celda">Registros de la ubicación</h2><p x-show="punto" x-text="punto ? Number(punto.total).toLocaleString('es-EC') + (Number(punto.total) === 1 ? ' registro' : ' registros') + ' · latitud ' + punto.lat + ' · longitud ' + punto.lon : ''"></p></div>
         <button type="button" class="atlas-icon-button" autofocus x-on:click="$refs.detalleCelda.close()" aria-label="Cerrar registros">×</button>
     </header>
     <div class="atlas-cell-loading" x-show="cargando" role="status"><span class="atlas-loading-dot" aria-hidden="true"></span>Cargando árbol taxonómico y registros públicos…</div>
