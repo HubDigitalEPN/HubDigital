@@ -5,15 +5,18 @@
     $maxDecada = max([1, ...array_map(static fn ($fila) => (int) $fila['registros'], $datosMapa['decadas'])]);
     $coloresFilo = ['Arthropoda' => '#17699b', 'Mollusca' => '#d17d28', 'Annelida' => '#568c59', 'Nematoda' => '#8c62a5', 'Nematomorpha' => '#b94e6b'];
 @endphp
-<div class="atlas atlas-dashboard" wire:key="dashboard-mapa" x-on:atlas-datos="actualizar($event.detail)" x-on:click.capture="recordarAccion($event)" x-data="portalDashboard()">
+<div class="atlas atlas-dashboard" wire:key="dashboard-mapa" x-on:atlas-datos="actualizar($event.detail)" x-on:click.capture="recordarAccion($event)" x-data="portalDashboard()" x-id="['atlas-map-tooltip']" x-on:scroll.window.capture="ocultarAyudaMapa()" x-on:resize.window="ocultarAyudaMapa()" x-on:keydown.escape.window="ocultarAyudaMapa()">
+    <template x-teleport="body"><div class="atlas-floating-tooltip" x-ref="ayudaMapa" :id="$id('atlas-map-tooltip')" role="tooltip" x-show="ayudaMapaTexto !== ''" x-cloak :style="{left: ayudaMapaIzquierda + 'px', top: ayudaMapaSuperior + 'px'}" x-text="ayudaMapaTexto"></div></template>
     <span hidden wire:key="mapa-datos-{{ $claveFiltrosMapa }}" x-init="$dispatch('atlas-datos', {celdas: @js($datosMapa['mapa']), filos: @js($datosMapa['filos'])})"></span>
-    <header class="atlas-dashboard-header">
-        <h1>Colección Biológica <small class="atlas-collection-count">({{ number_format((int) $resumen['registros'], 0, ',', '.') }} {{ (int) $resumen['registros'] === 1 ? 'registro' : 'registros' }})</small></h1>
-    </header>
-
     <div class="atlas-stage">
         <section x-ref="panelMapa" class="atlas-panel atlas-map-panel" :class="{'atlas-map-maximized': maximizado}" x-on:keydown.escape.window="if (maximizado && !$event.defaultPrevented && !document.querySelector('dialog[open]') && document.querySelector('#chat-bot-trigger')?.getAttribute('aria-expanded') !== 'true' && !$event.target.closest('#chat-bot-panel')) minimizar()" aria-label="Mapa de registros públicos">
-            <div class="atlas-panel-header atlas-map-tools"><button type="button" class="atlas-icon-button" x-ref="maximizar" x-on:click="alternarTamano()" :aria-label="maximizado ? 'Minimizar mapa' : 'Maximizar mapa'" :title="maximizado ? 'Minimizar mapa' : 'Maximizar mapa'" :aria-pressed="maximizado.toString()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path x-show="!maximizado" d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/><path x-show="maximizado" d="M3 8h5V3m8 0v5h5M8 21v-5H3m18 0h-5v5"/></svg></button><x-catalogopublico::menu-analisis tipo="mapa" :datos="$datosMapa['mapa']" /></div>
+            <header class="atlas-panel-header atlas-map-tools">
+                <h1 class="atlas-map-title">Colección Biológica <small class="atlas-collection-count">({{ number_format((int) $resumen['registros'], 0, ',', '.') }} {{ (int) $resumen['registros'] === 1 ? 'registro' : 'registros' }})</small></h1>
+                <div class="atlas-map-actions">
+                    <button type="button" class="atlas-icon-button" x-ref="maximizar" x-on:click="alternarTamano()" :aria-label="maximizado ? 'Minimizar mapa' : 'Maximizar mapa'" :title="maximizado ? 'Minimizar mapa' : 'Maximizar mapa'" :aria-pressed="maximizado.toString()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path x-show="!maximizado" d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/><path x-show="maximizado" d="M3 8h5V3m8 0v5h5M8 21v-5H3m18 0h-5v5"/></svg></button>
+                    <x-catalogopublico::menu-analisis tipo="mapa" :datos="$datosMapa['mapa']" />
+                </div>
+            </header>
             <div class="atlas-map-shell">
                 <div class="atlas-cell-error" x-show="errorTeselas" x-cloak role="alert">No se pudo cargar parte del mapa base. Los registros y filtros se conservan. <button type="button" x-on:click="reintentarTeselas()">Reintentar mapa base</button></div>
                 <div class="atlas-map" x-ref="mapa" tabindex="-1" wire:ignore role="region" aria-label="Mapa cartográfico de registros públicos: las agrupaciones se separan al acercar hasta mostrar las coordenadas originales"></div>
@@ -35,7 +38,7 @@
                     <p class="atlas-chart-empty">La selección no contiene filos identificados.</p>
                 @endforelse
             </div>
-            @if($hayFiltrosActivos)
+            @if($mostrarFotoComposicion)
             @if(($datosMapa['mosaico'] ?? []) !== [])
                 <div class="atlas-taxon-photograph" aria-label="Fotografía pública de la selección">
                     @foreach(array_slice($datosMapa['mosaico'], 0, 1) as $foto)

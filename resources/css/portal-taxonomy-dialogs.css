@@ -1,25 +1,30 @@
-/* Jerarquía horizontal y fotografías compactas de los diálogos públicos. */
+/* Ramas taxonómicas conectadas y fotografías compactas de los diálogos públicos. */
 .atlas-cell-toolbar { align-items:center; flex-wrap:nowrap; gap:.75rem; }
 .atlas-cell-toolbar h3 { flex:1; min-width:0; margin:0; font:700 1.1rem Georgia,serif; }
 .atlas-cell-toolbar .collection-view-switch { flex:none; margin-left:auto; }
 .atlas-taxonomic-layout { grid-template-columns:minmax(0,1fr) minmax(17rem,22rem); gap:1rem; }
-.atlas-tree-scroll { overflow:auto; max-height:62dvh; padding:.4rem .5rem; overscroll-behavior:contain; }
+.atlas-tree-scroll { container-type:inline-size; overflow:auto; max-height:62dvh; padding:1.25rem .75rem; overscroll-behavior:contain; }
 .atlas-dendrogram { min-width:100%; }
 .atlas-dendrogram-node { right:auto; box-sizing:border-box; padding:.25rem .5rem .25rem .8rem; background:#fff; }
 .atlas-dendrogram-label strong { font-size:.86rem; }
 .atlas-dendrogram-label small { font-size:.65rem; }
-.atlas-taxonomic-tree { width:100%; }
+.atlas-taxonomic-tree { --tree-node-width:8rem; --tree-link-width:1rem; width:max-content; min-width:100%; }
+@supports(width:1cqw) { .atlas-taxonomic-tree { --tree-node-width:clamp(6rem,calc((100cqw - (var(--tree-levels) - 1) * 2rem) / var(--tree-levels)),9rem); } }
 .atlas-taxonomic-tree ul { list-style:none; margin:0; padding:0; }
-.atlas-tree-roots,.atlas-tree-children { display:flex; flex-wrap:wrap; align-items:flex-start; gap:.6rem; }
-.atlas-tree-branch { min-width:0; flex:1 1 10.5rem; max-width:100%; }
-.atlas-tree-branch--vertical { width:100%; flex-basis:100%; }
-.atlas-tree-children--vertical { display:block; padding-top:.5rem!important; border-top:1px solid #9cbed1; }
-.atlas-tree-branch--horizontal { display:flex; flex-wrap:wrap; align-items:flex-start; gap:.6rem; }
-.atlas-tree-children--horizontal { flex:1 1 11rem; padding-left:.7rem!important; border-left:1px solid #9cbed1; }
-.atlas-taxonomic-tree .atlas-dendrogram-node { position:relative; left:auto; top:auto; display:block; flex:0 0 10.5rem; width:10.5rem; max-width:100%; min-height:3.4rem; height:auto; padding:.4rem .6rem .4rem 1rem; }
-.atlas-tree-branch--vertical > .atlas-dendrogram-node { margin-bottom:.5rem; }
-.atlas-tree-fold { flex:1 1 11rem; min-width:0; }
-.atlas-tree-fold > summary { padding:.45rem; cursor:pointer; color:#154d6f; }
+.atlas-tree-roots { display:flex; flex-direction:column; justify-content:center; min-height:min(32dvh,18rem); }
+.atlas-tree-branch { position:relative; display:flex; align-items:center; min-width:0; padding:.85rem 0; }
+.atlas-tree-children { position:relative; flex:none; padding-left:var(--tree-link-width)!important; }
+.atlas-tree-children::before, .atlas-tree-fold::before { content:''; position:absolute; top:50%; left:0; width:var(--tree-link-width); border-top:1.5px solid #7ca5bb; }
+.atlas-tree-children > .atlas-tree-branch { padding-left:var(--tree-link-width); }
+.atlas-tree-children > .atlas-tree-branch::before { content:''; position:absolute; top:50%; left:0; width:var(--tree-link-width); border-top:1.5px solid #7ca5bb; }
+.atlas-tree-children > .atlas-tree-branch::after { content:''; position:absolute; top:0; bottom:0; left:0; border-left:1.5px solid #7ca5bb; }
+.atlas-tree-children > .atlas-tree-branch:first-child::after { top:50%; }
+.atlas-tree-children > .atlas-tree-branch:last-child::after { bottom:50%; }
+.atlas-tree-children > .atlas-tree-branch:only-child::after { display:none; }
+.atlas-taxonomic-tree .atlas-dendrogram-node { position:relative; left:auto; top:auto; display:flex; align-items:center; flex:0 0 var(--tree-node-width); width:var(--tree-node-width); min-height:3.4rem; height:auto; padding:.4rem .45rem .4rem .65rem; }
+.atlas-tree-fold { position:relative; flex:none; padding-left:var(--tree-link-width); }
+.atlas-tree-fold > summary { max-width:12rem; padding:.45rem; cursor:pointer; color:#154d6f; font-size:.72rem; }
+.atlas-tree-fold[open] > summary { position:absolute; bottom:100%; left:1rem; width:max-content; }
 .atlas-tree-fold > summary:focus-visible { outline:2px solid #17699b; outline-offset:2px; }
 .atlas-taxonomic-tree [data-rango="registro"] { background:#f0f7fb; font-style:normal; }
 .atlas-taxon-information { padding-left:1rem; }

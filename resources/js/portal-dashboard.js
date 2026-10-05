@@ -138,12 +138,62 @@ const registrarDashboard = () => {
     window.Alpine.data('portalFiltros', () => ({
         observador: null,
         actualizar: null,
+        localidadesAbiertas: false,
+        localidades: [],
+        busquedaLocalidad: '',
+        get localidadesEncontradas() {
+            const normalizar = texto => texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es').trim();
+            const consulta = normalizar(this.busquedaLocalidad);
+            return this.localidades.filter(nombre => normalizar(nombre).includes(consulta));
+        },
+        get localidadesMostradas() { return this.localidadesEncontradas.slice(0, 100); },
+        abrirLocalidades() {
+            this.localidades = JSON.parse(this.$refs.datosLocalidades.dataset.localidades || '[]');
+            this.busquedaLocalidad = '';
+            this.localidadesAbiertas = true;
+            this.posicionarLocalidades();
+            this.$refs.dialogoLocalidades.showModal();
+            this.$nextTick(() => this.$refs.buscarLocalidad.focus({preventScroll: true}));
+        },
+        posicionarLocalidades() {
+            const margen = 16;
+            const bordeFiltros = this.$el.getBoundingClientRect().right + margen;
+            const ancho = Math.min(420, window.innerWidth - margen * 2);
+            const cabeAlLado = window.innerWidth - bordeFiltros >= 240;
+            const anchoDisponible = cabeAlLado ? Math.min(ancho, window.innerWidth - bordeFiltros - margen) : ancho;
+            const izquierda = cabeAlLado
+                ? Math.max(bordeFiltros, Math.min((window.innerWidth - anchoDisponible) / 2 - 40, window.innerWidth - anchoDisponible - margen))
+                : (window.innerWidth - anchoDisponible) / 2;
+            this.$refs.dialogoLocalidades.style.width = `${anchoDisponible}px`;
+            this.$refs.dialogoLocalidades.style.left = `${izquierda}px`;
+        },
+        cerrarLocalidades() { this.$refs.dialogoLocalidades.close(); },
+        restaurarFocoLocalidades() {
+            this.localidadesAbiertas = false;
+            this.$refs.elegirLocalidad.focus({preventScroll: true});
+        },
+        elegirLocalidad(nombre) {
+            if (nombre !== '' && !this.localidades.includes(nombre)) return;
+            this.cerrarLocalidades();
+            this.$wire.$set('borradorFiltros.filtroGeografias', nombre === '' ? [] : [nombre]);
+        },
+        navegarLocalidades(evento) {
+            if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(evento.key)) return;
+            const botones = [...this.$refs.opcionesLocalidades.querySelectorAll('button')];
+            const actual = botones.indexOf(evento.target);
+            if (actual < 0) return;
+            evento.preventDefault();
+            const indice = evento.key === 'Home' ? 0 : evento.key === 'End' ? botones.length - 1
+                : Math.max(0, Math.min(botones.length - 1, actual + (evento.key === 'ArrowDown' ? 1 : -1)));
+            botones[indice].focus();
+        },
         init() {
             this.$el.open = window.matchMedia('(min-width: 701px)').matches;
             this.actualizar = () => {
                 const rect = this.$el.getBoundingClientRect();
                 this.$el.style.setProperty('--filtros-left', `${rect.left}px`);
                 this.$el.style.setProperty('--filtros-width', `${rect.width}px`);
+                if (this.localidadesAbiertas) this.posicionarLocalidades();
             };
             this.observador = new ResizeObserver(this.actualizar);
             this.observador.observe(this.$el);
@@ -279,6 +329,30 @@ const registrarDashboard = () => {
         enfocarTrasCambio: false,
         zoomMapa: 0,
         errorTeselas: false,
+        ayudaMapaTexto: '',
+        ayudaMapaIzquierda: 0,
+        ayudaMapaSuperior: 0,
+        ayudaMapaInvocador: null,
+        mostrarAyudaMapa(texto, invocador) {
+            this.ocultarAyudaMapa();
+            this.ayudaMapaTexto = texto;
+            this.ayudaMapaInvocador = invocador;
+            invocador.setAttribute('aria-describedby', this.$id('atlas-map-tooltip'));
+            this.$nextTick(() => {
+                if (this.ayudaMapaInvocador !== invocador) return;
+                const origen = invocador.getBoundingClientRect();
+                const ayuda = this.$refs.ayudaMapa.getBoundingClientRect();
+                const margen = 8;
+                this.ayudaMapaIzquierda = Math.max(margen, Math.min(origen.left + origen.width / 2 - ayuda.width / 2, window.innerWidth - ayuda.width - margen));
+                const encima = origen.top - ayuda.height - margen;
+                this.ayudaMapaSuperior = Math.max(margen, Math.min(encima >= margen ? encima : origen.bottom + margen, window.innerHeight - ayuda.height - margen));
+            });
+        },
+        ocultarAyudaMapa() {
+            this.ayudaMapaInvocador?.removeAttribute('aria-describedby');
+            this.ayudaMapaInvocador = null;
+            this.ayudaMapaTexto = '';
+        },
         reintentarTeselas() { teselasFallidas.clear(); this.errorTeselas = false; teselas?.redraw(); },
         colores: ['#17699b', '#d17d28', '#568c59', '#8c62a5', '#b94e6b', '#71828d', '#a18a29', '#3f8d90'],
 
@@ -299,6 +373,7 @@ const registrarDashboard = () => {
                 this.pintar();
                 // El zoom solo utiliza el índice cliente; no solicita datos a Livewire.
                 mapa.on('zoomend', () => this.programarPintado());
+                mapa.on('movestart zoomstart', () => this.ocultarAyudaMapa());
                 mapa.on('boxzoomend', ({boxZoomBounds: limites}) => {
                     if (!limites) return;
                     this.$wire.seleccionarArea(
@@ -332,6 +407,7 @@ const registrarDashboard = () => {
         },
 
         actualizar(datos) {
+            this.ocultarAyudaMapa();
             celdas = datos.celdas;
             filos = datos.filos;
             agrupador = crearAgrupadorMapa(celdas);
@@ -371,6 +447,7 @@ const registrarDashboard = () => {
         },
 
         async abrirUbicacion(lat, lon, total, invocador) {
+            this.ocultarAyudaMapa();
             window.dispatchEvent(new CustomEvent('iniciar-detalle-celda', {detail: {lat, lon, total, invocador}}));
             try {
                 await this.$wire.abrirCelda(lat, lon);
@@ -390,6 +467,7 @@ const registrarDashboard = () => {
 
         pintar() {
             if (!capa || !mapa || !agrupador) return;
+            this.ocultarAyudaMapa();
             this.zoomMapa = mapa.getZoom();
             capa.clearLayers();
             for (const nodo of agrupador.paraZoom(this.zoomMapa)) {
@@ -411,15 +489,16 @@ const registrarDashboard = () => {
                 const abrir = () => this.abrirUbicacion(lat, lon, cantidad, elemento);
                 const composicion = partes.map(({filo, cantidad}) => `${filo}: ${cantidad.toLocaleString('es-EC')}`).join(', ');
                 const descripcion = `Ubicación original: ${cantidad.toLocaleString('es-EC')} ${cantidad === 1 ? 'registro' : 'registros'} con coordenadas ${lat}, ${lon}.${composicion ? ' ' + composicion + '.' : ''} Abrir detalle.`;
-                const tooltip = L.DomUtil.create('span');
-                tooltip.textContent = descripcion;
-                marcador.bindTooltip(tooltip);
                 marcador.on('click', abrir);
                 if (elemento) {
                     if (partes.length > 1) elemento.style.background = fondoFilos(nodo.filos);
                     elemento.setAttribute('tabindex', '0');
                     elemento.setAttribute('role', 'button');
                     elemento.setAttribute('aria-label', descripcion);
+                    elemento.addEventListener('mouseenter', () => this.mostrarAyudaMapa(descripcion, elemento));
+                    elemento.addEventListener('mouseleave', () => this.ocultarAyudaMapa());
+                    elemento.addEventListener('focus', () => this.mostrarAyudaMapa(descripcion, elemento));
+                    elemento.addEventListener('blur', () => this.ocultarAyudaMapa());
                     elemento.addEventListener('keydown', evento => {
                         if (evento.key === 'Enter' || evento.key === ' ') { evento.preventDefault(); abrir(); }
                     });

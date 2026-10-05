@@ -17,7 +17,7 @@ function dashboardConMapa(celdas) {
     const eventosTeselas = {};
     let redibujosTeselas = 0;
     let siguienteCuadro = 0;
-    const nodo = () => ({style: {}, atributos: {}, eventos: {}, setAttribute(clave, valor) {this.atributos[clave] = valor;}, addEventListener(clave, manejador) {this.eventos[clave] = manejador;}});
+    const nodo = () => ({style: {}, atributos: {}, eventos: {}, setAttribute(clave, valor) {this.atributos[clave] = valor;}, removeAttribute(clave) {delete this.atributos[clave];}, addEventListener(clave, manejador) {this.eventos[clave] = manejador;}, getBoundingClientRect() {return {left: 20, top: 300, bottom: 316, width: 16, height: 16};}});
     const mapa = {getZoom: () => 10, on() {}, fitBounds() {}, createPane: () => ({style: {}}), invalidateSize() {}, remove() {}};
     const capa = {addTo() { return this; }, clearLayers() { marcadores.length = 0; }};
     const control = () => ({addTo() { return this; }, on() { return this; }, redraw() {}});
@@ -50,7 +50,7 @@ function dashboardConMapa(celdas) {
     }};
     const contexto = {
         L, crearAgrupadorMapa, crearGeojsonMapa, prepararPuntosMapa, etiquetaAgrupacionMapa, ZOOM_UBICACIONES_ORIGINALES, colorFilo, composicionFilos, fondoFilos,
-        window: {Alpine: {data: (nombre, fabrica) => registros.set(nombre, fabrica)}, addEventListener() {}},
+        window: {innerWidth: 1280, innerHeight: 800, Alpine: {data: (nombre, fabrica) => registros.set(nombre, fabrica)}, addEventListener() {}},
         document: {documentElement: {classList: {add() {}, remove() {}}}},
         requestAnimationFrame: tarea => { const id = ++siguienteCuadro; cuadros.set(id, tarea); return id; },
         cancelAnimationFrame: id => cuadros.delete(id),
@@ -58,10 +58,11 @@ function dashboardConMapa(celdas) {
     // Ejecuta el componente real; sólo sustituye imports y el adaptador de Leaflet/DOM.
     runInNewContext(fuenteDashboard.replace(/^import .*;\r?$/gm, ''), contexto);
     const dashboard = registros.get('portalDashboard')(celdas, {Mollusca: 8, Annelida: 2});
-    dashboard.$refs = {mapa: {focus() {}}, panelMapa: {scrollIntoView() {}}};
+    dashboard.$refs = {mapa: {focus() {}}, panelMapa: {scrollIntoView() {}}, ayudaMapa: {getBoundingClientRect: () => ({width: 320, height: 70})}};
+    dashboard.$id = () => 'ayuda-mapa-prueba';
     dashboard.$nextTick = tarea => tarea();
     dashboard.init();
-    return {dashboard, marcadores, capasOriginales, eventosTeselas, redibujosTeselas: () => redibujosTeselas, pintar() {
+    return {dashboard, filtros: registros.get('portalFiltros')(), ventana: contexto.window, marcadores, capasOriginales, eventosTeselas, redibujosTeselas: () => redibujosTeselas, pintar() {
         while (cuadros.size) {
             const [id, tarea] = cuadros.entries().next().value;
             cuadros.delete(id);
@@ -111,6 +112,93 @@ test('composición llega a Livewire por UUID y el mapa reemplaza la población a
         assert.equal(marcadores.length, 2);
     }
     assert.deepEqual(llamadas, ['id-mollusca', 'id-mollusca', 'id-annelida', 'id-annelida']);
+});
+
+test('el selector de localidad busca sin acentos y aplica una opción vigente después de cerrar', () => {
+    const {filtros} = dashboardConMapa([]);
+    const eventos = [];
+    filtros.$el = {getBoundingClientRect: () => ({right: 330})};
+    filtros.$refs = {
+        datosLocalidades: {dataset: {localidades: JSON.stringify(['La Peña', 'Puyo', 'Río Pastaza'])}},
+        dialogoLocalidades: {style: {}, showModal() {eventos.push('abrir');}, close() {eventos.push('cerrar');}},
+        buscarLocalidad: {focus() {eventos.push('foco-buscador');}},
+        elegirLocalidad: {focus() {eventos.push('foco-filtro');}},
+    };
+    filtros.$wire = {$set(campo, valor) {eventos.push([campo, Array.from(valor)]);}};
+    filtros.$nextTick = accion => accion();
+    filtros.abrirLocalidades();
+    assert.equal(filtros.localidadesAbiertas, true);
+    assert.deepEqual(eventos, ['abrir', 'foco-buscador']);
+    filtros.busquedaLocalidad = ' PENA ';
+    assert.deepEqual(Array.from(filtros.localidadesEncontradas), ['La Peña']);
+    filtros.elegirLocalidad('Localidad ajena');
+    assert.equal(eventos.length, 2);
+    filtros.elegirLocalidad('La Peña');
+    assert.deepEqual(eventos.slice(-2), ['cerrar', ['borradorFiltros.filtroGeografias', ['La Peña']]]);
+    filtros.restaurarFocoLocalidades();
+    assert.equal(filtros.localidadesAbiertas, false);
+    assert.equal(eventos.at(-1), 'foco-filtro');
+    filtros.$refs.datosLocalidades.dataset.localidades = JSON.stringify(['Puyo']);
+    filtros.abrirLocalidades();
+    assert.equal(filtros.busquedaLocalidad, '');
+    assert.deepEqual(Array.from(filtros.localidadesEncontradas), ['Puyo']);
+    filtros.elegirLocalidad('');
+    assert.deepEqual(eventos.at(-1), ['borradorFiltros.filtroGeografias', []]);
+});
+
+test('el selector acota el DOM sin perder búsquedas y se coloca junto a los filtros cuando cabe', () => {
+    const {filtros, ventana} = dashboardConMapa([]);
+    filtros.localidades = Array.from({length: 250}, (_, i) => `Localidad ${i}`);
+    assert.equal(filtros.localidadesMostradas.length, 100);
+    filtros.busquedaLocalidad = 'Localidad 249';
+    assert.deepEqual(Array.from(filtros.localidadesMostradas), ['Localidad 249']);
+    filtros.$el = {getBoundingClientRect: () => ({right: 330})};
+    filtros.$refs = {dialogoLocalidades: {style: {}}};
+    for (const ancho of [1280, 700]) {
+        ventana.innerWidth = ancho;
+        filtros.posicionarLocalidades();
+        const izquierda = parseFloat(filtros.$refs.dialogoLocalidades.style.left);
+        const anchoDialogo = parseFloat(filtros.$refs.dialogoLocalidades.style.width);
+        assert.ok(izquierda >= 346);
+        assert.ok(izquierda + anchoDialogo <= ancho - 16);
+        assert.ok(anchoDialogo <= 420);
+    }
+    ventana.innerWidth = 390;
+    filtros.posicionarLocalidades();
+    assert.equal(filtros.$refs.dialogoLocalidades.style.width, '358px');
+    assert.equal(filtros.$refs.dialogoLocalidades.style.left, '16px');
+    let enfocado = 0;
+    const botones = Array.from({length: 3}, (_, i) => ({focus() {enfocado = i;}}));
+    filtros.$refs.opcionesLocalidades = {querySelectorAll: () => botones};
+    for (const [key, actual, esperado] of [['ArrowDown', 0, 1], ['End', 0, 2], ['ArrowDown', 2, 2], ['ArrowUp', 2, 1], ['Home', 2, 0]]) {
+        let evitado = false;
+        filtros.navegarLocalidades({key, target: botones[actual], preventDefault() {evitado = true;}});
+        assert.equal(enfocado, esperado);
+        assert.equal(evitado, true);
+    }
+});
+
+test('el tooltip responde al ratón y al foco sin salir de la ventana y se retira al actualizar', () => {
+    const {dashboard, marcadores, ventana} = dashboardConMapa([{lat: -1, lon: -78, total: 1, filos: {Annelida: 1}}]);
+    const elemento = marcadores[0].elemento;
+    elemento.eventos.mouseenter();
+    assert.match(dashboard.ayudaMapaTexto, /coordenadas -1, -78/);
+    assert.equal(dashboard.ayudaMapaIzquierda, 8);
+    assert.equal(dashboard.ayudaMapaSuperior, 222);
+    assert.equal(elemento.atributos['aria-describedby'], 'ayuda-mapa-prueba');
+    elemento.eventos.mouseleave();
+    assert.equal(dashboard.ayudaMapaTexto, '');
+    assert.equal(elemento.atributos['aria-describedby'], undefined);
+    elemento.getBoundingClientRect = () => ({left: 1240, top: 2, bottom: 18, width: 16, height: 16});
+    elemento.eventos.focus();
+    assert.equal(dashboard.ayudaMapaIzquierda, ventana.innerWidth - 320 - 8);
+    assert.equal(dashboard.ayudaMapaSuperior, 26);
+    elemento.eventos.blur();
+    assert.equal(dashboard.ayudaMapaTexto, '');
+    elemento.eventos.focus();
+    dashboard.actualizar({celdas: [], filos: {}});
+    assert.equal(dashboard.ayudaMapaTexto, '');
+    assert.equal(elemento.atributos['aria-describedby'], undefined);
 });
 
 test('una ubicación compartida muestra todos sus colores y abre las coordenadas originales con teclado', () => {

@@ -47,6 +47,9 @@ final class PortalCatalogo extends Component
 
     public string $avisoFiltrosDependientes = '';
 
+    #[Locked]
+    public bool $mostrarFotoComposicion = false;
+
     private array $filtrosAntes = [];
 
     private int $restauracionHistorial = 0;
@@ -115,6 +118,7 @@ final class PortalCatalogo extends Component
     {
         // La lista se obtiene del estado público; no permite asignar propiedades arbitrarias.
         if (! array_any($this->criteriosActivos, static fn (array $c): bool => $c['clave'] === $clave && $c['indice'] === $indice)) return;
+        $this->mostrarFotoComposicion = false;
         $grupos = ['periodo' => ['filtroFechaDesde', 'filtroFechaHasta'], 'elevacion' => ['filtroElevDesde', 'filtroElevHasta'],
             'latitud' => ['filtroLatMin', 'filtroLatMax', 'filtroLatitud'], 'longitud' => ['filtroLonMin', 'filtroLonMax', 'filtroLongitud']];
         if ($clave === 'jerarquia') {
@@ -234,6 +238,7 @@ final class PortalCatalogo extends Component
         }
         $this->borradorFiltros = $this->valoresFiltros();
         unset($this->geografiaDisponible, $this->provinciasDisponibles, $this->localidadesDisponibles);
+        $this->mostrarFotoComposicion = false;
         $this->cerrarCelda();
         $this->cerrarFichaRegistro();
     }
@@ -247,21 +252,12 @@ final class PortalCatalogo extends Component
         if (in_array($campo, ['filtroFiloId', 'filtroTaxon', 'filtroProvincia'], true)) $this->ajustarGeografiaDependiente();
     }
 
-    public function agregarLocalidad(): void
-    {
-        $localidades = $this->borradorFiltros['filtroGeografias'] ?: [''];
-        if (count($localidades) >= 100) return;
-        $this->borradorFiltros['filtroGeografias'] = [...$localidades, ''];
-        $this->dispatch('localidad-agregada');
-    }
-
     public function quitarLocalidad(int $indice): void
     {
         if ($indice < 0 || ! array_key_exists($indice, $this->borradorFiltros['filtroGeografias'])) return;
         unset($this->borradorFiltros['filtroGeografias'][$indice]);
         $this->borradorFiltros['filtroGeografias'] = array_values($this->borradorFiltros['filtroGeografias']);
         $this->aplicarBorrador();
-        $this->dispatch('localidad-retirada', indice: $indice);
     }
 
     private function ajustarGeografiaDependiente(): void
@@ -374,6 +370,7 @@ final class PortalCatalogo extends Component
     /** Restaura la selección completa en un único request, nunca propiedad a propiedad. */
     public function restaurarSeleccionUrl(array $parametros, int $restauracion = 0): void
     {
+        $this->mostrarFotoComposicion = false;
         $this->restauracionHistorial = max(0, $restauracion);
         $this->versionNavegacion = max($this->versionNavegacion, $this->restauracionHistorial);
         $this->aplicarEstadoUrl($parametros);
@@ -400,6 +397,7 @@ final class PortalCatalogo extends Component
     public function seleccionarMes(int $mes): void
     {
         if ($mes < 1 || $mes > 12) return;
+        $this->mostrarFotoComposicion = false;
         $this->filtroMes = (string) $mes;
         $this->pagina = 1;
     }
@@ -407,6 +405,7 @@ final class PortalCatalogo extends Component
     public function seleccionarAltitud(int $desde, int $hasta): void
     {
         if ($desde < -500 || $hasta > 9000 || $desde > $hasta) return;
+        $this->mostrarFotoComposicion = false;
         $this->filtroElevDesde = (string) $desde;
         $this->filtroElevHasta = (string) $hasta;
         $this->pagina = 1;
@@ -416,6 +415,7 @@ final class PortalCatalogo extends Component
     {
         $metodo = ProtocoloColectaPublico::clave($metodo);
         if (! in_array($metodo, $this->metodosRecoleccionDisponibles, true)) return;
+        $this->mostrarFotoComposicion = false;
         $this->filtroMetodos = [$metodo];
         $this->pagina = 1;
     }
@@ -583,6 +583,7 @@ final class PortalCatalogo extends Component
 
     public function navegar(string $nivel, string $taxon): void
     {
+        $this->mostrarFotoComposicion = false;
         $this->nivel = $nivel;
         $this->taxon = $taxon;
         $this->explorar = '';
@@ -634,6 +635,7 @@ final class PortalCatalogo extends Component
     {
         $opcion = NormalizacionGeografica::nombreDisponible($provincia, $this->provinciasDisponibles);
         if ($opcion !== null) {
+            $this->mostrarFotoComposicion = false;
             $this->filtroProvincia = $opcion;
             $this->borradorFiltros['filtroProvincia'] = $opcion;
             $this->ajustarGeografiaDependiente();
@@ -644,6 +646,7 @@ final class PortalCatalogo extends Component
     public function seleccionarDecada(int $decada): void
     {
         if ($decada >= 0 && $decada <= 2090 && $decada % 10 === 0) {
+            $this->mostrarFotoComposicion = false;
             $this->filtroFechaDesde = sprintf('%04d-01-01', $decada);
             $this->filtroFechaHasta = sprintf('%04d-12-31', $decada + 9);
             $this->pagina = 1;
@@ -673,6 +676,7 @@ final class PortalCatalogo extends Component
         $id = $this->identificadorFilo($identificador);
         if ($id === null) return;
         $this->filtroFiloId = $this->filtroFiloId === $id ? '' : $id;
+        $this->mostrarFotoComposicion = $this->filtroFiloId !== '';
         $this->ajustarGeografiaDependiente();
         $this->borradorFiltros['filtroFiloId'] = $this->filtroFiloId;
         $this->pagina = 1;
@@ -687,6 +691,7 @@ final class PortalCatalogo extends Component
             return;
         }
         $this->filtroLatMin = (string) $latMin;
+        $this->mostrarFotoComposicion = false;
         $this->filtroLatMax = (string) $latMax;
         $this->filtroLonMin = (string) $lonMin;
         $this->filtroLonMax = (string) $lonMax;
@@ -696,6 +701,7 @@ final class PortalCatalogo extends Component
 
     public function filtrarCompletos(): void
     {
+        $this->mostrarFotoComposicion = false;
         $this->filtroDatosCompletos = '1';
         $this->pagina = 1;
         $this->vista = 'registros';
@@ -703,6 +709,7 @@ final class PortalCatalogo extends Component
 
     public function verGeorreferenciados(): void
     {
+        $this->mostrarFotoComposicion = false;
         $this->filtroSoloUbicacion = '1';
         $this->pagina = 1;
         $this->vista = 'registros';
@@ -801,6 +808,7 @@ final class PortalCatalogo extends Component
 
     public function explorarNivel(string $nivel): void
     {
+        $this->mostrarFotoComposicion = false;
         $this->explorar = $nivel;
         $this->nivel = '';
         $this->taxon = '';
@@ -817,6 +825,7 @@ final class PortalCatalogo extends Component
 
     public function aplicarFiltros(array $datos): void
     {
+        $this->mostrarFotoComposicion = false;
         $this->pagina = 1;
         $this->filtroCatalogo = (string) ($datos['filtroCatalogo'] ?? '');
         $this->filtroPreparaciones = (array) ($datos['filtroPreparaciones'] ?? []);
@@ -847,6 +856,7 @@ final class PortalCatalogo extends Component
 
     public function limpiarFiltros(): void
     {
+        $this->mostrarFotoComposicion = false;
         $this->resetValidation();
         $this->avisoFiltrosDependientes = $this->avisoSeleccionUrl = '';
         $this->nivel = '';

@@ -120,3 +120,37 @@ test('un enlace antiguo de exclusión avisa y el chat rechaza esa selección ret
         ->assertSee('El filtro Excluir provincia fue retirado')->assertSet('filtroProvincia', 'Loja')->assertViewHas('totalRegistrosVista', 1);
     expect(SeleccionPaginaChat::desde(['fxprov' => 'Pastaza']))->toBeNull();
 });
+
+test('solo una entrada de composición activa su fotografía y otro filtro vuelve a ocultarla', function (string $accion, array $parametros): void {
+    $f = mapaFiltrosAutomaticosFixture();
+    DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->update(['sampling_protocol' => 'pitfall']);
+    DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $f['ids'][0])->update(['sampling_protocol_visible' => true]);
+    $pagina = Livewire::withQueryParams(['vista' => 'mapa', 'fph' => $f['annelida']])->test(PortalCatalogo::class)
+        ->assertSet('mostrarFotoComposicion', false)
+        ->set('borradorFiltros.filtroProvincia', 'Pastaza')->assertSet('mostrarFotoComposicion', false)
+        ->call('limpiarFiltros')->call('seleccionarFilo', $f['annelida'])->assertSet('mostrarFotoComposicion', true);
+    $fotografias = static function (string $html): int {
+        $dom = new DOMDocument();
+        @$dom->loadHTML('<?xml encoding="utf-8" ?>'.$html);
+        return (new DOMXPath($dom))->query('//section[contains(@class,"atlas-taxa-panel")]//div[contains(@x-data,"portalFotografias")]')->length;
+    };
+    expect($fotografias($pagina->html()))->toBe(1);
+    if ($accion === 'borrador') {
+        $pagina->set('borradorFiltros.filtroGeografias', ['Puyo'])->assertSet('filtroGeografias', ['Puyo']);
+    } else {
+        $pagina->call($accion, ...$parametros);
+    }
+    $pagina->assertSet('mostrarFotoComposicion', false);
+    expect($fotografias($pagina->html()))->toBe(0);
+})->with([
+    'provincia' => ['seleccionarProvincia', ['Pastaza']],
+    'década' => ['seleccionarDecada', [2000]],
+    'mes' => ['seleccionarMes', [1]],
+    'método' => ['seleccionarMetodo', ['pitfall']],
+    'elevación' => ['seleccionarAltitud', [0, 499]],
+    'área del mapa' => ['seleccionarArea', [-5, 0, -81, -75]],
+    'localidad LOV' => ['borrador', []],
+    'limpiar' => ['limpiarFiltros', []],
+    'retirar el mismo filo' => ['seleccionarFilo', ['Annelida']],
+    'historial' => ['restaurarSeleccionUrl', [['vista' => 'mapa', 'fprov' => 'Loja']]],
+]);

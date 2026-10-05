@@ -98,7 +98,10 @@
     @endif {{-- fin navegación de tarjetas --}}
 
 
-    <div class="collection-workspace">
+    <div class="collection-loading" wire:loading.delay wire:target="borradorFiltros,cambiarVista,aplicarBorrador,limpiarFiltros,retirarCriterio,seleccionarFilo,seleccionarProvincia,seleccionarDecada,seleccionarMes,seleccionarAltitud,seleccionarMetodo,seleccionarArea,explorarNivel,navegar,cambiarPagina,cambiarPaginaHermanos,abrirFichaRegistro">
+        <span class="collection-loading-indicator" role="status" aria-live="polite"><span class="atlas-spinner" aria-hidden="true"></span><span>Actualizando filtros y registros…</span></span>
+    </div>
+    <div class="collection-workspace" wire:loading.attr="inert" wire:loading.class="is-updating">
         <x-catalogopublico::filtro-investigacion
             :provincias="$provinciasDisponibles" :localidades="$this->localidadesDisponibles" :filos="$filosDisponibles"
             :preparaciones="$preparacionesDisponibles" :metodos="$metodosRecoleccionDisponibles"
@@ -127,9 +130,6 @@
             <button type="button" wire:loading.attr="disabled" wire:click="cambiarVista('mapa')" aria-label="Vista de mapa y análisis" title="Mapa y análisis" aria-pressed="{{ $vista === 'mapa' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2zM9 3v16m6-14v16"/></svg><span class="sr-only">Mapa y análisis</span></button>
         </div>
     </nav>
-            <div class="collection-loading" wire:loading.delay wire:target="borradorFiltros,cambiarVista,aplicarBorrador,limpiarFiltros,retirarCriterio,seleccionarFilo,seleccionarProvincia,seleccionarDecada,seleccionarMes,seleccionarAltitud,seleccionarMetodo,seleccionarArea,explorarNivel,navegar,cambiarPagina,cambiarPaginaHermanos,abrirFichaRegistro">
-                <span class="collection-loading-indicator" role="status" aria-live="polite"><span class="atlas-spinner" aria-hidden="true"></span><span>Actualizando filtros y registros…</span></span>
-            </div>
 
     @include('catalogopublico::components.ficha-registro-publico')
     @if($vista === 'mapa')
@@ -157,7 +157,6 @@
                     <button type="button" wire:click="descargarResultados" wire:loading.attr="disabled" wire:target="descargarResultados" class="rounded-md border border-science-blue px-4 py-2 text-sm font-semibold text-science-blue hover:bg-sky-50 disabled:opacity-50">Descargar resultados CSV</button>
                 @endif
             </div>
-            @if($totalRegistrosVista > 0)<p class="mb-4 text-xs text-text-secondary">El CSV incluye toda la selección, también otras páginas. Conserva códigos, identificación, localidad, coordenadas, condición de tipo y disposición. Las fotografías y los campos adicionales se consultan en la ficha; el formato XLSX de especie conserva más campos públicos y las referencias geográficas. Perfil de intercambio: <code>{{ \Modules\CatalogoPublico\Domain\ValueObjects\PerfilExportacionPublica::IDENTIFICADOR }}</code>.</p>@endif
             @if($totalRegistrosVista === 0)
                 <p class="rounded-lg border border-border bg-surface p-8 text-center text-text-secondary">No hay registros públicos para esta selección.</p>
             @else

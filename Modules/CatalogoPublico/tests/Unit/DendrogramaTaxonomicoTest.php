@@ -137,8 +137,26 @@ it('el gráfico renderiza controles nativos y relaciones públicas con nombres e
             ->and($dom->query('//button[@data-taxon-id="rango-0"]')->item(0)->getAttribute('aria-label'))->not->toContain('registros')
             ->and($dom->query('//button[@data-taxon-id="rango-0"]')->item(0)->getAttribute('title'))->not->toContain('registros')
             ->and($dom->query('//ul[@class="atlas-tree-roots"]')->length)->toBe(1)
-            ->and($dom->query('//li[@data-hijo-id="rango-0" and contains(@class,"atlas-tree-branch--vertical")]')->length)->toBe(1)
-            ->and($dom->query('//li[@data-hijo-id="rango-3" and contains(@class,"atlas-tree-branch--horizontal")]')->length)->toBe(1);
+            ->and($dom->query('//li[@class="atlas-tree-branch"]')->length)->toBe(11)
+            ->and($dom->query('//li[contains(@class,"atlas-tree-branch--vertical") or contains(@class,"atlas-tree-branch--horizontal")]')->length)->toBe(0);
+        // La presentación solicitada conecta todos los rangos como ramas. El padre
+        // declarado debe coincidir con el padre real del DOM, sin filas por rango.
+        foreach ($nodos as $nodo) {
+            $ramas = $dom->query('//li[@data-hijo-id="'.$nodo['id'].'"]');
+            expect($ramas->length)->toBe(1);
+            $rama = $ramas->item(0);
+            expect($rama->getAttribute('data-padre-id'))->toBe($nodo['padre_id'] ?? '')
+                ->and($dom->query('./button[@data-taxon-id="'.$nodo['id'].'"]', $rama)->length)->toBe(1);
+            $padres = $dom->query('ancestor::li[@data-hijo-id][1]', $rama);
+            if ($nodo['padre_id'] === null) {
+                expect($padres->length)->toBe(0)
+                    ->and($rama->parentNode->getAttribute('class'))->toBe('atlas-tree-roots');
+            } else {
+                expect($padres->length)->toBe(1)
+                    ->and($padres->item(0)->getAttribute('data-hijo-id'))->toBe($nodo['padre_id'])
+                    ->and($rama->parentNode->getAttribute('class'))->toBe('atlas-tree-children');
+            }
+        }
     } finally {
         libxml_clear_errors();
         libxml_use_internal_errors($erroresAnteriores);
