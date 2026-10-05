@@ -13,13 +13,19 @@ function dashboardConMapa(celdas) {
     const registros = new Map();
     const marcadores = [];
     const cuadros = new Map();
+    const capasOriginales = [];
+    const eventosTeselas = {};
+    let redibujosTeselas = 0;
     let siguienteCuadro = 0;
     const nodo = () => ({style: {}, atributos: {}, eventos: {}, setAttribute(clave, valor) {this.atributos[clave] = valor;}, addEventListener(clave, manejador) {this.eventos[clave] = manejador;}});
     const mapa = {getZoom: () => 10, on() {}, fitBounds() {}, createPane: () => ({style: {}}), invalidateSize() {}, remove() {}};
     const capa = {addTo() { return this; }, clearLayers() { marcadores.length = 0; }};
-    const control = () => ({addTo() {}});
+    const control = () => ({addTo() { return this; }, on() { return this; }, redraw() {}});
     const L = {
-        map: () => mapa, control: {zoom: control, scale: control}, tileLayer: control,
+        map: () => mapa, control: {zoom: control, scale: control}, tileLayer: () => ({
+            on(nombres, accion) { for (const nombre of nombres.split(' ')) eventosTeselas[nombre] = accion; return this; },
+            addTo() { return this; }, redraw() { redibujosTeselas++; },
+        }),
         featureGroup: () => capa, latLngBounds: puntos => ({isValid: () => puntos.length > 0}),
         DomUtil: {create: nodo},
         divIcon: opciones => opciones,
@@ -33,6 +39,15 @@ function dashboardConMapa(celdas) {
             return marcador;
         },
     };
+    // El adaptador conserva el contrato de construcción de las capas reales.
+    L.CircleMarker = {extend: metodos => function (coordenadas, opciones) {
+        Object.assign(this, L.circleMarker(coordenadas, opciones), metodos);
+        capasOriginales.push(this);
+    }};
+    L.Marker = {extend: metodos => function (coordenadas, opciones) {
+        Object.assign(this, L.marker(coordenadas, opciones), metodos);
+        capasOriginales.push(this);
+    }};
     const contexto = {
         L, crearAgrupadorMapa, crearGeojsonMapa, prepararPuntosMapa, etiquetaAgrupacionMapa, ZOOM_UBICACIONES_ORIGINALES, colorFilo, composicionFilos, fondoFilos,
         window: {Alpine: {data: (nombre, fabrica) => registros.set(nombre, fabrica)}, addEventListener() {}},
@@ -46,7 +61,7 @@ function dashboardConMapa(celdas) {
     dashboard.$refs = {mapa: {focus() {}}, panelMapa: {scrollIntoView() {}}};
     dashboard.$nextTick = tarea => tarea();
     dashboard.init();
-    return {dashboard, marcadores, pintar() {
+    return {dashboard, marcadores, capasOriginales, eventosTeselas, redibujosTeselas: () => redibujosTeselas, pintar() {
         while (cuadros.size) {
             const [id, tarea] = cuadros.entries().next().value;
             cuadros.delete(id);
@@ -128,4 +143,56 @@ test('una acción explícita de composición conserva el foco del mapa durante s
     dashboard.actualizar({celdas: [], filos: {}});
     assert.equal(dashboard.enfocarTrasCambio, false);
     assert.deepEqual(acciones, ['desplazar', 'foco', 'desplazar', 'foco']);
+});
+
+test('QA7 el selector permite abrir cada ubicación original solapada y reemplaza sus opciones al filtrar', () => {
+    const celdas = [
+        {lat: -3.762, lon: -78.502, total: 1, filos: {Annelida: 1}},
+        {lat: -3.7620001, lon: -78.5020001, total: 2, filos: {Annelida: 2}},
+    ];
+    const {dashboard, pintar} = dashboardConMapa(celdas);
+    const aperturas = [];
+    dashboard.abrirUbicacion = (...datos) => aperturas.push(datos.slice(0, 3));
+    for (let indice = 0; indice < dashboard.ubicacionesOriginales.length; indice++) {
+        const punto = dashboard.ubicacionesOriginales[indice];
+        dashboard.ubicacionElegida = String(indice);
+        dashboard.abrirUbicacionElegida({focus() {}});
+        assert.deepEqual(Array.from(aperturas.at(-1)), [punto.lat, punto.lon, punto.cantidad]);
+    }
+    assert.equal(aperturas.length, 2);
+    dashboard.actualizar({celdas: [celdas[1]], filos: {Annelida: 2}}); pintar();
+    assert.equal(dashboard.ubicacionElegida, '');
+    assert.equal(dashboard.ubicacionesOriginales.length, 1);
+    assert.equal(dashboard.ubicacionesOriginales[0].lat, celdas[1].lat);
+});
+
+test('QA7 una tesela recuperada no oculta otro error y el reintento conserva la selección', () => {
+    const {dashboard, eventosTeselas, redibujosTeselas} = dashboardConMapa([{lat: -3.762, lon: -78.502, total: 1, filos: {Annelida: 1}}]);
+    const primera = {coords: {z: 10, x: 1, y: 1}}; const segunda = {coords: {z: 10, x: 2, y: 1}};
+    eventosTeselas.tileerror(primera); eventosTeselas.tileerror(segunda);
+    eventosTeselas.tileload(primera); assert.equal(dashboard.errorTeselas, true);
+    eventosTeselas.tileunload(segunda); assert.equal(dashboard.errorTeselas, false);
+    eventosTeselas.tileerror(primera); dashboard.reintentarTeselas();
+    assert.equal(redibujosTeselas(), 1); assert.equal(dashboard.errorTeselas, false);
+    assert.equal(dashboard.ubicacionesOriginales[0].lat, -3.762);
+});
+
+test('QA7 puntos e iconos conservan la proyección fraccionaria sin redondear ni alterar coordenadas', () => {
+    for (const filos of [{Annelida: 1}, {Annelida: 1, Arthropoda: 1}]) {
+        const {capasOriginales} = dashboardConMapa([{lat: -3.762, lon: -78.502, total: 2, filos}]);
+        const capa = capasOriginales[0]; const latlng = {lat: -3.762, lng: -78.502};
+        capa._latlng = latlng;
+        capa._map = {getZoom: () => 10, getPixelOrigin: () => ({x: 100, y: 200}), project(valor) {
+            assert.equal(valor, latlng);
+            return {x: 123.463829091, y: 245.375, subtract(origen) {return {x: this.x - origen.x, y: this.y - origen.y};}};
+        }};
+        let posicion = null;
+        capa._updateBounds = () => {posicion = capa._point;};
+        capa._setPos = punto => {posicion = punto;}; capa._icon = {};
+        capa.options = {zIndexOffset: 0};
+        capa._resetZIndex = () => {assert.equal(capa._zIndex, 45);};
+        if (capa._project) capa._project(); else capa.update();
+        assert.ok(Math.abs(posicion.x - 23.463829091) < 1e-9); assert.equal(posicion.y, 45.375);
+        assert.deepEqual(capa._latlng, latlng);
+    }
 });

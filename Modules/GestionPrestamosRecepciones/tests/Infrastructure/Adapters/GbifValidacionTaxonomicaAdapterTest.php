@@ -3,13 +3,26 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\GbifValidacionTaxonomicaAdapter;
-use Tests\TestCase;
+use Tests\DatabaseFeatureTestCase;
 
-uses(TestCase::class);
+uses(DatabaseFeatureTestCase::class, Tests\Concerns\ColeccionPortalAislada::class);
 
 beforeEach(fn () => Cache::flush());
+
+it('prioriza un taxón activo del catálogo local sin consultar GBIF', function () {
+    DB::table('taxonomia.taxones')->insert([
+        'id' => (string) Str::uuid(), 'nombre_cientifico' => 'Anacroneuria', 'rango' => 'genero', 'estado' => 'activo',
+    ]);
+    Http::preventStrayRequests();
+    $resultado = (new GbifValidacionTaxonomicaAdapter)->validarEspecies(['Anacroneuria']);
+    expect($resultado[0]['estado'])->toBe('catalogado')->and($resultado[0]['sugerencias'])->toBe([])
+        ->and($resultado[0]['confianza'])->toBe(100)->and($resultado[0]['fuenteReferencia'])->toBe('Catálogo EPN');
+    Http::assertNothingSent();
+});
 
 it('ofrece la sugerencia fuzzy de alta confianza', function () {
     Http::fake(['api.gbif.org/*' => Http::response([

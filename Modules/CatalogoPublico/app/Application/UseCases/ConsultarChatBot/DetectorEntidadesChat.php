@@ -27,6 +27,7 @@ final class DetectorEntidadesChat
         foreach (['mariposas' => 'Lepidoptera', 'escarabajos' => 'Coleoptera'] as $comun => $cientifico) {
             if (preg_match('/\b'.$comun.'\b/', $normal)) $resultado['taxon'] = $cientifico;
         }
+        if (preg_match('/\bhormigas?\b/', $normal)) $resultado['taxon'] = 'Formicidae';
 
         // Los sitios compuestos (Playa de Oro) no se pueden resolver palabra a palabra.
         $palabras = preg_split('/\s+/', $normal, -1, PREG_SPLIT_NO_EMPTY) ?: [];
@@ -34,13 +35,22 @@ final class DetectorEntidadesChat
         foreach ($palabras as $i => $palabra) {
             for ($n = 1; $n <= min(6, count($palabras) - $i); $n++) $candidatos[] = implode(' ', array_slice($palabras, $i, $n));
         }
-        foreach (['provincia' => ['state_province', 'state_province_visible'], 'localidad' => ['locality_name', 'locality_name_visible'], 'pais' => ['country', 'country_visible']] as $clave => [$campo, $visible]) {
+        $geografias = [];
+        foreach ([['provincia', 'state_province', 'state_province_visible'], ['pais', 'country', 'country_visible'],
+            ['localidad', 'locality_name', 'locality_name_visible'], ['localidad', 'localidad', 'locality_name_visible'],
+            ['localidad', 'localidad_area', 'locality_name_visible'], ['localidad', 'localidad2', 'locality_name_visible'],
+            ['localidad', 'localidad3', 'locality_name_visible']] as [$clave, $campo, $visible]) {
             $nombres = DB::table('taxonomia.especimenes as e')->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
                 ->where('d.publicado', true)->whereRaw(ElegibilidadGeograficaPortal::sql('e', 'd'))->where('d.'.$visible, true)
                 ->whereIn(DB::raw(NormalizacionGeografica::sql('e.'.$campo)), array_unique($candidatos))->distinct()->pluck('e.'.$campo)->all();
             usort($nombres, static fn ($a, $b) => (mb_strlen($b) <=> mb_strlen($a)) ?: strcmp($a, $b));
-            if ($nombres !== []) $resultado[$clave] = $nombres[0];
+            // La primera columna con una coincidencia conserva su prioridad:
+            // un texto antiguo más largo no desplaza la localidad publicada.
+            // El orden anterior elige además una grafía estable entre variantes
+            // equivalentes, sin depender de la extracción básica o del orden SQL.
+            if ($nombres !== []) $geografias[$clave] ??= $nombres[0];
         }
+        $resultado = array_replace($resultado, $geografias);
         // Un lugar usado como provincia/país no agrega otro predicado por coincidir con una localidad.
         if (isset($resultado['localidad'])) {
             $localidad = preg_replace('/^(?:provincia|pais)\s+(?:de\s+)?/', '', $this->texto->normalizar($resultado['localidad']));
@@ -96,6 +106,7 @@ final class DetectorEntidadesChat
         preg_match_all('/\b[A-ZÁÉÍÓÚ][a-záéíóúñ]{2,}\b/u', $pregunta, $matches);
         $omitidos = ['son', 'por', 'puedes', 'dame', 'estoy', 'solo', 'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre', 'no', 'esa', 'ese', 'esta', 'este', 'como', 'que', 'cual', 'cuantos', 'cuantas', 'tienen', 'tengo', 'quiero', 'busca', 'buscar', 'especimenes', 'registros', 'genero', 'familia', 'hola', 'buenos', 'buenas', 'gracias', 'necesito', 'donde', 'muestra', 'existe'];
         $result = [];
+        $omitidos = [...$omitidos, 'excel', 'xlsx', 'csv', 'despues', 'tabla', 'mapa', 'pasos', 'paso', 'publicos', 'publicas', 'catalogo', 'formato', 'datos', 'seleccion', 'aqui', 'son', 'recolecto', 'filtros', 'fuera'];
         foreach ($matches[0] as $principal) {
             if (in_array($this->texto->normalizar($principal), $omitidos, true)) {
                 continue;
@@ -115,9 +126,11 @@ final class DetectorEntidadesChat
                 ->where('d.publicado', true)->whereRaw(ElegibilidadGeograficaPortal::sql('e', 'd'))
                 ->where(function ($query) use ($principal): void {
                     $query->where(fn ($q) => $q->where('d.state_province_visible', true)->whereRaw('lower(e.state_province) = lower(?)', [$principal]))
-                        ->orWhere(fn ($q) => $q->where('d.locality_name_visible', true)->whereRaw('lower(e.locality_name) = lower(?)', [$principal]))
+                        ->orWhere(fn ($q) => $q->where('d.locality_name_visible', true)->where(function ($sitio) use ($principal): void {
+                            foreach (['e.locality_name', 'e.localidad', 'e.localidad_area', 'e.localidad2', 'e.localidad3'] as $campo) $sitio->orWhereRaw('lower('.$campo.') = lower(?)', [$principal]);
+                        }))
                         ->orWhere(fn ($q) => $q->where('d.country_visible', true)->whereRaw('lower(e.country) = lower(?)', [$principal]));
-                })->first(['e.state_province', 'e.locality_name', 'e.country', 'd.state_province_visible', 'd.locality_name_visible', 'd.country_visible']);
+                })->first(['e.state_province', DB::raw(\Modules\CatalogoPublico\Infrastructure\LocalidadPublica::sql().' AS locality_name'), 'e.country', 'd.state_province_visible', 'd.locality_name_visible', 'd.country_visible']);
             if ($geografia) {
                 if ($geografia->state_province_visible && mb_strtolower((string) $geografia->state_province) === mb_strtolower($principal)) {
                     $result['provincia'] = $geografia->state_province;

@@ -34,6 +34,9 @@ final class ActualizarEspecimenHandler
 
         $especimen->actualizar(
             localidad: $input->localidad,
+            localidad2: $input->localidad2,
+            localidad3: $input->localidad3,
+            actualizarDesglose: $input->actualizarDesglose,
             fechaColecta: $input->fechaColecta,
             colector: $input->colector,
             entidadDepositanteId: $input->entidadDepositanteId,

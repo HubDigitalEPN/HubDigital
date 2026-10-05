@@ -10,6 +10,7 @@ use Modules\CatalogoPublico\Application\Ports\DatosEspecimenProveedor;
 use Modules\CatalogoPublico\Application\Ports\FiltrosPendientes;
 use Modules\CatalogoPublico\Application\Ports\ProveedorEspecimenesPort;
 use Modules\CatalogoPublico\Domain\ValueObjects\LocalidadInecPublica;
+use Modules\CatalogoPublico\Infrastructure\LocalidadPublica;
 
 /**
  * ACL — Anti-Corruption Layer entre CatalogoPublico (Customer) e InventarioGestionColeccion (Supplier).
@@ -53,6 +54,11 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
                 e.country,
                 e.state_province,
                 e.locality_name,
+                e.localidad,
+                e.localidad_area,
+                e.localidad_desglosada,
+                e.localidad2,
+                e.localidad3,
                 e.localidad_verbatim,
                 e.lat_lon_max_error,
                 loc.referencia_inec,
@@ -121,6 +127,11 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
                 e.country,
                 e.state_province,
                 e.locality_name,
+                e.localidad,
+                e.localidad_area,
+                e.localidad_desglosada,
+                e.localidad2,
+                e.localidad3,
                 e.localidad_verbatim,
                 e.lat_lon_max_error,
                 loc.referencia_inec,
@@ -200,7 +211,7 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
                 'e.specimen_notes',
                 'e.country',
                 'e.state_province',
-                'e.locality_name',
+                'e.locality_name', 'e.localidad', 'e.localidad_area', 'e.localidad_desglosada', 'e.localidad2', 'e.localidad3',
                 'e.localidad_verbatim',
                 'e.lat_lon_max_error',
                 'loc.referencia_inec',
@@ -354,7 +365,7 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
                 'e.specimen_notes',
                 'e.country',
                 'e.state_province',
-                'e.locality_name',
+                'e.locality_name', 'e.localidad', 'e.localidad_area', 'e.localidad_desglosada', 'e.localidad2', 'e.localidad3',
                 'e.localidad_verbatim',
                 'e.lat_lon_max_error',
                 'loc.referencia_inec',
@@ -417,7 +428,7 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
                 'e.specimen_notes',
                 'e.country',
                 'e.state_province',
-                'e.locality_name',
+                'e.locality_name', 'e.localidad', 'e.localidad_area', 'e.localidad_desglosada', 'e.localidad2', 'e.localidad3',
                 'e.localidad_verbatim',
                 'e.lat_lon_max_error',
                 'loc.referencia_inec',
@@ -493,7 +504,7 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
             family: $fila->family,
             genus: $fila->genus,
             country: $fila->country,
-            localityName: $fila->locality_name,
+            localityName: LocalidadPublica::desdeFila($fila),
             decimalLatitude: $fila->decimal_latitude !== null ? (float) $fila->decimal_latitude : null,
             decimalLongitude: $fila->decimal_longitude !== null ? (float) $fila->decimal_longitude : null,
             stateProvince: $fila->state_province,

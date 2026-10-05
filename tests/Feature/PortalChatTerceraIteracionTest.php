@@ -20,6 +20,8 @@ use Modules\CatalogoPublico\Application\UseCases\ConsultarChatBot\TransferenciaC
 use Illuminate\Support\Facades\RateLimiter;
 use Modules\CatalogoPublico\Application\UseCases\ConsultarChatBot\AnaliticaChat;
 
+uses(Tests\Concerns\ColeccionPortalAislada::class);
+
 test('la negación y el contraste cambian la intención elegida', function (): void {
     $chat = app(ConocimientoPortal::class);
     expect($chat->responder('no quiero donar, quiero depositar', registrar: false)['intent'] ?? null)->toBe('deposito')

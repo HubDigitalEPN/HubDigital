@@ -64,11 +64,19 @@ final class RegistroColumnasEspecimen
             self::col('filaOrigenExcel', 'Fila origen Excel', self::GRUPO_IDENTIFICACION, self::PRIORIDAD_OPCIONAL, false, null),
 
             // Taxonomía
-            self::col('taxonNombre', 'Taxón (científico)', self::GRUPO_TAXONOMIA, self::PRIORIDAD_CRITICA, true, 'scientificName'),
+            self::col('taxonNombre', 'Nombre científico', self::GRUPO_TAXONOMIA, self::PRIORIDAD_CRITICA, true, 'scientificName'),
+            self::col('revisionNombreCientifico', 'Revisión del nombre científico', self::GRUPO_REVISION, self::PRIORIDAD_RECOMENDADA, true, null),
+            self::col('motivoNombreCientifico', 'Motivo del contraste científico', self::GRUPO_REVISION, self::PRIORIDAD_RECOMENDADA, false, null),
+            self::col('nombreCientificoOriginal', 'Nombre científico anterior', self::GRUPO_REVISION, self::PRIORIDAD_OPCIONAL, false, null),
+            self::col('candidatoNombreCientifico', 'Nombre candidato por confirmar', self::GRUPO_REVISION, self::PRIORIDAD_OPCIONAL, false, null),
+            self::col('fuenteNombreCientifico', 'Fuente del contraste científico', self::GRUPO_REVISION, self::PRIORIDAD_OPCIONAL, false, null),
+            self::col('fechaRevisionNombreCientifico', 'Fecha del contraste científico', self::GRUPO_REVISION, self::PRIORIDAD_OPCIONAL, false, null),
             self::col('taxonVerbatim', 'Taxón verbatim', self::GRUPO_TAXONOMIA, self::PRIORIDAD_RECOMENDADA, false, 'verbatimIdentification'),
 
             // Localidad
-            self::col('localidad', 'Localidad', self::GRUPO_LOCALIDAD, self::PRIORIDAD_RECOMENDADA, true, 'verbatimLocality'),
+            self::col('localidad', 'Localidad · reserva / parque / área', self::GRUPO_LOCALIDAD, self::PRIORIDAD_RECOMENDADA, true, null),
+            self::col('localidad2', 'Localidad 2 · cantón / parroquia', self::GRUPO_LOCALIDAD, self::PRIORIDAD_RECOMENDADA, true, null),
+            self::col('localidad3', 'Localidad 3 · sector / ruta / vía', self::GRUPO_LOCALIDAD, self::PRIORIDAD_RECOMENDADA, true, null),
             self::col('localidadVerbatim', 'Localidad verbatim', self::GRUPO_LOCALIDAD, self::PRIORIDAD_RECOMENDADA, false, null),
             self::col('localityName', 'Locality name', self::GRUPO_LOCALIDAD, self::PRIORIDAD_OPCIONAL, false, 'locality'),
             self::col('country', 'País', self::GRUPO_LOCALIDAD, self::PRIORIDAD_RECOMENDADA, false, 'country'),
@@ -199,7 +207,9 @@ final class RegistroColumnasEspecimen
     {
         return [
             // Procedencia geográfica normalizada (el crudo vive en los verbatim)
-            'localidad' => self::campoEdit(self::TIPO_TEXTO, 255, admiteVacio: false),
+            'localidad' => self::campoEdit(self::TIPO_TEXTO, 255),
+            'localidad2' => self::campoEdit(self::TIPO_TEXTO, 255),
+            'localidad3' => self::campoEdit(self::TIPO_TEXTO, 500),
             'localityName' => self::campoEdit(self::TIPO_TEXTO, 500),
             'localityCode' => self::campoEdit(self::TIPO_TEXTO, 255),
             'localityNotes' => self::campoEdit(self::TIPO_TEXTO_LARGO, null),
@@ -312,7 +322,7 @@ final class RegistroColumnasEspecimen
             'taxonVerbatim', 'clade', 'vernacularName', 'scientificNameAuthorship',
             'identifiedBy', 'dateDetermined',
             // Localidad
-            'localidad', 'localidadVerbatim', 'localityName', 'country', 'countryCode',
+            'localidad', 'localidad2', 'localidad3', 'localidadVerbatim', 'localityName', 'country', 'countryCode',
             'continent', 'stateProvince', 'municipality', 'decimalLatitude',
             'decimalLongitude', 'elevationMinM', 'elevationMaxM',
             // Fecha

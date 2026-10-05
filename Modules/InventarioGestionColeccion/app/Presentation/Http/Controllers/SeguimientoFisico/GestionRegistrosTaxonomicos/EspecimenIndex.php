@@ -8,6 +8,7 @@ use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Rule;
 use Livewire\Component;
+use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\RevisionNombreCientifico;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\GeocodificadorInversoPort;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarEspecimen\ActualizarEspecimenHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarEspecimen\ActualizarEspecimenInput;
@@ -88,7 +89,7 @@ final class EspecimenIndex extends Component
         'fEstado' => 'nullable|string|in:disponible,en_prestamo',
         'fEstadoRevision' => 'nullable|string|in:pendiente,confirmada,descartada',
         'fMotivoRevision' => 'nullable|string|max:200',
-        'fIncidencia' => 'nullable|string|in:duplicados,coordenadas,ec_publicar,fechas,taxonomia',
+        'fIncidencia' => 'nullable|string|in:duplicados,coordenadas,ec_publicar,fechas,taxonomia,localidades,nombres_cientificos,nombres_vacios,nombres_no_cientificos,nombres_no_resueltos,nombres_corregidos,nombres_sin_revisar',
     ];
 
     /** Campos cuyo cambio invalida la página actual y obliga a volver a la 1. */
@@ -246,8 +247,14 @@ final class EspecimenIndex extends Component
     #[Rule('required|string|uuid')]
     public string $taxonId = '';
 
-    #[Rule('required|string|max:255')]
+    #[Rule('nullable|string|max:255')]
     public string $localidad = '';
+
+    #[Rule('nullable|string|max:255')]
+    public string $localidad2 = '';
+
+    #[Rule('nullable|string|max:500')]
+    public string $localidad3 = '';
 
     #[Rule('required|date_format:Y-m-d')]
     public string $fechaColecta = '';
@@ -308,8 +315,14 @@ final class EspecimenIndex extends Component
 
     public string $editandoId = '';
 
-    #[Rule('required|string|max:255')]
+    #[Rule('nullable|string|max:255')]
     public string $editLocalidad = '';
+
+    #[Rule('nullable|string|max:255')]
+    public string $editLocalidad2 = '';
+
+    #[Rule('nullable|string|max:500')]
+    public string $editLocalidad3 = '';
 
     #[Rule('required|date_format:Y-m-d')]
     public string $editFechaColecta = '';
@@ -386,6 +399,11 @@ final class EspecimenIndex extends Component
         }
 
         $this->fechaColecta = date('Y-m-d');
+    }
+
+    public function boot(): void
+    {
+        abort_unless(auth()->user()?->esCurador(), 403);
     }
 
     // ── Columnas ──────────────────────────────────────────────────────────────
@@ -481,6 +499,8 @@ final class EspecimenIndex extends Component
         foreach ($conocidas as $clave) {
             if (! in_array($clave, $ordenado, true)) {
                 $ordenado[] = $clave;
+                if (in_array($clave, ['localidad2', 'localidad3', 'revisionNombreCientifico'], true)) $visibles[] = $clave;
+                if ($clave === 'revisionNombreCientifico') $visibles[] = 'taxonNombre';
             }
         }
 
@@ -667,6 +687,8 @@ final class EspecimenIndex extends Component
             'cardexLiquidCollectionCode',
             'taxonId',
             'localidad',
+            'localidad2',
+            'localidad3',
             'colector',
             'entidadDepositanteId',
             'individualCount',
@@ -698,6 +720,8 @@ final class EspecimenIndex extends Component
         $this->validateOnly('codigoCatalogo');
         $this->validateOnly('taxonId');
         $this->validateOnly('localidad');
+        $this->validateOnly('localidad2');
+        $this->validateOnly('localidad3');
         $this->validateOnly('fechaColecta');
         $this->validateOnly('colector');
 
@@ -706,6 +730,8 @@ final class EspecimenIndex extends Component
                 codigoCatalogo: $this->codigoCatalogo,
                 taxonId: $this->taxonId,
                 localidad: $this->localidad,
+                localidad2: $this->nullableString($this->localidad2),
+                localidad3: $this->nullableString($this->localidad3),
                 fechaColecta: $this->fechaColecta,
                 colector: $this->colector,
                 entidadDepositanteId: $this->entidadDepositanteId !== '' ? $this->entidadDepositanteId : null,
@@ -764,6 +790,8 @@ final class EspecimenIndex extends Component
 
         $this->editandoId = $id;
         $this->editLocalidad = (string) ($e['localidad'] ?? '');
+        $this->editLocalidad2 = (string) ($e['localidad2'] ?? '');
+        $this->editLocalidad3 = (string) ($e['localidad3'] ?? '');
         $this->editFechaColecta = (string) ($e['fechaColecta'] ?? '');
         $this->editColector = (string) ($e['colector'] ?? '');
         $this->editEntidadDepositanteId = (string) ($e['entidadDepositanteId'] ?? '');
@@ -790,6 +818,8 @@ final class EspecimenIndex extends Component
     public function actualizarEspecimen(ActualizarEspecimenHandler $handler): void
     {
         $this->validateOnly('editLocalidad');
+        $this->validateOnly('editLocalidad2');
+        $this->validateOnly('editLocalidad3');
         $this->validateOnly('editFechaColecta');
         $this->validateOnly('editColector');
 
@@ -797,6 +827,9 @@ final class EspecimenIndex extends Component
             $handler->handle(new ActualizarEspecimenInput(
                 especimenId: $this->editandoId,
                 localidad: $this->editLocalidad,
+                localidad2: $this->nullableString($this->editLocalidad2),
+                localidad3: $this->nullableString($this->editLocalidad3),
+                actualizarDesglose: true,
                 fechaColecta: $this->editFechaColecta,
                 colector: $this->editColector,
                 entidadDepositanteId: $this->editEntidadDepositanteId !== '' ? $this->editEntidadDepositanteId : null,
@@ -1060,7 +1093,7 @@ final class EspecimenIndex extends Component
         }
 
         $this->fichaId = $id;
-        $this->fichaDatos = $ficha->ficha;
+        $this->fichaDatos = app(RevisionNombreCientifico::class)->completar([$ficha->ficha])[0];
         $this->fichaBorrador = [];
         foreach (RegistroColumnasEspecimen::clavesEditablesEnMasa() as $clave) {
             $valor = $ficha->ficha[$clave] ?? null;
@@ -1364,7 +1397,7 @@ final class EspecimenIndex extends Component
                     ? $this->problemasDeFila($clasificador, $fila['motivoRevision'] ?? null)
                     : [],
             ],
-            $output->items,
+            app(RevisionNombreCientifico::class)->completar($output->items),
         );
 
         return view('inventariogestioncoleccion::admin.taxonomia.especimenes.index', [

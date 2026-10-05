@@ -26,5 +26,8 @@ final readonly class ActualizarEspecimenInput
         public ?string $disposition = null,
         public ?string $occurrenceStatus = null,
         public ?string $specimenNotes = null,
+        public ?string $localidad2 = null,
+        public ?string $localidad3 = null,
+        public bool $actualizarDesglose = false,
     ) {}
 }

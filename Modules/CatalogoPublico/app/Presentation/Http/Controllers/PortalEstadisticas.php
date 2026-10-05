@@ -42,6 +42,7 @@ final class PortalEstadisticas
             'vista' => 'mapa',
             'ft' => $filtros['taxon'] ?? null,
             'fprov' => $filtros['provincia'] ?? null,
+            'fxprov' => $filtros['provincia_excluida'] ?? null,
             'fph' => $filtros['filo'] ?? null,
             'ffd' => isset($filtros['desde']) ? $filtros['desde'].'-01-01' : null,
             'ffh' => isset($filtros['hasta']) ? $filtros['hasta'].'-12-31' : null,
@@ -61,7 +62,7 @@ final class PortalEstadisticas
         $this->presupuesto = new PresupuestoConsultaPortal($firma);
         try {
             return $this->presupuesto->ejecutar(fn (): array => $this->cachear(
-                'portal:estadisticas:v19:'.(int) $incluirContenidoTaxon.':'.$this->revisionDatos().':'.$firma,
+                'portal:estadisticas:v20:'.(int) $incluirContenidoTaxon.':'.$this->revisionDatos().':'.$firma,
                 fn (): array => $this->resumir($filtros, $incluirContenidoTaxon),
             ));
         } finally {
@@ -77,7 +78,7 @@ final class PortalEstadisticas
     /** Distribución completa sin hidratar tarjetas ni calcular los otros indicadores. */
     public function puntosParaMapa(array $filtros): array
     {
-        return $this->cachear('portal:puntos:v3:'.$this->revisionDatos().':'.sha1(json_encode($filtros)), function () use ($filtros): array {
+        return $this->cachear('portal:puntos:v4:'.$this->revisionDatos().':'.sha1(json_encode($filtros)), function () use ($filtros): array {
             $taxones = DB::table('taxonomia.taxones')->get(['id', 'padre_id', 'rango', 'nombre_cientifico'])->keyBy('id');
             return $this->agruparPuntos($this->consulta($filtros), $taxones);
         });
@@ -158,6 +159,7 @@ final class PortalEstadisticas
     private function consulta(array $filtros): Builder
     {
         $datos = [];
+        $datos['filtroProvinciaExcluida'] = $filtros['provincia_excluida'] ?? '';
         foreach (['codigo' => 'filtroCatalogo', 'preparaciones' => 'filtroPreparaciones', 'taxon' => 'filtroTaxon', 'pais' => 'filtroPais', 'provincia' => 'filtroProvincia', 'geografias' => 'filtroGeografias', 'filo' => 'filtroFiloId', 'mes' => 'filtroMes', 'identificacion' => 'filtroIdentificacion', 'ubicacion' => 'filtroSoloUbicacion', 'colector' => 'filtroColector', 'metodos' => 'filtroMetodos', 'lat_min' => 'filtroLatMin', 'lat_max' => 'filtroLatMax', 'lon_min' => 'filtroLonMin', 'lon_max' => 'filtroLonMax', 'elev_desde' => 'filtroElevDesde', 'elev_hasta' => 'filtroElevHasta', 'biomas' => 'filtroBiomas', 'habitat' => 'filtroHabitat', 'tipo' => 'filtroTipo', 'disposicion' => 'filtroDisposicion', 'casta' => 'filtroCasta', 'estadio' => 'filtroEstadio'] as $clave => $propiedad) {
             if (isset($filtros[$clave])) $datos[$propiedad] = $filtros[$clave];
         }
@@ -175,6 +177,7 @@ final class PortalEstadisticas
     {
         return [
             'provincia' => ['nullable', 'string', 'max:120'],
+            'provincia_excluida' => ['nullable', 'string', 'max:120'],
             'desde' => ['nullable', 'integer', 'between:1800,2100'],
             'hasta' => ['nullable', 'integer', 'between:1800,2100'],
             'filo' => ['nullable', 'uuid'],

@@ -12,7 +12,7 @@ final class PerfilExportacionPublica
     public const array ENCABEZADOS_CSV = [
         'N.º catálogo', 'Taxón', 'Fecha', 'Localidad del Excel', 'Localidad INEC', 'Código INEC',
         'Provincia', 'Latitud', 'Longitud', 'Precisión', 'Tipo', 'Referencia INEC',
-        'Disposición', 'Perfil de exportación',
+        'Disposición', 'Perfil de exportación', 'Localidad',
     ];
 
     public const array ENCABEZADOS_XLSX = [

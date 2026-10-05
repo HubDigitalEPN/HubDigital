@@ -24,7 +24,7 @@
                     </div>
                     <div class="flex shrink-0 items-center gap-1">
                         <flux:button size="xs" variant="ghost" icon="pencil-square" aria-label="Editar {{ $institucion->nombre }}" wire:click="editar({{ $institucion->id }})" />
-                        <flux:button size="xs" variant="ghost" :icon="$institucion->activo ? 'trash' : 'arrow-path'" :aria-label="$institucion->activo ? 'Eliminar '.$institucion->nombre : 'Restaurar '.$institucion->nombre" wire:click="cambiarEstado({{ $institucion->id }})" />
+                        <flux:button size="xs" variant="ghost" :icon="$institucion->activo ? 'pause' : 'arrow-path'" :aria-label="$institucion->activo ? 'Desactivar '.$institucion->nombre : 'Activar '.$institucion->nombre" wire:click="cambiarEstado({{ $institucion->id }})" />
                     </div>
                 </div>
             @empty
@@ -33,6 +33,23 @@
         </div>
         <div class="mt-3">{{ $instituciones->links() }}</div>
     </div>
+
+    <section class="rounded-xl border border-border bg-white p-4" aria-labelledby="instituciones-pendientes">
+        <flux:heading id="instituciones-pendientes" size="lg">Nombres por identificar</flux:heading>
+        <p class="mt-1 text-sm text-text-secondary">Estos textos se conservan como referencia y requieren confirmar la entidad antes de añadirla al catálogo.</p>
+        <flux:input class="mt-3" wire:model.live.debounce.300ms="busquedaPendientes" label="Filtrar nombres por identificar" />
+        <div class="mt-3 space-y-3">
+            @forelse($pendientes as $pendiente)
+                <div class="rounded-lg border border-border p-3">
+                    <p class="text-sm font-medium text-text-primary">{{ $pendiente->valor_original }}</p>
+                    <p class="text-sm text-text-secondary">{{ $pendiente->motivo }}</p>
+                    <p class="text-xs text-text-secondary">Filas del Excel: {{ $pendiente->filas_excel ?: 'Sin referencia de fila' }}</p>
+                </div>
+            @empty
+                <p class="text-sm text-text-secondary">No hay nombres pendientes con este filtro.</p>
+            @endforelse
+        </div>
+    </section>
 
     <flux:modal name="institucion-editor" class="w-full max-w-md">
         <div class="space-y-4">

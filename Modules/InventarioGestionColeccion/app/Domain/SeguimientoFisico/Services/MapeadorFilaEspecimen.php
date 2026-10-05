@@ -34,6 +34,8 @@ final class MapeadorFilaEspecimen
             'taxonNombre' => $e->taxonId() !== null ? ($taxonNombre ?? $e->taxonId()) : null,
             'taxonVerbatim' => $e->taxonVerbatim(),
             'localidad' => $e->localidad(),
+            'localidad2' => $e->localidad2(),
+            'localidad3' => $e->localidad3(),
             'localidadVerbatim' => $e->localidadVerbatim(),
             'fechaColecta' => $e->fechaColecta(),
             'fechaColectaFin' => $e->fechaColectaFin(),

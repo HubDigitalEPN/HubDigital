@@ -1,5 +1,57 @@
 # Distribución de las pruebas
 
+## Tres fallos restantes del chat — 4 de octubre de 2026
+
+La siguiente salida de `crear-paquete-oci` aportada por el usuario completa Pest/PostgreSQL con **1.189 pruebas aprobadas, tres fallidas y 6.164 aserciones**, en 527,20 segundos. Los repositorios de inventario y GBIF aparecen aprobados y la ejecución ya no termina por agotamiento de memoria. El paquete se detiene ante los tres fallos; no hay evidencia de aprobación integral ni de publicación de esta rama.
+
+Los tres fallos quedan localizados en `DetectorEntidadesChat`: el criterio de mayor longitud entre columnas seleccionaba el texto anterior de `localidad` en lugar de la coincidencia publicada `Playa de Oro`; los empates dejaban la variante inicial `Perú` en vez del representante estable `Peru`. El detector ahora resuelve primero las coincidencias completas con un orden determinista y conserva la prioridad de la primera columna pública coincidente. Las grafías de la colección permanecen intactas y las consultas siguen comparándolas mediante normalización geográfica y los permisos existentes.
+
+Se conservan las aserciones fallidas de `PortalCatalogoSeleccionTest` y los dos casos de corrección geográfica de `PortalChatContratoSeleccionTest`. El caso existente de variantes con tilde también exige el mismo país y el mismo enlace para sus tres consultas, además del conteo y de la conservación del valor original en la base. No se añaden escenarios Gherkin que repitan esas entradas y resultados.
+
+**Revisado estáticamente:** selección de entidades, orden de prioridades, consulta pública, permisos, contexto y enlaces. **Ejecutado:** exclusivamente la salida fallida del paquete proporcionada por el usuario. **Pendiente:** nueva ejecución completa de `crear-paquete-oci` por el usuario; no se ejecutaron pruebas aisladas ni la aplicación para validar esta corrección.
+
+## Corrección de los fallos del paquete — 4 de octubre de 2026
+
+Se conserva la rama `fix/portal-remediacion-qa7-20261004` por instrucción expresa del usuario. La salida proporcionada muestra fallos en importación, ingesta, fichas, XLSX, cartografía, selección, chat y GBIF; termina con agotamiento de los 512 MB de PHP en `Connection::fetchAll`, antes de imprimir el detalle de las aserciones. No hay evidencia de una ejecución completa aprobada.
+
+La revisión estática del validador confirma que migra la base local existente sin vaciar la colección. Las pruebas de portal con conteos globales o identidades reales, las de repositorios de inventario y las del adaptador GBIF ahora usan una colección sintética dentro de `DatabaseTransactions`. El hook exige PostgreSQL, entorno `testing` y transacción activa antes de aislar taxones, localidades y muestras; el rollback restaura la colección local. Esto conserva los conteos exactos y evita que las consultas de repositorio carguen el catálogo real completo. Los catálogos institucionales permanecen disponibles.
+
+| Corrección | Cobertura conservada o ampliada |
+| --- | --- |
+| No marcar para revisión una localidad opcional ausente ni una sola área o un sector sin cantón; conservar ambigüedad y fuentes largas | `ImportarCatalogoInvertebradosTest`, `IngresarLoteDepositoHandlerTest`, `RevisionCientificaColeccionTest`; permanecen los motivos y conteos originales de advertencias |
+| Prioridad del campo histórico `locality_name` sin desglose aprobado, tanto en proyección PHP como SQL | `RevisionCientificaColeccionTest`, exportación Unicode de `PortalCartografiaRealTest` y búsqueda contextual existente |
+| Ficha completa, columnas de auditoría sin evidencia inventada y familia derivada del UUID con sus permisos | `ObtenerFichaEspecimenHandlerTest`, `PortalQa7RemediacionTest`; se comprueba también la reserva del nombre científico |
+| Incertidumbre numérica, cero explícito y textos sin fórmulas ni pérdida de ceros | `PortalContratoExportacionQa6Test`; se exige el tipo `inlineStr` que devuelve el lector XLSX usado también por QA5 |
+| Ayuda de acceso antes de una mención negada de depósito, limpieza de contexto y exclusiones ambiguas sin conteos | `PortalChatContratoSeleccionTest`, `PortalQa7RemediacionTest`; se mantienen las aserciones anteriores |
+| Alias de estadio sin cambiar la selección del enlace y prioridad local frente a GBIF | `PortalChatSeleccionQa4Test`, `PortalQa7RemediacionTest`, `GbifValidacionTaxonomicaAdapterTest`; nuevo caso de catálogo local sin HTTP |
+
+**Revisado:** código, diffs, contratos, permisos y restauración transaccional mediante lectura; etiquetas y estados de las vistas afectadas. **Ejecutado por el paquete:** solamente la ejecución fallida aportada por el usuario. **Pendiente:** siguiente ejecución completa de `crear-paquete-oci` por el usuario y aceptación visual en navegador. No se ejecutaron suites, comprobaciones aisladas del paquete ni la aplicación. Las pruebas y sus requisitos permanecen activos; no se agregaron escenarios Gherkin ni se debilitaron aserciones.
+
+## Catálogos, localidades y nombres científicos — continuidad del 4 de octubre de 2026
+
+La instrucción posterior del usuario conserva la rama de QA7 y cambia las operaciones nuevas de base de datos a ejecución directa en local y OCI, con respaldos y auditoría. No autoriza ejecutar el paquete. Los recuentos posteriores y la comparación de los campos originales documentan las operaciones realizadas; no sustituyen Pest, Behat, compilaciones ni aceptación visual.
+
+`tests/Feature/RevisionCientificaColeccionTest.php` prepara cinco contratos distintos: filtros científicos con total y paginación del inventario completo; invalidación del contraste al editar un nombre o su verbatim conservando la evidencia anterior; localidad con sector largo, edición masiva, búsqueda y composición pública sin truncar; desglose sin reserva inventada y fuente excesiva pendiente; equivalencias documentadas de catálogos y rechazo de entidades sin identificar. Usa transacciones, los esquemas preparados directamente y ninguna consulta real a GBIF. **Escrito y revisado estáticamente, no ejecutado.**
+
+Estos casos amplían la cobertura de edición masiva, persistencia y privacidad existente sin repetirlos en Gherkin. La comparación operativa de los 49.696 especímenes comprueba sus columnas originales salvo los campos expresamente cambiados (`taxon_id`, `updated_at`); no es una suite ni una ejecución de la aplicación. La revisión estática de UX comprueba etiquetas, motivos legibles, filtros, campos de auditoría de solo lectura y permisos de curador/administrador. Teclado, foco, contraste y adaptación renderizados siguen pendientes de navegador y entorno disponibles. El [registro de QA7](portal-qa7-remediacion-20261004.md) contiene resultados y pendientes de ambas bases.
+
+## Remediación QA7 — 4 de octubre de 2026
+
+La solicitud actual autoriza remediar la revisión 7. No autoriza ejecutar `crear-paquete-oci`; la autorización de QA6 fue puntual. Las pruebas siguientes se escribieron y revisaron estáticamente, pero no se ejecutaron. El paquete ya incluye Pest/PostgreSQL y todos los `tests/Frontend/*.test.mjs`; no se duplicaron esas verificaciones con comandos aislados.
+
+| Contrato nuevo | Cobertura preparada y diferencia respecto de la existente |
+| --- | --- |
+| Inclusión/exclusión provincial, ámbitos, cero, provincia vacía/desconocida/reservada y operadores ambiguos | `PortalQa7RemediacionTest`; complementa los casos positivos de ubicación y permisos anteriores; comprueba filas y mapa del enlace resultante |
+| Acción/formato antes de entidades, Q35 con hormigas/enero/década, CSV/XLSX y depósito autenticado | `PortalQa7RemediacionTest`; complementa `PortalChatCompuestoQa6Test` que cubre cantidad + instrucciones de mapa |
+| Elipsis de especies, selección vacía, paratipos como registros, localidad, unidad ambigua y ayuda intermedia | `PortalQa7RemediacionTest`; extiende los conteos explícitos de `PortalChatSeleccionQa4Test` |
+| Capacidades/glosario/actualidad locales y clasificación de género con descendientes, sin HTTP | `PortalQa7RemediacionTest`; separa ayuda determinista del fallback externo y conserva permisos |
+| Alias de estadio y hojas terminales de familia/género/especie paginadas | `PortalQa7RemediacionTest`; cubre el falso cero Adulto y el caso terminal de Tubifex que la paginación de especies no alcanzaba |
+| Retiro individual de filtros, diccionario y familia de referencia externa reservada | `PortalQa7RemediacionTest`; complementa contratos históricos de URL, exportación y divulgación |
+| Selector original, renovación de opciones, recuperación de teselas y proyección fraccionaria | Casos adicionales en `portal-dashboard-actions.test.mjs`; conservan los contratos anteriores de filos/teclado/foco. El residual CSS independiente y la adaptación renderizada siguen pendientes |
+| Incertidumbre métrica numérica, desconocida sin cero y cero explícitamente informado | Caso adicional en `PortalContratoExportacionQa6Test`; las aserciones anteriores de campos, advertencias y permisos se conservan |
+
+No se añadieron escenarios Gherkin: los flujos nuevos se cubren en Pest/Node dentro del paquete y repetir las mismas entradas, recorrido y resultados no aportaría cobertura distinta. Los escenarios `@listo` existentes permanecen activos. El [registro de remediación](portal-qa7-remediacion-20261004.md) distingue implementación, revisión estática y pendientes visuales/curatoriales; no declara pruebas aprobadas.
+
 ## Remediación QA6 — 3 de octubre de 2026
 
 El usuario autorizó para esta tarea la secuencia Edge en localhost, `crear-paquete-oci` completo, despliegue de la misma identidad en OCI y Edge en `dev.labinvepn.org`, con corrección y reintento ante fallos. Esta autorización reemplaza la limitación de navegación pública de la tarea anterior. El arranque de PostgreSQL/Laravel/Vite y la migración local preparan el entorno visual; no sustituyen ni repiten suites, builds o comprobaciones aisladas del paquete.

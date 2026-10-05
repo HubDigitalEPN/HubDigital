@@ -24,6 +24,15 @@ final class FiltrosLenguajeChat
         $fechasConsumidas = [];
         $rangoNaturalCompleto = false;
 
+        // La década y el mes son criterios independientes: enero de los años noventa.
+        if (preg_match('/\b(?:anos|decada de los)\s+(?:mil novecientos\s+)?(noventa|ochenta|setenta|sesenta|cincuenta)\b/', $texto, $decada)) {
+            $inicioDecada = ['noventa' => 1990, 'ochenta' => 1980, 'setenta' => 1970, 'sesenta' => 1960, 'cincuenta' => 1950][$decada[1]];
+            $filtros = ['desde' => $inicioDecada.'-01-01', 'hasta' => ($inicioDecada + 9).'-12-31'];
+            foreach (self::MESES as $indice => $mes) {
+                if (preg_match('/\b'.$mes.'\b/', $texto)) { $filtros['mes'] = (string) ($indice + 1); break; }
+            }
+        }
+
         if (preg_match('/\b(desde|del|entre)\s+('.$fecha.')\s+(hasta|al|y)\s+('.$fecha.')\b/', $texto, $m)) {
             $filtros = ['desde' => $m[2], 'hasta' => $m[4]];
             $fechasConsumidas = [$m[2], $m[4]];

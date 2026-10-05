@@ -3258,6 +3258,8 @@ final class RegistroSolicitudDeposito extends Component
             'localidadesCatalogo' => $this->campoEditorManual === 'Localidad' ? $this->localidadesDisponibles() : [],
             'institucionesCatalogo' => DB::table('usuarios.instituciones_catalogo')
                 ->where('activo', true)->orderBy('nombre')->pluck('nombre')->all(),
+            'cargosCatalogo' => DB::table('usuarios.cargos_catalogo')
+                ->where('activo', true)->orderBy('nombre')->pluck('nombre')->all(),
         ]);
     }
 

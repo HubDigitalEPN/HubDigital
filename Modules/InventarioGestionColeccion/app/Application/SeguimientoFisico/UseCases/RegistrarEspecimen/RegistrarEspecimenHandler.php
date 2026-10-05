@@ -62,6 +62,8 @@ final class RegistrarEspecimenHandler
             codigoCatalogo: $input->codigoCatalogo,
             taxonId: $input->taxonId,
             localidad: $input->localidad,
+            localidad2: $input->localidad2,
+            localidad3: $input->localidad3,
             fechaColecta: $input->fechaColecta,
             colector: $input->colector,
             entidadDepositanteId: $input->entidadDepositanteId,

@@ -78,6 +78,24 @@ test('agrupa filas con mismo oldCode en una sola muestra', function (): void {
         ->and($muestraRepo->contarTodas())->toBe(2);
 });
 
+test('una reserva sin cantón se conserva sin advertencia y dos áreas mantienen la revisión', function (): void {
+    [$importer, $repo] = bootstrapImporter();
+    $resultado = $importer->ejecutar(new ArrayFuenteCatalogo([
+        ['occurrenceID' => 'LOC-LIMPIA', 'localityName' => 'Reserva Natural El Madrigal', 'country' => 'Ecuador', 'stateProvince' => 'Loja'],
+        ['occurrenceID' => 'LOC-AMBIGUA', 'localityName' => 'Reserva A, Reserva B', 'country' => 'Ecuador', 'stateProvince' => 'Loja'],
+    ]));
+    $limpia = $repo->buscarPorCodigoCatalogo('LOC-LIMPIA');
+    $ambigua = $repo->buscarPorCodigoCatalogo('LOC-AMBIGUA');
+    expect($resultado->especimenesPersistidos)->toBe(2)
+        ->and($resultado->marcadosParaRevision)->toBe(1)
+        ->and($resultado->motivosRevision['Localidad por desglosar: revisar el texto fuente'])->toBe(1)
+        ->and($limpia->localidad())->toBe('Reserva natural el madrigal')
+        ->and($limpia->localidad2())->toBeNull()->and($limpia->localidad3())->toBeNull()
+        ->and($limpia->motivoRevision())->toBeNull()
+        ->and($ambigua->localidadVerbatim())->toBe('Reserva a, Reserva b')
+        ->and($ambigua->motivoRevision())->toContain('Localidad por desglosar');
+});
+
 test('conserva cada técnica original cuando oldCode comparte muestras o está vacío', function (): void {
     [$importer, $especimenRepo] = bootstrapImporter();
     $resultado = $importer->ejecutar(new ArrayFuenteCatalogo([

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers;
 
+use App\Support\CatalogoTerritoriosDesglose;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\DesgloseLocalidad;
+
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especimen;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\MuestraColecta;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
@@ -43,6 +46,7 @@ final class ImportarCatalogoInvertebrados
         private readonly MuestraColectaRepositoryInterface $muestraRepo,
         private readonly TaxonRepositoryInterface $taxonRepo,
         private readonly FilaCatalogoMapper $mapper,
+        private readonly ?CatalogoTerritoriosDesglose $territorios = null,
     ) {}
 
     public function ejecutar(
@@ -104,6 +108,11 @@ final class ImportarCatalogoInvertebrados
                 try {
                     $mapeada = $this->mapper->mapear($fila);
                     $normalizada = $this->mapper->normalizarClaves($fila);
+                    $territorios = DesgloseLocalidad::clave($mapeada->country ?? '') === 'ecuador'
+                        ? ($this->territorios?->paraProvincia($mapeada->stateProvince ?? '') ?? []) : [];
+                    $municipio = $territorios[DesgloseLocalidad::clave($mapeada->municipality ?? '')] ?? null;
+                    $desglose = DesgloseLocalidad::desde($mapeada->localidadVerbatim ?? $mapeada->localidad,
+                        $municipio, territorios: $territorios, contexto: [$mapeada->country, $mapeada->stateProvince]);
 
                     $taxonId = $constructorTaxonomia->resolverDeFila($normalizada);
 
@@ -129,7 +138,9 @@ final class ImportarCatalogoInvertebrados
                         id: $this->especimenRepo->nextIdentity(),
                         codigoCatalogo: $mapeada->codigoCatalogo,
                         taxonId: $taxonId !== null ? (string) $taxonId : null,
-                        localidad: $mapeada->localidad,
+                        localidad: $desglose['localidad'] ?? '',
+                        localidad2: $desglose['localidad2'],
+                        localidad3: $desglose['localidad3'],
                         fechaColecta: $mapeada->fechaColecta,
                         colector: $mapeada->colector,
                         occurrenceId: $mapeada->occurrenceId,
@@ -153,7 +164,7 @@ final class ImportarCatalogoInvertebrados
                         habitat: $mapeada->habitat,
                         taxonVerbatim: $mapeada->taxonVerbatim,
                         muestraId: $muestraId,
-                        localidadVerbatim: $mapeada->localidadVerbatim,
+                        localidadVerbatim: $mapeada->localidadVerbatim ?? $mapeada->localidad,
                         fechaVerbatim: $mapeada->fechaVerbatim,
                         fechaColectaFin: $mapeada->fechaColectaFin,
                         individualCountVerbatim: $mapeada->individualCountVerbatim,
@@ -206,10 +217,12 @@ final class ImportarCatalogoInvertebrados
                         samplingProtocol: $mapeada->samplingProtocol,
                     );
 
-                    if ($mapeada->requiereRevision()) {
-                        $especimen->marcarParaRevision($mapeada->motivoRevision() ?? 'revisión requerida');
+                    $warnings = $mapeada->warnings;
+                    if ($desglose['requiere_revision']) $warnings[] = 'Localidad por desglosar: revisar el texto fuente';
+                    if ($warnings !== []) {
+                        $especimen->marcarParaRevision(implode('; ', $warnings));
                         $marcadosParaRevision++;
-                        foreach ($mapeada->warnings as $w) {
+                        foreach ($warnings as $w) {
                             $motivosRevision[$w] = ($motivosRevision[$w] ?? 0) + 1;
                         }
                     }

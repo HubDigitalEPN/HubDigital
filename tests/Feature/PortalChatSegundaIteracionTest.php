@@ -13,6 +13,8 @@ use Modules\CatalogoPublico\Application\UseCases\ConsultarChatBot\CorpusChat;
 use Modules\CatalogoPublico\Application\UseCases\ConsultarChatBot\AnaliticaChat;
 use Modules\CatalogoPublico\Presentation\Http\Controllers\AdministrarAsistente;
 
+uses(Tests\Concerns\ColeccionPortalAislada::class);
+
 test('las frases sociales no consultan el catálogo y los requisitos ambiguos piden aclaración', function (): void {
     $social = app(ConversacionBasica::class);
     expect($social->responder('muchas gracias')['texto'])->toContain('Con gusto')

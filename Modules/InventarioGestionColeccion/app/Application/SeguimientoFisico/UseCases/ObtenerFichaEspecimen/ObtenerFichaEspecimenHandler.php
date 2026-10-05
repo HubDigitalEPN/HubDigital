@@ -46,7 +46,16 @@ final class ObtenerFichaEspecimenHandler
         }
 
         return new ObtenerFichaEspecimenOutput(
-            MapeadorFilaEspecimen::mapear($especimen, $nombreTaxon),
+            // El contraste externo no forma parte de la entidad Especimen.
+            // Exponer sus columnas sin inventar evidencia cuando no se carga.
+            MapeadorFilaEspecimen::mapear($especimen, $nombreTaxon) + [
+                'revisionNombreCientifico' => null,
+                'motivoNombreCientifico' => null,
+                'nombreCientificoOriginal' => null,
+                'candidatoNombreCientifico' => null,
+                'fuenteNombreCientifico' => null,
+                'fechaRevisionNombreCientifico' => null,
+            ],
             true,
         );
     }

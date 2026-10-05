@@ -39,5 +39,7 @@ final readonly class RegistrarEspecimenInput
          * normal queda null y el repositorio asigna el GUID automáticamente.
          */
         public ?string $guidForzado = null,
+        public ?string $localidad2 = null,
+        public ?string $localidad3 = null,
     ) {}
 }

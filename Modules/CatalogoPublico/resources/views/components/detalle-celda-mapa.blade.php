@@ -12,7 +12,7 @@
         <button type="button" class="atlas-icon-button" autofocus x-on:click="$refs.detalleCelda.close()" aria-label="Cerrar registros">×</button>
     </header>
     <div class="atlas-cell-loading" x-show="cargando" role="status"><span class="atlas-loading-dot" aria-hidden="true"></span>Cargando árbol taxonómico y registros públicos…</div>
-    <p class="atlas-cell-error" x-show="error" x-cloak role="alert">No se pudo cargar esta ubicación. Cierra el diálogo y vuelve a seleccionar el punto para reintentar.</p>
+    <div class="atlas-cell-error" x-show="error" x-cloak role="alert"><p>No se pudo cargar esta ubicación. La selección se conserva.</p><button type="button" x-on:click="error = false; cargando = true; $wire.abrirCelda(punto.lat, punto.lon).then(() => { cargando = false }).catch(() => { cargando = false; error = true })">Reintentar esta ubicación</button></div>
     @if($celdaMapa !== null)
         @php
             $detalle = $this->detalleCelda;
@@ -51,10 +51,11 @@
                         <aside class="atlas-taxon-information" aria-labelledby="titulo-info-taxon">
                             <h3 id="titulo-info-taxon">{{ $seleccionado['nombre'] ?? 'Información del taxón' }}</h3>
                             @if($seleccionado)
+                                <x-catalogopublico::referencia-taxonomica :nombre="$seleccionado['nombre']" :familia-visible="isset($seleccionado['jerarquia']['family'])" :familia-original="$seleccionado['jerarquia']['family'] ?? null" />
                                 @if(!$esEspecie)
                                     <x-catalogopublico::fotografia-mosaico :taxon="$ilustracion['taxon_consulta'] ?? ($seleccionado['jerarquia'] ?? [])" :fotos="\Modules\CatalogoPublico\Application\Services\IlustracionTaxonomica::mosaicoParaTaxon($seleccionado['jerarquia'] ?? [])" :limite="1" :retrato="true" :compacto="true" contexto="ficha-mapa" />
                                 @endif
-                                @if($esEspecie && $detalle['registros'] !== [])
+                                @if($detalle['mostrarRegistros'] && $detalle['registros'] !== [])
                                     <div x-data="{ registroActivo: 0 }" wire:key="informacion-taxon-{{ $seleccionado['id'] }}-{{ $detalle['pagina'] }}">
                                         <label class="atlas-record-selector">Ejemplar de la selección<select x-model.number="registroActivo">
                                             @foreach($detalle['registros'] as $registro)<option value="{{ $loop->index }}">{{ $registro->occurrence_id ?: 'Código reservado' }} · {{ $loop->iteration }}</option>@endforeach
@@ -67,13 +68,14 @@
                                         @endforeach
                                     </div>
                                 @endif
+                                @if($detalle['mostrarRegistros'] && $detalle['registros'] === [])<p role="status">No hay registros públicos disponibles para esta hoja en la selección actual. Revisa los filtros o vuelve al árbol.</p>@endif
                             @endif
                         </aside>
                     </div>
                 @else
                     <x-catalogopublico::tabla-registros-mapa :registros="$detalle['registros']" :imagenes="$detalle['imagenes']" :total="$detalle['total']" :seleccion="null" />
                 @endif
-                @if($vistaCelda === 'registros' || ($detalle['grupos'] ?? []) === [])
+                @if($detalle['mostrarRegistros'] && $detalle['registros'] !== [])
                     <nav class="atlas-cell-pagination" aria-label="Páginas de ejemplares de la ubicación">
                         <button type="button" wire:click="paginarCelda({{ $detalle['pagina'] - 1 }})" wire:loading.attr="disabled" @disabled($detalle['pagina'] <= 1)>Anterior</button>
                         <span>Página {{ $detalle['pagina'] }} de {{ $detalle['ultima'] }} · 6 registros por página</span>

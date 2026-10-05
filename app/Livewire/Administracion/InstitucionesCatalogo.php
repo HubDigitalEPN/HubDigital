@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Livewire\Administracion;
 
+use App\Support\NormalizadorNombreCatalogo;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -18,6 +20,7 @@ final class InstitucionesCatalogo extends Component
     use WithPagination;
 
     public string $busqueda = '';
+    public string $busquedaPendientes = '';
 
     public ?int $editandoId = null;
 
@@ -53,12 +56,12 @@ final class InstitucionesCatalogo extends Component
 
     public function guardar(): void
     {
-        $this->nombre = trim(preg_replace('/\s+/u', ' ', $this->nombre) ?? '');
+        $this->nombre = NormalizadorNombreCatalogo::desde('institucion', $this->nombre);
         $this->validate([
             'nombre' => ['required', 'string', 'min:3', 'max:160'],
         ], ['nombre.unique' => 'Esta institución ya está registrada.']);
 
-        if (DB::table('usuarios.instituciones_catalogo')->where('nombre', $this->nombre)
+        if (DB::table('usuarios.instituciones_catalogo')->whereRaw('lower(nombre) = lower(?)', [$this->nombre])
             ->when($this->editandoId !== null, fn ($q) => $q->where('id', '<>', $this->editandoId))
             ->exists()) {
             $this->addError('nombre', 'Esta institución ya está registrada.');
@@ -97,6 +100,11 @@ final class InstitucionesCatalogo extends Component
         return view('livewire.administracion.instituciones-catalogo', [
             'instituciones' => $query->orderByDesc('activo')->orderBy('nombre')->paginate(20),
             'activas' => DB::table('usuarios.instituciones_catalogo')->where('activo', true)->count(),
+            'pendientes' => Schema::hasTable('usuarios.catalogos_nombres_pendientes')
+                ? DB::table('usuarios.catalogos_nombres_pendientes')->where('tipo', 'institucion')->where('resuelto', false)
+                    ->when(trim($this->busquedaPendientes) !== '', fn ($q) => $q->where('valor_original', 'ilike', '%'.trim($this->busquedaPendientes).'%'))
+                    ->orderBy('valor_original')->get()
+                : collect(),
         ]);
     }
 }

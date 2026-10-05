@@ -9,6 +9,7 @@ use Modules\CatalogoPublico\Application\Services\ColumnasRegistroPublico;
 use Modules\CatalogoPublico\Presentation\Http\Controllers\PortalCatalogo;
 
 uses(Tests\DatabaseFeatureTestCase::class);
+uses(Tests\Concerns\ColeccionPortalAislada::class);
 
 function domRegistrosPublicos(string $html): DOMXPath
 {

@@ -69,6 +69,71 @@ final class PortalCatalogo extends Component
         return $this->valoresFiltros();
     }
 
+    /** Resumen del estado aplicado; nunca muestra el borrador como si ya estuviera activo. */
+    #[Computed]
+    public function criteriosActivos(): array
+    {
+        $etiquetas = ['filtroCatalogo' => 'Catálogo', 'filtroTaxon' => 'Taxón', 'filtroProvincia' => 'Provincia',
+            'filtroProvinciaExcluida' => 'Fuera de provincia', 'filtroPais' => 'País', 'filtroFiloId' => 'Filo',
+            'filtroGeografias' => 'Localidad', 'filtroPreparaciones' => 'Preparación', 'filtroMetodos' => 'Método',
+            'filtroColector' => 'Colector', 'filtroBiomas' => 'Bioma', 'filtroHabitat' => 'Hábitat',
+            'filtroTipo' => 'Condición de tipo', 'filtroDisposicion' => 'Disposición', 'filtroCasta' => 'Casta',
+            'filtroEstadio' => 'Estadio', 'filtroMes' => 'Mes', 'filtroIdentificacion' => 'Identificación',
+            'filtroSoloUbicacion' => 'Coordenadas públicas', 'filtroDatosCompletos' => 'Datos completos'];
+        $criterios = [];
+        if ($this->taxon !== '') $criterios[] = ['clave' => 'jerarquia', 'etiqueta' => 'Selección taxonómica', 'valor' => $this->taxon, 'indice' => -1];
+        foreach ($etiquetas as $campo => $etiqueta) {
+            $valores = is_array($this->{$campo}) ? $this->{$campo} : [$this->{$campo}];
+            foreach ($valores as $indice => $valor) {
+                if (trim((string) $valor) === '') continue;
+                $visible = match ($campo) {
+                    'filtroMes' => ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'][(int) $valor - 1] ?? $valor,
+                    'filtroEstadio' => \Modules\CatalogoPublico\Infrastructure\EtiquetaDatoPublico::etapa(\Modules\CatalogoPublico\Domain\ValueObjects\EstadioVidaPublico::clave($valor)),
+                    'filtroTipo' => \Modules\CatalogoPublico\Infrastructure\EtiquetaDatoPublico::tipo(\Modules\CatalogoPublico\Domain\ValueObjects\CondicionMaterialPublica::tipoFiltro($valor)),
+                    'filtroDisposicion' => \Modules\CatalogoPublico\Infrastructure\EtiquetaDatoPublico::disposicion(\Modules\CatalogoPublico\Domain\ValueObjects\CondicionMaterialPublica::disposicionFiltro($valor)),
+                    'filtroFiloId' => collect($this->filosDisponibles)->firstWhere('id', $valor)['nombre_cientifico'] ?? 'Filo seleccionado',
+                    'filtroSoloUbicacion', 'filtroDatosCompletos' => 'Sí',
+                    'filtroMetodos' => ProtocoloColectaPublico::etiqueta($valor),
+                    default => $valor,
+                };
+                $criterios[] = ['clave' => $campo, 'etiqueta' => $etiqueta, 'valor' => $visible, 'indice' => is_array($this->{$campo}) ? $indice : -1];
+            }
+        }
+        foreach (['periodo' => ['Periodo', $this->filtroFechaDesde, $this->filtroFechaHasta],
+            'elevacion' => ['Elevación (m)', $this->filtroElevDesde, $this->filtroElevHasta],
+            'latitud' => ['Latitud', $this->filtroLatMin, $this->filtroLatMax],
+            'longitud' => ['Longitud', $this->filtroLonMin, $this->filtroLonMax]] as $clave => [$etiqueta, $desde, $hasta]) {
+            if ($desde !== '' || $hasta !== '') $criterios[] = ['clave' => $clave, 'etiqueta' => $etiqueta,
+                'valor' => ($desde === '' ? 'sin mínimo' : $desde).' — '.($hasta === '' ? 'sin máximo' : $hasta), 'indice' => -1];
+        }
+        return $criterios;
+    }
+
+    public function retirarCriterio(string $clave, int $indice = -1): void
+    {
+        // La lista se obtiene del estado público; no permite asignar propiedades arbitrarias.
+        if (! array_any($this->criteriosActivos, static fn (array $c): bool => $c['clave'] === $clave && $c['indice'] === $indice)) return;
+        $grupos = ['periodo' => ['filtroFechaDesde', 'filtroFechaHasta'], 'elevacion' => ['filtroElevDesde', 'filtroElevHasta'],
+            'latitud' => ['filtroLatMin', 'filtroLatMax', 'filtroLatitud'], 'longitud' => ['filtroLonMin', 'filtroLonMax', 'filtroLongitud']];
+        if ($clave === 'jerarquia') {
+            $this->nivel = $this->taxon = $this->explorar = '';
+        } elseif (isset($grupos[$clave])) {
+            foreach ($grupos[$clave] as $campo) $this->{$campo} = '';
+        } elseif ($indice >= 0) {
+            $valores = $this->{$clave};
+            unset($valores[$indice]);
+            $this->{$clave} = array_values($valores);
+        } else {
+            $this->{$clave} = '';
+        }
+        unset($this->criteriosActivos);
+        $this->actualizarFiltros();
+        $this->borradorFiltros = $this->valoresFiltros();
+        $this->cerrarCelda();
+        $this->cerrarFichaRegistro();
+        $this->dispatch('criterio-retirado');
+    }
+
     public function abrirFichaRegistro(string $id): void
     {
         if (! \Illuminate\Support\Str::isUuid($id)) abort(404);
@@ -95,7 +160,10 @@ final class PortalCatalogo extends Component
         $registro = $registros[0] ?? null;
         if ($registro === null) return null;
         $imagenes = $this->cargarImagenesPorEspecimen(array_values(array_filter([$registro->occurrence_id])));
-        return ['registro' => $registro, 'fotos' => $imagenes[$registro->occurrence_id ?? ''] ?? []];
+        $familiaPublica = app(EloquentProveedorEspecimenesParaArbol::class)->familiaPublicaPorEspecimenId(
+            $this->registroFichaId, $this->filtrosActuales(), $this->nivel, $this->taxon,
+        );
+        return ['registro' => $registro, 'fotos' => $imagenes[$registro->occurrence_id ?? ''] ?? [], 'familia_publica' => $familiaPublica];
     }
 
     // Un contrato plano compartido por montaje, enlaces copiados y Atrás/Adelante.
@@ -107,7 +175,7 @@ final class PortalCatalogo extends Component
         'flat' => 'filtroLatMin', 'flax' => 'filtroLatMax', 'flon' => 'filtroLonMin', 'flox' => 'filtroLonMax',
         'fed' => 'filtroElevDesde', 'feh' => 'filtroElevHasta', 'fb' => 'filtroBiomas', 'fh' => 'filtroHabitat',
         'fsti' => 'filtroTipo', 'fd' => 'filtroDisposicion', 'fca' => 'filtroCasta', 'fes' => 'filtroEstadio', 'fpais' => 'filtroPais',
-        'fprov' => 'filtroProvincia', 'fph' => 'filtroFiloId', 'fmes' => 'filtroMes', 'fid' => 'filtroIdentificacion',
+        'fprov' => 'filtroProvincia', 'fxprov' => 'filtroProvinciaExcluida', 'fph' => 'filtroFiloId', 'fmes' => 'filtroMes', 'fid' => 'filtroIdentificacion',
         'fgeo' => 'filtroSoloUbicacion', 'fap' => 'filtroDatosCompletos',
     ];
 
@@ -415,6 +483,7 @@ final class PortalCatalogo extends Component
     public string $filtroPais = '';
 
     public string $filtroProvincia = '';
+    public string $filtroProvinciaExcluida = '';
 
     public string $filtroFiloId = '';
 
@@ -642,6 +711,7 @@ final class PortalCatalogo extends Component
             'preparaciones' => $this->filtroPreparaciones,
             'taxon' => $this->filtroTaxon,
             'provincia' => $this->filtroProvincia,
+            'provincia_excluida' => $this->filtroProvinciaExcluida,
             'pais' => $this->filtroPais,
             'geografias' => $this->filtroGeografias,
             'filo' => $this->filtroFiloId,
@@ -700,6 +770,7 @@ final class PortalCatalogo extends Component
         $this->filtroCatalogo = (string) ($datos['filtroCatalogo'] ?? '');
         $this->filtroPreparaciones = (array) ($datos['filtroPreparaciones'] ?? []);
         $this->filtroTaxon = (string) ($datos['filtroTaxon'] ?? '');
+        if (array_key_exists('filtroProvinciaExcluida', $datos)) $this->filtroProvinciaExcluida = (string) $datos['filtroProvinciaExcluida'];
         $this->filtroGeografias = (array) ($datos['filtroGeografias'] ?? []);
         $this->filtroColector = (string) ($datos['filtroColector'] ?? '');
         $this->filtroFechaDesde = (string) ($datos['filtroFechaDesde'] ?? '');
@@ -754,6 +825,7 @@ final class PortalCatalogo extends Component
         $this->filtroCasta = '';
         $this->filtroEstadio = '';
         $this->filtroProvincia = '';
+        $this->filtroProvinciaExcluida = '';
         $this->filtroPais = '';
         $this->filtroFiloId = '';
         $this->filtroMes = '';
@@ -817,6 +889,7 @@ final class PortalCatalogo extends Component
                     $localidad ? $localidadInec->referencia : null,
                     $fila->type_status_visible ? $fila->disposition : null,
                     PerfilExportacionPublica::IDENTIFICADOR,
+                    $localidad ? \Modules\CatalogoPublico\Infrastructure\LocalidadPublica::desdeFila($fila) : null,
                 ]);
                 $latitud = $coordenadas ? NumeroExportacion::decimal($fila->decimal_latitude, -90, 90) : null;
                 $longitud = $coordenadas ? NumeroExportacion::decimal($fila->decimal_longitude, -180, 180) : null;
@@ -912,6 +985,7 @@ final class PortalCatalogo extends Component
             'filtroCasta' => $this->filtroCasta,
             'filtroEstadio' => $this->filtroEstadio,
             'filtroProvincia' => $this->filtroProvincia,
+            'filtroProvinciaExcluida' => $this->filtroProvinciaExcluida,
             'filtroPais' => $this->filtroPais,
             'filtroFiloId' => $this->filtroFiloId,
             'filtroMes' => $this->filtroMes,
@@ -1062,6 +1136,7 @@ final class PortalCatalogo extends Component
             'filtroCasta' => $this->filtroCasta,
             'filtroEstadio' => $this->filtroEstadio,
             'filtroProvincia' => $this->filtroProvincia,
+            'filtroProvinciaExcluida' => $this->filtroProvinciaExcluida,
             'filtroPais' => $this->filtroPais,
             'filtroFiloId' => $this->filtroFiloId,
             'filtroMes' => $this->filtroMes,

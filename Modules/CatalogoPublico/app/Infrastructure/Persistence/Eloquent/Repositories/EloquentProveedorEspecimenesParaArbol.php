@@ -12,6 +12,7 @@ use Illuminate\Support\LazyCollection;
 use Modules\CatalogoPublico\Infrastructure\CalidadDatoPublico;
 use Modules\CatalogoPublico\Infrastructure\ElegibilidadGeograficaPortal;
 use Modules\CatalogoPublico\Infrastructure\NormalizacionGeografica;
+use Modules\CatalogoPublico\Infrastructure\LocalidadPublica;
 use Modules\CatalogoPublico\Infrastructure\ProtocoloColectaPublico;
 use Modules\CatalogoPublico\Application\Ports\ProveedorEspecimenesParaArbolPort;
 use Modules\CatalogoPublico\Domain\ValueObjects\EspecimenParaArbol;
@@ -83,6 +84,16 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
         return ['hijos' => $hijos,
             'conteos' => $conteos, 'descendientes' => $resumen['descendientes'],
             'curatoriales' => $resumen['curatoriales'], 'curatoriales_total' => $resumen['curatoriales_total']];
+    }
+
+    /** Familia del UUID seleccionado, con los mismos permisos y linaje confirmado del portal. */
+    public function familiaPublicaPorEspecimenId(string $especimenId, FiltrosBusqueda $filtros, string $nivel = '', string $taxon = ''): ?string
+    {
+        $taxonId = $this->consultaPublica($filtros, $nivel, $taxon)
+            ->where('te.id', $especimenId)->where('ed.scientific_name_visible', true)->where('ed.family_visible', true)
+            ->value('te.taxon_id');
+        if ($taxonId === null) return null;
+        return $this->resolverJerarquiasPorTaxon([$taxonId])[$taxonId][RangoTaxonomico::Family->rangoBD()] ?? null;
     }
 
     /** Navegación agregada por taxón: evita hidratar la colección completa en una VM pequeña. */
@@ -177,6 +188,7 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
 
         return $query->select([
             'te.occurrence_id', 'te.codigo_catalogo', 'te.fecha_colecta',
+            'te.localidad', 'te.localidad_area', 'te.localidad_desglosada', 'te.localidad2', 'te.localidad3', 'te.locality_name',
             'te.localidad_verbatim', 'te.state_province', 'te.decimal_latitude',
             'te.decimal_longitude', 'te.lat_lon_max_error', 'te.type_status', 'te.disposition',
             'tx.nombre_cientifico', 'tx.rango', 'inec.nombre as localidad_inec',
@@ -351,7 +363,11 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
             $ids = $this->resolverDescendientesGeografia($filtros->geografias);
             $query->where(function (Builder $geografia) use ($ids, $filtros): void {
                 $geografia->whereIn('te.localidad_id', $ids);
-                foreach ($filtros->geografias as $nombre) $geografia->orWhereRaw(NormalizacionGeografica::sql('te.locality_name').' = ?', [NormalizacionGeografica::normalizar($nombre)]);
+                foreach ($filtros->geografias as $nombre) {
+                    foreach (['te.locality_name', 'te.localidad', 'te.localidad_area', 'te.localidad2', 'te.localidad3', LocalidadPublica::sql('te')] as $campo) {
+                        $geografia->orWhereRaw(NormalizacionGeografica::sql($campo).' = ?', [NormalizacionGeografica::normalizar($nombre)]);
+                    }
+                }
             });
         }
 
@@ -359,6 +375,11 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
 
         if ($filtros->provincia !== null) {
             $query->where('ed.state_province_visible', true)->whereRaw(NormalizacionGeografica::sql('te.state_province').' = ?', [NormalizacionGeografica::normalizar($filtros->provincia)]);
+        }
+        if ($filtros->provinciaExcluida !== null) {
+            // Un dato ausente/reservado no acredita que la colecta esté fuera de una provincia.
+            $query->where('ed.state_province_visible', true)->whereRaw(CalidadDatoPublico::textoValido('te.state_province'))
+                ->whereRaw(NormalizacionGeografica::sql('te.state_province').' <> ?', [NormalizacionGeografica::normalizar($filtros->provinciaExcluida)]);
         }
 
         // Colector — búsqueda parcial case-insensitive
@@ -470,7 +491,7 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
         }
         if ($filtros->estadio !== null) {
             $query->where('ed.life_stage_visible', true)
-                ->where('te.life_stage', 'ILIKE', '%'.$filtros->estadio.'%');
+                ->whereRaw(\Modules\CatalogoPublico\Domain\ValueObjects\EstadioVidaPublico::claveSql('te.life_stage').' ILIKE ?', ['%'.\Modules\CatalogoPublico\Domain\ValueObjects\EstadioVidaPublico::clave($filtros->estadio).'%']);
         }
 
         return $query;

@@ -118,6 +118,8 @@ class Especimen
         private ?string $responsibleResearcherExport = null,
         private ?string $endemicVerbatim = null,
         private ?string $samplingProtocol = null,
+        private ?string $localidad2 = null,
+        private ?string $localidad3 = null,
     ) {}
 
     /**
@@ -207,6 +209,8 @@ class Especimen
         ?string $endemicVerbatim = null,
         ?EstadoCustodia $estadoCustodia = null,
         ?string $samplingProtocol = null,
+        ?string $localidad2 = null,
+        ?string $localidad3 = null,
     ): self {
         $localidad = trim($localidad);
         $localityName = self::limpiarTexto($localityName) ?? $localidad;
@@ -219,6 +223,8 @@ class Especimen
             taxonVerbatim: self::limpiarTexto($taxonVerbatim),
             muestraId: $muestraId,
             localidad: $localidad,
+            localidad2: self::limpiarTexto($localidad2),
+            localidad3: self::limpiarTexto($localidad3),
             localidadId: $localidadId,
             localidadVerbatim: self::limpiarTexto($localidadVerbatim),
             fechaColecta: $fechaColecta,
@@ -399,6 +405,8 @@ class Especimen
         ?string $responsibleResearcherExport = null,
         ?string $endemicVerbatim = null,
         ?string $samplingProtocol = null,
+        ?string $localidad2 = null,
+        ?string $localidad3 = null,
     ): self {
         return new self(
             id: $id,
@@ -407,6 +415,8 @@ class Especimen
             taxonVerbatim: $taxonVerbatim,
             muestraId: $muestraId,
             localidad: $localidad,
+            localidad2: $localidad2,
+            localidad3: $localidad3,
             localidadId: $localidadId,
             localidadVerbatim: $localidadVerbatim,
             fechaColecta: $fechaColecta,
@@ -514,8 +524,15 @@ class Especimen
         ?string $disposition = null,
         ?string $occurrenceStatus = null,
         ?string $specimenNotes = null,
+        ?string $localidad2 = null,
+        ?string $localidad3 = null,
+        bool $actualizarDesglose = false,
     ): void {
         $this->localidad = trim($localidad);
+        if ($actualizarDesglose) {
+            $this->localidad2 = self::limpiarTexto($localidad2);
+            $this->localidad3 = self::limpiarTexto($localidad3);
+        }
         $this->fechaColecta = $fechaColecta;
         $this->colector = trim($colector);
         $this->entidadDepositanteId = $entidadDepositanteId;
@@ -684,6 +701,16 @@ class Especimen
     public function localidadId(): ?string
     {
         return $this->localidadId;
+    }
+
+    public function localidad2(): ?string
+    {
+        return $this->localidad2;
+    }
+
+    public function localidad3(): ?string
+    {
+        return $this->localidad3;
     }
 
     public function localidadVerbatim(): ?string

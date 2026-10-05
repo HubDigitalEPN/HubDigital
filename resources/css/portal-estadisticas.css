@@ -539,3 +539,22 @@
 .atlas-map-mixed { border:1px solid #102d4870; border-radius:50%; opacity:.9; cursor:pointer; }
 .atlas-map-mixed:focus-visible { outline:3px solid #102d48; outline-offset:3px; }
 .atlas-legend-cluster { display:inline-flex; flex:none; align-items:center; justify-content:center; width:22px; height:22px; margin-right:.3rem; border:2px solid #fff; border-radius:50%; background:#17699b; color:#fff; box-shadow:0 0 0 1px #0e4975; font-style:normal; font-weight:700; }
+
+.collection-active-filters { display:flex; flex-wrap:wrap; gap:.45rem; padding:.75rem 1rem; background:#f2f7fb; border-bottom:1px solid #ccd9e4; }
+.collection-active-filters button { max-width:100%; min-height:44px; padding:.4rem .65rem; border:1px solid #8daabd; border-radius:.2rem; background:#fff; color:#14364f; font-size:.78rem; overflow-wrap:anywhere; text-align:left; }
+.collection-active-filters button:focus-visible, .collection-export-dictionary:focus-visible { outline:3px solid #17699b; outline-offset:2px; }
+.collection-export-dictionary { margin-right:auto; padding:.5rem; color:#155d91; text-decoration:underline; font-size:.8rem; }
+.atlas-taxonomic-reference { margin:.65rem 0; padding:.65rem; border:1px solid #ccd9e4; background:#f7f9fb; font-size:.78rem; overflow-wrap:anywhere; }
+.atlas-taxonomic-reference summary { min-height:44px; display:flex; align-items:center; cursor:pointer; font-weight:600; }
+.atlas-taxonomic-reference dl { display:grid; gap:.5rem; margin:.5rem 0; }
+.atlas-taxonomic-reference dt { font-weight:600; }
+.atlas-taxonomic-reference summary:focus-visible { outline:2px solid #17699b; outline-offset:2px; }
+.atlas-map-location-picker { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; padding:.65rem; border-bottom:1px solid #ccd9e4; background:#fff; color:#142c43; font-size:.78rem; }
+.atlas-map-location-picker label { flex:1 1 100%; }
+.atlas-map-location-picker select { flex:1 1 12rem; min-width:0; min-height:44px; border:1px solid #8daabd; background:#fff; padding:.4rem; }
+.atlas-map-location-picker button, .atlas-cell-error button { min-height:44px; padding:.4rem .65rem; border:1px solid #155d91; background:#fff; color:#155d91; }
+.atlas-map-location-picker button:disabled { opacity:.55; cursor:default; }
+.atlas-dashboard .atlas-map-shell { display:flex; flex-direction:column; }
+.atlas-dashboard .atlas-map { flex:1; height:auto; }
+.atlas-dashboard .atlas-map-maximized .atlas-map { position:relative; inset:auto; flex:1; height:auto; min-height:0; }
+@media(max-width:400px) { .atlas-map-location-picker button { width:100%; } .collection-active-filters { padding:.5rem; } }

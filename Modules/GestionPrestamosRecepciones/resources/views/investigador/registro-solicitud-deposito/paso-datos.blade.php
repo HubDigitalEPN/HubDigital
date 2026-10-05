@@ -158,7 +158,7 @@
                     <flux:heading size="lg">{{ $campoEditorManual }}</flux:heading>
                     <p class="mt-1 text-xs leading-relaxed text-text-secondary">
                         {{ match($campoEditorManual) {
-                            'Cargo' => 'Indica el puesto o función que desempeñas en la institución solicitante.',
+                            'Cargo' => 'Selecciona tu cargo de la lista administrada por el curador o escribe el puesto que desempeñas.',
                             'Institución' => 'Selecciona la entidad a la que perteneces. El curador administra esta lista.',
                             'Provincia' => 'Selecciona la provincia donde se recolectó el material. Debe coincidir con la zona de recolección.',
                             'Localidad' => 'Indica el lugar de recolección dentro de la provincia seleccionada.',
@@ -167,7 +167,12 @@
                     </p>
                 </div>
                 <div>
-                    @if($campoEditorManual === 'Institución')
+                    @if($campoEditorManual === 'Cargo')
+                        <flux:input wire:model="valorEditorManual" label="Cargo" list="cargos-depositante" maxlength="120" />
+                        <datalist id="cargos-depositante">
+                            @foreach($cargosCatalogo as $cargoOpcion)<option value="{{ $cargoOpcion }}"></option>@endforeach
+                        </datalist>
+                    @elseif($campoEditorManual === 'Institución')
                         <select wire:model="valorEditorManual" aria-label="Institución" class="min-h-9 w-full rounded-lg border border-border bg-white px-3 text-sm">
                             <option value="">Selecciona una institución</option>
                             @foreach($institucionesCatalogo as $institucionOpcion)<option value="{{ $institucionOpcion }}">{{ $institucionOpcion }}</option>@endforeach

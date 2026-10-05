@@ -85,3 +85,22 @@ test('QA6 tipo y disposición tienen filtros independientes y conservan valores 
         ->and(EtiquetaDatoPublico::tipo('Estado curatorial no catalogado'))->toBe('Estado curatorial no catalogado')
         ->and(FiltrosBusqueda::desde(['filtroTipo' => 'Estado curatorial no catalogado'])->tipo)->toBe('Estado curatorial no catalogado');
 });
+
+test('QA7 XLSX tipa incertidumbre métrica sin convertir desconocidos en cero', function (): void {
+    $contenido = (new PhpSpreadsheetGeneradorXlsxAdapter)->generar(['occurrenceID', 'coordinateUncertaintyInMeters'], [
+        ['001', '12.5'], ['002', null], ['003', 'desconocida'], ['004', 0],
+    ]);
+    $archivo = tempnam(sys_get_temp_dir(), 'pest-qa7-incertidumbre-'); $libro = null;
+    try {
+        file_put_contents($archivo, $contenido);
+        $libro = IOFactory::load($archivo); $hoja = $libro->getActiveSheet();
+        // El lector representa inlineStr como RichText, igual que en el contrato QA5.
+        expect((string) $hoja->getCell('A2')->getValue())->toBe('001')->and($hoja->getCell('A2')->getDataType())->toBe('inlineStr')
+            ->and($hoja->getCell('B2')->getDataType())->toBe('n')->and((float) $hoja->getCell('B2')->getValue())->toBe(12.5)
+            ->and((string) $hoja->getCell('B3')->getValue())->toBe('')
+            ->and((string) $hoja->getCell('B4')->getValue())->toBe('desconocida')->and($hoja->getCell('B4')->getDataType())->toBe('inlineStr')
+            ->and($hoja->getCell('B5')->getDataType())->toBe('n')->and((float) $hoja->getCell('B5')->getValue())->toBe(0.0);
+    } finally {
+        $libro?->disconnectWorksheets(); unlink($archivo);
+    }
+});

@@ -149,6 +149,14 @@
                                 Instituciones
                             </flux:sidebar.item>
                             <flux:sidebar.item
+                                icon="briefcase"
+                                :href="route('admin.cargos')"
+                                :current="request()->routeIs('admin.cargos')"
+                                wire:navigate
+                            >
+                                Cargos
+                            </flux:sidebar.item>
+                            <flux:sidebar.item
                                 icon="beaker"
                                 :href="route('admin.grupos-animales')"
                                 :current="request()->routeIs('admin.grupos-animales')"

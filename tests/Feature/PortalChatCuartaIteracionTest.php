@@ -10,6 +10,8 @@ use Modules\CatalogoPublico\Application\UseCases\ConsultarChatBot\CorpusChat;
 use Modules\CatalogoPublico\Application\UseCases\ConsultarChatBot\EvaluadorCorpusChat;
 use Modules\CatalogoPublico\Application\UseCases\ConsultarChatBot\RankingIntencionesChat;
 
+uses(Tests\Concerns\ColeccionPortalAislada::class);
+
 test('la negación de un dominio separa depósito de donación', function (): void {
     $ranker = app(RankingIntencionesChat::class);
     $ranking = $ranker->evaluar('no es depósito, es donación');

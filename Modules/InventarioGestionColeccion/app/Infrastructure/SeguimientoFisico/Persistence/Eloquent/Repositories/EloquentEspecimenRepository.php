@@ -6,10 +6,13 @@ namespace Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Pe
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especimen;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\RegistroColumnasEspecimen;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\DesgloseLocalidad;
+use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\RevisionNombreCientifico;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EspecimenId;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoCustodia;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoEspecimen;
@@ -30,7 +33,9 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
             return null;
         }
 
-        return Str::snake($clave);
+        return $clave === 'localidad'
+            ? '(CASE WHEN localidad_desglosada THEN localidad_area ELSE localidad END)'
+            : Str::snake($clave);
     }
 
     public function nextIdentity(): EspecimenId
@@ -54,7 +59,11 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
                 'localidad_id' => $especimen->localidadId(),
                 // BD acepta null (post-hardening). Bridge '' → null para que la entidad,
                 // que sigue usando string vacío como "ausente", persista coherentemente.
-                'localidad' => $this->stringNullable($especimen->localidad()),
+                'localidad' => $this->localidadCompatible($especimen),
+                'localidad_area' => $this->stringNullable($especimen->localidad()),
+                'localidad_desglosada' => true,
+                'localidad2' => $especimen->localidad2(),
+                'localidad3' => $especimen->localidad3(),
                 'localidad_verbatim' => $especimen->localidadVerbatim(),
                 'fecha_colecta' => $this->stringNullable($especimen->fechaColecta()),
                 'fecha_verbatim' => $especimen->fechaVerbatim(),
@@ -179,6 +188,8 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
         return EspecimenEloquentModel::with('identificadores')
             ->where(function ($query) use ($localidad): void {
                 $query->where('localidad', 'ilike', "%{$localidad}%")
+                    ->orWhere('localidad2', 'ilike', "%{$localidad}%")
+                    ->orWhere('localidad3', 'ilike', "%{$localidad}%")
                     ->orWhere('locality_name', 'ilike', "%{$localidad}%")
                     ->orWhere('state_province', 'ilike', "%{$localidad}%")
                     ->orWhere('municipality', 'ilike', "%{$localidad}%");
@@ -855,7 +866,10 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
             $pat = '%'.mb_strtolower($global, 'UTF-8').'%';
             $taxonIdsGlobal = $filtros['busquedaGlobalTaxonIds'] ?? [];
             $query->where(function (Builder $q) use ($pat, $taxonIdsGlobal): void {
-                $q->where('busqueda_global', 'like', $pat);
+                $q->where('busqueda_global', 'like', $pat)
+                    ->orWhere('localidad_area', 'ilike', $pat)
+                    ->orWhere('localidad2', 'ilike', $pat)
+                    ->orWhere('localidad3', 'ilike', $pat);
                 if (! empty($taxonIdsGlobal)) {
                     $q->orWhereIn('taxon_id', $taxonIdsGlobal);
                 }
@@ -897,6 +911,8 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
             $pat = '%'.$filtros['localidad'].'%';
             $query->where(function ($q) use ($pat): void {
                 $q->where('localidad', 'ilike', $pat)
+                    ->orWhere('localidad2', 'ilike', $pat)
+                    ->orWhere('localidad3', 'ilike', $pat)
                     ->orWhere('locality_name', 'ilike', $pat)
                     ->orWhere('state_province', 'ilike', $pat)
                     ->orWhere('municipality', 'ilike', $pat)
@@ -926,7 +942,25 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
         }
         // Colas de control sobre TODO el inventario, no solo los registros publicados.
         // Son condiciones SQL para conservar el total y la paginación correctos.
+        if (str_starts_with($filtros['incidencia'] ?? '', 'nombres_')) {
+            $this->aplicarFiltroNombreCientifico($query, $filtros['incidencia']);
+            return;
+        }
         switch ($filtros['incidencia'] ?? null) {
+            case 'localidades':
+                $query->where(function (Builder $pendientes): void {
+                    $pendientes->where(function (Builder $importados): void {
+                        $importados->where('estado_revision', 'pendiente')->where('motivo_revision', 'ilike', '%Localidad por desglosar:%');
+                    })->orWhereExists(function ($respaldo): void {
+                        $respaldo->selectRaw('1')->from('taxonomia.localidades_desglose_respaldo as ld')
+                            ->whereColumn('ld.especimen_id', 'taxonomia.especimenes.id')->where('ld.requiere_revision', true)
+                            ->where('taxonomia.especimenes.localidad_desglosada', true)
+                            ->whereRaw('taxonomia.especimenes.localidad_area IS NOT DISTINCT FROM ld.area_asignada')
+                            ->whereRaw('taxonomia.especimenes.localidad2 IS NOT DISTINCT FROM ld.territorio_asignado')
+                            ->whereRaw('taxonomia.especimenes.localidad3 IS NOT DISTINCT FROM ld.sector_asignado');
+                    });
+                });
+                break;
             case 'duplicados':
                 $query->where(function (Builder $q): void {
                     foreach (['codigo_catalogo', 'catalog_number', 'occurrence_id'] as $indice => $columna) {
@@ -976,6 +1010,47 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
         }
     }
 
+    private function aplicarFiltroNombreCientifico(Builder $query, string $incidencia): void
+    {
+        if (! Schema::hasTable(RevisionNombreCientifico::TABLA)) {
+            if (! in_array($incidencia, ['nombres_sin_revisar', 'nombres_cientificos'], true)) $query->whereRaw('FALSE');
+            return;
+        }
+
+        $vigente = static function ($sub): void {
+            $sub->selectRaw('1')->from(RevisionNombreCientifico::TABLA.' as rn')
+                ->whereColumn('rn.especimen_id', 'taxonomia.especimenes.id')
+                ->whereRaw('rn.taxon_id IS NOT DISTINCT FROM taxonomia.especimenes.taxon_id')
+                ->whereRaw('rn.taxon_verbatim_original IS NOT DISTINCT FROM taxonomia.especimenes.taxon_verbatim')
+                ->whereRaw('rn.nombre_revisado IS NOT DISTINCT FROM COALESCE((SELECT nt.nombre_cientifico FROM taxonomia.taxones nt WHERE nt.id = taxonomia.especimenes.taxon_id), taxonomia.especimenes.taxon_verbatim)');
+        };
+        if ($incidencia === 'nombres_sin_revisar') {
+            $query->whereNotExists($vigente);
+            return;
+        }
+        if ($incidencia === 'nombres_cientificos') {
+            $query->where(static function (Builder $pendientes) use ($vigente): void {
+                $pendientes->whereExists(static function ($sub) use ($vigente): void {
+                    $vigente($sub);
+                    $sub->whereIn('rn.estado', RevisionNombreCientifico::PENDIENTES);
+                })->orWhereNotExists($vigente);
+            });
+            return;
+        }
+        $estados = match ($incidencia) {
+            'nombres_cientificos' => RevisionNombreCientifico::PENDIENTES,
+            'nombres_vacios' => ['vacio'],
+            'nombres_no_cientificos' => ['no_cientifico'],
+            'nombres_no_resueltos' => ['no_resuelto', 'grafia_por_revisar', 'fuente_no_disponible', 'clasificacion_por_revisar'],
+            'nombres_corregidos' => ['corregido'],
+            default => [],
+        };
+        $query->whereExists(static function ($sub) use ($vigente, $estados): void {
+            $vigente($sub);
+            $sub->whereIn('rn.estado', $estados);
+        });
+    }
+
     /**
      * @param  string[]  $ids
      * @return array<string, string|null>
@@ -991,6 +1066,7 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
         // `::text` deja que Postgres decida la representación (un boolean sale
         // 'true'/'false'), que es exactamente contra lo que después compara el
         // deshacer. Castear en PHP produciría un formato distinto.
+        if ($clave === 'localidad') $columna = '(CASE WHEN localidad_desglosada THEN localidad_area ELSE localidad END)';
         return EspecimenEloquentModel::whereIn('id', $ids)
             ->selectRaw("id, {$columna}::text AS valor_campo")
             ->pluck('valor_campo', 'id')
@@ -1010,10 +1086,13 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
         // Builder::update() no dispara los timestamps de Eloquent: si no se
         // pone a mano, la operación que más filas toca deja el catálogo con
         // fechas de modificación mentirosas.
-        return EspecimenEloquentModel::whereIn('id', $ids)->update([
-            $columna => self::valorParaColumna($clave, $valor),
-            'updated_at' => now(),
-        ]);
+        return DB::transaction(function () use ($ids, $clave, $columna, $valor): int {
+            $valores = [$columna => self::valorParaColumna($clave, $valor), 'updated_at' => now()];
+            if ($clave === 'localidad') $valores['localidad_desglosada'] = true;
+            $afectados = EspecimenEloquentModel::whereIn('id', $ids)->update($valores);
+            if (in_array($clave, ['localidad', 'localidad2', 'localidad3'], true)) $this->sincronizarLocalidadCompleta($ids);
+            return $afectados;
+        });
     }
 
     /** @param array<string, string|null> $valoresPorId */
@@ -1029,14 +1108,33 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
         // Una sentencia por fila, pero dentro de la transacción del caso de uso
         // y sobre una selección manual (cientos de filas como mucho). Un CASE
         // WHEN gigante sería más rápido y mucho más difícil de auditar.
-        foreach ($valoresPorId as $id => $valor) {
-            $afectados += EspecimenEloquentModel::where('id', $id)->update([
-                $columna => self::valorParaColumna($clave, $valor),
-                'updated_at' => now(),
-            ]);
-        }
+        return DB::transaction(function () use ($valoresPorId, $clave, $columna, $afectados): int {
+            foreach ($valoresPorId as $id => $valor) {
+                $valores = [$columna => self::valorParaColumna($clave, $valor), 'updated_at' => now()];
+                if ($clave === 'localidad') $valores['localidad_desglosada'] = true;
+                $afectados += EspecimenEloquentModel::where('id', $id)->update($valores);
+            }
+            if (in_array($clave, ['localidad', 'localidad2', 'localidad3'], true)) $this->sincronizarLocalidadCompleta(array_keys($valoresPorId));
+            return $afectados;
+        });
+    }
 
-        return $afectados;
+    private function sincronizarLocalidadCompleta(array $ids): void
+    {
+        $area = 'CASE WHEN localidad_desglosada THEN localidad_area ELSE localidad END';
+        $completa = "NULLIF(concat_ws(', ', NULLIF(btrim({$area}), ''), NULLIF(btrim(localidad2), ''), NULLIF(btrim(localidad3), '')), '')";
+        EspecimenEloquentModel::whereIn('id', $ids)->update([
+            'localidad_area' => DB::raw($area),
+            'localidad_desglosada' => true,
+            'localidad' => DB::raw("CASE WHEN char_length({$completa}) <= 255 THEN {$completa} ELSE ({$area}) END"),
+        ]);
+    }
+
+    private function localidadCompatible(Especimen $especimen): ?string
+    {
+        $completa = DesgloseLocalidad::unir($especimen->localidad(), $especimen->localidad2(), $especimen->localidad3());
+        // La versión anterior usa varchar(255); el texto completo permanece en las tres columnas.
+        return mb_strlen($completa ?? '') <= 255 ? $completa : $this->stringNullable($especimen->localidad());
     }
 
     /**
@@ -1051,7 +1149,7 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
             throw new \InvalidArgumentException("El campo '{$clave}' no se puede editar en masa.");
         }
 
-        return Str::snake($clave);
+        return $clave === 'localidad' ? 'localidad_area' : Str::snake($clave);
     }
 
     /** Convierte la representación textual de la bitácora al tipo de la columna. */
@@ -1152,7 +1250,11 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
                 'taxon_verbatim' => $especimen->taxonVerbatim(),
                 'muestra_id' => $especimen->muestraId(),
                 'localidad_id' => $especimen->localidadId(),
-                'localidad' => $this->stringNullable($especimen->localidad()),
+                'localidad' => $this->localidadCompatible($especimen),
+                'localidad_area' => $this->stringNullable($especimen->localidad()),
+                'localidad_desglosada' => true,
+                'localidad2' => $especimen->localidad2(),
+                'localidad3' => $especimen->localidad3(),
                 'localidad_verbatim' => $especimen->localidadVerbatim(),
                 'fecha_colecta' => $this->stringNullable($especimen->fechaColecta()),
                 'fecha_verbatim' => $especimen->fechaVerbatim(),
@@ -1300,7 +1402,9 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
             codigoCatalogo: $model->codigo_catalogo,
             taxonId: $model->taxon_id,
             // BD puede tener null; la entidad usa '' para "ausente" en estos legacy fields.
-            localidad: $model->localidad ?? '',
+            localidad: ($model->localidad_desglosada ? $model->localidad_area : $model->localidad) ?? '',
+            localidad2: $model->localidad2,
+            localidad3: $model->localidad3,
             fechaColecta: $fechaColecta,
             colector: $model->colector ?? '',
             estado: EstadoEspecimen::from($model->estado),

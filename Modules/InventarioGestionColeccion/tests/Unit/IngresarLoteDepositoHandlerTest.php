@@ -168,6 +168,21 @@ test('los problemas reales de calidad de dato si mandan el especimen a revision'
         ->and($repo->buscarTodos()[0]->motivoRevision())->toContain('coordenadas');
 });
 
+test('un sector sin cantón es válido y varios lugares sin referencia conservan la fuente para revisión', function (): void {
+    $repo = new InMemoryEspecimenRepository;
+    $salida = ingestaDeposito($repo)->handle(entradaDeposito([
+        ['indice' => 1, 'datosDwC' => filaDwC(['localityName' => 'Sendero norte']), 'estadoRegistro' => 'Validado Técnicamente'],
+        ['indice' => 2, 'datosDwC' => filaDwC(['localityName' => 'Sendero norte, Vía sur']), 'estadoRegistro' => 'Validado Técnicamente'],
+    ]));
+    $limpio = $repo->buscarPorCodigoCatalogo('MEPN-INV-DEP-00002-0001');
+    $ambiguo = $repo->buscarPorCodigoCatalogo('MEPN-INV-DEP-00002-0002');
+    expect($salida->especimenesCreados)->toBe(2)->and($salida->marcadosParaRevision)->toBe(1)
+        ->and($limpio->localidad())->toBe('')->and($limpio->localidad2())->toBeNull()
+        ->and($limpio->localidad3())->toBe('Sendero norte')->and($limpio->motivoRevision())->toBeNull()
+        ->and($ambiguo->localidadVerbatim())->toBe('Sendero norte, Vía sur')
+        ->and($ambiguo->motivoRevision())->toContain('Localidad por desglosar');
+});
+
 test('no se ocupa fila_origen_excel, que pertenece al importador del catalogo', function (): void {
     // Esa columna tiene un índice único en toda la tabla y el catálogo importado ya
     // ocupa el rango 1..48856: escribir ahí el número de fila del depósito reventaría

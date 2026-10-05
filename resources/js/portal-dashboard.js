@@ -5,6 +5,27 @@ import {nombreDescargaImagen} from './portal-image-model';
 import {crearHistorialCatalogo} from './portal-history-model';
 import {enlaceRecuperacionCatalogo, vigilarPeticionCatalogo} from './portal-request-model';
 
+// Leaflet 1.9 redondea latLngToLayerPoint a enteros. Mantener la proyección
+// fraccionaria evita un residual visual sin alterar latitud, longitud ni CRS.
+const CirculoCoordenadaOriginal = L.CircleMarker.extend({
+    _project() {
+        this._point = this._map.project(this._latlng, this._map.getZoom()).subtract(this._map.getPixelOrigin());
+        this._updateBounds();
+    },
+});
+const IconoCoordenadaOriginal = L.Marker.extend({
+    update() {
+        if (this._icon && this._map) {
+            const punto = this._map.project(this._latlng, this._map.getZoom()).subtract(this._map.getPixelOrigin());
+            this._setPos(punto);
+            // z-index requiere un entero; solo el orden de capas se redondea.
+            this._zIndex = Math.round(punto.y) + this.options.zIndexOffset;
+            this._resetZIndex();
+        }
+        return this;
+    },
+});
+
 // El mapa del panel y los mapas de especie usan la misma copia local de Leaflet.
 window.L = L;
 
@@ -205,7 +226,7 @@ const registrarDashboard = () => {
                         .on('tileload', () => { this.errorMapa = false; }).addTo(mapa);
                     mapa.fitBounds(L.latLngBounds(ubicaciones.map(({lat, lon}) => [lat, lon])), {padding: [24, 24], maxZoom: 10});
                     for (const {lat, lon, cantidad, radio} of ubicaciones) {
-                        const marcador = L.circleMarker([lat, lon], {
+                        const marcador = new CirculoCoordenadaOriginal([lat, lon], {
                             radius: radio, color: '#0e4975', weight: 1, fillColor: '#17699b', fillOpacity: .8,
                         }).addTo(mapa);
                         const popup = L.DomUtil.create('div');
@@ -244,6 +265,8 @@ const registrarDashboard = () => {
         // Leaflet administra objetos mutables propios; no deben convertirse en proxies Alpine.
         let mapa = null;
         let capa = null;
+        let teselas = null;
+        const teselasFallidas = new Set();
         let agrupador = crearAgrupadorMapa(celdas);
         let pintadoPendiente = null;
         return {
@@ -251,6 +274,15 @@ const registrarDashboard = () => {
         maximizado: false,
         enfocarTrasCambio: false,
         zoomMapa: 0,
+        errorTeselas: false,
+        ubicacionElegida: '',
+        ubicacionesOriginales: agrupador.originales,
+        abrirUbicacionElegida(invocador) {
+            const punto = this.ubicacionesOriginales[Number(this.ubicacionElegida)];
+            if (this.ubicacionElegida === '' || !punto) return;
+            return this.abrirUbicacion(punto.lat, punto.lon, punto.cantidad, invocador);
+        },
+        reintentarTeselas() { teselasFallidas.clear(); this.errorTeselas = false; teselas?.redraw(); },
         colores: ['#17699b', '#d17d28', '#568c59', '#8c62a5', '#b94e6b', '#71828d', '#a18a29', '#3f8d90'],
 
         init() {
@@ -258,10 +290,11 @@ const registrarDashboard = () => {
                 if (!this.$refs.mapa || mapa) return;
                 mapa = L.map(this.$refs.mapa, {scrollWheelZoom: false, boxZoom: true, zoomControl: false});
                 L.control.zoom({zoomInTitle: 'Acercar', zoomOutTitle: 'Alejar'}).addTo(mapa);
-                L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                teselas = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
                     maxZoom: 18,
-                }).addTo(mapa);
+                }).on('tileerror', ({coords}) => { teselasFallidas.add(`${coords.z}/${coords.x}/${coords.y}`); this.errorTeselas = true; })
+                    .on('tileload tileunload', ({coords}) => { teselasFallidas.delete(`${coords.z}/${coords.x}/${coords.y}`); this.errorTeselas = teselasFallidas.size > 0; }).addTo(mapa);
                 L.control.scale({imperial: false}).addTo(mapa);
                 mapa.createPane('registros').style.zIndex = '450';
                 capa = L.featureGroup().addTo(mapa);
@@ -291,6 +324,8 @@ const registrarDashboard = () => {
             mapa?.remove();
             mapa = null;
             capa = null;
+            teselas = null;
+            teselasFallidas.clear();
             agrupador = null;
         },
 
@@ -303,6 +338,8 @@ const registrarDashboard = () => {
             celdas = datos.celdas;
             filos = datos.filos;
             agrupador = crearAgrupadorMapa(celdas);
+            this.ubicacionesOriginales = agrupador.originales;
+            this.ubicacionElegida = '';
             this.encuadrar();
             this.programarPintado();
             if (this.enfocarTrasCambio) this.$nextTick(() => {
@@ -367,10 +404,10 @@ const registrarDashboard = () => {
                 }
                 const {lat, lon, cantidad, radio} = nodo;
                 const partes = composicionFilos(nodo.filos);
-                const marcador = partes.length > 1 ? L.marker([lat, lon], {
+                const marcador = partes.length > 1 ? new IconoCoordenadaOriginal([lat, lon], {
                     pane: 'registros', keyboard: false,
                     icon: L.divIcon({html: '', className: 'atlas-map-mixed', iconSize: [radio * 2, radio * 2], iconAnchor: [radio, radio]}),
-                }).addTo(capa) : L.circleMarker([lat, lon], {
+                }).addTo(capa) : new CirculoCoordenadaOriginal([lat, lon], {
                     pane: 'registros',
                     radius: radio,
                     color: colorFilo(partes[0]?.filo), weight: 1, fillColor: colorFilo(partes[0]?.filo), fillOpacity: .85,

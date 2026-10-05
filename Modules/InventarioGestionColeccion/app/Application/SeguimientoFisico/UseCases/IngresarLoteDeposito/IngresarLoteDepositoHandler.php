@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\IngresarLoteDeposito;
 
+use App\Support\CatalogoTerritoriosDesglose;
+use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\DesgloseLocalidad;
+
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Entities\Especimen;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\EspecimenRepositoryInterface;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EstadoCustodia;
@@ -50,6 +53,7 @@ final class IngresarLoteDepositoHandler
     public function __construct(
         private readonly EspecimenRepositoryInterface $especimenRepo,
         private readonly FilaCatalogoMapper $mapper,
+        private readonly ?CatalogoTerritoriosDesglose $territorios = null,
     ) {}
 
     public function handle(IngresarLoteDepositoInput $input): IngresarLoteDepositoOutput
@@ -77,12 +81,19 @@ final class IngresarLoteDepositoHandler
             }
 
             $mapeada = $this->mapper->mapear($fila['datosDwC']);
+            $territorios = DesgloseLocalidad::clave($mapeada->country ?? '') === 'ecuador'
+                ? ($this->territorios?->paraProvincia($mapeada->stateProvince ?? '') ?? []) : [];
+            $municipio = $territorios[DesgloseLocalidad::clave($mapeada->municipality ?? '')] ?? null;
+            $desglose = DesgloseLocalidad::desde($mapeada->localidadVerbatim ?? $mapeada->localidad,
+                $municipio, territorios: $territorios, contexto: [$mapeada->country, $mapeada->stateProvince]);
 
             $especimen = Especimen::crear(
                 id: $this->especimenRepo->nextIdentity(),
                 codigoCatalogo: $codigo,
                 taxonId: null,
-                localidad: $mapeada->localidad,
+                localidad: $desglose['localidad'] ?? '',
+                localidad2: $desglose['localidad2'],
+                localidad3: $desglose['localidad3'],
                 fechaColecta: $mapeada->fechaColecta,
                 colector: $mapeada->colector,
                 entidadDepositanteId: $input->entidadDepositanteId,
@@ -106,7 +117,7 @@ final class IngresarLoteDepositoHandler
                 biome: $mapeada->biome,
                 habitat: $mapeada->habitat,
                 taxonVerbatim: $mapeada->taxonVerbatim,
-                localidadVerbatim: $mapeada->localidadVerbatim,
+                localidadVerbatim: $mapeada->localidadVerbatim ?? $mapeada->localidad,
                 fechaVerbatim: $mapeada->fechaVerbatim,
                 fechaColectaFin: $mapeada->fechaColectaFin,
                 individualCountVerbatim: $mapeada->individualCountVerbatim,
@@ -131,7 +142,9 @@ final class IngresarLoteDepositoHandler
                 estadoCustodia: $custodia,
             );
 
-            $motivo = $this->motivoRevision($fila, $mapeada->warnings);
+            $warnings = $mapeada->warnings;
+            if ($desglose['requiere_revision']) $warnings[] = 'Localidad por desglosar: revisar el texto fuente';
+            $motivo = $this->motivoRevision($fila, $warnings);
 
             if ($motivo !== null) {
                 $especimen->marcarParaRevision($motivo);

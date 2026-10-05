@@ -253,7 +253,7 @@ trait ExploraCeldaMapa
         $arbol = array_values($arbol);
         uasort($curatoriales, static fn (array $a, array $b): int => $b['total'] <=> $a['total'] ?: strnatcasecmp($a['nota'], $b['nota']));
         $curatoriales = array_values(array_slice($curatoriales, 0, 12));
-        return compact('total', 'grupos', 'totalGrupos', 'directos', 'registros', 'imagenes', 'pagina', 'ultima', 'arbol', 'rutas',
+        return compact('total', 'grupos', 'totalGrupos', 'directos', 'mostrarRegistros', 'registros', 'imagenes', 'pagina', 'ultima', 'arbol', 'rutas',
             'arbol_hojas_total', 'arbol_pagina', 'arbol_ultima', 'arbol_registros_total', 'seleccionado', 'informacion',
             'curatoriales', 'curatoriales_total');
     }

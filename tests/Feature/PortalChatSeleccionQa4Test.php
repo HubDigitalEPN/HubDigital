@@ -14,6 +14,7 @@ use Modules\CatalogoPublico\Presentation\Http\Controllers\PortalCatalogo;
 use Tests\DatabaseFeatureTestCase;
 
 uses(DatabaseFeatureTestCase::class);
+uses(Tests\Concerns\ColeccionPortalAislada::class);
 
 /** Reutiliza las identificaciones y los cuatro registros públicos del contrato QA3. */
 function seleccionCompletaChatQa4(): array

@@ -16,6 +16,7 @@ use Modules\CatalogoPublico\Presentation\Http\Controllers\PortalCatalogo;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
 uses(Tests\DatabaseFeatureTestCase::class);
+uses(Tests\Concerns\ColeccionPortalAislada::class);
 
 function contratoExportacionFixtureQa6(): array
 {

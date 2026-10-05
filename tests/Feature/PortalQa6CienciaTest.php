@@ -9,6 +9,7 @@ use Modules\CatalogoPublico\Infrastructure\Adapters\InventarioGestionColeccionEs
 use Modules\CatalogoPublico\Infrastructure\Persistence\Eloquent\Repositories\EloquentProveedorEspecimenesParaArbol;
 
 uses(Tests\DatabaseFeatureTestCase::class);
+uses(Tests\Concerns\ColeccionPortalAislada::class);
 
 function qa6TaxonCiencia(string $nombre, string $rango, ?string $padre = null): string
 {

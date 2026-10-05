@@ -20,7 +20,7 @@ final class ColumnasRegistroPublico
         'recorded_by' => ['colector', 'Colector'],
         'country' => ['country', 'País'],
         'state_province' => ['stateProvince', 'Provincia'],
-        'locality_name' => ['localityName', 'Localidad registrada'],
+        'locality_name' => ['localidad', 'Localidad'],
         'locality_excel' => ['localidadVerbatim', 'Localidad original'],
         'locality_inec' => ['localityName', 'Localidad INEC'],
         'locality_inec_reference' => ['localityNotes', 'Referencia INEC'],

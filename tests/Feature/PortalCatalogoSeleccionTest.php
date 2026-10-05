@@ -16,6 +16,7 @@ use Modules\CatalogoPublico\Infrastructure\Persistence\Eloquent\Repositories\Elo
 use Modules\CatalogoPublico\Presentation\Http\Controllers\TablaEspecimenesDivulgados;
 
 uses(Tests\DatabaseFeatureTestCase::class);
+uses(Tests\Concerns\ColeccionPortalAislada::class);
 
 function seleccionPortalFixture(): array
 {

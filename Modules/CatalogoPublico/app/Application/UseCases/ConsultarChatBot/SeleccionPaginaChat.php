@@ -15,7 +15,7 @@ final readonly class SeleccionPaginaChat
     public static function desde(array $entrada): ?self
     {
         $reglas = [];
-        foreach (['fc', 'ft', 'fco', 'fh', 'fsti', 'fd', 'fca', 'fes', 'fpais', 'fprov', 'taxon'] as $clave) {
+        foreach (['fc', 'ft', 'fco', 'fh', 'fsti', 'fd', 'fca', 'fes', 'fpais', 'fprov', 'fxprov', 'taxon'] as $clave) {
             $reglas[$clave] = ['nullable', 'string', 'max:2000'];
         }
         foreach (['fp', 'fg', 'fm', 'fb'] as $clave) {
@@ -50,6 +50,7 @@ final readonly class SeleccionPaginaChat
             'filtroDisposicion' => $p['fd'] ?? '',
             'filtroCasta' => $p['fca'] ?? '', 'filtroEstadio' => $p['fes'] ?? '',
             'filtroProvincia' => $p['fprov'] ?? '', 'filtroPais' => $p['fpais'] ?? '', 'filtroFiloId' => $p['fph'] ?? '',
+            'filtroProvinciaExcluida' => $p['fxprov'] ?? '',
             'filtroMes' => $p['fmes'] ?? '', 'filtroIdentificacion' => $p['fid'] ?? '',
             'filtroSoloUbicacion' => $p['fgeo'] ?? '', 'filtroDatosCompletos' => $p['fap'] ?? '',
         ]);

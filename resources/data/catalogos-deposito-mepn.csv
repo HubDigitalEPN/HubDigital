@@ -1,0 +1,115 @@
+tipo,valor_original,nombre_canonico,estado,filas_excel,evidencia
+cargo,Analista de Conservación de Recursos Naturales,Analista de conservación de recursos naturales,normalizado,8;93;118,Normalización ortográfica del cargo; sin empresa adjunta; equivalencia de género y singular/plural de proyectos
+cargo,Biólogo de Seguridad y Ambiente,Biólogo de seguridad y ambiente,normalizado,94,Normalización ortográfica del cargo; sin empresa adjunta; equivalencia de género y singular/plural de proyectos
+cargo,Consultor Ambiental,Consultor ambiental,normalizado,13;211;217,Normalización ortográfica del cargo; sin empresa adjunta; equivalencia de género y singular/plural de proyectos
+cargo,Consultora Ambiental,Consultor ambiental,normalizado,76,Normalización ortográfica del cargo; sin empresa adjunta; equivalencia de género y singular/plural de proyectos
+cargo,Coordinación Biótica,Coordinación biótica,normalizado,97;98,Normalización ortográfica del cargo; sin empresa adjunta; equivalencia de género y singular/plural de proyectos
+cargo,Coordinador Biótico,Coordinador biótico,normalizado,2;156,Normalización ortográfica del cargo; sin empresa adjunta; equivalencia de género y singular/plural de proyectos
+cargo,Coordinador Biótico y Gestión de Proyectos,Coordinador biótico y gestión de proyectos,normalizado,222,Normalización ortográfica del cargo; sin empresa adjunta; equivalencia de género y singular/plural de proyectos
+cargo,Coordinador Técnico de Proyectos,Coordinador técnico de proyectos,normalizado,135;136,Normalización ortográfica del cargo; sin empresa adjunta; equivalencia de género y singular/plural de proyectos
+cargo,Coordinador de Proyectos,Coordinador de proyectos,normalizado,51;90,Normalización ortográfica del cargo; sin empresa adjunta; equivalencia de género y singular/plural de proyectos
+cargo,Coordinador del Proyecto,Coordinador de proyectos,normalizado,181,Normalización ortográfica del cargo; sin empresa adjunta; equivalencia de género y singular/plural de proyectos
+cargo,Coordinadora de Proyectos,Coordinador de proyectos,normalizado,192;193;194,Normalización ortográfica del cargo; sin empresa adjunta; equivalencia de género y singular/plural de proyectos
+cargo,Coordinadora del Proyecto,Coordinador de proyectos,normalizado,19,Normalización ortográfica del cargo; sin empresa adjunta; equivalencia de género y singular/plural de proyectos
+cargo,Cordinadora de Proyectos,Coordinador de proyectos,normalizado,81,Normalización ortográfica del cargo; sin empresa adjunta; equivalencia de género y singular/plural de proyectos
+cargo,Director Técnico de Proyectos,Director técnico de proyectos,normalizado,183;184,Normalización ortográfica del cargo; sin empresa adjunta; equivalencia de género y singular/plural de proyectos
+cargo,Director de Proyecto,Director de proyecto,normalizado,102,Normalización ortográfica del cargo; sin empresa adjunta; equivalencia de género y singular/plural de proyectos
+cargo,Docente-Investigadora,Docente investigador,normalizado,178,Normalización ortográfica del cargo; sin empresa adjunta; equivalencia de género y singular/plural de proyectos
+cargo,Especialista de Areas Verdes y Arbolado Urbano,Especialista de áreas verdes y arbolado urbano,normalizado,177,Normalización ortográfica del cargo; sin empresa adjunta; equivalencia de género y singular/plural de proyectos
+cargo,Gerente,Gerente,normalizado,14,Normalización ortográfica del cargo; sin empresa adjunta; equivalencia de género y singular/plural de proyectos
+cargo,Gerente Ambiental,Gerente ambiental,normalizado,75,Normalización ortográfica del cargo; sin empresa adjunta; equivalencia de género y singular/plural de proyectos
+cargo,Gerente General,Gerente general,normalizado,3;5;6;7;11;17;20;21;24;25;26;33;34;35;36;37;38;39;40;41;42;43;48;49;50;53;54;55;56;60;61;62;68;69;70;71;72;73;77;79;82;83;84;85;88;89;95;96;103;104;108;109;110;111;112;113;114;119;120;121;123;124;125;126;130;131;134;137;138;139;141;148;149;150;151;157;158;166;167;168;171;174;175;179;180;185;191;196;197;198;199;203;205;206;207;209;213;214;215;218;220;221;223;224;227;228;229;230;231,Normalización ortográfica del cargo; sin empresa adjunta; equivalencia de género y singular/plural de proyectos
+cargo,"Gerente General, Labcestta S. A.,",Gerente general,normalizado,204,Normalización ortográfica del cargo; sin empresa adjunta; equivalencia de género y singular/plural de proyectos
+cargo,Gerente Técnico,Gerente técnico,normalizado,9;10;12;18;52;59;92;190;195;210,Normalización ortográfica del cargo; sin empresa adjunta; equivalencia de género y singular/plural de proyectos
+cargo,Gerente de Operaciones,Gerente de operaciones,normalizado,32;74;107,Normalización ortográfica del cargo; sin empresa adjunta; equivalencia de género y singular/plural de proyectos
+cargo,Gerente de operaciones,Gerente de operaciones,normalizado,143;144,Normalización ortográfica del cargo; sin empresa adjunta; equivalencia de género y singular/plural de proyectos
+cargo,Gerente y Representante Legal,Gerente y representante legal,normalizado,29;57;101;106;115;116;117;132;133;162;187;219,Normalización ortográfica del cargo; sin empresa adjunta; equivalencia de género y singular/plural de proyectos
+cargo,Gerente y representante legal,Gerente y representante legal,normalizado,27;44;45;46;47;58;86;87;140;142;200;225;226,Normalización ortográfica del cargo; sin empresa adjunta; equivalencia de género y singular/plural de proyectos
+cargo,Investigador,Investigador,normalizado,172,Normalización ortográfica del cargo; sin empresa adjunta; equivalencia de género y singular/plural de proyectos
+cargo,Procurador Común Consorcio Trigona,Procurador común,normalizado,127;128;129,Normalización ortográfica del cargo; sin empresa adjunta; equivalencia de género y singular/plural de proyectos
+cargo,Procurador Común del CONSORCIO ABM,Procurador común,normalizado,105,Normalización ortográfica del cargo; sin empresa adjunta; equivalencia de género y singular/plural de proyectos
+cargo,Procurador común,Procurador común,normalizado,66,Normalización ortográfica del cargo; sin empresa adjunta; equivalencia de género y singular/plural de proyectos
+cargo,Representante Legal,Representante legal,normalizado,4;22;23;30;31;78;80;159;160;161;163;164;165;169;170;173;176;182;186;188;189;201;202;216,Normalización ortográfica del cargo; sin empresa adjunta; equivalencia de género y singular/plural de proyectos
+cargo,Representante legal,Representante legal,normalizado,15;16;63;64;65;91;99;100;145;146;147;152;208,Normalización ortográfica del cargo; sin empresa adjunta; equivalencia de género y singular/plural de proyectos
+cargo,Responsable del componente biótico,Responsable del componente biótico,normalizado,28;67;153,Normalización ortográfica del cargo; sin empresa adjunta; equivalencia de género y singular/plural de proyectos
+cargo,"Subgerente de Seguridad, Salud y Ambiente","Subgerente de seguridad, salud y ambiente",normalizado,212,Normalización ortográfica del cargo; sin empresa adjunta; equivalencia de género y singular/plural de proyectos
+cargo,Técnica,Técnico,normalizado,154;155,Normalización ortográfica del cargo; sin empresa adjunta; equivalencia de género y singular/plural de proyectos
+institucion,ABSEG SEGURIDAD Y AMBIENTE CÍA. LTDA,ABSEG SEGURIDAD Y AMBIENTE Compañía Limitada,normalizado,209,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,ABSEG SEGURIDAD Y AMBIENTE CÍA. LTDA.,ABSEG SEGURIDAD Y AMBIENTE Compañía Limitada,normalizado,63;64;65;91;100;152,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,ALS Ecuador - ALSECU S.A.,ALS Ecuador - ALSECU Sociedad Anónima,normalizado,3;49;50;83;88;112;113;203,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,ANDESCONSULTING.S.A,Andesconsulting Sociedad Anónima,normalizado,13,https://appscvs.supercias.gob.ec/notificacionesTributarias/docs/cuarta_irq_31122024.pdf
+institucion,AmbienConsul Cía. Ltda.,AmbienConsul Compañía Limitada,normalizado,9;10;18;59;81,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,Asamtech Cia. Ltda.,Asamtech Compañía Limitada,normalizado,71;72;229;231,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,BIOENERGY ENVIRONMENT & CONSULTING S.A.,BIOENERGY ENVIRONMENT & CONSULTING Sociedad Anónima,normalizado,186,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,BIORCONSULT S.A (BIOSOCIAL GROUP?),Biorconsult Sociedad Anónima,normalizado,222,https://emamep.gob.ec/wp-content/uploads/2025/01/4.-Informe-Rendicion-de-Cuentas-2023-signed.pdf
+institucion,BLAUBACH CONSULTORES S.A.,BLAUBACH CONSULTORES Sociedad Anónima,normalizado,24;25;26;89;95;96,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,CALIDAD AMBIENTAL CYAMBIENTE CÍA. LTDA.,CALIDAD AMBIENTAL CYAMBIENTE Compañía Limitada,normalizado,31;149;151,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,CHARLIEG INGENIERÍA Y REMEDIACIÓN COMPAÑÍA LIMITADA,Charlieg Ingeniería Y Remediación Compañía Limitada,normalizado,202,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,CHAVEZSOLUTIONS AMBIENTALES CIA. LTDA.,CHAVEZSOLUTIONS AMBIENTALES Compañía Limitada,normalizado,174;175,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,CONSORCIO ABM,,pendiente,105,Confirmar denominaci?n completa del consorcio; no ampliar siglas sin evidencia.
+institucion,CONSULTOR AMBIENTAL INDIVIDUAL,,pendiente,153,"Describe una persona o modalidad de trabajo, no identifica una institución"
+institucion,CONSULTOR INDEPENDIENTE,,pendiente,97;98;156;211,No identifica una empresa o institución
+institucion,CONSULTORA AMBIENTAL CGA CIA. LTDA.,Consultora Ambiental CGA Compañía Limitada,normalizado,199,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,CONSULTORA AMBIENTAL JAMBATOCONSULT CIA. LTDA.,CONSULTORA AMBIENTAL JAMBATOCONSULT Compañía Limitada,normalizado,102;159;160;188;189;217,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,CORENA S.A.,CORENA Sociedad Anónima,normalizado,109;125;126,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,Consorcio Frontera Geopark Bloque Perico/ Frontera Energy Colombia Corp.,,pendiente,30;101,Dos entidades en la misma celda; confirmar a cuál corresponde el registro
+institucion,Consorcio Trigona,Consorcio Trigona,normalizado,127;128;129,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,Consorcio “ENVIRONMENT CORP”.,,pendiente,66,Confirmar denominaci?n completa del consorcio; no ampliar siglas sin evidencia.
+institucion,Consultor Ambiental Individual,,pendiente,58;67,"Describe una persona o modalidad de trabajo, no identifica una institución"
+institucion,Consultora Ambiental Serviaguitas S.A,Consultora Ambiental Serviaguitas Sociedad Anónima,normalizado,6;7;34;39;79;207,Equivalencia explícita con el nombre completo de la fuente MEPN
+institucion,Consultora Ambinetal CGAS Cía. Ltda.,Consultora Ambiental CGA Compañía Limitada,normalizado,122,https://certificacionpuntoverde.ambiente.gob.ec/libraries/EAlfresco.php/?doc=97be60fa-088d-4606-be90-2966ee9b9cff
+institucion,Consultora independiente,,pendiente,76,No identifica una empresa o institución
+institucion,Consultores Ambientales RUAH Cía. Ltda.,Consultores Ambientales RUAH Compañía Limitada,normalizado,51;90,Equivalencia explícita con el nombre completo de la fuente MEPN
+institucion,Consultores Ambientales Ruah Cia. Ltda.,Consultores Ambientales RUAH Compañía Limitada,normalizado,185,Equivalencia explícita con el nombre completo de la fuente MEPN
+institucion,Costecam Cía. Ltda.,Costecam Compañía Limitada,normalizado,15;16;82;117;133;213;214;215,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,Curatio Regeneración Ambiental S.A.,Curatio Regeneración Ambiental Sociedad Anónima,normalizado,73;119,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,DIAGNÓSTICO BIOLÓGICO S.A.,DIAGNÓSTICO BIOLÓGICO Sociedad Anónima,normalizado,208,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,ECOSAMBITO C. LTDA.,Consultora Ambiental Ecosambito Compañía Limitada,normalizado,183;184,https://mercadodevalores.supercias.gob.ec/mercadovalores/descargadorServlet.jsf?idDocumento=39619&idSeccion=GMV&idTipoDocumento=10
+institucion,ECUAINTEGRAL CONSULTING S.A,ECUAINTEGRAL CONSULTING Sociedad Anónima,normalizado,75,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,ECUAMBIENTE CONSULTING GROUP CIA. LTDA.,ECUAMBIENTE CONSULTING GROUP Compañía Limitada,normalizado,12;52;92;190;195;210,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,ENERGY AND ENVIRONMENTAL CONSULTING CONSULTORA DE ENERGÍA Y MEDIO AMBIENTE CÍA. LTDA.,Energy and Environmental Consulting Compañía Limitada,normalizado,154;155,Equivalencia explícita con el nombre completo de la fuente MEPN
+institucion,ENTRIX AMERICAS S.A.,ENTRIX AMERICAS Sociedad Anónima,normalizado,5;11;48;53;61,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,ENVIROTEC CIA. LTDA.,ENVIROTEC Compañía Limitada,normalizado,137,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,EP Petroecuador,Empresa Pública de Hidrocarburos del Ecuador Petroecuador,normalizado,94;212,Equivalencia explícita con el nombre completo de la fuente MEPN
+institucion,EcoSambito C. Ltda,Consultora Ambiental Ecosambito Compañía Limitada,normalizado,135;136,https://mercadodevalores.supercias.gob.ec/mercadovalores/descargadorServlet.jsf?idDocumento=39619&idSeccion=GMV&idTipoDocumento=10
+institucion,Empresa de Servicios Integrales Mineros GEOSEMSSA S.A,Empresa de Servicios Integrales Mineros GEOSEMSSA Sociedad Anónima,normalizado,4;145;146;147,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,Energy and Environmental Consulting Cía. Ltda.,Energy and Environmental Consulting Compañía Limitada,normalizado,110,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,Estudios y Servicios Ambientales ESSAM Cía. Ltda.,Estudios y Servicios Ambientales ESSAM Compañía Limitada,normalizado,21;54;114;124;148;168;180,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,Facultad de Ciencias Biológicas UCE,Facultad de Ciencias Biológicas de la Universidad Central del Ecuador,normalizado,19;181,Equivalencia explícita con el nombre completo de la fuente MEPN
+institucion,GEOSEMSSA S.A,Empresa de Servicios Integrales Mineros GEOSEMSSA Sociedad Anónima,normalizado,163;164;182;201,Equivalencia explícita con el nombre completo de la fuente MEPN
+institucion,GESAMBCONSULT,GESAMBCONSULT Consultores Compañía Limitada,normalizado,37;42;69,Equivalencia explícita con el nombre completo de la fuente MEPN
+institucion,GESAMBCONSULT CONSULTORES CÍA. LTDA.,GESAMBCONSULT Consultores Compañía Limitada,normalizado,56;103,Equivalencia explícita con el nombre completo de la fuente MEPN
+institucion,GESAMBCONSULT CONSULTORES Cía. Ltda.,GESAMBCONSULT Consultores Compañía Limitada,normalizado,120;141,Equivalencia explícita con el nombre completo de la fuente MEPN
+institucion,GESTAECUADOR CÍA. LTDA.,Gestaecuador Compañía Limitada,normalizado,57;106;115;116;162;187;219,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,GESTAECUADOR Cía. Ltda.,Gestaecuador Compañía Limitada,normalizado,27;29;44;45;47,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,GLOBALMINOIL S.A.,GLOBALMINOIL Sociedad Anónima,normalizado,78;80,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,Gesambconsult Consultores Cía.Ltda,GESAMBCONSULT Consultores Compañía Limitada,normalizado,221,Equivalencia explícita con el nombre completo de la fuente MEPN
+institucion,Gobierno Autónomo Descentralizado Municipal del Cantón Rumiñahui,Gobierno Autónomo Descentralizado Municipal del Cantón Rumiñahui,normalizado,8;93;118;177,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,HIDROGEOCOL ECUADOR CIA LTDA,HIDROGEOCOL ECUADOR Compañía Limitada,normalizado,138;179,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,IMCOECSA,"Ingeniería, Montajes y Construcciones del Ecuador Sociedad Anónima IMCOECSA",normalizado,28,https://www.compraspublicas.gob.ec/ProcesoContratacion/compras/EC/resumenContractual1.cpe?cnt=WF5T9Uj8NjyZqG9L0ZW0FGz3yJZ4faBidPuxiTUfFkk%2C&contratoId=Jc3bELaA7vuny4yxPK-qx26-Gowc1hMoQD7DivUV4_k%2C&idSoliCompra=kSW5ycxaddYRd6DT3fZjkY45gMCkALlRN3PyxrOX2Uo%2C
+institucion,INGENIERÍA Y NATURALEZA INGERALEZA S.A.,INGENIERÍA Y NATURALEZA INGERALEZA Sociedad Anónima,normalizado,161;173,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,KUUSA SOLUCIONES AMBIENTALES CÍA. LTDA.,KUUSA SOLUCIONES AMBIENTALES Compañía Limitada,normalizado,20;55;108;123;134;191,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,LAMOR ECUADOR S.A.,LAMOR ECUADOR Sociedad Anónima,normalizado,192;193;194,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,Labcestta S. A.,Labcestta Sociedad Anónima,normalizado,204,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,MALACATUS CONSULTING & TRAINING CIA. LTDA.,Malacatus Consulting & Training PMC Compañía Limitada,normalizado,167;218;224,https://www.ambiente.gob.ec/wp-content/uploads/downloads/2016/09/Publicacion-COMPANIAS-CONSULTORAS-JULIO-EXTRAORDINARIO-2016.pdf
+institucion,MALACATUS CONSULTING & TRAINING PMC CIA. LTDA.,Malacatus Consulting & Training PMC Compañía Limitada,normalizado,17;62;77;85,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,"Museo de Entomología, Escuela Superior Politécnica de Chimborazo","Museo de Entomología, Escuela Superior Politécnica de Chimborazo",normalizado,172,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,PECKSAMBIENTE S.A.,Pecksambiente Sociedad Anónima,normalizado,150;165;196,https://www.pecs.com.ec/politica-de-privacidad/
+institucion,PECSAMBIENTE S.A.,Pecksambiente Sociedad Anónima,normalizado,104,https://www.pecs.com.ec/politica-de-privacidad/
+institucion,PLANAMB S.A.,PLANAMB Sociedad Anónima,normalizado,132,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,PROCAPCON Consultores S. A.,PROCAPCON Consultores Sociedad Anónima,normalizado,46;86;87;140;142;200;225;226,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,PROYECTOS ENERGÉTICOS ECUEGESA S.A.,PROYECTOS ENERGÉTICOS ECUEGESA Sociedad Anónima,normalizado,139;171,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,Panambiente Cía. Ltda.,Panambiente Compañía Limitada,normalizado,60;84,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,RENSSNATURE & CONSULTING CIA. LTDA.,RENSSNATURE & CONSULTING Compañía Limitada,normalizado,14;35;36;40;41;223;228,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,RENSSNATURE & CONSULTING CIA. LTDA..,RENSSNATURE & CONSULTING Compañía Limitada,normalizado,220,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,Rivera Consultores S.A.,Rivera Consultores Sociedad Anónima,normalizado,22;23,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,SAICA GROUP CIA LTDA,SAICA GROUP Compañía Limitada,normalizado,43;166,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,SERCONSITMA CÍA. LTDA,SERCONSITMA Compañía Limitada,normalizado,33;38;111,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,SIANCERO S.A.,SIANCERO Sociedad Anónima,normalizado,99;169;170;176;216,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,SICCAA CIA. LTDA.,SICCAA Compañía Limitada,normalizado,70,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,Serviaguitas S.A,Consultora Ambiental Serviaguitas Sociedad Anónima,normalizado,68;230,Equivalencia explícita con el nombre completo de la fuente MEPN
+institucion,Sumacay Consultting & Service SC&S Cia. Ltda,,pendiente,130;131;157;158;197;205;206,Confirmar razón social; no inferir palabras ni siglas del nombre comercial
+institucion,TERRASOLUTION S.A.S.,TERRASOLUTION Sociedad por Acciones Simplificada,normalizado,198;227,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,Universidad Indoamérica-Ecoforensic,Universidad Indoamérica,normalizado,178,Equivalencia explícita con el nombre completo de la fuente MEPN
+institucion,Whistler Consultora Cía. Ltda.,Whistler Consultora Compañía Limitada,normalizado,2;32;74;107;143;144,Nombre completo de la fuente MEPN; expansión de la forma societaria y corrección de espacios
+institucion,dmb,,pendiente,121,Sigla sin identificación suficiente de la institución

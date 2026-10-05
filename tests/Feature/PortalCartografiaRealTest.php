@@ -15,6 +15,7 @@ use Modules\CatalogoPublico\Presentation\Http\Controllers\PortalCatalogo;
 use Modules\CatalogoPublico\Presentation\Http\Controllers\PortalEstadisticas;
 
 uses(Tests\DatabaseFeatureTestCase::class);
+uses(Tests\Concerns\ColeccionPortalAislada::class);
 
 function cartografiaRealFixture(): array
 {
@@ -178,6 +179,8 @@ test('el icono registros del modal muestra toda la ubicación en páginas de sei
     $original = (array) DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->first();
     unset($original['coordenadas_otras_regiones'], $original['busqueda_global']);
     $idsEsperados = [$f['ids'][0], $f['ids'][1], $f['ids'][2]];
+    // Asignar filas de origen nuevas conserva el orden y su unicidad.
+    $filaInicial = (int) DB::table('taxonomia.especimenes')->max('fila_origen_excel') + 1;
     $insertar = static function (array $cambios, bool $publicado = true) use ($original): string {
         $id = (string) Str::uuid(); $codigo = 'QA-TABLA-MODAL-'.Str::uuid();
         DB::table('taxonomia.especimenes')->insert(array_replace($original, [
@@ -188,7 +191,7 @@ test('el icono registros del modal muestra toda la ubicación en páginas de sei
         ]);
         return $id;
     };
-    for ($i = 0; $i < 11; $i++) $idsEsperados[] = $insertar(['fila_origen_excel' => $i + 3]);
+    for ($i = 0; $i < 11; $i++) $idsEsperados[] = $insertar(['fila_origen_excel' => $filaInicial + $i + 2]);
     // La especie beta del mismo punto también pertenece a la rejilla aunque
     // el árbol conserve seleccionada alfa. Los demás filtros siguen vigentes.
     DB::table('taxonomia.especimenes')->where('id', $f['ids'][2])->update([
@@ -204,7 +207,7 @@ test('el icono registros del modal muestra toda la ubicación en páginas de sei
     $excluidos = [$insertar(['state_province' => 'Napo']),
         $insertar(['decimal_latitude' => $latitud + 0.0001]), $noPublicado];
     DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->update([
-        'fila_origen_excel' => 1, 'colector' => 'COLECTOR-PRIVADO-TABLA', 'specimen_notes' => 'NOTA-PRIVADA-TABLA',
+        'fila_origen_excel' => $filaInicial, 'colector' => 'COLECTOR-PRIVADO-TABLA', 'specimen_notes' => 'NOTA-PRIVADA-TABLA',
         'locality_name' => 'LOCALIDAD-PRIVADA-TABLA', 'localidad_verbatim' => 'ORIGINAL-PRIVADO-TABLA',
         'elevation_min_m' => 9123, 'elevation_max_m' => 9234,
     ]);
@@ -214,7 +217,7 @@ test('el icono registros del modal muestra toda la ubicación en páginas de sei
     ]);
     $notaPublica = '<script>alert("nota pública")</script>'."\n".'Río Ñambí';
     DB::table('taxonomia.especimenes')->where('id', $f['ids'][1])->update([
-        'fila_origen_excel' => 2, 'country' => 'Ecuador', 'locality_name' => 'Localidad registrada Ñambí',
+        'fila_origen_excel' => $filaInicial + 1, 'country' => 'Ecuador', 'locality_name' => 'Localidad registrada Ñambí',
         'localidad_verbatim' => 'Localidad original Ñambí', 'lat_lon_max_error' => 'Referencia GPS original',
         'elevation_min_m' => 0, 'elevation_max_m' => 120, 'individual_count' => 0,
         'type_status' => 'paratype', 'disposition' => 'in_collection', 'specimen_notes' => $notaPublica, 'occurrence_status' => 'present',
@@ -264,14 +267,14 @@ test('el icono registros del modal muestra toda la ubicación en páginas de sei
     expect($publicos)->toMatchArray([
         'Código de catálogo' => $f['codigos'][1], 'Identificación científica' => $f['prefijo'].' alfa',
         'Fecha original' => '2025-01-10', 'Colector' => 'QA', 'País' => 'Ecuador', 'Provincia' => 'Pichincha',
-        'Localidad registrada' => 'Localidad registrada Ñambí', 'Localidad original' => 'Localidad original Ñambí',
+        'Localidad' => 'Localidad registrada Ñambí', 'Localidad original' => 'Localidad original Ñambí',
         'Latitud' => (string) $latitud, 'Longitud' => (string) $longitud,
         'Referencia de coordenadas' => 'Referencia GPS original', 'Elevación mín. (m)' => '0', 'Elevación máx. (m)' => '120',
         'Método de colecta' => 'Red '.$f['prefijo'], 'Individuos' => '0', 'Condición de tipo' => 'Paratipo', 'Disposición' => 'En la colección',
         'Notas del espécimen' => $notaPublica, 'Estado' => 'Presente', 'Casta' => 'obrera', 'Estadio' => 'Adulto',
     ])->toHaveKeys(['Localidad INEC', 'Referencia INEC', 'Notas de tipo', 'Fotografías publicadas']);
     $privados = $celdasFila($dom, $f['ids'][0]);
-    expect($privados['Colector'])->toBe('—')->and($privados['Localidad registrada'])->toBe('—')
+    expect($privados['Colector'])->toBe('—')->and($privados['Localidad'])->toBe('—')
         ->and($privados['Notas del espécimen'])->toBe('—')->and($privados['Elevación mín. (m)'])->toBe('—')
         ->and($dom->query('//table[@class="atlas-record-table"]//script')->length)->toBe(0)
         ->and($dom->query('//table[@class="atlas-record-table"]//a[@title="foto-publica-tabla.jpg"]')->length)->toBe(1)

@@ -44,6 +44,7 @@ final class PhpSpreadsheetGeneradorXlsxAdapter implements GeneradorXlsxPort
                 'decimalLongitude' => [-180, 180, false],
                 'minimumElevationInMeters' => [null, null, false],
                 'maximumElevationInMeters' => [null, null, false],
+                'coordinateUncertaintyInMeters' => [0, null, false],
             ];
             $zonaFecha = new DateTimeZone('UTC');
             $baseFechaExcel = new DateTimeImmutable('1899-12-31', $zonaFecha);

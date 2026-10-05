@@ -13,6 +13,7 @@ use Modules\CatalogoPublico\Application\Ports\ProveedorEspecimenesPort;
 use Modules\CatalogoPublico\Application\Ports\ProveedorJerarquiaDeEspecimenPort;
 use Modules\CatalogoPublico\Application\Ports\ProveedorOpcionesFiltroPort;
 use Modules\CatalogoPublico\Application\Ports\TransactionManagerPort;
+use Modules\CatalogoPublico\Application\Services\ReferenciaTaxonomicaPublica;
 use Modules\CatalogoPublico\Domain\Repositories\EspecimenDivulgableRepositoryInterface;
 use Modules\CatalogoPublico\Domain\Repositories\ImagenPorDefectoRepositoryInterface;
 use Modules\CatalogoPublico\Domain\Repositories\ImagenTaxonomicaRepositoryInterface;
@@ -69,6 +70,7 @@ class CatalogoPublicoServiceProvider extends ModuleServiceProvider
 
         $this->app->bind(ClasificadorIntencionPort::class, ClasificadorCatalogoLocal::class);
         $this->app->bind(GeneradorRespuestaChatBotPort::class, GeneradorCatalogoExacto::class);
+        $this->app->scoped(ReferenciaTaxonomicaPublica::class);
     }
 
     public function boot(): void

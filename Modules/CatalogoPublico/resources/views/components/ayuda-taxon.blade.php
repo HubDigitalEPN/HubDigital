@@ -6,6 +6,6 @@
     $fotografiaAyuda = $nivel === 'species' && is_string($fotoPublica) && trim($fotoPublica) !== ''
         ? view('catalogopublico::components.fotografia-ejemplar', ['url' => $fotoPublica, 'nombre' => $nombre])->render()
         : view('catalogopublico::components.fotografia-mosaico', ['fotos' => \Modules\CatalogoPublico\Application\Services\IlustracionTaxonomica::mosaicoParaTaxon($jerarquiaAyuda), 'taxon' => $ilustracion['taxon_consulta'] ?? $jerarquiaAyuda, 'contexto' => 'ayuda-taxon', 'limite' => 1, 'retrato' => true, 'compacto' => true])->render();
-    $datosAyuda = ['nombre' => $nombre, 'nivel' => $etiqueta, 'registros' => (int) $registros, 'stats' => $stats, 'fotografia' => $fotografiaAyuda];
+    $datosAyuda = ['nombre' => $nombre, 'nivel' => $etiqueta, 'jerarquia' => $jerarquiaAyuda, 'registros' => (int) $registros, 'stats' => $stats, 'fotografia' => $fotografiaAyuda];
 @endphp
-<button type="button" class="collection-taxon-help" x-on:click.prevent.stop="abrirTaxon($event.currentTarget, @js($datosAyuda))" aria-label="¿Qué es {{ $nombre }}?" title="¿Qué es {{ $nombre }}?">?</button>
+<button type="button" class="collection-taxon-help" x-on:click.prevent.stop="abrirTaxon($event.currentTarget, @js($datosAyuda))" aria-label="Resumen de {{ $nombre }}" title="Resumen de {{ $nombre }}">?</button>

@@ -28,6 +28,10 @@ class EspecimenEloquentModel extends Model
         'muestra_id',
         'localidad_id',
         'localidad',
+        'localidad_area',
+        'localidad_desglosada',
+        'localidad2',
+        'localidad3',
         'localidad_verbatim',
         'fecha_colecta',
         'fecha_verbatim',
@@ -106,6 +110,7 @@ class EspecimenEloquentModel extends Model
     ];
 
     protected $casts = [
+        'localidad_desglosada' => 'boolean',
         'devuelto_en' => 'datetime',
         'endemic' => 'boolean',
         'fecha_colecta' => 'date',

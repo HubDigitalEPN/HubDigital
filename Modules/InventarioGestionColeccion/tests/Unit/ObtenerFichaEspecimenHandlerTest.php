@@ -24,6 +24,7 @@ function sembrarFicha(): array
     $id = EspecimenId::generar();
     $especimenRepo->guardar(Especimen::crear(
         $id, 'MEPN-1', (string) $especie->id(), 'Yasuní', '2001-02-14', 'Juan',
+        localidad2: 'Tena', localidad3: 'Sendero norte',
     ));
 
     return [new ObtenerFichaEspecimenHandler($especimenRepo, $taxonRepo), (string) $id];
@@ -37,11 +38,16 @@ test('la ficha devuelve TODAS las columnas del catálogo con el taxón resuelto'
     expect($out->encontrado)->toBeTrue()
         ->and($out->ficha['codigoCatalogo'])->toBe('MEPN-1')
         ->and($out->ficha['taxonNombre'])->toBe('Morpho peleides')
-        ->and($out->ficha['localidad'])->toBe('Yasuní');
+        ->and($out->ficha['localidad'])->toBe('Yasuní')
+        ->and($out->ficha['localidad2'])->toBe('Tena')->and($out->ficha['localidad3'])->toBe('Sendero norte');
 
     // La ficha expone cada columna declarada en el catálogo (sin recortes).
     foreach (RegistroColumnasEspecimen::todas() as $col) {
         expect($out->ficha)->toHaveKey($col['clave']);
+    }
+    foreach (['revisionNombreCientifico', 'motivoNombreCientifico', 'nombreCientificoOriginal',
+        'candidatoNombreCientifico', 'fuenteNombreCientifico', 'fechaRevisionNombreCientifico'] as $campo) {
+        expect($out->ficha[$campo])->toBeNull();
     }
 });
 

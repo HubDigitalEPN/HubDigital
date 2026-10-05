@@ -7,7 +7,8 @@
         $v = $e[$clave] ?? null;
 
         if ($clave === 'taxonNombre' && $v === null) {
-            return $e['taxonVerbatim'] !== null ? $e['taxonVerbatim'].' (verbatim)' : '';
+            $original = trim($e['taxonVerbatim'] ?? '');
+            return in_array($original, ['', '_', '-', '?'], true) ? '' : $original.' (verbatim)';
         }
         if ($clave === 'endemic') {
             return $v === null ? '' : ($v ? 'Sí' : 'No');
@@ -25,10 +26,11 @@
         $vacio = '<span class="text-text-secondary">·</span>';
 
         if ($clave === 'taxonNombre') {
+            $original = trim($e['taxonVerbatim'] ?? '');
             return $v !== null
                 ? '<span class="font-serif italic">'.e($v).'</span>'
-                : ($e['taxonVerbatim'] !== null
-                    ? '<span class="text-text-secondary italic">'.e($e['taxonVerbatim']).'</span>'
+                : (! in_array($original, ['', '_', '-', '?'], true)
+                    ? '<span class="text-text-secondary italic">'.e($original).'</span>'
                     : $vacio);
         }
         if ($clave === 'estadoRevision') {
@@ -354,7 +356,15 @@
                             <option value="ec_publicar">No publicados</option>
                             <option value="fechas">Fechas incorrectas o pendientes</option>
                             <option value="taxonomia">Sin especie o filo enlazado</option>
+                            <option value="localidades">Desglose de localidades por revisar</option>
+                            <option value="nombres_cientificos">Nombres científicos pendientes de revisión</option>
+                            <option value="nombres_vacios">Nombre científico vacío</option>
+                            <option value="nombres_no_cientificos">Texto no científico</option>
+                            <option value="nombres_no_resueltos">Nombre sin coincidencia suficiente</option>
+                            <option value="nombres_corregidos">Grafía científica corregida</option>
+                            <option value="nombres_sin_revisar">Nombre sin revisar o modificado</option>
                         </flux:select>
+                        <flux:description>El contraste científico es documental. Una falta de coincidencia requiere revisión y no demuestra que el nombre sea inexistente.</flux:description>
                     </flux:field>
 
                     <flux:field class="sm:col-span-2 lg:col-span-3">
@@ -1140,7 +1150,10 @@
                 </flux:select>
                 <flux:error name="taxonId" />
             </flux:field>
-            <flux:field><flux:label>Localidad</flux:label><flux:input wire:model="localidad" /><flux:error name="localidad" /></flux:field>
+            <p class="text-sm text-text-secondary">El portal mostrará juntas las tres localidades cuando el registro y su localidad estén autorizados para publicación. Deja el área vacía si no está documentada.</p>
+            <flux:field><flux:label>Localidad · reserva, parque o área protegida</flux:label><flux:input wire:model="localidad" maxlength="255" /><flux:error name="localidad" /></flux:field>
+            <flux:field><flux:label>Localidad 2 · cantón o parroquia</flux:label><flux:input wire:model="localidad2" maxlength="255" /><flux:error name="localidad2" /></flux:field>
+            <flux:field><flux:label>Localidad 3 · localidad, sector, ruta o vía</flux:label><flux:input wire:model="localidad3" maxlength="500" /><flux:error name="localidad3" /></flux:field>
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <flux:field><flux:label>País</flux:label><flux:input wire:model="country" /></flux:field>
                 <flux:field><flux:label>Provincia</flux:label><flux:input wire:model="stateProvince" /></flux:field>
@@ -1201,7 +1214,10 @@
         <div class="space-y-4 p-1">
             <flux:heading size="lg" class="text-text-primary">Editar especímen</flux:heading>
             @if($errorMessage)<flux:callout variant="danger">{{ $errorMessage }}</flux:callout>@endif
-            <flux:field><flux:label>Localidad</flux:label><flux:input wire:model="editLocalidad" /><flux:error name="editLocalidad" /></flux:field>
+            <p class="text-sm text-text-secondary">El portal mostrará juntas las tres localidades cuando el registro y su localidad estén autorizados para publicación. Deja el área vacía si no está documentada.</p>
+            <flux:field><flux:label>Localidad · reserva, parque o área protegida</flux:label><flux:input wire:model="editLocalidad" maxlength="255" /><flux:error name="editLocalidad" /></flux:field>
+            <flux:field><flux:label>Localidad 2 · cantón o parroquia</flux:label><flux:input wire:model="editLocalidad2" maxlength="255" /><flux:error name="editLocalidad2" /></flux:field>
+            <flux:field><flux:label>Localidad 3 · localidad, sector, ruta o vía</flux:label><flux:input wire:model="editLocalidad3" maxlength="500" /><flux:error name="editLocalidad3" /></flux:field>
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <flux:field><flux:label>País</flux:label><flux:input wire:model="editCountry" /></flux:field>
                 <flux:field><flux:label>Provincia</flux:label><flux:input wire:model="editStateProvince" /></flux:field>

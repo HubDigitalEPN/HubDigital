@@ -12,6 +12,7 @@ use Modules\CatalogoPublico\Presentation\Http\Controllers\PortalCatalogo;
 use Tests\DatabaseFeatureTestCase;
 
 uses(DatabaseFeatureTestCase::class);
+uses(Tests\Concerns\ColeccionPortalAislada::class);
 
 function seleccionMapaChatQa5(): array
 {

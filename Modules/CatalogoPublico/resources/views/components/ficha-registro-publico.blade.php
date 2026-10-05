@@ -10,7 +10,7 @@
         $ficha = $this->fichaRegistro;
     @endphp
     @if($ficha)
-        @include('catalogopublico::components.registro-mapa', ['registro' => $ficha['registro'], 'fotos' => array_slice($ficha['fotos'], 0, 1), 'permitirFicha' => false])
+        @include('catalogopublico::components.registro-mapa', ['registro' => $ficha['registro'], 'fotos' => array_slice($ficha['fotos'], 0, 1), 'permitirFicha' => false, 'familiaPublica' => $ficha['familia_publica']])
     @else
         <p role="status">Este registro ya no está disponible en la selección pública.</p>
     @endif

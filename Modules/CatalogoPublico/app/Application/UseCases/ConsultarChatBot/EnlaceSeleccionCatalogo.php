@@ -10,7 +10,7 @@ use Modules\CatalogoPublico\Domain\ValueObjects\FiltrosBusqueda;
 final class EnlaceSeleccionCatalogo
 {
     private const ESCALARES = ['nivel', 'taxon', 'fc', 'ft', 'fco', 'ffd', 'ffh', 'flat', 'flax', 'flon', 'flox',
-        'fed', 'feh', 'fh', 'fsti', 'fd', 'fca', 'fes', 'fpais', 'fprov', 'fph', 'fmes', 'fid', 'fgeo', 'fap'];
+        'fed', 'feh', 'fh', 'fsti', 'fd', 'fca', 'fes', 'fpais', 'fprov', 'fxprov', 'fph', 'fmes', 'fid', 'fgeo', 'fap'];
 
     private const LISTAS = ['fp', 'fg', 'fm', 'fb'];
 
@@ -27,6 +27,7 @@ final class EnlaceSeleccionCatalogo
             'fh' => $filtros->habitat, 'fsti' => $filtros->tipo, 'fca' => $filtros->casta, 'fes' => $filtros->estadio,
             'fd' => $filtros->disposicion,
             'fpais' => $filtros->pais, 'fprov' => $filtros->provincia, 'fph' => $filtros->filoId,
+            'fxprov' => $filtros->provinciaExcluida,
             'fmes' => $filtros->mes, 'fid' => $filtros->identificacion,
             'fgeo' => $filtros->soloUbicacion ? '1' : '', 'fap' => $filtros->datosCompletos ? '1' : '',
         ]);

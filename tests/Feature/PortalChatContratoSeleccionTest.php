@@ -16,6 +16,7 @@ use Modules\CatalogoPublico\Presentation\Http\Controllers\PortalCatalogo;
 use Tests\DatabaseFeatureTestCase;
 
 uses(DatabaseFeatureTestCase::class);
+uses(Tests\Concerns\ColeccionPortalAislada::class);
 
 function registrosParaContratoChat(): void
 {
@@ -119,7 +120,9 @@ test('las variantes geográficas con acentos conservan la unión y los valores o
     foreach (['Perú', 'Peru', ' PERÚ '] as $pais) {
         $respuesta = app(ConsultaCatalogoPublico::class)->responder('Busca Chatobius en '.$pais);
         expect($respuesta['datos']['total'])->toBe(3)
-            ->and($respuesta['entidades']['taxon'])->toBe('Chatobius');
+            ->and($respuesta['entidades']['taxon'])->toBe('Chatobius')
+            ->and($respuesta['entidades']['pais'])->toBe('Peru')
+            ->and(parametrosEnlaceChat($respuesta)['fpais'])->toBe('Peru');
     }
     expect(DB::table('taxonomia.especimenes')->where('occurrence_id', 'QA3-CHAT-2')->value('country'))->toBe('Perú');
     foreach (['Yasuní', 'Yasuni'] as $indice => $localidad) {
