@@ -35,7 +35,21 @@ final class AsistentePortal
         $parametrosAyuda = $seleccionPortal === null
             ? $this->consultaCatalogo->parametros($contextoCatalogo)
             : EnlaceSeleccionCatalogo::limpiar($seleccionPortal);
+        if (($compuesta = app(SolicitudCompuestaPortal::class)->responder($pregunta, $contextoCatalogo, $seleccionPortal)) !== null) return $compuesta;
         if (($ayudaLocal = app(AyudaContextualPortal::class)->responder($pregunta, $parametrosAyuda)) !== null) return $ayudaLocal;
+        // La pertenencia científica no expresa cesión o donación del material.
+        if (! preg_match('/\b(?:cuant[oa]s?|cantidad|numero|total|buscar|busca|muestrame)\b/', $normal)
+            && (preg_match('/\b(?:a que familia|familia de|clasificacion de)\b/', $normal)
+                || (preg_match('/\bpertenece(?:n)?\b/', $normal) && preg_match('/\bfamilia\b|\bgenero\b|\borden\b|\bfilo\b|\bclase\b|\btaxon\b|\ba [a-z]+idae\b/', $normal)))) {
+            return $this->consultaCatalogo->clasificacionPublica($pregunta)
+                ?? ['texto' => 'No tengo un linaje público suficiente para resolver esa clasificación. Indica el nombre científico y consulta la autoridad de la ficha; no puedo decidir una identificación ni una familia sin evidencia.',
+                    'fuente' => 'portal', 'intent' => 'catalogo.clasificacion_sin_evidencia', 'opciones' => []];
+        }
+        $preguntaBiologica = (bool) preg_match('/^(que (?:son|es|hacen|funcion)|para que sirven|por que|como viven|cual es la funcion)/', $normal)
+            && (bool) preg_match('/artropod|insect|invertebr|hormig|maripos|abej|avisp|escarabaj|crustace|molusc|nudibranquio|aracnid|aran/', $normal)
+            && ! preg_match('/catalog|colecci|registr|deposit|prestam|localidad|provincia|cuant|nombre cientifico/', $normal);
+        if ($preguntaBiologica && ($respuestaBiologica = $this->biologiaLocal($normal)) !== null) return $respuestaBiologica;
+        if (preg_match('/\b(?:quien escribio|autor de|autoria de)\b/', $normal)) return app(FuentesPublicasChat::class)->responder($pregunta);
         if (preg_match('/^(?:y\s+)?cuant[oa]s?\s+hay[?\s]*$/', $normal)) {
             return ['texto' => '¿Qué deseas contar: registros, especies, géneros o familias? Indica también si te refieres a la selección aplicada o a la consulta anterior.',
                 'fuente' => 'aclaracion', 'intent' => 'catalogo.aclaracion', 'opciones' => $opciones];
@@ -128,16 +142,6 @@ final class AsistentePortal
             return $this->ayudaFiltros($pregunta, $contextoCatalogo, $seleccionPortal);
         }
 
-        if (preg_match('/prestam|solicitante|pedir especimen/', $normal)) {
-            return [
-                'texto' => 'Para solicitar especímenes en préstamo, entra con tu cuenta y activa el rol Solicitante desde Configuración. Luego abre Mis solicitudes y registra el material que necesitas.',
-                'opciones' => [
-                    ['label' => 'Iniciar sesión', 'url' => route('login')],
-                    ['label' => 'Explorar catálogo', 'url' => route('portal.catalogo')],
-                ],
-            ];
-        }
-
         if (preg_match('/^(catalogo|coleccion|filtrar catalogo|usar catalogo)$/', $normal)) {
             return [
                 'texto' => 'En el catálogo puedes buscar por código, nombre científico y localidad. Escríbeme el dato que tienes o abre los filtros.',
@@ -162,6 +166,7 @@ final class AsistentePortal
             || ($contextoCatalogo !== [] && (bool) preg_match('/^(?:y\s+de\s+|y\s+)?cuantos?|^y\s+|^(?:perdon|corrijo|quise decir|queria decir|no\s+)|^donde\s+los\s+encontraron/i', $normal));
         $consultaCientifica = $consultaCientifica || (bool) preg_match('/\bdonde\b.*\b(?:recolect|colect|encontr)/', $normal);
         $consultaCientifica = $consultaCientifica || (bool) preg_match('/\b(?:hormigas?|mariposas|escarabajos)\b/', $normal);
+        $consultaCientifica = $consultaCientifica || app(OperadorProvinciaChat::class)->solicitado($pregunta);
         if ($consultaCientifica && ($publica = $this->consultaCatalogo->responder($pregunta, $contextoCatalogo, $seleccionPortal)) !== null) {
             return $publica;
         }
@@ -171,13 +176,6 @@ final class AsistentePortal
         $conocida = $this->conocimiento->responder($pregunta, $nodoAnterior, $variantesRecientes);
         if ($conocida !== null) {
             return $conocida;
-        }
-
-        $preguntaBiologica = (bool) preg_match('/^(que (son|es|hacen|funcion)|para que sirven|por que|como viven|cual es la funcion)/', $normal)
-            && (bool) preg_match('/(artr[oó]pod|insect|invertebr|hormig|maripos|abej|avisp|escarabaj|crustace|molusc|nudibranquio|aracnid|aran)/', $normal)
-            && ! preg_match('/(catalog|colecci|registr|deposit|prestam|localidad|provincia|cuant|nombre cientifico)/', $normal);
-        if ($preguntaBiologica && ($respuestaBiologica = $this->biologiaLocal($normal)) !== null) {
-            return $respuestaBiologica;
         }
 
         if (! $preguntaBiologica && preg_match('/catalog|colecci|buscar|busca|tienen|cuant|existe|especimen|registro|taxon|familia|genero|especie|invertebr|distribuci|provincia|[A-Z]{2,8}-\d+/i', Str::ascii($pregunta))) {
@@ -328,7 +326,7 @@ final class AsistentePortal
                 'Natural History Museum', 'https://www.nhm.ac.uk/discover/the-cambrian-period.html',
             ],
             'hormig' => [
-                'Las hormigas son insectos sociales. Su función depende de la especie: algunas depredan otros invertebrados, otras dispersan semillas y las cortadoras cultivan hongos.',
+                'Las hormigas son insectos sociales. En los bosques, muchas depredan otros invertebrados y forman parte de las redes alimentarias del suelo. Su función depende de la especie y del ambiente; esta explicación general no demuestra abundancia ni comportamiento de los ejemplares de la colección.',
                 'Natural History Museum', 'https://www.nhm.ac.uk/discover/life-in-soil.html',
             ],
             'maripos' => [

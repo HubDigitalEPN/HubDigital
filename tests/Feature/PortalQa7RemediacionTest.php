@@ -98,6 +98,11 @@ test('QA7 002 003 las acciones conservan filtros y los formatos nunca se convier
     ['¿Cómo descargo los datos XLSX de esta especie?', 'portal.xlsx', 'tarjetas'],
     ['quiero descargar Excel', 'portal.xlsx', 'tarjetas'],
     ['No quiero quitar los filtros; dame pasos para volver al mapa', 'portal.cambiar_vista', 'mapa'],
+    ['Volver al mapa sin quitar filtros', 'portal.cambiar_vista', 'mapa'],
+    ['Vuelve al mapa sin quitar ningún filtro', 'portal.cambiar_vista', 'mapa'],
+    ['Regresa al mapa sin limpiar los filtros', 'portal.cambiar_vista', 'mapa'],
+    ['Abre el mapa sin restablecer los filtros', 'portal.cambiar_vista', 'mapa'],
+    ['No quitar los filtros; volver al mapa', 'portal.cambiar_vista', 'mapa'],
     ['No quiero cambiar filtros, solo abrir el mapa', 'portal.cambiar_vista', 'mapa'],
     ['dame pasos para arreglar que no salgan resultados', 'portal.resultados_vacios', 'registros'],
 ]);

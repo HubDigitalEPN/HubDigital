@@ -9,6 +9,12 @@ final class ReferenciaTaxonomicaPublica
 {
     private ?array $referencias = null;
 
+    /** Alias documentados por ID de evidencia; no se infieren a partir de sinónimos externos. */
+    private const HISTORIAL = [
+        'TX7-009' => ['ECtatoma ruidum', 'Ectatomma ruidum'],
+        'TX7-072' => ['Dolichoderus dEColatus', 'Dolichoderus decollatus'],
+    ];
+
     public function para(?string $nombre, bool $familiaVisible = false): ?array
     {
         if ($nombre === null || trim($nombre) === '') return null;
@@ -17,11 +23,17 @@ final class ReferenciaTaxonomicaPublica
             $this->referencias = is_file($archivo) ? (json_decode(file_get_contents($archivo), true, flags: JSON_THROW_ON_ERROR)['samples'] ?? []) : [];
         }
         $fila = array_find($this->referencias, static fn (array $r): bool => mb_strtolower($r['portal_name']) === mb_strtolower($nombre));
+        if ($fila === null) {
+            $id = array_find_key(self::HISTORIAL, static fn (array $alias): bool => array_any($alias, static fn (string $n): bool => mb_strtolower($n) === mb_strtolower($nombre)));
+            if ($id !== null) $fila = array_find($this->referencias, static fn (array $r): bool => $r['sample_id'] === $id);
+        }
         if ($fila === null) return null;
         $uso = $fila['reference_accepted_usage'] ?? $fila['reference_usage'] ?? [];
         $pendiente = ! in_array($fila['name_relation_category'], ['nombre_concordante', 'diferencia_de_mayusculas'], true)
             || mb_strtolower($nombre) === 'naesiotus eschariferus';
-        return ['original' => $nombre, 'candidato' => $fila['name_relation_category'] === 'coincidencia_automatica_rechazada' ? null : ($uso['canonicalName'] ?? null),
+        return ['original' => $nombre, 'anterior' => $fila['portal_name'] !== $nombre ? $fila['portal_name'] : null,
+            'historial' => self::HISTORIAL[$fila['sample_id']] ?? [$fila['portal_name']],
+            'candidato' => $fila['name_relation_category'] === 'coincidencia_automatica_rechazada' ? null : ($uso['canonicalName'] ?? null),
             'rango_referencia' => $uso['rank'] ?? null, 'estado_referencia' => $uso['status'] ?? null,
             'familia_referencia' => $familiaVisible ? ($fila['reference_classification']['FAMILY'] ?? null) : null,
             'categoria' => $fila['name_relation_category'], 'fuente' => 'GBIF · Catalogue of Life Extended Release (COL XR)',

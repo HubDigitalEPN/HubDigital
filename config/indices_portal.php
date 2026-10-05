@@ -30,7 +30,7 @@ return [
         'imagen' => 'mapa',
         'foto' => 'Material de campo para documentar métodos de colecta.',
         'parrafos' => [
-            'Agrupa los registros por una misma clave del protocolo de colecta, sin distinguir mayúsculas y minúsculas ni espacios al inicio o al final. Por ejemplo, Beating y beating forman una sola categoría; cada barra y su filtro usan exactamente esa población. El método original se conserva en las fichas y exportaciones de registros. Se omiten campos vacíos y marcadores curatoriales de daño o falta de información.',
+            'Agrupa los registros por una misma clave del protocolo de colecta, sin distinguir mayúsculas y minúsculas ni espacios al inicio o al final. Por ejemplo, Beating y beating forman una sola categoría; cada barra y su filtro usan exactamente esa población. El método original (samplingProtocol) se conserva en las fichas y en la descarga de especie XLSX. El CSV general de registros no incluye ese campo; CSV y JSON del indicador contienen categorías y conteos agregados. Se omiten campos vacíos y marcadores curatoriales de daño o falta de información.',
             'Seleccionar una técnica mantiene los demás filtros y permite revisar su distribución, periodos y material asociado. El conteo expresa registros disponibles, no eficiencia de captura: comparar técnicas requiere conocer su esfuerzo de muestreo.',
         ],
     ],

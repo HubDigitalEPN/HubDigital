@@ -54,7 +54,14 @@ final class ConsultaCatalogoPublico
         $rango = ['genero' => 'género', 'especie' => 'especie', 'familia' => 'familia', 'phylum' => 'filo', 'clase' => 'clase', 'orden' => 'orden'][$taxon->rango] ?? $taxon->rango;
         $texto = $taxon->nombre_cientifico.' figura como '.$rango.' en la clasificación interna publicada del catálogo. Linaje público: '.implode(' → ', array_column($ruta, 'nombre')).'. Hay '.(clone $publicos)->count('e.id').' registros públicos de este taxón y sus descendientes. No hay una descripción de historia natural publicada para esta consulta; la clasificación no certifica la identificación física ni un nombre aceptado por una autoridad externa.';
         $referencia = app(\Modules\CatalogoPublico\Application\Services\ReferenciaTaxonomicaPublica::class)->para($taxon->nombre_cientifico, (bool) $fila->family_visible);
-        if ($referencia !== null) $texto .= ' Contraste externo: '.$referencia['fuente'].' consultado el '.$referencia['fecha'].'. '.$referencia['decision'].'.';
+        if ($referencia !== null) {
+            if ($fila->family_visible) {
+                $familia = array_find($ruta, static fn (array $n): bool => $n['rango'] === 'familia');
+                if ($familia !== null) $texto .= ' Familia publicada en el catálogo: '.$familia['nombre'].'.';
+                if ($referencia['familia_referencia'] !== null) $texto .= ' Familia de referencia externa: '.$referencia['familia_referencia'].'.';
+            }
+            $texto .= ' Contraste externo: '.$referencia['fuente'].' consultado el '.$referencia['fecha'].'. '.$referencia['decision'].'. '.$referencia['limite'];
+        }
         return ['texto' => $texto, 'fuente' => 'catalogo', 'intent' => 'catalogo.clasificacion', 'entidades' => $entities,
             'opciones' => [['label' => 'Ver registros del taxón', 'url' => route('portal.catalogo', $this->parametros($entities))]]];
     }
@@ -79,7 +86,14 @@ final class ConsultaCatalogoPublico
             return null;
         }
         $normal = $this->texto->normalizar($pregunta);
+        $operadorProvincia = $this->detector->operadorProvincia($pregunta);
+        if (isset($operadorProvincia['error_consulta'])) {
+            $aclaracion = $this->aclaracion($operadorProvincia['error_consulta'], $contexto, sinDatos: true);
+            $aclaracion['opciones'] = [];
+            return $aclaracion;
+        }
         $referenciaSeleccion = (bool) preg_match('/\b(?:(?:esta|esa|mi)\s+seleccion|seleccion\s+(?:actual|aplicada)|(?:de|en)\s+aqui)\b/', $normal)
+            || ($seleccionPortal !== null && (bool) preg_match('/\bestos\s+(?:dos\s+)?registros\b.*\bindividuos?\b/', $normal))
             || ($contexto === [] && $seleccionPortal !== null && (bool) preg_match('/^y\s+cuant|^y?\s*donde\s+se\s+(?:recolecto|colecto)|^y\s+donde/', $normal));
         $retirarFiltro = $this->filtroPorRetirar($normal);
         if ($retirarFiltro === 'no_soportado') {
@@ -100,7 +114,7 @@ final class ConsultaCatalogoPublico
         $followup = (bool) preg_match('/^(?:y\s+de\s+|y\s+)?cuantos?\b|^(?:y|solo|dame solo|quita|quitar|elimina)\s+|^donde\s+los\s+encontraron\b|\b(?:esa especie|ese taxon|esos registros|de esos dos registros)\b/', $normal);
         $queryText = $pregunta;
         $geografiasNegadas = [];
-        if ($correction && str_starts_with($normal, 'no ')) {
+        if ($operadorProvincia === [] && $correction && str_starts_with($normal, 'no ')) {
             // Conserva mayúsculas del nombre o localidad: el detector las usa para acotar entidades.
             $clauses = preg_split('/\s*(?:[,;.]|\bpero\b|\bsino\b)\s*/iu', rtrim($pregunta, '.')) ?: [];
             if (count($clauses) > 1) {
@@ -157,20 +171,12 @@ final class ConsultaCatalogoPublico
             $entities['codigo'] = $codigos[$posicion];
             unset($entities['taxon']);
         }
-        // Resolver el operador antes del conteo o del enlace. No convertir «fuera» en igualdad.
-        $normalConsulta = $this->texto->normalizar($queryText);
-        if (preg_match('/\b(?:fuera de|no (?:son|es|estan|esta|se recolectaron|se recolecto) (?:de|en)|excepto|excluye|excluir|sin la provincia|no en)\s+(?:la provincia (?:de )?)?(.+)$/', $normalConsulta, $negacion)) {
-            $lugar = $this->texto->normalizar($entities['provincia'] ?? $contexto['provincia'] ?? '');
-            if ($lugar === '' || $negacion[1] !== $lugar) {
-                return $this->aclaracion('Solo puedo excluir una provincia identificada de forma inequívoca. No he calculado un conteo parcial. Indica la provincia o usa los filtros del catálogo.', $contexto, sinDatos: true);
-            }
-            $entities['provincia_excluida'] = $entities['provincia'] ?? $contexto['provincia'];
-            unset($entities['provincia']);
-        } elseif (preg_match('/\b(?:fuera (?:de|del)|excepto|excluye|excluir|sin la provincia)\b/', $normalConsulta)) {
-            return $this->aclaracion('Solo puedo excluir una provincia identificada de forma inequívoca. No he calculado un conteo parcial. Indica una única provincia al final de la pregunta.', $contexto, sinDatos: true);
+        if ($operadorProvincia !== []) {
+            unset($entities['provincia'], $entities['provincia_excluida']);
+            $entities = array_replace($entities, $operadorProvincia);
         }
         if (isset($entities['error_consulta'])) return $this->aclaracion($entities['error_consulta'], $contexto);
-        if (preg_match('/\bo\b/', $normal)) {
+        if (preg_match('/\bo\b/', $normal) && ! preg_match('/\bindividuos?\s+o\s+(?:dos\s+)?especies\b/', $normal)) {
             return $this->aclaracion('La unión de alternativas con «o» no está disponible en esta consulta. No he calculado un conteo parcial. Elige una alternativa o consulta cada una por separado.', $contexto);
         }
         if (preg_match('/\b(?:hembras?|machos?|femenin[oa]s?|masculin[oa]s?|sexo)\b/', $normal)) {
@@ -183,6 +189,7 @@ final class ConsultaCatalogoPublico
             return $this->aclaracion('La exclusión solicitada no está disponible en los filtros de esta consulta. No he calculado un conteo parcial. Puedes reformular con los criterios que deseas incluir.', $contexto);
         }
         if ($referenciaSeleccion) {
+            if (preg_match('/\bestos\s+(?:dos\s+)?registros\b.*\bindividuos?\b/', $normal)) $entities = [];
             if ($entities !== [] || $coleccionExplicita) {
                 return $this->aclaracion('Confirma si quieres contar la selección aplicada o preparar una consulta nueva con esos criterios. No he calculado un conteo parcial.', $contexto);
             }
@@ -194,11 +201,14 @@ final class ConsultaCatalogoPublico
             return $this->contarSeleccion($normal, $seleccion, $seleccionPortal === null ? $contexto : [], $seleccionPortal !== null);
         }
         $options = [['label' => 'Abrir catálogo para ver más', 'url' => route('portal.catalogo', $this->parametros($entities))]];
-        if (preg_match('/\bfamilias\b/', $normal)) {
+        $unidades = $this->unidadesSolicitadas($normal);
+        if (count($unidades) > 1) return $this->contarUnidades($this->seleccion($entities), $entities, $options, $unidades);
+        $unidadPedida = $unidades[0] ?? null;
+        if ($unidadPedida === 'familias' || ($unidadPedida === null && preg_match('/\bfamilias\b/', $normal))) {
             if (preg_match('/\bmas\s+registros\b/', $normal)) return $this->familias($entities, $options);
             return $this->taxonesPorRango($this->seleccion($entities), $entities, $options, 'familia');
         }
-        if (preg_match('/\bgeneros\b/', $normal)) {
+        if ($unidadPedida === 'generos' || ($unidadPedida === null && preg_match('/\bgeneros\b/', $normal))) {
             return $this->taxonesPorRango($this->seleccion($entities), $entities, $options, 'genero');
         }
         if (isset($entities['codigo'])) {
@@ -220,7 +230,7 @@ final class ConsultaCatalogoPublico
             $hint = $suggestions === [] ? '' : ' ¿Te refieres a '.implode(' o ', $suggestions).'? Confirma el nombre antes de buscar.';
             return $this->resultado('No encontré registros publicados'.$de.' en el catálogo. Esto no confirma si existen ejemplares no divulgados.'.$hint, 'catalogo.count', $entities, 0, [], $options);
         }
-        if (preg_match('/\bespecies\b/', $normal)) {
+        if ($unidadPedida === 'especies' || ($unidadPedida === null && preg_match('/\bespecies\b/', $normal))) {
             return $this->taxonesPorRango($query->where('t.rango', 'especie'), $entities, $options, 'especie');
         }
         if (preg_match('/\b(cuantos?|numero|total|tienen|existe|hay registros)\b/', $normal)) {
@@ -361,12 +371,13 @@ final class ConsultaCatalogoPublico
             $normal .= ' registros';
         }
         preg_match_all('/\b(registros|especimenes|ejemplares|especies|generos|familias)\b/', $normal, $unidades);
-        $unidades = array_unique(array_map(static fn (string $unidad): string => in_array($unidad, ['especimenes', 'ejemplares'], true) ? 'registros' : $unidad, $unidades[1]));
+        $unidades = $this->unidadesSolicitadas($normal) ?: array_unique(array_map(static fn (string $unidad): string => in_array($unidad, ['especimenes', 'ejemplares'], true) ? 'registros' : $unidad, $unidades[1]));
         $ids = app(EloquentProveedorEspecimenesParaArbol::class)->consultaPublica($seleccion->filtros,
             $seleccion->parametros['nivel'] ?? '', $seleccion->parametros['taxon'] ?? '')->select('te.id');
         $query = $this->publicos()->whereIn('e.id', $ids);
         $options = [['label' => 'Abrir registros de la selección', 'url' => route('portal.catalogo', $seleccion->parametros + ['vista' => 'registros'])]];
         if (preg_match('/\bdonde\b.*\b(?:recolect|colect|encontr)/', $normal)) return $this->localidades($query, $entities, $options);
+        if (count($unidades) > 1) return $this->contarUnidades($query, $entities, $options, array_values($unidades), $pagina ? 'en la selección aplicada de la página' : 'en la consulta pública anterior');
         if (count($unidades) !== 1) return $this->aclaracion('Indica qué unidad quieres contar en la selección: registros, especies, géneros o familias.', $entities);
         $unidad = reset($unidades);
         $poblacion = $pagina ? 'en la selección aplicada de la página' : 'en la consulta pública anterior';
@@ -380,6 +391,55 @@ final class ConsultaCatalogoPublico
         $texto = 'Hay '.$total.' '.($total === 1 ? 'registro publicado' : 'registros publicados').' '.$poblacion.'.';
         if (isset($tipoCanonico)) $texto .= ' Condición de tipo: '.$tipoCanonico.'. Este conteo es de registros, no de individuos.';
         return $this->resultado($texto, 'catalogo.count', $entities, $total, [], $options);
+    }
+
+    private function unidadesSolicitadas(string $normal): array
+    {
+        if (preg_match('/\bregistros\b.*\bindividuos?\s+o\s+(?:dos\s+)?especies\b/', $normal)) return ['registros', 'especies'];
+        $unidad = '(?:registros|especimenes|ejemplares|especies|generos|familias)';
+        preg_match_all('/\b(?:cuant[oa]s?|numero(?: de)?|total(?: de)?)\s+(?:(?:los|las|distint[oa]s?|public[oa]s?)\s+)*('.$unidad.')(?:\s+y\s+(?:cuant[oa]s?\s+)?('.$unidad.'))?\b/', $normal, $pedidas, PREG_SET_ORDER);
+        $unidades = [];
+        foreach ($pedidas as $pedida) {
+            foreach (array_slice($pedida, 1) as $nombre) {
+                if ($nombre !== '') $unidades[] = in_array($nombre, ['ejemplares', 'especimenes'], true) ? 'registros' : $nombre;
+            }
+        }
+        return array_values(array_unique($unidades));
+    }
+
+    private function contarUnidades(Builder $query, array $entities, array $options, array $unidades, ?string $poblacion = null): array
+    {
+        $partes = []; $conteos = [];
+        foreach ($unidades as $unidad) {
+            if ($unidad === 'registros') {
+                $total = (clone $query)->count('e.id');
+                $partes[] = 'Hay '.$total.' '.($total === 1 ? 'registro publicado' : 'registros publicados').($poblacion ? ' '.$poblacion : '').'.';
+            } else {
+                $rango = ['especies' => 'especie', 'generos' => 'genero', 'familias' => 'familia'][$unidad];
+                $respuesta = $this->taxonesPorRango(clone $query, $entities, [], $rango, $poblacion);
+                $total = $respuesta['datos']['total'];
+                $partes[] = $respuesta['texto'];
+            }
+            $conteos[$unidad] = $total;
+        }
+        $partes[] = 'Los registros no equivalen necesariamente a individuos; el número de individuos requiere el campo público correspondiente. Las especies se cuentan según la jerarquía interna publicada.';
+        $respuesta = $this->resultado(implode("\n\n", $partes), 'catalogo.conteos', $entities, (clone $query)->count('e.id'), [], $options);
+        $respuesta['datos']['conteos'] = $conteos;
+        return $respuesta;
+    }
+
+    /** Solo abre directamente una especie si toda la selección tiene esa identidad pública. */
+    public function parametrosTarjetasEspecie(array $parametros): array
+    {
+        $seleccion = SeleccionPaginaChat::desde($parametros);
+        if ($seleccion === null) return $parametros;
+        if (($seleccion->parametros['nivel'] ?? '') === 'species') return $seleccion->parametros;
+        $filas = app(EloquentProveedorEspecimenesParaArbol::class)->consultaPublica($seleccion->filtros,
+            $seleccion->parametros['nivel'] ?? '', $seleccion->parametros['taxon'] ?? '')
+            ->leftJoin('taxonomia.taxones as t', 't.id', '=', 'te.taxon_id')
+            ->select('t.id', 't.nombre_cientifico', 't.rango', 'ed.scientific_name_visible')->distinct()->limit(2)->get();
+        if ($filas->count() !== 1 || ! $filas[0]->scientific_name_visible || $filas[0]->rango !== 'especie') return $seleccion->parametros;
+        return array_replace($seleccion->parametros, ['nivel' => 'species', 'taxon' => $filas[0]->nombre_cientifico]);
     }
 
     private function familias(array $entities, array $options): array

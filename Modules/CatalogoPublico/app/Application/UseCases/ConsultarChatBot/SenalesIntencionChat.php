@@ -9,7 +9,7 @@ final class SenalesIntencionChat
 {
     private const DOMAIN = [
         'deposito' => '/\b(deposit\w*|custodi\w*|dejar|dejo|guarde|guardar)\b/u',
-        'donacion' => '/\b(dona\w*|regal\w*|ceder|cesion|gratuit\w*|transferir|pertenec\w*)\b/u',
+        'donacion' => '/\b(dona\w*|regal\w*|ceder|cesion|gratuit\w*|transferir|transferencia de propiedad)\b/u',
         'catalogo' => '/\b(catalog\w*|taxon\w*|especie\w*|genero\w*|familia\w*|registro\w* public\w*|divulgad\w*|busco ejemplares)\b/u',
         'acceso' => '/\b(acces\w*|ingres\w*|entrar|autentic\w*|sesion|clave|contrasen\w*|usuario|cuenta)\b/u',
         'contacto' => '/\b(contact\w*|correo|escrib\w*|comunic\w*|hablar con|ayuda humana)\b/u',

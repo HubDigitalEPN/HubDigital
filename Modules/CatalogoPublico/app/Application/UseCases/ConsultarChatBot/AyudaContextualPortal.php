@@ -9,7 +9,7 @@ use Illuminate\Support\Str;
 /** Ayuda local versionada. Resuelve acción y objeto antes de extraer filtros. */
 final class AyudaContextualPortal
 {
-    public const VERSION_GLOSARIO = '2026-10-04';
+    public const VERSION_GLOSARIO = '2026-10-05';
 
     public function __construct(private readonly DetectorEntidadesChat $detector, private readonly ConsultaCatalogoPublico $consulta) {}
 
@@ -23,6 +23,25 @@ final class AyudaContextualPortal
             'texto' => $texto, 'fuente' => 'portal', 'intent' => $intencion, 'opciones' => $opciones,
         ];
 
+        if (preg_match('/\b(?:prestamos?|prestan|prestame|pedir (?:material|especimenes)|solicitante)\b/', $normal)
+            && ! preg_match('/\b(?:disposicion|condicion de tipo|significa|glosario)\b/', $normal)) {
+            return $salida("1. Consulta con curaduría del Laboratorio la disponibilidad del material y las condiciones del préstamo. La consulta del catálogo no constituye una solicitud ni una aprobación.\n2. Inicia sesión con una cuenta verificada. La solicitud de préstamo requiere el rol autorizado Prestamista; si no tienes acceso, consulta al Laboratorio.\n3. Abre Mis solicitudes de préstamo y Nueva solicitud; describe el material y completa los datos y documentos que pida el formulario.\n4. Consulta el seguimiento y espera la revisión e instrucciones de curaduría antes de retirar material. No puedo asegurar disponibilidad, aprobación, requisitos específicos ni plazos para tu caso.", 'portal.prestamo_pasos', [
+                ['label' => 'Información y contacto del Laboratorio', 'url' => url('/').'#contacto'],
+                ['label' => 'Iniciar sesión', 'url' => route('login')],
+                ['label' => 'Solicitudes de préstamo (requiere acceso)', 'url' => route('prestamos.investigador.mis-solicitudes')],
+            ]);
+        }
+        if (preg_match('/\bcf\b/', $normal) && preg_match('/significa|calificador|nombre cientifico/', $normal)) {
+            return $salida('cf. (confer, «comparar con») es un calificador de identificación: expresa que el material se compara con ese taxón, con incertidumbre sobre su determinación. No equivale a una identificación confirmada ni forma parte del binomio. El portal conserva el texto fuente; no elimina el calificador para convertirlo en un nombre aceptado. Darwin Core permite expresar esta duda en identificationQualifier.', 'portal.calificador', [
+                ['label' => 'Fuente: Darwin Core · identificationQualifier', 'url' => 'https://dwc.tdwg.org/terms/#dwc:identificationQualifier'],
+            ]);
+        }
+        if (preg_match('/\b(?:quien escribio|autor de|autoria de)\b/', $normal) && str_contains($normal, 'origen de las especies')) {
+            return $salida('Charles Darwin escribió El origen de las especies, publicado por primera vez en 1859. Es una referencia de historia de la ciencia; no es una consulta de ejemplares de la colección.', 'general.autoria', [
+                ['label' => 'Fuente: Darwin Online · primera edición (1859)', 'url' => 'https://darwin-online.org.uk/content/contentblock?basepage=1&hitpage=4&itemID=PC-Virginia-Francis-F373&viewtype=text'],
+            ]);
+        }
+
         if (preg_match('/\bnoticias?\b|\bactualidad\b|\bultima hora\b/', $normal)) {
             return $salida('No puedo verificar noticias ni acontecimientos de hoy en tiempo real. Consulta una fuente de actualidad con fecha de publicación; una referencia histórica no responde a esa pregunta.', 'general.sin_actualidad');
         }
@@ -34,7 +53,7 @@ final class AyudaContextualPortal
         }
         if ((preg_match('/\b(?:tipo nomenclatural|condicion de tipo|disposicion|incertidumbre|precision|localidad inec|estado de ocurrencia)\b/', $normal)
             && preg_match('/que (?:es|significa)|son (?:lo mismo|exactas)|es lo mismo|diferencia|explica|exactitud|exactas/', $normal)
-            ) || preg_match('/coordenadas.*(?:exactas|exactitud|recuperadas)|(?:exactas|exactitud).*coordenadas/', $normal)) {
+            ) || preg_match('/coordenadas?.*(?:exactas?|exactitud|recuperadas?)|(?:exactas?|exactitud).*coordenadas?|coordenada recuperada|ubicacion exacta/', $normal)) {
             return $salida('Condición de tipo (typeStatus) indica el papel nomenclatural del ejemplar, como holotipo o paratipo. Disposición (disposition) indica la situación del material, por ejemplo en la colección o en préstamo. Estado de ocurrencia (occurrenceStatus) expresa presencia o ausencia registrada; son campos distintos. Una celda vacía significa no informado, no «sin tipo». La localidad original conserva el texto de colecta; la localidad INEC es una referencia administrativa separada y no demuestra el sitio exacto. Precisión e incertidumbre no se deducen del número de decimales: una coordenada recuperada del Excel o aproximada conserva sus advertencias, y la incertidumbre desconocida permanece vacía, nunca cero. Glosario '.$this::VERSION_GLOSARIO.'.', 'portal.glosario', [
                 ['label' => 'Diccionario CSV y XLSX', 'url' => route('portal.diccionario-exportacion')],
                 ['label' => 'Ver registros de la selección', 'url' => $enlace('registros')],
@@ -72,22 +91,23 @@ final class AyudaContextualPortal
         }
         if (preg_match('/\b(?:descarg\w*|export\w*|xlsx|csv)\b/', $normal) || preg_match('/\bexcel\b/', $normal) && preg_match('/datos|registros|quiero/', $normal)) {
             $xlsx = preg_match('/\b(?:xlsx|excel)\b/', $normal);
+            $tarjetas = $xlsx ? $this->consulta->parametrosTarjetasEspecie($parametros) : $parametros;
             return $salida($xlsx
                 ? 'Para descargar XLSX, cambia a Tarjetas de la especie seleccionada y pulsa Descargar datos XLSX. Se exportan todos sus registros filtrados, incluidas otras páginas y las advertencias de coordenadas. Si la selección abarca varias especies o rangos superiores, usa Registros → Descargar resultados CSV, o abre una especie antes de descargar su XLSX. El enlace conserva la selección aplicada; no necesitas cuenta.'
                 : 'Cambia a Registros y pulsa Descargar resultados CSV. La descarga incluye toda la selección filtrada, incluidas otras páginas; el enlace conserva los criterios aplicados. No necesitas cuenta. Consulta el diccionario para distinguir los campos de CSV y XLSX.',
                 $xlsx ? 'portal.xlsx' : 'portal.csv', [
-                    ['label' => $xlsx ? 'Abrir tarjetas de la selección' : 'Abrir registros filtrados', 'url' => $enlace($xlsx ? 'tarjetas' : 'registros')],
+                    ['label' => $xlsx ? 'Abrir tarjetas de la selección' : 'Abrir registros filtrados', 'url' => $xlsx ? route('portal.catalogo', array_replace($tarjetas, ['vista' => 'tarjetas'])) : $enlace('registros')],
                     ['label' => 'Diccionario CSV y XLSX', 'url' => route('portal.diccionario-exportacion')],
                 ]);
         }
         if (preg_match('/(?:quitar|limpiar|restablecer|reiniciar)\s+(?:todos\s+)?(?:los\s+)?filtros/', $normal)
-            && ! preg_match('/no (?:quiero|deseo|hay que) (?:quitar|limpiar)/', $normal)) {
+            && ! preg_match('/\b(?:sin|no(?: (?:quiero|deseo|hay que))?)\s+(?:quitar|limpiar|restablecer|reiniciar)\b/', $normal)) {
             return $salida('Pulsa Limpiar en Filtros de investigación para restablecer la consulta global. Esto retira todos los criterios y la selección espacial. El enlace siguiente abre esa consulta global.', 'portal.limpiar', [
                 ['label' => 'Abrir catálogo sin filtros', 'url' => route('portal.catalogo', ['vista' => 'mapa'])],
             ]);
         }
-        if (preg_match('/(?:volver|abrir|regresar|cambiar|ver|pasar).*(?:mapa|tabla|registros|tarjetas)/', $normal)
-            && preg_match('/filtros|solo|volver|regresar/', $normal)) {
+        if (preg_match('/(?:volver|vuelve|abrir|abre|regresar|regresa|cambiar|ver|pasar).*(?:mapa|tabla|registros|tarjetas)/', $normal)
+            && preg_match('/\b(?:filtros?|solo|volver|vuelve|regresar|regresa)\b/', $normal)) {
             $vista = str_contains($normal, 'mapa') ? 'mapa' : (str_contains($normal, 'tarjetas') ? 'tarjetas' : 'registros');
             return $salida('Usa los botones Tarjetas, Registros y Mapa y análisis. Cambiar de vista conserva todos los filtros aplicados, incluida la caja espacial; el enlace mantiene esa misma selección. No pulses Limpiar si deseas conservarla.', 'portal.cambiar_vista', [
                 ['label' => 'Abrir vista de la selección', 'url' => $enlace($vista)],

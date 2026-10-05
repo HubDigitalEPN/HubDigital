@@ -5,6 +5,8 @@
         <summary>Autoridad y revisión del nombre</summary>
         <dl>
             <div><dt>Nombre publicado</dt><dd>{{ $referencia['original'] }}</dd></div>
+            @if($referencia['anterior'])<div><dt>Nombre anterior en la revisión</dt><dd>{{ $referencia['anterior'] }}</dd></div>@endif
+            <div><dt>Referencia estable de revisión</dt><dd>{{ $referencia['evidencia'] }}</dd></div>
             @if($familiaVisible && $familiaOriginal)<div><dt>Familia publicada en el catálogo</dt><dd>{{ $familiaOriginal }}</dd></div>@endif
             <div><dt>Nombre de referencia externo</dt><dd>{{ $referencia['candidato'] ?? 'Sin correspondencia resuelta' }} {{ $referencia['rango_referencia'] ? '('.$referencia['rango_referencia'].')' : '' }}</dd></div>
             @if($referencia['familia_referencia'])<div><dt>Familia de referencia externa</dt><dd>{{ $referencia['familia_referencia'] }}</dd></div>@endif

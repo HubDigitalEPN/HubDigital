@@ -87,7 +87,7 @@ test('consultar una provincia no añade una localidad homónima ni una nota con 
     }
     expect(app(DetectorEntidadesChat::class)->extraer('Busca Chatobius en la localidad de Pichincha'))
         ->toMatchArray(['taxon' => 'Chatobius', 'localidad' => 'Pichincha'])->not->toHaveKey('provincia');
-    foreach (['¿Cuántas especies distintas de Chatobius hay en Pichincha?', '¿Cuántas especies distintas de Chatobius hay en la provincia de Pichincha?'] as $pregunta) {
+    foreach (['¿Cuántas especies distintas de Chatobius hay en Pichincha?', '¿Cuántas especies distintas de Chatobius hay en la provincia de Pichincha?', '¿Cuántas especies diferentes de Chatobius hay en Pichincha?'] as $pregunta) {
         $respuesta = app(ConsultaCatalogoPublico::class)->responder($pregunta);
         expect($respuesta['entidades'])->toMatchArray(['taxon' => 'Chatobius', 'provincia' => 'Pichincha'])
             ->not->toHaveKey('localidad')

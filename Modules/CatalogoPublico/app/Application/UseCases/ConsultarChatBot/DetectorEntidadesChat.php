@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\CatalogoPublico\Application\UseCases\ConsultarChatBot;
 
 use Modules\CatalogoPublico\Infrastructure\ElegibilidadGeograficaPortal;
+use Modules\CatalogoPublico\Infrastructure\CalidadDatoPublico;
 
 use Illuminate\Support\Facades\DB;
 use Modules\CatalogoPublico\Infrastructure\NormalizacionGeografica;
@@ -13,6 +14,19 @@ use Modules\CatalogoPublico\Infrastructure\NormalizacionGeografica;
 final class DetectorEntidadesChat
 {
     public function __construct(private readonly TextoChat $texto, private readonly FiltrosLenguajeChat $filtrosLenguaje) {}
+
+    public function operadorProvincia(string $pregunta): array
+    {
+        $operador = app(OperadorProvinciaChat::class);
+        if (! $operador->solicitado($pregunta)) return [];
+        $provincias = DB::table('taxonomia.especimenes as e')
+            ->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
+            ->where('d.publicado', true)->where('d.state_province_visible', true)
+            ->whereRaw(ElegibilidadGeograficaPortal::sql('e', 'd'))->whereRaw(CalidadDatoPublico::textoValido('e.state_province'))
+            ->distinct()->orderBy('e.state_province')->pluck('e.state_province')->all();
+
+        return $operador->extraer($pregunta, NormalizacionGeografica::nombresDisponibles($provincias));
+    }
 
     /** @return array{taxon?:string,provincia?:string,localidad?:string,pais?:string,codigo?:string} */
     public function extraer(string $pregunta): array
@@ -106,7 +120,7 @@ final class DetectorEntidadesChat
         preg_match_all('/\b[A-ZÁÉÍÓÚ][a-záéíóúñ]{2,}\b/u', $pregunta, $matches);
         $omitidos = ['son', 'por', 'puedes', 'dame', 'estoy', 'solo', 'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre', 'no', 'esa', 'ese', 'esta', 'este', 'como', 'que', 'cual', 'cuantos', 'cuantas', 'tienen', 'tengo', 'quiero', 'busca', 'buscar', 'especimenes', 'registros', 'genero', 'familia', 'hola', 'buenos', 'buenas', 'gracias', 'necesito', 'donde', 'muestra', 'existe'];
         $result = [];
-        $omitidos = [...$omitidos, 'excel', 'xlsx', 'csv', 'despues', 'tabla', 'mapa', 'pasos', 'paso', 'publicos', 'publicas', 'catalogo', 'formato', 'datos', 'seleccion', 'aqui', 'son', 'recolecto', 'filtros', 'fuera'];
+        $omitidos = [...$omitidos, 'excel', 'xlsx', 'csv', 'despues', 'tabla', 'mapa', 'pasos', 'paso', 'publicos', 'publicas', 'catalogo', 'formato', 'datos', 'seleccion', 'aqui', 'son', 'recolecto', 'filtros', 'fuera', 'quien', 'primero', 'ultimo', 'finalmente', 'muestrame', 'dime', 'explicame', 'resto'];
         foreach ($matches[0] as $principal) {
             if (in_array($this->texto->normalizar($principal), $omitidos, true)) {
                 continue;
@@ -116,7 +130,8 @@ final class DetectorEntidadesChat
             foreach (array_filter([$binomio, $principal]) as $candidato) {
                 $taxon = DB::table('taxonomia.taxones')->whereRaw('lower(nombre_cientifico) = lower(?)', [$candidato])->value('nombre_cientifico');
                 if ($taxon !== null) {
-                    $result['taxon'] = $taxon;
+                    // Una familia mencionada como alternativa no desplaza el binomio consultado.
+                    if (! isset($result['taxon']) || mb_strlen($taxon) > mb_strlen($result['taxon'])) $result['taxon'] = $taxon;
                     continue 2;
                 }
             }
