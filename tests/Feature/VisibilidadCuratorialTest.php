@@ -65,7 +65,7 @@ test('Colección Biológica responde como primera pantalla pública', function (
         ->assertOk()
         ->assertSee('Colección Biológica')
         ->assertSee('Filtros de investigación')
-        ->assertSee('Riqueza por provincia')
+        ->assertSee('Registros por provincia')
         ->assertSee('Vista de registros');
     $this->get('/portal/comparar-especies')->assertNotFound();
 });
@@ -78,18 +78,18 @@ test('las tres vistas se alternan en el mismo componente y conservan la selecci�
         ->assertDontSee('Volver al árbol')
         ->set('filtroTaxon', $taxonSinCoincidencias)
         ->call('cambiarVista', 'mapa')->assertSet('vista', 'mapa')->assertSet('filtroTaxon', $taxonSinCoincidencias)
-        ->assertSee('Riqueza por provincia')
-        ->assertSee('No hay especies con provincia pública en esta selección.')
-        ->assertSee('No hay fechas e identificaciones a especie visibles.')
+        ->assertSee('Registros por provincia')
+        ->assertSee('No hay registros con provincia pública en esta selección.')
+        ->assertSee('No hay registros con fecha de colecta pública válida.')
         ->assertDontSee('Catálogo del laboratorio de invertebrados')->assertDontSee('Volver al árbol')
         ->call('cambiarVista', 'registros')->assertSet('vista', 'registros')->assertSet('filtroTaxon', $taxonSinCoincidencias)
-        ->assertSee('Registros del catálogo')->assertDontSee('Riqueza por provincia')->assertDontSee('Volver al árbol')
+        ->assertSee('Registros del catálogo')->assertDontSee('Registros por provincia')->assertDontSee('Volver al árbol')
         ->call('cambiarVista', 'tarjetas')->assertSet('vista', 'tarjetas')->assertSet('filtroTaxon', $taxonSinCoincidencias)
-        ->assertSee('Catálogo del laboratorio de invertebrados')->assertDontSee('Riqueza por provincia')
+        ->assertSee('Catálogo del laboratorio de invertebrados')->assertDontSee('Registros por provincia')
         ->call('explorarNivel', 'phylum')->assertSet('explorar', 'phylum')
         ->assertSee('Volver al árbol')->assertDontSee('Catálogo del laboratorio de invertebrados')
         ->call('cambiarVista', 'mapa')->assertSet('explorar', 'phylum')->assertSet('filtroTaxon', $taxonSinCoincidencias)
-        ->assertSee('Riqueza por provincia')->assertDontSee('Volver al árbol')
+        ->assertSee('Registros por provincia')->assertDontSee('Volver al árbol')
         ->call('cambiarVista', 'tarjetas')->assertSet('explorar', 'phylum')->assertSet('filtroTaxon', $taxonSinCoincidencias)
         ->assertSee('Volver al árbol')
         ->call('volverAlArbol')->assertSee('Catálogo del laboratorio de invertebrados')->assertDontSee('Volver al árbol');
@@ -143,7 +143,8 @@ test('los filtros públicos se aplican también a la lista CSV y respetan la ubi
     $destino = $redireccion->baseResponse->headers->get('Location');
     expect($destino)->toContain('fprov=Pichincha', 'fmes=6', 'vista=mapa');
     $this->get($destino)->assertOk()
-        ->assertSee('1 registro público')->assertSee(\Modules\CatalogoPublico\Infrastructure\ProtocoloColectaPublico::clave($metodo))->assertSee($metodo)->assertDontSee($sinUbicacion)->assertDontSee($metodoRestringido);
+        ->assertSee('<small class="atlas-collection-count">(1 registro)</small>', false)
+        ->assertSee(\Modules\CatalogoPublico\Infrastructure\ProtocoloColectaPublico::clave($metodo))->assertSee($metodo)->assertDontSee($sinUbicacion)->assertDontSee($metodoRestringido);
     $csv = $this->get(route('portal.lista-especies', $filtros))->assertOk()->streamedContent();
     expect($csv)->toContain($conUbicacion)->not->toContain($sinUbicacion)->not->toContain($metodoRestringido);
     $taxonRedireccion = $this->get(route('portal.estadisticas', ['taxon' => $conUbicacion, 'mes' => 6]))->assertRedirect();

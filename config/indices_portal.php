@@ -35,12 +35,12 @@ return [
         ],
     ],
     'mapa' => [
-        'titulo' => 'Distribución de los registros',
+        'titulo' => 'Mapa de la colección',
         'foto' => 'Trabajo de campo con GPS y cuaderno para registrar ubicaciones.',
         'parrafos' => [
             'Este indicador muestra las coordenadas públicas de los ejemplares de la selección aplicada sobre la cartografía de OpenStreetMap. Conserva visibles países, relieve, ciudades y demás elementos de la base cartográfica en las áreas con y sin registros.',
             'Al alejar el mapa aparecen clústeres de pantalla que reúnen varias ubicaciones cercanas. Su número indica cuántas ubicaciones originales contienen, no cuántos ejemplares. Al pulsarlos se acerca el mapa y se separan sus miembros; el clúster no es una coordenada de colecta.',
-            'Al acercar aparecen los puntos en sus latitudes y longitudes WGS84 originales, sin desplazarlos a un centro de cuadrícula. Un punto reúne únicamente registros que comparten exactamente ese par de coordenadas. Su tamaño expresa la cantidad de registros, con un máximo visual. Selecciona el punto para explorar el árbol taxonómico y consultar seis taxones terminales o seis ejemplares por página.',
+            'Al acercar aparecen los puntos en sus latitudes y longitudes WGS84 originales, sin desplazarlos a un centro de cuadrícula. Un punto reúne únicamente registros que comparten exactamente ese par de coordenadas. Su tamaño expresa la cantidad de registros, con un máximo visual. Selecciona el punto para explorar el árbol taxonómico y consultar cada registro como una hoja del árbol; la tabla permite seis ejemplares por página.',
             'El color identifica el filo: azul para Arthropoda, naranja para Mollusca, verde para Annelida, violeta para Nematoda y rosa para Nematomorpha; gris indica un filo no disponible. Si una ubicación o un clúster contiene varios filos, sus segmentos muestran la composición. El detalle accesible del punto informa los filos y sus conteos. Seleccionar un filo en Composición taxonómica filtra todos los paneles y el mapa.',
             'La precisión de una ubicación depende del dato original y de su referencia pública: conservar la coordenada no convierte una ubicación aproximada o recuperada en una medición GPS exacta. La selección pública exige ambas coordenadas válidas y visibles; los registros sin ese par o con coordenadas reservadas quedan fuera de los paneles públicos. La ausencia de puntos no demuestra ausencia de organismos y el número de registros no equivale a abundancia natural.',
         ],
@@ -55,20 +55,20 @@ return [
         ],
     ],
     'riqueza' => [
-        'titulo' => 'Riqueza por provincia',
+        'titulo' => 'Registros por provincia',
         'foto' => 'Observación de distintos invertebrados durante un muestreo en un bosque tropical.',
         'parrafos' => [
-            'La riqueza observada es el número de especies diferentes documentadas en una provincia dentro de la selección vigente. Permite comparar la cobertura taxonómica de la colección entre provincias y detectar lugares que merecen una revisión adicional.',
-            'Se seleccionan registros cuya identificación a especie y provincia son públicas. En cada provincia se cuentan los nombres científicos distintos: varias ocurrencias de una misma especie aportan una sola unidad a la riqueza de esa provincia. El panel muestra las diez provincias con mayor riqueza; una especie presente en varias provincias se cuenta una vez en cada una, por lo que no deben sumarse las barras para obtener la riqueza total.',
-            'El resultado depende del esfuerzo de muestreo, las identificaciones y la publicación de datos. No estima las especies aún no observadas ni corrige diferencias de esfuerzo entre provincias. Una especie con nomenclatura provisional puede reflejarse según la identificación registrada en la colección.',
+            'Muestra los registros de la selección vigente que tienen una provincia pública válida. Incluye ejemplares identificados hasta familia u otros rangos, para que su cobertura territorial no desaparezca del panel.',
+            'Las barras muestran las diez provincias con más registros. Las variantes de escritura de una provincia se reúnen en un mismo grupo. Los datos agregados descargables conservan además el número de especies distintas con identificación pública confirmada; un registro identificado solo hasta familia no se cuenta como una especie.',
+            'El resultado depende del esfuerzo de muestreo y de la publicación de datos. No estima abundancia natural ni especies aún no observadas. Seleccionar una provincia aplica ese criterio a toda la colección.',
         ],
     ],
     'decadas' => [
         'titulo' => 'Cobertura temporal',
         'foto' => 'Revisión de cuadernos de campo históricos junto a una colección entomológica.',
         'parrafos' => [
-            'La cobertura temporal describe en qué décadas se recolectaron las especies documentadas. Ayuda a reconocer periodos bien representados, interrupciones de muestreo y materiales históricos que pueden resultar útiles para nuevas investigaciones.',
-            'Se toma el año inicial de la fecha de colecta pública, se divide por diez, se redondea hacia abajo y se multiplica por diez para obtener el inicio de la década. Para cada década se cuentan los nombres científicos distintos con identificación pública a especie. Si una especie aparece en varias décadas, aporta una unidad en cada periodo.',
+            'La cobertura temporal muestra en qué décadas se recolectaron los registros de la selección vigente, incluyendo identificaciones hasta familia u otros rangos. Ayuda a reconocer periodos representados y materiales históricos.',
+            'Se toma el año inicial de una fecha de colecta pública válida para obtener el inicio de la década. Cada registro aporta una unidad a su década. Los datos agregados descargables conservan además el número de especies distintas con identificación pública confirmada; las fechas reservadas no intervienen en este conteo.',
             'Las barras expresan cobertura de la colección y no tendencias poblacionales. Fechas erróneas o incompletas pueden producir periodos inesperados; conviene revisarlas antes de interpretar cambios ecológicos. Al seleccionar una década se aplica su rango de fechas a toda la consulta, respetando el solapamiento de los intervalos de colecta.',
         ],
     ],

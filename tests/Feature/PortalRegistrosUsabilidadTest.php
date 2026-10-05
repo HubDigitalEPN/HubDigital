@@ -90,15 +90,15 @@ test('una ficha abierta retira datos cuyo permiso cambia y se cierra al restaura
         ->assertSet('registroFichaId', null)->assertSet('filtroProvincia', 'Esmeraldas');
 });
 
-test('latitud y longitud simples se aplican independientemente conservando cero, borrador e historial', function (): void {
+test('latitud y longitud simples se aplican al cambiar conservando cero, validación e historial', function (): void {
     registrosParaContratoChat();
     DB::table('taxonomia.especimenes')->where('codigo_catalogo', 'QA3-CHAT-1')->update(['decimal_latitude' => 0]);
     DB::table('taxonomia.especimenes')->where('codigo_catalogo', 'QA3-CHAT-4')->update(['decimal_longitude' => -79.2]);
     $catalogo = Livewire::withQueryParams(['vista' => 'registros', 'flat' => '-1', 'flax' => '1', 'flon' => '-80', 'flox' => '-78'])->test(PortalCatalogo::class)
         ->assertSet('filtroLatitud', '')->assertSet('filtroLongitud', '');
     $catalogo->set('borradorFiltros.filtroLatitud', '0');
-    expect(seleccionChatRenderizada($catalogo))->toBe(['flat' => '-1', 'flax' => '1', 'flon' => '-80', 'flox' => '-78']);
-    $catalogo->call('aplicarBorrador')->assertHasNoErrors()->assertSet('filtroLatitud', '0')
+    expect(seleccionChatRenderizada($catalogo))->toBe(['flat' => '0', 'flax' => '0', 'flon' => '-80', 'flox' => '-78']);
+    $catalogo->assertHasNoErrors()->assertSet('filtroLatitud', '0')
         ->assertSet('filtroLatMin', '0')->assertSet('filtroLatMax', '0')->assertViewHas('totalRegistrosVista', 1);
     expect(seleccionChatRenderizada($catalogo))->toBe(['flat' => '0', 'flax' => '0', 'flon' => '-80', 'flox' => '-78'])
         ->and($catalogo->instance()->filtrosAplicados['filtroLatitud'])->toBe('0');
@@ -122,7 +122,7 @@ test('quitar solo el filo conserva provincia y demás filtros sin mantener la fi
     $filo = DB::table('taxonomia.taxones')->where('nombre_cientifico', 'Chatobius')->value('padre_id');
     $id = DB::table('taxonomia.especimenes')->where('codigo_catalogo', 'QA3-CHAT-1')->value('id');
     $catalogo = Livewire::withQueryParams(['vista' => 'registros', 'fph' => $filo, 'fprov' => 'Pichincha', 'ffd' => '2000-05-01'])->test(PortalCatalogo::class)
-        ->call('abrirFichaRegistro', $id)->call('quitarFiltroFilo')->assertSet('filtroFiloId', '')
+        ->call('abrirFichaRegistro', $id)->call('retirarCriterio', 'filtroFiloId')->assertSet('filtroFiloId', '')
         ->assertSet('filtroProvincia', 'Pichincha')->assertSet('filtroFechaDesde', '2000-05-01')
         ->assertSet('registroFichaId', null)->assertViewHas('totalRegistrosVista', 2);
     expect(seleccionChatRenderizada($catalogo))->toBe(['ffd' => '2000-05-01', 'fprov' => 'Pichincha']);

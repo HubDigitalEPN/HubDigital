@@ -9,7 +9,7 @@
     {{-- Fortify centraliza validación, normalización, hash y evento Registered. --}}
     <form id="hub-register-form" method="POST" action="{{ route('register.store') }}" class="flex flex-col gap-3" novalidate
         x-data="{
-            role: @js(strtoupper(old('rol', 'PRESTAMISTA'))),
+            role: @js($rolInicial),
             turnstileVerified: {{ config('services.turnstile.enabled') ? 'false' : 'true' }}
         }"
         x-on:hub-register-turnstile-passed.window="turnstileVerified = true"
@@ -32,7 +32,7 @@
                     : 'border-border bg-surface hover:border-science-blue/40'"
                 class="flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border-2 p-3 transition-all duration-150 focus-within:ring-2 focus-within:ring-science-blue"
             >
-                <input type="radio" name="rol" value="PRESTAMISTA" x-model="role" class="sr-only" @checked(strtoupper(old('rol', 'PRESTAMISTA')) === 'PRESTAMISTA')>
+                <input type="radio" name="rol" value="PRESTAMISTA" x-model="role" class="sr-only" @checked($rolInicial === 'PRESTAMISTA')>
                 <div
                     x-bind:class="role === 'PRESTAMISTA' ? 'bg-science-blue/15' : 'bg-bg-main'"
                     class="flex h-8 w-8 items-center justify-center rounded-lg"
@@ -59,7 +59,7 @@
                     : 'border-border bg-surface hover:border-science-blue/40'"
                 class="flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border-2 p-3 transition-all duration-150 focus-within:ring-2 focus-within:ring-science-blue"
             >
-                <input type="radio" name="rol" value="DEPOSITANTE" x-model="role" class="sr-only" @checked(strtoupper(old('rol', 'PRESTAMISTA')) === 'DEPOSITANTE')>
+                <input type="radio" name="rol" value="DEPOSITANTE" x-model="role" class="sr-only" @checked($rolInicial === 'DEPOSITANTE')>
                 <div
                     x-bind:class="role === 'DEPOSITANTE' ? 'bg-science-blue/15' : 'bg-bg-main'"
                     class="flex h-8 w-8 items-center justify-center rounded-lg"

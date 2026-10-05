@@ -39,6 +39,8 @@ final class EtiquetaDatoPublico
         return match (strtolower(trim($valor ?? ''))) {
             'present' => 'Presente',
             'absent' => 'Ausente',
+            'detected' => 'Detectado',
+            'notdetected' => 'No detectado',
             'in_collection', 'in collection' => 'En la colección',
             '' => 'No informado',
             default => (string) $valor,

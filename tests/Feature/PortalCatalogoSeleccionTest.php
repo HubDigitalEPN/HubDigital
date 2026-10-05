@@ -330,8 +330,8 @@ test('la jerarquía es visible y removible en mapa y su CSV conserva exactamente
 
 test('un borrador inválido conserva la selección aplicada hasta que el visitante corrige los límites', function (): void {
     $f = seleccionPortalFixture();
-    Livewire::withQueryParams(['vista' => 'mapa', 'fph' => $f['filo']])->test(PortalCatalogo::class)
-        ->set('borradorFiltros.filtroFechaDesde', '2025-01-01')->set('borradorFiltros.filtroFechaHasta', '2000-01-01')
+    $componente = Livewire::withQueryParams(['vista' => 'mapa', 'fph' => $f['filo']])->test(PortalCatalogo::class);
+    $componente->set('borradorFiltros', array_replace($componente->get('borradorFiltros'), ['filtroFechaDesde' => '2025-01-01', 'filtroFechaHasta' => '2000-01-01']))
         ->call('aplicarBorrador')->assertHasErrors(['filtroFechaHasta'])
         ->assertSet('filtroFechaDesde', '')->assertSet('filtroFechaHasta', '')
         ->assertViewHas('datosMapa', fn ($d) => (int) $d['resumen']['registros'] === 3)
@@ -353,12 +353,14 @@ test('cada indicador filtra conservando la vista del mapa', function (): void {
     }
 });
 
-test('el detalle de cuadrícula recorre grupos y pagina seis registros respetando sus campos reservados', function (): void {
+test('el detalle de cuadrícula conserva todas las hojas y la tabla pagina seis registros respetando sus campos reservados', function (): void {
     $f = seleccionPortalFixture();
     $original = (array) DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->first();
     unset($original['coordenadas_otras_regiones'], $original['busqueda_global']);
+    $idsEsperados = array_slice($f['ids'], 0, 2);
     for ($i = 0; $i < 13; $i++) {
         $id = (string) Str::uuid();
+        $idsEsperados[] = $id;
         DB::table('taxonomia.especimenes')->insert(array_replace($original, ['id' => $id, 'occurrence_id' => $f['codigos'][0].'-'.$i, 'codigo_catalogo' => $f['codigos'][0].'-'.$i]));
         DB::table('divulgacion.especimenes_divulgables')->insert(['id' => (string) Str::uuid(), 'especimen_id' => $id, 'publicado' => true]);
     }
@@ -369,14 +371,25 @@ test('el detalle de cuadrícula recorre grupos y pagina seis registros respetand
     expect($componente->instance()->detalleCelda['total'])->toBe(15);
     $componente->call('navegarCelda', $f['filo'])->call('navegarCelda', $f['taxones'][0])->assertDontSee('COLECTOR-RESERVADO-QA');
     expect($componente->instance()->detalleCelda['registros'])->toHaveCount(6);
+    expect(array_column($componente->instance()->detalleCelda['registros_arbol'], 'especimen_id'))->toEqualCanonicalizing($idsEsperados);
+    $componente->call('paginarCelda', 2)->assertSet('paginaCelda', 1)->assertDontSee('Páginas de ejemplares de la ubicación');
+    foreach ([$idsEsperados[0], $idsEsperados[14]] as $id) {
+        $componente->call('navegarCelda', 'registro:'.$id)->assertDontSee('COLECTOR-RESERVADO-QA');
+        expect(array_column($componente->instance()->detalleCelda['registros'], 'especimen_id'))->toBe([$id]);
+    }
+    $componente->call('cambiarVistaCelda', 'registros')->assertSet('paginaCelda', 1)->assertDontSee('COLECTOR-RESERVADO-QA');
     $primera = array_column($componente->instance()->detalleCelda['registros'], 'occurrence_id');
+    $idsPrimera = array_column($componente->instance()->detalleCelda['registros'], 'especimen_id');
     $componente->call('paginarCelda', 2)->assertSet('paginaCelda', 2);
     $segunda = array_column($componente->instance()->detalleCelda['registros'], 'occurrence_id');
+    $idsSegunda = array_column($componente->instance()->detalleCelda['registros'], 'especimen_id');
     expect($segunda)->toHaveCount(6)->and(array_intersect($primera, $segunda))->toBe([]);
     $componente->call('paginarCelda', 3)->assertSet('paginaCelda', 3);
     $tercera = array_column($componente->instance()->detalleCelda['registros'], 'occurrence_id');
+    $idsTercera = array_column($componente->instance()->detalleCelda['registros'], 'especimen_id');
     expect($tercera)->toHaveCount(3)->and(array_intersect([...$primera, ...$segunda], $tercera))->toBe([])
         ->and(count(array_unique([...$primera, ...$segunda, ...$tercera])))->toBe(15);
+    expect([...$idsPrimera, ...$idsSegunda, ...$idsTercera])->toEqualCanonicalizing($idsEsperados);
     $componente->call('volverCelda', 0)->call('cambiarVistaCelda', 'registros')->assertSet('paginaCelda', 1)
         ->call('cerrarCelda')->assertSet('celdaMapa', null);
 });

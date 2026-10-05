@@ -17,10 +17,48 @@ final class AsistentePortal
     ) {}
 
     /** @return array{texto:string, opciones:array, node_id?:int, variant_id?:int|null} */
-    public function responder(string $pregunta, ConsultarChatBotHandler $catalogo, ?int $nodoAnterior = null, array $variantesRecientes = [], array $contextoCatalogo = [], ?array $seleccionPortal = null): array
+    public function responder(string $pregunta, ConsultarChatBotHandler $catalogo, ?int $nodoAnterior = null, array $variantesRecientes = [], array $contextoCatalogo = [], ?array $seleccionPortal = null, ?string $solicitudPendiente = null): array
     {
         $normal = preg_replace('/^[\s\x{00bf}?]+/u', '', Str::lower(Str::ascii(trim($pregunta)))) ?? '';
         $opciones = $this->opcionesBase();
+        if (preg_match('/^cuantas espesies (?:ai|hay) (?:aki|aqui)[?.!]*$/', $normal)) {
+            $pregunta = '¿Cuántas especies hay en esta selección?';
+            $normal = 'cuantas especies hay en esta seleccion?';
+        }
+        if (preg_match('/^(?:ke|que) bichos (?:ai|hay) (?:aki|aqui)[?.!]*$/', $normal)) {
+            return ['texto' => '¿Quieres ver los registros o contar las especies de la selección aplicada en esta página?',
+                'fuente' => 'aclaracion', 'intent' => 'catalogo.aclaracion', 'opciones' => [
+                    ['label' => 'Ver registros', 'pregunta' => 'Muéstrame los registros de esta selección'],
+                    ['label' => 'Contar especies', 'pregunta' => '¿Cuántas especies hay en esta selección?'],
+                ]];
+        }
+
+        // Una función retirada no debe convertirse en una consulta o ayuda parcial.
+        if (app(OperadorProvinciaChat::class)->solicitado($pregunta)) {
+            return app(SolicitudCompuestaPortal::class)->responder($pregunta, $contextoCatalogo, $seleccionPortal)
+                ?? $this->consultaCatalogo->responder($pregunta, $contextoCatalogo, $seleccionPortal)
+                ?? ['texto' => 'La exclusión de provincias ya no está disponible. Selecciona Provincia para incluir sus registros. No he preparado filtros parciales.',
+                    'fuente' => 'aclaracion', 'intent' => 'catalogo.aclaracion', 'opciones' => []];
+        }
+        $alcance = preg_match('/^(?:la )?seleccion aplicada(?: de (?:esta|la) pagina)?[.?!]*$/', $normal) ? 'pagina'
+            : (preg_match('/^una consulta nueva con los criterios que indique[.?!]*$/', $normal) ? 'consulta' : null);
+        if ($alcance !== null) {
+            if ($solicitudPendiente !== null) {
+                $respuesta = app(SolicitudCompuestaPortal::class)->responder($solicitudPendiente, $contextoCatalogo, $seleccionPortal, $alcance)
+                    ?? $this->consultaCatalogo->responder($solicitudPendiente, $contextoCatalogo, $seleccionPortal, $alcance);
+                if ($respuesta !== null) return $respuesta + ['solicitud_pendiente' => null];
+            }
+            return ['texto' => 'Indica qué deseas hacer con la selección aplicada: contar registros, especies, géneros o familias, descargar sus datos o volver al mapa.',
+                'fuente' => 'aclaracion', 'intent' => 'catalogo.aclaracion', 'opciones' => [], 'solicitud_pendiente' => null];
+        }
+        // El menú promete ambos trámites; se resuelve antes de la ayuda de préstamo.
+        if (preg_match('/^(depositos y prestamos|tramites)\b/', $normal)) {
+            return ['texto' => 'Elige el trámite que necesitas. Depósito y préstamo tienen requisitos y revisión propios; iniciar una solicitud no implica aprobación.',
+                'fuente' => 'portal', 'intent' => 'portal.tramites', 'opciones' => [
+                    ['label' => 'Depositar o donar', 'pregunta' => '¿Cómo hago un depósito?'],
+                    ['label' => 'Solicitar préstamo', 'pregunta' => '¿Cómo solicito un préstamo?'],
+                ]];
+        }
 
         // Resolver el acceso público antes de interpretar menciones negadas
         // de trámites o reutilizar las entidades de una consulta anterior.
@@ -80,6 +118,7 @@ final class AsistentePortal
             && preg_match('/\b(?:cu[aá]nt[oa]s?|cantidad|n[uú]mero|total)\b/iu', $partes['conteo'])) {
             $publica = $this->consultaCatalogo->responder(trim($partes['conteo']), $contextoCatalogo, $seleccionPortal);
             if ($publica !== null) {
+                if ($publica['requiere_seleccion'] ?? false) $publica['solicitud_pendiente'] = $pregunta;
                 $publica['texto'] .= "\n\n".$this->instruccionesMapa();
                 if (($publica['fuente'] ?? '') === 'catalogo') {
                     $referenciaSeleccion = preg_match('/\b(?:(?:esta|esa|mi)\s+seleccion|seleccion\s+(?:actual|aplicada))\b/', Str::lower(Str::ascii($partes['conteo'])));
@@ -122,13 +161,6 @@ final class AsistentePortal
                 ['label' => 'Trámites', 'pregunta' => 'Depósitos y préstamos'],
             ]];
         }
-        if (preg_match('/^(depositos y prestamos|tramites)/', $normal)) {
-            return ['texto' => '¿Qué trámite necesitas?', 'opciones' => [
-                ['label' => 'Depositar o donar', 'pregunta' => '¿Cómo hago un depósito?'],
-                ['label' => 'Solicitar préstamo', 'pregunta' => '¿Cómo solicito un préstamo?'],
-            ]];
-        }
-
         if (preg_match('/^(?:cuanto es|calcula|cuanto da)\s+-?\d|^-?\d+\s*[+*\/-]/', $normal)) {
             return app(FuentesPublicasChat::class)->responder($pregunta);
         }
@@ -168,6 +200,7 @@ final class AsistentePortal
         $consultaCientifica = $consultaCientifica || (bool) preg_match('/\b(?:hormigas?|mariposas|escarabajos)\b/', $normal);
         $consultaCientifica = $consultaCientifica || app(OperadorProvinciaChat::class)->solicitado($pregunta);
         if ($consultaCientifica && ($publica = $this->consultaCatalogo->responder($pregunta, $contextoCatalogo, $seleccionPortal)) !== null) {
+            if ($publica['requiere_seleccion'] ?? false) $publica['solicitud_pendiente'] = $pregunta;
             return $publica;
         }
         if (($compuesta = $this->conocimiento->responderCompuesta($pregunta)) !== null) {
@@ -209,7 +242,7 @@ final class AsistentePortal
 
     private function instruccionesMapa(): string
     {
-        return 'Cómo usar el mapa: abre Mapa y análisis. Al alejar, los clústeres reúnen varias ubicaciones y muestran su número; púlsalos para acercar. Cada punto original reúne registros con el mismo par de coordenadas. Su tamaño expresa registros y sus colores, filos. Abre un punto para consultar el árbol taxonómico y seis ejemplares por página. Las coordenadas aproximadas conservan sus advertencias; los conteos no equivalen a abundancia natural.';
+        return 'Cómo usar el mapa: abre Mapa y análisis. Al alejar, los clústeres reúnen varias ubicaciones y muestran su número; púlsalos para acercar. Cada punto original reúne registros con el mismo par de coordenadas. Su tamaño expresa registros y sus colores, filos. Abre un punto para consultar el árbol taxonómico y selecciona la hoja de cada registro para ver su ficha. La tabla muestra seis ejemplares por página. Las coordenadas aproximadas conservan sus advertencias; los conteos no equivalen a abundancia natural.';
     }
 
     private function ayudaPuntosMapa(array $contextoCatalogo, ?array $seleccionPortal): array
@@ -246,7 +279,7 @@ final class AsistentePortal
     private function ayudaFiltros(string $pregunta, array $contextoCatalogo, ?array $seleccionPortal): array
     {
         if (preg_match('/\b(?:fuera de|excepto|excluye|excluir|no son de)\b/', Str::lower(Str::ascii($pregunta)))) {
-            return ['texto' => 'Usa Excluir provincia en Filtros de investigación para retirar una provincia del conjunto; no la marques como Provincia incluida. No he preparado filtros parciales. También puedes preguntar por registros de un taxón fuera de una única provincia.',
+            return ['texto' => 'La exclusión de provincias ya no está disponible. Selecciona Provincia para incluir sus registros. No he preparado filtros parciales.',
                 'fuente' => 'aclaracion', 'intent' => 'catalogo.aclaracion', 'opciones' => []];
         }
         $entidades = app(DetectorEntidadesChat::class)->extraer($pregunta);
@@ -269,8 +302,8 @@ final class AsistentePortal
         if (isset($entidades['localidad_preferida'])) $texto .= ' Localidad = '.$entidades['localidad_preferida'].' es opcional según tu preferencia; agrégala si quieres restringir los resultados a ese sitio.';
         $texto .= $haySeleccionActual
             ? "\n3. Abre el enlace al mapa de esta selección."
-            : "\n3. Pulsa Aplicar filtros. Si un intervalo es inválido, corrígelo: se conserva la selección anterior.";
-        $texto .= "\n4. Usa los botones Tarjetas, Registros y Mapa y análisis: todos conservan la misma selección.\n5. En Registros puedes descargar el CSV; en los tres puntos de cada panel, Indicador explica el cálculo. Limpiar restablece toda la selección.";
+            : "\n3. Los filtros se aplican al cambiar cada dato. Si un intervalo es inválido, corrígelo: se conserva la selección anterior.";
+        $texto .= "\n4. Usa los botones Tarjetas, Registros y Mapa y análisis: todos conservan la misma selección.\n5. En Registros puedes descargar el CSV; en los tres puntos de cada panel, Indicador explica el cálculo. Limpiar Filtros restablece toda la selección.";
         if (preg_match('/\bmapa\b/', $normal)) $texto .= "\n\n".$this->instruccionesMapa();
         return ['texto' => $texto, 'fuente' => 'portal', 'intent' => 'portal.filtros',
             'entidades' => $usarSeleccionActual && $seleccionPortal === null ? $contextoCatalogo : $entidades,

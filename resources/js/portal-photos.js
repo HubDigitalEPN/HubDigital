@@ -32,7 +32,8 @@ async function solicitarJSON(ruta, parametros, cancelar) {
     }
 }
 
-export function crearEstadoFotografias(taxon, fotosLocales = []) {
+export function crearEstadoFotografias(taxon, fotosLocales = [], limite = 4) {
+    const cantidad = Number.isInteger(limite) ? Math.max(1, Math.min(4, limite)) : 4;
     let consulta = consultaFotografias(taxon);
     const identidadDesconocida = taxon?._rango_desconocido || !consulta && (taxon?.rank || taxon?.rango || Array.isArray(taxon?.ancestros) || Array.isArray(taxon?.jerarquia));
     let locales = identidadDesconocida ? [] : fotografiasLocalesValidas(fotosLocales, consulta);
@@ -47,7 +48,7 @@ export function crearEstadoFotografias(taxon, fotosLocales = []) {
         descripcion: descripcionFotografias(locales),
         error: '',
         init() {
-            if (iniciado || destruido || !consulta?.api || locales.length >= 4) return;
+            if (iniciado || destruido || !consulta?.api || locales.length >= cantidad) return;
             iniciado = true;
             // Las ayudas ocultas no disparan consultas hasta hacerse visibles.
             if (typeof IntersectionObserver !== 'undefined' && this.$el) {
@@ -61,9 +62,10 @@ export function crearEstadoFotografias(taxon, fotosLocales = []) {
             } else { this.cargar(); }
         },
         async cargar() {
-            if (destruido || !consulta?.api || this.cargando || locales.length >= 4) return;
+            if (destruido || !consulta?.api || this.cargando || locales.length >= cantidad) return;
             const turno = ++sesion;
-            const existente = cache.obtener(consulta.clave);
+            const claveCache = `${consulta.clave}:${cantidad}`;
+            const existente = cache.obtener(claveCache);
             if (existente !== null) {
                 this.fotos = combinarFotografias(locales, existente);
                 this.descripcion = descripcionFotografias(this.fotos);
@@ -86,7 +88,7 @@ export function crearEstadoFotografias(taxon, fotosLocales = []) {
                     const ecuatorianas = await solicitarJSON('observations', {...parametros, place_id: String(LUGAR_ECUADOR_INATURALIST)}, señal);
                     if (destruido || turno !== sesion || señal.aborted) return;
                     let observaciones = ecuatorianas.results.slice(0, 12);
-                    if (locales.length + candidatasEcuador(observaciones, seleccionado, locales) < 4) {
+                    if (locales.length + candidatasEcuador(observaciones, seleccionado, locales) < cantidad) {
                         const globales = await solicitarJSON('observations', {...parametros, photo_license: 'cc0'}, señal);
                         if (destruido || turno !== sesion || señal.aborted) return;
                         observaciones = [...observaciones, ...globales.results.slice(0, 12)];
@@ -97,7 +99,7 @@ export function crearEstadoFotografias(taxon, fotosLocales = []) {
                     externas = fotografiasDeObservaciones(observaciones, detalles.results, seleccionado, consulta);
                 }
                 if (destruido || turno !== sesion || señal.aborted) return;
-                cache.guardar(consulta.clave, externas);
+                cache.guardar(claveCache, externas);
                 this.fotos = combinarFotografias(locales, externas);
                 this.descripcion = descripcionFotografias(this.fotos);
             } catch {

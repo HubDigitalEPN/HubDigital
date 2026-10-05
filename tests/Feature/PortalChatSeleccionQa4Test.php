@@ -44,7 +44,7 @@ test('el conteo contextual usa la página aplicada completa aunque el chat y el 
     $seleccion = seleccionCompletaChatQa4();
     $entradaHistorica = array_replace($seleccion, ['fm' => ['Red QA4']]);
     $catalogo = Livewire::withQueryParams($entradaHistorica + ['vista' => 'mapa', 'pagina' => 2])->test(PortalCatalogo::class);
-    $catalogo->set('borradorFiltros.filtroMetodos', ['Otra técnica pendiente']);
+    $catalogo->set('borradorFiltros', array_replace($catalogo->get('borradorFiltros'), ['filtroMetodos' => ['Otra técnica pendiente']]));
     $chat = Livewire::test(ChatBotWidget::class)->call('nuevaConversacion');
     $chat->set('pregunta', 'Busca Chatoterus')->call('enviar');
     expect(app(ContextoChat::class)->obtener()['entities']['taxon'])->toBe('Chatoterus')

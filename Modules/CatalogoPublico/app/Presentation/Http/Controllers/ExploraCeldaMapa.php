@@ -29,7 +29,7 @@ trait ExploraCeldaMapa
     public int $paginaCelda = 1;
 
     #[Locked]
-    public int $paginaArbolCelda = 1;
+    public ?string $registroCeldaId = null;
 
     public function abrirCelda(float $latitud, float $longitud): void
     {
@@ -38,7 +38,7 @@ trait ExploraCeldaMapa
         $this->rutaCelda = [];
         $this->vistaCelda = 'grupos';
         $this->paginaCelda = 1;
-        $this->paginaArbolCelda = 1;
+        $this->registroCeldaId = null;
         unset($this->detalleCelda);
         $this->dispatch('abrir-detalle-celda');
     }
@@ -49,7 +49,7 @@ trait ExploraCeldaMapa
         $this->rutaCelda = [];
         $this->vistaCelda = 'grupos';
         $this->paginaCelda = 1;
-        $this->paginaArbolCelda = 1;
+        $this->registroCeldaId = null;
         unset($this->detalleCelda);
     }
 
@@ -64,8 +64,18 @@ trait ExploraCeldaMapa
     /** Solo permite navegar a las ramas públicas del árbol visible. */
     public function navegarCelda(string $id): void
     {
+        if (str_starts_with($id, 'registro:')) {
+            $registro = $this->detalleCelda['registros_arbol'][$id] ?? null;
+            if ($registro === null) return;
+            $this->registroCeldaId = $registro['especimen_id'];
+            $this->rutaCelda = $this->detalleCelda['rutas'][$registro['padre_id'] ?? ''] ?? [];
+            $this->paginaCelda = 1;
+            unset($this->detalleCelda);
+            return;
+        }
         $ruta = $this->detalleCelda['rutas'][$id] ?? null;
         if ($ruta === null) return;
+        $this->registroCeldaId = null;
         $this->rutaCelda = $ruta;
         $this->paginaCelda = 1;
         unset($this->detalleCelda);
@@ -75,19 +85,14 @@ trait ExploraCeldaMapa
     {
         $this->rutaCelda = array_slice($this->rutaCelda, 0, max(0, $profundidad));
         $this->paginaCelda = 1;
-        if ($profundidad <= 0) $this->paginaArbolCelda = 1;
+        $this->registroCeldaId = null;
         unset($this->detalleCelda);
     }
 
     public function paginarCelda(int $pagina): void
     {
+        if ($this->vistaCelda !== 'registros') return;
         $this->paginaCelda = max(1, min($pagina, $this->detalleCelda['ultima']));
-        unset($this->detalleCelda);
-    }
-
-    public function paginarArbolCelda(int $pagina): void
-    {
-        $this->paginaArbolCelda = max(1, min($pagina, $this->detalleCelda['arbol_ultima']));
         unset($this->detalleCelda);
     }
 
@@ -153,9 +158,32 @@ trait ExploraCeldaMapa
             }
         }
         unset($entrada);
+        // Cada registro termina en una hoja propia, incluso si su identificación llega solo a familia.
+        $rutasPorPermiso = [];
+        foreach ($filasConRuta as $entrada) {
+            $fila = $entrada['fila'];
+            $clave = $fila->taxon_id.':'.(int) $fila->scientific_name_visible.':'.(int) $fila->family_visible.':'.(int) $fila->genus_visible;
+            $rutasPorPermiso[$clave] = $entrada['ruta'];
+        }
+        $registros_arbol = [];
+        foreach ((clone $base)->select('te.id', 'te.taxon_id', 'ed.scientific_name_visible', 'ed.family_visible', 'ed.genus_visible')
+            ->selectRaw('CASE WHEN ed.occurrence_id_visible THEN te.occurrence_id END AS codigo_publico')
+            ->orderBy('te.fila_origen_excel')->orderBy('te.id')->get() as $indice => $fila) {
+            $clave = $fila->taxon_id.':'.(int) $fila->scientific_name_visible.':'.(int) $fila->family_visible.':'.(int) $fila->genus_visible;
+            $rutaRegistro = $rutasPorPermiso[$clave] ?? [];
+            $padreRegistro = $rutaRegistro === [] ? null : $rutaRegistro[array_key_last($rutaRegistro)]['id'];
+            $idRegistro = 'registro:'.$fila->id;
+            $registros_arbol[$idRegistro] = ['id' => $idRegistro, 'taxon_id' => null, 'especimen_id' => $fila->id,
+                'padre_id' => $padreRegistro, 'nombre' => trim((string) $fila->codigo_publico) ?: 'Registro público '.($indice + 1),
+                'rango' => 'registro', 'total' => 1];
+        }
+        if ($this->registroCeldaId === null && $this->rutaCelda === [] && count($registros_arbol) === 1) $this->registroCeldaId = reset($registros_arbol)['especimen_id'];
+        $registro_seleccionado = $registros_arbol['registro:'.$this->registroCeldaId] ?? null;
+        if ($registro_seleccionado === null) $this->registroCeldaId = null;
         // Releer la ruta vigente también retira nombres cuyos permisos cambiaron
         // mientras el diálogo estaba abierto.
-        $idRuta = $this->rutaCelda === [] ? null : end($this->rutaCelda)['id'];
+        $idRuta = $registro_seleccionado !== null ? $registro_seleccionado['padre_id']
+            : ($this->rutaCelda === [] ? null : end($this->rutaCelda)['id']);
         $this->rutaCelda = $idRuta ? ($rutasDisponibles[$idRuta] ?? []) : [];
         $seleccion = array_column($this->rutaCelda, 'id');
         $grupos = $taxonesPorVisibilidad = [];
@@ -198,30 +226,22 @@ trait ExploraCeldaMapa
         }
         uasort($grupos, static fn (array $a, array $b): int => strnatcasecmp($a['nombre'], $b['nombre']));
         $totalGrupos = count($grupos);
-        $mostrarRegistros = $this->vistaCelda === 'registros' || $grupos === [];
+        $mostrarRegistros = $this->vistaCelda === 'registros' || $grupos === [] || $registro_seleccionado !== null;
         $tamanoPagina = EloquentProveedorEspecimenesParaArbol::TAMANO_PAGINA;
         $ultima = max(1, (int) ceil(($mostrarRegistros ? $total : $totalGrupos) / $tamanoPagina));
         $pagina = min($this->paginaCelda, $ultima);
         $grupos = array_slice($grupos, $mostrarRegistros ? 0 : ($pagina - 1) * $tamanoPagina, $tamanoPagina, true);
         $registros = $imagenes = [];
         if ($mostrarRegistros) {
-            $ids = (clone $base)->orderBy('te.fila_origen_excel')->orderBy('te.id')->offset(($pagina - 1) * $tamanoPagina)->limit($tamanoPagina)->pluck('te.id')->all();
+            $consultaRegistros = clone $base;
+            if ($this->vistaCelda === 'grupos' && $registro_seleccionado !== null) $consultaRegistros->where('te.id', $registro_seleccionado['especimen_id']);
+            $ids = $consultaRegistros->orderBy('te.fila_origen_excel')->orderBy('te.id')->offset(($pagina - 1) * $tamanoPagina)->limit($tamanoPagina)->pluck('te.id')->all();
             $registros = $this->cargarDetallesPorEspecimenIds($ids, app(ProveedorEspecimenesPort::class), app(EspecimenDivulgableRepositoryInterface::class));
             $imagenes = $this->cargarImagenesPorEspecimen(array_values(array_filter(array_column($registros, 'occurrence_id'))));
         }
-        // Vista de conjunto desde abrir el punto: como máximo seis hojas reales
-        // y sus ancestros publicados, reutilizando los agregados ya obtenidos.
-        $padres = array_fill_keys(array_filter(array_column($nodos, 'padre_id')), true);
-        $hojas = array_diff_key($nodos, $padres);
-        uasort($hojas, static fn (array $a, array $b): int => strnatcasecmp($a['nombre'], $b['nombre']) ?: strcmp($a['id'], $b['id']));
-        $arbol_hojas_total = count($hojas);
-        $arbol_ultima = max(1, (int) ceil($arbol_hojas_total / $tamanoPagina));
-        $arbol_pagina = min(max(1, $this->paginaArbolCelda), $arbol_ultima);
+        $arbol_hojas_total = count($registros_arbol);
         $arbol_registros_total = (int) $filas->sum('total');
-        $arbol = [];
-        foreach (array_slice($hojas, ($arbol_pagina - 1) * $tamanoPagina, $tamanoPagina, true) as $id => $hoja) {
-            foreach ($rutasDisponibles[$id] as $nodo) $arbol[$nodo['id']] = $nodos[$nodo['id']];
-        }
+        $arbol = $nodos + $registros_arbol;
         $idSeleccionado = $seleccion === [] ? null : end($seleccion);
         $seleccionado = $idSeleccionado ? ($nodos[$idSeleccionado] ?? null) : null;
         $rutas = array_intersect_key($rutasDisponibles, $arbol);
@@ -254,7 +274,7 @@ trait ExploraCeldaMapa
         uasort($curatoriales, static fn (array $a, array $b): int => $b['total'] <=> $a['total'] ?: strnatcasecmp($a['nota'], $b['nota']));
         $curatoriales = array_values(array_slice($curatoriales, 0, 12));
         return compact('total', 'grupos', 'totalGrupos', 'directos', 'mostrarRegistros', 'registros', 'imagenes', 'pagina', 'ultima', 'arbol', 'rutas',
-            'arbol_hojas_total', 'arbol_pagina', 'arbol_ultima', 'arbol_registros_total', 'seleccionado', 'informacion',
+            'arbol_hojas_total', 'arbol_registros_total', 'seleccionado', 'informacion', 'registros_arbol', 'registro_seleccionado',
             'curatoriales', 'curatoriales_total');
     }
 }

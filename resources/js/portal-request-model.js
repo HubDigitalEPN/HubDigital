@@ -96,8 +96,7 @@ function aplicarLlamada(estado, llamada, datos, defectos, propiedades) {
         }
         break;
     case 'seleccionarFilo':
-    case 'quitarFiltroFilo':
-        estado.fph = llamada.method === 'quitarFiltroFilo' || estado.fph === params[0] ? '' : params[0];
+        estado.fph = estado.fph === params[0] ? '' : params[0];
         if (datos.borradorFiltros) datos.borradorFiltros.filtroFiloId = estado.fph;
         paginaInicial();
         break;
@@ -120,7 +119,16 @@ function aplicarLlamada(estado, llamada, datos, defectos, propiedades) {
         if (Object.hasOwn(borrador, 'filtroLatitud') && borrador.filtroLatitud !== latitudAnterior) estado.flat = estado.flax = borrador.filtroLatitud;
         if (Object.hasOwn(borrador, 'filtroLongitud') && borrador.filtroLongitud !== longitudAnterior) estado.flon = estado.flox = borrador.filtroLongitud;
         estado.fm = normalizarMetodos(estado.fm);
+        sincronizarBorrador(estado);
         paginaInicial();
+        break;
+    }
+    case 'quitarLocalidad': {
+        const localidades = datos.borradorFiltros?.filtroGeografias;
+        if (Array.isArray(localidades) && Number.isInteger(params[0]) && params[0] >= 0 && params[0] < localidades.length) {
+            datos.borradorFiltros.filtroGeografias = localidades.filter((_, indice) => indice !== params[0]);
+            return aplicarLlamada(estado, {method: 'aplicarBorrador'}, datos, defectos, propiedades);
+        }
         break;
     }
     case 'aplicarFiltros': {
@@ -157,6 +165,9 @@ export function enlaceRecuperacionCatalogo(href, configuracion, request) {
         const llamadas = componente.calls ?? [];
         for (const [alias, propiedad] of Object.entries(propiedades)) {
             if (Object.hasOwn(datos, propiedad)) estado[alias] = datos[propiedad];
+        }
+        if (Object.keys(componente.updates ?? {}).some(clave => clave.startsWith('borradorFiltros.'))) {
+            estado = aplicarLlamada(estado, {method: 'aplicarBorrador'}, datos, configuracion.defectos, propiedades);
         }
         for (const llamada of llamadas) {
             estado = aplicarLlamada(estado, llamada, datos, configuracion.defectos, propiedades);

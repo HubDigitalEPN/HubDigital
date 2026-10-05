@@ -36,7 +36,6 @@ final readonly class FiltrosBusqueda
         public readonly bool $datosCompletos,
         public readonly ?string $pais = null,
         public readonly ?string $disposicion = null,
-        public readonly ?string $provinciaExcluida = null,
     ) {}
 
     public static function vacio(): self
@@ -148,7 +147,6 @@ final readonly class FiltrosBusqueda
             casta: $textoOpcional('filtroCasta'),
             estadio: $textoOpcional('filtroEstadio'),
             provincia: $textoOpcional('filtroProvincia'),
-            provinciaExcluida: $textoOpcional('filtroProvinciaExcluida'),
             pais: $textoOpcional('filtroPais'),
             filoId: preg_match('/^[0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$/', (string) ($datos['filtroFiloId'] ?? '')) ? (string) $datos['filtroFiloId'] : null,
             mes: filter_var($datos['filtroMes'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 12]]) ?: null,
@@ -181,7 +179,6 @@ final readonly class FiltrosBusqueda
             && $this->casta === null
             && $this->estadio === null
             && $this->provincia === null
-            && $this->provinciaExcluida === null
             && $this->pais === null
             && $this->filoId === null
             && $this->mes === null

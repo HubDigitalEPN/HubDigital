@@ -145,36 +145,41 @@ test('una acción explícita de composición conserva el foco del mapa durante s
     assert.deepEqual(acciones, ['desplazar', 'foco', 'desplazar', 'foco']);
 });
 
-test('QA7 el selector permite abrir cada ubicación original solapada y reemplaza sus opciones al filtrar', () => {
+test('las ubicaciones solapadas conservan acceso por teclado al retirar el selector y al filtrar', () => {
     const celdas = [
         {lat: -3.762, lon: -78.502, total: 1, filos: {Annelida: 1}},
         {lat: -3.7620001, lon: -78.5020001, total: 2, filos: {Annelida: 2}},
     ];
-    const {dashboard, pintar} = dashboardConMapa(celdas);
+    const {dashboard, marcadores, pintar} = dashboardConMapa(celdas);
     const aperturas = [];
     dashboard.abrirUbicacion = (...datos) => aperturas.push(datos.slice(0, 3));
-    for (let indice = 0; indice < dashboard.ubicacionesOriginales.length; indice++) {
-        const punto = dashboard.ubicacionesOriginales[indice];
-        dashboard.ubicacionElegida = String(indice);
-        dashboard.abrirUbicacionElegida({focus() {}});
-        assert.deepEqual(Array.from(aperturas.at(-1)), [punto.lat, punto.lon, punto.cantidad]);
+    for (const marcador of marcadores) {
+        // El agrupador ordena las coordenadas; ese orden no cambia su identidad.
+        const punto = celdas.find(celda => celda.lat === marcador.coordenadas[0] && celda.lon === marcador.coordenadas[1]);
+        assert.ok(punto, 'cada marcador corresponde a una ubicación original');
+        marcador.elemento.eventos.keydown({key: 'Enter', preventDefault() {}});
+        assert.deepEqual(Array.from(aperturas.at(-1)), [punto.lat, punto.lon, punto.total]);
     }
     assert.equal(aperturas.length, 2);
+    assert.deepEqual(aperturas.map(datos => Array.from(datos)).sort((a, b) => a[1] - b[1]),
+        celdas.map(punto => [punto.lat, punto.lon, punto.total]).sort((a, b) => a[1] - b[1]));
     dashboard.actualizar({celdas: [celdas[1]], filos: {Annelida: 2}}); pintar();
-    assert.equal(dashboard.ubicacionElegida, '');
-    assert.equal(dashboard.ubicacionesOriginales.length, 1);
-    assert.equal(dashboard.ubicacionesOriginales[0].lat, celdas[1].lat);
+    assert.equal(marcadores.length, 1);
+    assert.deepEqual(Array.from(marcadores[0].coordenadas), [celdas[1].lat, celdas[1].lon]);
+    marcadores[0].elemento.eventos.keydown({key: 'Enter', preventDefault() {}});
+    assert.deepEqual(Array.from(aperturas.at(-1)), [celdas[1].lat, celdas[1].lon, celdas[1].total]);
+    assert.equal('abrirUbicacionElegida' in dashboard, false);
 });
 
 test('QA7 una tesela recuperada no oculta otro error y el reintento conserva la selección', () => {
-    const {dashboard, eventosTeselas, redibujosTeselas} = dashboardConMapa([{lat: -3.762, lon: -78.502, total: 1, filos: {Annelida: 1}}]);
+    const {dashboard, marcadores, eventosTeselas, redibujosTeselas} = dashboardConMapa([{lat: -3.762, lon: -78.502, total: 1, filos: {Annelida: 1}}]);
     const primera = {coords: {z: 10, x: 1, y: 1}}; const segunda = {coords: {z: 10, x: 2, y: 1}};
     eventosTeselas.tileerror(primera); eventosTeselas.tileerror(segunda);
     eventosTeselas.tileload(primera); assert.equal(dashboard.errorTeselas, true);
     eventosTeselas.tileunload(segunda); assert.equal(dashboard.errorTeselas, false);
     eventosTeselas.tileerror(primera); dashboard.reintentarTeselas();
     assert.equal(redibujosTeselas(), 1); assert.equal(dashboard.errorTeselas, false);
-    assert.equal(dashboard.ubicacionesOriginales[0].lat, -3.762);
+    assert.deepEqual(Array.from(marcadores[0].coordenadas), [-3.762, -78.502]);
 });
 
 test('QA7 puntos e iconos conservan la proyección fraccionaria sin redondear ni alterar coordenadas', () => {
@@ -194,5 +199,24 @@ test('QA7 puntos e iconos conservan la proyección fraccionaria sin redondear ni
         if (capa._project) capa._project(); else capa.update();
         assert.ok(Math.abs(posicion.x - 23.463829091) < 1e-9); assert.equal(posicion.y, 45.375);
         assert.deepEqual(capa._latlng, latlng);
+    }
+});
+
+test('QA9 el icono original conserva fracciones durante zoom sin cambiar su latitud o longitud', () => {
+    const lat = -.833333333; const lon = -89.5;
+    const {capasOriginales} = dashboardConMapa([{lat, lon, total: 2, filos: {Annelida: 1, Arthropoda: 1}}]);
+    const icono = capasOriginales[0]; const latlng = {lat, lng: lon};
+    const centro = {lat: -1, lng: -78};
+    let posicion; icono._latlng = latlng;
+    icono._map = {_latLngToNewLayerPoint(origen, zoom, center) {
+        assert.equal(origen, latlng); assert.equal(center, centro);
+        return {x: 23.44252 * 2 ** (zoom - 9), y: 45.01121 * 2 ** (zoom - 9)};
+    }};
+    icono._setPos = punto => {posicion = punto;};
+    for (const zoom of [9, 10, 11, 9]) {
+        icono._animateZoom({zoom, center: centro});
+        assert.equal(posicion.x, 23.44252 * 2 ** (zoom - 9));
+        assert.equal(posicion.y, 45.01121 * 2 ** (zoom - 9));
+        assert.deepEqual(icono._latlng, latlng);
     }
 });

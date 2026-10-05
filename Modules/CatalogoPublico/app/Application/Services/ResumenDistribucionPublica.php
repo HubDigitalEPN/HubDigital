@@ -7,11 +7,11 @@ namespace Modules\CatalogoPublico\Application\Services;
 use Modules\CatalogoPublico\Infrastructure\CalidadDatoPublico;
 use Modules\CatalogoPublico\Infrastructure\NormalizacionGeografica;
 
-/** Deriva diversidad de conteos públicos agrupados, sin hidratar ejemplares. */
+/** Deriva cobertura de registros y especies confirmadas de conteos públicos agrupados. */
 final class ResumenDistribucionPublica
 {
     /**
-     * La consulta de origen exige nombre científico y provincia públicos; agrupa
+     * La consulta exige provincia pública y enmascara el UUID si el nombre es reservado; agrupa
      * por UUID y clave geográfica, manteniendo el conteo y una grafía de origen.
      *
      * @param iterable<object> $conteosPublicos
@@ -26,13 +26,13 @@ final class ResumenDistribucionPublica
         foreach ($conteosPublicos as $fila) {
             $nombre = $nombres[$fila->taxon_id] ?? null;
             $provincia = $fila->provincia ?? null;
-            if ($nombre === null || ! CalidadDatoPublico::esTextoValido($provincia)
+            if (! CalidadDatoPublico::esTextoValido($provincia)
                 || ! NormalizacionGeografica::contieneNombre($provincia)) continue;
             $clave = NormalizacionGeografica::normalizar($fila->provincia_clave ?? $provincia);
             $grupos[$clave] ??= ['provincia' => $provincia, 'nombres' => [], 'registros' => 0];
-            // Representante de los conteos válidos; nunca de un UUID descartado.
+            // La grafía procede exclusivamente de provincias públicas válidas.
             if (strcmp($provincia, $grupos[$clave]['provincia']) < 0) $grupos[$clave]['provincia'] = $provincia;
-            $grupos[$clave]['nombres'][$nombre] = true;
+            if ($nombre !== null) $grupos[$clave]['nombres'][$nombre] = true;
             $grupos[$clave]['registros'] += (int) $fila->registros;
         }
         $filas = [];
@@ -40,13 +40,13 @@ final class ResumenDistribucionPublica
             $filas[] = ['provincia' => NormalizacionGeografica::nombresDisponibles([$grupo['provincia']])[0],
                 'especies' => count($grupo['nombres']), 'registros' => $grupo['registros']];
         }
-        usort($filas, static fn (array $a, array $b): int => $b['especies'] <=> $a['especies'] ?: strcmp($a['provincia'], $b['provincia']));
+        usort($filas, static fn (array $a, array $b): int => $b['registros'] <=> $a['registros'] ?: strcmp($a['provincia'], $b['provincia']));
         return array_slice($filas, 0, 10);
     }
 
     /**
-     * La consulta de origen exige nombre científico y fecha públicos y fecha
-     * válida; agrupa únicamente por UUID y década, sin exponer fechas individuales.
+     * La consulta exige fecha pública válida y enmascara el UUID si el nombre es reservado;
+     * agrupa por UUID y década, sin exponer fechas individuales.
      *
      * @param iterable<object> $conteosPublicos
      * @param array<string, object>|\ArrayAccess<string, object> $taxones
@@ -59,10 +59,9 @@ final class ResumenDistribucionPublica
         $grupos = [];
         foreach ($conteosPublicos as $fila) {
             $nombre = $nombres[$fila->taxon_id] ?? null;
-            if ($nombre === null) continue;
             $decada = (int) $fila->decada;
             $grupos[$decada] ??= ['nombres' => [], 'registros' => 0];
-            $grupos[$decada]['nombres'][$nombre] = true;
+            if ($nombre !== null) $grupos[$decada]['nombres'][$nombre] = true;
             $grupos[$decada]['registros'] += (int) $fila->registros;
         }
         ksort($grupos, SORT_NUMERIC);

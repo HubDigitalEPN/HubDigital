@@ -126,8 +126,8 @@ it('el gráfico renderiza controles nativos y relaciones públicas con nombres e
         $dom = new DOMXPath($documento);
         expect($dom->query('//button[@type="button"]')->length)->toBe(11)
             ->and($dom->query('//button[@aria-pressed="true" and @data-taxon-id="especie-1"]')->length)->toBe(1)
-            ->and($dom->query('//path[@data-padre-id="rango-8" and @data-hijo-id="especie-1"]')->length)->toBe(1)
-            ->and($dom->query('//path[@data-padre-id="rango-8" and @data-hijo-id="especie-2"]')->length)->toBe(1)
+            ->and($dom->query('//li[@data-padre-id="rango-8" and @data-hijo-id="especie-1"]')->length)->toBe(1)
+            ->and($dom->query('//li[@data-padre-id="rango-8" and @data-hijo-id="especie-2"]')->length)->toBe(1)
             ->and($dom->query('//button[@data-taxon-id="especie-1"]')->item(0)->getAttribute('aria-label'))->toContain('Taxón padre: Neoponera')
             ->and($dom->query('//button[@data-taxon-id="especie-2"]//strong')->item(0)->textContent)->toBe($nodos[10]['nombre'])
             ->and($dom->query('//script')->length)->toBe(0)
@@ -136,7 +136,9 @@ it('el gráfico renderiza controles nativos y relaciones públicas con nombres e
             ->and($dom->query('//button[@data-rango!="especie"]//small/span')->length)->toBe(0)
             ->and($dom->query('//button[@data-taxon-id="rango-0"]')->item(0)->getAttribute('aria-label'))->not->toContain('registros')
             ->and($dom->query('//button[@data-taxon-id="rango-0"]')->item(0)->getAttribute('title'))->not->toContain('registros')
-            ->and($dom->query('//svg[@aria-hidden="true"]')->length)->toBe(1);
+            ->and($dom->query('//ul[@class="atlas-tree-roots"]')->length)->toBe(1)
+            ->and($dom->query('//li[@data-hijo-id="rango-0" and contains(@class,"atlas-tree-branch--vertical")]')->length)->toBe(1)
+            ->and($dom->query('//li[@data-hijo-id="rango-3" and contains(@class,"atlas-tree-branch--horizontal")]')->length)->toBe(1);
     } finally {
         libxml_clear_errors();
         libxml_use_internal_errors($erroresAnteriores);

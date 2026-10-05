@@ -35,7 +35,7 @@ final class ColumnasRegistroPublico
         'disposition' => ['disposition', 'Disposición'],
         'type_notes' => ['typeNotes', 'Notas de tipo'],
         'specimen_notes' => ['specimenNotes', 'Notas del espécimen'],
-        'occurrence_status' => ['occurrenceStatus', 'Estado'],
+        'occurrence_status' => ['occurrenceStatus', 'Estado original'],
         'caste' => ['caste', 'Casta'],
         'life_stage' => ['lifeStage', 'Estadio'],
     ];

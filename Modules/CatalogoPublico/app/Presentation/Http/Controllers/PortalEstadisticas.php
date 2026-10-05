@@ -42,7 +42,6 @@ final class PortalEstadisticas
             'vista' => 'mapa',
             'ft' => $filtros['taxon'] ?? null,
             'fprov' => $filtros['provincia'] ?? null,
-            'fxprov' => $filtros['provincia_excluida'] ?? null,
             'fph' => $filtros['filo'] ?? null,
             'ffd' => isset($filtros['desde']) ? $filtros['desde'].'-01-01' : null,
             'ffh' => isset($filtros['hasta']) ? $filtros['hasta'].'-12-31' : null,
@@ -62,7 +61,7 @@ final class PortalEstadisticas
         $this->presupuesto = new PresupuestoConsultaPortal($firma);
         try {
             return $this->presupuesto->ejecutar(fn (): array => $this->cachear(
-                'portal:estadisticas:v20:'.(int) $incluirContenidoTaxon.':'.$this->revisionDatos().':'.$firma,
+                'portal:estadisticas:v21:'.(int) $incluirContenidoTaxon.':'.$this->revisionDatos().':'.$firma,
                 fn (): array => $this->resumir($filtros, $incluirContenidoTaxon),
             ));
         } finally {
@@ -81,6 +80,20 @@ final class PortalEstadisticas
         return $this->cachear('portal:puntos:v4:'.$this->revisionDatos().':'.sha1(json_encode($filtros)), function () use ($filtros): array {
             $taxones = DB::table('taxonomia.taxones')->get(['id', 'padre_id', 'rango', 'nombre_cientifico'])->keyBy('id');
             return $this->agruparPuntos($this->consulta($filtros), $taxones);
+        });
+    }
+
+    /** Opciones geográficas públicas, invalidadas junto con los registros y sus permisos. */
+    public function geografiaParaFiltros(FiltrosBusqueda $filtros, string $nivel = '', string $taxon = ''): array
+    {
+        $clave = 'portal:geografia:v1:'.$this->revisionDatos().':'.sha1(serialize([$filtros, $nivel, $taxon]));
+        return $this->cachear($clave, static function () use ($filtros, $nivel, $taxon): array {
+            $consulta = app(EloquentProveedorEspecimenesParaArbol::class)->consultaPublica($filtros, $nivel, $taxon);
+            $campos = ['CASE WHEN ed.state_province_visible THEN te.state_province END AS provincia'];
+            foreach ([\Modules\CatalogoPublico\Infrastructure\LocalidadPublica::sql('te'), 'te.locality_name', 'te.localidad', 'te.localidad_area', 'te.localidad2', 'te.localidad3'] as $i => $campo) {
+                $campos[] = 'CASE WHEN ed.locality_name_visible THEN '.$campo.' END AS localidad_'.$i;
+            }
+            return $consulta->selectRaw(implode(', ', $campos))->distinct()->get()->map(static fn (object $fila): array => (array) $fila)->all();
         });
     }
 
@@ -159,7 +172,6 @@ final class PortalEstadisticas
     private function consulta(array $filtros): Builder
     {
         $datos = [];
-        $datos['filtroProvinciaExcluida'] = $filtros['provincia_excluida'] ?? '';
         foreach (['codigo' => 'filtroCatalogo', 'preparaciones' => 'filtroPreparaciones', 'taxon' => 'filtroTaxon', 'pais' => 'filtroPais', 'provincia' => 'filtroProvincia', 'geografias' => 'filtroGeografias', 'filo' => 'filtroFiloId', 'mes' => 'filtroMes', 'identificacion' => 'filtroIdentificacion', 'ubicacion' => 'filtroSoloUbicacion', 'colector' => 'filtroColector', 'metodos' => 'filtroMetodos', 'lat_min' => 'filtroLatMin', 'lat_max' => 'filtroLatMax', 'lon_min' => 'filtroLonMin', 'lon_max' => 'filtroLonMax', 'elev_desde' => 'filtroElevDesde', 'elev_hasta' => 'filtroElevHasta', 'biomas' => 'filtroBiomas', 'habitat' => 'filtroHabitat', 'tipo' => 'filtroTipo', 'disposicion' => 'filtroDisposicion', 'casta' => 'filtroCasta', 'estadio' => 'filtroEstadio'] as $clave => $propiedad) {
             if (isset($filtros[$clave])) $datos[$propiedad] = $filtros[$clave];
         }
@@ -177,7 +189,6 @@ final class PortalEstadisticas
     {
         return [
             'provincia' => ['nullable', 'string', 'max:120'],
-            'provincia_excluida' => ['nullable', 'string', 'max:120'],
             'desde' => ['nullable', 'integer', 'between:1800,2100'],
             'hasta' => ['nullable', 'integer', 'between:1800,2100'],
             'filo' => ['nullable', 'uuid'],
@@ -283,18 +294,18 @@ final class PortalEstadisticas
         $especies = $conteosEspecies['especies'];
         $provinciaClave = NormalizacionGeografica::sql('te.state_province');
         $riqueza = $this->medir('riqueza', fn (): array => ResumenDistribucionPublica::riqueza(
-            (clone $base)->where('ed.scientific_name_visible', true)->where('ed.state_province_visible', true)
+            (clone $base)->where('ed.state_province_visible', true)
                 ->whereRaw(CalidadDatoPublico::textoValido('te.state_province'))
-                ->selectRaw("te.taxon_id, {$provinciaClave} AS provincia_clave, MIN(te.state_province) AS provincia, COUNT(*) AS registros")
-                ->groupBy('te.taxon_id')->groupByRaw($provinciaClave)->get(),
+                ->selectRaw("CASE WHEN ed.scientific_name_visible THEN te.taxon_id END AS taxon_id, {$provinciaClave} AS provincia_clave, MIN(te.state_province) AS provincia, COUNT(*) AS registros")
+                ->groupByRaw('CASE WHEN ed.scientific_name_visible THEN te.taxon_id END')->groupByRaw($provinciaClave)->get(),
             $taxones, $idsValidos,
         ));
         $decada = 'FLOOR(EXTRACT(YEAR FROM te.fecha_colecta) / 10)::integer * 10';
         $decadas = $this->medir('decadas', fn (): array => ResumenDistribucionPublica::decadas(
-            (clone $base)->where('ed.scientific_name_visible', true)->where('ed.event_date_visible', true)
+            (clone $base)->where('ed.event_date_visible', true)
                 ->whereRaw(CalidadDatoPublico::fechaValida('te.fecha_colecta'))
-                ->selectRaw("te.taxon_id, {$decada} AS decada, COUNT(*) AS registros")
-                ->groupBy('te.taxon_id')->groupByRaw($decada)->get(),
+                ->selectRaw("CASE WHEN ed.scientific_name_visible THEN te.taxon_id END AS taxon_id, {$decada} AS decada, COUNT(*) AS registros")
+                ->groupByRaw('CASE WHEN ed.scientific_name_visible THEN te.taxon_id END')->groupByRaw($decada)->get(),
             $taxones, $idsValidos,
         ));
         $raras = $conteosEspecies['raras'];

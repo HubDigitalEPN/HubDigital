@@ -14,7 +14,7 @@ final class SolicitudCompuestaPortal
         private readonly AyudaContextualPortal $ayuda,
     ) {}
 
-    public function responder(string $pregunta, array $contexto, ?array $seleccionPortal): ?array
+    public function responder(string $pregunta, array $contexto, ?array $seleccionPortal, ?string $alcanceConfirmado = null): ?array
     {
         $normal = $this->texto->normalizar($pregunta);
         if (! preg_match('/descarg|export|xlsx|excel|csv/', $normal)
@@ -42,25 +42,32 @@ final class SolicitudCompuestaPortal
             array_push($acciones, ...$enClausula);
         }
         if (count($acciones) < 2) return null;
+        if (app(OperadorProvinciaChat::class)->solicitado($pregunta)) {
+            return ['texto' => 'La exclusión de provincias ya no está disponible. No he contado, descargado ni preparado enlaces con filtros parciales.',
+                'fuente' => 'portal', 'intent' => 'portal.solicitud_compuesta', 'entidades' => $contexto, 'opciones' => [], 'solicitud_pendiente' => null,
+                'partes' => array_map(static fn (array $accion): array => ['accion' => $accion['tipo'], 'estado' => 'pendiente'], $acciones)];
+        }
         $parametros = $seleccionPortal === null ? $this->consulta->parametros($contexto) : EnlaceSeleccionCatalogo::limpiar($seleccionPortal);
-        $partes = []; $opciones = []; $resultados = []; $entidades = $contexto; $seleccionFallida = false;
+        $partes = []; $opciones = []; $resultados = []; $entidades = $contexto; $seleccionFallida = false; $requiereSeleccion = false;
         foreach ($acciones as $accion) {
             $tipo = $accion['tipo'];
             if (in_array($tipo, ['consulta', 'conteo'], true)) {
                 $consulta = $accion['texto'];
-                if ($tipo === 'conteo' && $this->detector->extraer($consulta) === [] && ! str_contains($this->texto->normalizar($consulta), 'seleccion')) {
+                if ($tipo === 'conteo' && ! $this->consulta->esReferenciaSeleccion($consulta) && $this->detector->extraer($consulta) === []) {
                     $consulta .= ' en esta selección';
                 }
-                $respuesta = $this->consulta->responder($consulta, $entidades, $seleccionPortal);
+                $respuesta = $this->consulta->responder($consulta, $entidades, $seleccionPortal, $alcanceConfirmado);
                 if ($respuesta === null || ($respuesta['intent'] ?? '') === 'catalogo.aclaracion') {
                     $seleccionFallida = true;
+                    $requiereSeleccion = $requiereSeleccion || ($respuesta['requiere_seleccion'] ?? false);
+                    if ($respuesta['requiere_seleccion'] ?? false) $opciones = array_merge($opciones, $respuesta['opciones'] ?? []);
                     $partes[] = $respuesta['texto'] ?? 'No pude preparar esa selección. Indica el nombre científico y los criterios de consulta.';
                     $resultados[] = ['accion' => $tipo, 'estado' => 'pendiente'];
                     continue;
                 }
                 $partes[] = $respuesta['texto'];
                 $entidades = $respuesta['entidades'] ?? $entidades;
-                $usaPagina = preg_match('/\bseleccion\b/', $this->texto->normalizar($consulta));
+                $usaPagina = $alcanceConfirmado === 'pagina' || ($alcanceConfirmado !== 'consulta' && $this->consulta->esReferenciaSeleccion($consulta));
                 if (! $usaPagina) {
                     $parametros = $this->consulta->parametros($entidades);
                     $seleccionPortal = $parametros;
@@ -94,6 +101,7 @@ final class SolicitudCompuestaPortal
         foreach ($opciones as $opcion) $unicas[$opcion['url'] ?? $opcion['pregunta'] ?? $opcion['label']] = $opcion;
         return ['texto' => implode("\n\n", $texto).' No he descargado archivos ni cambiado la vista por ti; los enlaces permiten completar los pasos.',
             'fuente' => 'portal', 'intent' => 'portal.solicitud_compuesta', 'entidades' => $entidades,
-            'opciones' => array_values($unicas), 'partes' => $resultados];
+            'opciones' => array_values($unicas), 'partes' => $resultados,
+            'solicitud_pendiente' => $requiereSeleccion ? $pregunta : null];
     }
 }

@@ -30,7 +30,7 @@
                             </a>
                         @else
                             <a
-                                href="{{ route('register') }}"
+                                href="{{ route('register', ['rol' => 'DEPOSITANTE']) }}"
                                 class="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-blue-navy px-5 py-3 text-sm font-semibold !text-white shadow-sm transition hover:bg-[#244872] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-science-blue focus-visible:ring-offset-2"
                             >
                                 <flux:icon name="user-plus" class="size-5" />

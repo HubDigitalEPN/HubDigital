@@ -100,7 +100,7 @@
 
     <div class="collection-workspace">
         <x-catalogopublico::filtro-investigacion
-            :provincias="$provinciasDisponibles" :filos="$filosDisponibles"
+            :provincias="$provinciasDisponibles" :localidades="$this->localidadesDisponibles" :filos="$filosDisponibles"
             :preparaciones="$preparacionesDisponibles" :metodos="$metodosRecoleccionDisponibles"
             :biomas="$biomasDisponibles" :hay-filtros-activos="$hayFiltrosActivos"
             :aplicados="$this->filtrosAplicados"
@@ -121,15 +121,14 @@
         </section>
     @endif
     <nav class="collection-view-bar" aria-label="Vista de la Colección Biológica">
-        <a class="collection-export-dictionary" href="{{ route('portal.diccionario-exportacion') }}">Diccionario CSV/XLSX</a>
         <div class="collection-view-switch">
             <button type="button" wire:loading.attr="disabled" wire:click="cambiarVista('tarjetas')" aria-label="Vista de tarjetas" title="Tarjetas" aria-pressed="{{ $vista === 'tarjetas' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg><span class="sr-only">Tarjetas</span></button>
             <button type="button" wire:loading.attr="disabled" wire:click="cambiarVista('registros')" aria-label="Vista de registros" title="Registros" aria-pressed="{{ $vista === 'registros' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h3m4 0h9M4 12h3m4 0h9M4 18h3m4 0h9"/></svg><span class="sr-only">Registros</span></button>
             <button type="button" wire:loading.attr="disabled" wire:click="cambiarVista('mapa')" aria-label="Vista de mapa y análisis" title="Mapa y análisis" aria-pressed="{{ $vista === 'mapa' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2zM9 3v16m6-14v16"/></svg><span class="sr-only">Mapa y análisis</span></button>
         </div>
     </nav>
-            <div class="collection-loading" wire:loading.delay wire:target="cambiarVista,aplicarBorrador,limpiarFiltros,retirarCriterio,seleccionarFilo,quitarFiltroFilo,seleccionarProvincia,seleccionarDecada,seleccionarMes,seleccionarAltitud,seleccionarMetodo,seleccionarArea,explorarNivel,navegar,cambiarPagina,cambiarPaginaHermanos,abrirFichaRegistro">
-                <span class="collection-loading-indicator" role="status"><span class="atlas-spinner" aria-hidden="true"></span><span class="sr-only">Actualizando selección</span></span>
+            <div class="collection-loading" wire:loading.delay wire:target="borradorFiltros,cambiarVista,aplicarBorrador,limpiarFiltros,retirarCriterio,seleccionarFilo,seleccionarProvincia,seleccionarDecada,seleccionarMes,seleccionarAltitud,seleccionarMetodo,seleccionarArea,explorarNivel,navegar,cambiarPagina,cambiarPaginaHermanos,abrirFichaRegistro">
+                <span class="collection-loading-indicator" role="status" aria-live="polite"><span class="atlas-spinner" aria-hidden="true"></span><span>Actualizando filtros y registros…</span></span>
             </div>
 
     @include('catalogopublico::components.ficha-registro-publico')
@@ -174,6 +173,12 @@
         </div>
 
     @else
+    @if($nivelActual !== '' && $nivelActual !== 'species' && $taxonActual !== '' && ($conteos[$nivelActual.':'.$taxonActual] ?? 0) > 0)
+        <section class="collection-taxon-records" aria-label="Registros del taxón seleccionado">
+            <p>{{ number_format($conteos[$nivelActual.':'.$taxonActual], 0, ',', '.') }} {{ $conteos[$nivelActual.':'.$taxonActual] === 1 ? 'registro público' : 'registros públicos' }} de <em>{{ $taxonActual }}</em>, incluidos los identificados hasta este rango.</p>
+            <button type="button" wire:click="cambiarVista('registros')" wire:loading.attr="disabled">Ver registros de este taxón</button>
+        </section>
+    @endif
     @if($nivelExplorar === '')
     {{-- =====================================================================
          RAÍZ — presentación del catálogo + grid de filos
@@ -496,7 +501,7 @@
                             <span class="font-serif italic">{{ $taxonActual }}</span>
                             <span class="text-base font-normal text-text-secondary">· Especie</span>
                         </h1>
-                        <div class="flex items-center gap-3">
+                        <div class="collection-species-download flex flex-wrap items-center gap-3">
                             <span class="text-xs text-text-secondary tabular-nums">
                                 {{ number_format($totalEspecimenes, 0, ',', '.') }} {{ $totalEspecimenes === 1 ? 'registro' : 'registros' }}
                             </span>
@@ -505,7 +510,7 @@
                                     wire:click="descargarDatos"
                                     wire:loading.attr="disabled"
                                     wire:target="descargarDatos"
-                                    class="flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-xs font-medium text-text-secondary shadow-sm transition-colors hover:border-science-blue/50 hover:text-science-blue disabled:opacity-50 w-full sm:w-auto"
+                                    class="flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-xs font-medium text-text-secondary shadow-sm transition-colors hover:border-science-blue/50 hover:text-science-blue disabled:opacity-50 w-full sm:w-auto"
                                 >
                                     <span wire:loading.remove wire:target="descargarDatos" class="flex items-center gap-1.5">
                                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-3.5">

@@ -16,6 +16,26 @@ test('registration screen can be rendered', function () {
     $response->assertOk();
 });
 
+test('registration preselects only public purposes and preserves a previous form choice', function (mixed $entrada, string $esperado): void {
+    $response = $this->get(route('register', ['rol' => $entrada]))->assertOk();
+    $dom = new DOMDocument;
+    @$dom->loadHTML('<?xml encoding="UTF-8">'.$response->getContent());
+    $radios = (new DOMXPath($dom))->query('//input[@name="rol" and @checked]');
+    expect($radios->length)->toBe(1)->and($radios->item(0)->getAttribute('value'))->toBe($esperado);
+
+    $response = $this->withSession(['_old_input' => ['rol' => 'PRESTAMISTA']])
+        ->get(route('register', ['rol' => 'DEPOSITANTE']))->assertOk();
+    @$dom->loadHTML('<?xml encoding="UTF-8">'.$response->getContent());
+    $radios = (new DOMXPath($dom))->query('//input[@name="rol" and @checked]');
+    expect($radios->length)->toBe(1)->and($radios->item(0)->getAttribute('value'))->toBe('PRESTAMISTA');
+})->with([
+    'generic registration' => [null, 'PRESTAMISTA'],
+    'deposit intent' => ['DEPOSITANTE', 'DEPOSITANTE'],
+    'loan intent' => ['PRESTAMISTA', 'PRESTAMISTA'],
+    'internal role rejected' => ['ADMIN', 'PRESTAMISTA'],
+    'malformed query rejected' => [['DEPOSITANTE'], 'PRESTAMISTA'],
+]);
+
 test('registration renders turnstile and keeps submit disabled until verification', function () {
     config()->set('services.turnstile.enabled', true);
     config()->set('services.turnstile.site_key', 'site-key-for-test');

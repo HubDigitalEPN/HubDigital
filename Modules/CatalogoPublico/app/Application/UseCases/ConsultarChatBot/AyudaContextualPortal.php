@@ -54,22 +54,23 @@ final class AyudaContextualPortal
         if ((preg_match('/\b(?:tipo nomenclatural|condicion de tipo|disposicion|incertidumbre|precision|localidad inec|estado de ocurrencia)\b/', $normal)
             && preg_match('/que (?:es|significa)|son (?:lo mismo|exactas)|es lo mismo|diferencia|explica|exactitud|exactas/', $normal)
             ) || preg_match('/coordenadas?.*(?:exactas?|exactitud|recuperadas?)|(?:exactas?|exactitud).*coordenadas?|coordenada recuperada|ubicacion exacta/', $normal)) {
-            return $salida('Condición de tipo (typeStatus) indica el papel nomenclatural del ejemplar, como holotipo o paratipo. Disposición (disposition) indica la situación del material, por ejemplo en la colección o en préstamo. Estado de ocurrencia (occurrenceStatus) expresa presencia o ausencia registrada; son campos distintos. Una celda vacía significa no informado, no «sin tipo». La localidad original conserva el texto de colecta; la localidad INEC es una referencia administrativa separada y no demuestra el sitio exacto. Precisión e incertidumbre no se deducen del número de decimales: una coordenada recuperada del Excel o aproximada conserva sus advertencias, y la incertidumbre desconocida permanece vacía, nunca cero. Glosario '.$this::VERSION_GLOSARIO.'.', 'portal.glosario', [
+            return $salida('Condición de tipo y disposición del material son campos distintos. Condición de tipo (typeStatus) indica el papel nomenclatural del ejemplar, como holotipo o paratipo. Disposición (disposition) indica la situación del material, por ejemplo en la colección o en préstamo. Estado de ocurrencia (occurrenceStatus) expresa detección o no detección durante la colecta. El XLSX traduce present a detected y absent a notDetected; conserva el estado original en occurrenceStatusVerbatim. Un valor como destroyed o loaned no demuestra detección ni ausencia y deja occurrenceStatus vacío; disposición y notas se conservan por separado. Una celda vacía significa no informado, no «sin tipo». La localidad original conserva el texto de colecta; la localidad INEC es una referencia administrativa separada y no demuestra el sitio exacto. Precisión e incertidumbre no se deducen del número de decimales: una coordenada recuperada del Excel o aproximada conserva sus advertencias, y la incertidumbre desconocida permanece vacía, nunca cero. Glosario '.$this::VERSION_GLOSARIO.'.', 'portal.glosario', [
                 ['label' => 'Diccionario CSV y XLSX', 'url' => route('portal.diccionario-exportacion')],
                 ['label' => 'Ver registros de la selección', 'url' => $enlace('registros')],
             ]);
         }
         if (preg_match('/\b(?:depositar|deposito|depositos|donar|donacion)\b/', $normal)
-            && preg_match('/pasos|paso a paso|instrucciones|como|necesito|quiero/', $normal)
-            && ! preg_match('/requisitos|documentos|permiso|autorizacion|estado de|firma/', $normal)) {
-            return $salida("1. Abre Depósitos y lee los requisitos de la modalidad que necesitas.\n2. Inicia sesión o crea una cuenta y configura el rol Depositante cuando corresponda.\n3. Abre el formulario de solicitud, indica la modalidad (incluido depósito temporal cuando corresponda), describe el material y adjunta los documentos que solicita el formulario.\n4. Revisa los datos antes de enviar y consulta el seguimiento de la solicitud. Curaduría revisa la admisión; iniciar una solicitud no acredita que el depósito haya sido aceptado. No envíes ni traslades material sin las instrucciones de curaduría.", 'portal.deposito_pasos', [
+            && preg_match('/pasos|paso a paso|instrucciones|como|necesito|quiero|requisitos|documentos/', $normal)
+            && ! preg_match('/estado de|seguimiento|mi solicitud|correccion|rechaz|firma (?:invalida|rechazada)/', $normal)) {
+            return $salida("1. Abre Depósitos y elige la modalidad de depósito o donación que corresponda; no todas las solicitudes son depósitos temporales.\n2. Inicia sesión o crea una cuenta con propósito Depositante.\n3. Completa los datos de depósito material MEPN y el detalle biológico en los formularios guiados. Prepara la solicitud generada y firmada, evidencia de procedencia lícita, cesión o justificación institucional, y autorización de recolección y guía de movilización cuando correspondan a tu caso. El formulario determina los documentos exigibles.\n4. Revisa y envía la solicitud; consulta el seguimiento. Curaduría revisa la admisión de la modalidad solicitada. La recepción física no implica aceptación automática ni transferencia de propiedad. No envíes ni traslades material hasta recibir instrucciones del equipo curatorial.", 'portal.deposito_pasos', [
                 ['label' => 'Abrir Depósitos', 'url' => route('depositos.portal')],
+                ['label' => 'Crear cuenta como Depositante', 'url' => route('register', ['rol' => 'DEPOSITANTE'])],
                 ['label' => 'Iniciar sesión', 'url' => route('login')],
             ]);
         }
         // Una consulta de varios pasos se resuelve completa, antes de tratar Excel como formato.
         if (preg_match('/pasos|paso a paso/', $normal) && preg_match('/\b(?:fuera de|excepto|excluye|excluir|no son de)\b/', $normal)) {
-            return $salida('Para excluir una provincia, usa Excluir provincia en Filtros de investigación; no la marques como Provincia incluida. También puedes consultar «¿Cuántos registros de un taxón hay fuera de una provincia?». No he preparado filtros parciales para este procedimiento compuesto.', 'catalogo.aclaracion');
+            return $salida('La exclusión de provincias ya no está disponible. Selecciona Provincia para incluir sus registros. No he preparado filtros parciales para este procedimiento compuesto.', 'catalogo.aclaracion');
         }
         if (preg_match('/pasos|paso a paso/', $normal) && preg_match('/buscar|consultar|filtrar/', $normal) && preg_match('/descarg|export/', $normal)) {
             $consultaTexto = preg_split('/[.;]|\b(?:despues|después|expl[ií]came|no quiero)\b/iu', $pregunta)[0];
@@ -79,13 +80,13 @@ final class AyudaContextualPortal
             foreach (['taxon' => 'Taxón', 'provincia' => 'Provincia', 'localidad' => 'Localidad', 'mes' => 'Mes de colecta', 'desde' => 'Desde', 'hasta' => 'Hasta'] as $clave => $etiqueta) {
                 if (isset($entidades[$clave])) $criterios[] = $etiqueta.': '.$entidades[$clave];
             }
-            return $salida("1. Abre Colección Biológica y Filtros de investigación; Limpiar inicia una consulta global.\n2. Configura ".($criterios === [] ? 'los criterios que necesitas' : implode('; ', $criterios))." y pulsa Aplicar filtros.\n3. En Mapa y análisis, las barras de Cobertura por década y Mes de colecta agregan criterios; el resumen de filtros activos permite retirarlos individualmente.\n4. Alterna Mapa y análisis y Registros para comparar la misma selección.\n5. En Registros pulsa Descargar resultados CSV; incluye todas las páginas. Para XLSX entra en las tarjetas de una especie y pulsa Descargar datos XLSX. Revisa Precisión, Referencia INEC y las advertencias geográficas de la ficha; XLSX conserva georeferenceRemarks. La consulta y las descargas públicas no requieren cuenta.", 'portal.consulta_pasos', [
+            return $salida("1. Abre Colección Biológica y Filtros de investigación; Limpiar Filtros inicia una consulta global.\n2. Configura ".($criterios === [] ? 'los criterios que necesitas' : implode('; ', $criterios)).". Los filtros se aplican al cambiar cada dato.\n3. En Mapa y análisis, las barras de Cobertura por década y Mes de colecta agregan criterios; el resumen de filtros activos permite retirarlos individualmente.\n4. Alterna Mapa y análisis y Registros para comparar la misma selección.\n5. En Registros pulsa Descargar resultados CSV; incluye todas las páginas. Para XLSX entra en las tarjetas de una especie y pulsa Descargar datos XLSX. Revisa Precisión, Referencia INEC y las advertencias geográficas de la ficha; XLSX conserva georeferenceRemarks. La consulta y las descargas públicas no requieren cuenta.", 'portal.consulta_pasos', [
                 ['label' => 'Abrir consulta propuesta', 'url' => route('portal.catalogo', array_replace($this->consulta->parametros($entidades), ['vista' => 'mapa']))],
                 ['label' => 'Diccionario de descargas', 'url' => route('portal.diccionario-exportacion')],
             ]);
         }
         if (preg_match('/como.*filtr|pasos.*filtr/', $normal) && preg_match('/provincia/', $normal) && preg_match('/metodo/', $normal)) {
-            return $salida('Abre Filtros de investigación y elige Provincia. Expande Ejemplar y colecta y marca el Método de recolección que necesitas. Pulsa Aplicar filtros: ambos criterios se combinan. El resumen muestra los criterios aplicados y permite retirar cada uno; cambiar de vista conserva la selección.', 'portal.filtros', [
+            return $salida('Abre Filtros de investigación y elige Provincia. Expande Ejemplar y colecta y marca el Método de recolección que necesitas. Los filtros se aplican al cambiar cada dato y ambos criterios se combinan. El resumen muestra los criterios aplicados y permite retirar cada uno; cambiar de vista conserva la selección.', 'portal.filtros', [
                 ['label' => 'Abrir selección aplicada', 'url' => $enlace('registros')],
             ]);
         }
@@ -102,7 +103,7 @@ final class AyudaContextualPortal
         }
         if (preg_match('/(?:quitar|limpiar|restablecer|reiniciar)\s+(?:todos\s+)?(?:los\s+)?filtros/', $normal)
             && ! preg_match('/\b(?:sin|no(?: (?:quiero|deseo|hay que))?)\s+(?:quitar|limpiar|restablecer|reiniciar)\b/', $normal)) {
-            return $salida('Pulsa Limpiar en Filtros de investigación para restablecer la consulta global. Esto retira todos los criterios y la selección espacial. El enlace siguiente abre esa consulta global.', 'portal.limpiar', [
+            return $salida('Pulsa Limpiar Filtros en Filtros de investigación para restablecer la consulta global. Esto retira todos los criterios y la selección espacial. El enlace siguiente abre esa consulta global.', 'portal.limpiar', [
                 ['label' => 'Abrir catálogo sin filtros', 'url' => route('portal.catalogo', ['vista' => 'mapa'])],
             ]);
         }

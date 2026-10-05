@@ -154,7 +154,7 @@ test('restaurar o limpiar sincroniza el borrador y no resucita filtros previos e
 });
 
 test('el borrador recupera cambios anidados de checkbox y una coordenada exacta desde tuplas Livewire', () => {
-    const parametros = recuperarLlamadas([['aplicarBorrador']], {
+    const parametros = recuperarLlamadas([], {
         datos: {borradorFiltros: [{filtroMetodos: [['beating'], {s: 'arr'}], filtroProvincia: 'Orellana',
             filtroLatitud: '', filtroLongitud: '', filtroLatMin: '', filtroLatMax: '', filtroLonMin: '', filtroLonMax: ''}, {s: 'arr'}]},
         updates: {'borradorFiltros.filtroMetodos.0': 'Pitfall', 'borradorFiltros.filtroProvincia': 'Pichincha',

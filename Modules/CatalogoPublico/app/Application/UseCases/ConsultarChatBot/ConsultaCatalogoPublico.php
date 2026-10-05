@@ -80,7 +80,7 @@ final class ConsultaCatalogoPublico
         return ['total' => $total, 'con_coordenadas' => $coordenadas];
     }
 
-    public function responder(string $pregunta, array $contexto = [], ?array $seleccionPortal = null): ?array
+    public function responder(string $pregunta, array $contexto = [], ?array $seleccionPortal = null, ?string $alcanceConfirmado = null): ?array
     {
         if (! config('chatbot.specimen_search', true)) {
             return null;
@@ -90,16 +90,16 @@ final class ConsultaCatalogoPublico
         if (isset($operadorProvincia['error_consulta'])) {
             $aclaracion = $this->aclaracion($operadorProvincia['error_consulta'], $contexto, sinDatos: true);
             $aclaracion['opciones'] = [];
+            $aclaracion['solicitud_pendiente'] = null;
             return $aclaracion;
         }
-        $referenciaSeleccion = (bool) preg_match('/\b(?:(?:esta|esa|mi)\s+seleccion|seleccion\s+(?:actual|aplicada)|(?:de|en)\s+aqui)\b/', $normal)
-            || ($seleccionPortal !== null && (bool) preg_match('/\bestos\s+(?:dos\s+)?registros\b.*\bindividuos?\b/', $normal))
-            || ($contexto === [] && $seleccionPortal !== null && (bool) preg_match('/^y\s+cuant|^y?\s*donde\s+se\s+(?:recolecto|colecto)|^y\s+donde/', $normal));
+        $referenciaSeleccion = $alcanceConfirmado === 'pagina' || ($alcanceConfirmado !== 'consulta' && ($this->esReferenciaSeleccion($pregunta)
+            || ($contexto === [] && $seleccionPortal !== null && (bool) preg_match('/^y\s+cuant|^y?\s*donde\s+se\s+(?:recolecto|colecto)|^y\s+donde/', $normal))));
         $retirarFiltro = $this->filtroPorRetirar($normal);
         if ($retirarFiltro === 'no_soportado') {
             return $this->aclaracion('No puedo retirar ese filtro del chat de forma confirmada. Indica uno de estos criterios: taxón, código, provincia, país, localidad, mes, fechas, elevación, coordenadas o identificación. Para otros filtros, usa el formulario del catálogo.', $contexto);
         }
-        $camposPorFiltro = ['taxon' => ['taxon'], 'codigo' => ['codigo'], 'provincia' => ['provincia', 'provincia_excluida'], 'pais' => ['pais'],
+        $camposPorFiltro = ['taxon' => ['taxon'], 'codigo' => ['codigo'], 'provincia' => ['provincia'], 'pais' => ['pais'],
             'localidad' => ['localidad'], 'mes' => ['mes'], 'fechas' => ['desde', 'hasta', 'fecha_precision'],
             'desde' => ['desde', 'fecha_precision'], 'hasta' => ['hasta', 'fecha_precision'],
             'elevacion' => ['elev_desde', 'elev_hasta'], 'ubicacion' => ['ubicacion'], 'identificacion' => ['identificacion']];
@@ -126,16 +126,14 @@ final class ConsultaCatalogoPublico
         }
         $entities = $retirarFiltro === null ? $this->detector->extraer($queryText) : [];
         if (($correction || $followup || $retirarFiltro !== null) && ! $coleccionExplicita && ! $referenciaSeleccion && $contexto !== []) {
-            $previous = array_intersect_key($contexto, array_flip(['taxon', 'provincia', 'provincia_excluida', 'localidad', 'pais', 'codigo', 'mes', 'desde', 'hasta', 'fecha_precision', 'ubicacion', 'identificacion', 'elev_desde', 'elev_hasta']));
+            $previous = array_intersect_key($contexto, array_flip(['taxon', 'provincia', 'localidad', 'pais', 'codigo', 'mes', 'desde', 'hasta', 'fecha_precision', 'ubicacion', 'identificacion', 'elev_desde', 'elev_hasta']));
             if (isset($entities['taxon']) || isset($entities['codigo'])) unset($previous['taxon'], $previous['codigo']);
             foreach ($geografiasNegadas as $geografia) {
                 unset($previous[$geografia]);
-                if ($geografia === 'provincia') unset($previous['provincia_excluida']);
             }
             foreach (['provincia', 'localidad', 'pais'] as $geografia) {
                 if (isset($entities[$geografia])) {
                     unset($previous[$geografia]);
-                    if ($geografia === 'provincia') unset($previous['provincia_excluida']);
                 }
             }
             $quitarMes = $retirarFiltro === 'mes';
@@ -171,10 +169,6 @@ final class ConsultaCatalogoPublico
             $entities['codigo'] = $codigos[$posicion];
             unset($entities['taxon']);
         }
-        if ($operadorProvincia !== []) {
-            unset($entities['provincia'], $entities['provincia_excluida']);
-            $entities = array_replace($entities, $operadorProvincia);
-        }
         if (isset($entities['error_consulta'])) return $this->aclaracion($entities['error_consulta'], $contexto);
         if (preg_match('/\bo\b/', $normal) && ! preg_match('/\bindividuos?\s+o\s+(?:dos\s+)?especies\b/', $normal)) {
             return $this->aclaracion('La unión de alternativas con «o» no está disponible en esta consulta. No he calculado un conteo parcial. Elige una alternativa o consulta cada una por separado.', $contexto);
@@ -189,14 +183,23 @@ final class ConsultaCatalogoPublico
             return $this->aclaracion('La exclusión solicitada no está disponible en los filtros de esta consulta. No he calculado un conteo parcial. Puedes reformular con los criterios que deseas incluir.', $contexto);
         }
         if ($referenciaSeleccion) {
-            if (preg_match('/\bestos\s+(?:dos\s+)?registros\b.*\bindividuos?\b/', $normal)) $entities = [];
-            if ($entities !== [] || $coleccionExplicita) {
-                return $this->aclaracion('Confirma si quieres contar la selección aplicada o preparar una consulta nueva con esos criterios. No he calculado un conteo parcial.', $contexto);
-            }
             $entrada = $seleccionPortal ?? ($contexto !== [] ? $this->parametros($contexto) : null);
             if ($entrada === null) return $this->aclaracion('No tengo una selección aplicada ni una consulta pública anterior. Abre el catálogo y aplica los filtros o escribe qué quieres contar.', $contexto);
             $seleccion = SeleccionPaginaChat::desde($entrada);
             if ($seleccion === null) return $this->aclaracion('La selección recibida contiene criterios inválidos. Revisa los filtros del catálogo; no he calculado un conteo parcial.', $contexto);
+            if ($alcanceConfirmado === 'pagina' || preg_match('/\bestos\s+(?:dos\s+)?registros\b.*\bindividuos?\b/', $normal)) {
+                $entities = [];
+                $coleccionExplicita = false;
+            }
+            if ($coleccionExplicita || ! $this->criteriosCoinciden($entities, $seleccion)) {
+                $respuesta = $this->aclaracion('Los criterios nombrados difieren de la selección aplicada. Elige cuál usar; no he calculado un conteo ni preparado enlaces parciales.', $contexto);
+                $respuesta['requiere_seleccion'] = true;
+                $respuesta['opciones'] = [
+                    ['label' => 'Usar selección de la página', 'pregunta' => 'La selección aplicada de esta página'],
+                    ['label' => 'Preparar consulta nueva', 'pregunta' => 'Una consulta nueva con los criterios que indiqué'],
+                ];
+                return $respuesta;
+            }
 
             return $this->contarSeleccion($normal, $seleccion, $seleccionPortal === null ? $contexto : [], $seleccionPortal !== null);
         }
@@ -204,6 +207,7 @@ final class ConsultaCatalogoPublico
         $unidades = $this->unidadesSolicitadas($normal);
         if (count($unidades) > 1) return $this->contarUnidades($this->seleccion($entities), $entities, $options, $unidades);
         $unidadPedida = $unidades[0] ?? null;
+        $especiesPedidas = $unidadPedida === 'especies' || ($unidadPedida === null && preg_match('/\bespecies\b/', $normal));
         if ($unidadPedida === 'familias' || ($unidadPedida === null && preg_match('/\bfamilias\b/', $normal))) {
             if (preg_match('/\bmas\s+registros\b/', $normal)) return $this->familias($entities, $options);
             return $this->taxonesPorRango($this->seleccion($entities), $entities, $options, 'familia');
@@ -228,9 +232,13 @@ final class ConsultaCatalogoPublico
             $suggestions = isset($entities['taxon']) ? $this->sugerirTaxonPublico($entities['taxon']) : [];
             foreach ($suggestions as $name) $options[] = ['label' => 'Buscar '.$name, 'pregunta' => '¿Tienen '.$name.'?'];
             $hint = $suggestions === [] ? '' : ' ¿Te refieres a '.implode(' o ', $suggestions).'? Confirma el nombre antes de buscar.';
-            return $this->resultado('No encontré registros publicados'.$de.' en el catálogo. Esto no confirma si existen ejemplares no divulgados.'.$hint, 'catalogo.count', $entities, 0, [], $options);
+            $texto = 'No encontré registros publicados'.$de.' en el catálogo. Esto no confirma si existen ejemplares no divulgados.'.$hint;
+            // Una selección sin registros también tiene cero especies públicas;
+            // conserva la unidad pedida y no afirma ausencia biológica.
+            if ($especiesPedidas) $texto = 'Hay 0 especies publicadas'.$de.' en el catálogo. '.$texto;
+            return $this->resultado($texto, $especiesPedidas ? 'catalogo.species' : 'catalogo.count', $entities, 0, [], $options);
         }
-        if ($unidadPedida === 'especies' || ($unidadPedida === null && preg_match('/\bespecies\b/', $normal))) {
+        if ($especiesPedidas) {
             return $this->taxonesPorRango($query->where('t.rango', 'especie'), $entities, $options, 'especie');
         }
         if (preg_match('/\b(cuantos?|numero|total|tienen|existe|hay registros)\b/', $normal)) {
@@ -241,6 +249,34 @@ final class ConsultaCatalogoPublico
             ->map(static fn ($row) => $row->occurrence_id.' — '.$row->nombre_cientifico)->all();
         $text = 'Encontré '.$total.' '.($total === 1 ? 'registro publicado' : 'registros publicados').$de.'. Primeros resultados: '.implode('; ', $rows).($total > 10 ? '; se muestran los primeros 10.' : '.');
         return $this->resultado($text, 'catalogo.search', $entities, $total, $rows, $options);
+    }
+
+    public function esReferenciaSeleccion(string $pregunta): bool
+    {
+        return (bool) preg_match('/\b(?:(?:esta|esa|mi) seleccion|seleccion (?:actual|aplicada)|(?:esta|esa|mi) pagina|(?:de|en) aqui|registros visibles|(?:estos|estas) (?:(?:dos|tres|cuatro|cinco|seis|\d+) )?(?:registros|caracoles|ejemplares|especimenes|invertebrados))\b/', $this->texto->normalizar($pregunta));
+    }
+
+    private function criteriosCoinciden(array $entidades, SeleccionPaginaChat $seleccion): bool
+    {
+        $aplicados = $seleccion->parametros;
+        foreach ($this->parametros($entidades) as $clave => $valor) {
+            if ($clave === 'vista') continue;
+            if ($clave === 'ft') {
+                if (! in_array($this->texto->normalizar((string) $valor), array_map(fn (string $nombre): string => $this->texto->normalizar($nombre), [$aplicados['ft'] ?? '', $aplicados['taxon'] ?? '']), true)) return false;
+            } elseif (is_array($valor)) {
+                $actuales = array_map(fn (string $nombre): string => $this->texto->normalizar($nombre), $aplicados[$clave] ?? []);
+                foreach ($valor as $nombre) if (! in_array($this->texto->normalizar($nombre), $actuales, true)) return false;
+            } elseif (! isset($aplicados[$clave])) {
+                return false;
+            } elseif ($clave === 'fc') {
+                // Los ceros y separadores pertenecen al identificador, no a un número.
+                if (mb_strtolower(trim((string) $valor)) !== mb_strtolower(trim((string) $aplicados[$clave]))) return false;
+            } elseif (in_array($clave, ['flat', 'flax', 'flon', 'flox', 'fed', 'feh', 'fmes'], true)
+                && is_numeric($valor) && is_numeric($aplicados[$clave])) {
+                if ((float) $valor !== (float) $aplicados[$clave]) return false;
+            } elseif ($this->texto->normalizar((string) $valor) !== $this->texto->normalizar((string) $aplicados[$clave])) return false;
+        }
+        return true;
     }
 
     /** Retira solo los valores previos mencionados en una cláusula geográfica negada. */
@@ -324,7 +360,6 @@ final class ConsultaCatalogoPublico
         return array_filter([
             'vista' => 'registros', 'fpais' => $entities['pais'] ?? null, 'fc' => $entities['codigo'] ?? null,
             'ft' => $entities['taxon'] ?? null, 'fprov' => $entities['provincia'] ?? null,
-            'fxprov' => $entities['provincia_excluida'] ?? null,
             'fg' => isset($entities['localidad']) ? [$entities['localidad']] : null,
             'fmes' => $entities['mes'] ?? null, 'ffd' => $entities['desde'] ?? null,
             'ffh' => $entities['hasta'] ?? null, 'fgeo' => $entities['ubicacion'] ?? null,
@@ -339,7 +374,6 @@ final class ConsultaCatalogoPublico
             'filtroPais' => $entities['pais'] ?? '',
             'filtroCatalogo' => $entities['codigo'] ?? '', 'filtroTaxon' => $entities['taxon'] ?? '',
             'filtroProvincia' => $entities['provincia'] ?? '', 'filtroGeografias' => isset($entities['localidad']) ? [$entities['localidad']] : [],
-            'filtroProvinciaExcluida' => $entities['provincia_excluida'] ?? '',
             'filtroMes' => $entities['mes'] ?? '', 'filtroFechaDesde' => $entities['desde'] ?? '',
             'filtroFechaHasta' => $entities['hasta'] ?? '', 'filtroSoloUbicacion' => $entities['ubicacion'] ?? '',
             'filtroIdentificacion' => $entities['identificacion'] ?? '',
@@ -528,7 +562,6 @@ final class ConsultaCatalogoPublico
             if (isset($entities[$clave])) $criterios[] = $etiqueta.': '.($clave === 'ubicacion' ? 'sí' : $entities[$clave]);
         }
         if ($criterios !== []) $text .= ' Filtros aplicados: '.implode('; ', $criterios).'.';
-        if (isset($entities['provincia_excluida'])) $text .= ' Provincia excluida: '.$entities['provincia_excluida'].'. Solo se incluyen provincias públicas informadas; una provincia desconocida no acredita estar fuera.';
         if (isset($entities['localidad_preferida'])) $text .= ' '.$entities['localidad_preferida'].' es una preferencia; no la apliqué como restricción obligatoria.';
         return ['texto' => $text, 'opciones' => $options, 'intent' => $intent, 'fuente' => 'catalogo',
             'confianza' => 'HIGH', 'confianza_valor' => 1.0, 'entidades' => $entities,

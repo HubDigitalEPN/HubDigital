@@ -49,34 +49,57 @@ function qa7ParametrosRespuesta(array $respuesta): array
     return $parametros;
 }
 
-test('QA7 001 inclusión y exclusión consultan conjuntos opuestos y el enlace conserva el operador', function (): void {
+test('QA7 001 inclusión conserva conteo enlace y UUID y la exclusión retirada no produce consultas parciales', function (): void {
     $fixture = qa7ColeccionFixture();
     $consulta = app(ConsultaCatalogoPublico::class);
     $positiva = $consulta->responder('¿Cuántos registros de Qaheptus alpha hay en Orellana?');
     expect($positiva['datos']['total'])->toBe(2);
+    expect(qa7ParametrosRespuesta($positiva))->toMatchArray(['ft' => 'Qaheptus alpha', 'fprov' => 'Orellana'])->not->toHaveKey('fxprov');
+    Livewire::withQueryParams(qa7ParametrosRespuesta($positiva))->test(PortalCatalogo::class)
+        ->assertViewHas('registrosVista', fn ($r) => array_column($r, 'especimen_id') === array_slice($fixture['ids'], 0, 2));
+    $napo = $consulta->responder('¿Cuántos registros de Qaheptus alpha hay en Napo?');
+    expect($napo['datos']['total'])->toBe(1);
+    Livewire::withQueryParams(qa7ParametrosRespuesta($napo))->test(PortalCatalogo::class)
+        ->assertViewHas('registrosVista', fn ($r) => array_column($r, 'especimen_id') === [$fixture['ids'][2]])
+        ->call('cambiarVista', 'mapa')->assertViewHas('datosMapa', fn ($d) => (int) $d['resumen']['registros'] === 1);
     foreach (['¿Cuántos registros de Qaheptus alpha hay fuera de Orellana?', '¿Cuántos registros no son de Orellana?'] as $pregunta) {
         $negativa = $consulta->responder($pregunta, $positiva['entidades']);
-        expect($negativa['datos']['total'])->toBe(1)
-            ->and($negativa['entidades'])->toMatchArray(['taxon' => 'Qaheptus alpha', 'provincia_excluida' => 'Orellana'])->not->toHaveKey('provincia')
-            ->and(qa7ParametrosRespuesta($negativa))->toMatchArray(['fxprov' => 'Orellana'])->not->toHaveKey('fprov');
-        $pagina = Livewire::withQueryParams(qa7ParametrosRespuesta($negativa))->test(PortalCatalogo::class)
-            ->assertViewHas('totalRegistrosVista', 1)->assertViewHas('registrosVista', fn ($r) => array_column($r, 'especimen_id') === [$fixture['ids'][2]]);
-        $pagina->call('cambiarVista', 'mapa')->assertViewHas('datosMapa', fn ($d) => (int) $d['resumen']['registros'] === 1);
+        expect($negativa['intent'])->toBe('catalogo.aclaracion')->and($negativa)->not->toHaveKey('datos')
+            ->and($negativa['opciones'])->toBe([])->and($negativa['texto'])->toContain('exclusión de provincias ya no está disponible');
     }
     DB::table('taxonomia.especimenes')->where('id', $fixture['ids'][2])->update(['state_province' => 'Orellana']);
-    expect($consulta->responder('¿Cuántos registros de Qaheptus alpha hay fuera de Orellana?')['datos']['total'])->toBe(0);
+    $vacia = $consulta->responder('¿Cuántos registros de Qaheptus alpha hay en Napo?');
+    expect($vacia['datos']['total'])->toBe(0)
+        ->and($vacia['entidades'])->toMatchArray(['taxon' => 'Qaheptus alpha', 'provincia' => 'Napo'])
+        ->and(qa7ParametrosRespuesta($vacia))->toMatchArray(['ft' => 'Qaheptus alpha', 'fprov' => 'Napo']);
+    Livewire::withQueryParams(qa7ParametrosRespuesta($vacia))->test(PortalCatalogo::class)
+        ->assertSet('filtroProvincia', 'Napo')->assertViewHas('totalRegistrosVista', 0)->assertViewHas('registrosVista', []);
 });
+
+test('una provincia territorial sin datos públicos conserva el criterio y no se convierte en taxón', function (string $provincia): void {
+    $fixture = qa7ColeccionFixture();
+    DB::table('divulgacion.especimenes_divulgables')->whereIn('especimen_id', $fixture['ids'])->update(['state_province_visible' => false]);
+    $consulta = app(ConsultaCatalogoPublico::class);
+    foreach (['¿Cuántos registros hay en '.$provincia.'?', '¿Cuántos registros hay en la provincia de '.$provincia.'?',
+        '¿Cuántos registros hay en '.mb_strtolower($provincia).'?'] as $pregunta) {
+        $respuesta = $consulta->responder($pregunta);
+        expect($respuesta['entidades'])->toMatchArray(['provincia' => $provincia])->not->toHaveKey('taxon')
+            ->and($respuesta['datos']['total'])->toBe(0)
+            ->and(qa7ParametrosRespuesta($respuesta))->toMatchArray(['fprov' => $provincia])->not->toHaveKey('ft')
+            ->and($respuesta['texto'])->not->toContain('QA7-INV-');
+    }
+})->with(['Napo', 'El Oro', 'Santo Domingo de los Tsáchilas']);
 
 test('QA7 001 una provincia desconocida o reservada no acredita una exclusión', function (): void {
     $fixture = qa7ColeccionFixture();
     DB::table('taxonomia.especimenes')->where('id', $fixture['ids'][2])->update(['state_province' => null]);
     $consulta = app(ConsultaCatalogoPublico::class);
-    expect($consulta->responder('¿Cuántos registros de Qaheptus alpha hay fuera de Orellana?')['datos']['total'])->toBe(0);
+    expect($consulta->responder('¿Cuántos registros de Qaheptus alpha hay en Orellana?')['datos']['total'])->toBe(2);
     DB::table('taxonomia.especimenes')->where('id', $fixture['ids'][2])->update(['state_province' => 'desconocida']);
-    expect($consulta->responder('¿Cuántos registros de Qaheptus alpha hay fuera de Orellana?')['datos']['total'])->toBe(0);
+    expect($consulta->responder('¿Cuántos registros de Qaheptus alpha hay en Orellana?')['datos']['total'])->toBe(2);
     DB::table('taxonomia.especimenes')->where('id', $fixture['ids'][2])->update(['state_province' => 'Napo']);
     DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $fixture['ids'][2])->update(['state_province_visible' => false]);
-    expect($consulta->responder('¿Cuántos registros de Qaheptus alpha hay fuera de Orellana?')['datos']['total'])->toBe(0);
+    expect($consulta->responder('¿Cuántos registros de Qaheptus alpha hay en Orellana?')['datos']['total'])->toBe(2);
     $ambigua = $consulta->responder('¿Cuántos registros de Qaheptus alpha hay fuera de Provincia inexistente?');
     expect($ambigua['intent'])->toBe('catalogo.aclaracion')->and($ambigua)->not->toHaveKey('datos');
     foreach (['fuera de Orellana y Napo', 'fuera del Ecuador'] as $exclusion) {
@@ -120,7 +143,7 @@ test('QA7 un procedimiento compuesto tampoco convierte exclusión en inclusión'
     qa7ColeccionFixture(); Http::preventStrayRequests();
     $respuesta = app(AsistentePortal::class)->responder('Dame pasos para buscar Qaheptus alpha fuera de Orellana y descargar los datos', app(ConsultarChatBotHandler::class));
     expect($respuesta['intent'])->toBe('catalogo.aclaracion')->and($respuesta['opciones'])->toBe([])
-        ->and($respuesta['texto'])->toContain('Excluir provincia', 'No he preparado filtros parciales');
+        ->and($respuesta['texto'])->toContain('exclusión de provincias ya no está disponible', 'No he preparado filtros parciales');
     Http::assertNothingSent();
 });
 
@@ -208,14 +231,27 @@ test('QA7 007 los alias de estadio conservan el conjunto y los permisos de divul
     expect($repo->consultaPublica(FiltrosBusqueda::desde(['filtroEstadio' => $etiqueta]))->count())->toBe(0);
 })->with([['adult', 'Adulto'], ['juvenile', 'Juvenil'], ['larval', 'Larva'], ['pupal', 'Pupa'], ['egg', 'Huevo'], ['nymph', 'Ninfa']]);
 
-test('QA7 008 todas las hojas terminales muestran fichas y paginan seis UUID públicos', function (string $rango): void {
+test('QA7 008 las hojas terminales muestran cada UUID y solo la tabla pagina seis registros públicos', function (string $rango): void {
     $fixture = qa7ColeccionFixture($rango, 7);
     $componente = Livewire::withQueryParams(['vista' => 'mapa', 'ft' => 'Qaheptus alpha'])->test(PortalCatalogo::class)
         ->call('abrirCelda', -1.8910422, -77.765439)->call('navegarCelda', $fixture['taxon']);
     $detalle = $componente->get('detalleCelda');
-    expect($detalle['mostrarRegistros'])->toBeTrue()->and($detalle['registros'])->toHaveCount(6)->and($detalle['ultima'])->toBe(2);
-    $componente->assertSee('QA7-INV-1')->assertSee('Ejemplar de la selección')->call('paginarCelda', 2)->assertSee('QA7-INV-7');
-    expect($componente->get('detalleCelda')['registros'])->toHaveCount(1);
+    expect($detalle['mostrarRegistros'])->toBeTrue()->and($detalle['registros'])->toHaveCount(6)->and($detalle['ultima'])->toBe(2)
+        ->and(array_column($detalle['registros_arbol'], 'especimen_id'))->toBe($fixture['ids'])
+        ->and(array_unique(array_column($detalle['registros_arbol'], 'padre_id')))->toBe([$fixture['taxon']]);
+    $componente->assertSee('QA7-INV-1')->assertSee('Ejemplar de la selección')
+        ->assertDontSee('Páginas de ejemplares de la ubicación')->call('paginarCelda', 2)->assertSet('paginaCelda', 1);
+    foreach ($fixture['ids'] as $i => $id) {
+        $componente->call('navegarCelda', 'registro:'.$id)->assertSee('QA7-INV-'.($i + 1));
+        $seleccionado = $componente->get('detalleCelda');
+        expect($seleccionado['registro_seleccionado']['especimen_id'])->toBe($id)
+            ->and($seleccionado['seleccionado']['taxon_id'])->toBe($fixture['taxon'])
+            ->and(array_column($seleccionado['registros'], 'especimen_id'))->toBe([$id]);
+    }
+    $componente->call('cambiarVistaCelda', 'registros')->assertSet('paginaCelda', 1)->assertSee('Páginas de ejemplares de la ubicación');
+    expect(array_column($componente->get('detalleCelda')['registros'], 'especimen_id'))->toBe(array_slice($fixture['ids'], 0, 6));
+    $componente->call('paginarCelda', 2)->assertSet('paginaCelda', 2)->assertSee('QA7-INV-7');
+    expect(array_column($componente->get('detalleCelda')['registros'], 'especimen_id'))->toBe([$fixture['ids'][6]]);
 })->with(['familia', 'genero', 'especie']);
 
 test('QA7 retirar mes, altitud o caja conserva el resto de filtros y el historial', function (): void {
@@ -229,7 +265,7 @@ test('QA7 retirar mes, altitud o caja conserva el resto de filtros y el historia
 });
 
 test('QA7 el diccionario público distingue perfiles, INEC y vacíos', function (): void {
-    $this->get(route('portal.diccionario-exportacion'))->assertOk()->assertSee('hubdigital.portal-publico/2.0')
+    $this->get(route('portal.diccionario-exportacion'))->assertOk()->assertSee('hubdigital.portal-publico/3.0')
         ->assertSee('Código INEC')->assertSee('georeferenceRemarks')->assertSee('Vacío no significa cero')->assertSee('typeStatus');
 });
 

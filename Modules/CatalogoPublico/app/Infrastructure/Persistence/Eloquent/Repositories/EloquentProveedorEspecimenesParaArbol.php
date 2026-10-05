@@ -376,12 +376,6 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
         if ($filtros->provincia !== null) {
             $query->where('ed.state_province_visible', true)->whereRaw(NormalizacionGeografica::sql('te.state_province').' = ?', [NormalizacionGeografica::normalizar($filtros->provincia)]);
         }
-        if ($filtros->provinciaExcluida !== null) {
-            // Un dato ausente/reservado no acredita que la colecta esté fuera de una provincia.
-            $query->where('ed.state_province_visible', true)->whereRaw(CalidadDatoPublico::textoValido('te.state_province'))
-                ->whereRaw(NormalizacionGeografica::sql("replace(te.state_province, chr(160), ' ')")." <> ''")
-                ->whereRaw(NormalizacionGeografica::sql('te.state_province').' <> ?', [NormalizacionGeografica::normalizar($filtros->provinciaExcluida)]);
-        }
 
         // Colector — búsqueda parcial case-insensitive
         if ($filtros->colectores !== []) {

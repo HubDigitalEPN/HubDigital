@@ -33,6 +33,7 @@ final readonly class RegistroExportable
         public readonly ?string $localityExcel,
         public readonly ?string $localityInec,
         public readonly ?string $localityInecReference,
+        public readonly ?string $occurrenceStatusVerbatim,
     ) {}
 
     public static function desde(
@@ -82,7 +83,7 @@ final readonly class RegistroExportable
             occurrenceID: $visibilidad->occurrenceIDVisible ? $occurrenceID : '',
             scientificName: $visibilidad->scientificNameVisible ? $scientificName : '',
             typeStatus: $aplicar($visibilidad->typeStatusVisible, $typeStatus),
-            occurrenceStatus: $aplicar($visibilidad->occurrenceStatusVisible, $occurrenceStatus),
+            occurrenceStatus: $aplicar($visibilidad->occurrenceStatusVisible, EstadoOcurrenciaPublico::deteccion($occurrenceStatus)),
             individualCount: $aplicar($visibilidad->individualCountVisible, $individualCount),
             localityName: $aplicar($visibilidad->localityNameVisible, $localityName),
             country: $aplicar($visibilidad->countryVisible, $country),
@@ -104,6 +105,7 @@ final readonly class RegistroExportable
             localityExcel: $aplicar($visibilidad->localityNameVisible, $localityExcel),
             localityInec: $aplicar($visibilidad->localityNameVisible, $localityInec),
             localityInecReference: $aplicar($visibilidad->localityNameVisible, $localityInecReference),
+            occurrenceStatusVerbatim: $aplicar($visibilidad->occurrenceStatusVisible, $occurrenceStatus),
         );
     }
 
@@ -143,6 +145,7 @@ final readonly class RegistroExportable
             'localityExcel' => $this->localityExcel ?? '',
             'localityInec' => $this->localityInec ?? '',
             'localityInecReference' => $this->localityInecReference ?? '',
+            'occurrenceStatusVerbatim' => $this->occurrenceStatusVerbatim ?? '',
             'exportProfile' => PerfilExportacionPublica::IDENTIFICADOR,
         ];
     }

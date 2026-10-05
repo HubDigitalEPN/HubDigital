@@ -14,6 +14,10 @@ const CirculoCoordenadaOriginal = L.CircleMarker.extend({
     },
 });
 const IconoCoordenadaOriginal = L.Marker.extend({
+    _animateZoom({zoom, center}) {
+        // La implementación base también redondea durante zoomanim.
+        this._setPos(this._map._latLngToNewLayerPoint(this._latlng, zoom, center));
+    },
     update() {
         if (this._icon && this._map) {
             const punto = this._map.project(this._latlng, this._map.getZoom()).subtract(this._map.getPixelOrigin());
@@ -261,7 +265,7 @@ const registrarDashboard = () => {
         };
     });
 
-    window.Alpine.data('portalDashboard', (celdas, filos) => {
+    window.Alpine.data('portalDashboard', (celdas = [], filos = {}) => {
         // Leaflet administra objetos mutables propios; no deben convertirse en proxies Alpine.
         let mapa = null;
         let capa = null;
@@ -275,13 +279,6 @@ const registrarDashboard = () => {
         enfocarTrasCambio: false,
         zoomMapa: 0,
         errorTeselas: false,
-        ubicacionElegida: '',
-        ubicacionesOriginales: agrupador.originales,
-        abrirUbicacionElegida(invocador) {
-            const punto = this.ubicacionesOriginales[Number(this.ubicacionElegida)];
-            if (this.ubicacionElegida === '' || !punto) return;
-            return this.abrirUbicacion(punto.lat, punto.lon, punto.cantidad, invocador);
-        },
         reintentarTeselas() { teselasFallidas.clear(); this.errorTeselas = false; teselas?.redraw(); },
         colores: ['#17699b', '#d17d28', '#568c59', '#8c62a5', '#b94e6b', '#71828d', '#a18a29', '#3f8d90'],
 
@@ -338,8 +335,6 @@ const registrarDashboard = () => {
             celdas = datos.celdas;
             filos = datos.filos;
             agrupador = crearAgrupadorMapa(celdas);
-            this.ubicacionesOriginales = agrupador.originales;
-            this.ubicacionElegida = '';
             this.encuadrar();
             this.programarPintado();
             if (this.enfocarTrasCambio) this.$nextTick(() => {

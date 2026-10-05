@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\CatalogoPublico\Application\UseCases\ConsultarChatBot;
 
+use App\Support\CatalogoTerritorialEcuador;
 use Modules\CatalogoPublico\Infrastructure\ElegibilidadGeograficaPortal;
 use Modules\CatalogoPublico\Infrastructure\CalidadDatoPublico;
 
@@ -19,13 +20,7 @@ final class DetectorEntidadesChat
     {
         $operador = app(OperadorProvinciaChat::class);
         if (! $operador->solicitado($pregunta)) return [];
-        $provincias = DB::table('taxonomia.especimenes as e')
-            ->join('divulgacion.especimenes_divulgables as d', 'd.especimen_id', '=', 'e.id')
-            ->where('d.publicado', true)->where('d.state_province_visible', true)
-            ->whereRaw(ElegibilidadGeograficaPortal::sql('e', 'd'))->whereRaw(CalidadDatoPublico::textoValido('e.state_province'))
-            ->distinct()->orderBy('e.state_province')->pluck('e.state_province')->all();
-
-        return $operador->extraer($pregunta, NormalizacionGeografica::nombresDisponibles($provincias));
+        return ['error_consulta' => 'La exclusión de provincias ya no está disponible. Selecciona una Provincia para incluir sus registros. No he calculado un conteo. No he preparado filtros parciales.'];
     }
 
     /** @return array{taxon?:string,provincia?:string,localidad?:string,pais?:string,codigo?:string} */
@@ -64,6 +59,11 @@ final class DetectorEntidadesChat
             // equivalentes, sin depender de la extracción básica o del orden SQL.
             if ($nombres !== []) $geografias[$clave] ??= $nombres[0];
         }
+        // La provincia pedida sigue siendo un criterio aunque no queden registros
+        // públicos allí. El catálogo territorial no consulta ubicaciones reservadas
+        // ni afirma que existan ejemplares en esa provincia.
+        $provinciaSolicitada = $this->provinciaTerritorialSolicitada($normal);
+        if ($provinciaSolicitada !== null) $geografias['provincia'] ??= $provinciaSolicitada;
         $resultado = array_replace($resultado, $geografias);
         // Un lugar usado como provincia/país no agrega otro predicado por coincidir con una localidad.
         if (isset($resultado['localidad'])) {
@@ -79,7 +79,9 @@ final class DetectorEntidadesChat
         }
         if (isset($resultado['taxon']) && ! DB::table('taxonomia.taxones')->whereRaw('lower(nombre_cientifico) = lower(?)', [$resultado['taxon']])->exists()) {
             foreach (['provincia', 'localidad', 'pais'] as $clave) {
-                if (isset($resultado[$clave]) && str_starts_with($this->texto->normalizar($resultado[$clave]), $this->texto->normalizar($resultado['taxon']))) {
+                if (isset($resultado[$clave]) && (str_starts_with($this->texto->normalizar($resultado[$clave]), $this->texto->normalizar($resultado['taxon']))
+                    || ($clave === 'provincia' && $provinciaSolicitada !== null
+                        && preg_match('/\b'.preg_quote($this->texto->normalizar($resultado['taxon']), '/').'\b/u', $this->texto->normalizar($provinciaSolicitada))))) {
                     unset($resultado['taxon']);
                     break;
                 }
@@ -97,6 +99,20 @@ final class DetectorEntidadesChat
             unset($resultado['localidad']);
         }
         return $resultado;
+    }
+
+    private function provinciaTerritorialSolicitada(string $preguntaNormalizada): ?string
+    {
+        foreach (CatalogoTerritorialEcuador::provincias() as $provincia) {
+            $nombre = preg_quote($this->texto->normalizar($provincia['nombre']), '/');
+            $explicita = preg_match('/\bprovincia\s+(?:de\s+)?'.$nombre.'\b/u', $preguntaNormalizada);
+            // Una mención explícita de localidad no se interpreta como provincia.
+            if (! $explicita && preg_match('/\b(?:localidad|sitio)\s+(?:de\s+)?'.$nombre.'\b/u', $preguntaNormalizada)) continue;
+            if ($explicita || preg_match('/\b(?:en|de)\s+(?:(?:la\s+)?provincia\s+(?:de\s+)?)?'.$nombre.'\b/u', $preguntaNormalizada)) {
+                return $provincia['nombre'];
+            }
+        }
+        return null;
     }
 
     private function entidadesBasicas(string $pregunta): array
@@ -120,7 +136,7 @@ final class DetectorEntidadesChat
         preg_match_all('/\b[A-ZÁÉÍÓÚ][a-záéíóúñ]{2,}\b/u', $pregunta, $matches);
         $omitidos = ['son', 'por', 'puedes', 'dame', 'estoy', 'solo', 'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre', 'no', 'esa', 'ese', 'esta', 'este', 'como', 'que', 'cual', 'cuantos', 'cuantas', 'tienen', 'tengo', 'quiero', 'busca', 'buscar', 'especimenes', 'registros', 'genero', 'familia', 'hola', 'buenos', 'buenas', 'gracias', 'necesito', 'donde', 'muestra', 'existe'];
         $result = [];
-        $omitidos = [...$omitidos, 'excel', 'xlsx', 'csv', 'despues', 'tabla', 'mapa', 'pasos', 'paso', 'publicos', 'publicas', 'catalogo', 'formato', 'datos', 'seleccion', 'aqui', 'son', 'recolecto', 'filtros', 'fuera', 'quien', 'primero', 'ultimo', 'finalmente', 'muestrame', 'dime', 'explicame', 'resto'];
+        $omitidos = [...$omitidos, 'para', 'con', 'ahora', 'estos', 'esas', 'estas', 'esos', 'aplicada', 'actual', 'pagina', 'excel', 'xlsx', 'csv', 'despues', 'tabla', 'mapa', 'pasos', 'paso', 'publicos', 'publicas', 'catalogo', 'formato', 'datos', 'seleccion', 'aqui', 'son', 'recolecto', 'filtros', 'fuera', 'quien', 'primero', 'ultimo', 'finalmente', 'muestrame', 'dime', 'explicame', 'resto'];
         foreach ($matches[0] as $principal) {
             if (in_array($this->texto->normalizar($principal), $omitidos, true)) {
                 continue;

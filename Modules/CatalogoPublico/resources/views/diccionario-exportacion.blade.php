@@ -1,11 +1,11 @@
 @component('layouts.portal', ['title' => 'Diccionario de descargas · Laboratorio de Invertebrados EPN'])
     <div class="mx-auto w-full max-w-5xl px-4 py-8">
         <h1 class="font-display text-3xl font-bold">Diccionario de descargas públicas</h1>
-        <p class="my-4">Perfil <code>{{ \Modules\CatalogoPublico\Domain\ValueObjects\PerfilExportacionPublica::IDENTIFICADOR }}</code> · revisión 4 de octubre de 2026. CSV y XLSX conservan campos distintos; ninguno acredita por sí solo la exactitud científica del dato.</p>
+        <p class="my-4">Perfil <code>{{ \Modules\CatalogoPublico\Domain\ValueObjects\PerfilExportacionPublica::IDENTIFICADOR }}</code> · revisión 5 de octubre de 2026. CSV y XLSX conservan campos distintos; ninguno acredita por sí solo la exactitud científica del dato.</p>
         <p class="mb-4">CSV: texto UTF-8 con separador punto y coma, toda la selección aplicada. XLSX: libro de la especie seleccionada con todas sus páginas; identificadores como texto, fechas y números tipados cuando son válidos. Un vacío significa dato no informado o reservado. La incertidumbre desconocida nunca se sustituye por cero. N.º de catálogo puede repetirse: no lo uses como clave única para unir filas.</p>
         <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Equivalencias CSV y XLSX">
             <table class="w-full border-collapse text-left text-sm">
-                <caption class="py-3 text-left font-semibold">Columnas, tipos y equivalencias del perfil 2.0</caption>
+                <caption class="py-3 text-left font-semibold">Columnas, tipos y equivalencias de {{ \Modules\CatalogoPublico\Domain\ValueObjects\PerfilExportacionPublica::IDENTIFICADOR }}</caption>
                 <thead><tr><th scope="col" class="p-2">CSV</th><th scope="col" class="p-2">XLSX</th><th scope="col" class="p-2">Tipo y significado</th></tr></thead>
                 <tbody>
                 @foreach([
@@ -23,7 +23,8 @@
                     ['Referencia INEC', 'localityInecReference', 'Texto. Procedencia o cautela de la referencia administrativa.'],
                     ['Disposición', 'disposition', 'Texto. Situación del material, como in_collection u on_loan.'],
                     ['Perfil de exportación', 'exportProfile', 'Texto. Identificador de este contrato de intercambio.'],
-                    ['—', 'occurrenceStatus', 'Texto. Presencia o ausencia registrada; distinto de disposición y condición de tipo.'],
+                    ['—', 'occurrenceStatus', 'Texto. Detección o no detección durante la colecta: detected o notDetected. Los valores históricos present y absent se traducen respectivamente; un estado físico como destroyed o loaned no permite inferir detección y deja esta celda vacía.'],
+                    ['—', 'occurrenceStatusVerbatim', 'Texto. Extensión local: estado original de la fuente, conservado sin cambios. Puede describir el estado físico del material; no es una declaración de detección. Comparar con disposition y specimenNotes sin sobrescribirlos.'],
                     ['—', 'individualCount', 'Número de individuos, cuando se informa y se permite divulgar.'],
                     ['Localidad', 'localityName', 'Unión de área protegida, cantón o parroquia y sector, ruta o vía, según los datos curatoriales disponibles. localityExcel conserva el texto original y localityInec la referencia administrativa.'],
                     ['—', 'country', 'Texto. País de colecta informado.'],

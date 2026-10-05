@@ -7,7 +7,7 @@ namespace Modules\CatalogoPublico\Domain\ValueObjects;
 /** Esquema versionado de las descargas públicas; no implica un archivo Darwin Core completo. */
 final class PerfilExportacionPublica
 {
-    public const string IDENTIFICADOR = 'hubdigital.portal-publico/2.0';
+    public const string IDENTIFICADOR = 'hubdigital.portal-publico/3.0';
 
     public const array ENCABEZADOS_CSV = [
         'N.º catálogo', 'Taxón', 'Fecha', 'Localidad del Excel', 'Localidad INEC', 'Código INEC',
@@ -21,6 +21,6 @@ final class PerfilExportacionPublica
         'samplingProtocol', 'typeNotes', 'specimenNotes', 'stateProvince',
         'minimumElevationInMeters', 'maximumElevationInMeters', 'eventDate', 'caste', 'lifeStage',
         'disposition', 'georeferenceRemarks', 'coordinateUncertaintyInMeters',
-        'localityExcel', 'localityInec', 'localityInecReference', 'exportProfile',
+        'localityExcel', 'localityInec', 'localityInecReference', 'occurrenceStatusVerbatim', 'exportProfile',
     ];
 }

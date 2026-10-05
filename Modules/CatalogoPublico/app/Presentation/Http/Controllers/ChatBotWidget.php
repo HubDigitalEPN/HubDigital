@@ -53,7 +53,7 @@ final class ChatBotWidget extends Component
         $start = microtime(true);
         try {
             $previous = $contexto->obtener();
-            $output = $asistente->responder($pregunta, $handler, $previous['node_id'] ?? null, $previous['variants'] ?? [], $previous['entities'] ?? [], $seleccionPortal);
+            $output = $asistente->responder($pregunta, $handler, $previous['node_id'] ?? null, $previous['variants'] ?? [], $previous['entities'] ?? [], $seleccionPortal, $previous['solicitud_pendiente'] ?? null);
             $output['fuente'] ??= 'legacy';
             $contexto->guardar($previous, $output);
         } catch (QueryException $error) {

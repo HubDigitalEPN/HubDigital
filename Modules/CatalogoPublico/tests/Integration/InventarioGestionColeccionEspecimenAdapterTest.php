@@ -182,7 +182,7 @@ test('traduce los nuevos campos de divulgación y resuelve sampling_protocol ví
         ->and($datos->elevationMaxM)->toBe(1500.0);
 });
 
-test('usa present como occurrenceStatus por defecto cuando el Supplier no tiene valor', function (): void {
+test('conserva occurrenceStatus no informado sin inferir presencia cuando el Supplier no tiene valor', function (): void {
     [, , $speciesId] = crearJerarquiaTaxonomica('Formicidae', 'Solenopsis', 'Solenopsis invicta');
     $occurrenceId = 'QA-'.Str::uuid();
 
@@ -194,7 +194,7 @@ test('usa present como occurrenceStatus por defecto cuando el Supplier no tiene 
     $adapter = app(InventarioGestionColeccionEspecimenAdapter::class);
     $datos = $adapter->buscarPorOccurrenceId($occurrenceId);
 
-    expect($datos->occurrenceStatus)->toBe('present');
+    expect($datos->occurrenceStatus)->toBe('');
 });
 
 test('QA6 conserva el tipo desconocido y la disposición sin convertirlos en tipo nomenclatural', function (): void {

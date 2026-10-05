@@ -51,21 +51,18 @@ function qa8Enlace(array $respuesta, string $vista): array
     throw new RuntimeException('Falta el enlace de la vista '.$vista);
 }
 
-test('QA8 001 las paráfrasis conservan exclusión, conjunto vacío y control no vacío tras un positivo', function (string $plantilla): void {
+test('QA8 001 las paráfrasis de exclusión retirada no calculan ni enlazan conjuntos parciales tras un positivo', function (string $plantilla): void {
     $fixture = qa8HormigasFixture(); Http::preventStrayRequests();
     $asistente = app(AsistentePortal::class); $handler = app(ConsultarChatBotHandler::class);
-    foreach (['Camponotus femoratus' => [], 'Camponotus' => [$fixture['ids'][2]]] as $taxon => $esperados) {
+    foreach (['Camponotus femoratus', 'Camponotus'] as $taxon) {
         $positiva = $asistente->responder('¿Cuántos registros de '.$taxon.' hay en Orellana?', $handler);
+        expect($positiva['datos']['total'])->toBe(3)->and(qa8Enlace($positiva, 'registros'))
+            ->toMatchArray(['ft' => $taxon, 'fprov' => 'Orellana'])->not->toHaveKey('fxprov');
         foreach ([[], $positiva['entidades']] as $contexto) {
             $respuesta = $asistente->responder(sprintf($plantilla, $taxon), $handler, contextoCatalogo: $contexto);
-            expect($respuesta['datos']['total'])->toBe(count($esperados))
-                ->and($respuesta['texto'])->toContain('Provincia excluida: Orellana', 'provincias públicas informadas')
-                ->and($respuesta['entidades'])->toMatchArray(['taxon' => $taxon, 'provincia_excluida' => 'Orellana'])->not->toHaveKey('provincia');
-            $p = qa8Enlace($respuesta, 'registros');
-            expect($p)->toMatchArray(['ft' => $taxon, 'fxprov' => 'Orellana'])->not->toHaveKey('fprov');
-            Livewire::withQueryParams($p)->test(PortalCatalogo::class)
-                ->assertViewHas('registrosVista', fn ($r) => array_column($r, 'especimen_id') === $esperados)
-                ->assertViewHas('totalRegistrosVista', count($esperados));
+            expect($respuesta['intent'])->toBe('catalogo.aclaracion')->and($respuesta)->not->toHaveKey('datos')
+                ->and($respuesta['texto'])->toContain('exclusión de provincias ya no está disponible')
+                ->and($respuesta['opciones'])->toBe([])->and($respuesta['entidades'])->not->toHaveKey('provincia_excluida');
         }
     }
     Http::assertNothingSent();
@@ -87,8 +84,8 @@ test('QA8 Q11 Q12 conserva taxón en la elipsis y distingue coincidencias textua
     $chat->set('pregunta', '¿Cuántos registros de Camponotus femoratus hay en Orellana?')->call('enviar');
     expect($chat->get('mensajes')[1]['texto'])->toContain('3 registros publicados');
     $chat->set('pregunta', '¿Y cuántos no son de Orellana?')->call('enviar');
-    expect($chat->get('mensajes')[3]['texto'])->toContain('No encontré registros', 'Provincia excluida: Orellana');
-    expect(qa8Enlace(['opciones' => $chat->get('mensajes')[3]['opciones']], 'registros'))->toMatchArray(['ft' => 'Camponotus femoratus', 'fxprov' => 'Orellana'])->not->toHaveKey('fprov');
+    expect($chat->get('mensajes')[3]['texto'])->toContain('exclusión de provincias ya no está disponible');
+    expect($chat->get('mensajes')[3]['opciones'])->toBe([]);
     Http::assertNothingSent();
 });
 
@@ -97,8 +94,10 @@ test('QA8 las provincias vacías o desconocidas no invalidan un operador conocid
     $consulta = app(ConsultaCatalogoPublico::class);
     foreach (['', '  ', "\u{00a0}", 'desconocida', null] as $provincia) {
         DB::table('taxonomia.especimenes')->where('id', $fixture['ids'][3])->update(['state_province' => $provincia]);
-        expect($consulta->responder('Camponotus femoratus fuera de Orellana')['datos']['total'])->toBe(0)
-            ->and($consulta->responder('Camponotus fuera de Orellana')['datos']['total'])->toBe(1);
+        expect($consulta->responder('¿Cuántos registros de Camponotus femoratus hay en Orellana?')['datos']['total'])->toBe(2)
+            ->and($consulta->responder('¿Cuántos registros de Camponotus hay en Napo?')['datos']['total'])->toBe(1);
+        $retirada = $consulta->responder('Camponotus femoratus fuera de Orellana');
+        expect($retirada)->not->toHaveKey('datos')->and($retirada['opciones'])->toBe([]);
     }
 });
 

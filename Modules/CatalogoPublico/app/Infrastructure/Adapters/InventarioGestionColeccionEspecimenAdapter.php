@@ -499,7 +499,7 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
             specimenNotes: $fila->specimen_notes,
             samplingProtocol: $fila->sampling_protocol ?? null, // Prioridad del protocolo original por ejemplar.
             recordedBy: $fila->colector,          // ACL: colector del Supplier → recordedBy del Customer
-            occurrenceStatus: $fila->occurrence_status ?? 'present',
+            occurrenceStatus: $fila->occurrence_status ?? '',
             taxonomiaEnRevision: (bool) ($fila->taxonomia_en_revision ?? false),
             family: $fila->family,
             genus: $fila->genus,

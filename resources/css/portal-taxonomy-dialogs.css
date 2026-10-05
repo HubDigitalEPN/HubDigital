@@ -8,6 +8,20 @@
 .atlas-dendrogram-node { right:auto; box-sizing:border-box; padding:.25rem .5rem .25rem .8rem; background:#fff; }
 .atlas-dendrogram-label strong { font-size:.86rem; }
 .atlas-dendrogram-label small { font-size:.65rem; }
+.atlas-taxonomic-tree { width:100%; }
+.atlas-taxonomic-tree ul { list-style:none; margin:0; padding:0; }
+.atlas-tree-roots,.atlas-tree-children { display:flex; flex-wrap:wrap; align-items:flex-start; gap:.6rem; }
+.atlas-tree-branch { min-width:0; flex:1 1 10.5rem; max-width:100%; }
+.atlas-tree-branch--vertical { width:100%; flex-basis:100%; }
+.atlas-tree-children--vertical { display:block; padding-top:.5rem!important; border-top:1px solid #9cbed1; }
+.atlas-tree-branch--horizontal { display:flex; flex-wrap:wrap; align-items:flex-start; gap:.6rem; }
+.atlas-tree-children--horizontal { flex:1 1 11rem; padding-left:.7rem!important; border-left:1px solid #9cbed1; }
+.atlas-taxonomic-tree .atlas-dendrogram-node { position:relative; left:auto; top:auto; display:block; flex:0 0 10.5rem; width:10.5rem; max-width:100%; min-height:3.4rem; height:auto; padding:.4rem .6rem .4rem 1rem; }
+.atlas-tree-branch--vertical > .atlas-dendrogram-node { margin-bottom:.5rem; }
+.atlas-tree-fold { flex:1 1 11rem; min-width:0; }
+.atlas-tree-fold > summary { padding:.45rem; cursor:pointer; color:#154d6f; }
+.atlas-tree-fold > summary:focus-visible { outline:2px solid #17699b; outline-offset:2px; }
+.atlas-taxonomic-tree [data-rango="registro"] { background:#f0f7fb; font-style:normal; }
 .atlas-taxon-information { padding-left:1rem; }
 .atlas-taxon-information > h3 { margin-bottom:.6rem; }
 .atlas-taxon-information .atlas-cell-pagination { margin-top:.75rem; }

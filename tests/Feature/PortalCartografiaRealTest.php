@@ -271,7 +271,7 @@ test('el icono registros del modal muestra toda la ubicación en páginas de sei
         'Latitud' => (string) $latitud, 'Longitud' => (string) $longitud,
         'Referencia de coordenadas' => 'Referencia GPS original', 'Elevación mín. (m)' => '0', 'Elevación máx. (m)' => '120',
         'Método de colecta' => 'Red '.$f['prefijo'], 'Individuos' => '0', 'Condición de tipo' => 'Paratipo', 'Disposición' => 'En la colección',
-        'Notas del espécimen' => $notaPublica, 'Estado' => 'Presente', 'Casta' => 'obrera', 'Estadio' => 'Adulto',
+        'Notas del espécimen' => $notaPublica, 'Estado original' => 'Presente', 'Casta' => 'obrera', 'Estadio' => 'Adulto',
     ])->toHaveKeys(['Localidad INEC', 'Referencia INEC', 'Notas de tipo', 'Fotografías publicadas']);
     $privados = $celdasFila($dom, $f['ids'][0]);
     expect($privados['Colector'])->toBe('—')->and($privados['Localidad'])->toBe('—')
@@ -296,8 +296,10 @@ test('el icono registros del modal muestra toda la ubicación en páginas de sei
     $domArbol = $leerDom($componente->html());
     expect($domArbol->query('//dialog//table[@class="atlas-record-table"]')->length)->toBe(0)
         ->and($domArbol->query('//dialog//aside[contains(@class,"atlas-taxon-information")]')->length)->toBe(1)
-        ->and($domArbol->query('//dialog//section[contains(@class,"atlas-tree-section")]//svg')->length)->toBe(1)
+        ->and($domArbol->query('//dialog//section[contains(@class,"atlas-tree-section")]//ul[@class="atlas-tree-roots"]')->length)->toBe(1)
+        ->and($domArbol->query('//dialog//button[@data-rango="registro"]')->length)->toBe(14)
         ->and($componente->instance()->detalleCelda['seleccionado']['taxon_id'])->toBe($f['taxones'][0]);
+    $componente->call('paginarCelda', 2)->assertSet('paginaCelda', 1);
     // Sin filtro de filo ni taxón, el material no publicado del mismo punto sigue excluido.
     $sinFiltroTaxonomico = Livewire::withQueryParams(['vista' => 'mapa', 'fprov' => 'Pichincha'])
         ->test(PortalCatalogo::class)->call('abrirCelda', $latitud, $longitud)->call('cambiarVistaCelda', 'registros');
@@ -341,18 +343,22 @@ test('el árbol conserva ancestros y ramas hermanas y selecciona su información
     expect($componente->instance()->detalleCelda['seleccionado']['nombre'])->toBe($f['prefijo'].' beta');
 });
 
-test('un punto de una sola especie conserva su cadena real sin fabricar bifurcaciones', function (): void {
+test('un punto de una sola especie conserva su cadena real y muestra cada ejemplar como hoja', function (): void {
     $f = cartografiaRealFixture();
     $componente = Livewire::withQueryParams(['vista' => 'mapa', 'fph' => $f['filo']])->test(PortalCatalogo::class)
         ->call('abrirCelda', -0.25, -78.5);
     $detalle = $componente->instance()->detalleCelda;
-    expect($detalle['arbol_hojas_total'])->toBe(1)->and($detalle['arbol_ultima'])->toBe(1)
-        ->and($detalle['arbol_registros_total'])->toBe(2)->and($detalle['arbol'])->toHaveCount(2)
-        ->and(array_column($detalle['arbol'], 'taxon_id'))->toBe([$f['filo'], $f['taxones'][0]])
-        ->and(array_column($detalle['arbol'], 'padre_id'))->toBe([null, $f['filo']]);
+    $taxones = array_values(array_filter($detalle['arbol'], static fn (array $n): bool => $n['rango'] !== 'registro'));
+    expect($detalle['arbol_hojas_total'])->toBe(2)
+        ->and($detalle['arbol_registros_total'])->toBe(2)->and($detalle['arbol'])->toHaveCount(4)
+        ->and(array_column($taxones, 'taxon_id'))->toBe([$f['filo'], $f['taxones'][0]])
+        ->and(array_column($taxones, 'padre_id'))->toBe([null, $f['filo']])
+        ->and(array_column($detalle['registros_arbol'], 'especimen_id'))->toEqualCanonicalizing(array_slice($f['ids'], 0, 2))
+        ->and(array_column($detalle['registros_arbol'], 'padre_id'))->toBe([$f['taxones'][0], $f['taxones'][0]])
+        ->and($detalle)->not->toHaveKey('arbol_pagina');
 });
 
-test('abrir un punto ofrece seis linajes completos por página y permite seleccionar directamente su especie propia', function (): void {
+test('abrir un punto ofrece todos los linajes y registros sin paginar el árbol y conserva cada permiso', function (): void {
     $f = cartografiaRealFixture();
     $reino = (string) Str::uuid(); $familia = (string) Str::uuid(); $genero = (string) Str::uuid();
     $suborden = (string) Str::uuid(); $subfamilia = (string) Str::uuid(); $tribu = (string) Str::uuid();
@@ -372,7 +378,6 @@ test('abrir un punto ofrece seis linajes completos por página y permite selecci
     $original = (array) DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->first();
     unset($original['coordenadas_otras_regiones'], $original['busqueda_global']);
     $taxonesReales = [$reino, $f['filo'], $suborden, $familia, $subfamilia, $tribu, $genero, ...$f['taxones']];
-    $especimenPorTaxon = [];
     foreach (range(0, 11) as $i) {
         $taxonId = (string) Str::uuid(); $id = (string) Str::uuid(); $codigo = 'QA-LINAJE-'.Str::uuid();
         DB::table('taxonomia.taxones')->insert(['id' => $taxonId, 'padre_id' => $genero,
@@ -381,7 +386,7 @@ test('abrir un punto ofrece seis linajes completos por página y permite selecci
             'codigo_catalogo' => $codigo, 'occurrence_id' => $codigo]));
         DB::table('divulgacion.especimenes_divulgables')->insert(['id' => (string) Str::uuid(), 'especimen_id' => $id,
             'publicado' => true, 'scientific_name_visible' => $i !== 11]);
-        if ($i !== 11) { $taxonesReales[] = $taxonId; $especimenPorTaxon[$taxonId] = $id; }
+        if ($i !== 11) $taxonesReales[] = $taxonId;
     }
     $componente = Livewire::withQueryParams(['vista' => 'mapa', 'fco' => $f['prefijo']])->test(PortalCatalogo::class)
         ->call('abrirCelda', -0.25, -78.5);
@@ -391,15 +396,16 @@ test('abrir un punto ofrece seis linajes completos por página y permite selecci
         return array_values(array_filter($arbol, static fn (array $n): bool => ! in_array($n['id'], $padres, true)));
     };
     expect($detalle['seleccionado'])->toBeNull()->and($detalle['registros'])->toBe([])
-        ->and($detalle['arbol_hojas_total'])->toBe(14)->and($detalle['arbol_ultima'])->toBe(3)
-        ->and($detalle['arbol_registros_total'])->toBe(15)->and($detalle['arbol_pagina'])->toBe(1)
-        ->and($hojas($detalle['arbol']))->toHaveCount(6)
-        ->and(array_values(array_unique(array_column($detalle['arbol'], 'rango'))))->toEqualCanonicalizing(['reino', 'phylum', 'suborden', 'familia', 'subfamilia', 'tribu', 'genero', 'especie'])
-        ->and(array_diff(array_column($detalle['arbol'], 'taxon_id'), $taxonesReales))->toBe([]);
+        ->and($detalle['arbol_hojas_total'])->toBe(15)
+        ->and($detalle['arbol_registros_total'])->toBe(15)->and($detalle)->not->toHaveKey('arbol_pagina')->not->toHaveKey('arbol_ultima')
+        ->and($hojas($detalle['arbol']))->toHaveCount(15)
+        ->and(array_values(array_unique(array_column($detalle['arbol'], 'rango'))))->toEqualCanonicalizing(['reino', 'phylum', 'suborden', 'familia', 'subfamilia', 'tribu', 'genero', 'especie', 'registro'])
+        ->and(array_diff(array_filter(array_column($detalle['arbol'], 'taxon_id')), $taxonesReales))->toBe([]);
     $idsVisibles = array_column($detalle['arbol'], 'id');
     foreach ($detalle['arbol'] as $nodo) {
         if ($nodo['padre_id'] !== null) expect($idsVisibles)->toContain($nodo['padre_id']);
-        expect(end($detalle['rutas'][$nodo['id']])['taxon_id'])->toBe($nodo['taxon_id']);
+        if ($nodo['rango'] !== 'registro') expect(end($detalle['rutas'][$nodo['id']])['taxon_id'])->toBe($nodo['taxon_id']);
+        else expect($nodo['taxon_id'])->toBeNull()->and($nodo['total'])->toBe(1);
     }
     $ramasAlfa = array_values(array_filter($detalle['arbol'], static fn (array $n): bool => $n['taxon_id'] === $f['taxones'][0]));
     expect($ramasAlfa)->toHaveCount(2)->and($ramasAlfa[0]['id'])->not->toBe($ramasAlfa[1]['id']);
@@ -414,7 +420,7 @@ test('abrir un punto ofrece seis linajes completos por página y permite selecci
         ->and($padrePrivado['taxon_id'])->toBe($tribu)
         ->and(array_column($rutaPrivada, 'taxon_id'))->not->toContain($familia, $genero)
         ->and(array_column($rutaPrivada, 'nombre'))->not->toContain($f['prefijo'].' Familia', $f['prefijo'].' Genero');
-    $idFueraDePagina = collect($detalle['arbol'])->firstWhere('taxon_id', $f['taxones'][1])['id'];
+    $idHermano = collect($detalle['arbol'])->firstWhere('taxon_id', $f['taxones'][1])['id'];
     $componente->call('navegarCelda', $privada['id']);
     $seleccion = $componente->instance()->detalleCelda;
     expect($seleccion['informacion']['cantidad'])->toBe(1)
@@ -431,40 +437,41 @@ test('abrir un punto ofrece seis linajes completos por página y permite selecci
         ->and($seleccion['informacion']['jerarquia']['subfamily'])->toBe($f['prefijo'].' Subfamilia')
         ->and($seleccion['informacion']['jerarquia']['tribe'])->toBe($f['prefijo'].' Tribu')
         ->and(array_column($seleccion['registros'], 'especimen_id'))->toBe([$f['ids'][1]])
-        ->and($seleccion['arbol_hojas_total'])->toBe(14);
-    $primerasHojas = array_column($hojas($detalle['arbol']), 'id');
-    $componente->call('paginarArbolCelda', 2);
-    $intermedia = $componente->instance()->detalleCelda;
-    $hojasIntermedias = array_column($hojas($intermedia['arbol']), 'id');
-    expect($intermedia['arbol_pagina'])->toBe(2)->and($hojasIntermedias)->toHaveCount(6)
-        ->and(array_intersect($primerasHojas, $hojasIntermedias))->toBe([])
-        ->and(array_column($intermedia['registros'], 'especimen_id'))->toBe([$f['ids'][1]]);
-    $componente->call('paginarArbolCelda', 3);
-    $segunda = $componente->instance()->detalleCelda;
-    expect($segunda['arbol_pagina'])->toBe(3)->and($hojas($segunda['arbol']))->toHaveCount(2)
-        ->and(array_intersect($primerasHojas, array_column($hojas($segunda['arbol']), 'id')))->toBe([])
-        ->and(array_column($segunda['registros'], 'especimen_id'))->toBe([$f['ids'][1]])
-        ->and($segunda['rutas'])->not->toHaveKey($idFueraDePagina);
-    expect(count(array_unique([...$primerasHojas, ...$hojasIntermedias, ...array_column($hojas($segunda['arbol']), 'id')])))->toBe(14);
-    $componente->call('navegarCelda', $idFueraDePagina);
-    expect($componente->instance()->detalleCelda['seleccionado']['id'])->toBe($privada['id']);
-    $hoja = $hojas($segunda['arbol'])[0];
-    $componente->call('navegarCelda', $hoja['id']);
+        ->and($seleccion['arbol_hojas_total'])->toBe(15);
+    $componente->call('navegarCelda', $idHermano);
     $propia = $componente->instance()->detalleCelda;
-    expect($propia['seleccionado']['taxon_id'])->toBe($hoja['taxon_id'])
-        ->and($propia['informacion']['taxon'])->toBe($hoja['nombre'])->and($propia['informacion']['cantidad'])->toBe(1)
-        ->and(array_column($propia['registros'], 'especimen_id'))->toBe([$especimenPorTaxon[$hoja['taxon_id']]])
-        ->and(array_column($propia['informacion']['jerarquia']['ancestros'], 'nombre'))->toBe(array_column($propia['rutas'][$hoja['id']], 'nombre'))
+    expect($propia['seleccionado']['taxon_id'])->toBe($f['taxones'][1])
+        ->and($propia['informacion']['taxon'])->toBe($f['prefijo'].' beta')->and($propia['informacion']['cantidad'])->toBe(1)
+        ->and(array_column($propia['registros'], 'especimen_id'))->toBe([$f['ids'][2]])
+        ->and(array_column($propia['informacion']['jerarquia']['ancestros'], 'nombre'))->toBe(array_column($propia['rutas'][$idHermano], 'nombre'))
         ->and($propia['informacion']['jerarquia']['suborder'])->toBe($f['prefijo'].' Suborden')
         ->and($propia['informacion']['jerarquia']['subfamily'])->toBe($f['prefijo'].' Subfamilia')
-        ->and($propia['informacion']['jerarquia']['tribe'])->toBe($f['prefijo'].' Tribu')
-        ->and($propia['arbol_pagina'])->toBe(3);
+        ->and($propia['informacion']['jerarquia']['tribe'])->toBe($f['prefijo'].' Tribu');
+    foreach ($detalle['registros_arbol'] as $hoja) {
+        $componente->call('navegarCelda', $hoja['id']);
+        $registro = $componente->instance()->detalleCelda;
+        expect(array_column($registro['registros'], 'especimen_id'))->toBe([$hoja['especimen_id']])
+            ->and($registro['registro_seleccionado']['id'])->toBe($hoja['id'])
+            ->and($registro['arbol'])->toHaveCount(count($detalle['arbol']));
+        if ($hoja['padre_id'] === null) expect($registro['seleccionado'])->toBeNull()->and($registro['registros'][0]->scientific_name)->toBeNull();
+    }
+    $componente->assertDontSee($f['prefijo'].' RESERVADA')->call('navegarCelda', 'registro:'.Str::uuid());
+    expect($componente->instance()->detalleCelda['registro_seleccionado']['id'])->toBe($hoja['id']);
     $componente->call('volverCelda', 0);
-    expect($componente->instance()->detalleCelda['arbol_pagina'])->toBe(1)
-        ->and($componente->instance()->detalleCelda['seleccionado'])->toBeNull();
-    $componente->call('paginarArbolCelda', 2)->call('cerrarCelda')->assertSet('paginaArbolCelda', 1)
+    expect($componente->instance()->detalleCelda['seleccionado'])->toBeNull();
+    $componente->call('cerrarCelda')->assertSet('registroCeldaId', null)
         ->call('abrirCelda', -0.25, -78.5);
-    expect($componente->instance()->detalleCelda['arbol_pagina'])->toBe(1);
+    expect($componente->instance()->detalleCelda['arbol_hojas_total'])->toBe(15);
+    $componente->call('cambiarVistaCelda', 'registros');
+    $idsTabla = [];
+    foreach ([1, 2, 3] as $paginaTabla) {
+        $componente->call('paginarCelda', $paginaTabla);
+        $tabla = $componente->instance()->detalleCelda;
+        expect($tabla['registros'])->toHaveCount($paginaTabla === 3 ? 3 : 6);
+        $idsTabla = [...$idsTabla, ...array_column($tabla['registros'], 'especimen_id')];
+    }
+    expect($idsTabla)->toHaveCount(15)->and(array_values(array_unique($idsTabla)))->toHaveCount(15)
+        ->and($idsTabla)->toEqualCanonicalizing(array_column($detalle['registros_arbol'], 'especimen_id'));
 });
 
 test('las ramas del mismo taxón con permisos distintos conservan sus conteos y UUID propios', function (): void {

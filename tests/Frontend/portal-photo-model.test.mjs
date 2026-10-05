@@ -15,6 +15,21 @@ const observacion = (id, taxon, photos) => ({id, quality_grade: 'research', plac
 const local = (nombre = 'Camponotus sericeiventris', archivo = 'camponotus-sericeiventris') => ({kingdom: 'Animalia', phylum: 'Arthropoda', class: 'Insecta', order: 'Hymenoptera', family: 'Formicidae', genus: 'Camponotus', species: nombre, url: `/images/taxonomia/fotografias/${archivo}.webp?v=20261002-fuentes1`, alt: `Fotografía de referencia de ${nombre}.`, descripcion: '', foto_real: true, morfologia: true, autor: '', autor_fuente: 'Autor de referencia', fuente: 'https://www.inaturalist.org/observations/20', licencia: 'CC0 1.0', licencia_url: 'https://creativecommons.org/publicdomain/zero/1.0/'});
 const respuesta = datos => ({ok: true, headers: {get: () => null}, text: async () => JSON.stringify(datos)});
 
+test('mostrar una sola referencia local evita consultas para completar un mosaico', async () => {
+    const anterior = globalThis.fetch;
+    let peticiones = 0;
+    globalThis.fetch = async () => {peticiones++; throw new Error('No debe completar cuatro fotografías');};
+    try {
+        const estado = crearEstadoFotografias({species: 'Camponotus sericeiventris'}, [local()], 1);
+        estado.init();
+        await estado.cargar();
+        assert.equal(peticiones, 0);
+        assert.equal(estado.fotos.length, 1);
+        assert.equal(estado.cargando, false);
+        estado.destroy();
+    } finally {globalThis.fetch = anterior;}
+});
+
 test('la consulta conserva la identidad más específica y no reduce una especie a su familia', () => {
     const consulta = consultaFotografias({family: 'Formicidae', genus: 'Camponotus', species: '\u00a0Camponotus  femoratus\u00a0'});
     assert.equal(consulta.rank, 'species');
@@ -172,6 +187,38 @@ test('el cliente encadena únicamente tres GET públicos y conserva metadatos pe
         assert.equal(estado.error, '');
         assert.ok(!('ancestors' in estado.fotos[0]) && !('photos' in estado.fotos[0]));
         estado.destroy();
+    } finally {globalThis.fetch = anterior;}
+});
+
+test('consultar una fotografía no limita el mosaico posterior del mismo taxón en la caché', async () => {
+    const anterior = globalThis.fetch;
+    const a = especie('Camponotus cachefotografias', 71);
+    const ecuatoriana = observacion(710, a, [foto(711)]);
+    const global = {...observacion(720, a, [foto(712, 'cc0'), foto(713, 'cc0'), foto(714, 'cc0')]), place_ids: []};
+    const cola = [
+        {results: [a]}, {results: [ecuatoriana]}, {results: [a]},
+        {results: [a]}, {results: [ecuatoriana]}, {results: [global]}, {results: [a]},
+    ];
+    const llamadas = [];
+    globalThis.fetch = async url => {llamadas.push(new URL(url)); return respuesta(cola.shift());};
+    try {
+        const individual = crearEstadoFotografias({species: a.name}, [], 1);
+        await individual.cargar();
+        assert.equal(individual.fotos.length, 1);
+        assert.equal(llamadas.length, 3);
+        individual.destroy();
+        const mosaico = crearEstadoFotografias({species: a.name}, [], 4);
+        await mosaico.cargar();
+        assert.equal(mosaico.fotos.length, 4);
+        assert.equal(llamadas.length, 7);
+        assert.equal(llamadas[5].searchParams.get('photo_license'), 'cc0');
+        assert.equal(llamadas[5].searchParams.has('place_id'), false);
+        mosaico.destroy();
+        const repetida = crearEstadoFotografias({species: a.name}, [], 1);
+        await repetida.cargar();
+        assert.equal(repetida.fotos.length, 1);
+        assert.equal(llamadas.length, 7);
+        repetida.destroy();
     } finally {globalThis.fetch = anterior;}
 });
 

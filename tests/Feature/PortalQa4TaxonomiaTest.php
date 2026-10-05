@@ -259,7 +259,8 @@ test('QA4-007 la nota fuente conserva su material sin convertirse en rango, espe
     expect($detalle['arbol_registros_total'])->toBe(5)->and($detalle['curatoriales_total'])->toBe(4)
         ->and(array_column($detalle['arbol'], 'nombre'))->not->toContain(...$notas)
         ->and(array_column($detalle['arbol'], 'taxon_id'))->not->toContain($debajo)
-        ->and($detalle['arbol_hojas_total'])->toBe(1);
+        ->and($detalle['arbol_hojas_total'])->toBe(5)
+        ->and(array_column($detalle['registros_arbol'], 'especimen_id'))->toEqualCanonicalizing([$idValido, ...$fuente]);
     $componente->call('cambiarVistaCelda', 'registros');
     expect(array_column($componente->instance()->detalleCelda['registros'], 'especimen_id'))->toEqualCanonicalizing([$idValido, ...$fuente]);
     expect(DB::table('taxonomia.taxones')->where('id', $claseNota)->value('nombre_cientifico'))->toBe('trasladada '.$seleccion)
@@ -376,10 +377,25 @@ test('QA4-007 los ciclos y cadenas superiores a treinta nodos conservan material
     $componente = Livewire::withQueryParams(['vista' => 'mapa', 'fco' => $seleccion])->test(PortalCatalogo::class)
         ->call('abrirCelda', -0.4, -90.3)->call('cambiarVistaCelda', 'registros');
     $detalle = $componente->instance()->detalleCelda;
-    expect($detalle['arbol'])->toBe([])->and($detalle['arbol_registros_total'])->toBe(2)
+    expect($detalle['arbol'])->toHaveCount(2)
+        ->and(array_column($detalle['arbol'], 'rango'))->toBe(['registro', 'registro'])
+        ->and(array_column($detalle['arbol'], 'taxon_id'))->toBe([null, null])
+        ->and(array_column($detalle['arbol'], 'padre_id'))->toBe([null, null])
+        ->and(array_column($detalle['arbol'], 'especimen_id'))->toEqualCanonicalizing($ids)
+        ->and($detalle['rutas'])->toBe([])->and($detalle['seleccionado'])->toBeNull()
+        ->and($detalle['arbol_registros_total'])->toBe(2)
         ->and($detalle['curatoriales_total'])->toBe(2)
         ->and(array_column($detalle['registros'], 'especimen_id'))->toEqualCanonicalizing($ids);
     foreach ($detalle['registros'] as $fila) expect($fila->taxon_en_revision)->toBeTrue();
+    $componente->call('cambiarVistaCelda', 'grupos');
+    foreach ($ids as $id) {
+        $componente->call('navegarCelda', 'registro:'.$id);
+        $hoja = $componente->instance()->detalleCelda;
+        expect($hoja['registro_seleccionado']['especimen_id'])->toBe($id)
+            ->and($hoja['seleccionado'])->toBeNull()->and($hoja['rutas'])->toBe([])
+            ->and(array_column($hoja['registros'], 'especimen_id'))->toBe([$id])
+            ->and($hoja['registros'][0]->taxon_en_revision)->toBeTrue();
+    }
 });
 
 test('las opciones de filtros excluyen vacíos Unicode conservando material, nombres, permisos y alias', function (): void {

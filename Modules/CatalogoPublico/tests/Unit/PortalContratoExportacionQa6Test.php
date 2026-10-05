@@ -86,6 +86,40 @@ test('QA6 tipo y disposición tienen filtros independientes y conservan valores 
         ->and(FiltrosBusqueda::desde(['filtroTipo' => 'Estado curatorial no catalogado'])->tipo)->toBe('Estado curatorial no catalogado');
 });
 
+test('QA9 XLSX separa detección estado original disposición y notas en sus bytes', function (): void {
+    $casos = ['present' => 'detected', 'absent' => 'notDetected', 'detected' => 'detected', 'notDetected' => 'notDetected',
+        'destroyed' => '', 'loaned' => '', 'in_collection' => '', 'Estado por revisar' => '', '' => ''];
+    $filas = [];
+    foreach ($casos as $original => $deteccion) {
+        $filas[] = registroExportableQa6(['occurrenceStatus' => $original, 'typeStatus' => 'paratype',
+            'specimenNotes' => 'Destrucción para barcoding; conservar nota original.'])->toArray();
+    }
+    $contenido = (new PhpSpreadsheetGeneradorXlsxAdapter)->generar(RegistroExportable::encabezados(), $filas);
+    $archivo = tempnam(sys_get_temp_dir(), 'pest-qa9-estado-'); $libro = null;
+    try {
+        file_put_contents($archivo, $contenido);
+        $libro = IOFactory::load($archivo);
+        $valores = $libro->getActiveSheet()->toArray(null, false, false);
+        expect($valores[0])->toBe(PerfilExportacionPublica::ENCABEZADOS_XLSX)->toHaveCount(27);
+        foreach (array_keys($casos) as $i => $original) {
+            $fila = array_combine($valores[0], array_map(static fn ($v): string => (string) ($v ?? ''), $valores[$i + 1]));
+            expect($fila['occurrenceStatus'])->toBe($casos[$original])
+                ->and($fila['occurrenceStatusVerbatim'])->toBe($original)
+                ->and($fila['disposition'])->toBe('in_collection')->and($fila['typeStatus'])->toBe('paratype')
+                ->and($fila['specimenNotes'])->toBe('Destrucción para barcoding; conservar nota original.')
+                ->and($fila['exportProfile'])->toBe('hubdigital.portal-publico/3.0');
+        }
+    } finally {
+        $libro?->disconnectWorksheets(); unlink($archivo);
+    }
+    $flags = ConfiguracionVisibilidad::todosHabilitados()->toArray();
+    $flags['occurrenceStatusVisible'] = false;
+    $reservada = registroExportableQa6(['occurrenceStatus' => 'destroyed'], ConfiguracionVisibilidad::desde($flags))->toArray();
+    expect($reservada['occurrenceStatus'])->toBe('')->and($reservada['occurrenceStatusVerbatim'])->toBe('')
+        ->and($reservada['disposition'])->toBe('in_collection');
+    expect(registroExportableQa6(['occurrenceStatus' => null])->toArray()['occurrenceStatus'])->toBe('');
+});
+
 test('QA7 XLSX tipa incertidumbre métrica sin convertir desconocidos en cero', function (): void {
     $contenido = (new PhpSpreadsheetGeneradorXlsxAdapter)->generar(['occurrenceID', 'coordinateUncertaintyInMeters'], [
         ['001', '12.5'], ['002', null], ['003', 'desconocida'], ['004', 0],

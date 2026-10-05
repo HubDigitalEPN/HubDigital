@@ -16,7 +16,7 @@ function taxonesDistribucionQa6(): array
     ];
 }
 
-test('QA6 riqueza suma grafías y UUID sin duplicar nombres científicos ni incluir identificaciones inválidas', function (): void {
+test('QA6 provincia suma todos los registros públicos sin contar identificaciones inválidas como especies', function (): void {
     $filas = [
         (object) ['taxon_id' => 'a', 'provincia_clave' => 'narino', 'provincia' => 'Narino', 'registros' => '2'],
         (object) ['taxon_id' => 'b', 'provincia_clave' => 'narino', 'provincia' => 'Nariño', 'registros' => '3'],
@@ -32,10 +32,13 @@ test('QA6 riqueza suma grafías y UUID sin duplicar nombres científicos ni incl
     ];
     $resultado = ResumenDistribucionPublica::riqueza($filas, taxonesDistribucionQa6(), ['a', 'b', 'c', 'g', 'p']);
     expect($resultado)->toBe([
+        ['provincia' => 'Nariño', 'especies' => 2, 'registros' => 402],
         ['provincia' => 'Chocó', 'especies' => 2, 'registros' => 5],
-        ['provincia' => 'Nariño', 'especies' => 2, 'registros' => 6],
     ])->and(ResumenDistribucionPublica::riqueza(array_reverse($filas), taxonesDistribucionQa6(), ['a', 'b', 'c', 'g', 'p']))->toBe($resultado)
-        ->and(ResumenDistribucionPublica::riqueza($filas, taxonesDistribucionQa6(), []))->toBe([]);
+        ->and(ResumenDistribucionPublica::riqueza($filas, taxonesDistribucionQa6(), []))->toBe([
+            ['provincia' => 'Nariño', 'especies' => 0, 'registros' => 402],
+            ['provincia' => 'Chocó', 'especies' => 0, 'registros' => 5],
+        ]);
 });
 
 test('QA6 décadas cuentan nombres distintos dentro de cada década y mantienen orden cronológico y totales', function (): void {
@@ -52,6 +55,7 @@ test('QA6 décadas cuentan nombres distintos dentro de cada década y mantienen 
     ];
     $resultado = ResumenDistribucionPublica::decadas($filas, taxonesDistribucionQa6(), ['a', 'b', 'c', 'g', 'p']);
     expect($resultado)->toBe([
+        ['decada' => 1980, 'especies' => 0, 'registros' => 396],
         ['decada' => 1990, 'especies' => 2, 'registros' => 5],
         ['decada' => 2000, 'especies' => 2, 'registros' => 6],
     ])->and(ResumenDistribucionPublica::decadas(array_reverse($filas), taxonesDistribucionQa6(), ['a', 'b', 'c', 'g', 'p']))->toBe($resultado)

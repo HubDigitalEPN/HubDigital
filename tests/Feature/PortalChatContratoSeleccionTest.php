@@ -261,8 +261,9 @@ test('el enlace de ayuda usa filtros aplicados y no borradores inválidos ni una
     registrosParaContratoChat();
     $catalogo = Livewire::withQueryParams(['ft' => 'Chatobius', 'fprov' => 'Pichincha', 'vista' => 'registros'])->test(PortalCatalogo::class);
     $aplicada = ['ft' => 'Chatobius', 'fprov' => 'Pichincha'];
-    $catalogo->set('borradorFiltros.filtroProvincia', 'Esmeraldas')
-        ->set('borradorFiltros.filtroFechaDesde', '2001-01-01')->set('borradorFiltros.filtroFechaHasta', '2000-01-01');
+    $catalogo->set('borradorFiltros', array_replace($catalogo->get('borradorFiltros'), [
+        'filtroProvincia' => 'Esmeraldas', 'filtroFechaDesde' => '2001-01-01', 'filtroFechaHasta' => '2000-01-01',
+    ]));
     expect(seleccionChatRenderizada($catalogo))->toEqual($aplicada);
     $catalogo->call('aplicarBorrador')->assertHasErrors('filtroFechaHasta');
     expect(seleccionChatRenderizada($catalogo))->toEqual($aplicada);
@@ -271,7 +272,7 @@ test('el enlace de ayuda usa filtros aplicados y no borradores inválidos ni una
     $chat = Livewire::test(ChatBotWidget::class)->set('pregunta', 'Descargar resultados CSV')->call('enviar', seleccionChatRenderizada($catalogo));
     expect(parametrosEnlaceChat($chat->get('mensajes')[1]))->toEqual($aplicada + ['vista' => 'registros']);
 
-    $catalogo->set('borradorFiltros.filtroFechaDesde', '')->set('borradorFiltros.filtroFechaHasta', '')
+    $catalogo->set('borradorFiltros', array_replace($catalogo->get('borradorFiltros'), ['filtroFechaDesde' => '', 'filtroFechaHasta' => '']))
         ->call('aplicarBorrador')->assertHasNoErrors();
     $chat->call('sugerir', 'Descargar resultados CSV', seleccionChatRenderizada($catalogo));
     expect(parametrosEnlaceChat($chat->get('mensajes')[3]))->toMatchArray(['ft' => 'Chatobius', 'fprov' => 'Esmeraldas', 'vista' => 'registros'])

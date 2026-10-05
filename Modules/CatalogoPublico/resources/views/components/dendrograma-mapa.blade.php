@@ -1,14 +1,20 @@
 @props(['arbol', 'seleccionado' => null])
 @php
     $dendrograma = \Modules\CatalogoPublico\Application\Services\DendrogramaTaxonomico::calcular($arbol, $seleccionado === null ? null : (string) $seleccionado);
+    $hijosArbol = [];
+    $raicesArbol = [];
+    foreach ($dendrograma['nodos'] as $nodo) {
+        if ($nodo['padre_id'] === null) {
+            $raicesArbol[] = $nodo;
+        } else {
+            $hijosArbol[(string) $nodo['padre_id']][] = $nodo;
+        }
+    }
 @endphp
-<div class="atlas-dendrogram" role="group" aria-label="Dendrograma de la jerarquía taxonómica pública" style="width:{{ $dendrograma['ancho'] }}px;height:{{ $dendrograma['alto'] }}px">
-    <svg class="atlas-dendrogram-branches" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {{ $dendrograma['ancho'] }} {{ $dendrograma['alto'] }}" preserveAspectRatio="none" aria-hidden="true" focusable="false">
-        @foreach($dendrograma['ramas'] as $ramaDendrograma)
-            <path d="{{ $ramaDendrograma['trazo'] }}" class="atlas-dendrogram-branch {{ $ramaDendrograma['activa'] ? 'is-active' : ($ramaDendrograma['hoja'] ? 'is-leaf' : '') }}" data-padre-id="{{ $ramaDendrograma['padre_id'] }}" data-hijo-id="{{ $ramaDendrograma['hijo_id'] }}" />
+<div class="atlas-taxonomic-tree" role="group" aria-label="Jerarquía taxonómica pública y registros de la ubicación">
+    <ul class="atlas-tree-roots">
+        @foreach($raicesArbol as $nodoDendrograma)
+            @include('catalogopublico::components.rama-arbol-mapa', ['nodoDendrograma' => $nodoDendrograma])
         @endforeach
-    </svg>
-    @foreach($dendrograma['nodos'] as $nodoDendrograma)
-        @include('catalogopublico::components.nodo-arbol-mapa', ['nodoDendrograma' => $nodoDendrograma])
-    @endforeach
+    </ul>
 </div>

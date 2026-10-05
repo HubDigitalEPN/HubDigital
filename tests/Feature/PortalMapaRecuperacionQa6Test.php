@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
+use Modules\CatalogoPublico\Domain\ValueObjects\FiltrosBusqueda;
 use Modules\CatalogoPublico\Infrastructure\ConsultaMapaNoDisponible;
 use Modules\CatalogoPublico\Infrastructure\PresupuestoConsultaPortal;
 use Modules\CatalogoPublico\Presentation\Http\Controllers\PortalCatalogo;
@@ -41,10 +42,18 @@ function seleccionMapaRecuperacionQa6(): array
 function servicioMapaNoDisponibleQa6(): object
 {
     // La resolución de esta colaboración se hace por el contenedor; el doble
-    // conserva su firma y arroja la misma excepción de infraestructura del fallo real.
-    $servicio = new class
+    // conserva las opciones geográficas reales y arroja la misma excepción del
+    // fallo cartográfico, sin simular un error en los filtros independientes.
+    $servicio = new class(new PortalEstadisticas)
     {
         public int $intentos = 0;
+
+        public function __construct(private readonly PortalEstadisticas $geografia) {}
+
+        public function geografiaParaFiltros(FiltrosBusqueda $filtros, string $nivel = '', string $taxon = ''): array
+        {
+            return $this->geografia->geografiaParaFiltros($filtros, $nivel, $taxon);
+        }
 
         public function datosParaVista(array $filtros, bool $incluirContenidoTaxon = true): array
         {
@@ -67,6 +76,8 @@ test('QA6 el error de mapa admite reintento explícito y volver a registros cons
         ->assertSet('nivel', 'species')->assertSet('taxon', $f['parametros']['taxon'])
         ->assertSet('filtroPais', 'Ecuador')->assertSet('filtroProvincia', 'Orellana');
     expect($servicio->intentos)->toBe(1);
+    expect($portal->instance()->provinciasDisponibles)->toBe(['Orellana'])
+        ->and($portal->instance()->localidadesDisponibles)->toBe(['Localidad QA6 mapa']);
     $portal->call('$refresh')->assertViewHas('errorMapa', true)
         ->assertSet('filtroPais', 'Ecuador')->assertSet('filtroProvincia', 'Orellana');
     expect($servicio->intentos)->toBe(2);

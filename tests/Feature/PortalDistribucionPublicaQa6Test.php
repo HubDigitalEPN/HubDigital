@@ -24,11 +24,11 @@ test('QA6 distribución agregada conserva reservas de provincia fecha y nombre y
         ['id' => $g, 'padre_id' => $filo, 'rango' => 'genero', 'nombre_cientifico' => $marca.' genero'],
         ['id' => $sinFilo, 'padre_id' => null, 'rango' => 'especie', 'nombre_cientifico' => $marca.' cuarta'],
     ]);
-    $insertar = static function (string $taxon, string $provincia, string $fecha, array $permisos = []): string {
+    $insertar = static function (string $taxon, string $provincia, string $fecha, array $permisos = []) use ($marca): string {
         $id = (string) Str::uuid();
         DB::table('taxonomia.especimenes')->insert([
             'id' => $id, 'codigo_catalogo' => 'QA6-DIST-'.Str::uuid(), 'occurrence_id' => 'QA6-DIST-'.Str::uuid(),
-            'taxon_id' => $taxon, 'country' => 'Ecuador', 'state_province' => $provincia, 'fecha_colecta' => $fecha,
+            'taxon_id' => $taxon, 'country' => 'Ecuador', 'state_province' => $provincia, 'fecha_colecta' => $fecha, 'colector' => $marca,
             'decimal_latitude' => -0.5, 'decimal_longitude' => -76.5,
         ]);
         DB::table('divulgacion.especimenes_divulgables')->insert(array_replace([
@@ -54,8 +54,24 @@ test('QA6 distribución agregada conserva reservas de provincia fecha y nombre y
     expect($datos['riqueza'])->toBe([
         ['provincia' => 'Nariño', 'especies' => 2, 'registros' => 3],
         ['provincia' => 'Chocó', 'especies' => 1, 'registros' => 2],
+        ['provincia' => 'Esmeraldas', 'especies' => 0, 'registros' => 1],
     ])->and($datos['decadas'])->toBe([
+        ['decada' => 1980, 'especies' => 0, 'registros' => 1],
         ['decada' => 1990, 'especies' => 1, 'registros' => 1],
         ['decada' => 2000, 'especies' => 2, 'registros' => 4],
+    ]);
+    // Un filo exige identificación pública: el registro reservado solo aporta
+    // cobertura de provincia/fecha cuando la selección no filtra su identidad.
+    $sinIdentificacionExigida = app(PortalEstadisticas::class)->datosParaVista(['colector' => $marca], false);
+    expect($sinIdentificacionExigida['riqueza'])->toBe([
+        ['provincia' => 'Nariño', 'especies' => 2, 'registros' => 3],
+        ['provincia' => 'Chocó', 'especies' => 1, 'registros' => 2],
+        ['provincia' => 'Carchi', 'especies' => 0, 'registros' => 1],
+        ['provincia' => 'Esmeraldas', 'especies' => 0, 'registros' => 1],
+    ])->and($sinIdentificacionExigida['decadas'])->toBe([
+        ['decada' => 1980, 'especies' => 0, 'registros' => 1],
+        ['decada' => 1990, 'especies' => 1, 'registros' => 1],
+        ['decada' => 2000, 'especies' => 2, 'registros' => 4],
+        ['decada' => 2010, 'especies' => 0, 'registros' => 1],
     ]);
 });
