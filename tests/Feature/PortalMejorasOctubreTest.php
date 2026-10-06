@@ -14,6 +14,24 @@ use Modules\CatalogoPublico\Presentation\Http\Controllers\PortalCatalogo;
 uses(Tests\DatabaseFeatureTestCase::class);
 uses(Tests\Concerns\ColeccionPortalAislada::class);
 
+test('las opciones almacenadas se invalidan al corregir nombres o retirar su publicación y permisos', function (): void {
+    $f = coleccionOctubre();
+    DB::table('taxonomia.especimenes')->whereIn('id', $f['ids'])->update(['preparations' => 'Alcohol', 'biome' => 'Bosque', 'sampling_protocol' => 'Red manual', 'colector' => 'Colector Browser']);
+    $opciones = app(\Modules\CatalogoPublico\Infrastructure\Adapters\InventarioOpcionesFiltroAdapter::class);
+    expect($opciones->obtenerPreparaciones())->toBe(['Alcohol'])->and($opciones->obtenerBiomas())->toBe(['Bosque'])
+        ->and($opciones->obtenerMetodosRecoleccion())->toBe(['red manual'])->and($opciones->obtenerColectores())->toBe(['Colector Browser']);
+    // Segunda consulta consume el contenido almacenado antes de corregir datos.
+    expect($opciones->obtenerPreparaciones())->toBe(['Alcohol']);
+    DB::table('taxonomia.especimenes')->whereIn('id', $f['ids'])->update(['preparations' => 'Seco']);
+    DB::table('divulgacion.especimenes_divulgables')->whereIn('especimen_id', $f['ids'])->update(['recorded_by_visible' => false, 'sampling_protocol_visible' => false]);
+    expect($opciones->obtenerPreparaciones())->toBe(['Seco'])->and($opciones->obtenerMetodosRecoleccion())->toBe([])->and($opciones->obtenerColectores())->toBe([]);
+    // La publicación se deriva por trigger del linaje; escribir publicado=false
+    // directamente vuelve a calcularlo y no retira un ejemplar con filo válido.
+    DB::table('taxonomia.especimenes')->whereIn('id', $f['ids'])->update(['taxon_id' => null]);
+    expect(DB::table('divulgacion.especimenes_divulgables')->whereIn('especimen_id', $f['ids'])->where('publicado', true)->count())->toBe(0);
+    expect($opciones->obtenerPreparaciones())->toBe([])->and($opciones->obtenerBiomas())->toBe([]);
+});
+
 function coleccionOctubre(): array
 {
     $filos = $familias = $especies = $ids = [];

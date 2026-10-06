@@ -114,6 +114,15 @@ if ! candidate_artisan optimize || ! candidate_artisan depositos:verificar-almac
     exit 1
 fi
 
+# Prepara los agregados y facetas antes de exponer la release; el primer
+# visitante recibe la misma caché invalidada por revisión que los siguientes.
+if ! systemd-run --quiet --wait --collect --pipe --property=User=www-data --property=Group=www-data \
+    --property=EnvironmentFile="${env_file}" --working-directory="${release_dir}" \
+    /usr/bin/php8.4 "${release_dir}/deploy/oracle/scripts/warm-portal-cache.php"; then
+    echo 'No se pudo preparar la caché inicial del portal; la release permanece en mantenimiento.' >&2
+    exit 1
+fi
+
 install -d -m 0700 /var/lib/hubdigital/migration
 "${release_dir}/deploy/oracle/scripts/inspect-restored-state.sh" "${release_dir}"
 manifest_sha="$(sha256sum "${release_dir}/RELEASE-MANIFEST.sha256" | awk '{print $1}')"

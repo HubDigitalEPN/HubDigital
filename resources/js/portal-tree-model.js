@@ -9,39 +9,34 @@ export function distribuirArbol(nodos, ancho, alto) {
         }
         return nivel;
     };
-    const niveles = [];
-    for (const nodo of nodos) (niveles[profundidad(nodo)] ||= []).push(nodo);
-    // Un padre cíclico o ausente nunca deja bandas indefinidas en la presentación.
-    for (let nivel = 0; nivel < niveles.length; nivel++) niveles[nivel] ||= [];
-    const columnas = Math.max(1, Math.min(niveles.length, Math.floor(Math.max(170, ancho) / 175), Math.ceil(Math.sqrt(niveles.length * Math.max(1, ancho / Math.max(250, alto))))));
+    // Cada nodo ocupa una celda. Una familia con cinco ejemplares no necesita
+    // una columna de cinco filas que agrande también toda la banda de su padre.
+    const ordenados = nodos.map((nodo, indice) => ({nodo, indice, nivel: profundidad(nodo)}))
+        .sort((a, b) => a.nivel - b.nivel || a.indice - b.indice).map(({nodo}) => nodo);
+    const columnas = Math.max(1, Math.min(nodos.length || 1, Math.floor(Math.max(170, ancho) / 175), Math.ceil(Math.sqrt(nodos.length * Math.max(1, ancho / Math.max(180, alto))))));
     const celda = Math.max(170, ancho / columnas);
     const posiciones = [], porPosicion = new Map();
-    const bandas = [];
-    for (let inicio = 0; inicio < niveles.length; inicio += columnas) {
-        const nivelesBanda = niveles.slice(inicio, inicio + columnas);
-        bandas.push({inicio, niveles: nivelesBanda, minimo: Math.max(100, Math.max(...nivelesBanda.map(nivel => nivel.length)) * 82)});
-    }
-    const espacio = Math.max(0, alto - 40 - Math.max(0, bandas.length - 1) * 26 - bandas.reduce((suma, banda) => suma + banda.minimo, 0));
-    let yBanda = 20;
-    for (const {inicio, niveles: banda, minimo} of bandas) {
-        const altoBanda = minimo + espacio / bandas.length;
-        banda.forEach((nivel, i) => {
-            const columna = Math.floor(inicio / columnas) % 2 ? columnas - 1 - i : i;
-            nivel.forEach((nodo, j) => {
-                const pos = {...nodo, x: columna * celda + 12, y: yBanda + (j + .5) * altoBanda / nivel.length - 32, ancho: celda - 32};
-                posiciones.push(pos); porPosicion.set(String(nodo.id), pos);
-            });
-        });
-        yBanda += altoBanda + 26;
-    }
+    const filas = Math.max(1, Math.ceil(ordenados.length / columnas));
+    const paso = Math.max(72, (alto - 8) / filas);
+    ordenados.forEach((nodo, indice) => {
+        const fila = Math.floor(indice / columnas);
+        const columna = fila % 2 ? columnas - 1 - indice % columnas : indice % columnas;
+        const pos = {...nodo, fila, x: columna * celda + 12, y: 4 + fila * paso + (paso - 64) / 2, ancho: celda - 32};
+        posiciones.push(pos); porPosicion.set(String(nodo.id), pos);
+    });
     const enlaces = posiciones.filter(nodo => porPosicion.has(String(nodo.padre_id))).map(nodo => {
         const padre = porPosicion.get(String(nodo.padre_id));
-        const mismaBanda = Math.floor(profundidad(padre) / columnas) === Math.floor(profundidad(nodo) / columnas);
+        const mismaBanda = padre.fila === nodo.fila;
+        const adyacentes = mismaBanda && Math.abs(padre.x - nodo.x) < celda + 1;
         const derecha = nodo.x > padre.x;
-        const x1 = mismaBanda ? padre.x + (derecha ? padre.ancho : 0) : padre.x + padre.ancho / 2;
-        const x2 = mismaBanda ? nodo.x + (derecha ? 0 : nodo.ancho) : nodo.x + nodo.ancho / 2;
-        const y1 = padre.y + (mismaBanda ? 32 : 64), y2 = nodo.y + (mismaBanda ? 32 : 0);
-        return {id: String(nodo.id), d: mismaBanda ? `M${x1},${y1} H${(x1+x2)/2} V${y2} H${x2}` : `M${x1},${y1} V${(y1+y2)/2} H${x2} V${y2}`};
+        if (adyacentes) {
+            const x1 = padre.x + (derecha ? padre.ancho : 0), x2 = nodo.x + (derecha ? 0 : nodo.ancho);
+            return {id: String(nodo.id), d: `M${x1},${padre.y+32} H${x2}`};
+        }
+        // Los enlaces largos recorren los espacios entre celdas y filas.
+        // Así una rama con cinco hojas no atraviesa las tarjetas intermedias.
+        const salida = padre.x + padre.ancho, carril = salida + 6, llegada = nodo.x + nodo.ancho / 2;
+        return {id: String(nodo.id), d: `M${salida},${padre.y+32} H${carril} V${nodo.y-6} H${llegada} V${nodo.y}`};
     });
-    return {nodos: posiciones, enlaces, ancho: Math.max(170, ancho), alto: Math.max(alto, yBanda - 6)};
+    return {nodos: posiciones, enlaces, ancho: Math.max(170, ancho), alto: Math.max(alto, filas * paso + 8)};
 }

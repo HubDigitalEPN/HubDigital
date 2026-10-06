@@ -184,10 +184,13 @@ const registrarDashboard = () => {
             const rect = this.$el.getBoundingClientRect();
             const escala = rect.width / this.$el.clientWidth || 1;
             if (!this.ubicacion) this.$el.style.height = `${Math.max(0, ((window.visualViewport?.height || window.innerHeight) - rect.top - 12) / escala)}px`;
+            const compacto = !this.ubicacion && this.$el.clientHeight < 360;
+            if (compacto !== this.$el.classList.contains('portal-records-compact')) this.alturaFilaMaxima = 0;
+            this.$el.classList.toggle('portal-records-compact', compacto);
             const tabla = this.$el.querySelector('.atlas-record-table-scroll');
             const cabecera = tabla?.querySelector('thead');
             const filas = [...(tabla?.querySelectorAll('tbody .portal-record-row') || [])];
-            if (!tabla || !cabecera || filas.length === 0 || tabla.clientHeight < 100) return;
+            if (!tabla || !cabecera || filas.length === 0 || tabla.clientHeight < 1) return;
             if (this.anchoMedido !== this.$el.clientWidth) { this.anchoMedido = this.$el.clientWidth; this.alturaFilaMaxima = 0; }
             // Una fila más alta no debe alternar indefinidamente entre dos tamaños de página.
             this.alturaFilaMaxima = Math.max(this.alturaFilaMaxima, 48, ...filas.map(fila => fila.getBoundingClientRect().height / escala));
@@ -268,8 +271,9 @@ const registrarDashboard = () => {
             this.$el.open = window.matchMedia('(min-width: 701px)').matches;
             this.actualizar = () => {
                 const rect = this.$el.getBoundingClientRect();
-                this.$el.style.setProperty('--filtros-left', `${rect.left}px`);
-                this.$el.style.setProperty('--filtros-width', `${rect.width}px`);
+                const escala = rect.width / this.$el.offsetWidth || 1;
+                this.$el.style.setProperty('--filtros-left', `${rect.left / escala}px`);
+                this.$el.style.setProperty('--filtros-width', `${rect.width / escala}px`);
                 if (this.localidadesAbiertas) this.posicionarLocalidades();
             };
             this.observador = new ResizeObserver(this.actualizar);

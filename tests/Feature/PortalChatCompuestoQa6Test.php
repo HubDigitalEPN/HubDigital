@@ -14,7 +14,7 @@ test('QA6 el chat responde cantidad y uso del mapa preservando todos los filtros
         contextoCatalogo: ['codigo' => 'QA3-CHAT-1'], seleccionPortal: $seleccion);
     expect($respuesta['intent'])->toBe('catalogo.count')
         ->and($respuesta['datos']['total'])->toBe(1)
-        ->and($respuesta['texto'])->toContain('1 registro publicado', 'Cómo usar el mapa', 'clústeres', 'seis ejemplares por página', 'advertencias');
+        ->and($respuesta['texto'])->toContain('1 registro publicado', 'Cómo usar el mapa', 'clústeres', 'hasta cinco registros', 'árbol llega hasta familia', 'con un buscador', 'altura disponible', 'advertencias');
     $mapa = array_values(array_filter($respuesta['opciones'], fn (array $opcion): bool => $opcion['label'] === 'Abrir mapa de esta consulta'))[0];
     parse_str((string) parse_url($mapa['url'], PHP_URL_QUERY), $parametros);
     expect($parametros)->toEqual($seleccion + ['vista' => 'mapa']);

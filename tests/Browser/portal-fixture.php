@@ -35,13 +35,17 @@ $datos = DB::transaction(static function () use ($token, $prefijo, $archivo): ar
         $filoExistente = $i ? DB::table('taxonomia.taxones')->where('nombre_cientifico', 'Nematomorpha')->where('rango', 'phylum')->value('id') : null;
         $filos[$i] = $filoExistente ?: (string) Str::uuid(); $familias[$i] = (string) Str::uuid(); $especies[$i] = (string) Str::uuid();
         $reino = (string) Str::uuid(); $clase = (string) Str::uuid(); $orden = (string) Str::uuid(); $suborden = (string) Str::uuid();
-        $taxones = [...$taxones, ...($filoExistente ? [] : [$reino, $filos[$i]]), $clase, $orden, $suborden, $familias[$i], $especies[$i]];
+        $subfamilia = (string) Str::uuid(); $tribu = (string) Str::uuid(); $genero = (string) Str::uuid();
+        $taxones = [...$taxones, ...($filoExistente ? [] : [$reino, $filos[$i]]), $clase, $orden, $suborden, $familias[$i], $subfamilia, $tribu, $genero, $especies[$i]];
         $nuevos = [
             ['id' => $clase, 'padre_id' => $filos[$i], 'rango' => 'clase', 'nombre_cientifico' => 'Browserclass'.$token.$i],
             ['id' => $orden, 'padre_id' => $clase, 'rango' => 'orden', 'nombre_cientifico' => 'Browserorder'.$token.$i],
             ['id' => $suborden, 'padre_id' => $orden, 'rango' => 'suborden', 'nombre_cientifico' => 'Browsersuborder'.$token.$i],
             ['id' => $familias[$i], 'padre_id' => $suborden, 'rango' => 'familia', 'nombre_cientifico' => 'Browseridae'.$token.$i],
-            ['id' => $especies[$i], 'padre_id' => $familias[$i], 'rango' => 'especie', 'nombre_cientifico' => 'Browserobius '.$token.' '.($i ? 'beta' : 'alfa')],
+            ['id' => $subfamilia, 'padre_id' => $familias[$i], 'rango' => 'subfamilia', 'nombre_cientifico' => 'Browsersubfamily'.$token.$i],
+            ['id' => $tribu, 'padre_id' => $subfamilia, 'rango' => 'tribu', 'nombre_cientifico' => 'Browsertribe'.$token.$i],
+            ['id' => $genero, 'padre_id' => $tribu, 'rango' => 'genero', 'nombre_cientifico' => 'Browsergenus'.$token.$i],
+            ['id' => $especies[$i], 'padre_id' => $genero, 'rango' => 'especie', 'nombre_cientifico' => 'Browserobius '.$token.' '.($i ? 'beta' : 'alfa')],
         ];
         if (!$filoExistente) $nuevos = [
             ['id' => $reino, 'padre_id' => null, 'rango' => 'reino', 'nombre_cientifico' => 'BrowserAnimalia'.$token.$i],

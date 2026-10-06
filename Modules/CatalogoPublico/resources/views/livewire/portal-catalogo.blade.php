@@ -140,7 +140,7 @@
         @endif
     @elseif($vista === 'registros')
         <div class="portal-records-viewport portal-records-catalogue mx-auto max-w-7xl px-4 pt-4 sm:px-6 lg:px-8" x-data="portalRegistros({{ $this->registrosPorPagina }})">
-            <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+            <div class="portal-records-header mb-4 flex flex-wrap items-end justify-between gap-3">
                 <div>
                     <h1 class="font-display text-2xl font-bold text-blue-navy">
                         {{ $taxonActual !== '' ? 'Registros de '.$taxonActual : 'Registros del catálogo' }}
@@ -148,7 +148,7 @@
                     <p class="mt-1 text-sm text-text-secondary">{{ number_format($totalRegistrosVista, 0, ',', '.') }} {{ $totalRegistrosVista === 1 ? 'registro' : 'registros' }} · página {{ $paginaActual }} de {{ $ultimaPagina }}</p>
                 </div>
                 @if($totalRegistrosVista > 0)
-                    <button type="button" wire:click="descargarResultados" wire:loading.attr="disabled" wire:target="descargarResultados" class="rounded-md border border-science-blue px-4 py-2 text-sm font-semibold text-science-blue hover:bg-sky-50 disabled:opacity-50">Descargar resultados CSV</button>
+                    <button type="button" wire:click="descargarResultados" wire:loading.attr="disabled" wire:target="descargarResultados" aria-label="Descargar resultados CSV" class="rounded-md border border-science-blue px-4 py-2 text-sm font-semibold text-science-blue hover:bg-sky-50 disabled:opacity-50"><span class="portal-records-download-label">Descargar resultados CSV</span><span class="portal-records-download-compact-label" aria-hidden="true">CSV</span></button>
                 @endif
             </div>
             @if($totalRegistrosVista === 0)

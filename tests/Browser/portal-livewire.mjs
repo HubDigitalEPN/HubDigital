@@ -175,6 +175,13 @@ try {
     assert.equal(totalPeticiones, antesDeCerrar, 'Cerrar el modal hizo una consulta innecesaria.');
     assert.equal(await evaluar("document.querySelector('.atlas-cell-dialog').open"), false);
 
+    // Cinco ejemplares mantienen sus hojas y el linaje profundo sin apilarlas
+    // en una única columna que obligue a desplazar verticalmente el modal.
+    await evaluar("[...document.querySelectorAll('.atlas-map [aria-label^=\"Ubicación original\"]')].find(p=>p.getAttribute('aria-label').includes('5 registros')).dispatchEvent(new MouseEvent('click',{bubbles:true}))");
+    await visible("document.querySelectorAll('.atlas-tree-section [data-rango=registro]').length === 5"); await reposo();
+    assert.ok(await evaluar("(() => {const region=document.querySelector('.atlas-tree-scroll'); return region.scrollHeight <= region.clientHeight + 2;})()"), 'El linaje profundo con cinco ejemplares debe caber en el modal.');
+    await evaluar("document.querySelector('.atlas-cell-header button[aria-label=\"Cerrar registros\"]').click()");
+
     // Los tres gráficos nuevos aplican sus filtros al mapa mediante clicks reales en sus puntos.
     async function pulsarGrafico(id, indice = 0) {
         const punto = await evaluar(`(() => {const c=document.querySelector('#${id}').closest('section').querySelector('canvas'); c.scrollIntoView({block:'center'}); const chart=window.HubDigitalChart.getChart(c); const p=chart.getDatasetMeta(0).data[${indice}].getCenterPoint(); const r=c.getBoundingClientRect(); return {x:r.left+p.x,y:r.top+p.y};})()`);
@@ -205,12 +212,14 @@ try {
     await evaluar("document.querySelector('button[aria-label=\"Vista de registros\"]').click()");
     await visible("document.querySelector('.portal-records-viewport .portal-record-row')"); await reposo();
     const cantidades = [];
-    for (const [altura, escala] of [[900, 1], [620, 1], [900, .8], [900, 1.25]]) {
+    for (const [altura, escala] of [[900, 1], [620, 1], [900, .8], [900, 1.25], [620, 2]]) {
         await conexion.send('Emulation.setDeviceMetricsOverride', {width: 1440, height: altura, deviceScaleFactor: 1, mobile: false});
         await evaluar(`document.documentElement.style.zoom='${escala}'; window.dispatchEvent(new Event('resize'))`); await reposo();
         const ajuste = await evaluar(`(() => {const raiz=document.querySelector('.portal-records-viewport'); const nav=raiz.querySelector('.portal-records-pagination'); const r=nav.getBoundingClientRect(); return {filas:raiz.querySelectorAll('.portal-record-row').length, inferior:r.bottom, altura:window.innerHeight, posicion:getComputedStyle(nav).position};})()`);
         assert.ok(ajuste.inferior <= ajuste.altura + 2, 'La navegación quedó fuera de la pantalla.');
         assert.ok(['static', 'relative'].includes(ajuste.posicion), 'La navegación quedó flotante.'); cantidades.push(ajuste.filas);
+        const acceso = await evaluar("(() => {const boton=[...document.querySelectorAll('.portal-records-viewport .portal-records-pagination button')].find(b=>b.textContent.includes('Siguiente')); const r=boton.getBoundingClientRect(); const puntos=[.2,.5,.9].map(f=>{const encima=document.elementFromPoint(r.left+r.width*f,r.top+r.height/2); return {libre:encima === boton || boton.contains(encima), elemento:encima?.className};}); return {puntos, boton:r.toJSON(), raiz:boton.closest('.portal-records-viewport').getBoundingClientRect().toJSON()};})()");
+        assert.ok(acceso.puntos.every(p=>p.libre), `Otro control cubrió Siguiente a ${escala}: ${JSON.stringify(acceso)}`);
     }
     assert.ok(new Set(cantidades).size > 1, 'El número de registros no se adaptó a la pantalla.');
     await evaluar("document.documentElement.style.zoom='1'");

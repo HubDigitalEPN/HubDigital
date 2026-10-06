@@ -93,8 +93,23 @@
 .portal-records-viewport .atlas-record-table-photos { flex-wrap:nowrap; }
 .portal-records-viewport .atlas-record-table-photos img { width:64px; height:48px; }
 .portal-records-pagination { flex:none; display:flex; justify-content:flex-end; align-items:center; gap:.65rem; margin:.75rem 0 0; padding:.25rem 0; }
+.collection-main .portal-records-pagination:not(.atlas-cell-pagination) { padding-inline-end:5rem; }
 .portal-records-pagination button { padding:.6rem 1rem; border:1px solid #b4cad9; border-radius:.3rem; color:#155d91; }
 .portal-records-pagination button:disabled { opacity:.45; }
+.portal-records-download-compact-label { display:none; }
+.portal-records-compact.portal-records-catalogue { padding-top:0; }
+.portal-records-compact .portal-records-header { flex:none; flex-wrap:nowrap; align-items:center; gap:.5rem; margin-bottom:.35rem; }
+.portal-records-compact .portal-records-header > div { min-width:0; }
+.portal-records-compact .portal-records-header h1 { font-size:1rem; line-height:1.2; }
+.portal-records-compact .portal-records-header p { margin-top:.2rem; font-size:.7rem; line-height:1.3; }
+.portal-records-compact .portal-records-header > button { flex:none; padding:.25rem .45rem; font-size:.75rem; }
+.portal-records-compact .portal-records-download-label { display:none; }
+.portal-records-compact .portal-records-download-compact-label { display:inline; }
+.portal-records-compact .portal-records-pagination { gap:.4rem; margin-top:.3rem; }
+.portal-records-compact .portal-records-pagination > span { display:none; }
+.portal-records-compact .portal-records-pagination button { padding:.25rem .5rem; font-size:.8rem; }
+.portal-records-compact .portal-record-row > * { height:2.5rem; padding:.25rem .4rem; font-size:.75rem; }
+.portal-records-compact .atlas-record-table thead th { padding:.25rem .4rem; font-size:.75rem; }
 .atlas-chart-canvas { position:relative; height:17rem; min-height:17rem; padding:.6rem; }
 .atlas-chart-data-toggle { margin:.25rem 1rem; text-align:left; color:#155d91; text-decoration:underline; }
 .atlas-figure-caption { padding:.8rem 1rem; margin-top:auto; border-top:1px solid #dce5ec; color:#506b80; font-size:.75rem; line-height:1.6; }

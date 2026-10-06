@@ -15,12 +15,12 @@ return [
     'altitud' => [
         'titulo' => 'Cobertura altitudinal',
         'subtitulo' => 'Registros por intervalo de elevación pública',
-        'nota' => 'Una colecta cuyo intervalo cruza varias franjas aparece en cada una; las barras no se suman.',
+        'nota' => 'Una colecta cuyo intervalo cruza varias franjas aparece en cada una; sus conteos no se suman.',
         'imagen' => 'riqueza',
         'foto' => 'Muestreo de invertebrados en ambientes de distinta elevación.',
         'parrafos' => [
             'Cuenta los registros cuyo intervalo de elevación pública se solapa con cada franja. Cuando solo existe un extremo se usa ese valor. Las franjas van de −500 a 9000 metros; los datos sin elevación quedan fuera de este indicador.',
-            'Permite localizar material documentado para comparar ambientes a distintas altitudes. Seleccionar una franja aplica exactamente el mismo criterio de solapamiento a la colección. Los intervalos amplios pueden figurar en más de una barra: no deben sumarse para obtener el total.',
+            'Permite localizar material documentado para comparar ambientes a distintas altitudes. Seleccionar una franja aplica exactamente el mismo criterio de solapamiento a la colección. Los intervalos amplios pueden figurar en más de una franja: sus conteos no deben sumarse para obtener el total.',
         ],
     ],
     'metodos' => [
@@ -30,7 +30,7 @@ return [
         'imagen' => 'mapa',
         'foto' => 'Material de campo para documentar métodos de colecta.',
         'parrafos' => [
-            'Agrupa los registros por una misma clave del protocolo de colecta, sin distinguir mayúsculas y minúsculas ni espacios al inicio o al final. Por ejemplo, Beating y beating forman una sola categoría; cada barra y su filtro usan exactamente esa población. El método original (samplingProtocol) se conserva en las fichas y en la descarga de especie XLSX. El CSV general de registros no incluye ese campo; CSV y JSON del indicador contienen categorías y conteos agregados. Se omiten campos vacíos y marcadores curatoriales de daño o falta de información.',
+            'Agrupa los registros por una misma clave del protocolo de colecta, sin distinguir mayúsculas y minúsculas ni espacios al inicio o al final. Por ejemplo, Beating y beating forman una sola categoría; el gráfico y su filtro usan exactamente esa población. El método original se conserva en las fichas y en la descarga de especie XLSX. El CSV general de registros no incluye ese campo; el CSV del indicador contiene categorías y conteos agregados. Se omiten campos vacíos y marcadores curatoriales de daño o falta de información.',
             'Seleccionar una técnica mantiene los demás filtros y permite revisar su distribución, periodos y material asociado. El conteo expresa registros disponibles, no eficiencia de captura: comparar técnicas requiere conocer su esfuerzo de muestreo.',
         ],
     ],
@@ -40,7 +40,7 @@ return [
         'parrafos' => [
             'Este indicador muestra las coordenadas públicas de los ejemplares de la selección aplicada sobre la cartografía de OpenStreetMap. Conserva visibles países, relieve, ciudades y demás elementos de la base cartográfica en las áreas con y sin registros.',
             'Al alejar el mapa aparecen clústeres de pantalla que reúnen varias ubicaciones cercanas. Su número indica cuántas ubicaciones originales contienen, no cuántos ejemplares. Al pulsarlos se acerca el mapa y se separan sus miembros; el clúster no es una coordenada de colecta.',
-            'Al acercar aparecen los puntos en sus latitudes y longitudes WGS84 originales, sin desplazarlos a un centro de cuadrícula. Un punto reúne únicamente registros que comparten exactamente ese par de coordenadas. Su tamaño expresa la cantidad de registros, con un máximo visual. Selecciona el punto para explorar el árbol taxonómico y consultar cada registro como una hoja del árbol; la tabla permite seis ejemplares por página.',
+            'Al acercar aparecen los puntos en sus latitudes y longitudes WGS84 originales, sin desplazarlos a un centro de cuadrícula. Un punto reúne únicamente registros que comparten exactamente ese par de coordenadas. Su tamaño expresa la cantidad de registros, con un máximo visual. Selecciona el punto para explorar su árbol: hasta cinco registros aparecen como hojas; con más de cinco, el árbol llega hasta familia y los ejemplares se eligen con un buscador. La tabla adapta los registros por página a la altura disponible.',
             'El color identifica el filo: azul para Arthropoda, naranja para Mollusca, verde para Annelida, violeta para Nematoda y rosa para Nematomorpha; gris indica un filo no disponible. Si una ubicación o un clúster contiene varios filos, sus segmentos muestran la composición. El detalle accesible del punto informa los filos y sus conteos. Seleccionar un filo en Composición taxonómica filtra todos los paneles y el mapa.',
             'La precisión de una ubicación depende del dato original y de su referencia pública: conservar la coordenada no convierte una ubicación aproximada o recuperada en una medición GPS exacta. La selección pública exige ambas coordenadas válidas y visibles; los registros sin ese par o con coordenadas reservadas quedan fuera de los paneles públicos. La ausencia de puntos no demuestra ausencia de organismos y el número de registros no equivale a abundancia natural.',
         ],
@@ -69,7 +69,7 @@ return [
         'parrafos' => [
             'La cobertura temporal muestra en qué décadas se recolectaron los registros de la selección vigente, incluyendo identificaciones hasta familia u otros rangos. Ayuda a reconocer periodos representados y materiales históricos.',
             'Se toma el año inicial de una fecha de colecta pública válida para obtener el inicio de la década. Cada registro aporta una unidad a su década. Los datos agregados descargables conservan además el número de especies distintas con identificación pública confirmada; las fechas reservadas no intervienen en este conteo.',
-            'Las barras expresan cobertura de la colección y no tendencias poblacionales. Fechas erróneas o incompletas pueden producir periodos inesperados; conviene revisarlas antes de interpretar cambios ecológicos. Al seleccionar una década se aplica su rango de fechas a toda la consulta, respetando el solapamiento de los intervalos de colecta.',
+            'La línea o las barras expresan cobertura de la colección y no tendencias poblacionales. Fechas erróneas o incompletas pueden producir periodos inesperados; conviene revisarlas antes de interpretar cambios ecológicos. Al seleccionar una década se aplica su rango de fechas a toda la consulta, respetando el solapamiento de los intervalos de colecta.',
         ],
     ],
     'calidad' => [

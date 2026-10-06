@@ -38,3 +38,33 @@ test('un padre ausente o cíclico no bloquea el cálculo de posiciones', () => {
     assert.equal(vista.nodos.length, 3);
     assert.ok(vista.nodos.every(nodo => Number.isFinite(nodo.x) && Number.isFinite(nodo.y)));
 });
+
+test('el linaje real de nueve niveles y cinco registros cabe también en un modal de alto limitado', () => {
+    const ancestros = Array.from({length: 9}, (_, i) => ({id: String(i), padre_id: i ? String(i - 1) : null}));
+    const nodos = [...ancestros, ...Array.from({length: 5}, (_, i) => ({id: `registro-${i}`, padre_id: '8'}))];
+    const vista = distribuirArbol(nodos, 809, 301);
+    assert.equal(vista.nodos.length, 14);
+    assert.equal(vista.enlaces.length, 13);
+    assert.equal(vista.alto, 301);
+    assert.equal(new Set(vista.nodos.map(n => n.fila)).size, 4);
+    for (const [i, a] of vista.nodos.entries()) {
+        assert.ok(a.y >= 0 && a.y + 64 <= 301 && a.x + a.ancho <= 809);
+        for (const b of vista.nodos.slice(i + 1)) assert.equal(a.x < b.x + b.ancho && a.x + a.ancho > b.x && a.y < b.y + 64 && a.y + 64 > b.y, false);
+    }
+    // Cada enlace debe llegar a su hoja sin cruzar el interior de otra tarjeta.
+    for (const enlace of vista.enlaces) {
+        const hijo = vista.nodos.find(n => String(n.id) === enlace.id);
+        let anterior;
+        for (const comando of enlace.d.matchAll(/([MHV])([\d.]+)(?:,([\d.]+))?/g)) {
+            const punto = comando[1] === 'M' ? [Number(comando[2]), Number(comando[3])]
+                : comando[1] === 'H' ? [Number(comando[2]), anterior[1]] : [anterior[0], Number(comando[2])];
+            if (anterior) for (const otro of vista.nodos.filter(n => n.id !== hijo.id && n.id !== hijo.padre_id)) {
+                const cruza = anterior[0] === punto[0]
+                    ? punto[0] > otro.x && punto[0] < otro.x + otro.ancho && Math.max(anterior[1], punto[1]) > otro.y && Math.min(anterior[1], punto[1]) < otro.y + 64
+                    : punto[1] > otro.y && punto[1] < otro.y + 64 && Math.max(anterior[0], punto[0]) > otro.x && Math.min(anterior[0], punto[0]) < otro.x + otro.ancho;
+                assert.equal(cruza, false, `${enlace.id} cruza la tarjeta ${otro.id}`);
+            }
+            anterior = punto;
+        }
+    }
+});

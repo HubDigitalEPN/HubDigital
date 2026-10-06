@@ -243,7 +243,7 @@ final class AsistentePortal
 
     private function instruccionesMapa(): string
     {
-        return 'Cómo usar el mapa: abre Mapa y análisis. Al alejar, los clústeres reúnen varias ubicaciones y muestran su número; púlsalos para acercar. Cada punto original reúne registros con el mismo par de coordenadas. Su tamaño expresa registros y sus colores, filos. Abre un punto para consultar el árbol taxonómico y selecciona la hoja de cada registro para ver su ficha. La tabla muestra seis ejemplares por página. Las coordenadas aproximadas conservan sus advertencias; los conteos no equivalen a abundancia natural.';
+        return 'Cómo usar el mapa: abre Mapa y análisis. Al alejar, los clústeres reúnen varias ubicaciones y muestran su número; púlsalos para acercar. Cada punto original reúne registros con el mismo par de coordenadas. Su tamaño expresa registros y sus colores, filos. Abre un punto para consultar el árbol taxonómico: hasta cinco registros aparecen como hojas; con más de cinco, el árbol llega hasta familia y eliges el ejemplar con un buscador. La tabla adapta los registros por página a la altura disponible. Las coordenadas aproximadas conservan sus advertencias; los conteos no equivalen a abundancia natural.';
     }
 
     private function ayudaPuntosMapa(array $contextoCatalogo, ?array $seleccionPortal): array

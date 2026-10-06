@@ -1222,3 +1222,6 @@ Write-Host "Luego ejecuta:"
 Write-Host "  mkdir -p ~/hubdigital-upload && tar -xzf ~/$nombreKitCloudShell -C ~/hubdigital-upload"
 Write-Host "  cd ~/hubdigital-upload && bash ./$nombreScriptTransferencia"
 Write-Host "`nEstos mismos comandos quedaron guardados en: $nombreInstruccionesCloudShell"
+# Las sondas nativas admiten códigos informativos; solo se llega aquí después
+# de todas las puertas obligatorias y de verificar el artefacto publicado.
+exit 0

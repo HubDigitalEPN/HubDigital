@@ -271,6 +271,13 @@ final class PortalEstadisticas
     private function resumir(array $filtros, bool $incluirContenidoTaxon): array
     {
         $base = $this->consulta($filtros);
+        if ($filtros !== []) {
+            // Resuelve los filtros complejos una sola vez. Repetir el recorrido
+            // taxonómico y las normalizaciones de varias localidades en cada
+            // agregado produce planes costosos al unir métodos de muestreo.
+            $ids = $this->medir('seleccion', fn (): array => (clone $base)->pluck('te.id')->all());
+            $base = $this->consulta([])->whereRaw('te.id = ANY(?::uuid[])', ['{'.implode(',', $ids).'}']);
+        }
         $taxones = $this->medir('taxonomia', fn () => DB::table('taxonomia.taxones')->select('id', 'padre_id', 'rango', 'nombre_cientifico')->get()->keyBy('id'));
         $idsValidos = CalidadDatoPublico::taxonesConLinajeValido($taxones);
         $especieValida = CalidadDatoPublico::textoValido('t.nombre_cientifico').' AND t.id = ANY(?::uuid[])';
