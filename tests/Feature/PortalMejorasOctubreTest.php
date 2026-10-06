@@ -310,12 +310,51 @@ test('las seis tarjetas de Coleoptera publican imágenes diferentes en la navega
 test('la biblioteca de tarjetas no repite fotografías y distingue la única representación sin familia confirmada', function (): void {
     $fuentes = require base_path('Modules/CatalogoPublico/app/Application/Services/FotografiasTarjetas.php');
     expect($fuentes)->toHaveCount(86)->and(array_unique(array_column($fuentes, 'foto')))->toHaveCount(86);
+    $grupos = require base_path('Modules/CatalogoPublico/app/Application/Services/FotografiasTarjetasGrupos.php');
+    expect($grupos)->toHaveCount(60)->and(array_unique(array_column([...$fuentes, ...$grupos], 'foto')))->toHaveCount(146);
     foreach ($fuentes as $foto) {
         expect(is_file(public_path('images/taxonomia/tarjetas/'.$foto['archivo'].'.webp')))->toBeTrue()
+            ->and($foto['licencia'])->toBeIn(['cc0', 'cc-by', 'cc-by-sa']);
+    }
+    foreach ($grupos as $clave => $foto) {
+        [$nivel, $nombre] = explode(':', $clave);
+        $referencia = \Modules\CatalogoPublico\Application\Services\FotografiaTarjeta::para($nombre, $nivel);
+        expect($referencia['url'])->toEndWith('.webp')->and($referencia['fuente'])->toEndWith('/'.$foto['observacion'])
+            ->and(filesize(public_path($referencia['url'])))->toBeLessThan(80000)
             ->and($foto['licencia'])->toBeIn(['cc0', 'cc-by', 'cc-by-sa']);
     }
     $ilustracion = \Modules\CatalogoPublico\Application\Services\FotografiaTarjeta::para('Melaryidae', 'family');
     expect($ilustracion['ilustracion'])->toBeTrue()->and($ilustracion['species'])->toBe('Coleoptera')
         ->and($ilustracion['fuente'])->toBeNull()
         ->and(\Modules\CatalogoPublico\Application\Services\FotografiaTarjeta::para('Aderidae', 'family', ['phylum' => 'Mollusca']))->toBeNull();
+    expect(\Modules\CatalogoPublico\Application\Services\FotografiaTarjeta::para('Diptera', 'order', ['phylum' => 'Mollusca']))->toBeNull()
+        ->and(\Modules\CatalogoPublico\Application\Services\FotografiaTarjeta::para('Coleoptera', 'order', ['class' => 'Arachnida']))->toBeNull()
+        ->and(\Modules\CatalogoPublico\Application\Services\FotografiaTarjeta::para('Collembola', 'order', ['phylum' => 'Arthropoda', 'class' => 'Insecta']))->not->toBeNull();
+});
+
+test('las seis órdenes iniciales de Insecta muestran fotos distintas sin consultar fuentes externas', function (): void {
+    $f = coleccionOctubre(); $clase = (string) Str::uuid();
+    DB::table('taxonomia.taxones')->where('id', $f['filos'][0])->update(['nombre_cientifico' => 'Arthropoda']);
+    DB::table('taxonomia.taxones')->insert(['id' => $clase, 'padre_id' => $f['filos'][0], 'rango' => 'clase', 'nombre_cientifico' => 'Insecta']);
+    $nombres = ['Blattodea', 'Coleoptera', 'Collembola', 'Dermaptera', 'Diptera', 'Ephemeroptera'];
+    foreach ($nombres as $i => $nombre) {
+        if ($i < 4) {
+            DB::table('taxonomia.taxones')->where('id', $f['familias'][$i])->update(['padre_id' => $clase, 'rango' => 'orden', 'nombre_cientifico' => $nombre]);
+            continue;
+        }
+        $orden = (string) Str::uuid(); $ejemplar = (string) Str::uuid();
+        DB::table('taxonomia.taxones')->insert(['id' => $orden, 'padre_id' => $clase, 'rango' => 'orden', 'nombre_cientifico' => $nombre]);
+        DB::table('taxonomia.especimenes')->insert(['id' => $ejemplar, 'taxon_id' => $orden, 'codigo_catalogo' => 'QA-ORDEN-FOTO-'.$i, 'occurrence_id' => 'QA-ORDEN-FOTO-'.$i, 'fila_origen_excel' => 100 + $i, 'decimal_latitude' => -.273, 'decimal_longitude' => -79.024]);
+        DB::table('divulgacion.especimenes_divulgables')->insert(['id' => (string) Str::uuid(), 'especimen_id' => $ejemplar, 'publicado' => true]);
+    }
+    Http::fake();
+    $portal = Livewire::withQueryParams(['nivel' => 'class', 'taxon' => 'Insecta', 'vista' => 'tarjetas'])->test(PortalCatalogo::class);
+    $documento = new DOMDocument; @$documento->loadHTML($portal->html()); $dom = new DOMXPath($documento); $urls = [];
+    foreach ($nombres as $nombre) {
+        $imagenes = $dom->query('//div[@data-foto-tarjeta="'.$nombre.'"]//img');
+        expect($imagenes->length)->toBe(1);
+        $urls[] = $imagenes->item(0)->getAttribute('src');
+    }
+    expect(array_unique($urls))->toHaveCount(6);
+    Http::assertNothingSent();
 });

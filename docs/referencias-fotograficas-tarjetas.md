@@ -2,6 +2,8 @@
 
 Las imágenes se distinguen de las fotografías de ejemplares del laboratorio. Las tarjetas prefieren imágenes publicadas desde R2; el árbol de una ubicación muestra exclusivamente esas imágenes. Las referencias de tarjetas incluyen especie ilustrada, autor, enlace de origen y licencia. Los archivos locales nuevos son WebP, con lado máximo de 480 × 360 y calidad 76. Las referencias dinámicas de iNaturalist se consultan al entrar en pantalla, exigen identidad y linaje coincidentes, y se sirven en WebP por una ruta con origen fijo y tamaño acotado. La conversión conserva créditos y se almacena durante catorce días.
 
+Se conservan también 60 referencias diferentes de filos, clases y órdenes en `FotografiasTarjetasGrupos.php`, con identificador del taxón fuente, rango, observación, foto, autor, licencia y linajes locales permitidos. Estas tarjetas cargan archivos WebP directamente, incluso cuando la fuente externa está ocupada. Se mantienen los nombres y rangos históricos del catálogo: Collembola figura como orden local y como subclase en la fuente; Phasmatodea usa la referencia de Phasmida. Haplotaxida muestra la lombriz Bimastos welchi y Mesogastropoda muestra Aliger gigas, representantes concretos de esos grupos históricos, cuya fuente actual se organiza bajo Clitellata y Littorinimorpha. La foto ilustrada no cambia la clasificación del registro. Las imágenes de ejemplares del árbol continúan limitadas a R2.
+
 | Nombre de la colección | Especie ilustrada | Origen y licencia |
 | --- | --- | --- |
 | Aderidae | Emelinus melsheimeri | [Sean Golden, observación 402361568](https://www.inaturalist.org/observations/402361568), CC BY 4.0 |
