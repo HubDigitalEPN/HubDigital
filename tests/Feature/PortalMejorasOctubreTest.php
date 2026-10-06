@@ -190,6 +190,8 @@ test('los saludos y definiciones no heredan la respuesta anterior ni se confunde
         ['que es esto ?', 'portal.presentacion', 'Colección Biológica'],
         ['que es una coleccion biologica', 'portal.definicion_coleccion', 'ejemplares'],
         ['que es una hormiga ?', 'biologia.hormig', 'insectos sociales'],
+        ['que es una ormiga ?', 'biologia.hormig', 'insectos sociales'],
+        ['¿Qué son las ormigas?', 'biologia.hormig', 'insectos sociales'],
         ['quien eres tu', 'conversacion.quien eres', 'asistente del portal'],
         ['qué es Nematomorpha', 'biologia.nematomorf', 'gusanos'],
     ] as [$pregunta, $intent, $texto]) {
@@ -235,6 +237,8 @@ test('la conversación real pasa de saludo a métricas y definiciones sin repeti
     foreach ([
         ['hola', 'Hola'], ['cuantas ubicaciones tenemos', 'Hay 1 ubicación'],
         ['que es una hormiga ?', 'insectos sociales'], ['ola', 'Hola'],
+        ['que es esto ?', 'Colección Biológica'], ['que es una coleccion biologica', 'ejemplares'],
+        ['que es una ormiga ?', 'insectos sociales'],
         ['que provincia tiene mas especies', 'Pichincha'], ['quien eres tu', 'asistente del portal'],
     ] as [$pregunta, $texto]) {
         $chat->set('pregunta', $pregunta)->call('enviar');

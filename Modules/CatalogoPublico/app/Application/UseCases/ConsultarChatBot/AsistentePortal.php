@@ -357,6 +357,9 @@ final class AsistentePortal
     /** @return array{texto:string,opciones:array}|null */
     private function biologiaLocal(string $normal): ?array
     {
+        // Variante coloquial de las capturas; acotada a palabras completas y
+        // solo a la explicación, sin corregir nombres científicos del catálogo.
+        $normal = preg_replace('/\bormigas?\b/u', 'hormigas', $normal) ?? $normal;
         $normal = str_replace(['nematomorph', 'annelid'], ['nematomorf', 'anelid'], $normal);
         $temas = [
             'nematomorf' => [
