@@ -204,6 +204,7 @@
                         $numEspecimenes = $hijo['total'] ?? $conteos[$clave] ?? 0;
                     @endphp
                     <article class="rounded-lg border border-border bg-surface p-4 shadow-sm transition-all hover:border-science-blue/40 hover:shadow-md">
+                        <x-catalogopublico::fotografia-tarjeta :nombre="$hijo['taxon']" :nivel="$hijo['nivel']" :jerarquia="array_column($ruta, 'taxon', 'nivel')" :url="$portadas[$hijo['nivel'].':'.$hijo['taxon']] ?? null" />
                         <div class="flex items-start justify-between gap-2">
                             <div class="min-w-0">
                                 <div class="flex items-center gap-2">
@@ -306,17 +307,7 @@
                                 <article
                                     class="collection-taxon-card group text-left rounded-lg border border-border bg-surface shadow-sm hover:border-science-blue/40 hover:shadow-md transition-all"
                                 >
-                                    {{-- Imagen (solo para género; filo/clase/orden/familia son tarjetas simples) --}}
-                                    @if($hijo['nivel'] === 'genus')
-                                        @php $portadaUrl = $portadas['genus:'.$hijo['taxon']] ?? null; @endphp
-                                        <div class="h-20 bg-bg-main border-b border-border flex items-center justify-center overflow-hidden">
-                                            @if($portadaUrl)
-                                                <img src="{{ $portadaUrl }}" alt="{{ $hijo['taxon'] }}" class="h-full w-full object-cover" />
-                                            @else
-                                                <flux:icon name="photo" class="size-7 text-border" />
-                                            @endif
-                                        </div>
-                                    @endif
+                                    <x-catalogopublico::fotografia-tarjeta :nombre="$hijo['taxon']" :nivel="$hijo['nivel']" :jerarquia="array_column($ruta, 'taxon', 'nivel')" :url="$portadas[$hijo['nivel'].':'.$hijo['taxon']] ?? null" />
 
                                     {{-- Cuerpo --}}
                                     <div class="p-3.5">
@@ -417,16 +408,7 @@
                                 <article
                                     class="collection-taxon-card group w-full text-left rounded-lg border border-border bg-surface shadow-sm px-4 py-3.5 hover:border-science-blue/40 hover:shadow transition-all flex flex-wrap items-center gap-4"
                                 >
-                                    {{-- Imagen por defecto de la especie (si tiene) --}}
-                                    @if($portadaEspecie)
-                                        <div class="size-14 shrink-0 overflow-hidden rounded-lg border border-border bg-bg-main">
-                                            <img src="{{ $portadaEspecie }}" alt="{{ $especie['especie'] }}" class="h-full w-full object-cover" loading="lazy" />
-                                        </div>
-                                    @else
-                                        <div class="size-14 shrink-0 flex items-center justify-center rounded-lg border border-dashed border-border bg-bg-main">
-                                            <flux:icon name="photo" class="size-5 text-border" />
-                                        </div>
-                                    @endif
+                                    <x-catalogopublico::fotografia-tarjeta :nombre="$especie['especie']" nivel="species" :jerarquia="array_column($ruta, 'taxon', 'nivel')" :url="$portadaEspecie" :compacto="true" />
 
                                     <div class="min-w-0 flex-1">
                                         <button type="button" wire:click="navegar('species', '{{ $especie['especie'] }}')" class="collection-taxon-main font-serif italic text-base text-text-primary group-hover:text-science-blue transition-colors">
@@ -894,17 +876,7 @@
                     <article
                         class="collection-taxon-card group text-left rounded-lg border border-border bg-surface shadow-sm hover:border-science-blue/40 hover:shadow-md transition-all"
                     >
-                        {{-- Imagen (solo para género; filo/clase/orden/familia son tarjetas simples) --}}
-                        @if($nodo['nivel'] === 'genus')
-                            @php $portadaUrl = $portadas['genus:'.$nodo['taxon']] ?? null; @endphp
-                            <div class="h-20 bg-bg-main border-b border-border flex items-center justify-center overflow-hidden">
-                                @if($portadaUrl)
-                                    <img src="{{ $portadaUrl }}" alt="{{ $nodo['taxon'] }}" class="h-full w-full object-cover" />
-                                @else
-                                    <flux:icon name="photo" class="size-7 text-border" />
-                                @endif
-                            </div>
-                        @endif
+                        <x-catalogopublico::fotografia-tarjeta :nombre="$nodo['taxon']" :nivel="$nodo['nivel']" :jerarquia="$nodo['jerarquia'] ?? array_column($ruta, 'taxon', 'nivel')" :url="$portadas[$nodo['nivel'].':'.$nodo['taxon']] ?? null" />
 
                         {{-- Cuerpo --}}
                         <div class="p-3.5">

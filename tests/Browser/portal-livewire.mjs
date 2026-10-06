@@ -126,6 +126,17 @@ try {
     await reposo();
     assert.match(await evaluar('window.location.search'), /vista=mapa/);
     assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /18 registros/);
+    // Provincia y Localidad comparten LOV: abrir/cancelar no actualiza filtros; el botón principal conserva contraste.
+    const peticionesAntesLov = totalPeticiones;
+    for (const abrir of ['abrirProvincias()', 'abrirLocalidades()']) {
+        await evaluar(`[...document.querySelectorAll('.research-sidebar button')].find(b => b.getAttribute('x-on:click') === ${JSON.stringify(abrir)}).click()`);
+        await visible("document.querySelector('.research-locality-dialog[open] input[type=search]') === document.activeElement");
+        assert.ok(await evaluar("(() => {const b=document.querySelector('.research-locality-dialog[open] .research-locality-apply'); const s=getComputedStyle(b); return s.color === 'rgb(255, 255, 255)' && s.backgroundColor !== 'rgba(0, 0, 0, 0)';})()"));
+        await conexion.send('Input.dispatchKeyEvent', {type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27});
+        await conexion.send('Input.dispatchKeyEvent', {type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27});
+        await visible("!document.querySelector('.research-locality-dialog[open]')");
+    }
+    await reposo(); assert.equal(totalPeticiones, peticionesAntesLov);
     await evaluar("document.querySelector('.atlas-map-actions .atlas-panel-tools > button').click()");
     await evaluar("[...document.querySelectorAll('.atlas-map-actions [role=menuitem]')].find(b => b.textContent.includes('Alternar agrupaciones')).click()");
     await visible("document.querySelectorAll('.atlas-map [aria-label^=\"Ubicación original\"]').length === 3");
@@ -196,8 +207,15 @@ try {
         await evaluar("[...document.querySelectorAll('.collection-active-filters button')].find(b=>b.getAttribute('wire:click')?.includes(" + JSON.stringify(alias === 'ffd' ? 'periodo' : alias === 'fmes' ? 'filtroMes' : 'elevacion') + ")).click()");
         await reposo();
     }
+    // Las leyendas no ocupan la vista normal; Indicador muestra la explicación y PDF agrega sus figuras.
+    assert.equal(await evaluar("document.querySelectorAll('.atlas-dashboard .atlas-figure-caption').length"), 0);
+    assert.equal(await evaluar("[...document.querySelectorAll('#menu-filos button')].filter(b=>b.getAttribute('x-on:click') === 'alternarGrafico()').length"), 0);
+    await evaluar("document.querySelector('.atlas-map-actions .atlas-panel-tools > button').click(); [...document.querySelectorAll('.atlas-map-actions [role=menuitem]')].find(b=>b.textContent.trim()==='Indicador').click()");
+    await visible("document.querySelector('.atlas-index-dialog[open] .atlas-indicator-explanation')");
+    assert.equal(await evaluar("document.querySelector('.atlas-index-dialog[open] .atlas-indicator-explanation').textContent.trim().split(/\\s+/).length"), 80);
+    await evaluar("document.querySelector('.atlas-index-dialog[open]').close()");
     // Solo los paneles pasan al documento imprimible; el navegador genera un PDF real.
-    await evaluar(`window.__pdfPreparado=false; window.__observadorPdf=new MutationObserver(cambios=>{for(const cambio of cambios) for(const nodo of cambio.addedNodes) if(nodo.matches?.('.atlas-pdf-frame')) nodo.contentWindow.print=()=>{window.__pdfPreparado=true;};}); window.__observadorPdf.observe(document.body,{childList:true}); document.querySelector('.atlas-map-actions .atlas-panel-tools > button').click(); [...document.querySelectorAll('.atlas-map-actions [role=menuitem]')].find(b=>b.textContent.includes('siete paneles a PDF')).click();`);
+    await evaluar(`window.__pdfPreparado=false; window.__observadorPdf=new MutationObserver(cambios=>{for(const cambio of cambios) for(const nodo of cambio.addedNodes) if(nodo.matches?.('.atlas-pdf-frame')) nodo.contentWindow.print=()=>{window.__pdfPreparado=true;};}); window.__observadorPdf.observe(document.body,{childList:true}); document.querySelector('.atlas-map-actions .atlas-panel-tools > button').click(); [...document.querySelectorAll('.atlas-map-actions [role=menuitem]')].find(b=>b.textContent.trim()==='Exportar a PDF').click();`);
     await visible('window.__pdfPreparado');
     assert.equal(await evaluar("document.querySelector('.atlas-pdf-frame').contentDocument.querySelectorAll('main > .atlas-panel').length"), 7);
     assert.equal(await evaluar("document.querySelector('.atlas-pdf-frame').contentDocument.querySelectorAll('button, .research-sidebar, .atlas-panel-tools, .atlas-map-actions').length"), 0);

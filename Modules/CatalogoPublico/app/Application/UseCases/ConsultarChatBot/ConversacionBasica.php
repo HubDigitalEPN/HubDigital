@@ -12,8 +12,8 @@ final class ConversacionBasica
     public function responder(string $pregunta): ?array
     {
         $normal = $this->texto->normalizar($pregunta);
-        if (! in_array($normal, ['hola', 'buenos dias', 'buenas tardes', 'buenas noches', 'buenas', 'que tal'], true)
-            && preg_match('/^(?:(?:muy )?buen(?:os dias|as tardes|as noches| dia)|hola(?: hola)?|saludos)(?: desde [a-z ]+| estimados| estan por aqui| me ayudan)?$/', $normal)) {
+        if (in_array($normal, ['hola', 'ola', 'holaa', 'buenos dias', 'buenas tardes', 'buenas noches', 'buenas', 'que tal'], true)
+            || preg_match('/^(?:(?:muy )?buen(?:os dias|as tardes|as noches| dia)|hola(?: hola)?|saludos)(?: desde [a-z ]+| estimados| estan por aqui| me ayudan)?$/', $normal)) {
             return ['texto' => '¡Hola! Puedo orientarte sobre depósitos, documentos y registros públicos del catálogo. ¿Qué necesitas?',
                 'opciones' => [], 'fuente' => 'conversacion', 'intent' => 'saludo', 'confianza' => 'HIGH', 'confianza_valor' => 1.0];
         }
@@ -22,6 +22,7 @@ final class ConversacionBasica
         } elseif (preg_match('/^(?:ok |listo )?(?:perfecto|entendido)$/', $normal)) {
             $normal = 'entendido';
         }
+        if (preg_match('/^(?:quien eres(?: tu)?|como te llamas|eres (?:un robot|una ia|humano))$/', $normal)) $normal = 'quien eres';
         $respuestas = [
             'gracias' => 'Con gusto. Si necesitas algo más sobre depósitos o el catálogo, dime.',
             'muchas gracias' => 'Con gusto. Aquí estoy si te surge otra pregunta.',

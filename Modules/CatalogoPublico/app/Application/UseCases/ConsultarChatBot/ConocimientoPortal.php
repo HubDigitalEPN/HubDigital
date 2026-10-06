@@ -13,6 +13,24 @@ final class ConocimientoPortal
 {
     public function __construct(private readonly RankingIntencionesChat $ranker, private readonly TextoChat $texto) {}
 
+    /** Un saludo reconocido exactamente conserva la respuesta aprobada, sus variantes y valoración. */
+    public function saludoPublicado(?int $anterior = null, array $variantesRecientes = []): ?array
+    {
+        $nodo = DB::table('divulgacion.chat_nodes')->where('slug', 'saludo')
+            ->where('status', 'published')->where('needs_curator_review', false)->first();
+        if ($nodo === null) return null;
+        [$respuesta, $variante] = $this->elegirVariante((int) $nodo->id, $nodo->answer, $variantesRecientes);
+        DB::table('divulgacion.chat_nodes')->where('id', $nodo->id)->increment('uses');
+        if ($variante !== null) DB::table('divulgacion.chat_variants')->where('id', $variante)->increment('uses');
+        if ($anterior !== null && DB::table('divulgacion.chat_nodes')->where('id', $anterior)->exists()) {
+            DB::table('divulgacion.chat_transitions')->insertOrIgnore(['from_id' => $anterior, 'to_id' => $nodo->id, 'uses' => 0]);
+            DB::table('divulgacion.chat_transitions')->where('from_id', $anterior)->where('to_id', $nodo->id)->increment('uses');
+        }
+        return ['texto' => $respuesta, 'opciones' => $this->opciones((string) $nodo->action, (int) $nodo->id),
+            'node_id' => (int) $nodo->id, 'variant_id' => $variante, 'node_slug' => 'saludo', 'intent' => 'saludo',
+            'fuente' => 'conocimiento', 'confianza' => 'HIGH', 'confianza_valor' => 1.0, 'entidades' => []];
+    }
+
     /** Combina únicamente dos temas relacionados que ya tienen respuesta institucional publicada. */
     public function responderCompuesta(string $pregunta): ?array
     {

@@ -27,6 +27,9 @@ export async function prepararPdfPaneles() {
         doc.head.append(estilo);
         for (const panel of paneles) {
             const copia = panel.cloneNode(true);
+            const leyenda = copia.querySelector('template.atlas-export-caption');
+            if (!leyenda) throw new Error('Falta la explicación de una figura para exportar.');
+            leyenda.replaceWith(leyenda.content.cloneNode(true));
             copia.classList.remove('atlas-map-maximized');
             const originalesVisibles = [...panel.querySelectorAll('[x-show]')];
             [...copia.querySelectorAll('[x-show]')].forEach((nodo, i) => {

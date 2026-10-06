@@ -143,6 +143,18 @@ const registrarDashboard = () => {
             const nodo = this.distribucion.nodos.find(nodo => String(nodo.id) === String(id));
             return nodo ? {left: `${nodo.x}px`, top: `${nodo.y}px`, width: `${nodo.ancho}px`} : {};
         },
+        navegarTeclado(evento) {
+            if (!['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(evento.key)) return;
+            const actual = evento.target.closest('[data-taxon-id]');
+            if (!actual) return;
+            const botones = [...this.$el.querySelectorAll('[data-taxon-id]:not(:disabled)')];
+            const indice = botones.indexOf(actual), id = actual.dataset.taxonId;
+            let destino;
+            if (evento.key === 'ArrowRight') destino = botones.find(b => String(this.nodos.find(n => String(n.id) === b.dataset.taxonId)?.padre_id) === id);
+            else if (evento.key === 'ArrowLeft') destino = botones.find(b => b.dataset.taxonId === String(this.nodos.find(n => String(n.id) === id)?.padre_id));
+            else destino = botones[evento.key === 'Home' ? 0 : evento.key === 'End' ? botones.length - 1 : Math.max(0, Math.min(botones.length - 1, indice + (evento.key === 'ArrowDown' ? 1 : -1)))];
+            evento.preventDefault(); destino?.focus({preventScroll: true}); destino?.scrollIntoView({block: 'nearest', inline: 'nearest'});
+        },
         init() {
             const colocar = () => {
                 const contenedor = this.$el.parentElement;
@@ -212,6 +224,7 @@ const registrarDashboard = () => {
         observador: null,
         actualizar: null,
         localidadesAbiertas: false,
+        tipoGeografia: 'localidad',
         localidades: [],
         localidadesElegidas: [],
         busquedaLocalidad: '',
@@ -222,8 +235,13 @@ const registrarDashboard = () => {
         },
         get localidadesMostradas() { return this.localidadesEncontradas.slice(0, 100); },
         abrirLocalidades() {
-            this.localidades = JSON.parse(this.$refs.datosLocalidades.dataset.localidades || '[]');
-            this.localidadesElegidas = [...(this.$wire.borradorFiltros.filtroGeografias || [])];
+            this.abrirGeografias('localidad');
+        },
+        abrirProvincias() { this.abrirGeografias('provincia'); },
+        abrirGeografias(tipo) {
+            this.tipoGeografia = tipo;
+            this.localidades = JSON.parse(this.$refs.datosLocalidades.dataset[tipo === 'provincia' ? 'provincias' : 'localidades'] || '[]');
+            this.localidadesElegidas = [...(this.$wire.borradorFiltros[tipo === 'provincia' ? 'filtroProvincias' : 'filtroGeografias'] || [])];
             this.busquedaLocalidad = '';
             this.localidadesAbiertas = true;
             this.posicionarLocalidades();
@@ -245,7 +263,7 @@ const registrarDashboard = () => {
         cerrarLocalidades() { this.$refs.dialogoLocalidades.close(); },
         restaurarFocoLocalidades() {
             this.localidadesAbiertas = false;
-            this.$refs.elegirLocalidad.focus({preventScroll: true});
+            this.$refs[this.tipoGeografia === 'provincia' ? 'elegirProvincia' : 'elegirLocalidad'].focus({preventScroll: true});
         },
         elegirLocalidad(nombre) {
             if (nombre !== '' && !this.localidades.includes(nombre)) return;
@@ -255,7 +273,7 @@ const registrarDashboard = () => {
         aplicarLocalidades() {
             const elegidas = this.localidadesElegidas.filter(nombre => this.localidades.includes(nombre));
             this.cerrarLocalidades();
-            this.$wire.$set('borradorFiltros.filtroGeografias', elegidas);
+            this.$wire.$set('borradorFiltros.' + (this.tipoGeografia === 'provincia' ? 'filtroProvincias' : 'filtroGeografias'), elegidas);
         },
         navegarLocalidades(evento) {
             if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(evento.key)) return;

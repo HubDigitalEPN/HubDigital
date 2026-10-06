@@ -126,7 +126,7 @@ export function urlFotoINaturalist(foto) {
     } catch { return null; }
 }
 
-export function fotografiasDeObservaciones(observaciones, taxones, seleccionado, consulta) {
+export function fotografiasDeObservaciones(observaciones, taxones, seleccionado, consulta, internacionalesConCredito = false) {
     if (!consulta || !idPositivo(seleccionado?.id) || !Array.isArray(taxones)) return [];
     const detalles = new Map();
     for (const taxon of taxones.slice(0, 30)) {
@@ -155,7 +155,7 @@ export function fotografiasDeObservaciones(observaciones, taxones, seleccionado,
             const url = urlFotoINaturalist(foto);
             const autor = foto?.attribution_name || foto?.attribution;
             const creditoEcuador = esReferenciaEcuador(observacion);
-            if (!url || ids.has(foto.id) || (!creditoEcuador && foto.license_code !== 'cc0')
+            if (!url || ids.has(foto.id) || (!creditoEcuador && foto.license_code !== 'cc0' && !internacionalesConCredito)
                 || (foto.license_code !== 'cc0' && (typeof autor !== 'string' || !autor.trim()))) continue;
             ids.add(foto.id);
             const family = nombrePublico('family', consulta, linaje);

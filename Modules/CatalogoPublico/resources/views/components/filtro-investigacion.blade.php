@@ -16,12 +16,16 @@
     </summary>
     <form wire:submit="aplicarBorrador" class="research-filter-form" aria-label="Filtros de investigación">
         <fieldset class="research-filter-lock" wire:loading.attr="disabled">
-        <p class="research-filter-note">Los filtros se aplican al cambiar un dato, en tarjetas, registros y análisis.</p>
         @if($errors->any())<p class="research-filter-error" role="alert">{{ $errors->first() }}</p>@endif
         <label @class(['research-filter-active' => $activo('filtroCatalogo')])><span>N.º de catálogo</span><input type="search" wire:model.live.debounce.400ms="borradorFiltros.filtroCatalogo" aria-invalid="{{ $errors->has('filtroCatalogo') ? 'true' : 'false' }}" aria-describedby="error-filtroCatalogo" placeholder="MEPN-INV-1, MEPN-INV-2" maxlength="240"></label>
         <label @class(['research-filter-active' => $activo('filtroTaxon')])><span>Taxón</span><input type="search" wire:model.live.debounce.400ms="borradorFiltros.filtroTaxon" aria-invalid="{{ $errors->has('filtroTaxon') ? 'true' : 'false' }}" aria-describedby="error-filtroTaxon" placeholder="Nombre científico en cualquier rango" maxlength="120"></label>
         <fieldset @class(['research-filter-active' => $activo('filtroFilos')])><legend>Filo</legend><small>Selecciona uno o varios; sin selección se incluyen todos.</small><div class="research-check-list">@foreach($filos as $filo)<label><input type="checkbox" wire:model.live="borradorFiltros.filtroFilos" value="{{ $filo['id'] }}">{{ $filo['nombre_cientifico'] }}</label>@endforeach</div></fieldset>
-        <details @class(['research-filter-section', 'research-filter-active' => $activo('filtroProvincias')])><summary>Provincia @if($activo('filtroProvincias'))<small>({{ count($aplicados['filtroProvincias']) }})</small>@endif</summary><fieldset><legend class="sr-only">Provincias</legend><small>Puedes combinar varias provincias.</small><div class="research-check-list">@foreach($provincias as $provincia)<label><input type="checkbox" wire:model.live="borradorFiltros.filtroProvincias" value="{{ $provincia }}">{{ ucfirst($provincia) }}</label>@endforeach</div></fieldset></details>
+        <div @class(['research-localities', 'research-filter-active' => $activo('filtroProvincias')])>
+            <span id="etiqueta-provincia">Provincia</span>
+            <button type="button" class="research-locality-picker" x-ref="elegirProvincia" x-on:click="abrirProvincias()" aria-labelledby="etiqueta-provincia valor-provincia" aria-haspopup="dialog" aria-controls="localidades-dialogo" aria-invalid="{{ $errors->has('filtroProvincias') ? 'true' : 'false' }}" aria-describedby="error-filtroProvincias">
+                <span id="valor-provincia">{{ implode(' · ', $this->borradorFiltros['filtroProvincias'] ?: []) ?: 'Todas las provincias' }}</span><span aria-hidden="true">⌕</span>
+            </button>
+        </div>
         <div @class(['research-localities', 'research-filter-active' => $activo('filtroGeografias')])>
             <span id="etiqueta-localidad">Localidad</span>
             <button type="button" class="research-locality-picker" x-ref="elegirLocalidad" x-on:click="abrirLocalidades()" aria-labelledby="etiqueta-localidad valor-localidad" aria-haspopup="dialog" aria-controls="localidades-dialogo" aria-invalid="{{ $errors->has('filtroGeografias') ? 'true' : 'false' }}" aria-describedby="error-filtroGeografias">
@@ -29,10 +33,6 @@
             </button>
         </div>
 
-        <div class="research-filter-pair">
-            <label @class(['research-filter-active' => $activo('filtroLatitud') || $activo('filtroLatMin') || $activo('filtroLatMax')])><span>Latitud</span><input type="number" step="any" min="-90" max="90" wire:model.live.debounce.400ms="borradorFiltros.filtroLatitud" aria-invalid="{{ $errors->has('filtroLatitud') ? 'true' : 'false' }}" placeholder="−90 a 90"></label>
-            <label @class(['research-filter-active' => $activo('filtroLongitud') || $activo('filtroLonMin') || $activo('filtroLonMax')])><span>Longitud</span><input type="number" step="any" min="-180" max="180" wire:model.live.debounce.400ms="borradorFiltros.filtroLongitud" aria-invalid="{{ $errors->has('filtroLongitud') ? 'true' : 'false' }}" placeholder="−180 a 180"></label>
-        </div>
         @if(($aplicados['filtroLatMin'] ?? '') !== ($aplicados['filtroLatMax'] ?? '') || ($aplicados['filtroLonMin'] ?? '') !== ($aplicados['filtroLonMax'] ?? ''))<p class="research-filter-active research-filter-note">Área seleccionada en el mapa</p>@endif
         @if($activo('filtroFechaDesde') || $activo('filtroFechaHasta'))<p class="research-filter-active research-filter-note">Periodo: {{ $aplicados['filtroFechaDesde'] ?? '' }} — {{ $aplicados['filtroFechaHasta'] ?? '' }}</p>@endif
         @if($activo('filtroMes'))<p class="research-filter-active research-filter-note">Mes seleccionado: {{ ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][(int) $aplicados['filtroMes'] - 1] ?? $aplicados['filtroMes'] }}</p>@endif
@@ -61,17 +61,17 @@
         </fieldset>
     </form>
     <dialog id="localidades-dialogo" class="research-locality-dialog" x-ref="dialogoLocalidades" wire:ignore.self aria-labelledby="titulo-localidades" x-on:cancel.prevent="cerrarLocalidades()" x-on:close="restaurarFocoLocalidades()" x-on:click="if ($event.target === $el && ($event.clientX < $el.getBoundingClientRect().left || $event.clientX > $el.getBoundingClientRect().right || $event.clientY < $el.getBoundingClientRect().top || $event.clientY > $el.getBoundingClientRect().bottom)) cerrarLocalidades()">
-        <div x-ref="datosLocalidades" wire:loading.attr="inert" data-localidades="{{ json_encode(array_values($localidades), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}">
-            <header class="research-locality-heading"><h2 id="titulo-localidades">Elegir localidades</h2><button type="button" x-on:click="cerrarLocalidades()" aria-label="Cerrar selector de localidad">×</button></header>
-            <label class="research-locality-search"><span>Buscar localidad</span><input type="search" x-ref="buscarLocalidad" x-model="busquedaLocalidad" x-on:keydown.arrow-down.prevent="($refs.opcionesLocalidades.querySelector('ul input') || $refs.opcionesLocalidades.querySelector('button'))?.focus()" autocomplete="off" placeholder="Escribe parte del nombre"></label>
-            <p class="research-locality-status" role="status" x-text="`${localidadesEncontradas.length.toLocaleString('es-EC')} localidades disponibles`"></p>
+        <div x-ref="datosLocalidades" wire:loading.attr="inert" data-localidades="{{ json_encode(array_values($localidades), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}" data-provincias="{{ json_encode(array_values($provincias), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}">
+            <header class="research-locality-heading"><h2 id="titulo-localidades" x-text="tipoGeografia === 'provincia' ? 'Elegir provincias' : 'Elegir localidades'">Elegir localidades</h2><button type="button" x-on:click="cerrarLocalidades()" :aria-label="'Cerrar selector de ' + tipoGeografia">×</button></header>
+            <label class="research-locality-search"><span x-text="'Buscar ' + tipoGeografia">Buscar localidad</span><input type="search" x-ref="buscarLocalidad" x-model="busquedaLocalidad" x-on:keydown.arrow-down.prevent="($refs.opcionesLocalidades.querySelector('ul input') || $refs.opcionesLocalidades.querySelector('button'))?.focus()" autocomplete="off" placeholder="Escribe parte del nombre"></label>
+            <p class="research-locality-status" role="status" x-text="`${localidadesEncontradas.length.toLocaleString('es-EC')} ${tipoGeografia === 'provincia' ? 'provincias' : 'localidades'} disponibles`"></p>
             <p class="research-locality-status" x-show="localidadesEncontradas.length > 100">Se muestran las primeras 100. Escribe un nombre para acotar la lista.</p>
             <div class="research-locality-options" x-ref="opcionesLocalidades" x-on:keydown="navegarLocalidades($event)">
-                <button type="button" x-on:click="localidadesElegidas = []">Todas las localidades</button>
+                <button type="button" x-on:click="localidadesElegidas = []" x-text="tipoGeografia === 'provincia' ? 'Todas las provincias' : 'Todas las localidades'">Todas las localidades</button>
                 <template x-if="localidadesAbiertas"><ul><template x-for="localidad in localidadesMostradas" :key="localidad"><li><label><input type="checkbox" x-model="localidadesElegidas" :value="localidad"><span x-text="localidad"></span></label></li></template></ul></template>
-                <p x-show="localidadesEncontradas.length === 0">No hay localidades que coincidan con la búsqueda.</p>
+                <p x-show="localidadesEncontradas.length === 0" x-text="'No hay ' + (tipoGeografia === 'provincia' ? 'provincias' : 'localidades') + ' que coincidan con la búsqueda.'"></p>
             </div>
-            <button type="button" class="research-locality-apply" x-on:click="aplicarLocalidades()" x-text="localidadesElegidas.length ? 'Aplicar ' + localidadesElegidas.length + ' localidades' : 'Incluir todas las localidades'">Aplicar localidades</button>
+            <button type="button" class="research-locality-apply" x-on:click="aplicarLocalidades()" x-text="localidadesElegidas.length ? 'Aplicar ' + localidadesElegidas.length + ' ' + (tipoGeografia === 'provincia' ? 'provincias' : 'localidades') : 'Incluir todas las ' + (tipoGeografia === 'provincia' ? 'provincias' : 'localidades')">Aplicar localidades</button>
         </div>
     </dialog>
 </details>

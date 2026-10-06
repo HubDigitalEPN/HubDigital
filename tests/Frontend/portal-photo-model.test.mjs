@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {consultaFotografias, seleccionarTaxonExacto, linajeFotografia, urlFotoINaturalist, fotografiasDeObservaciones, fotografiasLocalesValidas, combinarFotografias, crearCacheFotografias, candidatasEcuador, LUGAR_ECUADOR_INATURALIST, descripcionFotografias} from '../../resources/js/portal-photo-model.js';
-import {crearEstadoFotografias} from '../../resources/js/portal-photos.js';
+import {crearEstadoFotografias, referenciaWebp, crearFotografiaTarjeta} from '../../resources/js/portal-photos.js';
 
 const nodo = (id, name, rank, parent_id) => ({id, name, rank, parent_id, is_active: true});
 const base = [nodo(1, 'Animalia', 'kingdom', 100), nodo(2, 'Arthropoda', 'phylum', 1), nodo(3, 'Insecta', 'class', 2), nodo(4, 'Hymenoptera', 'order', 3), nodo(5, 'Formicidae', 'family', 4)];
@@ -14,6 +14,16 @@ const observacion = (id, taxon, photos) => ({id, quality_grade: 'research', plac
 // Metadatos simulados de licencia abierta; no atribuir país ni autoría a la foto AntWeb real.
 const local = (nombre = 'Camponotus sericeiventris', archivo = 'camponotus-sericeiventris') => ({kingdom: 'Animalia', phylum: 'Arthropoda', class: 'Insecta', order: 'Hymenoptera', family: 'Formicidae', genus: 'Camponotus', species: nombre, url: `/images/taxonomia/fotografias/${archivo}.webp?v=20261002-fuentes1`, alt: `Fotografía de referencia de ${nombre}.`, descripcion: '', foto_real: true, morfologia: true, autor: '', autor_fuente: 'Autor de referencia', fuente: 'https://www.inaturalist.org/observations/20', licencia: 'CC0 1.0', licencia_url: 'https://creativecommons.org/publicdomain/zero/1.0/'});
 const respuesta = datos => ({ok: true, headers: {get: () => null}, text: async () => JSON.stringify(datos)});
+
+test('las referencias de tarjetas solo optimizan fotos del depósito abierto y conservan los créditos', () => {
+    assert.equal(referenciaWebp('https://inaturalist-open-data.s3.amazonaws.com/photos/123/medium.jpeg'), '/portal/referencias-fotograficas/123/jpeg.webp');
+    for (const url of ['https://example.test/photos/123/medium.jpg', 'http://inaturalist-open-data.s3.amazonaws.com/photos/123/medium.jpg', 'https://inaturalist-open-data.s3.amazonaws.com/photos/123/medium.svg', 'https://inaturalist-open-data.s3.amazonaws.com/photos/123/medium.jpg?token=secret', '/portal/imagenes/abcdef']) assert.equal(referenciaWebp(url), null);
+    const estado = crearFotografiaTarjeta({family: 'Formicidae'});
+    estado.fotos = [{url: 'https://inaturalist-open-data.s3.amazonaws.com/photos/456/medium.png', species: 'Camponotus sericeiventris', autor_fuente: 'Autora', licencia: 'CC BY 4.0'}];
+    assert.equal(estado.fotografia.url, '/portal/referencias-fotograficas/456/png.webp');
+    assert.equal(estado.fotografia.autor_fuente, 'Autora');
+    assert.equal(estado.fotografia.species, 'Camponotus sericeiventris');
+});
 
 test('mostrar una sola referencia local evita consultas para completar un mosaico', async () => {
     const anterior = globalThis.fetch;

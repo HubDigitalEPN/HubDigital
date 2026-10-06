@@ -162,6 +162,24 @@ test('el selector de localidad combina opciones vigentes y las aplica una sola v
     assert.deepEqual(eventos.at(-1), ['borradorFiltros.filtroGeografias', []]);
 });
 
+test('provincia usa el mismo LOV multiselección con buscador y devuelve el foco a su propio filtro', () => {
+    const {filtros} = dashboardConMapa([]); const eventos = [];
+    filtros.$el = {getBoundingClientRect: () => ({right: 330})};
+    filtros.$refs = {
+        datosLocalidades: {dataset: {provincias: JSON.stringify(['Nariño', 'Orellana', 'Pichincha']), localidades: JSON.stringify(['Lugar Uno'])}},
+        dialogoLocalidades: {style: {}, showModal() {eventos.push('abrir');}, close() {eventos.push('cerrar');}},
+        buscarLocalidad: {focus() {}}, elegirProvincia: {focus() {eventos.push('foco-provincia');}},
+    };
+    filtros.$wire = {borradorFiltros: {filtroProvincias: ['Orellana'], filtroGeografias: ['Lugar Uno']}, $set(campo, valor) {eventos.push([campo, Array.from(valor)]);}};
+    filtros.$nextTick = accion => accion(); filtros.abrirProvincias();
+    assert.equal(filtros.tipoGeografia, 'provincia'); assert.deepEqual(Array.from(filtros.localidadesElegidas), ['Orellana']);
+    filtros.busquedaLocalidad = ' NARINO '; assert.deepEqual(Array.from(filtros.localidadesEncontradas), ['Nariño']);
+    filtros.elegirLocalidad('Nariño'); filtros.aplicarLocalidades();
+    assert.deepEqual(eventos.slice(-2), ['cerrar', ['borradorFiltros.filtroProvincias', ['Orellana', 'Nariño']]]);
+    assert.deepEqual(filtros.$wire.borradorFiltros.filtroGeografias, ['Lugar Uno']);
+    filtros.restaurarFocoLocalidades(); assert.equal(eventos.at(-1), 'foco-provincia');
+});
+
 test('el selector acota el DOM sin perder búsquedas y se coloca junto a los filtros cuando cabe', () => {
     const {filtros, ventana} = dashboardConMapa([]);
     filtros.localidades = Array.from({length: 250}, (_, i) => `Localidad ${i}`);

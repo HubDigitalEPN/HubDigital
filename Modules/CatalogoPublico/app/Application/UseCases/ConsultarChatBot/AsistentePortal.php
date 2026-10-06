@@ -22,6 +22,25 @@ final class AsistentePortal
         $normal = preg_replace('/^[\s\x{00bf}?]+/u', '', Str::lower(Str::ascii(trim($pregunta)))) ?? '';
         $opciones = $this->opcionesBase();
         if (($estadistica = app(EstadisticasCatalogoChat::class)->responder($pregunta, $seleccionPortal)) !== null) return $estadistica;
+        if (($social = $this->conversacion->responder($pregunta)) !== null) {
+            return $social['intent'] === 'saludo'
+                ? ($this->conocimiento->saludoPublicado($nodoAnterior, $variantesRecientes) ?? $social)
+                : $social;
+        }
+        $definicion = app(TextoChat::class)->normalizar($pregunta);
+        if (preg_match('/^que (?:es|son|significa) (?:una |la |esta )?coleccion biologica$/', $definicion)) {
+            return ['texto' => 'Una colección biológica reúne ejemplares de seres vivos conservados y organizados para su estudio. Cada ejemplar se acompaña de datos, como su nombre, dónde y cuándo se recolectó y quién lo recolectó. Esa información permite estudiar la diversidad, comparar organismos y documentar cambios a lo largo del tiempo. En este portal puedes consultar los registros públicos de la colección del Laboratorio de Invertebrados.',
+                'fuente' => 'portal', 'intent' => 'portal.definicion_coleccion', 'entidades' => [],
+                'opciones' => [['label' => 'Explorar la colección', 'url' => route('portal.catalogo')]]];
+        }
+        if (preg_match('/^(?:que es (?:esto|esta pagina|este portal)|de que trata (?:esto|esta pagina|este portal))$/', $definicion)) {
+            return ['texto' => 'Estás en el catálogo público de la Colección Biológica del Laboratorio de Invertebrados. Aquí puedes explorar los grupos de animales, consultar los registros y ver sus ubicaciones en el mapa. Los filtros permiten elegir la parte de la colección que quieres estudiar. Si te refieres a un animal, una cifra o un gráfico concreto, dime su nombre y te lo explico.',
+                'fuente' => 'portal', 'intent' => 'portal.presentacion', 'entidades' => [], 'opciones' => []];
+        }
+        // Las definiciones preceden a la interpretación de nombres como filtros o navegación.
+        if (preg_match('/^(?:que (?:es|son|hacen)|para que sirven|por que|como viven|cual es la funcion)\b/', $definicion)
+            && !preg_match('/\b(?:cuantas?|cuantos?|registros|ejemplares|localidad|provincia|catalogo|coleccion|depositos?|prestamos?)\b/', $definicion)
+            && ($biologia = $this->biologiaLocal($definicion)) !== null) return $biologia;
         if (preg_match('/^cuantas espesies (?:ai|hay) (?:aki|aqui)[?.!]*$/', $normal)) {
             $pregunta = '¿Cuántas especies hay en esta selección?';
             $normal = 'cuantas especies hay en esta seleccion?';
@@ -338,7 +357,16 @@ final class AsistentePortal
     /** @return array{texto:string,opciones:array}|null */
     private function biologiaLocal(string $normal): ?array
     {
+        $normal = str_replace(['nematomorph', 'annelid'], ['nematomorf', 'anelid'], $normal);
         $temas = [
+            'nematomorf' => [
+                'Los nematomorfos son gusanos largos y muy delgados, conocidos como gusanos crin de caballo. En las formas de agua dulce, sus larvas crecen dentro de insectos; los adultos salen al agua para reproducirse. Pueden encontrarse en charcos y arroyos, a veces formando nudos.',
+                'University of Kentucky', 'https://entomology.mgcafe.uky.edu/ef613',
+            ],
+            'anelid' => [
+                'Los anélidos son animales de cuerpo blando dividido en segmentos, como las lombrices de tierra, las sanguijuelas y muchos gusanos marinos. Algunos viven en el suelo y otros en el agua. Annelida es el nombre científico del grupo; un registro identificado como anélido no necesariamente tiene una especie determinada.',
+                'Smithsonian', 'https://ocean.si.edu/ocean-life/invertebrates',
+            ],
             'artropod' => [
                 'Los artrópodos son invertebrados con exoesqueleto, cuerpo segmentado y apéndices articulados. Incluyen insectos, arácnidos y crustáceos.',
                 'Natural History Museum', 'https://www.nhm.ac.uk/discover/the-cambrian-period.html',
@@ -390,7 +418,7 @@ final class AsistentePortal
         }
         foreach ($temas as $palabra => [$texto, $fuente, $url]) {
             if (str_contains($normal, $palabra)) {
-                return ['texto' => $texto, 'opciones' => [
+                return ['texto' => $texto, 'fuente' => 'portal', 'intent' => 'biologia.'.$palabra, 'entidades' => [], 'opciones' => [
                     ['label' => 'Fuente: '.$fuente, 'url' => $url],
                     ['label' => 'Explorar catálogo', 'url' => route('portal.catalogo')],
                 ]];

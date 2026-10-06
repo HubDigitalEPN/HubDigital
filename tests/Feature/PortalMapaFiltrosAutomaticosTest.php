@@ -106,11 +106,11 @@ test('una hoja conserva su UUID y relee el linaje público antes de cargar su fi
         ->and($detalle['registros_arbol']['registro:'.$f['ids'][1]]['padre_id'])->toBe($f['familia']);
 });
 
-test('la referencia de Nematomorpha es realista y declara su generación sin atribuirla al ejemplar', function (): void {
+test('la referencia de Nematomorpha explica el grupo para visitantes y usa una imagen comprimida', function (): void {
     $referencia = ReferenciaVisualSeleccion::para(['phylum' => 'Nematomorpha', 'family' => 'Gordiidae']);
-    expect($referencia['url'])->toEndWith('nematomorpha-reference-generated-20261005.png')
-        ->and($referencia['texto'])->toContain('generada con IA', 'larvas', 'adultos', 'agua')
-        ->and($referencia['origen'])->toContain('No es una fotografía de un ejemplar de la colección')
+    expect($referencia['url'])->toEndWith('nematomorpha-reference-20261006.webp')
+        ->and($referencia['texto'])->toContain('gusanos', 'larvas', 'adultos', 'agua')->not->toContain('generada', 'IA', 'acredita una identificación')
+        ->and($referencia)->not->toHaveKey('origen')
         ->and(ReferenciaVisualSeleccion::para([]))->toBeNull()
         ->and(ReferenciaVisualSeleccion::para(['phylum' => 'FiloInexistente']))->toBeNull();
 });

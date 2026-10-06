@@ -20,10 +20,9 @@ final class ReferenciaVisualSeleccion
                 'licencia_url' => $fotografia['licencia_url'] ?? null];
         }
         if (strcasecmp(trim($filo), 'Nematomorpha') !== 0) return null;
-        return ['url' => asset('images/nematomorpha-reference-generated-20261005.png'),
-            'alt' => 'Imagen fotorrealista generada de un nematomorfo delgado enrollado sobre una piedra húmeda',
-            'texto' => 'Nematomorpha: gusanos de cuerpo largo y fino, semejante a una crin. En las formas de agua dulce, las larvas crecen dentro de insectos; los adultos salen al agua para reproducirse. Ilustración generada con IA.',
-            'origen' => 'No es una fotografía de un ejemplar de la colección ni acredita una identificación.',
+        return ['url' => asset('images/nematomorpha-reference-20261006.webp'),
+            'alt' => 'Nematomorfo de cuerpo delgado enrollado sobre una piedra húmeda',
+            'texto' => 'Nematomorpha es un grupo de gusanos muy largos y delgados, conocidos como gusanos crin de caballo. Sus larvas crecen dentro de insectos, como grillos y escarabajos. Al llegar a adultos, salen al agua para reproducirse; por eso pueden encontrarse en charcos y arroyos, a veces formando nudos.',
             'fuente' => 'https://entomology.mgcafe.uky.edu/ef613', 'autor' => null, 'licencia' => null, 'licencia_url' => null];
     }
 }

@@ -32,7 +32,7 @@ async function solicitarJSON(ruta, parametros, cancelar) {
     }
 }
 
-export function crearEstadoFotografias(taxon, fotosLocales = [], limite = 4) {
+export function crearEstadoFotografias(taxon, fotosLocales = [], limite = 4, opciones = {}) {
     const cantidad = Number.isInteger(limite) ? Math.max(1, Math.min(4, limite)) : 4;
     let consulta = consultaFotografias(taxon);
     const identidadDesconocida = taxon?._rango_desconocido || !consulta && (taxon?.rank || taxon?.rango || Array.isArray(taxon?.ancestros) || Array.isArray(taxon?.jerarquia));
@@ -64,7 +64,7 @@ export function crearEstadoFotografias(taxon, fotosLocales = [], limite = 4) {
         async cargar() {
             if (destruido || !consulta?.api || this.cargando || locales.length >= cantidad) return;
             const turno = ++sesion;
-            const claveCache = `${consulta.clave}:${cantidad}`;
+            const claveCache = `${consulta.clave}:${cantidad}:${opciones.internacionalesConCredito ? 'credito-global' : 'cc0'}`;
             const existente = cache.obtener(claveCache);
             if (existente !== null) {
                 this.fotos = combinarFotografias(locales, existente);
@@ -89,14 +89,14 @@ export function crearEstadoFotografias(taxon, fotosLocales = [], limite = 4) {
                     if (destruido || turno !== sesion || señal.aborted) return;
                     let observaciones = ecuatorianas.results.slice(0, 12);
                     if (locales.length + candidatasEcuador(observaciones, seleccionado, locales) < cantidad) {
-                        const globales = await solicitarJSON('observations', {...parametros, photo_license: 'cc0'}, señal);
+                        const globales = await solicitarJSON('observations', {...parametros, photo_license: opciones.internacionalesConCredito ? 'cc0,cc-by,cc-by-sa' : 'cc0'}, señal);
                         if (destruido || turno !== sesion || señal.aborted) return;
                         observaciones = [...observaciones, ...globales.results.slice(0, 12)];
                     }
                     const ids = [...new Set([seleccionado.id, ...observaciones.map(observacion => observacion.taxon?.id)
                         .filter(id => Number.isSafeInteger(id) && id > 0)])];
                     const detalles = await solicitarJSON(`taxa/${ids.join(',')}`, {}, señal);
-                    externas = fotografiasDeObservaciones(observaciones, detalles.results, seleccionado, consulta);
+                    externas = fotografiasDeObservaciones(observaciones, detalles.results, seleccionado, consulta, opciones.internacionalesConCredito === true);
                 }
                 if (destruido || turno !== sesion || señal.aborted) return;
                 cache.guardar(claveCache, externas);
@@ -125,4 +125,24 @@ export function crearEstadoFotografias(taxon, fotosLocales = [], limite = 4) {
     };
 }
 
-if (typeof window !== 'undefined') window.portalFotografias = crearEstadoFotografias;
+/** Solo se optimizan fotografías del depósito abierto; no acepta URLs arbitrarias ni fotos de R2. */
+export function referenciaWebp(url) {
+    const coincidencia = typeof url === 'string' && /^https:\/\/inaturalist-open-data\.s3\.amazonaws\.com\/photos\/([1-9][0-9]{0,11})\/medium\.(jpg|jpeg|png)$/.exec(url);
+    return coincidencia ? `/portal/referencias-fotograficas/${coincidencia[1]}/${coincidencia[2]}.webp` : null;
+}
+
+export function crearFotografiaTarjeta(taxon, fotosLocales = []) {
+    return {
+        ...crearEstadoFotografias(taxon, fotosLocales, 1, {internacionalesConCredito: true}),
+        fallo: false,
+        get fotografia() {
+            const foto = this.fotos[0];
+            return foto ? {...foto, url: referenciaWebp(foto.url) || foto.url} : null;
+        },
+    };
+}
+
+if (typeof window !== 'undefined') {
+    window.portalFotografias = crearEstadoFotografias;
+    window.portalFotografiaTarjeta = crearFotografiaTarjeta;
+}

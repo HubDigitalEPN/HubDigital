@@ -10,8 +10,8 @@
         x-on:keydown.arrow-down.prevent="mover($event)" x-on:keydown.arrow-up.prevent="mover($event)" x-on:keydown.home.prevent="mover($event)" x-on:keydown.end.prevent="mover($event)" x-on:focusout="if (!$el.contains($event.relatedTarget)) abierto = false">
         <button type="button" role="menuitem" wire:click="{{ $tipo === 'especies' ? 'descargarListaEspecies' : "descargarAnalisis('$tipo')" }}" x-on:click="cerrar()">{{ $tipo === 'especies' ? 'Lista completa CSV' : 'Descargar CSV' }}</button>
         @if($tipo === 'mapa')<button type="button" role="menuitem" x-on:click="geojson()">Coordenadas GeoJSON · SIG</button>@endif
-        @if($tipo === 'mapa')<button type="button" role="menuitem" x-on:click="pdf()">Exportar los siete paneles a PDF</button>@endif
-        <button type="button" role="menuitem" x-on:click="alternarGrafico()">{{ $tipo === 'mapa' ? 'Alternar agrupaciones y ubicaciones' : 'Alternar tipo de gráfico' }}</button>
+        @if($tipo === 'mapa')<button type="button" role="menuitem" x-on:click="pdf()">Exportar a PDF</button>@endif
+        @if($tipo !== 'filos')<button type="button" role="menuitem" x-on:click="alternarGrafico()">{{ $tipo === 'mapa' ? 'Alternar agrupaciones y ubicaciones' : 'Alternar tipo de gráfico' }}</button>@endif
         <button type="button" role="menuitem" x-on:click="indice()">Indicador</button>
     </div>
     <span class="sr-only" role="status" x-text="aviso"></span>
@@ -22,6 +22,7 @@
                 <img src="{{ asset('images/indices/'.($indice['imagen'] ?? $tipo).'-640.webp') }}" srcset="{{ asset('images/indices/'.($indice['imagen'] ?? $tipo).'-320.webp') }} 320w, {{ asset('images/indices/'.($indice['imagen'] ?? $tipo).'-640.webp') }} 640w" sizes="(max-width: 480px) calc(94vw - 32px), 300px" alt="Ilustración generada: {{ $indice['foto'] }}" width="640" height="480" loading="lazy" decoding="async">
                 <figcaption>Ilustración generada con IA para explicar el indicador; no es una fotografía de un ejemplar de la colección.</figcaption>
             </figure>
+            @if(config('figuras_portal.'.$tipo))<x-catalogopublico::figura-panel :tipo="$tipo" contexto="indicador" />@endif
             @foreach($indice['parrafos'] as $parrafo)<p>{{ $parrafo }}</p>@endforeach
         </div>
     </dialog>

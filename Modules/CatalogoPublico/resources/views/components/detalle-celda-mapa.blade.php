@@ -48,12 +48,11 @@
                         </section>
                         <aside class="atlas-taxon-information" aria-labelledby="titulo-info-taxon">
                             <h3 id="titulo-info-taxon">{{ $seleccionado['nombre'] ?? 'Información del taxón' }}</h3>
+                            @php($codigoFoto = $detalle['registros'][0]->occurrence_id ?? '')
+                            <x-catalogopublico::fotografia-ejemplar :url="$detalle['imagenes'][$codigoFoto][0]['url'] ?? null" :nombre="$seleccionado['nombre'] ?? 'esta selección'" :mostrar-ausencia="true" />
                             @if($detalle['arbolResumido'])<button type="button" class="atlas-record-selector atlas-record-lov-trigger" x-on:click="invocadorLov = $event.currentTarget; $refs.registrosLov.showModal(); $nextTick(() => $refs.buscarRegistroLov.focus())">Buscar entre {{ number_format($detalle['totalUbicacion'], 0, ',', '.') }} ejemplares <span aria-hidden="true">⌕</span></button>@endif
                             @if($seleccionado)
                                 <x-catalogopublico::referencia-taxonomica :nombre="$seleccionado['nombre']" :familia-visible="isset($seleccionado['jerarquia']['family'])" :familia-original="$seleccionado['jerarquia']['family'] ?? null" />
-                                @if(!$esEspecie)
-                                    <x-catalogopublico::fotografia-mosaico :taxon="$ilustracion['taxon_consulta'] ?? ($seleccionado['jerarquia'] ?? [])" :fotos="\Modules\CatalogoPublico\Application\Services\IlustracionTaxonomica::mosaicoParaTaxon($seleccionado['jerarquia'] ?? [])" :limite="1" :retrato="true" :compacto="true" contexto="ficha-mapa" />
-                                @endif
                             @endif
                             @if(!$seleccionado && !$detalle['mostrarRegistros'])<p>Selecciona un taxón o un registro del árbol para ver su información.</p>@endif
                                 @if($detalle['mostrarRegistros'] && $detalle['registros'] !== [])
@@ -63,7 +62,6 @@
                                         @endif
                                         @foreach($detalle['registros'] as $registro)
                                             @if($detalle['registro_seleccionado'] !== null || (!$detalle['arbolResumido'] && $loop->first))<div>
-                                                <x-catalogopublico::fotografia-ejemplar :url="$detalle['imagenes'][$registro->occurrence_id][0]['url'] ?? null" :nombre="$seleccionado['nombre'] ?? 'Registro público'" />
                                                 @include('catalogopublico::components.registro-mapa', ['fotos' => [], 'mostrarIdentificacion' => false, 'mostrarReferencia' => !$seleccionado, 'permitirFicha' => false])
                                             </div>@endif
                                         @endforeach

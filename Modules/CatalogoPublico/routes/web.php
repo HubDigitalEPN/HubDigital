@@ -7,6 +7,7 @@ use Modules\CatalogoPublico\Presentation\Http\Controllers\GestionImagenesTaxonom
 use Modules\CatalogoPublico\Presentation\Http\Controllers\PortalCatalogo;
 use Modules\CatalogoPublico\Presentation\Http\Controllers\PortalEstadisticas;
 use Modules\CatalogoPublico\Presentation\Http\Controllers\ServirImagenCatalogo;
+use Modules\CatalogoPublico\Presentation\Http\Controllers\ServirReferenciaFotografica;
 use Modules\CatalogoPublico\Presentation\Http\Controllers\SincronizarEspecimenes;
 use Modules\CatalogoPublico\Presentation\Http\Controllers\TablaEspecimenesDivulgados;
 
@@ -32,4 +33,7 @@ Route::prefix('portal')
         Route::get('/imagenes/{objeto}', ServirImagenCatalogo::class)
             ->where('objeto', '[A-Za-z0-9_-]+')
             ->name('imagen');
+        Route::get('/referencias-fotograficas/{foto}/{extension}.webp', ServirReferenciaFotografica::class)
+            ->where('foto', '[1-9][0-9]{0,11}')->where('extension', 'jpg|jpeg|png')
+            ->middleware('throttle:120,1')->name('referencia-fotografica');
     });

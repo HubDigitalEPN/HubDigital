@@ -1353,6 +1353,7 @@ final class PortalCatalogo extends Component
         if ($claves === []) return [];
         return DB::table('divulgacion.imagenes_por_defecto as d')
             ->join('divulgacion.imagenes_taxonomicas as i', 'i.id', '=', 'd.imagen_id')
+            ->where('i.disco', 'r2')
             ->join('taxonomia.especimenes as e', 'e.occurrence_id', '=', 'i.occurrence_id')
             ->join('divulgacion.especimenes_divulgables as ed', 'ed.especimen_id', '=', 'e.id')
             ->where('ed.publicado', true)->whereRaw(ElegibilidadGeograficaPortal::sql('e', 'ed'))->where('ed.scientific_name_visible', true)
@@ -1384,6 +1385,7 @@ final class PortalCatalogo extends Component
 
         $consulta = DB::table('divulgacion.imagenes_taxonomicas')
             ->whereIn('occurrence_id', $occurrenceIDs)
+            ->where('disco', 'r2')
             ->whereRaw('(SELECT COUNT(*) FROM taxonomia.especimenes identidad WHERE identidad.occurrence_id = divulgacion.imagenes_taxonomicas.occurrence_id) = 1')
             ->selectRaw('occurrence_id, ruta, disco, nombre_original, ROW_NUMBER() OVER (PARTITION BY occurrence_id ORDER BY created_at, id) AS posicion');
         return DB::query()->fromSub($consulta, 'fotos_publicas')->where('posicion', '<=', 12)->orderBy('occurrence_id')->orderBy('posicion')

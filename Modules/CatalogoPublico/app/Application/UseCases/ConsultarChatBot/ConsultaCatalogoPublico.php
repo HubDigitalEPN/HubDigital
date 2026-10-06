@@ -239,7 +239,7 @@ final class ConsultaCatalogoPublico
             return $this->resultado($texto, $especiesPedidas ? 'catalogo.species' : 'catalogo.count', $entities, 0, [], $options);
         }
         if ($especiesPedidas) {
-            return $this->taxonesPorRango($query->where('t.rango', 'especie'), $entities, $options, 'especie');
+            return $this->taxonesPorRango($query->where('t.rango', 'especie'), $entities, $options, 'especie', null, $total);
         }
         if (preg_match('/\b(cuantos?|numero|total|tienen|existe|hay registros)\b/', $normal)) {
             return $this->resultado('Hay '.$total.' '.($total === 1 ? 'registro publicado' : 'registros publicados').$de.' en el catálogo.', 'catalogo.count', $entities, $total, [], $options);
@@ -419,7 +419,8 @@ final class ConsultaCatalogoPublico
             return $this->taxonesPorRango($query, $entities, $options, $unidad === 'generos' ? 'genero' : 'familia', $poblacion);
         }
         if ($unidad === 'especies') {
-            return $this->taxonesPorRango($query->where('t.rango', 'especie'), $entities, $options, 'especie', $poblacion);
+            $registros = (clone $query)->count('e.id');
+            return $this->taxonesPorRango($query->where('t.rango', 'especie'), $entities, $options, 'especie', $poblacion, $registros);
         }
         $total = $query->count('e.id');
         $texto = 'Hay '.$total.' '.($total === 1 ? 'registro publicado' : 'registros publicados').' '.$poblacion.'.';
@@ -503,7 +504,7 @@ final class ConsultaCatalogoPublico
         return $this->resultado($text, 'catalogo.families', $entities, count($rows), $rows, $options);
     }
 
-    private function taxonesPorRango(Builder $query, array $entities, array $options, string $rango, ?string $poblacion = null): array
+    private function taxonesPorRango(Builder $query, array $entities, array $options, string $rango, ?string $poblacion = null, ?int $registros = null): array
     {
         // Parte de la misma selección pública que el enlace; cada identificación
         // se recorre una vez aunque tenga miles de ejemplares en la colección.
@@ -532,6 +533,9 @@ final class ConsultaCatalogoPublico
         $singular = match ($rango) { 'familia' => 'familia', 'genero' => 'género', default => 'especie' };
         $poblacion ??= isset($entities['taxon']) ? 'dentro de '.$entities['taxon'] : 'en el catálogo público';
         $text = 'Hay '.$total.' '.($total === 1 ? $singular.($rango === 'genero' ? ' publicado' : ' publicada') : $plural.($rango === 'genero' ? ' publicados' : ' publicadas')).' '.$poblacion.'. Se cuenta cada nombre científico válido para la jerarquía interna publicada de '.$singular.' una vez entre las identificaciones de registros divulgados. Este conteo no certifica la aceptación del nombre por una autoridad externa ni la identificación física del ejemplar.';
+        if ($rango === 'especie' && $total === 0 && $registros > 0) {
+            $text = 'Hay '.$registros.' '.($registros === 1 ? 'registro publicado' : 'registros publicados').' '.$poblacion.'. Sin embargo, no hay identificaciones públicas válidas a nivel de especie: los ejemplares pueden estar identificados hasta familia u otro grupo. Por eso el mapa muestra '.$registros.' registros y el conteo de especies distintas es 0. Un registro es una entrada de la colección; varios registros pueden pertenecer a una misma especie, y un registro aún puede no tener su especie determinada.';
+        }
         if ($rows !== []) $text .= ' '.implode('; ', $rows).($total > $limite ? '; se muestran '.($rango === 'genero' ? 'los primeros ' : 'las primeras ').$limite.'.' : '.');
         $intent = match ($rango) { 'familia' => 'catalogo.families', 'genero' => 'catalogo.genera', default => 'catalogo.species' };
         return $this->resultado($text, $intent, $entities, $total, $rows, $options);
