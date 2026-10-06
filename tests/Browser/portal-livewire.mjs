@@ -247,6 +247,22 @@ try {
     await evaluar("document.querySelector('.collection-taxon-help[aria-label=\"Resumen de Nematomorpha\"]').click()");
     await visible("document.querySelector('.collection-taxon-dialog[open] img')?.complete && document.querySelector('.collection-taxon-dialog[open] img')?.naturalWidth > 0");
     await evaluar("document.querySelector('.collection-taxon-dialog[open] button[aria-label=\"Cerrar explicación\"]').click()");
+    // Una referencia ya resuelta pertenece al taxón original: el morph de tarjetas
+    // debe destruir ese estado, incluso si el siguiente nivel reutiliza su posición.
+    // Se siembra una respuesta local reconocible para no depender de la API externa.
+    const filoFotografia = `FiloBrowser${token}`;
+    const claseFotografia = `Browserclass${token}0`;
+    const ordenFotografia = `Browserorder${token}0`;
+    await evaluar(`document.querySelector('[data-foto-tarjeta="${filoFotografia}"]').closest('article').querySelector('button[aria-label^="Explorar"]').click()`);
+    await visible(`document.querySelector('[data-foto-tarjeta="${claseFotografia}"]')`); await reposo();
+    await evaluar(`(() => {const el=document.querySelector('[data-foto-tarjeta="${claseFotografia}"] [x-data]'); const estado=window.Alpine.$data(el); estado.destroy(); estado.fotos=[{url:'/images/nematomorpha-reference-20261006.webp',alt:'QA FOTO DEL TAXON ANTERIOR',species:'QA FOTO DEL TAXON ANTERIOR',autor:'Fixture local',fuente:'https://example.org/referencia',licencia:'CC0',licencia_url:'https://creativecommons.org/publicdomain/zero/1.0/'}]; estado.fallo=false; estado.cargando=false;})()`);
+    await visible("document.querySelector('img[alt=\"QA FOTO DEL TAXON ANTERIOR\"]')");
+    await evaluar(`document.querySelector('[data-foto-tarjeta="${claseFotografia}"]').closest('article').querySelector('.collection-taxon-main').click()`);
+    await visible(`document.querySelector('[data-foto-tarjeta="${ordenFotografia}"]')`); await reposo();
+    assert.equal(await evaluar("document.querySelectorAll('img[alt=\"QA FOTO DEL TAXON ANTERIOR\"]').length"), 0, 'La tarjeta conservó la fotografía del taxón anterior.');
+    assert.equal(await evaluar(`window.Alpine.$data(document.querySelector('[data-foto-tarjeta="${ordenFotografia}"] [x-data]')).fotos.some(f=>f.species==='QA FOTO DEL TAXON ANTERIOR')`), false);
+    await evaluar("[...document.querySelectorAll('button')].find(b=>b.getAttribute('wire:click') === \"navegar('', '')\").click()");
+    await visible("document.querySelector('.collection-taxon-help[aria-label=\"Resumen de Nematomorpha\"]')"); await reposo();
     await evaluar("document.querySelector('button[aria-label=\"Vista de mapa y análisis\"]').click()");
     await visible("document.querySelector('.atlas-dashboard .leaflet-pane')"); await reposo();
     // Verificación del PDF de siete figuras con el motor Chromium.
@@ -258,7 +274,7 @@ try {
     assert.equal(pdf.subarray(0, 5).toString(), '%PDF-');
     assert.equal((pdf.toString('latin1').match(/\/Type\s*\/Page\b/g) || []).length, 7, 'El PDF debe contener las siete figuras completas.');
     sinErrores();
-    console.log('OK navegador: tooltip durante morph Livewire, filtros bloqueados, LOV, cierre sin request, tres gráficos que filtran el mapa, filas adaptables, fotografía y PDF de siete figuras.');
+    console.log('OK navegador: tooltip durante morph Livewire, filtros bloqueados, LOV, cierre sin request, tres gráficos que filtran el mapa, filas adaptables, fotografía renovada al cambiar de taxón y PDF de siete figuras.');
 } catch (error) {
     console.error('Diagnóstico del navegador:', JSON.stringify({excepciones, erroresLivewire, peticionesPendientes: peticiones.size}));
     if (conexion) {

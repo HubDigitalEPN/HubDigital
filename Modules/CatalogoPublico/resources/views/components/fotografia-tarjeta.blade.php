@@ -5,7 +5,7 @@
     $fotosTarjeta = \Modules\CatalogoPublico\Application\Services\IlustracionTaxonomica::mosaicoParaTaxon($linajeFoto);
     $referenciaFilo = $nivel === 'phylum' ? \Modules\CatalogoPublico\Application\Services\ReferenciaVisualSeleccion::para($linajeFoto) : null;
 @endphp
-<div class="collection-card-photograph {{ $compacto ? 'collection-card-photograph-small' : '' }}" data-foto-tarjeta="{{ $nombre }}">
+<div wire:key="tarjeta-foto-{{ sha1(json_encode([$nivel, $linajeFoto, $url, $compacto])) }}" class="collection-card-photograph {{ $compacto ? 'collection-card-photograph-small' : '' }}" data-foto-tarjeta="{{ $nombre }}">
     @if($url)
         <figure><img src="{{ $url }}" alt="Ejemplar publicado de {{ $nombre }}" width="480" height="360" loading="lazy" decoding="async"><figcaption>Ejemplar de la colección</figcaption></figure>
     @elseif($referenciaTarjeta)
