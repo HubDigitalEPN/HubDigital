@@ -339,17 +339,23 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
         // Cada coincidencia textual conserva los permisos del rango que inició
         // la búsqueda; una familia reservada no puede inferirse por sus conteos.
         if ($filtros->taxonNombre !== null) {
-            $query->where('ed.scientific_name_visible', true)->whereRaw(<<<'SQL'
-                EXISTS (
+            // Resuelve el recorrido una vez por consulta, fuera de la condición
+            // correlacionada de cada ejemplar. Agrupar por UUID evita multiplicar
+            // registros cuando coinciden varios rangos del mismo linaje.
+            $seleccion = DB::query()->fromRaw(<<<'SQL'
+                (
                     WITH RECURSIVE seleccion AS (
                         SELECT id, rango AS rango_raiz FROM taxonomia.taxones WHERE nombre_cientifico ILIKE ?
                         UNION
                         SELECT t.id, s.rango_raiz FROM taxonomia.taxones t JOIN seleccion s ON t.padre_id = s.id
-                    ) SELECT 1 FROM seleccion s WHERE s.id = te.taxon_id
-                        AND (s.rango_raiz <> 'familia' OR ed.family_visible)
-                        AND (s.rango_raiz <> 'genero' OR ed.genus_visible)
-                )
-                SQL, ['%'.$filtros->taxonNombre.'%']);
+                    ) SELECT id, rango_raiz FROM seleccion
+                ) AS coincidencias
+                SQL, ['%'.$filtros->taxonNombre.'%'])
+                ->selectRaw("id, BOOL_OR(rango_raiz NOT IN ('familia', 'genero')) AS otros, BOOL_OR(rango_raiz = 'familia') AS familia, BOOL_OR(rango_raiz = 'genero') AS genero")
+                ->groupBy('id');
+            $query->joinSub($seleccion, 'seleccion_taxonomica', 'seleccion_taxonomica.id', '=', 'te.taxon_id')
+                ->where('ed.scientific_name_visible', true)
+                ->whereRaw('(seleccion_taxonomica.otros OR (seleccion_taxonomica.familia AND ed.family_visible) OR (seleccion_taxonomica.genero AND ed.genus_visible))');
         }
 
         if ($filtros->filoId !== null) {

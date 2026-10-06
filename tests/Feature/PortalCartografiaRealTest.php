@@ -539,6 +539,38 @@ test('las ramas del mismo taxón con permisos distintos conservan sus conteos y 
     expect($generoExplorado['taxon'])->toBe($f['prefijo'].' genero')->and($generoExplorado)->not->toHaveKey('total');
 });
 
+test('la búsqueda con coincidencias en varios rangos no duplica registros y conserva cada permiso', function (): void {
+    $f = cartografiaRealFixture();
+    $familia = (string) Str::uuid(); $genero = (string) Str::uuid();
+    $compartido = $f['prefijo'].' compartido';
+    DB::table('taxonomia.taxones')->insert([
+        ['id' => $familia, 'padre_id' => $f['filo'], 'nombre_cientifico' => $compartido.' familia', 'rango' => 'familia'],
+        ['id' => $genero, 'padre_id' => $familia, 'nombre_cientifico' => $compartido.' genero', 'rango' => 'genero'],
+    ]);
+    DB::table('taxonomia.taxones')->where('id', $f['taxones'][0])->update(['padre_id' => $genero]);
+    DB::table('taxonomia.especimenes')->where('id', $f['ids'][2])->update(['taxon_id' => $f['taxones'][0]]);
+    foreach ([[true, false], [false, true], [false, false]] as $i => [$familiaVisible, $generoVisible]) {
+        DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $f['ids'][$i])
+            ->update(['family_visible' => $familiaVisible, 'genus_visible' => $generoVisible]);
+    }
+    $repo = app(EloquentProveedorEspecimenesParaArbol::class);
+    foreach ([[$f['prefijo'], [0, 1, 2]], [$compartido, [0, 1]], [$compartido.' familia', [0]], [$compartido.' genero', [1]]] as [$nombre, $indices]) {
+        $filtros = FiltrosBusqueda::desde(['filtroTaxon' => $nombre]);
+        $pagina = $repo->paginaPublica($filtros, 1);
+        expect($pagina['total'])->toBe(count($indices))
+            ->and($pagina['ids'])->toEqualCanonicalizing(array_map(fn ($i) => $f['ids'][$i], $indices))
+            ->and($repo->cursorParaCsv($filtros)->pluck('occurrence_id')->all())
+            ->toEqualCanonicalizing(array_map(fn ($i) => $f['codigos'][$i], $indices));
+        $mapa = app(PortalEstadisticas::class)->datosParaVista(['taxon' => $nombre]);
+        expect((int) $mapa['resumen']['registros'])->toBe(count($indices))
+            ->and(array_sum(array_column($mapa['mapa'], 'total')))->toBe(count($indices));
+    }
+    DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $f['ids'][1])
+        ->update(['scientific_name_visible' => false]);
+    expect($repo->paginaPublica(FiltrosBusqueda::desde(['filtroTaxon' => $f['prefijo']]), 1)['ids'])
+        ->toEqualCanonicalizing([$f['ids'][0], $f['ids'][2]]);
+});
+
 test('el mosaico conserva la identidad del género sin fotografía propia y retira ancestros reservados', function (): void {
     $f = cartografiaRealFixture();
     $familia = DB::table('taxonomia.taxones')->where('rango', 'familia')->where('nombre_cientifico', 'Formicidae')->value('id');
