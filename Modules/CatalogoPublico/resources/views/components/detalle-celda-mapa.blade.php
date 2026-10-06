@@ -5,7 +5,7 @@
     x-on:abrir-detalle-celda.window="cargando = false"
     x-on:error-detalle-celda.window="cargando = false; error = true"
     x-on:keydown.escape.stop.prevent="$el.close()" x-on:cancel.stop.prevent="$el.close()"
-    x-on:close="cargando = false; $wire.cerrarCelda(); anterior?.focus({preventScroll: true})"
+    x-on:close="cargando = false; $wire.cerrarCelda().then(() => $dispatch('restaurar-foco-mapa', { invocador: anterior }))"
     x-on:click="if ($event.target === $el) $el.close()">
     <header class="atlas-cell-header">
         <div><h2 id="titulo-detalle-celda">Registros de la ubicación</h2><p x-show="punto" x-text="punto ? Number(punto.total).toLocaleString('es-EC') + (Number(punto.total) === 1 ? ' registro' : ' registros') + ' · latitud ' + punto.lat + ' · longitud ' + punto.lon : ''"></p></div>

@@ -15,11 +15,12 @@ function dashboardConMapa(celdas) {
     const cuadros = new Map();
     const capasOriginales = [];
     const ayudas = [];
+    const focos = [];
     const eventosMapa = {};
     const eventosTeselas = {};
     let redibujosTeselas = 0;
     let siguienteCuadro = 0;
-    const nodo = () => ({style: {}, atributos: {}, eventos: {}, setAttribute(clave, valor) {this.atributos[clave] = valor;}, removeAttribute(clave) {delete this.atributos[clave];}, addEventListener(clave, manejador) {this.eventos[clave] = manejador;}, getBoundingClientRect() {return {left: 20, top: 300, bottom: 316, width: 16, height: 16};}});
+    const nodo = () => ({style: {}, atributos: {}, eventos: {}, setAttribute(clave, valor) {this.atributos[clave] = valor;}, getAttribute(clave) {return this.atributos[clave] ?? null;}, removeAttribute(clave) {delete this.atributos[clave];}, addEventListener(clave, manejador) {this.eventos[clave] = manejador;}, focus() {focos.push(this); this.eventos.focus?.();}, getBoundingClientRect() {return {left: 20, top: 300, bottom: 316, width: 16, height: 16};}});
     const mapa = {getZoom: () => 10, on(nombres, accion) {for (const nombre of nombres.split(' ')) eventosMapa[nombre] = accion;}, fitBounds() {}, createPane: () => ({style: {}}), invalidateSize() {}, remove() {}};
     const capa = {addTo() { return this; }, clearLayers() { marcadores.length = 0; }};
     const control = () => ({addTo() { return this; }, on() { return this; }, redraw() {}});
@@ -69,11 +70,11 @@ function dashboardConMapa(celdas) {
     // Ejecuta el componente real; sólo sustituye imports y el adaptador de Leaflet/DOM.
     runInNewContext(fuenteDashboard.replace(/^import .*;\r?$/gm, ''), contexto);
     const dashboard = registros.get('portalDashboard')(celdas, {Mollusca: 8, Annelida: 2});
-    dashboard.$refs = {mapa: {focus() {}}, panelMapa: {scrollIntoView() {}}};
+    dashboard.$refs = {mapa: {focus() {focos.push('mapa');}, querySelectorAll: () => marcadores.map(marcador => marcador.elemento)}, panelMapa: {scrollIntoView() {}}};
     dashboard.$id = () => 'ayuda-mapa-prueba';
     dashboard.$nextTick = tarea => tarea();
     dashboard.init();
-    return {dashboard, filtros: registros.get('portalFiltros')(), ventana: contexto.window, marcadores, capasOriginales, ayudas, eventosMapa, eventosTeselas, redibujosTeselas: () => redibujosTeselas, pintar() {
+    return {dashboard, filtros: registros.get('portalFiltros')(), ventana: contexto.window, marcadores, capasOriginales, ayudas, focos, eventosMapa, eventosTeselas, redibujosTeselas: () => redibujosTeselas, pintar() {
         while (cuadros.size) {
             const [id, tarea] = cuadros.entries().next().value;
             cuadros.delete(id);
@@ -248,6 +249,31 @@ test('el tooltip externo conserva su ciclo al filtrar varias veces y no deja nod
     assert.equal(ultimo.atributos['aria-describedby'], undefined);
 });
 
+test('cerrar el árbol devuelve el foco al marcador vigente tras repintar y al mapa si ya no existe', () => {
+    const celdas = [{lat: -1, lon: -78, total: 1, filos: {Annelida: 1}}];
+    const {dashboard, marcadores, focos, ayudas, pintar} = dashboardConMapa(celdas);
+    const original = marcadores[0].elemento;
+    dashboard.actualizar({celdas, filos: celdas[0].filos});
+    dashboard.restaurarFocoMapa(original);
+    assert.equal(focos.length, 0, 'el foco espera el pintado de los nuevos marcadores');
+    pintar();
+    assert.notEqual(marcadores[0].elemento, original);
+    assert.equal(focos[0], marcadores[0].elemento);
+    assert.equal(ayudas[0].hidden, false, 'el marcador recuperado conserva su ayuda de teclado');
+    dashboard.actualizar({celdas: [], filos: {}});
+    dashboard.restaurarFocoMapa(original);
+    pintar();
+    assert.equal(focos.at(-1), 'mapa', 'una selección distinta no enfoca el nodo retirado');
+    const cantidadFocos = focos.length;
+    dashboard.restaurarFocoMapa(original);
+    dashboard.destroy();
+    pintar();
+    assert.equal(focos.length, cantidadFocos, 'salir de la vista descarta el foco pendiente');
+    assert.match(plantillaDashboard, /x-on:restaurar-foco-mapa\.window="restaurarFocoMapa\(/);
+    const detalle = readFileSync(new URL('../../Modules/CatalogoPublico/resources/views/components/detalle-celda-mapa.blade.php', import.meta.url), 'utf8');
+    assert.match(detalle, /\$wire\.cerrarCelda\(\)\.then\(\(\) => \$dispatch\('restaurar-foco-mapa'/);
+});
+
 test('una ubicación compartida muestra todos sus colores y abre las coordenadas originales con teclado', () => {
     const celdas = [{lat: -0.63194, lon: -76.14416, total: 8, filos: {Arthropoda: 6, Mollusca: 2}}];
     const {dashboard, marcadores, pintar} = dashboardConMapa(celdas);
@@ -278,6 +304,22 @@ test('una acción explícita de composición conserva el foco del mapa durante s
     dashboard.actualizar({celdas: [], filos: {}});
     assert.equal(dashboard.enfocarTrasCambio, false);
     assert.deepEqual(acciones, ['desplazar', 'foco', 'desplazar', 'foco']);
+});
+
+test('seleccionar un panel mantiene visible la barra de filtros y conserva el foco del mapa', () => {
+    const {dashboard} = dashboardConMapa([]);
+    const acciones = [];
+    const barra = {scrollIntoView: opciones => acciones.push(['barra', opciones.block])};
+    dashboard.$refs = {
+        mapa: {focus: () => acciones.push(['foco'])},
+        panelMapa: {
+            closest: () => ({querySelector: selector => selector === '.collection-view-bar' ? barra : null}),
+            scrollIntoView: () => acciones.push(['panel']),
+        },
+    };
+    dashboard.recordarAccion({target: {closest: () => ({getAttribute: () => '$wire.seleccionarFilo("id-annelida")'})}});
+    dashboard.actualizar({celdas: [], filos: {}});
+    assert.deepEqual(acciones, [['barra', 'start'], ['foco'], ['barra', 'start'], ['foco']]);
 });
 
 test('las ubicaciones solapadas conservan acceso por teclado al retirar el selector y al filtrar', () => {

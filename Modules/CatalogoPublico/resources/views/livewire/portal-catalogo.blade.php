@@ -101,14 +101,14 @@
     <div class="collection-loading" wire:loading.delay wire:target="borradorFiltros,cambiarVista,aplicarBorrador,limpiarFiltros,retirarCriterio,seleccionarFilo,seleccionarProvincia,seleccionarDecada,seleccionarMes,seleccionarAltitud,seleccionarMetodo,seleccionarArea,explorarNivel,navegar,cambiarPagina,cambiarPaginaHermanos,abrirFichaRegistro">
         <span class="collection-loading-indicator" role="status" aria-live="polite"><span class="atlas-spinner" aria-hidden="true"></span><span>Actualizando filtros y registros…</span></span>
     </div>
-    <div class="collection-workspace" wire:key="catalogo-workspace" wire:loading.attr="inert" wire:loading.class="is-updating">
+    <div class="collection-workspace" wire:key="catalogo-workspace" wire:loading.class="is-updating">
         <x-catalogopublico::filtro-investigacion
             :provincias="$provinciasDisponibles" :localidades="$this->localidadesDisponibles" :filos="$filosDisponibles"
             :preparaciones="$preparacionesDisponibles" :metodos="$metodosRecoleccionDisponibles"
             :biomas="$biomasDisponibles" :hay-filtros-activos="$hayFiltrosActivos"
             :aplicados="$this->filtrosAplicados"
         />
-        <div class="collection-main" wire:key="catalogo-contenido">
+        <div class="collection-main" wire:key="catalogo-contenido" wire:loading.attr="inert">
     <nav class="collection-view-bar" wire:key="catalogo-vistas" aria-label="Vista de la Colección Biológica">
         <div class="collection-active-filters" role="group" aria-label="Filtros activos de la selección aplicada">
             @foreach($this->criteriosActivos as $criterio)

@@ -189,7 +189,7 @@
 }
 
 /* Portal unificado: navegación de vistas y filtros persistentes a la izquierda. */
-.collection-view-bar { width:100%; margin:0 0 .6rem; padding:0; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:.5rem .75rem; }
+.collection-view-bar { width:100%; margin:0 0 .6rem; padding:0; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:.5rem .75rem; scroll-margin-top:5.25rem; }
 .collection-view-bar > .collection-view-switch { flex:none; margin-left:auto; }
 .collection-taxon-records { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:.75rem; padding:.85rem 1rem; margin-bottom:1rem; border:1px solid #cbd9e5; border-radius:.6rem; background:#f3f8fc; color:#16344d; }
 .collection-taxon-records p { flex:1 1 240px; margin:0; font-size:.85rem; }

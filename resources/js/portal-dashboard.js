@@ -425,7 +425,7 @@ const registrarDashboard = () => {
             this.encuadrar();
             this.programarPintado();
             if (this.enfocarTrasCambio) this.$nextTick(() => {
-                this.$refs.panelMapa.scrollIntoView({block: 'start', behavior: 'instant'});
+                this.desplazarAlMapa();
                 this.$refs.mapa.focus({preventScroll: true});
                 this.enfocarTrasCambio = false;
             });
@@ -435,9 +435,14 @@ const registrarDashboard = () => {
             const boton = evento.target.closest('button[wire\\:click]');
             if (boton && /^(?:\$wire\.)?(seleccionar|filtrar|explorarEspecie)/.test(boton.getAttribute('wire:click'))) {
                 this.enfocarTrasCambio = true;
-                this.$refs.panelMapa.scrollIntoView({block: 'start', behavior: 'instant'});
+                this.desplazarAlMapa();
                 this.$refs.mapa.focus({preventScroll: true});
             }
+        },
+
+        desplazarAlMapa() {
+            const barra = this.$refs.panelMapa.closest?.('.collection-main')?.querySelector('.collection-view-bar');
+            (barra ?? this.$refs.panelMapa).scrollIntoView({block: 'start', behavior: 'instant'});
         },
 
         alternarTamano() {
@@ -466,6 +471,18 @@ const registrarDashboard = () => {
             } catch {
                 window.dispatchEvent(new CustomEvent('error-detalle-celda'));
             }
+        },
+
+        restaurarFocoMapa(invocador) {
+            const etiqueta = invocador?.getAttribute('aria-label');
+            // El cierre de Livewire puede reemplazar el marcador original.
+            // Espera el morph y el pintado antes de buscar su elemento vigente.
+            this.$nextTick(() => requestAnimationFrame(() => {
+                if (!mapa) return;
+                const actual = etiqueta ? Array.from(this.$refs.mapa.querySelectorAll('[aria-label]'))
+                    .find(elemento => elemento.getAttribute('aria-label') === etiqueta) : null;
+                (actual ?? this.$refs.mapa).focus({preventScroll: true});
+            }));
         },
 
         programarPintado() {
