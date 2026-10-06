@@ -28,7 +28,7 @@ test('la tabla pública ofrece todas las columnas permitidas y aplica la selecci
     registrosParaContratoChat();
     DB::table('taxonomia.columnas_portal_publico')->delete();
     $servicio = app(ColumnasRegistroPublico::class);
-    expect($servicio->visibles())->toHaveCount(24)
+    expect($servicio->visibles())->toHaveCount(26)
         ->and(array_column($servicio->visibles(), 'campo'))->toContain('disposition');
     $id = DB::table('taxonomia.especimenes')->where('codigo_catalogo', 'QA3-CHAT-1')->value('id');
     DB::table('taxonomia.especimenes')->where('id', $id)->update(['colector' => 'COLECTOR-RESERVADO-FICHA',
@@ -45,7 +45,7 @@ test('la tabla pública ofrece todas las columnas permitidas y aplica la selecci
     $catalogo->call('$refresh')->assertDontSee('COLECTOR-RESERVADO-FICHA');
     $dom = domRegistrosPublicos($catalogo->html());
     $titulos = array_map(fn (DOMNode $n): string => trim($n->textContent), iterator_to_array($dom->query('//table[@class="atlas-record-table"]/thead/tr/th')));
-    expect($titulos)->toBe(['Código de catálogo', 'Identificación científica', 'Colector', 'Fotografías publicadas', 'Ficha'])
+    expect($titulos)->toBe(['Código de catálogo', 'Identificación científica', 'Colector'])
         ->and($dom->query('//table[@class="atlas-record-table"]//tr[@tabindex="0"]')->length)->toBe(1)
         ->and($dom->query('//table[@class="atlas-record-table"]//th[@scope="row"]')->item(0)->textContent)->toBe('QA3-CHAT-1');
 

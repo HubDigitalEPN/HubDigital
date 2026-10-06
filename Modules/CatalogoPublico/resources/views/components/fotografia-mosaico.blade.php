@@ -2,7 +2,7 @@
 @php
     $fotosPublicas = array_values(array_filter(array_slice($fotos, 0, 4), static fn (array $foto): bool => ($foto['foto_real'] ?? false) && ($foto['morfologia'] ?? false) && is_string($foto['url'] ?? null) && $foto['url'] !== ''));
     $limiteFotografias = max(1, min(4, (int) $limite));
-    $referenciaGrupo = $contexto === 'composicion' ? \Modules\CatalogoPublico\Application\Services\ReferenciaVisualSeleccion::para($taxon) : null;
+    $referenciaGrupo = in_array($contexto, ['composicion', 'ayuda-taxon'], true) ? \Modules\CatalogoPublico\Application\Services\ReferenciaVisualSeleccion::para($taxon) : null;
     $claveFotografias = hash('sha256', serialize([$contexto, $taxon, $fotosPublicas, $limiteFotografias, (bool) $retrato, (bool) $compacto]));
 @endphp
 <div wire:key="fotografias-{{ $claveFotografias }}" x-data="portalFotografias(@js($taxon), @js($fotosPublicas), {{ $limiteFotografias }})" :aria-busy="cargando.toString()">
@@ -28,6 +28,7 @@
         <figure class="atlas-taxon-photograph" x-show="fotos.length === 0">
             <img src="{{ $referenciaGrupo['url'] }}" alt="{{ $referenciaGrupo['alt'] }}" width="1448" height="1086" loading="lazy" decoding="async">
             <figcaption>{{ $referenciaGrupo['texto'] }}
+                @if(isset($referenciaGrupo['origen']))<small>{{ $referenciaGrupo['origen'] }}</small>@endif
                 @if($referenciaGrupo['autor'])<span>{{ $referenciaGrupo['autor'] }}</span>@endif
                 @if($referenciaGrupo['fuente'])<a href="{{ $referenciaGrupo['fuente'] }}" target="_blank" rel="noopener noreferrer">Referencia</a>@endif
                 @if($referenciaGrupo['licencia'])<a href="{{ $referenciaGrupo['licencia_url'] }}" target="_blank" rel="noopener noreferrer">{{ $referenciaGrupo['licencia'] }}</a>@endif

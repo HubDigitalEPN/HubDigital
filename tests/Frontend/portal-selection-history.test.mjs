@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {crearHistorialCatalogo, leerSeleccionCatalogo, normalizarEstadoCatalogo, urlSeleccionCatalogo} from '../../resources/js/portal-history-model.js';
 
-const defectos = {nivel: '', taxon: '', explorar: '', vista: 'tarjetas', pagina: 1, fph: '', fpais: '', fprov: '', fg: [], fp: [], ffd: '', ffh: '', fed: '', feh: ''};
+const defectos = {nivel: '', taxon: '', explorar: '', vista: 'tarjetas', pagina: 1, fph: '', fphs: [], fpais: '', fprov: '', fprovs: [], fg: [], fp: [], ffd: '', ffh: '', fed: '', feh: ''};
 const especie = {...defectos, nivel: 'species', taxon: 'Aulacomya atra', fpais: 'Ecuador', fg: ['Galápagos', 'Isla Santa Cruz']};
 const orden = {...especie, nivel: 'order', taxon: 'Mytiloida'};
 
@@ -110,4 +110,20 @@ test('los snapshots ajenos no restauran HTML de otra selección y los errores no
     historial.recibir(orden);
     await historial.volver('https://laboratorio.example/login');
     assert.equal(nav.location.href, antes);
+});
+
+
+test('cuatro filos provincias y localidades sobreviven al enlace y al historial sin perder selecciones', async () => {
+    const nav = navegador();
+    const restablecidas = [];
+    const historial = crearHistorialCatalogo({...nav, estado: especie, defectos, restaurar: async estado => { restablecidas.push(estado); return estado; }});
+    const filtros = {...defectos, vista: 'mapa', fphs: ['filo-1', 'filo-2', 'filo-3', 'filo-4'], fprovs: ['Orellana', 'Pichincha', 'Loja', 'Pastaza'], fg: ['Lugar Uno', 'Lugar Dos', 'Lugar Tres', 'Lugar Cuatro']};
+    historial.recibir(filtros);
+    assert.deepEqual(leerSeleccionCatalogo(nav.location.href, defectos), filtros);
+    await historial.volver(nav.mover(-1));
+    assert.deepEqual(restablecidas[0], especie);
+    await historial.volver(nav.mover(1));
+    assert.deepEqual(restablecidas[1], filtros);
+    assert.equal(new URL(nav.location.href).searchParams.has('fph'), false);
+    assert.equal(new URL(nav.location.href).searchParams.has('fprov'), false);
 });

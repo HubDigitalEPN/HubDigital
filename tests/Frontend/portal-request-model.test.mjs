@@ -9,10 +9,11 @@ const propiedadesCatalogo = {
     flon: 'filtroLonMin', flox: 'filtroLonMax', fed: 'filtroElevDesde', feh: 'filtroElevHasta', fb: 'filtroBiomas',
     fh: 'filtroHabitat', fsti: 'filtroTipo', fd: 'filtroDisposicion', fca: 'filtroCasta', fes: 'filtroEstadio',
     fpais: 'filtroPais', fprov: 'filtroProvincia', fph: 'filtroFiloId', fmes: 'filtroMes', fid: 'filtroIdentificacion',
+    fprovs: 'filtroProvincias', fphs: 'filtroFilos',
     fgeo: 'filtroSoloUbicacion', fap: 'filtroDatosCompletos',
 };
 const defectosCatalogo = Object.fromEntries(Object.keys(propiedadesCatalogo).map(alias => [alias,
-    ['fp', 'fg', 'fm', 'fb'].includes(alias) ? [] : (alias === 'pagina' ? 1 : (alias === 'vista' ? 'tarjetas' : '')),
+    ['fp', 'fg', 'fm', 'fb', 'fprovs', 'fphs'].includes(alias) ? [] : (alias === 'pagina' ? 1 : (alias === 'vista' ? 'tarjetas' : '')),
 ]));
 const seleccionPrevia = {vista: 'mapa', pagina: 4, nivel: 'species', taxon: 'Camponotus femoratus', fpais: 'Ecuador',
     fprov: 'Orellana', fd: 'in_collection', fsti: 'paratype', fm: ['beating'], ffd: '2001-01-01', ffh: '2002-12-31'};
@@ -121,7 +122,9 @@ test('las barras de provincia década mes altitud y filo reproducen su selecció
     const filo = '11111111-1111-4111-8111-111111111111';
     const parametros = recuperarLlamadas([['seleccionarProvincia', 'Nariño'], ['seleccionarDecada', 1990],
         ['seleccionarMes', 5], ['seleccionarAltitud', 0, 499], ['seleccionarFilo', filo]]);
-    assert.equal(parametros.get('fprov'), 'Nariño');
+    assert.equal(parametros.has('fprov'), false);
+    assert.equal(parametros.get('fprovs[0]'), 'Orellana');
+    assert.equal(parametros.get('fprovs[1]'), 'Nariño');
     assert.equal(parametros.get('ffd'), '1990-01-01');
     assert.equal(parametros.get('ffh'), '1999-12-31');
     assert.equal(parametros.get('fmes'), '5');
@@ -216,4 +219,23 @@ test('los rangos y vistas inválidos no reemplazan una selección recuperable', 
     assert.equal(parametros.get('ffd'), '2001-01-01');
     assert.equal(parametros.get('ffh'), '2002-12-31');
     for (const alias of ['fmes', 'fed', 'feh', 'flat', 'flax', 'flon', 'flox']) assert.equal(parametros.has(alias), false);
+});
+
+
+test('reintentar filtros múltiples y retirar una selección conserva las otras y descarta el alias escalar anterior', () => {
+    const parametros = recuperarLlamadas([], {
+        datos: {borradorFiltros: [{filtroFiloId: 'anterior', filtroFilos: [['anterior'], {s: 'arr'}], filtroProvincia: 'Orellana', filtroProvincias: [['Orellana'], {s: 'arr'}]}, {s: 'arr'}]},
+        updates: {'borradorFiltros.filtroFilos': ['filo-1', 'filo-2', 'filo-3', 'filo-4'], 'borradorFiltros.filtroProvincias': ['Loja', 'Pastaza']},
+    });
+    assert.equal(parametros.has('fph'), false);
+    assert.equal(parametros.has('fprov'), false);
+    assert.deepEqual([0, 1, 2, 3].map(i => parametros.get(`fphs[${i}]`)), ['filo-1', 'filo-2', 'filo-3', 'filo-4']);
+    assert.deepEqual([0, 1].map(i => parametros.get(`fprovs[${i}]`)), ['Loja', 'Pastaza']);
+    const retirado = recuperarLlamadas([['seleccionarFilo', 'filo-2'], ['aplicarBorrador']], {estado: {...seleccionPrevia, fphs: ['filo-1', 'filo-2', 'filo-3']}});
+    assert.deepEqual([0, 1].map(i => retirado.get(`fphs[${i}]`)), ['filo-1', 'filo-3']);
+    assert.equal(retirado.get('fprov'), 'Orellana');
+    const criterio = recuperarLlamadas([['retirarCriterio', 'filtroFilos', 1], ['aplicarBorrador']], {estado: {...seleccionPrevia, fphs: ['filo-1', 'filo-2', 'filo-3']}});
+    assert.deepEqual([0, 1].map(i => criterio.get(`fphs[${i}]`)), ['filo-1', 'filo-3']);
+    assert.equal(criterio.get('fprov'), 'Orellana');
+    assert.equal(criterio.get('ffd'), seleccionPrevia.ffd);
 });

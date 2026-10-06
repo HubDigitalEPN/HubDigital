@@ -139,7 +139,7 @@
         @include('catalogopublico::components.detalle-celda-mapa')
         @endif
     @elseif($vista === 'registros')
-        <div class="mx-auto max-w-7xl px-4 pb-10 pt-4 sm:px-6 lg:px-8">
+        <div class="portal-records-viewport portal-records-catalogue mx-auto max-w-7xl px-4 pt-4 sm:px-6 lg:px-8" x-data="portalRegistros({{ $this->registrosPorPagina }})">
             <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
                 <div>
                     <h1 class="font-display text-2xl font-bold text-blue-navy">
@@ -155,10 +155,10 @@
                 <p class="rounded-lg border border-border bg-surface p-8 text-center text-text-secondary">No hay registros públicos para esta selección.</p>
             @else
                 <x-catalogopublico::tabla-registros-mapa :registros="$registrosVista" :imagenes="$imagenesRegistrosVista" :total="$totalRegistrosVista" contexto="catalogo" :mostrar-titulo="false" />
-                <nav class="mt-5 flex items-center justify-between gap-3" aria-label="Páginas de registros">
+                <nav class="portal-records-pagination" aria-label="Páginas de registros">
+                    <span class="text-sm text-text-secondary">{{ $paginaActual }} / {{ $ultimaPagina }}</span>
                     <button type="button" wire:click="cambiarPagina({{ $paginaActual - 1 }})" @disabled($paginaActual <= 1)
                         class="rounded-lg border border-border px-4 py-2 text-sm text-science-blue disabled:cursor-not-allowed disabled:opacity-40">Anterior</button>
-                    <span class="text-sm text-text-secondary">{{ $paginaActual }} / {{ $ultimaPagina }}</span>
                     <button type="button" wire:click="cambiarPagina({{ $paginaActual + 1 }})" @disabled($paginaActual >= $ultimaPagina)
                         class="rounded-lg border border-border px-4 py-2 text-sm text-science-blue disabled:cursor-not-allowed disabled:opacity-40">Siguiente</button>
                 </nav>

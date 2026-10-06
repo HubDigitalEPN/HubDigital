@@ -8,6 +8,7 @@ import '../css/portal-record-dialog.css';
 import 'leaflet/dist/leaflet.css';
 import './portal-dashboard';
 import './portal-photos';
+import './portal-charts';
 
 // Disponible para los paneles Livewire sin depender de scripts externos.
 window.HubDigitalChart = Chart;

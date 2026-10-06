@@ -18,7 +18,7 @@ it('permite al curador definir columnas públicas y restablecer todas sin public
         ->toBe(['occurrence_id', 'scientific_name', 'decimal_latitude']);
     $panel->call('mostrarTodasPublicas')->assertHasNoErrors();
     $claves = array_column(app(ColumnasRegistroPublico::class)->visibles(), 'clave');
-    expect($claves)->toHaveCount(24)->toContain('disposition')->not->toContain('estado_revision', 'motivo_revision', 'archivo_r2');
+    expect($claves)->toHaveCount(26)->toContain('disposition', 'fotografias', 'ficha')->not->toContain('estado_revision', 'motivo_revision', 'archivo_r2');
 });
 
 it('rechaza columnas públicas desconocidas conservando la configuración anterior', function () {
@@ -34,4 +34,12 @@ it('impide que visitantes y usuarios externos administren las columnas del porta
     Livewire::test(ConfiguracionColumnasIndex::class)->assertForbidden();
     Livewire::actingAs(User::factory()->depositante()->create())
         ->test(ConfiguracionColumnasIndex::class)->assertForbidden();
+});
+
+it('permite al administrador gestionar la misma configuración en la pantalla interna', function () {
+    $administrador = User::factory()->administrador()->create();
+    $this->actingAs($administrador)->get(route('inventario.taxonomia.columnas.config'))->assertOk();
+    Livewire::actingAs($administrador)->test(ConfiguracionColumnasIndex::class)
+        ->set('columnasPublicas', ['occurrence_id', 'fotografias'])->call('guardarColumnasPublicas')->assertHasNoErrors();
+    expect(array_column(app(ColumnasRegistroPublico::class)->visibles(), 'clave'))->toBe(['occurrence_id', 'fotografias']);
 });

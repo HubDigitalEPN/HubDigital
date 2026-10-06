@@ -5,21 +5,17 @@
     $columnas = array_column($this->columnasPublicas, 'etiqueta', 'campo');
     $camposNumericos = ['decimal_latitude', 'decimal_longitude', 'elevation_min_m', 'elevation_max_m', 'individual_count'];
     $camposExtensos = ['locality_inec_reference', 'coordinate_reference', 'type_notes', 'specimen_notes'];
-    $camposPrincipales = ['occurrence_id', 'scientific_name', 'event_date', 'country', 'state_province', 'locality_name', 'decimal_latitude', 'decimal_longitude', 'coordinate_reference'];
     $etiquetaRegion = $contexto === 'catalogo' ? 'Registros de la colección con desplazamiento horizontal' : 'Tabla de registros de la ubicación con desplazamiento horizontal y vertical';
 @endphp
 
-<section class="atlas-record-table-section" aria-label="Registros públicos" x-data="{ todasLasColumnas: false }">
+<section class="atlas-record-table-section" aria-label="Registros públicos">
     @if($mostrarTitulo)<h3>Registros{{ $seleccion ? ' de '.$seleccion : ($contexto === 'mapa' ? ' de esta ubicación' : ' del catálogo') }}</h3>@endif
-    <p class="atlas-record-table-hint">@if(isset($columnas['occurrence_id']))El código permanece visible al desplazarte. @endif<button type="button" class="underline text-science-blue" x-on:click="todasLasColumnas = !todasLasColumnas" :aria-pressed="todasLasColumnas.toString()" x-text="todasLasColumnas ? 'Mostrar columnas principales' : 'Mostrar todos los campos'">Mostrar todos los campos</button></p>
     <div class="atlas-record-table-scroll" role="region" tabindex="0" aria-label="{{ $etiquetaRegion }}">
         <table class="atlas-record-table">
-            <caption class="sr-only">Registros públicos de esta selección. El botón Mostrar todos los campos permite ampliar las columnas.</caption>
+            <caption class="sr-only">Registros públicos de esta selección, con las columnas configuradas por la administración.</caption>
             <thead>
                 <tr>
-                    @foreach($columnas as $campo => $etiqueta)<th scope="col" @if(!in_array($campo, $camposPrincipales, true)) x-show="todasLasColumnas" x-cloak @endif>{{ $etiqueta }}</th>@endforeach
-                    <th scope="col" x-show="todasLasColumnas" x-cloak>Fotografías publicadas</th>
-                    <th scope="col">Ficha</th>
+                    @foreach($columnas as $campo => $etiqueta)<th scope="col">{{ $etiqueta }}</th>@endforeach
                 </tr>
             </thead>
             <tbody>
@@ -30,6 +26,7 @@
                         x-on:keydown.space.self.prevent="$wire.abrirFichaRegistro(@js($registro->especimen_id))"
                         aria-label="Abrir ficha de {{ $registro->occurrence_id ?: 'registro con código reservado' }}">
                         @foreach($columnas as $campo => $etiqueta)
+                            @if(in_array($campo, ['fotografias', 'ficha'], true)) @continue @endif
                             @php
                                 $valorOriginal = $registro->{$campo} ?? null;
                                 $valor = match ($campo) {
@@ -44,20 +41,20 @@
                             @if($campo === 'occurrence_id')
                                 <th scope="row">{{ $valor ?: 'Código reservado' }}</th>
                             @else
-                                <td class="{{ $claseCelda }}" @if(!in_array($campo, $camposPrincipales, true)) x-show="todasLasColumnas" x-cloak @endif>
+                                <td class="{{ $claseCelda }}">
                                     @if($valorOriginal === null || $valorOriginal === '')
                                         @if($campo === 'type_status' && ($registro->type_status_visible ?? false))<span>No informado</span>@else<span aria-label="Sin dato público disponible">—</span>@endif
                                     @elseif($campo === 'scientific_name')
-                                        <em>{{ $valor }}</em>
+                                        <em class="atlas-record-table-value" title="{{ $valor }}">{{ $valor }}</em>
                                     @else
-                                        <span class="atlas-record-table-value">{{ $valor }}</span>
+                                        <span class="atlas-record-table-value" title="{{ $valor }}">{{ $valor }}</span>
                                     @endif
                                     @if($campo === 'scientific_name' && ($registro->taxon_en_revision ?? false))<p class="atlas-data-warning">Dato original con clasificación pendiente de revisión; no se considera una identificación confirmada.</p>@endif
                                     @if($campo === 'event_date' && $valorOriginal && ((int) substr($valorOriginal, 0, 4) < 1800 || $valorOriginal > date('Y-m-d')))<p class="atlas-data-warning">Fecha original pendiente de revisión; no se interpreta como una fecha de colecta confirmada.</p>@endif
                                 </td>
                             @endif
                         @endforeach
-                        <td x-show="todasLasColumnas" x-cloak>
+                        @if(isset($columnas['fotografias']))<td>
                             @php
                                 $fotos = $imagenes[$registro->occurrence_id ?? ''] ?? [];
                             @endphp
@@ -70,11 +67,11 @@
                             @else
                                 <span class="atlas-photo-empty">Sin fotografías publicadas</span>
                             @endif
-                        </td>
-                        <td><button type="button" class="portal-record-open" x-on:click.stop="$wire.abrirFichaRegistro(@js($registro->especimen_id))">Abrir ficha<span class="sr-only"> de {{ $registro->occurrence_id ?: 'registro público' }}</span></button></td>
+                        </td>@endif
+                        @if(isset($columnas['ficha']))<td><button type="button" class="portal-record-open" x-on:click.stop="$wire.abrirFichaRegistro(@js($registro->especimen_id))">Abrir ficha<span class="sr-only"> de {{ $registro->occurrence_id ?: 'registro público' }}</span></button></td>@endif
                     </tr>
                 @empty
-                    <tr><td colspan="{{ count($columnas) + 2 }}">No hay registros públicos para esta selección.</td></tr>
+                    <tr><td colspan="{{ max(1, count($columnas)) }}">No hay registros públicos para esta selección.</td></tr>
                 @endforelse
             </tbody>
         </table>

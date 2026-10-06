@@ -38,6 +38,8 @@ final class ColumnasRegistroPublico
         'occurrence_status' => ['occurrenceStatus', 'Estado original'],
         'caste' => ['caste', 'Casta'],
         'life_stage' => ['lifeStage', 'Estadio'],
+        'fotografias' => ['fotografias', 'Fotografías publicadas'],
+        'ficha' => ['ficha', 'Ficha'],
     ];
 
     public function todas(): array

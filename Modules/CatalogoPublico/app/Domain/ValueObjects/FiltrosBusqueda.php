@@ -36,6 +36,8 @@ final readonly class FiltrosBusqueda
         public readonly bool $datosCompletos,
         public readonly ?string $pais = null,
         public readonly ?string $disposicion = null,
+        public readonly array $provincias = [],
+        public readonly array $filos = [],
     ) {}
 
     public static function vacio(): self
@@ -147,6 +149,8 @@ final readonly class FiltrosBusqueda
             casta: $textoOpcional('filtroCasta'),
             estadio: $textoOpcional('filtroEstadio'),
             provincia: $textoOpcional('filtroProvincia'),
+            provincias: $normalizarArray($datos['filtroProvincias'] ?? []),
+            filos: array_values(array_filter($normalizarArray($datos['filtroFilos'] ?? []), static fn (string $id): bool => \Illuminate\Support\Str::isUuid($id))),
             pais: $textoOpcional('filtroPais'),
             filoId: preg_match('/^[0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$/', (string) ($datos['filtroFiloId'] ?? '')) ? (string) $datos['filtroFiloId'] : null,
             mes: filter_var($datos['filtroMes'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 12]]) ?: null,
@@ -179,11 +183,23 @@ final readonly class FiltrosBusqueda
             && $this->casta === null
             && $this->estadio === null
             && $this->provincia === null
+            && $this->provincias === []
             && $this->pais === null
             && $this->filoId === null
+            && $this->filos === []
             && $this->mes === null
             && $this->identificacion === null
             && ! $this->soloUbicacion
             && ! $this->datosCompletos;
+    }
+
+    public function provinciasSeleccionadas(): array
+    {
+        return array_values(array_unique([...$this->provincias, ...($this->provincia === null ? [] : [$this->provincia])]));
+    }
+
+    public function filosSeleccionados(): array
+    {
+        return array_values(array_unique([...$this->filos, ...($this->filoId === null ? [] : [$this->filoId])]));
     }
 }

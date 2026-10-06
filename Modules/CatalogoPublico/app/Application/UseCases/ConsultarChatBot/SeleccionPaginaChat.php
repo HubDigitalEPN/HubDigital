@@ -19,7 +19,7 @@ final readonly class SeleccionPaginaChat
         foreach (['fc', 'ft', 'fco', 'fh', 'fsti', 'fd', 'fca', 'fes', 'fpais', 'fprov', 'taxon'] as $clave) {
             $reglas[$clave] = ['nullable', 'string', 'max:2000'];
         }
-        foreach (['fp', 'fg', 'fm', 'fb'] as $clave) {
+        foreach (['fp', 'fg', 'fm', 'fb', 'fprovs', 'fphs'] as $clave) {
             $reglas[$clave] = ['sometimes', 'array', 'max:100'];
             $reglas[$clave.'.*'] = ['required', 'string', 'max:500'];
         }
@@ -37,6 +37,7 @@ final readonly class SeleccionPaginaChat
             'fid' => ['nullable', 'in:especie,superior'], 'fgeo' => ['nullable', 'in:0,1'], 'fap' => ['nullable', 'in:0,1'],
         ];
         $reglas['taxon'][] = 'required_with:nivel';
+        $reglas['fphs.*'] = ['required', 'uuid'];
         if (Validator::make(array_intersect_key($entrada, $reglas), $reglas)->stopOnFirstFailure()->fails()) return null;
 
         $p = EnlaceSeleccionCatalogo::limpiar($entrada);
@@ -51,6 +52,7 @@ final readonly class SeleccionPaginaChat
             'filtroDisposicion' => $p['fd'] ?? '',
             'filtroCasta' => $p['fca'] ?? '', 'filtroEstadio' => $p['fes'] ?? '',
             'filtroProvincia' => $p['fprov'] ?? '', 'filtroPais' => $p['fpais'] ?? '', 'filtroFiloId' => $p['fph'] ?? '',
+            'filtroProvincias' => $p['fprovs'] ?? [], 'filtroFilos' => $p['fphs'] ?? [],
             'filtroMes' => $p['fmes'] ?? '', 'filtroIdentificacion' => $p['fid'] ?? '',
             'filtroSoloUbicacion' => $p['fgeo'] ?? '', 'filtroDatosCompletos' => $p['fap'] ?? '',
         ]);

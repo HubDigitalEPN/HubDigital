@@ -5,7 +5,7 @@
     $maxDecada = max([1, ...array_map(static fn ($fila) => (int) $fila['registros'], $datosMapa['decadas'])]);
     $coloresFilo = ['Arthropoda' => '#17699b', 'Mollusca' => '#d17d28', 'Annelida' => '#568c59', 'Nematoda' => '#8c62a5', 'Nematomorpha' => '#b94e6b'];
 @endphp
-<div class="atlas atlas-dashboard" wire:key="dashboard-mapa" x-on:atlas-datos="actualizar($event.detail)" x-on:restaurar-foco-mapa.window="restaurarFocoMapa($event.detail.invocador)" x-on:click.capture="recordarAccion($event)" x-data="portalDashboard()" x-id="['atlas-map-tooltip']" x-on:scroll.window.capture="ocultarAyudaMapa()" x-on:resize.window="ocultarAyudaMapa()" x-on:keydown.escape.window="ocultarAyudaMapa()">
+<div class="atlas atlas-dashboard" wire:key="dashboard-mapa" x-on:atlas-datos="actualizar($event.detail)" x-on:restaurar-foco-mapa.window="restaurarFocoMapa($event.detail.invocador)" x-on:click.capture="recordarAccion($event)" x-data="portalDashboard()" x-on:alternar-tipo-grafico="alternarRepresentacionMapa($event.detail)" x-id="['atlas-map-tooltip']" x-on:scroll.window.capture="ocultarAyudaMapa()" x-on:resize.window="ocultarAyudaMapa()" x-on:keydown.escape.window="ocultarAyudaMapa()">
     <span hidden wire:key="mapa-datos-{{ $claveFiltrosMapa }}" x-init="$dispatch('atlas-datos', {celdas: @js($datosMapa['mapa']), filos: @js($datosMapa['filos'])})"></span>
     <div class="atlas-stage">
         <section x-ref="panelMapa" class="atlas-panel atlas-map-panel" :class="{'atlas-map-maximized': maximizado}" x-on:keydown.escape.window="if (maximizado && !$event.defaultPrevented && !document.querySelector('dialog[open]') && document.querySelector('#chat-bot-trigger')?.getAttribute('aria-expanded') !== 'true' && !$event.target.closest('#chat-bot-panel')) minimizar()" aria-label="Mapa de registros públicos">
@@ -21,14 +21,16 @@
                 <div class="atlas-map" x-ref="mapa" tabindex="-1" wire:ignore role="region" aria-label="Mapa cartográfico de registros públicos: las agrupaciones se separan al acercar hasta mostrar las coordenadas originales"></div>
                 @if($datosMapa['mapa'] === [])<p class="atlas-map-message">Esta selección no tiene coordenadas públicas. Ajusta los filtros o explora los registros.</p>@endif
             </div>
+            <x-catalogopublico::figura-panel tipo="mapa" />
         </section>
 
-        <section class="atlas-panel atlas-taxa-panel" aria-labelledby="titulo-filos">
-            <div class="atlas-panel-header"><div><h2 id="titulo-filos">Composición taxonómica</h2><p class="atlas-panel-subtitle">Selecciona un filo para filtrar todos los paneles</p></div><x-catalogopublico::menu-analisis tipo="filos" :datos="$datosMapa['filos']" /></div>
-            <div class="atlas-taxon-body">
+        <section class="atlas-panel atlas-taxa-panel" wire:key="grafico-filos-{{ sha1(json_encode($datosMapa['filos'])) }}" aria-labelledby="titulo-filos" x-data="portalGrafico('filos', @js($datosMapa['filos']), 'Composición taxonómica')" x-on:alternar-tipo-grafico="alternar($event.detail)">
+            <div class="atlas-panel-header"><div><h2 id="titulo-filos">Composición taxonómica</h2><p class="atlas-panel-subtitle">Selecciona uno o varios filos para filtrar todos los paneles</p></div><x-catalogopublico::menu-analisis tipo="filos" :datos="$datosMapa['filos']" /></div>
+            <x-catalogopublico::grafico-panel titulo="Composición taxonómica" />
+            <div class="atlas-taxon-body" x-show="modo === 'barras' || tablaAbierta">
                 @forelse($datosMapa['filos'] as $filo => $cantidad)
                     @php $porcentaje = (int) $cantidad / $total * 100; $color = $coloresFilo[$filo] ?? '#71828d'; $idFiloCategoria = $this->identificadorFilo($filo); @endphp
-                    <button class="atlas-taxon-row" type="button" wire:key="composicion-filo-{{ $idFiloCategoria ?? sha1($filo) }}" wire:click="$wire.seleccionarFilo(@js($idFiloCategoria ?? ''))" wire:loading.attr="disabled" wire:target="seleccionarFilo" @disabled($idFiloCategoria === null) aria-pressed="{{ $idFiloCategoria !== null && $filtroFiloId === $idFiloCategoria ? 'true' : 'false' }}" aria-label="{{ $idFiloCategoria === null ? $filo.' sin identificador confirmado para filtrar' : ($filtroFiloId === $idFiloCategoria ? 'Quitar filtro de filo '.$filo : 'Filtrar por filo '.$filo) }}">
+                    <button class="atlas-taxon-row" type="button" wire:key="composicion-filo-{{ $idFiloCategoria ?? sha1($filo) }}" wire:click="$wire.seleccionarFilo(@js($idFiloCategoria ?? ''))" wire:loading.attr="disabled" wire:target="seleccionarFilo" @disabled($idFiloCategoria === null) aria-pressed="{{ $idFiloCategoria !== null && in_array($idFiloCategoria, $this->filtrosAplicados['filtroFilos'], true) ? 'true' : 'false' }}" aria-label="{{ $idFiloCategoria === null ? $filo.' sin identificador confirmado para filtrar' : (in_array($idFiloCategoria, $this->filtrosAplicados['filtroFilos'], true) ? 'Quitar filtro de filo '.$filo : 'Filtrar por filo '.$filo) }}">
                         <span class="atlas-taxon-name"><i class="atlas-legend-dot" style="background:{{ $color }}"></i>{{ $filo }}</span>
                         <span class="atlas-taxon-count">{{ number_format((int) $cantidad, 0, ',', '.') }} <small>({{ number_format($porcentaje, 1, ',', '.') }} %)</small></span>
                         <span class="atlas-bar" aria-hidden="true"><span style="width:{{ min(100, $porcentaje) }}%;background:{{ $color }}"></span></span>
@@ -50,13 +52,15 @@
             @endif
             @if(($datosMapa['mosaico'] ?? []) !== [])<p class="atlas-taxa-note">Fotografía publicada de {{ $datosMapa['mosaico'][0]['taxon'] ?? $datosMapa['mosaico'][0]['nombre'] }}. Corresponde a un ejemplar de la selección actual; sus datos públicos se consultan en el catálogo.</p>@endif
             @endif
+            <x-catalogopublico::figura-panel tipo="filos" />
         </section>
     </div>
 
     <div class="atlas-analysis-row atlas-analysis-row--three" role="group" aria-label="Distribución, tiempo y calidad">
-        <section class="atlas-panel" aria-labelledby="titulo-riqueza">
+        <section class="atlas-panel" wire:key="grafico-riqueza-{{ sha1(json_encode($datosMapa['riqueza'])) }}" aria-labelledby="titulo-riqueza" x-data="portalGrafico('riqueza', @js($datosMapa['riqueza']), 'Registros por provincia')" x-on:alternar-tipo-grafico="alternar($event.detail)">
             <div class="atlas-panel-header"><div><h2 id="titulo-riqueza">Registros por provincia</h2><p class="atlas-panel-subtitle">Registros públicos · diez principales</p></div><x-catalogopublico::menu-analisis tipo="riqueza" :datos="$datosMapa['riqueza']" /></div>
-            <div class="atlas-ranked-chart">
+            <x-catalogopublico::grafico-panel titulo="Registros por provincia" />
+            <div class="atlas-ranked-chart" x-show="modo === 'barras' || tablaAbierta">
                 @forelse($datosMapa['riqueza'] as $fila)
                     <button class="atlas-ranked-row" type="button" wire:click='seleccionarProvincia(@json($fila["provincia"]))' title="Filtrar por {{ $fila['provincia'] }}">
                         <span>{{ $fila['provincia'] }}</span><strong>{{ number_format((int) $fila['registros'], 0, ',', '.') }}</strong>
@@ -64,11 +68,12 @@
                     </button>
                 @empty<p class="atlas-chart-empty">No hay registros con provincia pública en esta selección.</p>@endforelse
             </div>
-            <p class="atlas-panel-note">Selecciona una provincia para actualizar toda la vista.</p>
+            <x-catalogopublico::figura-panel tipo="riqueza" />
         </section>
-        <section class="atlas-panel" aria-labelledby="titulo-decadas">
+        <section class="atlas-panel" wire:key="grafico-decadas-{{ sha1(json_encode($datosMapa['decadas'])) }}" aria-labelledby="titulo-decadas" x-data="portalGrafico('decadas', @js($datosMapa['decadas']), 'Cobertura temporal')" x-on:alternar-tipo-grafico="alternar($event.detail)">
             <div class="atlas-panel-header"><div><h2 id="titulo-decadas">Cobertura temporal</h2><p class="atlas-panel-subtitle">Registros públicos por década de colecta</p></div><x-catalogopublico::menu-analisis tipo="decadas" :datos="$datosMapa['decadas']" /></div>
-            <div class="atlas-ranked-chart atlas-ranked-chart--time">
+            <x-catalogopublico::grafico-panel titulo="Cobertura temporal" />
+            <div class="atlas-ranked-chart atlas-ranked-chart--time" x-show="modo === 'barras' || tablaAbierta">
                 @forelse($datosMapa['decadas'] as $fila)
                     <button class="atlas-ranked-row" type="button" wire:click="seleccionarDecada({{ (int) $fila['decada'] }})" title="Filtrar la década de {{ $fila['decada'] }}">
                         <span>{{ $fila['decada'] }}–{{ (int) $fila['decada'] + 9 }}</span><strong>{{ number_format((int) $fila['registros'], 0, ',', '.') }}</strong>
@@ -76,7 +81,7 @@
                     </button>
                 @empty<p class="atlas-chart-empty">No hay registros con fecha de colecta pública válida.</p>@endforelse
             </div>
-            <p class="atlas-panel-note">Selecciona una década para actualizar toda la vista.</p>
+            <x-catalogopublico::figura-panel tipo="decadas" />
         </section>
         @include('catalogopublico::components.panel-investigacion', ['tipoPanel' => 'estacionalidad'])
     </div>

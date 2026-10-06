@@ -132,6 +132,8 @@ test('QA6 provincia canónica conserva URL, borrador y selección de riqueza sin
         ->assertSet('filtroProvincia', 'Nariño')->assertSet('borradorFiltros.filtroProvincia', 'Nariño')
         ->assertViewHas('datosMapa', fn ($d) => (int) $d['resumen']['registros'] === 3)
         ->assertDispatched('catalogo-estado-url', fn ($evento, $parametros): bool => $parametros['estado']['fprov'] === 'Nariño')
+        ->call('seleccionarProvincia', '  NARINO  ')->assertSet('filtroProvincia', '')
+        ->assertSet('borradorFiltros.filtroProvincia', '')->assertSet('filtroProvincias', [])
         ->call('seleccionarProvincia', '  NARINO  ')->assertSet('filtroProvincia', 'Nariño')
         ->assertSet('borradorFiltros.filtroProvincia', 'Nariño')
         ->set('borradorFiltros.filtroProvincia', 'Narino')->call('aplicarBorrador')
@@ -395,6 +397,7 @@ test('el detalle de cuadrícula conserva todas las hojas y la tabla pagina seis 
 });
 
 test('el chatbot aplica códigos en frases y listas y conserva la consulta en el enlace', function (): void {
+    Livewire::withoutLazyLoading();
     $f = seleccionPortalFixture();
     $chat = app(ConsultaCatalogoPublico::class);
     foreach (['Busca el espécimen '.$f['codigos'][0], 'Busca '.strtolower($f['codigos'][0]), $f['codigos'][0].', '.$f['codigos'][1]] as $i => $pregunta) {
@@ -408,6 +411,7 @@ test('el chatbot aplica códigos en frases y listas y conserva la consulta en el
 });
 
 test('el chat comparte mes localidad fechas e identificación con el portal y conserva seguimiento selectivo', function (): void {
+    Livewire::withoutLazyLoading();
     $f = seleccionPortalFixture();
     DB::table('taxonomia.especimenes')->whereIn('id', $f['ids'])->update(['locality_name' => 'Playa de Oro']);
     $chat = app(ConsultaCatalogoPublico::class);

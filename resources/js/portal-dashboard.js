@@ -1,4 +1,6 @@
 import L from 'leaflet';
+import {exportarPdfPaneles} from './portal-dashboard-export.js';
+import {distribuirArbol} from './portal-tree-model.js';
 import {crearGeojsonMapa, prepararPuntosMapa, crearAgrupadorMapa, etiquetaAgrupacionMapa, ZOOM_UBICACIONES_ORIGINALES} from './portal-map-model';
 import {colorFilo, composicionFilos, fondoFilos} from './portal-map-model';
 import {nombreDescargaImagen} from './portal-image-model';
@@ -117,7 +119,7 @@ const registrarDashboard = () => {
             Arthropoda: 'Animales con cuerpo segmentado, apéndices articulados y exoesqueleto. Incluye insectos, arácnidos, crustáceos y miriápodos.',
             Mollusca: 'Animales de cuerpo blando, como caracoles, bivalvos y cefalópodos; muchos presentan una concha.',
             Nematoda: 'Gusanos de cuerpo cilíndrico no segmentado; comprende formas de vida libre y parásitas.',
-            Nematomorpha: 'Gusanos delgados y alargados, conocidos como gusanos crin de caballo; sus larvas parasitan artrópodos.',
+            Nematomorpha: 'Nematomorpha es un filo: un gran grupo de animales que comparten características del cuerpo y de su desarrollo. Se conocen como gusanos crin de caballo porque su cuerpo es muy largo y tan fino como un hilo. En los nematomorfos de agua dulce, las larvas se desarrollan dentro de insectos, como grillos y escarabajos; al madurar, salen al agua, donde se reproducen. Los adultos suelen verse en charcos y arroyos, a veces formando nudos. Este ciclo une la vida terrestre de sus hospedadores con el ambiente acuático.',
         },
         abrirTaxon(invocador, datos) {
             this.invocadorAyuda = invocador;
@@ -135,11 +137,80 @@ const registrarDashboard = () => {
         },
     }});
 
+    window.Alpine.data('portalArbolAdaptable', (nodos, seleccionado) => ({
+        nodos, seleccionado, distribucion: {nodos: [], enlaces: [], ancho: 0, alto: 0}, observador: null,
+        estiloNodo(id) {
+            const nodo = this.distribucion.nodos.find(nodo => String(nodo.id) === String(id));
+            return nodo ? {left: `${nodo.x}px`, top: `${nodo.y}px`, width: `${nodo.ancho}px`} : {};
+        },
+        init() {
+            const colocar = () => {
+                const contenedor = this.$el.parentElement;
+                this.distribucion = distribuirArbol(this.nodos, contenedor.clientWidth - 24, contenedor.clientHeight - 24);
+                const enlaces = this.$refs.enlaces;
+                if (!enlaces) return;
+                enlaces.replaceChildren(...this.distribucion.enlaces.map(enlace => {
+                    const ruta = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    ruta.setAttribute('d', enlace.d);
+                    return ruta;
+                }));
+            };
+            this.observador = new ResizeObserver(colocar);
+            this.observador.observe(this.$el.parentElement);
+            this.$nextTick(colocar);
+        },
+        destroy() { this.observador?.disconnect(); },
+    }));
+
+    window.Alpine.data('portalRegistros', (cantidad, ubicacion = false) => ({
+        cantidad, ubicacion, observador: null, alCambiar: null, cuadro: null, solicitando: false, anchoMedido: 0, alturaFilaMaxima: 0,
+        init() {
+            this.alCambiar = () => {
+                cancelAnimationFrame(this.cuadro);
+                this.cuadro = requestAnimationFrame(() => this.ajustar());
+            };
+            this.observador = new ResizeObserver(this.alCambiar);
+            this.observador.observe(this.$el);
+            window.addEventListener('resize', this.alCambiar);
+            window.visualViewport?.addEventListener('resize', this.alCambiar);
+            this.$nextTick(() => {
+                const tabla = this.$el.querySelector('.atlas-record-table');
+                if (tabla) this.observador.observe(tabla);
+                this.alCambiar();
+            });
+        },
+        async ajustar() {
+            if (!this.$el.isConnected || this.solicitando) return;
+            const rect = this.$el.getBoundingClientRect();
+            const escala = rect.width / this.$el.clientWidth || 1;
+            if (!this.ubicacion) this.$el.style.height = `${Math.max(0, ((window.visualViewport?.height || window.innerHeight) - rect.top - 12) / escala)}px`;
+            const tabla = this.$el.querySelector('.atlas-record-table-scroll');
+            const cabecera = tabla?.querySelector('thead');
+            const filas = [...(tabla?.querySelectorAll('tbody .portal-record-row') || [])];
+            if (!tabla || !cabecera || filas.length === 0 || tabla.clientHeight < 100) return;
+            if (this.anchoMedido !== this.$el.clientWidth) { this.anchoMedido = this.$el.clientWidth; this.alturaFilaMaxima = 0; }
+            // Una fila más alta no debe alternar indefinidamente entre dos tamaños de página.
+            this.alturaFilaMaxima = Math.max(this.alturaFilaMaxima, 48, ...filas.map(fila => fila.getBoundingClientRect().height / escala));
+            const alturaFila = this.alturaFilaMaxima;
+            const nueva = Math.max(1, Math.min(100, Math.floor((tabla.clientHeight - cabecera.getBoundingClientRect().height / escala - 18) / alturaFila)));
+            if (nueva === this.cantidad) return;
+            this.solicitando = true;
+            try { await this.$wire.ajustarRegistrosPorPagina(nueva, this.ubicacion); this.cantidad = nueva; }
+            finally { this.solicitando = false; this.alCambiar(); }
+        },
+        destroy() {
+            cancelAnimationFrame(this.cuadro); this.observador?.disconnect();
+            window.removeEventListener('resize', this.alCambiar);
+            window.visualViewport?.removeEventListener('resize', this.alCambiar);
+        },
+    }));
+
     window.Alpine.data('portalFiltros', () => ({
         observador: null,
         actualizar: null,
         localidadesAbiertas: false,
         localidades: [],
+        localidadesElegidas: [],
         busquedaLocalidad: '',
         get localidadesEncontradas() {
             const normalizar = texto => texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es').trim();
@@ -149,6 +220,7 @@ const registrarDashboard = () => {
         get localidadesMostradas() { return this.localidadesEncontradas.slice(0, 100); },
         abrirLocalidades() {
             this.localidades = JSON.parse(this.$refs.datosLocalidades.dataset.localidades || '[]');
+            this.localidadesElegidas = [...(this.$wire.borradorFiltros.filtroGeografias || [])];
             this.busquedaLocalidad = '';
             this.localidadesAbiertas = true;
             this.posicionarLocalidades();
@@ -174,12 +246,17 @@ const registrarDashboard = () => {
         },
         elegirLocalidad(nombre) {
             if (nombre !== '' && !this.localidades.includes(nombre)) return;
+            this.localidadesElegidas = nombre === '' ? [] : this.localidadesElegidas.includes(nombre)
+                ? this.localidadesElegidas.filter(valor => valor !== nombre) : [...this.localidadesElegidas, nombre];
+        },
+        aplicarLocalidades() {
+            const elegidas = this.localidadesElegidas.filter(nombre => this.localidades.includes(nombre));
             this.cerrarLocalidades();
-            this.$wire.$set('borradorFiltros.filtroGeografias', nombre === '' ? [] : [nombre]);
+            this.$wire.$set('borradorFiltros.filtroGeografias', elegidas);
         },
         navegarLocalidades(evento) {
             if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(evento.key)) return;
-            const botones = [...this.$refs.opcionesLocalidades.querySelectorAll('button')];
+            const botones = [...this.$refs.opcionesLocalidades.querySelectorAll('button, input')];
             const actual = botones.indexOf(evento.target);
             if (actual < 0) return;
             evento.preventDefault();
@@ -245,18 +322,14 @@ const registrarDashboard = () => {
         metadatos() {
             return {titulo, fuente: 'Laboratorio de Invertebrados — Escuela Politécnica Nacional', consulta: window.location.href, consultado: new Date().toISOString(), alcance: 'Registros públicos de la selección aplicada; no representa abundancia natural.', panel: tipo};
         },
-        json() { this.descargar(JSON.stringify({...this.metadatos(), datos}, null, 2), 'json', 'application/json;charset=utf-8'); },
+        async pdf() {
+            this.cerrar();
+            try { await exportarPdfPaneles(); }
+            catch (error) { this.aviso = error.message; }
+        },
+        alternarGrafico() { this.$dispatch('alternar-tipo-grafico', {tipo}); this.cerrar(); },
         geojson() {
             this.descargar(JSON.stringify(crearGeojsonMapa(datos, this.metadatos()), null, 2), 'geojson', 'application/geo+json');
-        },
-        cita() {
-            const m = this.metadatos();
-            this.descargar(`${m.fuente}. ${titulo}. Consulta: ${new Date().toLocaleDateString('es-EC')}.\n${m.consulta}\n${m.alcance}\nLos filtros constan en el enlace; los datos pueden actualizarse. Conserve también la exportación para reproducir el análisis.\n`, 'txt', 'text/plain;charset=utf-8');
-        },
-        async enlace() {
-            try { await navigator.clipboard.writeText(window.location.href); this.aviso = 'Enlace con filtros copiado.'; }
-            catch { this.descargar(window.location.href, 'url.txt', 'text/plain;charset=utf-8'); this.aviso = 'Se descargó el enlace porque el navegador no permitió copiarlo.'; }
-            this.cerrar();
         },
         indice() { this.abierto = false; this.$refs.indice.showModal(); },
     }));
@@ -332,7 +405,13 @@ const registrarDashboard = () => {
         maximizado: false,
         enfocarTrasCambio: false,
         zoomMapa: 0,
+        ubicacionesIndividuales: false,
         errorTeselas: false,
+        alternarRepresentacionMapa(evento) {
+            if (evento.tipo !== 'mapa') return;
+            this.ubicacionesIndividuales = !this.ubicacionesIndividuales;
+            this.programarPintado();
+        },
         mostrarAyudaMapa(texto, invocador) {
             this.ocultarAyudaMapa();
             if (!invocador) return;
@@ -498,7 +577,7 @@ const registrarDashboard = () => {
             this.ocultarAyudaMapa();
             this.zoomMapa = mapa.getZoom();
             capa.clearLayers();
-            for (const nodo of agrupador.paraZoom(this.zoomMapa)) {
+            for (const nodo of agrupador.paraZoom(this.ubicacionesIndividuales ? ZOOM_UBICACIONES_ORIGINALES : this.zoomMapa)) {
                 if (nodo.tipo === 'grupo') {
                     agregarAgrupacionMapa(capa, mapa, nodo);
                     continue;

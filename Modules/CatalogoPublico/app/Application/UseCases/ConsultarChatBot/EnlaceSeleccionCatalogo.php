@@ -12,7 +12,7 @@ final class EnlaceSeleccionCatalogo
     private const ESCALARES = ['nivel', 'taxon', 'fc', 'ft', 'fco', 'ffd', 'ffh', 'flat', 'flax', 'flon', 'flox',
         'fed', 'feh', 'fh', 'fsti', 'fd', 'fca', 'fes', 'fpais', 'fprov', 'fph', 'fmes', 'fid', 'fgeo', 'fap'];
 
-    private const LISTAS = ['fp', 'fg', 'fm', 'fb'];
+    private const LISTAS = ['fp', 'fg', 'fm', 'fb', 'fprovs', 'fphs'];
 
     public static function parametros(FiltrosBusqueda $filtros, string $nivel, string $taxon): array
     {
@@ -27,6 +27,7 @@ final class EnlaceSeleccionCatalogo
             'fh' => $filtros->habitat, 'fsti' => $filtros->tipo, 'fca' => $filtros->casta, 'fes' => $filtros->estadio,
             'fd' => $filtros->disposicion,
             'fpais' => $filtros->pais, 'fprov' => $filtros->provincia, 'fph' => $filtros->filoId,
+            'fprovs' => $filtros->provincias, 'fphs' => $filtros->filos,
             'fmes' => $filtros->mes, 'fid' => $filtros->identificacion,
             'fgeo' => $filtros->soloUbicacion ? '1' : '', 'fap' => $filtros->datosCompletos ? '1' : '',
         ]);

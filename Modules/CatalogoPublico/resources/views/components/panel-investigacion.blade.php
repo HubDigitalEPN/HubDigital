@@ -3,10 +3,12 @@
     $filasPanel = $datosMapa[$tipoPanel];
     $maxPanel = max([1, ...array_column($filasPanel, 'registros')]);
     $mesesPanel = [1 => 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    $datosGrafico = $tipoPanel === 'metodos' ? array_map(static fn (array $fila): array => $fila + ['etiqueta' => \Modules\CatalogoPublico\Infrastructure\ProtocoloColectaPublico::etiqueta($fila['metodo'])], $filasPanel) : $filasPanel;
 @endphp
-<section class="atlas-panel" aria-labelledby="titulo-{{ $tipoPanel }}">
+<section class="atlas-panel" wire:key="grafico-{{ $tipoPanel }}-{{ sha1(json_encode($filasPanel)) }}" aria-labelledby="titulo-{{ $tipoPanel }}" x-data="portalGrafico(@js($tipoPanel), @js($datosGrafico), @js($configPanel['titulo']))" x-on:alternar-tipo-grafico="alternar($event.detail)">
     <div class="atlas-panel-header"><div><h2 id="titulo-{{ $tipoPanel }}">{{ $configPanel['titulo'] }}</h2><p class="atlas-panel-subtitle">{{ $configPanel['subtitulo'] }}</p></div><x-catalogopublico::menu-analisis :tipo="$tipoPanel" :datos="$filasPanel" /></div>
-    <div class="atlas-ranked-chart">
+    <x-catalogopublico::grafico-panel :titulo="$configPanel['titulo']" />
+    <div class="atlas-ranked-chart" x-show="modo === 'barras' || tablaAbierta">
         @forelse($filasPanel as $filaPanel)
             @php
                 [$etiquetaPanel, $accionPanel] = match ($tipoPanel) {
@@ -21,5 +23,5 @@
             </button>
         @empty<p class="atlas-chart-empty">No hay datos públicos disponibles para este indicador en la selección.</p>@endforelse
     </div>
-    <p class="atlas-panel-note">{{ $configPanel['nota'] }}</p>
+    <x-catalogopublico::figura-panel :tipo="$tipoPanel" />
 </section>

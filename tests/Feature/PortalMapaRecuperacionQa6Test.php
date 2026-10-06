@@ -89,6 +89,7 @@ test('QA6 el error de mapa admite reintento explícito y volver a registros cons
 });
 
 test('QA6 la URL directa de mapa muestra un error recuperable con la selección intacta', function (): void {
+    Livewire::withoutLazyLoading();
     $f = seleccionMapaRecuperacionQa6();
     servicioMapaNoDisponibleQa6();
     $this->get(route('portal.catalogo', $f['parametros']))->assertOk()

@@ -26,7 +26,7 @@ Route::prefix('portal')
     ->group(function () {
         Route::get('/', fn () => redirect()->route('portal.catalogo', ['vista' => 'mapa']))->name('inicio');
         Route::get('/estadisticas', PortalEstadisticas::class)->name('estadisticas');
-        Route::get('/catalogo', PortalCatalogo::class)->name('catalogo');
+        Route::get('/catalogo', PortalCatalogo::class)->lazy('on-load')->name('catalogo');
         Route::view('/diccionario-exportacion', 'catalogopublico::diccionario-exportacion')->name('diccionario-exportacion');
         Route::get('/lista-especies.csv', [PortalEstadisticas::class, 'descargarLista'])->name('lista-especies');
         Route::get('/imagenes/{objeto}', ServirImagenCatalogo::class)

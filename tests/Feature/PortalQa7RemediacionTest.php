@@ -231,18 +231,20 @@ test('QA7 007 los alias de estadio conservan el conjunto y los permisos de divul
     expect($repo->consultaPublica(FiltrosBusqueda::desde(['filtroEstadio' => $etiqueta]))->count())->toBe(0);
 })->with([['adult', 'Adulto'], ['juvenile', 'Juvenil'], ['larval', 'Larva'], ['pupal', 'Pupa'], ['egg', 'Huevo'], ['nymph', 'Ninfa']]);
 
-test('QA7 008 las hojas terminales muestran cada UUID y solo la tabla pagina seis registros públicos', function (string $rango): void {
+test('QA7 008 el LOV conserva cada UUID en ubicaciones numerosas y la tabla pagina los registros públicos', function (string $rango): void {
     $fixture = qa7ColeccionFixture($rango, 7);
     $componente = Livewire::withQueryParams(['vista' => 'mapa', 'ft' => 'Qaheptus alpha'])->test(PortalCatalogo::class)
         ->call('abrirCelda', -1.8910422, -77.765439)->call('navegarCelda', $fixture['taxon']);
     $detalle = $componente->get('detalleCelda');
     expect($detalle['mostrarRegistros'])->toBeTrue()->and($detalle['registros'])->toHaveCount(6)->and($detalle['ultima'])->toBe(2)
+        ->and($detalle['arbolResumido'])->toBeTrue()
+        ->and(array_intersect(array_column($detalle['arbolVisual'], 'rango'), ['registro', 'genero', 'especie']))->toBe([])
         ->and(array_column($detalle['registros_arbol'], 'especimen_id'))->toBe($fixture['ids'])
         ->and(array_unique(array_column($detalle['registros_arbol'], 'padre_id')))->toBe([$fixture['taxon']]);
-    $componente->assertSee('QA7-INV-1')->assertSee('Ejemplar de la selección')
+    $componente->assertSee('QA7-INV-1')->assertSee('Buscar entre 7 ejemplares')->assertDontSee('Ejemplar de la selección')
         ->assertDontSee('Páginas de ejemplares de la ubicación')->call('paginarCelda', 2)->assertSet('paginaCelda', 1);
     foreach ($fixture['ids'] as $i => $id) {
-        $componente->call('navegarCelda', 'registro:'.$id)->assertSee('QA7-INV-'.($i + 1));
+        $componente->call('seleccionarRegistroCelda', $id)->assertSee('QA7-INV-'.($i + 1));
         $seleccionado = $componente->get('detalleCelda');
         expect($seleccionado['registro_seleccionado']['especimen_id'])->toBe($id)
             ->and($seleccionado['seleccionado']['taxon_id'])->toBe($fixture['taxon'])

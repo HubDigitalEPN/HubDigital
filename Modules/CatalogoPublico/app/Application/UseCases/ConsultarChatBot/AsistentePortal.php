@@ -21,6 +21,7 @@ final class AsistentePortal
     {
         $normal = preg_replace('/^[\s\x{00bf}?]+/u', '', Str::lower(Str::ascii(trim($pregunta)))) ?? '';
         $opciones = $this->opcionesBase();
+        if (($estadistica = app(EstadisticasCatalogoChat::class)->responder($pregunta, $seleccionPortal)) !== null) return $estadistica;
         if (preg_match('/^cuantas espesies (?:ai|hay) (?:aki|aqui)[?.!]*$/', $normal)) {
             $pregunta = '¿Cuántas especies hay en esta selección?';
             $normal = 'cuantas especies hay en esta seleccion?';

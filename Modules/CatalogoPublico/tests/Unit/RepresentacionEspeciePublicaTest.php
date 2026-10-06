@@ -112,7 +112,7 @@ it('el retrato del ejemplar no inventa imagen ni mensaje al faltar la fotografí
         ->and($dom->query('//figcaption')->length)->toBe(0);
 });
 
-it('la ayuda y la referencia de rama usan una sola foto compacta sin estados de ausencia ni explicación global', function () {
+it('la ayuda ofrece una foto compacta o su referencia de grupo sin estados de ausencia ni explicación global', function () {
     $dom = fotografiaPublicaDom(view('catalogopublico::components.fotografia-mosaico', [
         'taxon' => ['phylum' => 'Arthropoda'], 'fotos' => [], 'contexto' => 'ayuda-taxon',
         'limite' => 1, 'retrato' => true, 'compacto' => true,
@@ -120,7 +120,10 @@ it('la ayuda y la referencia de rama usan una sola foto compacta sin estados de 
     expect($dom->query('//template[@*[name()="x-for"]]')->item(0)->getAttribute('x-for'))->toBe('foto in fotos.slice(0, 1)')
         ->and($dom->query('//details')->length)->toBe(0)
         ->and($dom->query('//p')->length)->toBe(0)
-        ->and($dom->query('//figure')->length)->toBe(1)
+        ->and($dom->query('//template//figure')->length)->toBe(1)
+        ->and($dom->query('//figure[contains(@class,"atlas-taxon-photograph")]')->length)->toBe(1)
+        ->and($dom->query('//figure[contains(@class,"atlas-taxon-photograph")]')->item(0)->getAttribute('x-show'))->toBe('fotos.length === 0')
+        ->and($dom->query('//figure[contains(@class,"atlas-taxon-photograph")]/img')->item(0)->getAttribute('src'))->not->toBe('')
         ->and($dom->query('//small[contains(@class,"collection-photograph-credit")]')->length)->toBe(1);
 });
 

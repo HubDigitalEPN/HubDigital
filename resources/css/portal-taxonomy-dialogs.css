@@ -54,3 +54,53 @@
   .collection-taxon-explanation h2 { font-size:1.1rem; }
   .collection-taxon-help-photograph .collection-photograph-compact img { height:24dvh; max-height:12rem; }
 }
+
+.research-filter-lock { border:0!important; padding:0!important; margin:0!important; min-width:0; display:flex; flex-direction:column; gap:.8rem; }
+.research-sidebar[inert] { opacity:.7; cursor:wait; }
+.research-locality-options label { display:flex; align-items:center; gap:.6rem; padding:.55rem; cursor:pointer; }
+.research-locality-apply, .atlas-record-lov-trigger { padding:.65rem; border:1px solid #aac5d8; border-radius:.3rem; color:#154d6f; }
+.atlas-cell-dialog[open] { display:flex; flex-direction:column; overflow:hidden; }
+.atlas-cell-header, .atlas-cell-toolbar { flex:none; }
+.atlas-cell-body { display:flex; flex-direction:column; flex:1; min-height:0; }
+.atlas-cell-content { flex:1; min-height:0; overflow:auto; }
+.atlas-taxonomic-layout { display:grid; height:100%; min-height:0; align-items:stretch; grid-template-columns:minmax(0,1fr) minmax(16rem,21rem); }
+.atlas-tree-section { min-height:0; display:flex; }
+.atlas-tree-scroll { flex:1; min-height:0; max-height:none; padding:.75rem; }
+.atlas-taxon-information { min-height:0; overflow:auto; }
+.atlas-tree-adaptive { position:relative; min-width:0; }
+.atlas-tree-adaptive ul, .atlas-tree-adaptive li, .atlas-tree-adaptive details { display:contents; }
+.atlas-tree-adaptive li::before, .atlas-tree-adaptive li::after, .atlas-tree-adaptive ul::before { display:none; }
+.atlas-tree-adaptive summary { display:none; }
+.atlas-tree-adaptive .atlas-dendrogram-node { position:absolute; height:64px; min-height:64px; margin:0; font-size:.85rem; padding:.35rem .6rem; }
+.atlas-tree-adaptive .atlas-dendrogram-label strong { overflow-wrap:anywhere; word-break:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.atlas-tree-adaptive .atlas-dendrogram-label small { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.atlas-tree-connections { position:absolute; inset:0; pointer-events:none; }
+.atlas-tree-connections path { stroke:#7ca5bb; stroke-width:1.5; fill:none; }
+.atlas-record-lov { width:min(38rem,92vw); max-height:80dvh; padding:1rem; border:1px solid #aac5d8; border-radius:.5rem; overflow:auto; }
+.atlas-record-lov::backdrop { background:#102d4880; }
+.atlas-record-lov header { display:flex; justify-content:space-between; gap:1rem; }
+.atlas-record-lov h3 { font-weight:700; }
+.atlas-record-lov label { display:grid; gap:.4rem; margin:.8rem 0; }
+.atlas-record-lov input { width:100%; padding:.6rem; border:1px solid #aac5d8; border-radius:.3rem; }
+.atlas-record-lov ul { list-style:none; padding:0; }
+.atlas-record-lov li button { display:flex; justify-content:space-between; gap:1rem; text-align:left; width:100%; padding:.7rem; border-bottom:1px solid #dce5ec; }
+.atlas-record-lov button:focus-visible { outline:2px solid #17699b; outline-offset:2px; }
+.portal-records-viewport { display:flex; flex-direction:column; min-height:0; overflow:hidden; width:100%; }
+.portal-records-viewport .atlas-record-table-section { flex:1; min-height:0; display:flex; flex-direction:column; }
+.portal-records-viewport .atlas-record-table-scroll { flex:1; min-height:0; max-height:none; }
+.portal-records-viewport .portal-record-row > * { height:4.5rem; }
+.portal-records-viewport .atlas-record-table-value { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.portal-records-viewport .atlas-record-table-photos { flex-wrap:nowrap; }
+.portal-records-viewport .atlas-record-table-photos img { width:64px; height:48px; }
+.portal-records-pagination { flex:none; display:flex; justify-content:flex-end; align-items:center; gap:.65rem; margin:.75rem 0 0; padding:.25rem 0; }
+.portal-records-pagination button { padding:.6rem 1rem; border:1px solid #b4cad9; border-radius:.3rem; color:#155d91; }
+.portal-records-pagination button:disabled { opacity:.45; }
+.atlas-chart-canvas { position:relative; height:17rem; min-height:17rem; padding:.6rem; }
+.atlas-chart-data-toggle { margin:.25rem 1rem; text-align:left; color:#155d91; text-decoration:underline; }
+.atlas-figure-caption { padding:.8rem 1rem; margin-top:auto; border-top:1px solid #dce5ec; color:#506b80; font-size:.75rem; line-height:1.6; }
+.atlas-figure-caption strong { color:#18354d; }
+@media(max-width:900px) {
+  .atlas-taxonomic-layout { grid-template-columns:minmax(0,1fr); grid-template-rows:minmax(16rem,2fr) minmax(8rem,1fr); }
+  .atlas-taxon-information { padding:.5rem 0; }
+  .atlas-tree-scroll { max-height:none; }
+}

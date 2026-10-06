@@ -27,6 +27,8 @@ function aplicarLlamada(estado, llamada, datos, defectos, propiedades) {
     const sincronizarBorrador = seleccion => {
         datos.borradorFiltros = Object.fromEntries(Object.entries(propiedades)
             .filter(([, propiedad]) => propiedad.startsWith('filtro')).map(([alias, propiedad]) => [propiedad, seleccion[alias]]));
+        datos.borradorFiltros.filtroFilos = [...new Set([...(seleccion.fphs || []), ...(seleccion.fph ? [seleccion.fph] : [])])];
+        datos.borradorFiltros.filtroProvincias = [...new Set([...(seleccion.fprovs || []), ...(seleccion.fprov ? [seleccion.fprov] : [])])];
         datos.borradorFiltros.filtroLatitud = seleccion.flat === seleccion.flax ? seleccion.flat : '';
         datos.borradorFiltros.filtroLongitud = seleccion.flon === seleccion.flox ? seleccion.flon : '';
     };
@@ -65,10 +67,15 @@ function aplicarLlamada(estado, llamada, datos, defectos, propiedades) {
     case 'cambiarPagina':
         estado.pagina = Math.max(1, Number(params[0]));
         break;
-    case 'seleccionarProvincia':
-        estado.fprov = params[0];
+    case 'seleccionarProvincia': {
+        const provincias = [...new Set([...(estado.fprovs || []), ...(estado.fprov ? [estado.fprov] : [])])];
+        const seleccionadas = provincias.includes(params[0]) ? provincias.filter(nombre => nombre !== params[0]) : [...provincias, params[0]];
+        estado.fprov = seleccionadas.length === 1 ? seleccionadas[0] : '';
+        estado.fprovs = seleccionadas.length > 1 ? seleccionadas : [];
+        sincronizarBorrador(estado);
         paginaInicial();
         break;
+    }
     case 'seleccionarMetodo':
         estado.fm = [String(params[0]).trim().toLowerCase()];
         paginaInicial();
@@ -96,8 +103,11 @@ function aplicarLlamada(estado, llamada, datos, defectos, propiedades) {
         }
         break;
     case 'seleccionarFilo':
-        estado.fph = estado.fph === params[0] ? '' : params[0];
-        if (datos.borradorFiltros) datos.borradorFiltros.filtroFiloId = estado.fph;
+        const filos = [...new Set([...(estado.fphs || []), ...(estado.fph ? [estado.fph] : [])])];
+        const nuevosFilos = filos.includes(params[0]) ? filos.filter(id => id !== params[0]) : [...filos, params[0]];
+        estado.fph = nuevosFilos.length === 1 ? nuevosFilos[0] : '';
+        estado.fphs = nuevosFilos.length > 1 ? nuevosFilos : [];
+        sincronizarBorrador(estado);
         paginaInicial();
         break;
     case 'filtrarCompletos':
@@ -116,6 +126,8 @@ function aplicarLlamada(estado, llamada, datos, defectos, propiedades) {
         const latitudAnterior = estado.flat === estado.flax ? estado.flat : '';
         const longitudAnterior = estado.flon === estado.flox ? estado.flon : '';
         copiarFiltros(borrador);
+        if (estado.fph && Array.isArray(estado.fphs)) estado.fphs = estado.fphs.filter(id => id !== estado.fph);
+        if (estado.fprov && Array.isArray(estado.fprovs)) estado.fprovs = estado.fprovs.filter(nombre => nombre !== estado.fprov);
         if (Object.hasOwn(borrador, 'filtroLatitud') && borrador.filtroLatitud !== latitudAnterior) estado.flat = estado.flax = borrador.filtroLatitud;
         if (Object.hasOwn(borrador, 'filtroLongitud') && borrador.filtroLongitud !== longitudAnterior) estado.flon = estado.flox = borrador.filtroLongitud;
         estado.fm = normalizarMetodos(estado.fm);
@@ -129,6 +141,23 @@ function aplicarLlamada(estado, llamada, datos, defectos, propiedades) {
             datos.borradorFiltros.filtroGeografias = localidades.filter((_, indice) => indice !== params[0]);
             return aplicarLlamada(estado, {method: 'aplicarBorrador'}, datos, defectos, propiedades);
         }
+        break;
+    }
+    case 'retirarCriterio': {
+        const [clave, indice = -1] = params;
+        const grupos = {periodo: ['ffd', 'ffh'], elevacion: ['fed', 'feh'], latitud: ['flat', 'flax'], longitud: ['flon', 'flox']};
+        if (clave === 'jerarquia' && estado.taxon) estado.nivel = estado.taxon = estado.explorar = '';
+        else if (Object.hasOwn(grupos, clave) && grupos[clave].some(alias => estado[alias])) {
+            for (const alias of grupos[clave]) estado[alias] = '';
+        } else {
+            const alias = Object.entries(propiedades).find(([, propiedad]) => propiedad === clave && propiedad.startsWith('filtro'))?.[0];
+            if (!alias) break;
+            if (Array.isArray(estado[alias]) && Number.isInteger(indice) && indice >= 0 && indice < estado[alias].length) estado[alias] = estado[alias].filter((_, posicion) => posicion !== indice);
+            else if (indice === -1 && !Array.isArray(estado[alias]) && estado[alias]) estado[alias] = '';
+            else break;
+        }
+        sincronizarBorrador(estado);
+        paginaInicial();
         break;
     }
     case 'aplicarFiltros': {
@@ -167,6 +196,12 @@ export function enlaceRecuperacionCatalogo(href, configuracion, request) {
             if (Object.hasOwn(datos, propiedad)) estado[alias] = datos[propiedad];
         }
         if (Object.keys(componente.updates ?? {}).some(clave => clave.startsWith('borradorFiltros.'))) {
+            for (const campo of Object.keys(componente.updates ?? {})) {
+                if (campo === 'borradorFiltros.filtroFilos' || campo.startsWith('borradorFiltros.filtroFilos.')) datos.borradorFiltros.filtroFiloId = '';
+                if (campo === 'borradorFiltros.filtroProvincias' || campo.startsWith('borradorFiltros.filtroProvincias.')) datos.borradorFiltros.filtroProvincia = '';
+                if (campo === 'borradorFiltros.filtroFiloId') datos.borradorFiltros.filtroFilos = [];
+                if (campo === 'borradorFiltros.filtroProvincia') datos.borradorFiltros.filtroProvincias = [];
+            }
             estado = aplicarLlamada(estado, {method: 'aplicarBorrador'}, datos, configuracion.defectos, propiedades);
         }
         for (const llamada of llamadas) {

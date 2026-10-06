@@ -339,8 +339,44 @@ Copy-Item -LiteralPath (Join-Path $Proyecto 'tools/pdf-signature/target/pdf-sign
 Invoke-Comando -Programa 'java.exe' -Argumentos @('-jar', $destinoJar, 'selftest') -Descripcion 'Probando firma valida, firma alterada y PDF sin firma con Java' -DirectorioTrabajo $Proyecto
 Write-Host 'OK Java: firma valida, alteracion, ausencia de firma y seguridad PDF comprobadas.' -ForegroundColor Green
 
+# El navegador valida exactamente el build nuevo mientras PostgreSQL permanece activo.
+if (-not $OmitirCompilacion) {
+    if (-not (Get-Command 'npm.cmd' -ErrorAction SilentlyContinue)) { throw 'No se encontro npm.cmd en PATH.' }
+    # Cada modulo conserva su build independiente y su propio lock. Revisar solo
+    # la raiz dejaba sin validar los Vite declarados por los tres modulos.
+    $proyectosFrontend = @($Proyecto) + @(Get-ChildItem -LiteralPath (Join-Path $Proyecto 'Modules') -Directory |
+        Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName 'package.json') -PathType Leaf } |
+        Sort-Object Name | ForEach-Object { $_.FullName })
+    foreach ($proyectoFrontend in $proyectosFrontend) {
+        $nombreFrontend = Split-Path -Leaf $proyectoFrontend
+        if (-not (Test-Path -LiteralPath (Join-Path $proyectoFrontend 'package-lock.json') -PathType Leaf)) {
+            throw "Falta package-lock.json en $nombreFrontend. No se pueden validar dependencias reproducibles."
+        }
+        Invoke-Comando -Programa 'npm.cmd' -Argumentos @('ci', '--include=dev', '--include=optional', '--no-audit') -Descripcion "Instalando dependencias frontend exactas: $nombreFrontend" -DirectorioTrabajo $proyectoFrontend
+        # npm ci puede terminar correctamente aunque anuncie vulnerabilidades.
+        # audit exige una respuesta satisfactoria del registro, incluye las
+        # herramientas de desarrollo afectadas y bloquea antes de publicar.
+        Invoke-Comando -Programa 'npm.cmd' -Argumentos @('audit', '--audit-level=low', '--include=dev', '--include=optional') -Descripcion "Comprobando vulnerabilidades de dependencias: $nombreFrontend" -DirectorioTrabajo $proyectoFrontend
+        Invoke-Comando -Programa 'npm.cmd' -Argumentos @('run', 'build') -Descripcion "Compilando y validando JavaScript y CSS con Vite: $nombreFrontend" -DirectorioTrabajo $proyectoFrontend
+    }
+
+    # Contratos JavaScript sin navegador: precisión WGS84, tamaños por cantidad
+    # nombres de fotografías e historial atómico. Árbol y caché están en Pest.
+    $directorioPruebasFrontend = Join-Path $Proyecto 'tests\Frontend'
+    foreach ($contratoPortal in @('portal-map-model.test.mjs', 'portal-image-model.test.mjs', 'portal-selection-history.test.mjs', 'portal-photo-model.test.mjs', 'portal-dashboard-actions.test.mjs', 'portal-chart-model.test.mjs', 'portal-tree-model.test.mjs')) {
+        if (-not (Test-Path -LiteralPath (Join-Path $directorioPruebasFrontend $contratoPortal) -PathType Leaf)) {
+            throw "Falta el contrato JavaScript del portal: $contratoPortal"
+        }
+    }
+    $pruebasFrontend = @(Get-ChildItem -LiteralPath $directorioPruebasFrontend -Filter '*.test.mjs' -File |
+        Sort-Object Name | ForEach-Object { $_.FullName })
+    if ($pruebasFrontend.Count -eq 0) { throw 'Faltan los contratos JavaScript del mapa cartografico.' }
+    Invoke-Comando -Programa 'node.exe' -Argumentos (@('--test') + $pruebasFrontend) -Descripcion 'Validando contratos JavaScript del mapa, fotografias e historial del portal con Node' -DirectorioTrabajo $Proyecto
+}
+
 $suitePostgresCompletada = $false
 $suiteGherkinCompletada = $false
+$suiteNavegadorCompletada = $false
 $solucionPdfComprobada = $false
 $php = Get-Command 'php' -ErrorAction SilentlyContinue
 if (-not $php) {
@@ -388,6 +424,7 @@ if ($php) {
                 '-Proyecto', $Proyecto, '-Php', $phpPrograma
             ) -Descripcion 'Validando con PostgreSQL temporal y apagado automatico'
             $suitePostgresCompletada = $true
+            $suiteNavegadorCompletada = $true
             Invoke-Comando -Programa $phpPrograma -Argumentos @('deploy/oracle/scripts/verify-deposit-pdf.php') -Descripcion 'Comprobando admision PDF y firma integrada PHP/Java' -DirectorioTrabajo $Proyecto
             $solucionPdfComprobada = $true
         }
@@ -395,40 +432,6 @@ if ($php) {
     }
 } else {
     throw 'No se encontro PHP: main solo se publica despues de validar PHP/PostgreSQL.'
-}
-
-if (-not $OmitirCompilacion) {
-    if (-not (Get-Command 'npm.cmd' -ErrorAction SilentlyContinue)) { throw 'No se encontro npm.cmd en PATH.' }
-    # Cada modulo conserva su build independiente y su propio lock. Revisar solo
-    # la raiz dejaba sin validar los Vite declarados por los tres modulos.
-    $proyectosFrontend = @($Proyecto) + @(Get-ChildItem -LiteralPath (Join-Path $Proyecto 'Modules') -Directory |
-        Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName 'package.json') -PathType Leaf } |
-        Sort-Object Name | ForEach-Object { $_.FullName })
-    foreach ($proyectoFrontend in $proyectosFrontend) {
-        $nombreFrontend = Split-Path -Leaf $proyectoFrontend
-        if (-not (Test-Path -LiteralPath (Join-Path $proyectoFrontend 'package-lock.json') -PathType Leaf)) {
-            throw "Falta package-lock.json en $nombreFrontend. No se pueden validar dependencias reproducibles."
-        }
-        Invoke-Comando -Programa 'npm.cmd' -Argumentos @('ci', '--include=dev', '--include=optional', '--no-audit') -Descripcion "Instalando dependencias frontend exactas: $nombreFrontend" -DirectorioTrabajo $proyectoFrontend
-        # npm ci puede terminar correctamente aunque anuncie vulnerabilidades.
-        # audit exige una respuesta satisfactoria del registro, incluye las
-        # herramientas de desarrollo afectadas y bloquea antes de publicar.
-        Invoke-Comando -Programa 'npm.cmd' -Argumentos @('audit', '--audit-level=low', '--include=dev', '--include=optional') -Descripcion "Comprobando vulnerabilidades de dependencias: $nombreFrontend" -DirectorioTrabajo $proyectoFrontend
-        Invoke-Comando -Programa 'npm.cmd' -Argumentos @('run', 'build') -Descripcion "Compilando y validando JavaScript y CSS con Vite: $nombreFrontend" -DirectorioTrabajo $proyectoFrontend
-    }
-
-    # Contratos JavaScript sin navegador: precisión WGS84, tamaños por cantidad
-    # nombres de fotografías e historial atómico. Árbol y caché están en Pest.
-    $directorioPruebasFrontend = Join-Path $Proyecto 'tests\Frontend'
-    foreach ($contratoPortal in @('portal-map-model.test.mjs', 'portal-image-model.test.mjs', 'portal-selection-history.test.mjs', 'portal-photo-model.test.mjs')) {
-        if (-not (Test-Path -LiteralPath (Join-Path $directorioPruebasFrontend $contratoPortal) -PathType Leaf)) {
-            throw "Falta el contrato JavaScript del portal: $contratoPortal"
-        }
-    }
-    $pruebasFrontend = @(Get-ChildItem -LiteralPath $directorioPruebasFrontend -Filter '*.test.mjs' -File |
-        Sort-Object Name | ForEach-Object { $_.FullName })
-    if ($pruebasFrontend.Count -eq 0) { throw 'Faltan los contratos JavaScript del mapa cartografico.' }
-    Invoke-Comando -Programa 'node.exe' -Argumentos (@('--test') + $pruebasFrontend) -Descripcion 'Validando contratos JavaScript del mapa, fotografias e historial del portal con Node' -DirectorioTrabajo $Proyecto
 }
 
 $requeridos = @(
@@ -442,10 +445,16 @@ $requeridos = @(
     'Modules/CatalogoPublico/app/Application/Services/DendrogramaTaxonomico.php',
     'Modules/CatalogoPublico/app/Application/UseCases/ConsultarChatBot/EnlaceSeleccionCatalogo.php',
     'Modules/CatalogoPublico/app/Application/UseCases/ConsultarChatBot/SeleccionPaginaChat.php',
+    'Modules/CatalogoPublico/app/Application/UseCases/ConsultarChatBot/EstadisticasCatalogoChat.php',
     'Modules/CatalogoPublico/app/Infrastructure/EtiquetaDatoPublico.php',
     'app/Support/InformacionRelease.php',
     'app/Http/Controllers/VersionPortalController.php',
     'resources/js/portal-history-model.js',
+    'resources/js/portal-chart-model.js',
+    'resources/js/portal-charts.js',
+    'resources/js/portal-tree-model.js',
+    'resources/js/portal-dashboard-export.js',
+    'config/figuras_portal.php',
     'Modules/CatalogoPublico/app/Infrastructure/NormalizacionGeografica.php',
     'Modules/CatalogoPublico/app/Infrastructure/ProtocoloColectaPublico.php',
     'Modules/CatalogoPublico/database/migrations/2026_10_02_000012_restore_original_sampling_protocol.php',
@@ -459,6 +468,9 @@ $requeridos = @(
     'Modules/CatalogoPublico/resources/views/components/dendrograma-mapa.blade.php',
     'Modules/CatalogoPublico/resources/views/components/registro-mapa.blade.php',
     'Modules/CatalogoPublico/resources/views/components/tabla-registros-mapa.blade.php',
+    'Modules/CatalogoPublico/resources/views/components/catalogo-cargando.blade.php',
+    'Modules/CatalogoPublico/resources/views/components/figura-panel.blade.php',
+    'Modules/CatalogoPublico/resources/views/components/grafico-panel.blade.php',
     'Modules/CatalogoPublico/resources/views/components/avisos-curatoriales.blade.php',
     'Modules/CatalogoPublico/resources/views/components/representacion-especie.blade.php',
     'Modules/CatalogoPublico/resources/views/components/fotografia-taxonomica.blade.php',
@@ -538,8 +550,8 @@ if ($headAntesValidacion -ne $headDespuesValidacion -or
     throw 'El codigo cambio durante las pruebas o compilaciones. main no se publica: vuelve a validar la version actual.'
 }
 
-if (-not $suitePostgresCompletada -or -not $suiteGherkinCompletada -or -not $solucionPdfComprobada) {
-    throw 'No se completaron las validaciones PHP/PostgreSQL, Gherkin y PDF obligatorias. main no se publica y no se crea el paquete.'
+if (-not $suitePostgresCompletada -or -not $suiteGherkinCompletada -or -not $suiteNavegadorCompletada -or -not $solucionPdfComprobada) {
+    throw 'No se completaron las validaciones PHP/PostgreSQL, Gherkin, navegador/tooltip/Livewire y PDF obligatorias. main no se publica y no se crea el paquete.'
 }
 
 $estadoAntesCommit = @(Get-SalidaGit -Argumentos @('status', '--porcelain=v1', '--untracked-files=all'))
@@ -1194,6 +1206,7 @@ Write-Host "SHA kit:   $hashKit"
 Write-Host "Tamano:    $tamanoMiB MiB"
 Write-Host 'Java PDF:  OK, compilacion Maven y autoprueba criptografica.'
 Write-Host 'Gherkin:   OK, escenarios de negocio activos completados con Behat en modo estricto.'
+Write-Host 'Portal:    OK, navegador real; tooltip durante Livewire, filtros, LOV, graficos, filas adaptables, fotografia y PDF de siete paneles.'
 if ($suitePostgresCompletada) {
     Write-Host 'Depositos: OK, suite PHP/PostgreSQL completada.'
 } else {

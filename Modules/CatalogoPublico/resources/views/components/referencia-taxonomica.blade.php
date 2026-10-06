@@ -2,7 +2,7 @@
 @php($referencia = app(\Modules\CatalogoPublico\Application\Services\ReferenciaTaxonomicaPublica::class)->para($nombre, $familiaVisible))
 @if($referencia)
     <details class="atlas-taxonomic-reference">
-        <summary>Autoridad y revisión del nombre</summary>
+        <summary>Verificación del nombre científico</summary>
         <dl>
             <div><dt>Nombre publicado</dt><dd>{{ $referencia['original'] }}</dd></div>
             @if($referencia['anterior'])<div><dt>Nombre anterior en la revisión</dt><dd>{{ $referencia['anterior'] }}</dd></div>@endif

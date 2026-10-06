@@ -59,6 +59,7 @@ test('un ejemplar sin filo queda en curaduría y entra al CSV público al confir
 });
 
 test('Colección Biológica responde como primera pantalla pública', function (): void {
+    Livewire::withoutLazyLoading();
     $this->get(route('portal.inicio'))->assertRedirect(route('portal.catalogo', ['vista' => 'mapa']));
     $this->get(route('portal.estadisticas'))->assertRedirect(route('portal.catalogo', ['vista' => 'mapa']));
     $this->get(route('portal.catalogo', ['vista' => 'mapa']))
@@ -96,6 +97,7 @@ test('las tres vistas se alternan en el mismo componente y conservan la selecci�
 });
 
 test('los filtros públicos se aplican también a la lista CSV y respetan la ubicación visible', function (): void {
+    Livewire::withoutLazyLoading();
     $ahora = now();
     $filo = (string) Str::uuid();
     $colector = 'Filtro QA '.Str::uuid();

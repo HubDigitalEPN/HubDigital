@@ -99,6 +99,22 @@ try {
         & $Php artisan migrate --database=pgsql --force --no-interaction
         if ($LASTEXITCODE -ne 0) { throw 'No se pudieron aplicar las migraciones locales.' }
 
+        # Node necesita el ejecutable nativo: php en PATH puede ser un shim .cmd.
+        # Se resuelve dentro del comando central, sin invocar un shell desde Node.
+        $phpNativo = ((& $Php -r 'echo PHP_BINARY;') -join '').Trim()
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $phpNativo -PathType Leaf)) {
+            throw 'No se pudo resolver el ejecutable nativo PHP para la prueba del navegador.'
+        }
+        foreach ($contrato in @('tests/Browser/portal-livewire.mjs', 'tests/Browser/portal-fixture.php')) {
+            if (-not (Test-Path -LiteralPath (Join-Path $Proyecto $contrato) -PathType Leaf)) {
+                throw "Falta la prueba obligatoria de navegador del portal: $contrato"
+            }
+        }
+        if (-not (Get-Command 'node.exe' -ErrorAction SilentlyContinue)) { throw 'Falta Node para verificar tooltip y Livewire en el navegador real.' }
+        Write-Host 'Probando tooltip durante actualizaciones Livewire y recorridos del portal en Edge/Chrome real...' -ForegroundColor Cyan
+        & node.exe tests/Browser/portal-livewire.mjs $phpNativo
+        if ($LASTEXITCODE -ne 0) { throw 'Fallo la validacion real de tooltip/Livewire o del portal. No se publica main ni se crea el paquete OCI.' }
+
         Write-Host 'Ejecutando la suite PHP con PostgreSQL local (sin bootstrap inicial)...' -ForegroundColor Cyan
         & $Php artisan test --exclude-group=bootstrap-inicial
         $codigoPruebas = $LASTEXITCODE

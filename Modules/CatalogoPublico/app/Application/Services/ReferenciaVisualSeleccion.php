@@ -22,7 +22,8 @@ final class ReferenciaVisualSeleccion
         if (strcasecmp(trim($filo), 'Nematomorpha') !== 0) return null;
         return ['url' => asset('images/nematomorpha-reference-generated-20261005.png'),
             'alt' => 'Imagen fotorrealista generada de un nematomorfo delgado enrollado sobre una piedra húmeda',
-            'texto' => 'Nematomorpha · Imagen de referencia generada con IA. No es una fotografía de un ejemplar de la colección ni acredita una identificación.',
+            'texto' => 'Nematomorpha: gusanos de cuerpo largo y fino, semejante a una crin. En las formas de agua dulce, las larvas crecen dentro de insectos; los adultos salen al agua para reproducirse. Ilustración generada con IA.',
+            'origen' => 'No es una fotografía de un ejemplar de la colección ni acredita una identificación.',
             'fuente' => 'https://entomology.mgcafe.uky.edu/ef613', 'autor' => null, 'licencia' => null, 'licencia_url' => null];
     }
 }

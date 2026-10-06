@@ -61,7 +61,7 @@ final class PortalEstadisticas
         $this->presupuesto = new PresupuestoConsultaPortal($firma);
         try {
             return $this->presupuesto->ejecutar(fn (): array => $this->cachear(
-                'portal:estadisticas:v21:'.(int) $incluirContenidoTaxon.':'.$this->revisionDatos().':'.$firma,
+                'portal:estadisticas:v22:'.(int) $incluirContenidoTaxon.':'.$this->revisionDatos().':'.$firma,
                 fn (): array => $this->resumir($filtros, $incluirContenidoTaxon),
             ));
         } finally {
@@ -172,7 +172,7 @@ final class PortalEstadisticas
     private function consulta(array $filtros): Builder
     {
         $datos = [];
-        foreach (['codigo' => 'filtroCatalogo', 'preparaciones' => 'filtroPreparaciones', 'taxon' => 'filtroTaxon', 'pais' => 'filtroPais', 'provincia' => 'filtroProvincia', 'geografias' => 'filtroGeografias', 'filo' => 'filtroFiloId', 'mes' => 'filtroMes', 'identificacion' => 'filtroIdentificacion', 'ubicacion' => 'filtroSoloUbicacion', 'colector' => 'filtroColector', 'metodos' => 'filtroMetodos', 'lat_min' => 'filtroLatMin', 'lat_max' => 'filtroLatMax', 'lon_min' => 'filtroLonMin', 'lon_max' => 'filtroLonMax', 'elev_desde' => 'filtroElevDesde', 'elev_hasta' => 'filtroElevHasta', 'biomas' => 'filtroBiomas', 'habitat' => 'filtroHabitat', 'tipo' => 'filtroTipo', 'disposicion' => 'filtroDisposicion', 'casta' => 'filtroCasta', 'estadio' => 'filtroEstadio'] as $clave => $propiedad) {
+        foreach (['codigo' => 'filtroCatalogo', 'preparaciones' => 'filtroPreparaciones', 'taxon' => 'filtroTaxon', 'pais' => 'filtroPais', 'provincia' => 'filtroProvincia', 'provincias' => 'filtroProvincias', 'filos' => 'filtroFilos', 'geografias' => 'filtroGeografias', 'filo' => 'filtroFiloId', 'mes' => 'filtroMes', 'identificacion' => 'filtroIdentificacion', 'ubicacion' => 'filtroSoloUbicacion', 'colector' => 'filtroColector', 'metodos' => 'filtroMetodos', 'lat_min' => 'filtroLatMin', 'lat_max' => 'filtroLatMax', 'lon_min' => 'filtroLonMin', 'lon_max' => 'filtroLonMax', 'elev_desde' => 'filtroElevDesde', 'elev_hasta' => 'filtroElevHasta', 'biomas' => 'filtroBiomas', 'habitat' => 'filtroHabitat', 'tipo' => 'filtroTipo', 'disposicion' => 'filtroDisposicion', 'casta' => 'filtroCasta', 'estadio' => 'filtroEstadio'] as $clave => $propiedad) {
             if (isset($filtros[$clave])) $datos[$propiedad] = $filtros[$clave];
         }
         $datos['filtroFechaDesde'] = $filtros['desde_fecha'] ?? (isset($filtros['desde']) ? $filtros['desde'].'-01-01' : '');
@@ -250,7 +250,7 @@ final class PortalEstadisticas
 
         $resultado = $calcular();
         try {
-            $this->operacionCache(static fn () => Cache::put($clave, $resultado, 300));
+            $this->operacionCache(static fn () => Cache::put($clave, $resultado, 3600));
         } catch (DeadlockException $error) {
             throw $error;
         } catch (\Throwable $error) {

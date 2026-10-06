@@ -60,6 +60,15 @@ final class PortalCatalogo extends Component
     public string $avisoSeleccionUrl = '';
 
     #[Locked]
+    public array $estadoInicialUrl = [];
+
+    public function placeholder(): View
+    {
+        $this->estadoInicialUrl = array_intersect_key(request()->query(), self::PROPIEDADES_URL + ['fxprov' => '']);
+        return view('catalogopublico::components.catalogo-cargando');
+    }
+
+    #[Locked]
     public ?string $registroFichaId = null;
 
     #[Computed]
@@ -71,7 +80,7 @@ final class PortalCatalogo extends Component
     #[Computed]
     public function filtrosAplicados(): array
     {
-        return $this->valoresFiltros();
+        return $this->valoresBorrador();
     }
 
     /** Resumen del estado aplicado; nunca muestra el borrador como si ya estuviera activo. */
@@ -79,7 +88,7 @@ final class PortalCatalogo extends Component
     public function criteriosActivos(): array
     {
         $etiquetas = ['filtroCatalogo' => 'Catálogo', 'filtroTaxon' => 'Taxón', 'filtroProvincia' => 'Provincia',
-            'filtroPais' => 'País', 'filtroFiloId' => 'Filo',
+            'filtroPais' => 'País', 'filtroFiloId' => 'Filo', 'filtroFilos' => 'Filo', 'filtroProvincias' => 'Provincia',
             'filtroGeografias' => 'Localidad', 'filtroPreparaciones' => 'Preparación', 'filtroMetodos' => 'Método',
             'filtroColector' => 'Colector', 'filtroBiomas' => 'Bioma', 'filtroHabitat' => 'Hábitat',
             'filtroTipo' => 'Condición de tipo', 'filtroDisposicion' => 'Disposición', 'filtroCasta' => 'Casta',
@@ -96,7 +105,7 @@ final class PortalCatalogo extends Component
                     'filtroEstadio' => \Modules\CatalogoPublico\Infrastructure\EtiquetaDatoPublico::etapa(\Modules\CatalogoPublico\Domain\ValueObjects\EstadioVidaPublico::clave($valor)),
                     'filtroTipo' => \Modules\CatalogoPublico\Infrastructure\EtiquetaDatoPublico::tipo(\Modules\CatalogoPublico\Domain\ValueObjects\CondicionMaterialPublica::tipoFiltro($valor)),
                     'filtroDisposicion' => \Modules\CatalogoPublico\Infrastructure\EtiquetaDatoPublico::disposicion(\Modules\CatalogoPublico\Domain\ValueObjects\CondicionMaterialPublica::disposicionFiltro($valor)),
-                    'filtroFiloId' => collect($this->filosDisponibles)->firstWhere('id', $valor)['nombre_cientifico'] ?? 'Filo seleccionado',
+                    'filtroFiloId', 'filtroFilos' => collect($this->filosDisponibles)->firstWhere('id', $valor)['nombre_cientifico'] ?? 'Filo seleccionado',
                     'filtroSoloUbicacion', 'filtroDatosCompletos' => 'Sí',
                     'filtroMetodos' => ProtocoloColectaPublico::etiqueta($valor),
                     default => $valor,
@@ -134,7 +143,7 @@ final class PortalCatalogo extends Component
         }
         unset($this->criteriosActivos);
         $this->actualizarFiltros();
-        $this->borradorFiltros = $this->valoresFiltros();
+        $this->borradorFiltros = $this->valoresBorrador();
         $this->cerrarCelda();
         $this->cerrarFichaRegistro();
         $this->dispatch('criterio-retirado');
@@ -182,6 +191,7 @@ final class PortalCatalogo extends Component
         'fed' => 'filtroElevDesde', 'feh' => 'filtroElevHasta', 'fb' => 'filtroBiomas', 'fh' => 'filtroHabitat',
         'fsti' => 'filtroTipo', 'fd' => 'filtroDisposicion', 'fca' => 'filtroCasta', 'fes' => 'filtroEstadio', 'fpais' => 'filtroPais',
         'fprov' => 'filtroProvincia', 'fph' => 'filtroFiloId', 'fmes' => 'filtroMes', 'fid' => 'filtroIdentificacion',
+        'fprovs' => 'filtroProvincias', 'fphs' => 'filtroFilos',
         'fgeo' => 'filtroSoloUbicacion', 'fap' => 'filtroDatosCompletos',
     ];
 
@@ -192,7 +202,7 @@ final class PortalCatalogo extends Component
 
     public function mount(): void
     {
-        $this->aplicarEstadoUrl(request()->query());
+        $this->aplicarEstadoUrl($this->estadoInicialUrl !== [] ? $this->estadoInicialUrl : request()->query());
         $this->validarSeleccionUrl();
         $paginaSolicitada = $this->pagina;
         try {
@@ -203,7 +213,7 @@ final class PortalCatalogo extends Component
             $this->setErrorBag($error->errors());
         }
         $this->pagina = max(1, $paginaSolicitada);
-        $this->borradorFiltros = $this->valoresFiltros();
+        $this->borradorFiltros = $this->valoresBorrador();
         $this->filtrosAntes = $this->valoresFiltros();
     }
 
@@ -212,9 +222,20 @@ final class PortalCatalogo extends Component
         return array_filter(get_object_vars($this), static fn (string $clave): bool => preg_match('/^filtro[A-Z]/', $clave) === 1, ARRAY_FILTER_USE_KEY);
     }
 
+    private function valoresBorrador(): array
+    {
+        return array_replace($this->valoresFiltros(), [
+            'filtroFilos' => $this->filtrosActuales()->filosSeleccionados(),
+            'filtroProvincias' => $this->filtrosActuales()->provinciasSeleccionadas(),
+        ]);
+    }
+
     private function limpiarEntradasUrlInvalidas(array $errores): void
     {
-        foreach (array_keys($errores) as $propiedad) $this->{$propiedad} = '';
+        foreach (array_keys($errores) as $campo) {
+            $propiedad = explode('.', $campo)[0];
+            $this->{$propiedad} = is_array($this->{$propiedad}) ? [] : '';
+        }
         foreach (['filtroLat', 'filtroLon'] as $prefijo) {
             if (isset($errores[$prefijo.'Min']) || isset($errores[$prefijo.'Max'])) {
                 $this->{$prefijo.'Min'} = '';
@@ -228,6 +249,8 @@ final class PortalCatalogo extends Component
     {
         $anteriores = $this->valoresFiltros();
         foreach ($anteriores as $propiedad => $valor) $this->{$propiedad} = $this->borradorFiltros[$propiedad] ?? $valor;
+        if ($this->filtroFiloId !== '') $this->filtroFilos = array_values(array_diff($this->filtroFilos, [$this->filtroFiloId]));
+        if ($this->filtroProvincia !== '') $this->filtroProvincias = array_values(array_diff($this->filtroProvincias, [$this->filtroProvincia]));
         if ($this->filtroLatitud !== $anteriores['filtroLatitud']) $this->filtroLatMin = $this->filtroLatMax = $this->filtroLatitud;
         if ($this->filtroLongitud !== $anteriores['filtroLongitud']) $this->filtroLonMin = $this->filtroLonMax = $this->filtroLongitud;
         try {
@@ -236,7 +259,7 @@ final class PortalCatalogo extends Component
             foreach ($anteriores as $propiedad => $valor) $this->{$propiedad} = $valor;
             throw $error;
         }
-        $this->borradorFiltros = $this->valoresFiltros();
+        $this->borradorFiltros = $this->valoresBorrador();
         unset($this->geografiaDisponible, $this->provinciasDisponibles, $this->localidadesDisponibles);
         $this->mostrarFotoComposicion = false;
         $this->cerrarCelda();
@@ -248,8 +271,12 @@ final class PortalCatalogo extends Component
         $campo = explode('.', $clave ?? '')[0];
         if (! array_key_exists($campo, $this->valoresFiltros())) return;
         $this->avisoFiltrosDependientes = '';
+        if ($campo === 'filtroFilos') $this->borradorFiltros['filtroFiloId'] = '';
+        if ($campo === 'filtroProvincias') $this->borradorFiltros['filtroProvincia'] = '';
+        if ($campo === 'filtroFiloId') $this->borradorFiltros['filtroFilos'] = [];
+        if ($campo === 'filtroProvincia') $this->borradorFiltros['filtroProvincias'] = [];
         $this->aplicarBorrador();
-        if (in_array($campo, ['filtroFiloId', 'filtroTaxon', 'filtroProvincia'], true)) $this->ajustarGeografiaDependiente();
+        if (in_array($campo, ['filtroFiloId', 'filtroFilos', 'filtroTaxon', 'filtroProvincia', 'filtroProvincias'], true)) $this->ajustarGeografiaDependiente();
     }
 
     public function quitarLocalidad(int $indice): void
@@ -264,6 +291,9 @@ final class PortalCatalogo extends Component
     {
         unset($this->geografiaDisponible, $this->provinciasDisponibles, $this->localidadesDisponibles);
         $retirados = [];
+        $provincias = array_values(array_filter($this->filtroProvincias, fn (string $nombre): bool => NormalizacionGeografica::nombreDisponible($nombre, $this->provinciasDisponibles) !== null));
+        if ($provincias !== $this->filtroProvincias) $retirados[] = 'Provincia';
+        $this->filtroProvincias = $provincias;
         if ($this->filtroProvincia !== '' && NormalizacionGeografica::nombreDisponible($this->filtroProvincia, $this->provinciasDisponibles) === null) {
             $this->filtroProvincia = '';
             $retirados[] = 'Provincia';
@@ -272,13 +302,13 @@ final class PortalCatalogo extends Component
         $localidades = array_values(array_filter($this->filtroGeografias, fn (string $nombre): bool => NormalizacionGeografica::nombreDisponible($nombre, $this->localidadesDisponibles) !== null));
         if ($localidades !== $this->filtroGeografias) $retirados[] = 'Localidad';
         $this->filtroGeografias = $localidades;
-        $this->borradorFiltros = $this->valoresFiltros();
+        $this->borradorFiltros = $this->valoresBorrador();
         if ($retirados !== []) $this->avisoFiltrosDependientes = 'Se retiró '.implode(' y ', $retirados).' porque no tiene registros en la nueva selección.';
     }
 
     public function dehydrate(): void
     {
-        if (! $this->getErrorBag()->any() && $this->valoresFiltros() !== $this->filtrosAntes) $this->borradorFiltros = $this->valoresFiltros();
+        if (! $this->getErrorBag()->any() && $this->valoresFiltros() !== $this->filtrosAntes) $this->borradorFiltros = $this->valoresBorrador();
     }
 
     public function rendered(View $view, string $html): void
@@ -365,6 +395,9 @@ final class PortalCatalogo extends Component
             if ($id === null) $this->avisoSeleccionUrl = 'El filo del enlace no corresponde a una opción disponible. Se conservaron los demás filtros.';
             $this->filtroFiloId = $id ?? '';
         }
+        $filos = array_values(array_unique(array_filter(array_map($this->identificadorFilo(...), $this->filtroFilos))));
+        if (count($filos) !== count($this->filtroFilos)) $this->avisoSeleccionUrl = 'Se retiraron filos no disponibles del enlace. Se conservaron los demás filtros.';
+        $this->filtroFilos = $filos;
     }
 
     /** Restaura la selección completa en un único request, nunca propiedad a propiedad. */
@@ -384,7 +417,7 @@ final class PortalCatalogo extends Component
         }
         $this->pagina = $pagina;
         $this->paginaHermanos = 1;
-        $this->borradorFiltros = $this->valoresFiltros();
+        $this->borradorFiltros = $this->valoresBorrador();
         $this->cerrarCelda();
         $this->cerrarFichaRegistro();
     }
@@ -531,6 +564,30 @@ final class PortalCatalogo extends Component
 
     public string $filtroFiloId = '';
 
+    public array $filtroFilos = [];
+
+    public array $filtroProvincias = [];
+
+    #[Locked]
+    public int $registrosPorPagina = 6;
+
+    public function ajustarRegistrosPorPagina(int $cantidad, bool $ubicacion = false): void
+    {
+        $cantidad = max(1, min(100, $cantidad));
+        if ($ubicacion) {
+            if ($this->registrosPorPaginaCelda === $cantidad) return;
+            $inicio = ($this->paginaCelda - 1) * $this->registrosPorPaginaCelda;
+            $this->registrosPorPaginaCelda = $cantidad;
+            $this->paginaCelda = intdiv($inicio, $cantidad) + 1;
+            unset($this->detalleCelda);
+        } else {
+            if ($this->registrosPorPagina === $cantidad) return;
+            $inicio = ($this->pagina - 1) * $this->registrosPorPagina;
+            $this->registrosPorPagina = $cantidad;
+            $this->pagina = intdiv($inicio, $cantidad) + 1;
+        }
+    }
+
     public string $filtroMes = '';
 
     public string $filtroIdentificacion = '';
@@ -606,6 +663,10 @@ final class PortalCatalogo extends Component
     {
         $this->filtroMetodos = array_values(array_unique(array_map(ProtocoloColectaPublico::clave(...), $this->filtroMetodos)));
         $this->validate([
+            'filtroFilos' => ['array', 'max:100'],
+            'filtroFilos.*' => ['uuid'],
+            'filtroProvincias' => ['array', 'max:100'],
+            'filtroProvincias.*' => ['string', 'max:2000'],
             'filtroFechaDesde' => ['nullable', 'date_format:Y-m-d'],
             'filtroFechaHasta' => array_filter(['nullable', 'date_format:Y-m-d', $this->filtroFechaDesde !== '' ? 'after_or_equal:filtroFechaDesde' : null]),
             'filtroLatitud' => ['nullable', 'numeric', 'between:-90,90'],
@@ -625,7 +686,7 @@ final class PortalCatalogo extends Component
         ]);
         $this->resetValidation();
         unset($this->geografiaDisponible, $this->provinciasDisponibles, $this->localidadesDisponibles);
-        $this->filtroProvincia = NormalizacionGeografica::nombreDisponible($this->filtroProvincia, $this->provinciasDisponibles) ?? $this->filtroProvincia;
+        if ($this->filtroProvincia !== '') $this->filtroProvincia = NormalizacionGeografica::nombreDisponible($this->filtroProvincia, $this->provinciasDisponibles) ?? $this->filtroProvincia;
         $this->pagina = 1;
         $this->paginaHermanos = 1;
         $this->sincronizarCoordenadasSimples();
@@ -636,9 +697,12 @@ final class PortalCatalogo extends Component
         $opcion = NormalizacionGeografica::nombreDisponible($provincia, $this->provinciasDisponibles);
         if ($opcion !== null) {
             $this->mostrarFotoComposicion = false;
-            $this->filtroProvincia = $opcion;
-            $this->borradorFiltros['filtroProvincia'] = $opcion;
+            $provincias = $this->filtrosActuales()->provinciasSeleccionadas();
+            $provincias = in_array($opcion, $provincias, true) ? array_values(array_diff($provincias, [$opcion])) : [...$provincias, $opcion];
+            $this->filtroProvincia = count($provincias) === 1 ? $provincias[0] : '';
+            $this->filtroProvincias = count($provincias) > 1 ? $provincias : [];
             $this->ajustarGeografiaDependiente();
+            $this->borradorFiltros = $this->valoresBorrador();
             $this->pagina = 1;
         }
     }
@@ -675,10 +739,13 @@ final class PortalCatalogo extends Component
     {
         $id = $this->identificadorFilo($identificador);
         if ($id === null) return;
-        $this->filtroFiloId = $this->filtroFiloId === $id ? '' : $id;
-        $this->mostrarFotoComposicion = $this->filtroFiloId !== '';
+        $filos = $this->filtrosActuales()->filosSeleccionados();
+        $filos = in_array($id, $filos, true) ? array_values(array_diff($filos, [$id])) : [...$filos, $id];
+        $this->filtroFiloId = count($filos) === 1 ? $filos[0] : '';
+        $this->filtroFilos = count($filos) > 1 ? $filos : [];
+        $this->mostrarFotoComposicion = $filos !== [];
         $this->ajustarGeografiaDependiente();
-        $this->borradorFiltros['filtroFiloId'] = $this->filtroFiloId;
+        $this->borradorFiltros = $this->valoresBorrador();
         $this->pagina = 1;
         $this->paginaHermanos = 1;
         $this->cerrarCelda();
@@ -738,7 +805,7 @@ final class PortalCatalogo extends Component
     public function geografiaDisponible(): array
     {
         // Una sola consulta para ambas facetas; el propio criterio geográfico no oculta sus alternativas.
-        $datos = array_replace($this->valoresFiltros(), ['filtroProvincia' => '', 'filtroGeografias' => []]);
+        $datos = array_replace($this->valoresFiltros(), ['filtroProvincia' => '', 'filtroProvincias' => [], 'filtroGeografias' => []]);
         return app(PortalEstadisticas::class)->geografiaParaFiltros(FiltrosBusqueda::desde($datos), $this->nivel, $this->taxon);
     }
 
@@ -746,8 +813,9 @@ final class PortalCatalogo extends Component
     public function localidadesDisponibles(): array
     {
         $nombres = [];
+        $provincias = array_map(NormalizacionGeografica::normalizar(...), $this->filtrosActuales()->provinciasSeleccionadas());
         foreach ($this->geografiaDisponible as $fila) {
-            if ($this->filtroProvincia !== '' && NormalizacionGeografica::normalizar($fila['provincia'] ?? '') !== NormalizacionGeografica::normalizar($this->filtroProvincia)) continue;
+            if ($provincias !== [] && !in_array(NormalizacionGeografica::normalizar($fila['provincia'] ?? ''), $provincias, true)) continue;
             foreach ($fila as $campo => $nombre) {
                 if ($campo !== 'provincia' && CalidadDatoPublico::esTextoValido($nombre) && NormalizacionGeografica::contieneNombre($nombre)) $nombres[] = $nombre;
             }
@@ -773,6 +841,8 @@ final class PortalCatalogo extends Component
             'pais' => $this->filtroPais,
             'geografias' => $this->filtroGeografias,
             'filo' => $this->filtroFiloId,
+            'filos' => $this->filtroFilos,
+            'provincias' => $this->filtroProvincias,
             'desde_fecha' => $filtros->fechaDesde?->format('Y-m-d'),
             'hasta_fecha' => $filtros->fechaHasta?->format('Y-m-d'),
             'mes' => $this->filtroMes,
@@ -888,12 +958,14 @@ final class PortalCatalogo extends Component
         $this->filtroProvincia = '';
         $this->filtroPais = '';
         $this->filtroFiloId = '';
+        $this->filtroFilos = [];
+        $this->filtroProvincias = [];
         $this->filtroMes = '';
         $this->filtroIdentificacion = '';
         $this->filtroSoloUbicacion = '';
         $this->filtroDatosCompletos = '';
         unset($this->geografiaDisponible, $this->provinciasDisponibles, $this->localidadesDisponibles);
-        $this->borradorFiltros = $this->valoresFiltros();
+        $this->borradorFiltros = $this->valoresBorrador();
         $this->cerrarCelda();
         $this->cerrarFichaRegistro();
     }
@@ -1048,6 +1120,8 @@ final class PortalCatalogo extends Component
             'filtroProvincia' => $this->filtroProvincia,
             'filtroPais' => $this->filtroPais,
             'filtroFiloId' => $this->filtroFiloId,
+            'filtroFilos' => $this->filtroFilos,
+            'filtroProvincias' => $this->filtroProvincias,
             'filtroMes' => $this->filtroMes,
             'filtroIdentificacion' => $this->filtroIdentificacion,
             'filtroSoloUbicacion' => $this->filtroSoloUbicacion,
@@ -1096,7 +1170,7 @@ final class PortalCatalogo extends Component
         }
 
         if ($this->vista === 'registros') {
-            $pagina = app(EloquentProveedorEspecimenesParaArbol::class)->paginaPublica($filtros, $this->pagina, $this->nivel, $this->taxon);
+            $pagina = app(EloquentProveedorEspecimenesParaArbol::class)->paginaPublica($filtros, $this->pagina, $this->nivel, $this->taxon, $this->registrosPorPagina);
             $this->pagina = $pagina['pagina'];
             $registrosVista = $this->cargarDetallesPorEspecimenIds($pagina['ids'], $proveedor, $repoDivulgable);
             $imagenesRegistrosVista = $this->cargarImagenesPorEspecimen(array_values(array_filter(array_column($registrosVista, 'occurrence_id'))));

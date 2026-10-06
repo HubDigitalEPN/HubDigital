@@ -9,10 +9,9 @@
     <div id="menu-{{ $tipo }}" class="atlas-menu" x-ref="menu" x-cloak x-show="abierto" role="menu" aria-label="Opciones de {{ $indice['titulo'] }}"
         x-on:keydown.arrow-down.prevent="mover($event)" x-on:keydown.arrow-up.prevent="mover($event)" x-on:keydown.home.prevent="mover($event)" x-on:keydown.end.prevent="mover($event)" x-on:focusout="if (!$el.contains($event.relatedTarget)) abierto = false">
         <button type="button" role="menuitem" wire:click="{{ $tipo === 'especies' ? 'descargarListaEspecies' : "descargarAnalisis('$tipo')" }}" x-on:click="cerrar()">{{ $tipo === 'especies' ? 'Lista completa CSV' : 'Descargar CSV' }}</button>
-        <button type="button" role="menuitem" x-on:click="json()">Datos del panel JSON</button>
         @if($tipo === 'mapa')<button type="button" role="menuitem" x-on:click="geojson()">Coordenadas GeoJSON · SIG</button>@endif
-        <button type="button" role="menuitem" x-on:click="enlace()">Copiar enlace con filtros</button>
-        <button type="button" role="menuitem" x-on:click="cita()">Descargar cita y consulta</button>
+        @if($tipo === 'mapa')<button type="button" role="menuitem" x-on:click="pdf()">Exportar los siete paneles a PDF</button>@endif
+        <button type="button" role="menuitem" x-on:click="alternarGrafico()">{{ $tipo === 'mapa' ? 'Alternar agrupaciones y ubicaciones' : 'Alternar tipo de gráfico' }}</button>
         <button type="button" role="menuitem" x-on:click="indice()">Indicador</button>
     </div>
     <span class="sr-only" role="status" x-text="aviso"></span>

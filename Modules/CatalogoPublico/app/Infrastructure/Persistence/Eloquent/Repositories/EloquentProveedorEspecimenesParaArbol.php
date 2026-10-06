@@ -39,7 +39,7 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
             'id' => $nodo['id'], 'nombre_cientifico' => $nodo['taxon'],
         ], $this->resumenRaiz(FiltrosBusqueda::desde([]))['hijos']);
         try {
-            Cache::put($clave, $filos, 300);
+            Cache::put($clave, $filos, 3600);
         } catch (\Throwable $error) {
             Log::warning('Caché de filos no disponible', ['operacion' => 'guardar', 'tipo' => $error::class]);
         }
@@ -63,14 +63,15 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
         return $query;
     }
 
-    public function paginaPublica(FiltrosBusqueda $filtros, int $pagina, string $nivel = '', string $taxon = ''): array
+    public function paginaPublica(FiltrosBusqueda $filtros, int $pagina, string $nivel = '', string $taxon = '', int $tamano = self::TAMANO_PAGINA): array
     {
+        $tamano = max(1, min(100, $tamano));
         $query = $this->consultaPublica($filtros, $nivel, $taxon);
         $total = (clone $query)->count('te.id');
-        $ultima = max(1, (int) ceil($total / self::TAMANO_PAGINA));
+        $ultima = max(1, (int) ceil($total / $tamano));
         $actual = min(max(1, $pagina), $ultima);
         $ids = $query->orderBy('te.fila_origen_excel')->orderBy('te.id')
-            ->offset(($actual - 1) * self::TAMANO_PAGINA)->limit(self::TAMANO_PAGINA)->pluck('te.id')->all();
+            ->offset(($actual - 1) * $tamano)->limit($tamano)->pluck('te.id')->all();
 
         return ['ids' => $ids, 'total' => $total, 'pagina' => $actual, 'ultima' => $ultima];
     }
@@ -358,9 +359,11 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
                 ->whereRaw('(seleccion_taxonomica.otros OR (seleccion_taxonomica.familia AND ed.family_visible) OR (seleccion_taxonomica.genero AND ed.genus_visible))');
         }
 
-        if ($filtros->filoId !== null) {
+        if ($filtros->filosSeleccionados() !== []) {
             $query->where('ed.scientific_name_visible', true);
-            $query->whereRaw('te.taxon_id IN (WITH RECURSIVE descendientes AS (SELECT id FROM taxonomia.taxones WHERE id = ? UNION SELECT t.id FROM taxonomia.taxones t JOIN descendientes d ON t.padre_id = d.id) SELECT id FROM descendientes)', [$filtros->filoId]);
+            $idsFilos = $filtros->filosSeleccionados();
+            $parametros = implode(',', array_fill(0, count($idsFilos), '?'));
+            $query->whereRaw('te.taxon_id IN (WITH RECURSIVE descendientes AS (SELECT id FROM taxonomia.taxones WHERE id IN ('.$parametros.') UNION SELECT t.id FROM taxonomia.taxones t JOIN descendientes d ON t.padre_id = d.id) SELECT id FROM descendientes)', $idsFilos);
         }
 
         // Geografía — CTE recursivo pre-resuelto
@@ -379,8 +382,8 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
 
         if ($filtros->pais !== null) $query->where('ed.country_visible', true)->whereRaw(NormalizacionGeografica::sql('te.country').' = ?', [NormalizacionGeografica::normalizar($filtros->pais)]);
 
-        if ($filtros->provincia !== null) {
-            $query->where('ed.state_province_visible', true)->whereRaw(NormalizacionGeografica::sql('te.state_province').' = ?', [NormalizacionGeografica::normalizar($filtros->provincia)]);
+        if ($filtros->provinciasSeleccionadas() !== []) {
+            $query->where('ed.state_province_visible', true)->whereIn(DB::raw(NormalizacionGeografica::sql('te.state_province')), array_map(NormalizacionGeografica::normalizar(...), $filtros->provinciasSeleccionadas()));
         }
 
         // Colector — búsqueda parcial case-insensitive

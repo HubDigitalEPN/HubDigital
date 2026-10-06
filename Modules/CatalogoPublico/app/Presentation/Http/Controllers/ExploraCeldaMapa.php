@@ -29,7 +29,22 @@ trait ExploraCeldaMapa
     public int $paginaCelda = 1;
 
     #[Locked]
+    public int $registrosPorPaginaCelda = 6;
+
+    #[Locked]
     public ?string $registroCeldaId = null;
+
+    public string $busquedaRegistroCelda = '';
+
+    public function seleccionarRegistroCelda(string $id): void
+    {
+        if (!\Illuminate\Support\Str::isUuid($id) || !$this->consultaCelda()->where('te.id', $id)->exists()) abort(404);
+        $this->registroCeldaId = $id;
+        $this->rutaCelda = [];
+        $this->paginaCelda = 1;
+        unset($this->detalleCelda);
+        $this->dispatch('registro-celda-seleccionado');
+    }
 
     public function abrirCelda(float $latitud, float $longitud): void
     {
@@ -39,6 +54,7 @@ trait ExploraCeldaMapa
         $this->vistaCelda = 'grupos';
         $this->paginaCelda = 1;
         $this->registroCeldaId = null;
+        $this->busquedaRegistroCelda = '';
         unset($this->detalleCelda);
         $this->dispatch('abrir-detalle-celda');
     }
@@ -110,6 +126,24 @@ trait ExploraCeldaMapa
     public function detalleCelda(): array
     {
         $base = $this->consultaCelda();
+        $totalUbicacion = (clone $base)->count('te.id');
+        $arbolResumido = $totalUbicacion > 5;
+        $buscar = mb_substr(trim($this->busquedaRegistroCelda), 0, 120);
+        $consultaLov = clone $base;
+        if ($buscar !== '') {
+            $patron = '%'.addcslashes($buscar, '\\%_').'%';
+            $consultaLov->leftJoin('taxonomia.taxones as tlov', 'tlov.id', '=', 'te.taxon_id')->where(function (Builder $q) use ($patron): void {
+                $q->where(fn (Builder $codigo) => $codigo->where('ed.occurrence_id_visible', true)
+                    ->where(fn (Builder $valores) => $valores->where('te.occurrence_id', 'ILIKE', $patron)->orWhere('te.codigo_catalogo', 'ILIKE', $patron)))
+                    ->orWhere(fn (Builder $nombre) => $nombre->where('ed.scientific_name_visible', true)->where('tlov.nombre_cientifico', 'ILIKE', $patron));
+            });
+        } else {
+            $consultaLov->leftJoin('taxonomia.taxones as tlov', 'tlov.id', '=', 'te.taxon_id');
+        }
+        $registrosLov = $consultaLov->select('te.id')->selectRaw('CASE WHEN ed.occurrence_id_visible THEN te.occurrence_id END AS codigo, CASE WHEN ed.scientific_name_visible THEN tlov.nombre_cientifico END AS nombre')
+            ->orderBy('te.fila_origen_excel')->orderBy('te.id')->limit(31)->get()->map(static fn (object $fila): array => (array) $fila)->all();
+        $lovHayMas = count($registrosLov) > 30;
+        $registrosLov = array_slice($registrosLov, 0, 30);
         $taxones = DB::table('taxonomia.taxones')->get(['id', 'padre_id', 'nombre_cientifico', 'rango', 'autor', 'anio_descripcion'])->keyBy('id');
         $idsValidos = array_fill_keys(CalidadDatoPublico::taxonesConLinajeValido($taxones), true);
         $filas = (clone $base)->selectRaw('te.taxon_id, ed.scientific_name_visible, ed.family_visible, ed.genus_visible, COUNT(*) AS total')
@@ -166,7 +200,8 @@ trait ExploraCeldaMapa
             $rutasPorPermiso[$clave] = $entrada['ruta'];
         }
         $registros_arbol = [];
-        foreach ((clone $base)->select('te.id', 'te.taxon_id', 'ed.scientific_name_visible', 'ed.family_visible', 'ed.genus_visible')
+        $hojas = clone $base;
+        foreach ($hojas->select('te.id', 'te.taxon_id', 'ed.scientific_name_visible', 'ed.family_visible', 'ed.genus_visible')
             ->selectRaw('CASE WHEN ed.occurrence_id_visible THEN te.occurrence_id END AS codigo_publico')
             ->orderBy('te.fila_origen_excel')->orderBy('te.id')->get() as $indice => $fila) {
             $clave = $fila->taxon_id.':'.(int) $fila->scientific_name_visible.':'.(int) $fila->family_visible.':'.(int) $fila->genus_visible;
@@ -227,7 +262,7 @@ trait ExploraCeldaMapa
         uasort($grupos, static fn (array $a, array $b): int => strnatcasecmp($a['nombre'], $b['nombre']));
         $totalGrupos = count($grupos);
         $mostrarRegistros = $this->vistaCelda === 'registros' || $grupos === [] || $registro_seleccionado !== null;
-        $tamanoPagina = EloquentProveedorEspecimenesParaArbol::TAMANO_PAGINA;
+        $tamanoPagina = $this->vistaCelda === 'registros' ? $this->registrosPorPaginaCelda : EloquentProveedorEspecimenesParaArbol::TAMANO_PAGINA;
         $ultima = max(1, (int) ceil(($mostrarRegistros ? $total : $totalGrupos) / $tamanoPagina));
         $pagina = min($this->paginaCelda, $ultima);
         $grupos = array_slice($grupos, $mostrarRegistros ? 0 : ($pagina - 1) * $tamanoPagina, $tamanoPagina, true);
@@ -239,12 +274,15 @@ trait ExploraCeldaMapa
             $registros = $this->cargarDetallesPorEspecimenIds($ids, app(ProveedorEspecimenesPort::class), app(EspecimenDivulgableRepositoryInterface::class));
             $imagenes = $this->cargarImagenesPorEspecimen(array_values(array_filter(array_column($registros, 'occurrence_id'))));
         }
-        $arbol_hojas_total = count($registros_arbol);
+        $arbol_hojas_total = $totalUbicacion;
         $arbol_registros_total = (int) $filas->sum('total');
         $arbol = $nodos + $registros_arbol;
+        // El índice completo conserva rutas y permisos para la búsqueda; solo la presentación se acota.
+        $arbolVisual = $arbolResumido ? array_filter($nodos, static fn (array $n): bool => in_array(mb_strtolower($n['rango']), ['reino', 'kingdom', 'subreino', 'phylum', 'filo', 'subfilo', 'clase', 'class', 'subclase', 'orden', 'order', 'suborden', 'infraorden', 'superfamilia', 'familia', 'family'], true)) : $arbol;
+        $arbolVisual = array_values($arbolVisual);
         $idSeleccionado = $seleccion === [] ? null : end($seleccion);
         $seleccionado = $idSeleccionado ? ($nodos[$idSeleccionado] ?? null) : null;
-        $rutas = array_intersect_key($rutasDisponibles, $arbol);
+        $rutas = $rutasDisponibles;
         $informacion = null;
         if ($seleccionado) {
             $idTaxonSeleccionado = $seleccionado['taxon_id'];
@@ -275,6 +313,6 @@ trait ExploraCeldaMapa
         $curatoriales = array_values(array_slice($curatoriales, 0, 12));
         return compact('total', 'grupos', 'totalGrupos', 'directos', 'mostrarRegistros', 'registros', 'imagenes', 'pagina', 'ultima', 'arbol', 'rutas',
             'arbol_hojas_total', 'arbol_registros_total', 'seleccionado', 'informacion', 'registros_arbol', 'registro_seleccionado',
-            'curatoriales', 'curatoriales_total');
+            'curatoriales', 'curatoriales_total', 'arbolResumido', 'arbolVisual', 'totalUbicacion', 'registrosLov', 'lovHayMas');
     }
 }

@@ -126,7 +126,7 @@ test('composición llega a Livewire por UUID y el mapa reemplaza la población a
     assert.deepEqual(llamadas, ['id-mollusca', 'id-mollusca', 'id-annelida', 'id-annelida']);
 });
 
-test('el selector de localidad busca sin acentos y aplica una opción vigente después de cerrar', () => {
+test('el selector de localidad combina opciones vigentes y las aplica una sola vez después de cerrar', () => {
     const {filtros} = dashboardConMapa([]);
     const eventos = [];
     filtros.$el = {getBoundingClientRect: () => ({right: 330})};
@@ -136,7 +136,7 @@ test('el selector de localidad busca sin acentos y aplica una opción vigente de
         buscarLocalidad: {focus() {eventos.push('foco-buscador');}},
         elegirLocalidad: {focus() {eventos.push('foco-filtro');}},
     };
-    filtros.$wire = {$set(campo, valor) {eventos.push([campo, Array.from(valor)]);}};
+    filtros.$wire = {borradorFiltros: {filtroGeografias: []}, $set(campo, valor) {eventos.push([campo, Array.from(valor)]);}};
     filtros.$nextTick = accion => accion();
     filtros.abrirLocalidades();
     assert.equal(filtros.localidadesAbiertas, true);
@@ -146,7 +146,10 @@ test('el selector de localidad busca sin acentos y aplica una opción vigente de
     filtros.elegirLocalidad('Localidad ajena');
     assert.equal(eventos.length, 2);
     filtros.elegirLocalidad('La Peña');
-    assert.deepEqual(eventos.slice(-2), ['cerrar', ['borradorFiltros.filtroGeografias', ['La Peña']]]);
+    filtros.elegirLocalidad('Puyo');
+    assert.equal(eventos.length, 2);
+    filtros.aplicarLocalidades();
+    assert.deepEqual(eventos.slice(-2), ['cerrar', ['borradorFiltros.filtroGeografias', ['La Peña', 'Puyo']]]);
     filtros.restaurarFocoLocalidades();
     assert.equal(filtros.localidadesAbiertas, false);
     assert.equal(eventos.at(-1), 'foco-filtro');
@@ -155,6 +158,7 @@ test('el selector de localidad busca sin acentos y aplica una opción vigente de
     assert.equal(filtros.busquedaLocalidad, '');
     assert.deepEqual(Array.from(filtros.localidadesEncontradas), ['Puyo']);
     filtros.elegirLocalidad('');
+    filtros.aplicarLocalidades();
     assert.deepEqual(eventos.at(-1), ['borradorFiltros.filtroGeografias', []]);
 });
 
@@ -271,7 +275,8 @@ test('cerrar el árbol devuelve el foco al marcador vigente tras repintar y al m
     assert.equal(focos.length, cantidadFocos, 'salir de la vista descarta el foco pendiente');
     assert.match(plantillaDashboard, /x-on:restaurar-foco-mapa\.window="restaurarFocoMapa\(/);
     const detalle = readFileSync(new URL('../../Modules/CatalogoPublico/resources/views/components/detalle-celda-mapa.blade.php', import.meta.url), 'utf8');
-    assert.match(detalle, /\$wire\.cerrarCelda\(\)\.then\(\(\) => \$dispatch\('restaurar-foco-mapa'/);
+    assert.match(detalle, /x-on:close\.self="cargando = false; \$dispatch\('restaurar-foco-mapa'/);
+    assert.doesNotMatch(detalle, /\$wire\.cerrarCelda/);
 });
 
 test('una ubicación compartida muestra todos sus colores y abre las coordenadas originales con teclado', () => {

@@ -297,7 +297,9 @@ test('el icono registros del modal muestra toda la ubicación en páginas de sei
     expect($domArbol->query('//dialog//table[@class="atlas-record-table"]')->length)->toBe(0)
         ->and($domArbol->query('//dialog//aside[contains(@class,"atlas-taxon-information")]')->length)->toBe(1)
         ->and($domArbol->query('//dialog//section[contains(@class,"atlas-tree-section")]//ul[@class="atlas-tree-roots"]')->length)->toBe(1)
-        ->and($domArbol->query('//dialog//button[@data-rango="registro"]')->length)->toBe(14)
+        ->and($domArbol->query('//dialog//button[@data-rango="registro"]')->length)->toBe(0)
+        ->and($domArbol->query('//dialog[contains(@class,"atlas-record-lov")]//input[@type="search"]')->length)->toBe(1)
+        ->and($componente->instance()->detalleCelda['arbolResumido'])->toBeTrue()
         ->and($componente->instance()->detalleCelda['seleccionado']['taxon_id'])->toBe($f['taxones'][0]);
     $componente->call('paginarCelda', 2)->assertSet('paginaCelda', 1);
     // Sin filtro de filo ni taxón, el material no publicado del mismo punto sigue excluido.

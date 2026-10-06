@@ -5,7 +5,7 @@
 <article class="atlas-record-card" wire:key="registro-mapa-{{ $registro->especimen_id }}">
     <h3>{{ $registro->occurrence_id ?: 'Código reservado' }}</h3>@if($mostrarIdentificacion)<p><em>{{ $registro->scientific_name ?: 'Identificación reservada o pendiente' }}</em></p>@endif
     @if($registro->taxon_en_revision ?? false)<p class="atlas-data-warning">Dato original por revisar; excluido de riqueza e identificación a especie.</p>@endif
-    <x-catalogopublico::referencia-taxonomica :nombre="$registro->scientific_name" :familia-visible="!empty($familiaPublica)" :familia-original="$familiaPublica ?? null" />
+    @if($mostrarReferencia ?? true)<x-catalogopublico::referencia-taxonomica :nombre="$registro->scientific_name" :familia-visible="!empty($familiaPublica)" :familia-original="$familiaPublica ?? null" />@endif
     @if($registro->event_date && ((int) substr($registro->event_date, 0, 4) < 1800 || $registro->event_date > date('Y-m-d')))<p class="atlas-data-warning">Fecha original pendiente de revisión; excluida de indicadores temporales.</p>@endif
     @if($fotos !== [])
         <div class="atlas-record-photos">
