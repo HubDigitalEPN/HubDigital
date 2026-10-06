@@ -101,29 +101,23 @@
     <div class="collection-loading" wire:loading.delay wire:target="borradorFiltros,cambiarVista,aplicarBorrador,limpiarFiltros,retirarCriterio,seleccionarFilo,seleccionarProvincia,seleccionarDecada,seleccionarMes,seleccionarAltitud,seleccionarMetodo,seleccionarArea,explorarNivel,navegar,cambiarPagina,cambiarPaginaHermanos,abrirFichaRegistro">
         <span class="collection-loading-indicator" role="status" aria-live="polite"><span class="atlas-spinner" aria-hidden="true"></span><span>Actualizando filtros y registros…</span></span>
     </div>
-    <div class="collection-workspace" wire:loading.attr="inert" wire:loading.class="is-updating">
+    <div class="collection-workspace" wire:key="catalogo-workspace" wire:loading.attr="inert" wire:loading.class="is-updating">
         <x-catalogopublico::filtro-investigacion
             :provincias="$provinciasDisponibles" :localidades="$this->localidadesDisponibles" :filos="$filosDisponibles"
             :preparaciones="$preparacionesDisponibles" :metodos="$metodosRecoleccionDisponibles"
             :biomas="$biomasDisponibles" :hay-filtros-activos="$hayFiltrosActivos"
             :aplicados="$this->filtrosAplicados"
         />
-        <div class="collection-main">
-    @if($taxon !== '')
-        <div class="collection-selection" role="status"><span>Selección: <strong>{{ $taxon }}</strong></span><button type="button" wire:click="quitarTaxon">Quitar taxón ×</button></div>
-    @endif
-    @if($this->criteriosActivos !== [])
-        <section class="collection-active-filters" aria-label="Filtros activos">
-            <h2 class="sr-only">Filtros activos de la selección aplicada</h2>
+        <div class="collection-main" wire:key="catalogo-contenido">
+    <nav class="collection-view-bar" wire:key="catalogo-vistas" aria-label="Vista de la Colección Biológica">
+        <div class="collection-active-filters" role="group" aria-label="Filtros activos de la selección aplicada">
             @foreach($this->criteriosActivos as $criterio)
-                <button type="button" wire:key="criterio-{{ $criterio['clave'] }}-{{ $criterio['indice'] }}" wire:click="retirarCriterio(@js($criterio['clave']), {{ $criterio['indice'] }})" wire:loading.attr="disabled"
+                <button type="button" wire:key="criterio-{{ $criterio['clave'] }}-{{ $criterio['indice'] }}" wire:click="$wire.retirarCriterio(@js($criterio['clave']), {{ $criterio['indice'] }})" wire:loading.attr="disabled"
                     aria-label="Quitar {{ $criterio['etiqueta'] }}: {{ $criterio['valor'] }}">
                     <strong>{{ $criterio['etiqueta'] }}:</strong> {{ $criterio['valor'] }} <span aria-hidden="true">×</span>
                 </button>
             @endforeach
-        </section>
-    @endif
-    <nav class="collection-view-bar" aria-label="Vista de la Colección Biológica">
+        </div>
         <div class="collection-view-switch">
             <button type="button" wire:loading.attr="disabled" wire:click="cambiarVista('tarjetas')" aria-label="Vista de tarjetas" title="Tarjetas" aria-pressed="{{ $vista === 'tarjetas' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg><span class="sr-only">Tarjetas</span></button>
             <button type="button" wire:loading.attr="disabled" wire:click="cambiarVista('registros')" aria-label="Vista de registros" title="Registros" aria-pressed="{{ $vista === 'registros' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h3m4 0h9M4 12h3m4 0h9M4 18h3m4 0h9"/></svg><span class="sr-only">Registros</span></button>

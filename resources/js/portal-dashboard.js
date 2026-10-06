@@ -323,35 +323,43 @@ const registrarDashboard = () => {
         const teselasFallidas = new Set();
         let agrupador = crearAgrupadorMapa(celdas);
         let pintadoPendiente = null;
+        // El tooltip vive fuera del mapa, sin directivas Alpine: un x-ref
+        // teletransportado pierde su raíz al clonarse durante el morph de Livewire.
+        let ayudaMapa = null;
+        let invocadorAyudaMapa = null;
         return {
         observador: null,
         maximizado: false,
         enfocarTrasCambio: false,
         zoomMapa: 0,
         errorTeselas: false,
-        ayudaMapaTexto: '',
-        ayudaMapaIzquierda: 0,
-        ayudaMapaSuperior: 0,
-        ayudaMapaInvocador: null,
         mostrarAyudaMapa(texto, invocador) {
             this.ocultarAyudaMapa();
-            this.ayudaMapaTexto = texto;
-            this.ayudaMapaInvocador = invocador;
-            invocador.setAttribute('aria-describedby', this.$id('atlas-map-tooltip'));
-            this.$nextTick(() => {
-                if (this.ayudaMapaInvocador !== invocador) return;
-                const origen = invocador.getBoundingClientRect();
-                const ayuda = this.$refs.ayudaMapa.getBoundingClientRect();
-                const margen = 8;
-                this.ayudaMapaIzquierda = Math.max(margen, Math.min(origen.left + origen.width / 2 - ayuda.width / 2, window.innerWidth - ayuda.width - margen));
-                const encima = origen.top - ayuda.height - margen;
-                this.ayudaMapaSuperior = Math.max(margen, Math.min(encima >= margen ? encima : origen.bottom + margen, window.innerHeight - ayuda.height - margen));
-            });
+            if (!invocador) return;
+            if (!ayudaMapa) {
+                ayudaMapa = document.createElement('div');
+                ayudaMapa.className = 'atlas-floating-tooltip';
+                ayudaMapa.id = this.$id('atlas-map-tooltip');
+                ayudaMapa.setAttribute('role', 'tooltip');
+                document.body.appendChild(ayudaMapa);
+            }
+            invocadorAyudaMapa = invocador;
+            invocador.setAttribute('aria-describedby', ayudaMapa.id);
+            ayudaMapa.textContent = texto;
+            ayudaMapa.hidden = false;
+            const origen = invocador.getBoundingClientRect();
+            const ayuda = ayudaMapa.getBoundingClientRect();
+            const margen = 8;
+            const izquierda = Math.max(margen, Math.min(origen.left + origen.width / 2 - ayuda.width / 2, window.innerWidth - ayuda.width - margen));
+            const encima = origen.top - ayuda.height - margen;
+            const superior = Math.max(margen, Math.min(encima >= margen ? encima : origen.bottom + margen, window.innerHeight - ayuda.height - margen));
+            ayudaMapa.style.left = `${izquierda}px`;
+            ayudaMapa.style.top = `${superior}px`;
         },
         ocultarAyudaMapa() {
-            this.ayudaMapaInvocador?.removeAttribute('aria-describedby');
-            this.ayudaMapaInvocador = null;
-            this.ayudaMapaTexto = '';
+            invocadorAyudaMapa?.removeAttribute('aria-describedby');
+            invocadorAyudaMapa = null;
+            if (ayudaMapa) { ayudaMapa.hidden = true; ayudaMapa.textContent = ''; }
         },
         reintentarTeselas() { teselasFallidas.clear(); this.errorTeselas = false; teselas?.redraw(); },
         colores: ['#17699b', '#d17d28', '#568c59', '#8c62a5', '#b94e6b', '#71828d', '#a18a29', '#3f8d90'],
@@ -389,6 +397,9 @@ const registrarDashboard = () => {
         },
 
         destroy() {
+            this.ocultarAyudaMapa();
+            ayudaMapa?.remove();
+            ayudaMapa = null;
             this.observador?.disconnect();
             if (pintadoPendiente !== null) cancelAnimationFrame(pintadoPendiente);
             pintadoPendiente = null;
@@ -490,13 +501,15 @@ const registrarDashboard = () => {
                 const composicion = partes.map(({filo, cantidad}) => `${filo}: ${cantidad.toLocaleString('es-EC')}`).join(', ');
                 const descripcion = `Ubicación original: ${cantidad.toLocaleString('es-EC')} ${cantidad === 1 ? 'registro' : 'registros'} con coordenadas ${lat}, ${lon}.${composicion ? ' ' + composicion + '.' : ''} Abrir detalle.`;
                 marcador.on('click', abrir);
+                // Leaflet normaliza el hover tanto para los círculos SVG como
+                // para los iconos de ubicaciones con varios filos.
+                marcador.on('mouseover', () => this.mostrarAyudaMapa(descripcion, elemento));
+                marcador.on('mouseout', () => this.ocultarAyudaMapa());
                 if (elemento) {
                     if (partes.length > 1) elemento.style.background = fondoFilos(nodo.filos);
                     elemento.setAttribute('tabindex', '0');
                     elemento.setAttribute('role', 'button');
                     elemento.setAttribute('aria-label', descripcion);
-                    elemento.addEventListener('mouseenter', () => this.mostrarAyudaMapa(descripcion, elemento));
-                    elemento.addEventListener('mouseleave', () => this.ocultarAyudaMapa());
                     elemento.addEventListener('focus', () => this.mostrarAyudaMapa(descripcion, elemento));
                     elemento.addEventListener('blur', () => this.ocultarAyudaMapa());
                     elemento.addEventListener('keydown', evento => {

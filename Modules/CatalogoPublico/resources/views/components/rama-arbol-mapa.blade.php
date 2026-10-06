@@ -3,7 +3,7 @@
     $plegable = count($descendientes) > 6;
     $soloRegistros = $descendientes !== [] && collect($descendientes)->every(fn ($hijo) => $hijo['rango'] === 'registro');
 @endphp
-<li class="atlas-tree-branch" data-padre-id="{{ $nodoDendrograma['padre_id'] }}" data-hijo-id="{{ $nodoDendrograma['id'] }}">
+<li class="atlas-tree-branch" wire:key="rama-mapa-{{ $nodoDendrograma['id'] }}" data-padre-id="{{ $nodoDendrograma['padre_id'] }}" data-hijo-id="{{ $nodoDendrograma['id'] }}">
     @include('catalogopublico::components.nodo-arbol-mapa', ['nodoDendrograma' => $nodoDendrograma, 'disposicionFluida' => true])
     @if($descendientes !== [])
         @if($plegable)

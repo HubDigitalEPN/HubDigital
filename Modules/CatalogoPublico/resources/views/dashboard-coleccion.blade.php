@@ -6,7 +6,6 @@
     $coloresFilo = ['Arthropoda' => '#17699b', 'Mollusca' => '#d17d28', 'Annelida' => '#568c59', 'Nematoda' => '#8c62a5', 'Nematomorpha' => '#b94e6b'];
 @endphp
 <div class="atlas atlas-dashboard" wire:key="dashboard-mapa" x-on:atlas-datos="actualizar($event.detail)" x-on:click.capture="recordarAccion($event)" x-data="portalDashboard()" x-id="['atlas-map-tooltip']" x-on:scroll.window.capture="ocultarAyudaMapa()" x-on:resize.window="ocultarAyudaMapa()" x-on:keydown.escape.window="ocultarAyudaMapa()">
-    <template x-teleport="body"><div class="atlas-floating-tooltip" x-ref="ayudaMapa" :id="$id('atlas-map-tooltip')" role="tooltip" x-show="ayudaMapaTexto !== ''" x-cloak :style="{left: ayudaMapaIzquierda + 'px', top: ayudaMapaSuperior + 'px'}" x-text="ayudaMapaTexto"></div></template>
     <span hidden wire:key="mapa-datos-{{ $claveFiltrosMapa }}" x-init="$dispatch('atlas-datos', {celdas: @js($datosMapa['mapa']), filos: @js($datosMapa['filos'])})"></span>
     <div class="atlas-stage">
         <section x-ref="panelMapa" class="atlas-panel atlas-map-panel" :class="{'atlas-map-maximized': maximizado}" x-on:keydown.escape.window="if (maximizado && !$event.defaultPrevented && !document.querySelector('dialog[open]') && document.querySelector('#chat-bot-trigger')?.getAttribute('aria-expanded') !== 'true' && !$event.target.closest('#chat-bot-panel')) minimizar()" aria-label="Mapa de registros públicos">
@@ -29,7 +28,7 @@
             <div class="atlas-taxon-body">
                 @forelse($datosMapa['filos'] as $filo => $cantidad)
                     @php $porcentaje = (int) $cantidad / $total * 100; $color = $coloresFilo[$filo] ?? '#71828d'; $idFiloCategoria = $this->identificadorFilo($filo); @endphp
-                    <button class="atlas-taxon-row" type="button" wire:click="$wire.seleccionarFilo(@js($idFiloCategoria ?? ''))" wire:loading.attr="disabled" wire:target="seleccionarFilo" @disabled($idFiloCategoria === null) aria-pressed="{{ $idFiloCategoria !== null && $filtroFiloId === $idFiloCategoria ? 'true' : 'false' }}" aria-label="{{ $idFiloCategoria === null ? $filo.' sin identificador confirmado para filtrar' : ($filtroFiloId === $idFiloCategoria ? 'Quitar filtro de filo '.$filo : 'Filtrar por filo '.$filo) }}">
+                    <button class="atlas-taxon-row" type="button" wire:key="composicion-filo-{{ $idFiloCategoria ?? sha1($filo) }}" wire:click="$wire.seleccionarFilo(@js($idFiloCategoria ?? ''))" wire:loading.attr="disabled" wire:target="seleccionarFilo" @disabled($idFiloCategoria === null) aria-pressed="{{ $idFiloCategoria !== null && $filtroFiloId === $idFiloCategoria ? 'true' : 'false' }}" aria-label="{{ $idFiloCategoria === null ? $filo.' sin identificador confirmado para filtrar' : ($filtroFiloId === $idFiloCategoria ? 'Quitar filtro de filo '.$filo : 'Filtrar por filo '.$filo) }}">
                         <span class="atlas-taxon-name"><i class="atlas-legend-dot" style="background:{{ $color }}"></i>{{ $filo }}</span>
                         <span class="atlas-taxon-count">{{ number_format((int) $cantidad, 0, ',', '.') }} <small>({{ number_format($porcentaje, 1, ',', '.') }} %)</small></span>
                         <span class="atlas-bar" aria-hidden="true"><span style="width:{{ min(100, $porcentaje) }}%;background:{{ $color }}"></span></span>

@@ -14,11 +14,13 @@ function dashboardConMapa(celdas) {
     const marcadores = [];
     const cuadros = new Map();
     const capasOriginales = [];
+    const ayudas = [];
+    const eventosMapa = {};
     const eventosTeselas = {};
     let redibujosTeselas = 0;
     let siguienteCuadro = 0;
     const nodo = () => ({style: {}, atributos: {}, eventos: {}, setAttribute(clave, valor) {this.atributos[clave] = valor;}, removeAttribute(clave) {delete this.atributos[clave];}, addEventListener(clave, manejador) {this.eventos[clave] = manejador;}, getBoundingClientRect() {return {left: 20, top: 300, bottom: 316, width: 16, height: 16};}});
-    const mapa = {getZoom: () => 10, on() {}, fitBounds() {}, createPane: () => ({style: {}}), invalidateSize() {}, remove() {}};
+    const mapa = {getZoom: () => 10, on(nombres, accion) {for (const nombre of nombres.split(' ')) eventosMapa[nombre] = accion;}, fitBounds() {}, createPane: () => ({style: {}}), invalidateSize() {}, remove() {}};
     const capa = {addTo() { return this; }, clearLayers() { marcadores.length = 0; }};
     const control = () => ({addTo() { return this; }, on() { return this; }, redraw() {}});
     const L = {
@@ -32,9 +34,10 @@ function dashboardConMapa(celdas) {
         marker(coordenadas, opciones) { return L.circleMarker(coordenadas, opciones); },
         circleMarker(coordenadas, opciones) {
             const elemento = nodo();
+            const eventos = {};
             const marcador = {
-                addTo() { marcadores.push({coordenadas, opciones, elemento}); return this; },
-                getElement: () => elemento, bindTooltip() {}, on() {},
+                addTo() { marcadores.push({coordenadas, opciones, elemento, eventos}); return this; },
+                getElement: () => elemento, bindTooltip() {}, on(nombre, accion) {eventos[nombre] = accion; return this;},
             };
             return marcador;
         },
@@ -51,18 +54,26 @@ function dashboardConMapa(celdas) {
     const contexto = {
         L, crearAgrupadorMapa, crearGeojsonMapa, prepararPuntosMapa, etiquetaAgrupacionMapa, ZOOM_UBICACIONES_ORIGINALES, colorFilo, composicionFilos, fondoFilos,
         window: {innerWidth: 1280, innerHeight: 800, Alpine: {data: (nombre, fabrica) => registros.set(nombre, fabrica)}, addEventListener() {}},
-        document: {documentElement: {classList: {add() {}, remove() {}}}},
+        document: {
+            documentElement: {classList: {add() {}, remove() {}}},
+            body: {appendChild(ayuda) {ayudas.push(ayuda);}},
+            createElement() {
+                return {...nodo(), hidden: false, textContent: '',
+                    getBoundingClientRect: () => ({width: 320, height: 70}),
+                    remove() {ayudas.splice(ayudas.indexOf(this), 1);}};
+            },
+        },
         requestAnimationFrame: tarea => { const id = ++siguienteCuadro; cuadros.set(id, tarea); return id; },
         cancelAnimationFrame: id => cuadros.delete(id),
     };
     // Ejecuta el componente real; sólo sustituye imports y el adaptador de Leaflet/DOM.
     runInNewContext(fuenteDashboard.replace(/^import .*;\r?$/gm, ''), contexto);
     const dashboard = registros.get('portalDashboard')(celdas, {Mollusca: 8, Annelida: 2});
-    dashboard.$refs = {mapa: {focus() {}}, panelMapa: {scrollIntoView() {}}, ayudaMapa: {getBoundingClientRect: () => ({width: 320, height: 70})}};
+    dashboard.$refs = {mapa: {focus() {}}, panelMapa: {scrollIntoView() {}}};
     dashboard.$id = () => 'ayuda-mapa-prueba';
     dashboard.$nextTick = tarea => tarea();
     dashboard.init();
-    return {dashboard, filtros: registros.get('portalFiltros')(), ventana: contexto.window, marcadores, capasOriginales, eventosTeselas, redibujosTeselas: () => redibujosTeselas, pintar() {
+    return {dashboard, filtros: registros.get('portalFiltros')(), ventana: contexto.window, marcadores, capasOriginales, ayudas, eventosMapa, eventosTeselas, redibujosTeselas: () => redibujosTeselas, pintar() {
         while (cuadros.size) {
             const [id, tarea] = cuadros.entries().next().value;
             cuadros.delete(id);
@@ -179,26 +190,62 @@ test('el selector acota el DOM sin perder búsquedas y se coloca junto a los fil
 });
 
 test('el tooltip responde al ratón y al foco sin salir de la ventana y se retira al actualizar', () => {
-    const {dashboard, marcadores, ventana} = dashboardConMapa([{lat: -1, lon: -78, total: 1, filos: {Annelida: 1}}]);
+    const {dashboard, marcadores, ventana, ayudas} = dashboardConMapa([{lat: -1, lon: -78, total: 1, filos: {Annelida: 1}}]);
     const elemento = marcadores[0].elemento;
-    elemento.eventos.mouseenter();
-    assert.match(dashboard.ayudaMapaTexto, /coordenadas -1, -78/);
-    assert.equal(dashboard.ayudaMapaIzquierda, 8);
-    assert.equal(dashboard.ayudaMapaSuperior, 222);
+    marcadores[0].eventos.mouseover();
+    assert.match(ayudas[0].textContent, /coordenadas -1, -78/);
+    assert.equal(ayudas[0].style.left, '8px');
+    assert.equal(ayudas[0].style.top, '222px');
+    assert.equal(ayudas[0].hidden, false);
+    assert.equal(ayudas[0].atributos.role, 'tooltip');
     assert.equal(elemento.atributos['aria-describedby'], 'ayuda-mapa-prueba');
-    elemento.eventos.mouseleave();
-    assert.equal(dashboard.ayudaMapaTexto, '');
+    marcadores[0].eventos.mouseout();
+    assert.equal(ayudas[0].hidden, true);
+    assert.equal(ayudas[0].textContent, '');
     assert.equal(elemento.atributos['aria-describedby'], undefined);
     elemento.getBoundingClientRect = () => ({left: 1240, top: 2, bottom: 18, width: 16, height: 16});
     elemento.eventos.focus();
-    assert.equal(dashboard.ayudaMapaIzquierda, ventana.innerWidth - 320 - 8);
-    assert.equal(dashboard.ayudaMapaSuperior, 26);
+    assert.equal(ayudas[0].style.left, `${ventana.innerWidth - 320 - 8}px`);
+    assert.equal(ayudas[0].style.top, '26px');
     elemento.eventos.blur();
-    assert.equal(dashboard.ayudaMapaTexto, '');
+    assert.equal(ayudas[0].hidden, true);
     elemento.eventos.focus();
     dashboard.actualizar({celdas: [], filos: {}});
-    assert.equal(dashboard.ayudaMapaTexto, '');
+    assert.equal(ayudas[0].hidden, true);
     assert.equal(elemento.atributos['aria-describedby'], undefined);
+});
+
+test('el tooltip externo conserva su ciclo al filtrar varias veces y no deja nodos ni referencias al salir del mapa', () => {
+    const originales = [
+        {lat: -1, lon: -78, total: 1, filos: {Annelida: 1}},
+        {lat: -2, lon: -79, total: 3, filos: {Annelida: 1, Mollusca: 2}},
+    ];
+    const {dashboard, marcadores, ayudas, eventosMapa, pintar} = dashboardConMapa(originales);
+    assert.doesNotMatch(plantillaDashboard, /x-teleport|x-ref="ayudaMapa"/);
+    for (let vuelta = 0; vuelta < 3; vuelta++) {
+        for (const punto of originales) {
+            dashboard.actualizar({celdas: [punto], filos: punto.filos});
+            pintar();
+            const marcador = marcadores[0];
+            marcador.eventos.mouseover();
+            assert.equal(ayudas.length, 1);
+            assert.match(ayudas[0].textContent, new RegExp(`coordenadas ${punto.lat}, ${punto.lon}`));
+            assert.equal(ayudas[0].hidden, false);
+            for (const evento of ['movestart', 'zoomstart']) {
+                eventosMapa[evento]();
+                assert.equal(ayudas[0].hidden, true);
+                assert.equal(marcador.elemento.atributos['aria-describedby'], undefined);
+                marcador.elemento.eventos.focus();
+            }
+            assert.equal(Object.keys(ayudas[0].atributos).some(nombre => nombre.startsWith('x-')), false);
+            marcador.eventos.mouseout();
+        }
+    }
+    const ultimo = marcadores[0].elemento;
+    ultimo.eventos.focus();
+    dashboard.destroy();
+    assert.equal(ayudas.length, 0);
+    assert.equal(ultimo.atributos['aria-describedby'], undefined);
 });
 
 test('una ubicación compartida muestra todos sus colores y abre las coordenadas originales con teclado', () => {

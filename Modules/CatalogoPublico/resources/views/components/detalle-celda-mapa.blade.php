@@ -1,4 +1,4 @@
-<dialog class="atlas-cell-dialog" wire:ignore.self x-data="{ anterior: null, cargando: false, error: false, punto: null }" x-ref="detalleCelda"
+<dialog class="atlas-cell-dialog" wire:key="catalogo-detalle-ubicacion" wire:ignore.self x-data="{ anterior: null, cargando: false, error: false, punto: null }" x-ref="detalleCelda"
     aria-labelledby="titulo-detalle-celda" :aria-busy="cargando.toString()"
     x-on:iniciar-detalle-celda.window="anterior = $event.detail.invocador || document.activeElement; punto = $event.detail; error = false; cargando = true; if (!$el.open) $el.showModal()"
     x-on:finalizar-detalle-celda.window="cargando = false"

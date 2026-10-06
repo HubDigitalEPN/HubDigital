@@ -189,7 +189,8 @@
 }
 
 /* Portal unificado: navegación de vistas y filtros persistentes a la izquierda. */
-.collection-view-bar { width:100%; margin:0 0 .6rem; padding:0; display:flex; justify-content:flex-end; }
+.collection-view-bar { width:100%; margin:0 0 .6rem; padding:0; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:.5rem .75rem; }
+.collection-view-bar > .collection-view-switch { flex:none; margin-left:auto; }
 .collection-taxon-records { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:.75rem; padding:.85rem 1rem; margin-bottom:1rem; border:1px solid #cbd9e5; border-radius:.6rem; background:#f3f8fc; color:#16344d; }
 .collection-taxon-records p { flex:1 1 240px; margin:0; font-size:.85rem; }
 .collection-taxon-records button { min-height:44px; padding:.6rem .8rem; border:1px solid #155d91; border-radius:.35rem; background:#fff; color:#155d91; font-weight:600; cursor:pointer; }
@@ -563,7 +564,7 @@
 .atlas-map-mixed:focus-visible { outline:3px solid #102d48; outline-offset:3px; }
 .atlas-legend-cluster { display:inline-flex; flex:none; align-items:center; justify-content:center; width:22px; height:22px; margin-right:.3rem; border:2px solid #fff; border-radius:50%; background:#17699b; color:#fff; box-shadow:0 0 0 1px #0e4975; font-style:normal; font-weight:700; }
 
-.collection-active-filters { display:flex; flex-wrap:wrap; gap:.45rem; padding:.75rem 1rem; background:#f2f7fb; border-bottom:1px solid #ccd9e4; }
+.collection-active-filters { display:flex; flex:1 1 12rem; min-width:0; flex-wrap:wrap; gap:.45rem; padding:0; }
 .collection-active-filters button { max-width:100%; min-height:44px; padding:.4rem .65rem; border:1px solid #8daabd; border-radius:.2rem; background:#fff; color:#14364f; font-size:.78rem; overflow-wrap:anywhere; text-align:left; }
 .collection-active-filters button:focus-visible { outline:3px solid #17699b; outline-offset:2px; }
 .atlas-taxonomic-reference { margin:.65rem 0; padding:.65rem; border:1px solid #ccd9e4; background:#f7f9fb; font-size:.78rem; overflow-wrap:anywhere; }
@@ -575,4 +576,3 @@
 .atlas-dashboard .atlas-map-shell { display:flex; flex-direction:column; }
 .atlas-dashboard .atlas-map { flex:1; height:auto; }
 .atlas-dashboard .atlas-map-maximized .atlas-map { position:relative; inset:auto; flex:1; height:auto; min-height:0; }
-@media(max-width:400px) { .collection-active-filters { padding:.5rem; } }

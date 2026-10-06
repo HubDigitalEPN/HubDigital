@@ -1,4 +1,4 @@
-<dialog class="portal-record-dialog" wire:ignore.self x-data x-ref="fichaPublica"
+<dialog class="portal-record-dialog" wire:key="catalogo-ficha-registro" wire:ignore.self x-data x-ref="fichaPublica"
     x-on:abrir-ficha-registro.window="$refs.fichaPublica.showModal()"
     x-on:click="if ($event.target === $el) $el.close()"
     x-on:close="$wire.cerrarFichaRegistro()" aria-labelledby="titulo-ficha-publica">
