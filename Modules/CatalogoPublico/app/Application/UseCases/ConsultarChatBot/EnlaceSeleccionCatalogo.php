@@ -9,7 +9,7 @@ use Modules\CatalogoPublico\Domain\ValueObjects\FiltrosBusqueda;
 /** Parámetros públicos del enlace: nunca incluye ejemplares ni el borrador del formulario. */
 final class EnlaceSeleccionCatalogo
 {
-    private const ESCALARES = ['nivel', 'taxon', 'fc', 'ft', 'fco', 'ffd', 'ffh', 'flat', 'flax', 'flon', 'flox',
+    private const ESCALARES = ['nivel', 'taxon', 'fc', 'ft', 'fti', 'fco', 'ffd', 'ffh', 'flat', 'flax', 'flon', 'flox',
         'fed', 'feh', 'fh', 'fsti', 'fd', 'fca', 'fes', 'fpais', 'fprov', 'fph', 'fmes', 'fid', 'fgeo', 'fap'];
 
     private const LISTAS = ['fp', 'fg', 'fm', 'fb', 'fprovs', 'fphs'];
@@ -20,6 +20,7 @@ final class EnlaceSeleccionCatalogo
             'nivel' => $nivel, 'taxon' => $taxon,
             'fc' => implode(', ', $filtros->codigosCatalogo), 'fp' => $filtros->preparaciones,
             'ft' => $filtros->taxonNombre, 'fg' => $filtros->geografias,
+            'fti' => $filtros->taxonId,
             'fco' => implode(', ', $filtros->colectores), 'ffd' => $filtros->fechaDesde?->format('Y-m-d'),
             'ffh' => $filtros->fechaHasta?->format('Y-m-d'), 'fm' => $filtros->metodosRecoleccion,
             'flat' => $filtros->latMin, 'flax' => $filtros->latMax, 'flon' => $filtros->lonMin, 'flox' => $filtros->lonMax,

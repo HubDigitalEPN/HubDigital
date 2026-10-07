@@ -84,7 +84,7 @@ test('registros identificados hasta familia aparecen en provincia década y en l
     expect($reservado['registro_seleccionado']['nombre'])->toBe('Registro público 1')
         ->and($reservado['registro_seleccionado']['padre_id'])->toBeNull()->and($reservado['seleccionado'])->toBeNull()
         ->and(array_column($reservado['registros'], 'especimen_id'))->toBe([$f['ids'][2]]);
-    $pagina->assertDontSee('QA-AUTO-3')->assertSee('Registro público 1');
+    $pagina->assertDontSee('QA-AUTO-3')->assertSee('Código reservado');
 });
 
 test('una hoja conserva su UUID y relee el linaje público antes de cargar su ficha cuando cambia la identificación', function (): void {

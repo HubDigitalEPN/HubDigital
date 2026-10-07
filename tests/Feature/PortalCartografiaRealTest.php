@@ -170,7 +170,7 @@ test('el mapa conserva coordenadas exactas y un punto vecino no entra en el moda
         ->and(array_column($componente->instance()->detalleCelda['registros'], 'especimen_id'))->toBe([$f['ids'][0]]);
 });
 
-test('el icono registros del modal muestra toda la ubicación en páginas de seis con campos y permisos completos', function (): void {
+test('el modal abre directamente todos los registros de la ubicación con campos y permisos completos', function (): void {
     $f = cartografiaRealFixture();
     $latitud = -0.2561234; $longitud = -78.5134567;
     DB::table('taxonomia.especimenes')->whereIn('id', [$f['ids'][0], $f['ids'][1]])->update([
@@ -247,7 +247,7 @@ test('el icono registros del modal muestra toda la ubicación en páginas de sei
         return array_combine($titulos, array_map(fn (DOMNode $n): string => trim($n->textContent), iterator_to_array($celdas)));
     };
     $componente = Livewire::withQueryParams(['vista' => 'mapa', 'fph' => $f['filo'], 'fprov' => 'Pichincha'])
-        ->test(PortalCatalogo::class)->call('abrirCelda', $latitud, $longitud)
+        ->test(PortalCatalogo::class)->call('abrirCelda', $latitud, $longitud)->assertSet('vistaCelda', 'registros')
         ->call('navegarCelda', $f['taxones'][0])->call('cambiarVistaCelda', 'registros')
         ->assertSet('filtroFiloId', $f['filo'])->assertSet('filtroProvincia', 'Pichincha')
         ->assertSet('paginaCelda', 1)->assertSet('vistaCelda', 'registros');
@@ -258,7 +258,10 @@ test('el icono registros del modal muestra toda la ubicación en páginas de sei
     $tabla = $dom->query('//dialog//table[@class="atlas-record-table"]')->item(0);
     expect($dom->query('//dialog//table[@class="atlas-record-table"]/tbody/tr')->length)->toBe(6)
         ->and($dom->query('//dialog//article[contains(@class,"atlas-record-card")]')->length)->toBe(0)
-        ->and($dom->query('//dialog//div[@class="collection-view-switch"]/button')->length)->toBe(2)
+        ->and($dom->query('//dialog//div[@class="collection-view-switch"]/button')->length)->toBe(0)
+        ->and($dom->query('//dialog//div[@class="atlas-cell-toolbar"]')->length)->toBe(0)
+        ->and($dom->query('//dialog//section[contains(@class,"atlas-tree-section")]')->length)->toBe(0)
+        ->and($dom->query('//dialog//aside[contains(@class,"atlas-taxon-information")]')->length)->toBe(0)
         ->and($dom->query('//dialog//div[@class="atlas-record-table-scroll" and @role="region" and @tabindex="0"]')->length)->toBe(1);
     foreach (['COLECTOR-PRIVADO-TABLA', 'NOTA-PRIVADA-TABLA', 'LOCALIDAD-PRIVADA-TABLA', 'ORIGINAL-PRIVADO-TABLA', $f['codigos'][0]] as $reservado) {
         expect($tabla->textContent)->not->toContain($reservado);
@@ -294,11 +297,11 @@ test('el icono registros del modal muestra toda la ubicación en páginas de sei
     $componente->call('paginarCelda', 999)->assertSet('paginaCelda', 3)
         ->call('cambiarVistaCelda', 'grupos')->assertSet('vistaCelda', 'grupos')->assertSet('paginaCelda', 1);
     $domArbol = $leerDom($componente->html());
-    expect($domArbol->query('//dialog//table[@class="atlas-record-table"]')->length)->toBe(0)
-        ->and($domArbol->query('//dialog//aside[contains(@class,"atlas-taxon-information")]')->length)->toBe(1)
-        ->and($domArbol->query('//dialog//section[contains(@class,"atlas-tree-section")]//ul[@class="atlas-tree-roots"]')->length)->toBe(1)
+    expect($domArbol->query('//dialog//table[@class="atlas-record-table"]')->length)->toBe(1)
+        ->and($domArbol->query('//dialog//aside[contains(@class,"atlas-taxon-information")]')->length)->toBe(0)
+        ->and($domArbol->query('//dialog//section[contains(@class,"atlas-tree-section")]//ul[@class="atlas-tree-roots"]')->length)->toBe(0)
         ->and($domArbol->query('//dialog//button[@data-rango="registro"]')->length)->toBe(0)
-        ->and($domArbol->query('//dialog[contains(@class,"atlas-record-lov")]//input[@type="search"]')->length)->toBe(1)
+        ->and($domArbol->query('//dialog[contains(@class,"atlas-record-lov")]//input[@type="search"]')->length)->toBe(0)
         ->and($componente->instance()->detalleCelda['arbolResumido'])->toBeTrue()
         ->and($componente->instance()->detalleCelda['seleccionado']['taxon_id'])->toBe($f['taxones'][0]);
     $componente->call('paginarCelda', 2)->assertSet('paginaCelda', 1);
@@ -333,7 +336,8 @@ test('el árbol conserva ancestros y ramas hermanas y selecciona su información
     $f = cartografiaRealFixture();
     DB::table('taxonomia.especimenes')->where('id', $f['ids'][1])->update(['taxon_id' => $f['taxones'][1]]);
     $componente = Livewire::withQueryParams(['vista' => 'mapa', 'fph' => $f['filo']])->test(PortalCatalogo::class)
-        ->call('abrirCelda', -0.25, -78.5)->call('navegarCelda', $f['filo'])->call('navegarCelda', $f['taxones'][0]);
+        ->call('abrirCelda', -0.25, -78.5)->call('cambiarVistaCelda', 'grupos')
+        ->call('navegarCelda', $f['filo'])->call('navegarCelda', $f['taxones'][0]);
     $detalle = $componente->instance()->detalleCelda;
     expect(array_column($detalle['arbol'], 'id'))->toContain($f['filo'], $f['taxones'][0], $f['taxones'][1])
         ->and($detalle['seleccionado']['nombre'])->toBe($f['prefijo'].' alfa')
@@ -391,7 +395,7 @@ test('abrir un punto ofrece todos los linajes y registros sin paginar el árbol 
         if ($i !== 11) $taxonesReales[] = $taxonId;
     }
     $componente = Livewire::withQueryParams(['vista' => 'mapa', 'fco' => $f['prefijo']])->test(PortalCatalogo::class)
-        ->call('abrirCelda', -0.25, -78.5);
+        ->call('abrirCelda', -0.25, -78.5)->call('cambiarVistaCelda', 'grupos');
     $detalle = $componente->instance()->detalleCelda;
     $hojas = static function (array $arbol): array {
         $padres = array_filter(array_column($arbol, 'padre_id'));
@@ -487,7 +491,7 @@ test('las ramas del mismo taxón con permisos distintos conservan sus conteos y 
     DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $f['ids'][1])
         ->update(['family_visible' => false, 'genus_visible' => false]);
     $componente = Livewire::withQueryParams(['vista' => 'mapa', 'fph' => $f['filo']])->test(PortalCatalogo::class)
-        ->call('abrirCelda', -0.25, -78.5)->call('navegarCelda', $f['filo']);
+        ->call('abrirCelda', -0.25, -78.5)->call('cambiarVistaCelda', 'grupos')->call('navegarCelda', $f['filo']);
     $detalle = $componente->instance()->detalleCelda;
     $ramaReservada = collect($detalle['grupos'])->firstWhere('taxon_id', $f['taxones'][0]);
     expect($detalle['total'])->toBe(2)->and($ramaReservada['total'])->toBe(1);

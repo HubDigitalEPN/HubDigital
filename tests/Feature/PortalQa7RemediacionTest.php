@@ -234,14 +234,16 @@ test('QA7 007 los alias de estadio conservan el conjunto y los permisos de divul
 test('QA7 008 el LOV conserva cada UUID en ubicaciones numerosas y la tabla pagina los registros públicos', function (string $rango): void {
     $fixture = qa7ColeccionFixture($rango, 7);
     $componente = Livewire::withQueryParams(['vista' => 'mapa', 'ft' => 'Qaheptus alpha'])->test(PortalCatalogo::class)
-        ->call('abrirCelda', -1.8910422, -77.765439)->call('navegarCelda', $fixture['taxon']);
+        ->call('abrirCelda', -1.8910422, -77.765439)->assertSet('vistaCelda', 'registros')
+        ->call('cambiarVistaCelda', 'grupos')->call('navegarCelda', $fixture['taxon']);
     $detalle = $componente->get('detalleCelda');
     expect($detalle['mostrarRegistros'])->toBeTrue()->and($detalle['registros'])->toHaveCount(6)->and($detalle['ultima'])->toBe(2)
         ->and($detalle['arbolResumido'])->toBeTrue()
         ->and(array_intersect(array_column($detalle['arbolVisual'], 'rango'), ['registro', 'genero', 'especie']))->toBe([])
         ->and(array_column($detalle['registros_arbol'], 'especimen_id'))->toBe($fixture['ids'])
         ->and(array_unique(array_column($detalle['registros_arbol'], 'padre_id')))->toBe([$fixture['taxon']]);
-    $componente->assertSee('QA7-INV-1')->assertSee('Buscar entre 7 ejemplares')->assertDontSee('Ejemplar de la selección')
+    $componente->assertSee('QA7-INV-1')->assertDontSee('Buscar entre 7 ejemplares')->assertDontSee('Ejemplar de la selección')
+        ->assertDontSee('atlas-tree-section', false)->assertDontSee('atlas-record-lov', false)
         ->assertDontSee('Páginas de ejemplares de la ubicación')->call('paginarCelda', 2)->assertSet('paginaCelda', 1);
     foreach ($fixture['ids'] as $i => $id) {
         $componente->call('seleccionarRegistroCelda', $id)->assertSee('QA7-INV-'.($i + 1));

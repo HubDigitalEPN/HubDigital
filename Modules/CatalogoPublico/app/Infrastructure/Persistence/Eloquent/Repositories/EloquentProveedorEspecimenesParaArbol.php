@@ -359,6 +359,21 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
                 ->whereRaw('(seleccion_taxonomica.otros OR (seleccion_taxonomica.familia AND ed.family_visible) OR (seleccion_taxonomica.genero AND ed.genus_visible))');
         }
 
+        if ($filtros->taxonId !== null) {
+            $seleccionExacta = DB::query()->fromRaw(<<<'SQL'
+                (
+                    WITH RECURSIVE seleccion AS (
+                        SELECT id, rango AS rango_raiz FROM taxonomia.taxones WHERE id = ?
+                        UNION
+                        SELECT t.id, s.rango_raiz FROM taxonomia.taxones t JOIN seleccion s ON t.padre_id = s.id
+                    ) SELECT id, rango_raiz FROM seleccion
+                ) AS taxon_exacto
+                SQL, [$filtros->taxonId])->select('id', 'rango_raiz');
+            $query->joinSub($seleccionExacta, 'seleccion_exacta', 'seleccion_exacta.id', '=', 'te.taxon_id')
+                ->where('ed.scientific_name_visible', true)
+                ->whereRaw("(seleccion_exacta.rango_raiz NOT IN ('familia', 'family', 'genero', 'género', 'genus') OR (seleccion_exacta.rango_raiz IN ('familia', 'family') AND ed.family_visible) OR (seleccion_exacta.rango_raiz IN ('genero', 'género', 'genus') AND ed.genus_visible))");
+        }
+
         if ($filtros->filosSeleccionados() !== []) {
             $query->where('ed.scientific_name_visible', true);
             $idsFilos = $filtros->filosSeleccionados();

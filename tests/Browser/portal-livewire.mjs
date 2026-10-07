@@ -166,31 +166,101 @@ try {
     await mostrarTooltip();
     await conexion.send('Network.emulateNetworkConditions', {offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1});
 
-    // Una ubicación numerosa termina en familia; el popup busca más allá de su primera página.
+    // El explorador mantiene un bosque horizontal y filtra el fondo sin desmontar su modal.
+    await evaluar("document.querySelector('button[aria-label=\"Árbol taxonómico\"]').click()");
+    await visible("document.querySelector('.taxonomy-explorer[open] .taxonomy-explorer-node')"); await reposo();
+    assert.ok(await evaluar("(() => {const d=document.querySelector('.taxonomy-explorer'); const r=d.getBoundingClientRect(); return r.width >= innerWidth * .5 && r.width <= innerWidth * .6 && r.height <= innerHeight * .8 + 1;})()"));
+    assert.ok(await evaluar("(() => {const raices=[...document.querySelectorAll('.taxonomy-explorer-node.is-root')]; return raices.length === 2 && Math.abs(raices[0].getBoundingClientRect().top-raices[1].getBoundingClientRect().top) < 1;})()"));
+    await evaluar("document.querySelector('.taxonomy-explorer-node.is-root .taxonomy-explorer-toggle').click()");
+    await visible("document.querySelectorAll('.taxonomy-explorer-node').length > 2"); await reposo();
+    assert.equal(await evaluar("new URL(location.href).searchParams.has('fti')"), false);
+    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /18 registros/);
+    await evaluar("[...document.querySelectorAll('.taxonomy-explorer-node.is-root .taxonomy-explorer-name')].find(b=>b.textContent.includes('FiloBrowser')).click()");
+    await visible(`new URL(location.href).searchParams.get('fti') === ${JSON.stringify(datos.filos[0])}`); await reposo();
+    assert.equal(await evaluar("document.querySelector('.taxonomy-explorer').open"), true);
+    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /17 registros/);
+    assert.match(await evaluar("document.querySelector('.taxonomy-explorer-header p').textContent"), /17 registros/);
+    await evaluar(`(() => {const b=document.querySelector('#busqueda-explorador-taxonomico'); b.focus(); b.value=${JSON.stringify(datos.taxonBusqueda + ' alfa')}; b.dispatchEvent(new Event('input',{bubbles:true}));})()`);
+    await visible(`document.querySelector('.taxonomy-explorer-node.is-match em')?.textContent === ${JSON.stringify(datos.taxonBusqueda + ' alfa')}`); await reposo();
+    assert.ok(await evaluar("(() => {const n=document.querySelector('.taxonomy-explorer-node.is-match').getBoundingClientRect(), p=document.querySelector('.taxonomy-explorer-forest').getBoundingClientRect(); return n.top >= p.top && n.bottom <= p.bottom;})()"));
+    assert.equal(await evaluar('document.activeElement?.id'), 'busqueda-explorador-taxonomico', 'La búsqueda debe conservar el foco para confirmar mediante Enter.');
+    const peticionesAntesEnter = totalPeticiones;
+    await conexion.send('Input.dispatchKeyEvent', {type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, text: '\r', unmodifiedText: '\r'});
+    await conexion.send('Input.dispatchKeyEvent', {type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13});
+    await visible(`!document.querySelector('.taxonomy-explorer').open && new URL(location.href).searchParams.get('fti') === ${JSON.stringify(datos.especies[0])}`); await reposo();
+    assert.equal(totalPeticiones - peticionesAntesEnter, 1, 'Enter debe confirmar el taxón con una sola petición Livewire.');
+    await evaluar("[...document.querySelectorAll('.collection-active-filters button')].find(b=>b.getAttribute('wire:click')?.includes('filtroTaxonId')).click()");
+    await visible("!new URL(location.href).searchParams.has('fti')"); await reposo();
+    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /18 registros/);
+    await evaluar("document.querySelector('button[aria-label=\"Árbol taxonómico\"]').click()");
+    await visible("document.querySelector('.taxonomy-explorer[open] .taxonomy-explorer-node')"); await reposo();
+    const antesDeEscape = totalPeticiones;
+    await conexion.send('Input.dispatchKeyEvent', {type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27});
+    await conexion.send('Input.dispatchKeyEvent', {type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27});
+    await visible("!document.querySelector('.taxonomy-explorer').open && document.activeElement?.getAttribute('aria-label') === 'Árbol taxonómico'");
+    assert.equal(totalPeticiones, antesDeEscape);
+    await evaluar("document.querySelector('button[aria-label=\"Árbol taxonómico\"]').click()");
+    await visible("document.querySelector('.taxonomy-explorer[open] .taxonomy-explorer-node')"); await reposo();
+    const fondoExplorador = await evaluar("(() => {const r=document.querySelector('.taxonomy-explorer').getBoundingClientRect(); return {x:r.left-8,y:r.top+20};})()");
+    await conexion.send('Input.dispatchMouseEvent', {type: 'mousePressed', button: 'left', clickCount: 1, ...fondoExplorador});
+    await conexion.send('Input.dispatchMouseEvent', {type: 'mouseReleased', button: 'left', clickCount: 1, ...fondoExplorador});
+    await visible("!document.querySelector('.taxonomy-explorer').open");
+
+    await evaluar("document.querySelector('button[aria-label=\"Árbol taxonómico\"]').click()");
+    await visible("document.querySelector('.taxonomy-explorer[open] .taxonomy-explorer-node')"); await reposo();
+    const antesDeCerrarExplorador = totalPeticiones;
+    await evaluar("document.querySelector('.taxonomy-explorer-footer button').click()");
+    await visible("!document.querySelector('.taxonomy-explorer').open && document.activeElement?.getAttribute('aria-label') === 'Árbol taxonómico'");
+    await reposo(); assert.equal(totalPeticiones, antesDeCerrarExplorador, 'Cerrar Explorador debe cerrar localmente y restaurar el foco.');
+
+    // En móvil la cabecera, el cierre y el espacio del diagrama siguen disponibles.
+    await conexion.send('Emulation.setDeviceMetricsOverride', {width: 390, height: 700, deviceScaleFactor: 1, mobile: true});
+    await evaluar("document.querySelector('button[aria-label=\"Árbol taxonómico\"]').click()");
+    await visible("document.querySelector('.taxonomy-explorer[open] .taxonomy-explorer-node')"); await reposo();
+    assert.ok(await evaluar("(() => {const d=document.querySelector('.taxonomy-explorer'), r=d.getBoundingClientRect(), cerrar=d.querySelector('.taxonomy-explorer-footer button').getBoundingClientRect(); return r.width <= innerWidth && r.height <= innerHeight * .8 + 1 && cerrar.bottom <= r.bottom && d.querySelector('.taxonomy-explorer-forest').clientHeight >= 150;})()"));
+    await evaluar("document.querySelector('.taxonomy-explorer-close').click()");
+    await visible("!document.querySelector('.taxonomy-explorer').open");
+    await conexion.send('Emulation.setDeviceMetricsOverride', {width: 1440, height: 900, deviceScaleFactor: 1, mobile: false});
+    await reposo();
+
+    // El modal abre los registros del punto directamente y permite recorrer todas sus páginas.
+    async function recorrerRegistrosUbicacion() {
+        const codigos = [];
+        for (let pagina = 0; pagina < 12; pagina++) {
+            await reposo();
+            codigos.push(...await evaluar("[...document.querySelectorAll('.atlas-cell-dialog .portal-record-row th[scope=row]')].map(n => n.textContent.trim())"));
+            const haySiguiente = await evaluar("[...document.querySelectorAll('.atlas-cell-dialog .atlas-cell-pagination button')].some(b => b.textContent.trim() === 'Siguiente' && !b.disabled)");
+            if (!haySiguiente) return codigos;
+            const etiqueta = await evaluar("document.querySelector('.atlas-cell-pagination span').textContent");
+            await evaluar("[...document.querySelectorAll('.atlas-cell-dialog .atlas-cell-pagination button')].find(b => b.textContent.trim() === 'Siguiente').click()");
+            await visible(`document.querySelector('.atlas-cell-pagination span').textContent !== ${JSON.stringify(etiqueta)}`);
+        }
+        throw new Error('La paginación de la ubicación no terminó.');
+    }
     await evaluar("[...document.querySelectorAll('.atlas-map [aria-label^=\"Ubicación original\"]')].find(p=>p.getAttribute('aria-label').includes('12 registros')).dispatchEvent(new MouseEvent('click',{bubbles:true}))");
-    await visible("document.querySelector('.atlas-cell-dialog[open] .atlas-record-lov-trigger')"); await reposo();
-    assert.equal(await evaluar("document.querySelectorAll('.atlas-tree-section [data-rango=registro]').length"), 0);
-    await visible("new Set([...document.querySelectorAll('.atlas-tree-section button')].map(n => Math.round(n.getBoundingClientRect().top))).size > 1");
-    assert.ok(await evaluar("(() => {const region=document.querySelector('.atlas-tree-scroll'); return region.scrollHeight <= region.clientHeight + 2;})()"), 'La cadena hasta familia debe caber en el alto disponible.');
-    await evaluar("document.querySelector('.atlas-record-lov-trigger').click()");
-    await visible("document.querySelector('.atlas-record-lov[open] input') === document.activeElement");
-    await evaluar(`(() => {const input=document.querySelector('.atlas-record-lov input'); input.value=${JSON.stringify(datos.codigos[11])}; input.dispatchEvent(new Event('input',{bubbles:true}));})()`);
-    await visible(`document.querySelectorAll('.atlas-record-lov li button').length === 1 && document.querySelector('.atlas-record-lov ul')?.textContent.includes(${JSON.stringify(datos.codigos[11])})`); await reposo();
-    assert.equal(await evaluar("document.querySelectorAll('.atlas-record-lov li button').length"), 1);
-    await evaluar("document.querySelector('.atlas-record-lov li button').click()"); await reposo();
-    await visible("!document.querySelector('.atlas-record-lov').open");
-    assert.ok(await evaluar(`document.querySelector('.atlas-taxon-information').textContent.includes(${JSON.stringify(datos.codigos[11])})`));
+    await visible("document.querySelector('.atlas-cell-dialog[open] .portal-record-row')"); await reposo();
+    assert.equal(await evaluar("document.querySelectorAll('.atlas-cell-dialog .atlas-tree-section, .atlas-cell-dialog .atlas-taxon-information, .atlas-cell-dialog .atlas-cell-toolbar, .atlas-cell-dialog .collection-view-switch, .atlas-cell-dialog .atlas-record-lov').length"), 0);
+    const codigosUbicacion = await recorrerRegistrosUbicacion();
+    assert.equal(codigosUbicacion.length, 12);
+    assert.deepEqual([...codigosUbicacion].sort(), datos.codigos.slice(0, 12).sort());
+    await evaluar(`(() => {const fila=[...document.querySelectorAll('.atlas-cell-dialog .portal-record-row')].find(n => n.querySelector('th[scope=row]').textContent.trim() === ${JSON.stringify(datos.codigos[11])}); fila.focus(); fila.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));})()`);
+    await visible(`document.querySelector('.portal-record-dialog[open]')?.textContent.includes(${JSON.stringify(datos.codigos[11])})`); await reposo();
+    await evaluar("document.querySelector('.portal-record-dialog button[aria-label=\"Cerrar ficha del registro\"]').click()"); await reposo();
+    await visible("!document.querySelector('.portal-record-dialog').open && document.querySelector('.atlas-cell-dialog').open");
     const antesDeCerrar = totalPeticiones;
     await evaluar("document.querySelector('.atlas-cell-header button[aria-label=\"Cerrar registros\"]').click()");
     await demora(700);
     assert.equal(totalPeticiones, antesDeCerrar, 'Cerrar el modal hizo una consulta innecesaria.');
     assert.equal(await evaluar("document.querySelector('.atlas-cell-dialog').open"), false);
 
-    // Cinco ejemplares mantienen sus hojas y el linaje profundo sin apilarlas
-    // en una única columna que obligue a desplazar verticalmente el modal.
+    // Otro punto reemplaza la selección anterior y presenta solo sus cinco ejemplares.
     await evaluar("[...document.querySelectorAll('.atlas-map [aria-label^=\"Ubicación original\"]')].find(p=>p.getAttribute('aria-label').includes('5 registros')).dispatchEvent(new MouseEvent('click',{bubbles:true}))");
-    await visible("document.querySelectorAll('.atlas-tree-section [data-rango=registro]').length === 5"); await reposo();
-    assert.ok(await evaluar("(() => {const region=document.querySelector('.atlas-tree-scroll'); return region.scrollHeight <= region.clientHeight + 2;})()"), 'El linaje profundo con cinco ejemplares debe caber en el modal.');
+    await visible(`document.querySelector('.atlas-cell-dialog[open] .portal-record-row')?.textContent.includes(${JSON.stringify(datos.codigos[12])})`); await reposo();
+    const codigosOtroPunto = await recorrerRegistrosUbicacion();
+    assert.equal(codigosOtroPunto.length, 5);
+    assert.deepEqual([...codigosOtroPunto].sort(), datos.codigos.slice(12, 17).sort());
+    assert.equal(codigosOtroPunto.some(codigo => codigosUbicacion.includes(codigo)), false);
+    assert.ok(await evaluar("(() => {const region=document.querySelector('.atlas-cell-dialog .atlas-record-table-scroll'); return region.clientHeight > 0 && region.clientWidth > 0;})()"), 'La tabla debe disponer de espacio para desplazarse dentro del modal.');
     await evaluar("document.querySelector('.atlas-cell-header button[aria-label=\"Cerrar registros\"]').click()");
 
     // Los tres gráficos nuevos aplican sus filtros al mapa mediante clicks reales en sus puntos.
@@ -279,7 +349,7 @@ try {
     console.error('Diagnóstico del navegador:', JSON.stringify({excepciones, erroresLivewire, peticionesPendientes: peticiones.size}));
     if (conexion) {
         try {
-            const estado = await conexion.send('Runtime.evaluate', {expression: `JSON.stringify({url: location.href, titulo: document.title, texto: document.body.innerText.slice(-1800), tooltip: document.querySelector('.atlas-floating-tooltip')?.outerHTML, marcadores: [...document.querySelectorAll('.atlas-map [aria-label^="Ubicación original"]')].map(p=>({etiqueta:p.getAttribute('aria-label'), rect:p.getBoundingClientRect().toJSON()}))})`, returnByValue: true});
+            const estado = await conexion.send('Runtime.evaluate', {expression: `JSON.stringify({url: location.href, titulo: document.title, foco: {id: document.activeElement?.id, elemento: document.activeElement?.tagName}, busqueda: document.querySelector('#busqueda-explorador-taxonomico')?.value, texto: document.body.innerText.slice(-1800), tooltip: document.querySelector('.atlas-floating-tooltip')?.outerHTML, marcadores: [...document.querySelectorAll('.atlas-map [aria-label^="Ubicación original"]')].map(p=>({etiqueta:p.getAttribute('aria-label'), rect:p.getBoundingClientRect().toJSON()}))})`, returnByValue: true});
             console.error('Estado de la página:', estado.result.value);
         } catch { /* Se conserva la causa original si el navegador ya terminó. */ }
     }

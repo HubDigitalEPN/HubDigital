@@ -90,7 +90,10 @@ test('1127 ejemplares se buscan por LOV sin generar hojas de registro en el árb
     DB::table('taxonomia.especimenes')->insert($registros);
     DB::table('divulgacion.especimenes_divulgables')->insert($visibilidad);
     DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $f['ids'][0])->update(['occurrence_id_visible' => false]);
-    $portal = Livewire::withQueryParams(['vista' => 'mapa'])->test(PortalCatalogo::class)->call('abrirCelda', -.273, -79.024);
+    $portal = Livewire::withQueryParams(['vista' => 'mapa'])->test(PortalCatalogo::class)->call('abrirCelda', -.273, -79.024)
+        ->assertSet('vistaCelda', 'registros');
+    expect($portal->instance()->detalleCelda['registros'])->toHaveCount(6);
+    $portal->call('cambiarVistaCelda', 'grupos');
     $detalle = $portal->instance()->detalleCelda;
     expect($detalle['totalUbicacion'])->toBe(1127)->and($detalle['arbolResumido'])->toBeTrue()
         ->and(array_unique(array_column($detalle['arbolVisual'], 'rango')))->toBe(['phylum', 'familia'])
@@ -107,7 +110,7 @@ test('1127 ejemplares se buscan por LOV sin generar hojas de registro en el árb
     $portal->call('seleccionarRegistroCelda', $f['ids'][0])->assertStatus(404);
 });
 
-test('una ubicación de un ejemplar conserva su hoja sin selector ni botones duplicados y el encabezado cambia al ver registros', function (): void {
+test('una ubicación de un ejemplar muestra su tabla sin selector ni encabezados duplicados y conserva la referencia en la ficha', function (): void {
     $f = coleccionOctubre();
     // Nombre con evidencia congelada: el botón solo se publica cuando existe una referencia.
     DB::table('taxonomia.taxones')->where('id', $f['especies'][2])->update(['nombre_cientifico' => 'Ectatomma ruidum']);
@@ -115,11 +118,15 @@ test('una ubicación de un ejemplar conserva su hoja sin selector ni botones dup
     expect($portal->instance()->detalleCelda['arbolResumido'])->toBeFalse()
         ->and(array_filter($portal->instance()->detalleCelda['arbolVisual'], fn ($n) => $n['rango'] === 'registro'))->toHaveCount(1);
     $portal->assertDontSee('Buscar ejemplar <span', false)->assertDontSee('Abrir ficha del registro')
-        ->assertDontSee('Autoridad y revisión del nombre')->assertSee('Verificación del nombre científico');
+        ->assertDontSee('Autoridad y revisión del nombre')->assertDontSee('Verificación del nombre científico')
+        ->assertDontSee('El código permanece visible al desplazarte.')->assertDontSee('Mostrar todos los campos')
+        ->assertDontSee('atlas-cell-toolbar', false)->assertDontSee('atlas-tree-section', false)
+        ->assertDontSee('atlas-taxon-information', false)->assertSee('QA-OCT-11');
+    expect(substr_count($portal->html(), '>Registros de la ubicación</h2>'))->toBe(1)
+        ->and(substr_count($portal->html(), '>Registros de esta ubicación</h3>'))->toBe(0);
+    $portal->call('abrirFichaRegistro', $portal->instance()->detalleCelda['registros'][0]->especimen_id)
+        ->assertSee('Verificación del nombre científico');
     expect(substr_count($portal->html(), '>Verificación del nombre científico</summary>'))->toBe(1);
-    $portal->call('cambiarVistaCelda', 'registros')->assertDontSee('El código permanece visible al desplazarte.')
-        ->assertDontSee('Mostrar todos los campos');
-    expect(substr_count($portal->html(), '>Registros de esta ubicación</h3>'))->toBe(1);
 });
 
 test('el chat responde las cinco preguntas de las capturas con métricas públicas y ganadores diferentes para especies y registros', function (): void {
@@ -248,7 +255,7 @@ test('la conversación real pasa de saludo a métricas y definiciones sin repeti
     Http::assertNothingSent();
 });
 
-test('el detalle del árbol publica una sola foto de R2 o un espacio sin imagen y excluye otros discos', function (): void {
+test('la tabla de la ubicación publica una sola foto de R2 o indica su ausencia y excluye otros discos', function (): void {
     $f = coleccionOctubre();
     foreach (['local', 'r2'] as $disco) DB::table('divulgacion.imagenes_taxonomicas')->insert([
         'id' => (string) Str::uuid(), 'occurrence_id' => 'QA-OCT-11', 'ruta' => 'divulgacion/imagenes/'.$disco.'-'.Str::uuid().'.jpg',
@@ -257,11 +264,11 @@ test('el detalle del árbol publica una sola foto de R2 o un espacio sin imagen 
     $portal = Livewire::withQueryParams(['vista' => 'mapa', 'fc' => 'QA-OCT-11'])->test(PortalCatalogo::class)->call('abrirCelda', -.273, -79.024);
     expect($portal->instance()->detalleCelda['imagenes']['QA-OCT-11'])->toHaveCount(1);
     $documento = new DOMDocument; @$documento->loadHTML($portal->html()); $dom = new DOMXPath($documento);
-    expect($dom->query('//aside[contains(@class,"atlas-taxon-information")]//img')->length)->toBe(1)
-        ->and($dom->query('//aside[contains(@class,"atlas-taxon-information")]//img')->item(0)->getAttribute('src'))->toContain('/portal/imagenes/');
+    expect($dom->query('//dialog[contains(@class,"atlas-cell-dialog")]//table//img')->length)->toBe(1)
+        ->and($dom->query('//dialog[contains(@class,"atlas-cell-dialog")]//table//img')->item(0)->getAttribute('src'))->toContain('/portal/imagenes/');
     DB::table('divulgacion.imagenes_taxonomicas')->where('occurrence_id', 'QA-OCT-11')->where('disco', 'r2')->delete();
     $portal = Livewire::withQueryParams(['vista' => 'mapa', 'fc' => 'QA-OCT-11'])->test(PortalCatalogo::class)->call('abrirCelda', -.273, -79.024);
-    $portal->assertSee('No hay imagen disponible')->assertDontSee('data-fotografia-ejemplar=', false);
+    $portal->assertSee('Sin fotografías publicadas')->assertDontSee('data-fotografia-ejemplar=', false);
 });
 
 test('las seis familias de la captura tienen referencias WebP distintas con créditos y sin sustituir otros taxones', function (): void {

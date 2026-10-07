@@ -4,7 +4,7 @@ import {enlaceRecuperacionCatalogo, vigilarPeticionCatalogo} from '../../resourc
 
 const propiedadesCatalogo = {
     nivel: 'nivel', taxon: 'taxon', explorar: 'explorar', vista: 'vista', pagina: 'pagina',
-    fc: 'filtroCatalogo', fp: 'filtroPreparaciones', ft: 'filtroTaxon', fg: 'filtroGeografias', fco: 'filtroColector',
+    fc: 'filtroCatalogo', fp: 'filtroPreparaciones', ft: 'filtroTaxon', fti: 'filtroTaxonId', fg: 'filtroGeografias', fco: 'filtroColector',
     ffd: 'filtroFechaDesde', ffh: 'filtroFechaHasta', fm: 'filtroMetodos', flat: 'filtroLatMin', flax: 'filtroLatMax',
     flon: 'filtroLonMin', flox: 'filtroLonMax', fed: 'filtroElevDesde', feh: 'filtroElevHasta', fb: 'filtroBiomas',
     fh: 'filtroHabitat', fsti: 'filtroTipo', fd: 'filtroDisposicion', fca: 'filtroCasta', fes: 'filtroEstadio',
@@ -34,6 +34,17 @@ test('un cambio a mapa fallido conserva especie, provincia, país y disposición
     assert.equal(url.searchParams.get('vista'), 'mapa');
     for (const clave of ['nivel', 'taxon', 'fpais', 'fprov', 'fd']) assert.equal(url.searchParams.get(clave), estado[clave]);
     assert.equal(url.searchParams.get('fm[0]'), 'beating');
+});
+
+test('el enlace de reintento del explorador conserva el UUID elegido y los filtros de contexto', () => {
+    const id = '9ea89f9b-e411-4098-8ca4-ff3a374f7c06';
+    const p = recuperarLlamadas([['seleccionarTaxonExplorador', id]]);
+    assert.equal(p.get('fti'), id); assert.equal(p.get('vista'), 'mapa');
+    assert.equal(p.has('nivel'), false); assert.equal(p.has('taxon'), false); assert.equal(p.has('pagina'), false);
+    for (const clave of ['fpais', 'fprov', 'fd']) assert.equal(p.get(clave), seleccionPrevia[clave]);
+    const borrador = recuperarLlamadas([['aplicarBorrador']], {estado: {...seleccionPrevia, fti: id}, datos: {borradorFiltros: {filtroTaxonId: '7605c19f-ec8f-46b5-a544-c6b3b7431389'}}});
+    assert.equal(borrador.get('fti'), id);
+    assert.equal(recuperarLlamadas([['navegar', 'class', 'Insecta']], {estado: {...seleccionPrevia, fti: id}}).has('fti'), false);
 });
 
 test('la espera cancela la petición y los errores HTTP tienen salida explícita sin reintento automático', () => {

@@ -18,10 +18,11 @@ function dashboardConMapa(celdas) {
     const focos = [];
     const eventosMapa = {};
     const eventosTeselas = {};
+    const encuadres = [];
     let redibujosTeselas = 0;
     let siguienteCuadro = 0;
     const nodo = () => ({style: {}, atributos: {}, eventos: {}, setAttribute(clave, valor) {this.atributos[clave] = valor;}, getAttribute(clave) {return this.atributos[clave] ?? null;}, removeAttribute(clave) {delete this.atributos[clave];}, addEventListener(clave, manejador) {this.eventos[clave] = manejador;}, focus() {focos.push(this); this.eventos.focus?.();}, getBoundingClientRect() {return {left: 20, top: 300, bottom: 316, width: 16, height: 16};}});
-    const mapa = {getZoom: () => 10, on(nombres, accion) {for (const nombre of nombres.split(' ')) eventosMapa[nombre] = accion;}, fitBounds() {}, createPane: () => ({style: {}}), invalidateSize() {}, remove() {}};
+    const mapa = {getZoom: () => 10, on(nombres, accion) {for (const nombre of nombres.split(' ')) eventosMapa[nombre] = accion;}, fitBounds(limites, opciones) {encuadres.push({limites, opciones});}, createPane: () => ({style: {}}), invalidateSize() {}, remove() {}};
     const capa = {addTo() { return this; }, clearLayers() { marcadores.length = 0; }};
     const control = () => ({addTo() { return this; }, on() { return this; }, redraw() {}});
     const L = {
@@ -29,7 +30,7 @@ function dashboardConMapa(celdas) {
             on(nombres, accion) { for (const nombre of nombres.split(' ')) eventosTeselas[nombre] = accion; return this; },
             addTo() { return this; }, redraw() { redibujosTeselas++; },
         }),
-        featureGroup: () => capa, latLngBounds: puntos => ({isValid: () => puntos.length > 0}),
+        featureGroup: () => capa, latLngBounds: puntos => ({puntos, isValid: () => puntos.length > 0}),
         DomUtil: {create: nodo},
         divIcon: opciones => opciones,
         marker(coordenadas, opciones) { return L.circleMarker(coordenadas, opciones); },
@@ -74,7 +75,7 @@ function dashboardConMapa(celdas) {
     dashboard.$id = () => 'ayuda-mapa-prueba';
     dashboard.$nextTick = tarea => tarea();
     dashboard.init();
-    return {dashboard, filtros: registros.get('portalFiltros')(), ventana: contexto.window, marcadores, capasOriginales, ayudas, focos, eventosMapa, eventosTeselas, redibujosTeselas: () => redibujosTeselas, pintar() {
+    return {dashboard, filtros: registros.get('portalFiltros')(), ventana: contexto.window, marcadores, capasOriginales, ayudas, focos, eventosMapa, eventosTeselas, encuadres, redibujosTeselas: () => redibujosTeselas, pintar() {
         while (cuadros.size) {
             const [id, tarea] = cuadros.entries().next().value;
             cuadros.delete(id);
@@ -124,6 +125,20 @@ test('composición llega a Livewire por UUID y el mapa reemplaza la población a
         assert.equal(marcadores.length, 2);
     }
     assert.deepEqual(llamadas, ['id-mollusca', 'id-mollusca', 'id-annelida', 'id-annelida']);
+});
+
+test('una hoja taxonómica encuadra sólo las coordenadas actuales y una selección sin coordenadas no inventa una localidad', () => {
+    const inicial = {lat: -0.2731234, lon: -79.0245678, total: 1, filos: {Mollusca: 1}};
+    const {dashboard, encuadres} = dashboardConMapa([inicial]);
+    const actual = {lat: -1.2345678, lon: -77.6543219, total: 2, filos: {Mollusca: 2}};
+    dashboard.actualizar({celdas: [actual], filos: actual.filos});
+    dashboard.encuadrarTaxonomia();
+    assert.deepEqual(Array.from(encuadres.at(-1).limites.puntos, punto => Array.from(punto)), [[actual.lat, actual.lon]]);
+    assert.equal(encuadres.at(-1).opciones.maxZoom, 16);
+    assert.match(plantillaDashboard, /x-on:encuadrar-taxonomia\.window="encuadrarTaxonomia\(\)"/);
+    dashboard.actualizar({celdas: [], filos: {}});
+    const cantidad = encuadres.length;
+    dashboard.encuadrarTaxonomia(); assert.equal(encuadres.length, cantidad);
 });
 
 test('el selector de localidad combina opciones vigentes y las aplica una sola vez después de cerrar', () => {

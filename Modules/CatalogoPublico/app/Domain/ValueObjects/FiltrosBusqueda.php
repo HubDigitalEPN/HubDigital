@@ -38,6 +38,7 @@ final readonly class FiltrosBusqueda
         public readonly ?string $disposicion = null,
         public readonly array $provincias = [],
         public readonly array $filos = [],
+        public readonly ?string $taxonId = null,
     ) {}
 
     public static function vacio(): self
@@ -131,6 +132,7 @@ final readonly class FiltrosBusqueda
             codigosCatalogo: $codigosCatalogo,
             preparaciones: $normalizarArray($datos['filtroPreparaciones'] ?? []),
             taxonNombre: $taxonNombre,
+            taxonId: \Illuminate\Support\Str::isUuid((string) ($datos['filtroTaxonId'] ?? '')) ? strtolower((string) $datos['filtroTaxonId']) : null,
             geografias: $normalizarArray($datos['filtroGeografias'] ?? []),
             colectores: $colectores,
             fechaDesde: $fechaDesde,
@@ -165,6 +167,7 @@ final readonly class FiltrosBusqueda
         return $this->codigosCatalogo === []
             && $this->preparaciones === []
             && $this->taxonNombre === null
+            && $this->taxonId === null
             && $this->geografias === []
             && $this->colectores === []
             && $this->fechaDesde === null

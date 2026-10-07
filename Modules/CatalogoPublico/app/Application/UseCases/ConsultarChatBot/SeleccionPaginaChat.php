@@ -34,6 +34,7 @@ final readonly class SeleccionPaginaChat
             'fed' => ['nullable', 'numeric'],
             'feh' => array_filter(['nullable', 'numeric', isset($entrada['fed']) && $entrada['fed'] !== '' ? 'gte:fed' : null]),
             'fph' => ['nullable', 'uuid'], 'fmes' => ['nullable', 'integer', 'between:1,12'],
+            'fti' => ['nullable', 'uuid'],
             'fid' => ['nullable', 'in:especie,superior'], 'fgeo' => ['nullable', 'in:0,1'], 'fap' => ['nullable', 'in:0,1'],
         ];
         $reglas['taxon'][] = 'required_with:nivel';
@@ -44,6 +45,7 @@ final readonly class SeleccionPaginaChat
         $filtros = FiltrosBusqueda::desde([
             'filtroCatalogo' => $p['fc'] ?? '', 'filtroPreparaciones' => $p['fp'] ?? [],
             'filtroTaxon' => $p['ft'] ?? '', 'filtroGeografias' => $p['fg'] ?? [], 'filtroColector' => $p['fco'] ?? '',
+            'filtroTaxonId' => $p['fti'] ?? '',
             'filtroFechaDesde' => $p['ffd'] ?? '', 'filtroFechaHasta' => $p['ffh'] ?? '', 'filtroMetodos' => $p['fm'] ?? [],
             'filtroLatMin' => $p['flat'] ?? '', 'filtroLatMax' => $p['flax'] ?? '',
             'filtroLonMin' => $p['flon'] ?? '', 'filtroLonMax' => $p['flox'] ?? '',

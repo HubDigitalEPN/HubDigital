@@ -369,9 +369,12 @@ test('el detalle de cuadrícula conserva todas las hojas y la tabla pagina seis 
     DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->update(['colector' => 'COLECTOR-RESERVADO-QA']);
     DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $f['ids'][0])->update(['recorded_by_visible' => false]);
     $componente = Livewire::withQueryParams(['vista' => 'mapa', 'fph' => $f['filo']])->test(PortalCatalogo::class)
-        ->call('abrirCelda', -0.25, -78.5)->assertDispatched('abrir-detalle-celda')->assertSet('vistaCelda', 'grupos');
+        ->call('abrirCelda', -0.25, -78.5)->assertDispatched('abrir-detalle-celda')->assertSet('vistaCelda', 'registros')
+        ->assertSee('Páginas de ejemplares de la ubicación')->assertDontSee('atlas-cell-toolbar', false)
+        ->assertDontSee('atlas-tree-section', false)->assertDontSee('atlas-taxon-information', false);
     expect($componente->instance()->detalleCelda['total'])->toBe(15);
-    $componente->call('navegarCelda', $f['filo'])->call('navegarCelda', $f['taxones'][0])->assertDontSee('COLECTOR-RESERVADO-QA');
+    $componente->call('cambiarVistaCelda', 'grupos')->call('navegarCelda', $f['filo'])
+        ->call('navegarCelda', $f['taxones'][0])->assertDontSee('COLECTOR-RESERVADO-QA');
     expect($componente->instance()->detalleCelda['registros'])->toHaveCount(6);
     expect(array_column($componente->instance()->detalleCelda['registros_arbol'], 'especimen_id'))->toEqualCanonicalizing($idsEsperados);
     $componente->call('paginarCelda', 2)->assertSet('paginaCelda', 1)->assertDontSee('Páginas de ejemplares de la ubicación');

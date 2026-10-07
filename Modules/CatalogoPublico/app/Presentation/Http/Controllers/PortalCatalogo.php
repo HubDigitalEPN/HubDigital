@@ -42,6 +42,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 final class PortalCatalogo extends Component
 {
     use ExploraCeldaMapa;
+    use ExploraTaxonomia;
 
     public array $borradorFiltros = [];
 
@@ -96,6 +97,10 @@ final class PortalCatalogo extends Component
             'filtroSoloUbicacion' => 'Coordenadas públicas', 'filtroDatosCompletos' => 'Datos completos'];
         $criterios = [];
         if ($this->taxon !== '') $criterios[] = ['clave' => 'jerarquia', 'etiqueta' => 'Selección taxonómica', 'valor' => $this->taxon, 'indice' => -1];
+        if ($this->filtroTaxonId !== '') {
+            $nodo = app(\Modules\CatalogoPublico\Infrastructure\ExploradorTaxonomicoPublico::class)->taxon($this->contextoExplorador(), $this->filtroTaxonId);
+            $criterios[] = ['clave' => 'filtroTaxonId', 'etiqueta' => 'Taxón del explorador', 'valor' => $nodo['nombre'] ?? 'Taxón seleccionado', 'indice' => -1];
+        }
         foreach ($etiquetas as $campo => $etiqueta) {
             $valores = is_array($this->{$campo}) ? $this->{$campo} : [$this->{$campo}];
             foreach ($valores as $indice => $valor) {
@@ -185,7 +190,7 @@ final class PortalCatalogo extends Component
     // El borrador, los diálogos y el chat nunca forman parte del historial público.
     private const array PROPIEDADES_URL = [
         'nivel' => 'nivel', 'taxon' => 'taxon', 'explorar' => 'explorar', 'vista' => 'vista', 'pagina' => 'pagina',
-        'fc' => 'filtroCatalogo', 'fp' => 'filtroPreparaciones', 'ft' => 'filtroTaxon', 'fg' => 'filtroGeografias',
+        'fc' => 'filtroCatalogo', 'fp' => 'filtroPreparaciones', 'ft' => 'filtroTaxon', 'fti' => 'filtroTaxonId', 'fg' => 'filtroGeografias',
         'fco' => 'filtroColector', 'ffd' => 'filtroFechaDesde', 'ffh' => 'filtroFechaHasta', 'fm' => 'filtroMetodos',
         'flat' => 'filtroLatMin', 'flax' => 'filtroLatMax', 'flon' => 'filtroLonMin', 'flox' => 'filtroLonMax',
         'fed' => 'filtroElevDesde', 'feh' => 'filtroElevHasta', 'fb' => 'filtroBiomas', 'fh' => 'filtroHabitat',
@@ -248,7 +253,10 @@ final class PortalCatalogo extends Component
     public function aplicarBorrador(): void
     {
         $anteriores = $this->valoresFiltros();
-        foreach ($anteriores as $propiedad => $valor) $this->{$propiedad} = $this->borradorFiltros[$propiedad] ?? $valor;
+        // La identidad seleccionada sólo cambia mediante el explorador validado o los enlaces públicos.
+        foreach ($anteriores as $propiedad => $valor) {
+            if ($propiedad !== 'filtroTaxonId') $this->{$propiedad} = $this->borradorFiltros[$propiedad] ?? $valor;
+        }
         if ($this->filtroFiloId !== '') $this->filtroFilos = array_values(array_diff($this->filtroFilos, [$this->filtroFiloId]));
         if ($this->filtroProvincia !== '') $this->filtroProvincias = array_values(array_diff($this->filtroProvincias, [$this->filtroProvincia]));
         if ($this->filtroLatitud !== $anteriores['filtroLatitud']) $this->filtroLatMin = $this->filtroLatMax = $this->filtroLatitud;
@@ -363,6 +371,11 @@ final class PortalCatalogo extends Component
 
     private function validarSeleccionUrl(): void
     {
+        if ($this->filtroTaxonId !== '') {
+            $nodo = app(\Modules\CatalogoPublico\Infrastructure\ExploradorTaxonomicoPublico::class)->taxon(FiltrosBusqueda::vacio(), $this->filtroTaxonId);
+            $this->filtroTaxonId = $nodo['id'] ?? '';
+            if ($nodo === null) $this->avisoSeleccionUrl = 'El taxón del enlace ya no está disponible públicamente. Se conservaron los demás filtros.';
+        }
         if (! in_array($this->vista, ['tarjetas', 'registros', 'mapa'], true)) $this->vista = 'tarjetas';
         if ($this->explorar !== '' && ! isset(self::NIVEL_PLURAL[$this->explorar])) $this->explorar = '';
         if ($this->explorar !== '') {
@@ -640,6 +653,7 @@ final class PortalCatalogo extends Component
 
     public function navegar(string $nivel, string $taxon): void
     {
+        $this->filtroTaxonId = '';
         $this->mostrarFotoComposicion = false;
         $this->nivel = $nivel;
         $this->taxon = $taxon;
@@ -663,6 +677,7 @@ final class PortalCatalogo extends Component
     {
         $this->filtroMetodos = array_values(array_unique(array_map(ProtocoloColectaPublico::clave(...), $this->filtroMetodos)));
         $this->validate([
+            'filtroTaxonId' => ['nullable', 'uuid'],
             'filtroFilos' => ['array', 'max:100'],
             'filtroFilos.*' => ['uuid'],
             'filtroProvincias' => ['array', 'max:100'],
@@ -837,6 +852,7 @@ final class PortalCatalogo extends Component
             'codigo' => $this->filtroCatalogo,
             'preparaciones' => $this->filtroPreparaciones,
             'taxon' => $this->filtroTaxon,
+            'taxon_id' => $filtros->taxonId,
             'provincia' => $this->filtroProvincia,
             'pais' => $this->filtroPais,
             'geografias' => $this->filtroGeografias,
@@ -878,6 +894,7 @@ final class PortalCatalogo extends Component
 
     public function explorarNivel(string $nivel): void
     {
+        $this->filtroTaxonId = '';
         $this->mostrarFotoComposicion = false;
         $this->explorar = $nivel;
         $this->nivel = '';
@@ -936,6 +953,7 @@ final class PortalCatalogo extends Component
         $this->filtroCatalogo = '';
         $this->filtroPreparaciones = [];
         $this->filtroTaxon = '';
+        $this->filtroTaxonId = '';
         $this->filtroGeografias = [];
         $this->filtroColector = '';
         $this->filtroFechaDesde = '';
@@ -1100,6 +1118,7 @@ final class PortalCatalogo extends Component
             'filtroCatalogo' => $this->filtroCatalogo,
             'filtroPreparaciones' => $this->filtroPreparaciones,
             'filtroTaxon' => $this->filtroTaxon,
+            'filtroTaxonId' => $this->filtroTaxonId,
             'filtroGeografias' => $this->filtroGeografias,
             'filtroColector' => $this->filtroColector,
             'filtroFechaDesde' => $this->filtroFechaDesde,

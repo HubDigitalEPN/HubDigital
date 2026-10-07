@@ -50,15 +50,23 @@ function aplicarLlamada(estado, llamada, datos, defectos, propiedades) {
         break;
     case 'navegar':
     case 'quitarTaxon':
+        if (Object.hasOwn(propiedades, 'fti')) estado.fti = '';
         estado.nivel = llamada.method === 'quitarTaxon' ? '' : params[0];
         estado.taxon = llamada.method === 'quitarTaxon' ? '' : params[1];
         estado.explorar = '';
         paginaInicial();
         break;
     case 'explorarNivel':
+        if (Object.hasOwn(propiedades, 'fti')) estado.fti = '';
         estado.explorar = params[0];
         estado.nivel = estado.taxon = '';
         paginaInicial();
+        break;
+    case 'seleccionarTaxonExplorador':
+        if (Object.hasOwn(propiedades, 'fti') && typeof params[0] === 'string' && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(params[0])) {
+            estado.fti = params[0]; estado.nivel = estado.taxon = estado.explorar = '';
+            estado.vista = 'mapa'; paginaInicial(); sincronizarBorrador(estado);
+        }
         break;
     case 'volverAlArbol':
         estado.explorar = '';
@@ -123,9 +131,11 @@ function aplicarLlamada(estado, llamada, datos, defectos, propiedades) {
         break;
     case 'aplicarBorrador': {
         const borrador = datos.borradorFiltros ?? {};
+        const taxonAnterior = estado.fti;
         const latitudAnterior = estado.flat === estado.flax ? estado.flat : '';
         const longitudAnterior = estado.flon === estado.flox ? estado.flon : '';
         copiarFiltros(borrador);
+        if (Object.hasOwn(propiedades, 'fti')) estado.fti = taxonAnterior;
         if (estado.fph && Array.isArray(estado.fphs)) estado.fphs = estado.fphs.filter(id => id !== estado.fph);
         if (estado.fprov && Array.isArray(estado.fprovs)) estado.fprovs = estado.fprovs.filter(nombre => nombre !== estado.fprov);
         if (Object.hasOwn(borrador, 'filtroLatitud') && borrador.filtroLatitud !== latitudAnterior) estado.flat = estado.flax = borrador.filtroLatitud;

@@ -23,7 +23,7 @@ trait ExploraCeldaMapa
     public array $rutaCelda = [];
 
     #[Locked]
-    public string $vistaCelda = 'grupos';
+    public string $vistaCelda = 'registros';
 
     #[Locked]
     public int $paginaCelda = 1;
@@ -51,7 +51,7 @@ trait ExploraCeldaMapa
         if (! is_finite($latitud) || ! is_finite($longitud) || abs($latitud) > 90 || abs($longitud) > 180) return;
         $this->celdaMapa = ['lat' => $latitud, 'lon' => $longitud];
         $this->rutaCelda = [];
-        $this->vistaCelda = 'grupos';
+        $this->vistaCelda = 'registros';
         $this->paginaCelda = 1;
         $this->registroCeldaId = null;
         $this->busquedaRegistroCelda = '';
@@ -63,7 +63,7 @@ trait ExploraCeldaMapa
     {
         $this->celdaMapa = null;
         $this->rutaCelda = [];
-        $this->vistaCelda = 'grupos';
+        $this->vistaCelda = 'registros';
         $this->paginaCelda = 1;
         $this->registroCeldaId = null;
         unset($this->detalleCelda);

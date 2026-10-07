@@ -518,6 +518,11 @@ const registrarDashboard = () => {
             mapa?.fitBounds(limites?.isValid() ? limites : [[-5.1, -92.1], [1.9, -75]], {padding: [24, 24], maxZoom: 10});
         },
 
+        encuadrarTaxonomia() {
+            const limites = L.latLngBounds((agrupador?.originales ?? []).map(({lat, lon}) => [lat, lon]));
+            if (limites.isValid()) mapa?.fitBounds(limites, {padding: [24, 24], maxZoom: 16});
+        },
+
         actualizar(datos) {
             this.ocultarAyudaMapa();
             celdas = datos.celdas;
