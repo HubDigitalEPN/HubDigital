@@ -135,10 +135,20 @@ test('una hoja taxonómica encuadra sólo las coordenadas actuales y una selecci
     dashboard.encuadrarTaxonomia();
     assert.deepEqual(Array.from(encuadres.at(-1).limites.puntos, punto => Array.from(punto)), [[actual.lat, actual.lon]]);
     assert.equal(encuadres.at(-1).opciones.maxZoom, 16);
-    assert.match(plantillaDashboard, /x-on:encuadrar-taxonomia\.window="encuadrarTaxonomia\(\)"/);
+    assert.match(plantillaDashboard, /x-on:encuadrar-taxonomia\.window="encuadrarTaxonomia\(\$event\.detail\)"/);
     dashboard.actualizar({celdas: [], filos: {}});
     const cantidad = encuadres.length;
     dashboard.encuadrarTaxonomia(); assert.equal(encuadres.length, cantidad);
+});
+
+test('ver en el mapa encuadra el grupo vigente, desplaza el panel y lleva el foco al mapa', () => {
+    const puntos = [{lat: -.27, lon: -79.02, total: 2, filos: {Mollusca: 2}}, {lat: -1.23, lon: -77.65, total: 1, filos: {Mollusca: 1}}];
+    const {dashboard, encuadres, focos} = dashboardConMapa(puntos);
+    let desplazamientos = 0;
+    dashboard.$refs.panelMapa.scrollIntoView = () => {desplazamientos++;};
+    dashboard.encuadrarTaxonomia({mostrar: true});
+    assert.deepEqual(Array.from(encuadres.at(-1).limites.puntos, punto => Array.from(punto)), puntos.map(({lat, lon}) => [lat, lon]));
+    assert.equal(desplazamientos, 1); assert.equal(focos.at(-1), 'mapa');
 });
 
 test('el selector de localidad combina opciones vigentes y las aplica una sola vez después de cerrar', () => {

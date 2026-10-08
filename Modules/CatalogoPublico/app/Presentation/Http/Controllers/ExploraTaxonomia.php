@@ -19,9 +19,9 @@ trait ExploraTaxonomia
         return FiltrosBusqueda::desde(array_replace($this->valoresFiltros(), ['filtroTaxonId' => '']));
     }
 
-    public function consultarExploradorTaxonomico(?string $padre = null, string $busqueda = ''): array
+    public function consultarExploradorTaxonomico(?string $padre = null, string $busqueda = '', array $conservar = []): array
     {
-        $resultado = app(ExploradorTaxonomicoPublico::class)->consultar($this->contextoExplorador(), $padre, $busqueda);
+        $resultado = app(ExploradorTaxonomicoPublico::class)->consultar($this->contextoExplorador(), $padre, $busqueda, $conservar);
         $resultado['total'] = app(EloquentProveedorEspecimenesParaArbol::class)
             ->consultaPublica($this->filtrosActuales(), $this->nivel, $this->taxon)->count('te.id');
         $resultado['seleccionado'] = $this->filtroTaxonId;

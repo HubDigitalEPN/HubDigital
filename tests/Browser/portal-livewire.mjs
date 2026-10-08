@@ -169,7 +169,7 @@ try {
     // El explorador mantiene un bosque horizontal y filtra el fondo sin desmontar su modal.
     await evaluar("document.querySelector('button[aria-label=\"Árbol taxonómico\"]').click()");
     await visible("document.querySelector('.taxonomy-explorer[open] .taxonomy-explorer-node')"); await reposo();
-    assert.ok(await evaluar("(() => {const d=document.querySelector('.taxonomy-explorer'); const r=d.getBoundingClientRect(); return r.width >= innerWidth * .5 && r.width <= innerWidth * .6 && r.height <= innerHeight * .8 + 1;})()"));
+    assert.ok(await evaluar("(() => {const d=document.querySelector('.taxonomy-explorer'); const r=d.getBoundingClientRect(); return Math.abs(r.width-innerWidth*.9) <= 2 && Math.abs(r.height-innerHeight*.9) <= 2 && !d.querySelector('footer,.taxonomy-explorer-forest-heading') && d.querySelector('input').placeholder === 'Buscar un taxón';})()"));
     assert.ok(await evaluar("(() => {const raices=[...document.querySelectorAll('.taxonomy-explorer-node.is-root')]; return raices.length === 2 && Math.abs(raices[0].getBoundingClientRect().top-raices[1].getBoundingClientRect().top) < 1;})()"));
     await evaluar("document.querySelector('.taxonomy-explorer-node.is-root .taxonomy-explorer-toggle').click()");
     await visible("document.querySelectorAll('.taxonomy-explorer-node').length > 2"); await reposo();
@@ -204,20 +204,30 @@ try {
     const fondoExplorador = await evaluar("(() => {const r=document.querySelector('.taxonomy-explorer').getBoundingClientRect(); return {x:r.left-8,y:r.top+20};})()");
     await conexion.send('Input.dispatchMouseEvent', {type: 'mousePressed', button: 'left', clickCount: 1, ...fondoExplorador});
     await conexion.send('Input.dispatchMouseEvent', {type: 'mouseReleased', button: 'left', clickCount: 1, ...fondoExplorador});
-    await visible("!document.querySelector('.taxonomy-explorer').open");
-
+    assert.equal(await evaluar("document.querySelector('.taxonomy-explorer').open"), true, 'El clic fuera debe conservar el modal abierto.');
+    await evaluar("document.querySelector('.taxonomy-explorer-forest').scrollTop=220");
+    const navegacionExplorador = await evaluar("(() => {const d=document.querySelector('.taxonomy-explorer'), l=d.querySelector('.taxonomy-explorer-forest'); return {busqueda:d.querySelector('input').value, claves:[...d.querySelectorAll('[data-taxon-clave]')].map(n=>n.dataset.taxonClave).sort(), expandidos:[...d.querySelectorAll('[aria-expanded=true][data-taxon-clave]')].map(n=>n.dataset.taxonClave).sort(), x:l.scrollLeft,y:l.scrollTop};})()");
+    assert.ok(navegacionExplorador.y > 0, 'La navegación profunda debe poder desplazarse antes de cerrar.');
+    const antesDeVerMapa = totalPeticiones;
+    await evaluar("document.querySelector('.taxonomy-explorer-map').click()");
+    await visible("!document.querySelector('.taxonomy-explorer').open && document.activeElement?.classList.contains('atlas-map')");
+    await reposo(); assert.equal(totalPeticiones, antesDeVerMapa, 'Ver en el mapa reutiliza la selección vigente sin otra consulta cuando el mapa ya está visible.');
     await evaluar("document.querySelector('button[aria-label=\"Árbol taxonómico\"]').click()");
     await visible("document.querySelector('.taxonomy-explorer[open] .taxonomy-explorer-node')"); await reposo();
-    const antesDeCerrarExplorador = totalPeticiones;
-    await evaluar("document.querySelector('.taxonomy-explorer-footer button').click()");
+    assert.deepEqual(await evaluar("(() => {const d=document.querySelector('.taxonomy-explorer'), l=d.querySelector('.taxonomy-explorer-forest'); return {busqueda:d.querySelector('input').value, claves:[...d.querySelectorAll('[data-taxon-clave]')].map(n=>n.dataset.taxonClave).sort(), expandidos:[...d.querySelectorAll('[aria-expanded=true][data-taxon-clave]')].map(n=>n.dataset.taxonClave).sort(), x:l.scrollLeft,y:l.scrollTop};})()"), navegacionExplorador, 'Reabrir recupera búsqueda, ramas y posición.');
+    const antesDeContraerYCerrar = totalPeticiones;
+    await evaluar("document.querySelector('.taxonomy-explorer-reset').click()");
+    await visible("document.querySelectorAll('.taxonomy-explorer-node').length === document.querySelectorAll('.taxonomy-explorer-node.is-root').length");
+    assert.equal(await evaluar("document.querySelector('.taxonomy-explorer-reset').disabled"), true);
+    await evaluar("document.querySelector('.taxonomy-explorer-close').click()");
     await visible("!document.querySelector('.taxonomy-explorer').open && document.activeElement?.getAttribute('aria-label') === 'Árbol taxonómico'");
-    await reposo(); assert.equal(totalPeticiones, antesDeCerrarExplorador, 'Cerrar Explorador debe cerrar localmente y restaurar el foco.');
+    await reposo(); assert.equal(totalPeticiones, antesDeContraerYCerrar, 'Contraer y cerrar mediante X deben actuar localmente y restaurar el foco.');
 
     // En móvil la cabecera, el cierre y el espacio del diagrama siguen disponibles.
     await conexion.send('Emulation.setDeviceMetricsOverride', {width: 390, height: 700, deviceScaleFactor: 1, mobile: true});
     await evaluar("document.querySelector('button[aria-label=\"Árbol taxonómico\"]').click()");
     await visible("document.querySelector('.taxonomy-explorer[open] .taxonomy-explorer-node')"); await reposo();
-    assert.ok(await evaluar("(() => {const d=document.querySelector('.taxonomy-explorer'), r=d.getBoundingClientRect(), cerrar=d.querySelector('.taxonomy-explorer-footer button').getBoundingClientRect(); return r.width <= innerWidth && r.height <= innerHeight * .8 + 1 && cerrar.bottom <= r.bottom && d.querySelector('.taxonomy-explorer-forest').clientHeight >= 150;})()"));
+    assert.ok(await evaluar("(() => {const d=document.querySelector('.taxonomy-explorer'), r=d.getBoundingClientRect(), cerrar=d.querySelector('.taxonomy-explorer-close').getBoundingClientRect(), mapa=d.querySelector('.taxonomy-explorer-map').getBoundingClientRect(); return Math.abs(r.width-innerWidth*.9) <= 2 && Math.abs(r.height-innerHeight*.9) <= 2 && cerrar.bottom <= r.bottom && mapa.left >= r.left && mapa.right <= r.right && d.querySelector('.taxonomy-explorer-forest').clientHeight >= 150;})()"));
     await evaluar("document.querySelector('.taxonomy-explorer-close').click()");
     await visible("!document.querySelector('.taxonomy-explorer').open");
     await conexion.send('Emulation.setDeviceMetricsOverride', {width: 1440, height: 900, deviceScaleFactor: 1, mobile: false});

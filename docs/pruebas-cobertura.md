@@ -1,5 +1,15 @@
 # Distribución de las pruebas
 
+## Explorador al 90%, navegación conservada y acción de mapa — 7 de octubre de 2026
+
+La rama `feat/explorador-ampliado-20261007` parte del `main` validado y desplegado `d1f8e1d1`. El diálogo ocupa el 90% del ancho y de la altura visible, conserva el bloqueo modal y ya no cierra al pulsar el fondo exterior. La cabecera reúne «Ver en el mapa», un icono accesible para contraer y la X. Se retiran el pie, las instrucciones, el encabezado de linajes y la indicación de desplazamiento; «Buscar un taxón» pasa al placeholder con etiqueta accesible oculta. La actividad se muestra mediante un aviso superpuesto que no ocupa espacio del árbol.
+
+Al volver a abrir se conservan búsqueda, expansiones, hijos cargados y desplazamiento. Una única consulta actualiza nombres y contadores y recupera exclusivamente las claves que siguen siendo públicas, con sus ancestros válidos; las claves del cliente no pueden reconstruir ramas reservadas ni eludir filtros. Si cambia un filtro aplicado del contexto, se consulta la población nueva. Cambiar el taxón seleccionado no borra la navegación. «Ver en el mapa» espera si necesita cambiar la representación, cierra y encuadra las coordenadas reales del grupo vigente, desplazando y enfocando el panel del mapa; no requiere otra selección.
+
+`portal-taxonomy-explorer.test.mjs` conserva los contratos existentes y agrega recuperación de navegación, contador actualizado, cambio de contexto, cancelación de consultas antiguas y acción de mapa con espera/error. `PortalExploradorTaxonomicoTest` cubre la recuperación pública con claves conocidas y ajenas, nuevos contadores, otro filtro geográfico y retirada de permisos. `portal-dashboard-actions.test.mjs` comprueba encuadre y foco sobre las coordenadas vigentes. El navegador obligatorio adapta las dimensiones de escritorio/móvil, exige permanencia al pulsar fuera, ausencia del pie, regreso al mapa, conservación de ramas y desplazamiento al reabrir, icono de contracción y cierre mediante X/Escape. No se agrega Gherkin porque estas entradas, flujos y resultados ya quedan distribuidos entre Pest, Node y navegador.
+
+Revisión realizada: lectura estática de vistas, estados, eventos, consultas, permisos, foco, errores y adaptación. No se ejecutaron suites, compilaciones ni `crear-paquete-oci`; estos controles pertenecen al paquete. La conexión de navegador estaba indisponible en esta sesión, por lo que la comprobación renderizada de esta modificación queda pendiente de la siguiente ejecución completa por el usuario.
+
 ## Población pública del explorador y coordenadas reservadas — 7 de octubre de 2026
 
 El registro del usuario muestra 1.298 pruebas PHP aprobadas y un fallo en `PortalExploradorTaxonomicoTest`. La prueba nueva esperaba incluir un ejemplar con ambas coordenadas reservadas en la selección por UUID y en el contador del explorador, aunque `ElegibilidadGeograficaPortal` exige excluirlo de toda la población pública. Ese contrato ya está documentado y cubierto por `PortalCatalogoSeleccionTest` para catálogo, mapa, exportación, chat y curaduría; no se modifica la política ni el código de producción.

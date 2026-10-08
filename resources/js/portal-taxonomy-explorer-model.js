@@ -10,7 +10,7 @@ export function distribuirBosque(nodos, expandidos = [], anchoDisponible = 720) 
     for (const grupo of hijos.values()) grupo.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', {numeric: true, sensitivity: 'base'}) || a.clave.localeCompare(b.clave));
     const raices = hijos.get('') ?? [];
     const separacion = 32, pasoVertical = 150, margen = 24;
-    const anchoNodo = Math.max(148, Math.min(188, Math.floor((anchoDisponible - margen * 2 - Math.max(0, raices.length - 1) * separacion) / Math.max(1, raices.length))));
+    const anchoNodo = Math.max(148, Math.min(220, Math.floor((anchoDisponible - margen * 2 - Math.max(0, raices.length - 1) * separacion) / Math.max(1, raices.length))));
     const ramas = nodo => abiertos.has(nodo.clave) ? (hijos.get(nodo.clave) ?? []) : [];
     const medir = nodo => Math.max(1, ramas(nodo).reduce((total, hijo) => total + medir(hijo), 0));
     const unidades = raices.reduce((total, nodo) => total + medir(nodo), 0);
@@ -60,9 +60,11 @@ export function crearExploradorTaxonomico(reloj = {
     let temporizador = null, version = 0, sesion = 0, observador = null, invocador = null;
     let pendiente = null, procesando = false, revisionSeleccion = 0;
     let ramasCargando = new Set();
+    let contexto = null, ultimaBusqueda = '', restaurarFoco = true;
+    let posicionGuardada = {x: 0, y: 0, cuerpo: 0};
     return {
         abierto: false, busqueda: '', nodos: [], expandidos: [], cargados: [], cargandoRamas: [],
-        seleccionado: '', destacado: '', total: 0, listo: false, buscando: false, aplicando: false, hayMas: false, error: '',
+        seleccionado: '', destacado: '', total: 0, listo: false, buscando: false, aplicando: false, mostrandoMapa: false, hayMas: false, error: '',
         ancho: 720, bosque: {ancho: 720, alto: 180, nodos: [], conexiones: []},
         init() {
             if (globalThis.ResizeObserver) {
@@ -72,54 +74,81 @@ export function crearExploradorTaxonomico(reloj = {
         },
         destroy() { this.cancelarBusqueda(); version++; sesion++; observador?.disconnect(); },
         numero(valor) { return Number(valor).toLocaleString('es-EC'); },
-        get cantidadFilos() { return this.nodos.filter(nodo => nodo.padre === null).length; },
+        contextoActual() {
+            // Lee los filtros aplicados, no los valores aún pendientes del borrador.
+            const claves = Object.keys(this.$wire.borradorFiltros ?? {}).filter(clave => clave !== 'filtroTaxonId').sort();
+            return JSON.stringify(claves.map(clave => [clave, this.$wire[clave]]));
+        },
+        restaurarPosicion() {
+            this.$refs.lienzo.scrollLeft = posicionGuardada.x;
+            this.$refs.lienzo.scrollTop = posicionGuardada.y;
+            if (this.$refs.cuerpo) this.$refs.cuerpo.scrollTop = posicionGuardada.cuerpo;
+        },
         cancelarBusqueda() { if (temporizador !== null) reloj.clearTimeout(temporizador); temporizador = null; },
         async abrir(origen) {
+            if (this.abierto) return;
             invocador = origen ?? document.activeElement;
             sesion++; version++;
             this.cancelarBusqueda();
-            this.busqueda = ''; this.nodos = []; this.expandidos = []; this.cargados = [];
+            const actual = this.contextoActual();
+            const conservar = this.listo && contexto === actual && ultimaBusqueda === this.busqueda.trim();
+            if (contexto !== actual) {
+                this.nodos = []; this.expandidos = []; this.cargados = []; this.listo = false;
+                posicionGuardada = {x: 0, y: 0, cuerpo: 0};
+            }
+            contexto = actual;
             ramasCargando = new Set(); this.cargandoRamas = [];
-            this.error = ''; this.hayMas = false; this.listo = false; this.destacado = ''; this.abierto = true;
+            this.error = ''; this.destacado = ''; this.abierto = true; restaurarFoco = true;
             this.$refs.dialogo.showModal();
-            this.$nextTick(() => { this.distribuir(); this.$refs.busqueda.focus(); });
-            await this.consultar();
+            this.$nextTick(() => {
+                this.distribuir(); this.$refs.busqueda.focus({preventScroll: true});
+                if (conservar) this.$nextTick(() => this.restaurarPosicion());
+            });
+            await this.consultar(conservar);
         },
-        cerrar() { this.$refs.dialogo.close(); },
+        cerrar(devolverFoco = true) {
+            posicionGuardada = {x: this.$refs.lienzo.scrollLeft || 0, y: this.$refs.lienzo.scrollTop || 0, cuerpo: this.$refs.cuerpo?.scrollTop || 0};
+            restaurarFoco = devolverFoco;
+            this.$refs.dialogo.close();
+        },
         alCerrar() {
             this.abierto = false; sesion++; version++;
             this.cancelarBusqueda(); pendiente = null;
-            invocador?.focus?.({preventScroll: true}); invocador = null;
-        },
-        cerrarDesdeFondo(evento) {
-            if (evento.target !== this.$refs.dialogo) return;
-            const caja = this.$refs.dialogo.getBoundingClientRect();
-            if (evento.clientX < caja.left || evento.clientX > caja.right || evento.clientY < caja.top || evento.clientY > caja.bottom) this.cerrar();
+            this.buscando = false; this.mostrandoMapa = false; this.destacado = '';
+            ramasCargando = new Set(); this.cargandoRamas = [];
+            if (restaurarFoco) invocador?.focus?.({preventScroll: true}); invocador = null;
         },
         buscar() {
             this.cancelarBusqueda(); version++;
             this.buscando = true; this.error = '';
             temporizador = reloj.setTimeout(() => { temporizador = null; this.consultar(); }, 300);
         },
-        async consultar() {
+        async consultar(conservar = false) {
             this.cancelarBusqueda();
             const solicitud = ++version;
             const revision = revisionSeleccion;
             this.buscando = true; this.error = '';
             try {
-                const datos = await this.$wire.consultarExploradorTaxonomico(null, this.busqueda.trim());
+                const argumentos = [null, this.busqueda.trim()];
+                if (conservar) argumentos.push(this.nodos.map(nodo => nodo.clave));
+                const datos = await this.$wire.consultarExploradorTaxonomico(...argumentos);
                 if (solicitud !== version || !this.abierto) return;
-                this.nodos = datos.nodos; this.expandidos = datos.expandidos;
-                this.cargados = []; ramasCargando = new Set(); this.cargandoRamas = [];
+                this.nodos = datos.nodos;
+                const vigentes = new Set(this.nodos.map(nodo => nodo.clave));
+                this.expandidos = conservar ? this.expandidos.filter(clave => vigentes.has(clave)) : datos.expandidos;
+                this.cargados = conservar ? this.cargados.filter(clave => vigentes.has(clave)) : [];
+                ramasCargando = new Set(); this.cargandoRamas = [];
                 if (revision === revisionSeleccion && !this.aplicando) { this.total = datos.total; this.seleccionado = datos.seleccionado; }
                 this.listo = true;
-                this.hayMas = datos.hayMas; this.distribuir(null, true);
+                ultimaBusqueda = this.busqueda.trim();
+                this.hayMas = datos.hayMas; this.distribuir(null, !conservar);
+                if (conservar) this.$nextTick(() => this.restaurarPosicion());
             } catch {
                 if (solicitud === version && this.abierto) this.error = 'No se pudo consultar la taxonomía. Vuelve a intentarlo.';
             } finally { if (solicitud === version) this.buscando = false; }
         },
         async alternar(nodo) {
-            if (!nodo.tieneHijos || this.buscando || ramasCargando.has(nodo.clave)) return;
+            if (!nodo.tieneHijos || this.buscando || this.mostrandoMapa || ramasCargando.has(nodo.clave)) return;
             const posicion = this.bosque.nodos.find(item => item.clave === nodo.clave);
             const ancla = posicion ? {clave: nodo.clave, x: posicion.x, desplazamiento: this.$refs.lienzo.scrollLeft || 0} : null;
             if (this.expandidos.includes(nodo.clave)) {
@@ -175,7 +204,7 @@ export function crearExploradorTaxonomico(reloj = {
             });
         },
         seleccionar(nodo, cerrar = false) {
-            if (this.buscando) return;
+            if (this.buscando || this.mostrandoMapa) return;
             this.error = ''; this.destacado = nodo.id; revisionSeleccion++;
             if (pendiente?.id === nodo.id && pendiente.sesion === sesion) {
                 pendiente.cerrar ||= cerrar; return;
@@ -224,13 +253,24 @@ export function crearExploradorTaxonomico(reloj = {
                 }
             } finally { procesando = false; this.aplicando = false; }
         },
-        finalizarSeleccion(hoja) {
+        async verEnMapa() {
+            if (!this.listo || this.aplicando || this.mostrandoMapa) return;
+            const actual = sesion, revision = revisionSeleccion;
+            this.mostrandoMapa = true; this.error = '';
+            try {
+                if (this.$wire.vista !== 'mapa') await this.$wire.cambiarVista('mapa');
+                if (actual === sesion && revision === revisionSeleccion && this.abierto) this.finalizarSeleccion(true, true);
+            } catch {
+                if (actual === sesion && this.abierto) this.error = 'No se pudo abrir el mapa. Vuelve a intentarlo.';
+            } finally { if (actual === sesion) this.mostrandoMapa = false; }
+        },
+        finalizarSeleccion(hoja, mostrarMapa = false) {
             const actual = sesion;
             const revision = revisionSeleccion;
             this.$nextTick(() => {
                 if (actual !== sesion || revision !== revisionSeleccion || !this.abierto) return;
-                if (hoja) window.dispatchEvent(new CustomEvent('encuadrar-taxonomia'));
-                this.cerrar();
+                this.cerrar(!mostrarMapa);
+                if (hoja) window.dispatchEvent(new CustomEvent('encuadrar-taxonomia', {detail: {mostrar: mostrarMapa}}));
             });
         },
         teclado(evento, nodo) {

@@ -63,6 +63,19 @@ test('el explorador entrega cuatro o cinco raíces públicas independientes y s�
     expect($acotado['nodos'])->toHaveCount(1)->and($acotado['nodos'][0]['padre'])->toBeNull();
 });
 
+test('reabrir recupera los nodos cargados con contadores vigentes sin recuperar taxones reservados ni fuera del contexto', function (): void {
+    $f = exploradorTaxonomicoFixture(1); $rama = $f['ramas'][0]; $servicio = app(ExploradorTaxonomicoPublico::class);
+    $ruta = $servicio->consultar(FiltrosBusqueda::vacio(), null, $rama['especie']['nombre']);
+    $claves = [...array_column($ruta['nodos'], 'clave'), 'clave-ajena-no-publicada'];
+    $otro = exploradorInsertarRegistro($rama['especie']['id'], $f['prefijo']);
+    $reabierto = $servicio->consultar(FiltrosBusqueda::vacio(), null, '', $claves);
+    expect(array_column($reabierto['nodos'], 'id'))->toEqualCanonicalizing(array_column($ruta['nodos'], 'id'));
+    foreach ($reabierto['nodos'] as $nodo) expect($nodo['total'])->toBe(2);
+    expect($servicio->consultar(FiltrosBusqueda::desde(['filtroProvincia' => 'Napo']), null, '', $claves)['nodos'])->toBe([]);
+    DB::table('divulgacion.especimenes_divulgables')->whereIn('especimen_id', [$f['registros'][0][0], $otro])->update(['scientific_name_visible' => false]);
+    expect($servicio->consultar(FiltrosBusqueda::vacio(), null, '', $claves)['nodos'])->toBe([]);
+});
+
 test('buscar consulta nombres publicados y devuelve sólo sus rutas con los ancestros expandidos', function (): void {
     $f = exploradorTaxonomicoFixture(); $servicio = app(ExploradorTaxonomicoPublico::class);
     $rama = $f['ramas'][2];

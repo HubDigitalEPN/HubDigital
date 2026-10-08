@@ -20,7 +20,7 @@ final class ExploradorTaxonomicoPublico
         'subgenero' => 'Subgénero', 'especie' => 'Especie', 'species' => 'Especie',
         'subespecie' => 'Subespecie', 'subspecies' => 'Subespecie'];
 
-    public function consultar(FiltrosBusqueda $filtros, ?string $padre = null, string $busqueda = ''): array
+    public function consultar(FiltrosBusqueda $filtros, ?string $padre = null, string $busqueda = '', array $conservar = []): array
     {
         $indice = $this->indice($filtros);
         $nodos = $indice['nodos'];
@@ -48,6 +48,12 @@ final class ExploradorTaxonomicoPublico
         } else {
             if ($padre !== null && !isset($nodos[$padre])) abort(404);
             $resultado = array_filter($nodos, static fn (array $n): bool => $n['padre'] === $padre);
+        }
+        // Reabrir conserva sólo nodos y rutas que siguen siendo públicos en este contexto.
+        // El cliente aporta claves, nunca nombres ni contadores que debamos confiar.
+        $claves = array_fill_keys(array_slice(array_filter($conservar, 'is_string'), 0, 5000), true);
+        foreach (array_intersect_key($nodos, $claves) as $clave => $nodo) {
+            foreach ($indice['rutas'][$clave] as $ancestro) $resultado[$ancestro] ??= $nodos[$ancestro];
         }
         return ['nodos' => array_values($resultado), 'expandidos' => array_keys($expandidos),
             'hayMas' => $hayMas, 'totalCatalogo' => $indice['total']];

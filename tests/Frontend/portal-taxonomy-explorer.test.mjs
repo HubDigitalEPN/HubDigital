@@ -10,13 +10,13 @@ function componente(wire = {}) {
     const tareas = new Map(); let numero = 0, cierres = 0, focos = 0, aperturas = 0;
     const reloj = {setTimeout(tarea, retraso) {const id = ++numero; tareas.set(id, {tarea, retraso}); return id;}, clearTimeout(id) {tareas.delete(id);}};
     const ui = crearExploradorTaxonomico(reloj);
-    ui.$wire = wire;
+    ui.$wire = {vista: 'mapa', borradorFiltros: {}, ...wire};
     ui.$refs = {
         dialogo: {tagName: 'DIALOG', open: true, showModal() {this.open = true; aperturas++;},
             close() {this.open = false; cierres++; ui.alCerrar();},
             getBoundingClientRect() {return {left: 100, top: 80, right: 800, bottom: 600};},
             querySelector() {return {focus() {focos++;}};}},
-        lienzo: {clientWidth: 720}, busqueda: {focus() {focos++;}},
+        lienzo: {clientWidth: 720}, cuerpo: {scrollTop: 0}, busqueda: {focus() {focos++;}},
     };
     ui.$nextTick = tarea => tarea();
     // Alpine expone el elemento del evento: un input o botón también llama estos métodos.
@@ -25,18 +25,102 @@ function componente(wire = {}) {
     return {ui, tareas, cierres: () => cierres, focos: () => focos, aperturas: () => aperturas};
 }
 
-test('abrir y cerrar utilizan el diálogo aunque el evento venga de un descendiente; sólo el fondo exterior cierra', async () => {
+test('abrir y cerrar utilizan el diálogo aunque el evento venga de un descendiente y restauran el foco', async () => {
     const {ui, cierres, aperturas} = componente({consultarExploradorTaxonomico: async () => resultado('', [nodo('filo')])});
     let restaurados = 0;
     ui.cerrar();
     await ui.abrir({focus() {restaurados++;}});
     assert.equal(aperturas(), 1); assert.equal(ui.$refs.dialogo.open, true); assert.equal(ui.abierto, true);
-    ui.cerrarDesdeFondo({target: ui.$el, clientX: 0, clientY: 0});
-    ui.cerrarDesdeFondo({target: ui.$refs.dialogo, clientX: 200, clientY: 100});
     assert.equal(cierres(), 1); assert.equal(ui.abierto, true);
-    ui.cerrarDesdeFondo({target: ui.$refs.dialogo, clientX: 90, clientY: 100});
+    ui.cerrar();
     assert.equal(cierres(), 2); assert.equal(ui.$refs.dialogo.open, false); assert.equal(ui.abierto, false);
     assert.equal(restaurados, 1);
+});
+
+test('reabrir conserva búsqueda, ramas cargadas, expansiones y desplazamiento con contadores actualizados', async () => {
+    const raiz = {...nodo('a'), tieneHijos: true}, hijo = nodo('h', 'a');
+    const llamadas = [];
+    const {ui} = componente({consultarExploradorTaxonomico(padre, texto, conservar) {
+        llamadas.push([padre, texto, conservar]);
+        if (padre === 'a') return resultado('', [hijo]);
+        return {...resultado('', texto || conservar ? [raiz, hijo] : [raiz]), total: conservar ? 7 : 4,
+            expandidos: texto ? ['a'] : []};
+    }});
+    ui.cerrar(); await ui.abrir({focus() {}});
+    ui.busqueda = 'Arthro'; await ui.consultar();
+    await ui.alternar(raiz); await ui.alternar(raiz);
+    ui.$refs.lienzo.scrollLeft = 180; ui.$refs.lienzo.scrollTop = 240;
+    ui.$refs.cuerpo.scrollTop = 32;
+    ui.cerrar();
+    ui.$refs.lienzo.scrollLeft = ui.$refs.lienzo.scrollTop = 0;
+    ui.$refs.cuerpo.scrollTop = 0;
+    await ui.abrir({focus() {}});
+    assert.deepEqual(llamadas.at(-1), [null, 'Arthro', ['a', 'h']]);
+    assert.equal(ui.busqueda, 'Arthro'); assert.deepEqual(ui.expandidos, ['a']); assert.deepEqual(ui.cargados, ['a']);
+    assert.equal(ui.$refs.lienzo.scrollLeft, 180); assert.equal(ui.$refs.lienzo.scrollTop, 240);
+    assert.equal(ui.$refs.cuerpo.scrollTop, 32);
+    assert.equal(ui.total, 7); assert.equal(ui.bosque.nodos.length, 2);
+});
+
+test('cambiar el taxón seleccionado conserva las ramas pero cambiar un filtro aplicado consulta el contexto nuevo', async () => {
+    const raiz = {...nodo('a'), tieneHijos: true}, hijo = nodo('h', 'a'), llamadas = [];
+    const {ui} = componente({borradorFiltros: {filtroProvincia: '', filtroTaxonId: ''}, filtroProvincia: 'Pichincha', filtroTaxonId: '',
+        consultarExploradorTaxonomico(padre, texto, conservar) {
+            llamadas.push([padre, texto, conservar]);
+            if (padre === 'a') return resultado('', [hijo]);
+            return resultado(ui.$wire.filtroTaxonId, ui.$wire.filtroProvincia === 'Napo' ? [nodo('b')] : conservar ? [raiz, hijo] : [raiz]);
+        }});
+    ui.cerrar(); await ui.abrir({focus() {}}); await ui.alternar(raiz); ui.cerrar();
+    ui.$wire.filtroTaxonId = 'a'; await ui.abrir({focus() {}});
+    assert.deepEqual(llamadas.at(-1)[2], ['a', 'h']); assert.deepEqual(ui.expandidos, ['a']); assert.equal(ui.seleccionado, 'a');
+    ui.cerrar(); ui.$wire.filtroProvincia = 'Napo'; await ui.abrir({focus() {}});
+    assert.equal(llamadas.at(-1)[2], undefined); assert.deepEqual(ui.nodos.map(n => n.id), ['b']);
+    assert.deepEqual(ui.expandidos, []); assert.deepEqual(ui.cargados, []);
+});
+
+test('cerrar durante el debounce conserva la consulta escrita y descarta la respuesta de la sesión anterior', async () => {
+    const vieja = diferido(), llamadas = [];
+    const {ui, tareas} = componente({consultarExploradorTaxonomico(padre, texto) {
+        llamadas.push(texto); return texto === 'vieja' ? vieja.promesa : resultado('', [nodo('nueva')]);
+    }});
+    ui.busqueda = 'vieja'; const pendiente = ui.consultar();
+    ui.busqueda = 'nueva'; ui.buscar(); ui.cerrar();
+    assert.equal(tareas.size, 0); await ui.abrir({focus() {}});
+    vieja.resolver(resultado('', [nodo('vieja')])); await pendiente;
+    assert.deepEqual(llamadas, ['vieja', 'nueva']); assert.equal(ui.busqueda, 'nueva'); assert.equal(ui.nodos[0].id, 'nueva');
+});
+
+test('ver en el mapa espera la vista de mapa, cierra antes del encuadre y conserva la navegación', async () => {
+    const anterior = globalThis.window, eventos = [], respuesta = diferido(), vistas = [];
+    const {ui, cierres} = componente({vista: 'registros', cambiarVista(vista) {vistas.push(vista); return respuesta.promesa;}});
+    let restaurados = 0;
+    globalThis.window = {dispatchEvent(evento) {eventos.push({tipo: evento.type, mostrar: evento.detail.mostrar, abierto: ui.$refs.dialogo.open});}};
+    try {
+        ui.$wire.consultarExploradorTaxonomico = async () => ({...resultado('a', [nodo('a'), nodo('h', 'a')]), expandidos: ['a']});
+        ui.cerrar(); await ui.abrir({focus() {restaurados++;}});
+        ui.$refs.lienzo.scrollTop = 240;
+        const tarea = ui.verEnMapa();
+        assert.deepEqual(vistas, ['mapa']); assert.equal(ui.$refs.dialogo.open, true); assert.equal(ui.mostrandoMapa, true);
+        respuesta.resolver(); await tarea;
+        assert.equal(cierres(), 2); assert.equal(ui.mostrandoMapa, false); assert.equal(restaurados, 0);
+        assert.deepEqual(eventos, [{tipo: 'encuadrar-taxonomia', mostrar: true, abierto: false}]);
+        assert.deepEqual(ui.expandidos, ['a']); assert.equal(ui.nodos.length, 2); assert.equal(ui.seleccionado, 'a');
+    } finally {if (anterior === undefined) delete globalThis.window; else globalThis.window = anterior;}
+});
+
+test('ver en el mapa no cierra con una selección pendiente y un fallo al cambiar de vista permite reintentar', async () => {
+    const {ui, cierres} = componente({vista: 'tarjetas', cambiarVista: async () => {throw new Error('Sin conexión');}});
+    ui.listo = true; ui.aplicando = true;
+    await ui.verEnMapa(); assert.equal(cierres(), 0); assert.equal(ui.error, '');
+    ui.aplicando = false; await ui.verEnMapa();
+    assert.equal(cierres(), 0); assert.match(ui.error, /Vuelve a intentarlo/); assert.equal(ui.mostrandoMapa, false);
+    const anterior = globalThis.window;
+    globalThis.window = {dispatchEvent() {}};
+    try {
+        ui.$wire.cambiarVista = async () => {};
+        await ui.verEnMapa();
+        assert.equal(cierres(), 1); assert.equal(ui.error, ''); assert.equal(ui.mostrandoMapa, false);
+    } finally {if (anterior === undefined) delete globalThis.window; else globalThis.window = anterior;}
 });
 
 test('las flechas del teclado buscan el destino dentro del diálogo desde el botón de un nodo', () => {
