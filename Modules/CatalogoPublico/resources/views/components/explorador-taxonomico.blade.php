@@ -11,7 +11,12 @@
         <div class="taxonomy-explorer-actions">
             <button type="button" class="taxonomy-explorer-reset" :disabled="!expandidos.length" x-on:click="volverAFilos()"
                 aria-label="Contraer ramas" title="Contraer ramas">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 3 4 4 4-4M12 7v10m-4 4 4-4 4 4M3 12h4m10 0h4"/></svg>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="5" rx="1"/><path d="M12 8v5M5 13h14M5 13v5m14-5v5M3 21h4m10 0h4M9 11l3-3 3 3"/></svg>
+            </button>
+            <button type="button" class="taxonomy-explorer-reset taxonomy-explorer-fit" :disabled="!nodos.length" x-on:click="ajustarArbol()"
+                :aria-pressed="ajustado" :aria-label="ajustado ? 'Restaurar tamaño del árbol' : 'Ajustar árbol a la vista'"
+                :title="ajustado ? 'Restaurar tamaño del árbol' : 'Ajustar árbol a la vista'">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M9 9l-6-6m12 6 6-6M9 15l-6 6m12-6 6 6"/></svg>
             </button>
             <button type="button" class="taxonomy-explorer-map" :disabled="aplicando || mostrandoMapa || !listo" x-on:click="verEnMapa()">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2zM9 3v16m6-14v16"/></svg>
@@ -34,10 +39,11 @@
             <button type="button" x-show="!nodos.length" x-on:click="consultar()">Reintentar</button>
         </p>
         <p class="taxonomy-explorer-status" x-show="hayMas">Se muestran las primeras 50 coincidencias. Escribe un nombre más específico para acotar la búsqueda.</p>
-        <div class="taxonomy-explorer-forest" x-ref="lienzo" :aria-busy="buscando">
+        <div class="taxonomy-explorer-forest" x-ref="lienzo" :aria-busy="buscando" x-on:scroll="ocultarAyuda()">
             <p class="taxonomy-explorer-empty" x-show="!buscando && !error && !nodos.length" x-text="busqueda.trim() ? 'No hay taxones que coincidan con la búsqueda.' : 'No hay filos publicados para los filtros actuales.'"></p>
-            <div class="taxonomy-explorer-board" x-show="nodos.length" role="tree" aria-label="Estructura taxonómica por filos"
-                :style="{width: bosque.ancho + 'px', height: bosque.alto + 'px'}">
+            <div class="taxonomy-explorer-canvas" x-show="nodos.length" :style="{width: bosque.ancho * escala + 'px', height: bosque.alto * escala + 'px'}">
+            <div class="taxonomy-explorer-board" role="tree" aria-label="Estructura taxonómica por filos"
+                :style="{width: bosque.ancho + 'px', height: bosque.alto + 'px', transform: 'scale(' + escala + ')'}">
                 <svg x-ref="conexiones" :width="bosque.ancho" :height="bosque.alto" aria-hidden="true"></svg>
                 <template x-for="nodo in bosque.nodos" :key="nodo.clave">
                     <div class="taxonomy-explorer-node" role="treeitem" :data-taxon-clave="nodo.clave"
@@ -45,14 +51,16 @@
                         :aria-expanded="nodo.tieneHijos ? expandidos.includes(nodo.clave) : null"
                         :aria-label="nodo.nombre + ', ' + nodo.etiqueta + ', ' + numero(nodo.total) + ' registros'"
                         :class="{'is-root': nodo.padre === null, 'is-selected': (destacado || seleccionado) === nodo.id, 'is-match': nodo.coincide}"
-                        :style="{left: nodo.x + 'px', top: nodo.y + 'px', width: nodo.ancho + 'px', height: nodo.alto + 'px', '--taxon-color': nodo.color}">
+                        :style="{left: nodo.x + 'px', top: nodo.y + 'px', width: nodo.ancho + 'px', height: nodo.alto + 'px', '--taxon-color': nodo.color}"
+                        x-on:mouseenter="mostrarAyuda(nodo, $el)" x-on:mouseleave="ocultarAyuda()"
+                        x-on:focusin="mostrarAyuda(nodo, $event.target)" x-on:focusout="ocultarAyuda()">
                         <button type="button" class="taxonomy-explorer-toggle" x-show="nodo.tieneHijos"
                             :class="{'is-expanded': expandidos.includes(nodo.clave)}" :disabled="buscando || mostrandoMapa || cargandoRamas.includes(nodo.clave)"
                             :aria-label="(expandidos.includes(nodo.clave) ? 'Colapsar ' : 'Expandir ') + nodo.nombre"
                             :aria-expanded="expandidos.includes(nodo.clave)" x-on:click.stop="alternar(nodo)">
                             <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m5 3 5 5-5 5"/></svg>
                         </button>
-                        <button type="button" class="taxonomy-explorer-name" :disabled="buscando || mostrandoMapa" :title="nodo.nombre"
+                        <button type="button" class="taxonomy-explorer-name" :disabled="buscando || mostrandoMapa"
                             x-on:click.stop="seleccionar(nodo)" x-on:dblclick.stop="seleccionar(nodo, true)" x-on:keydown="teclado($event, nodo)">
                             <small class="taxonomy-explorer-rank" x-text="nodo.etiqueta"></small>
                             <em x-text="nodo.nombre"></em>
@@ -62,6 +70,14 @@
                     </div>
                 </template>
             </div>
+            </div>
         </div>
     </div>
+    <aside id="ayuda-nodo-explorador" x-ref="ayuda" class="taxonomy-explorer-tooltip" x-cloak x-show="ayuda" role="tooltip">
+        <strong><em x-text="ayuda?.nombre"></em></strong>
+        <span x-text="ayuda?.etiqueta"></span>
+        <p x-text="numero(ayuda?.total || 0) + ((ayuda?.total || 0) === 1 ? ' registro público asociado' : ' registros públicos asociados')"></p>
+        <p x-text="ayuda?.hijos ? numero(ayuda.hijos) + (ayuda.hijos === 1 ? ' rama descendiente publicada' : ' ramas descendientes publicadas') : 'Sin ramas descendientes publicadas'"></p>
+        <p class="taxonomy-explorer-tooltip-lineage" x-text="ayuda?.linaje"></p>
+    </aside>
 </dialog>

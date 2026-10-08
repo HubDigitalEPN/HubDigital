@@ -132,6 +132,14 @@ final class ExploradorTaxonomicoPublico
         // Su contador siempre representa el filtro por identidad, no sólo una de esas rutas.
         foreach ($nodos as &$nodo) $nodo['total'] = $conteos[$nodo['id']];
         unset($nodo);
+        // La ayuda describe exclusivamente el linaje público de esta ruta.
+        $hijos = [];
+        foreach ($nodos as $nodo) if ($nodo['padre'] !== null) $hijos[$nodo['padre']] = ($hijos[$nodo['padre']] ?? 0) + 1;
+        foreach ($nodos as $clave => &$nodo) {
+            $nodo['hijos'] = $hijos[$clave] ?? 0;
+            $nodo['linaje'] = implode(' → ', array_map(static fn (string $ancestro): string => $nodos[$ancestro]['nombre'], $rutas[$clave]));
+        }
+        unset($nodo);
         uasort($nodos, static fn (array $a, array $b): int => strnatcasecmp($a['nombre'], $b['nombre']) ?: strcmp($a['clave'], $b['clave']));
         return ['nodos' => $nodos, 'rutas' => $rutas, 'total' => $total];
     }

@@ -1,5 +1,15 @@
 # Distribución de las pruebas
 
+## Registros coincidentes, apertura por nombre, ayuda y encuadre del bosque — 7 de octubre de 2026
+
+La rama `fix/explorador-registros-mapa-20261007` parte de `main` (`083e9fd9`). La revisión con clics en Chrome confirmó que los seis ejemplares de Leptodictya williamsi comparten −0.666, −77.91 y están disponibles en la tabla de esa ubicación. El símbolo anterior ocultaba su cantidad. Las ubicaciones con varios registros ahora muestran su contador y la unidad `reg.`, conservan colores, coordenadas originales, acceso por teclado y detalle completo. No se desplazan ejemplares para simular ubicaciones distintas.
+
+Pulsar el nombre selecciona y abre una rama cerrada; repetir el clic mantiene su expansión. La flecha conserva su acción exclusiva de expansión/contracción. La ayuda de ratón y foco muestra nombre, rango, registros, número de hijos publicados y linaje de la ruta visible, sin revelar ancestros reservados ni solicitar información externa. Se cambia el icono de contracción y se incorpora «Ajustar árbol a la vista»: escala el bosque completo en ambos ejes, conserva selección y ramas, y permite restaurar el tamaño normal. El ajuste también se conserva al reabrir el diálogo.
+
+Los contratos de `portal-dashboard-actions.test.mjs` cubren trece registros en tres coordenadas, el símbolo de seis registros coincidentes, colores y apertura. `portal-taxonomy-explorer.test.mjs` cubre selección/apertura sin contracción accidental, ajuste/restauración y ayuda accesible dentro del modal. Las aserciones existentes de `PortalExploradorTaxonomicoTest` se amplían con linajes y conteos de hijos públicos, incluida una ruta con familia/género reservados. El recorrido obligatorio `portal-livewire.mjs` exige contadores visibles, apertura al repetir la selección, ayuda con foco y todo el árbol dentro de la vista sin peticiones adicionales. No se añaden duplicados Gherkin ni se ejecutan suites aisladas.
+
+Revisión complementaria realizada: diagnóstico del dato real, lectura de cambios, permisos, ciclo de peticiones, coordenadas y estado de navegación. Las pruebas nuevas se ejecutarán exclusivamente dentro del paquete completo. La aceptación en OCI comprobará los casos de Tingidae y Leptodictya williamsi y los controles nuevos después de activar la release.
+
 ## Explorador al 90%, navegación conservada y acción de mapa — 7 de octubre de 2026
 
 La rama `feat/explorador-ampliado-20261007` parte del `main` validado y desplegado `d1f8e1d1`. El diálogo ocupa el 90% del ancho y de la altura visible, conserva el bloqueo modal y ya no cierra al pulsar el fondo exterior. La cabecera reúne «Ver en el mapa», un icono accesible para contraer y la X. Se retiran el pie, las instrucciones, el encabezado de linajes y la indicación de desplazamiento; «Buscar un taxón» pasa al placeholder con etiqueta accesible oculta. La actividad se muestra mediante un aviso superpuesto que no ocupa espacio del árbol.

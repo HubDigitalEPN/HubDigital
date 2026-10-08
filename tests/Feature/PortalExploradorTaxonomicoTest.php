@@ -55,8 +55,10 @@ test('el explorador entrega cuatro o cinco raíces públicas independientes y s�
         ->and(array_column($inicial['nodos'], 'rango'))->toBe(['phylum', 'phylum', 'phylum', 'phylum'])
         ->and(array_column($inicial['nodos'], 'total'))->toBe([1, 2, 3, 4]);
     $hijos = $servicio->consultar(FiltrosBusqueda::vacio(), $inicial['nodos'][0]['clave']);
+    expect($inicial['nodos'][0]['hijos'])->toBe(1)->and($inicial['nodos'][0]['linaje'])->toBe($f['ramas'][0]['phylum']['nombre']);
     expect($hijos['nodos'])->toHaveCount(1)->and($hijos['nodos'][0]['rango'])->toBe('clase')
-        ->and($hijos['nodos'][0]['padre'])->toBe($inicial['nodos'][0]['clave']);
+        ->and($hijos['nodos'][0]['padre'])->toBe($inicial['nodos'][0]['clave'])
+        ->and($hijos['nodos'][0]['linaje'])->toBe($f['ramas'][0]['phylum']['nombre'].' → '.$f['ramas'][0]['clase']['nombre']);
     exploradorTaxonomicoFixture(1);
     expect($servicio->consultar(FiltrosBusqueda::vacio())['nodos'])->toHaveCount(5);
     $acotado = $servicio->consultar(FiltrosBusqueda::desde(['filtroFilos' => [$f['ramas'][0]['phylum']['id']]]));
@@ -111,6 +113,8 @@ test('la selección por identidad incluye descendientes y respeta campos taxonó
     $especies = array_filter($encontrados['nodos'], fn ($nodo) => $nodo['id'] === $rama['especie']['id']);
     expect($especies)->not->toBeEmpty();
     foreach ($especies as $nodo) expect($nodo['total'])->toBe(3);
+    expect(array_any($especies, fn ($nodo) => !str_contains($nodo['linaje'], $rama['familia']['nombre']) && !str_contains($nodo['linaje'], $rama['genero']['nombre'])))->toBeTrue()
+        ->and(array_any($especies, fn ($nodo) => str_contains($nodo['linaje'], $rama['familia']['nombre']) && str_contains($nodo['linaje'], $rama['genero']['nombre'])))->toBeTrue();
     $pagina = Livewire::withQueryParams(['vista' => 'mapa'])->test(PortalCatalogo::class)
         ->call('seleccionarTaxonExplorador', $rama['especie']['id'])
         ->assertSet('filtroTaxonId', $rama['especie']['id'])->assertSet('nivel', '')->assertSet('taxon', '')

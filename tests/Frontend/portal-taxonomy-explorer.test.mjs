@@ -1,10 +1,53 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {crearExploradorTaxonomico, distribuirBosque} from '../../resources/js/portal-taxonomy-explorer-model.js';
+import {crearExploradorTaxonomico, distribuirBosque, escalaBosque} from '../../resources/js/portal-taxonomy-explorer-model.js';
 
 const nodo = (clave, padre = null, nombre = clave) => ({clave, id: clave, padre, nombre, etiqueta: padre ? 'Especie' : 'Filo', total: 4, tieneHijos: false, hoja: false});
 const diferido = () => { let resolver; const promesa = new Promise(resolve => {resolver = resolve;}); return {promesa, resolver}; };
 const resultado = (seleccionado = '', nodos = []) => ({seleccionado, nodos, total: 4, expandidos: [], hayMas: false});
+
+test('un clic en el nombre filtra y abre la rama sin contraerla al seleccionar de nuevo', async () => {
+    const raiz = {...nodo('filo'), tieneHijos: true}, hijo = nodo('especie', 'filo'), consultas = [], selecciones = [];
+    const {ui, cierres} = componente({
+        consultarExploradorTaxonomico: async padre => {consultas.push(padre); return resultado('', [hijo]);},
+        seleccionarTaxonExplorador: async id => {selecciones.push(id); return {seleccionado: id, total: 6, hoja: false};},
+    });
+    ui.nodos = [raiz]; await ui.seleccionar(raiz);
+    assert.deepEqual(consultas, ['filo']); assert.deepEqual(selecciones, ['filo']);
+    assert.deepEqual(ui.expandidos, ['filo']); assert.equal(ui.bosque.nodos.length, 2); assert.equal(ui.total, 6);
+    await ui.seleccionar(raiz);
+    assert.deepEqual(consultas, ['filo']); assert.deepEqual(selecciones, ['filo']); assert.deepEqual(ui.expandidos, ['filo']);
+    assert.equal(cierres(), 0);
+});
+
+test('ajustar el bosque incluye cada nodo sin scroll y mantiene expansión y selección al restaurar', () => {
+    const {ui} = componente();
+    ui.$refs.lienzo.clientWidth = 600; ui.$refs.lienzo.clientHeight = 240;
+    ui.nodos = [nodo('raiz'), ...Array.from({length: 8}, (_, i) => nodo(`h-${i}`, 'raiz'))];
+    ui.expandidos = ['raiz']; ui.seleccionado = 'h-7'; ui.$refs.lienzo.scrollLeft = 140; ui.$refs.lienzo.scrollTop = 100;
+    ui.ajustarArbol();
+    assert.ok(ui.escala < 1); assert.equal(ui.ajustado, true);
+    for (const n of ui.bosque.nodos) {
+        assert.ok((n.x + n.ancho) * ui.escala <= 600); assert.ok((n.y + n.alto) * ui.escala <= 240);
+    }
+    assert.equal(ui.$refs.lienzo.scrollLeft, 0); assert.equal(ui.$refs.lienzo.scrollTop, 0);
+    assert.deepEqual(ui.expandidos, ['raiz']); assert.equal(ui.seleccionado, 'h-7');
+    ui.ajustarArbol(); assert.equal(ui.escala, 1); assert.equal(ui.ajustado, false); assert.deepEqual(ui.expandidos, ['raiz']);
+    assert.equal(escalaBosque({ancho: 200, alto: 200}, 600, 240), 1);
+});
+
+test('la ayuda de un nodo usa metadatos públicos y se mantiene dentro del modal incluso en el borde', () => {
+    const {ui} = componente(); const atributos = {};
+    ui.$refs.dialogo.getBoundingClientRect = () => ({left: 100, top: 80, width: 700, height: 520});
+    ui.$refs.ayuda = {id: 'ayuda', style: {}, getBoundingClientRect: () => ({width: 320, height: 160})};
+    const origen = {getBoundingClientRect: () => ({left: 740, top: 85, bottom: 115, width: 40}),
+        setAttribute: (clave, valor) => {atributos[clave] = valor;}, removeAttribute: clave => {delete atributos[clave];}};
+    const datos = {...nodo('especie'), etiqueta: 'Especie', total: 6, hijos: 0, linaje: 'Arthropoda → Tingidae → Leptodictya williamsi'};
+    ui.mostrarAyuda(datos, origen);
+    assert.equal(ui.ayuda, datos); assert.equal(atributos['aria-describedby'], 'ayuda');
+    assert.equal(ui.$refs.ayuda.style.left, '372px'); assert.equal(ui.$refs.ayuda.style.top, '43px');
+    ui.ocultarAyuda(); assert.equal(ui.ayuda, null); assert.equal(atributos['aria-describedby'], undefined);
+});
 
 function componente(wire = {}) {
     const tareas = new Map(); let numero = 0, cierres = 0, focos = 0, aperturas = 0;

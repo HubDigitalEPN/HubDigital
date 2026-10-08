@@ -52,6 +52,10 @@ function colorRaiz(nombre) {
     return paleta[huella % paleta.length];
 }
 
+export function escalaBosque(bosque, ancho, alto) {
+    return Math.min(1, Math.max(1, ancho - 16) / bosque.ancho, Math.max(1, alto - 16) / bosque.alto);
+}
+
 export function crearExploradorTaxonomico(reloj = {
     // Los temporizadores nativos del navegador deben conservar su contexto global.
     setTimeout: (tarea, retraso) => globalThis.setTimeout(tarea, retraso),
@@ -61,19 +65,40 @@ export function crearExploradorTaxonomico(reloj = {
     let pendiente = null, procesando = false, revisionSeleccion = 0;
     let ramasCargando = new Set();
     let contexto = null, ultimaBusqueda = '', restaurarFoco = true;
-    let posicionGuardada = {x: 0, y: 0, cuerpo: 0};
+    let posicionGuardada = {x: 0, y: 0, cuerpo: 0}, invocadorAyuda = null;
     return {
         abierto: false, busqueda: '', nodos: [], expandidos: [], cargados: [], cargandoRamas: [],
         seleccionado: '', destacado: '', total: 0, listo: false, buscando: false, aplicando: false, mostrandoMapa: false, hayMas: false, error: '',
         ancho: 720, bosque: {ancho: 720, alto: 180, nodos: [], conexiones: []},
+        ajustado: false, escala: 1, ayuda: null,
         init() {
             if (globalThis.ResizeObserver) {
                 observador = new ResizeObserver(() => this.distribuir());
                 observador.observe(this.$refs.lienzo);
             }
         },
-        destroy() { this.cancelarBusqueda(); version++; sesion++; observador?.disconnect(); },
+        destroy() { this.ocultarAyuda(); this.cancelarBusqueda(); version++; sesion++; observador?.disconnect(); },
         numero(valor) { return Number(valor).toLocaleString('es-EC'); },
+        mostrarAyuda(nodo, origen) {
+            this.ocultarAyuda();
+            if (!origen || !this.$refs.ayuda) return;
+            invocadorAyuda = origen;
+            this.ayuda = nodo;
+            origen.setAttribute('aria-describedby', this.$refs.ayuda.id);
+            this.$nextTick(() => {
+                if (invocadorAyuda !== origen) return;
+                const caja = this.$refs.dialogo.getBoundingClientRect(), rect = origen.getBoundingClientRect();
+                const tooltip = this.$refs.ayuda, medida = tooltip.getBoundingClientRect(), margen = 8;
+                tooltip.style.left = Math.max(margen, Math.min(rect.left - caja.left + rect.width / 2 - medida.width / 2, caja.width - medida.width - margen)) + 'px';
+                const encima = rect.top - caja.top - medida.height - margen;
+                tooltip.style.top = Math.max(margen, Math.min(encima >= margen ? encima : rect.bottom - caja.top + margen, caja.height - medida.height - margen)) + 'px';
+            });
+        },
+        ocultarAyuda() { invocadorAyuda?.removeAttribute('aria-describedby'); invocadorAyuda = null; this.ayuda = null; },
+        ajustarArbol() {
+            this.ajustado = !this.ajustado;
+            this.distribuir(null, true);
+        },
         contextoActual() {
             // Lee los filtros aplicados, no los valores aún pendientes del borrador.
             const claves = Object.keys(this.$wire.borradorFiltros ?? {}).filter(clave => clave !== 'filtroTaxonId').sort();
@@ -94,6 +119,7 @@ export function crearExploradorTaxonomico(reloj = {
             const conservar = this.listo && contexto === actual && ultimaBusqueda === this.busqueda.trim();
             if (contexto !== actual) {
                 this.nodos = []; this.expandidos = []; this.cargados = []; this.listo = false;
+                this.ajustado = false; this.escala = 1;
                 posicionGuardada = {x: 0, y: 0, cuerpo: 0};
             }
             contexto = actual;
@@ -107,11 +133,13 @@ export function crearExploradorTaxonomico(reloj = {
             await this.consultar(conservar);
         },
         cerrar(devolverFoco = true) {
+            this.ocultarAyuda();
             posicionGuardada = {x: this.$refs.lienzo.scrollLeft || 0, y: this.$refs.lienzo.scrollTop || 0, cuerpo: this.$refs.cuerpo?.scrollTop || 0};
             restaurarFoco = devolverFoco;
             this.$refs.dialogo.close();
         },
         alCerrar() {
+            this.ocultarAyuda();
             this.abierto = false; sesion++; version++;
             this.cancelarBusqueda(); pendiente = null;
             this.buscando = false; this.mostrandoMapa = false; this.destacado = '';
@@ -124,6 +152,7 @@ export function crearExploradorTaxonomico(reloj = {
             temporizador = reloj.setTimeout(() => { temporizador = null; this.consultar(); }, 300);
         },
         async consultar(conservar = false) {
+            this.ocultarAyuda();
             this.cancelarBusqueda();
             const solicitud = ++version;
             const revision = revisionSeleccion;
@@ -149,6 +178,7 @@ export function crearExploradorTaxonomico(reloj = {
         },
         async alternar(nodo) {
             if (!nodo.tieneHijos || this.buscando || this.mostrandoMapa || ramasCargando.has(nodo.clave)) return;
+            this.ocultarAyuda();
             const posicion = this.bosque.nodos.find(item => item.clave === nodo.clave);
             const ancla = posicion ? {clave: nodo.clave, x: posicion.x, desplazamiento: this.$refs.lienzo.scrollLeft || 0} : null;
             if (this.expandidos.includes(nodo.clave)) {
@@ -181,8 +211,10 @@ export function crearExploradorTaxonomico(reloj = {
             this.$nextTick(() => this.$refs.dialogo.querySelector('.is-root .taxonomy-explorer-name')?.focus({preventScroll: true}));
         },
         distribuir(ancla = null, mostrarResultado = false) {
+            this.ocultarAyuda();
             this.ancho = this.$refs?.lienzo?.clientWidth || this.ancho;
             this.bosque = distribuirBosque(this.nodos, this.expandidos, this.ancho);
+            this.escala = this.ajustado ? escalaBosque(this.bosque, this.ancho, this.$refs.lienzo.clientHeight || 300) : 1;
             this.$nextTick(() => {
                 const svg = this.$refs.conexiones;
                 if (svg) {
@@ -193,7 +225,9 @@ export function crearExploradorTaxonomico(reloj = {
                     svg.replaceChildren(...paths);
                 }
                 const lienzo = this.$refs.lienzo;
-                if (ancla) {
+                if (this.ajustado) {
+                    lienzo.scrollLeft = 0; lienzo.scrollTop = 0;
+                } else if (ancla) {
                     const posicion = this.bosque.nodos.find(item => item.clave === ancla.clave);
                     if (posicion) lienzo.scrollLeft = Math.max(0, ancla.desplazamiento + posicion.x - ancla.x);
                 } else if (mostrarResultado) {
@@ -205,16 +239,19 @@ export function crearExploradorTaxonomico(reloj = {
         },
         seleccionar(nodo, cerrar = false) {
             if (this.buscando || this.mostrandoMapa) return;
+            // El nombre selecciona y abre; volver a pulsarlo nunca contrae la rama.
+            const apertura = !cerrar && nodo.tieneHijos && !this.expandidos.includes(nodo.clave) ? this.alternar(nodo) : null;
             this.error = ''; this.destacado = nodo.id; revisionSeleccion++;
             if (pendiente?.id === nodo.id && pendiente.sesion === sesion) {
-                pendiente.cerrar ||= cerrar; return;
+                pendiente.cerrar ||= cerrar; return apertura;
             }
             if (!procesando && this.seleccionado === nodo.id) {
                 if (cerrar) this.finalizarSeleccion(nodo.hoja);
-                return;
+                return apertura;
             }
             pendiente = {id: nodo.id, cerrar, sesion};
-            return this.procesarSeleccion();
+            const seleccion = this.procesarSeleccion();
+            return apertura ? Promise.all([seleccion, apertura]) : seleccion;
         },
         confirmarConTeclado(evento) {
             if (evento.key !== 'Enter' || evento.isComposing || evento.keyCode === 229) return;

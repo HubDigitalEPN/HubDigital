@@ -41,7 +41,14 @@
 .taxonomy-explorer-error { flex: none; margin-top: .8rem; color: #9a2333; font-size: .9rem; }
 .taxonomy-explorer-error button { margin-left: .5rem; text-decoration: underline; }
 .taxonomy-explorer-forest { flex: 1; min-height: 160px; width: 100%; overflow: auto; overscroll-behavior: contain; border: 1px solid #dce7ef; border-radius: 9px; background: radial-gradient(circle, #d5e2eb 1px, transparent 1px) 0 0 / 20px 20px, #f8fbfd; scrollbar-color: #9cb6ca #eef4f8; scrollbar-width: thin; }
-.taxonomy-explorer-board { position: relative; margin: 0 auto; }
+.taxonomy-explorer-canvas { position: relative; margin: 0 auto; overflow: hidden; }
+.taxonomy-explorer-board { position: absolute; top: 0; left: 0; transform-origin: top left; }
+.taxonomy-explorer-fit[aria-pressed="true"] { background: #e5f2fb; border-color: #2775a2; }
+.taxonomy-explorer-tooltip { position: absolute; z-index: 4; width: max-content; max-width: min(22rem, calc(100% - 16px)); padding: .75rem .9rem; border: 1px solid #adc8df; border-radius: 8px; background: #fff; color: #173752; box-shadow: 0 5px 22px rgb(8 28 45 / 18%); font-size: .8rem; line-height: 1.4; overflow-wrap: anywhere; pointer-events: none; }
+.taxonomy-explorer-tooltip strong { display: block; font: 700 1rem Georgia, serif; }
+.taxonomy-explorer-tooltip > span { color: #536d83; }
+.taxonomy-explorer-tooltip p { margin: .4rem 0 0; }
+.taxonomy-explorer-tooltip-lineage { padding-top: .5rem; border-top: 1px solid #dce7ef; color: #536d83; }
 .taxonomy-explorer-board svg { position: absolute; inset: 0; pointer-events: none; stroke: #85a9c3; stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; opacity: .65; fill: none; }
 .taxonomy-explorer-node { position: absolute; display: flex; align-items: center; border: 1px solid #c4d6e4; border-radius: 10px; background: #fff; box-shadow: 0 3px 9px rgb(18 51 77 / 6%); }
 .taxonomy-explorer-node::after { content: ''; position: absolute; top: -4px; left: calc(50% - 4px); width: 8px; height: 8px; border: 2px solid #f8fbfd; border-radius: 50%; background: var(--taxon-color); pointer-events: none; }

@@ -31,7 +31,7 @@ function dashboardConMapa(celdas) {
             addTo() { return this; }, redraw() { redibujosTeselas++; },
         }),
         featureGroup: () => capa, latLngBounds: puntos => ({puntos, isValid: () => puntos.length > 0}),
-        DomUtil: {create: nodo},
+        DomUtil: {create(tag, clase, padre) {const elemento = {...nodo(), tagName: tag, className: clase, children: []}; padre?.children.push(elemento); return elemento;}},
         divIcon: opciones => opciones,
         marker(coordenadas, opciones) { return L.circleMarker(coordenadas, opciones); },
         circleMarker(coordenadas, opciones) {
@@ -97,6 +97,22 @@ function activarComposicion(dashboard, identificador) {
     const el = {_x_dataStack: [dashboard], hasAttribute: () => true};
     return runInNewContext(`${funciones}\n${'contextualizeExpression(expresion, el)'}`, {expresion, el});
 }
+
+test('trece registros en tres coordenadas muestran sus cantidades y seis registros coincidentes abren la misma ubicación', () => {
+    const celdas = [{lat: -.666, lon: -77.91, total: 6, filos: {Arthropoda: 6}},
+        {lat: -.71, lon: -76.2, total: 5, filos: {Arthropoda: 5}}, {lat: -.712, lon: -76.201, total: 2, filos: {Arthropoda: 2}}];
+    const {dashboard, marcadores, pintar} = dashboardConMapa(celdas);
+    assert.equal(marcadores.length, 3);
+    assert.equal(marcadores.reduce((suma, m) => suma + Number(m.opciones.icon.html.children[0].textContent), 0), 13);
+    const aperturas = []; dashboard.abrirUbicacion = (...datos) => aperturas.push(datos.slice(0, 3));
+    dashboard.actualizar({celdas: [celdas[0]], filos: {Arthropoda: 6}}); pintar();
+    assert.equal(marcadores.length, 1);
+    assert.equal(marcadores[0].opciones.icon.html.children[0].textContent, '6');
+    assert.equal(marcadores[0].opciones.icon.html.children[1].textContent, 'reg.');
+    assert.deepEqual(Array.from(marcadores[0].coordenadas), [-.666, -77.91]);
+    assert.match(marcadores[0].elemento.atributos['aria-label'], /6 registros.*Comparten esta coordenada/);
+    marcadores[0].eventos.click(); assert.deepEqual(Array.from(aperturas[0]), [-.666, -77.91, 6]);
+});
 
 test('composición llega a Livewire por UUID y el mapa reemplaza la población al seleccionar y retirar cada filo', () => {
     const celdas = [
@@ -327,7 +343,8 @@ test('una ubicación compartida muestra todos sus colores y abre las coordenadas
     const {dashboard, marcadores, pintar} = dashboardConMapa(celdas);
     assert.equal(marcadores.length, 1);
     const mixto = marcadores[0];
-    assert.equal(mixto.opciones.icon.className, 'atlas-map-mixed');
+    assert.equal(mixto.opciones.icon.className, 'atlas-map-count');
+    assert.equal(mixto.opciones.icon.html.children[0].textContent, '8');
     assert.match(mixto.elemento.style.background, /#17699b/);
     assert.match(mixto.elemento.style.background, /#d17d28/);
     assert.match(mixto.elemento.atributos['aria-label'], /Mollusca: 2/);
@@ -339,7 +356,8 @@ test('una ubicación compartida muestra todos sus colores y abre las coordenadas
     assert.deepEqual(Array.from(aperturas[0]), [-0.63194, -76.14416, 8]);
     dashboard.actualizar({celdas: [{...celdas[0], total: 2, filos: {Mollusca: 2}}], filos: {Mollusca: 2}});
     pintar();
-    assert.equal(marcadores[0].opciones.fillColor, '#d17d28');
+    assert.equal(marcadores[0].elemento.style.background, '#d17d28');
+    assert.equal(marcadores[0].opciones.icon.html.children[0].textContent, '2');
     assert.deepEqual(Array.from(marcadores[0].coordenadas), [-0.63194, -76.14416]);
 });
 
@@ -409,7 +427,7 @@ test('QA7 una tesela recuperada no oculta otro error y el reintento conserva la 
 
 test('QA7 puntos e iconos conservan la proyección fraccionaria sin redondear ni alterar coordenadas', () => {
     for (const filos of [{Annelida: 1}, {Annelida: 1, Arthropoda: 1}]) {
-        const {capasOriginales} = dashboardConMapa([{lat: -3.762, lon: -78.502, total: 2, filos}]);
+        const {capasOriginales} = dashboardConMapa([{lat: -3.762, lon: -78.502, total: Object.values(filos).reduce((a, b) => a + b, 0), filos}]);
         const capa = capasOriginales[0]; const latlng = {lat: -3.762, lng: -78.502};
         capa._latlng = latlng;
         capa._map = {getZoom: () => 10, getPixelOrigin: () => ({x: 100, y: 200}), project(valor) {

@@ -562,6 +562,11 @@
 .atlas-map-cluster-unit { padding:0 4px 2px; background:#fffffff2; border-radius:0 0 4px 4px; font:600 10px/1 system-ui,sans-serif; }
 .atlas-map-mixed { border:1px solid #102d4870; border-radius:50%; opacity:.9; cursor:pointer; }
 .atlas-map-mixed:focus-visible { outline:3px solid #102d48; outline-offset:3px; }
+.atlas-map-count { display:flex; align-items:center; justify-content:center; border:2px solid #fff; border-radius:50%; box-shadow:0 0 0 1px #102d4870,0 2px 6px #102d4840; cursor:pointer; }
+.atlas-map-count-label { display:flex; flex-direction:column; align-items:center; padding:1px 3px; border-radius:4px; background:#fffffff2; color:#102d48; line-height:1; }
+.atlas-map-count-label strong { font:700 14px/1.1 system-ui,sans-serif; }
+.atlas-map-count-label span { font:600 9px/1.1 system-ui,sans-serif; }
+.atlas-map-count:focus-visible { outline:3px solid #102d48; outline-offset:3px; }
 .atlas-legend-cluster { display:inline-flex; flex:none; align-items:center; justify-content:center; width:22px; height:22px; margin-right:.3rem; border:2px solid #fff; border-radius:50%; background:#17699b; color:#fff; box-shadow:0 0 0 1px #0e4975; font-style:normal; font-weight:700; }
 
 .collection-active-filters { display:flex; flex:1 1 12rem; min-width:0; flex-wrap:wrap; gap:.45rem; padding:0; }
