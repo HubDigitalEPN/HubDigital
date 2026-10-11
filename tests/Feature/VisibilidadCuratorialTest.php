@@ -98,6 +98,19 @@ test('las tres vistas se alternan en el mismo componente y conservan la selecci�
 
 test('los filtros públicos se aplican también a la lista CSV y respetan la ubicación visible', function (): void {
     Livewire::withoutLazyLoading();
+    $contenidoResultados = static function (string $html, string $clase): DOMNode {
+        $anterior = libxml_use_internal_errors(true);
+        try {
+            $documento = new DOMDocument;
+            $documento->loadHTML('<?xml encoding="UTF-8">'.$html);
+            $nodo = (new DOMXPath($documento))->query('//*[contains(concat(" ", normalize-space(@class), " "), " '.$clase.' ")]')->item(0);
+            expect($nodo)->not->toBeNull();
+            return $nodo;
+        } finally {
+            libxml_clear_errors();
+            libxml_use_internal_errors($anterior);
+        }
+    };
     $ahora = now();
     $filo = (string) Str::uuid();
     $colector = 'Filtro QA '.Str::uuid();
@@ -144,18 +157,26 @@ test('los filtros públicos se aplican también a la lista CSV y respetan la ubi
     $redireccion = $this->get(route('portal.estadisticas', $filtros))->assertRedirect();
     $destino = $redireccion->baseResponse->headers->get('Location');
     expect($destino)->toContain('fprov=Pichincha', 'fmes=6', 'vista=mapa');
-    $this->get($destino)->assertOk()
+    $mapa = $this->get($destino)->assertOk()
         ->assertSee('<small class="atlas-collection-count">(1 registro)</small>', false)
-        ->assertSee(\Modules\CatalogoPublico\Infrastructure\ProtocoloColectaPublico::clave($metodo))->assertSee($metodo)->assertDontSee($sinUbicacion)->assertDontSee($metodoRestringido);
+        ->assertSee(\Modules\CatalogoPublico\Infrastructure\ProtocoloColectaPublico::clave($metodo))->assertSee($metodo);
+    // Los nombres científicos públicos del árbol lateral siguen disponibles;
+    // los resultados del mapa y CSV deben conservar la selección y sus permisos.
+    expect($contenidoResultados($mapa->getContent(), 'atlas-dashboard')->textContent)
+        ->not->toContain($sinUbicacion)->not->toContain($metodoRestringido);
     $csv = $this->get(route('portal.lista-especies', $filtros))->assertOk()->streamedContent();
     expect($csv)->toContain($conUbicacion)->not->toContain($sinUbicacion)->not->toContain($metodoRestringido);
     $taxonRedireccion = $this->get(route('portal.estadisticas', ['taxon' => $conUbicacion, 'mes' => 6]))->assertRedirect();
     $this->get($taxonRedireccion->baseResponse->headers->get('Location'))
         ->assertOk()->assertSee($conUbicacion)->assertDontSee($sinUbicacion);
-    $this->get(route('portal.catalogo', [
+    $registros = $this->get(route('portal.catalogo', [
         'vista' => 'registros', 'fph' => $filo, 'fprov' => 'Pichincha',
         'ffd' => '2025-01-01', 'ffh' => '2025-12-31', 'fmes' => '6',
         'fid' => 'especie', 'fgeo' => '1', 'fap' => '1', 'fco' => $colector, 'fm' => [$metodo],
-    ]))->assertOk()->assertSee($conUbicacion)
-        ->assertDontSee($sinUbicacion)->assertDontSee($metodoRestringido);
+    ]))->assertOk()->assertSee($conUbicacion);
+    $resultados = $contenidoResultados($registros->getContent(), 'portal-records-catalogue');
+    expect($resultados->textContent)->toContain($conUbicacion)
+        ->not->toContain($sinUbicacion)->not->toContain($metodoRestringido);
+    $filas = (new DOMXPath($resultados->ownerDocument))->query('.//table[@class="atlas-record-table"]/tbody/tr', $resultados);
+    expect($filas->length)->toBe(1);
 });

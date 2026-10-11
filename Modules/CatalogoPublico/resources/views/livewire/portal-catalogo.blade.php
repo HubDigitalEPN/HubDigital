@@ -1,15 +1,16 @@
 <div x-data="portalCatalogo" data-catalogo-seleccion="{{ json_encode($this->seleccionPublicaChat) }}" data-catalogo-historial="{{ json_encode($this->historialCatalogo) }}" x-on:catalogo-estado-url.window="actualizarHistorial($event.detail)" x-on:criterio-retirado.window="$nextTick(() => ($el.querySelector('.collection-active-filters button') || $el.querySelector('.collection-view-switch button'))?.focus({preventScroll: true}))">
     @php
+        $catalogoTexto = static fn (string $clave): string => \App\Support\PortalCopy::text('catalogo.'.$clave);
         $etiquetaConteo = static fn (string $nivel, int $cantidad, string $plural): string => $cantidad === 1 ? (['kingdom' => 'reino', 'phylum' => 'filo', 'class' => 'clase', 'order' => 'orden', 'family' => 'familia', 'genus' => 'género', 'species' => 'especie'][$nivel] ?? $plural) : $plural;
     @endphp
     @if($avisoSeleccionUrl !== '')<p role="status" class="mx-auto max-w-7xl px-4 py-3 text-sm text-text-secondary">{{ $avisoSeleccionUrl }}</p>@endif
     <div x-cloak x-show="errorHistorial" class="mx-auto max-w-7xl px-4 py-3 text-sm text-text-secondary">
         <p x-text="errorHistorial" role="alert"></p>
-        <button type="button" class="mt-2 underline text-science-blue" x-on:click="window.location.reload()">Recargar la selección del enlace actual</button>
+        <button type="button" class="mt-2 underline text-science-blue" x-on:click="window.location.reload()">{{ $catalogoTexto('recargar_seleccion') }}</button>
     </div>
     <div x-cloak x-show="errorConsulta" class="mx-auto max-w-7xl px-4 py-3 text-sm text-text-secondary">
         <p x-text="errorConsulta" role="alert"></p>
-        <a :href="enlaceReintento" class="mt-2 inline-block underline text-science-blue">Reintentar la selección</a>
+        <a :href="enlaceReintento" class="mt-2 inline-block underline text-science-blue">{{ $catalogoTexto('reintentar_seleccion') }}</a>
     </div>
     @if($vista === 'tarjetas')
     {{-- =====================================================================
@@ -23,7 +24,7 @@
                     wire:click="navegar('', '')"
                     class="shrink-0 px-3 py-2 -mb-px text-xs font-medium transition-colors border-b-2 border-transparent text-text-secondary hover:text-text-primary hover:border-border"
                 >
-                    Catálogo
+                    {{ $catalogoTexto('catalogo') }}
                 </button>
                 <span class="shrink-0 self-end h-4 w-px bg-border mb-2 mx-1"></span>
                 @foreach(array_filter($nivelesNavegacion, fn ($k) => $k !== '', ARRAY_FILTER_USE_KEY) as $nivelNav => $etiquetaNav)
@@ -57,7 +58,7 @@
                         wire:click="navegar('', '')"
                         class="text-science-blue hover:underline transition-colors"
                     >
-                        Catálogo
+                        {{ $catalogoTexto('catalogo') }}
                     </button>
 
                     @foreach($ruta as $segmento)
@@ -98,12 +99,12 @@
     @endif {{-- fin navegación de tarjetas --}}
 
 
-    <div class="collection-loading" wire:loading.delay wire:target="borradorFiltros,cambiarVista,aplicarBorrador,limpiarFiltros,retirarCriterio,seleccionarFilo,seleccionarProvincia,seleccionarDecada,seleccionarMes,seleccionarAltitud,seleccionarMetodo,seleccionarArea,explorarNivel,navegar,cambiarPagina,cambiarPaginaHermanos,abrirFichaRegistro">
-        <span class="collection-loading-indicator" role="status" aria-live="polite"><span class="atlas-spinner" aria-hidden="true"></span><span>Actualizando filtros y registros…</span></span>
+    <div class="collection-loading" wire:loading.delay wire:target="borradorFiltros,cambiarVista,aplicarBorrador,aplicarBusquedaTexto,limpiarFiltros,retirarCriterio,seleccionarFilo,seleccionarProvincia,cambiarProvinciaPanel,seleccionarLocalidad,volverProvincias,seleccionarDecada,seleccionarMes,seleccionarAltitud,seleccionarMetodo,seleccionarArea,explorarNivel,navegar,cambiarPagina,cambiarPaginaHermanos,abrirFichaRegistro">
+        <span class="collection-loading-indicator" role="status" aria-live="polite"><span class="atlas-spinner" aria-hidden="true"></span><span>{{ $catalogoTexto('actualizando') }}</span></span>
     </div>
     <div class="collection-workspace" wire:key="catalogo-workspace" wire:loading.class="is-updating">
         <x-catalogopublico::filtro-investigacion
-            :provincias="$provinciasDisponibles" :localidades="$this->localidadesDisponibles" :filos="$filosDisponibles"
+            :filos="$filosDisponibles"
             :preparaciones="$preparacionesDisponibles" :metodos="$metodosRecoleccionDisponibles"
             :biomas="$biomasDisponibles" :hay-filtros-activos="$hayFiltrosActivos"
             :aplicados="$this->filtrosAplicados"
@@ -119,10 +120,10 @@
             @endforeach
         </div>
         <div class="collection-view-switch">
-            <button type="button" wire:loading.attr="disabled" x-on:click="$dispatch('abrir-explorador-taxonomico', {invocador: $event.currentTarget})" aria-haspopup="dialog" aria-controls="explorador-taxonomico" aria-label="Árbol taxonómico" title="Árbol taxonómico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6v5H9zM3 16h6v5H3zM15 16h6v5h-6zM12 8v4M6 16v-4h12v4"/></svg><span class="sr-only">Árbol taxonómico</span></button>
-            <button type="button" wire:loading.attr="disabled" wire:click="cambiarVista('tarjetas')" aria-label="Vista de tarjetas" title="Tarjetas" aria-pressed="{{ $vista === 'tarjetas' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg><span class="sr-only">Tarjetas</span></button>
-            <button type="button" wire:loading.attr="disabled" wire:click="cambiarVista('registros')" aria-label="Vista de registros" title="Registros" aria-pressed="{{ $vista === 'registros' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h3m4 0h9M4 12h3m4 0h9M4 18h3m4 0h9"/></svg><span class="sr-only">Registros</span></button>
-            <button type="button" wire:loading.attr="disabled" wire:click="cambiarVista('mapa')" aria-label="Vista de mapa y análisis" title="Mapa y análisis" aria-pressed="{{ $vista === 'mapa' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2zM9 3v16m6-14v16"/></svg><span class="sr-only">Mapa y análisis</span></button>
+            <button type="button" wire:loading.attr="disabled" x-on:click="$dispatch('abrir-explorador-taxonomico', {invocador: $event.currentTarget})" aria-haspopup="dialog" aria-controls="explorador-taxonomico" aria-label="{{ $catalogoTexto('arbol_taxonomico') }}" title="{{ $catalogoTexto('arbol_taxonomico') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6v5H9zM3 16h6v5H3zM15 16h6v5h-6zM12 8v4M6 16v-4h12v4"/></svg><span class="sr-only">{{ $catalogoTexto('arbol_taxonomico') }}</span></button>
+            <button type="button" wire:loading.attr="disabled" wire:click="cambiarVista('tarjetas')" aria-label="{{ $catalogoTexto('vista_tarjetas') }}" title="{{ $catalogoTexto('tarjetas') }}" aria-pressed="{{ $vista === 'tarjetas' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg><span class="sr-only">{{ $catalogoTexto('tarjetas') }}</span></button>
+            <button type="button" wire:loading.attr="disabled" wire:click="cambiarVista('registros')" aria-label="{{ $catalogoTexto('vista_registros') }}" title="{{ $catalogoTexto('registros') }}" aria-pressed="{{ $vista === 'registros' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h3m4 0h9M4 12h3m4 0h9M4 18h3m4 0h9"/></svg><span class="sr-only">{{ $catalogoTexto('registros') }}</span></button>
+            <button type="button" wire:loading.attr="disabled" wire:click="cambiarVista('mapa')" aria-label="{{ $catalogoTexto('vista_mapa_analisis') }}" title="{{ $catalogoTexto('mapa_analisis') }}" aria-pressed="{{ $vista === 'mapa' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2zM9 3v16m6-14v16"/></svg><span class="sr-only">{{ $catalogoTexto('mapa_analisis') }}</span></button>
         </div>
     </nav>
 
@@ -130,10 +131,10 @@
     @if($vista === 'mapa')
         @if($errorMapa ?? false)
             <section class="mx-auto max-w-7xl px-4 py-8" aria-labelledby="mapa-error-titulo">
-                <h1 id="mapa-error-titulo" class="font-display text-2xl font-bold text-blue-navy">No se pudo cargar el mapa</h1>
-                <p class="mt-3" role="alert">La consulta no pudo completarse en el tiempo disponible. Tus filtros se conservan; puedes reintentar o consultar los registros.</p>
-                <button type="button" wire:click="$refresh" class="mt-4 underline text-science-blue">Reintentar mapa</button>
-                <button type="button" wire:click="cambiarVista('registros')" class="mt-4 ml-4 underline text-science-blue">Ver registros de la selección</button>
+                <h1 id="mapa-error-titulo" class="font-display text-2xl font-bold text-blue-navy">{{ $catalogoTexto('mapa_error_titulo') }}</h1>
+                <p class="mt-3" role="alert">{{ $catalogoTexto('mapa_error_descripcion') }}</p>
+                <button type="button" wire:click="$refresh" class="mt-4 underline text-science-blue">{{ $catalogoTexto('reintentar_mapa') }}</button>
+                <button type="button" wire:click="cambiarVista('registros')" class="mt-4 ml-4 underline text-science-blue">{{ $catalogoTexto('ver_registros_seleccion') }}</button>
             </section>
         @else
         @include('catalogopublico::dashboard-coleccion')
@@ -144,24 +145,24 @@
             <div class="portal-records-header mb-4 flex flex-wrap items-end justify-between gap-3">
                 <div>
                     <h1 class="font-display text-2xl font-bold text-blue-navy">
-                        {{ $taxonActual !== '' ? 'Registros de '.$taxonActual : 'Registros del catálogo' }}
+                        {{ $taxonActual !== '' ? 'Registros de '.$taxonActual : \App\Support\PortalCopy::text('catalogo.registros_titulo') }}
                     </h1>
                     <p class="mt-1 text-sm text-text-secondary">{{ number_format($totalRegistrosVista, 0, ',', '.') }} {{ $totalRegistrosVista === 1 ? 'registro' : 'registros' }} · página {{ $paginaActual }} de {{ $ultimaPagina }}</p>
                 </div>
                 @if($totalRegistrosVista > 0)
-                    <button type="button" wire:click="descargarResultados" wire:loading.attr="disabled" wire:target="descargarResultados" aria-label="Descargar resultados CSV" class="rounded-md border border-science-blue px-4 py-2 text-sm font-semibold text-science-blue hover:bg-sky-50 disabled:opacity-50"><span class="portal-records-download-label">Descargar resultados CSV</span><span class="portal-records-download-compact-label" aria-hidden="true">CSV</span></button>
+                    <button type="button" wire:click="descargarResultados" wire:loading.attr="disabled" wire:target="descargarResultados" aria-label="{{ $catalogoTexto('descargar_resultados') }}" class="rounded-md border border-science-blue px-4 py-2 text-sm font-semibold text-science-blue hover:bg-sky-50 disabled:opacity-50"><span class="portal-records-download-label">{{ $catalogoTexto('descargar_resultados') }}</span><span class="portal-records-download-compact-label" aria-hidden="true">CSV</span></button>
                 @endif
             </div>
             @if($totalRegistrosVista === 0)
-                <p class="rounded-lg border border-border bg-surface p-8 text-center text-text-secondary">No hay registros públicos para esta selección.</p>
+                <p class="rounded-lg border border-border bg-surface p-8 text-center text-text-secondary">{{ \App\Support\PortalCopy::text('catalogo.registros_vacios') }}</p>
             @else
                 <x-catalogopublico::tabla-registros-mapa :registros="$registrosVista" :imagenes="$imagenesRegistrosVista" :total="$totalRegistrosVista" contexto="catalogo" :mostrar-titulo="false" />
                 <nav class="portal-records-pagination" aria-label="Páginas de registros">
                     <span class="text-sm text-text-secondary">{{ $paginaActual }} / {{ $ultimaPagina }}</span>
                     <button type="button" wire:click="cambiarPagina({{ $paginaActual - 1 }})" @disabled($paginaActual <= 1)
-                        class="rounded-lg border border-border px-4 py-2 text-sm text-science-blue disabled:cursor-not-allowed disabled:opacity-40">Anterior</button>
+                        class="rounded-lg border border-border px-4 py-2 text-sm text-science-blue disabled:cursor-not-allowed disabled:opacity-40">{{ $catalogoTexto('anterior') }}</button>
                     <button type="button" wire:click="cambiarPagina({{ $paginaActual + 1 }})" @disabled($paginaActual >= $ultimaPagina)
-                        class="rounded-lg border border-border px-4 py-2 text-sm text-science-blue disabled:cursor-not-allowed disabled:opacity-40">Siguiente</button>
+                        class="rounded-lg border border-border px-4 py-2 text-sm text-science-blue disabled:cursor-not-allowed disabled:opacity-40">{{ $catalogoTexto('siguiente') }}</button>
                 </nav>
             @endif
         </div>
@@ -170,7 +171,7 @@
     @if($nivelActual !== '' && $nivelActual !== 'species' && $taxonActual !== '' && ($conteos[$nivelActual.':'.$taxonActual] ?? 0) > 0)
         <section class="collection-taxon-records" aria-label="Registros del taxón seleccionado">
             <p>{{ number_format($conteos[$nivelActual.':'.$taxonActual], 0, ',', '.') }} {{ $conteos[$nivelActual.':'.$taxonActual] === 1 ? 'registro público' : 'registros públicos' }} de <em>{{ $taxonActual }}</em>, incluidos los identificados hasta este rango.</p>
-            <button type="button" wire:click="cambiarVista('registros')" wire:loading.attr="disabled">Ver registros de este taxón</button>
+            <button type="button" wire:click="cambiarVista('registros')" wire:loading.attr="disabled">{{ $catalogoTexto('ver_registros_taxon') }}</button>
         </section>
     @endif
     @if($nivelExplorar === '')
@@ -181,7 +182,7 @@
         <div class="bg-blue-navy">
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
                 <h1 class="font-display text-2xl font-bold text-white">
-                    Catálogo del laboratorio de invertebrados
+                    {{ \App\Support\PortalCopy::text('catalogo.catalogo_titulo') }}
                 </h1>
             </div>
         </div>
@@ -935,6 +936,7 @@
     </div>
 
     @include('catalogopublico::components.explorador-taxonomico')
+    <livewire:catalogopublico.registros-taxon-explorador />
 
     {{-- Indicador de carga --}}
     <div

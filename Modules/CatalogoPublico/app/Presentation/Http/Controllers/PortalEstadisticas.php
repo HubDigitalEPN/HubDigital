@@ -61,7 +61,7 @@ final class PortalEstadisticas
         $this->presupuesto = new PresupuestoConsultaPortal($firma);
         try {
             return $this->presupuesto->ejecutar(fn (): array => $this->cachear(
-                'portal:estadisticas:v22:'.(int) $incluirContenidoTaxon.':'.$this->revisionDatos().':'.$firma,
+                'portal:estadisticas:v23:'.(int) $incluirContenidoTaxon.':'.$this->revisionDatos().':'.$firma,
                 fn (): array => $this->resumir($filtros, $incluirContenidoTaxon),
             ));
         } finally {
@@ -77,7 +77,7 @@ final class PortalEstadisticas
     /** Distribución completa sin hidratar tarjetas ni calcular los otros indicadores. */
     public function puntosParaMapa(array $filtros): array
     {
-        return $this->cachear('portal:puntos:v4:'.$this->revisionDatos().':'.sha1(json_encode($filtros)), function () use ($filtros): array {
+        return $this->cachear('portal:puntos:v5:'.$this->revisionDatos().':'.sha1(json_encode($filtros)), function () use ($filtros): array {
             $taxones = DB::table('taxonomia.taxones')->get(['id', 'padre_id', 'rango', 'nombre_cientifico'])->keyBy('id');
             return $this->agruparPuntos($this->consulta($filtros), $taxones);
         });
@@ -86,7 +86,7 @@ final class PortalEstadisticas
     /** Opciones geográficas públicas, invalidadas junto con los registros y sus permisos. */
     public function geografiaParaFiltros(FiltrosBusqueda $filtros, string $nivel = '', string $taxon = ''): array
     {
-        $clave = 'portal:geografia:v1:'.$this->revisionDatos().':'.sha1(serialize([$filtros, $nivel, $taxon]));
+        $clave = 'portal:geografia:v2:'.$this->revisionDatos().':'.sha1(serialize([$filtros, $nivel, $taxon]));
         return $this->cachear($clave, static function () use ($filtros, $nivel, $taxon): array {
             $consulta = app(EloquentProveedorEspecimenesParaArbol::class)->consultaPublica($filtros, $nivel, $taxon);
             $campos = ['CASE WHEN ed.state_province_visible THEN te.state_province END AS provincia'];
@@ -100,6 +100,31 @@ final class PortalEstadisticas
     private function revisionDatos(): int
     {
         return (int) DB::table('divulgacion.portal_cache_revision')->where('id', 1)->value('version');
+    }
+
+    /** Faceta territorial: conserva otros filtros y ofrece todas las provincias o localidades públicas. */
+    public function territorioParaPanel(FiltrosBusqueda $filtros, string $nivel = '', string $taxon = ''): array
+    {
+        $clave = 'portal:territorio:v1:'.$this->revisionDatos().':'.sha1(serialize([$filtros, $nivel, $taxon]));
+        return $this->cachear($clave, static function () use ($filtros, $nivel, $taxon): array {
+            $localidades = $filtros->provinciasSeleccionadas() !== [];
+            $campo = $localidades ? \Modules\CatalogoPublico\Infrastructure\LocalidadPublica::sql('te') : 'te.state_province';
+            $nombre = $localidades ? 'localidad' : 'provincia';
+            $consulta = app(EloquentProveedorEspecimenesParaArbol::class)->consultaPublica($filtros, $nivel, $taxon)
+                ->where('ed.state_province_visible', true)->whereRaw(CalidadDatoPublico::textoValido($campo));
+            if ($localidades) $consulta->where('ed.locality_name_visible', true);
+            $filas = $consulta->selectRaw($campo.' AS nombre, COUNT(*) AS registros')->groupByRaw($campo)->get();
+            $agrupadas = [];
+            foreach ($filas as $fila) {
+                if (! NormalizacionGeografica::contieneNombre($fila->nombre)) continue;
+                $claveNombre = NormalizacionGeografica::normalizar($fila->nombre);
+                $agrupadas[$claveNombre] ??= [$nombre => trim($fila->nombre), 'registros' => 0];
+                $agrupadas[$claveNombre]['registros'] += (int) $fila->registros;
+            }
+            $resultado = array_values($agrupadas);
+            usort($resultado, static fn (array $a, array $b): int => ($b['registros'] <=> $a['registros']) ?: strcmp($a[$nombre], $b[$nombre]));
+            return $resultado;
+        });
     }
 
     /** Un punto mantiene la latitud y longitud almacenadas; solo agrupa coincidencias exactas. */

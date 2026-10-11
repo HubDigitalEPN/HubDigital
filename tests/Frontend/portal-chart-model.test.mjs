@@ -33,6 +33,29 @@ test('el tiempo respeta décadas ausentes y los meses conservan doce posiciones 
     assert.deepEqual(mensual.slice(0, 3).map(fila => fila.value), [0, 8, 0]);
 });
 
+test('el gráfico territorial distingue localidad de provincia y expone sus categorías en el eje Y', () => {
+    const llamadas = [];
+    const localidades = configuracionGraficoPanel('riqueza', [{localidad: 'Puyo', registros: 4}], '', {
+        seleccionarLocalidad: nombre => llamadas.push(nombre),
+    });
+    localidades.options.onClick({}, [{index: 0}]);
+    assert.deepEqual(llamadas, ['Puyo']);
+    assert.equal(localidades.options.scales.y.title.text, 'Localidad');
+    assert.equal(localidades.options.scales.y.title.display, true);
+    assert.equal(localidades.options.scales.y.ticks.callback(0), 'Puyo');
+    const provincias = configuracionGraficoPanel('riqueza', [{provincia: 'Pastaza', registros: 4}], '', {});
+    assert.equal(provincias.options.scales.y.title.text, 'Provincia');
+    const escala = {ticks: [{value: -.5}, {value: .5}]};
+    provincias.options.scales.y.afterBuildTicks(escala);
+    assert.deepEqual(escala.ticks, [{value: 0}]);
+    assert.deepEqual(escala.ticks.map(marca => provincias.options.scales.y.ticks.callback(marca.value)), ['Pastaza']);
+    const altitud = configuracionGraficoPanel('altitud', [{desde: 0, hasta: 499, registros: 4}], '', {});
+    assert.equal(altitud.options.scales.y.title.text, 'Intervalo de elevación (m)');
+    const varias = configuracionGraficoPanel('riqueza', [{localidad: 'Puyo', registros: 4}, {localidad: 'Mera', registros: 2}], '', {});
+    varias.options.scales.y.afterBuildTicks(escala);
+    assert.deepEqual(escala.ticks.map(marca => varias.options.scales.y.ticks.callback(marca.value)), ['Puyo', 'Mera']);
+});
+
 test('los intervalos altitudinales se etiquetan completos y los filos usan los colores del mapa', () => {
     const altitud = configuracionGraficoPanel('altitud', [{desde: 0, hasta: 499, registros: 3}], '', {});
     assert.equal(altitud.type, 'scatter');
@@ -41,4 +64,14 @@ test('los intervalos altitudinales se etiquetan completos y los filos usan los c
     const filos = configuracionGraficoPanel('filos', {Nematomorpha: 1, Mollusca: 347}, '', {});
     assert.deepEqual(filos.data.datasets[0].backgroundColor, [colorFilo('Nematomorpha'), colorFilo('Mollusca')]);
     assert.deepEqual(valoresPanel('metodos', [{metodo: 'fogging', etiqueta: 'Nebulización de dosel', registros: 8}])[0], {label: 'Nebulización de dosel', value: 8, x: NaN});
+});
+
+test('las localidades largas caben en el eje Y y conservan nombre completo en ayuda y selección', () => {
+    const nombre = 'COTUNDO, Sierra Azul, Valle Hermoso, Vía al Tena, Cosanga';
+    const llamadas = [];
+    const config = configuracionGraficoPanel('riqueza', [{localidad: nombre, registros: 250}], '', {seleccionarLocalidad: valor => llamadas.push(valor)});
+    const marca = config.options.scales.y.ticks.callback.call({chart: {width: 280}}, 0);
+    assert.equal(marca.length, 14); assert.ok(marca.endsWith('…'));
+    assert.equal(config.options.plugins.tooltip.callbacks.title([{dataIndex: 0}]), nombre);
+    config.options.onClick({}, [{index: 0}]); assert.deepEqual(llamadas, [nombre]);
 });

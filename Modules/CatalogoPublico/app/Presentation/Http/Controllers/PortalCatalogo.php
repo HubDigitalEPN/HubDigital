@@ -43,6 +43,7 @@ final class PortalCatalogo extends Component
 {
     use ExploraCeldaMapa;
     use ExploraTaxonomia;
+    use CargaRegistrosPublicos;
 
     public array $borradorFiltros = [];
 
@@ -99,7 +100,7 @@ final class PortalCatalogo extends Component
         if ($this->taxon !== '') $criterios[] = ['clave' => 'jerarquia', 'etiqueta' => 'Selección taxonómica', 'valor' => $this->taxon, 'indice' => -1];
         if ($this->filtroTaxonId !== '') {
             $nodo = app(\Modules\CatalogoPublico\Infrastructure\ExploradorTaxonomicoPublico::class)->taxon($this->contextoExplorador(), $this->filtroTaxonId);
-            $criterios[] = ['clave' => 'filtroTaxonId', 'etiqueta' => 'Taxón del explorador', 'valor' => $nodo['nombre'] ?? 'Taxón seleccionado', 'indice' => -1];
+            $criterios[] = ['clave' => 'filtroTaxonId', 'etiqueta' => 'Taxón', 'valor' => $nodo['nombre'] ?? 'Taxón seleccionado', 'indice' => -1];
         }
         foreach ($etiquetas as $campo => $etiqueta) {
             $valores = is_array($this->{$campo}) ? $this->{$campo} : [$this->{$campo}];
@@ -267,6 +268,10 @@ final class PortalCatalogo extends Component
             foreach ($anteriores as $propiedad => $valor) $this->{$propiedad} = $valor;
             throw $error;
         }
+        if ($this->filtroTaxon !== $anteriores['filtroTaxon']) {
+            $this->ajustarFilosAlTexto();
+            $this->actualizarFiltros();
+        }
         $this->borradorFiltros = $this->valoresBorrador();
         unset($this->geografiaDisponible, $this->provinciasDisponibles, $this->localidadesDisponibles);
         $this->mostrarFotoComposicion = false;
@@ -278,6 +283,7 @@ final class PortalCatalogo extends Component
     {
         $campo = explode('.', $clave ?? '')[0];
         if (! array_key_exists($campo, $this->valoresFiltros())) return;
+        if (in_array($campo, ['filtroCatalogo', 'filtroTaxon'], true)) return;
         $this->avisoFiltrosDependientes = '';
         if ($campo === 'filtroFilos') $this->borradorFiltros['filtroFiloId'] = '';
         if ($campo === 'filtroProvincias') $this->borradorFiltros['filtroProvincia'] = '';
@@ -293,6 +299,62 @@ final class PortalCatalogo extends Component
         unset($this->borradorFiltros['filtroGeografias'][$indice]);
         $this->borradorFiltros['filtroGeografias'] = array_values($this->borradorFiltros['filtroGeografias']);
         $this->aplicarBorrador();
+    }
+
+    public function aplicarBusquedaTexto(string $campo, string $texto): void
+    {
+        if (! in_array($campo, ['filtroCatalogo', 'filtroTaxon'], true)) abort(422);
+        validator([$campo => $texto], [$campo => ['nullable', 'string', 'max:'.($campo === 'filtroCatalogo' ? 240 : 120)]])->validate();
+        $this->borradorFiltros[$campo] = trim($texto);
+        $this->aplicarBorrador();
+        if ($campo === 'filtroTaxon') $this->ajustarGeografiaDependiente();
+    }
+
+    public function seleccionarLocalidad(string $localidad): void
+    {
+        if ($this->filtrosActuales()->provinciasSeleccionadas() === []) return;
+        $opcion = NormalizacionGeografica::nombreDisponible($localidad, array_column($this->territorioPanel, 'localidad'));
+        if ($opcion === null) return;
+        $this->filtroGeografias = in_array($opcion, $this->filtroGeografias, true)
+            ? array_values(array_diff($this->filtroGeografias, [$opcion])) : [...$this->filtroGeografias, $opcion];
+        $this->actualizarFiltros();
+        $this->mostrarFotoComposicion = false;
+        $this->borradorFiltros = $this->valoresBorrador();
+        $this->cerrarCelda();
+        $this->cerrarFichaRegistro();
+    }
+
+    public function volverProvincias(): void
+    {
+        $this->filtroProvincia = '';
+        $this->filtroProvincias = $this->filtroGeografias = [];
+        $this->actualizarFiltros();
+        $this->mostrarFotoComposicion = false;
+        $this->borradorFiltros = $this->valoresBorrador();
+        $this->cerrarCelda();
+        $this->cerrarFichaRegistro();
+        $this->dispatch('territorio-actualizado', localidades: false);
+    }
+
+    public function cambiarProvinciaPanel(string $provincia): void
+    {
+        $opcion = NormalizacionGeografica::nombreDisponible($provincia, $this->provinciasDisponibles);
+        if ($opcion === null) return;
+        $this->filtroProvincia = $opcion;
+        $this->filtroProvincias = $this->filtroGeografias = [];
+        $this->actualizarFiltros();
+        $this->mostrarFotoComposicion = false;
+        $this->borradorFiltros = $this->valoresBorrador();
+        $this->cerrarCelda();
+        $this->cerrarFichaRegistro();
+        $this->dispatch('territorio-actualizado', localidades: true);
+    }
+
+    #[Computed]
+    public function territorioPanel(): array
+    {
+        $datos = array_replace($this->valoresFiltros(), ['filtroGeografias' => []]);
+        return app(PortalEstadisticas::class)->territorioParaPanel(FiltrosBusqueda::desde($datos), $this->nivel, $this->taxon);
     }
 
     private function ajustarGeografiaDependiente(): void
@@ -433,6 +495,7 @@ final class PortalCatalogo extends Component
         $this->borradorFiltros = $this->valoresBorrador();
         $this->cerrarCelda();
         $this->cerrarFichaRegistro();
+        $this->dispatch('catalogo-busqueda-restaurada');
     }
 
     public function quitarTaxon(): void
@@ -675,6 +738,7 @@ final class PortalCatalogo extends Component
 
     public function actualizarFiltros(): void
     {
+        unset($this->territorioPanel);
         $this->filtroMetodos = array_values(array_unique(array_map(ProtocoloColectaPublico::clave(...), $this->filtroMetodos)));
         $this->validate([
             'filtroTaxonId' => ['nullable', 'uuid'],
@@ -711,6 +775,7 @@ final class PortalCatalogo extends Component
     {
         $opcion = NormalizacionGeografica::nombreDisponible($provincia, $this->provinciasDisponibles);
         if ($opcion !== null) {
+            unset($this->territorioPanel);
             $this->mostrarFotoComposicion = false;
             $provincias = $this->filtrosActuales()->provinciasSeleccionadas();
             $provincias = in_array($opcion, $provincias, true) ? array_values(array_diff($provincias, [$opcion])) : [...$provincias, $opcion];
@@ -719,6 +784,9 @@ final class PortalCatalogo extends Component
             $this->ajustarGeografiaDependiente();
             $this->borradorFiltros = $this->valoresBorrador();
             $this->pagina = 1;
+            $this->cerrarCelda();
+            $this->cerrarFichaRegistro();
+            $this->dispatch('territorio-actualizado', localidades: $provincias !== []);
         }
     }
 
@@ -982,10 +1050,11 @@ final class PortalCatalogo extends Component
         $this->filtroIdentificacion = '';
         $this->filtroSoloUbicacion = '';
         $this->filtroDatosCompletos = '';
-        unset($this->geografiaDisponible, $this->provinciasDisponibles, $this->localidadesDisponibles);
+        unset($this->geografiaDisponible, $this->provinciasDisponibles, $this->localidadesDisponibles, $this->territorioPanel);
         $this->borradorFiltros = $this->valoresBorrador();
         $this->cerrarCelda();
         $this->cerrarFichaRegistro();
+        $this->dispatch('catalogo-busqueda-restaurada');
     }
 
     // ─── Exportación ─────────────────────────────────────────────────────────
@@ -1075,8 +1144,9 @@ final class PortalCatalogo extends Component
                 static fn (string $filo, int $cantidad): array => [$filo, $cantidad],
                 array_keys($datos['filos']), array_values($datos['filos']),
             )],
-            'riqueza' => ['riqueza-por-provincia.csv', ['Provincia', 'Especies', 'Registros'], array_map(
-                static fn (array $fila): array => [$fila['provincia'], $fila['especies'], $fila['registros']], $datos['riqueza'],
+            'riqueza' => [$this->filtrosActuales()->provinciasSeleccionadas() === [] ? 'registros-por-provincia.csv' : 'registros-por-localidad.csv',
+                [$this->filtrosActuales()->provinciasSeleccionadas() === [] ? 'Provincia' : 'Localidad', 'Registros'], array_map(
+                static fn (array $fila): array => [$fila['localidad'] ?? $fila['provincia'], $fila['registros']], $this->territorioPanel,
             )],
             'decadas' => ['cobertura-por-decada.csv', ['Década', 'Especies', 'Registros'], array_map(
                 static fn (array $fila): array => [$fila['decada'], $fila['especies'], $fila['registros']], $datos['decadas'],
@@ -1390,32 +1460,6 @@ final class PortalCatalogo extends Component
             ->all();
     }
 
-    /**
-     * Imágenes agrupadas por occurrence_id para los especímenes visibles de la especie.
-     *
-     * @param  list<string>  $occurrenceIDs
-     * @return array<string, list<array{url: string, nombre: string}>>
-     */
-    private function cargarImagenesPorEspecimen(array $occurrenceIDs): array
-    {
-        if ($occurrenceIDs === []) {
-            return [];
-        }
-
-        $consulta = DB::table('divulgacion.imagenes_taxonomicas')
-            ->whereIn('occurrence_id', $occurrenceIDs)
-            ->where('disco', 'r2')
-            ->whereRaw('(SELECT COUNT(*) FROM taxonomia.especimenes identidad WHERE identidad.occurrence_id = divulgacion.imagenes_taxonomicas.occurrence_id) = 1')
-            ->selectRaw('occurrence_id, ruta, disco, nombre_original, ROW_NUMBER() OVER (PARTITION BY occurrence_id ORDER BY created_at, id) AS posicion');
-        return DB::query()->fromSub($consulta, 'fotos_publicas')->where('posicion', '<=', 12)->orderBy('occurrence_id')->orderBy('posicion')
-            ->get(['occurrence_id', 'ruta', 'disco', 'nombre_original'])
-            ->groupBy('occurrence_id')
-            ->map(fn ($grupo): array => $grupo->map(fn ($r): array => [
-                'url' => StorageImagenesAdapter::urlPublica($r->ruta),
-                'nombre' => $r->nombre_original,
-            ])->values()->all())
-            ->all();
-    }
 
     /** @return list<array{nivel: string, taxon: string, etiqueta: string}> */
     private function resolverRuta(ConstruirArbolTaxonomicoOutput $output): array
@@ -1509,70 +1553,6 @@ final class PortalCatalogo extends Component
         return $hermanos;
     }
 
-    /** @param list<string> $especimenIds @return list<object> */
-    private function cargarDetallesPorEspecimenIds(
-        array $especimenIds,
-        ProveedorEspecimenesPort $proveedor,
-        EspecimenDivulgableRepositoryInterface $repoDivulgable,
-    ): array {
-        return $this->aplicarVisibilidad($proveedor->buscarPorEspecimenIds($especimenIds), $repoDivulgable);
-    }
-
-    /** @param list<DatosEspecimenProveedor> $datos @return list<object> */
-    private function aplicarVisibilidad(array $datos, EspecimenDivulgableRepositoryInterface $repoDivulgable): array
-    {
-        if ($datos === []) {
-            return [];
-        }
-
-        // Config de visibilidad indexada por especimenId (FK estable compartida con el DTO).
-        $configPorEspecimen = [];
-        foreach ($repoDivulgable->buscarPublicadosPorEspecimenIds(array_map(fn (DatosEspecimenProveedor $dto): string => $dto->especimenId, $datos)) as $divulgable) {
-            $configPorEspecimen[$divulgable->especimenId()] = $divulgable;
-        }
-
-        $datosPublicados = array_values(array_filter($datos, fn (DatosEspecimenProveedor $dto): bool => isset($configPorEspecimen[$dto->especimenId])));
-
-        return array_map(
-            function (DatosEspecimenProveedor $dto) use ($configPorEspecimen): object {
-                $cfg = $configPorEspecimen[$dto->especimenId];
-                $ver = fn (callable $flag): bool => $flag($cfg);
-                $g = fn (bool $visible, mixed $valor): mixed => $visible ? $valor : null;
-
-                return (object) [
-                    'especimen_id' => $dto->especimenId,
-                    'occurrence_id' => $g($ver(fn (EspecimenDivulgable $d) => $d->occurrenceIDVisible()), $dto->occurrenceId),
-                    'scientific_name' => $g($ver(fn (EspecimenDivulgable $d) => $d->scientificNameVisible()), $dto->scientificName),
-                    'taxon_en_revision' => $ver(fn (EspecimenDivulgable $d) => $d->scientificNameVisible()) && ($dto->taxonomiaEnRevision || ! CalidadDatoPublico::esTextoValido($dto->scientificName)),
-                    'individual_count' => $g($ver(fn (EspecimenDivulgable $d) => $d->individualCountVisible()), $dto->individualCount),
-                    'type_status' => $g($ver(fn (EspecimenDivulgable $d) => $d->typeStatusVisible()), $dto->typeStatus),
-                    'type_status_visible' => $ver(fn (EspecimenDivulgable $d) => $d->typeStatusVisible()),
-                    'disposition' => $g($ver(fn (EspecimenDivulgable $d) => $d->typeStatusVisible()), $dto->disposition),
-                    'type_notes' => $g($ver(fn (EspecimenDivulgable $d) => $d->typeNotesVisible()), $dto->typeNotes),
-                    'specimen_notes' => $g($ver(fn (EspecimenDivulgable $d) => $d->specimenNotesVisible()), $dto->specimenNotes),
-                    'sampling_protocol' => $g($ver(fn (EspecimenDivulgable $d) => $d->samplingProtocolVisible()), $dto->samplingProtocol),
-                    'recorded_by' => $g($ver(fn (EspecimenDivulgable $d) => $d->recordedByVisible()), $dto->recordedBy),
-                    'occurrence_status' => $g($ver(fn (EspecimenDivulgable $d) => $d->occurrenceStatusVisible()), $dto->occurrenceStatus),
-                    'country' => $g($ver(fn (EspecimenDivulgable $d) => $d->countryVisible()), $dto->country),
-                    'state_province' => $g($ver(fn (EspecimenDivulgable $d) => $d->stateProvinceVisible()), $dto->stateProvince),
-                    'locality_name' => $g($ver(fn (EspecimenDivulgable $d) => $d->localityNameVisible()), $dto->localityName),
-                    'locality_excel' => $g($ver(fn (EspecimenDivulgable $d) => $d->localityNameVisible()), $dto->localityExcel),
-                    'locality_inec' => $g($ver(fn (EspecimenDivulgable $d) => $d->localityNameVisible()), $dto->localityInec),
-                    'locality_inec_reference' => $g($ver(fn (EspecimenDivulgable $d) => $d->localityNameVisible()), $dto->localityInecReference),
-                    'locality_visible' => $ver(fn (EspecimenDivulgable $d) => $d->localityNameVisible()),
-                    'coordinate_reference' => $g($ver(fn (EspecimenDivulgable $d) => $d->decimalLatitudeVisible()) && $ver(fn (EspecimenDivulgable $d) => $d->decimalLongitudeVisible()), $dto->coordinateReference),
-                    'decimal_latitude' => $g($ver(fn (EspecimenDivulgable $d) => $d->decimalLatitudeVisible()), $dto->decimalLatitude),
-                    'decimal_longitude' => $g($ver(fn (EspecimenDivulgable $d) => $d->decimalLongitudeVisible()), $dto->decimalLongitude),
-                    'elevation_min_m' => $g($ver(fn (EspecimenDivulgable $d) => $d->elevationVisible()), $dto->elevationMinM),
-                    'elevation_max_m' => $g($ver(fn (EspecimenDivulgable $d) => $d->elevationVisible()), $dto->elevationMaxM),
-                    'event_date' => $g($ver(fn (EspecimenDivulgable $d) => $d->eventDateVisible()), $dto->eventDate),
-                    'caste' => $g($ver(fn (EspecimenDivulgable $d) => $d->casteVisible()), $dto->caste),
-                    'life_stage' => $g($ver(fn (EspecimenDivulgable $d) => $d->lifeStageVisible()), $dto->lifeStage),
-                ];
-            },
-            $datosPublicados
-        );
-    }
 
     /** @return list<array{nivel: string, taxon: string, padre: string}> */
     private function resolverTaxonesParaExplorar(ConstruirArbolTaxonomicoOutput $output, string $nivel, array $rutas = []): array

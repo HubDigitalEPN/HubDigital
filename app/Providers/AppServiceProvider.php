@@ -20,7 +20,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->scoped(\App\Support\PortalCopy::class);
     }
 
     /**

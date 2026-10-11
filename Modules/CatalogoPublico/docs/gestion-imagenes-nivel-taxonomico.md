@@ -8,6 +8,8 @@
 
 ## 1. Contexto y ubicación
 
+Desde el 10 de octubre de 2026 existe además una **ficha editorial del explorador 3D** para cualquier rango, solicitada por el usuario. Se administra en `/administracion/fichas-taxonomicas`, se vincula por UUID y vive en `divulgacion.fichas_taxonomicas`. Su foto representativa y explicación no se propagan a la galería de ejemplares ni cambian las reglas R1–R8 de este documento. Véase `docs/portal-explorador-taxonomico.md`.
+
 La gestión de imágenes es una capacidad **de administración** (la ejerce el curador), no del portal público. Por eso vive
 dentro del mismo árbol de divulgación que ya existe en `CatalogoPublico`:
 

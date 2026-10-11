@@ -71,11 +71,13 @@ class CatalogoPublicoServiceProvider extends ModuleServiceProvider
         $this->app->bind(ClasificadorIntencionPort::class, ClasificadorCatalogoLocal::class);
         $this->app->bind(GeneradorRespuestaChatBotPort::class, GeneradorCatalogoExacto::class);
         $this->app->scoped(ReferenciaTaxonomicaPublica::class);
+        $this->app->scoped(\Modules\CatalogoPublico\Infrastructure\ExploradorTaxonomicoPublico::class);
     }
 
     public function boot(): void
     {
         parent::boot();
+        \Livewire\Livewire::component('catalogopublico.registros-taxon-explorador', \Modules\CatalogoPublico\Presentation\Http\Controllers\RegistrosTaxonExplorador::class);
         $this->loadMigrationsFrom(module_path($this->name, 'database/migrations'));
     }
 }

@@ -1,5 +1,6 @@
 const OFFLINE_CACHE = 'hubdigital-public-offline-v1';
 const OFFLINE_URL = '/offline.html';
+importScripts('/pwa-cache.js');
 
 function readPushPayload(data) {
     if (!data) return {};
@@ -21,6 +22,7 @@ self.addEventListener('activate', (event) => event.waitUntil(
         .then((keys) => Promise.all(keys
             .filter((key) => key.startsWith('hubdigital-public-offline-') && key !== OFFLINE_CACHE)
             .map((key) => caches.delete(key))))
+        .then(() => portalPwa.activate())
         .then(() => self.clients.claim()),
 ));
 
@@ -66,9 +68,7 @@ self.addEventListener('notificationclick', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-    if (event.request.mode !== 'navigate') return;
-
-    // Solo se conserva una pantalla pública de desconexión; expedientes, sesiones y
-    // PDF privados nunca se escriben en Cache Storage.
-    event.respondWith(fetch(event.request).catch(() => caches.match(OFFLINE_URL)));
+    if (new URL(event.request.url).origin !== self.location.origin) return;
+    if (portalPwa.policy(event.request) === 'network' && event.request.mode !== 'navigate') return;
+    event.respondWith(portalPwa.serve(event));
 });

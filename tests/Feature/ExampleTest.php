@@ -7,7 +7,7 @@ test('la raiz muestra el portal publico del laboratorio', function (): void {
         ->assertOk()
         ->assertSee('Ciencia, colecciones y biodiversidad del Ecuador')
         ->assertSee('Laboratorio de Invertebrados')
-        ->assertSee('Orcés&nbsp;V.', false)
+        ->assertSee('Museo de Historia Natural Gustavo Orcés V.')
         ->assertSee('Ver Colección Biológica')
         ->assertDontSee('Conocer las colecciones')
         ->assertDontSee('Servicios para la comunidad')

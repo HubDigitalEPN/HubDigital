@@ -169,7 +169,7 @@ test('los siete pies de figura tienen ochenta palabras y numeración consecutiva
     foreach ($figuras as $figura) expect(preg_split('/\s+/u', trim($figura['texto'])))->toHaveCount(80);
 });
 
-test('las explicaciones se reservan al indicador y al PDF y el panel de filtros ofrece provincias por LOV sin coordenadas', function (): void {
+test('las explicaciones se reservan al indicador y al PDF y la búsqueda territorial está en el dashboard sin coordenadas en filtros', function (): void {
     coleccionOctubre();
     $portal = Livewire::withQueryParams(['vista' => 'mapa'])->test(PortalCatalogo::class);
     $documento = new DOMDocument;
@@ -180,10 +180,17 @@ test('las explicaciones se reservan al indicador y al PDF y el panel de filtros 
         ->and($dom->query('//dialog[contains(@class,"atlas-index-dialog")]//p[@class="atlas-indicator-explanation"]')->length)->toBe(7)
         ->and($dom->query('//*[@id="menu-filos"]//button[contains(.,"Alternar tipo")]')->length)->toBe(0)
         ->and($dom->query('//*[@id="menu-mapa"]//button[normalize-space(.)="Exportar a PDF"]')->length)->toBe(1)
-        ->and($dom->query('//button[@*[name()="x-on:click" and .="abrirProvincias()"]]')->length)->toBe(1)
-        ->and($dom->query('//button[contains(@class,"research-locality-apply")]')->length)->toBe(1)
+        ->and($dom->query('//button[@*[name()="x-on:click" and .="abrirProvincias()"]]')->length)->toBe(0)
+        ->and($dom->query('//button[contains(@class,"research-locality-apply")]')->length)->toBe(0)
+        ->and($dom->query('//input[@id="buscar-provincia-panel"]')->length)->toBe(0)
+        ->and($dom->query('//*[contains(@class,"atlas-chart-data-toggle")]')->length)->toBe(0)
+        ->and($dom->query('//section[@aria-labelledby="titulo-riqueza"]//button[contains(@class,"atlas-ranked-row")]')->length)->toBeGreaterThan(0)
         ->and($dom->query('//input[@*[starts-with(name(),"wire:model") and (contains(.,"filtroLatitud") or contains(.,"filtroLongitud"))]]')->length)->toBe(0);
-    $portal->assertDontSee('Los filtros se aplican al cambiar un dato');
+    $portal->assertDontSee('Los filtros se aplican al cambiar un dato')
+        ->assertDontSee('Escribe parte del nombre o código y pulsa Enter para filtrar.')
+        ->assertDontSee('Selecciona uno o varios; sin selección se incluyen todos.')
+        ->assertDontSee('Ver valores y filtrar')
+        ->assertDontSee('taxonomy-explorer-orientation', false)->assertDontSee('taxonomy-explorer-tooltip', false);
 });
 
 test('los saludos y definiciones no heredan la respuesta anterior ni se confunden con búsquedas enciclopédicas', function (): void {

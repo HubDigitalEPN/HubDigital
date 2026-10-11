@@ -302,7 +302,7 @@
                             heading="Divulgación" icon="megaphone"
                             class="grid"
                             expandable
-                            :expanded="request()->routeIs('divulgacion.*')"
+                            :expanded="request()->routeIs('divulgacion.*', 'admin.textos-portal', 'admin.fichas-taxonomicas')"
                         >
                             <flux:sidebar.item
                                 icon="table-cells"
@@ -335,6 +335,10 @@
                                 wire:navigate
                             >
                                 Asistente del portal
+                            </flux:sidebar.item>
+                            <flux:sidebar.item icon="photo" :href="route('admin.fichas-taxonomicas')" :current="request()->routeIs('admin.fichas-taxonomicas')" wire:navigate>Fichas del explorador</flux:sidebar.item>
+                            <flux:sidebar.item icon="pencil-square" :href="route('admin.textos-portal')" :current="request()->routeIs('admin.textos-portal')" wire:navigate>
+                                Textos del portal
                             </flux:sidebar.item>
                         </flux:sidebar.group>
                         @if($rolActivo === RolUsuario::ADMIN)

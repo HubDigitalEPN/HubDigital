@@ -36,6 +36,56 @@ function mapaFiltrosAutomaticosFixture(): array
     return compact('annelida', 'arthropoda', 'familia', 'ids');
 }
 
+test('el borrador textual espera confirmación y los fragmentos mantienen la selección en mapa y registros', function (): void {
+    $f = mapaFiltrosAutomaticosFixture();
+    $pagina = Livewire::withQueryParams(['vista' => 'mapa'])->test(PortalCatalogo::class)
+        ->set('borradorFiltros.filtroCatalogo', 'auto-1')->assertSet('filtroCatalogo', '')
+        ->assertViewHas('datosMapa', fn ($d) => (int) $d['resumen']['registros'] === 4)
+        ->call('aplicarBusquedaTexto', 'filtroCatalogo', 'auto-1')->assertSet('filtroCatalogo', 'auto-1')
+        ->assertViewHas('datosMapa', fn ($d) => (int) $d['resumen']['registros'] === 1)
+        ->call('cambiarVista', 'registros')->assertViewHas('registrosVista', fn ($r) => array_column($r, 'especimen_id') === [$f['ids'][0]])
+        ->call('limpiarFiltros')->set('borradorFiltros.filtroTaxon', 'anelidaqa')->assertSet('filtroTaxon', '')
+        ->call('aplicarBusquedaTexto', 'filtroTaxon', 'anelidaqa')->assertSet('filtroTaxon', 'anelidaqa')
+        ->assertViewHas('totalRegistrosVista', 3);
+    $pagina->call('aplicarBusquedaTexto', 'filtroCatalogo', '%')->assertViewHas('totalRegistrosVista', 0);
+});
+
+test('las sugerencias públicas respetan publicación y permisos de código y rango taxonómico', function (): void {
+    $f = mapaFiltrosAutomaticosFixture();
+    $this->getJson(route('portal.sugerencias', ['campo' => 'filtroCatalogo', 'texto' => 'auto-1']))
+        ->assertOk()->assertJsonPath('sugerencias', ['QA-AUTO-1'])->assertHeader('Cache-Control', 'no-cache, private')->assertHeader('X-Portal-Public-Cache', 'data');
+    DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $f['ids'][0])->update(['occurrence_id_visible' => false]);
+    $this->getJson(route('portal.sugerencias', ['campo' => 'filtroCatalogo', 'texto' => 'auto-1']))->assertJsonPath('sugerencias', []);
+    $this->getJson(route('portal.sugerencias', ['campo' => 'filtroTaxon', 'texto' => 'anelidaqa']))->assertJsonPath('sugerencias', ['FamiliaAnelidaQa']);
+    DB::table('divulgacion.especimenes_divulgables')->whereIn('especimen_id', array_slice($f['ids'], 0, 3))->update(['family_visible' => false]);
+    $this->getJson(route('portal.sugerencias', ['campo' => 'filtroTaxon', 'texto' => 'anelidaqa']))->assertJsonPath('sugerencias', []);
+    $this->getJson(route('portal.sugerencias', ['campo' => 'filtroTaxon', 'texto' => 'arthrop']))->assertJsonPath('sugerencias', ['Arthropoda']);
+    // La publicación se deriva de un filo confirmado: retirar ese linaje
+    // representa un ejemplar realmente no publicable, sin eludir el trigger.
+    $taxonNoPublicable = (string) Str::uuid();
+    DB::table('taxonomia.taxones')->insert(['id' => $taxonNoPublicable, 'padre_id' => null,
+        'rango' => 'especie', 'nombre_cientifico' => 'Arthropoda reservada sin filo QA']);
+    DB::table('taxonomia.especimenes')->where('id', $f['ids'][3])->update(['taxon_id' => $taxonNoPublicable]);
+    expect((bool) DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $f['ids'][3])->value('publicado'))->toBeFalse();
+    $this->getJson(route('portal.sugerencias', ['campo' => 'filtroTaxon', 'texto' => 'arthrop']))->assertJsonPath('sugerencias', []);
+    $this->getJson(route('portal.sugerencias', ['campo' => 'arbitrario', 'texto' => 'auto']))->assertUnprocessable();
+});
+
+test('el panel territorial desciende a localidades y conserva otras facetas al volver o cambiar provincia', function (): void {
+    $f = mapaFiltrosAutomaticosFixture();
+    $pagina = Livewire::withQueryParams(['vista' => 'mapa', 'fph' => $f['annelida']])->test(PortalCatalogo::class);
+    expect(array_column($pagina->instance()->territorioPanel, 'provincia'))->toEqualCanonicalizing(['Loja', 'Pastaza']);
+    $pagina->assertDontSee('localidades-dialogo')->call('seleccionarProvincia', 'Pastaza')->assertSee('Registros por localidad');
+    expect($pagina->instance()->territorioPanel)->toBe([['localidad' => 'Puyo', 'registros' => 1]]);
+    $pagina->call('seleccionarLocalidad', 'LOCALIDAD-RESERVADA')->assertSet('filtroGeografias', [])
+        ->call('seleccionarLocalidad', 'Puyo')->assertSet('filtroGeografias', ['Puyo'])
+        ->call('cambiarVista', 'registros')->assertViewHas('registrosVista', fn ($r) => array_column($r, 'especimen_id') === [$f['ids'][0]])
+        ->call('cambiarProvinciaPanel', 'Loja')->assertSet('filtroProvincia', 'Loja')->assertSet('filtroGeografias', [])
+        ->assertViewHas('registrosVista', fn ($r) => array_column($r, 'especimen_id') === [$f['ids'][1]])
+        ->call('volverProvincias')->assertSet('filtroProvincia', '')->assertSet('filtroFiloId', $f['annelida'])
+        ->assertViewHas('totalRegistrosVista', 3);
+});
+
 test('cambiar filo provincia y localidad aplica de inmediato y ofrece solo geografía pública de esa selección', function (): void {
     $f = mapaFiltrosAutomaticosFixture();
     $pagina = Livewire::withQueryParams(['vista' => 'mapa'])->test(PortalCatalogo::class)

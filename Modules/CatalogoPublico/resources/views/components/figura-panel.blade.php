@@ -1,5 +1,5 @@
 @props(['tipo', 'contexto' => 'exportacion'])
-@php($figura = config('figuras_portal.'.$tipo))
+@php($figura = \App\Support\PortalCopy::configuration('figuras_portal')[$tipo])
 @if($contexto === 'indicador')
     <p class="atlas-indicator-explanation">{{ $figura['texto'] }}</p>
 @else

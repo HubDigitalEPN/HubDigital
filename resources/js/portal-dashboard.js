@@ -78,6 +78,7 @@ const registrarDashboard = () => {
         let historial = null;
         let alVolver = null;
         let soltarInterceptor = null;
+        let soltarFocoTerritorio = null;
         return {
         errorHistorial: '',
         errorConsulta: '',
@@ -90,6 +91,18 @@ const registrarDashboard = () => {
                 this.enlaceReintento = enlaceRecuperacionCatalogo(window.location.href, actual, interceptor.request);
                 this.errorConsulta = '';
                 vigilarPeticionCatalogo(interceptor, mensaje => { this.errorConsulta = mensaje; });
+            });
+            // Los eventos del servidor pueden llegar antes de finalizar el morph.
+            // Enfocar únicamente cuando la nueva sección ya está renderizada.
+            soltarFocoTerritorio = this.$wire.$interceptMessage(({onSuccess}) => {
+                onSuccess(({payload, onRender}) => {
+                    const territorio = payload.effects?.dispatches?.find(evento => evento.name === 'territorio-actualizado');
+                    if (!territorio) return;
+                    onRender(() => {
+                        if (!raizCatalogo.isConnected) return;
+                        raizCatalogo.querySelector(territorio.params.localidades ? '.atlas-territory-back' : '#titulo-riqueza')?.focus({preventScroll: true});
+                    });
+                });
             });
             historial = crearHistorialCatalogo({
                 history: window.history, location: window.location, ...configuracion,
@@ -109,6 +122,7 @@ const registrarDashboard = () => {
         destroy() {
             historial?.destroy();
             soltarInterceptor?.();
+            soltarFocoTerritorio?.();
             window.removeEventListener('popstate', alVolver);
         },
         taxonAyuda: null,
@@ -543,6 +557,11 @@ const registrarDashboard = () => {
 
         recordarAccion(evento) {
             const boton = evento.target.closest('button[wire\\:click]');
+            if (boton && /^(?:\$wire\.)?seleccionar(?:Provincia|Localidad)\b/.test(boton.getAttribute('wire:click'))) {
+                // Navegar localidades conserva el foco en el panel territorial.
+                this.enfocarTrasCambio = false;
+                return;
+            }
             if (boton && /^(?:\$wire\.)?(seleccionar|filtrar|explorarEspecie)/.test(boton.getAttribute('wire:click'))) {
                 this.enfocarTrasCambio = true;
                 this.desplazarAlMapa();

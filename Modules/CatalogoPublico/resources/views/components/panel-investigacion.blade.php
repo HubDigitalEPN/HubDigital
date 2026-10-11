@@ -1,5 +1,5 @@
 @php
-    $configPanel = config('indices_portal.'.$tipoPanel);
+    $configPanel = \App\Support\PortalCopy::configuration('indices_portal')[$tipoPanel];
     $filasPanel = $datosMapa[$tipoPanel];
     $maxPanel = max([1, ...array_column($filasPanel, 'registros')]);
     $mesesPanel = [1 => 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
@@ -21,7 +21,7 @@
                 <span>{{ $etiquetaPanel }}</span><strong>{{ number_format((int) $filaPanel['registros'], 0, ',', '.') }}</strong>
                 <i aria-hidden="true"><b style="width:{{ $filaPanel['registros'] / $maxPanel * 100 }}%"></b></i>
             </button>
-        @empty<p class="atlas-chart-empty">No hay datos públicos disponibles para este indicador en la selección.</p>@endforelse
+        @empty<p class="atlas-chart-empty">{{ \App\Support\PortalCopy::text('catalogo.indicador_vacio') }}</p>@endforelse
     </div>
     <x-catalogopublico::figura-panel :tipo="$tipoPanel" />
 </section>

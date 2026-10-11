@@ -28,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             NormalizeAuthenticationEmail::class,
             EnsureInitialPasswordChanged::class,
+            \App\Http\Middleware\CachePublicPortal::class,
         ]);
 
         $middleware->alias([

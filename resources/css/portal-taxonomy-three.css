@@ -1,0 +1,111 @@
+.taxonomy-navigator-phylotree .portal-ete-host.portal-taxonomy-split-host { overflow: hidden; }
+.portal-taxonomy-split { display: grid; grid-template-columns: clamp(245px, 21%, 295px) minmax(0, 1fr) clamp(240px, 19%, 275px); width: 100%; height: 100%; min-height: 0; }
+.portal-taxonomy-tree-pane { min-height: 0; overflow: auto; border-right: 1px solid #cbdde7; scrollbar-width: thin; scrollbar-color: #8daac0 #eff5f9; }
+.portal-taxonomy-three-pane { min-width: 0; min-height: 0; overflow: hidden; }
+.portal-taxonomy-split:not(.has-selection) { grid-template-columns: minmax(0, 1fr); }
+.portal-taxonomy-split:not(.has-selection) :is(.portal-taxonomy-three-pane, .portal-taxonomy-branch-pane) { display: none; }
+.portal-taxonomy-split:not(.has-selection) .portal-taxonomy-tree-pane { border-right: 0; }
+.portal-three-initial { display: grid; place-content: center; height: 100%; min-height: 180px; padding: 32px; color: #436177; text-align: center; }
+.portal-three-scene { display: flex; flex-direction: column; height: 100%; min-height: 0; color: #eaf4fc; background: #0a1929; color-scheme: dark; }
+.portal-three-scene:fullscreen { position: relative; width: 100vw; height: 100vh; }
+button.portal-three-fullscreen-exit { display: none; }
+.portal-three-scene:fullscreen button.portal-three-fullscreen-exit { position: absolute; display: grid; place-items: center; right: 16px; top: 16px; z-index: 4; width: 40px; height: 40px; padding: 0; border: 1px solid #7395ab; border-radius: 5px; color: #eaf4fc; background: #142d40; font-size: 24px; }
+.portal-three-context { display: flex; align-items: center; gap: 12px; padding-right: 4px; }
+.portal-three-context[hidden], .taxonomy-explorer button.portal-three-fit[hidden] { display: none; }
+.portal-three-identity { min-width: 0; flex: 1; }
+.portal-three-title { max-width: 230px; margin: 0; font-family: Georgia, serif; font-size: 21px; line-height: 1.2; font-weight: 700; color: #173d56; overflow-wrap: anywhere; }
+.portal-three-meta { margin: 4px 0 0; font-size: 12px; color: #4c6d85; }
+.portal-three-controls { display: flex; align-items: center; gap: 5px; }
+.taxonomy-explorer .taxonomy-navigator-zoom { align-items: center; }
+.taxonomy-explorer .taxonomy-navigator-zoom button { display: grid; place-items: center; flex: 0 0 40px; width: 40px; height: 40px; min-width: 40px; min-height: 40px; max-width: 40px; max-height: 40px; box-sizing: border-box; padding: 0; border: 1px solid #bfd3e2; border-radius: 5px; background: #fff; color: #174c70; font-size: 23px; line-height: 1; }
+.taxonomy-explorer .portal-three-controls button:hover { background: #e7f3fa; border-color: #70accc; }
+.taxonomy-explorer .portal-three-controls button:disabled { opacity: .4; cursor: default; }
+.portal-three-viewport { position: relative; flex: 1; min-height: 190px; overflow: hidden; background: linear-gradient(150deg, #081522, #10283a); }
+.portal-three-viewport::before { content: ''; position: absolute; inset: 0; background: var(--taxonomy-starfield) center / cover no-repeat; pointer-events: none; }
+.portal-three-canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; cursor: grab; }
+.portal-three-canvas:active { cursor: grabbing; }
+.portal-three-legend { display: flex; flex: none; align-items: center; justify-content: center; flex-wrap: wrap; gap: 7px 12px; margin: 0; padding: 9px 14px; border-top: 1px solid rgb(168 190 207 / 12%); background: #0d1b27; }
+.taxonomy-explorer button.portal-three-legend-item { display: inline-flex; align-items: center; gap: 7px; padding: 3px 5px; border: 0; border-radius: 4px; background: transparent; color: #c8dce9; font-size: 13px; line-height: 18px; white-space: nowrap; }
+.taxonomy-explorer button.portal-three-legend-item:hover { background: #203a4d; color: #fff; }
+.taxonomy-explorer button.portal-three-legend-item[aria-pressed="true"] { background: #203a4d; color: #fff; box-shadow: inset 0 -2px var(--rank-color); }
+.taxonomy-explorer button.portal-three-legend-item:focus-visible { outline: 2px solid var(--rank-color); outline-offset: 3px; }
+.portal-three-legend-item::before { content: ''; width: 8px; height: 8px; flex: none; border-radius: 50%; background: var(--rank-color); }
+.portal-three-legend-item:not(:last-child)::after { content: '→'; margin-left: 5px; color: #7796ac; }
+.portal-three-status { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); max-width: calc(100% - 40px); margin: 0; padding: 14px 18px; border: 1px solid #6b99b8; border-radius: 10px; background: #15344a; color: #eaf6fd; text-align: center; font-size: 16px; }
+.portal-three-instructions { flex: none; height: 62px; box-sizing: border-box; margin: 0; padding: 9px 18px; border-top: 1px solid rgb(168 213 242 / 12%); color: #abc4d9; font-size: 13px; line-height: 20px; overflow: auto; overflow-wrap: anywhere; text-align: center; scrollbar-width: thin; }
+.taxonomy-explorer .portal-three-scene :is(button, canvas):focus-visible { outline: 3px solid #6cd4ee; outline-offset: -2px; }
+.taxonomy-explorer .portal-taxonomy-tree-pane .portal-mdd-node[aria-current="location"] { background: #c9e5df; border-color: #437e74; outline: 2px solid #5c9b91; outline-offset: 2px; }
+@container taxonomy-explorer (max-width: 800px) {
+    .taxonomy-navigator-phylotree .portal-ete-host.portal-taxonomy-split-host { overflow: auto; }
+    .portal-taxonomy-split { grid-template-columns: 245px minmax(0, 1fr); grid-template-rows: 360px 470px; height: auto; min-height: 100%; }
+    .portal-taxonomy-branch-pane { grid-column: 1 / -1; border-left: 0; border-top: 1px solid #cbdde7; }
+    .taxonomy-phylotree-controls { flex-wrap: wrap; }
+    .taxonomy-phylotree-controls > .taxonomy-navigator-zoom { flex-basis: 100%; justify-content: flex-end; }
+    .portal-three-context { margin-right: auto; }
+}
+@container taxonomy-explorer (max-width: 600px) {
+    .taxonomy-navigator-phylotree .portal-ete-host.portal-taxonomy-split-host { overflow: auto; }
+    .portal-taxonomy-split { display: flex; flex-direction: column; height: auto; min-height: 100%; }
+    .portal-taxonomy-tree-pane { flex: none; height: 185px; min-height: 130px; border-right: 0; border-bottom: 1px solid #cbdde7; }
+    .portal-taxonomy-three-pane { flex: none; height: 410px; }
+    .portal-taxonomy-branch-pane { flex: none; height: 400px; }
+    .portal-three-viewport { min-height: 230px; }
+    .portal-taxonomy-split:not(.has-selection) .portal-taxonomy-tree-pane { flex: 1; }
+    .portal-three-context { gap: 6px; }
+    .portal-three-title { max-width: 160px; font-size: 18px; }
+    .portal-three-instructions { height: 88px; padding: 7px; font-size: 12px; }
+}
+.portal-taxonomy-tree-pane .portal-mdd-content { padding-right: 8px; padding-left: 8px; }
+.portal-taxonomy-branch-pane { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; border-left: 1px solid #cbdde7; background: #f8fafc; color: #244257; color-scheme: light; }
+.portal-taxonomy-branch-pane[hidden] { display: none; }
+.portal-branch-header { flex: none; max-height: calc(100% - 100px); overflow: auto; padding: 0 14px; border-bottom: 1px solid #dbe5ec; scrollbar-width: thin; }
+.portal-branch-photo { margin: 0; }
+.portal-branch-photo { border-radius: 6px; background: #eaf0f4; }
+.portal-branch-photo { margin-right: -14px; margin-left: -14px; }
+.taxonomy-explorer button.portal-branch-photo-open { display: block; width: 100%; padding: 0; border: 0; border-radius: 0; background: #eaf0f4; cursor: zoom-in; }
+.portal-branch-photo img { display: block; width: 100%; height: auto; aspect-ratio: 1; object-fit: cover; object-position: center; background: #eaf0f4; }
+.portal-branch-tools { display: flex; align-items: start; justify-content: space-between; gap: 8px; padding: 7px 0; }
+.portal-branch-tools:has(> .portal-branch-info[hidden]):has(> .portal-branch-credit[hidden]) { display: none; }
+.taxonomy-explorer button.portal-branch-info { flex: none; min-height: 30px; padding: 3px 6px; border: 1px solid #bfd3e2; border-radius: 4px; font-size: 11px; color: #174c70; background: #fff; }
+.portal-photo-dialog { position: fixed; inset: 0; width: min(900px, 90vw); max-width: 90vw; max-height: 90vh; margin: auto; padding: 16px; border: 1px solid #bfd3e2; border-radius: 10px; color: #173d56; background: #fff; overflow: auto; box-sizing: border-box; }
+.portal-photo-dialog::backdrop { background: rgb(4 17 29 / 72%); }
+.portal-photo-bar { display: flex; align-items: center; gap: 16px; margin-bottom: 12px; }
+.portal-photo-title { flex: 1; min-width: 0; margin: 0; font: 700 20px Georgia, serif; overflow-wrap: anywhere; }
+.taxonomy-explorer button.portal-photo-close { display: grid; place-items: center; flex: 0 0 40px; width: 40px; height: 40px; padding: 0; border: 1px solid #bfd3e2; border-radius: 5px; font-size: 25px; background: #fff; color: #174c70; }
+.portal-photo-image { display: block; width: 100%; height: min(65vh, 650px); object-fit: contain; background: #f3f7fa; }
+.portal-photo-credit { margin: 10px 0 0; font-size: 12px; color: #63788a; }
+.portal-branch-credit { margin: 4px 0 0; font-size: 9px; line-height: 1.4; color: #63788a; overflow-wrap: anywhere; }
+.portal-branch-credit summary { padding: 3px 0; cursor: pointer; background: #f8fafc; }
+.portal-branch-credit details > div { padding: 5px; }
+.portal-branch-credit a { color: #236594; text-decoration: underline; }
+.portal-branch-description { margin: 10px 0; font-size: 12px; line-height: 1.55; white-space: pre-line; }
+.portal-branch-profile-status { margin: 10px 0; padding: 14px 10px; border: 1px dashed #ccdbe5; border-radius: 6px; color: #657c8e; font-size: 12px; line-height: 1.5; }
+.portal-branch-tree { position: relative; flex: 1; min-height: 80px; overflow: auto; padding: 0 4px; scrollbar-width: thin; scrollbar-color: #91adc0 #eff4f8; }
+.portal-branch-rows { position: relative; min-width: 0; }
+.portal-branch-row { position: absolute; left: 0; right: 0; display: flex; align-items: center; gap: 5px; height: 40px; padding: 0 7px 0 calc(5px + var(--branch-depth) * 12px); border: 1px solid transparent; border-radius: 4px; font-size: 12px; cursor: pointer; }
+.portal-branch-row:hover { background: #eaf3fa; }
+.portal-branch-row[aria-selected="true"] { border-color: #9ec8ea; background: #d7ebfc; color: #145c91; }
+.portal-branch-row:focus-visible { outline: 2px solid #247bad; outline-offset: -2px; }
+.portal-branch-toggle, .portal-branch-icon { display: grid; place-items: center; flex: none; width: 16px; height: 24px; }
+.portal-branch-toggle svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.portal-branch-row[aria-expanded="true"] .portal-branch-toggle svg { transform: rotate(90deg); }
+.portal-branch-toggle.is-leaf { visibility: hidden; }
+.portal-branch-icon svg { width: 16px; height: 16px; fill: none; stroke: var(--branch-rank); stroke-width: 1.6; }
+.portal-branch-name { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.portal-branch-count { flex: none; margin-left: auto; color: #59788e; font-size: 10px; font-variant-numeric: tabular-nums; }
+.portal-branch-row.is-match .portal-branch-name { font-weight: 650; }
+.portal-taxonomy-branch-pane.is-leaf { overflow: auto; }
+.portal-taxonomy-branch-pane.is-leaf .portal-branch-header { max-height: none; overflow: visible; }
+.portal-taxonomy-branch-pane.is-empty .portal-branch-header { max-height: none; border-bottom: 0; }
+.portal-taxonomy-branch-pane [hidden] { display: none !important; }
+.taxonomy-explorer .portal-taxonomy-branch-pane :is(button, input):focus-visible { outline: 2px solid #247bad; outline-offset: 2px; }
+@container taxonomy-explorer (min-width: 601px) and (max-width: 800px) {
+    .portal-taxonomy-branch-pane { border-left: 0; }
+}
+@container taxonomy-explorer (max-width: 600px) {
+    .portal-taxonomy-branch-pane { height: auto; min-height: 470px; border-left: 0; }
+    .portal-taxonomy-branch-pane .portal-branch-header { max-height: none; }
+    .portal-taxonomy-branch-pane .portal-branch-tree { flex: none; height: 240px; }
+    .portal-taxonomy-branch-pane.is-empty { height: 90px; min-height: 90px; }
+    .portal-taxonomy-branch-pane.is-leaf { height: auto; min-height: 260px; }
+}

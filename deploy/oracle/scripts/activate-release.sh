@@ -86,6 +86,7 @@ assert_validation_queue_empty() {
     }
 }
 assert_validation_queue_empty
+bash "${release_dir}/deploy/oracle/scripts/install-ete.sh" "${release_dir}"
 "${release_dir}/deploy/oracle/scripts/update-service-units.sh" "${release_dir}"
 ln -sfn "${release_dir}" /srv/hubdigital/current
 nginx_source="${release_dir}/deploy/oracle/nginx/hubdigital-http.conf"
@@ -96,7 +97,15 @@ install -m 0644 "${nginx_source}" /etc/nginx/sites-available/hubdigital
 ln -sfn /etc/nginx/sites-available/hubdigital /etc/nginx/sites-enabled/hubdigital
 rm -f /etc/nginx/sites-enabled/default
 nginx -t
-systemctl enable php8.4-fpm nginx hubdigital-worker
+systemctl enable php8.4-fpm nginx hubdigital-worker hubdigital-ete
+if ! systemctl restart hubdigital-ete.service; then
+    echo 'Fallo al iniciar ETE; la release permanece en mantenimiento.' >&2
+    exit 1
+fi
+if ! curl --fail --silent --show-error --retry 5 --retry-connrefused --retry-delay 1 --max-time 10 http://127.0.0.1:8001/health | jq -e '.motor == "ETE 3.1.3" and .estado == "disponible"' >/dev/null; then
+    echo 'ETE no está disponible; no se activa el portal.' >&2
+    exit 1
+fi
 if ! systemctl restart php8.4-fpm nginx; then
     echo 'Fallo al reiniciar FPM o nginx; la release queda en mantenimiento y no se inician escritores.' >&2
     exit 1
@@ -186,7 +195,7 @@ else
     echo "${chat_result}"
 fi
 
-for unit in hubdigital-worker.service php8.4-fpm.service nginx.service; do
+for unit in hubdigital-worker.service php8.4-fpm.service nginx.service hubdigital-ete.service; do
     if systemctl is-active --quiet "${unit}"; then
         echo "OK ${unit}: active"
     else

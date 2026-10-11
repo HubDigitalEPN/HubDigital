@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Modules\CatalogoPublico\Infrastructure;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Modules\CatalogoPublico\Domain\ValueObjects\FiltrosBusqueda;
 use Modules\CatalogoPublico\Infrastructure\Persistence\Eloquent\Repositories\EloquentProveedorEspecimenesParaArbol;
@@ -12,6 +14,8 @@ use Modules\CatalogoPublico\Infrastructure\Persistence\Eloquent\Repositories\Elo
 /** Agrega linajes públicos; al cliente entrega únicamente las ramas solicitadas. */
 final class ExploradorTaxonomicoPublico
 {
+    private array $indices = [];
+
     private const RANGOS = ['phylum' => 'Filo', 'filo' => 'Filo', 'subfilo' => 'Subfilo',
         'clase' => 'Clase', 'class' => 'Clase', 'subclase' => 'Subclase', 'orden' => 'Orden', 'order' => 'Orden',
         'suborden' => 'Suborden', 'infraorden' => 'Infraorden', 'superfamilia' => 'Superfamilia',
@@ -29,8 +33,20 @@ final class ExploradorTaxonomicoPublico
         $hayMas = false;
         if ($busqueda !== '') {
             // Cada búsqueda consulta PostgreSQL; no busca en una copia cliente del catálogo.
+            $normalizada = Str::lower(Str::ascii($busqueda));
+            $equivalentes = [];
+            if (mb_strlen($normalizada) >= 2) {
+                foreach (config('portal-taxonomy-aliases', []) as $nombre => $alias) {
+                    if (array_any($alias, static fn (string $texto): bool => str_contains(Str::lower(Str::ascii($texto)), $normalizada))) {
+                        $equivalentes[] = Str::lower($nombre);
+                    }
+                }
+            }
             $ids = DB::table('taxonomia.taxones')->whereIn('id', array_column($nodos, 'id'))
-                ->where('nombre_cientifico', 'ILIKE', '%'.addcslashes($busqueda, '\\%_').'%')
+                ->where(function ($consulta) use ($normalizada, $equivalentes): void {
+                    $consulta->whereRaw("translate(lower(nombre_cientifico), 'áéíóúüñ', 'aeiouun') LIKE ?", ['%'.addcslashes($normalizada, '\\%_').'%']);
+                    if ($equivalentes !== []) $consulta->orWhereIn(DB::raw('lower(nombre_cientifico)'), $equivalentes);
+                })
                 ->orderBy('nombre_cientifico')->orderBy('id')->limit(51)->pluck('id')->all();
             $hayMas = count($ids) > 50;
             $coincidencias = array_fill_keys(array_slice($ids, 0, 50), true);
@@ -55,7 +71,26 @@ final class ExploradorTaxonomicoPublico
         foreach (array_intersect_key($nodos, $claves) as $clave => $nodo) {
             foreach ($indice['rutas'][$clave] as $ancestro) $resultado[$ancestro] ??= $nodos[$ancestro];
         }
-        return ['nodos' => array_values($resultado), 'expandidos' => array_keys($expandidos),
+        // Las claves conservadas son las ramas abiertas. Incluir sus hijos
+        // mantiene la navegación incluso si una rama supera la precarga limitada.
+        foreach ($nodos as $clave => $nodo) {
+            if ($nodo['padre'] !== null && isset($claves[$nodo['padre']])) $resultado[$clave] ??= $nodo;
+        }
+        // La misma lectura entrega los hijos inmediatos de las ramas visibles.
+        // No se expande ninguna rama todavía: su primer clic reutiliza estos datos.
+        $precarga = [];
+        if ($busqueda === '') {
+            $restantes = 300;
+            $porPadre = [];
+            foreach ($nodos as $nodo) if ($nodo['padre'] !== null) $porPadre[$nodo['padre']][] = $nodo;
+            foreach ($resultado as $clave => $nodo) {
+                $hijos = $porPadre[$clave] ?? [];
+                if ($hijos === [] || count($hijos) > $restantes) continue;
+                $precarga[$clave] = $hijos;
+                $restantes -= count($hijos);
+            }
+        }
+        return ['nodos' => array_values($resultado), 'expandidos' => array_keys($expandidos), 'precarga' => $precarga,
             'hayMas' => $hayMas, 'totalCatalogo' => $indice['total']];
     }
 
@@ -64,6 +99,14 @@ final class ExploradorTaxonomicoPublico
         if (!Str::isUuid($id)) return null;
         $id = strtolower($id);
         return array_find($this->indice($filtros)['nodos'], static fn (array $n): bool => $n['id'] === $id);
+    }
+
+    /** Estructura agregada y pública para el visor local; nunca contiene ejemplares. */
+    public function estructura(FiltrosBusqueda $filtros): array
+    {
+        $indice = $this->indice($filtros);
+        return ['nodos' => array_values($indice['nodos']), 'expandidos' => [], 'precarga' => [],
+            'hayMas' => false, 'totalCatalogo' => $indice['total'], 'completo' => true];
     }
 
     public function exacto(FiltrosBusqueda $filtros, string $nombre): array
@@ -77,6 +120,25 @@ final class ExploradorTaxonomicoPublico
     }
 
     private function indice(FiltrosBusqueda $filtros): array
+    {
+        // Los triggers existentes cambian la revisión por taxonomía, registros
+        // y permisos de divulgación. La lectura nunca reutiliza otra revisión.
+        $revision = (int) DB::table('divulgacion.portal_cache_revision')->where('id', 1)->value('version');
+        $clave = 'portal:indice-taxonomico:v2:'.$revision.':'.sha1(json_encode($filtros));
+        if (isset($this->indices[$clave])) return $this->indices[$clave];
+        try {
+            $guardado = Cache::get($clave);
+            if (is_array($guardado)) return $this->indices[$clave] = $guardado;
+        } catch (\Throwable $error) {
+            Log::warning('Caché del explorador no disponible', ['operacion' => 'leer', 'tipo' => $error::class]);
+        }
+        $indice = $this->construirIndice($filtros);
+        try { Cache::put($clave, $indice, 3600); }
+        catch (\Throwable $error) { Log::warning('Caché del explorador no disponible', ['operacion' => 'guardar', 'tipo' => $error::class]); }
+        return $this->indices[$clave] = $indice;
+    }
+
+    private function construirIndice(FiltrosBusqueda $filtros): array
     {
         $base = app(EloquentProveedorEspecimenesParaArbol::class)->consultaPublica($filtros);
         $total = (clone $base)->count('te.id');

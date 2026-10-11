@@ -336,6 +336,11 @@ Write-Host 'OK Maven: firmador y validador Java compilados.' -ForegroundColor Gr
 $destinoJar = Join-Path $Proyecto 'resources/bin/hubdigital-pdf-signature.jar'
 New-Item -ItemType Directory -Path (Split-Path -Parent $destinoJar) -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $Proyecto 'tools/pdf-signature/target/pdf-signature-1.0.0.jar') -Destination $destinoJar -Force
+if (!(Test-Path -LiteralPath (Join-Path $Proyecto 'tests/Python/test_portal_ete.py') -PathType Leaf)) {
+    throw 'Falta el contrato obligatorio del renderizador ETE; no se admite una suite Python vacía.'
+}
+Invoke-Comando -Programa 'powershell.exe' -Argumentos @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $Proyecto 'scripts/development/instalar-ete.ps1')) -Descripcion 'Preparando runtime aislado ETE del portal' -DirectorioTrabajo $Proyecto
+Invoke-Comando -Programa (Join-Path $Proyecto '.local/ete-venv/Scripts/python.exe') -Argumentos @('-m', 'unittest', 'discover', '-s', 'tests/Python', '-p', 'test_*.py') -Descripcion 'Validando renderizado ETE, identidades y vistas taxonómicas' -DirectorioTrabajo $Proyecto
 Invoke-Comando -Programa 'java.exe' -Argumentos @('-jar', $destinoJar, 'selftest') -Descripcion 'Probando firma valida, firma alterada y PDF sin firma con Java' -DirectorioTrabajo $Proyecto
 Write-Host 'OK Java: firma valida, alteracion, ausencia de firma y seguridad PDF comprobadas.' -ForegroundColor Green
 
@@ -488,6 +493,8 @@ $requeridos = @(
     'bootstrap/app.php', 'bootstrap/providers.php', 'bootstrap/cache/.gitignore',
     'composer.json', 'composer.lock', 'modules_statuses.json',
     'resources/bin/hubdigital-pdf-signature.jar',
+    'resources/python/portal_ete/server.py', 'resources/python/portal_ete/requirements.txt',
+    'config/portal-ete.php', 'deploy/oracle/scripts/install-ete.sh', 'deploy/oracle/systemd/hubdigital-ete.service',
     'resources/data/ecuador-localidades-inec.json',
     'resources/data/qa7-referencias-taxonomicas.json',
     'resources/data/catalogos-deposito-mepn.csv',

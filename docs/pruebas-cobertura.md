@@ -1,5 +1,588 @@
 # Distribución de las pruebas
 
+## Ejecución integral autorizada y correcciones del paquete — 11 de octubre de 2026
+
+El usuario autorizó ejecutar `crear-paquete-oci`, corregir sus errores y reintentar el flujo completo. Se conserva la rama vigente y la publicación permanece condicionada a todas las validaciones del comando.
+
+Los primeros intentos detectaron una línea vacía adicional al final del CSS, una dependencia nativa bloqueada por el Vite local y el aviso GHSA-fgmj-fm8m-jvvx de ECharts. Se corrigió el formato y se detuvo temporalmente sólo el Vite identificado del proyecto. Su archivo `public/hot` se preservó en `.local/deployment` durante la validación, para comprobar exclusivamente los assets compilados. El rótulo del validador ahora identifica Opera Neon, el navegador que ya utiliza la puerta automatizada del paquete. ECharts se fijó en 6.1.0 con su lockfile, la versión corregida del [aviso de seguridad](https://github.com/advisories/GHSA-fgmj-fm8m-jvvx); la siguiente auditoría integral informó cero vulnerabilidades en el proyecto y sus módulos.
+
+La primera ejecución de contratos JavaScript llegó a 192 casos: 187 aprobados y cinco fallos. Se completó la respuesta HTTP simulada con cabeceras y se agregó una aserción sobre la revisión pública. Los dos casos de temporizadores esperan ahora la promesa real de la predicción, conservando la verificación de 300 ms, contexto global, cancelación y descarte de respuestas antiguas; la respuesta antigua también contiene una coincidencia elegible. El caso de contracción exige ambas raíces publicadas, manteniendo selección y posición. El caso de raíz inexistente exige su rechazo explícito, además de conservar las aserciones de raíz visible y seleccionable bajo cualquier rango. La siguiente ejecución aprobó los 192 casos y los 83 escenarios Gherkin con sus 489 pasos.
+
+La puerta de navegador detectó un selector inválido: dos niveles de JavaScript eliminaban el escape del atributo `x-on:click`. Las consultas usan ahora `getAttribute` y conservan las comprobaciones de ausencia del selector antiguo y de alternancia del gráfico territorial. La revisión estática del resto del recorrido sustituyó referencias al botón de ajuste superior retirado por el control vigente del grafo 3D y exige zoom 1 y encuadre completo. El antiguo reinicio se reemplaza por la comprobación de pantalla completa nativa: clic real, raíz conservada, Escape devuelve al explorador abierto, ausencia de peticiones adicionales y botón visible en móvil. No se omiten pruebas, se rebajan requisitos ni se agrega Gherkin duplicado. Cada corrección se verifica exclusivamente con otra ejecución completa del paquete.
+
+La ejecución integral también detectó que el foco territorial intentaba saltar al botón de regreso antes de completar el morph de Livewire. El catálogo lo coordina ahora con `onRender` del mensaje que contiene `territorio-actualizado`, consulta el elemento actualizado y libera el interceptor al destruirse. Se conserva la exigencia Browser de foco en el botón de regreso al elegir provincia y en el título al volver.
+
+La siguiente ejecución identificó otra interferencia: el capturador de acciones del dashboard enviaba también las selecciones de provincia y localidad al mapa. Esas dos acciones conservan ahora el foco territorial; las demás selecciones mantienen el comportamiento del mapa. Un contrato Frontend comprueba que ambas cancelan incluso un enfoque al mapa pendiente, sin desplazar ni reenfocar después de actualizar datos.
+
+El siguiente recorrido aprobó el foco y detectó dos expectativas antiguas que exigían los 18 registros filtrados del mapa en el encabezado del explorador. Browser comprueba ahora que su total incluye la fixture, que el encabezado corresponde al total del catálogo público propio y que buscar y reabrir conservan exactamente ese encabezado. Las aserciones de 18 registros del mapa permanecen intactas.
+
+La siguiente puerta Browser detectó la ausencia de `aria-busy="false"` al terminar la navegación. Alpine elimina el atributo cuando recibe el booleano `false`; los tres contenedores del explorador declaran ahora las cadenas ARIA `true` y `false` explícitamente. Se conserva la espera de finalización y no se amplía su plazo ni se omite el estado accesible.
+
+Tras aprobar esa espera, Browser detectó que la clase de la antigua barra Expandir/Contraer se reutiliza ahora para Créditos/Información. El contrato exige la ausencia de títulos repetidos y de ambos botones retirados, y verifica que la barra de la foto contiene únicamente Información. Se comprueba la función visible de los controles en lugar de prohibir una clase reutilizada.
+
+La primera suite PHP/PostgreSQL completa aprobó 1.316 casos y detectó 12 fallos. Se evita renderizar la tabla del diálogo de registros taxonómicos hasta tener un UUID seleccionado: elimina cabeceras y una fila vacía duplicadas en diálogos cerrados, además de consultas de columnas innecesarias. El contrato existente exige ahora ausencia de esa tabla antes de abrir un taxón y conserva paginación y privacidad al abrirlo. Los casos de recuperación usan un mock parcial de caché: mantienen la división SQL por cero y el deadlock, los contadores, savepoints, selección y ocultación de mensajes privados, dejando funcionar operaciones ajenas al fallo simulado.
+
+Los contratos editoriales comprueban el nombre completo del museo como texto administrable y los rótulos dinámicos del menú, conservando estado ARIA y retorno del foco. El contrato adaptable del chat comprueba altura limitada por el viewport, separación inferior, controles de al menos 44 px y movimiento reducido; sustituye referencias al antiguo posicionamiento absoluto. La prueba de sugerencias exige la cabecera real `no-cache, private` y mantiene publicación, permisos y marcador de caché pública. El borrador Filo debe conservar exactamente el panel aplicado, sus dos raíces y la selección, incluidos ancestros cargados.
+
+La prueba de permisos del mapa distingue los resultados filtrados de los nombres científicos públicos disponibles en el árbol lateral independiente. Mantiene la exclusión de ejemplares sin ubicación y con método reservado en el dashboard, CSV y tabla del catálogo; exige exactamente una fila y el taxón correcto. No se autoriza exponer campos reservados ni se retiran pruebas de privacidad. Todas estas correcciones se validan con otra ejecución completa de `crear-paquete-oci`.
+
+El reintento detectó una carrera en la fixture Browser de ramas masivas: el reposo de Livewire no implica que haya terminado la carga HTTP independiente del explorador. Antes de sustituir los nodos sólo en memoria, el caso espera apertura, catálogo listo, búsqueda y visor inactivos, ausencia de ramas pendientes y escena visible. Se conservan los 244 descendientes, sus raíces, la virtualización y todas las aserciones de la prueba, sin ampliar plazos.
+
+La siguiente ejecución aprobó Browser y 1.327 casos PHP/PostgreSQL; quedó una expectativa de fixture: escribir `publicado=false` no retira una publicación derivada de un filo confirmado. El caso asigna ahora un taxón sin filo cuyo nombre también contiene «Arthropoda», comprueba que PostgreSQL lo marca no publicable y conserva la exigencia de cero sugerencias para «arthrop». No se modifica el trigger ni el filtrado público para eludir la prueba.
+
+El siguiente reintento detectó una carrera en el recorrido de paginación a escala 0,8: la espera consideraba el fin de la red y el panel de filtros, mientras el contenido seguía `inert` durante el ajuste de filas. Browser espera ahora también el fin de `is-updating`, la disponibilidad de `collection-main` y el ajuste `solicitando` de cada tabla. Conserva el plazo original y todas las comprobaciones de navegación visible, ausencia de superposiciones y cantidad adaptable; no se retira la protección de la interfaz durante sus consultas.
+
+Una segunda ejecución mostró que una consulta de `ResizeObserver` también podía comenzar entre las dos mediciones del botón. La geometría y los tres puntos de hit testing se leen ahora en una sola evaluación, condicionada a contenido disponible. Las aserciones se ejecutan sobre esa misma instantánea y mantienen sus exigencias originales.
+
+La siguiente ejecución aprobó el recorrido Browser completo, los 1.328 casos PHP/PostgreSQL con 8.677 aserciones y la admisión PDF integrada PHP/Java. La puerta de formato posterior a `git add` detectó una línea vacía adicional al final del nuevo controlador `CargaRegistrosPublicos.php`; se retiró sin cambiar su comportamiento. La publicación quedó detenida antes del commit y se repite el comando integral para validar y empaquetar la versión final.
+
+## Retirar un filtro del octree restaura su padre natural — 11 de octubre de 2026
+
+Se conserva la rama de trabajo vigente. Se releyeron los acuerdos de validación y la cobertura de `crear-paquete-oci`. La revisión estática comprobó las identidades completas de los nodos, sus claves padre publicadas, el ámbito de búsqueda separado de la raíz 3D, las revisiones frente a respuestas tardías y la actualización conjunta del grafo, encabezado, linaje y ficha. La equis se gestiona desde el formulario persistente: retirar su botón `x-for` ya no desconecta las referencias de Alpine usadas para enfocar y continuar buscando.
+
+El contrato Frontend existente de etiquetas encadenadas incorpora un padre intermedio sin etiqueta propia: retirar Formicidae restaura Apocrita, mientras Hymenoptera mantiene el ámbito de búsqueda. Se agregan contratos para retirar la única etiqueta conservando fuente y tarjetas, descartar una restauración tardía al quitar otra etiqueta y recuperar el foco y el texto escrito aunque se retire el ámbito del botón. No se agrega Gherkin que duplique estos contratos.
+
+**No se ejecutaron las pruebas automáticas, el paquete, compilaciones, comprobaciones de sintaxis, migraciones ni verificaciones equivalentes aisladas. La validación integral permanece pendiente de `crear-paquete-oci` por el usuario.**
+
+El recorrido manual complementario utilizó exclusivamente Opera Neon mediante MCP, la pestaña QA existente de `localhost:8000`, perfil dedicado y zoom del navegador del 75%, con datos públicos reales:
+
+- Buscar Formicidae y retirar su única etiqueta cambió la raíz y ficha a Apocrita, con fotografía cargada, sus seis hijos y el linaje «Clase: Insecta → Orden: Hymenoptera → Suborden: Apocrita · 11.397 registros». Se conservaron los siete hijos inmediatos de Arthropoda y el catálogo de 28.612 registros.
+- Con «coleóp» escrito al retirar Formicidae, el campo conservó el texto y recibió el foco. La búsqueda general ofreció los homónimos públicos de Coleoptera, Orden y Familia, mientras el grafo y la ficha permanecían en Apocrita.
+- Encadenar «himenópt» y «hormig» dejó las etiquetas Hymenoptera y Formicidae. Retirar Formicidae restauró Apocrita y mantuvo el ámbito de Hymenoptera: «coleóp» no ofreció resultados en ese orden. Retirar Hymenoptera devolvió raíz, encabezado y ficha a Insecta y ofreció las dos coincidencias en el ámbito general, conservando el texto y foco.
+- La raíz recuperó el centro `0,0,0` y zoom propio `1`. No quedaron avisos de carga ni errores o advertencias de consola tras la corrección del foco. La fotografía y el explorador de hijos correspondían al padre restaurado.
+
+## Búsqueda española, filtros persistentes, ficha ampliable y acabado del visor — 11 de octubre de 2026
+
+Se conserva la rama por la indicación vigente del usuario. Se releyeron los acuerdos de validación y se contrastó la cobertura de `crear-paquete-oci` antes de actuar. La revisión estática examinó los parámetros enlazados de PostgreSQL, el agrupamiento de las alternativas españolas dentro de las identidades publicadas y del UUID seleccionado, las revisiones de solicitudes, la restauración de filtros, los ancestros fuera de la raíz 3D, el foco y cierre de diálogos anidados, los diámetros compartidos entre shader y octree y el coste del fondo estático.
+
+Los contratos Feature añadidos cubren fragmentos españoles con y sin tilde, mayúsculas, nombres científicos, aislamiento de otra rama y retirada de nombres reservados. Los contratos Frontend añaden ámbito por UUID sin filtrar la revalidación del catálogo, etiquetas encadenadas, Intro sin duplicados, restauración por ×, linaje formal con Superfamilia cuando está publicada, huecos reales, homónimos, ciclos y aumento máximo del diámetro del 8%, conservando el mínimo para 1–99 registros. El recorrido Browser existente conserva sus aserciones de catálogo y tarjetas, exige una etiqueta persistente y retira su ámbito antes de la siguiente búsqueda general. No se agrega Gherkin que repita estos contratos.
+
+**No se ejecutaron las pruebas automáticas nuevas o existentes, `crear-paquete-oci`, compilaciones, comprobaciones de sintaxis, migraciones ni verificaciones equivalentes aisladas. Su validación integral queda pendiente del paquete por el usuario.**
+
+La evidencia manual complementaria procede de datos públicos reales en Opera Neon mediante MCP, la única pestaña QA de `localhost:8000`, perfil dedicado y zoom de navegador del 75%:
+
+- La apertura eligió Arachnida y mantuvo los siete hijos inmediatos de Arthropoda, con la invitación a seleccionar una esfera en el panel derecho.
+- «himenópt» + Intro encontró Hymenoptera, dejó su etiqueta con × dentro del buscador y mostró su foto y explicación publicadas. Con Orden activo conservó las 19 esferas de órdenes de Insecta, centró la selección y mantuvo las tarjetas del filo.
+- «hormig» dentro de Hymenoptera añadió Formicidae, recuperó la vista completa para mostrar la familia y actualizó foto, descripción y los 773 nodos de su rama. El pie mostró «Clase: Insecta → Orden: Hymenoptera → Suborden: Apocrita → Familia: Formicidae». El dato local carece de una Superfamilia intermedia y no se inventó.
+- «coleóp» no ofreció resultados dentro de Formicidae ni de Hymenoptera. Quitar × de Formicidae restauró Hymenoptera; quitar la última × mantuvo el texto escrito y ofreció los dos homónimos públicos de Coleoptera en la búsqueda general. El panel volvió a su invitación inicial.
+- Desde un zoom propio del grafo de 1,25, «dermápter» mostró primero el orden y luego la familia bajo Diptera. Intro eligió el orden de tres registros, restauró el zoom a 1, centró su posición real, mantuvo Orden y actualizó la ficha. El aviso de carga estaba apagado.
+- La miniatura midió 274,11 píxeles CSS de ancho en el panel de 275, con 90 de alto. Su diálogo ampliado se abrió con foco en Cerrar, imagen sin recorte, nombre y créditos. Escape cerró sólo la fotografía, limpió su recurso ampliado y devolvió el foco a la miniatura, conservando el explorador abierto.
+- Con 640 × 1.093 CSS px, no hubo desbordamiento horizontal del documento, diálogo, visor ni campo con etiquetas. Los cuatro controles conservaron 40 × 40 y sus ayudas. La ampliación midió 576 × 781,78, dentro de la pantalla y sin desbordamiento horizontal. Se retiró la emulación y se restauraron 1.648 × 786 CSS px y el zoom de navegador de 75%.
+- Un clic real en la esfera centrada convirtió Dermaptera en raíz de sus tres nodos. Seleccionar Forficulidae en el explorador actualizó su ficha y el pie «Clase: Insecta → Orden: Dermaptera → Familia: Forficulidae» sin cambiar la raíz del grafo. Intro sobre su esfera la convirtió en raíz terminal: una esfera, ficha y ningún explorador de hijos. La izquierda conservó las siete tarjetas del filo.
+- Los recorridos y las capturas no mostraron una superposición de error de Vite; la consola no mostró errores ni advertencias.
+
+La comparación visual utilizó la captura anterior de referencia `C:\HT\LABINVEPN\.local\opera-neon\neon-qa.png` y capturas de la implementación de Opera Neon, inspeccionadas con `view_image`. Se revisaron seis aspectos: la composición de tres paneles conserva el protagonismo del octree; los colores mantienen la identidad cian/dorado/lavanda/rosa/verde con tonos más sobrios; los mundos conservan volumen y acabado mate sin aura blanca; las estrellas son diminutas y no forman una cuadrícula; la foto llena el ancho con altura fija y admite ampliación; las etiquetas, foco y linaje son legibles en escritorio y pantalla estrecha. Se corrigió un contorno de foco duplicado en el input, conservando el foco visible del campo completo. Los cambios de textos visibles se limitan a las instrucciones de ámbito y al linaje pedidos por el usuario; no se agregaron rótulos decorativos sobre la ficha. Las capturas temporales de esta tarea se retiran tras la revisión.
+
+La variación por abundancia se calcula al reconstruir buffers y nunca por fotograma; usa el mismo diámetro para dibujar y seleccionar. El SVG del fondo es compartido y estático. Se conservan SWR, sus límites de caché y la programación de renderizado existente; estas revisiones no acreditan un porcentaje global de reducción de CPU o RAM. PostgreSQL, fichas publicadas, R2 y OCI no se modificaron en esta tarea. El cambio queda disponible localmente, pendiente del empaquetado y despliegue habituales.
+
+## SWR y consumo del visor 3D — 10 de octubre de 2026
+
+Se mantiene la rama de trabajo por indicación del usuario. Se contrastó la cobertura vigente de `crear-paquete-oci` y se revisaron estáticamente el ciclo de la fuente pública, renovación concurrente, invalidación de respuestas tardías, LRU, tamaños de buffers, transferencias al worker, revisión del índice espacial y programación del renderizado. Los nuevos contratos Frontend cubren entrega inmediata de una rama vencida, renovación compartida, fallo con espera de reintento, descarte tras invalidación, presupuesto de memoria, expulsión por LRU y equivalencia de datos publicados. El contrato del modelo añade equivalencia entre topología compacta y geometría completa al filtrar un rango. **No se ejecutaron estas pruebas, el paquete, compilaciones, suites ni verificaciones equivalentes aisladas; quedan pendientes de `crear-paquete-oci` por el usuario.** No se agrega Gherkin duplicado.
+
+La evidencia complementaria de rendimiento y presentación procede de datos reales en la única pestaña QA de Opera Neon mediante MCP, con zoom del navegador de 75%:
+
+- Antes del cambio, Insecta mostró 2.906 nodos y dos draw calls; se observaron 85 escrituras de cámara en 1,406 segundos. En esa versión la cámara se escribía en cada renderizado, aproximadamente 60 fps.
+- Después del cambio, Insecta mostró los mismos 2.906 nodos y dos draw calls; el contador de renderizados avanzó 68 en 2,201 segundos, aproximadamente 30 fps. La lectura se publica cada 200 ms y admite un margen de varios fotogramas. La cámara siguió girando y la velocidad angular configurada siguió en 1,1. Esto acredita menos renderizados, no una reducción porcentual medida de CPU.
+- Orden conservó las 19 esferas, colores y caminos, `aria-busy=false`, y omitió el descarte espacial por tamaño. Las siete tarjetas de Arthropoda permanecieron fijas. Se inspeccionó la captura y no hubo overlay de Vite, errores ni advertencias de consola.
+- Al volver a Arachnida con la entrada vencida, el visor indicó `cacheOrigen=stale`, una renovación y cero peticiones pendientes al finalizar; mostró sus 203 nodos, sin estado de carga ni aviso «Abriendo visor…». La caché conservó tres entradas con 783.118 bytes estimados, dentro de su límite de 12.582.912 bytes.
+- Sobre la leyenda Orden de Arachnida se iluminaron diez nodos y nueve caminos, y el contador de renderizados permaneció en 6.917 durante 1,2 segundos; dibujo e índice no se reconstruyeron. Volver a Insecta reutilizó otra entrada vencida y terminó con dos renovaciones y cero pendientes, manteniendo las mismas tres entradas y presupuesto.
+- Con Orden activo, elegir el homónimo Dermaptera de rango Orden conservó Insecta y las 19 esferas, resaltó su selección visible y mostró la explicación publicada en el panel derecho. Cerrar el modal detuvo la rotación y mantuvo el contador en 7.206 durante 1,2 segundos. Reabrir con la respuesta pública equivalente conservó las tres entradas de caché y el filtro Orden, sin estado de carga ni errores o advertencias de consola.
+- La fotografía real de Dermaptera terminó de cargar con 360 px y permaneció visible. Al acercar Insecta a 1,953×, el octree dejó 2.518 de 2.906 nodos en el encuadre y descartó 44 octantes; Ajustar recuperó los 2.906 nodos y omitió el recorrido espacial al caber la caja completa. Los clics rápidos Arachnida → Insecta conservaron la raíz y encabezado correctos, con el índice en worker y sin avisos pendientes. No se registraron errores ni advertencias.
+- Tras la revisión final de invalidación, la apertura recuperó Arachnida (203 nodos). Cambiar a Insecta y volver inmediatamente Arachnida → Insecta conservó sus 2.906 nodos e índice, con `indiceReutilizado=true`, encabezado correcto y estado oculto. La caché registró dos entradas y 777.762 bytes estimados.
+- En 640 × 1.093 CSS px, Orden conservó sus 19 esferas y colores, sin desbordamiento horizontal ni overlay. Los cuatro controles mantuvieron 40 × 40 CSS px y sus ayudas; se inspeccionó la captura móvil y se retiró la emulación. La consola final no mostró errores ni advertencias. Las retiradas reales de publicación, fallos de worker y límites extremos se revisaron estáticamente; los contratos añadidos permanecen pendientes del paquete. No se modificó la base de datos para simularlos.
+
+Las fichas, PostgreSQL y OCI no se modifican en esta tarea. El cambio está disponible en desarrollo local y queda pendiente del empaquetado y despliegue habituales. El presupuesto de caché excluye la escena activa y el índice espacial; no se afirma un límite global de RAM ni capacidad acreditada con millones de nodos.
+
+## Búsqueda que localiza, tarjetas del filo e indicador de carga — 10 de octubre de 2026
+
+Se contrastó la cobertura de `crear-paquete-oci` antes de validar. Se revisaron estáticamente las identidades de taxón y linaje, la separación entre tarjetas del filo y raíz 3D, el filtrado por rango, los estados asíncronos y el foco. El contrato Frontend incorpora actualizaciones solapadas, cambios de raíz durante la espera, homónimos de distinto rango, conservación del catálogo y descarte de una selección tardía al cerrar. El contrato Browser existente se adapta a las tarjetas fijas del filo y conserva las comprobaciones de jerarquía, hojas, zoom, mapa, registros y virtualización de ramas numerosas en el panel derecho. **Estas pruebas y el paquete no se ejecutaron; quedan pendientes de `crear-paquete-oci`.** No se ejecutaron compilaciones, suites, migraciones ni comprobaciones equivalentes por separado.
+
+Los recorridos complementarios usan exclusivamente Opera Neon mediante MCP, datos públicos reales, una sola pestaña QA de `localhost:8000` y zoom del navegador de 75%:
+
+- La apertura mostró Arachnida y los siete hijos inmediatos de Arthropoda, con `visorCargando=false`, sin errores ni advertencias de consola.
+- Buscar Formicidae desde Arachnida abrió su rama contenedora Insecta (2.906 nodos), situó y resaltó Formicidae, y mostró su ficha y 773 nodos en el explorador derecho. La izquierda conservó Arachnida, Chilopoda, Crustacea, Diplopoda, Insecta, Malacostraca y Tingidae; el aviso «Abriendo visor…» quedó oculto.
+- Con la leyenda Orden activa, buscar Dermaptera mostró sus dos homónimos con rango y ascendencia. Elegir el orden conservó Insecta como raíz del grafo, las 19 esferas de órdenes y las tarjetas del filo. La selección visible coincidió con la clave del orden de tres registros y el panel derecho mostró sus dos familias hijas.
+- Al repetir mediante Intro, la sugerencia de rango Orden apareció primero y se seleccionó el mismo taxón, conservando el filtro `orden`. Su foto terminó de cargar con 360 px de ancho y la ficha mostró el texto publicado; el indicador de carga estaba apagado. No se registraron errores ni advertencias de consola.
+- Cambiar rápidamente de Insecta a Arachnida conservó Arachnida y sus 203 nodos, sin avisos de carga, con `aria-busy=false` y la misma instancia de las tarjetas. El recorrido final confirmó el encabezado Arachnida, «Clase · 1.253 registros» y todas las leyendas habilitadas; pulsar Orden mostró sus nueve taxones sin bloqueo ni errores de consola. El retorno al dibujo previo cancela la raíz pendiente y restaura su encabezado y controles.
+- Elegir explícitamente Dermaptera de rango Familia recuperó la rama completa de Insecta y seleccionó su clave bajo Diptera, con un registro, foto cargada y panel terminal sin explorador de hijos. En 640 × 1.093 CSS px no hubo desbordamiento horizontal; los cuatro controles conservaron 40 × 40 y sus ayudas. Se consultó la ficha desplazando el visor, se guardó la captura móvil y se retiró la emulación. La consola final no mostró errores ni advertencias.
+
+La búsqueda 3D deja de aplicar filtros propios al catálogo: localiza el resultado y mantiene el total público de la cabecera. Los filtros de la representación alternativa y las acciones explícitas de mapa/registros se conservan. Las fichas y los datos de PostgreSQL no se modificaron en esta tarea. El cambio de interfaz sigue pendiente del empaquetado y despliegue habituales en OCI.
+
+## Selección como raíz, ficha sin duplicados y controles uniformes — 10 de octubre de 2026
+
+Esta entrada actualiza el comportamiento de selección descrito en la revisión anterior, siguiendo la nueva indicación del usuario y conservando su rama. Pulsar una esfera, o seleccionarla con Intro, la convierte en raíz del grafo y de la ficha derecha. La ficha conserva foto, créditos, explicación y descendientes, pero ya no repite el rótulo, nombre ni rango sobre la fotografía. Se retiraron los botones Expandir/Contraer; las carpetas siguen abriendo sus hijos mediante flecha, doble clic o teclado. Los cuatro controles de cámara tienen medidas iguales de 40 × 40 CSS px, nombre accesible y ayuda nativa `title`. La velocidad automática de OrbitControls pasa de 0,8 a 1,1; se conserva la pausa del puntero, la actividad y el movimiento reducido.
+
+Se releyeron ambos AGENTS.md y la cobertura de `crear-paquete-oci` sin ejecutarlo. La revisión estática contrastó selección, espera del dibujo, cancelación por cambio de raíz, actualización de ficha y navegación al padre; también la retirada de controles y referencias DOM y la especificidad de sus medidas. Se adaptó el contrato Browser existente para exigir la nueva raíz y la ausencia del encabezado y botones retirados. **No se ejecutaron el paquete, suites, compilaciones, comprobaciones de sintaxis, migraciones ni verificaciones equivalentes por separado.** Su ejecución permanece pendiente por el usuario; no se agregó Gherkin duplicado.
+
+Los recorridos complementarios utilizaron exclusivamente Opera Neon mediante MCP, reutilizando la única pestaña QA de `localhost:8000`, con zoom del navegador en 75% y datos públicos reales:
+
+- Abrir el explorador seleccionó Arachnida y conservó vacío el panel derecho. Los cuatro controles devolvieron 40 × 40 CSS px y sus ayudas para volver al padre, alejar, acercar y ajustar.
+- Un clic real sobre la esfera central mostró la ficha de Arachnida. AvPág dos veces e Intro seleccionaron Araneae: grafo y ficha pasaron a Araneae, ambos con 174 nodos y sus 988 registros. La izquierda conservó las tarjetas iniciales y su origen Arachnida.
+- La captura de escritorio confirmó la fotografía y explicación sin el encabezado duplicado ni Expandir/Contraer. Se señaló el control para volver al padre y se comprobó su ayuda accesible.
+- En 640 × 1.093 CSS px, todos los controles conservaron 40 × 40, la cabecera de la ficha mostró sus 196 px completos y no hubo desbordamiento horizontal. Desplazar el visor permitió consultar foto, explicación, búsqueda y carpetas. Se retiró la emulación y se restauraron 1.648 × 786 CSS px, DPR 1,125.
+- Los recorridos finalizaron sin errores ni advertencias de consola ni overlay de Vite. Las capturas reutilizan `neon-qa.png` y `worlds-mobile.png`, fuera del repositorio. La revisión acredita estos flujos, no ausencia general de regresiones.
+- Tras la carga local, volver al padre desde Araneae recuperó Arachnida y dejó vacío el panel derecho. Seleccionar Acari mediante AvPág e Intro lo convirtió en raíz terminal de un nodo; su fotografía nueva y texto con tildes se mostraron completos. Árbol y buscador permanecieron ocultos y no hubo errores ni advertencias de consola.
+
+La carga editorial solicitada usa identidades completas de rango y ascendencia para conservar homónimos y las fichas existentes. Las referencias fotográficas proceden de iNaturalist con licencia permitida, créditos y fuente; su rango, filo y clase se contrastan con el linaje antes de elegir la imagen. Cuando la foto representa un grupo superior se indica en el texto y la descripción alternativa, sin atribuirla a una especie concreta. Las fichas mantienen UTF-8, se insertan por lotes sin sustituir registros y comparten miniaturas R2. Esta carga de contenido es independiente de las validaciones y migraciones del empaquetador. La interfaz requiere el empaquetado y despliegue habituales para estar disponible en la VM.
+
+La carga terminó con **3.282 fichas publicadas con foto y texto sobre 4.102 taxones, 80,01%, tanto en `hubdigital` local como en `hubdigital_pruebas` de OCI**. Se añadieron 3.260 fichas en cada base y se conservaron las 22 anteriores. La transferencia reutilizó 65 imágenes por huella en el prefijo R2 `pruebas-oracle-20260920`; no copió scripts ni modificó archivos de la release. La inserción remota terminó con `COMMIT`. Estos datos son resultados de la carga expresamente solicitada, no una aprobación de suites del proyecto. Se retiraron los archivos locales temporales de preparación y transferencia.
+
+## Fichas administrables y explorador de rama — 10 de octubre de 2026
+
+Se mantiene la rama solicitada por el usuario. Los paneles laterales se estrechan para dar prioridad al octree. El panel derecho empieza vacío: abrir el modal, cambiar de filo o seleccionar una tarjeta izquierda no consulta ni muestra fichas. Un clic en una esfera, o su selección mediante Intro, muestra su identidad, fotografía, explicación breve y descendientes sin cambiar la raíz ni la cámara del grafo. Un nodo terminal no muestra explorador, buscador ni controles de expansión. Se retiró el botón de ocultar la jerarquía y se reforzó ligeramente el azul de las filas seleccionadas del filtro Filo.
+
+La revisión estática contrastó el cambio con la cobertura vigente del empaquetador. Se revisaron permisos de curador y administrador en cada petición de Livewire, publicación y visibilidad pública antes de entregar metadatos o fotografías, consulta por UUID, validación y compresión de imágenes, almacenamiento R2 existente, integridad SHA-256, créditos, texto sin HTML, conflictos entre ediciones y cancelación de solicitudes al cambiar de selección. Las fichas editoriales de cualquier rango son independientes de la galería de fotografías de ejemplares y conservan sus restricciones existentes. El explorador utiliza un recorrido iterativo y una ventana de filas; conserva todos los descendientes, sus cifras y su ascendencia al buscar, y ofrece navegación por teclado y foco estable.
+
+Los contratos nuevos quedan preparados para `crear-paquete-oci`: `PortalFichasTaxonomicasTest.php` cubre edición por roles, rangos, autoría, compresión, publicación, visibilidad, validación y conflicto editorial; `portal-taxonomy-branch-model.test.mjs` cubre aislamiento de rama, búsqueda con ascendencia, cadenas profundas, ciclos y ventana de filas. Se ajustó la selección por teclado de `portal-livewire.mjs` para exigir que la raíz del grafo se conserve mientras se abre la rama derecha. **No se ejecutaron estas pruebas, suites, compilaciones ni el paquete.** No se añadió Gherkin que duplique los contratos de Pest.
+
+La revisión UX/UI complementaria usó exclusivamente Opera Neon mediante MCP, reutilizando la pestaña QA de `localhost:8000` con zoom del navegador en 75%, sobre datos publicados reales distintos de los fixtures automatizados:
+
+- Arachnida conservó sus 203 nodos y 1.253 registros; seleccionar su esfera abrió su ficha y explorador. Acari, terminal, mostró únicamente su identidad y el estado de ficha todavía no publicada, sin descendientes inventados ni controles vacíos.
+- Seleccionar Araneae abrió sus 174 nodos y 988 registros a la derecha, conservando Arachnida y sus 203 nodos en el grafo. Expandir permitió llegar al final de la rama manteniendo acotadas las filas del DOM.
+- Buscar Lyssomanes mantuvo siete filas con su camino desde Arachnida, Araneae, Araneomorphae y Salticidae hasta el género y sus dos especies; se conservaron los seis registros del género.
+- Insecta permitió expandir y recorrer sus 2.906 nodos hasta el final; en ese punto había nueve filas dibujadas y se conservaban los 26.849 registros. Volver a la tarjeta Arachnida dejó vacío el panel derecho y reanudó el giro; su ficha apareció después de pulsar su esfera.
+- En escritorio se observaron anchos de 295 / 877,64 / 275 CSS px para jerarquía, grafo y ficha. La cabecera de la ficha mostró el texto completo y las acciones de expansión permanecieron disponibles encima del árbol.
+- En 640 CSS px, los paneles se apilaron con desplazamiento vertical, fotografía y texto completos, controles visibles y sin desbordamiento horizontal. En 800 CSS px, jerarquía y grafo conservaron dos columnas, y la ficha ocupó la fila inferior. Se retiró la emulación y se restauraron 1.648 × 786 CSS px, DPR 1,125.
+- Los recorridos finales no mostraron errores ni advertencias de consola ni overlay de Vite. Las capturas reutilizan `neon-qa.png` y `worlds-mobile.png`, fuera del repositorio. Estos recorridos no acreditan rendimiento con millones de nodos.
+
+Por autorización expresa del usuario se creó la tabla editorial y se cargaron 22 fichas iniciales tanto en la base local como en `hubdigital_pruebas` de la VM. Las fotografías representativas, con créditos y licencia permitida, se guardaron como WebP de aproximadamente 4–20 KB en los prefijos R2 respectivos. La carga conservó fichas existentes y no agregó taxones ni ejemplares. En la VM se transfirieron sólo contenido editorial e imágenes; no se modificaron los archivos de la release. Esta carga de contenido es independiente de la ejecución de migraciones y validaciones integrales del paquete.
+
+La pantalla administrativa se revisó estáticamente; su recorrido autenticado y los contratos automatizados quedan pendientes del paquete por el usuario. La interfaz nueva permanece en la rama local y requiere el empaquetado y despliegue habituales para estar disponible en la VM. No se declara aprobación de las suites ni ausencia general de regresiones.
+
+## Menú junto a las esferas y selección azul de Filo — 10 de octubre de 2026
+
+Se corrigió el menú contextual del grafo en la misma rama solicitada por el usuario. El evento conserva sus coordenadas antes de esperar la respuesta del octree; la apertura recibe el rectángulo proyectado de la esfera y los límites del canvas. Se espera a que `x-show` revele el menú antes de medirlo y enfocarlo. El menú se coloca a la derecha de la esfera, pasa a la izquierda cuando falta espacio y se mantiene dentro de la vista. Se conservan las acciones de mapa y registros y el menú de las tarjetas. Las filas marcadas del filtro Filo tienen fondo azul claro, texto y cifras azules y casilla con acento azul, usando el estado existente `is-selected`; no se alteran los colores de los rangos del grafo.
+
+La revisión estática contrastó el flujo con la cobertura del empaquetador y `portal-livewire.mjs`, cuyo menú existente se abre sobre tarjetas síncronas. Se revisaron la propagación del ancla hasta Alpine, los diámetros y la perspectiva del shader, la conversión a coordenadas del modal, el foco y la cancelación cuando se cierra el menú antes del frame pendiente. Se añadieron contratos en `portal-taxonomy-explorer.test.mjs` para posición, cambio de lado, límites, origen cero, respuesta sin `currentTarget` y cierre antes del enfoque. **No se ejecutaron suites ni compilaciones**; estos contratos quedan pendientes de `crear-paquete-oci` por el usuario.
+
+La comprobación UX/UI complementaria utilizó exclusivamente Opera Neon mediante MCP, reutilizando la pestaña QA de `localhost:8000` y su zoom del navegador de 75%, con datos públicos reales:
+
+- Arachnida: el octree identificó la raíz; el menú de 180 × 99,36 CSS px abrió a su derecha y enfocó «Ver en el mapa». Al acercar mediante la rueda, la raíz quedó cerca del borde derecho y el menú pasó a su izquierda, permaneciendo dentro del canvas de 984,40 × 450,22 CSS px. Flecha abajo enfocó «Ver registros» y Escape cerró el menú.
+- Araneae: clic derecho sobre la esfera hija abrió su propio menú junto a ella, dentro del mismo canvas; Arachnida conservó sus 203 nodos.
+- Vista estrecha de 640 × 1.093 CSS px: el menú quedó junto a la esfera dentro del canvas de 548,44 × 381,65, sin desbordamiento horizontal. Se retiró la emulación y se restauró la vista habitual de 1.648 × 786, DPR 1,125.
+- Lyssomanes permaneció marcado después de recargar: `aria-selected=true`, fondo `#dceeff`, nombre y cifra `#125b8d` y casilla `#17699b`. Se conservaron su selección y sus seis registros.
+- Los recorridos finales no mostraron errores ni advertencias de consola. Las capturas reutilizan `neon-qa.png` y `worlds-mobile.png` fuera del repositorio. No se ejecutaron de nuevo los flujos de aplicación al mapa y apertura de registros ya cubiertos por el paquete; su encaminamiento se revisó estáticamente.
+
+La validación integral, publicación y despliegue siguen pendientes. Esta revisión acredita los recorridos descritos, no ausencia general de regresiones.
+
+## Acabado sobrio de los mundos — 10 de octubre de 2026
+
+Se ajustaron únicamente los materiales, los trazos del atlas y el fondo del visor en la misma rama solicitada por el usuario. Las esferas tienen iluminación direccional, sombra, reflejos suaves y microrelieve mate ilustrativo. La superficie modera la saturación conservando el color asociado a cada rango; los colores de la leyenda permanecen iguales. Los emblemas pasan a ser trazos finos y discretos integrados en los mundos cercanos. El halo y las estrellas son tenues. No se modificaron los datos, las posiciones, los tamaños, el índice espacial, las cifras ni los controles.
+
+Se revisaron estáticamente los uniforms compartidos entre ambos shaders, la cobertura gradual del borde, el umbral del microrelieve para evitar calcularlo en puntos pequeños y la reutilización del atlas. Se consultó la cobertura del empaquetador sin ejecutarlo; no se agregaron pruebas automáticas para estos cambios de apariencia ni se ejecutaron suites o compilaciones.
+
+La revisión UX/UI complementaria utilizó exclusivamente el MCP oficial de Opera Neon, en la pestaña QA existente de `localhost:8000`, con zoom del navegador en 75%. Las capturas actualizan `neon-qa.png` y `worlds-mobile.png`, fuera del repositorio. Se comparó el render con la captura del usuario: se redujeron el halo brillante, los símbolos blancos grandes y las insignias repetidas, manteniendo el color de los rangos y la perspectiva.
+
+- Los cuatro filos conservaron su primera rama y cifras: Arachnida 203 nodos / 1.253 registros, Clitellata 4 / 3, Bivalvia 7 / 2 y Nematomorpha 1 / 1. Insecta conservó 2.906 nodos; sus filtros Orden y Especie mostraron e indexaron 19 y 1.427, respectivamente. Una segunda pulsación o la tarjeta izquierda recuperaron la rama completa.
+- Hover real sobre Familia en Arachnida mantuvo 46 nodos y 45 conexiones iluminados hasta la raíz y detuvo la cámara. Acercar produjo zoom 1,25 sin cambiar sus 203 nodos; Ajustar recuperó 1. Al seleccionar otra vez la tarjeta, el giro se reanudó y la cámara cambió durante los siguientes 220 ms.
+- En 1.648 × 786 CSS px se revisó el acabado de raíz y satélites. En 640 × 1.093 CSS px, el canvas conservó 548,44 × 381,65 y la leyenda se acomodó en dos filas sin desbordamiento horizontal. Se retiró la emulación al terminar y se restauró la vista habitual.
+- No se observaron errores ni advertencias de consola ni overlay de Vite. La escena conservó dos llamadas de dibujo para puntos y conexiones, y una para la raíz terminal; esto no acredita rendimiento con millones de nodos.
+
+La validación integral y las suites automáticas siguen pendientes de `crear-paquete-oci` por el usuario. No se publicó ni se desplegó el cambio.
+
+## Mundos biológicos, filtro por rangos y octree — 10 de octubre de 2026
+
+Continúa la misma rama por petición expresa del usuario. La esfera representa mundos biológicos iluminados con emblemas del grupo publicado, sin tierras, continentes ni nubes. Conserva los colores de Clase, Orden, Familia, Género, Especie y de los rangos intermedios. Los emblemas se obtienen de la ascendencia pública y comparten un atlas pequeño; no son retratos de especies concretas. Seleccionar una tarjeta izquierda inicia inmediatamente el giro, incluso al repetir la selección. El mouse sobre el grafo o la leyenda lo detiene. Pulsar un rango transforma la esfera para mostrar todos y sólo sus taxones dentro de esa rama; no cambia la raíz ni abre un selector. Una segunda pulsación recupera la rama completa.
+
+Se revisaron estáticamente la proyección por rango, sus ancestros visibles, la exclusión del ancla oculta del render y el octree, las revisiones de solicitudes asíncronas, el descarte por encuadre, la selección según diámetro, la reutilización del buffer GPU, la caché de ascendencia biológica y la liberación del atlas. Se consultó la cobertura de `scripts/deployment/crear-paquete-oci-core.ps1` sin ejecutarlo. Los contratos Node y el recorrido Browser del paquete usan fixtures sintéticos; la revisión complementaria siguiente usa los datos públicos reales y el aspecto renderizado.
+
+Recorridos UX/UI mediante el MCP oficial de Opera Neon, reutilizando la única pestaña QA de `localhost:8000`, con zoom del navegador en 75%. Vista habitual: 1.648 × 786 CSS px, DPR 1,125. Vista estrecha emulada: 640 × 1.093 CSS px; se retiró la emulación al terminar y se restauró la vista habitual. No se observaron errores ni advertencias de consola ni overlay de Vite en estos recorridos.
+
+| Recorrido complementario | Evidencia observada |
+| --- | --- |
+| Selección inicial y grupos | Los cuatro filos abren su primer nodo: Arthropoda → Arachnida, Annelida → Clitellata, Mollusca → Bivalvia y Nematomorpha → su raíz terminal. Se revisaron las 12 tarjetas iniciales de los cuatro filos con su emblema correspondiente. |
+| Arthropoda | Arachnida conserva 203 nodos / 1.253 registros; Chilopoda 4 / 2; Crustacea 4 / 1; Diplopoda 3 / 4; Insecta 2.906 / 26.849; Malacostraca 11 / 4; Tingidae 9 / 13. Las siete tarjetas permanecen en la izquierda sin expandirse. |
+| Otros filos | Clitellata: 4 nodos / 3 registros; Hirudinea: 4 / 1; Bivalvia: 7 / 2; Gastropoda: 164 / 345; Nematomorpha: 1 / 1. Se comprobaron símbolos de anélidos, moluscos y nematomorfos y se conservaron los registros. |
+| Leyendas por rango | Se recorrieron las 55 combinaciones de rama inicial y rango presentes entre los cuatro filos, recuperando la rama completa después de filtrar. En Insecta: Clase 1, Orden 19, Suborden 21, Familia 327, Subfamilia 149, Tribu 128, Género 834 y Especie 1.427; la raíz continúa siendo Insecta. El octree indexa la cantidad visible de cada filtro y `aria-pressed` identifica el rango elegido. |
+| Giro y pausa | En las siete tarjetas de Arthropoda, con el puntero fuera del grafo, la cámara cambia durante los siguientes 220–300 ms. Clics reales del MCP sobre Arachnida y Bivalvia confirman el inicio inmediato, incluido el nodo ya seleccionado. Hover real sobre el canvas detiene el giro y mantiene la cámara estable. |
+| Caminos hacia la raíz | Hover real en Familia, sobre Arachnida completa: 46 nodos y 45 conexiones iluminados, que incluyen sus ancestros y caminos compartidos; la cámara permanece detenida. |
+| Zoom y descarte espacial | Insecta filtrada por Especie conserva 1.427 taxones. Tras siete acercamientos (zoom 4,768), el encuadre dibuja 295 y descarta 131 octantes; Ajustar recupera los 1.427. Tiempo local observado de la consulta: 2,2 ms; no equivale a una prueba de carga. |
+| Teclado | Clic real en Orden y posterior Intro restauran Arachnida completa; el foco permanece en la leyenda. Se conservaron los controles de cámara y la semántica de botones. |
+| Vista estrecha | Las tarjetas se desplazan sobre el grafo; el canvas conserva 548,44 × 381,65 CSS px y los ocho rangos se acomodan en dos filas sin desbordamiento horizontal. El modal permanece dentro de la pantalla. |
+
+Se actualizaron `portal-taxonomy-three-model.test.mjs` y `portal-taxonomy-three-spatial.test.mjs` para todos los nodos del rango, ascendencia resumida, ancla oculta, recuperación de buffers, selección por tamaño, puntos coincidentes y poda de octantes. `portal-taxonomy-three-organisms.test.mjs` cubre ascendencia biológica, homónimos, cadena de 12.000 niveles, caché y grupos desconocidos o cíclicos. `tests/Browser/portal-livewire.mjs` conserva los fixtures y exige filtrar las 122 especies de una familia y restaurar sus 123 nodos, sin modificar las tarjetas. **No se ejecutaron estas suites ni compilaciones**: quedan pendientes de `crear-paquete-oci` por el usuario. No se agregaron escenarios Gherkin duplicados.
+
+La evidencia visual temporal se guarda fuera del repositorio en `.local/opera-neon/neon-qa.png` y `worlds-mobile.png`, reutilizando esos archivos. Quedan pendientes el paquete completo, lectores de pantalla, revisión individual de cada familia, cargas de millones de taxones y despliegue OCI. Esta revisión no acredita publicación ni ausencia general de regresiones.
+
+## Limpieza de navegadores y herramientas temporales — 10 de octubre de 2026
+
+Se retiraron las descargas de navegadores de Playwright, sus instalaciones y perfiles temporales, los dos perfiles de Chrome creados para revisar localhost, las librerías de captura/control y las capturas y guiones temporales de QA: aproximadamente 2,08 GiB. El inventario y los registros de eliminación quedan fuera del repositorio, en `C:\HT\LABINVEPN\limpieza-codex-20261010`. Se conservaron código, datos, credenciales, respaldos, dependencias, pruebas automáticas, Opera Neon, su MCP y WebView2. Las capturas y JSON temporales mencionados en entradas anteriores se eliminaron a petición del usuario; permanecen los resultados resumidos de los recorridos en esta documentación.
+
+La puerta `tests/Browser/portal-livewire.mjs` selecciona ahora el Opera Neon instalado en Windows. Conserva todos los fixtures y aserciones y su perfil temporal aislado, sin dependencia de Chrome, Edge ni Playwright. Este cambio se revisó estáticamente; el recorrido completo del paquete sigue pendiente de `crear-paquete-oci` por el usuario. No se ejecutaron suites ni compilaciones durante la limpieza.
+
+Chrome se desinstaló mediante su MSI oficial tras volver a solicitar la elevación indicada por el usuario. El proceso devolvió 0 y el registro confirmó la eliminación correcta; se comprobó que desaparecieron la entrada de instalación y el ejecutable. Se conservaron los perfiles personales y no se reinició Windows. Los registros quedan en `chrome-uninstall-admin.log`, dentro del directorio de limpieza. Edge permanece: su desinstalador oficial devolvió 93 y registró que Windows no permite retirar el producto en la región configurada. No se modificó esa restricción ni se borraron componentes del sistema manualmente. Se conservan `qa6-work/local-anastrepha.xlsx` y `qa6-work/oci-anastrepha.xlsx` por indicación expresa del usuario.
+
+## Tarjetas iniciales y esfera Three.js con octree — 10 de octubre de 2026
+
+La representación vigente conserva sólo los hijos inmediatos del filo a la izquierda y abre la rama elegida a la derecha. Usa Three.js con buffers de puntos y segmentos; d3-octree indexa las posiciones en un worker. Esta entrada sustituye el comportamiento activo descrito en las entradas históricas siguientes, que se conservan como antecedentes.
+
+Se revisaron estáticamente el aislamiento de rama, los padres publicados, la cancelación de solicitudes, liberación de geometrías, caché limitada, transferencia de buffers, construcción cancelable del octree y el ajuste proporcional del canvas. Se actualizaron los contratos Browser y se añadieron contratos Node para buffers completos y selección espacial. **No se ejecutaron**: su ejecución y la compilación pertenecen a `crear-paquete-oci`, pendiente del usuario para esta tarea.
+
+Los recorridos complementarios de UX/UI se realizaron exclusivamente en la pestaña existente de Opera Neon QA mediante su MCP, manteniendo el zoom nativo de 75%. Se revisaron presentación, controles, selección, foco, teclado, leyenda, giro y consola sobre los datos publicados locales. Evidencia en `C:\HT\LABINVEPN\.local\opera-neon\three-interactive.results.json`, `three-real-hover.results.json`, `three-navigate.results.json` y `three-picking-responsive.results.json`.
+
+| Recorrido observado en Neon | Resultado |
+| --- | --- |
+| Selección inicial al cambiar de filo | Arthropoda abre Arachnida; Annelida, Clitellata; Mollusca, Bivalvia; Nematomorpha, su raíz terminal. |
+| Siete tarjetas de Arthropoda | Arachnida 203 nodos, Chilopoda 4, Crustacea 4, Diplopoda 3, Insecta 2.906, Malacostraca 11 y Tingidae 9. Cada esfera conserva su raíz y descendientes; la izquierda mantiene siete tarjetas. Las cifras de registros permanecen independientes. |
+| Leyenda y camino a la raíz | El hover real sobre Familia en Arachnida ilumina 46 nodos y 45 conexiones, incluidos ancestros. La unión coincide con los caminos del catálogo público. En Insecta, Familia ilumina 364 nodos y 363 conexiones. No hay nombres superpuestos sobre los puntos. |
+| Navegación por leyenda | Orden permite elegir Araneae (174 nodos). Familia permite buscar Formicidae entre 327 familias de Insecta (sólo diez opciones DOM simultáneas), y abre sus 773 nodos y 772 relaciones. La izquierda conserva sus tarjetas. |
+| Zoom y giro | Los botones superiores cambian el zoom de 1 a 1,25 y de vuelta a 1. Las flechas giran la cámara. Tras inactividad la cámara gira; al entrar el puntero queda estable. |
+| Octree y teclado | Señalar la raíz de Arachnida consultó dos puntos de 203 en el worker; tiempo de esa consulta 1,5 ms. Fin alcanzó la opción 77 de 77 del selector virtualizado. Escape cerró sólo el selector y devolvió el foco a la leyenda. |
+| Consola | Sin mensajes de error ni advertencia en los recorridos anteriores. |
+| Modal reducido | En un modal de aproximadamente 523 px de ancho, los controles quedan dentro del borde, la leyenda se distribuye en dos filas y no hay desbordamiento horizontal. La lista conserva sus siete tarjetas mediante desplazamiento y la esfera conserva la proporción. Evidencia: `three-compact-finish.results.json` y `three-compact-final.png`. |
+
+Los tiempos corresponden a recorridos locales, no a un benchmark ni a capacidad acreditada con millones de nodos. No se ejecutó el paquete ni se publicó o desplegó este cambio. Los contratos de permisos y agregación permanecen en Pest; no se agregó Gherkin duplicado.
+
+## Tarjetas y conectores de Mammal Diversity Database — 10 de octubre de 2026
+
+El usuario cambió la referencia visual al árbol de tarjetas de Mammal Diversity Database. El visor activo adapta sus componentes TreeTips/RecursiveTreeTips y conectores HTML/CSS, con licencia MIT conservada en `resources/vendor/mdd-tree/LICENSE.md`. Esta entrada sustituye la representación vigente de los motores descritos en las entradas históricas siguientes. No acredita sus recorridos de 393 familias como pruebas del componente nuevo.
+
+Se trabaja en `fix/visor-raiz-hijos-zoom-20261010`, creada desde `main` conservando todo el trabajo pendiente. Se releyeron ambos AGENTS.md y la cobertura del empaquetador. No se ejecutaron `crear-paquete-oci`, suites, compilaciones, auditorías ni comprobaciones equivalentes por separado. Las comprobaciones realizadas fueron revisión estática y recorridos complementarios de UX en el Chrome disponible, con los datos reales publicados; no se ejecutó el harness Browser ni sus fixtures.
+
+### Contratos preparados para el paquete
+
+Browser conserva permisos, registros, mapa, foco, teclado, estabilidad y comportamiento modal. Las aserciones del dibujo se adaptan a la referencia final: raíz identificada sin título duplicado, tronco desde arriba, tarjetas con totales de registros, nombres horizontales, expansión anidada que conserva el padre y reutilización del DOM al plegar o hacer zoom. El caso masivo conserva siete hijos y 244 nietos, despliega dos familias de 122 hijos sin cambiar la raíz y recorre cambios de raíz con descendientes compartidos. El zoom parte de 0,78125 y alcanza el mínimo de 0,5. Los nuevos casos de los cuatro bordes verifican cursores, arrastre y conservación del eje y lado opuestos; se conservan las esquinas y restauración por teclado. Los contratos previos de los adaptadores y renderizadores siguen presentes. No se añadieron escenarios Gherkin duplicados ni se retiraron pruebas de negocio.
+
+### UX complementaria con datos publicados
+
+Chrome permaneció visible en localhost, sin alternar maximización y minimización. El viewport revisado fue de 1.600 × 732 CSS px. La escala predeterminada elegida por el usuario es 0,78125, equivalente a dos pulsaciones de + desde 0,5. Las cifras usan el total publicado y el mismo formato `es-EC` del filtro izquierdo; la cantidad de hijos se conserva en la etiqueta accesible, sin ocupar el contador visible.
+
+| Caso observado | Resultado |
+| --- | --- |
+| Arthropoda | Siete tarjetas iniciales, todas dentro del visor al tamaño revisado. Totales: Arachnida 1.253, Chilopoda 2, Crustacea 1, Diplopoda 4, Insecta 26.849, Malacostraca 4 y Tingidae 13. La raíz se identifica en el selector y no se repite como título. Los padres coinciden con las claves publicadas. |
+| Annelida | Clitellata 3 e Hirudinea 1. Desplegar Clitellata añade Haplotaxida 3 debajo de su padre y conserva Annelida como raíz. |
+| Mollusca | Bivalvia 2 y Gastropoda 345, a la escala predeterminada, con el padre publicado. |
+| Nematomorpha | Tarjeta terminal con un registro, sin hijos inventados ni panel vacío. |
+| Línea inicial | Se acortó solamente el tramo superior del tronco. La última reducción pasó de aproximadamente 106 a 79,5 px antes del zoom, un 25%; los conectores de las ramas conservan sus dimensiones. |
+| Zoom | Acercar aumentó la tarjeta de 270 a 337,5 px cuando se revisó a escala 1. La revisión final comprobó la escala predeterminada 0,78125 y que los siete hijos iniciales caben; los cambios de filo restauran esa escala. |
+| Bordes del modal | Arrastre real de los cuatro bordes mediante Chrome: derecho e izquierdo modifican sólo el ancho; superior e inferior sólo el alto. Se conservó el lado opuesto con tolerancia inferior a 1 px. Los cursores son `ew-resize` y `ns-resize`; las esquinas conservan cursor diagonal sin iconos visibles. Inicio restauró el tamaño inicial tras cada recorrido. |
+
+La revisión de estilos encontró que la regla general de cursor del portal prevalecía sobre el componente; se corrigió la especificidad y se comprobó el cursor resultante de las ocho zonas. Las tarjetas usan fuente CSS de 20 px, con escala efectiva según el zoom elegido por el usuario. No se observaron errores ni advertencias de consola del visor en estos recorridos. Los tiempos locales observados para las vistas iniciales finales fueron 15,4 ms (Arthropoda), 6,2 ms (Annelida), 5,8 ms (Mollusca) y 3,3 ms (Nematomorpha); excluyen descarga y consulta y no equivalen a una prueba de carga.
+
+Quedan pendientes la ejecución completa del paquete y sus suites, lectores de pantalla, otros navegadores, carga/concurrencia, despliegue OCI y revisión de todas las familias con el componente nuevo. Esta revisión complementaria no acredita aprobación del paquete ni ausencia general de regresiones.
+
+## Visor con phylotree.js y Apache ECharts, sin React — 9 de octubre de 2026
+
+Continúa la misma rama por instrucción expresa del usuario. Esta entrada sustituye las conclusiones visuales de ETE/180°/360° que aparecen más abajo. Se retiró el navegador izquierdo y se conserva el buscador arriba con un selector de filos: Arthropoda es el predeterminado cuando está publicado. phylotree.js 2.6.0 aporta su trazado SVG nativo para ramas de hasta 120 nodos; Apache ECharts 6.0.0 aporta su trazado de árbol y Canvas para las mayores. Las fuentes de nombres son 18 px y la raíz 21 px; el zoom mínimo mantiene 16 px efectivos. Colores por rama, tarjetas claras y metadatos secundarios distinguen padres e hijos. Los motores dibujan las relaciones publicadas, sin reubicar géneros según referencias externas.
+
+Una rama masiva abre con la raíz y todos sus hijos inmediatos, sin perder la descendencia del modelo. «Expandir todas las ramas» permite desplegarla completa con desplazamiento. Esta política evita que la vista inicial muestre sólo la raíz aislada entre troncos que conectan descendientes muy lejanos. El canvas físico ocupa únicamente el visor; su plano de datos puede superar 190.000 px de altura. No se asegura que miles de nombres quepan simultáneamente en el modal. El zoom y scroll reutilizan el motor; la caché de SVG y la precarga pública evitan redibujos y viajes al servidor. Cambiar la raíz vacía la serie Canvas para corregir el fallo nativo de símbolos que conservaban un padre retirado.
+
+### Distribución y ejecución pendiente
+
+Se releyeron ambos AGENTS.md y el script de crear-paquete-oci antes de validar. El paquete ya cubre suites PHP/Pest/PostgreSQL, Java/Maven, Behat, Node/Frontend, Python/ETE, navegador con fixtures, dependencias y Vite. No se ejecutaron el paquete, esas suites, compilaciones ni comprobaciones equivalentes por separado. Sólo se instalaron las dos dependencias nuevas con scripts y auditorías deshabilitados; sus auditorías y compilación quedan pendientes del paquete.
+
+| Contrato preparado | Cobertura |
+| --- | --- |
+| Frontend, portal-phylotree-data | Raíz correcta, descendencia completa, padres publicados, exclusión de otras familias, terminales, ciclos, homónimos y nombres especiales; árboles de 31, 122, 768 y 3.141 hijos y recorrido de 393 familias sintéticas. |
+| Frontend, modelo del explorador | Orden de filos, ausencia de Arthropoda, navegación de rama sin contraer ni modificar el mapa, y conservación del linaje. Se conservan contratos previos del modelo y filtros. |
+| Browser, portal-livewire | Se actualiza la representación requerida conservando permisos, registros, mapa, teclado, foco, estabilidad, modal y cuatro esquinas. Se agregan ramas Canvas de 247 y 123 nodos para expansión completa, viewport limitado, zoom sin recrear motor y cambios de raíz con descendientes compartidos. |
+| Python/ETE y visor anterior | Se conservan los contratos y código funcional heredados. Ya no acreditan el renderizador activo del portal. |
+
+No se agregaron escenarios Gherkin que dupliquen Pest ni se retiraron pruebas de negocio. La ejecución de todos estos contratos y cualquier publicación siguen pendientes de crear-paquete-oci.
+
+### Recorrido complementario en Chrome con datos reales publicados
+
+Se utilizó Chrome visible sobre localhost mediante DevTools, con viewport de 1.280 × 585 CSS px y DPR 1,5, sin maximizar ni minimizar entre acciones. No se ejecutó el harness Browser del paquete. Los datos publicados, tamaños y densidades son distintos de los fixtures centralizados: 3.323 nodos, cuatro filos y 393 familias. Se revisaron en el navegador las salidas de los motores y las etiquetas accesibles de **las 393 familias**, abriendo cada rama y expandiendo completas las que usan Canvas. Todas conservaron su raíz, el conjunto de descendientes esperado, las conexiones con su padre publicado y fuente principal mínima de 18 px al zoom normal; 212 eran terminales. Esto fue una inspección de datos y representación del motor, **no una inspección humana de cada etiqueta en 393 capturas**. La revisión visual detallada fue por muestras.
+
+| Recorrido observado | Resultado y límites |
+| --- | --- |
+| Arthropoda | Primera vista: raíz y siete hijos, con los 3.141 nodos conservados. Se observó renderizado de 128,5 ms. Expansión completa: 3.141 nodos y 3.140 conexiones, 1.163,5 ms. Se recorrieron posiciones verticales y horizontales con nombres legibles; el canvas siguió midiendo 1.107 × 240 px pese a un plano de 3.160 × 193.818 px. |
+| Todas las familias | Recorrido de las 393 sin omisiones ni padres ajenos en las salidas inspeccionadas, tras corregir y repetir la transición a Formicidae. Mayor renderizado observado del recorrido: 459,2 ms. |
+| Formicidae | Sus 31 hijos directos aparecen en la vista inicial; la expansión incluye 773 nodos y 772 conexiones. Se revisó la ruta completa y se entró en Myrmicinae mediante su nodo. |
+| Myrmicinae | Raíz nombrada, 18 hijos inmediatos y 271 nodos conservados. Renderizado inicial observado: 30,5 ms. Dos acciones de zoom consumieron 21,2 ms y conservaron la misma instancia del motor. |
+| Melolonthidae, Membracidae, Scarabaeidae | Expansiones completas de 151, 185 y 231 nodos; se revisaron los padres de cada salida nativa. Tiempos observados: 84,8; 81,7 y 100,9 ms. |
+| Annelida | SVG de nueve nodos y ocho relaciones, fuente principal mínima de 18 px; 19,6 ms observados. Se revisaron clases, órdenes y familias. |
+| Mollusca | Raíz con Bivalvia y Gastropoda; 172 nodos conservados, 22,2 ms observados para la vista inicial. |
+| Nematomorpha | Raíz terminal nombrada, un nodo y cero relaciones; no vuelve al mensaje de seleccionar una clase. |
+| Búsqueda y selector | Buscar Formicidae con Enter conserva el buscador, su filtro propio y los cuatro filos disponibles. Se recorrió la selección entre filos con el control superior. |
+| Cuatro esquinas con Canvas | Se enfocaron las cuatro esquinas y se cambiaron ancho/alto con flechas. Al pasar de 1.107 a 1.067 px de visor, el trazado inicial pasó de 747 a 707 px de ancho; conservó sus ocho nodos, foco y ausencia de errores. Inicio restauró el modal. Este recorrido con Arthropoda complementa el fixture pequeño del paquete. |
+
+Los tiempos corresponden a renderizado local observado en esta máquina, excluyen descarga inicial de recursos y consulta de taxonomía, y no son una prueba de carga o concurrencia en OCI. Al terminar esos recorridos no se observaron errores de consola del visor. Las pruebas integrales, lectores de pantalla, navegadores distintos, escenarios sin conexión, recorrido autenticado del curador y despliegue OCI siguen pendientes. La revisión complementaria no acredita ausencia general de regresiones ni una release publicada.
+
+## Orientación, nombres proporcionados y cuatro esquinas — 9 de octubre de 2026
+
+Continúa la misma rama por instrucción expresa del usuario. La última corrección mantiene siempre el explorador como modal del catálogo, de tamaño inicial 90%, arrastrable y redimensionable desde cualquiera de sus cuatro esquinas. Se retiró la apertura en ventana independiente. El ajuste utiliza la misma escala en ambos ejes y `preserveAspectRatio="xMidYMid meet"`: no deforma las letras ni estira el círculo lateralmente. Esta decisión sustituye el intento intermedio de encuadre elíptico, rechazado por el usuario. Las capturas de ese intento y de la ventana independiente no acreditan la versión vigente.
+
+Se corrigieron los ángulos del arco nativo ETE: positivos, con medio sector para centrar el abanico superior. Una rama con una sola hoja se orienta hacia la derecha y se centra verticalmente. Los filos terminales también habilitan el visor. Los colores siguen el filo del linaje; los nombres nativos pasan a 18 puntos y los contadores a 12, con menor separación vacía entre hojas. El ajuste conserva el SVG completo y todos los taxones de las ramas abiertas; mostrar todo un árbol de cientos de nombres en un modal finito sigue exigiendo zoom para leer cada etiqueta.
+
+### Cobertura preparada, pendiente del paquete
+
+| Contrato | Cobertura |
+| --- | --- |
+| Ajuste sin deformación ni recorte | Node: escala uniforme máxima, SVG asimétrico, panel ancho/estrecho, centro circular, base semicircular y rama única centrada. La aserción de elipse se sustituye por el requisito final de proporciones uniformes, conservando los límites y el encuadre. |
+| Terminales y orientación real de las letras | Python: Nematomorpha sin hijos; Haplotaxida y Glossiphoniidae a la derecha; composición de matrices Qt para detectar nombres invertidos en 180°. Se mantienen los contratos masivos de 122/154/256/768 taxones y el rechazo explícito sobre el límite. |
+| Cuatro esquinas y disponibilidad | Node: reducir/ampliar desde noroeste, noreste, suroeste y sureste manteniendo fija la esquina opuesta; límites y restauración. Un filo terminal habilita su gráfico. |
+| Integración visible | Browser: cuatro controles de esquina, distinción entre rama única y arco al revisar el encuadre. Se conservan zoom relativo, estabilidad, lateral, arrastre, registros, mapa, teclado y foco. |
+
+Se leyó nuevamente el acuerdo y la cobertura de `crear-paquete-oci-core.ps1`. No se ejecutaron el paquete, Python/Node/Browser ni otras suites, compilaciones o migraciones por separado. No se agregaron escenarios Gherkin duplicados ni se retiraron contratos funcionales previos. Se retiró únicamente el contrato nuevo del intento de ventana independiente, al eliminar esa funcionalidad por instrucción posterior del usuario.
+
+### Recorrido visual complementario con datos publicados
+
+Chrome se abrió a solicitud del usuario sobre `http://localhost:8000/portal/catalogo?vista=mapa`, con una ventana de 1912 × 1077 y el zoom de página previamente configurado en 80%. Permaneció visible sin maximizar/minimizar entre acciones. Se usó la ventana propia de revisión y entrada física de Windows: el runtime de la extensión Chrome no estaba disponible y el cliente nativo de computer-use informó que su pipe no estaba disponible. No se inyectó JavaScript ni se ejecutó el harness de pruebas del paquete. Los datos reales, tamaños y densidades siguientes complementan los fixtures centralizados de integración; la cantidad de registros no se confunde con la cantidad de nodos del gráfico.
+
+| Datos recorridos | Observación visual |
+| --- | --- |
+| Annelida, 4 registros | Sus dos clases se muestran hacia arriba, con nombres derechos y raíz inferior centrada. |
+| Clitellata, 3 registros → Haplotaxida | Dos nodos; rama horizontal a la derecha, nombre/contador legibles y centrados verticalmente. |
+| Hirudinea, 1 registro → Glossiphoniidae | Dos nodos, orientación correcta, sin nombre invertido ni arco vacío. |
+| Nematomorpha, 1 registro | El filo terminal tiene su gráfico nativo, nombre y contador; ya no muestra el aviso de seleccionar una clase. |
+| Mollusca, 347 registros | Bivalvia y Gastropoda visibles en el abanico superior, conservando el color naranja. |
+| Bivalvia, 2 registros | Ambos hijos visibles y proporcionados, en 180°. Los nombres proceden de la jerarquía publicada. |
+| Gastropoda, 345 registros → Stylommatophora | 3 nodos iniciales y 20 al expandir la rama; familias completas en el arco superior, sin recorte de etiquetas. |
+| Arthropoda, 28.260 registros | Filo y siete hijos inmediatos en 180°, nombres y contadores visibles; lateral limitado a filo/clase. |
+| Arachnida, 1.253 registros | 11 taxones en 180°, incluidos nombres largos, sin inversión de la mitad izquierda. |
+| Insecta, 26.849 registros → Coleoptera | 21 taxones iniciales en 180°; 62 al expandir Coleoptera, en 360° centrados. Contraer el punto padre vuelve a los 21 y al arco superior, con encuadre automático. |
+| Formicidae, 11.364 registros → Camponotus | 32 taxones iniciales (familia y 31 hijos); 154 al abrir Camponotus, conservados en un círculo de 360°. La vista completa mantiene los nombres proporcionados, pero sus etiquetas más pequeñas requieren acercamiento para lectura individual. Se probaron dos pasos de zoom positivo y negativo desde la ruta. |
+| Lateral y cambio de tamaño | Plegar conserva la rama y centra de nuevo el gráfico. Se arrastraron físicamente las cuatro esquinas con el árbol real de 62 taxones; cada una mantuvo la opuesta, y el dibujo volvió a encajar. Inicio restauró el modal de 90% y la selección. La cabecera se arrastró dentro de la página. |
+
+Los logs del renderizador de esta tipografía registraron 203 ms para los 32 taxones de Formicidae, 922 ms para sus 154 y 156 ms para los 62 de Insecta con Coleoptera. Son tiempos del proceso ETE, no latencias completas ni una prueba de carga. Capturas locales temporales en `.local/localhost/ete-final-*.png`; las de esquinas muestran dimensiones sucesivas del mismo modal, no ventanas de pantalla completa. La inspección de consola completa, lectores de pantalla, otras resoluciones y la ejecución integral del paquete quedan pendientes. Se conserva el resto de pendientes autenticados/OCI de las entradas anteriores. No se afirma aprobación de suites, ausencia general de regresiones ni publicación o despliegue.
+
+## Estabilidad, encuadre automático y tamaño del modal — 9 de octubre de 2026
+
+Continúa la misma rama por instrucción expresa del usuario. Esta corrección sustituye la política de tamaño natural y encuadre opcional de la evidencia anterior. Abrir el árbol, cambiar selección/ramas, plegar el lateral o redimensionar vuelve a mostrar el SVG completo a la mayor escala posible; los botones −/+ están a la derecha de la ruta. El buscador y los dos niveles laterales se conservan al plegar. El modal se mueve y cambia de tamaño dentro de la pestaña; no puede cubrir la barra de direcciones.
+
+La revisión estática identificó medidas compartidas entre distintos objetivos de ResizeObserver, sensibilidad a barras internas y lecturas intercaladas con escrituras de dimensiones. Se sustituye por medidas border-box por elemento, un frame agrupado y geometría idempotente. Las notificaciones repetidas no reinician una petición ETE pendiente. El ajuste semicircular reserva el margen nativo inferior sin limitar toda la escala por ese margen.
+
+| Contrato preparado, sin ejecutar | Cobertura |
+| --- | --- |
+| Encajar árboles grandes y ampliar pequeños | `portal-ete-viewer.test.mjs`: centro/base, SVG asimétrico, paneles de distintas proporciones, encaje sin recorte y escala máxima. |
+| Evitar ciclos de redimensionado | `portal-taxonomy-explorer.test.mjs`: varios objetivos con medidas distintas, todas las entradas, cambios de content-box por barras internas, cambios externos agrupados y destrucción. |
+| Tamaño del modal | Contrato Node: conservar esquina, límites de viewport, pantallas menores que el mínimo y restauración accesible con Inicio. |
+| Integración visible | `portal-livewire.mjs`: muestreo de geometría durante 600 ms, zoom relativo, plegado/restauración del lateral y arrastre real de la esquina con encuadre completo. |
+
+Se consultó la cobertura vigente del paquete antes de validar. Estas pruebas, las compilaciones y las suites centrales permanecen pendientes de `crear-paquete-oci`; no se ejecutaron por separado. Los recorridos manuales con ramas numerosas y la inspección visual temporal son evidencia complementaria, no aprobación de la suite ni publicación.
+
+### Evidencia manual de esta corrección
+
+Chrome visible en `localhost:8000/portal/catalogo`, ventana capturada de 1912 × 1077 y zoom del navegador de 80%, conservado. Se usaron clics, arrastres y teclado físicos en la ventana propia de revisión, sin minimizar/maximizar, CDP ni JavaScript inyectado. Se conservó el filtro existente del mapa; Formicidae se buscó dentro del modal. La inspección estática de contratos y geometría y estos recorridos complementan las suites pendientes.
+
+| Recorrido observado | Resultado visible |
+| --- | --- |
+| Buscar Formicidae | Arco de 180° grande, completo, con raíz abajo y centrada; 31 hijos inmediatos. |
+| Expandir Camponotus dentro de Formicidae | Círculo de 360° completo con raíz en el centro del panel; rama anidada de 154 taxones según la estructura ya documentada. |
+| Estabilidad temporal de ambas vistas | Tres capturas separadas por vista: comparación de píxeles del visor sin diferencias en los dos pares de cada serie. Es una observación temporal, no un muestreo de todos los frames. |
+| Acercar y alejar | Se amplió el círculo desde su escala visible, conservando el centro; alejar recuperó la escala anterior. |
+| Plegar el lateral | El panel derecho recuperó el ancho del buscador/jerarquía y volvió a encuadrar; los botones −/+ siguieron en el extremo derecho de la ruta. |
+| Arrastrar, reducir y ampliar el modal | Se mantuvo dentro del área de la página. El círculo completo se ajustó a cada tamaño. No se intentó superponerlo a la barra de direcciones. |
+| Modal estrecho, aproximadamente 682 píxeles CSS de ancho | El buscador siguió visible, la jerarquía se recogió y la ruta conservó el zoom a la derecha. Al plegar el panel aumentó la altura útil del grafo. La adaptación usa el ancho del modal mediante consultas de contenedor, también en una pantalla de escritorio ancha. |
+| Teclado de la esquina | Tras pulsar la esquina, flecha Arriba redujo 40 píxeles CSS el alto y reajustó el arco; Inicio restauró el tamaño de 90% y lo centró, conservando la selección. |
+
+Capturas fuera del repositorio: `C:\Users\Usuario\AppData\Local\Temp\hubdigital-taxonium-20261009`, prefijos `ete-estable-180-`, `ete-estable-360-`, `ete-lateral-plegado-360`, `ete-modal-reducido-360`, `ete-modal-ampliado-360`, `ete-modal-estrecho-180`, `ete-modal-estrecho-plegado-180` y `ete-modal-teclado-180`. Chrome quedó con el explorador abierto y Formicidae encuadrado.
+
+Pendientes de esta corrección: contratos automatizados, revisión completa de consola, tecnología de asistencia, otras resoluciones y navegadores. No se ejecutaron compilaciones, suites, migraciones ni publicación. Los pendientes del editor, despliegue y carga OCI de las entradas anteriores siguen vigentes.
+
+## ETE nativo, arco automático y ramas numerosas — 9 de octubre de 2026 (evidencia anterior)
+
+Esta evidencia corresponde a la incorporación de la geometría nativa, previa a la corrección de estabilidad y encuadre descrita arriba. Sustituye la disposición de faces en columnas y el lateral de tres niveles descritos en la entrada histórica siguiente. El explorador izquierdo termina en filo/clase; su buscador permanece. El panel derecho utiliza la geometría circular nativa de ETE, con etiquetas radiales como el ejemplo solicitado. En aquella revisión no había selector de vista, deslizador de ramas, botones de zoom, rótulo de jerarquía ni franja inferior de conteo/crédito.
+
+Hasta 40 hojas visibles se utiliza el arco superior de 180° con raíz abajo al centro. Con más hojas se utiliza 360° con raíz en el centro del panel. Expandir y contraer vuelve a calcular esa decisión. El tamaño natural no se reduce automáticamente; el encuadre completo es opcional. Cientos de nombres completos pueden exigir desplazamiento al conservar el tamaño legible.
+
+### Cobertura preparada para el paquete, sin ejecutar
+
+| Contrato | Evidencia preparada |
+| --- | --- |
+| Geometría nativa y ramas masivas | `test_portal_ete.py`: tres vistas explícitas, polígonos rotados sin superposición, 122 hojas, rama anidada de 154 taxones, identidades, nombres, padres y caché. Se sustituyen las aserciones de columnas y textos horizontales porque el diseño solicitado ahora es el radial nativo. |
+| Densidad y ausencia de truncamiento | Python: límite de 40/41 hojas, 256 y 768 descendientes conservados íntegramente, contracción y rechazo explícito por encima de 3.000 nodos visibles. Estos casos no se presentan como ejecutados. |
+| Raíz centrada y clics radiales | `portal-ete-viewer.test.mjs`: centro circular/base semicircular con SVG asimétrico, distintos paneles/escalas, polígonos de faces y puntos internos. |
+| Dos niveles en el lateral y linaje completo | `portal-taxonomy-explorer.test.mjs`: conserva todas las clases y la ruta profunda sin introducir órdenes en el lateral. |
+| API pública y caché de vistas | `PortalExploradorTaxonomicoTest`: reenvío de `auto`, raíz de segundo nivel, separación respecto a vista explícita e invalidación de vistas ajenas; conserva privacidad y errores previos. |
+| Integración de navegador | `portal-livewire.mjs`: ausencia de controles/franja retirados, primer nivel y clase, expansión en ETE, base de 180° centrada, arrastre, teclado, registros, mapa y reapertura. |
+
+Se volvió a consultar `crear-paquete-oci-core.ps1`: Python, Node, navegador, Pest/PostgreSQL, Behat, Maven, Vite y comprobaciones integrales siguen dentro del paquete. No se ejecutó el paquete ni ninguna comprobación aislada equivalente. No se agregaron escenarios Gherkin duplicados ni se retiraron pruebas funcionales.
+
+### Revisión estática y aceptación visual complementaria
+
+Se revisaron el índice público completo, separación entre precarga y estructura, navegación, identidades, zonas de clic, posición real de la raíz, cancelación, cachés, sanitización SVG, permisos, rutas, errores y límites. El límite de 32 no existe: el dibujo incluye sólo las ramas abiertas; los descendientes cerrados se incorporan al expandir. Formicidae corresponde a registros públicos del catálogo, no a la totalidad mundial de la familia.
+
+Se utilizó Chrome visible en localhost con teclado/clics físicos de Windows. Chrome permaneció en primer plano, sin minimizar/maximizar entre acciones. Las ramas se recorrieron con el zoom de página previamente configurado (80%); Formicidae se revisó también al 100%, natural y encuadrado. El chatbot se revisó adicionalmente a 100%, 200% y 500%, dejando el navegador en 100% con el explorador abierto. No se usaron plugin de Chrome, native pipe, CDP, suites del proyecto ni JavaScript inyectado en este recorrido manual. Las observaciones de legibilidad y distribución con datos reales complementan los contratos preparados.
+
+| Recorrido real observado | Dibujo y posición |
+| --- | --- |
+| Formicidae, 11.364 registros | Familia y 31 hijos inmediatos: 32 taxones en 180°, raíz abajo al centro; franja inferior retirada. |
+| Formicidae → Camponotus | 154 taxones en 360°, raíz centrada; el motor registró 563 ms de renderizado. |
+| Camponotus, 2.876 registros | Género y 122 hijos: 123 taxones en 360°. Natural mantiene la letra; ajustar muestra el círculo entero. Render registrado: 515 ms. |
+| Coleoptera, 7.038 registros | Orden y 41 hijos: 42 taxones en 360°. Render registrado: 156 ms. |
+| Arthropoda → Insecta desde el lateral | Clase y 20 hijos: 21 taxones en 180°. Sólo filos/clases permanecen en el panel izquierdo. |
+| Insecta → Coleoptera → contracción | 62 taxones en 360°; pulsar el punto padre devuelve los 21 taxones y 180°, reutilizando el dibujo anterior. Se observó también el encuadre completo y el arrastre del modal. |
+| Araneae → Araneomorphae → Prodidomidae | 5 → 32 → 33 taxones; los arcos enlazan ambos padres con sus hijos, en 180°. |
+| Myrmicinae | 19 taxones en 180°. |
+| Scarabaeidae → Scarabaeinae | 11 → 26 taxones en 180°, con arco del padre anidado. |
+| Dichotomius y Canthon | 31 y 13 taxones respectivamente, en 180°, con nombres largos y contadores radiales. |
+| Chatbot | Botón visible en zoom normal, 200% y 500%; se abrió a 500% y Escape lo cerró devolviendo el foco. Se observó el halo de pulso; movimiento reducido se revisó sólo en CSS. |
+
+Los tiempos son del dibujo en el proceso ETE, no latencias completas ni una prueba de carga. Las capturas se conservan fuera del repositorio en `C:\Users\Usuario\AppData\Local\Temp\hubdigital-taxonium-20261009`, con prefijos `ete-nativo-`, `ete-360-a-180-`, `ete-modal-` y `chatbot-zoom-`. Las capturas de columnas y selector de tres vistas de la entrada siguiente son históricas, no evidencia de la versión vigente.
+
+Pendientes: ejecución completa de `crear-paquete-oci`, verificación automatizada de los casos de 256/768 hojas, revisión móvil y de tecnologías de asistencia de esta última geometría, apariencia privada con cuenta real, migración/recorrido autenticado del editor, casos sin conexión/assets compilados y despliegue/concurrencia/memoria OCI. El panel del chat abre a 500%, pero su cabecera queda fuera del campo visible al enfocar la entrada; Escape sigue disponible. La petición de visibilidad del icono está comprobada; esto no acredita legibilidad integral del chat a ese zoom. No se afirma aprobación de suites, ausencia de regresiones o publicación de una release.
+
+## Explorador ETE y continuidad del panel curador — 9 de octubre de 2026 (histórico)
+
+La geometría, los niveles laterales y controles de esta entrada corresponden a una iteración anterior. La sección vigente anterior sustituye esas decisiones y distingue las observaciones actuales de esta evidencia histórica.
+
+El trabajo interrumpido continúa en `feat/portal-textos-filtros-geograficos-20261008`, conservando los cambios previos y la instrucción expresa de usar esa misma rama. ETE sustituye la representación de tarjetas de las entradas históricas. Los tres primeros niveles quedan en la jerarquía lateral; el SVG interactivo comienza en el cuarto nivel. La vista inicial es semicircular de 180°, con alternativas rectangular y circular de 360°. La búsqueda está en el panel izquierdo y el modal permite arrastre y movimiento por teclado.
+
+La revisión visual de Formicidae con Camponotus abierto encontró que el radio circular desplazaba las etiquetas fuera de la zona visible. El motor ahora calcula el arco sin reservar de nuevo el tamaño de las faces, porque estas se alinean después en Qt. Las etiquetas de padres se separan entre sí y reservan espacio antes de las columnas de hojas. Se mantienen nombres y contadores horizontales y zonas interactivas de padres. Una nueva búsqueda o rama recupera el tamaño natural y el inicio del desplazamiento. Al redimensionar, un modal arrastrado vuelve a quedar dentro del viewport.
+
+### Cobertura del paquete preparada, sin ejecutar
+
+| Contrato | Cobertura |
+| --- | --- |
+| Motor real, tres vistas, niveles iniciales, nombres especiales y caché | `tests/Python/test_portal_ete.py`: SVG de ETE, identidades de faces, contracción, cambio de rama, reutilización y exclusión de los primeros tres niveles de las zonas interactivas. |
+| Rama masiva anidada con padres y hojas legibles | Se añade un contrato Python con 31 hijos y 122 descendientes: conserva 154 identidades, sitúa etiquetas cerca del inicio y compara todas sus cajas para detectar superposiciones en semicircular y circular. |
+| Zonas accesibles, SVG y estado del explorador | `portal-ete-viewer.test.mjs` y `portal-taxonomy-explorer.test.mjs`: mapa de faces, controles, selección, jerarquía, filtros propios y menús. |
+| Arrastre y cambio de tamaño | `portal-livewire.mjs`: se añade un arrastre real de la cabecera en su harness existente y se comprueba que el modal permanezca completo tras pasar a 390 × 700. Conserva los contratos de integración ETE, teclado, menús, registros, mapa, foco y reapertura. |
+| Editor del curador y administrador | `PortalTextosAdministracionTest`: autoría, restauración, escape del contenido, correo inválido y rechazo de visitantes/depositantes. Se conservan estas pruebas previas. |
+| Privacidad y caché pública | `PortalExploradorTaxonomicoTest`, `PortalPwaPublicoTest` y contratos PWA: datos públicos, rutas, revisión, caché y exclusión de sesiones/mutaciones. |
+
+Se leyó la cobertura de `scripts/deployment/crear-paquete-oci-core.ps1`: prepara ETE y ejecuta Python, contratos de frontend, integración de navegador, Pest/PostgreSQL, Behat y compilaciones dentro del mismo comando. No se ejecutó el paquete, ninguna suite aislada, compilación ni migración en esta continuación. No se añadieron escenarios Gherkin duplicados ni se retiraron pruebas funcionales.
+
+### Revisión estática y evidencia complementaria de UX/UI
+
+Se revisaron geometría y mapa de faces, permisos del editor, rutas, escape del contenido, validación antes de escritura, autoría, cancelación de solicitudes, restauración de tamaño/desplazamiento, límites de caché y encuadre del modal. Se revisó también el contrato de instalación/activación OCI: runtime Linux separado, servicio interno en loopback y comprobación de salud antes de abrir el portal.
+
+La aceptación visual usó Chrome visible sobre `http://localhost:8000/portal/catalogo?vista=mapa`, con entrada física de Windows y devolución del foco y cursor. No se usaron plugin de Chrome, native pipe, CDP ni JavaScript inyectado para este recorrido manual. La inspección se centró en legibilidad con datos reales y adaptación visual, complementando los contratos preparados del paquete.
+
+- Formicidae presenta 11.364 registros y 31 hijos; el dibujo contiene 32 taxones. Abrir Camponotus, con 122 hijos, muestra 154 taxones y nombres desde el inicio del campo. Tras la corrección, los contadores de padres observados no cruzan las etiquetas de hijos. Un segundo clic contrae la rama.
+- Se observaron las vistas semicircular, rectangular y circular con nombres horizontales. Ajustar todo encuadra el dibujo; buscar después Camponotus recupera su tamaño legible y presenta 123 taxones.
+- El arrastre mueve el modal. Pasar ese modal movido a 390 × 700 conserva sus bordes y controles dentro de la pantalla. La jerarquía móvil se pliega; al abrirla permite buscar Formicidae y al cerrarla deja más altura para el visor.
+- En escritorio, el clic derecho sobre una face ETE muestra «Ver en el mapa» y «Ver registros». Las acciones completas de registros/mapa y el teclado quedan respaldadas por sus contratos pendientes; no se presentan como verificadas de nuevo en este recorrido.
+
+Capturas conservadas en `.local/portal-ete-review-20261009/`: `camponotus-expandido.png`, `formicidae-rectangular.png`, `formicidae-circular.png`, `modal-movido.png`, `busqueda-tamano-natural.png`, `formicidae-movil.png`, `modal-movido-redimensionado.png` y `menu-ete-escritorio.png`. Este directorio está fuera del contenido versionado. Chrome y localhost permanecen disponibles.
+
+Pendientes: ejecución completa autorizada de `crear-paquete-oci`, migración del editor y recorrido autenticado de guardar/restaurar, revisión completa de teclado/tecnologías de asistencia, caché de assets compilados y casos sin conexión, concurrencia/memoria de la VM y despliegue OCI. La observación manual no acredita ausencia de regresiones, aprobación de las suites ni una release publicada.
+
+## Portal claro, explorador horizontal y Filo dinámico — 8 de octubre de 2026 (histórico)
+
+Registro de la iteración previa. ETE sustituye las dimensiones y geometría de tarjetas descritas aquí; las decisiones sobre tema claro, Filo, filtros territoriales y las evidencias de su revisión se conservan. Todo permanece en `feat/portal-textos-filtros-geograficos-20261008`, la misma rama solicitada expresamente por el usuario. No se han ejecutado ni publicado el paquete o una release.
+
+Los portales públicos usan exclusivamente el tema claro: no ejecutan la selección automática de Flux y retiran la clase oscura al navegar a un portal, sin modificar las preferencias guardadas de la cuenta. Las pantallas privadas conservan su selector de apariencia. Se retiran las ayudas de Enter y Filo, la búsqueda provincial, el botón «Ver valores y filtrar», la orientación vertical del explorador y sus ayudas de ratón/foco. El regreso a provincias es un icono de 32 píxeles junto a «Registros por localidad» y devuelve el foco al título provincial; la búsqueda de localidades permanece.
+
+El explorador usa tarjetas horizontales de 182 × 36 píxeles CSS, con nombre científico destacado y contador a su derecha. La raíz abierta se coloca arriba a la izquierda. Los hijos pequeños continúan a la derecha; las ramas numerosas se agrupan en filas y columnas con conectores comunes y una etiqueta «Hijos de …». No se giran ni reducen las tarjetas y no se abren modales adicionales para dibujar descendientes. El ajuste de escala existente sigue siendo una acción explícita del visitante. Las ramas, la selección y el desplazamiento se conservan al reabrir; únicamente se abren automáticamente los ancestros de una selección.
+
+El panel Filo muestra los filos correspondientes al Taxón confirmado con Enter, nunca al borrador. Sus flechas abren un explorador con hijos inmediatos, sangría y conteos, dentro del alto disponible del panel. Marcar un filo abre sus hijos y filtra; marcar un descendiente filtra esa rama conservando la vista actual. Confirmar otro Taxón o seleccionar un descendiente de otro filo retira las selecciones taxonómicas incompatibles, evitando intersecciones vacías involuntarias. La confirmación devuelve el estado del panel al cliente para sincronizar el checkbox después de la actualización Livewire. Las flechas del teclado recorren padres e hijos. Un fallo al confirmar restaura el checkbox anterior y ofrece un error visible.
+
+### Caché vigente y carga de ramas
+
+| Estrategia | Alcance |
+| --- | --- |
+| Cache First | CSS/JS de `/build`, `/vendor`, `/flux`, Livewire con identidad de versión, imágenes locales `/images` y referencias fotográficas procesadas. 160 entradas, 7 días. |
+| Stale-While-Revalidate | Inicio `/`, apertura exacta `/portal/catalogo?vista=mapa` y GET inicial `/portal/explorador` sin filtros. Documentos: 8 entradas, 5 minutos. Datos: 48 entradas compartidas, 2 minutos, con aviso de revisión nueva al explorador. |
+| Network First | GET públicos cambiantes de `/portal/sugerencias`, consultas/ramas de `/portal/explorador` y `/portal/filos`. Respaldo público vigente ante fallo de conexión, 48 entradas compartidas, 2 minutos. |
+
+La versión de caché es `hubdigital-public-v3`. Se exige la marca pública del servidor; una respuesta privada elimina el documento público anterior. R2 `/portal/imagenes/`, teselas externas, POST/Livewire, pantallas privadas y sesiones acceden a red. `/portal/pwa/arranque.js` renueva CSRF sin almacenarse. HTTP 4xx/5xx no se ocultan con respuestas antiguas. El índice taxonómico del servidor se comparte durante 3600 segundos, con clave por filtros y revisión: los triggers existentes de taxonomía, registros y permisos cambian esa revisión. Cada respuesta puede precargar hasta 300 hijos inmediatos sin expandirlos; las ramas ya recibidas se reutilizan en sus siguientes clics. La reapertura recupera también los hijos de ramas abiertas que superan esa precarga.
+
+### Distribución de cobertura preparada, sin ejecutar
+
+| Contrato | Cobertura del paquete mantenida o ampliada |
+| --- | --- |
+| Luz pública y preferencias privadas | `PortalPwaPublicoTest`: cabeceras públicas anónimas/autenticadas y pantalla privada de apariencia. |
+| Geometría, grupos, precarga y navegación | `portal-taxonomy-explorer.test.mjs`: raíz superior izquierda, 31 hijos sin solapamientos, tarjetas uniformes horizontales, reutilización, toggles y claves conservadas. `portal-livewire.mjs`: integración visual, contador a la derecha, ausencia de ayudas/orientación, foco y reapertura con desplazamiento en pantalla estrecha. |
+| Filo según texto confirmado y selección válida | `PortalExploradorTaxonomicoTest`: borrador sin aplicar, poda de selecciones incompatibles al confirmar o cambiar de rama, vista conservada, GET público de hijos y retirada de permisos. `portal-phylum-model.test.mjs`: expansión local, respuesta tardía descartada, recuperación de error y teclado. |
+| Índice compartido e invalidación | `PortalExploradorTaxonomicoTest`: lectura reutilizada por otra instancia, precarga y nombre actualizado tras cambiar la revisión. |
+| Políticas PWA y privacidad | `portal-pwa-cache.test.mjs`: versión v3 y Network First de `/portal/filos`, además de TTL, cuota, respuestas privadas y respaldo. |
+| Retirada de controles y navegación territorial | `PortalMejorasOctubreTest` y recorrido `portal-livewire.mjs`: sin buscador provincial, ayudas ni botones retirados; regreso discreto y foco del título. |
+
+Los casos corresponden a Pest, contratos de frontend e integración existente de navegador; no se agregan escenarios Gherkin duplicados ni se retiran pruebas funcionales. Todas las suites, compilaciones y comprobaciones integrales siguen centralizadas en `crear-paquete-oci` y quedan pendientes de su ejecución por el usuario.
+
+### Evidencia complementaria: Chrome real en localhost
+
+Se abrió Chrome y se operó mediante clics, escritura, clic derecho, teclado y desplazamiento de Windows, sin plugin de Chrome, native pipe, CDP ni inyección de JavaScript. El usuario autorizó el primer plano. Entorno: `http://localhost:8000`, pantalla de escritorio 1920 × 1080 físicos con escala de Windows y viewport móvil de 390 × 700 CSS. Se observaron identidad del portal, contenido real, ausencia de pantalla vacía y de superposición de error del framework. La consola del recorrido final indica cero errores y cero advertencias de aplicación; muestra cuatro avisos de rendimiento de Livewire/reflow entre 31 y 80 ms, sin bloqueo del flujo. No se presenta esto como una medición integral de rendimiento.
+
+- Emular `prefers-color-scheme: dark` en Rendering conserva inicio y catálogo blancos, con capturas del selector y contenido.
+- Annelida aplica 4 registros y presenta inmediatamente Clitellata (3) e Hirudinea (1). Marcar Clitellata aplica 3; el explorador modal conserva sus 28.612 registros independientes. Confirmar Formicidae por Enter retira esas selecciones y presenta 11.383 coincidencias parciales en el mapa y únicamente Arthropoda en el panel Filo.
+- Cambiar desde Annelida a Arachnida retira el filo incompatible y presenta 1.253 registros. Tras corregir la sincronización, cambiar entre Chilopoda (2) y Arachnida (1.253), sin recargar la página ni editar durante la petición, mantiene marcado el hijo confirmado y retira la marca anterior.
+- La raíz del modal queda arriba a la izquierda y sus tarjetas siguen horizontales. La predicción propia de Formicidae aplica una pill de 11.364 registros. Abrir su familia muestra 31 hijos en cinco columnas: 30 quedan visibles y un desplazamiento corto revela el último. Camponotus presenta 122 hijos en el mismo campo, con mayor desplazamiento vertical necesario para conservar el tamaño legible. Otro clic contrae la rama.
+- Seleccionar Orellana presenta sus localidades y el icono junto al título; volver retira el criterio territorial. No aparecen la búsqueda provincial ni «Ver valores y filtrar».
+- A 390 × 700, Arthropoda presenta sus siete clases bajo el filo, dentro del panel desplazable. Cabecera, pill, búsqueda, contracción, ajuste y cierre del modal permanecen accesibles; las tarjetas horizontales se distribuyen en una columna cuando el ancho lo requiere.
+
+Capturas fuera del repositorio: `C:\Users\Usuario\AppData\Local\Temp\hubdigital-portal-review-20261008` (`inicio-modo-oscuro.png`, `catalogo-modo-oscuro.png`, `localidades-retorno.png`, `formicidae-distribucion.png`, `filtro-filo-movil.png`, `explorador-movil.png`, `filo-seleccion-confirmada.png`, `consola.png`, `consola-final.png`, `catalogo-final.png`). La consola final vuelve a mostrar cero errores y cero advertencias de aplicación. Se retiraron los archivos temporales de entrada manual, conservando Chrome y localhost. El comportamiento manual de predicción/Enter, menús contextuales, tabla/ficha, mapa, eje Y y cachés observadas en Application se registró en la entrada histórica siguiente y sigue siendo pertinente.
+
+Pendiente: ejecución completa de `crear-paquete-oci`, migración del editor de textos y su recorrido autenticado de guardado/restauración, apariencia privada con una cuenta real y casos PWA de vencimiento/cuota/sin conexión. Los assets de Vite en localhost:5173 pertenecen a otro origen; Cache First de archivos compilados `/build` requiere el entorno servido del paquete. No se ha desplegado en `dev.labinvepn.org`.
+
+El entorno local permanece encendido en segundo plano. Desde `C:\HT\LABINVEPN\HubDigital`: `powershell -ExecutionPolicy Bypass -File .\scripts\development\localhost.ps1 -Accion iniciar`, `-Accion estado` o `-Accion detener`. El script administra exclusivamente sus procesos PHP/Vite y conserva PostgreSQL; no ejecuta pruebas, migraciones ni compilaciones de producción.
+
+## PWA y explorador independiente con nodos compactos — 8 de octubre de 2026 (histórico)
+
+Registro de la primera iteración. Las dimensiones, orientación, ayudas y pendientes de revisión móvil de esta entrada están sustituidos por la sección vigente anterior.
+
+Todos los cambios siguen en `feat/portal-textos-filtros-geograficos-20261008`, por instrucción expresa del usuario. La reducción inicial del 15% queda sustituida por la petición posterior de reducir a la mitad ese tamaño: 93,5 píxeles de ancho, 49,3 de alto para raíces y 44,2 para descendientes. El árbol abre horizontalmente, permite cambiar a vertical y conserva ramas al reabrir. El nombre y la flecha alternan expansión/contracción. La ayuda de ratón/foco conserva el texto completo con un tamaño legible.
+
+La población del explorador y sus filtros son independientes del mapa y la barra izquierda. Seleccionar una sugerencia o confirmar con Enter añade un filtro propio; sus pills permiten retirarlo. El menú contextual ofrece «Ver en el mapa», que cierra el árbol y sustituye los filtros del catálogo por el taxón elegido, y «Ver registros», que abre otro diálogo sin cerrar el árbol, con paginación y ficha pública. Se retira el botón superior de mapa. El menú también responde a ContextMenu/Shift+F10; Escape cierra primero el diálogo de registros y devuelve el foco al nodo.
+
+### Estrategias PWA implementadas en esta rama
+
+| Estrategia | Alcance y límites |
+| --- | --- |
+| Cache First | CSS/JS de `/build`, `/vendor`, `/flux` y Livewire; imágenes de `/images` y referencias fotográficas procesadas. Máximo 160 entradas, vigencia 7 días. Fotografías R2 de `/portal/imagenes/`, teselas y recursos externos conservan acceso directo a red. |
+| Stale-While-Revalidate | Inicio `/`, navegación inicial exacta `/portal/catalogo?vista=mapa` y GET inicial `/portal/explorador` sin filtros. Documentos: 8 entradas y 5 minutos. Datos del árbol: 48 entradas compartidas y 2 minutos. Una revisión nueva avisa al explorador para actualizar su contenido. |
+| Network First | GET públicos de sugerencias y ramas/búsquedas del explorador: red primero y respaldo público vigente solo ante fallo de conexión. Máximo 48 entradas compartidas y 2 minutos. Las escrituras POST/Livewire, sesiones, pantallas privadas y navegaciones filtradas acceden a red sin almacenar respuestas personales. |
+
+Solo se almacenan documentos y datos marcados por el servidor como públicos. Una respuesta privada elimina el documento público previo de esa URL. El arranque de sesión `/portal/pwa/arranque.js` se solicita siempre a red para renovar el token CSRF antes de Livewire; no se almacena. Se mantienen la página de respaldo sin conexión, notificaciones y limpieza de versiones propias. HTTP 4xx/5xx no se sustituyen por datos anteriores. La caché HTTP y los agregados del servidor son capas adicionales, distintas de estas políticas PWA.
+
+### Distribución de cobertura preparada
+
+| Contrato | Pruebas mantenidas o ampliadas, pendientes de ejecución |
+| --- | --- |
+| Políticas, TTL, límites, privacidad y renovación | `portal-pwa-cache.test.mjs`: Cache First, SWR con actualización, Network First con respaldo, respuestas privadas, cuota y limpieza de versiones. `PortalPwaPublicoTest`: documentos anónimos, consultas excluidas, sesión autenticada y arranque CSRF privado. |
+| Árbol global, rutas y registros públicos | `PortalExploradorTaxonomicoTest`: consulta global independiente, GET del árbol y linaje, rechazo de taxones reservados, cambio al mapa, tabla/ficha paginada y fotografías públicas. |
+| Geometría, toggles, sugerencias y pills | `portal-taxonomy-explorer.test.mjs`: orientación horizontal por defecto, dimensiones a la mitad, conectores, cambio de orientación, expansión/contracción, filtro propio, retirada de descendientes, solicitudes independientes y menú contextual. |
+| Integración, foco y conservación de navegación | `portal-livewire.mjs`: independencia entre mapa/árbol, menús, segundo diálogo y ficha, cambio al mapa, pills, ayuda, ramas/desplazamiento conservados, ajuste a la vista y controles en pantalla estrecha. La rama profunda se revisa a 1000 píxeles de ancho porque los nodos compactos caben en escritorio amplio. |
+| Eje Y con localidades largas | `portal-chart-model.test.mjs`: marcas de categorías y abreviación visible según ancho; se conserva el nombre completo para ayudas y selección. |
+
+Las sugerencias taxonómicas reutilizan el índice público del explorador y su coincidencia parcial PostgreSQL. La revisión manual encontró que la consulta correlacionada previa bloqueaba el servidor PHP local durante 73 segundos; se sustituyó y las sugerencias se observaron de nuevo en Chrome sin ese bloqueo. No se agregan escenarios Gherkin duplicados.
+
+### Revisión complementaria efectuada en Chrome real
+
+Se abrió Chrome en `http://localhost:8000` y se usaron clics, clic derecho, escritura, teclado y desplazamiento mediante entrada de Windows. No se usaron el plugin de Chrome, native pipe ni inyección de JavaScript. El usuario autorizó pasar a primer plano cuando el control de fondo no permitió observar el contenido. Los recorridos se enfocaron en usabilidad del tamaño solicitado, textos reales largos, foco, estados y comportamiento visible.
+
+- Los cuatro filos caben con nodos compactos; Arthropoda expande a la derecha y el segundo clic contrae. El icono alterna horizontal/vertical.
+- Elegir «Leptodictya williamsi» en la predicción deja una pill y 6 registros en el árbol mientras el mapa conserva 28.612. «Ver registros» abre su tabla encima del árbol; una fila abre la ficha y Escape vuelve al árbol. «Ver en el mapa» presenta los 6 registros de la especie. Retirar la pill del árbol devuelve sus 28.612 sin cambiar los 6 del mapa.
+- Escribir `3108` mantiene 28.612 registros mientras aparece la predicción; Enter aplica la coincidencia parcial y presenta 12. La búsqueda parcial `Leptodictya` presenta sus 6 ejemplares al confirmar.
+- Elegir Napo muestra sus localidades; elegir COTUNDO filtra a 250 registros. El gráfico alternable de puntos muestra el eje Y y su título; se ajustaron las etiquetas largas al ancho disponible.
+- La sección azul del inicio conserva el contenido y ya no muestra «Consultar el catálogo digital».
+- En Application de DevTools se observó el service worker activado: caché `pages` con inicio/mapa, `assets` con JS públicos y fotografías locales, y `data` con explorador/sugerencias. Los CSS/JS de Vite en localhost:5173 son externos al origen localhost:8000; el comportamiento de archivos compilados `/build` queda pendiente del paquete y su entorno servido.
+
+La revisión estática cubrió permisos, visibilidad pública, rutas, token de sesión, claves/TTL de caché, errores y efectos de los filtros. No se ejecutaron suites, compilaciones, migraciones ni `crear-paquete-oci`. Quedan pendientes su ejecución completa por el usuario, la migración del editor y su recorrido autenticado de guardado/restauración, la revisión visual móvil y los casos de vencimiento/cuota/sin conexión. Estos cambios no se han desplegado en `dev.labinvepn.org`.
+
+El entorno local permanece encendido en segundo plano. Desde `C:\HT\LABINVEPN\HubDigital`, iniciar con `powershell -ExecutionPolicy Bypass -File .\scripts\development\localhost.ps1 -Accion iniciar`, consultar con `-Accion estado` y apagar con `-Accion detener`. El script solo administra sus procesos PHP/Vite y deja PostgreSQL en su estado actual; no ejecuta pruebas, migraciones ni compilaciones de producción.
+
+## Textos administrables, búsqueda confirmada y navegación territorial — 8 de octubre de 2026 (histórico)
+
+Registro de la primera iteración. La búsqueda provincial y su foco están sustituidos por el icono de regreso junto al título descrito en la sección vigente.
+
+La rama `feat/portal-textos-filtros-geograficos-20261008` parte de `main`. Retira el botón «Consultar el catálogo digital» de la sección de investigación del inicio. El editor `/administracion/textos-portal`, accesible desde Divulgación y el centro de administración, permite a curadores y administradores guardar textos de inicio, cabecera, pie, contacto, depósitos, etiquetas del catálogo, explicaciones de indicadores y pies de figuras. Los textos se guardan con autoría, se escapan al mostrarse y pueden restaurarse; las identificaciones científicas y los valores de los registros mantienen su gestión existente.
+
+Los campos N.º de catálogo y Taxón mantienen un borrador local: escribir o elegir una sugerencia no aplica filtros; Enter confirma. La búsqueda usa fragmentos con `ILIKE`, sin distinguir mayúsculas, y trata `%`, `_` y `\` como caracteres literales. Las sugerencias comienzan con dos caracteres y devuelven como máximo doce valores públicos; su política PWA vigente está descrita arriba. Los fragmentos de catálogo separados por comas conservan su unión. Cambiar otros filtros conserva el texto confirmado y no aplica lo escrito sin Enter.
+
+Provincia y Localidad salen del panel izquierdo. El dashboard permite buscar provincias, seleccionarlas y consultar sus localidades públicas. Pulsar una localidad filtra la selección compartida por mapa, tarjetas y registros. El buscador territorial no envía actualizaciones Livewire al escribir. Volver a provincias retira los criterios territoriales, conserva los restantes y devuelve el foco al buscador. La lista y el CSV incluyen todas las alternativas; el gráfico presenta las diez principales y rotula el eje Y. Para permitir elegir otra localidad, sus conteos omiten exclusivamente el filtro de localidad y conservan los demás criterios.
+
+| Contrato | Cobertura preparada |
+| --- | --- |
+| Enter, coincidencia parcial, permisos y resultados comunes | `PortalMapaFiltrosAutomaticosTest`: borrador sin aplicar, fragmentos de catálogo/taxón, comodines literales, sugerencias sin datos reservados, provincias/localidades públicas y regreso conservando el filo. |
+| Edición, restauración, autoría y contenido seguro | `PortalTextosAdministracionTest`: curador/administrador, rechazo de visitantes/depositantes, escape HTML y conservación de valores ante correo inválido. |
+| Predicción sin aplicar y combinación de fragmentos | `portal-search-model.test.mjs` y `portal-search-actions.test.mjs`: selección con ratón/teclado, Enter, composición, borrador retirado al limpiar y cancelación de consultas. |
+| Etiquetas y acciones del gráfico | `portal-chart-model.test.mjs`: eje Y para provincia, localidad y elevación; marcas enteras de categorías aunque la escala deje margen y selección territorial mediante puntos. |
+| Integración DOM, foco y solicitudes | `portal-livewire.mjs`: búsqueda territorial sin actualizar filtros, navegación provincia/localidad/regreso, foco restaurado, marcas visibles del eje Y y predicción de catálogo sin aplicar hasta Enter. Se conservan sus demás contratos y las etiquetas accesibles de las tres vistas. |
+| Figuras y ubicación del buscador | `PortalMejorasOctubreTest`: siete pies numerados de ochenta palabras por defecto, explicaciones reservadas a Indicador/PDF, búsqueda territorial en el dashboard y ausencia de los controles retirados en la barra izquierda. |
+
+No se agregan escenarios Gherkin porque las entradas, los flujos y los resultados anteriores ya se distribuyen entre Pest, Node y navegador. El script `scripts/deployment/crear-paquete-oci-core.ps1` incorpora los contratos de frontend; la validación PostgreSQL incorpora navegador y Pest. Se conservan los escenarios y pasos activos de Behat. Ninguna de esas suites ni compilaciones se ejecutó en esta tarea.
+
+Revisión complementaria realizada: lectura de consultas, visibilidad, rutas, autorizaciones, borradores, cancelación de solicitudes, claves de caché, eventos, etiquetas y foco. El recorrido posterior en Chrome real y sus límites se registran arriba. La migración del editor, todas las pruebas y las compilaciones quedan pendientes de la siguiente ejecución completa de `crear-paquete-oci` por el usuario y del despliegue de ese paquete.
+
+### Caché publicada antes de estos cambios
+
+Se leyó el `service-worker.js` servido por `dev.labinvepn.org` el 8 de octubre de 2026 antes de implementar las estrategias nuevas; coincidía con la versión inicial del repositorio. Esta tabla conserva el diagnóstico previo del despliegue. Las duraciones del servidor proceden del código; no se inspeccionó la configuración privada del despliegue. Las políticas nuevas aún locales están descritas al inicio de este documento.
+
+| Capa | Estrategia y alcance |
+| --- | --- |
+| Service worker | Red para navegaciones; ante un fallo de conexión entrega únicamente `/offline.html`, precargado en `hubdigital-public-offline-v1`. No almacena páginas del catálogo, resultados, peticiones Livewire, fotografías ni teselas. Una respuesta HTTP de error no activa ese respaldo. Usa `skipWaiting`, `clients.claim` y limpieza de versiones anteriores de su propio caché. |
+| Agregados del servidor | Estadísticas, puntos y opciones públicas usan TTL de 3600 segundos, con claves por filtros y revisión `divulgacion.portal_cache_revision`. Las mutaciones pertinentes invalidan por revisión. No proporcionan navegación sin conexión. |
+| Imágenes HTTP | Fotografías del catálogo: `public, max-age=300`. Referencias fotográficas procesadas: `public, max-age=1209600` (14 días), también almacenadas temporalmente en el servidor. |
+| Galerías en memoria | Caché LRU de fotografías con TTL de 5 minutos, máximo 32 entradas y hasta 4 fotografías por entrada. Se pierde al recargar; no es almacenamiento PWA persistente. |
+| Navegación Livewire y otros recursos | Livewire conserva instantáneas de navegación y puede anticipar enlaces. JS, CSS, imágenes y teselas quedan sujetos a sus cabeceras HTTP habituales; no existe una política de caché del service worker para esos recursos. |
+| Textos del editor, añadido en esta rama | Caché de 300 segundos, reutilizado dentro de cada petición y eliminado explícitamente al guardar. No altera la estrategia PWA publicada. |
+
+El portal publicado ofrece una página de respaldo sin conexión, no un catálogo consultable sin conexión. No implementa `cache-first` ni `stale-while-revalidate` en el service worker de ninguna vista del catálogo.
+
 ## Registros coincidentes, apertura por nombre, ayuda y encuadre del bosque — 7 de octubre de 2026
 
 La rama `fix/explorador-registros-mapa-20261007` parte de `main` (`083e9fd9`). La revisión con clics en Chrome confirmó que los seis ejemplares de Leptodictya williamsi comparten −0.666, −77.91 y están disponibles en la tabla de esa ubicación. El símbolo anterior ocultaba su cantidad. Las ubicaciones con varios registros ahora muestran su contador y la unidad `reg.`, conservan colores, coordenadas originales, acceso por teclado y detalle completo. No se desplazan ejemplares para simular ubicaciones distintas.

@@ -372,6 +372,19 @@ test('una acción explícita de composición conserva el foco del mapa durante s
     assert.deepEqual(acciones, ['desplazar', 'foco', 'desplazar', 'foco']);
 });
 
+test('navegar provincias y localidades no roba el foco territorial hacia el mapa', () => {
+    for (const llamada of ['$wire.seleccionarProvincia("Orellana")', 'seleccionarLocalidad("Lugar Browser Uno")']) {
+        const {dashboard} = dashboardConMapa([]);
+        const acciones = [];
+        dashboard.$refs = {mapa: {focus: () => acciones.push('foco')}, panelMapa: {scrollIntoView: () => acciones.push('desplazar')}};
+        dashboard.enfocarTrasCambio = true;
+        dashboard.recordarAccion({target: {closest: () => ({getAttribute: () => llamada})}});
+        assert.equal(dashboard.enfocarTrasCambio, false);
+        dashboard.actualizar({celdas: [], filos: {}});
+        assert.deepEqual(acciones, []);
+    }
+});
+
 test('seleccionar un panel mantiene visible la barra de filtros y conserva el foco del mapa', () => {
     const {dashboard} = dashboardConMapa([]);
     const acciones = [];

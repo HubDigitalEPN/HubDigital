@@ -6,7 +6,9 @@ test('el menú móvil expone estado y devuelve el foco al cerrarse con escape', 
     expect($layout)
         ->not->toBeFalse()
         ->toContain('x-ref="menuButton"')
-        ->toContain("x-text=\"abierto ? 'Cerrar menú principal' : 'Abrir menú principal'\"")
+        ->toContain("x-text=\"abierto ? @js(\$navegacion('cerrar_menu')) : @js(\$navegacion('abrir_menu'))\"")
+        ->toContain(':aria-expanded="abierto.toString()"')
+        ->toContain('aria-controls="menu-portal-movil"')
         ->toContain('$refs.menuButton.focus()');
 });
 
@@ -31,10 +33,13 @@ test('el chat conserva controles táctiles y refluye cuando el zoom reduce el vi
 
     expect($styles)
         ->not->toBeFalse()
-        ->toContain('@media (max-height: 8rem)')
-        ->toContain('body:has(#titulo-portada) .portal-chat-shell')
-        ->toContain('position: absolute')
-        ->toContain('top: 5.25rem');
+        ->toContain('--chat-bottom: max(clamp(12px, 10dvh, 72px), env(safe-area-inset-bottom, 0px))')
+        ->toContain('bottom: var(--chat-bottom)')
+        ->toContain('height: min(34rem, calc(100dvh - var(--chat-bottom) - 16px))')
+        ->toContain('max-height: calc(100dvh - var(--chat-bottom) - 16px)')
+        ->toContain('width: clamp(44px, 7dvh, 56px)')
+        ->toContain('height: clamp(44px, 7dvh, 56px)')
+        ->toContain('@media (prefers-reduced-motion: reduce)');
 });
 
 test('el hero adapta su altura y tipografía al escritorio visible', function (): void {

@@ -14,7 +14,7 @@ function emitStatus(status, message) {
 
 async function registration() {
     if (!('serviceWorker' in navigator) || !window.isSecureContext) return null;
-    await navigator.serviceWorker.register('/service-worker.js', { scope: '/' });
+    await navigator.serviceWorker.register('/service-worker.js', { scope: '/', updateViaCache: 'none' });
     return navigator.serviceWorker.ready;
 }
 

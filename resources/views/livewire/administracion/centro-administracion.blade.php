@@ -68,6 +68,14 @@
         </article>
     </section>
 
+    <section class="hub-panel flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between" aria-labelledby="titulo-fichas-portal">
+        <div><h2 id="titulo-fichas-portal" class="hub-section-title">Fichas taxonómicas</h2><p class="mt-1 text-sm text-text-secondary">Fotos y explicaciones del explorador, para cualquier rango.</p></div>
+        <a href="{{ route('admin.fichas-taxonomicas') }}" wire:navigate class="inline-flex min-h-11 items-center rounded-lg border border-blue-navy/25 px-4 py-2 text-sm font-semibold text-blue-navy">Administrar fichas</a>
+    </section>
+    <section class="hub-panel flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between" aria-labelledby="titulo-textos-portal">
+        <div><h2 id="titulo-textos-portal" class="hub-section-title">Textos del portal</h2><p class="mt-1 text-sm text-text-secondary">Contenido de inicio, navegación, depósitos y Colección Biológica.</p></div>
+        <a href="{{ route('admin.textos-portal') }}" wire:navigate class="inline-flex min-h-11 items-center rounded-lg border border-blue-navy/25 px-4 py-2 text-sm font-semibold text-blue-navy">Administrar textos</a>
+    </section>
     <section class="hub-panel flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between" aria-labelledby="titulo-configuracion-sistema">
         <div>
             <h2 id="titulo-configuracion-sistema" class="font-display text-xl font-semibold text-blue-navy">Configuración del sistema</h2>

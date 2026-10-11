@@ -111,7 +111,7 @@ try {
             }
         }
         if (-not (Get-Command 'node.exe' -ErrorAction SilentlyContinue)) { throw 'Falta Node para verificar tooltip y Livewire en el navegador real.' }
-        Write-Host 'Probando tooltip durante actualizaciones Livewire y recorridos del portal en Edge/Chrome real...' -ForegroundColor Cyan
+        Write-Host 'Probando tooltip durante actualizaciones Livewire y recorridos del portal en Opera Neon real...' -ForegroundColor Cyan
         & node.exe tests/Browser/portal-livewire.mjs $phpNativo
         if ($LASTEXITCODE -ne 0) { throw 'Fallo la validacion real de tooltip/Livewire o del portal. No se publica main ni se crea el paquete OCI.' }
 

@@ -47,6 +47,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/administracion/textos-depositos', ConfiguracionTextosWizard::class)
         ->middleware('role:admin')
         ->name('admin.textos-depositos');
+    Route::get('/administracion/textos-portal', \App\Livewire\Administracion\ConfiguracionTextosPortal::class)
+        ->middleware('role:curador')->name('admin.textos-portal');
+    Route::get('/administracion/fichas-taxonomicas', \App\Livewire\Administracion\FichasTaxonomicasPortal::class)
+        ->middleware('role:curador')->name('admin.fichas-taxonomicas');
+    Route::get('/administracion/fichas-taxonomicas/{taxon}/foto', \Modules\CatalogoPublico\Presentation\Http\Controllers\FotoFichaTaxonomica::class)
+        ->whereUuid('taxon')->middleware('role:curador')->name('admin.ficha-foto');
     Route::get('/administracion/instituciones', InstitucionesCatalogo::class)
         ->middleware('role:curador')
         ->name('admin.instituciones');

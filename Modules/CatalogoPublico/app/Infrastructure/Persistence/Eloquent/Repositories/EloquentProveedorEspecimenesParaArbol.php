@@ -24,6 +24,35 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
 {
     public const int TAMANO_PAGINA = 6;
 
+    /** Fragmento literal: los comodines escritos por el visitante no amplían la selección. */
+    private static function patronParcial(string $texto): string
+    {
+        return '%'.str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $texto).'%';
+    }
+
+    /** Opciones públicas, acotadas y sin hidratar el mapa al escribir. */
+    public function sugerenciasPublicas(string $campo, string $texto): array
+    {
+        if (mb_strlen($texto) < 2 || ! in_array($campo, ['filtroCatalogo', 'filtroTaxon'], true)) return [];
+        $patron = self::patronParcial($texto);
+        $base = $this->consultaPublica(FiltrosBusqueda::desde([]));
+        if ($campo === 'filtroCatalogo') {
+            $base->where('ed.occurrence_id_visible', true);
+            $codigos = (clone $base)->where('te.codigo_catalogo', 'ILIKE', $patron)->select('te.codigo_catalogo as nombre');
+            $ocurrencias = (clone $base)->where('te.occurrence_id', 'ILIKE', $patron)->select('te.occurrence_id as nombre');
+            return DB::query()->fromSub($codigos->union($ocurrencias), 'opciones')->orderBy('nombre')->limit(12)->pluck('nombre')->all();
+        }
+
+        // Reutiliza los linajes públicos del explorador; evita recorrer los
+        // descendientes de cada coincidencia por cada ejemplar del catálogo.
+        $datos = app(\Modules\CatalogoPublico\Infrastructure\ExploradorTaxonomicoPublico::class)
+            ->consultar(FiltrosBusqueda::vacio(), busqueda: $texto);
+        $nombres = array_column(array_filter($datos['nodos'], static fn (array $nodo): bool => $nodo['coincide']), 'nombre');
+        $nombres = array_values(array_unique($nombres));
+        sort($nombres, SORT_STRING);
+        return array_slice($nombres, 0, 12);
+    }
+
     /** Los filtros ofrecen los mismos filos que las tarjetas públicas, sin ramas vacías. */
     public function filosPublicosDisponibles(): array
     {
@@ -322,12 +351,15 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
 
     private function aplicarFiltros(Builder $query, FiltrosBusqueda $filtros): Builder
     {
-        // N.° de catálogo — multi-valor separado por coma, comparación exacta case-insensitive
+        // N.º de catálogo — fragmentos separados por coma, coincidencia parcial sin distinguir mayúsculas.
         if ($filtros->codigosCatalogo !== []) {
             $query->where('ed.occurrence_id_visible', true);
-            $placeholders = implode(',', array_fill(0, count($filtros->codigosCatalogo), '?'));
-            $valores = array_map('strtolower', $filtros->codigosCatalogo);
-            $query->whereRaw("(LOWER(te.codigo_catalogo) = ANY(ARRAY[{$placeholders}]) OR LOWER(te.occurrence_id) = ANY(ARRAY[{$placeholders}]))", [...$valores, ...$valores]);
+            $query->where(function (Builder $codigos) use ($filtros): void {
+                foreach ($filtros->codigosCatalogo as $codigo) {
+                    $patron = self::patronParcial($codigo);
+                    $codigos->orWhere('te.codigo_catalogo', 'ILIKE', $patron)->orWhere('te.occurrence_id', 'ILIKE', $patron);
+                }
+            });
         }
 
         // Tipo de colección (preparations) — multi-select
@@ -351,7 +383,7 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
                         SELECT t.id, s.rango_raiz FROM taxonomia.taxones t JOIN seleccion s ON t.padre_id = s.id
                     ) SELECT id, rango_raiz FROM seleccion
                 ) AS coincidencias
-                SQL, ['%'.$filtros->taxonNombre.'%'])
+                SQL, [self::patronParcial($filtros->taxonNombre)])
                 ->selectRaw("id, BOOL_OR(rango_raiz NOT IN ('familia', 'genero')) AS otros, BOOL_OR(rango_raiz = 'familia') AS familia, BOOL_OR(rango_raiz = 'genero') AS genero")
                 ->groupBy('id');
             $query->joinSub($seleccion, 'seleccion_taxonomica', 'seleccion_taxonomica.id', '=', 'te.taxon_id')

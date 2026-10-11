@@ -3,12 +3,14 @@
     inset: 0;
     box-sizing: border-box;
     color-scheme: light;
+    container-type: inline-size;
+    container-name: taxonomy-explorer;
     width: 90vw;
-    max-width: 90vw;
+    max-width: calc(100vw - 16px);
     height: 90vh;
     height: 90dvh;
-    max-height: 90vh;
-    max-height: 90dvh;
+    max-height: calc(100vh - 16px);
+    max-height: calc(100dvh - 16px);
     margin: auto;
     padding: 0;
     border: 1px solid #bed2e3;
@@ -18,6 +20,8 @@
     box-shadow: 0 24px 80px rgb(8 28 45 / 30%);
 }
 .taxonomy-explorer::backdrop { background: rgb(0 0 0 / 45%); }
+.taxonomy-records { width: 84vw; max-width: 84vw; height: 84dvh; }
+.taxonomy-records-back { align-self: flex-start; min-height: 44px; padding: .5rem .75rem; border: 1px solid #adc8df; border-radius: 6px; }
 .taxonomy-explorer[open] { display: flex; flex-direction: column; }
 .taxonomy-explorer-header {
     display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem;
@@ -25,6 +29,22 @@
 }
 .taxonomy-explorer-header h2 { margin: 0; font-family: Georgia, serif; font-size: 1.4rem; font-weight: 700; line-height: 1.25; }
 .taxonomy-explorer-header p { margin: .4rem 0 0; font-size: .85rem; }
+.taxonomy-explorer-header { cursor: grab; touch-action: none; }
+.taxonomy-explorer-header.is-dragging { cursor: grabbing; user-select: none; }
+.taxonomy-explorer-header:focus-visible { outline: 3px solid #247cac; outline-offset: -3px; }
+.taxonomy-explorer button.taxonomy-explorer-resize[data-esquina] { position: absolute; z-index: 7; width: 12px; height: 12px; min-width: 0; min-height: 0; padding: 0; border: 0; background: transparent; cursor: var(--taxonomy-resize-cursor, nwse-resize); touch-action: none; user-select: none; }
+.taxonomy-explorer .taxonomy-explorer-resize:focus-visible { outline: 2px solid #247cac; outline-offset: -2px; background: rgb(36 124 172 / 15%); }
+.taxonomy-explorer button.taxonomy-explorer-resize-n[data-esquina], .taxonomy-explorer button.taxonomy-explorer-resize-s[data-esquina] { left: 12px; right: 12px; width: auto; height: 8px; --taxonomy-resize-cursor: ns-resize; }
+.taxonomy-explorer .taxonomy-explorer-resize-n { top: 0; }
+.taxonomy-explorer .taxonomy-explorer-resize-s { bottom: 0; }
+.taxonomy-explorer button.taxonomy-explorer-resize-e[data-esquina], .taxonomy-explorer button.taxonomy-explorer-resize-w[data-esquina] { top: 12px; bottom: 12px; height: auto; width: 8px; --taxonomy-resize-cursor: ew-resize; }
+.taxonomy-explorer .taxonomy-explorer-resize-e { right: 0; }
+.taxonomy-explorer .taxonomy-explorer-resize-w { left: 0; }
+.taxonomy-explorer .taxonomy-explorer-resize-nw { left: 0; top: 0; }
+.taxonomy-explorer .taxonomy-explorer-resize-ne { right: 0; top: 0; --taxonomy-resize-cursor: nesw-resize; }
+.taxonomy-explorer .taxonomy-explorer-resize-sw { left: 0; bottom: 0; --taxonomy-resize-cursor: nesw-resize; }
+.taxonomy-explorer .taxonomy-explorer-resize-se { right: 0; bottom: 0; }
+.taxonomy-explorer-header { padding-left: 1.4rem; padding-right: 1.4rem; }
 .taxonomy-explorer-actions { flex: none; display: flex; align-items: center; gap: .4rem; }
 .taxonomy-explorer-actions svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .taxonomy-explorer-reset { display: grid; place-items: center; width: 44px; min-height: 44px; border: 1px solid #adc8df; border-radius: 6px; color: #276485; }
@@ -33,7 +53,17 @@
 .taxonomy-explorer button:disabled { opacity: .5; cursor: default; }
 .taxonomy-explorer-close { flex: none; display: grid; place-items: center; min-width: 44px; min-height: 44px; border-radius: 6px; font-size: 1.5rem; line-height: 1; }
 .taxonomy-explorer-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: .75rem; overflow: auto; overscroll-behavior: contain; padding: .85rem 1rem; }
-.taxonomy-explorer-search { flex: none; }
+.taxonomy-explorer-search { flex: none; position: relative; }
+.taxonomy-explorer-summary { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin-top: .4rem; }
+.taxonomy-explorer-summary p { margin: 0; }
+.taxonomy-explorer-pill { display: inline-flex; align-items: center; gap: .5rem; min-height: 36px; padding: .2rem .65rem; border: 1px solid #adc8df; border-radius: 999px; background: #e5f2fb; font-size: .8rem; }
+.taxonomy-explorer-suggestions { position: absolute; z-index: 5; inset: 100% 0 auto; margin: .25rem 0 0; padding: .25rem; max-height: 18rem; overflow: auto; list-style: none; border: 1px solid #adc8df; border-radius: 6px; background: #fff; box-shadow: 0 6px 20px rgb(8 28 45 / 18%); }
+.taxonomy-explorer-suggestions button { display: flex; flex-wrap: wrap; gap: .2rem .75rem; width: 100%; min-height: 44px; padding: .5rem .7rem; text-align: left; }
+.taxonomy-explorer-suggestions button.is-active { background: #e5f2fb; }
+.taxonomy-explorer-suggestions span, .taxonomy-explorer-suggestions small { color: #4a647b; font-size: .8rem; }
+.taxonomy-explorer-suggestions small { flex-basis: 100%; }
+.taxonomy-explorer-context-menu { position: absolute; z-index: 6; min-width: 180px; padding: .3rem; border: 1px solid #adc8df; border-radius: 8px; background: #fff; box-shadow: 0 6px 20px rgb(8 28 45 / 18%); }
+.taxonomy-explorer-context-menu button { display: block; width: 100%; min-height: 44px; padding: .5rem .7rem; text-align: left; border-radius: 4px; }
 .taxonomy-explorer-search input { width: 100%; min-height: 44px; border: 1px solid #adc8df; border-radius: 6px; padding: .6rem .8rem; background: #fff; color: #173752; }
 .taxonomy-explorer-status { flex: none; display: flex; align-items: center; gap: .5rem; margin-top: .8rem; font-size: .85rem; }
 .taxonomy-explorer-toast { position: absolute; z-index: 3; bottom: 1rem; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: .5rem; max-width: calc(100% - 2rem); margin: 0; padding: .65rem 1rem; border: 1px solid #bad1e2; border-radius: 999px; background: #fff; color: #173752; box-shadow: 0 5px 22px rgb(8 28 45 / 18%); font-size: .85rem; pointer-events: none; }
@@ -44,13 +74,10 @@
 .taxonomy-explorer-canvas { position: relative; margin: 0 auto; overflow: hidden; }
 .taxonomy-explorer-board { position: absolute; top: 0; left: 0; transform-origin: top left; }
 .taxonomy-explorer-fit[aria-pressed="true"] { background: #e5f2fb; border-color: #2775a2; }
-.taxonomy-explorer-tooltip { position: absolute; z-index: 4; width: max-content; max-width: min(22rem, calc(100% - 16px)); padding: .75rem .9rem; border: 1px solid #adc8df; border-radius: 8px; background: #fff; color: #173752; box-shadow: 0 5px 22px rgb(8 28 45 / 18%); font-size: .8rem; line-height: 1.4; overflow-wrap: anywhere; pointer-events: none; }
-.taxonomy-explorer-tooltip strong { display: block; font: 700 1rem Georgia, serif; }
-.taxonomy-explorer-tooltip > span { color: #536d83; }
-.taxonomy-explorer-tooltip p { margin: .4rem 0 0; }
-.taxonomy-explorer-tooltip-lineage { padding-top: .5rem; border-top: 1px solid #dce7ef; color: #536d83; }
+.taxonomy-explorer-group { position: absolute; border: 1px solid #cedee9; border-left: 3px solid var(--taxon-color); border-radius: 6px; background: #eef5fa80; pointer-events: none; }
+.taxonomy-explorer-group > span { position: absolute; top: 2px; left: 8px; padding: 0 4px; background: #f8fbfd; color: #446078; font-size: 8px; }
 .taxonomy-explorer-board svg { position: absolute; inset: 0; pointer-events: none; stroke: #85a9c3; stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; opacity: .65; fill: none; }
-.taxonomy-explorer-node { position: absolute; display: flex; align-items: center; border: 1px solid #c4d6e4; border-radius: 10px; background: #fff; box-shadow: 0 3px 9px rgb(18 51 77 / 6%); }
+.taxonomy-explorer-node { position: absolute; display: flex; align-items: center; border: 1px solid #c4d6e4; border-radius: 6px; background: #fff; box-shadow: 0 3px 9px rgb(18 51 77 / 6%); }
 .taxonomy-explorer-node::after { content: ''; position: absolute; top: -4px; left: calc(50% - 4px); width: 8px; height: 8px; border: 2px solid #f8fbfd; border-radius: 50%; background: var(--taxon-color); pointer-events: none; }
 .taxonomy-explorer-node.is-root { border-top: 3px solid var(--taxon-color); box-shadow: 0 5px 14px rgb(18 51 77 / 9%); }
 .taxonomy-explorer-node.is-root::after { display: none; }
@@ -58,20 +85,20 @@
 .taxonomy-explorer-node.is-selected { border-color: #2775a2; background: #e5f2fb; box-shadow: 0 0 0 2px rgb(39 117 162 / 24%), 0 4px 12px rgb(39 117 162 / 12%); }
 .taxonomy-explorer-node.is-root.is-match, .taxonomy-explorer-node.is-root.is-selected { border-top-color: var(--taxon-color); }
 .taxonomy-explorer-toggle { position: absolute; left: -22px; top: calc(50% - 22px); z-index: 1; display: flex; align-items: center; justify-content: center; width: 44px; min-height: 44px; border-radius: 50%; color: #386786; }
-.taxonomy-explorer-toggle::before { content: ''; position: absolute; inset: 7px; z-index: -1; border: 1px solid #adc7db; border-radius: 50%; background: #fff; box-shadow: 0 2px 4px rgb(18 51 77 / 7%); }
-.taxonomy-explorer-toggle svg { position: static; width: 12px; height: 12px; stroke: currentColor; stroke-width: 2; opacity: 1; transition: transform .15s; }
+.taxonomy-explorer-toggle::before { content: ''; position: absolute; inset: 12px; z-index: -1; border: 1px solid #adc7db; border-radius: 50%; background: #fff; box-shadow: 0 2px 4px rgb(18 51 77 / 7%); }
+.taxonomy-explorer-toggle svg { position: static; width: 9px; height: 9px; stroke: currentColor; stroke-width: 2; opacity: 1; transition: transform .15s; }
 .taxonomy-explorer-toggle.is-expanded svg { transform: rotate(90deg); }
-.taxonomy-explorer-name { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; justify-content: center; gap: .3rem; padding: .7rem 1rem .7rem 1.4rem; text-align: left; border-radius: 9px; }
-.taxonomy-explorer-name em { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-family: Georgia, serif; font-style: italic; font-size: 1rem; line-height: 1.2; overflow-wrap: anywhere; }
-.taxonomy-explorer-node.is-root .taxonomy-explorer-name em { font-size: 1.12rem; }
-.taxonomy-explorer-rank { display: block; color: #4a647b; font-size: .68rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; line-height: 1.25; }
-.taxonomy-explorer-node-count { display: flex; flex-wrap: wrap; align-items: baseline; gap: .3rem; font-size: .7rem; color: #536d83; }
-.taxonomy-explorer-node-count strong { color: #173752; font-size: .88rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.25; }
-.taxonomy-explorer-selected-mark { position: absolute; top: -8px; right: -8px; display: grid; place-items: center; width: 20px; height: 20px; border: 2px solid #fff; border-radius: 50%; background: #2775a2; color: #fff; font-size: .7rem; }
+.taxonomy-explorer-name { flex: 1; min-width: 0; height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: 8px minmax(0, 1fr); align-items: center; column-gap: 6px; padding: 2px 6px 2px 13px; text-align: left; border-radius: 6px; }
+.taxonomy-explorer-board[data-orientacion="horizontal"] .taxonomy-explorer-node::after { left: -4px; top: calc(50% - 4px); }
+.taxonomy-explorer-name em { grid-column: 1; grid-row: 2; font-family: Georgia, serif; font-style: italic; font-size: 12px; font-weight: 700; color: #075985; line-height: 1; overflow-wrap: anywhere; }
+.taxonomy-explorer-rank { grid-column: 1; grid-row: 1; color: #4a647b; font-size: 7px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; line-height: 1; }
+.taxonomy-explorer-node-count { grid-column: 2; grid-row: 1 / 3; display: flex; flex-direction: column; align-items: flex-end; font-size: 8px; color: #536d83; white-space: nowrap; }
+.taxonomy-explorer-node-count strong { color: #173752; font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.taxonomy-explorer-selected-mark { position: absolute; top: -5px; right: -5px; display: grid; place-items: center; width: 12px; height: 12px; border: 1px solid #fff; border-radius: 50%; background: #2775a2; color: #fff; font-size: 8px; }
 .taxonomy-explorer-empty { padding: 2rem 0; text-align: center; color: #4a647b; }
 .taxonomy-explorer button:hover { background-color: #edf5fb; }
 .taxonomy-explorer button:focus-visible, .taxonomy-explorer input:focus-visible { outline: 3px solid #247cac; outline-offset: 2px; }
-@media (max-width: 767px) {
+@container taxonomy-explorer (max-width: 767px) {
     .taxonomy-explorer-header { flex-wrap: wrap; gap: .6rem; padding: .75rem; }
     .taxonomy-explorer-header h2 { font-size: 1.15rem; }
     .taxonomy-explorer-actions { margin-left: auto; }
@@ -79,3 +106,182 @@
     .taxonomy-explorer-toast { bottom: .75rem; font-size: .78rem; }
 }
 @media (prefers-reduced-motion: reduce) { .taxonomy-explorer-toggle svg { transition: none; } .taxonomy-explorer-toast .atlas-spinner { animation: none; } }
+
+.taxonomy-navigator { flex: 1; min-height: 180px; display: grid; grid-template-columns: minmax(180px, 23%) minmax(0, 1fr); gap: 12px; overflow: hidden; }
+.taxonomy-navigator.is-sidebar-collapsed { grid-template-columns: minmax(0, 1fr); gap: 0; }
+.taxonomy-navigator-sidebar { min-width: 0; min-height: 0; display: flex; flex-direction: column; border: 1px solid #d5e2ed; border-radius: 8px; background: #f5f8fb; overflow: hidden; }
+.taxonomy-navigator-sidebar > summary { display: none; }
+.taxonomy-navigator-sidebar > h3 { flex: none; margin: 0; padding: 12px; border-bottom: 1px solid #d5e2ed; font-size: 12px; font-weight: 600; color: #526b82; }
+.taxonomy-sidebar-tree-panel { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
+.taxonomy-sidebar-tree-panel::details-content { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.taxonomy-sidebar-tree-panel > summary { display: none; }
+.taxonomy-navigator-search-block { flex: none; padding: 8px; border-bottom: 1px solid #d5e2ed; }
+.taxonomy-navigator-search-block input { font-size: 12px; min-height: 36px; padding: 6px 8px; }
+.taxonomy-navigator-search-block .taxonomy-explorer-error { font-size: 12px; }
+.taxonomy-navigator-search-block .taxonomy-explorer-suggestions { max-height: 260px; }
+.taxonomy-navigator-search-block .taxonomy-explorer-suggestions button { font-size: 12px; }
+.taxonomy-navigator-start { flex: 1; display: grid; place-items: center; text-align: center; padding: 24px; color: #526b82; font-size: 14px; }
+.taxonomy-navigator-tree { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 6px; scrollbar-width: thin; }
+.taxonomy-navigator-row { display: flex; align-items: center; min-height: 36px; padding-left: calc(var(--profundidad) * 10px); border-radius: 5px; }
+.taxonomy-navigator-row.is-current { background: #e0edf7; box-shadow: inset 3px 0 var(--taxon-color); }
+.taxonomy-navigator-arrow { flex: none; display: grid; place-items: center; width: 24px; height: 36px; border-radius: 4px; }
+.taxonomy-navigator-arrow svg { width: 10px; height: 10px; fill: none; stroke: #366682; stroke-width: 1.8; }
+.taxonomy-navigator-arrow svg.is-expanded { transform: rotate(90deg); }
+.taxonomy-navigator-row .taxonomy-navigator-name { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; min-height: 36px; padding: 5px 6px; text-align: left; font-size: 12px; }
+.taxonomy-navigator-row .taxonomy-navigator-name > span { flex: 1; overflow-wrap: anywhere; }
+.taxonomy-navigator-row small { flex: none; font-size: 10px; color: #54718a; font-variant-numeric: tabular-nums; }
+.taxonomy-navigator-main { position: relative; min-width: 0; min-height: 0; display: flex; flex-direction: column; border: 1px solid #d5e2ed; border-radius: 8px; background: #fff; overflow: hidden; }
+.portal-ete-loading { position: absolute; right: 12px; bottom: 44px; padding: 6px 10px; border: 1px solid #bfd3e2; border-radius: 5px; background: #fff; color: #526b82; font-size: 12px; pointer-events: none; }
+.portal-ete-host { position: relative; flex: 1; min-height: 160px; width: 100%; overflow: scroll; overflow-anchor: none; scroll-behavior: auto; overscroll-behavior: contain; background: #f8fbfd; scrollbar-width: thin; }
+.portal-ete-plane { position: relative; }
+.portal-ete-stage { position: absolute; }
+.portal-ete-stage > svg { display: block; width: 100%; height: 100%; }
+.portal-ete-node { position: absolute; min-width: 8px; min-height: 8px; padding: 0; border: 0; border-radius: 3px; background: transparent; cursor: pointer; }
+.portal-ete-node-point { min-width: 24px; max-width: 24px; min-height: 24px; max-height: 24px; transform: translate(-50%, -50%); }
+.portal-phylotree-stage { position: relative; min-width: 100%; min-height: 100%; display: flex; align-items: center; }
+.taxonomy-navigator-phylotree { display: flex; flex-direction: column; overflow: visible; }
+.taxonomy-phylotree-controls { flex: none; display: flex; align-items: flex-start; gap: 16px; padding: 0 0 4px; }
+.taxonomy-phylotree-controls > .taxonomy-navigator-zoom { align-self: center; }
+.portal-mdd-tree-stage { position: relative; min-width: 100%; min-height: 100%; }
+.portal-mdd-content { position: absolute; width: max-content; padding: 0 24px 24px; transform-origin: 0 0; }
+.portal-mdd-tree, .portal-mdd-children { list-style: none; margin: 0; padding: 0; }
+.portal-mdd-entry { position: relative; padding: 0 0 8px; }
+.portal-mdd-children { margin-left: 30px; padding-left: 40px; }
+.portal-mdd-tree > .portal-mdd-entry > .portal-mdd-children { --portal-mdd-root-gap: 50.5px; margin-left: 12px; padding-top: var(--portal-mdd-root-gap); }
+.portal-mdd-tree > .portal-mdd-entry > .portal-mdd-children > .portal-mdd-entry:first-child > .portal-mdd-vertical { top: calc(-1 * var(--portal-mdd-root-gap)); }
+.portal-mdd-tree > .portal-mdd-entry > .portal-mdd-children > .portal-mdd-entry:only-child > .portal-mdd-vertical { height: calc(var(--portal-mdd-root-gap) + 29px); }
+.portal-mdd-terminal { margin-top: 20px; }
+.portal-mdd-children[hidden] { display: none; }
+.portal-mdd-vertical, .portal-mdd-horizontal { position: absolute; background: #829b9b; pointer-events: none; }
+.portal-mdd-vertical { top: 0; bottom: 0; left: -40px; width: 2px; }
+.portal-mdd-entry:last-child > .portal-mdd-vertical { height: 29px; bottom: auto; }
+.portal-mdd-horizontal { top: 29px; left: -40px; width: 40px; height: 2px; }
+.taxonomy-explorer .portal-mdd-node { position: relative; display: flex; align-items: center; gap: 14px; width: max-content; min-width: 270px; min-height: 58px; max-width: 560px; padding: 7px 18px 7px 0; border: 1px solid #c8dad5; border-radius: 17px; color: #244841; background: #e5efeb; text-align: left; font-family: system-ui, sans-serif; cursor: pointer; }
+.portal-mdd-toggle { flex: none; display: grid; place-items: center; width: 52px; min-height: 42px; border-right: 1px solid #adc5bd; color: #41685e; font-size: 25px; font-weight: 500; }
+.portal-mdd-label { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.portal-mdd-rank { font-size: 14px; line-height: 18px; color: #53766b; }
+.portal-mdd-name { font-size: 20px; line-height: 25px; font-weight: 650; overflow-wrap: anywhere; }
+.portal-mdd-count { flex: none; margin-left: auto; color: #557b69; font-size: 20px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.taxonomy-explorer .portal-mdd-root { min-width: 0; min-height: 40px; margin: 0 0 8px; padding: 0; border: 0; border-radius: 4px; color: #173b50; background: transparent; }
+.portal-mdd-root .portal-mdd-name { font-size: 28px; line-height: 36px; font-weight: 700; }
+.taxonomy-explorer .portal-mdd-tree-stage .portal-mdd-node:hover, .taxonomy-explorer .portal-mdd-tree-stage .portal-mdd-node:focus-visible { background: #d6e9e1; border-color: #598b7c; }
+.taxonomy-explorer .portal-mdd-tree-stage .portal-mdd-root:hover, .taxonomy-explorer .portal-mdd-tree-stage .portal-mdd-root:focus-visible { background: transparent; }
+.taxonomy-explorer .portal-mdd-tree-stage .portal-mdd-node:focus-visible { outline: 3px solid #2185a5; outline-offset: 2px; box-shadow: none; }
+@container taxonomy-explorer (max-width: 600px) {
+    .portal-mdd-content { padding: 0 12px 18px; }
+    .portal-mdd-children { margin-left: 16px; padding-left: 28px; }
+    .portal-mdd-vertical, .portal-mdd-horizontal { left: -28px; }
+    .portal-mdd-horizontal { width: 28px; }
+}
+.taxonomy-phylum-select { display: flex; align-items: center; gap: 10px; flex: 0 1 290px; }
+.taxonomy-phylum-select label { font-size: 14px; font-weight: 700; color: #42637b; }
+.taxonomy-phylum-select select { width: 100%; min-width: 140px; min-height: 44px; border: 1px solid #adc8df; border-radius: 9px; padding: 8px 34px 8px 12px; background: #f0f7fb; color: #173752; font-size: 16px; font-weight: 600; }
+.taxonomy-phylotree-search { flex: 1; min-width: 0; max-width: 540px; }
+.taxonomy-phylotree-search input { border-radius: 9px; font-size: 16px; box-shadow: 0 2px 5px rgb(23 55 82 / 4%); }
+.taxonomy-search-field { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; padding: 3px; min-height: 44px; border: 1px solid #adc8df; border-radius: 9px; background: #fff; box-shadow: 0 2px 5px rgb(23 55 82 / 4%); }
+.taxonomy-search-field:focus-within { border-color: #247bad; outline: 2px solid #247bad; outline-offset: 2px; }
+.taxonomy-explorer-search .taxonomy-search-field input { flex: 1 1 130px; width: 0; min-width: 100px; min-height: 36px; padding: 5px 9px; border: 0; border-radius: 5px; outline: 0; box-shadow: none; }
+.taxonomy-explorer button.taxonomy-search-token { display: inline-flex; align-items: center; gap: 9px; max-width: 100%; min-height: 34px; padding: 5px 8px; border: 1px solid #b3d5ec; border-radius: 5px; color: #175b87; background: #e6f3fc; font-size: 13px; }
+.taxonomy-search-token span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.taxonomy-search-token span:last-child { flex: none; font-size: 18px; }
+.taxonomy-explorer button.taxonomy-search-token:hover { background: #d1e9fa; }
+.taxonomy-explorer button.taxonomy-search-token:focus-visible { outline: 2px solid #247bad; outline-offset: 2px; }
+.taxonomy-navigator-phylotree .taxonomy-navigator-main { flex: 1; box-shadow: 0 3px 12px rgb(23 55 82 / 5%); border-radius: 10px; }
+.taxonomy-navigator-phylotree .taxonomy-navigator-breadcrumb { padding: 5px 10px; background: linear-gradient(90deg, #eef5fa, #f9fbfd); }
+.taxonomy-navigator-phylotree .taxonomy-navigator-path button { font-size: 14px; padding: 5px 8px; }
+.taxonomy-navigator-phylotree .taxonomy-navigator-path button[aria-current="location"] { background: #e1f0f8; }
+.taxonomy-navigator-phylotree .taxonomy-navigator-heading { padding: 10px 16px; border-bottom: 1px solid #e4edf3; }
+.taxonomy-navigator-phylotree .taxonomy-navigator-heading h3 { font-size: 25px; }
+.taxonomy-navigator-phylotree .taxonomy-navigator-heading p { font-size: 14px; }
+.taxonomy-navigator-phylotree .taxonomy-branch-select { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 13px; color: #466077; }
+.taxonomy-branch-select select { max-width: 260px; min-width: 140px; min-height: 36px; border: 1px solid #bfd3e2; border-radius: 7px; padding: 5px 28px 5px 8px; color: #173752; background: #f9fbfd; font-size: 14px; }
+.taxonomy-expand-all { flex: none; min-height: 36px; padding: 5px 10px; border: 1px solid #bfd3e2; border-radius: 7px; color: #174f72; background: #fff; font-size: 13px; }
+@container taxonomy-explorer (max-width: 600px) {
+    .taxonomy-expand-all { max-width: 115px; white-space: normal; font-size: 12px; }
+    .taxonomy-branch-select { flex-wrap: wrap; }
+}
+.taxonomy-navigator-phylotree .portal-ete-host { background: radial-gradient(circle, #dce7ef .7px, transparent .8px) 0 0 / 20px 20px, #f8fbfd; scrollbar-color: #8daac0 #eff5f9; }
+.taxonomy-navigator-phylotree :is(select, input, button):focus-visible { outline: 3px solid #2185a5; outline-offset: 2px; }
+.taxonomy-explorer .taxonomy-search-field input:focus-visible { outline: 0; box-shadow: none; }
+@container taxonomy-explorer (max-width: 600px) {
+    .taxonomy-phylotree-controls { flex-wrap: wrap; gap: 8px; }
+    .taxonomy-phylum-select, .taxonomy-phylotree-search { flex-basis: 100%; max-width: none; }
+}
+.portal-phylotree-stage > .portal-phylotree-svg { display: block; flex: none; max-width: none; overflow: visible; }
+.portal-phylotree-stage.portal-canvas-stage { display: block; }
+.portal-canvas-viewport { position: sticky; top: 0; left: 0; overflow: hidden; }
+.portal-canvas-drawing, .portal-canvas-accessible { position: absolute; inset: 0; }
+.portal-canvas-accessible { pointer-events: none; }
+.portal-canvas-accessible .portal-canvas-hit { pointer-events: auto; background: transparent; border: 0; border-radius: 8px; color: transparent; }
+.portal-canvas-accessible .portal-canvas-hit:focus-visible { outline: 3px solid #2185a5; outline-offset: 2px; }
+.portal-phylotree-svg .branch { fill: none; stroke: #526c80; stroke-width: 2; vector-effect: non-scaling-stroke; }
+.portal-phylotree-svg .portal-phylotree-node text { fill: #173752; font-family: Georgia, serif; font-style: italic; font-weight: 600; stroke: #f8fbfd; stroke-width: 5; stroke-linejoin: round; paint-order: stroke fill; cursor: pointer; }
+.portal-phylotree-svg .portal-phylotree-node.is-root text { fill: #075985; font-weight: 700; }
+.portal-phylotree-svg .portal-phylotree-node circle { fill: #17699b; stroke: #fff; stroke-width: 2; }
+.portal-phylotree-svg .portal-phylotree-label-bg { fill: #fff; stroke: #d9e5ee; stroke-width: 1; }
+.portal-phylotree-svg .portal-phylotree-node.is-root .portal-phylotree-label-bg { fill: #e6f2fa; stroke: #88b2cc; stroke-width: 1.5; }
+.portal-phylotree-svg .portal-phylotree-scientific { fill: var(--rama-color, #17699b); }
+.portal-phylotree-svg .portal-phylotree-meta, .portal-phylotree-svg .portal-phylotree-root-tag { font-family: system-ui, sans-serif; font-style: normal; font-weight: 500; font-size: .78em; fill: #466077; stroke: none; }
+.portal-phylotree-svg .portal-phylotree-root-tag { font-weight: 700; fill: #075985; }
+.portal-phylotree-svg .portal-phylotree-node:hover .portal-phylotree-label-bg, .portal-phylotree-svg .portal-phylotree-node:focus-visible .portal-phylotree-label-bg { fill: #edf7fc; stroke: var(--rama-color, #17699b); stroke-width: 2; }
+.portal-phylotree-svg .portal-phylotree-node:hover text, .portal-phylotree-svg .portal-phylotree-node:focus-visible text { fill: #075985; text-decoration: underline; }
+.portal-ete-host .portal-phylotree-terminal { position: relative; display: block; margin: 24px; padding: 18px 22px; border: 2px solid #98b9cf; border-radius: 8px; background: #eaf4fb; color: #075985; font-family: Georgia, serif; font-weight: 700; overflow-wrap: anywhere; text-align: left; }
+.portal-ete-controls { display: flex; flex-wrap: wrap; flex: none; align-items: center; gap: 10px; padding: 6px 12px; border-block: 1px solid #d5e2ed; font-size: 11px; }
+.portal-ete-controls label { display: inline-flex; align-items: center; gap: 6px; }
+.portal-ete-controls select { min-height: 32px; padding: 3px 6px; border: 1px solid #bfd3e2; border-radius: 5px; background: white; }
+.portal-ete-controls input { max-width: 100px; }
+.portal-ete-controls > div { display: flex; gap: 4px; margin-left: auto; }
+.portal-ete-controls button { min-width: 32px; min-height: 32px; border: 1px solid #bfd3e2; border-radius: 5px; font-size: 18px; }
+.taxonomy-explorer .portal-ete-node:hover { background: rgb(39 117 162 / 12%); }
+.taxonomy-explorer .portal-ete-node:focus-visible { background: rgb(39 117 162 / 18%); box-shadow: inset 0 0 0 3px #247cac; }
+.taxonomy-explorer .portal-ete-node[aria-current="location"] { background: rgb(39 117 162 / 10%); outline: 2px solid #2775a2; outline-offset: 2px; }
+.taxonomy-navigator-caption { display: flex; flex: none; justify-content: space-between; gap: 8px; padding: 8px 12px; font-size: 11px; color: #526b82; border-top: 1px solid #d5e2ed; }
+.taxonomy-navigator-caption a { color: #075985; text-decoration: underline; }
+.taxonomy-navigator-breadcrumb { flex: none; min-width: 0; display: flex; align-items: center; gap: 4px; padding: 2px 6px; background: #f5f8fb; border-bottom: 1px solid #d5e2ed; }
+.taxonomy-navigator-path { flex: 1; min-width: 0; display: flex; align-items: center; gap: 4px; min-height: 38px; padding: 0 2px; overflow-x: auto; white-space: nowrap; scrollbar-width: thin; }
+.taxonomy-navigator-zoom { display: flex; flex: none; gap: 4px; margin-left: auto; }
+.taxonomy-navigator-zoom button, .taxonomy-navigator-fold { flex: none; display: grid; place-items: center; width: 36px; min-height: 36px; border: 1px solid #bfd3e2; border-radius: 5px; color: #174c70; background: #fff; }
+.taxonomy-navigator-zoom button { font-size: 22px; line-height: 1; }
+.taxonomy-navigator-fold svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.taxonomy-navigator-path > span { display: inline-flex; align-items: center; gap: 4px; }
+.taxonomy-navigator-path button { min-height: 32px; padding: 4px 5px; border-radius: 4px; font-size: 11px; }
+.taxonomy-navigator-path button[aria-current="location"] { font-weight: 700; color: #075985; }
+.taxonomy-navigator-path i { color: #8398a9; font-style: normal; }
+.taxonomy-navigator-heading { flex: none; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; }
+.taxonomy-navigator-heading > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.taxonomy-navigator-heading h3 { margin: 0; font-family: Georgia, serif; font-style: italic; font-size: 20px; line-height: 1.15; font-weight: 700; color: var(--taxon-color); overflow-wrap: anywhere; }
+.taxonomy-navigator-heading p { margin: 0; font-size: 11px; color: #526b82; }
+.taxonomy-navigator-search { flex: 0 1 200px; }
+.taxonomy-navigator-search input { width: 100%; min-height: 36px; border: 1px solid #bfd3e2; border-radius: 6px; padding: 5px 9px; font-size: 12px; background: #fff; color: #173752; }
+.taxonomy-navigator-children { flex: 1; min-height: 64px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); grid-auto-rows: 64px; align-content: start; gap: 12px; padding: 0 12px; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.taxonomy-navigator-card { min-width: 0; border: 1px solid #c4d6e4; border-left: 3px solid var(--taxon-color); border-radius: 6px; background: #fff; }
+.taxonomy-navigator-card .taxonomy-navigator-name { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: 12px minmax(0, 1fr); column-gap: 8px; align-items: center; width: 100%; height: 100%; padding: 7px 22px 7px 10px; text-align: left; border-radius: 5px; }
+.taxonomy-navigator-card .taxonomy-navigator-name > small { font-size: 8px; color: #526b82; letter-spacing: .04em; text-transform: uppercase; }
+.taxonomy-navigator-card em { grid-column: 1; grid-row: 2; font-family: Georgia, serif; font-size: 14px; font-weight: 700; font-style: italic; line-height: 1.15; overflow-wrap: anywhere; color: #075985; }
+.taxonomy-navigator-count { grid-column: 2; grid-row: 1 / 3; display: flex; flex-direction: column; align-items: flex-end; white-space: nowrap; }
+.taxonomy-navigator-count strong { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.taxonomy-navigator-count small { font-size: 9px; color: #526b82; }
+.taxonomy-navigator-next { position: absolute; right: 7px; top: 50%; transform: translateY(-50%); font-size: 20px; color: #49778f; }
+.taxonomy-navigator-empty { grid-column: 1 / -1; align-self: center; padding: 16px; color: #526b82; font-size: 13px; }
+.taxonomy-navigator-pagination { flex: none; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 12px; font-size: 11px; color: #526b82; }
+.taxonomy-navigator-pagination > div { display: flex; align-items: center; gap: 10px; }
+.taxonomy-navigator-pagination button { width: 36px; min-height: 36px; border: 1px solid #bfd3e2; border-radius: 5px; font-size: 20px; color: #174c70; }
+@container taxonomy-explorer (max-width: 850px) {
+    .taxonomy-navigator { grid-template-columns: minmax(160px, 25%) minmax(0, 1fr); gap: 8px; }
+}
+@container taxonomy-explorer (max-width: 767px) {
+    .taxonomy-navigator { display: flex; flex-direction: column; gap: 8px; }
+    .taxonomy-navigator-sidebar { flex: none; max-height: 42%; }
+    .taxonomy-navigator-sidebar > h3 { display: none; }
+    .taxonomy-sidebar-tree-panel { flex: none; }
+    .taxonomy-sidebar-tree-panel > summary { display: flex; justify-content: space-between; min-height: 36px; padding: 8px 10px; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .taxonomy-sidebar-tree-panel:not([open]) > :not(summary) { display: none; }
+    .taxonomy-sidebar-tree-panel[open] .taxonomy-navigator-tree { max-height: 170px; }
+    .taxonomy-navigator-main { flex: 1; }
+    .taxonomy-navigator-heading { padding: 8px; gap: 6px; }
+    .taxonomy-navigator-heading h3 { font-size: 18px; }
+    .taxonomy-navigator-search { flex-basis: 100%; }
+    .taxonomy-navigator-search input { min-height: 32px; }
+    .taxonomy-navigator-children { padding: 0 8px; }
+    .taxonomy-navigator-pagination { padding: 6px 8px; }
+}

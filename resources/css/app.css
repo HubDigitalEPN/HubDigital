@@ -407,13 +407,29 @@ img, svg, video, canvas, iframe, embed, object {
     }
 }
 
-@media (max-height: 8rem) {
-    body:has(#titulo-portada) .portal-chat-shell {
-        position: absolute;
-        top: 5.25rem;
-        bottom: auto;
-    }
+.portal-chat-shell {
+    --chat-bottom: max(clamp(12px, 10dvh, 72px), env(safe-area-inset-bottom, 0px));
+    position: fixed;
+    bottom: var(--chat-bottom);
+    padding-inline: max(12px, min(24px, 4vw), env(safe-area-inset-right, 0px));
 }
+#chat-bot-panel {
+    height: min(34rem, calc(100dvh - var(--chat-bottom) - 16px));
+    max-height: calc(100dvh - var(--chat-bottom) - 16px);
+}
+#chat-bot-trigger {
+    width: clamp(44px, 7dvh, 56px);
+    height: clamp(44px, 7dvh, 56px);
+    flex: none;
+    animation: portal-chat-pulse 14s ease-out 3s infinite;
+}
+#chat-bot-trigger:hover, #chat-bot-trigger:focus-visible { animation: none; }
+@keyframes portal-chat-pulse {
+    0%, 14%, 100% { transform: scale(1); box-shadow: 0 4px 12px rgb(16 43 70 / 25%); }
+    4%, 10% { transform: scale(1.07); box-shadow: 0 0 0 10px rgb(0 105 168 / 15%), 0 4px 12px rgb(16 43 70 / 25%); }
+    7% { transform: scale(1); box-shadow: 0 0 0 4px rgb(0 105 168 / 10%), 0 4px 12px rgb(16 43 70 / 25%); }
+}
+@media (prefers-reduced-motion: reduce) { #chat-bot-trigger { animation: none; transition: none; } }
 
 /* Los workspace internos ocupan el ancho operativo disponible. Los límites de
    lectura deben vivir en tarjetas y párrafos, no en la superficie completa. */

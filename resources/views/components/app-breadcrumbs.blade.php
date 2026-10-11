@@ -14,6 +14,7 @@
 
     $items = match (true) {
         request()->routeIs('admin.centro') => [['Centro de administración', null]],
+        request()->routeIs('admin.textos-portal') => [['Divulgación', route('divulgacion.index')], ['Textos del portal', null]],
         request()->routeIs('admin.usuarios') => [
             ['Centro de administración', route('admin.centro')],
             ['Usuarios y perfiles', null],

@@ -1,0 +1,291 @@
+[
+  {
+    "nombre": "Annelida",
+    "rangos": [
+      "filo",
+      "phylum"
+    ],
+    "descripcion": "Anélidos de cuerpo segmentado. Incluyen lombrices, sanguijuelas y numerosos gusanos acuáticos.",
+    "alt": "Ejemplo representativo de Annelida: Lumbricus terrestris",
+    "credito": "(c) AJ Wacaser, some rights reserved (CC BY) · Redimensionada y comprimida a WebP",
+    "fuente": "https://www.inaturalist.org/photos/1621807",
+    "archivo": "annelida.webp",
+    "sha256": "0f6ab273fb2f74a1f58a229f3459d6cd509a4aa87f833e24b4f752587a2d79a9"
+  },
+  {
+    "nombre": "Clitellata",
+    "rangos": [
+      "clase",
+      "class"
+    ],
+    "descripcion": "Grupo de anélidos que incluye lombrices y sanguijuelas. El clitelo participa en la formación del capullo de sus huevos.",
+    "alt": "Ejemplo representativo de Clitellata: Lumbricus terrestris",
+    "credito": "(c) AJ Wacaser, some rights reserved (CC BY) · Redimensionada y comprimida a WebP",
+    "fuente": "https://www.inaturalist.org/photos/1621807",
+    "archivo": "clitellata.webp",
+    "sha256": "0f6ab273fb2f74a1f58a229f3459d6cd509a4aa87f833e24b4f752587a2d79a9"
+  },
+  {
+    "nombre": "Hirudinea",
+    "rangos": [
+      "clase",
+      "class",
+      "subclase"
+    ],
+    "descripcion": "Sanguijuelas: anélidos con ventosas que habitan ambientes acuáticos y húmedos. Sus hábitos alimentarios varían entre especies.",
+    "alt": "Ejemplo representativo de Hirudinea: Hirudinea",
+    "credito": "(c) dhfischer, some rights reserved (CC BY), uploaded by dhfischer · Redimensionada y comprimida a WebP",
+    "fuente": "https://www.inaturalist.org/photos/106154331",
+    "archivo": "hirudinea.webp",
+    "sha256": "84e22d3527b1ff545a5e5219a0749073edf4d604c78e8bc92b752b81a516080b"
+  },
+  {
+    "nombre": "Arthropoda",
+    "rangos": [
+      "filo",
+      "phylum"
+    ],
+    "descripcion": "Animales con exoesqueleto y apéndices articulados. Incluyen insectos, arácnidos, crustáceos y miriápodos.",
+    "alt": "Ejemplo representativo de Arthropoda: Lyssomanes viridis",
+    "credito": "(c) skitterbug, some rights reserved (CC BY), uploaded by skitterbug · Redimensionada y comprimida a WebP",
+    "fuente": "https://www.inaturalist.org/photos/52507102",
+    "archivo": "arthropoda.webp",
+    "sha256": "bb5ab05ab58a1a1de736f535972c5c9f4e3a356ae7b59d44c8fc30999ef85c9f"
+  },
+  {
+    "nombre": "Arachnida",
+    "rangos": [
+      "clase",
+      "class"
+    ],
+    "descripcion": "Arácnidos como arañas, escorpiones y ácaros. La mayoría de sus adultos tiene cuatro pares de patas y carece de antenas.",
+    "alt": "Ejemplo representativo de Arachnida: Lyssomanes viridis",
+    "credito": "(c) skitterbug, some rights reserved (CC BY), uploaded by skitterbug · Redimensionada y comprimida a WebP",
+    "fuente": "https://www.inaturalist.org/photos/52507102",
+    "archivo": "arachnida.webp",
+    "sha256": "bb5ab05ab58a1a1de736f535972c5c9f4e3a356ae7b59d44c8fc30999ef85c9f"
+  },
+  {
+    "nombre": "Araneae",
+    "rangos": [
+      "orden",
+      "order"
+    ],
+    "descripcion": "Arañas: arácnidos que producen seda y desempeñan un papel importante como depredadores de otros invertebrados.",
+    "alt": "Ejemplo representativo de Araneae: Lyssomanes viridis",
+    "credito": "(c) skitterbug, some rights reserved (CC BY), uploaded by skitterbug · Redimensionada y comprimida a WebP",
+    "fuente": "https://www.inaturalist.org/photos/52507102",
+    "archivo": "araneae.webp",
+    "sha256": "bb5ab05ab58a1a1de736f535972c5c9f4e3a356ae7b59d44c8fc30999ef85c9f"
+  },
+  {
+    "nombre": "Salticidae",
+    "rangos": [
+      "familia",
+      "family"
+    ],
+    "descripcion": "Arañas saltadoras. Su visión desarrollada y sus saltos les permiten explorar el entorno y capturar presas.",
+    "alt": "Ejemplo representativo de Salticidae: Lyssomanes viridis",
+    "credito": "(c) skitterbug, some rights reserved (CC BY), uploaded by skitterbug · Redimensionada y comprimida a WebP",
+    "fuente": "https://www.inaturalist.org/photos/52507102",
+    "archivo": "salticidae.webp",
+    "sha256": "bb5ab05ab58a1a1de736f535972c5c9f4e3a356ae7b59d44c8fc30999ef85c9f"
+  },
+  {
+    "nombre": "Lyssomanes",
+    "rangos": [
+      "genero",
+      "género",
+      "genus"
+    ],
+    "descripcion": "Género de arañas saltadoras de la familia Salticidae. Muchas presentan cuerpos esbeltos y coloraciones verdes translúcidas.",
+    "alt": "Ejemplo representativo de Lyssomanes: Lyssomanes viridis",
+    "credito": "(c) skitterbug, some rights reserved (CC BY), uploaded by skitterbug · Redimensionada y comprimida a WebP",
+    "fuente": "https://www.inaturalist.org/photos/52507102",
+    "archivo": "lyssomanes.webp",
+    "sha256": "bb5ab05ab58a1a1de736f535972c5c9f4e3a356ae7b59d44c8fc30999ef85c9f"
+  },
+  {
+    "nombre": "Insecta",
+    "rangos": [
+      "clase",
+      "class"
+    ],
+    "descripcion": "Insectos: artrópodos cuyo cuerpo adulto se divide en cabeza, tórax y abdomen, con tres pares de patas.",
+    "alt": "Ejemplo representativo de Insecta: Danaus plexippus",
+    "credito": "(c) Kyle Van Houtan, some rights reserved (CC BY) · Redimensionada y comprimida a WebP",
+    "fuente": "https://www.inaturalist.org/photos/21693",
+    "archivo": "insecta.webp",
+    "sha256": "c6488829394223f77bfac524babdafc4b5ea21077a68592735e4a31dcaa7d4f2"
+  },
+  {
+    "nombre": "Coleoptera",
+    "rangos": [
+      "orden",
+      "order"
+    ],
+    "descripcion": "Escarabajos. Su primer par de alas forma los élitros, cubiertas protectoras de las alas posteriores y del abdomen.",
+    "alt": "Ejemplo representativo de Coleoptera: Coccinella septempunctata",
+    "credito": "(c) Barbara Banfield, some rights reserved (CC BY) · Redimensionada y comprimida a WebP",
+    "fuente": "https://www.inaturalist.org/photos/41776",
+    "archivo": "coleoptera.webp",
+    "sha256": "f8c679b9aff247cb3f7d5354aa2646515290ca413e3c6a5f3edc40ca96fb8a04"
+  },
+  {
+    "nombre": "Lepidoptera",
+    "rangos": [
+      "orden",
+      "order"
+    ],
+    "descripcion": "Mariposas y polillas, reconocidas por las escamas de sus alas. Su desarrollo comprende huevo, larva, pupa y adulto.",
+    "alt": "Ejemplo representativo de Lepidoptera: Danaus plexippus",
+    "credito": "(c) Kyle Van Houtan, some rights reserved (CC BY) · Redimensionada y comprimida a WebP",
+    "fuente": "https://www.inaturalist.org/photos/21693",
+    "archivo": "lepidoptera.webp",
+    "sha256": "c6488829394223f77bfac524babdafc4b5ea21077a68592735e4a31dcaa7d4f2"
+  },
+  {
+    "nombre": "Hymenoptera",
+    "rangos": [
+      "orden",
+      "order"
+    ],
+    "descripcion": "Abejas, avispas y hormigas. Este orden reúne polinizadores, depredadores y parasitoides con gran importancia ecológica.",
+    "alt": "Ejemplo representativo de Hymenoptera: Apis mellifera",
+    "credito": "(c) dloarie, some rights reserved (CC BY) · Redimensionada y comprimida a WebP",
+    "fuente": "https://www.inaturalist.org/photos/22661",
+    "archivo": "hymenoptera.webp",
+    "sha256": "6bfb3593c99fd6df64bdc9b381afb44e07ba9c7b671b1c7d31760c0442522129"
+  },
+  {
+    "nombre": "Diptera",
+    "rangos": [
+      "orden",
+      "order"
+    ],
+    "descripcion": "Moscas y mosquitos. Los adultos tienen un par de alas funcionales y un par de halterios que contribuyen al equilibrio en vuelo.",
+    "alt": "Ejemplo representativo de Diptera: Eristalis tenax",
+    "credito": "(c) Barbara Banfield, some rights reserved (CC BY) · Redimensionada y comprimida a WebP",
+    "fuente": "https://www.inaturalist.org/photos/44026",
+    "archivo": "diptera.webp",
+    "sha256": "e5348a6b8052ed96e9839cd85904e03e0fb6931bc8ccae629c4faf8b78580dcf"
+  },
+  {
+    "nombre": "Chilopoda",
+    "rangos": [
+      "clase",
+      "class"
+    ],
+    "descripcion": "Ciempiés: miriápodos depredadores de cuerpo alargado. En general presentan un par de patas por segmento del tronco.",
+    "alt": "Ejemplo representativo de Chilopoda: Scolopendra polymorpha",
+    "credito": "(c) Ken-ichi Ueda, some rights reserved (CC BY) · Redimensionada y comprimida a WebP",
+    "fuente": "https://www.inaturalist.org/photos/6181",
+    "archivo": "chilopoda.webp",
+    "sha256": "df35a19d59ab2d5d20d5b5a65838bd52a0ffdfdda9bf43ce896d64fda2fcc255"
+  },
+  {
+    "nombre": "Diplopoda",
+    "rangos": [
+      "clase",
+      "class"
+    ],
+    "descripcion": "Milpiés: miriápodos con dos pares de patas en la mayoría de sus segmentos aparentes. Muchos se alimentan de materia vegetal en descomposición.",
+    "alt": "Ejemplo representativo de Diplopoda: Xystocheir dissecta",
+    "credito": "(c) Ken-ichi Ueda, some rights reserved (CC BY) · Redimensionada y comprimida a WebP",
+    "fuente": "https://www.inaturalist.org/photos/3213",
+    "archivo": "diplopoda.webp",
+    "sha256": "7267eab5c5a59b9961d586a9e9e1045bed3076725a15b4016b56ee324ce1da35"
+  },
+  {
+    "nombre": "Crustacea",
+    "rangos": [
+      "clase",
+      "class",
+      "subfilo"
+    ],
+    "descripcion": "Crustáceos, como cangrejos, camarones y cochinillas. Presentan dos pares de antenas y ocupan ambientes acuáticos y terrestres.",
+    "alt": "Ejemplo representativo de Crustacea: Porcellio scaber",
+    "credito": "(c) 114397479669890378989, some rights reserved (CC BY) · Redimensionada y comprimida a WebP",
+    "fuente": "https://www.inaturalist.org/photos/95415",
+    "archivo": "crustacea.webp",
+    "sha256": "41f52b7733197f2010345921c9adfd8d7dd4b2d2d8b70df839b5bc88f0e97458"
+  },
+  {
+    "nombre": "Malacostraca",
+    "rangos": [
+      "clase",
+      "class"
+    ],
+    "descripcion": "Clase de crustáceos que incluye cangrejos, camarones, anfípodos e isópodos. Sus formas y modos de vida son muy diversos.",
+    "alt": "Ejemplo representativo de Malacostraca: Porcellio scaber",
+    "credito": "(c) 114397479669890378989, some rights reserved (CC BY) · Redimensionada y comprimida a WebP",
+    "fuente": "https://www.inaturalist.org/photos/95415",
+    "archivo": "malacostraca.webp",
+    "sha256": "41f52b7733197f2010345921c9adfd8d7dd4b2d2d8b70df839b5bc88f0e97458"
+  },
+  {
+    "nombre": "Tingidae",
+    "rangos": [
+      "familia",
+      "family"
+    ],
+    "descripcion": "Chinches de encaje. Muchas tienen alas y estructuras torácicas con una trama reticulada característica y se alimentan de plantas.",
+    "alt": "Ejemplo representativo de Tingidae: Tingidae",
+    "credito": "(c) Katja Schulz, some rights reserved (CC BY) · Redimensionada y comprimida a WebP",
+    "fuente": "https://www.inaturalist.org/photos/141506",
+    "archivo": "tingidae.webp",
+    "sha256": "2c8a99aa4ab5f03e4897cd1dbdd5e75e20b0ac86dff19990a3eda3b8018964e8"
+  },
+  {
+    "nombre": "Mollusca",
+    "rangos": [
+      "filo",
+      "phylum"
+    ],
+    "descripcion": "Moluscos de cuerpo blando, como caracoles, bivalvos y cefalópodos. Muchas especies presentan una concha protectora.",
+    "alt": "Ejemplo representativo de Mollusca: Cornu aspersum",
+    "credito": "(c) Barbara Banfield, some rights reserved (CC BY) · Redimensionada y comprimida a WebP",
+    "fuente": "https://www.inaturalist.org/photos/30233",
+    "archivo": "mollusca.webp",
+    "sha256": "d1c1677213378cd67f16d87e5a7d7824d8b60899cda7cd3e3d06e91b2aed5938"
+  },
+  {
+    "nombre": "Bivalvia",
+    "rangos": [
+      "clase",
+      "class"
+    ],
+    "descripcion": "Moluscos acuáticos con una concha formada por dos valvas. Muchos filtran partículas del agua para alimentarse.",
+    "alt": "Ejemplo representativo de Bivalvia: Mytilus edulis",
+    "credito": "(c) Ken-ichi Ueda, some rights reserved (CC BY) · Redimensionada y comprimida a WebP",
+    "fuente": "https://www.inaturalist.org/photos/72900",
+    "archivo": "bivalvia.webp",
+    "sha256": "97755ac8e3dd0b926d10bbc653fc55f062907cb65e08ccf51a5f93e1862dd0be"
+  },
+  {
+    "nombre": "Gastropoda",
+    "rangos": [
+      "clase",
+      "class"
+    ],
+    "descripcion": "Caracoles y babosas. Se desplazan mediante un pie muscular y viven en ambientes marinos, de agua dulce y terrestres.",
+    "alt": "Ejemplo representativo de Gastropoda: Cornu aspersum",
+    "credito": "(c) Barbara Banfield, some rights reserved (CC BY) · Redimensionada y comprimida a WebP",
+    "fuente": "https://www.inaturalist.org/photos/30233",
+    "archivo": "gastropoda.webp",
+    "sha256": "d1c1677213378cd67f16d87e5a7d7824d8b60899cda7cd3e3d06e91b2aed5938"
+  },
+  {
+    "nombre": "Nematomorpha",
+    "rangos": [
+      "filo",
+      "phylum"
+    ],
+    "descripcion": "Gusanos de cuerpo largo y delgado. Sus larvas parasitan otros invertebrados; muchos adultos viven en agua dulce.",
+    "alt": "Ejemplo representativo de Nematomorpha: Chordodes formosanus",
+    "credito": "(c) Fang-Yu, Shen, some rights reserved (CC BY) · Redimensionada y comprimida a WebP",
+    "fuente": "https://www.inaturalist.org/photos/12150289",
+    "archivo": "nematomorpha.webp",
+    "sha256": "de9ccb2c561c161f99af17a4637ebdce8998d4f474096c76cd4b0fc18f867178"
+  }
+]

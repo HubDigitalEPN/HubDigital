@@ -4,7 +4,7 @@ export function valoresPanel(tipo, datos) {
     const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
     if (tipo === 'filos') return Object.entries(datos).map(([label, value]) => ({label, value: Number(value)}));
     if (tipo === 'estacionalidad') return meses.map((label, i) => ({label, value: Number(datos.find(fila => Number(fila.mes) === i + 1)?.registros || 0)}));
-    return datos.map(fila => ({label: tipo === 'riqueza' ? fila.provincia : tipo === 'decadas' ? `${fila.decada}–${Number(fila.decada)+9}` : tipo === 'altitud' ? `${fila.desde}–${fila.hasta} m` : (fila.etiqueta || fila.metodo), value: Number(fila.registros), x: Number(fila.decada)}));
+    return datos.map(fila => ({label: tipo === 'riqueza' ? (fila.localidad || fila.provincia) : tipo === 'decadas' ? `${fila.decada}–${Number(fila.decada)+9}` : tipo === 'altitud' ? `${fila.desde}–${fila.hasta} m` : (fila.etiqueta || fila.metodo), value: Number(fila.registros), x: Number(fila.decada)}));
 }
 
 export function configuracionGraficoPanel(tipo, datos, titulo, seleccionar) {
@@ -24,6 +24,7 @@ export function configuracionGraficoPanel(tipo, datos, titulo, seleccionar) {
                 if (indice === undefined) return;
                 const fila = tipo === 'estacionalidad' ? {mes: indice + 1} : datos[indice];
                 if (tipo === 'filos') seleccionar.seleccionarFilo(valores[indice].label);
+                else if (tipo === 'riqueza' && fila.localidad) seleccionar.seleccionarLocalidad(fila.localidad);
                 else if (tipo === 'riqueza') seleccionar.seleccionarProvincia(fila.provincia);
                 else if (tipo === 'decadas') seleccionar.seleccionarDecada(Number(fila.decada));
                 else if (tipo === 'estacionalidad') seleccionar.seleccionarMes(fila.mes);
@@ -34,7 +35,13 @@ export function configuracionGraficoPanel(tipo, datos, titulo, seleccionar) {
     };
     if (!circular) configuracion.options.scales = puntos ? {
         x: {beginAtZero: true, title: {display: true, text: 'Registros'}},
-        y: {reverse: tipo === 'riqueza', min: -.5, max: Math.max(.5, valores.length - .5), ticks: {stepSize: 1, callback: valor => valores[valor]?.label || ''}},
+        y: {reverse: tipo === 'riqueza', min: -.5, max: Math.max(.5, valores.length - .5), title: {display: true, text: tipo === 'altitud' ? 'Intervalo de elevación (m)' : datos.some(fila => fila.localidad) ? 'Localidad' : 'Provincia'},
+            afterBuildTicks: escala => { escala.ticks = valores.map((_fila, indice) => ({value: indice})); },
+            ticks: {autoSkip: false, stepSize: 1, callback: function(valor) {
+                const etiqueta = valores[valor]?.label || '';
+                const maximo = Math.max(10, Math.min(24, Math.floor((this?.chart?.width || 420) / 20)));
+                return etiqueta.length > maximo ? etiqueta.slice(0, maximo - 1) + '…' : etiqueta;
+            }}},
     } : {x: tipo === 'decadas' ? {type: 'linear', ticks: {stepSize: 10}, title: {display: true, text: 'Década inicial'}} : {}, y: {beginAtZero: true, ticks: {precision: 0}, title: {display: true, text: 'Registros'}}};
     return configuracion;
 }

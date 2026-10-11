@@ -28,6 +28,26 @@ Route::prefix('portal')
         Route::get('/', fn () => redirect()->route('portal.catalogo', ['vista' => 'mapa']))->name('inicio');
         Route::get('/estadisticas', PortalEstadisticas::class)->name('estadisticas');
         Route::get('/catalogo', PortalCatalogo::class)->lazy('on-load')->name('catalogo');
+        Route::get('/explorador', \Modules\CatalogoPublico\Presentation\Http\Controllers\ExploradorPublico::class)
+            ->middleware('throttle:180,1')->name('explorador');
+        Route::get('/explorador/ficha/{taxon}', \Modules\CatalogoPublico\Presentation\Http\Controllers\FichaTaxonomicaPublica::class)
+            ->whereUuid('taxon')->middleware('throttle:180,1')->name('ficha');
+        Route::get('/explorador/ficha/{taxon}/foto', \Modules\CatalogoPublico\Presentation\Http\Controllers\FotoFichaTaxonomica::class)
+            ->whereUuid('taxon')->middleware('throttle:180,1')->name('ficha-foto');
+        Route::get('/explorador/dibujo', \Modules\CatalogoPublico\Presentation\Http\Controllers\DibujoTaxonomicoPublico::class)
+            ->middleware('throttle:180,1')->name('explorador-dibujo');
+        Route::get('/filos', \Modules\CatalogoPublico\Presentation\Http\Controllers\ArbolFiloPublico::class)
+            ->middleware('throttle:180,1')->name('filos');
+        // Arranque normal de una página pública: obtiene la sesión actual antes de Livewire.
+        // Este script nunca se cachea ni modifica peticiones enviadas por el visitante.
+        Route::get('/pwa/arranque.js', function (\Illuminate\Http\Request $request) {
+            abort_if($request->header('Sec-Fetch-Site') === 'cross-site', 403);
+            return response('document.querySelector(\'meta[name="csrf-token"]\')?.setAttribute("content", '.json_encode(csrf_token()).');', 200, [
+                'Content-Type' => 'application/javascript', 'Cache-Control' => 'no-store, private', 'X-Content-Type-Options' => 'nosniff',
+            ]);
+        })->name('pwa-arranque');
+        Route::get('/sugerencias', \Modules\CatalogoPublico\Presentation\Http\Controllers\SugerenciasBusquedaPublica::class)
+            ->middleware('throttle:120,1')->name('sugerencias');
         Route::view('/diccionario-exportacion', 'catalogopublico::diccionario-exportacion')->name('diccionario-exportacion');
         Route::get('/lista-especies.csv', [PortalEstadisticas::class, 'descargarLista'])->name('lista-especies');
         Route::get('/imagenes/{objeto}', ServirImagenCatalogo::class)

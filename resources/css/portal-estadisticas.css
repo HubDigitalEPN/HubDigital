@@ -581,3 +581,31 @@
 .atlas-dashboard .atlas-map-shell { display:flex; flex-direction:column; }
 .atlas-dashboard .atlas-map { flex:1; height:auto; }
 .atlas-dashboard .atlas-map-maximized .atlas-map { position:relative; inset:auto; flex:1; height:auto; min-height:0; }
+.research-search { position: relative; display: grid; gap: .35rem; min-width: 0; }
+.research-search > label { font-weight: 600; font-size: .8rem; }
+.research-search > small { font-size: .72rem; color: #51667d; }
+.research-search-options { margin: 0; padding: .25rem; list-style: none; max-height: 14rem; overflow: auto; border: 1px solid #b8ccdf; border-radius: .4rem; background: #fff; }
+.research-search-options li { padding: .6rem; cursor: pointer; overflow-wrap: anywhere; }
+.research-search-options li:hover, .research-search-options li.is-active { background: #e8f2fa; color: #123b60; }
+.atlas-territory-search { padding: .7rem 1rem; display: grid; gap: .4rem; }
+.atlas-territory-search label { font-size: .8rem; font-weight: 600; }
+.atlas-territory-search input { width: 100%; min-width: 0; border: 1px solid #b8ccdf; border-radius: .4rem; padding: .55rem .7rem; }
+.atlas-territory-heading { display: flex; align-items: center; gap: .4rem; }
+.atlas-territory-back { flex: none; display: grid; place-items: center; width: 32px; height: 32px; padding: 6px; border: 1px solid #cbd9e5; border-radius: 4px; background: #fff; color: #123b60; }
+.atlas-territory-back svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.atlas-territory-back:hover { background: #e8f2fa; }
+.atlas-territory-back:focus-visible { outline: 2px solid #17699b; outline-offset: 2px; }
+.atlas-ranked-row[aria-pressed="true"] { background: #e8f2fa; outline: 2px solid #17699b; outline-offset: -2px; }
+.research-phylum-tree.research-check-list { min-height: 12rem; max-height: clamp(12rem, 46dvh, 32rem); padding: .2rem 0; overflow: auto; }
+.research-phylum-row { display: flex; align-items: center; min-height: 28px; gap: 3px; padding: 2px 5px 2px calc(3px + var(--nivel-filo) * 10px); border-left: 1px solid #dce7ef; }
+.research-phylum-row.is-selected { background: #c9e5ff; border-left-color: #17699b; color: #125b8d; }
+.research-phylum-row .research-phylum-toggle { display: grid; place-items: center; flex: none; width: 22px; height: 24px; padding: 3px; color: #245d82; }
+.research-phylum-toggle svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.research-phylum-toggle svg.is-expanded { transform: rotate(90deg); }
+.research-phylum-toggle.is-leaf { visibility: hidden; }
+.research-filter-form .research-phylum-row label { display: flex; flex: 1; min-width: 0; align-items: center; gap: 4px; margin: 0; font-size: .72rem; }
+.research-filter-form .research-phylum-row label > span { display: block; min-width: 0; margin: 0; overflow-wrap: anywhere; }
+.research-phylum-row input[type="checkbox"] { flex: none; margin: 0; accent-color: #17699b; }
+.research-phylum-row > small { flex: none; font-size: .64rem; color: #536d83; font-variant-numeric: tabular-nums; }
+.research-phylum-row.is-selected > small, .research-phylum-row.is-selected .research-phylum-toggle { color: #125b8d; }
+.research-phylum-row button:focus-visible { outline: 2px solid #17699b; outline-offset: -2px; }

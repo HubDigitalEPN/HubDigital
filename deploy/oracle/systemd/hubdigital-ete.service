@@ -1,0 +1,27 @@
+[Unit]
+Description=HubDigital ETE public taxonomy SVG renderer
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/srv/hubdigital/current
+Environment=QT_QPA_PLATFORM=offscreen
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/hubdigital/ete/current/bin/python /srv/hubdigital/current/resources/python/portal_ete/server.py --port 8001
+Restart=on-failure
+RestartSec=3s
+MemoryAccounting=true
+MemoryMax=256M
+CPUAccounting=true
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+LimitCORE=0
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

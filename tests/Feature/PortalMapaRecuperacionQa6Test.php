@@ -126,6 +126,7 @@ test('QA6 un error SQL de caché conserva el agregado y la conexión del mapa', 
     $f = seleccionMapaRecuperacionQa6();
     $nivelAntes = DB::connection()->transactionLevel();
     $fallos = 0;
+    Cache::partialMock();
     Cache::shouldReceive('get')->andReturnUsing(static function (string $clave) use ($operacion, &$fallos): mixed {
         if ($operacion === 'leer' && str_starts_with($clave, 'portal:estadisticas:')) {
             $fallos++;
@@ -166,6 +167,7 @@ test('QA6 un conflicto de concurrencia de caché muestra error recuperable y con
     $f = seleccionMapaRecuperacionQa6();
     $nivelAntes = DB::connection()->transactionLevel();
     $fallos = 0;
+    Cache::partialMock();
     // Se simula la excepción de Laravel sin provocar bloqueos entre conexiones
     // reales. El presupuesto y los savepoints del render sí son los productivos.
     Cache::shouldReceive('get')->andReturnUsing(static function (string $clave) use ($operacion, &$fallos): mixed {

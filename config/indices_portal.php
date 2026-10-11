@@ -55,12 +55,12 @@ return [
         ],
     ],
     'riqueza' => [
-        'titulo' => 'Registros por provincia',
+        'titulo' => 'Registros por provincia y localidad',
         'foto' => 'Observación de distintos invertebrados durante un muestreo en un bosque tropical.',
         'parrafos' => [
             'Muestra los registros de la selección vigente que tienen una provincia pública válida. Incluye ejemplares identificados hasta familia u otros rangos, para que su cobertura territorial no desaparezca del panel.',
-            'Las barras muestran las diez provincias con más registros. Las variantes de escritura de una provincia se reúnen en un mismo grupo. Los datos agregados descargables conservan además el número de especies distintas con identificación pública confirmada; un registro identificado solo hasta familia no se cuenta como una especie.',
-            'El resultado depende del esfuerzo de muestreo y de la publicación de datos. No estima abundancia natural ni especies aún no observadas. Seleccionar una provincia aplica ese criterio a toda la colección.',
+            'La lista permite elegir cualquier provincia disponible y el buscador encuentra nombres parciales. Al seleccionar una provincia aparecen sus localidades públicas; seleccionar una localidad filtra el mapa y las demás vistas. Las variantes de escritura se reúnen en un mismo grupo. Volver a provincias retira la selección territorial y conserva los otros filtros.',
+            'El gráfico de puntos muestra las diez opciones con más registros y rotula el eje Y con provincias o localidades. La lista y el CSV incluyen todas las opciones disponibles. Los conteos conservan los demás filtros, pero omiten el filtro de localidad para permitir elegir otras localidades de la provincia. El resultado depende del esfuerzo de muestreo y de la publicación de datos; no estima abundancia natural ni biodiversidad no documentada.',
         ],
     ],
     'decadas' => [
