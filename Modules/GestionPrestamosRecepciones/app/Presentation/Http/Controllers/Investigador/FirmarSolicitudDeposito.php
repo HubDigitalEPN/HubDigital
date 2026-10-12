@@ -8,10 +8,12 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Services\FirmaPdfJava;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\JavaValidacionFirmaElectronicaAdapter;
 use Modules\GestionPrestamosRecepciones\Presentation\Support\PerfilFirmaPdf;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ValidacionFirmaElectronicaPort;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
@@ -31,8 +33,8 @@ final class FirmarSolicitudDeposito
     ): JsonResponse {
         $request->attributes->set('credencial_firma_sensible', $request->hasFile('certificado'));
         $reglas = FirmaPdfJava::reglas();
-        $reglas['certificado'] = ['required', 'file', 'extensions:p12,pfx', 'max:5120'];
-        $reglas['pdf_firmado'] = ['prohibited'];
+        $reglas['documento_version'] = ['required', 'integer', 'min:1'];
+        $reglas['firma_peticion_id'] = ['nullable', 'uuid'];
         $request->validate($reglas);
 
         $solicitud = SolicitudDepositoEloquentModel::findOrFail($id);
@@ -41,15 +43,36 @@ final class FirmarSolicitudDeposito
             EstadoSolicitudDeposito::EnBorrador->value,
             EstadoSolicitudDeposito::RequiereCorreccion->value,
         ], true), 409, 'La solicitud ya fue enviada y no admite una nueva firma.');
+        abort_unless((int) $request->input('documento_version') === (int) $solicitud->solicitud_documento_version,
+            409, 'El oficio cambió. Revisa y firma la versión actual.');
+        if (! collect([
+            'solicitud_nombre_permiso', 'solicitud_cedula', 'solicitud_cargo',
+            'solicitud_grupo', 'solicitud_proyecto', 'solicitud_institucion',
+            'solicitud_correo', 'solicitud_oficio',
+        ])->every(fn (string $campo) => filled($solicitud->{$campo}))) {
+            throw ValidationException::withMessages([
+                'solicitud' => 'Completa y guarda los campos obligatorios del oficio antes de firmar.',
+            ]);
+        }
+        $peticionId = $request->input('firma_peticion_id');
+        if (is_string($peticionId) && $peticionId === ($solicitud->solicitud_firma_metadata['firma_peticion_id'] ?? null)
+            && $solicitud->solicitud_firmada_en !== null && filled($solicitud->solicitud_firmada_ruta)
+            && $almacenamiento->existe($solicitud->solicitud_firmada_ruta)
+            && hash_equals((string) $solicitud->solicitud_firmada_sha256, $almacenamiento->sha256($solicitud->solicitud_firmada_ruta))) {
+            $request->request->remove('clave_certificado');
+            return response()->json(['message' => 'Solicitud firmada y validada criptográficamente.']);
+        }
 
+        $versionEsperada = (int) $solicitud->solicitud_documento_version;
         $pdfOriginal = $generador->generar($solicitud);
+        abort_unless((int) $solicitud->solicitud_documento_version === $versionEsperada,
+            409, 'El oficio cambió. Revisa y firma la versión actual.');
         $originalTemporal = DirectorioTemporalHubDigital::crearArchivo('firma-solicitud', 'original-', 16 * 1024 * 1024);
         if (file_put_contents($originalTemporal, $pdfOriginal, LOCK_EX) === false) {
             DirectorioTemporalHubDigital::eliminar(dirname($originalTemporal));
             abort(500, 'No se pudo preparar el documento oficial.');
         }
 
-        $versionEsperada = (int) $solicitud->solicitud_documento_version;
         $ruta = 'solicitudes-deposito/firmadas/'.$solicitud->id
             .'-v'.((int) $solicitud->solicitud_documento_version)
             .'-'.Str::uuid().'.pdf';
@@ -58,11 +81,14 @@ final class FirmarSolicitudDeposito
         $archivoJava = null;
         $inicioFirma = microtime(true);
         try {
-            $archivoJava = app(FirmaPdfJava::class)->preparar($request, $originalTemporal, PerfilFirmaPdf::SOLICITUD_DEPOSITANTE);
+            $archivoJava = app(FirmaPdfJava::class)->preparar($request, $originalTemporal, PerfilFirmaPdf::SOLICITUD_DEPOSITANTE,
+                $validador instanceof JavaValidacionFirmaElectronicaAdapter);
             $firmaMs = (int) round((microtime(true) - $inicioFirma) * 1000);
             $rutaAbsoluta = $archivoJava->ruta();
             $inicioValidacion = microtime(true);
-            $validacion = $validador->verificarFirmaDetallada($rutaAbsoluta, $originalTemporal);
+            $validacion = $archivoJava->dictamenFirma !== null
+                ? JavaValidacionFirmaElectronicaAdapter::desdeDictamen($archivoJava->dictamenFirma)
+                : $validador->verificarFirmaDetallada($rutaAbsoluta, $originalTemporal);
             $validacionMs = (int) round((microtime(true) - $inicioValidacion) * 1000);
             if (! $validacion->esAceptable()) {
                 return response()->json([
@@ -74,7 +100,9 @@ final class FirmarSolicitudDeposito
             $firmaMetadata = $validacion->toArray();
             $firmaMetadata['firmante_usuario_id'] = (string) $request->user()->id;
             $firmaMetadata['proposito'] = 'solicitud_deposito';
+            $firmaMetadata['firma_peticion_id'] = $peticionId;
             $firmaMetadata['pdf_sha256'] = hash_file('sha256', $rutaAbsoluta);
+            $firmaMetadata['original_sha256'] = hash('sha256', $pdfOriginal);
             $archivoFirmado = new UploadedFile($rutaAbsoluta, 'solicitud-firmada.pdf', 'application/pdf', null, true);
             $inicioAlmacenamiento = microtime(true);
             $rutaGuardada = $almacenamiento->guardarSubidoComo($archivoFirmado, $ruta);
@@ -155,7 +183,7 @@ final class FirmarSolicitudDeposito
         }
 
         return response()->json([
-            'message' => 'Solicitud firmada y validada por el Firmador HubDigital.',
+            'message' => 'Solicitud firmada y validada criptográficamente.',
         ]);
     }
 }

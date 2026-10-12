@@ -4,7 +4,7 @@
     'pasosCompletados' => [],
 ])
 
-<div class="grid grid-cols-7 items-stretch gap-0.5 p-1">
+<div class="hub-wizard-steps grid items-stretch gap-0.5 p-1" style="grid-template-columns: repeat({{ count($pasos) }}, minmax(0, 1fr))">
     @foreach($pasos as $index => $paso)
         @php
             $numero = $index + 1;

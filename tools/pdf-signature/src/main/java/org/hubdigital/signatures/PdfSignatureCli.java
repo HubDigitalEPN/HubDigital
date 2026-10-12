@@ -83,6 +83,8 @@ public final class PdfSignatureCli {
     private static volatile List<X509Certificate> cachedAuthorities;
     private PdfSignatureCli() {}
 
+    static boolean originalSeguro(Path path) throws Exception { return "seguro".equals(inspect(path).status); }
+
     public static void main(String[] args) {
         Security.addProvider(new BouncyCastleProvider());
         Security.setProperty("ocsp.enable", "true");
@@ -106,7 +108,7 @@ public final class PdfSignatureCli {
             }
             if (args.length == 1 && "verify-stream".equals(args[0])) {
                 verifyStream();
-            } else if (args.length == 2 && "sign".equals(args[0]) && "--request-stdin".equals(args[1])) {
+            } else if (args.length == 2 && Set.of("sign", "sign-verify").contains(args[0]) && "--request-stdin".equals(args[1])) {
                 byte[] entrada = System.in.readNBytes(65_537);
                 String[] datos = null;
                 try {
@@ -116,7 +118,8 @@ public final class PdfSignatureCli {
                     Result seguro = inspect(Path.of(datos[0]));
                     if (!"seguro".equals(seguro.status)) throw new IllegalArgumentException("El original no es un PDF seguro.");
                     FirmadorPdfOficial.firmar(Path.of(datos[0]), Path.of(datos[1]), Path.of(datos[2]), datos[3].toCharArray(), datos[4]);
-                    emit(new Result("firmado", "Firma creada por Java.", true));
+                    if ("sign-verify".equals(args[0])) emitOfficial(Path.of(datos[1]), Path.of(datos[0]));
+                    else emit(new Result("firmado", "Firma creada por Java.", true));
                 } finally {
                     Arrays.fill(entrada, (byte) 0);
                     if (datos != null) Arrays.fill(datos, "");
@@ -143,7 +146,13 @@ public final class PdfSignatureCli {
             }
         } catch (Exception e) {
             diagnosticarError(e);
-            emit(new Result("verificacion_no_disponible", "No fue posible completar la operación PDF. Revisa el archivo y la configuración del validador.", false));
+            String mensaje = "No fue posible completar la operación PDF. Revisa el archivo y la configuración del validador.";
+            if (e instanceof java.security.cert.CertificateExpiredException) mensaje = "El certificado está caducado.";
+            else if (e instanceof java.security.cert.CertificateNotYetValidException) mensaje = "El certificado aún no está vigente.";
+            else if (e instanceof java.io.IOException && "No se pudo abrir el certificado con la credencial indicada.".equals(e.getMessage())) {
+                mensaje = "No se pudo abrir el certificado. Verifica el archivo y su contraseña.";
+            }
+            emit(new Result("verificacion_no_disponible", mensaje, false));
             System.exit(2);
         }
     }
@@ -817,6 +826,7 @@ public final class PdfSignatureCli {
 
             sign(unsigned, signed, p12, password);
             cachedAnchors = Set.of(new TrustAnchor(cert, null));
+            selftestOficial(temp, p12, cert, keys);
             Result genuino = verify(signed);
             if (!"firmado_sin_revocacion".equals(genuino.status) || !genuino.cryptographicallyValid)
                 throw new IllegalStateException("Una firma genuina sin fuente de revocación no fue aceptada.");
@@ -834,6 +844,64 @@ public final class PdfSignatureCli {
     }
 
     private record PdfInfo(int paginas, double ancho, double alto, double area, int firmasAutor, int sellosTiempo) {}
+
+    private static void selftestOficial(Path temp, Path p12, X509Certificate cert, KeyPair keys) throws Exception {
+        Path original = temp.resolve("oficio.pdf"), signed = temp.resolve("oficio-firmado.pdf");
+        String profile = "solicitud-deposito:depositante:v1";
+        try (PDDocument pdf = new PDDocument()) {
+            PDPage page = new PDPage(); pdf.addPage(page);
+            List<org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotation> markers = new ArrayList<>();
+            for (String kind : List.of("bloques", "zonas")) {
+                var link = new org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationLink();
+                link.setRectangle("bloques".equals(kind)
+                    ? new org.apache.pdfbox.pdmodel.common.PDRectangle(50, 100, 480, 100)
+                    : new org.apache.pdfbox.pdmodel.common.PDRectangle(58, 108, 464, 84));
+                var action = new org.apache.pdfbox.pdmodel.interactive.action.PDActionURI();
+                action.setURI("https://firmas.hubdigital.invalid/" + kind + "/" + profile.replace(':', '/'));
+                link.setAction(action); markers.add(link);
+            }
+            page.setAnnotations(markers); pdf.save(original.toFile());
+        }
+        FirmadorPdfOficial.firmar(original, signed, p12, "temporal".toCharArray(), profile);
+        if (!verify(signed).cryptographicallyValid) throw new IllegalStateException("La firma oficial no es criptográficamente válida.");
+        try (PDDocument base = Loader.loadPDF(original.toFile()); PDDocument result = Loader.loadPDF(signed.toFile())) {
+            if (!ContenidoOficialPdf.coincide(base, result)) throw new IllegalStateException("La firma oficial no coincide con su zona y contenido.");
+            var image = new org.apache.pdfbox.rendering.PDFRenderer(result).renderImageWithDPI(0, 220);
+            int[] pixels = image.getRGB(0, 0, image.getWidth(), image.getHeight(), null, 0, image.getWidth());
+            var bitmap = new com.google.zxing.BinaryBitmap(new com.google.zxing.common.HybridBinarizer(
+                new com.google.zxing.RGBLuminanceSource(image.getWidth(), image.getHeight(), pixels)));
+            String qr = new com.google.zxing.MultiFormatReader().decode(bitmap).getText();
+            String digest = java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(original)));
+            if (!qr.contains(digest) || !qr.contains("Certificado SHA-256:")) throw new IllegalStateException("El QR no identifica el original y certificado.");
+            // La firma sin su apariencia visible debe fallar el contrato oficial.
+            var widget = result.getDocumentCatalog().getAcroForm().getFields().get(0).getWidgets().get(0);
+            widget.getCOSObject().removeItem(COSName.AP);
+            if (ContenidoOficialPdf.coincide(base, result)) throw new IllegalStateException("Se aceptó una firma sin apariencia visible.");
+        }
+        Path rejected = temp.resolve("no-debe-existir.pdf");
+        boolean wrongPassword = false;
+        try { FirmadorPdfOficial.firmar(original, rejected, p12, "incorrecta".toCharArray(), profile); }
+        catch (java.io.IOException expected) { wrongPassword = true; }
+        if (!wrongPassword || Files.exists(rejected)) throw new IllegalStateException("Se aceptó una contraseña incorrecta.");
+        Path invalidP12 = temp.resolve("invalido.p12"); Files.writeString(invalidP12, "esto no es un certificado");
+        boolean badCertificate = false;
+        try { FirmadorPdfOficial.firmar(original, rejected, invalidP12, "temporal".toCharArray(), profile); }
+        catch (java.io.IOException expected) { badCertificate = true; }
+        if (!badCertificate || Files.exists(rejected)) throw new IllegalStateException("Se aceptó un certificado malformado.");
+        X500Name name = new X500Name("C=EC,CN=Certificado caducado QA");
+        X509Certificate expired = new JcaX509CertificateConverter().setProvider("BC").getCertificate(
+            new JcaX509v3CertificateBuilder(name, BigInteger.valueOf(91),
+                Date.from(Instant.now().minusSeconds(7200)), Date.from(Instant.now().minusSeconds(3600)), name, keys.getPublic())
+                .build(new JcaContentSignerBuilder("SHA256withRSA").setProvider("BC").build(keys.getPrivate())));
+        boolean expiredRejected = false;
+        try { FirmadorPdfOficial.firmarConIdentidad(original, rejected, keys.getPrivate(), new Certificate[]{expired}, profile); }
+        catch (java.security.cert.CertificateExpiredException expected) { expiredRejected = true; }
+        if (!expiredRejected || Files.exists(rejected)) throw new IllegalStateException("Se aceptó un certificado caducado.");
+        // El token y el P12 comparten la construcción de CMS y apariencia; hardware no simulado.
+        Path tokenEquivalent = temp.resolve("identidad-firmada.pdf");
+        FirmadorPdfOficial.firmarConIdentidad(original, tokenEquivalent, keys.getPrivate(), new Certificate[]{cert}, profile);
+        if (!verify(tokenEquivalent).cryptographicallyValid) throw new IllegalStateException("Falló la firma con identidad suministrada.");
+    }
 
     private record FechaFirma(Date fecha, String baseTemporal, Date validoDesde, Date validoHasta, boolean caducadoAhora) {}
 

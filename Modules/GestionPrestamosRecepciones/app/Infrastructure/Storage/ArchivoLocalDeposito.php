@@ -11,6 +11,7 @@ final class ArchivoLocalDeposito
         private readonly string $ruta,
         private readonly bool $temporal,
         private readonly ?string $directorioTemporal = null,
+        public readonly ?array $dictamenFirma = null,
     ) {}
 
     public function ruta(): string

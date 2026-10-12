@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador;
 
 use App\Concerns\HandlesDomainExceptions;
+use App\Rules\IdentificacionEcuatoriana;
+use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Validator;
 use App\Support\CatalogoTerritorialEcuador;
 use App\Support\CatalogoLocalidadesEcuador;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\ValidacionPreviaDocumentoDeposito;
@@ -108,6 +111,18 @@ final class RegistroSolicitudDeposito extends Component
 
     public string $solicitudNombrePermiso = '';
     public string $solicitudCedula = '';
+    public string $solicitudTipoIdentificacion = 'cedula';
+    public string $solicitudTexto = '';
+    #[Locked]
+    public bool $solicitudCambiosPendientes = false;
+    #[Locked]
+    public int $solicitudDocumentoVersion = 1;
+    #[Locked]
+    public bool $firmaInvalidadaPorEdicion = false;
+    #[Locked]
+    public array $solicitudIdentificacionConsulta = [];
+    #[Locked]
+    public string $solicitudIdentificacionConsultada = '';
     public string $solicitudCargo = '';
     public string $solicitudGrupo = '';
     public string $solicitudProyecto = '';
@@ -377,6 +392,10 @@ final class RegistroSolicitudDeposito extends Component
         $this->solicitudInstitucion = (string) (auth()->user()->institucion ?? '');
         $this->solicitudCargo = (string) (auth()->user()->cargo ?? '');
         $this->solicitudCorreo = (string) auth()->user()->email;
+        foreach (['solicitudCargo' => 'usuarios.cargos_catalogo', 'solicitudInstitucion' => 'usuarios.instituciones_catalogo'] as $campo => $tabla) {
+            $this->{$campo} = (string) (DB::table($tabla)->where('activo', true)
+                ->whereRaw('lower(nombre) = lower(?)', [trim($this->{$campo})])->value('nombre') ?? '');
+        }
         if ($this->institucionConsultor !== '' && ! DB::table('usuarios.instituciones_catalogo')
             ->where('nombre', $this->institucionConsultor)->where('activo', true)->exists()) {
             $this->institucionConsultor = '';
@@ -391,7 +410,7 @@ final class RegistroSolicitudDeposito extends Component
 
         $borrador = SolicitudDepositoEloquentModel::where('investigador_id', (string) auth()->id())
             ->where('estado', EstadoSolicitudDeposito::EnBorrador->value)
-            ->first();
+            ->orderByDesc('updated_at')->first();
 
         if ($borrador) {
             try {
@@ -508,19 +527,23 @@ final class RegistroSolicitudDeposito extends Component
         $oficioCompleto = collect([
             'solicitud_nombre_permiso', 'solicitud_cedula', 'solicitud_cargo',
             'solicitud_grupo', 'solicitud_proyecto', 'solicitud_institucion',
-            'solicitud_correo',
+            'solicitud_correo', 'solicitud_oficio',
         ])->every(fn (string $campo) => filled($model->{$campo}));
         $this->solicitudFirmada = $oficioCompleto && $model->solicitud_firmada_en !== null
             && filled($model->solicitud_firmada_ruta) && filled($model->solicitud_firmada_sha256);
         $this->solicitudFirmaMetadata = $model->solicitud_firma_metadata ?? [];
         $this->solicitudNombrePermiso = (string) ($model->solicitud_nombre_permiso ?? $this->solicitudNombrePermiso);
         $this->solicitudCedula = (string) ($model->solicitud_cedula ?? '');
+        $this->solicitudTipoIdentificacion = (string) ($model->solicitud_tipo_identificacion ?? 'cedula');
+        $this->solicitudTexto = (string) ($model->solicitud_texto ?? '');
+        $this->solicitudDocumentoVersion = (int) $model->solicitud_documento_version;
         $this->solicitudCargo = (string) ($model->solicitud_cargo ?? $this->solicitudCargo);
         $this->solicitudGrupo = (string) ($model->solicitud_grupo ?? '');
         $this->solicitudProyecto = (string) ($model->solicitud_proyecto ?? '');
         $this->solicitudInstitucion = (string) ($model->solicitud_institucion ?? $this->solicitudInstitucion);
         $this->solicitudCorreo = (string) ($model->solicitud_correo ?? $this->solicitudCorreo);
         $this->solicitudOficio = (string) ($model->solicitud_oficio ?? '');
+        $this->solicitudCambiosPendientes = ! $oficioCompleto;
 
         $pasoGuardado = $model->paso_actual ?? 1;
 
@@ -737,7 +760,7 @@ final class RegistroSolicitudDeposito extends Component
         foreach ([
             'solicitud_nombre_permiso', 'solicitud_cedula', 'solicitud_cargo',
             'solicitud_grupo', 'solicitud_proyecto', 'solicitud_institucion',
-            'solicitud_correo',
+            'solicitud_correo', 'solicitud_oficio',
         ] as $campo) {
             $consulta->whereNotNull($campo)->where($campo, '<>', '');
         }
@@ -775,18 +798,94 @@ final class RegistroSolicitudDeposito extends Component
 
     // ── Paso 1 ────────────────────────────────────────────────────────────────────
 
+    private function reglasSolicitud(): array
+    {
+        return [
+            'solicitudNombrePermiso' => ['required', 'string', 'max:200'],
+            'solicitudTipoIdentificacion' => ['required', Rule::in(['cedula', 'ruc', 'pasaporte'])],
+            'solicitudCedula' => ['required', new IdentificacionEcuatoriana($this->solicitudTipoIdentificacion)],
+            'solicitudCargo' => ['required', 'string', 'max:200', Rule::exists(DB::getDefaultConnection().'.usuarios.cargos_catalogo', 'nombre')->where('activo', true)],
+            'solicitudGrupo' => ['required', Rule::in(config('depositos.grupos_especimenes'))],
+            'solicitudProyecto' => ['required', 'string', 'max:300'],
+            'solicitudInstitucion' => ['required', 'string', 'max:250', Rule::exists(DB::getDefaultConnection().'.usuarios.instituciones_catalogo', 'nombre')->where('activo', true)],
+            'solicitudCorreo' => ['required', 'email', 'max:250'],
+            'solicitudOficio' => ['required', 'string', 'max:100'],
+            'solicitudTexto' => ['nullable', 'string', 'max:3000'],
+        ];
+    }
+
+    /** Autoguarda al salir del campo; nunca conserva una firma para datos modificados. */
+    public function updated(string $propiedad): void
+    {
+        if ($this->paso !== 0 || ! in_array($propiedad, [
+            'solicitudNombrePermiso', 'solicitudTipoIdentificacion', 'solicitudCedula',
+            'solicitudCargo', 'solicitudGrupo', 'solicitudProyecto', 'solicitudInstitucion',
+            'solicitudCorreo', 'solicitudOficio', 'solicitudTexto',
+        ], true)) return;
+        if ($this->solicitudId !== null) {
+            $modelo = SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)
+                ->where('investigador_id', (string) auth()->id())->firstOrFail();
+            abort_unless(in_array($modelo->estado, [EstadoSolicitudDeposito::EnBorrador->value, EstadoSolicitudDeposito::RequiereCorreccion->value], true), 409, 'La solicitud ya fue enviada.');
+            if (! $this->solicitudCambiosPendientes && trim((string) $modelo->{Str::snake($propiedad)}) === trim($this->{$propiedad})) return;
+        }
+        $reglas = $this->reglasSolicitud();
+        $this->solicitudCambiosPendientes = true;
+        if ($this->solicitudId !== null) {
+            $this->firmaInvalidadaPorEdicion = app(InvalidarFirmaSolicitud::class)($this->solicitudId, (string) auth()->id())
+                || $this->firmaInvalidadaPorEdicion;
+        }
+        $this->solicitudFirmada = false;
+        $this->validateOnly($propiedad, $reglas);
+        if (in_array($propiedad, ['solicitudCedula', 'solicitudTipoIdentificacion'], true) && $this->solicitudCedula !== '') {
+            $this->validateOnly('solicitudCedula', $reglas);
+            $this->consultarIdentificacionOficial();
+        }
+        if ($this->solicitudTipoIdentificacion === 'ruc'
+            && ($this->solicitudIdentificacionConsulta['estado'] ?? null) === 'no_encontrado'
+            && $this->solicitudIdentificacionConsultada === ('ruc:'.trim($this->solicitudCedula))) return;
+        $valores = [];
+        foreach (array_keys($reglas) as $campo) $valores[$campo] = $this->{$campo};
+        if (Validator::make($valores, $reglas)->passes()) {
+            $this->guardarSolicitudInicial(app(RegistrarSolicitudDepositoHandler::class));
+        }
+    }
+
+    public function consultarIdentificacionOficial(): void
+    {
+        $numero = trim($this->solicitudCedula);
+        $this->validateOnly('solicitudCedula', $this->reglasSolicitud());
+        $clave = $this->solicitudTipoIdentificacion.':'.$numero;
+        if ($this->solicitudIdentificacionConsultada === $clave) return;
+        $this->solicitudIdentificacionConsulta = $this->solicitudTipoIdentificacion === 'ruc'
+            ? app(\App\Services\ConsultaRucSri::class)->consultar($numero)
+            : ['estado' => $this->solicitudTipoIdentificacion === 'cedula' ? 'cedula_local_valida' : 'pasaporte_formato_valido'];
+        $this->solicitudIdentificacionConsultada = $clave;
+        if (($this->solicitudIdentificacionConsulta['estado'] ?? null) === 'no_encontrado') {
+            $this->addError('solicitudCedula', 'El RUC no consta en la consulta oficial del SRI. Revisa el número.');
+        }
+    }
+
+    public function textoSolicitudSugerido(): string
+    {
+        return \Modules\GestionPrestamosRecepciones\Presentation\Support\TextoSolicitudDeposito::redactar(
+            new SolicitudDepositoEloquentModel([
+                'solicitud_nombre_permiso' => $this->solicitudNombrePermiso,
+                'solicitud_tipo_identificacion' => $this->solicitudTipoIdentificacion,
+                'solicitud_cedula' => $this->solicitudCedula,
+                'solicitud_cargo' => $this->solicitudCargo,
+                'solicitud_grupo' => $this->solicitudGrupo,
+                'solicitud_proyecto' => $this->solicitudProyecto,
+            ]),
+        );
+    }
+
     public function guardarSolicitudInicial(RegistrarSolicitudDepositoHandler $registrar): void
     {
-        $datos = $this->validate([
-            'solicitudNombrePermiso' => ['required', 'string', 'max:200'],
-            'solicitudCedula' => ['required', 'regex:/^[0-9]{10}$/'],
-            'solicitudCargo' => ['required', 'string', 'max:200'],
-            'solicitudGrupo' => ['required', 'string', 'max:250'],
-            'solicitudProyecto' => ['required', 'string', 'max:300'],
-            'solicitudInstitucion' => ['required', 'string', 'max:250'],
-            'solicitudCorreo' => ['required', 'email', 'max:250'],
-            'solicitudOficio' => ['nullable', 'string', 'max:100'],
-        ]);
+        $datos = $this->validate($this->reglasSolicitud());
+        $this->consultarIdentificacionOficial();
+        if (($this->solicitudIdentificacionConsulta['estado'] ?? null) === 'no_encontrado') {
+            throw ValidationException::withMessages(['solicitudCedula' => 'El RUC no consta en la consulta oficial del SRI. Revisa el número.']);
+        }
 
         if ($this->solicitudId === null) {
             $this->tipoTramite = TipoTramite::Deposito->value;
@@ -800,7 +899,9 @@ final class RegistroSolicitudDeposito extends Component
 
         $campos = [
             'solicitud_nombre_permiso' => trim($datos['solicitudNombrePermiso']),
-            'solicitud_cedula' => $datos['solicitudCedula'],
+            'solicitud_cedula' => trim($datos['solicitudCedula']),
+            'solicitud_tipo_identificacion' => $datos['solicitudTipoIdentificacion'],
+            'solicitud_texto' => trim($datos['solicitudTexto'] ?? ''),
             'solicitud_cargo' => trim($datos['solicitudCargo']),
             'solicitud_grupo' => trim($datos['solicitudGrupo']),
             'solicitud_proyecto' => trim($datos['solicitudProyecto']),
@@ -831,11 +932,12 @@ final class RegistroSolicitudDeposito extends Component
             if ($cambio) {
                 $rutaAnterior = $modelo->solicitud_firmada_ruta;
                 $oficioPrevio = filled($rutaAnterior);
-                foreach (array_keys($campos) as $campo) {
+                // El tipo por defecto no significa que ya existiera un oficio.
+                foreach (array_diff(array_keys($campos), ['solicitud_tipo_identificacion']) as $campo) {
                     $oficioPrevio = $oficioPrevio || filled($modelo->{$campo});
                 }
                 $estadoFirma = [
-                    'solicitud_documento_version' => (int) $modelo->solicitud_documento_version + ($oficioPrevio ? 1 : 0),
+                    'solicitud_documento_version' => (int) $modelo->solicitud_documento_version + ($oficioPrevio && ! $this->firmaInvalidadaPorEdicion ? 1 : 0),
                     'solicitud_firmada_ruta' => null,
                     'solicitud_firmada_sha256' => null,
                     'solicitud_firmada_en' => null,
@@ -857,6 +959,10 @@ final class RegistroSolicitudDeposito extends Component
             }
         }
         $this->solicitudFirmada = $this->solicitudInicialFirmada();
+        $this->solicitudDocumentoVersion = (int) SolicitudDepositoEloquentModel::findOrFail($this->solicitudId)->solicitud_documento_version;
+        $this->solicitudCambiosPendientes = false;
+        $this->firmaInvalidadaPorEdicion = false;
+        $this->resetValidation('solicitudFirmada');
         $this->borradorRestaurado = true;
     }
 
@@ -871,6 +977,8 @@ final class RegistroSolicitudDeposito extends Component
         foreach ([
             'solicitud_nombre_permiso' => $this->solicitudNombrePermiso,
             'solicitud_cedula' => $this->solicitudCedula,
+            'solicitud_tipo_identificacion' => $this->solicitudTipoIdentificacion,
+            'solicitud_texto' => $this->solicitudTexto,
             'solicitud_cargo' => $this->solicitudCargo,
             'solicitud_grupo' => $this->solicitudGrupo,
             'solicitud_proyecto' => $this->solicitudProyecto,
@@ -879,13 +987,19 @@ final class RegistroSolicitudDeposito extends Component
             'solicitud_oficio' => $this->solicitudOficio,
         ] as $campo => $valor) {
             if (trim((string) $modelo->{$campo}) !== trim($valor)) {
-                $this->addError('solicitudFirmada', 'Guarda los cambios del oficio y vuelve a firmarlo para continuar.');
+                $this->addError('solicitudFirmada', 'Espera el autoguardado y firma la versión actual del oficio para continuar.');
                 return;
             }
         }
         $this->solicitudFirmada = true;
         $this->paso = 1;
         $this->persistirEstadoWizard();
+    }
+
+    public function confirmarSolicitudFirmada(): void
+    {
+        $this->solicitudFirmada = ! $this->solicitudCambiosPendientes && $this->solicitudInicialFirmada();
+        if ($this->solicitudFirmada) $this->resetValidation('solicitudFirmada');
     }
 
     public function avanzarPaso1(RegistrarSolicitudDepositoHandler $registrar): void
@@ -1778,6 +1892,12 @@ final class RegistroSolicitudDeposito extends Component
         if ($valor === '' || mb_strlen($valor) > $limite) {
             $this->addError('valorEditorManual', "Ingresa un valor de hasta {$limite} caracteres.");
 
+            return;
+        }
+
+        if ($campo === 'Cargo' && ! DB::table('usuarios.cargos_catalogo')
+            ->where('nombre', $valor)->where('activo', true)->exists()) {
+            $this->addError('valorEditorManual', 'Selecciona un cargo de la lista.');
             return;
         }
 

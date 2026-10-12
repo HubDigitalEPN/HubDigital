@@ -606,10 +606,13 @@ class Dashboard extends Component
              COALESCE(SUM(nro_lotes), 0) AS lotes,
              COUNT(DISTINCT grupo_animal) AS grupos_taxonomicos,
              COUNT(DISTINCT provincia_origen) AS provincias_origen,
-             COUNT(*) FILTER (WHERE estado = ?) AS pendientes_revision,
+             COUNT(*) FILTER (WHERE estado IN (?, ?)) AS pendientes_revision,
              COUNT(*) FILTER (WHERE estado = ?) AS pausadas_asesoria,
-             COUNT(*) FILTER (WHERE estado = ?) AS rechazadas',
-            [$pendiente, $pausada, $rechazada],
+             COUNT(*) FILTER (WHERE estado IN (?, ?)) AS rechazadas,
+             COUNT(*) FILTER (WHERE estado = ?) AS requieren_correccion',
+            [$pendiente, EstadoSolicitudDeposito::PendienteDeRevisionDocumentalPrevia->value,
+                $pausada, $rechazada, EstadoSolicitudDeposito::RechazoPermanente->value,
+                EstadoSolicitudDeposito::RequiereCorreccion->value],
         )->first();
 
         $donacionesRealizadas = (clone $base)
@@ -626,6 +629,11 @@ class Dashboard extends Component
             'pendientesRevision' => (int) $resumen->pendientes_revision,
             'pausadasAsesoria' => (int) $resumen->pausadas_asesoria,
             'rechazadas' => (int) $resumen->rechazadas,
+            'requierenCorreccion' => (int) $resumen->requieren_correccion,
+            'borradorPendiente' => SolicitudDepositoEloquentModel::query()
+                ->where('investigador_id', $investigadorId)
+                ->where('estado', EstadoSolicitudDeposito::EnBorrador->value)
+                ->orderByDesc('updated_at')->first(['numero', 'paso_actual']),
             'donacionesRealizadas' => $donacionesRealizadas,
             'depositosRecientes' => (clone $base)->orderByDesc('created_at')->limit(4)->get(['id', 'numero', 'estado', 'tipo_tramite', 'created_at']),
         ];

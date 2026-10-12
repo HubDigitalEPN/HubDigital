@@ -118,6 +118,10 @@
 .portal-records-compact .portal-records-pagination { gap:.4rem; margin-top:.3rem; }
 .portal-records-compact .portal-records-pagination > span { display:none; }
 .portal-records-compact .portal-records-pagination button { padding:.25rem .5rem; font-size:.8rem; }
+.portal-records-progress { flex-wrap:wrap; }
+.portal-records-progress > span { margin-right:auto; }
+.portal-records-compact .portal-records-progress > span { display:block; font-size:.7rem; }
+.portal-records-progress > p { width:100%; }
 .portal-records-compact .portal-record-row > * { height:2.5rem; padding:.25rem .4rem; font-size:.75rem; }
 .portal-records-compact .atlas-record-table thead th { padding:.25rem .4rem; font-size:.75rem; }
 .atlas-chart-canvas { position:relative; height:17rem; min-height:17rem; padding:.6rem; }

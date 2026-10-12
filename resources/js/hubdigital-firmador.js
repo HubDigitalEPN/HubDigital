@@ -4,6 +4,10 @@ window.hubDigitalFirmador = (config) => ({
     estado: 'listo',
     progreso: '',
     error: '',
+    metodo: 'archivo',
+    tokenAlias: '',
+    tokenCertificados: [],
+    peticionId: null,
 
     abrirDialogo() {
         this.estado = 'listo';
@@ -24,25 +28,33 @@ window.hubDigitalFirmador = (config) => ({
         this.error = '';
         const archivo = this.$refs.certificado?.files?.[0];
         let clave = this.$refs.clave?.value ?? '';
-        if (!archivo || !/\.(p12|pfx)$/i.test(archivo.name)) {
+        if (this.metodo === 'archivo' && (!archivo || !/\.(p12|pfx)$/i.test(archivo.name))) {
             this.error = 'Selecciona un certificado .p12 o .pfx.';
             this.limpiarCamposCredenciales();
             return;
         }
         if (clave.length === 0) {
-            this.error = 'Ingresa la contraseña del certificado.';
+            this.error = this.metodo === 'token' ? 'Ingresa el PIN del token.' : 'Ingresa la contraseña del certificado.';
             this.limpiarCamposCredenciales();
             return;
         }
 
         this.estado = 'procesando';
-        this.progreso = 'Java está firmando y verificando el documento oficial…';
+        this.progreso = 'Firmando…';
+        this.peticionId ??= crypto.randomUUID();
         const formulario = new FormData();
         const controlador = new AbortController();
         const temporizador = window.setTimeout(() => controlador.abort(), 90000);
         try {
-            formulario.append('certificado', archivo);
-            formulario.append('clave_certificado', clave);
+            if (this.metodo === 'token') {
+                const firmado = await this.firmarConToken(clave, controlador.signal);
+                formulario.append('pdf_firmado', firmado, 'solicitud-token-firmada.pdf');
+            } else {
+                formulario.append('certificado', archivo);
+                formulario.append('clave_certificado', clave);
+            }
+            if (config.documentVersion != null) formulario.append('documento_version', String(config.documentVersion));
+            formulario.append('firma_peticion_id', this.peticionId);
             formulario.append('original_referencia', config.originalReference ?? '');
             formulario.append('original_sha256', config.originalSha256 ?? '');
             clave = '';
@@ -60,17 +72,17 @@ window.hubDigitalFirmador = (config) => ({
             });
             const cuerpo = await respuesta.json().catch(() => ({}));
             if (!respuesta.ok) {
-                throw new Error(cuerpo.message ?? 'No se pudo firmar y validar el documento.');
+                const detalle = Object.values(cuerpo.errors ?? {}).flat().find(Boolean);
+                throw new Error(detalle ?? cuerpo.message ?? 'No se pudo firmar y validar el documento.');
             }
-            this.estado = 'completado';
-            this.progreso = cuerpo.message ?? 'Documento firmado y validado por Java.';
-            window.dispatchEvent(new CustomEvent('toast', { detail: { message: this.progreso } }));
-            window.setTimeout(() => window.location.reload(), 900);
+            await this.completarFirma(cuerpo.message);
         } catch (error) {
+            if ((error?.name === 'AbortError' || error instanceof TypeError) && await this.recuperarFirma()) return;
+            if (error?.name !== 'AbortError' && !(error instanceof TypeError)) this.peticionId = null;
             this.estado = 'error';
             this.progreso = '';
             this.error = error?.name === 'AbortError'
-                ? 'La firma demoró demasiado. Actualiza la pantalla para comprobar su estado.'
+                ? 'No se pudo confirmar la firma por una interrupción de conexión. Vuelve a intentarlo; comprobaremos si ya se guardó.'
                 : this.mensajeSeguro(error);
         } finally {
             window.clearTimeout(temporizador);
@@ -79,6 +91,61 @@ window.hubDigitalFirmador = (config) => ({
             clave = '';
             this.limpiarCamposCredenciales();
         }
+    },
+
+    async completarFirma(mensaje) {
+        this.estado = 'completado';
+        this.progreso = mensaje ?? 'Solicitud firmada y validada criptográficamente.';
+        this.dialogo = false;
+        window.dispatchEvent(new CustomEvent('toast', {detail: {message: this.progreso}}));
+        if (config.onSigned) {
+            try {
+                await config.onSigned();
+                this.$nextTick(() => document.querySelector('[data-oficio-signed-link]')?.focus());
+            } catch { window.location.reload(); }
+        } else window.location.reload();
+    },
+
+    async recuperarFirma() {
+        if (!config.statusUrl) return false;
+        try {
+            const url = new URL(config.statusUrl, window.location.href);
+            url.searchParams.set('version', config.documentVersion);
+            const respuesta = await fetch(url, {credentials: 'same-origin', headers: {Accept: 'application/json'}, signal: AbortSignal.timeout(10000)});
+            if (!respuesta.ok || !(await respuesta.json()).firmada) return false;
+            await this.completarFirma();
+            return true;
+        } catch { return false; }
+    },
+
+    async firmarConToken(pin, signal) {
+        const puente = config.tokenUrl ?? 'http://127.0.0.1:17654';
+        const cabeceras = {'X-HubDigital-Bridge': '1'};
+        let sesion;
+        try {
+            const estado = await fetch(puente + '/session', {headers: cabeceras, signal});
+            if (!estado.ok) throw new Error('Conector local no disponible.');
+            sesion = await estado.json();
+        } catch (error) {
+            if (error.name === 'AbortError') throw error;
+            throw new Error('Abre el conector HubDigital para token USB y permite el acceso a la red local cuando el navegador lo solicite.');
+        }
+        const headers = {...cabeceras, 'X-Bridge-Session': sesion.token, 'X-Token-Pin': pin};
+        const listado = await fetch(puente + '/certificates', {method: 'POST', headers, signal});
+        const identidades = await listado.json();
+        if (!listado.ok) throw new Error(identidades.message);
+        this.tokenCertificados = identidades.certificados;
+        if (!this.tokenAlias && this.tokenCertificados.length === 1) this.tokenAlias = this.tokenCertificados[0].alias;
+        if (!this.tokenCertificados.some(cert => cert.alias === this.tokenAlias)) {
+            throw new Error('Selecciona el certificado del token y vuelve a introducir el PIN para firmar.');
+        }
+        const original = await fetch(config.originalUrl, {credentials: 'same-origin', signal, headers: {Accept: 'application/pdf'}});
+        if (!original.ok || !original.headers.get('content-type')?.includes('application/pdf')) throw new Error('No se pudo preparar el PDF para el token.');
+        headers['X-Token-Alias'] = encodeURIComponent(this.tokenAlias);
+        headers['Content-Type'] = 'application/pdf';
+        const respuesta = await fetch(puente + '/sign', {method: 'POST', headers, body: await original.blob(), signal});
+        if (!respuesta.ok) throw new Error((await respuesta.json()).message);
+        return respuesta.blob();
     },
 
     limpiarCamposCredenciales() {

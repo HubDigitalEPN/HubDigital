@@ -1,0 +1,21 @@
+Conector HubDigital para certificados en token USB
+
+1. Instala el controlador oficial PKCS#11 del fabricante y Java 17 o posterior.
+   Java y la biblioteca deben tener la misma arquitectura (normalmente 64 bits).
+2. Extrae todo el ZIP en una carpeta del equipo donde conectas el token.
+3. Ejecuta Iniciar-Conector.ps1 en PowerShell y selecciona la biblioteca DLL
+   PKCS#11 del fabricante. Si usas otro slot, crea tu configuracion y ejecuta:
+   .\Iniciar-Conector.ps1 -ConfiguracionPkcs11 .\mi-token.cfg
+4. Mantén abierto el conector, conecta el token, vuelve al oficio y selecciona
+   Token USB. Introduce el PIN solo en el dialogo de firma. Si hay varios
+   certificados, selecciona el requerido y vuelve a introducir el PIN.
+5. Permite el acceso a la red local cuando el navegador lo solicite.
+6. Cierra el conector con Ctrl+C al terminar.
+
+El conector escucha solamente en 127.0.0.1:17654 y acepta el origen exacto de
+ORIGEN.txt. No exporta la clave privada del token ni guarda el PIN. El portal
+valida la firma, certificado, contenido oficial y version antes de guardar
+el PDF firmado y habilitar el siguiente paso.
+
+No modifica el almacen de confianza del visor PDF. La validez criptografica
+y la confianza que muestra un visor son comprobaciones diferentes.

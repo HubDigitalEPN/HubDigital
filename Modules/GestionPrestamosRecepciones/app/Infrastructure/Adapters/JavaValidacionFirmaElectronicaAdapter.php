@@ -27,6 +27,12 @@ final class JavaValidacionFirmaElectronicaAdapter implements ValidacionFirmaElec
     {
         $resultado = $this->ejecutarJava($rutaFirmadaAbsoluta, $rutaOriginalAbsoluta);
 
+        return self::desdeDictamen($resultado);
+    }
+
+    public static function desdeDictamen(array $resultado): DetalleValidacionFirma
+    {
+
         return new DetalleValidacionFirma(
             resultado: ResultadoValidacionFirma::tryFrom((string) ($resultado['status'] ?? ''))
                 ?? ResultadoValidacionFirma::VerificacionNoDisponible,

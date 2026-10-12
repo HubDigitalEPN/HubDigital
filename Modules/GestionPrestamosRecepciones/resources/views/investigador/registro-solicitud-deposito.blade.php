@@ -142,7 +142,7 @@
 
                 <div class="flex items-center gap-3">
                     @if($paso === 0)
-                        <flux:button variant="primary" icon-trailing="arrow-right" wire:click="continuarDesdeSolicitud" wire:loading.attr="disabled" wire:target="continuarDesdeSolicitud" :disabled="!$solicitudFirmada">Continuar al trámite</flux:button>
+                        <flux:button variant="primary" icon-trailing="arrow-right" wire:click="continuarDesdeSolicitud" wire:loading.attr="disabled" :disabled="!$solicitudFirmada || $solicitudCambiosPendientes">Continuar al trámite</flux:button>
                     @elseif($paso === 1)
                         <flux:button
                             variant="primary"

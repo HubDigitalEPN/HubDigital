@@ -590,7 +590,8 @@ try {
     await conexion.send('Page.captureScreenshot').then(r => writeFileSync(path.join(temporal, 'portal.png'), Buffer.from(r.data, 'base64')));
     await evaluar("window.__observadorPdf.disconnect(); document.querySelector('.atlas-pdf-frame').remove()");
 
-    // La tabla mantiene navegación visible al cambiar el tamaño y la escala de presentación.
+    // El scroll conserva las filas cargadas y el botón accesible en distintos tamaños.
+    await evaluar(`(() => {const b=document.querySelector('input[placeholder="Nombre científico en cualquier rango"]');b.focus();b.value=${JSON.stringify(datos.taxonScroll)};b.dispatchEvent(new Event('input',{bubbles:true}));b.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));})()`); await reposo();
     await evaluar("document.querySelector('button[aria-label=\"Vista de registros\"]').click()");
     await visible("document.querySelector('.portal-records-viewport .portal-record-row')"); await reposo();
     const cantidades = [];
@@ -603,18 +604,31 @@ try {
             const raiz=document.querySelector('.portal-records-viewport');
             if (!raiz || raiz.closest('.collection-main')?.inert || raiz.closest('.collection-workspace')?.classList.contains('is-updating') || window.Alpine.$data(raiz).solicitando) return false;
             const nav=raiz.querySelector('.portal-records-pagination');
-            const boton=[...nav.querySelectorAll('button')].find(b=>b.textContent.includes('Siguiente'));
+            const boton=nav && [...nav.querySelectorAll('button')].find(b=>b.textContent.includes('Cargar más'));
+            if (!boton) return false;
             const navegacion=nav.getBoundingClientRect(), r=boton.getBoundingClientRect();
+            const tabla=raiz.querySelector('.atlas-record-table-scroll'), ventana=tabla.getBoundingClientRect();
+            const visibles=[...raiz.querySelectorAll('.portal-record-row')].filter(fila=>{const f=fila.getBoundingClientRect();return f.bottom>ventana.top && f.top<ventana.bottom;}).length;
             const puntos=[.2,.5,.9].map(f=>{const encima=document.elementFromPoint(r.left+r.width*f,r.top+r.height/2); return {libre:encima === boton || boton.contains(encima), elemento:encima?.className};});
-            return {ajuste:{filas:raiz.querySelectorAll('.portal-record-row').length, inferior:navegacion.bottom, altura:window.innerHeight, posicion:getComputedStyle(nav).position}, acceso:{puntos, boton:r.toJSON(), raiz:raiz.getBoundingClientRect().toJSON()}};
+            return {ajuste:{filas:raiz.querySelectorAll('.portal-record-row').length, visibles, inferior:navegacion.bottom, altura:window.innerHeight, posicion:getComputedStyle(nav).position}, acceso:{puntos, boton:r.toJSON(), raiz:raiz.getBoundingClientRect().toJSON()}};
         })()`), `paginación disponible a escala ${escala}`);
         assert.ok(ajuste.inferior <= ajuste.altura + 2, 'La navegación quedó fuera de la pantalla.');
-        assert.ok(['static', 'relative'].includes(ajuste.posicion), 'La navegación quedó flotante.'); cantidades.push(ajuste.filas);
-        assert.ok(acceso.puntos.every(p=>p.libre), `Otro control cubrió Siguiente a ${escala}: ${JSON.stringify(acceso)}`);
+        assert.ok(['static', 'relative'].includes(ajuste.posicion), 'La navegación quedó flotante.'); cantidades.push(ajuste.visibles);
+        assert.equal(ajuste.filas, 50, 'Cambiar el tamaño reemplazó los registros cargados.');
+        assert.ok(acceso.puntos.every(p=>p.libre), `Otro control cubrió Cargar más a ${escala}: ${JSON.stringify(acceso)}`);
     }
-    assert.ok(new Set(cantidades).size > 1, 'El número de registros no se adaptó a la pantalla.');
+    assert.ok(new Set(cantidades).size > 1, 'La ventana de registros no se adaptó a la pantalla.');
     await evaluar("document.documentElement.style.zoom='1'");
     await conexion.send('Emulation.setDeviceMetricsOverride', {width: 1440, height: 900, deviceScaleFactor: 1, mobile: false});
+    await reposo();
+    const posicionScroll = await evaluar(`(() => {const t=document.querySelector('.atlas-record-table-scroll'); t.scrollLeft=100; t.scrollTop=t.scrollHeight; return {top:t.scrollTop,left:t.scrollLeft,ids:[...document.querySelectorAll('.portal-record-row')].map(f=>f.getAttribute('wire:key'))};})()`);
+    await visible("document.querySelectorAll('.portal-record-row').length === 100"); await reposo();
+    const despuesScroll = await evaluar(`(() => {const t=document.querySelector('.atlas-record-table-scroll'); return {top:t.scrollTop,left:t.scrollLeft,ids:[...document.querySelectorAll('.portal-record-row')].map(f=>f.getAttribute('wire:key'))};})()`);
+    assert.deepEqual(despuesScroll.ids.slice(0, 50), posicionScroll.ids, 'El scroll reemplazó filas anteriores.');
+    assert.equal(new Set(despuesScroll.ids).size, 100, 'El scroll duplicó registros.');
+    assert.ok(Math.abs(despuesScroll.top - posicionScroll.top) < 2, 'El scroll perdió la posición vertical.');
+    assert.ok(Math.abs(despuesScroll.left - posicionScroll.left) < 2, 'El scroll perdió la posición horizontal.');
+    await evaluar(`(() => {const b=document.querySelector('input[placeholder="Nombre científico en cualquier rango"]');b.focus();b.value=${JSON.stringify(datos.taxonBusqueda)};b.dispatchEvent(new Event('input',{bubbles:true}));b.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));})()`); await reposo();
     await evaluar("document.querySelector('button[aria-label=\"Vista de tarjetas\"]').click()");
     await visible("document.querySelector('.collection-taxon-help[aria-label=\"Resumen de Nematomorpha\"]')"); await reposo();
     await evaluar("document.querySelector('.collection-taxon-help[aria-label=\"Resumen de Nematomorpha\"]').click()");

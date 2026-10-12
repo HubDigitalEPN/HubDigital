@@ -71,7 +71,7 @@ test('combina cuatro filos y provincias y localidades con unión dentro de cada 
     expect($seleccion)->toMatchArray(['fphs' => array_slice($f['filos'], 0, 2), 'fprovs' => ['Orellana', 'Pichincha'], 'fg' => ['Lugar Uno', 'Lugar Dos']])
         ->and(SeleccionPaginaChat::desde($seleccion)->filtros->filosSeleccionados())->toHaveCount(2);
     $portal->call('cambiarVista', 'registros')->assertViewHas('totalRegistrosVista', 8)
-        ->call('ajustarRegistrosPorPagina', 3)->assertViewHas('registrosVista', fn ($r) => count($r) === 3)
+        ->assertViewHas('registrosVista', fn ($r) => count($r) === 8)
         ->call('restaurarSeleccionUrl', $seleccion + ['vista' => 'mapa'], 1)
         ->assertViewHas('datosMapa', fn ($d) => (int) $d['resumen']['registros'] === 8);
     $portal->call('retirarCriterio', 'filtroFilos', 0)->assertSet('filtroFilos', [$f['filos'][1]])

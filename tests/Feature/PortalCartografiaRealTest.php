@@ -56,7 +56,7 @@ test('QA3-001 las tarjetas usan UUID y excluyen otro taxón con el mismo código
     $componente->call('cambiarVista', 'mapa')->assertViewHas('datosMapa', fn ($d) => (int) $d['resumen']['registros'] === 2);
 });
 
-test('tarjetas y tabla cargan seis UUID por página sin duplicarlos ni perder el resto', function (): void {
+test('tarjetas y tabla paginan UUID sin duplicarlos ni perder el resto', function (): void {
     $f = cartografiaRealFixture();
     $original = (array) DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->first();
     unset($original['coordenadas_otras_regiones'], $original['busqueda_global']);
@@ -66,17 +66,49 @@ test('tarjetas y tabla cargan seis UUID por página sin duplicarlos ni perder el
         DB::table('divulgacion.especimenes_divulgables')->insert(['id' => (string) Str::uuid(), 'especimen_id' => $id, 'publicado' => true]);
     }
     foreach (['tarjetas' => 'especimenes', 'registros' => 'registrosVista'] as $vista => $clave) {
+        $tamano = $vista === 'registros' ? 50 : 6;
+        $ultima = (int) ceil(25 / $tamano);
         $componente = Livewire::withQueryParams(['vista' => $vista, 'fph' => $f['filo'], 'nivel' => 'species', 'taxon' => $f['prefijo'].' alfa'])->test(PortalCatalogo::class)
-            ->assertViewHas('totalRegistrosVista', 25)->assertViewHas('ultimaPagina', 5)->assertViewHas($clave, fn ($filas) => count($filas) === 6);
+            ->assertViewHas('totalRegistrosVista', 25)->assertViewHas('ultimaPagina', $ultima)->assertViewHas($clave, fn ($filas) => count($filas) === min($tamano, 25));
         $vistos = [];
-        foreach (range(1, 5) as $pagina) {
-            $componente->call('cambiarPagina', $pagina)->assertViewHas($clave, fn ($filas) => count($filas) === ($pagina === 5 ? 1 : 6));
+        foreach (range(1, $ultima) as $pagina) {
+            $componente->call('cambiarPagina', $pagina)->assertViewHas($clave, fn ($filas) => count($filas) === min($tamano, 25 - ($pagina - 1) * $tamano));
             $actuales = array_column($componente->viewData($clave), 'especimen_id');
             expect(array_intersect($vistos, $actuales))->toBe([]);
             $vistos = [...$vistos, ...$actuales];
         }
         expect(count(array_unique($vistos)))->toBe(25);
     }
+});
+
+test('el scroll acumula lotes públicos ordenados, ignora duplicados y reinicia la selección', function (): void {
+    $f = cartografiaRealFixture();
+    $original = (array) DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->first();
+    unset($original['coordenadas_otras_regiones'], $original['busqueda_global']);
+    for ($i = 0; $i < 120; $i++) {
+        $id = (string) Str::uuid();
+        $codigo = 'QA-SCROLL-'.$i;
+        DB::table('taxonomia.especimenes')->insert(array_replace($original, ['id' => $id, 'codigo_catalogo' => $codigo, 'occurrence_id' => $codigo, 'fila_origen_excel' => $i + 10]));
+        DB::table('divulgacion.especimenes_divulgables')->insert(['id' => (string) Str::uuid(), 'especimen_id' => $id, 'publicado' => true]);
+    }
+    $seleccion = ['vista' => 'registros', 'fph' => $f['filo'], 'nivel' => 'species', 'taxon' => $f['prefijo'].' alfa'];
+    $portal = Livewire::withQueryParams($seleccion)->test(PortalCatalogo::class)
+        ->assertViewHas('totalRegistrosVista', 122)->assertViewHas('registrosVista', fn ($r) => count($r) === 50);
+    $clave = $portal->get('claveRegistrosCargados');
+    $primero = array_column($portal->viewData('registrosVista'), 'especimen_id');
+    $portal->call('cargarMasRegistros', $clave, 1)->assertViewHas('registrosVista', fn ($r) => count($r) === 100);
+    $ids = array_column($portal->viewData('registrosVista'), 'especimen_id');
+    expect(array_slice($ids, 0, 50))->toBe($primero)->and(array_unique($ids))->toHaveCount(100);
+    $portal->call('cargarMasRegistros', $clave, 1)->assertViewHas('registrosVista', fn ($r) => count($r) === 100)
+        ->call('cargarMasRegistros', $clave, 2)->assertViewHas('registrosVista', fn ($r) => count($r) === 122)
+        ->assertViewHas('hayMasRegistros', false)
+        ->call('cargarMasRegistros', $clave, 3)->assertSet('paginasRegistrosCargadas', 3);
+    DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $primero[0])->update(['decimal_latitude_visible' => false]);
+    $portal->call('$refresh')->assertViewHas('totalRegistrosVista', 121);
+    expect(array_column($portal->viewData('registrosVista'), 'especimen_id'))->not->toContain($primero[0]);
+    $portal->call('restaurarSeleccionUrl', ['vista' => 'registros', 'fph' => $f['filo'], 'fc' => $f['codigos'][2]], 1)
+        ->assertSet('paginasRegistrosCargadas', 1)->assertViewHas('totalRegistrosVista', 1)
+        ->call('cargarMasRegistros', $clave, 1)->assertViewHas('registrosVista', fn ($r) => count($r) === 1);
 });
 
 test('el rail pagina hermanos y sus conteos en el padre público sin ampliar los registros de la ficha', function (): void {

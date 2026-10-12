@@ -74,6 +74,8 @@ final class SolicitudDepositoEloquentModel extends Model
         'solicitud_documento_version',
         'solicitud_nombre_permiso',
         'solicitud_cedula',
+        'solicitud_tipo_identificacion',
+        'solicitud_texto',
         'solicitud_cargo',
         'solicitud_grupo',
         'solicitud_proyecto',

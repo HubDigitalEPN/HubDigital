@@ -645,7 +645,31 @@ final class PortalCatalogo extends Component
     public array $filtroProvincias = [];
 
     #[Locked]
-    public int $registrosPorPagina = 6;
+    public int $registrosPorPagina = 50;
+
+    #[Locked]
+    public int $paginasRegistrosCargadas = 1;
+
+    #[Locked]
+    public string $claveRegistrosCargados = '';
+
+    #[Locked]
+    public int $ultimaPaginaRegistros = 1;
+
+    private function claveSeleccionRegistros(): string
+    {
+        return sha1(json_encode([$this->filtrosActuales(), $this->nivel, $this->taxon, $this->pagina, $this->registrosPorPagina]));
+    }
+
+    public function cargarMasRegistros(string $seleccion, int $paginas): void
+    {
+        // Una petición repetida o de una selección anterior no puede ampliar la nueva tabla.
+        if ($this->vista !== 'registros' || $seleccion !== $this->claveSeleccionRegistros()
+            || $seleccion !== $this->claveRegistrosCargados || $paginas !== $this->paginasRegistrosCargadas) return;
+        if ($this->pagina + $this->paginasRegistrosCargadas - 1 < $this->ultimaPaginaRegistros) {
+            $this->paginasRegistrosCargadas++;
+        }
+    }
 
     public function ajustarRegistrosPorPagina(int $cantidad, bool $ubicacion = false): void
     {
@@ -656,11 +680,6 @@ final class PortalCatalogo extends Component
             $this->registrosPorPaginaCelda = $cantidad;
             $this->paginaCelda = intdiv($inicio, $cantidad) + 1;
             unset($this->detalleCelda);
-        } else {
-            if ($this->registrosPorPagina === $cantidad) return;
-            $inicio = ($this->pagina - 1) * $this->registrosPorPagina;
-            $this->registrosPorPagina = $cantidad;
-            $this->pagina = intdiv($inicio, $cantidad) + 1;
         }
     }
 
@@ -732,6 +751,8 @@ final class PortalCatalogo extends Component
         if (in_array($vista, ['tarjetas', 'registros', 'mapa'], true)) {
             $this->vista = $vista;
             $this->pagina = 1;
+            $this->claveRegistrosCargados = '';
+            $this->paginasRegistrosCargadas = 1;
             $this->cerrarFichaRegistro();
         }
     }
@@ -764,6 +785,8 @@ final class PortalCatalogo extends Component
             '*.date_format' => 'Usa una fecha válida con año, mes y día.',
         ]);
         $this->resetValidation();
+        $this->claveRegistrosCargados = '';
+        $this->paginasRegistrosCargadas = 1;
         unset($this->geografiaDisponible, $this->provinciasDisponibles, $this->localidadesDisponibles);
         if ($this->filtroProvincia !== '') $this->filtroProvincia = NormalizacionGeografica::nombreDisponible($this->filtroProvincia, $this->provinciasDisponibles) ?? $this->filtroProvincia;
         $this->pagina = 1;
@@ -1259,8 +1282,13 @@ final class PortalCatalogo extends Component
         }
 
         if ($this->vista === 'registros') {
-            $pagina = app(EloquentProveedorEspecimenesParaArbol::class)->paginaPublica($filtros, $this->pagina, $this->nivel, $this->taxon, $this->registrosPorPagina);
+            $clave = $this->claveSeleccionRegistros();
+            if ($clave !== $this->claveRegistrosCargados) $this->paginasRegistrosCargadas = 1;
+            $pagina = app(EloquentProveedorEspecimenesParaArbol::class)->paginaPublica($filtros, $this->pagina, $this->nivel, $this->taxon, $this->registrosPorPagina, $this->paginasRegistrosCargadas);
             $this->pagina = $pagina['pagina'];
+            $this->claveRegistrosCargados = $this->claveSeleccionRegistros();
+            $this->paginasRegistrosCargadas = $pagina['hasta'] - $pagina['pagina'] + 1;
+            $this->ultimaPaginaRegistros = $pagina['ultima'];
             $registrosVista = $this->cargarDetallesPorEspecimenIds($pagina['ids'], $proveedor, $repoDivulgable);
             $imagenesRegistrosVista = $this->cargarImagenesPorEspecimen(array_values(array_filter(array_column($registrosVista, 'occurrence_id'))));
             return view('catalogopublico::livewire.portal-catalogo', [
@@ -1274,6 +1302,7 @@ final class PortalCatalogo extends Component
                 'nivelActual' => $this->nivel, 'taxonActual' => $this->taxon,
                 'registrosVista' => $registrosVista, 'imagenesRegistrosVista' => $imagenesRegistrosVista,
                 'totalRegistrosVista' => $pagina['total'], 'paginaActual' => $pagina['pagina'], 'ultimaPagina' => $pagina['ultima'],
+                'hayMasRegistros' => $pagina['hasta'] < $pagina['ultima'],
             ]);
         }
 

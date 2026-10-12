@@ -185,6 +185,7 @@ test('el depósito completo persiste actores, documentos, taxonomía, recepción
         'solicitud_proyecto' => 'Inventario de insectos de prueba',
         'solicitud_institucion' => 'Consultoría E2E',
         'solicitud_correo' => 'ana.depositante.e2e@example.test',
+        'solicitud_oficio' => 'E2E-2026-001',
     ]);
 
     $apiLogin = $this->postJson('/api/login', [
@@ -238,6 +239,10 @@ test('el depósito completo persiste actores, documentos, taxonomía, recepción
     $matriz->validarRegistroCatalogado($registro);
     $matrices->guardar($matriz);
 
+    // El caso sin firma necesita el motor real: el doble de negocio usado
+    // para la documentación adjunta declara aceptable cualquier archivo.
+    $validadorNegocio = app(ValidacionFirmaElectronicaPort::class);
+    app()->instance(ValidacionFirmaElectronicaPort::class, app(JavaValidacionFirmaElectronicaAdapter::class));
     $this->actingAs($depositante)->post(
         route('depositos.solicitud.firmar', (string) $solicitud->id()),
         [
@@ -245,14 +250,16 @@ test('el depósito completo persiste actores, documentos, taxonomía, recepción
                 'solicitud-firmada.pdf',
                 pdfValidoParaDepositos('Solicitud de prueba para E2E'),
             ),
+            'documento_version' => 1,
         ],
         ['Accept' => 'application/json'],
     )->assertUnprocessable();
+    app()->instance(ValidacionFirmaElectronicaPort::class, $validadorNegocio);
 
     $credencial = certificadoRealDepositoParaPruebas();
     $this->actingAs($depositante)->post(
         route('depositos.solicitud.firmar', (string) $solicitud->id()),
-        ['certificado' => $credencial['archivo'], 'clave_certificado' => $credencial['clave']],
+        ['certificado' => $credencial['archivo'], 'clave_certificado' => $credencial['clave'], 'documento_version' => 1],
         ['Accept' => 'application/json'],
     )->assertOk();
     unset($credencial);
@@ -406,17 +413,79 @@ test('el depósito completo persiste actores, documentos, taxonomía, recepción
         ->assertHeader('Content-Type', 'application/pdf');
 });
 
+test('un borrador incompleto requiere preparar el oficio y el servidor rechaza su firma', function (): void {
+    configurarR2FalsoParaPruebas();
+    $depositante = User::factory()->depositante()->create();
+    $borrador = SolicitudDepositoEloquentModel::query()->create([
+        'id' => (string) \Illuminate\Support\Str::uuid(),
+        'numero' => 'MEPN-INV-DEP-'.random_int(70000, 99999),
+        'investigador_id' => (string) $depositante->id,
+        'tipo_tramite' => TipoTramite::Deposito->value,
+        'estado' => EstadoSolicitudDeposito::EnBorrador->value,
+        'paso_actual' => 0,
+        'documentos_adjuntos' => [],
+        'datos_faltantes' => [],
+        'solicitud_documento_version' => 1,
+    ]);
+    Livewire::actingAs($depositante)->test(RegistroSolicitudDeposito::class)
+        ->assertSet('solicitudCambiosPendientes', true)
+        ->assertSee('Preparar PDF')->assertDontSee('Firmar PDF');
+    $this->actingAs($depositante)->postJson(route('depositos.solicitud.firmar', (string) $borrador->id), [
+        'certificado' => UploadedFile::fake()->create('prueba.p12', 1, 'application/x-pkcs12'),
+        'clave_certificado' => 'clave de prueba',
+        'documento_version' => 1,
+    ])->assertUnprocessable()->assertJsonValidationErrors('solicitud')
+        ->assertJsonPath('errors.solicitud.0', 'Completa y guarda los campos obligatorios del oficio antes de firmar.');
+    expect($borrador->fresh()->solicitud_firmada_ruta)->toBeNull();
+});
+
+test('el oficio autoguarda solo valores de catálogos activos y conserva el texto personalizado', function (): void {
+    configurarR2FalsoParaPruebas();
+    foreach (['usuarios.cargos_catalogo' => 'Investigador del proyecto', 'usuarios.instituciones_catalogo' => 'Laboratorio de prueba'] as $tabla => $nombre) {
+        \Illuminate\Support\Facades\DB::table($tabla)->updateOrInsert(['nombre' => $nombre], ['activo' => true, 'created_at' => now(), 'updated_at' => now()]);
+    }
+    $depositante = User::factory()->depositante()->create();
+    $component = Livewire::actingAs($depositante)->test(RegistroSolicitudDeposito::class)
+        ->set('solicitudNombrePermiso', 'Titular de prueba')
+        ->set('solicitudCedula', '1707514251')
+        ->set('solicitudCargo', 'Investigador del proyecto')
+        ->set('solicitudInstitucion', 'Laboratorio de prueba')
+        ->set('solicitudGrupo', 'Macroinvertebrados acuáticos')
+        ->set('solicitudProyecto', 'MONITOREO DE LA LAGUNA LIMPIOPUNGO')
+        ->set('solicitudCorreo', $depositante->email)
+        ->set('solicitudOficio', 'QA-AUTO-001')
+        ->assertHasNoErrors()
+        ->assertSet('solicitudCambiosPendientes', false);
+    $borrador = SolicitudDepositoEloquentModel::where('investigador_id', $depositante->id)->sole();
+    expect($component->get('solicitudId'))->toBe((string) $borrador->id)
+        ->and($borrador->solicitud_documento_version)->toBe(1);
+    $component->set('solicitudTexto', 'Solicito recibir el material recolectado en Limpiopungo.')
+        ->assertHasNoErrors();
+    expect($borrador->fresh()->solicitud_texto)->toBe('Solicito recibir el material recolectado en Limpiopungo.');
+    $component->set('solicitudCargo', 'Cargo escrito libremente')
+        ->assertHasErrors('solicitudCargo')->assertSet('solicitudCambiosPendientes', true);
+    expect($borrador->fresh()->solicitud_cargo)->toBe('Investigador del proyecto');
+    $component->set('solicitudCargo', 'Investigador del proyecto')
+        ->set('solicitudGrupo', 'Grupo libre')->assertHasErrors('solicitudGrupo');
+    $component->set('solicitudGrupo', 'Macroinvertebrados acuáticos')
+        ->set('solicitudOficio', '')->assertHasErrors('solicitudOficio');
+});
+
 test('el oficio sin firma no avanza y al descartar el borrador se elimina su PDF firmado de R2', function (): void {
     configurarR2FalsoParaPruebas();
+    foreach (['usuarios.cargos_catalogo' => 'Investigador del proyecto', 'usuarios.instituciones_catalogo' => 'Laboratorio de prueba'] as $tabla => $nombre) {
+        \Illuminate\Support\Facades\DB::table($tabla)->updateOrInsert(['nombre' => $nombre], ['activo' => true, 'created_at' => now(), 'updated_at' => now()]);
+    }
     $depositante = User::factory()->depositante()->create();
     $component = Livewire::actingAs($depositante)->test(RegistroSolicitudDeposito::class)
         ->set('solicitudNombrePermiso', 'Hernan Augusto Troya Proano')
         ->set('solicitudCedula', '1707514251')
         ->set('solicitudCargo', 'Investigador del proyecto')
-        ->set('solicitudGrupo', 'macroinvertebrados acuáticos')
+        ->set('solicitudGrupo', 'Macroinvertebrados acuáticos')
         ->set('solicitudProyecto', 'Inventario de prueba')
         ->set('solicitudInstitucion', 'Laboratorio de prueba')
         ->set('solicitudCorreo', $depositante->email)
+        ->set('solicitudOficio', 'QA-2026-001')
         ->call('guardarSolicitudInicial')
         ->assertHasNoErrors()
         ->call('continuarDesdeSolicitud')
@@ -456,7 +525,7 @@ test('el oficio sin firma no avanza y al descartar el borrador se elimina su PDF
     $credencial = certificadoRealDepositoParaPruebas();
     $this->actingAs($depositante)->post(
         route('depositos.solicitud.firmar', (string) $borrador->id),
-        ['certificado' => $credencial['archivo'], 'clave_certificado' => $credencial['clave']],
+        ['certificado' => $credencial['archivo'], 'clave_certificado' => $credencial['clave'], 'documento_version' => 1],
         ['Accept' => 'application/json'],
     )->assertOk();
     unset($credencial);

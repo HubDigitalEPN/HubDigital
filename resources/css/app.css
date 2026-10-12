@@ -1095,7 +1095,7 @@ select:focus[data-flux-control] {
 .hub-depositos-dashboard { gap: .75rem; }
 .hub-depositos-ui .hub-wizard-progress + .overflow-hidden { margin-top: .5rem; }
 .hub-depositos-ui .hub-wizard-progress { box-shadow: none; }
-.hub-depositos-ui .hub-wizard-progress ~ .overflow-hidden .min-w-0 { padding: 1rem; }
+.hub-depositos-ui .hub-wizard-progress ~ .overflow-hidden > div > .min-w-0 { padding: 1rem; }
 .hub-depositos-ui :is(.space-y-5, .space-y-6) > * + * { margin-top: .75rem; }
 @media (max-width: 767px) {
     .hub-dashboard-hero,
@@ -1242,6 +1242,8 @@ select:focus[data-flux-control] {
 .hub-curator-button--outline { border: 1px solid #a8bddf; background: #fff; color: #174a9a; }
 .hub-curator-button--primary { border: 1px solid #174a9a; background: #174a9a; color: #fff; }
 .hub-curator-button:hover { filter: brightness(.93); }
+.hub-curator-button--primary:is(:hover, :focus-visible, :active),
+.hub-curator-button--primary:is(:hover, :focus-visible, :active) * { color: #fff !important; }
 .hub-curator-shortcuts { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); border: 1px solid #d7e1ef; border-radius: .42rem; background: #fff; }
 .hub-curator-shortcuts > * { position: relative; display: flex; align-items: center; gap: .75rem; min-width: 0; min-height: 4.1rem; padding: .7rem .85rem; color: #122b4f; text-align: left; cursor: pointer; }
 .hub-curator-shortcuts > * + *::before { content: ''; position: absolute; left: 0; height: 55%; border-left: 1px solid #d7e1ef; }
@@ -1364,3 +1366,17 @@ body:has(.hub-app-sidebar) { --color-accent: #174a9a; --color-accent-foreground:
 
 .portal-publico :is(a[href], button:not(:disabled), summary, select, [role="button"], [role="tab"], input[type="checkbox"], input[type="radio"], label:has(input[type="checkbox"]), label:has(input[type="radio"]), .leaflet-interactive) { cursor:pointer; }
 .portal-publico :is(button:disabled, [aria-disabled="true"]) { cursor:not-allowed; }
+
+.hub-identification-fields { display: grid; grid-template-columns: minmax(8rem, .8fr) minmax(0, 1.6fr); gap: .6rem; }
+.hub-request-letter [data-flux-field] { gap: .3rem; }
+.hub-request-letter :is(input, select)[data-flux-control] { min-block-size: 2.3rem; }
+.hub-depositos-ui [data-flux-field]:has([required]):not(:has([data-flux-field])) { position: relative; }
+.hub-depositos-ui [data-flux-field]:has([required]):not(:has([data-flux-field]))::after {
+    content: ''; position: absolute; left: 0; top: 1.35rem; width: 0; height: 0;
+    border-top: 6px solid #c62828; border-right: 6px solid transparent; pointer-events: none;
+}
+.hub-signature-dialog { width: min(40rem, calc(100vw - 2rem)); max-inline-size: min(40rem, calc(100vw - 2rem)) !important; max-height: calc(100dvh - 2rem); overflow-y: auto; }
+.hub-certificate-input, .hub-certificate-input::file-selector-button { cursor: pointer; }
+.hub-wizard-steps { white-space: nowrap; }
+@media (min-width: 1280px) { .hub-request-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 639px) { .hub-wizard-steps { overflow-x: auto; } }

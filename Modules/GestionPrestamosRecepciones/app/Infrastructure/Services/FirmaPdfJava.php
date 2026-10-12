@@ -21,7 +21,7 @@ final class FirmaPdfJava
         ];
     }
 
-    public function preparar(Request $request, string $original, string $perfil): ArchivoLocalDeposito
+    public function preparar(Request $request, string $original, string $perfil, bool $validarOriginal = false): ArchivoLocalDeposito
     {
         if (! $request->hasFile('certificado')) {
             return new ArchivoLocalDeposito($request->file('pdf_firmado')->getRealPath(), false);
@@ -35,25 +35,47 @@ final class FirmaPdfJava
                 throw new \RuntimeException('No se pudo preparar el certificado para Java.');
             }
             @chmod($p12, 0600);
+            $fuentes = ['ocsp' => [], 'crl' => [], 'timeout' => 2];
+            if ($validarOriginal) {
+                try { $fuentes = app(PrepararFuentesRevocacionFirma::class)->preparar(); }
+                catch (\Throwable $error) {
+                    \Illuminate\Support\Facades\Log::warning('No se pudieron cargar las fuentes excepcionales de revocación', ['error_tipo' => $error::class]);
+                }
+            }
+            $espera = max(1, min(5, $fuentes['timeout']));
             $proceso = new Process([
                 (string) config('firma-electronica.java_binary', 'java'),
-                '-Djava.awt.headless=true', '-Xmx384m', '-jar',
-                (string) config('firma-electronica.java_signature_jar'), 'sign', '--request-stdin',
+                '-Djava.awt.headless=true', '-Xmx384m',
+                '-Dcom.sun.security.ocsp.timeout='.$espera,
+                '-Dcom.sun.security.crl.timeout='.$espera,
+                '-Dhubdigital.revocation.timeout='.$espera,
+                '-Dsun.net.client.defaultConnectTimeout='.($espera * 1000),
+                '-Dsun.net.client.defaultReadTimeout='.($espera * 1000),
+                '-Dhubdigital.pdf.max_pages='.(int) config('firma-electronica.max_pages', 40),
+                '-Dhubdigital.pdf.max_page_points='.(int) config('firma-electronica.max_page_points', 1440),
+                '-Dhubdigital.pdf.render_dpi='.(int) config('firma-electronica.render_dpi', 110),
+                '-Dhubdigital.pdf.max_render_pixels='.(int) config('firma-electronica.max_render_pixels', 100000000),
+                '-jar', (string) config('firma-electronica.java_signature_jar'),
+                $validarOriginal ? 'sign-verify' : 'sign', '--request-stdin',
             ]);
-            $proceso->setEnv(DirectorioTemporalHubDigital::entornoProcesos());
+            $proceso->setEnv(array_merge(DirectorioTemporalHubDigital::entornoProcesos(), [
+                'HUBDIGITAL_SIGNATURE_TRUST_DIR' => (string) config('firma-electronica.java_signature_trust_dir'),
+                'HUBDIGITAL_SIGNATURE_OCSP_RESPONDERS' => implode('|', $fuentes['ocsp']),
+                'HUBDIGITAL_SIGNATURE_CRL_OVERRIDES' => implode('|', $fuentes['crl']),
+            ]));
             $proceso->setInput(implode("\0", [$original, $salida, $p12,
                 (string) $request->input('clave_certificado'), $perfil]));
-            $proceso->setTimeout(60);
+            $proceso->setTimeout((int) config('firma-electronica.java_timeout', 60));
             $proceso->run();
             $resultado = json_decode(trim($proceso->getOutput()), true);
             if (! $proceso->isSuccessful() || ! is_array($resultado)
-                || ($resultado['status'] ?? null) !== 'firmado' || ! is_file($salida)) {
-                throw new \InvalidArgumentException('Java no pudo crear la firma. Verifica el certificado, su contraseña y su vigencia.');
+                || (! $validarOriginal && ($resultado['status'] ?? null) !== 'firmado') || ! is_file($salida)) {
+                throw new \InvalidArgumentException($resultado['reason'] ?? 'No se pudo firmar. Verifica el certificado, su contraseña y su vigencia.');
             }
             @chmod($salida, 0600);
             @unlink($p12);
 
-            return new ArchivoLocalDeposito($salida, true, $directorio);
+            return new ArchivoLocalDeposito($salida, true, $directorio, $validarOriginal ? $resultado : null);
         } catch (\Throwable $error) {
             DirectorioTemporalHubDigital::eliminar($directorio);
             throw $error;

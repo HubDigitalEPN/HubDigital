@@ -5,7 +5,7 @@
     $columnas = array_column($this->columnasPublicas, 'etiqueta', 'campo');
     $camposNumericos = ['decimal_latitude', 'decimal_longitude', 'elevation_min_m', 'elevation_max_m', 'individual_count'];
     $camposExtensos = ['locality_inec_reference', 'coordinate_reference', 'type_notes', 'specimen_notes'];
-    $etiquetaRegion = $contexto === 'catalogo' ? 'Registros de la colección con desplazamiento horizontal' : 'Tabla de registros de la ubicación con desplazamiento horizontal y vertical';
+    $etiquetaRegion = $contexto === 'catalogo' ? 'Registros de la colección con desplazamiento horizontal y vertical; carga automática al llegar al final' : 'Tabla de registros de la ubicación con desplazamiento horizontal y vertical';
 @endphp
 
 <section class="atlas-record-table-section" aria-label="Registros públicos">

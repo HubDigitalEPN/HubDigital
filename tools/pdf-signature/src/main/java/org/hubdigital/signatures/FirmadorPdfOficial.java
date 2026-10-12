@@ -13,6 +13,9 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.List;
 import java.util.ArrayList;
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.EncodeHintType;
+import com.google.zxing.qrcode.QRCodeWriter;
 import javax.naming.ldap.LdapName;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.cos.COSDictionary;
@@ -67,6 +70,20 @@ final class FirmadorPdfOficial {
             if (aliases.size() != 1) throw new IllegalArgumentException("El certificado debe contener una única identidad de firma.");
             PrivateKey privada = (PrivateKey) almacen.getKey(aliases.get(0), clave);
             Certificate[] cadena = almacen.getCertificateChain(aliases.get(0));
+            firmarConIdentidad(original, salida, privada, cadena, perfil);
+        } finally {
+            Arrays.fill(clave, '\0');
+        }
+    }
+
+    static void firmarConIdentidad(Path original, Path salida, PrivateKey privada, Certificate[] cadena, String perfil) throws Exception {
+        firmarConIdentidad(original, salida, privada, cadena, perfil, "BC");
+    }
+
+    static void firmarConIdentidad(Path original, Path salida, PrivateKey privada, Certificate[] cadena, String perfil, String proveedorFirma) throws Exception {
+            if (!List.of("solicitud-deposito:depositante:v1", "acta-recepcion:curador:v1").contains(perfil)) {
+                throw new IllegalArgumentException("Perfil de firma no autorizado.");
+            }
             if (privada == null || cadena == null || cadena.length == 0
                 || !(cadena[0] instanceof X509Certificate firmante)) throw new IllegalArgumentException("El P12 no contiene una identidad X.509 utilizable.");
             firmante.checkValidity();
@@ -101,7 +118,7 @@ final class FirmadorPdfOficial {
                         cms.addSignerInfoGenerator(new JcaSignerInfoGeneratorBuilder(
                             new JcaDigestCalculatorProviderBuilder().setProvider("BC").build())
                             .setSignedAttributeGenerator(new DefaultSignedAttributeTableGenerator(new AttributeTable(atributos)))
-                            .build(new JcaContentSignerBuilder(algoritmo).setProvider("BC").build(privada), firmante));
+                            .build(new JcaContentSignerBuilder(algoritmo).setProvider(proveedorFirma).build(privada), firmante));
                         cms.addCertificates(new JcaCertStore(Arrays.asList(cadena)));
                         return cms.generate(new CMSProcessableByteArray(contenido.readAllBytes()), false).getEncoded();
                     } catch (Exception error) {
@@ -125,7 +142,8 @@ final class FirmadorPdfOficial {
                         widget.getCOSObject().removeItem(claveCampo);
                     }
                 }
-                apariencia(pdf, widget, zona, firmante, fecha);
+                apariencia(pdf, widget, zona, firmante, fecha,
+                    java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(original))));
                 zona.pagina.setAnnotations(List.of(widget));
                 zona.pagina.getCOSObject().setNeedToBeUpdated(true);
                 formulario.getCOSObject().setNeedToBeUpdated(true);
@@ -133,9 +151,6 @@ final class FirmadorPdfOficial {
                     pdf.saveIncremental(out);
                 }
             }
-        } finally {
-            Arrays.fill(clave, '\0');
-        }
     }
 
     private static KeyStore abrir(Path p12, char[] clave) throws Exception {
@@ -201,7 +216,7 @@ final class FirmadorPdfOficial {
         return new Zona(pagina, indice, z, perfil.contains(":depositante:") ? "depositante" : "curador");
     }
 
-    private static void apariencia(PDDocument pdf, PDAnnotationWidget widget, Zona zona, X509Certificate cert, Calendar fecha) throws Exception {
+    private static void apariencia(PDDocument pdf, PDAnnotationWidget widget, Zona zona, X509Certificate cert, Calendar fecha, String originalSha256) throws Exception {
         float ancho = zona.rectangulo.getWidth(), alto = zona.rectangulo.getHeight();
         PDAppearanceStream stream = new PDAppearanceStream(pdf);
         stream.setBBox(new PDRectangle(ancho, alto));
@@ -209,8 +224,8 @@ final class FirmadorPdfOficial {
         PDType1Font normal = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
         PDType1Font negrita = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
         String huella = java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(cert.getEncoded()));
-        List<String> lineas = List.of("FIRMADO ELECTRONICAMENTE POR", nombre(cert),
-            "Rol documental: " + zona.rol.toUpperCase(java.util.Locale.ROOT),
+        List<String> lineas = List.of("Firmado electrónicamente por", nombreLegible(nombre(cert)),
+            "Rol documental: " + zona.rol,
             "Fecha: " + fecha.toInstant(), "Certificado SHA-256: " + huella.substring(0, 24),
             "Firmador HubDigital | ETSI CAdES detached");
         try (PDPageContentStream contenido = new PDPageContentStream(pdf, stream)) {
@@ -220,12 +235,30 @@ final class FirmadorPdfOficial {
             contenido.setStrokingColor(0.18f, 0.42f, 0.31f);
             contenido.addRect(0.5f, 0.5f, ancho - 1, alto - 1);
             contenido.stroke();
+            var qr = new QRCodeWriter().encode("HubDigital\nFirmante: " + nombre(cert)
+                + "\nCertificado SHA-256: " + huella + "\nOriginal SHA-256: " + originalSha256
+                + "\nFecha: " + fecha.toInstant(), BarcodeFormat.QR_CODE, 0, 0,
+                java.util.Map.of(EncodeHintType.CHARACTER_SET, "UTF-8", EncodeHintType.MARGIN, 4));
+            float ladoQr = Math.min(alto - 8, 82), modulo = ladoQr / qr.getWidth();
+            float izquierdaQr = ancho - ladoQr - 4, baseQr = (alto - ladoQr) / 2;
+            contenido.setNonStrokingColor(1f, 1f, 1f);
+            contenido.addRect(izquierdaQr, baseQr, ladoQr, ladoQr);
+            contenido.fill();
+            contenido.setNonStrokingColor(0f, 0f, 0f);
+            for (int fila = 0; fila < qr.getHeight(); fila++) {
+                for (int columna = 0; columna < qr.getWidth(); columna++) {
+                    if (qr.get(columna, fila)) contenido.addRect(izquierdaQr + columna * modulo,
+                        baseQr + (qr.getHeight() - fila - 1) * modulo, modulo, modulo);
+                }
+            }
+            contenido.fill();
             float y = alto - 12;
             for (int i = 0; i < lineas.size(); i++) {
                 PDType1Font fuente = i < 2 ? negrita : normal;
                 float tamano = i < 2 ? 8 : 6.3f;
                 String texto = lineas.get(i).replaceAll("[^\\x20-\\x7E\\u00A0-\\u00FF]", "?");
-                while (!texto.isEmpty() && fuente.getStringWidth(texto) * tamano / 1000 > ancho - 16) texto = texto.substring(0, texto.length() - 1);
+                while (tamano > 4.5f && fuente.getStringWidth(texto) * tamano / 1000 > izquierdaQr - 16) tamano -= .25f;
+                if (fuente.getStringWidth(texto) * tamano / 1000 > izquierdaQr - 16) throw new IOException("El nombre del firmante excede el espacio visible.");
                 contenido.beginText();
                 contenido.setNonStrokingColor(0.07f, 0.22f, 0.35f);
                 contenido.setFont(fuente, tamano);
@@ -246,5 +279,15 @@ final class FirmadorPdfOficial {
             if ("CN".equalsIgnoreCase(rdn.getType())) return String.valueOf(rdn.getValue());
         }
         return certificado.getSubjectX500Principal().getName();
+    }
+
+    private static String nombreLegible(String nombre) {
+        if (!nombre.equals(nombre.toUpperCase(java.util.Locale.ROOT))) return nombre;
+        StringBuilder salida = new StringBuilder();
+        for (String palabra : nombre.toLowerCase(java.util.Locale.ROOT).split("\\s+")) {
+            if (!salida.isEmpty()) salida.append(' ');
+            if (!palabra.isEmpty()) salida.append(Character.toUpperCase(palabra.charAt(0))).append(palabra.substring(1));
+        }
+        return salida.toString();
     }
 }

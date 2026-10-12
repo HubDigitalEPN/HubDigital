@@ -33,6 +33,18 @@ function solicitudFirmadaParaIntegridad(User $depositante): SolicitudDepositoElo
     ]);
 }
 
+test('el estado recuperado de firma exige propietario versión e integridad de la copia persistida', function (): void {
+    $depositante = User::factory()->depositante()->create();
+    $solicitud = solicitudFirmadaParaIntegridad($depositante);
+    $url = route('depositos.solicitud.estado-firma', (string) $solicitud->id);
+    $this->actingAs($depositante)->getJson($url.'?version=1')->assertOk()->assertJsonPath('firmada', true);
+    $this->getJson($url.'?version=2')->assertOk()->assertJsonPath('firmada', false);
+    $this->actingAs(User::factory()->depositante()->create())->getJson($url.'?version=1')->assertNotFound();
+    app(\Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos::class)
+        ->guardarContenido($solicitud->solicitud_firmada_ruta, "%PDF-1.7\ncontenido alterado", 'application/pdf');
+    $this->actingAs($depositante)->getJson($url.'?version=1')->assertOk()->assertJsonPath('firmada', false);
+});
+
 test('un fallo al actualizar metadatos no elimina el documento firmado vigente', function (): void {
     $depositante = User::factory()->depositante()->create();
     $solicitud = solicitudFirmadaParaIntegridad($depositante);

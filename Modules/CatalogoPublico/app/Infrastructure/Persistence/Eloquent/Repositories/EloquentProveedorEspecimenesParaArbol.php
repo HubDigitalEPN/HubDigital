@@ -92,17 +92,18 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
         return $query;
     }
 
-    public function paginaPublica(FiltrosBusqueda $filtros, int $pagina, string $nivel = '', string $taxon = '', int $tamano = self::TAMANO_PAGINA): array
+    public function paginaPublica(FiltrosBusqueda $filtros, int $pagina, string $nivel = '', string $taxon = '', int $tamano = self::TAMANO_PAGINA, int $paginas = 1): array
     {
         $tamano = max(1, min(100, $tamano));
         $query = $this->consultaPublica($filtros, $nivel, $taxon);
         $total = (clone $query)->count('te.id');
         $ultima = max(1, (int) ceil($total / $tamano));
         $actual = min(max(1, $pagina), $ultima);
+        $hasta = min($ultima, $actual + max(1, min($paginas, $ultima)) - 1);
         $ids = $query->orderBy('te.fila_origen_excel')->orderBy('te.id')
-            ->offset(($actual - 1) * $tamano)->limit($tamano)->pluck('te.id')->all();
+            ->offset(($actual - 1) * $tamano)->limit(($hasta - $actual + 1) * $tamano)->pluck('te.id')->all();
 
-        return ['ids' => $ids, 'total' => $total, 'pagina' => $actual, 'ultima' => $ultima];
+        return ['ids' => $ids, 'total' => $total, 'pagina' => $actual, 'ultima' => $ultima, 'hasta' => $hasta];
     }
 
     /** Tarjetas iniciales: una fila por taxón, sin materializar todos los ejemplares. */

@@ -188,6 +188,70 @@ const registrarDashboard = () => {
         destroy() { this.observador?.disconnect(); },
     }));
 
+    window.Alpine.data('portalRegistrosInfinitos', () => ({
+        observador: null, cuadro: null, alCambiar: null, alDesplazar: null, tabla: null,
+        solicitando: false, errorCarga: '',
+        init() {
+            this.alCambiar = () => {
+                cancelAnimationFrame(this.cuadro);
+                this.cuadro = requestAnimationFrame(() => this.ajustar());
+            };
+            this.alDesplazar = () => this.comprobarCarga();
+            this.observador = new ResizeObserver(this.alCambiar);
+            this.observador.observe(this.$el);
+            window.addEventListener('resize', this.alCambiar);
+            window.visualViewport?.addEventListener('resize', this.alCambiar);
+            this.$nextTick(() => {
+                this.tabla = this.$el.querySelector('.atlas-record-table-scroll');
+                this.tabla?.addEventListener('scroll', this.alDesplazar, { passive: true });
+                const contenido = this.tabla?.querySelector('table');
+                if (contenido) this.observador.observe(contenido);
+                this.alCambiar();
+            });
+        },
+        ajustar() {
+            if (!this.$el.isConnected) return;
+            const rect = this.$el.getBoundingClientRect();
+            const escala = rect.width / this.$el.clientWidth || 1;
+            this.$el.style.height = `${Math.max(0, ((window.visualViewport?.height || window.innerHeight) - rect.top - 12) / escala)}px`;
+            this.$el.classList.toggle('portal-records-compact', this.$el.clientHeight < 360);
+            this.comprobarCarga();
+        },
+        comprobarCarga() {
+            if (!this.tabla || this.tabla.clientHeight < 1 || this.errorCarga) return;
+            if (this.tabla.scrollHeight - this.tabla.scrollTop - this.tabla.clientHeight < 160) this.cargarMas();
+        },
+        async cargarMas() {
+            if (this.solicitando || !this.$el.isConnected || this.$el.dataset.hayMas !== 'true') return;
+            this.solicitando = true;
+            this.errorCarga = '';
+            const { seleccion, paginas } = this.$el.dataset;
+            const posicion = { top: this.tabla?.scrollTop || 0, left: this.tabla?.scrollLeft || 0 };
+            try {
+                await this.$wire.cargarMasRegistros(seleccion, Number(paginas));
+                await this.$nextTick();
+                // Livewire termina el pintado en el siguiente frame; mantener la carga
+                // bloqueada hasta entonces evita medir la tabla durante el morph.
+                await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+                if (this.$el.isConnected && this.$el.dataset.seleccion === seleccion && this.tabla) {
+                    this.tabla.scrollTop = posicion.top;
+                    this.tabla.scrollLeft = posicion.left;
+                }
+            } catch {
+                this.errorCarga = 'No se pudieron cargar más registros. Pulsa Cargar más registros para reintentar.';
+            } finally {
+                this.solicitando = false;
+            }
+        },
+        destroy() {
+            cancelAnimationFrame(this.cuadro);
+            this.observador?.disconnect();
+            this.tabla?.removeEventListener('scroll', this.alDesplazar);
+            window.removeEventListener('resize', this.alCambiar);
+            window.visualViewport?.removeEventListener('resize', this.alCambiar);
+        },
+    }));
+
     window.Alpine.data('portalRegistros', (cantidad, ubicacion = false) => ({
         cantidad, ubicacion, observador: null, alCambiar: null, cuadro: null, solicitando: false, anchoMedido: 0, alturaFilaMaxima: 0,
         init() {

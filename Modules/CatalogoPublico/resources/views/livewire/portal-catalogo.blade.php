@@ -141,13 +141,15 @@
         @include('catalogopublico::components.detalle-celda-mapa')
         @endif
     @elseif($vista === 'registros')
-        <div class="portal-records-viewport portal-records-catalogue mx-auto max-w-7xl px-4 pt-4 sm:px-6 lg:px-8" x-data="portalRegistros({{ $this->registrosPorPagina }})">
+        <div class="portal-records-viewport portal-records-catalogue mx-auto max-w-7xl px-4 pt-4 sm:px-6 lg:px-8"
+            wire:key="registros-infinitos-{{ $this->claveRegistrosCargados }}" x-data="portalRegistrosInfinitos"
+            data-seleccion="{{ $this->claveRegistrosCargados }}" data-paginas="{{ $this->paginasRegistrosCargadas }}" data-hay-mas="{{ $hayMasRegistros ? 'true' : 'false' }}">
             <div class="portal-records-header mb-4 flex flex-wrap items-end justify-between gap-3">
                 <div>
                     <h1 class="font-display text-2xl font-bold text-blue-navy">
                         {{ $taxonActual !== '' ? 'Registros de '.$taxonActual : \App\Support\PortalCopy::text('catalogo.registros_titulo') }}
                     </h1>
-                    <p class="mt-1 text-sm text-text-secondary">{{ number_format($totalRegistrosVista, 0, ',', '.') }} {{ $totalRegistrosVista === 1 ? 'registro' : 'registros' }} · página {{ $paginaActual }} de {{ $ultimaPagina }}</p>
+                    <p class="mt-1 text-sm text-text-secondary">{{ number_format($totalRegistrosVista, 0, ',', '.') }} {{ $totalRegistrosVista === 1 ? 'registro' : 'registros' }} · {{ $hayMasRegistros ? 'Desplázate en la tabla para cargar más.' : 'Fin de los resultados.' }}</p>
                 </div>
                 @if($totalRegistrosVista > 0)
                     <button type="button" wire:click="descargarResultados" wire:loading.attr="disabled" wire:target="descargarResultados" aria-label="{{ $catalogoTexto('descargar_resultados') }}" class="rounded-md border border-science-blue px-4 py-2 text-sm font-semibold text-science-blue hover:bg-sky-50 disabled:opacity-50"><span class="portal-records-download-label">{{ $catalogoTexto('descargar_resultados') }}</span><span class="portal-records-download-compact-label" aria-hidden="true">CSV</span></button>
@@ -157,13 +159,16 @@
                 <p class="rounded-lg border border-border bg-surface p-8 text-center text-text-secondary">{{ \App\Support\PortalCopy::text('catalogo.registros_vacios') }}</p>
             @else
                 <x-catalogopublico::tabla-registros-mapa :registros="$registrosVista" :imagenes="$imagenesRegistrosVista" :total="$totalRegistrosVista" contexto="catalogo" :mostrar-titulo="false" />
-                <nav class="portal-records-pagination" aria-label="Páginas de registros">
-                    <span class="text-sm text-text-secondary">{{ $paginaActual }} / {{ $ultimaPagina }}</span>
-                    <button type="button" wire:click="cambiarPagina({{ $paginaActual - 1 }})" @disabled($paginaActual <= 1)
-                        class="rounded-lg border border-border px-4 py-2 text-sm text-science-blue disabled:cursor-not-allowed disabled:opacity-40">{{ $catalogoTexto('anterior') }}</button>
-                    <button type="button" wire:click="cambiarPagina({{ $paginaActual + 1 }})" @disabled($paginaActual >= $ultimaPagina)
-                        class="rounded-lg border border-border px-4 py-2 text-sm text-science-blue disabled:cursor-not-allowed disabled:opacity-40">{{ $catalogoTexto('siguiente') }}</button>
-                </nav>
+                <div class="portal-records-pagination portal-records-progress" aria-label="Carga de registros">
+                    <span role="status" class="text-sm text-text-secondary">Mostrando {{ number_format(($paginaActual - 1) * $this->registrosPorPagina + 1, 0, ',', '.') }}–{{ number_format(($paginaActual - 1) * $this->registrosPorPagina + count($registrosVista), 0, ',', '.') }} de {{ number_format($totalRegistrosVista, 0, ',', '.') }}{{ $hayMasRegistros ? '' : ' · Fin de los resultados' }}</span>
+                    @if($hayMasRegistros)
+                        <button type="button" x-on:click="cargarMas()" x-bind:disabled="solicitando" wire:loading.attr="disabled"
+                            class="rounded-lg border border-border px-4 py-2 text-sm text-science-blue disabled:cursor-not-allowed disabled:opacity-40">
+                            <span x-text="solicitando ? 'Cargando…' : 'Cargar más registros'">Cargar más registros</span>
+                        </button>
+                    @endif
+                    <p x-cloak x-show="errorCarga" x-text="errorCarga" role="alert" class="text-sm text-red-700"></p>
+                </div>
             @endif
         </div>
 

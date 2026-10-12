@@ -29,10 +29,10 @@ if ($accion === 'limpiar') {
 if ($accion !== 'crear') throw new RuntimeException('Acción de fixture inválida.');
 $datos = DB::transaction(static function () use ($token, $prefijo, $archivo): array {
     $taxones = $filos = $familias = $especies = $muestras = [];
-    foreach (range(0, 1) as $i) {
+    foreach (range(0, 2) as $i) {
         // La base local conserva la colección: reutilizar el filo real respeta
         // la unicidad del nombre sin modificarlo ni eliminarlo al limpiar.
-        $filoExistente = $i ? DB::table('taxonomia.taxones')->where('nombre_cientifico', 'Nematomorpha')->where('rango', 'phylum')->value('id') : null;
+        $filoExistente = $i === 1 ? DB::table('taxonomia.taxones')->where('nombre_cientifico', 'Nematomorpha')->where('rango', 'phylum')->value('id') : null;
         $filos[$i] = $filoExistente ?: (string) Str::uuid(); $familias[$i] = (string) Str::uuid(); $especies[$i] = (string) Str::uuid();
         $reino = (string) Str::uuid(); $clase = (string) Str::uuid(); $orden = (string) Str::uuid(); $suborden = (string) Str::uuid();
         $subfamilia = (string) Str::uuid(); $tribu = (string) Str::uuid(); $genero = (string) Str::uuid();
@@ -45,11 +45,11 @@ $datos = DB::transaction(static function () use ($token, $prefijo, $archivo): ar
             ['id' => $subfamilia, 'padre_id' => $familias[$i], 'rango' => 'subfamilia', 'nombre_cientifico' => 'Browsersubfamily'.$token.$i],
             ['id' => $tribu, 'padre_id' => $subfamilia, 'rango' => 'tribu', 'nombre_cientifico' => 'Browsertribe'.$token.$i],
             ['id' => $genero, 'padre_id' => $tribu, 'rango' => 'genero', 'nombre_cientifico' => 'Browsergenus'.$token.$i],
-            ['id' => $especies[$i], 'padre_id' => $genero, 'rango' => 'especie', 'nombre_cientifico' => 'Browserobius '.$token.' '.($i ? 'beta' : 'alfa')],
+            ['id' => $especies[$i], 'padre_id' => $genero, 'rango' => 'especie', 'nombre_cientifico' => $i === 2 ? 'Scrollobius '.$token : 'Browserobius '.$token.' '.($i ? 'beta' : 'alfa')],
         ];
         if (!$filoExistente) $nuevos = [
             ['id' => $reino, 'padre_id' => null, 'rango' => 'reino', 'nombre_cientifico' => 'BrowserAnimalia'.$token.$i],
-            ['id' => $filos[$i], 'padre_id' => $reino, 'rango' => 'phylum', 'nombre_cientifico' => $i ? 'Nematomorpha' : 'FiloBrowser'.$token],
+            ['id' => $filos[$i], 'padre_id' => $reino, 'rango' => 'phylum', 'nombre_cientifico' => $i === 1 ? 'Nematomorpha' : ($i === 2 ? 'FiloScroll'.$token : 'FiloBrowser'.$token)],
             ...$nuevos,
         ];
         DB::table('taxonomia.taxones')->insert($nuevos);
@@ -69,8 +69,25 @@ $datos = DB::transaction(static function () use ($token, $prefijo, $archivo): ar
         ]);
         DB::table('divulgacion.especimenes_divulgables')->insert(['id' => (string) Str::uuid(), 'especimen_id' => $ids[$i], 'publicado' => true]);
     }
+    // Un conjunto independiente hace reproducible la carga de 50 y 100 filas,
+    // sin modificar los 18 registros de los contratos del mapa y las ubicaciones.
+    foreach (range(1, 150) as $i) {
+        $idScroll = (string) Str::uuid();
+        $codigoScroll = $prefijo.'SCROLL-'.$i;
+        DB::table('taxonomia.especimenes')->insert([
+            'id' => $idScroll, 'taxon_id' => $especies[2], 'muestra_id' => $muestras[2],
+            'codigo_catalogo' => $codigoScroll, 'occurrence_id' => $codigoScroll,
+            'fila_origen_excel' => 210000 + $i, 'country' => 'Ecuador',
+            'state_province' => 'Pichincha', 'colector' => 'Fixture de desplazamiento',
+            'localidad' => 'Lugar Scroll', 'locality_name' => 'Lugar Scroll',
+            'decimal_latitude' => -1, 'decimal_longitude' => -78.5,
+            'fecha_colecta' => '2011-02-10', 'elevation_min_m' => 600, 'elevation_max_m' => 600,
+        ]);
+        DB::table('divulgacion.especimenes_divulgables')->insert(['id' => (string) Str::uuid(), 'especimen_id' => $idScroll, 'publicado' => true]);
+    }
     $taxonBusqueda = 'Browserobius '.$token;
-    $datos = compact('token', 'prefijo', 'taxones', 'filos', 'familias', 'especies', 'muestras', 'codigos', 'ids', 'taxonBusqueda');
+    $taxonScroll = 'Scrollobius '.$token;
+    $datos = compact('token', 'prefijo', 'taxones', 'filos', 'familias', 'especies', 'muestras', 'codigos', 'ids', 'taxonBusqueda', 'taxonScroll');
     if (file_put_contents($archivo, json_encode($datos, JSON_THROW_ON_ERROR)) === false) throw new RuntimeException('No se pudo registrar el fixture para limpiarlo.');
     return $datos;
 });
