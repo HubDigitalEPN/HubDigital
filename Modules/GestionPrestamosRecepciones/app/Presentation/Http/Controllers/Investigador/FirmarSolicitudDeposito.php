@@ -6,7 +6,6 @@ namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Inve
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\UploadedFile;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Services\FirmaPdfJava;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\JavaValidacionFirmaElectronicaAdapter;
 use Modules\GestionPrestamosRecepciones\Presentation\Support\PerfilFirmaPdf;
@@ -90,6 +89,11 @@ final class FirmarSolicitudDeposito
                 ? JavaValidacionFirmaElectronicaAdapter::desdeDictamen($archivoJava->dictamenFirma)
                 : $validador->verificarFirmaDetallada($rutaAbsoluta, $originalTemporal);
             $validacionMs = (int) round((microtime(true) - $inicioValidacion) * 1000);
+            if ($archivoJava->dictamenFirma !== null
+                && (! hash_equals((string) ($archivoJava->dictamenFirma['original_sha256'] ?? ''), hash('sha256', $pdfOriginal))
+                    || ! hash_equals((string) ($archivoJava->dictamenFirma['pdf_sha256'] ?? ''), (string) hash_file('sha256', $rutaAbsoluta)))) {
+                throw new \InvalidArgumentException('El PDF cambió después de su validación Java.');
+            }
             if (! $validacion->esAceptable()) {
                 return response()->json([
                     'message' => $validacion->error ?: 'La firma no superó la validación criptográfica e integral.',
@@ -103,14 +107,11 @@ final class FirmarSolicitudDeposito
             $firmaMetadata['firma_peticion_id'] = $peticionId;
             $firmaMetadata['pdf_sha256'] = hash_file('sha256', $rutaAbsoluta);
             $firmaMetadata['original_sha256'] = hash('sha256', $pdfOriginal);
-            $archivoFirmado = new UploadedFile($rutaAbsoluta, 'solicitud-firmada.pdf', 'application/pdf', null, true);
             $inicioAlmacenamiento = microtime(true);
-            $rutaGuardada = $almacenamiento->guardarSubidoComo($archivoFirmado, $ruta);
-            abort_unless($rutaGuardada === $ruta, 500, 'No se pudo guardar la solicitud firmada.');
+            $huellaGuardada = $almacenamiento->guardarFirmadoValidado($archivoJava, $ruta);
             $guardado = true;
             abort_unless(
-                $almacenamiento->existe($ruta)
-                    && hash_equals($firmaMetadata['pdf_sha256'], $almacenamiento->sha256($ruta)),
+                hash_equals($firmaMetadata['pdf_sha256'], $huellaGuardada),
                 500,
                 'El PDF firmado no superó la verificación de integridad en R2.',
             );
@@ -184,6 +185,6 @@ final class FirmarSolicitudDeposito
 
         return response()->json([
             'message' => 'Solicitud firmada y validada criptográficamente.',
-        ]);
+        ])->header('Server-Timing', 'firma;dur='.$firmaMs.',validacion;dur='.$validacionMs.',r2;dur='.$almacenamientoMs);
     }
 }

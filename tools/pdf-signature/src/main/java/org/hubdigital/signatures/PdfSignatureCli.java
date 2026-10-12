@@ -108,21 +108,15 @@ public final class PdfSignatureCli {
             }
             if (args.length == 1 && "verify-stream".equals(args[0])) {
                 verifyStream();
+            } else if (args.length == 2 && "serve".equals(args[0])) {
+                PdfSignatureWorker.serve(Path.of(args[1]));
             } else if (args.length == 2 && Set.of("sign", "sign-verify").contains(args[0]) && "--request-stdin".equals(args[1])) {
                 byte[] entrada = System.in.readNBytes(65_537);
-                String[] datos = null;
                 try {
                     if (entrada.length > 65_536) throw new IllegalArgumentException("Petición de firma demasiado larga.");
-                    datos = new String(entrada, StandardCharsets.UTF_8).split("\\x00", -1);
-                    if (datos.length != 5) throw new IllegalArgumentException("Petición de firma incompleta.");
-                    Result seguro = inspect(Path.of(datos[0]));
-                    if (!"seguro".equals(seguro.status)) throw new IllegalArgumentException("El original no es un PDF seguro.");
-                    FirmadorPdfOficial.firmar(Path.of(datos[0]), Path.of(datos[1]), Path.of(datos[2]), datos[3].toCharArray(), datos[4]);
-                    if ("sign-verify".equals(args[0])) emitOfficial(Path.of(datos[1]), Path.of(datos[0]));
-                    else emit(new Result("firmado", "Firma creada por Java.", true));
+                    System.out.println(signRequest(entrada, "sign-verify".equals(args[0])));
                 } finally {
                     Arrays.fill(entrada, (byte) 0);
-                    if (datos != null) Arrays.fill(datos, "");
                 }
             } else if (args.length == 2 && "verify".equals(args[0])) {
                 emit(verify(Path.of(args[1])));
@@ -146,15 +140,33 @@ public final class PdfSignatureCli {
             }
         } catch (Exception e) {
             diagnosticarError(e);
-            String mensaje = "No fue posible completar la operación PDF. Revisa el archivo y la configuración del validador.";
-            if (e instanceof java.security.cert.CertificateExpiredException) mensaje = "El certificado está caducado.";
-            else if (e instanceof java.security.cert.CertificateNotYetValidException) mensaje = "El certificado aún no está vigente.";
-            else if (e instanceof java.io.IOException && "No se pudo abrir el certificado con la credencial indicada.".equals(e.getMessage())) {
-                mensaje = "No se pudo abrir el certificado. Verifica el archivo y su contraseña.";
-            }
-            emit(new Result("verificacion_no_disponible", mensaje, false));
+            System.out.println(errorResult(e));
             System.exit(2);
         }
+    }
+
+    /** Mismo contrato en CLI y servicio; ninguna credencial se conserva entre peticiones. */
+    static String signRequest(byte[] entrada, boolean validar) throws Exception {
+        String[] datos = new String(entrada, StandardCharsets.UTF_8).split("\\x00", -1);
+        try {
+            if (datos.length != 5) throw new IllegalArgumentException("Petición de firma incompleta.");
+            if (!originalSeguro(Path.of(datos[0]))) throw new IllegalArgumentException("El original no es un PDF seguro.");
+            FirmadorPdfOficial.firmar(Path.of(datos[0]), Path.of(datos[1]), Path.of(datos[2]), datos[3].toCharArray(), datos[4]);
+            return validar ? officialResult(Path.of(datos[1]), Path.of(datos[0]))
+                : json(new Result("firmado", "Firma creada por Java.", true));
+        } finally {
+            Arrays.fill(datos, "");
+        }
+    }
+
+    static String errorResult(Exception e) {
+        String mensaje = "No fue posible completar la operación PDF. Revisa el archivo y la configuración del validador.";
+        if (e instanceof java.security.cert.CertificateExpiredException) mensaje = "El certificado está caducado.";
+        else if (e instanceof java.security.cert.CertificateNotYetValidException) mensaje = "El certificado aún no está vigente.";
+        else if (e instanceof java.io.IOException && "No se pudo abrir el certificado con la credencial indicada.".equals(e.getMessage())) {
+            mensaje = "No se pudo abrir el certificado. Verifica el archivo y su contraseña.";
+        }
+        return json(new Result("verificacion_no_disponible", mensaje, false));
     }
 
     private static Result verify(Path path) throws Exception {
@@ -864,6 +876,19 @@ public final class PdfSignatureCli {
         }
         FirmadorPdfOficial.firmar(original, signed, p12, "temporal".toCharArray(), profile);
         if (!verify(signed).cryptographicallyValid) throw new IllegalStateException("La firma oficial no es criptográficamente válida.");
+        String dictamen = officialResult(signed, original);
+        if (!dictamen.contains("\"aceptable\":true") || !dictamen.contains("\"pdf_seguro\":true")
+            || !dictamen.contains("\"pdf_sha256\":\"" + sha256(signed) + "\"")
+            || !dictamen.contains("\"original_sha256\":\"" + sha256(original) + "\"")) {
+            throw new IllegalStateException("El dictamen no acredita los bytes inspeccionados y firmados.");
+        }
+        PdfSignatureWorker.validatePath(temp.toRealPath(), original.toString(), false, 16L * 1024 * 1024);
+        boolean outsideRejected = false, overwriteRejected = false;
+        try { PdfSignatureWorker.validatePath(temp.toRealPath(), temp.getParent().resolve("fuera.pdf").toString(), true, 0); }
+        catch (IllegalArgumentException expected) { outsideRejected = true; }
+        try { PdfSignatureWorker.validatePath(temp.toRealPath(), signed.toString(), true, 0); }
+        catch (IllegalArgumentException expected) { overwriteRejected = true; }
+        if (!outsideRejected || !overwriteRejected) throw new IllegalStateException("El servicio permite rutas ajenas o sobreescritura.");
         try (PDDocument base = Loader.loadPDF(original.toFile()); PDDocument result = Loader.loadPDF(signed.toFile())) {
             if (!ContenidoOficialPdf.coincide(base, result)) throw new IllegalStateException("La firma oficial no coincide con su zona y contenido.");
             var image = new org.apache.pdfbox.rendering.PDFRenderer(result).renderImageWithDPI(0, 220);
@@ -927,19 +952,24 @@ public final class PdfSignatureCli {
     }
 
     private static void emitOfficial(Path path, Path original) throws Exception {
+        System.out.println(officialResult(path, original));
+    }
+
+    static String officialResult(Path path, Path original) throws Exception {
+        String huella = sha256(path), huellaOriginal = sha256(original);
         // Al firmar una solicitud o acta nueva, una fecha declarada por el
         // cliente no permite usar un certificado que ya está caducado hoy.
         Result result = verify(path, false);
         boolean certificadoValido = "firmado".equals(result.status) || "firmado_sin_revocacion".equals(result.status);
-        boolean formato = false, coincide = false;
+        boolean formato = false, coincide = false, seguro = false;
         String certificado = "{}";
         try (PDDocument firmado = Loader.loadPDF(path.toFile()); PDDocument base = Loader.loadPDF(original.toFile())) {
             List<PDSignature> firmas = firmado.getSignatureDictionaries();
             if (firmas.size() == 1) {
                 PDSignature firma = firmas.get(0);
                 formato = "ETSI.CAdES.detached".equals(firma.getSubFilter());
-                if (formato
-                    && "seguro".equals(inspect(path).status) && "seguro".equals(inspect(original).status)) {
+                seguro = "seguro".equals(inspect(path).status) && "seguro".equals(inspect(original).status);
+                if (formato && seguro) {
                     coincide = ContenidoOficialPdf.coincide(base, firmado);
                 }
                 if (result.cryptographicallyValid) {
@@ -979,15 +1009,30 @@ public final class PdfSignatureCli {
                     result.cryptographicallyValid, result.estadoRevocacion);
             }
         }
-        boolean aceptable = certificadoValido && formato && coincide;
+        if (!huella.equals(sha256(path)) || !huellaOriginal.equals(sha256(original))) {
+            throw new java.io.IOException("El PDF cambió durante su validación.");
+        }
+        boolean aceptable = certificadoValido && formato && coincide && seguro;
         String salida = json(result);
-        System.out.println(salida.substring(0, salida.length() - 1)
+        return salida.substring(0, salida.length() - 1)
             + ",\"documento_completo_firmado\":" + result.cryptographicallyValid
             + ",\"contenido_oficial_coincide\":" + coincide
             + ",\"certificado_vigente\":" + certificadoValido
             + ",\"certificado_confiable\":" + certificadoValido
             + ",\"formato_firma_aceptado\":" + formato
-            + ",\"aceptable\":" + aceptable + ",\"certificado\":" + certificado + "}");
+            + ",\"pdf_seguro\":" + seguro + ",\"pdf_sha256\":\"" + huella + "\""
+            + ",\"original_sha256\":\"" + huellaOriginal + "\""
+            + ",\"aceptable\":" + aceptable + ",\"certificado\":" + certificado + "}";
+    }
+
+    static String sha256(Path path) throws Exception {
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        try (InputStream input = Files.newInputStream(path)) {
+            byte[] buffer = new byte[16_384];
+            int read;
+            while ((read = input.read(buffer)) != -1) digest.update(buffer, 0, read);
+        }
+        return java.util.HexFormat.of().formatHex(digest.digest());
     }
 
     private static String json(Result result) {

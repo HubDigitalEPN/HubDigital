@@ -493,6 +493,8 @@ $requeridos = @(
     'bootstrap/app.php', 'bootstrap/providers.php', 'bootstrap/cache/.gitignore',
     'composer.json', 'composer.lock', 'modules_statuses.json',
     'resources/bin/hubdigital-pdf-signature.jar',
+    'deploy/oracle/systemd/hubdigital-signature.service', 'deploy/oracle/scripts/verify-signature-worker.php',
+    'Modules/GestionPrestamosRecepciones/app/Infrastructure/Services/ClienteFirmadorPreparado.php',
     'resources/token-usb/Iniciar-Conector.ps1', 'resources/token-usb/LEEME.txt',
     'resources/python/portal_ete/server.py', 'resources/python/portal_ete/requirements.txt',
     'config/portal-ete.php', 'deploy/oracle/scripts/install-ete.sh', 'deploy/oracle/systemd/hubdigital-ete.service',

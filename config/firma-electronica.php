@@ -5,6 +5,8 @@ return [
     'java_timeout' => (int) env('JAVA_SIGNATURE_TIMEOUT', 60),
     'java_signature_jar' => env('JAVA_SIGNATURE_JAR', base_path('resources/bin/hubdigital-pdf-signature.jar')),
     'java_signature_trust_dir' => env('JAVA_SIGNATURE_TRUST_DIR', base_path('resources/signature-trust')),
+    'worker_enabled' => (bool) env('JAVA_SIGNATURE_WORKER_ENABLED', PHP_OS_FAMILY === 'Linux'),
+    'worker_socket' => env('JAVA_SIGNATURE_WORKER_SOCKET', '/run/hubdigital-signature/firmador.sock'),
     'render_dpi' => 110,
     'max_pages' => (int) env('FIRMA_MAX_PAGES', 40),
     'max_page_points' => (int) env('FIRMA_MAX_PAGE_POINTS', 1440),

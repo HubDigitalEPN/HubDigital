@@ -7,6 +7,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\ArchivoLocalDeposito;
 
 test('rechaza cualquier controlador que no sea R2 sin escribir una copia local', function (): void {
     Storage::fake('local');
@@ -19,6 +20,51 @@ test('rechaza cualquier controlador que no sea R2 sin escribir una copia local',
         ->toThrow(RuntimeException::class, 'DEPOSIT_STORAGE_DRIVER debe ser r2')
         ->and(Storage::disk('local')->exists('depositos/prueba.pdf'))->toBeFalse()
         ->and(Storage::disk('public')->exists('depositos/prueba.pdf'))->toBeFalse();
+});
+
+test('reutiliza la inspección Java sólo para los bytes acreditados y confirma R2 antes de devolver la huella', function (): void {
+    configurarR2FalsoParaPruebas();
+    config()->set('deposit-storage.verify_after_write', true);
+    // Si intentara lanzar otro inspector, la prueba fallaría por este JAR ausente.
+    config()->set('firma-electronica.java_signature_jar', '/no-existe/inspector.jar');
+    $pdf = pdfValidoParaDepositos();
+    $archivo = UploadedFile::fake()->createWithContent('validado.pdf', $pdf);
+    $local = new ArchivoLocalDeposito($archivo->getRealPath(), false, dictamenFirma: [
+        'aceptable' => true, 'pdf_seguro' => true, 'pdf_sha256' => hash('sha256', $pdf),
+    ]);
+
+    expect((new AlmacenamientoDepositos)->guardarFirmadoValidado($local, 'depositos/validado.pdf'))
+        ->toBe(hash('sha256', $pdf));
+    expect(Http::recorded()->map(fn (array $par): string => $par[0]->method())->all())->toBe(['PUT', 'HEAD', 'GET']);
+});
+
+test('no persiste un firmado cuando su dictamen no acredita esos bytes', function (string $caso): void {
+    Http::fake();
+    $pdf = pdfValidoParaDepositos();
+    $archivo = UploadedFile::fake()->createWithContent('validado.pdf', $pdf);
+    $dictamen = ['aceptable' => true, 'pdf_seguro' => true, 'pdf_sha256' => hash('sha256', $pdf)];
+    match ($caso) {
+        'rechazado' => $dictamen['aceptable'] = false,
+        'inseguro' => $dictamen['pdf_seguro'] = false,
+        'sin_huella' => $dictamen['pdf_sha256'] = null,
+        'modificado' => $dictamen['pdf_sha256'] = hash('sha256', $pdf.'alterado'),
+    };
+    $local = new ArchivoLocalDeposito($archivo->getRealPath(), false, dictamenFirma: $dictamen);
+
+    expect(fn () => (new AlmacenamientoDepositos)->guardarFirmadoValidado($local, 'depositos/no.pdf'))
+        ->toThrow(InvalidArgumentException::class, 'dictamen Java');
+    Http::assertNothingSent();
+})->with(['rechazado', 'inseguro', 'sin_huella', 'modificado']);
+
+test('un PDF externo sin dictamen conserva la inspección Java antes de escribir R2', function (): void {
+    Http::fake();
+    config()->set('firma-electronica.java_signature_jar', '/no-existe/inspector.jar');
+    $archivo = UploadedFile::fake()->createWithContent('token.pdf', pdfValidoParaDepositos());
+
+    expect(fn () => (new AlmacenamientoDepositos)->guardarFirmadoValidado(
+        new ArchivoLocalDeposito($archivo->getRealPath(), false), 'depositos/token.pdf',
+    ))->toThrow(InvalidArgumentException::class, 'inspector Java');
+    Http::assertNothingSent();
 });
 
 test('rechaza configuracion R2 parcial sin aplicar fallback silencioso', function (): void {

@@ -97,12 +97,17 @@ install -m 0644 "${nginx_source}" /etc/nginx/sites-available/hubdigital
 ln -sfn /etc/nginx/sites-available/hubdigital /etc/nginx/sites-enabled/hubdigital
 rm -f /etc/nginx/sites-enabled/default
 nginx -t
-systemctl enable php8.4-fpm nginx hubdigital-worker hubdigital-ete
+systemctl enable php8.4-fpm nginx hubdigital-worker hubdigital-ete hubdigital-signature
+if ! systemctl restart hubdigital-signature.service \
+    || ! runuser -u www-data -- /usr/bin/php8.4 "${release_dir}/deploy/oracle/scripts/verify-signature-worker.php"; then
+    echo 'El firmador preparado no está disponible; la release permanece en mantenimiento.' >&2
+    exit 1
+fi
 if ! systemctl restart hubdigital-ete.service; then
     echo 'Fallo al iniciar ETE; la release permanece en mantenimiento.' >&2
     exit 1
 fi
-if ! curl --fail --silent --show-error --retry 5 --retry-connrefused --retry-delay 1 --max-time 10 http://127.0.0.1:8001/health | jq -e '.motor == "ETE 3.1.3" and .estado == "disponible"' >/dev/null; then
+if ! curl --fail --silent --show-error --retry 30 --retry-connrefused --retry-delay 1 --max-time 10 http://127.0.0.1:8001/health | jq -e '.motor == "ETE 3.1.3" and .estado == "disponible"' >/dev/null; then
     echo 'ETE no está disponible; no se activa el portal.' >&2
     exit 1
 fi
@@ -195,7 +200,7 @@ else
     echo "${chat_result}"
 fi
 
-for unit in hubdigital-worker.service php8.4-fpm.service nginx.service hubdigital-ete.service; do
+for unit in hubdigital-worker.service php8.4-fpm.service nginx.service hubdigital-ete.service hubdigital-signature.service; do
     if systemctl is-active --quiet "${unit}"; then
         echo "OK ${unit}: active"
     else

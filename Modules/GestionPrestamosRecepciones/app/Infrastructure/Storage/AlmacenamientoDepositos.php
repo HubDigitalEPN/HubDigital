@@ -123,6 +123,25 @@ final class AlmacenamientoDepositos
         }
     }
 
+    /** Reutiliza sólo el dictamen Java del servidor para exactamente los mismos bytes. */
+    public function guardarFirmadoValidado(ArchivoLocalDeposito $archivo, string $ruta): string
+    {
+        $contenido = file_get_contents($archivo->ruta());
+        if ($contenido === false) throw new \RuntimeException('No se pudo leer el PDF firmado.');
+        $dictamen = $archivo->dictamenFirma;
+        if ($dictamen === null) {
+            // Un PDF recibido del token no aporta un dictamen confiable del cliente.
+            $this->validarCargaPdf($archivo->ruta(), $contenido);
+        } elseif (($dictamen['aceptable'] ?? false) !== true || ($dictamen['pdf_seguro'] ?? false) !== true
+            || ! is_string($dictamen['pdf_sha256'] ?? null)
+            || ! hash_equals($dictamen['pdf_sha256'], hash('sha256', $contenido))) {
+            throw new \InvalidArgumentException('El PDF firmado no corresponde al dictamen Java validado.');
+        }
+
+        // Confirma tamaño y SHA-256 mediante lectura de R2 antes de devolver la huella.
+        return $this->guardarContenido($ruta, $contenido, 'application/pdf');
+    }
+
     public function existe(string $ruta): bool
     {
         $ruta = $this->normalizarRuta($ruta);
