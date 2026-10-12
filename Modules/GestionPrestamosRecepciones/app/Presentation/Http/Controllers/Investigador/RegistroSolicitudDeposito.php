@@ -116,6 +116,8 @@ final class RegistroSolicitudDeposito extends Component
     #[Locked]
     public bool $solicitudCambiosPendientes = false;
     #[Locked]
+    public bool $solicitudOficioAnteriorFirmado = false;
+    #[Locked]
     public int $solicitudDocumentoVersion = 1;
     #[Locked]
     public bool $firmaInvalidadaPorEdicion = false;
@@ -544,6 +546,19 @@ final class RegistroSolicitudDeposito extends Component
         $this->solicitudCorreo = (string) ($model->solicitud_correo ?? $this->solicitudCorreo);
         $this->solicitudOficio = (string) ($model->solicitud_oficio ?? '');
         $this->solicitudCambiosPendientes = ! $oficioCompleto;
+        if ($oficioCompleto) {
+            $reglas = $this->reglasSolicitud();
+            $valores = [];
+            foreach (array_keys($reglas) as $campo) $valores[$campo] = $this->{$campo};
+            $validacion = Validator::make($valores, $reglas);
+            if ($validacion->fails()) {
+                // Reabrir no modifica el oficio ni elimina su PDF en R2.
+                $this->solicitudOficioAnteriorFirmado = $this->solicitudFirmada;
+                $this->solicitudCambiosPendientes = true;
+                $this->solicitudFirmada = false;
+                $this->setErrorBag($validacion->errors());
+            }
+        }
 
         $pasoGuardado = $model->paso_actual ?? 1;
 
@@ -747,7 +762,7 @@ final class RegistroSolicitudDeposito extends Component
 
     private function solicitudInicialFirmada(): bool
     {
-        if ($this->solicitudId === null) {
+        if ($this->solicitudId === null || $this->solicitudCambiosPendientes) {
             return false;
         }
 
@@ -835,6 +850,7 @@ final class RegistroSolicitudDeposito extends Component
                 || $this->firmaInvalidadaPorEdicion;
         }
         $this->solicitudFirmada = false;
+        $this->solicitudOficioAnteriorFirmado = false;
         $this->validateOnly($propiedad, $reglas);
         if (in_array($propiedad, ['solicitudCedula', 'solicitudTipoIdentificacion'], true) && $this->solicitudCedula !== '') {
             $this->validateOnly('solicitudCedula', $reglas);
@@ -968,6 +984,13 @@ final class RegistroSolicitudDeposito extends Component
 
     public function continuarDesdeSolicitud(): void
     {
+        try {
+            $this->validate($this->reglasSolicitud());
+        } catch (ValidationException $e) {
+            $this->solicitudCambiosPendientes = true;
+            $this->solicitudFirmada = false;
+            throw $e;
+        }
         $modelo = $this->solicitudId === null ? null : SolicitudDepositoEloquentModel::query()
             ->whereKey($this->solicitudId)->where('investigador_id', (string) auth()->id())->first();
         if (! $this->solicitudInicialFirmada()) {

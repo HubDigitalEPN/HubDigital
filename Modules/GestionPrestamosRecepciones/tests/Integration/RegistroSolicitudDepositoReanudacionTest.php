@@ -4,13 +4,86 @@ declare(strict_types=1);
 
 use App\Models\User;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\MatrizEspeciesEloquentModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\RegistroSolicitudDeposito;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
 use Tests\DatabaseFeatureTestCase;
 
 uses(DatabaseFeatureTestCase::class);
+
+test('reanuda el oficio firmado solo con valores vigentes y conserva el PDF anterior sin editarlo', function (?string $campo, ?string $valor): void {
+    configurarR2FalsoParaPruebas();
+    foreach (['usuarios.cargos_catalogo' => 'Investigador de reanudación', 'usuarios.instituciones_catalogo' => 'Institución de reanudación'] as $tabla => $nombre) {
+        DB::table($tabla)->updateOrInsert(['nombre' => $nombre], ['activo' => true, 'created_at' => now(), 'updated_at' => now()]);
+    }
+    $depositante = User::factory()->depositante()->create();
+    $solicitudId = (string) Str::uuid();
+    $ruta = 'depositos/'.$solicitudId.'/oficio-anterior.pdf';
+    $contenido = '%PDF-oficio anterior: fixture de persistencia, no de criptografía';
+    $almacenamiento = app(AlmacenamientoDepositos::class);
+    $huella = $almacenamiento->guardarContenido($ruta, $contenido, 'application/pdf');
+    $datos = [
+        'id' => $solicitudId,
+        'numero' => sprintf('MEPN-INV-DEP-%05d', random_int(70000, 98999)),
+        'investigador_id' => (string) $depositante->id,
+        'tipo_tramite' => 'Depósito',
+        'estado' => 'En Borrador',
+        'paso_actual' => 1,
+        'documentos_cargados' => [],
+        'solicitud_nombre_permiso' => 'Titular de reanudación',
+        'solicitud_tipo_identificacion' => 'cedula',
+        'solicitud_cedula' => '1707514251',
+        'solicitud_cargo' => 'Investigador de reanudación',
+        'solicitud_institucion' => 'Institución de reanudación',
+        'solicitud_grupo' => 'Macroinvertebrados acuáticos',
+        'solicitud_proyecto' => 'Proyecto de reanudación',
+        'solicitud_correo' => $depositante->email,
+        'solicitud_oficio' => 'QA-REANUDAR-001',
+        'solicitud_documento_version' => 3,
+        'solicitud_firmada_en' => now(),
+        'solicitud_firmada_ruta' => $ruta,
+        'solicitud_firmada_sha256' => $huella,
+        'solicitud_firma_metadata' => ['pdf_sha256' => $huella],
+    ];
+    if ($campo !== null) $datos[\Illuminate\Support\Str::snake($campo)] = $valor;
+    $modelo = SolicitudDepositoEloquentModel::query()->create($datos);
+    $antes = $modelo->fresh()->getAttributes();
+    $component = Livewire::actingAs($depositante)->test(RegistroSolicitudDeposito::class);
+    if ($campo !== null) {
+        $component->assertSet('paso', 0)
+            ->assertSet('solicitudFirmada', false)
+            ->assertSet('solicitudCambiosPendientes', true)
+            ->assertSee('Ver PDF firmado anterior')
+            ->assertSee('Selecciona las opciones vigentes')
+            ->assertHasErrors($campo)
+            ->call('continuarDesdeSolicitud')
+            ->assertHasErrors($campo)->assertSet('paso', 0);
+        expect($modelo->fresh()->getAttributes())->toBe($antes);
+    } else {
+        $component->assertSet('paso', 1)
+            ->assertSet('solicitudFirmada', true)
+            ->assertSet('solicitudCambiosPendientes', false);
+        // El catálogo puede cambiar después de montar el formulario. La
+        // validación del servidor también debe bloquear esa petición posterior.
+        DB::table('usuarios.instituciones_catalogo')->where('nombre', 'Institución de reanudación')->update(['activo' => false]);
+        $component->call('continuarDesdeSolicitud')
+            ->assertHasErrors('solicitudInstitucion')->assertSet('paso', 0);
+    }
+    expect($modelo->fresh()->solicitud_firmada_ruta)->toBe($ruta)
+        ->and($modelo->fresh()->solicitud_firmada_sha256)->toBe($huella)
+        ->and($modelo->fresh()->solicitud_documento_version)->toBe(3)
+        ->and($almacenamiento->obtener($ruta))->toBe($contenido);
+    Http::assertNotSent(static fn (\Illuminate\Http\Client\Request $request): bool => $request->method() === 'DELETE');
+})->with([
+    'cargo anterior' => ['solicitudCargo', 'Cargo fuera del catálogo'],
+    'institución anterior' => ['solicitudInstitucion', 'Institución fuera del catálogo'],
+    'grupo anterior' => ['solicitudGrupo', 'Grupo fuera del catálogo'],
+    'oficio vigente y catálogo desactivado después' => [null, null],
+]);
 
 test('conserva la matriz pero exige firmar la solicitud al reanudar una corrección antigua', function (): void {
     $depositante = User::factory()->depositante()->create();

@@ -48,6 +48,10 @@
         </div>
     </details>
     <div class="flex flex-wrap items-center gap-x-4 gap-y-2" aria-live="polite">
+        @if($solicitudOficioAnteriorFirmado)
+            <span class="text-xs text-text-secondary">El oficio anterior tiene valores que deben actualizarse. Selecciona las opciones vigentes y firma el nuevo PDF.</span>
+            <a href="{{ route('depositos.solicitud.documento', ['id' => $solicitudId]) }}" target="_blank" rel="noopener" class="text-sm font-semibold text-science-blue hover:underline">Ver PDF firmado anterior ↗</a>
+        @endif
         <span wire:loading class="text-xs text-text-secondary">Guardando…</span>
         <span wire:loading.remove class="text-xs text-text-secondary">{{ $solicitudCambiosPendientes || ! $solicitudId ? 'Completa los campos para generar el PDF.' : 'Datos guardados automáticamente.' }}</span>
         @if(! $solicitudId || $solicitudCambiosPendientes)
