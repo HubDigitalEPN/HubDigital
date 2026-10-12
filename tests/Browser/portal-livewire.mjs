@@ -125,9 +125,11 @@ try {
         sinErrores();
     };
     const url = `${origen}/portal/catalogo?vista=mapa&ft=${encodeURIComponent(datos.taxonBusqueda)}`;
-    // El GET entrega inmediatamente el estado de carga; los agregados se resuelven después.
+    // El GET entrega el catálogo completo para que la PWA conserve contenido,
+    // sin repetir una petición Livewire para resolver un placeholder.
     const primera = await esperar(async () => { try { const r = await fetch(url); return r.ok && await r.text(); } catch { return false; } }, 'primera respuesta del portal');
-    assert.match(primera, /Cargando los registros públicos y sus filtros/);
+    assert.ok(/atlas-dashboard/.test(primera) && /research-phylum-tree/.test(primera), 'La primera respuesta incluye mapa, paneles y filtros ya renderizados.');
+    assert.ok(!/Cargando los registros públicos y sus filtros|wire:lazy/.test(primera), 'La apertura no depende de un placeholder ni una segunda petición de carga.');
     await conexion.send('Page.navigate', {url});
     await visible("document.querySelector('.atlas-dashboard .atlas-map .leaflet-pane') && document.querySelector('.research-check-list input') && window.Livewire");
     await reposo();
@@ -198,9 +200,9 @@ try {
     await mostrarTooltip();
     await conexion.send('Network.emulateNetworkConditions', {offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1});
 
-    // TreeTips de MDD: tarjetas iniciales; cada selección abre sólo su rama 3D.
+    // Explorador izquierdo único: una raíz compartida con el grafo y su ficha.
     await evaluar("document.querySelector('button[aria-label=\"Árbol taxonómico\"]').click()");
-    await visible("document.querySelector('#explorador-taxonomico[open] .portal-mdd-tree-stage')?.checkVisibility()"); await reposo();
+    await visible("document.querySelector('#explorador-taxonomico[open] .portal-taxonomy-tree-pane')?.checkVisibility()"); await reposo();
     const catalogoExplorador = await evaluar("({total: Alpine.$data(document.querySelector('#explorador-taxonomico')).total, texto: document.querySelector('.taxonomy-explorer-header p').textContent})");
     assert.ok(catalogoExplorador.total >= datos.codigos.length, 'El explorador conserva el catálogo público completo, incluidos todos los registros de la fixture.');
     assert.equal(Number(catalogoExplorador.texto.match(/[\d.]+/)[0].replaceAll('.', '')), catalogoExplorador.total, 'El encabezado refleja el total del catálogo propio del explorador.');
@@ -215,7 +217,7 @@ try {
         const muestras = await evaluar(`new Promise(resolve => {
             const fin = performance.now() + 600, muestras = [];
             function medir() {
-                const host = document.querySelector('.portal-ete-host'), stage = host.querySelector('.portal-ete-stage');
+                const host = document.querySelector('.portal-ete-host'), stage = host.querySelector('.portal-branch-tree');
                 const h = host.getBoundingClientRect(), s = stage.getBoundingClientRect();
                 muestras.push([h.width,h.height,s.left,s.top,s.width,s.height,host.scrollLeft,host.scrollTop]);
                 if (performance.now() < fin) requestAnimationFrame(medir); else resolve(muestras);
@@ -225,7 +227,7 @@ try {
         assert.ok(muestras.length >= 3);
         assert.ok(muestras.every(muestra => muestra.every((valor, i) => Math.abs(valor - muestras[0][i]) <= .5)), 'El árbol y sus barras permanecen estables tras terminar el dibujo.');
     }
-    const raizETE = ".portal-ete-node[aria-label^=" + JSON.stringify('Browsersuborder' + token + '0,') + "]";
+    const raizETE = ".portal-branch-row[aria-label^=" + JSON.stringify('Browsersuborder' + token + '0,') + "]";
     await buscarEnArbol('FiloBrowser' + token);
     assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /18 registros/);
     await evaluar("document.querySelector('#sugerencias-explorador button').click()");
@@ -238,7 +240,7 @@ try {
     async function navegarInicial(nombre) {
         await evaluar("(() => {const d=Alpine.$data(document.querySelector('#explorador-taxonomico'));return d.irARama(d.nodos.find(n=>n.nombre===" + JSON.stringify(nombre) + "));})()");
         await visible(nombre === 'FiloBrowser' + token
-            ? "document.querySelector('.portal-mdd-tree')?.dataset.taxonNombre===" + JSON.stringify(nombre)
+            ? "document.querySelector('.portal-three-scene')?.dataset.raiz===document.querySelector('.portal-taxonomy-tree-pane')?.dataset.raiz"
             : "document.querySelector('.portal-three-scene')?.dataset.nombre===" + JSON.stringify(nombre));
         await visible("document.querySelector('.portal-ete-host').getAttribute('aria-busy')==='false'");
     }
@@ -247,10 +249,10 @@ try {
     await visible("document.querySelector('.portal-three-instructions').textContent.includes(" + JSON.stringify('Browserorder' + token + '0') + ")");
     await evaluar("document.querySelector('.portal-three-canvas').dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}))");
     await visible("document.querySelector('.portal-three-scene')?.dataset.nombre===" + JSON.stringify('Browserorder' + token + '0'));
-    assert.equal(await evaluar("document.querySelector(" + JSON.stringify(raizETE) + ")"), null, 'Abrir una rama 3D no crea sus hijos en la izquierda.');
-    assert.ok(await evaluar("(() => {const d=Alpine.$data(document.querySelector('#explorador-taxonomico')),s=document.querySelector('.portal-ete-stage');return s.querySelector('.portal-mdd-tree').dataset.taxonClave===d.filoActual && [...s.querySelectorAll('[data-taxon-padre]')].every(n=>d.nodos.find(t=>t.clave===n.dataset.taxonClave)?.padre===n.dataset.taxonPadre);})()"), 'Abrir una rama conserva las tarjetas del filo y cada hijo permanece bajo su padre publicado.');
+    assert.notEqual(await evaluar("document.querySelector(" + JSON.stringify(raizETE) + ")"), null, 'La raíz 3D despliega sus descendientes en el explorador izquierdo.');
+    assert.ok(await evaluar("(() => {const d=Alpine.$data(document.querySelector('#explorador-taxonomico')),s=document.querySelector('.portal-taxonomy-tree-pane');return s.dataset.raiz===document.querySelector('.portal-three-scene').dataset.raiz && [...s.querySelectorAll('[data-taxon-padre]')].every(n=>d.nodos.find(t=>t.clave===n.dataset.taxonClave)?.padre===n.dataset.taxonPadre);})()"), 'La raíz y los padres del explorador izquierdo corresponden al grafo y al catálogo publicado.');
     assert.equal(await evaluar("document.querySelector('.taxonomy-navigator-tree')"), null);
-    assert.ok(await evaluar("document.querySelectorAll('.portal-mdd-horizontal').length>0"));
+    assert.ok(await evaluar("document.querySelectorAll('.portal-taxonomy-tree-pane .portal-branch-row[aria-expanded=true]').length>0"), 'La rama abre sus carpetas desde el inicio.');
     await evaluar("document.querySelector('.portal-three-canvas').dispatchEvent(new KeyboardEvent('keydown',{key:'PageDown',bubbles:true}))");
     await visible("document.querySelector('.portal-three-instructions').textContent.includes(" + JSON.stringify('Browsersuborder' + token + '0') + ")");
     await evaluar("document.querySelector('.portal-three-canvas').dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}))");
@@ -259,25 +261,24 @@ try {
     assert.equal(await evaluar("document.querySelector('.portal-three-scene').dataset.nombre"), 'Browsersuborder' + token + '0', 'Seleccionar una esfera la convierte en raíz del grafo y de su ficha.');
     assert.equal(await evaluar("document.querySelector('.portal-branch-eyebrow,.portal-branch-title,.portal-branch-meta')"), null, 'La ficha no repite el encabezado del taxón.');
     assert.equal(await evaluar("[...document.querySelectorAll('.portal-taxonomy-branch-pane button')].some(b => /^(Expandir|Contraer)$/.test(b.textContent.trim()))"), false, 'La ficha no conserva los botones Expandir/Contraer.');
-    assert.deepEqual(await evaluar("[...document.querySelectorAll('.portal-branch-tools button')].map(b => b.textContent.trim())"), ['Información'], 'La barra de la fotografía contiene únicamente el nuevo control Información junto a sus créditos.');
-    assert.equal(await evaluar("document.querySelector(" + JSON.stringify(raizETE) + ")"), null);
-    assert.ok(await evaluar("(() => {const d=Alpine.$data(document.querySelector('#explorador-taxonomico'));return [...document.querySelectorAll('.portal-mdd-horizontal')].every(e=>d.nodos.find(n=>n.clave===e.dataset.hijo)?.padre===e.dataset.padre);})()"), 'Cada conector sigue el padre publicado.');
+    assert.equal(await evaluar("document.querySelector('.portal-branch-info,.portal-taxonomy-branch-pane [role=tree]')"), null, 'La ficha muestra texto y foto, sin botón Información ni un segundo árbol.');
+    assert.notEqual(await evaluar("document.querySelector(" + JSON.stringify(raizETE) + ")"), null);
+    assert.ok(await evaluar("(() => {const d=Alpine.$data(document.querySelector('#explorador-taxonomico'));return [...document.querySelectorAll('.portal-branch-row[data-taxon-padre]')].every(e=>d.nodos.find(n=>n.clave===e.dataset.taxonClave)?.padre===e.dataset.taxonPadre);})()"), 'Cada fila sigue su padre publicado.');
     await navegarInicial('Browsersuborder' + token + '0'); await reposo();
-    await visible("document.querySelector('.portal-mdd-tree-stage').dataset.motor==='MDD TreeTips (MIT)' && document.querySelector('.portal-ete-host').getAttribute('aria-busy')==='false'");
-    assert.ok(await evaluar("document.querySelector('.portal-mdd-tree-stage')?.checkVisibility() && ![...document.querySelectorAll('.taxonomy-explorer-error')].some(e=>e.checkVisibility())"));
-    assert.ok(await evaluar("[...document.querySelectorAll('.portal-mdd-name')].every(n=>parseFloat(getComputedStyle(n).fontSize)>=20)"), 'Los nombres horizontales usan al menos 20 px al zoom inicial.');
-    const claseETE = '.portal-ete-node[aria-label^=' + JSON.stringify('Browserclass' + token + '0,') + ']';
-    assert.ok(await evaluar("(() => {const h=document.querySelector('.portal-ete-host'),r=h.getBoundingClientRect(),n=h.querySelector('.portal-mdd-node').getBoundingClientRect(),v=h.querySelector('.portal-mdd-vertical').getBoundingClientRect(),j=h.querySelector('.portal-mdd-horizontal').getBoundingClientRect();return !h.querySelector('.portal-mdd-root') && Math.abs(v.top-r.top)<=2 && j.top>v.top && n.right>r.left && n.left<r.right && n.top>=r.top && n.bottom<=r.bottom;})()"), 'Sin título duplicado, el tronco parte del borde superior y la primera rama permanece visible.');
+    await visible("document.querySelector('.portal-taxonomy-tree-pane').dataset.filas===document.querySelector('.portal-taxonomy-tree-pane').dataset.nodos && document.querySelector('.portal-ete-host').getAttribute('aria-busy')==='false'");
+    assert.ok(await evaluar("document.querySelector('.portal-taxonomy-tree-pane')?.checkVisibility() && ![...document.querySelectorAll('.taxonomy-explorer-error')].some(e=>e.checkVisibility())"));
+    assert.ok(await evaluar("[...document.querySelectorAll('.portal-branch-name')].every(n=>parseFloat(getComputedStyle(n).fontSize)>=12)"), 'Los nombres del explorador permanecen legibles.');
+    assert.ok(await evaluar("(() => {const h=document.querySelector('.portal-taxonomy-tree-pane'),r=h.getBoundingClientRect(),n=h.querySelector('.portal-branch-row').getBoundingClientRect();return n.left>=r.left && n.right<=r.right && n.top>=r.top && n.bottom<=r.bottom && h.dataset.filas===h.dataset.nodos;})()"), 'La raíz queda visible, sin recortes horizontales y con todos los niveles abiertos.');
     await asegurarETEEstable();
-    const anchoAjustado = await evaluar("document.querySelector('.portal-mdd-content').getBoundingClientRect().width");
+    const anchoAjustado = await evaluar("document.querySelector('.portal-branch-tree').getBoundingClientRect().width");
     await navegarInicial('FiloBrowser' + token);
-    assert.ok(await evaluar("document.querySelector('.portal-three-scene').dataset.raiz===document.querySelector('.portal-mdd-node').dataset.taxonClave"), 'Se abre automáticamente la esfera del primer nodo de la raíz elegida.');
+    assert.ok(await evaluar("document.querySelector('.portal-three-scene').dataset.raiz===document.querySelector('.portal-taxonomy-tree-pane').dataset.raiz"), 'El primer nodo elegido es la raíz tanto del grafo como del explorador.');
     await evaluar("document.querySelector('.taxonomy-navigator-zoom [aria-label=\"Acercar árbol\"]').click()"); await reposo();
     assert.ok(Math.abs(Number(await evaluar("document.querySelector('.portal-three-scene').dataset.zoom")) - 1.25) < .01);
-    assert.ok(Math.abs(await evaluar("document.querySelector('.portal-mdd-content').getBoundingClientRect().width") - anchoAjustado) < 1, 'El zoom de la esfera conserva el tamaño legible de las tarjetas.');
+    assert.ok(Math.abs(await evaluar("document.querySelector('.portal-branch-tree').getBoundingClientRect().width") - anchoAjustado) < 1, 'El zoom de la esfera conserva el tamaño legible del explorador.');
     await asegurarETEEstable();
     await evaluar("document.querySelector('.taxonomy-navigator-zoom [aria-label=\"Alejar árbol\"]').click()"); await reposo();
-    assert.ok(Math.abs(await evaluar("document.querySelector('.portal-mdd-content').getBoundingClientRect().width") - anchoAjustado) < 1);
+    assert.ok(Math.abs(await evaluar("document.querySelector('.portal-branch-tree').getBoundingClientRect().width") - anchoAjustado) < 1);
     for (const factor of [.8, .64]) {
         await evaluar("document.querySelector('[aria-label=\"Alejar árbol\"]').click()"); await reposo();
         assert.ok(Math.abs(Number(await evaluar("document.querySelector('.portal-three-scene').dataset.zoom")) - factor) < .001, 'Alejar funciona desde la vista inicial de la esfera.');
@@ -287,9 +288,9 @@ try {
         await navegarInicial('Browsergenus' + token + '0'); await reposo();
         await evaluar("document.querySelector('.taxonomy-navigator-zoom [aria-label=\"Acercar árbol\"]').click()");
         await navegarInicial(datos.taxonBusqueda + ' alfa'); await reposo();
-        assert.ok(await evaluar("document.querySelector('.portal-three-scene').dataset.nodos==='1' && document.querySelector('.portal-mdd-tree').dataset.taxonNombre===" + JSON.stringify('FiloBrowser' + token)), 'Una hoja elegida abre su única esfera y conserva las tarjetas del filo.');
+        assert.ok(await evaluar("document.querySelector('.portal-three-scene').dataset.nodos==='1' && document.querySelector('.portal-taxonomy-tree-pane').dataset.nodos==='1'"), 'Una hoja elegida muestra su única esfera y su fila raíz, sin hijos de otra rama.');
         await navegarInicial('Browsersuborder' + token + '0'); await reposo();
-        assert.ok(Math.abs(await evaluar("document.querySelector('.portal-mdd-content').getBoundingClientRect().width") - anchoAjustado) < 1, 'Volver a la rama restaura su vista inicial legible.');
+        assert.ok(Math.abs(await evaluar("document.querySelector('.portal-branch-tree').getBoundingClientRect().width") - anchoAjustado) < 1, 'Volver a la rama restaura su vista inicial legible.');
         await asegurarETEEstable();
     }
     assert.ok(await evaluar("(() => {const h=document.querySelector('.portal-ete-host'),m=document.querySelector('.taxonomy-navigator');return h.clientWidth>=m.clientWidth-4 && !document.querySelector('.taxonomy-navigator-sidebar');})()"));
@@ -345,8 +346,10 @@ try {
     await navegarInicial(datos.taxonBusqueda + ' alfa');
     const seleccionadoETE = '.portal-three-canvas';
     await evaluar("document.querySelector(" + JSON.stringify(seleccionadoETE) + ").scrollIntoView({block:'center',inline:'center'})");
-    async function menuTaxon() {
-        const posicion = await evaluar("(() => {const r=document.querySelector(" + JSON.stringify(seleccionadoETE) + ").getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};})()");
+    async function menuTaxon(selector = seleccionadoETE) {
+        await evaluar("document.querySelector(" + JSON.stringify(selector) + ").scrollIntoView({block:'center',inline:'nearest'})");
+        const posicion = await evaluar("(() => {const r=document.querySelector(" + JSON.stringify(selector) + ").getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};})()");
+        assert.ok(await evaluar("(() => {const n=document.querySelector(" + JSON.stringify(selector) + "),p=document.elementFromPoint(" + posicion.x + "," + posicion.y + ");return n===p || n.contains(p);})()"), 'El menú se abre mediante un clic real sobre el nodo visible.');
         await conexion.send('Input.dispatchMouseEvent',{type:'mousePressed',button:'right',clickCount:1,...posicion});
         await conexion.send('Input.dispatchMouseEvent',{type:'mouseReleased',button:'right',clickCount:1,...posicion});
         await visible("document.querySelector('.taxonomy-explorer-context-menu')?.checkVisibility()");
@@ -362,6 +365,12 @@ try {
     await visible("document.querySelector('#registros-taxon-explorador .portal-record-row')");
     await evaluar("document.querySelector('#registros-taxon-explorador .taxonomy-explorer-close').click()");
     await visible("!document.querySelector('#registros-taxon-explorador').open && document.querySelector('#explorador-taxonomico').open && document.activeElement.classList.contains('portal-three-canvas')");
+    const filaSeleccionadaETE = '.portal-taxonomy-tree-pane .portal-branch-row[aria-selected=true]';
+    await menuTaxon(filaSeleccionadaETE);
+    await evaluar("[...document.querySelectorAll('.taxonomy-explorer-context-menu button')].find(b=>b.textContent==='Ver registros').click()");
+    await visible("document.querySelector('#registros-taxon-explorador[open] .portal-record-row')");
+    await evaluar("document.querySelector('#registros-taxon-explorador .taxonomy-explorer-close').click()");
+    await visible("!document.querySelector('#registros-taxon-explorador').open && document.activeElement.matches(" + JSON.stringify(filaSeleccionadaETE) + ")");
     await menuTaxon();
     await evaluar("[...document.querySelectorAll('.taxonomy-explorer-context-menu button')].find(b=>b.textContent==='Ver en el mapa').click()");
     await visible("!document.querySelector('#explorador-taxonomico').open && document.activeElement.classList.contains('atlas-map')"); await reposo();
@@ -371,7 +380,7 @@ try {
     await evaluar("(() => {const b=document.querySelector('input[placeholder=\"Nombre científico en cualquier rango\"]');b.focus();b.value=" + JSON.stringify(datos.taxonBusqueda) + ";b.dispatchEvent(new Event('input',{bubbles:true}));b.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));})()"); await reposo();
     await visible("document.querySelector('.atlas-collection-count').textContent.includes('18 registros')");
     await evaluar("document.querySelector('button[aria-label=\"Árbol taxonómico\"]').click()");
-    await visible("document.querySelector('#explorador-taxonomico[open] .portal-mdd-tree-stage')"); await reposo();
+    await visible("document.querySelector('#explorador-taxonomico[open] .portal-taxonomy-tree-pane')"); await reposo();
     assert.equal(await evaluar("document.querySelectorAll('.taxonomy-explorer-pill').length"), 0);
     assert.equal(await evaluar("document.querySelector('.taxonomy-explorer-header p').textContent"), catalogoExplorador.texto, 'Reabrir el explorador conserva su catálogo independiente del filtro del mapa.');
     await conexion.send('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false}); await reposo();
@@ -387,15 +396,22 @@ try {
     await visible("!document.querySelector('#explorador-taxonomico').open && document.activeElement.getAttribute('aria-label')==='Árbol taxonómico'");
     assert.equal(totalPeticiones, antesDeEscape);
     await evaluar("document.querySelector('button[aria-label=\"Árbol taxonómico\"]').click()");
-    await visible("document.querySelector('#explorador-taxonomico[open] .portal-mdd-tree-stage')"); await reposo();
+    await visible("document.querySelector('#explorador-taxonomico[open] .portal-taxonomy-tree-pane')"); await reposo();
     const fondoExplorador = await evaluar("(() => {const r=document.querySelector('#explorador-taxonomico').getBoundingClientRect();return {x:r.left-8,y:r.top+20};})()");
     await conexion.send('Input.dispatchMouseEvent',{type:'mousePressed',button:'left',clickCount:1,...fondoExplorador});
     await conexion.send('Input.dispatchMouseEvent',{type:'mouseReleased',button:'left',clickCount:1,...fondoExplorador});
     assert.equal(await evaluar("document.querySelector('#explorador-taxonomico').open"), true);
+    assert.ok(await evaluar(`(() => {
+        const barra=document.querySelector('.taxonomy-navigator-zoom'),botones=[...barra.querySelectorAll('button')],rects=botones.map(b=>b.getBoundingClientRect());
+        return botones.length===5 && botones.at(-2).classList.contains('portal-three-fit') && botones.at(-1).classList.contains('portal-three-maximize')
+            && rects.every(r=>r.width===40 && r.height===40 && Math.abs(r.top-rects[0].top)<1)
+            && !document.querySelector('.taxonomy-explorer-header .portal-three-maximize');
+    })()`), 'Pantalla completa queda después del ajuste y los cinco controles tienen medidas y alineación iguales.');
+    assert.ok(await evaluar("new Set([...document.querySelector('.portal-three-legend').children].map(n=>Math.round(n.getBoundingClientRect().top))).size===1"), 'La leyenda utiliza una sola fila para reservar altura al grafo.');
     const antesDePantallaYCerrar = totalPeticiones;
     await navegarInicial('FiloBrowser' + token);
     const raizAntesDePantalla = await evaluar("document.querySelector('.portal-three-scene').dataset.raiz");
-    const controlPantalla = await evaluar("(() => {const r=document.querySelector('[aria-label=\"Ver octree en pantalla completa\"]').getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};})()");
+    const controlPantalla = await evaluar("(() => {const r=document.querySelector('[aria-label=\"Ver visualizador en pantalla completa\"]').getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};})()");
     await conexion.send('Input.dispatchMouseEvent',{type:'mousePressed',button:'left',clickCount:1,...controlPantalla});
     await conexion.send('Input.dispatchMouseEvent',{type:'mouseReleased',button:'left',clickCount:1,...controlPantalla});
     await visible("document.fullscreenElement===document.querySelector('.portal-three-scene')");
@@ -403,19 +419,19 @@ try {
     await conexion.send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
     await conexion.send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
     await visible("!document.fullscreenElement && document.querySelector('#explorador-taxonomico').open");
-    await visible("document.querySelector('.portal-ete-host').checkVisibility() && document.querySelector('.portal-mdd-tree-stage') && !document.querySelector('.taxonomy-navigator-sidebar')");
+    await visible("document.querySelector('.portal-ete-host').checkVisibility() && document.querySelector('.portal-taxonomy-tree-pane') && !document.querySelector('.taxonomy-navigator-sidebar')");
     await evaluar("document.querySelector('#explorador-taxonomico .taxonomy-explorer-close').click()");
     await visible("!document.querySelector('#explorador-taxonomico').open && document.activeElement.getAttribute('aria-label')==='Árbol taxonómico'");
     assert.equal(totalPeticiones, antesDePantallaYCerrar);
     await conexion.send('Emulation.setDeviceMetricsOverride',{width:390,height:700,deviceScaleFactor:1,mobile:true});
     await evaluar("document.querySelector('button[aria-label=\"Árbol taxonómico\"]').click()");
-    await visible("document.querySelector('#explorador-taxonomico[open] .portal-mdd-tree-stage').checkVisibility()"); await reposo();
-    assert.ok(await evaluar("(() => {const d=document.querySelector('#explorador-taxonomico'),r=d.getBoundingClientRect(),cerrar=d.querySelector('.taxonomy-explorer-close').getBoundingClientRect(),pantalla=d.querySelector('[aria-label=\"Ver octree en pantalla completa\"]').getBoundingClientRect();return Math.abs(r.width-innerWidth*.9)<=2 && Math.abs(r.height-innerHeight*.9)<=2 && cerrar.bottom<=r.bottom && pantalla.left>=r.left && pantalla.right<=r.right && d.querySelector('.taxonomy-navigator-main').clientHeight>=150;})()"));
+    await visible("document.querySelector('#explorador-taxonomico[open] .portal-taxonomy-tree-pane').checkVisibility()"); await reposo();
+    assert.ok(await evaluar("(() => {const d=document.querySelector('#explorador-taxonomico'),r=d.getBoundingClientRect(),cerrar=d.querySelector('.taxonomy-explorer-close').getBoundingClientRect(),pantalla=d.querySelector('[aria-label=\"Ver visualizador en pantalla completa\"]').getBoundingClientRect();return Math.abs(r.width-innerWidth*.9)<=2 && Math.abs(r.height-innerHeight*.9)<=2 && cerrar.bottom<=r.bottom && pantalla.left>=r.left && pantalla.right<=r.right && d.querySelector('.taxonomy-navigator-main').clientHeight>=150;})()"));
     await evaluar("document.querySelector('#explorador-taxonomico .taxonomy-explorer-close').click()");
     await visible("!document.querySelector('#explorador-taxonomico').open");
     await conexion.send('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false}); await reposo();
 
-    // Ramas masivas 3D: se conserva la raíz izquierda y el DOM, sin mutar mapa ni base de datos.
+    // Ramas masivas: jerarquía completa a la izquierda con DOM acotado; sin mutar la base.
     await evaluar("document.querySelector('button[aria-label=\"Árbol taxonómico\"]').click()"); await reposo();
     await visible("(() => {const dialogo=document.querySelector('#explorador-taxonomico'),d=Alpine.$data(dialogo);return dialogo.open && d.listo && !d.buscando && !d.visorCargando && d.cargandoRamas.length===0 && d.nodos.length>0 && document.querySelector('.portal-three-scene')?.checkVisibility();})()");
     await evaluar(`(async () => {
@@ -428,27 +444,31 @@ try {
         d.cargados=['masivo','familia-a','familia-b']; d.expandidos=[];
         await d.irARama(d.nodos[0]);
     })()`);
-    await visible("document.querySelector('.portal-mdd-tree')?.dataset.taxonClave==='masivo' && document.querySelector('.portal-mdd-tree-stage').dataset.nodos==='8'"); await reposo();
     await visible("document.querySelector('.portal-three-scene')?.dataset.raiz==='familia-a' && document.querySelector('.portal-three-scene').dataset.nodos==='123'");
-    assert.equal(await evaluar("document.querySelectorAll('.portal-mdd-node').length"), 7, 'El filo muestra sus siete hijos, sin mezclar los 244 nietos en esa vista ni repetir su título.');
-    for (const familia of ['familia-a', 'familia-b']) {
-        await evaluar("document.querySelector('.portal-mdd-node[data-taxon-clave=" + JSON.stringify(familia) + "]').click()");
-        await visible("document.querySelector('.portal-three-scene')?.dataset.raiz===" + JSON.stringify(familia) + " && document.querySelector('.portal-three-scene').dataset.nodos==='123'");
+    for (const familia of ['Familia A', 'Familia B']) {
+        await navegarInicial(familia); await reposo();
         assert.equal(await evaluar("document.querySelector('.portal-three-scene').dataset.relaciones"), '122');
-        assert.equal(await evaluar("document.querySelector('.portal-mdd-tree-stage').dataset.nodos"), '8');
-        assert.equal(await evaluar("document.querySelectorAll('.portal-mdd-node').length"), 7);
-        assert.equal(await evaluar("document.querySelector('.portal-mdd-tree').dataset.taxonClave"), 'masivo');
-        assert.equal(await evaluar("document.querySelector('.portal-mdd-node[data-taxon-clave=" + JSON.stringify(familia) + "] .portal-mdd-count').textContent"), '· 1', 'La cifra muestra los registros publicados, no la cantidad de hijos.');
+        assert.ok(await evaluar("(() => {const h=document.querySelector('.portal-taxonomy-tree-pane');return h.dataset.raiz===document.querySelector('.portal-three-scene').dataset.raiz && h.dataset.nodos==='123' && h.dataset.filas==='123' && Number(h.dataset.dibujados)<30;})()"), 'Los 122 hijos quedan abiertos en el único explorador, sin crear 123 elementos del DOM.');
+        assert.equal(await evaluar("document.querySelector('.portal-branch-count').textContent"), '1', 'La cifra muestra registros publicados, no cantidad de hijos.');
     }
     assert.ok(await evaluar(`(() => {
-        const d=Alpine.$data(document.querySelector('#explorador-taxonomico')),s=document.querySelector('.portal-mdd-tree-stage'),h=document.querySelector('.portal-ete-host');
-        return [...s.querySelectorAll('.portal-mdd-name')].every(n=>parseFloat(getComputedStyle(n).fontSize)>=20)
-            && [...s.querySelectorAll('.portal-mdd-horizontal')].every(e=>d.nodos.find(n=>n.clave===e.dataset.hijo)?.padre===e.dataset.padre)
-            && !s.querySelector('canvas,svg') && document.querySelector('.portal-three-canvas').checkVisibility()
-            && !document.querySelector('.portal-three-label,.portal-three-branches')
+        const d=Alpine.$data(document.querySelector('#explorador-taxonomico')),s=document.querySelector('.portal-taxonomy-tree-pane');
+        return [...s.querySelectorAll('.portal-branch-row[data-taxon-padre]')].every(e=>d.nodos.find(n=>n.clave===e.dataset.taxonClave)?.padre===e.dataset.taxonPadre)
+            && document.querySelector('.portal-three-canvas').checkVisibility()
+            && !document.querySelector('.portal-three-label,.portal-three-branches,.portal-taxonomy-branch-pane [role=tree]')
             && document.querySelector('.portal-three-context').closest('.taxonomy-navigator-zoom')
             && [...document.querySelectorAll('.portal-three-legend-item')].map(n=>n.textContent).join(',')==='Familia,Especie';
-    })()`), 'La rama completa se representa a la derecha con leyenda por rango, sin expandir tarjetas ni superponer nombres.');
+    })()`), 'La rama respeta sus padres, muestra una leyenda de rangos y no superpone nombres ni repite el árbol a la derecha.');
+    await evaluar("document.querySelector('.portal-tree-maximize').click()"); await reposo();
+    assert.ok(await evaluar("document.querySelector('.portal-taxonomy-split').classList.contains('has-expanded-tree') && !document.querySelector('.portal-taxonomy-three-pane').checkVisibility() && document.querySelector('.portal-three-scene').dataset.rotando==='false'"), 'Ampliar el árbol oculta el grafo y detiene su animación.');
+    const framesOcultos = await evaluar("document.querySelector('.portal-three-scene').dataset.frames");
+    await demora(450);
+    assert.equal(await evaluar("document.querySelector('.portal-three-scene').dataset.frames"), framesOcultos, 'El renderer no consume fotogramas mientras se navega sólo el árbol.');
+    await evaluar("document.querySelector('.portal-branch-row[data-taxon-clave=\"b-0\"]').click()"); await reposo();
+    assert.ok(await evaluar("document.querySelector('.portal-taxonomy-tree-pane').dataset.raiz==='b-0' && document.querySelector('.portal-taxonomy-tree-pane').dataset.nodos==='1' && document.querySelector('.portal-taxonomy-branch-pane').dataset.raiz==='b-0' && !document.querySelector('.portal-taxonomy-three-pane').checkVisibility()"), 'Elegir una hoja en el árbol ampliado actualiza raíz y ficha sin salir del modo ampliado.');
+    await evaluar("document.querySelector('.portal-tree-maximize').click()");
+    await visible("document.querySelector('.portal-three-scene').dataset.raiz==='b-0' && document.querySelector('.portal-three-scene').dataset.nodos==='1' && document.querySelector('.portal-taxonomy-three-pane').checkVisibility()");
+    await navegarInicial('Familia B'); await reposo();
     const altoCanvasAntes = await evaluar("document.querySelector('.portal-three-canvas').getBoundingClientRect().height");
     await evaluar("document.querySelector('.portal-three-canvas').dispatchEvent(new KeyboardEvent('keydown',{key:'PageDown',bubbles:true}))"); await reposo();
     assert.equal(await evaluar("document.querySelector('.portal-three-canvas').getBoundingClientRect().height"), altoCanvasAntes, 'El linaje largo de una especie no desplaza las esferas bajo el puntero.');
@@ -457,17 +477,17 @@ try {
     await evaluar("document.querySelector('.portal-three-legend-item[data-rango=\"especie\"]').click()"); await reposo();
     await visible("document.querySelector('.portal-three-scene').dataset.rangoFiltrado==='especie' && document.querySelector('.portal-three-scene').dataset.indexados==='123'");
     assert.ok(await evaluar("(() => {const s=document.querySelector('.portal-three-scene');return s.dataset.raiz==='familia-b' && s.dataset.nodos==='123' && s.dataset.nodosTotales==='123' && s.dataset.rangosVisibles==='familia,especie' && s.dataset.seleccionVisible==='true' && document.querySelector('.portal-three-legend-item[data-rango=\"especie\"]').getAttribute('aria-pressed')==='true' && !document.querySelector('.portal-three-rank-picker');})()"), 'La leyenda conserva la esfera raíz seleccionable y todas las especies de la rama.');
-    assert.equal(await evaluar("document.querySelectorAll('.portal-mdd-node').length"), 7, 'Filtrar un rango conserva las tarjetas del filo.');
+    assert.equal(await evaluar("document.querySelector('.portal-taxonomy-tree-pane').dataset.filas"), '123', 'Filtrar un rango conserva todos los hijos del explorador izquierdo.');
     await evaluar("document.querySelector('.portal-three-legend-item[data-rango=\"familia\"]').click()");
     await visible("document.querySelector('.portal-three-scene').dataset.rangoFiltrado==='familia' && document.querySelector('.portal-three-scene').dataset.nodos==='1'");
     assert.equal(await evaluar("document.querySelector('.portal-three-scene').dataset.rangosVisibles"), 'familia');
     await evaluar("document.querySelector('.portal-three-legend-item[data-rango=\"familia\"]').click()");
     await visible("document.querySelector('.portal-three-scene').dataset.rangoFiltrado==='' && document.querySelector('.portal-three-scene').dataset.nodos==='123'");
-    await evaluar("document.querySelector('.portal-mdd-node[data-taxon-clave=\"familia-b\"]').click()");
+    await navegarInicial('Familia B');
     await visible("document.querySelector('.portal-three-scene').dataset.raiz==='familia-b' && document.querySelector('.portal-three-scene').dataset.nodos==='123'");
-    await evaluar("window.nodoMasivoOriginal=document.querySelector('.portal-mdd-node');document.querySelector('[aria-label=\"Acercar árbol\"]').click()");
+    await evaluar("window.nodoMasivoOriginal=document.querySelector('.portal-branch-row');document.querySelector('[aria-label=\"Acercar árbol\"]').click()");
     await reposo();
-    assert.ok(await evaluar("document.querySelector('.portal-mdd-node')===window.nodoMasivoOriginal && Math.abs(Number(document.querySelector('.portal-three-scene').dataset.zoom)-1.25)<.01"), 'El zoom superior acerca el grafo y conserva las tarjetas iniciales.');
+    assert.ok(await evaluar("document.querySelector('.portal-branch-row')===window.nodoMasivoOriginal && Math.abs(Number(document.querySelector('.portal-three-scene').dataset.zoom)-1.25)<.01"), 'El zoom superior acerca el grafo y conserva las filas del explorador.');
     await evaluar("document.querySelector('[aria-label=\"Alejar árbol\"]').click()");
     for (const factor of [.8, .64]) {
         await evaluar("document.querySelector('[aria-label=\"Alejar árbol\"]').click()"); await reposo();
@@ -475,12 +495,12 @@ try {
     }
     await evaluar("document.querySelector('.portal-three-fit').click()"); await reposo();
     await asegurarETEEstable();
-    await evaluar("document.querySelector('.portal-mdd-node[data-taxon-clave=\"familia-a\"]').click()");
+    await navegarInicial('Familia A');
     await visible("document.querySelector('.portal-three-scene').dataset.raiz==='familia-a' && document.querySelector('.portal-three-scene').dataset.nodos==='123'");
-    await evaluar("document.querySelector('.portal-mdd-node[data-taxon-clave=\"familia-a\"]').click()");
+    await evaluar("window.nodoMasivoOriginal=document.querySelector('.portal-branch-row');document.querySelector('.portal-branch-row').click()");
     await reposo();
-    assert.ok(await evaluar("document.querySelector('.portal-mdd-node')===window.nodoMasivoOriginal && document.querySelectorAll('.portal-mdd-node').length===7 && document.querySelector('.portal-three-scene').dataset.raiz==='familia-a' && document.querySelector('.portal-three-scene').dataset.nodos==='123'"), 'Elegir otra vez una rama conserva sus descendientes 3D y no despliega ni reconstruye las tarjetas.');
-    await evaluar("document.querySelector('.portal-mdd-node[data-taxon-clave=\"familia-b\"]').click();document.querySelector('.portal-mdd-node[data-taxon-clave=\"familia-a\"]').click()");
+    assert.ok(await evaluar("document.querySelector('.portal-branch-row')===window.nodoMasivoOriginal && document.querySelector('.portal-taxonomy-tree-pane').dataset.filas==='123' && document.querySelector('.portal-three-scene').dataset.raiz==='familia-a' && document.querySelector('.portal-three-scene').dataset.nodos==='123'"), 'Elegir otra vez una rama conserva sus descendientes 3D y mantiene todas sus filas abiertas sin reconstruirlas.');
+    await evaluar("(() => {const d=Alpine.$data(document.querySelector('#explorador-taxonomico'));d.irARama(d.nodos.find(n=>n.clave==='familia-b'));d.irARama(d.nodos.find(n=>n.clave==='familia-a'));})()");
     await reposo();
     await visible("document.querySelector('.portal-taxonomy-three-pane').getAttribute('aria-busy')==='false'");
     assert.ok(await evaluar("document.querySelector('.portal-three-scene').dataset.raiz==='familia-a' && document.querySelector('.portal-three-title').textContent==='Familia A' && !document.querySelector('.portal-three-status').checkVisibility() && !document.querySelector('.portal-ete-loading').checkVisibility() && [...document.querySelectorAll('.portal-three-legend button')].every(b=>!b.disabled)"), 'Una raíz pendiente no sustituye el dibujo ni el encabezado de la última rama elegida, ni deja el aviso de carga activo o la leyenda bloqueada.');
@@ -488,10 +508,10 @@ try {
         await evaluar("(() => {const d=Alpine.$data(document.querySelector('#explorador-taxonomico'));return d.irARama(d.nodos.find(n=>n.clave===" + JSON.stringify(familia) + "));})()");
         await visible("document.querySelector('.portal-three-scene')?.dataset.raiz===" + JSON.stringify(familia));
         assert.equal(await evaluar("document.querySelector('.portal-three-scene').dataset.nodos"), '123');
-        assert.ok(await evaluar("document.querySelector('.portal-mdd-tree').dataset.taxonClave==='masivo' && document.querySelectorAll('.portal-mdd-node').length===7"), 'Cambiar la raíz 3D conserva las siete tarjetas del filo.');
+        assert.ok(await evaluar("document.querySelector('.portal-taxonomy-tree-pane').dataset.raiz===document.querySelector('.portal-three-scene').dataset.raiz && document.querySelector('.portal-taxonomy-tree-pane').dataset.filas==='123'"), 'Cambiar la raíz 3D conserva los hijos de la raíz actual.');
         await evaluar("document.querySelector('.portal-three-canvas').dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}))");
-        await visible("document.querySelector('.portal-taxonomy-branch-pane').dataset.nodos==='123'");
-        assert.ok(await evaluar("(() => {const h=document.querySelector('.portal-taxonomy-branch-pane');return h.dataset.filas==='123' && Number(h.dataset.dibujados)<20 && h.querySelector('.portal-branch-tree').scrollHeight>h.querySelector('.portal-branch-tree').clientHeight;})()"), 'La rama con 122 hijos se conserva completa en el explorador derecho, con filas virtuales y desplazamiento.');
+        await visible("document.querySelector('.portal-taxonomy-tree-pane').dataset.nodos==='123'");
+        assert.ok(await evaluar("(() => {const h=document.querySelector('.portal-taxonomy-tree-pane');return h.dataset.filas==='123' && Number(h.dataset.dibujados)<30 && h.querySelector('.portal-branch-tree').scrollHeight>h.querySelector('.portal-branch-tree').clientHeight;})()"), 'La rama con 122 hijos se conserva completa en el explorador izquierdo, con filas virtuales y desplazamiento.');
         assert.equal(await evaluar("Alpine.$data(document.querySelector('#explorador-taxonomico')).visorError"), '', 'Cambiar la raíz conserva hijos compartidos sin reutilizar padres retirados.');
     }
     await evaluar("(() => {const d=Alpine.$data(document.querySelector('#explorador-taxonomico'));Object.assign(d,window.respaldoVisorMasivo);d.distribuir();delete window.respaldoVisorMasivo;delete window.nodoMasivoOriginal;delete window.hijoMasivoOriginal;})()"); await reposo();

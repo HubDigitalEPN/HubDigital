@@ -8,7 +8,7 @@
     $colectaActiva = array_any(['filtroColector', 'filtroPreparaciones', 'filtroMetodos', 'filtroBiomas', 'filtroHabitat', 'filtroTipo', 'filtroDisposicion', 'filtroCasta', 'filtroEstadio'], $activo);
 @endphp
 
-<details class="research-sidebar" wire:key="catalogo-filtros" x-data="portalFiltros" wire:ignore.self wire:loading.attr="inert">
+<details class="research-sidebar" open wire:key="catalogo-filtros" x-data="portalFiltros" wire:ignore.self wire:loading.attr="inert">
     <summary title="Mostrar u ocultar filtros">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M7 12h10M10 17h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
         <span>{{ $filtroTexto('filtros') }}</span>
@@ -24,16 +24,18 @@
         <fieldset @class(['research-filter-active' => $activo('filtroFilos') || $activo('filtroTaxonId')]) wire:key="panel-filos" x-data="portalFiltroFilo(@js($panelFilos), @js(route('portal.filos')))" x-on:filos-panel-actualizados="actualizar($event.detail)">
             <legend>{{ $filtroTexto('filo') }}</legend>
             <span hidden wire:key="filos-datos-{{ sha1(json_encode($panelFilos)) }}" x-init="$dispatch('filos-panel-actualizados', @js($panelFilos))"></span>
-            <div class="research-phylum-tree research-check-list" role="tree" aria-label="{{ $filtroTexto('filo') }}" wire:ignore>
-                <template x-for="nodo in filas" :key="nodo.clave">
+            <div class="research-phylum-tree research-check-list" role="tree" aria-label="{{ $filtroTexto('filo') }}" wire:ignore x-ref="arbolFilo" x-on:scroll.passive="actualizarVentana()" x-on:resize.window.debounce.100ms="actualizarVentana()">
+                <div aria-hidden="true" :style="{height: espacioSuperior + 'px'}"></div>
+                <template x-for="nodo in filasVisibles" :key="nodo.clave">
                     <div class="research-phylum-row" role="treeitem" :data-filo-clave="nodo.clave" :aria-level="nodo.profundidad + 1" :aria-expanded="nodo.tieneHijos ? expandidos.includes(nodo.clave) : null" :aria-selected="marcado(nodo)" :style="{'--nivel-filo': Math.min(nodo.profundidad, 5)}" :class="{'is-selected': marcado(nodo)}">
                         <button type="button" class="research-phylum-toggle" :class="{'is-leaf': !nodo.tieneHijos}" :disabled="!nodo.tieneHijos || cargando.includes(nodo.clave)" :aria-label="(expandidos.includes(nodo.clave) ? 'Contraer ' : 'Expandir ') + nodo.nombre" x-on:click="alternar(nodo)">
                             <svg viewBox="0 0 16 16" aria-hidden="true" :class="{'is-expanded': expandidos.includes(nodo.clave)}"><path d="m6 3 5 5-5 5"/></svg>
                         </button>
-                        <label><input type="checkbox" :value="nodo.id" :checked="marcado(nodo)" :aria-label="nodo.nombre + ', ' + nodo.etiqueta" x-on:change="seleccionar(nodo, $event.target.checked, $event.target)" x-on:keydown="teclado($event, nodo)"><span x-text="nodo.nombre"></span></label>
+                        <label><input type="checkbox" :value="nodo.id" :checked="marcado(nodo)" :aria-label="nodo.nombre + ', ' + nodo.etiqueta" x-on:change="seleccionar(nodo, $event.target.checked, $event.target)" x-on:keydown="teclado($event, nodo)"><span x-text="nodo.nombre" :title="nodo.nombre + ' · ' + nodo.etiqueta"></span></label>
                         <small x-text="Number(nodo.total).toLocaleString('es-EC')"></small>
                     </div>
                 </template>
+                <div aria-hidden="true" :style="{height: espacioInferior + 'px'}"></div>
                 <p class="research-filter-note" x-show="filas.length === 0">No hay filos públicos para el taxón seleccionado.</p>
             </div>
             <p class="research-filter-error" x-cloak x-show="error" role="alert" x-text="error"></p>

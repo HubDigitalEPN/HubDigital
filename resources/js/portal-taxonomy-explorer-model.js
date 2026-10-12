@@ -318,7 +318,7 @@ export function crearExploradorTaxonomico(reloj = {
                     catch {if (solicitud === revisionVisor) this.visorError = 'No se pudo abrir el visor. Vuelve a intentarlo.'; cargandoVisor = null;}
                 }
                 if (!visor || solicitud !== revisionVisor || !this.abierto || this.modo !== 'ramas') return;
-                await visor.actualizar({nodos: this.nodos, expandidos: this.expandidos, rama: this.ramaActiva,
+                await visor.actualizar({nodos: this.nodos, expandidos: this.expandidos, rama: this.ramaActiva, navegacion: revisionNavegacion,
                     seleccion: this.nodos.find(nodo => nodo.id === this.seleccionado)?.clave || '',
                     taxon: this.filtrosArbol.at(-1)?.id || '', vista: this.vistaETE, escala: this.escalaETE,
                     revision: this.revisionETE, endpoint: this.$refs.dialogo.dataset.eteEndpoint});

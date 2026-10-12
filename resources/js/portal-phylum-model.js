@@ -19,10 +19,12 @@ export function crearFiltroFilo(inicial, endpoint) {
     let version = 0, contexto = null;
     return {
         nodos: [], expandidos: [], cargados: [], cargando: [], filos: [], seleccionado: '', filas: [], busquedaTaxon: '', error: '',
+        filasVisibles: [], espacioSuperior: 0, espacioInferior: 0,
         init() { this.actualizar(inicial); },
         actualizar(datos) {
             if (contexto !== datos.contexto) {
                 version++; this.nodos = []; this.expandidos = []; this.cargados = []; this.cargando = []; contexto = datos.contexto;
+                if (this.$refs?.arbolFilo) this.$refs.arbolFilo.scrollTop = 0;
             }
             this.error = ''; this.busquedaTaxon = datos.busquedaTaxon;
             this.filos = datos.filos; this.seleccionado = datos.seleccionado;
@@ -41,8 +43,20 @@ export function crearFiltroFilo(inicial, endpoint) {
                 if (!this.cargados.includes(clave)) this.cargados.push(clave);
             }
             this.nodos = [...nodos.values()];
+            if (datos.completo) this.cargados = this.nodos.filter(nodo => nodo.tieneHijos).map(nodo => nodo.clave);
         },
-        distribuir() { this.filas = filasFilo(this.nodos, this.expandidos); },
+        distribuir() {
+            this.filas = filasFilo(this.nodos, this.expandidos);
+            this.actualizarVentana();
+        },
+        actualizarVentana(posicion) {
+            const vista = this.$refs?.arbolFilo;
+            const alto = vista?.clientHeight || 320, scroll = posicion ?? vista?.scrollTop ?? 0;
+            const inicio = Math.max(0, Math.min(Math.max(0, this.filas.length - 1), Math.floor(scroll / 32) - 5));
+            const fin = Math.min(this.filas.length, Math.max(inicio + 1, Math.ceil((scroll + alto) / 32) + 5));
+            this.filasVisibles = this.filas.slice(inicio, fin);
+            this.espacioSuperior = inicio * 32; this.espacioInferior = (this.filas.length - fin) * 32;
+        },
         marcado(nodo) { return nodo.padre === null ? this.filos.includes(nodo.id) : this.seleccionado === nodo.id; },
         async alternar(nodo) {
             if (!nodo.tieneHijos || this.cargando.includes(nodo.clave)) return;
@@ -93,7 +107,12 @@ export function crearFiltroFilo(inicial, endpoint) {
             else if (evento.key === 'End') destino = this.filas.at(-1);
             else return;
             evento.preventDefault();
-            if (destino) this.$nextTick(() => this.$el.querySelector(`[data-filo-clave="${destino.clave}"] input`)?.focus());
+            if (destino) {
+                const vista = this.$refs?.arbolFilo, fila = this.filas.findIndex(n => n.clave === destino.clave);
+                if (vista && (fila * 32 < vista.scrollTop || (fila + 1) * 32 > vista.scrollTop + vista.clientHeight)) vista.scrollTop = Math.max(0, fila * 32 - vista.clientHeight / 2);
+                this.actualizarVentana();
+                this.$nextTick(() => this.$el.querySelector(`[data-filo-clave="${destino.clave}"] input`)?.focus());
+            }
         },
     };
 }

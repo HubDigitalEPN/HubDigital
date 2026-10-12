@@ -99,7 +99,8 @@
 .taxonomy-explorer button:hover { background-color: #edf5fb; }
 .taxonomy-explorer button:focus-visible, .taxonomy-explorer input:focus-visible { outline: 3px solid #247cac; outline-offset: 2px; }
 @container taxonomy-explorer (max-width: 767px) {
-    .taxonomy-explorer-header { flex-wrap: wrap; gap: .6rem; padding: .75rem; }
+    .taxonomy-explorer-header { flex-wrap: nowrap; gap: .4rem; padding: .75rem; }
+    .taxonomy-explorer-header > div:first-child { flex: 1; min-width: 0; }
     .taxonomy-explorer-header h2 { font-size: 1.15rem; }
     .taxonomy-explorer-actions { margin-left: auto; }
     .taxonomy-explorer-body { padding: .75rem; }

@@ -176,7 +176,17 @@ test('el panel Filo depende del Taxón confirmado y permite seleccionar hijos si
     $pagina->call('aplicarBusquedaTexto', 'filtroTaxon', $segunda['especie']['nombre'])
         ->assertSet('filtroTaxonId', '')->assertSet('filtroFiloId', '')->assertSet('filtroFilos', [])
         ->assertViewHas('datosMapa', fn ($d) => $d['resumen']['registros'] === 2);
-    expect(array_column($pagina->instance()->arbolFiloPanel['nodos'], 'id'))->toBe([$segunda['phylum']['id']]);
+    $panelTexto = $pagina->instance()->arbolFiloPanel;
+    expect(array_column($panelTexto['nodos'], 'id'))
+        ->toEqualCanonicalizing(array_column(array_slice($segunda, 0, 6), 'id'))
+        ->and($panelTexto['completo'])->toBeTrue()
+        ->and($panelTexto['expandidos'])->toHaveCount(5)
+        ->and(array_column(array_filter($panelTexto['nodos'], fn ($n) => $n['padre'] === null), 'id'))
+        ->toBe([$segunda['phylum']['id']]);
+    foreach ($panelTexto['nodos'] as $nodo) {
+        expect($nodo['total'])->toBe(2);
+        if ($nodo['tieneHijos']) expect($panelTexto['expandidos'])->toContain($nodo['clave']);
+    }
 });
 
 test('elegir un hijo de otro filo retira las selecciones incompatibles', function (): void {

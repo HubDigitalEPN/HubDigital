@@ -25,9 +25,11 @@ export function crearEscenaTaxonomica(elemento, acciones) {
     const volver = boton('Volver al padre de la rama 3D', '↶', () => {const padre = indice?.porClave.get(clave)?.padre; if (padre) acciones.navegar(padre);});
     controles.append(volver);
     const ajuste = boton('Ajustar grafo 3D', '⤢', () => ajustar()); ajuste.className = 'portal-three-fit';
+    const maximizar = boton('Ver visualizador en pantalla completa', '⛶', () => pantallaCompleta().catch(() => mostrarError('No se pudo activar la pantalla completa. Vuelve a intentarlo.')));
+    maximizar.className = 'portal-three-maximize';
     cabecera.append(identidad, controles);
     const barra = elemento.closest('.taxonomy-navigator').querySelector('.taxonomy-navigator-zoom');
-    barra.prepend(cabecera); barra.append(ajuste);
+    barra.prepend(cabecera); barra.append(ajuste, maximizar);
     const vista = crear('div', 'portal-three-viewport'), leyenda = crear('div', 'portal-three-legend');
     vista.style.setProperty('--taxonomy-starfield', fondoEstelar3D());
     leyenda.setAttribute('aria-label', 'Filtrar mundos por rango taxonómico; pulsa otra vez para ver toda la rama'); leyenda.setAttribute('role', 'group');
@@ -39,7 +41,7 @@ export function crearEscenaTaxonomica(elemento, acciones) {
     salirPantalla.className = 'portal-three-fullscreen-exit'; marco.append(salirPantalla);
     let renderer;
     try {renderer = new WebGLRenderer({antialias: true, alpha: true, powerPreference: 'high-performance'});}
-    catch (error) {elemento.replaceChildren(); cabecera.remove(); ajuste.remove(); throw error;}
+    catch (error) {elemento.replaceChildren(); cabecera.remove(); ajuste.remove(); maximizar.remove(); throw error;}
     renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, 1.5));
     const canvas = renderer.domElement; canvas.className = 'portal-three-canvas'; canvas.tabIndex = 0;
     canvas.setAttribute('role', 'img'); canvas.setAttribute('aria-label', 'Árbol 3D: flechas para girar, + y − para zoom, Inicio para ajustar');
@@ -56,7 +58,7 @@ export function crearEscenaTaxonomica(elemento, acciones) {
     const resaltado = new LineSegments(new BufferGeometry(), new LineBasicMaterial({color: '#65c4cf', transparent: true, opacity: .92, depthTest: false}));
     resaltado.visible = false; resaltado.renderOrder = 5; escena.add(resaltado);
     let fuente, indice, clave, dibujo, dibujoCompleto, puntos, conexiones, espacial, tamanos;
-    let destruido = false, revision = 0, idWorker = 0, frame = null, idle = null, pulsacion = null;
+    let destruido = false, activo = true, revision = 0, idWorker = 0, frame = null, idle = null, pulsacion = null;
     let sobreGrafo = false, pausaHasta = 0, reanudar = null, ultimoFrame = 0, esperaFrame = null, renderizando = false, ultimoTelemetria = 0;
     let indiceListo = false, consultandoEncuadre = false, ultimoEncuadre = 0, esperaEncuadre = null, firmaEncuadre = false, maxTamano = 92;
     let dibujoIndexado, idIndice = 0, jerarquiaFallback, indicesVisibles, recortado = false;
@@ -92,11 +94,11 @@ export function crearEscenaTaxonomica(elemento, acciones) {
     } catch {worker = null;}
 
     function programar() {
-        if (destruido || renderizando) return;
+        if (destruido || !activo || renderizando) return;
         if (esperaFrame !== null) {clearTimeout(esperaFrame); esperaFrame = null;}
         if (frame !== null) return;
         frame = requestAnimationFrame(tiempo => {
-            frame = null; if (destruido || !vista.clientWidth || !vista.clientHeight) return;
+            frame = null; if (destruido || !activo || !vista.clientWidth || !vista.clientHeight) return;
             const visible = elemento.closest('dialog').open && document.visibilityState === 'visible';
             if (!visible) {orbit.autoRotate = false; ultimoFrame = 0; marco.dataset.rotando = 'false'; return;}
             const rotar = visible && !sobreGrafo && tiempo >= pausaHasta && !movimientoReducido.matches;
@@ -571,6 +573,10 @@ export function crearEscenaTaxonomica(elemento, acciones) {
             estado.hidden = true;
             marcarSeleccion();
     }
+    async function pantallaCompleta() {
+        if (document.fullscreenElement === marco) return document.exitFullscreen();
+        await marco.requestFullscreen(); canvas.focus({preventScroll: true});
+    }
     return {
         async actualizar(nuevos, raiz, nuevoIndice) {
             if (destruido) return;
@@ -612,10 +618,7 @@ export function crearEscenaTaxonomica(elemento, acciones) {
             marco.dataset.renderMs = (performance.now() - inicio).toFixed(2);
         },
         ajustar, zoom, seleccionar, localizar,
-        async pantallaCompleta() {
-            if (document.fullscreenElement === marco) return document.exitFullscreen();
-            await marco.requestFullscreen(); canvas.focus({preventScroll: true});
-        },
+        pantallaCompleta,
         limpiarSeleccion() {seleccionElegida = ''; pulsoHasta = 0; marcarSeleccion(); ajustar();},
         rangoActivo: () => filtroRango,
         enfocar(claveSeleccion) {
@@ -624,7 +627,16 @@ export function crearEscenaTaxonomica(elemento, acciones) {
             canvas.focus({preventScroll: true}); resaltar(i); return true;
         },
         contiene: claveSeleccion => Boolean(dibujoCompleto?.claves.includes(claveSeleccion)), error: mostrarError,
-        mostrar(valor) {cabecera.hidden = !valor; ajuste.hidden = !valor; if (valor) programar();},
+        mostrar(valor) {
+            activo = valor; cabecera.hidden = !valor; ajuste.hidden = maximizar.hidden = !valor;
+            if (valor) {ultimoFrame = 0; programar();}
+            else {
+                orbit.autoRotate = false; marco.dataset.rotando = 'false';
+                if (frame !== null) {cancelAnimationFrame(frame); frame = null;}
+                for (const timer of [esperaFrame, reanudar, esperaEncuadre]) if (timer !== null) clearTimeout(timer);
+                esperaFrame = reanudar = esperaEncuadre = null; consultaPuntero.cancelar();
+            }
+        },
         destruir() {
             if (document.fullscreenElement === marco) document.exitFullscreen().catch(() => {});
             destruido = true; revision++; cancelarIndice(); resize.disconnect(); orbit.dispose(); worker?.terminate();
@@ -636,7 +648,7 @@ export function crearEscenaTaxonomica(elemento, acciones) {
             if (bootstrapWorker) URL.revokeObjectURL(bootstrapWorker);
             for (const promesa of pendientes.values()) promesa.reject(new Error('Visor cerrado.')); pendientes.clear(); cache.limpiar();
             if (frame !== null) cancelAnimationFrame(frame); consultaPuntero.destruir();
-            liberar(puntos); liberar(conexiones); liberar(resaltado); atlasBiologico.dispose(); gruposBiologicos.clear(); renderer.dispose(); renderer.forceContextLoss(); elemento.replaceChildren(); cabecera.remove(); ajuste.remove();
+            liberar(puntos); liberar(conexiones); liberar(resaltado); atlasBiologico.dispose(); gruposBiologicos.clear(); renderer.dispose(); renderer.forceContextLoss(); elemento.replaceChildren(); cabecera.remove(); ajuste.remove(); maximizar.remove();
         },
     };
 }

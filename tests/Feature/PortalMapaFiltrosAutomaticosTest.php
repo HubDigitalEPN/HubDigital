@@ -50,6 +50,27 @@ test('el borrador textual espera confirmación y los fragmentos mantienen la sel
     $pagina->call('aplicarBusquedaTexto', 'filtroCatalogo', '%')->assertViewHas('totalRegistrosVista', 0);
 });
 
+test('el taxón confirmado despliega toda su rama pública y excluye los descendientes reservados', function (): void {
+    $f = mapaFiltrosAutomaticosFixture();
+    $genero = (string) Str::uuid(); $uno = (string) Str::uuid(); $dos = (string) Str::uuid();
+    DB::table('taxonomia.taxones')->insert([
+        ['id' => $genero, 'padre_id' => $f['familia'], 'rango' => 'genero', 'nombre_cientifico' => 'GeneroFamiliaQa'],
+        ['id' => $uno, 'padre_id' => $genero, 'rango' => 'especie', 'nombre_cientifico' => 'GeneroFamiliaQa uno'],
+        ['id' => $dos, 'padre_id' => $genero, 'rango' => 'especie', 'nombre_cientifico' => 'GeneroFamiliaQa dos'],
+    ]);
+    DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->update(['taxon_id' => $uno]);
+    DB::table('taxonomia.especimenes')->where('id', $f['ids'][1])->update(['taxon_id' => $dos]);
+    $pagina = Livewire::withQueryParams(['vista' => 'mapa'])->test(PortalCatalogo::class)
+        ->call('aplicarBusquedaTexto', 'filtroTaxon', 'FamiliaAnelidaQa');
+    $panel = $pagina->instance()->arbolFiloPanel;
+    expect($panel['completo'])->toBeTrue()
+        ->and(array_column($panel['nodos'], 'id'))->toEqualCanonicalizing([$f['annelida'], $f['familia'], $genero, $uno, $dos])
+        ->and($panel['expandidos'])->toEqualCanonicalizing(array_column(array_filter($panel['nodos'], fn (array $n): bool => $n['tieneHijos']), 'clave'));
+    DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $f['ids'][1])->update(['family_visible' => false]);
+    $pagina->call('aplicarBusquedaTexto', 'filtroTaxon', 'FamiliaAnelidaQa');
+    expect(array_column($pagina->instance()->arbolFiloPanel['nodos'], 'id'))->not->toContain($dos, $f['arthropoda']);
+});
+
 test('las sugerencias públicas respetan publicación y permisos de código y rango taxonómico', function (): void {
     $f = mapaFiltrosAutomaticosFixture();
     $this->getJson(route('portal.sugerencias', ['campo' => 'filtroCatalogo', 'texto' => 'auto-1']))

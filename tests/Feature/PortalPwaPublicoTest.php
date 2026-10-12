@@ -6,9 +6,10 @@ use App\Models\User;
 
 uses(Tests\DatabaseFeatureTestCase::class);
 
-test('sólo las dos aperturas públicas anónimas autorizan guardar el documento en la PWA', function (): void {
+test('sólo las aperturas públicas anónimas autorizan guardar el documento renderizado en la PWA', function (): void {
     $this->get('/')->assertOk()->assertHeader('X-Portal-Public-Cache', 'document');
     $this->get('/portal/catalogo?vista=mapa')->assertOk()->assertHeader('X-Portal-Public-Cache', 'document');
+    $this->get('/portal/catalogo')->assertOk()->assertHeader('X-Portal-Public-Cache', 'document');
     $this->get('/?otra=consulta')->assertOk()->assertHeaderMissing('X-Portal-Public-Cache');
     $this->get('/portal/catalogo?vista=registros')->assertOk()->assertHeaderMissing('X-Portal-Public-Cache');
     $this->actingAs(User::factory()->curador()->create())->get('/')->assertOk()->assertHeaderMissing('X-Portal-Public-Cache');
@@ -29,6 +30,7 @@ test('el portal descarga el arranque por adelantado y presenta el contenido ante
     expect($script)->not->toBeFalse();
     expect($preload)->toBeLessThan(strpos($html, '</head>'));
     expect($script)->toBeGreaterThan(strpos($html, '</main>'));
+    expect($html)->toContain('atlas-dashboard')->not->toContain('wire:lazy');
 });
 
 test('los portales declaran su tema claro incluso para una cuenta autenticada', function (): void {

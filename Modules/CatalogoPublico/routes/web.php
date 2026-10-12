@@ -27,7 +27,9 @@ Route::prefix('portal')
     ->group(function () {
         Route::get('/', fn () => redirect()->route('portal.catalogo', ['vista' => 'mapa']))->name('inicio');
         Route::get('/estadisticas', PortalEstadisticas::class)->name('estadisticas');
-        Route::get('/catalogo', PortalCatalogo::class)->lazy('on-load')->name('catalogo');
+        // La PWA guarda el catálogo renderizado, no un placeholder que necesite
+        // otra petición Livewire en cada apertura, incluso desde la caché.
+        Route::get('/catalogo', PortalCatalogo::class)->name('catalogo');
         Route::get('/explorador', \Modules\CatalogoPublico\Presentation\Http\Controllers\ExploradorPublico::class)
             ->middleware('throttle:180,1')->name('explorador');
         Route::get('/explorador/ficha/{taxon}', \Modules\CatalogoPublico\Presentation\Http\Controllers\FichaTaxonomicaPublica::class)

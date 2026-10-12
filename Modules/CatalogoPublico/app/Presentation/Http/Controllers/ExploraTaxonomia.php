@@ -34,7 +34,14 @@ trait ExploraTaxonomia
         $explorador = app(ExploradorTaxonomicoPublico::class);
         $filtros = FiltrosBusqueda::desde(['filtroTaxon' => $this->filtroTaxon]);
         $seleccion = $this->filtroTaxonId !== '' ? $explorador->taxon($filtros, $this->filtroTaxonId) : null;
-        $datos = $explorador->consultar($filtros, conservar: $seleccion ? [$seleccion['clave']] : []);
+        if ($this->filtroTaxon !== '') {
+            // Un texto confirmado muestra todos los descendientes públicos
+            // del resultado; no sólo Filo/Clase ni una precarga de 300 nodos.
+            $datos = $explorador->estructura($filtros);
+            $datos['expandidos'] = array_column(array_filter($datos['nodos'], static fn (array $n): bool => $n['tieneHijos']), 'clave');
+        } else {
+            $datos = $explorador->consultar($filtros, conservar: $seleccion ? [$seleccion['clave']] : []);
+        }
         $datos['contexto'] = $this->filtroTaxon.':'.DB::table('divulgacion.portal_cache_revision')->where('id', 1)->value('version');
         $datos['busquedaTaxon'] = $this->filtroTaxon;
         $datos['filos'] = $this->filtrosActuales()->filosSeleccionados();

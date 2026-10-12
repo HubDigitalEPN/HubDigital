@@ -1,6 +1,6 @@
 /* Cache Storage contiene únicamente recursos y respuestas públicas autorizadas. */
 const portalPwa = (() => {
-    const VERSION = 'hubdigital-public-v4';
+    const VERSION = 'hubdigital-public-v5';
     const names = {assets: VERSION + '-assets', pages: VERSION + '-pages', data: VERSION + '-data'};
     const limits = {assets: 160, pages: 8, data: 48};
     const ages = {assets: 7 * 86400000, pages: 300000, data: 120000};
@@ -13,7 +13,7 @@ const portalPwa = (() => {
         const photo = /^\/images\/.*\.(?:avif|webp|png|jpe?g|gif|svg)$/i.test(url.pathname)
             || /^\/portal\/referencias-fotograficas\/[0-9]+\/(?:jpg|jpeg|png)\.webp$/.test(url.pathname);
         if (script || photo) return 'assets';
-        const map = url.pathname === '/portal/catalogo' && url.searchParams.size === 1 && url.searchParams.get('vista') === 'mapa';
+        const map = url.pathname === '/portal/catalogo' && (!url.search || url.searchParams.size === 1 && url.searchParams.get('vista') === 'mapa');
         if ((url.pathname === '/' && !url.search) || map) return 'pages';
         if (url.pathname === '/portal/explorador') {
             const inicial = !url.search || (url.searchParams.size === 1 && url.searchParams.get('completo') === '1');
@@ -55,20 +55,22 @@ const portalPwa = (() => {
         for (const key of keys.slice(0, Math.max(0, keys.length - limits[group]))) await cache.delete(key);
     }
 
-    async function network(request, group) {
+    async function network(request, group, event) {
         const response = await fetch(request);
-        if (group) await write(request, response, group).catch(() => {});
+        // La copia se inicia antes de devolver el body; Cache Storage nunca
+        // retrasa la entrega de CSS, JavaScript, HTML ni datos al visitante.
+        if (group) event.waitUntil(write(request, response.clone(), group).catch(() => {}));
         return response;
     }
 
     async function serve(event) {
         const request = event.request;
         const type = policy(request);
-        if (type === 'assets') return await read(request, 'assets').catch(() => null) || network(request, 'assets');
+        if (type === 'assets') return await read(request, 'assets').catch(() => null) || network(request, 'assets', event);
         if (type === 'pages' || type === 'initial-tree') {
             const group = type === 'pages' ? 'pages' : 'data';
             const cached = await read(request, group).catch(() => null);
-            const refresh = network(request, group).then(async response => {
+            const refresh = network(request, group, event).then(async response => {
                 if (type === 'initial-tree' && cached && response.ok
                     && response.headers.get('X-Portal-Revision') !== cached.headers.get('X-Portal-Revision')) {
                     const windows = await clients.matchAll({type: 'window'});
@@ -83,7 +85,7 @@ const portalPwa = (() => {
             catch { if (cached) return cached; if (type === 'pages') return caches.match('/offline.html'); throw new Error('Sin conexión'); }
         }
         if (type === 'data') {
-            try { return await network(request, 'data'); }
+            try { return await network(request, 'data', event); }
             catch { const cached = await read(request, 'data'); if (cached) return cached; throw new Error('Sin conexión'); }
         }
         if (request.mode === 'navigate') {

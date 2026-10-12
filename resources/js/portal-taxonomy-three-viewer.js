@@ -1,42 +1,37 @@
-import {crearVisorTaxonomico as crearArbol} from './portal-mdd-tree-viewer';
 import {indicePublicoTaxonomico} from './portal-phylotree-data';
 import {crearExploradorRama} from './portal-taxonomy-branch-viewer';
 import {mismaFuenteTaxonomica} from './portal-taxonomy-three-cache';
 
-/** Tarjetas, grafo y ficha/explorador; elegir una esfera la convierte en raíz 3D. */
+/** Una sola jerarquía a la izquierda; el panel derecho presenta la ficha de la raíz. */
 export function crearVisorTaxonomico(elemento, acciones) {
     elemento.classList.add('portal-taxonomy-split-host');
     const marco = document.createElement('div'); marco.className = 'portal-taxonomy-split'; marco.setAttribute('x-ignore', '');
     const izquierda = document.createElement('div'); izquierda.className = 'portal-taxonomy-tree-pane';
-    izquierda.setAttribute('aria-label', 'Jerarquía taxonómica: abre una rama para verla en 3D');
+    izquierda.setAttribute('aria-label', 'Explorador de la raíz seleccionada y todos sus descendientes');
     const derecha = document.createElement('section'); derecha.className = 'portal-taxonomy-three-pane';
     derecha.setAttribute('aria-label', 'Árbol tridimensional de la rama seleccionada');
     const explorador = document.createElement('section'); explorador.className = 'portal-taxonomy-branch-pane';
-    explorador.setAttribute('aria-label', 'Explorador de descendientes de la esfera seleccionada');
+    explorador.setAttribute('aria-label', 'Fotografía y descripción del taxón seleccionado');
     marco.append(izquierda, derecha, explorador); elemento.replaceChildren(marco);
-    let indice, fuente, datos, raiz, seleccionado, escena, cargando, destruido = false, revision = 0, revisionBusqueda = 0;
-    const arbol = crearArbol(izquierda, {...acciones,
-        zoom: factor => {if (!seleccionado) acciones.zoom?.(factor);},
-        ajustado: valor => {if (!seleccionado) acciones.ajustado?.(valor);},
-        seleccionarRama: nodo => abrirRama(nodo)});
-    const rama = crearExploradorRama(explorador, {
-        elegir: clave => escena?.localizar(clave),
-        menu: (nodo, evento) => acciones.menu(nodo, evento),
-    });
+    let indice, fuente, datos, raiz, seleccionado, escena, cargando, origenMenu = '', destruido = false, arbolAmpliado = false, revision = 0, revisionBusqueda = 0;
+    const rama = crearExploradorRama(izquierda, {
+        elegir: clave => inspeccionar(clave),
+        menu: (nodo, evento) => {origenMenu = 'arbol'; acciones.menu(nodo, evento);},
+        dibujado: (total, vista) => acciones.dibujado(total, vista),
+        ampliar: () => {
+            arbolAmpliado = !arbolAmpliado;
+            marco.classList.toggle('has-expanded-tree', arbolAmpliado);
+            elemento.closest('.taxonomy-navigator')?.classList.toggle('has-expanded-tree', arbolAmpliado);
+            rama.ampliar(arbolAmpliado); escena?.mostrar(!arbolAmpliado);
+            if (!arbolAmpliado) abrirRama(indice?.porClave.get(seleccionado), false, Boolean(explorador.dataset.ficha));
+        },
+    }, explorador);
 
     async function inspeccionar(clave) {
         if (!indice?.porClave.has(clave) || destruido) return;
-        await abrirRama(indice.porClave.get(clave));
+        await abrirRama(indice.porClave.get(clave), false, true);
         if (destruido || seleccionado !== clave) return;
-        rama.actualizar(indice, clave); escena?.seleccionar(clave);
-    }
-
-    function marcarOrigen(clave) {
-        const vistos = new Set(); let nodo = indice?.porClave.get(clave);
-        while (nodo && nodo.clave !== raiz && nodo.padre !== raiz && !vistos.has(nodo.clave)) {
-            vistos.add(nodo.clave); nodo = indice.porClave.get(nodo.padre);
-        }
-        arbol.marcarSeleccion(nodo?.clave);
+        if (!arbolAmpliado) escena?.seleccionar(clave);
     }
 
     function origenDelFilo(clave) {
@@ -48,12 +43,13 @@ export function crearVisorTaxonomico(elemento, acciones) {
     }
 
 
-    async function abrirRama(nodo, desdeBusqueda = false) {
+    async function abrirRama(nodo, desdeBusqueda = false, mostrarFicha = false) {
         if (!nodo || destruido) return;
         if (!desdeBusqueda) revisionBusqueda++;
-        seleccionado = nodo.clave; marcarOrigen(nodo.clave); marco.classList.add('has-selection');
-        rama.limpiar();
+        seleccionado = nodo.clave; marco.classList.add('has-selection');
+        rama.actualizar(indice, nodo.clave, mostrarFicha);
         const solicitud = ++revision;
+        if (arbolAmpliado) {escena?.mostrar(false); derecha.setAttribute('aria-busy', 'false'); return;}
         derecha.setAttribute('aria-busy', 'true');
         if (!escena) {
             if (!cargando) {
@@ -61,8 +57,8 @@ export function crearVisorTaxonomico(elemento, acciones) {
                 estado.setAttribute('role', 'status'); estado.textContent = 'Preparando la vista 3D…'; derecha.replaceChildren(estado);
                 cargando = import('./portal-taxonomy-three-scene').then(modulo => destruido ? null : modulo.crearEscenaTaxonomica(derecha, {
                     seleccionar: inspeccionar,
-                    navegar: clave => abrirRama(indice?.porClave.get(clave)),
-                    menu: (clave, evento, ancla) => acciones.menu(indice?.porClave.get(clave), evento, ancla),
+                    navegar: clave => abrirRama(indice?.porClave.get(clave), false, true),
+                    menu: (clave, evento, ancla) => {origenMenu = 'escena'; acciones.menu(indice?.porClave.get(clave), evento, ancla);},
                     zoom: factor => acciones.zoom?.(factor), ajustado: valor => acciones.ajustado?.(valor),
                 }));
             }
@@ -75,6 +71,7 @@ export function crearVisorTaxonomico(elemento, acciones) {
             }
         }
         if (!escena || destruido || solicitud !== revision) return;
+        if (arbolAmpliado) {escena.mostrar(false); return;}
         escena.mostrar(true);
         try {await escena.actualizar(fuente, nodo.clave, indice);}
         catch (error) {escena.error('No se pudo dibujar esta rama. Selecciónala de nuevo para reintentar.'); console.error('Árbol 3D:', error);}
@@ -85,35 +82,40 @@ export function crearVisorTaxonomico(elemento, acciones) {
             if (destruido) return;
             const cambioFuente = datos?.nodos !== nuevos.nodos && !mismaFuenteTaxonomica(fuente, nuevos.nodos);
             if (cambioFuente) {indice = indicePublicoTaxonomico(nuevos.nodos); fuente = [...indice.porClave.values()];}
-            const cambioRaiz = datos?.rama !== nuevos.rama;
+            // Una navegación explícita puede volver al mismo padre tras elegir
+            // una esfera. Una revalidación de datos conserva la raíz elegida.
+            const cambioRaiz = datos?.rama !== nuevos.rama || datos?.navegacion !== nuevos.navegacion;
             datos = nuevos; raiz = origenDelFilo(nuevos.rama);
-            // Las tarjetas pertenecen siempre al filo, independientemente de la raíz 3D.
-            await arbol.actualizar({...nuevos, nodos: fuente, rama: raiz});
             if (cambioRaiz || !indice.porClave.has(seleccionado)) {
                 seleccionado = (nuevos.rama !== raiz ? indice.porClave.get(nuevos.rama)
                     : indice.porPadre.get(raiz)?.[0] || indice.porClave.get(raiz))?.clave;
-                revision++; arbol.ajustar();
+                revision++;
             }
-            marcarOrigen(seleccionado);
-            if (seleccionado && (cambioRaiz || cambioFuente || !escena)) await abrirRama(indice.porClave.get(seleccionado));
+            if (seleccionado && (cambioRaiz || cambioFuente || !escena))
+                await abrirRama(indice.porClave.get(seleccionado), false, cambioFuente && !cambioRaiz && Boolean(explorador.dataset.ficha));
         },
         async localizar(clave) {
             if (!indice?.porClave.has(clave) || destruido) return false;
             const solicitud = ++revisionBusqueda;
-            await abrirRama(indice.porClave.get(clave), true);
+            await abrirRama(indice.porClave.get(clave), true, true);
+            if (arbolAmpliado) return !destruido && solicitud === revisionBusqueda;
             if (destruido || solicitud !== revisionBusqueda || !escena?.contiene(clave)) return false;
             const ubicado = await escena.localizar(clave);
             if (!ubicado || destruido || solicitud !== revisionBusqueda) return false;
-            marcarOrigen(clave); rama.actualizar(indice, clave);
             return true;
         },
         cancelarLocalizacion() {revisionBusqueda++;},
-        limpiarBusqueda() {revisionBusqueda++; rama.limpiar(); escena?.limpiarSeleccion();},
-        ajustar() {arbol.ajustar(); escena?.ajustar();},
+        limpiarBusqueda() {revisionBusqueda++; escena?.limpiarSeleccion();},
+        ajustar() {escena?.ajustar();},
         pantallaCompleta() {return escena?.pantallaCompleta();},
-        zoom(paso) {if (seleccionado && escena) escena.zoom(paso); else arbol.zoom(paso);},
+        zoom(paso) {escena?.zoom(paso);},
         rangoActivo() {return escena?.rangoActivo() || '';},
-        enfocar(clave) {if (rama.enfocar(clave) || escena?.enfocar(clave)) return true; return arbol.enfocar(clave);},
-        destruir() {destruido = true; revision++; revisionBusqueda++; arbol.destruir(); rama.destruir(); escena?.destruir(); elemento.classList.remove('portal-taxonomy-split-host'); elemento.replaceChildren();},
+        enfocar(clave) {
+            const desdeEscena = origenMenu === 'escena' && !arbolAmpliado;
+            origenMenu = '';
+            if (desdeEscena && escena?.enfocar(clave)) return true;
+            return rama.enfocar(clave) || (!arbolAmpliado && escena?.enfocar(clave));
+        },
+        destruir() {destruido = true; revision++; revisionBusqueda++; rama.destruir(); escena?.destruir(); elemento.closest('.taxonomy-navigator')?.classList.remove('has-expanded-tree'); elemento.classList.remove('portal-taxonomy-split-host'); elemento.replaceChildren();},
     };
 }

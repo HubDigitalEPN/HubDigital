@@ -68,3 +68,17 @@ test('el teclado recorre el padre y los hijos visibles en su orden de explorador
     ui.teclado(tecla('ArrowLeft'), hijo); assert.match(foco, /Arthropoda/);
     assert.deepEqual(filasFilo([nieto, hijo, raiz], ['Arthropoda', 'Insecta']).map(n => n.profundidad), [0, 1, 2]);
 });
+
+test('un filtro completo abre todos sus niveles y limita el DOM sin perder el último descendiente', () => {
+    const ramas = Array.from({length: 800}, (_, i) => nodo('Especie-' + String(i).padStart(4, '0'), 'Insecta'));
+    const ui = componente(datos({contexto: 'familia:2', busquedaTaxon: 'Familia', completo: true,
+        nodos: [raiz, hijo, ...ramas], precarga: {}, expandidos: ['Arthropoda', 'Insecta']}));
+    assert.equal(ui.filas.length, 802);
+    assert.deepEqual(ui.cargados, ['Arthropoda', 'Insecta']);
+    assert.ok(ui.filasVisibles.length < 25);
+    ui.actualizarVentana(802 * 32 - 320);
+    assert.equal(ui.filasVisibles.at(-1).clave, 'Especie-0799');
+    assert.ok(ui.filasVisibles.length < 25); assert.equal(ui.espacioInferior, 0);
+    ui.actualizar(datos({contexto: 'global:3'}));
+    assert.equal(ui.espacioSuperior, 0); assert.deepEqual(ui.filas.map(n => n.clave), ['Arthropoda']);
+});

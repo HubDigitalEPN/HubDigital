@@ -301,6 +301,7 @@ const registrarDashboard = () => {
         },
         init() {
             this.$el.open = window.matchMedia('(min-width: 701px)').matches;
+            this.$el.setAttribute?.('data-filtros-listos', 'true');
             this.actualizar = () => {
                 const rect = this.$el.getBoundingClientRect();
                 const escala = rect.width / this.$el.offsetWidth || 1;

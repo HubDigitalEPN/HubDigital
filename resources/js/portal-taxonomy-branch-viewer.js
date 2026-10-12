@@ -11,7 +11,12 @@ const icono = nombre => {
 };
 
 /** Explorador de carpetas con DOM acotado, selección y teclado de un árbol accesible. */
-export function crearExploradorRama(elemento, acciones) {
+export function crearExploradorRama(elemento, acciones, panelFicha) {
+    const barraArbol = crear('div', 'portal-tree-toolbar'), tituloArbol = crear('span', 'portal-tree-heading', 'Taxones');
+    const ampliarArbol = crear('button', 'portal-tree-maximize'); ampliarArbol.type = 'button';
+    ampliarArbol.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg>';
+    ampliarArbol.setAttribute('aria-label', 'Ampliar árbol de navegación'); ampliarArbol.title = 'Ampliar árbol de navegación'; ampliarArbol.setAttribute('aria-pressed', 'false');
+    ampliarArbol.addEventListener('click', () => acciones.ampliar?.()); barraArbol.append(tituloArbol, ampliarArbol);
     const cabecera = crear('header', 'portal-branch-header');
     const perfil = crear('div', 'portal-branch-profile'), foto = crear('figure', 'portal-branch-photo');
     const imagen = crear('img', ''), credito = crear('div', 'portal-branch-credit'), descripcion = crear('p', 'portal-branch-description');
@@ -20,23 +25,21 @@ export function crearExploradorRama(elemento, acciones) {
     const ampliarFoto = crear('button', 'portal-branch-photo-open'); ampliarFoto.type = 'button'; ampliarFoto.disabled = true;
     ampliarFoto.setAttribute('aria-haspopup', 'dialog'); ampliarFoto.setAttribute('aria-label', 'Ampliar fotografía'); ampliarFoto.title = 'Ampliar fotografía';
     imagen.decoding = 'async'; ampliarFoto.append(imagen); foto.append(ampliarFoto);
-    const informacion = crear('button', 'portal-branch-info', 'Información'); informacion.type = 'button'; informacion.hidden = true;
-    informacion.setAttribute('aria-haspopup', 'dialog'); informacion.title = 'Ver fotografía y descripción del taxón';
-    const herramientas = crear('div', 'portal-branch-tools'); herramientas.append(credito, informacion);
+    const herramientas = crear('div', 'portal-branch-tools'); herramientas.append(credito);
     const estadoPerfil = crear('p', 'portal-branch-profile-status'); estadoPerfil.setAttribute('role', 'status');
     const reintentar = crear('button', 'portal-branch-retry', 'Reintentar ficha'); reintentar.type = 'button'; reintentar.hidden = true;
-    perfil.append(foto, herramientas, estadoPerfil, reintentar);
+    perfil.append(foto, herramientas, descripcion, estadoPerfil, reintentar);
     cabecera.append(perfil);
     const vista = crear('div', 'portal-branch-tree'); vista.setAttribute('role', 'tree');
     const contenido = crear('div', 'portal-branch-rows'); contenido.setAttribute('role', 'none'); vista.append(contenido);
-    elemento.append(cabecera, vista);
+    elemento.append(barraArbol, vista); panelFicha.append(cabecera);
     const fotoModal = crear('dialog', 'portal-photo-dialog'); fotoModal.setAttribute('aria-label', 'Fotografía ampliada del taxón');
     const barraFoto = crear('div', 'portal-photo-bar'), tituloFoto = crear('h3', 'portal-photo-title');
     const cerrarFoto = crear('button', 'portal-photo-close', '×'); cerrarFoto.type = 'button'; cerrarFoto.setAttribute('aria-label', 'Cerrar fotografía ampliada'); cerrarFoto.title = 'Cerrar fotografía ampliada';
     barraFoto.append(tituloFoto, cerrarFoto);
-    const fotoGrande = crear('img', 'portal-photo-image'), creditosGrandes = crear('p', 'portal-photo-credit');
-    fotoModal.append(barraFoto, fotoGrande, descripcion, creditosGrandes); elemento.append(fotoModal);
-    let rama = {nodos: [], porClave: new Map()}, expandidos = new Set(), filas = [], elegido = '', foco = '', destruido = false, frame = null;
+    const fotoGrande = crear('img', 'portal-photo-image'), descripcionGrande = crear('p', 'portal-branch-description'), creditosGrandes = crear('p', 'portal-photo-credit');
+    fotoModal.append(barraFoto, fotoGrande, descripcionGrande, creditosGrandes); panelFicha.append(fotoModal);
+    let rama = {nodos: [], porClave: new Map()}, fuenteIndice, expandidos = new Set(), filas = [], elegido = '', foco = '', destruido = false, frame = null;
     const entradas = new Map(), altura = 40;
     let solicitudFicha = null, revisionFicha = 0, raizFicha = null;
     const endpoint = elemento.closest('dialog')?.dataset.fichaEndpoint;
@@ -45,13 +48,14 @@ export function crearExploradorRama(elemento, acciones) {
     function cerrarAmpliacion() {if (fotoModal.open) fotoModal.close(); fotoGrande.removeAttribute('src');}
     let origenAmpliacion = ampliarFoto;
     function abrirAmpliacion(evento) {
-        if (!raizFicha || informacion.hidden) return;
+        if (!raizFicha || ampliarFoto.disabled) return;
         origenAmpliacion = evento.currentTarget;
         tituloFoto.textContent = raizFicha.nombre; fotoGrande.hidden = foto.hidden || ampliarFoto.disabled;
         if (!fotoGrande.hidden) {fotoGrande.src = imagen.src; fotoGrande.alt = imagen.alt;}
+        descripcionGrande.textContent = descripcion.textContent; descripcionGrande.hidden = descripcion.hidden;
         creditosGrandes.textContent = creditosTexto.textContent; fotoModal.showModal(); cerrarFoto.focus();
     }
-    ampliarFoto.addEventListener('click', abrirAmpliacion); informacion.addEventListener('click', abrirAmpliacion);
+    ampliarFoto.addEventListener('click', abrirAmpliacion);
     cerrarFoto.addEventListener('click', cerrarAmpliacion);
     fotoModal.addEventListener('keydown', evento => {if (evento.key === 'Escape') evento.stopPropagation();});
     fotoModal.addEventListener('cancel', evento => {evento.preventDefault(); evento.stopPropagation(); cerrarAmpliacion();});
@@ -61,8 +65,9 @@ export function crearExploradorRama(elemento, acciones) {
 
     async function cargarFicha(nodo) {
         solicitudFicha?.abort(); solicitudFicha = new AbortController(); const revision = ++revisionFicha;
-        ampliarFoto.disabled = true; informacion.hidden = credito.hidden = true; cerrarAmpliacion();
-        raizFicha = nodo; elemento.dataset.ficha = nodo.nombre; foto.hidden = descripcion.hidden = true; imagen.removeAttribute('src'); imagen.style.visibility = 'hidden'; creditosTexto.replaceChildren(); creditosDetalle.open = false;
+        ampliarFoto.disabled = true; credito.hidden = true; cerrarAmpliacion();
+        raizFicha = nodo; panelFicha.dataset.ficha = panelFicha.dataset.nombre = nodo.nombre; panelFicha.dataset.raiz = nodo.clave;
+        foto.hidden = descripcion.hidden = true; imagen.removeAttribute('src'); imagen.style.visibility = 'hidden'; creditosTexto.replaceChildren(); creditosDetalle.open = false;
         reintentar.hidden = true; estadoPerfil.hidden = false; estadoPerfil.textContent = 'Cargando ficha…'; perfil.setAttribute('aria-busy', 'true');
         try {
             if (!endpoint || !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(nodo.id || '')) throw new Error('Ficha no disponible');
@@ -71,7 +76,6 @@ export function crearExploradorRama(elemento, acciones) {
             const ficha = await respuesta.json();
             if (destruido || revision !== revisionFicha) return;
             descripcion.textContent = ficha.descripcion || ''; descripcion.hidden = !ficha.descripcion;
-            informacion.hidden = !(ficha.descripcion || ficha.foto);
             if (ficha.foto) {
                 const url = new URL(ficha.foto, location.href);
                 if (url.origin !== location.origin) throw new Error('Origen de foto inválido');
@@ -95,16 +99,21 @@ export function crearExploradorRama(elemento, acciones) {
     }
     reintentar.addEventListener('click', () => {if (raizFicha) cargarFicha(raizFicha);});
 
-    function limpiar() {
+    function limpiarFicha() {
         revisionFicha++; solicitudFicha?.abort(); raizFicha = null;
-        ampliarFoto.disabled = true; informacion.hidden = credito.hidden = true; cerrarAmpliacion(); delete elemento.dataset.ficha;
+        ampliarFoto.disabled = true; credito.hidden = true; cerrarAmpliacion(); delete panelFicha.dataset.ficha;
+        delete panelFicha.dataset.nombre; delete panelFicha.dataset.raiz;
         imagen.onload = imagen.onerror = null; imagen.removeAttribute('src');
+        foto.hidden = descripcion.hidden = reintentar.hidden = true;
+        estadoPerfil.hidden = false; estadoPerfil.textContent = 'Selecciona una esfera del visualizador.'; perfil.setAttribute('aria-busy', 'false');
+    }
+    function limpiar() {
+        limpiarFicha();
         rama = {nodos: [], porClave: new Map()}; filas = []; foco = elegido = '';
         for (const el of entradas.values()) el.remove(); entradas.clear();
         for (const clave of ['raiz', 'nombre', 'nodos', 'filas', 'dibujados', 'seleccion']) delete elemento.dataset[clave];
         elemento.classList.add('is-empty'); elemento.classList.remove('is-leaf');
-        vista.hidden = foto.hidden = descripcion.hidden = reintentar.hidden = true;
-        estadoPerfil.hidden = false; estadoPerfil.textContent = 'Selecciona una esfera del octree.'; perfil.setAttribute('aria-busy', 'false');
+        vista.hidden = true;
     }
 
     function enfocar(clave) {
@@ -119,7 +128,7 @@ export function crearExploradorRama(elemento, acciones) {
         for (const [k, row] of entradas) row.setAttribute('aria-selected', String(k === clave));
         elemento.dataset.seleccion = clave;
     }
-    function elegir(nodo) {marcar(nodo.clave); cargarFicha(nodo); acciones.elegir(nodo.clave);}
+    function elegir(nodo) {marcar(nodo.clave); acciones.elegir(nodo.clave);}
     function alternar(nodo) {
         if (!nodo.hijos.length) return;
         if (expandidos.has(nodo.clave)) expandidos.delete(nodo.clave); else expandidos.add(nodo.clave);
@@ -140,19 +149,19 @@ export function crearExploradorRama(elemento, acciones) {
         } else if (key === 'ArrowLeft') {
             if (nodo.hijos.length && fila.abierto) alternar(nodo);
             else if (nodo.padreIndice >= 0) enfocar(rama.nodos[nodo.padreIndice].clave);
-        } else if (key === 'Enter') {elegir(nodo); alternar(nodo);}
-        else elegir(nodo);
+        } else if (key === 'Enter' || key === ' ') elegir(nodo);
     }
     function crearFila(nodo) {
         const row = crear('div', 'portal-branch-row'); row.setAttribute('role', 'treeitem'); row.dataset.taxonClave = nodo.clave;
+        if (nodo.padre) row.dataset.taxonPadre = nodo.padre;
         const toggle = crear('span', 'portal-branch-toggle'); toggle.append(icono('flecha')); toggle.setAttribute('aria-hidden', 'true');
         const tipo = crear('span', 'portal-branch-icon'); tipo.append(icono(nodo.hijos.length ? 'carpeta' : 'hoja')); tipo.setAttribute('aria-hidden', 'true');
-        const label = crear('span', 'portal-branch-name', nodo.nombre), cuenta = crear('span', 'portal-branch-count', numero(nodo.total));
+        const label = crear('span', 'portal-branch-name', nodo.nombre), rango = crear('span', 'portal-branch-rank', nodo.etiqueta), cuenta = crear('span', 'portal-branch-count', numero(nodo.total));
         const color = rangoVisual3D(nodo); row.style.setProperty('--branch-rank', color.color);
         label.title = `${nodo.nombre} · ${nodo.etiqueta}`; cuenta.title = numero(nodo.total) + ' registros publicados'; cuenta.setAttribute('aria-hidden', 'true');
         row.setAttribute('aria-label', `${nodo.nombre}, ${nodo.etiqueta}, ${numero(nodo.total)} registros, ${numero(nodo.hijos.length)} hijos`);
         row.setAttribute('aria-level', String(nodo.profundidad + 1)); row.setAttribute('aria-posinset', String(nodo.posicion)); row.setAttribute('aria-setsize', String(nodo.hermanos));
-        row.append(toggle, tipo, label, cuenta);
+        row.append(toggle, tipo, label, rango, cuenta);
         row.addEventListener('click', evento => {enfocar(nodo.clave); if (evento.target.closest('.portal-branch-toggle')) alternar(nodo); else elegir(nodo);});
         row.addEventListener('dblclick', evento => {if (!evento.target.closest('.portal-branch-toggle')) alternar(nodo);});
         row.addEventListener('contextmenu', evento => {evento.preventDefault(); evento.stopPropagation(); enfocar(nodo.clave); acciones.menu(nodo, evento);});
@@ -200,23 +209,32 @@ export function crearExploradorRama(elemento, acciones) {
     vista.addEventListener('scroll', () => {if (frame === null) frame = requestAnimationFrame(() => {frame = null; dibujar();});}, {passive: true});
     limpiar();
     return {
-        actualizar(indice, clave) {
+        actualizar(indice, clave, mostrarFicha = true) {
             if (destruido) return;
-            rama = ramaExploradorTaxonomico(indice, clave); const raiz = rama.nodos[0];
-            for (const el of entradas.values()) el.remove(); entradas.clear();
+            if (fuenteIndice !== indice || rama.nodos[0]?.clave !== clave) {
+                rama = ramaExploradorTaxonomico(indice, clave); fuenteIndice = indice;
+                for (const el of entradas.values()) el.remove(); entradas.clear();
+            }
+            const raiz = rama.nodos[0];
             if (!raiz) {elemento.hidden = true; return;}
             elemento.hidden = false; elemento.classList.remove('is-empty');
             elemento.dataset.raiz = clave; elemento.dataset.nombre = raiz.nombre; elemento.dataset.nodos = String(rama.nodos.length);
             vista.setAttribute('aria-label', `Raíz ${raiz.nombre} y todos sus descendientes`);
-            const hoja = !raiz.hijos.length; elemento.classList.toggle('is-leaf', hoja);
-            vista.hidden = hoja;
-            cargarFicha(raiz);
-            vista.scrollTop = 0; foco = elegido = clave; expandidos = new Set([clave]); distribuir();
+            vista.hidden = false;
+            if (mostrarFicha) cargarFicha(raiz); else limpiarFicha();
+            vista.scrollTop = 0; foco = elegido = clave;
+            expandidos = new Set(rama.nodos.filter(n => n.hijos.length).map(n => n.clave)); distribuir();
+            acciones.dibujado?.(rama.nodos.length, 'jerarquia');
             elemento.dataset.seleccion = clave;
         },
         marcar,
         limpiar,
         enfocar,
-        destruir() {destruido = true; revisionFicha++; solicitudFicha?.abort(); dialogo?.removeEventListener('close', cerrarAmpliacion); cerrarAmpliacion(); imagen.onload = imagen.onerror = null; resize.disconnect(); if (frame !== null) cancelAnimationFrame(frame); entradas.clear(); elemento.replaceChildren();},
+        ampliar(valor) {
+            ampliarArbol.setAttribute('aria-pressed', String(valor));
+            ampliarArbol.setAttribute('aria-label', valor ? 'Restaurar árbol y visualizador' : 'Ampliar árbol de navegación');
+            ampliarArbol.title = ampliarArbol.getAttribute('aria-label');
+        },
+        destruir() {destruido = true; revisionFicha++; solicitudFicha?.abort(); dialogo?.removeEventListener('close', cerrarAmpliacion); cerrarAmpliacion(); imagen.onload = imagen.onerror = null; resize.disconnect(); if (frame !== null) cancelAnimationFrame(frame); entradas.clear(); elemento.replaceChildren(); panelFicha.replaceChildren();},
     };
 }
