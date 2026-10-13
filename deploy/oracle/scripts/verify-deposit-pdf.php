@@ -89,7 +89,8 @@ try {
     $firmado = $directorioFirma.'/firmado.pdf';
     $jar = (string) config('firma-electronica.java_signature_jar');
     $firmador = new \Symfony\Component\Process\Process([
-        'java', '-jar', $jar, 'sign', $archivoValido, $firmado,
+        'java', '-Djava.awt.headless=true', '-Xms24m', '-Xmx160m', '-XX:+UseSerialGC', '-XX:ActiveProcessorCount=2',
+        '-jar', $jar, 'sign', $archivoValido, $firmado,
         $directorioFirma.'/qa.p12', $directorioFirma.'/clave.txt',
     ]);
     $firmador->setTimeout(30);

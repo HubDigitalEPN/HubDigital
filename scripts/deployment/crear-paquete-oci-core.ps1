@@ -341,7 +341,7 @@ if (!(Test-Path -LiteralPath (Join-Path $Proyecto 'tests/Python/test_portal_ete.
 }
 Invoke-Comando -Programa 'powershell.exe' -Argumentos @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $Proyecto 'scripts/development/instalar-ete.ps1')) -Descripcion 'Preparando runtime aislado ETE del portal' -DirectorioTrabajo $Proyecto
 Invoke-Comando -Programa (Join-Path $Proyecto '.local/ete-venv/Scripts/python.exe') -Argumentos @('-m', 'unittest', 'discover', '-s', 'tests/Python', '-p', 'test_*.py') -Descripcion 'Validando renderizado ETE, identidades y vistas taxonómicas' -DirectorioTrabajo $Proyecto
-Invoke-Comando -Programa 'java.exe' -Argumentos @('-jar', $destinoJar, 'selftest') -Descripcion 'Probando firma valida, firma alterada y PDF sin firma con Java' -DirectorioTrabajo $Proyecto
+Invoke-Comando -Programa 'java.exe' -Argumentos @('-Djava.awt.headless=true', '-Xms24m', '-Xmx160m', '-XX:+UseSerialGC', '-XX:ActiveProcessorCount=2', '-jar', $destinoJar, 'selftest') -Descripcion 'Probando firma valida, firma alterada y PDF sin firma con Java' -DirectorioTrabajo $Proyecto
 Write-Host 'OK Java: firma valida, alteracion, ausencia de firma y seguridad PDF comprobadas.' -ForegroundColor Green
 
 # El navegador valida exactamente el build nuevo mientras PostgreSQL permanece activo.

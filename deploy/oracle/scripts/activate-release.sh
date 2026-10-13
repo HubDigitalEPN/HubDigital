@@ -175,7 +175,12 @@ signature_jar="${release_dir}/resources/bin/hubdigital-pdf-signature.jar"
 if [[ ! -r "${signature_jar}" ]] || ! command -v java >/dev/null 2>&1; then
     echo 'NO OK Java PDF: falta el JAR de la release o el runtime Java.' >&2
     verification_failed=1
-elif ! java_result="$(runuser -u www-data -- java -jar "${signature_jar}" selftest)"; then
+elif ! java_result="$(systemd-run --quiet --wait --collect --pipe \
+    --property=User=www-data --property=Group=www-data \
+    --property=MemoryMax=320M --property=MemorySwapMax=0 --property=RuntimeMaxSec=300 \
+    --working-directory="${release_dir}" \
+    /usr/bin/java -Djava.awt.headless=true -Xms24m -Xmx160m \
+    -XX:+UseSerialGC -XX:ActiveProcessorCount=2 -jar "${signature_jar}" selftest)"; then
     echo 'NO OK Java PDF: fallo la autoprueba criptografica.' >&2
     verification_failed=1
 elif ! jq -e '.status == "firmado" and .cryptographically_valid == true' >/dev/null 2>&1 <<<"${java_result}"; then
@@ -187,6 +192,7 @@ fi
 
 if ! pdf_result="$(systemd-run --quiet --wait --collect --pipe \
     --property=User=www-data --property=Group=www-data \
+    --property=MemoryMax=384M --property=MemorySwapMax=0 --property=RuntimeMaxSec=300 \
     --property=EnvironmentFile="${env_file}" --working-directory="${release_dir}" \
     /usr/bin/php8.4 "${release_dir}/deploy/oracle/scripts/verify-deposit-pdf.php" 2>&1)"; then
     echo "NO OK solucion PDF depositos: ${pdf_result}" >&2
