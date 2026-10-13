@@ -70,7 +70,7 @@ final class AlmacenamientoDepositos
         return $ruta;
     }
 
-    public function guardarContenido(string $ruta, string $contenido, string $mime = 'application/octet-stream'): string
+    public function guardarContenido(string $ruta, string $contenido, string $mime = 'application/octet-stream', bool $lecturaUnica = false): string
     {
         $ruta = $this->normalizarRuta($ruta);
         $maximo = (int) config('deposit-storage.max_object_bytes', 25 * 1024 * 1024);
@@ -83,12 +83,16 @@ final class AlmacenamientoDepositos
             $this->clienteR2()->put($rutaR2, $contenido, $mime);
             if ((bool) config('deposit-storage.verify_after_write', true)) {
                 try {
-                    $cabecera = $this->clienteR2()->head($rutaR2);
+                    $lectura = $lecturaUnica ? $this->clienteR2()->getVerificable($rutaR2) : null;
+                    $cabecera = $lectura ?? $this->clienteR2()->head($rutaR2);
                     if ($cabecera['content_length'] !== null && $cabecera['content_length'] !== strlen($contenido)) {
                         throw new \RuntimeException('R2 no confirmo el tamano integro del objeto guardado.');
                     }
 
-                    $contenidoPersistido = $this->clienteR2()->get($rutaR2);
+                    $contenidoPersistido = $lectura['contenido'] ?? $this->clienteR2()->get($rutaR2);
+                    if ($lecturaUnica && strlen($contenidoPersistido) !== strlen($contenido)) {
+                        throw new \RuntimeException('R2 no confirmó el tamaño íntegro de los bytes guardados.');
+                    }
                     if (! hash_equals($sha256, hash('sha256', $contenidoPersistido))) {
                         throw new \RuntimeException('R2 no confirmo la integridad SHA-256 del objeto guardado.');
                     }
@@ -139,7 +143,7 @@ final class AlmacenamientoDepositos
         }
 
         // Confirma tamaño y SHA-256 mediante lectura de R2 antes de devolver la huella.
-        return $this->guardarContenido($ruta, $contenido, 'application/pdf');
+        return $this->guardarContenido($ruta, $contenido, 'application/pdf', $archivo->dictamenFirma !== null);
     }
 
     public function existe(string $ruta): bool

@@ -32,6 +32,7 @@ final class PdfSignatureWorker {
             + Integer.getInteger("hubdigital.pdf.render_dpi", 110) + ":"
             + Long.getLong("hubdigital.pdf.max_render_pixels", 100_000_000L);
         PdfSignatureCli.prepareEngine();
+        PdfSignatureCli.preparePublicRevocation();
         Files.deleteIfExists(socket);
         ThreadPoolExecutor jobs = new ThreadPoolExecutor(1, 1, 0, TimeUnit.SECONDS,
             new ArrayBlockingQueue<>(8));

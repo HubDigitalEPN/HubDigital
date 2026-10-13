@@ -39,6 +39,20 @@ final class R2S3Client
         return $respuesta->body();
     }
 
+    /** Metadatos y bytes pertenecen a la misma lectura S3 posterior al PUT. */
+    public function getVerificable(string $ruta): array
+    {
+        $respuesta = $this->enviar('GET', $ruta);
+        $this->exigirExito($respuesta, 'leer');
+        $longitud = $respuesta->header('Content-Length');
+        if ($longitud !== '' && $longitud !== null && ! ctype_digit($longitud)) {
+            throw new \RuntimeException('R2 entregó una longitud de contenido inválida.');
+        }
+
+        return ['contenido' => $respuesta->body(),
+            'content_length' => $longitud === '' || $longitud === null ? null : (int) $longitud];
+    }
+
     /** @return resource */
     public function readStream(string $ruta)
     {

@@ -35,8 +35,38 @@ test('reutiliza la inspección Java sólo para los bytes acreditados y confirma 
 
     expect((new AlmacenamientoDepositos)->guardarFirmadoValidado($local, 'depositos/validado.pdf'))
         ->toBe(hash('sha256', $pdf));
-    expect(Http::recorded()->map(fn (array $par): string => $par[0]->method())->all())->toBe(['PUT', 'HEAD', 'GET']);
+    expect(Http::recorded()->map(fn (array $par): string => $par[0]->method())->all())->toBe(['PUT', 'GET']);
 });
+
+test('una lectura única del firmado rechaza metadatos y bytes distintos sin confirmar la escritura', function (string $caso): void {
+    config()->set('deposit-storage.driver', 'r2');
+    config()->set('deposit-storage.require_remote', true);
+    config()->set('deposit-storage.r2', [
+        'endpoint' => 'https://cuenta.r2.cloudflarestorage.com', 'bucket' => 'hubdigital-depositos-dev',
+        'access_key_id' => 'clave-prueba', 'secret_access_key' => 'secreto-prueba', 'max_attempts' => 1,
+    ]);
+    config()->set('deposit-storage.verify_after_write', true);
+    config()->set('deposit-storage.r2.max_attempts', 1);
+    $pdf = pdfValidoParaDepositos();
+    $archivo = UploadedFile::fake()->createWithContent('firmado.pdf', $pdf);
+    $local = new ArchivoLocalDeposito($archivo->getRealPath(), false, dictamenFirma: [
+        'aceptable' => true, 'pdf_seguro' => true, 'pdf_sha256' => hash('sha256', $pdf),
+    ]);
+    Http::fake(fn (Request $request) => match ($request->method()) {
+        'PUT' => Http::response('', 200),
+        'GET' => $caso === 'lectura_fallida' ? Http::response('', 503) : Http::response(
+            $caso === 'bytes_alterados' ? 'X'.substr($pdf, 1) : $pdf,
+            200, ['Content-Length' => $caso === 'tamano_incorrecto' ? (string) (strlen($pdf) + 1)
+                : ($caso === 'tamano_invalido' ? 'longitud-invalida' : (string) strlen($pdf))],
+        ),
+        'DELETE' => Http::response('', 204),
+        default => Http::response('', 404),
+    });
+
+    expect(fn () => (new AlmacenamientoDepositos)->guardarFirmadoValidado($local, 'depositos/firmado-qa.pdf'))
+        ->toThrow(RuntimeException::class);
+    expect(Http::recorded()->map(fn (array $par): string => $par[0]->method())->all())->toBe(['PUT', 'GET', 'DELETE']);
+})->with(['tamano_incorrecto', 'tamano_invalido', 'bytes_alterados', 'lectura_fallida']);
 
 test('no persiste un firmado cuando su dictamen no acredita esos bytes', function (string $caso): void {
     Http::fake();

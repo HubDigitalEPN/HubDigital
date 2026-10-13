@@ -6,26 +6,15 @@
     <div class="hub-request-fields grid gap-3 md:grid-cols-2">
         <flux:input wire:model.live.blur="solicitudNombrePermiso" label="Nombre de la persona titular del permiso de colección" maxlength="200" required />
         <div class="hub-identification-fields">
-            <flux:select wire:model.live="solicitudTipoIdentificacion" label="Tipo de identificación" required>
-                <option value="cedula">Cédula</option><option value="ruc">RUC</option><option value="pasaporte">Pasaporte</option>
-            </flux:select>
-            <flux:input wire:model.live.blur="solicitudCedula" label="Identificación" :inputmode="$solicitudTipoIdentificacion === 'pasaporte' ? 'text' : 'numeric'" :maxlength="$solicitudTipoIdentificacion === 'cedula' ? 10 : ($solicitudTipoIdentificacion === 'ruc' ? 13 : 20)" required />
+            <x-gestionprestamosrecepciones::lov-popup campo="solicitudTipoIdentificacion" label="Tipo de identificación" :valor="$solicitudTipoIdentificacion" :opciones="['cedula' => 'Cédula', 'ruc' => 'RUC', 'pasaporte' => 'Pasaporte']" />
+            <flux:input wire:model.live.blur="solicitudCedula" class:input="hub-field-number" label="Identificación" :inputmode="$solicitudTipoIdentificacion === 'pasaporte' ? 'text' : 'numeric'" :maxlength="$solicitudTipoIdentificacion === 'cedula' ? 10 : ($solicitudTipoIdentificacion === 'ruc' ? 13 : 20)" required />
         </div>
-        <flux:select wire:model.live="solicitudCargo" label="Cargo o posición en el proyecto" required>
-            <option value="">Selecciona un cargo</option>
-            @foreach($cargosCatalogo as $cargo)<option value="{{ $cargo }}">{{ $cargo }}</option>@endforeach
-        </flux:select>
-        <flux:select wire:model.live="solicitudInstitucion" label="Empresa o institución" required>
-            <option value="">Selecciona una institución</option>
-            @foreach($institucionesCatalogo as $institucion)<option value="{{ $institucion }}">{{ $institucion }}</option>@endforeach
-        </flux:select>
-        <flux:select wire:model.live="solicitudGrupo" label="Grupo de especímenes a depositar" required>
-            <option value="">Selecciona un grupo</option>
-            @foreach(config('depositos.grupos_especimenes') as $grupo)<option value="{{ $grupo }}">{{ $grupo }}</option>@endforeach
-        </flux:select>
+        <x-gestionprestamosrecepciones::lov-popup campo="solicitudCargo" label="Cargo o posición en el proyecto" :valor="$solicitudCargo" :opciones="$cargosCatalogo" placeholder="Selecciona un cargo" />
+        <x-gestionprestamosrecepciones::lov-popup campo="solicitudInstitucion" label="Empresa o institución" :valor="$solicitudInstitucion" :opciones="$institucionesCatalogo" placeholder="Selecciona una institución" />
+        <x-gestionprestamosrecepciones::lov-popup campo="solicitudGrupo" label="Grupo de especímenes a depositar" :valor="$solicitudGrupo" :opciones="config('depositos.grupos_especimenes')" placeholder="Selecciona un grupo" />
         <flux:input wire:model.live.blur="solicitudProyecto" label="Título del proyecto" maxlength="300" required />
         <flux:input wire:model.live.blur="solicitudCorreo" type="email" label="Correo electrónico" maxlength="250" required />
-        <flux:input wire:model.live.blur="solicitudOficio" label="Número de oficio" maxlength="100" required />
+        <flux:input wire:model.live.blur="solicitudOficio" class:input="hub-field-number" label="Número de oficio" maxlength="100" required />
     </div>
     @if($solicitudIdentificacionConsultada === ($solicitudTipoIdentificacion.':'.trim($solicitudCedula)))
         <p class="text-xs text-text-secondary" role="status">
@@ -57,7 +46,13 @@
                 <a data-oficio-signed-link href="{{ route('depositos.solicitud.documento', ['id' => $solicitudId]) }}" target="_blank" rel="noopener" class="text-sm font-semibold text-science-blue hover:underline">Ver PDF firmado ↗</a>
             @else
                 <div wire:key="firma-solicitud-{{ $solicitudId }}-{{ $solicitudDocumentoVersion }}" x-data="hubDigitalFirmador({uploadUrl: @js(route('depositos.solicitud.firmar', ['id' => $solicitudId])), originalUrl: @js(route('depositos.solicitud.documento', ['id' => $solicitudId, 'original' => 1])), statusUrl: @js(route('depositos.solicitud.estado-firma', ['id' => $solicitudId])), documentVersion: {{ $solicitudDocumentoVersion }}, onSigned: () => $wire.confirmarSolicitudFirmada()})" x-on:keydown.escape.window="if (dialogo) cerrarDialogo()">
-                    <flux:button size="sm" variant="primary" icon="lock-closed" x-ref="abrirFirma" x-on:click="abrirDialogo()" wire:loading.attr="disabled">Firmar PDF</flux:button>
+                    <flux:button size="sm" variant="primary" icon="lock-closed" x-ref="abrirFirma" x-on:click="abrirDialogo()" x-show="estado !== 'completado'" wire:loading.attr="disabled">Firmar PDF</flux:button>
+                    <template x-if="estado === 'completado'">
+                        <span class="inline-flex flex-wrap items-center gap-x-4 gap-y-2">
+                            <span class="text-sm font-semibold text-bio-green">Solicitud firmada y validada criptográficamente.</span>
+                            <a data-oficio-signed-link href="{{ route('depositos.solicitud.documento', ['id' => $solicitudId]) }}" target="_blank" rel="noopener" class="text-sm font-semibold text-science-blue hover:underline">Ver PDF firmado ↗</a>
+                        </span>
+                    </template>
                     <div x-show="dialogo" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-blue-navy/75 p-4" role="presentation">
                         <section role="dialog" aria-modal="true" aria-labelledby="titulo-firma-solicitud" x-trap.inert.noscroll="dialogo" x-on:click.outside="cerrarDialogo()" class="hub-signature-dialog space-y-3 rounded-xl border border-border bg-surface p-4 text-text-primary shadow-2xl">
                             <div class="flex items-start justify-between gap-3">

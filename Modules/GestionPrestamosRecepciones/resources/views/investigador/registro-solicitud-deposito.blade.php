@@ -55,10 +55,7 @@
         {{-- Header --}}
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-blue-navy/10 pb-3">
             <div class="min-w-0 max-w-3xl">
-                <flux:heading size="lg" level="1" class="font-display tracking-tight text-blue-navy">{{ \App\Support\WizardCopy::text('general.titulo') }}</flux:heading>
-                <flux:text class="mt-1 text-xs leading-5 text-text-secondary">
-                    {{ \App\Support\WizardCopy::text('general.intro') }}
-                </flux:text>
+                <flux:heading size="lg" level="1" class="hub-request-page-title font-display tracking-tight">{{ \App\Support\WizardCopy::text('general.titulo') }}</flux:heading>
             </div>
             <div class="flex items-center gap-3">
                 @if($numeroSolicitud)

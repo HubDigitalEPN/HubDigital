@@ -235,6 +235,44 @@ public final class PdfSignatureCli {
         }
     }
 
+    /** Prepara únicamente evidencia pública; ninguna identidad de usuario participa. */
+    static void preparePublicRevocation() throws Exception {
+        Path root = Path.of(System.getenv("HUBDIGITAL_SIGNATURE_TRUST_DIR")).toRealPath();
+        Path catalog = root.resolve("crl-preparacion.tsv");
+        if (!Files.isRegularFile(catalog) || Files.size(catalog) > 8192) return;
+        List<Runnable> jobs = new ArrayList<>();
+        for (String line : Files.readAllLines(catalog, StandardCharsets.UTF_8)) {
+            if (line.isBlank() || line.startsWith("#") || jobs.size() >= 2) continue;
+            String[] fields = line.split("\t", -1);
+            if (fields.length != 2 || !fields[0].matches("[a-zA-Z0-9_-]+\\.crt")) continue;
+            Path path = root.resolve(fields[0]).toRealPath();
+            if (!path.getParent().equals(root) || Files.size(path) > 65536) continue;
+            X509Certificate authority;
+            try (InputStream in = Files.newInputStream(path)) {
+                authority = (X509Certificate) CertificateFactory.getInstance("X.509").generateCertificate(in);
+            }
+            authority.checkValidity(new Date());
+            if (authority.getBasicConstraints() < 0) continue;
+            construirRuta(authority, List.of(), trustAnchors(), new Date());
+            URI source = URI.create(fields[1]);
+            jobs.add(() -> {
+                try {
+                    authority.checkValidity(new Date());
+                    RevocationResolver.prepararCrl(authority, source);
+                } catch (Exception ignored) { /* conserva la consulta normal */ }
+            });
+        }
+        if (!jobs.isEmpty()) {
+            var scheduler = java.util.concurrent.Executors.newSingleThreadScheduledExecutor(task -> {
+                Thread thread = new Thread(task, "hubdigital-crl-publica"); thread.setDaemon(true); return thread;
+            });
+            var first = scheduler.submit(() -> jobs.forEach(Runnable::run));
+            try { first.get(8, java.util.concurrent.TimeUnit.SECONDS); }
+            catch (Exception unavailable) { first.cancel(true); }
+            scheduler.scheduleWithFixedDelay(() -> jobs.forEach(Runnable::run), 120, 120, java.util.concurrent.TimeUnit.SECONDS);
+        }
+    }
+
     private static Result verify(Path path) throws Exception {
         return verify(path, true);
     }
