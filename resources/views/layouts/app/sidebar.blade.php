@@ -520,7 +520,7 @@
         {{-- Domain exception toast --}}
         <div
             x-data="{ show: false, message: '' }"
-            x-on:domain-error.window="message = $event.detail.message; show = true; setTimeout(() => show = false, 6000)"
+            x-on:domain-error.window="if (!document.querySelector('.hub-depositos-ui')) { message = $event.detail.message; show = true; setTimeout(() => show = false, 6000) }"
             x-show="show"
             x-transition:enter="transition ease-out duration-300"
             x-transition:enter-start="opacity-0 translate-y-4"

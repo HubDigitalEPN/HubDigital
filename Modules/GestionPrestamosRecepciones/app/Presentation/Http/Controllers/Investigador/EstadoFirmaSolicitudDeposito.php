@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\ColaFirmasSolicitudR2;
 
 final class EstadoFirmaSolicitudDeposito
 {
@@ -20,8 +21,9 @@ final class EstadoFirmaSolicitudDeposito
             && (int) $request->query('version') === (int) $solicitud->solicitud_documento_version
             && is_string($ruta) && $ruta !== ''
             && is_string($solicitud->solicitud_firmada_sha256)
-            && $almacenamiento->existe($ruta)
-            && hash_equals($solicitud->solicitud_firmada_sha256, $almacenamiento->sha256($ruta));
+            && (app(ColaFirmasSolicitudR2::class)->disponible($solicitud)
+                || ($almacenamiento->existe($ruta)
+                    && hash_equals($solicitud->solicitud_firmada_sha256, $almacenamiento->sha256($ruta))));
 
         return response()->json(['firmada' => $firmada], 200, ['Cache-Control' => 'private, no-store']);
     }

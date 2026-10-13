@@ -50,6 +50,9 @@ use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\VerActa;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\VerActaEmbed;
 
 Route::get('/depositos', PortalDepositos::class)->name('depositos.portal');
+Route::get('/verificar-firma/{id}/{version}', \Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\VerificarFirmaSolicitudDeposito::class)
+    ->whereUuid('id')->whereNumber('version')->middleware(['signed:relative', 'throttle:30,1'])
+    ->name('depositos.solicitud.verificar-firma');
 
 Route::middleware(['auth', 'verified', 'role:depositante'])
     ->prefix('depositos')

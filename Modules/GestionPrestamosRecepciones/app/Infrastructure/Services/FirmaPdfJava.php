@@ -24,7 +24,8 @@ final class FirmaPdfJava
     public function preparar(Request $request, string $original, string $perfil, bool $validarOriginal = false): ArchivoLocalDeposito
     {
         if (! $request->hasFile('certificado')) {
-            if ($validarOriginal && PHP_OS_FAMILY === 'Linux' && config('firma-electronica.worker_enabled', false)) {
+            if ($validarOriginal && config('firma-electronica.worker_enabled', false)
+                && (PHP_OS_FAMILY === 'Linux' || (PHP_OS_FAMILY === 'Windows' && app()->environment('local')))) {
                 $fuentes = $this->fuentes();
                 if ($fuentes['ocsp'] === [] && $fuentes['crl'] === [] && $fuentes['timeout'] === 2) {
                     $directorio = DirectorioTemporalHubDigital::crear('firma-token-java', 16 * 1024 * 1024);
@@ -61,6 +62,11 @@ final class FirmaPdfJava
                 $salidaServicio = $directorio.DIRECTORY_SEPARATOR.'servicio-'.bin2hex(random_bytes(8)).'.pdf';
                 $resultado = app(ClienteFirmadorPreparado::class)->firmar($original, $salidaServicio, $p12,
                     (string) $request->input('clave_certificado'), $perfil);
+                if (app()->environment('local')) {
+                    \Illuminate\Support\Facades\Log::debug('Transporte del motor de firma local', [
+                        'motor_preparado' => $resultado !== null,
+                    ]);
+                }
                 if ($resultado !== null && is_file($salidaServicio) && ! rename($salidaServicio, $salida)) {
                     throw new \RuntimeException('No se pudo recuperar el PDF del firmador preparado.');
                 }

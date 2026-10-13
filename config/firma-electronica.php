@@ -7,6 +7,7 @@ return [
     'java_signature_trust_dir' => env('JAVA_SIGNATURE_TRUST_DIR', base_path('resources/signature-trust')),
     'worker_enabled' => (bool) env('JAVA_SIGNATURE_WORKER_ENABLED', PHP_OS_FAMILY === 'Linux'),
     'worker_socket' => env('JAVA_SIGNATURE_WORKER_SOCKET', '/run/hubdigital-signature/firmador.sock'),
+    'worker_local_key' => env('JAVA_SIGNATURE_WORKER_LOCAL_KEY', base_path('.local/localhost/signature-worker.key')),
     'render_dpi' => 110,
     'max_pages' => (int) env('FIRMA_MAX_PAGES', 40),
     'max_page_points' => (int) env('FIRMA_MAX_PAGE_POINTS', 1440),

@@ -110,6 +110,8 @@ public final class PdfSignatureCli {
                 verifyStream();
             } else if (args.length == 2 && "serve".equals(args[0])) {
                 PdfSignatureWorker.serve(Path.of(args[1]));
+            } else if (args.length == 2 && "serve-local".equals(args[0])) {
+                PdfSignatureWorker.serveLocal(Path.of(args[1]));
             } else if (args.length == 2 && Set.of("sign", "sign-verify").contains(args[0]) && "--request-stdin".equals(args[1])) {
                 byte[] entrada = System.in.readNBytes(65_537);
                 try {
@@ -181,7 +183,7 @@ public final class PdfSignatureCli {
             KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
             generator.initialize(2048);
             KeyPair keys = generator.generateKeyPair();
-            X500Name name = new X500Name("CN=Preparacion interna del motor PDF");
+            X500Name name = new X500Name("C=EC,O=HubDigital sintetico,OU=Preparacion interna,CN=Identidad sintetica de preparacion institucional");
             X509Certificate cert = new JcaX509CertificateConverter().setProvider("BC").getCertificate(
                 new JcaX509v3CertificateBuilder(name, BigInteger.valueOf(System.nanoTime()).abs(),
                     Date.from(Instant.now().minusSeconds(60)), Date.from(Instant.now().plusSeconds(3600)), name, keys.getPublic())
@@ -198,16 +200,27 @@ public final class PdfSignatureCli {
             guardarIdentidadLegacy(legacy, keys, cert, password);
             String profile = "solicitud-deposito:depositante:v1";
             try (PDDocument pdf = new PDDocument()) {
-                PDPage page = new PDPage(); pdf.addPage(page);
-                org.apache.pdfbox.pdmodel.font.PDFont font;
-                Path fontPath = Path.of("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf");
-                font = Files.isRegularFile(fontPath)
-                    ? org.apache.pdfbox.pdmodel.font.PDType0Font.load(pdf, fontPath.toFile())
-                    : new org.apache.pdfbox.pdmodel.font.PDType1Font(org.apache.pdfbox.pdmodel.font.Standard14Fonts.FontName.HELVETICA);
+                PDPage page = new PDPage(org.apache.pdfbox.pdmodel.common.PDRectangle.A4); pdf.addPage(page);
+                List<org.apache.pdfbox.pdmodel.font.PDFont> fonts = new ArrayList<>();
+                Path fontPath = Path.of("vendor/dompdf/dompdf/lib/fonts/DejaVuSans.ttf");
+                if (!Files.isRegularFile(fontPath)) fontPath = Path.of("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf");
+                if (Files.isRegularFile(fontPath)) {
+                    fonts.add(org.apache.pdfbox.pdmodel.font.PDType0Font.load(pdf, fontPath.toFile()));
+                    // Dompdf incrusta TrueType simple: preparar también su ruta de lectura y rasterizado.
+                    fonts.add(org.apache.pdfbox.pdmodel.font.PDTrueTypeFont.load(pdf, fontPath.toFile(),
+                        org.apache.pdfbox.pdmodel.font.encoding.WinAnsiEncoding.INSTANCE));
+                    Path boldPath = fontPath.resolveSibling("DejaVuSans-Bold.ttf");
+                    if (Files.isRegularFile(boldPath)) fonts.add(org.apache.pdfbox.pdmodel.font.PDTrueTypeFont.load(
+                        pdf, boldPath.toFile(), org.apache.pdfbox.pdmodel.font.encoding.WinAnsiEncoding.INSTANCE));
+                } else {
+                    fonts.add(new org.apache.pdfbox.pdmodel.font.PDType1Font(
+                        org.apache.pdfbox.pdmodel.font.Standard14Fonts.FontName.HELVETICA));
+                }
                 try (var content = new org.apache.pdfbox.pdmodel.PDPageContentStream(pdf, page)) {
-                    content.beginText(); content.setFont(font, 10); content.newLineAtOffset(50, 730);
+                    content.beginText(); content.newLineAtOffset(50, 730);
                     for (int i = 0; i < 20; i++) {
-                        content.showText("Preparacion de fuentes y procesamiento del oficio institucional.");
+                        content.setFont(fonts.get(i % fonts.size()), 10);
+                        content.showText("Preparación institucional: colección, depósito y recepción de especímenes.");
                         content.newLineAtOffset(0, -16);
                     }
                     content.endText();
@@ -227,7 +240,9 @@ public final class PdfSignatureCli {
             for (int pass = 0; pass < 4; pass++) {
                 Files.deleteIfExists(signed);
                 FirmadorPdfOficial.firmar(original, signed, pass % 2 == 0 ? p12 : legacy, password.clone(), profile);
-                officialResult(signed, original);
+                if (!officialResult(signed, original).contains("\"aceptable\":true")) {
+                    throw new IllegalStateException("La preparación no completó la validación integral del oficio sintético.");
+                }
             }
         } finally {
             // La identidad de preparación nunca forma parte de la confianza del servicio publicado.
@@ -931,6 +946,10 @@ public final class PdfSignatureCli {
     }
 
     private static void selftest() throws Exception {
+        Set<TrustAnchor> reales = trustAnchors();
+        prepareEngine();
+        if (cachedAnchors != reales) throw new IllegalStateException("La preparación modificó la confianza publicada.");
+        PdfSignatureWorker.selftestLocalAuthentication();
         Path temp = Files.createTempDirectory("hubdigital-pdf-signature-");
         try {
             Path unsigned = temp.resolve("sin-firma.pdf");
@@ -993,6 +1012,14 @@ public final class PdfSignatureCli {
 
     private record PdfInfo(int paginas, double ancho, double alto, double area, int firmasAutor, int sellosTiempo) {}
 
+    private static String leerQrPrueba(PDDocument pdf, int dpi) throws Exception {
+        var image = new org.apache.pdfbox.rendering.PDFRenderer(pdf).renderImageWithDPI(0, dpi);
+        int[] pixels = image.getRGB(0, 0, image.getWidth(), image.getHeight(), null, 0, image.getWidth());
+        var bitmap = new com.google.zxing.BinaryBitmap(new com.google.zxing.common.HybridBinarizer(
+            new com.google.zxing.RGBLuminanceSource(image.getWidth(), image.getHeight(), pixels)));
+        return new com.google.zxing.MultiFormatReader().decode(bitmap).getText();
+    }
+
     private static void selftestOficial(Path temp, Path p12, X509Certificate cert, KeyPair keys) throws Exception {
         RevocationResolver.selftestCrl(cert, keys.getPrivate());
         Path original = temp.resolve("oficio.pdf"), signed = temp.resolve("oficio-firmado.pdf");
@@ -1048,17 +1075,28 @@ public final class PdfSignatureCli {
         }
         try (PDDocument base = Loader.loadPDF(original.toFile()); PDDocument result = Loader.loadPDF(signed.toFile())) {
             if (!ContenidoOficialPdf.coincide(base, result)) throw new IllegalStateException("La firma oficial no coincide con su zona y contenido.");
-            var image = new org.apache.pdfbox.rendering.PDFRenderer(result).renderImageWithDPI(0, 220);
-            int[] pixels = image.getRGB(0, 0, image.getWidth(), image.getHeight(), null, 0, image.getWidth());
-            var bitmap = new com.google.zxing.BinaryBitmap(new com.google.zxing.common.HybridBinarizer(
-                new com.google.zxing.RGBLuminanceSource(image.getWidth(), image.getHeight(), pixels)));
-            String qr = new com.google.zxing.MultiFormatReader().decode(bitmap).getText();
+            String qr = leerQrPrueba(result, 220);
             String digest = java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(original)));
             if (!qr.contains(digest) || !qr.contains("Certificado SHA-256:")) throw new IllegalStateException("El QR no identifica el original y certificado.");
             // La firma sin su apariencia visible debe fallar el contrato oficial.
             var widget = result.getDocumentCatalog().getAcroForm().getFields().get(0).getWidgets().get(0);
             widget.getCOSObject().removeItem(COSName.AP);
             if (ContenidoOficialPdf.coincide(base, result)) throw new IllegalStateException("Se aceptó una firma sin apariencia visible.");
+        }
+        Path originalQrUrl = temp.resolve("oficio-qr-url.pdf"), signedQrUrl = temp.resolve("oficio-qr-url-firmado.pdf");
+        String verificationUrl = "https://dev.labinvepn.org/verificar-firma/00000000-0000-4000-8000-000000000001/1?signature=" + "a".repeat(64);
+        try (PDDocument conUrl = Loader.loadPDF(original.toFile())) {
+            conUrl.getDocumentInformation().setCustomMetadataValue("HubDigitalVerificationUrl", verificationUrl);
+            conUrl.save(originalQrUrl.toFile());
+        }
+        FirmadorPdfOficial.firmar(originalQrUrl, signedQrUrl, p12, "temporal".toCharArray(), profile);
+        if (!officialResult(signedQrUrl, originalQrUrl).contains("\"aceptable\":true")) {
+            throw new IllegalStateException("El QR de verificación cambió el contenido oficial o su firma.");
+        }
+        try (PDDocument conQr = Loader.loadPDF(signedQrUrl.toFile())) {
+            if (!verificationUrl.equals(leerQrPrueba(conQr, 144))) {
+                throw new IllegalStateException("El QR no abre exactamente el enlace HTTPS de verificación.");
+            }
         }
         Path rejected = temp.resolve("no-debe-existir.pdf");
         boolean wrongPassword = false;

@@ -12,7 +12,7 @@ final class ClienteFirmadorPreparado
     /** La preparación es opcional: la firma siempre conserva su comprobación completa. */
     public function prepararOriginal(string $contenido): void
     {
-        if (PHP_OS_FAMILY !== 'Linux' || ! config('firma-electronica.worker_enabled', false)) return;
+        if (! $this->habilitado()) return;
         foreach ([FirmaPdfJava::class,
             \Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\JavaValidacionFirmaElectronicaAdapter::class,
             \Modules\GestionPrestamosRecepciones\Domain\ValueObjects\DetalleValidacionFirma::class,
@@ -39,7 +39,7 @@ final class ClienteFirmadorPreparado
 
     public function firmar(string $original, string $salida, string $p12, string $clave, string $perfil, ?int $espera = null): ?array
     {
-        if (! config('firma-electronica.worker_enabled', false) || PHP_OS_FAMILY !== 'Linux') {
+        if (! $this->habilitado()) {
             return null;
         }
         $jar = (string) config('firma-electronica.java_signature_jar');
@@ -51,11 +51,27 @@ final class ClienteFirmadorPreparado
             config('firma-electronica.max_render_pixels', 100000000)]);
         $entrada = implode("\0", [$hash, $trust, $limites, $original, $salida, $p12, $clave, $perfil]);
         $socket = null;
+        $claveLocal = '';
         try {
             if (strlen($entrada) > 65536) return null;
-            $socket = @stream_socket_client('unix://'.config('firma-electronica.worker_socket'), $codigo, $error, 0.2);
+            $local = PHP_OS_FAMILY === 'Windows';
+            if ($local) {
+                $rutaClave = (string) config('firma-electronica.worker_local_key');
+                if (! is_file($rutaClave) || is_link($rutaClave) || filesize($rutaClave) !== 32) return null;
+                $claveLocal = (string) @file_get_contents($rutaClave);
+                if (strlen($claveLocal) !== 32) return null;
+            }
+            $socket = @stream_socket_client($local ? 'tcp://127.0.0.1:17655'
+                : 'unix://'.config('firma-electronica.worker_socket'), $codigo, $error, 0.2);
             if ($socket === false) return null;
             stream_set_timeout($socket, $espera ?? (int) config('firma-electronica.java_timeout', 60));
+            if ($local) {
+                $nonce = bin2hex(random_bytes(32));
+                $this->escribir($socket, 'hello:'.$nonce.':'.hash_hmac('sha256', $nonce, $claveLocal));
+                $prueba = $this->respuesta($socket);
+                if (($prueba['status'] ?? '') !== 'ready' || ! hash_equals($hash, (string) ($prueba['jar_sha256'] ?? ''))
+                    || ! hash_equals(hash_hmac('sha256', $nonce."\0".$hash, $claveLocal), (string) ($prueba['proof'] ?? ''))) return null;
+            }
             $paquete = pack('N', strlen($entrada)).$entrada;
             for ($offset = 0; $offset < strlen($paquete); $offset += $n) {
                 $n = fwrite($socket, substr($paquete, $offset));
@@ -71,9 +87,37 @@ final class ClienteFirmadorPreparado
 
             return $resultado;
         } finally {
-            $entrada = $paquete = $clave = '';
+            $entrada = $paquete = $clave = $claveLocal = '';
             if (is_resource($socket)) fclose($socket);
         }
+    }
+
+    private function habilitado(): bool
+    {
+        return config('firma-electronica.worker_enabled', false)
+            && (PHP_OS_FAMILY === 'Linux' || (PHP_OS_FAMILY === 'Windows' && app()->environment('local')));
+    }
+
+    /** @param resource $socket */
+    private function escribir($socket, string $valor): void
+    {
+        $bytes = pack('N', strlen($valor)).$valor;
+        for ($offset = 0; $offset < strlen($bytes); $offset += $n) {
+            $n = fwrite($socket, substr($bytes, $offset));
+            if ($n === false || $n === 0) throw new \RuntimeException('No se pudo conectar al motor local.');
+        }
+    }
+
+    /** @param resource $socket */
+    private function respuesta($socket): ?array
+    {
+        $cabecera = $this->leer($socket, 4);
+        if ($cabecera === null) return null;
+        $tamano = unpack('N', $cabecera)[1];
+        if ($tamano < 1 || $tamano > 65536) return null;
+        $bytes = $this->leer($socket, $tamano);
+        $resultado = $bytes === null ? null : json_decode($bytes, true);
+        return is_array($resultado) ? $resultado : null;
     }
 
     /** @param resource $socket */

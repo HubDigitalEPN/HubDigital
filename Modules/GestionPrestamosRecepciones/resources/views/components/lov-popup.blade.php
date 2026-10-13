@@ -1,40 +1,46 @@
-@props(['campo', 'label', 'opciones' => [], 'valor' => '', 'placeholder' => 'Selecciona una opción', 'required' => true])
+@props(['campo', 'label', 'opciones' => [], 'valor' => '', 'placeholder' => 'Selecciona una opción', 'required' => true, 'disabled' => false])
 @php
     $valores = [];
-    foreach ($opciones as $valor => $etiqueta) {
-        $valores[] = ['valor' => array_is_list($opciones) ? (string) $etiqueta : (string) $valor, 'etiqueta' => (string) $etiqueta];
+    foreach ($opciones as $claveOpcion => $etiqueta) {
+        $valores[] = ['valor' => array_is_list($opciones) ? (string) $etiqueta : (string) $claveOpcion, 'etiqueta' => (string) $etiqueta];
     }
     $idLov = 'lov-'.$campo;
     $etiquetaActual = collect($valores)->firstWhere('valor', $valor)['etiqueta'] ?? $placeholder;
 @endphp
-<div data-flux-field class="hub-lov-field" wire:key="{{ $idLov }}-{{ substr(hash('sha256', json_encode($valores)), 0, 12) }}"
-    x-data="hubDigitalLov({campo: @js($campo), opciones: @js($valores), placeholder: @js($placeholder)})"
+<div data-flux-field class="hub-lov-field" wire:key="{{ $idLov }}-{{ substr(hash('sha256', json_encode($valores)), 0, 12) }}-{{ $disabled ? 'bloqueado' : 'editable' }}"
+    x-data="hubDigitalLov({campo: @js($campo), opciones: @js($valores), placeholder: @js($placeholder), disabled: @js($disabled)})"
+    x-bind:class="{'hub-lov-field--empty': !valor}"
     x-on:keydown.escape.window="if (abierto) cerrar()">
-    <label for="{{ $idLov }}-boton" id="{{ $idLov }}-label" class="hub-lov-label">{{ $label }}</label>
+    <label for="{{ $idLov }}-boton" id="{{ $idLov }}-label" class="hub-lov-label" title="{{ $label }}">{{ $label }}</label>
     <input type="hidden" value="{{ $valor }}" x-bind:value="valor" @if($required) required @endif />
     <button id="{{ $idLov }}-boton" type="button" class="hub-lov-trigger" role="combobox" aria-haspopup="dialog"
         aria-labelledby="{{ $idLov }}-label {{ $idLov }}-valor" aria-controls="{{ $idLov }}-dialogo"
         @if($required) aria-required="true" @endif x-bind:aria-expanded="abierto.toString()"
-        x-ref="invocador" x-on:click="abrir()" x-on:keydown.arrow-down.prevent="abrir()" wire:loading.attr="disabled">
-        <span id="{{ $idLov }}-valor" class="truncate" x-text="etiqueta" x-bind:title="etiqueta">{{ $etiquetaActual }}</span>
-        <flux:icon name="chevron-up-down" class="size-4 shrink-0 text-text-secondary" />
+        x-ref="invocador" x-on:click="abrir()" x-on:keydown.arrow-down.prevent="abrir()" @disabled($disabled) @if(!$disabled) wire:loading.attr="disabled" @endif>
+        <span id="{{ $idLov }}-valor" class="truncate" x-text="etiqueta" x-bind:class="{'hub-lov-value--empty': !valor}" x-bind:title="etiqueta">{{ $etiquetaActual }}</span>
+        <flux:icon name="magnifying-glass" class="size-4 shrink-0 text-text-secondary" />
     </button>
     <flux:error :name="$campo" />
-    <div x-show="abierto" x-cloak class="hub-lov-overlay" x-on:click.self="cerrar()">
+    <template x-if="abierto">
+    <div class="hub-lov-overlay" x-on:click.self="cerrar()">
         <section id="{{ $idLov }}-dialogo" class="hub-lov-dialog" role="dialog" aria-modal="true"
             aria-labelledby="{{ $idLov }}-titulo" x-trap.inert.noscroll="abierto">
-            <div class="hub-lov-heading"><h3 id="{{ $idLov }}-titulo">{{ $label }}</h3>
+            <div class="hub-lov-heading"><h3 id="{{ $idLov }}-titulo">Buscar</h3>
                 <button type="button" x-on:click="cerrar()" aria-label="Cerrar lista de {{ mb_strtolower($label) }}">×</button>
             </div>
+            <div class="hub-lov-searchbar">
             <label class="sr-only" for="{{ $idLov }}-buscar">Buscar {{ mb_strtolower($label) }}</label>
             <input id="{{ $idLov }}-buscar" class="hub-lov-search" type="search" autocomplete="off" placeholder="Buscar…"
-                x-ref="busqueda" x-model="busqueda" x-on:input="activa = 0"
-                aria-controls="{{ $idLov }}-lista" x-bind:aria-activedescendant="filtradas.length ? '{{ $idLov }}-opcion-' + activa : null"
+                x-ref="busqueda" x-model="busqueda" x-on:input="buscar()"
+                aria-controls="{{ $idLov }}-lista" x-bind:aria-activedescendant="visibles.length ? '{{ $idLov }}-opcion-' + activa : null"
                 x-on:keydown.arrow-down.prevent="mover(1)" x-on:keydown.arrow-up.prevent="mover(-1)"
                 x-on:keydown.enter.prevent="escoger()" />
-            <p class="hub-lov-count" role="status" x-text="filtradas.length + (filtradas.length === 1 ? ' opción' : ' opciones')"></p>
+            <button type="button" class="hub-lov-search-button" x-on:click="buscar(); $refs.busqueda.focus()" aria-label="Buscar opciones"><flux:icon name="magnifying-glass" class="size-4" /></button>
+            </div>
+            <p class="sr-only" role="status" x-text="filtradas.length + (filtradas.length === 1 ? ' opción' : ' opciones')"></p>
+            <div class="hub-lov-results">
             <div id="{{ $idLov }}-lista" class="hub-lov-list" role="listbox" aria-label="{{ $label }}" x-ref="lista">
-                <template x-for="(opcion, indice) in filtradas" :key="opcion.valor">
+                <template x-for="(opcion, indice) in visibles" :key="opcion.valor">
                     <button type="button" role="option" tabindex="-1" x-bind:id="'{{ $idLov }}-opcion-' + indice"
                         x-bind:data-indice="indice" x-bind:aria-selected="(opcion.valor === valor).toString()"
                         x-bind:class="{'is-active': indice === activa}" x-on:mouseenter="activa = indice"
@@ -42,6 +48,9 @@
                 </template>
             </div>
             <p x-show="!filtradas.length" class="hub-lov-empty">No hay opciones que coincidan con la búsqueda.</p>
+            </div>
+            <div class="hub-lov-footer"><button type="button" x-on:click="mostrarMas()" x-bind:disabled="visibles.length >= filtradas.length">Mostrar más</button></div>
         </section>
     </div>
+    </template>
 </div>

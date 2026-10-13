@@ -7,6 +7,7 @@ namespace Modules\GestionPrestamosRecepciones\Presentation\Support;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\URL;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
 
 /** Oficio de solicitud basado en la plantilla institucional adjunta. */
@@ -28,6 +29,38 @@ final class GeneradorPdfSolicitudDeposito
             }
         }
 
+        $clave = $this->clave($solicitud);
+        $indice = 'oficio-pdf-indice:'.$solicitud->id;
+        Cache::put($indice, array_values(array_unique([...Cache::get($indice, []), $clave])), now()->addMinutes(20));
+        // Revisar y firmar utilizan los mismos bytes mientras siga vigente el oficio.
+        return Cache::remember($clave, now()->addMinutes(20), static fn (): string =>
+            Pdf::loadView('gestionprestamosrecepciones::pdf.solicitud-deposito', [
+                'solicitud' => $solicitud,
+                'perfilFirma' => PerfilFirmaPdf::solicitudDepositante(),
+            ])->addInfo(['HubDigitalVerificationUrl' => self::urlVerificacion($solicitud)])->setPaper('a4')->output()
+        );
+    }
+
+    public static function urlVerificacion(SolicitudDepositoEloquentModel $solicitud): string
+    {
+        $base = rtrim((string) config('app.url'), '/');
+        if (!app()->environment(['local', 'testing']) && !str_starts_with($base, 'https://')) {
+            throw new \RuntimeException('La verificación móvil requiere una dirección HTTPS pública.');
+        }
+        return $base.URL::signedRoute('depositos.solicitud.verificar-firma', [
+            'id' => $solicitud->id, 'version' => (int) $solicitud->solicitud_documento_version,
+        ], null, false);
+    }
+
+    public function olvidar(SolicitudDepositoEloquentModel $solicitud): void
+    {
+        $indice = 'oficio-pdf-indice:'.$solicitud->id;
+        foreach (array_unique([...Cache::get($indice, []), $this->clave($solicitud)]) as $clave) Cache::forget($clave);
+        Cache::forget($indice);
+    }
+
+    private function clave(SolicitudDepositoEloquentModel $solicitud): string
+    {
         $datos = $solicitud->only([
             'id', 'numero', 'created_at', 'solicitud_documento_version',
             'solicitud_nombre_permiso', 'solicitud_tipo_identificacion', 'solicitud_cedula',
@@ -35,13 +68,7 @@ final class GeneradorPdfSolicitudDeposito
             'solicitud_correo', 'solicitud_oficio', 'solicitud_texto',
         ]);
         $plantilla = module_path('GestionPrestamosRecepciones', 'resources/views/pdf/solicitud-deposito.blade.php');
-        $identidad = hash('sha256', serialize([$datos, hash_file('sha256', $plantilla), 'oficio-texto-v2']));
-        // Revisar y firmar utilizan los mismos bytes mientras siga vigente el oficio.
-        return Cache::remember('oficio-pdf:'.$solicitud->id.':'.$identidad, now()->addMinutes(20), static fn (): string =>
-            Pdf::loadView('gestionprestamosrecepciones::pdf.solicitud-deposito', [
-                'solicitud' => $solicitud,
-                'perfilFirma' => PerfilFirmaPdf::solicitudDepositante(),
-            ])->setPaper('a4')->output()
-        );
+        $identidad = hash('sha256', serialize([$datos, hash_file('sha256', $plantilla), 'oficio-texto-qr-v3', config('app.url')]));
+        return 'oficio-pdf:'.$solicitud->id.':'.$identidad;
     }
 }

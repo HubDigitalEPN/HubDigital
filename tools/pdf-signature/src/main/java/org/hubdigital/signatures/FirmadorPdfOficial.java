@@ -235,10 +235,21 @@ final class FirmadorPdfOficial {
             contenido.setStrokingColor(0.18f, 0.42f, 0.31f);
             contenido.addRect(0.5f, 0.5f, ancho - 1, alto - 1);
             contenido.stroke();
-            var qr = new QRCodeWriter().encode("HubDigital\nFirmante: " + nombre(cert)
+            String destinoVerificacion = pdf.getDocumentInformation().getCustomMetadataValue("HubDigitalVerificationUrl");
+            if (destinoVerificacion != null) {
+                var uri = java.net.URI.create(destinoVerificacion);
+                if (destinoVerificacion.length() > 512 || uri.getHost() == null || uri.getUserInfo() != null
+                    || !("https".equals(uri.getScheme()) || ("http".equals(uri.getScheme())
+                        && List.of("localhost", "127.0.0.1", "::1").contains(uri.getHost())))) {
+                    throw new IOException("La dirección de verificación del QR no es válida.");
+                }
+            }
+            String datosQr = destinoVerificacion != null ? destinoVerificacion : "HubDigital\nFirmante: " + nombre(cert)
                 + "\nCertificado SHA-256: " + huella + "\nOriginal SHA-256: " + originalSha256
-                + "\nFecha: " + fecha.toInstant(), BarcodeFormat.QR_CODE, 0, 0,
-                java.util.Map.of(EncodeHintType.CHARACTER_SET, "UTF-8", EncodeHintType.MARGIN, 4));
+                + "\nFecha: " + fecha.toInstant();
+            var qr = new QRCodeWriter().encode(datosQr, BarcodeFormat.QR_CODE, 0, 0,
+                java.util.Map.of(EncodeHintType.CHARACTER_SET, "UTF-8", EncodeHintType.MARGIN, 4,
+                    EncodeHintType.ERROR_CORRECTION, com.google.zxing.qrcode.decoder.ErrorCorrectionLevel.M));
             float ladoQr = Math.min(alto - 8, 82), modulo = ladoQr / qr.getWidth();
             float izquierdaQr = ancho - ladoQr - 4, baseQr = (alto - ladoQr) / 2;
             contenido.setNonStrokingColor(1f, 1f, 1f);

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\RolUsuario;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Laravel\Fortify\Features;
 use Livewire\Livewire;
@@ -176,12 +177,16 @@ test('el depósito completo persiste actores, documentos, taxonomía, recepción
     );
     $solicitud->declararProvincia('Pichincha');
     $solicitudes->guardar($solicitud);
+    // El oficio del recorrido integral usa las mismas opciones vigentes que el formulario.
+    foreach (['usuarios.cargos_catalogo' => 'Investigador del proyecto', 'usuarios.instituciones_catalogo' => 'Consultoría E2E'] as $tabla => $nombre) {
+        DB::table($tabla)->updateOrInsert(['nombre' => $nombre], ['activo' => true, 'created_at' => now(), 'updated_at' => now()]);
+    }
     SolicitudDepositoEloquentModel::findOrFail((string) $solicitud->id())->update([
         'documentos_requeridos' => ['Copia de la autorización de recolección (MAE)', 'Copia del permiso de movilización'],
         'solicitud_nombre_permiso' => 'Hernan Augusto Troya Proano',
         'solicitud_cedula' => '1707514251',
         'solicitud_cargo' => 'Investigador del proyecto',
-        'solicitud_grupo' => 'insectos',
+        'solicitud_grupo' => 'Invertebrados terrestres',
         'solicitud_proyecto' => 'Inventario de insectos de prueba',
         'solicitud_institucion' => 'Consultoría E2E',
         'solicitud_correo' => 'ana.depositante.e2e@example.test',

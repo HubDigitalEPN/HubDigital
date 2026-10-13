@@ -2,6 +2,7 @@ package org.hubdigital.signatures;
 
 import java.net.StandardProtocolFamily;
 import java.net.UnixDomainSocketAddress;
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -20,9 +21,10 @@ import java.util.concurrent.TimeUnit;
 /** JVM preparada, accesible sólo por socket Unix privado, sin claves persistentes. */
 final class PdfSignatureWorker {
     private static final int MAX_FRAME = 65_536;
+    private record Engine(String identity, Path root, String trust, String limits) {}
     private PdfSignatureWorker() {}
 
-    static void serve(Path socket) throws Exception {
+    private static Engine prepare() throws Exception {
         Path jar = Path.of(PdfSignatureCli.class.getProtectionDomain().getCodeSource().getLocation().toURI()).toRealPath();
         String identity = PdfSignatureCli.sha256(jar);
         Path root = Path.of(System.getProperty("java.io.tmpdir")).toRealPath();
@@ -33,38 +35,72 @@ final class PdfSignatureWorker {
             + Long.getLong("hubdigital.pdf.max_render_pixels", 100_000_000L);
         PdfSignatureCli.prepareEngine();
         PdfSignatureCli.preparePublicRevocation();
+        return new Engine(identity, root, trust, limits);
+    }
+
+    static void serve(Path socket) throws Exception {
+        Engine engine = prepare();
         Files.deleteIfExists(socket);
-        ThreadPoolExecutor jobs = new ThreadPoolExecutor(1, 1, 0, TimeUnit.SECONDS,
-            new ArrayBlockingQueue<>(8));
         try (ServerSocketChannel server = ServerSocketChannel.open(StandardProtocolFamily.UNIX)) {
             server.bind(UnixDomainSocketAddress.of(socket));
             Files.setPosixFilePermissions(socket, PosixFilePermissions.fromString("rw-------"));
+            serveConnections(server, engine, null);
+        } finally {
+            Files.deleteIfExists(socket);
+        }
+    }
+
+    /** Desarrollo Windows: loopback fijo y autenticación mutua antes de recibir credenciales. */
+    static void serveLocal(Path keyFile) throws Exception {
+        if (!System.getProperty("os.name", "").startsWith("Windows")) {
+            throw new IllegalArgumentException("El transporte local está reservado a Windows.");
+        }
+        if (Files.isSymbolicLink(keyFile) || Files.size(keyFile) != 32) throw new IllegalArgumentException("Clave local inválida.");
+        byte[] key = Files.readAllBytes(keyFile);
+        try (ServerSocketChannel server = ServerSocketChannel.open(StandardProtocolFamily.INET)) {
+            server.bind(new InetSocketAddress("127.0.0.1", 17655), 8);
+            Engine engine = prepare();
+            System.out.println("LOCAL_SIGNATURE_READY"); System.out.flush();
+            serveConnections(server, engine, key);
+        } finally {
+            Arrays.fill(key, (byte) 0);
+        }
+    }
+
+    private static void serveConnections(ServerSocketChannel server, Engine engine, byte[] key) throws Exception {
+        ThreadPoolExecutor jobs = new ThreadPoolExecutor(1, 1, 0, TimeUnit.SECONDS, new ArrayBlockingQueue<>(8));
+        try {
             while (true) {
                 SocketChannel peer = server.accept();
                 try {
-                    jobs.execute(() -> handle(peer, identity, root, trust, limits));
+                    jobs.execute(() -> handle(peer, engine.identity, engine.root, engine.trust, engine.limits, key));
                 } catch (java.util.concurrent.RejectedExecutionException full) {
                     peer.close();
                 }
             }
         } finally {
             jobs.shutdownNow();
-            Files.deleteIfExists(socket);
         }
     }
 
-    private static void handle(SocketChannel peer, String identity, Path root, String trust, String limits) {
+    private static void handle(SocketChannel peer, String identity, Path root, String trust, String limits, byte[] key) {
         byte[] input = null, request = null;
         String[] fields = null;
         try (peer; Selector selector = Selector.open()) {
             peer.configureBlocking(false);
             peer.register(selector, SelectionKey.OP_READ);
-            ByteBuffer header = ByteBuffer.allocate(4);
-            transfer(peer, selector, header, false);
-            int size = header.flip().getInt();
-            if (size < 1 || size > MAX_FRAME) throw new IllegalArgumentException("Tamaño de petición inválido.");
-            input = new byte[size];
-            transfer(peer, selector, ByteBuffer.wrap(input), false);
+            if (key != null) {
+                byte[] hello = readFrame(peer, selector);
+                String[] proof;
+                try { proof = new String(hello, StandardCharsets.US_ASCII).split(":", -1); }
+                finally { Arrays.fill(hello, (byte) 0); }
+                if (proof.length != 3 || !"hello".equals(proof[0]) || !proof[1].matches("[0-9a-f]{64}")
+                    || !proof[2].matches("[0-9a-f]{64}") || !java.security.MessageDigest.isEqual(
+                        mac(key, proof[1]).getBytes(StandardCharsets.US_ASCII), proof[2].getBytes(StandardCharsets.US_ASCII))) return;
+                writeFrame(peer, selector, "{\"status\":\"ready\",\"jar_sha256\":\"" + identity
+                    + "\",\"proof\":\"" + mac(key, proof[1] + "\0" + identity) + "\"}");
+            }
+            input = readFrame(peer, selector);
             String result;
             if (Arrays.equals(input, "health".getBytes(StandardCharsets.US_ASCII))) {
                 result = "{\"status\":\"ready\",\"jar_sha256\":\"" + identity + "\"}";
@@ -89,12 +125,7 @@ final class PdfSignatureWorker {
                     catch (Exception error) { result = PdfSignatureCli.errorResult(error); }
                 }
             }
-            byte[] response = result.getBytes(StandardCharsets.UTF_8);
-            if (response.length > MAX_FRAME) throw new IllegalStateException("Dictamen demasiado largo.");
-            ByteBuffer output = ByteBuffer.allocate(4 + response.length).putInt(response.length).put(response);
-            output.flip();
-            peer.keyFor(selector).interestOps(SelectionKey.OP_WRITE);
-            transfer(peer, selector, output, true);
+            writeFrame(peer, selector, result);
         } catch (Exception ignored) {
             // No se registran entradas, rutas, contraseñas ni datos del certificado.
         } finally {
@@ -102,6 +133,67 @@ final class PdfSignatureWorker {
             if (request != null) Arrays.fill(request, (byte) 0);
             if (fields != null) Arrays.fill(fields, "");
         }
+    }
+
+    private static byte[] readFrame(SocketChannel peer, Selector selector) throws Exception {
+        peer.keyFor(selector).interestOps(SelectionKey.OP_READ);
+        ByteBuffer header = ByteBuffer.allocate(4);
+        transfer(peer, selector, header, false);
+        int size = header.flip().getInt();
+        if (size < 1 || size > MAX_FRAME) throw new IllegalArgumentException("Tamaño de petición inválido.");
+        byte[] bytes = new byte[size];
+        transfer(peer, selector, ByteBuffer.wrap(bytes), false);
+        return bytes;
+    }
+
+    private static void writeFrame(SocketChannel peer, Selector selector, String value) throws Exception {
+        byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
+        if (bytes.length > MAX_FRAME) throw new IllegalStateException("Dictamen demasiado largo.");
+        ByteBuffer output = ByteBuffer.allocate(4 + bytes.length).putInt(bytes.length).put(bytes);
+        output.flip();
+        peer.keyFor(selector).interestOps(SelectionKey.OP_WRITE);
+        transfer(peer, selector, output, true);
+    }
+
+    private static String mac(byte[] key, String value) throws Exception {
+        javax.crypto.Mac mac = javax.crypto.Mac.getInstance("HmacSHA256");
+        mac.init(new javax.crypto.spec.SecretKeySpec(key, "HmacSHA256"));
+        return java.util.HexFormat.of().formatHex(mac.doFinal(value.getBytes(StandardCharsets.UTF_8)));
+    }
+
+    /** El paquete comprueba la conversación real y el rechazo previo a cualquier operación documental. */
+    static void selftestLocalAuthentication() throws Exception {
+        byte[] key = new byte[32]; new java.security.SecureRandom().nextBytes(key);
+        String identity = "a".repeat(64), nonce = "b".repeat(64);
+        try (ServerSocketChannel server = ServerSocketChannel.open(StandardProtocolFamily.INET)) {
+            server.bind(new InetSocketAddress("127.0.0.1", 0));
+            for (boolean valid : new boolean[]{false, true}) {
+                try (SocketChannel client = SocketChannel.open(server.getLocalAddress())) {
+                    SocketChannel peer = server.accept();
+                    Thread handler = new Thread(() -> handle(peer, identity, Path.of(System.getProperty("java.io.tmpdir")), "", "", key));
+                    handler.start();
+                    try (Selector selector = Selector.open()) {
+                        client.configureBlocking(false); client.register(selector, SelectionKey.OP_WRITE);
+                        writeFrame(client, selector, "hello:" + nonce + ":" + (valid ? mac(key, nonce) : "0".repeat(64)));
+                        if (!valid) {
+                            boolean rejected = false;
+                            try { readFrame(client, selector); } catch (java.io.EOFException expected) { rejected = true; }
+                            if (!rejected) throw new IllegalStateException("El motor local aceptó un cliente sin clave.");
+                        } else {
+                            String response = new String(readFrame(client, selector), StandardCharsets.UTF_8);
+                            if (!response.contains("\"proof\":\"" + mac(key, nonce + "\0" + identity) + "\"")) {
+                                throw new IllegalStateException("El motor local no acreditó su identidad.");
+                            }
+                            writeFrame(client, selector, "health");
+                            if (!new String(readFrame(client, selector), StandardCharsets.UTF_8).contains(identity)) {
+                                throw new IllegalStateException("El motor local perdió el encuadre después de autenticar.");
+                            }
+                        }
+                    } finally { client.close(); handler.join(6000); }
+                    if (handler.isAlive()) throw new IllegalStateException("El transporte local no cerró la petición.");
+                }
+            }
+        } finally { Arrays.fill(key, (byte) 0); }
     }
 
     static void validatePath(Path root, String value, boolean output, long max) throws Exception {

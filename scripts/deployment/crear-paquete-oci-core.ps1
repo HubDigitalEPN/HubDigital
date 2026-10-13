@@ -10,12 +10,18 @@ si ya existe en el entorno. No consulta el gestor global de credenciales de Git.
 
 .EXAMPLE
 crear-paquete-oci -DescripcionCambio "actualiza solicitudes de deposito"
+
+.EXAMPLE
+crear-paquete-oci -SoloValidacionLocal -DescripcionCambio "revision local"
+# Ejecuta las mismas suites y compilaciones; termina antes de registrar,
+# publicar o empaquetar. No requiere credenciales GitHub ni conecta a OCI.
 #>
 [CmdletBinding()]
 param(
     [string]$Proyecto,
     [string]$Destino,
     [string]$DescripcionCambio,
+    [switch]$SoloValidacionLocal,
     [switch]$OmitirCompilacion,
     [switch]$OmitirPruebasPHP,
     [Alias('OmitirPruebasPostgreSQL', 'SoloFrontend')]
@@ -81,6 +87,7 @@ function Invoke-GitOficial {
         [Parameter(Mandatory)] [string]$Descripcion
     )
 
+    if ($SoloValidacionLocal) { throw 'La validacion local no admite operaciones remotas de Git.' }
     # Solo estas operaciones de origin reciben la credencial de HubDigital.
     # La configuracion de Git Credential Manager de otros repositorios no se toca.
     $nombres = @('GIT_CONFIG_COUNT', 'GIT_CONFIG_KEY_0', 'GIT_CONFIG_VALUE_0',
@@ -203,7 +210,7 @@ if ([string]::IsNullOrWhiteSpace($DescripcionCambio)) { throw 'La descripcion de
 $nombreSeguro = Convertir-NombreSeguro -Texto $DescripcionCambio
 if ([string]::IsNullOrWhiteSpace($nombreSeguro)) { throw 'La descripcion debe contener al menos una letra o un numero.' }
 $mensajeCommit = "HT: $DescripcionCambio"
-Write-Host "`nCommit previsto:  $mensajeCommit" -ForegroundColor Yellow
+Write-Host "`n$(if ($SoloValidacionLocal) { 'Validacion local:' } else { 'Commit previsto: ' }) $mensajeCommit" -ForegroundColor Yellow
 Write-Host "Nombre base:      $nombreSeguro" -ForegroundColor Yellow
 
 $rama = (Get-SalidaGit -Argumentos @('symbolic-ref', '--short', 'HEAD') | Select-Object -First 1).Trim()
@@ -220,6 +227,7 @@ if ($OmitirCompilacion -or $OmitirPruebasPHP -or $SinPostgres) {
     throw 'Publicar en main exige compilacion Java/Vite y pruebas PHP/PostgreSQL y Gherkin completas. No se admiten opciones de omision.'
 }
 
+if (-not $SoloValidacionLocal) {
 Write-Host "`n==> Comprobando acceso de escritura al repositorio oficial antes de las pruebas" -ForegroundColor Cyan
 $tokenGitHub = Get-TokenGitHubHubDigital
 Remove-Item Env:HUBDIGITAL_GITHUB_TOKEN -ErrorAction SilentlyContinue
@@ -246,6 +254,7 @@ Invoke-GitOficial -Argumentos @('-C', $Proyecto, 'fetch', $remoto, 'refs/heads/m
 if ($LASTEXITCODE -ne 0) {
     throw 'main contiene trabajo que no esta en esta rama. Integralo en la rama de trabajo antes de reintentar; no se sobrescribira main.'
 }
+}
 $estadoInicial = @(Get-SalidaGit -Argumentos @('status', '--porcelain=v1', '--untracked-files=all'))
 if ($rama -eq 'main' -and $estadoInicial) {
     throw 'Los cambios deben desarrollarse en una rama nueva. Conservamos todos los archivos; prepara esa rama antes de empaquetar.'
@@ -259,8 +268,10 @@ if ($mainExiste) {
     if ($LASTEXITCODE -ne 0) { throw 'main local contiene trabajo distinto. No se movera ni se publicara hasta integrarlo en esta rama.' }
 }
 
-Invoke-GitOficial -Argumentos @('-C', $Proyecto, 'push', '--dry-run', $remoto, 'HEAD:refs/heads/main') -Descripcion 'Comprobando que origin/main acepta esta cuenta sin publicar cambios'
-Write-Host "Cuenta GitHub con escritura comprobada para HubDigital: $($cuentaGitHub.login)" -ForegroundColor Green
+if (-not $SoloValidacionLocal) {
+    Invoke-GitOficial -Argumentos @('-C', $Proyecto, 'push', '--dry-run', $remoto, 'HEAD:refs/heads/main') -Descripcion 'Comprobando que origin/main acepta esta cuenta sin publicar cambios'
+    Write-Host "Cuenta GitHub con escritura comprobada para HubDigital: $($cuentaGitHub.login)" -ForegroundColor Green
+}
 
 $archivosRastreadosCambiados = @(Get-SalidaGit -Argumentos @('diff', '--name-only', $upstream))
 $archivosNuevos = @(Get-SalidaGit -Argumentos @('ls-files', '--others', '--exclude-standard'))
@@ -562,6 +573,12 @@ if ($headAntesValidacion -ne $headDespuesValidacion -or
 
 if (-not $suitePostgresCompletada -or -not $suiteGherkinCompletada -or -not $suiteNavegadorCompletada -or -not $solucionPdfComprobada) {
     throw 'No se completaron las validaciones PHP/PostgreSQL, Gherkin, navegador/tooltip/Livewire y PDF obligatorias. main no se publica y no se crea el paquete.'
+}
+
+if ($SoloValidacionLocal) {
+    Write-Host 'VALIDACION LOCAL COMPLETA: Java, ETE, frontend, Gherkin, PostgreSQL, navegador y PDF aprobados.' -ForegroundColor Green
+    Write-Host 'Los cambios permanecen en la rama de trabajo. Sin commit, push ni paquete OCI.'
+    exit 0
 }
 
 $estadoAntesCommit = @(Get-SalidaGit -Argumentos @('status', '--porcelain=v1', '--untracked-files=all'))

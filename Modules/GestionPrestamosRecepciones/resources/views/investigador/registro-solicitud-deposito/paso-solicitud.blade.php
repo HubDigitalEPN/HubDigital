@@ -1,56 +1,60 @@
 <div class="hub-request-letter space-y-3">
-    <div class="border-b border-border pb-2">
-        <flux:heading size="lg" level="2">Solicitud de recepción</flux:heading>
-        <flux:text class="mt-1 text-xs text-text-secondary">Completa, revisa y firma el oficio antes de continuar. Los campos con un pequeño triángulo rojo son obligatorios.</flux:text>
-    </div>
-    <div class="hub-request-fields grid gap-3 md:grid-cols-2">
-        <flux:input wire:model.live.blur="solicitudNombrePermiso" label="Nombre de la persona titular del permiso de colección" maxlength="200" required />
-        <div class="hub-identification-fields">
-            <x-gestionprestamosrecepciones::lov-popup campo="solicitudTipoIdentificacion" label="Tipo de identificación" :valor="$solicitudTipoIdentificacion" :opciones="['cedula' => 'Cédula', 'ruc' => 'RUC', 'pasaporte' => 'Pasaporte']" />
-            <flux:input wire:model.live.blur="solicitudCedula" class:input="hub-field-number" label="Identificación" :inputmode="$solicitudTipoIdentificacion === 'pasaporte' ? 'text' : 'numeric'" :maxlength="$solicitudTipoIdentificacion === 'cedula' ? 10 : ($solicitudTipoIdentificacion === 'ruc' ? 13 : 20)" required />
+    @php($camposBloqueados = $this->camposSolicitudBloqueados())
+    @php($guardadoR2Confirmado = $this->solicitudR2Confirmada())
+    <div class="hub-request-fields {{ $camposBloqueados ? 'hub-request-fields--locked' : '' }}">
+        <div class="hub-request-cell hub-request-cell--name"><flux:input placeholder=" " wire:model.live.blur="solicitudNombrePermiso" label="Nombre de la persona titular del permiso de colección" maxlength="200" :disabled="$camposBloqueados" required /></div>
+        <div class="hub-request-cell hub-request-cell--identification hub-identification-fields">
+            <x-gestionprestamosrecepciones::lov-popup campo="solicitudTipoIdentificacion" label="Tipo de identificación" :valor="$solicitudTipoIdentificacion" :opciones="['cedula' => 'Cédula', 'ruc' => 'RUC', 'pasaporte' => 'Pasaporte']" :disabled="$camposBloqueados" />
+            <flux:input placeholder=" " wire:model.live.blur="solicitudCedula" class:input="hub-field-number" label="Identificación" :inputmode="$solicitudTipoIdentificacion === 'pasaporte' ? 'text' : 'numeric'" :maxlength="$solicitudTipoIdentificacion === 'cedula' ? 10 : ($solicitudTipoIdentificacion === 'ruc' ? 13 : 20)" :disabled="$camposBloqueados" required />
         </div>
-        <x-gestionprestamosrecepciones::lov-popup campo="solicitudCargo" label="Cargo o posición en el proyecto" :valor="$solicitudCargo" :opciones="$cargosCatalogo" placeholder="Selecciona un cargo" />
-        <x-gestionprestamosrecepciones::lov-popup campo="solicitudInstitucion" label="Empresa o institución" :valor="$solicitudInstitucion" :opciones="$institucionesCatalogo" placeholder="Selecciona una institución" />
-        <x-gestionprestamosrecepciones::lov-popup campo="solicitudGrupo" label="Grupo de especímenes a depositar" :valor="$solicitudGrupo" :opciones="config('depositos.grupos_especimenes')" placeholder="Selecciona un grupo" />
-        <flux:input wire:model.live.blur="solicitudProyecto" label="Título del proyecto" maxlength="300" required />
-        <flux:input wire:model.live.blur="solicitudCorreo" type="email" label="Correo electrónico" maxlength="250" required />
-        <flux:input wire:model.live.blur="solicitudOficio" class:input="hub-field-number" label="Número de oficio" maxlength="100" required />
+        <div class="hub-request-cell hub-request-cell--cargo"><x-gestionprestamosrecepciones::lov-popup campo="solicitudCargo" label="Cargo o posición en el proyecto" :valor="$solicitudCargo" :opciones="$cargosCatalogo" placeholder="Selecciona un cargo" :disabled="$camposBloqueados" /></div>
+        <div class="hub-request-cell hub-request-cell--institution"><x-gestionprestamosrecepciones::lov-popup campo="solicitudInstitucion" label="Empresa o institución" :valor="$solicitudInstitucion" :opciones="$institucionesCatalogo" placeholder="Selecciona una institución" :disabled="$camposBloqueados" /></div>
+        <div class="hub-request-cell hub-request-cell--group"><x-gestionprestamosrecepciones::lov-popup campo="solicitudGrupo" label="Grupo de especímenes a depositar" :valor="$solicitudGrupo" :opciones="config('depositos.grupos_especimenes')" placeholder="Selecciona un grupo" :disabled="$camposBloqueados" /></div>
+        <div class="hub-request-cell hub-request-cell--email"><flux:input placeholder=" " wire:model.live.blur="solicitudCorreo" type="email" label="Correo electrónico" maxlength="250" :disabled="$camposBloqueados" required /></div>
+        <div class="hub-request-cell hub-request-cell--project"><flux:input placeholder=" " wire:model.live.blur="solicitudProyecto" label="Título del proyecto" maxlength="300" :disabled="$camposBloqueados" required /></div>
+        <div class="hub-request-cell hub-request-cell--letter">
+            <flux:input placeholder=" " wire:model.live.blur="solicitudOficio" class:input="hub-field-number" label="Número de oficio" maxlength="100" :disabled="$camposBloqueados" required />
+            <flux:modal.trigger name="revisar-texto-oficio"><flux:button variant="ghost" size="sm" icon="document-text">Texto del oficio · revisar</flux:button></flux:modal.trigger>
+        </div>
     </div>
-    @if($solicitudIdentificacionConsultada === ($solicitudTipoIdentificacion.':'.trim($solicitudCedula)))
-        <p class="text-xs text-text-secondary" role="status">
-            @switch($solicitudIdentificacionConsulta['estado'] ?? '')
-                @case('verificado') RUC verificado en el SRI: {{ $solicitudIdentificacionConsulta['razon_social'] }} · {{ $solicitudIdentificacionConsulta['estado_ruc'] }}. @break
-                @case('no_disponible') No se pudo consultar el SRI en este momento. @break
-                @case('cedula_local_valida') Formato de cédula válido. @break
-                @case('pasaporte_formato_valido') Formato de pasaporte correcto. @break
-            @endswitch
-        </p>
-    @endif
-    <details class="rounded-lg border border-border bg-bg-main px-3 py-2">
-        <summary class="cursor-pointer text-sm font-semibold">Texto del oficio · revisar</summary>
-        <p class="mt-2 text-sm leading-5">{{ $this->textoSolicitudSugerido() }}</p>
-    </details>
-    <div class="flex flex-wrap items-center gap-x-4 gap-y-2" aria-live="polite">
+    <flux:modal name="revisar-texto-oficio" class="max-w-2xl">
+        <flux:heading size="lg">Texto del oficio · revisar</flux:heading>
+        <p class="mt-3 whitespace-pre-line text-sm leading-6">{{ $this->textoSolicitudSugerido() }}</p>
+        <div class="mt-4 flex justify-end"><flux:modal.close><flux:button variant="ghost" size="sm">Cerrar</flux:button></flux:modal.close></div>
+    </flux:modal>
+    <div class="hub-request-document-actions flex flex-wrap items-center justify-between gap-3"
+        @if($solicitudFirmada && !$guardadoR2Confirmado) wire:poll.2s="confirmarSolicitudFirmada" @endif
+        wire:key="estado-pdf-{{ $solicitudId }}-{{ $solicitudDocumentoVersion }}"
+        x-data="{pdfGenerado: @js($solicitudFirmada)}"
+        x-on:hub-original-preparado.window="if ($event.detail.documentId === @js($solicitudId) && $event.detail.documentVersion === {{ $solicitudDocumentoVersion }}) pdfGenerado = true">
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-2" aria-live="polite">
         @if($solicitudOficioAnteriorFirmado)
-            <span class="text-xs text-text-secondary">El oficio anterior tiene valores que deben actualizarse. Selecciona las opciones vigentes y firma el nuevo PDF.</span>
-            <a href="{{ route('depositos.solicitud.documento', ['id' => $solicitudId]) }}" target="_blank" rel="noopener" class="text-sm font-semibold text-science-blue hover:underline">Ver PDF firmado anterior ↗</a>
+            <a href="{{ route('depositos.solicitud.documento', ['id' => $solicitudId]) }}" target="_blank" rel="noopener" class="text-sm font-semibold text-science-blue hover:underline" aria-label="PDF Firmado, versión anterior">PDF Firmado</a>
         @endif
-        <span wire:loading class="text-xs text-text-secondary">Guardando…</span>
-        <span wire:loading.remove class="text-xs text-text-secondary">{{ $solicitudCambiosPendientes || ! $solicitudId ? 'Completa los campos para generar el PDF.' : 'Datos guardados automáticamente.' }}</span>
+        <span wire:loading class="sr-only">Guardando…</span>
         @if(! $solicitudId || $solicitudCambiosPendientes)
             <flux:button size="sm" wire:click="guardarSolicitudInicial" wire:loading.attr="disabled" icon="document-text">Preparar PDF</flux:button>
         @else
-            <a href="{{ route('depositos.solicitud.documento', ['id' => $solicitudId, 'original' => 1]) }}" target="_blank" rel="noopener" class="text-sm font-semibold text-science-blue hover:underline">Revisar PDF generado ↗</a>
+            <span class="inline-flex items-center gap-1.5">
+                @if($guardadoR2Confirmado)
+                    <span data-pdf-generated-label class="text-sm font-semibold text-text-primary">PDF Generado</span>
+                @else
+                    <a data-pdf-generated-link href="{{ route('depositos.solicitud.documento', ['id' => $solicitudId, 'original' => 1]) }}" target="_blank" rel="noopener" class="text-sm font-semibold text-science-blue hover:underline">PDF Generado</a>
+                @endif
+                <template x-if="pdfGenerado"><span data-pdf-generated-check class="hub-pdf-check" role="img" aria-label="PDF generado correctamente">✓</span></template>
+            </span>
             @if($solicitudFirmada)
-                <span class="text-sm font-semibold text-bio-green">Solicitud firmada y validada criptográficamente.</span>
-                <a data-oficio-signed-link href="{{ route('depositos.solicitud.documento', ['id' => $solicitudId]) }}" target="_blank" rel="noopener" class="text-sm font-semibold text-science-blue hover:underline">Ver PDF firmado ↗</a>
+                <span class="inline-flex items-center gap-1.5">
+                    <a data-oficio-signed-link href="{{ route('depositos.solicitud.documento', ['id' => $solicitudId]) }}" target="_blank" rel="noopener" class="text-sm font-semibold text-science-blue hover:underline">PDF Firmado</a>
+                    <span data-pdf-signed-check class="hub-pdf-check" role="img" aria-label="PDF firmado correctamente">✓</span>
+                </span>
             @else
-                <div wire:key="firma-solicitud-{{ $solicitudId }}-{{ $solicitudDocumentoVersion }}" x-data="hubDigitalFirmador({uploadUrl: @js(route('depositos.solicitud.firmar', ['id' => $solicitudId])), originalUrl: @js(route('depositos.solicitud.documento', ['id' => $solicitudId, 'original' => 1])), statusUrl: @js(route('depositos.solicitud.estado-firma', ['id' => $solicitudId])), documentVersion: {{ $solicitudDocumentoVersion }}, onSigned: () => $wire.confirmarSolicitudFirmada()})" x-on:keydown.escape.window="if (dialogo) cerrarDialogo()">
-                    <flux:button size="sm" variant="primary" icon="lock-closed" x-ref="abrirFirma" x-on:click="abrirDialogo()" x-show="estado !== 'completado'" wire:loading.attr="disabled">Firmar PDF</flux:button>
+                <div wire:key="firma-solicitud-{{ $solicitudId }}-{{ $solicitudDocumentoVersion }}" x-data="hubDigitalFirmador({uploadUrl: @js(route('depositos.solicitud.firmar', ['id' => $solicitudId])), originalUrl: @js(route('depositos.solicitud.documento', ['id' => $solicitudId, 'original' => 1])), statusUrl: @js(route('depositos.solicitud.estado-firma', ['id' => $solicitudId])), documentId: @js($solicitudId), documentVersion: {{ $solicitudDocumentoVersion }}, onSigned: () => $wire.confirmarSolicitudFirmada()})" x-on:keydown.escape.window="if (dialogo) cerrarDialogo()">
+                    <button type="button" class="cursor-pointer text-sm font-semibold text-science-blue hover:underline disabled:cursor-wait disabled:opacity-50" x-ref="abrirFirma" x-on:click="abrirDialogo()" x-show="estado !== 'completado'" wire:loading.attr="disabled">Firmar PDF</button>
                     <template x-if="estado === 'completado'">
                         <span class="inline-flex flex-wrap items-center gap-x-4 gap-y-2">
-                            <span class="text-sm font-semibold text-bio-green">Solicitud firmada y validada criptográficamente.</span>
-                            <a data-oficio-signed-link href="{{ route('depositos.solicitud.documento', ['id' => $solicitudId]) }}" target="_blank" rel="noopener" class="text-sm font-semibold text-science-blue hover:underline">Ver PDF firmado ↗</a>
+                            <a data-oficio-signed-link href="{{ route('depositos.solicitud.documento', ['id' => $solicitudId]) }}" target="_blank" rel="noopener" class="text-sm font-semibold text-science-blue hover:underline">PDF Firmado</a>
+                            <span data-pdf-signed-check class="hub-pdf-check" role="img" aria-label="PDF firmado correctamente">✓</span>
                         </span>
                     </template>
                     <div x-show="dialogo" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-blue-navy/75 p-4" role="presentation">
@@ -74,7 +78,6 @@
                                 <select id="token-certificado" x-model="tokenAlias" class="w-full rounded border border-border p-2" x-bind:disabled="estado === 'procesando'"><option value="">Selecciona un certificado</option><template x-for="cert in tokenCertificados" :key="cert.alias"><option :value="cert.alias" x-text="cert.nombre"></option></template></select>
                             </flux:field>
                             <flux:input x-ref="clave" type="password" autocomplete="off" label="Clave del certificado o PIN del token" x-bind:disabled="estado === 'procesando'" required />
-                            <p x-show="error" x-text="error" class="text-sm text-error" role="alert" aria-live="assertive"></p>
                             <div class="flex flex-wrap items-center justify-end gap-2">
                                 <flux:button variant="ghost" x-on:click="cerrarDialogo()" x-bind:disabled="estado === 'procesando'">Cancelar</flux:button>
                                 <flux:button variant="primary" icon="lock-closed" x-on:click="firmar" x-bind:disabled="estado === 'procesando' || pdfPreparando" x-bind:aria-busy="(estado === 'procesando' || pdfPreparando).toString()">
@@ -87,6 +90,8 @@
                 </div>
             @endif
         @endif
+        </div>
+        <flux:button class="ml-auto" variant="primary" icon-trailing="arrow-right" wire:click="continuarDesdeSolicitud" wire:loading.attr="disabled" :disabled="!$solicitudFirmada || $solicitudCambiosPendientes">Paso 2 Trámite</flux:button>
     </div>
     <flux:error name="solicitudFirmada" />
 </div>

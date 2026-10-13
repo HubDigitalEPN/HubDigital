@@ -17,8 +17,11 @@ use Modules\GestionPrestamosRecepciones\Application\Ports\ValidacionFirmaElectro
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\ColaFirmasSolicitudR2;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\DirectorioTemporalHubDigital;
 use Modules\GestionPrestamosRecepciones\Presentation\Support\GeneradorPdfSolicitudDeposito;
+use Modules\GestionPrestamosRecepciones\Presentation\Support\ReglasSolicitudDeposito;
+use Illuminate\Support\Facades\Validator;
 
 /** Java crea y verifica la firma; PHP coordina el original y la persistencia. */
 final class FirmarSolicitudDeposito
@@ -56,13 +59,26 @@ final class FirmarSolicitudDeposito
         $peticionId = $request->input('firma_peticion_id');
         if (is_string($peticionId) && $peticionId === ($solicitud->solicitud_firma_metadata['firma_peticion_id'] ?? null)
             && $solicitud->solicitud_firmada_en !== null && filled($solicitud->solicitud_firmada_ruta)
-            && $almacenamiento->existe($solicitud->solicitud_firmada_ruta)
-            && hash_equals((string) $solicitud->solicitud_firmada_sha256, $almacenamiento->sha256($solicitud->solicitud_firmada_ruta))) {
+            && (app(ColaFirmasSolicitudR2::class)->disponible($solicitud)
+                || ($almacenamiento->existe($solicitud->solicitud_firmada_ruta)
+                    && hash_equals((string) $solicitud->solicitud_firmada_sha256, $almacenamiento->sha256($solicitud->solicitud_firmada_ruta))))) {
             $request->request->remove('clave_certificado');
             return response()->json(['message' => 'Solicitud firmada y validada criptográficamente.']);
         }
 
         $versionEsperada = (int) $solicitud->solicitud_documento_version;
+        abort_unless($solicitud->solicitud_firmada_en === null, 409,
+            'El PDF ya está firmado. Elimina el borrador para cambiar sus datos.');
+        $reglasDatos = ReglasSolicitudDeposito::obtener((string) $solicitud->solicitud_tipo_identificacion);
+        $datosOficio = [];
+        foreach (array_keys($reglasDatos) as $campo) $datosOficio[$campo] = $solicitud->{Str::snake($campo)};
+        Validator::make($datosOficio, $reglasDatos)->validate();
+        if ($solicitud->solicitud_tipo_identificacion === 'ruc') {
+            $consultaRuc = app(\App\Services\ConsultaRucSri::class)->consultar($solicitud->solicitud_cedula);
+            if (($consultaRuc['estado'] ?? '') === 'no_encontrado') {
+                throw ValidationException::withMessages(['solicitudCedula' => 'El RUC no consta en la consulta oficial del SRI. Revisa el número.']);
+            }
+        }
         $pdfOriginal = $generador->generar($solicitud);
         abort_unless((int) $solicitud->solicitud_documento_version === $versionEsperada,
             409, 'El oficio cambió. Revisa y firma la versión actual.');
@@ -76,6 +92,7 @@ final class FirmarSolicitudDeposito
             .'-v'.((int) $solicitud->solicitud_documento_version)
             .'-'.Str::uuid().'.pdf';
         $persistido = false;
+        $asincrono = (bool) config('deposit-storage.signature_async', false);
         $guardado = false;
         $archivoJava = null;
         $inicioFirma = microtime(true);
@@ -109,13 +126,12 @@ final class FirmarSolicitudDeposito
             $firmaMetadata['pdf_sha256'] = hash_file('sha256', $rutaAbsoluta);
             $firmaMetadata['original_sha256'] = hash('sha256', $pdfOriginal);
             $inicioAlmacenamiento = microtime(true);
-            $huellaGuardada = $almacenamiento->guardarFirmadoValidado($archivoJava, $ruta);
-            $guardado = true;
-            abort_unless(
-                hash_equals($firmaMetadata['pdf_sha256'], $huellaGuardada),
-                500,
-                'El PDF firmado no superó la verificación de integridad en R2.',
-            );
+            if (!$asincrono) {
+                $huellaGuardada = $almacenamiento->guardarFirmadoValidado($archivoJava, $ruta);
+                $guardado = true;
+                abort_unless(hash_equals($firmaMetadata['pdf_sha256'], $huellaGuardada), 500,
+                    'El PDF firmado no superó la verificación de integridad en R2.');
+            }
             $almacenamientoMs = (int) round((microtime(true) - $inicioAlmacenamiento) * 1000);
 
             $rutaAnterior = DB::transaction(function () use (
@@ -124,6 +140,8 @@ final class FirmarSolicitudDeposito
                 $versionEsperada,
                 $ruta,
                 $firmaMetadata,
+                $asincrono,
+                $archivoJava,
             ): ?string {
                 $vigente = SolicitudDepositoEloquentModel::query()->whereKey($id)->lockForUpdate()->firstOrFail();
                 abort_unless((string) $vigente->investigador_id === (string) $request->user()->id, 403);
@@ -146,10 +164,16 @@ final class FirmarSolicitudDeposito
                     'solicitud_firmada_en' => now(),
                     'solicitud_firma_metadata' => $firmaMetadata,
                 ])->save();
+                if ($asincrono) {
+                    $pendienteId = app(ColaFirmasSolicitudR2::class)->encolar($archivoJava, $vigente, $ruta, $anterior);
+                    $firmaMetadata['r2_pendiente_id'] = $pendienteId;
+                    $vigente->forceFill(['solicitud_firma_metadata' => $firmaMetadata])->save();
+                }
 
                 return $anterior;
             });
             $persistido = true;
+            if ($asincrono) $almacenamientoMs = (int) round((microtime(true) - $inicioAlmacenamiento) * 1000);
 
             Log::info('Firma de solicitud persistida', [
                 'solicitud_id' => $id,
@@ -158,9 +182,10 @@ final class FirmarSolicitudDeposito
                 'firma_ms' => $firmaMs,
                 'validacion_ms' => $validacionMs,
                 'almacenamiento_ms' => $almacenamientoMs,
+                'almacenamiento_encolado' => $asincrono,
             ]);
 
-            if (is_string($rutaAnterior) && $rutaAnterior !== '' && $rutaAnterior !== $ruta) {
+            if (!$asincrono && is_string($rutaAnterior) && $rutaAnterior !== '' && $rutaAnterior !== $ruta) {
                 try {
                     $almacenamiento->eliminar($rutaAnterior);
                 } catch (\Throwable $e) {
@@ -186,6 +211,8 @@ final class FirmarSolicitudDeposito
 
         return response()->json([
             'message' => 'Solicitud firmada y validada criptográficamente.',
-        ])->header('Server-Timing', 'firma;dur='.$firmaMs.',validacion;dur='.$validacionMs.',r2;dur='.$almacenamientoMs);
+            'almacenamiento' => $asincrono ? 'encolado' : 'confirmado',
+        ])->header('Server-Timing', 'firma;dur='.$firmaMs.',validacion;dur='.$validacionMs
+            .','.($asincrono ? 'cola' : 'r2').';dur='.$almacenamientoMs);
     }
 }

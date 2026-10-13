@@ -7,7 +7,7 @@
         body { color: #182536; font: 11px DejaVu Sans, sans-serif; line-height: 1.7; }
         .oficio { text-align: right; margin-bottom: 26px; }
         .destinatario { margin-bottom: 30px; line-height: 1.45; }
-        .cuerpo { text-align: justify; margin: 16px 0 30px; white-space: pre-line; overflow-wrap: break-word; }
+        .cuerpo { text-align: justify; text-align-last: left; margin: 16px 0 30px; white-space: normal; overflow-wrap: break-word; }
         .firma { margin-top: 28px; position: relative; height: 116px; }
         .firma a { display: block; position: absolute; color: #fff; font-size: 1px; line-height: 1px; text-decoration: none; }
         .firma .bloque { inset: 0; }
@@ -34,9 +34,7 @@
 
     <p>De mis consideraciones,</p>
 
-    <p class="cuerpo">
-        {{ \Modules\GestionPrestamosRecepciones\Presentation\Support\TextoSolicitudDeposito::redactar($solicitud) }}
-    </p>
+    <p class="cuerpo">{{ \Modules\GestionPrestamosRecepciones\Presentation\Support\TextoSolicitudDeposito::redactar($solicitud) }}</p>
 
     <p>Sin otro particular, me suscribo de usted.</p>
     <p>Atentamente,</p>

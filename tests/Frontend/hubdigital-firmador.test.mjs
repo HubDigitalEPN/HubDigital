@@ -7,7 +7,7 @@ import {webcrypto} from 'node:crypto';
 
 const source = await readFile(new URL('../../resources/js/hubdigital-firmador.js', import.meta.url), 'utf8');
 function signer(fetch, config = {}) {
-    const events = [], credentials = {value: 'clave de prueba'}, certificate = {value: 'prueba.p12', files: [new File(['p12 temporal'], 'prueba.p12')]};
+    const events = [], credentials = {value: 'clave de prueba'}, certificate = {value: 'prueba.p12', files: [new File(['p12 temporal'], 'prueba.p12')], focused: false, focus() {this.focused = true;}};
     const window = {setTimeout: () => 1, clearTimeout() {}, dispatchEvent: event => events.push(event), location: {href: 'https://dev.labinvepn.org/depositos/solicitud', reload() { throw new Error('No debe recargar si hay callback'); }}};
     const context = vm.createContext({window, document: {querySelector: selector => selector.startsWith('meta') ? {content: 'csrf'} : null}, fetch, FormData, AbortController, AbortSignal, URL, TypeError, crypto: webcrypto, CustomEvent: class {constructor(type, options) {this.type = type; this.detail = options.detail;}}});
     vm.runInContext(source, context);
@@ -27,15 +27,21 @@ test('preparar el original no envia credenciales y espera antes de aceptar la fi
         postCalls++;
         return {ok: true, json: async () => ({message: 'Solicitud firmada'})};
     }, {originalUrl: '/original'});
-    const prepared = ui.state.prepararPdf();
+    ui.state.init();
     assert.equal(ui.state.pdfPreparando, true);
+    assert.equal(ui.events.findLast(event => event.type === 'hub-firma-ocupada').detail.busy, true);
     await ui.state.firmar();
     assert.equal(postCalls, 0);
     assert.equal(originalRequest.body, undefined);
     assert.equal(originalRequest.headers.Accept, 'application/pdf');
     assert.equal(ui.credentials.value, 'clave de prueba');
     resolveOriginal({ok: true, arrayBuffer: async () => new ArrayBuffer(0)});
-    await prepared;
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(ui.state.pdfPreparando, false);
+    assert.equal(ui.state.pdfPreparado, true);
+    assert.equal(ui.events.find(event => event.type === 'hub-original-preparado').detail.documentVersion, 3);
+    ui.state.abrirDialogo();
+    assert.equal(ui.certificate.focused, true);
     assert.equal(ui.state.pdfPreparando, false);
     await ui.state.firmar();
     assert.equal(postCalls, 1);
@@ -59,6 +65,8 @@ test('un 422 muestra el detalle, sale de Firmando y limpia las credenciales', as
     await ui.state.firmar();
     assert.equal(ui.state.estado, 'error');
     assert.equal(ui.state.error, 'Contraseña incorrecta');
+    assert.equal(ui.events.find(event => event.type === 'show-toast').detail.variant, 'warning');
+    assert.equal(ui.events.findLast(event => event.type === 'hub-firma-ocupada').detail.busy, false);
     assert.equal(ui.state.progreso, '');
     assert.equal(ui.credentials.value, '');
     assert.equal(ui.certificate.value, '');
@@ -73,7 +81,9 @@ test('el éxito actualiza la solicitud inmediatamente y envía su versión', asy
     assert.equal(submitted.get('documento_version'), '3');
     assert.equal(submitted.get('clave_certificado'), null);
     assert.equal(submitted.get('certificado'), null);
-    assert.equal(ui.events[0].detail.message, 'Solicitud firmada');
+    assert.equal(ui.events.find(event => event.type === 'toast').detail.message, 'Solicitud firmada');
+    assert.equal(ui.events.filter(event => event.type === 'hub-firma-completada').length, 1);
+    assert.equal(ui.events.findLast(event => event.type === 'hub-firma-ocupada').detail.busy, false);
 });
 test('una respuesta perdida recupera la firma persistida sin volver a firmar', async () => {
     let calls = 0, notified = 0;

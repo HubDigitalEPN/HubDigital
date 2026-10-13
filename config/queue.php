@@ -31,6 +31,15 @@ return [
 
     'connections' => [
 
+        'r2_signatures' => [
+            'driver' => 'database',
+            'connection' => env('DB_CONNECTION', 'pgsql'),
+            'table' => 'jobs',
+            'queue' => 'r2-signatures',
+            'retry_after' => 600,
+            'after_commit' => false,
+        ],
+
         'sync' => [
             'driver' => 'sync',
         ],

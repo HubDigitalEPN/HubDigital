@@ -17,6 +17,8 @@ return [
     |
     */
     'driver' => env('DEPOSIT_STORAGE_DRIVER', 'r2'),
+    // Activar junto con el consumidor persistente de r2-signatures.
+    'signature_async' => filter_var(env('DEPOSIT_SIGNATURE_ASYNC', false), FILTER_VALIDATE_BOOL),
     'require_remote' => filter_var(
         env('DEPOSIT_STORAGE_REQUIRE_REMOTE', true),
         FILTER_VALIDATE_BOOL,

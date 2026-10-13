@@ -10,6 +10,7 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\Solici
 use Modules\GestionPrestamosRecepciones\Presentation\Support\GeneradorPdfSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Services\ClienteFirmadorPreparado;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\ColaFirmasSolicitudR2;
 
 /** Sirve el formulario oficial generado o su copia final firmada desde almacenamiento privado. */
 final class DocumentoSolicitudDeposito
@@ -26,7 +27,10 @@ final class DocumentoSolicitudDeposito
         abort_unless($esDueno || $usuario->esCurador() || $usuario->esReceptor(), 403);
 
         $servirOriginal = $request->boolean('original');
-        if (! $servirOriginal && $solicitud->solicitud_firmada_ruta !== null) {
+        $contenidoPendiente = !$servirOriginal ? app(ColaFirmasSolicitudR2::class)->contenidoPendiente($solicitud) : null;
+        if ($contenidoPendiente !== null) {
+            $contenido = $contenidoPendiente;
+        } elseif (! $servirOriginal && $solicitud->solicitud_firmada_ruta !== null) {
             abort_unless(
                 $almacenamiento->existe($solicitud->solicitud_firmada_ruta),
                 409,

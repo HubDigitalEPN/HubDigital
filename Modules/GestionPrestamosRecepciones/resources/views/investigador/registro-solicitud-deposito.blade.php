@@ -1,18 +1,19 @@
 <div
     class="hub-transactional-ui hub-depositos-ui hub-workspace space-y-3 pb-8"
     x-data="{
-        domainError: null,
+        firmaOcupada: false,
         tipoTramite: $wire.entangle('tipoTramite'),
         declaracionAceptada: $wire.entangle('declaracionAceptada'),
         matrizCargada: $wire.entangle('matrizCargada'),
         solicitudFirmada: $wire.entangle('solicitudFirmada'),
     }"
-    x-on:domain-error.window="domainError = $event.detail.message; setTimeout(() => domainError = null, 6000)"
+    x-on:hub-firma-ocupada.window="firmaOcupada = $event.detail.busy"
 >
-    {{-- Domain error global --}}
-    <div x-show="domainError" x-transition class="flex items-start gap-3 rounded-lg border border-error bg-error/5 p-4" role="alert" aria-live="assertive">
-        <flux:icon name="x-circle" class="size-5 text-error shrink-0 mt-0.5" />
-        <p class="text-sm text-error font-medium" x-text="domainError"></p>
+    <div wire:loading.delay.long class="hub-processing-overlay" style="display: none" role="status" aria-live="polite">
+        <div x-show="!firmaOcupada" class="hub-processing-card"><span class="hub-processing-spinner" aria-hidden="true"></span><span>Procesando…</span></div>
+    </div>
+    <div x-show="firmaOcupada" x-cloak x-trap.inert.noscroll="firmaOcupada" class="hub-processing-overlay" role="status" aria-live="polite" tabindex="-1">
+        <div class="hub-processing-card"><span class="hub-processing-spinner" aria-hidden="true"></span><span>Procesando…</span></div>
     </div>
 
     {{-- Corrección de un rechazo subsanable: recordatorio de las observaciones --}}
@@ -75,13 +76,6 @@
 
         {{-- Stepper --}}
         <div aria-label="Progreso de la solicitud" class="hub-wizard-progress overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
-            <div class="flex items-center justify-between px-3 pt-2 sm:hidden">
-                @php
-                    $pasoVisible = $paso <= 4 ? $paso + 1 : $paso;
-                    $etiquetaPaso = ['Solicitud', 'Trámite', 'Origen', 'Archivos y firmas', 'Datos', 'Identidad', 'Detalle', 'Envío'][$pasoVisible - 1] ?? '';
-                @endphp
-                <p class="text-sm font-semibold text-blue-navy">Paso {{ $pasoVisible }} de 8 · {{ $etiquetaPaso }}</p>
-            </div>
             <x-gestionprestamosrecepciones::wizard-stepper
                 :pasos="[
                     ['label' => 'Solicitud', 'sub' => 'Firma PDF'],
@@ -94,7 +88,7 @@
                     ['label' => 'Envío',      'sub' => 'Revisión'],
                 ]"
                 :pasoActual="$paso <= 4 ? $paso + 1 : $paso"
-                :pasosCompletados="array_values(array_unique(array_merge($paso > 0 ? [1] : [], array_map(fn ($numero) => $numero <= 4 ? $numero + 1 : $numero, array_filter($pasosCompletados, fn ($numero) => $numero !== 5)))))"
+                :pasosCompletados="array_values(array_unique(array_merge($paso > 0 || $solicitudFirmada ? [1] : [], array_map(fn ($numero) => $numero <= 4 ? $numero + 1 : $numero, array_filter($pasosCompletados, fn ($numero) => $numero !== 5)))))"
             />
         </div>
     @endif
@@ -127,7 +121,7 @@
         </div>
 
         {{-- Footer navigation --}}
-        @if($paso < 9)
+        @if($paso > 0 && $paso < 9)
             <div class="flex items-center justify-between gap-3 border-t border-blue-navy/10 bg-[#F8FAFC] px-4 py-3 sm:px-6 sm:py-4 lg:px-8">
                 <div>
                     @if($paso > 0 && !$extraccionProcesando)
@@ -138,9 +132,7 @@
                 </div>
 
                 <div class="flex items-center gap-3">
-                    @if($paso === 0)
-                        <flux:button variant="primary" icon-trailing="arrow-right" wire:click="continuarDesdeSolicitud" wire:loading.attr="disabled" :disabled="!$solicitudFirmada || $solicitudCambiosPendientes">Continuar al trámite</flux:button>
-                    @elseif($paso === 1)
+                    @if($paso === 1)
                         <flux:button
                             variant="primary"
                             icon-trailing="arrow-right"
@@ -227,18 +219,39 @@
 
     {{-- Toast teleportado al body — fuera del DOM de Livewire, sin morph --}}
     @teleport('body')
+        <div x-data="{show: false, timer: null, abrir() {clearTimeout(this.timer); this.show = true; this.timer = setTimeout(() => this.cerrar(), 3500);}, cerrar() {this.show = false; clearTimeout(this.timer); this.$nextTick(() => document.querySelector('[data-oficio-signed-link]')?.focus());}, destroy() {clearTimeout(this.timer);}}"
+            x-on:hub-firma-completada.window="abrir()" x-on:keydown.escape.window="if(show) cerrar()"
+            x-show="show" x-cloak x-transition.opacity x-trap.inert.noscroll="show"
+            class="hub-signature-success-overlay" data-hub-signature-success>
+            <section class="hub-signature-success-card" role="alertdialog" aria-modal="true" aria-labelledby="firma-completada-titulo" aria-describedby="firma-completada-detalle">
+                <div class="hub-signature-success-emblem" aria-hidden="true"><span><flux:icon name="check" class="size-7" /></span></div>
+                <h2 id="firma-completada-titulo">Documento firmado</h2>
+                <p id="firma-completada-detalle">Tu PDF está firmado y validado. El guardado seguro continúa automáticamente.</p>
+                <button type="button" x-on:click="cerrar()">Cerrar</button>
+            </section>
+        </div>
+    @endteleport
+    @teleport('body')
         <div
             x-data="{
                 show: false,
                 message: '',
                 variant: 'warning',
+                timer: null,
                 showToast(data) {
+                    if (!['warning', 'error'].includes(data.variant || 'warning')) return;
+                    clearTimeout(this.timer);
                     this.message = data.message;
                     this.variant = data.variant || 'warning';
                     this.show = true;
+                    this.timer = setTimeout(() => this.show = false, 6000);
+                },
+                destroy() {
+                    clearTimeout(this.timer);
                 }
             }"
             x-on:show-toast.window="showToast($event.detail)"
+            x-on:domain-error.window="showToast({message: $event.detail.message, variant: 'warning'})"
             x-on:close-toast.window="show = false"
             x-show="show"
             x-transition:enter="transition ease-out duration-300"
@@ -253,6 +266,7 @@
                     ? 'border-science-blue/50 bg-science-blue/5 ring-1 ring-science-blue/20'
                     : 'border-warning/50 bg-warning/5 ring-1 ring-warning/20'"
             class="rounded-xl border bg-surface px-3 py-2.5 flex items-start gap-2.5"
+            data-hub-floating-notice role="alert" aria-live="assertive"
             style="display: none; position: fixed; top: 1rem; right: 1rem; z-index: 9999; width: 19rem; max-width: calc(100dvi - 2rem); box-shadow: 0 20px 60px rgba(0,0,0,0.15), 0 4px 16px rgba(0,0,0,0.1);"
         >
             <div x-show="variant === 'error'" class="flex-shrink-0 mt-0.5">

@@ -9,26 +9,38 @@ window.hubDigitalFirmador = (config) => ({
     tokenCertificados: [],
     peticionId: null,
     pdfPreparando: false,
+    pdfPreparado: false,
+
+    init() {
+        if (config.originalUrl && config.documentVersion != null) void this.prepararPdf();
+    },
 
     abrirDialogo() {
         this.estado = 'listo';
         this.error = '';
         this.dialogo = true;
         this.$nextTick(() => this.$refs.certificado?.focus());
-        if (!this.pdfPreparando) void this.prepararPdf();
+        if (!this.pdfPreparando && !this.pdfPreparado) void this.prepararPdf();
     },
 
     async prepararPdf() {
-        if (!config.originalUrl || config.documentVersion == null) return;
+        if (this.pdfPreparando || this.pdfPreparado || !config.originalUrl || config.documentVersion == null) return;
         this.pdfPreparando = true;
+        this.notificarTrabajo();
         const controller = new AbortController();
         const timer = window.setTimeout(() => controller.abort(), 12000);
         try {
             const response = await fetch(config.originalUrl, {credentials: 'same-origin', signal: controller.signal,
                 headers: {Accept: 'application/pdf'}});
-            if (response.ok) await response.arrayBuffer();
+            if (response.ok) {
+                await response.arrayBuffer();
+                this.pdfPreparado = true;
+                window.dispatchEvent(new CustomEvent('hub-original-preparado', {
+                    detail: {documentId: config.documentId, documentVersion: config.documentVersion},
+                }));
+            }
         } catch { /* la firma conserva la generación y comprobación completas */ }
-        finally { window.clearTimeout(timer); this.pdfPreparando = false; }
+        finally { window.clearTimeout(timer); this.pdfPreparando = false; this.notificarTrabajo(); }
     },
 
     cerrarDialogo() {
@@ -44,17 +56,18 @@ window.hubDigitalFirmador = (config) => ({
         const archivo = this.$refs.certificado?.files?.[0];
         let clave = this.$refs.clave?.value ?? '';
         if (this.metodo === 'archivo' && (!archivo || !/\.(p12|pfx)$/i.test(archivo.name))) {
-            this.error = 'Selecciona un certificado .p12 o .pfx.';
+            this.avisarError('Selecciona un certificado .p12 o .pfx.');
             this.limpiarCamposCredenciales();
             return;
         }
         if (clave.length === 0) {
-            this.error = this.metodo === 'token' ? 'Ingresa el PIN del token.' : 'Ingresa la contraseña del certificado.';
+            this.avisarError(this.metodo === 'token' ? 'Ingresa el PIN del token.' : 'Ingresa la contraseña del certificado.');
             this.limpiarCamposCredenciales();
             return;
         }
 
         this.estado = 'procesando';
+        this.notificarTrabajo();
         this.progreso = 'Firmando…';
         this.peticionId ??= crypto.randomUUID();
         const formulario = new FormData();
@@ -96,23 +109,39 @@ window.hubDigitalFirmador = (config) => ({
             if (error?.name !== 'AbortError' && !(error instanceof TypeError)) this.peticionId = null;
             this.estado = 'error';
             this.progreso = '';
-            this.error = error?.name === 'AbortError'
+            this.avisarError(error?.name === 'AbortError'
                 ? 'No se pudo confirmar la firma por una interrupción de conexión. Vuelve a intentarlo; comprobaremos si ya se guardó.'
-                : this.mensajeSeguro(error);
+                : this.mensajeSeguro(error));
         } finally {
             window.clearTimeout(temporizador);
             formulario.delete('clave_certificado');
             formulario.delete('certificado');
             clave = '';
             this.limpiarCamposCredenciales();
+            this.notificarTrabajo();
         }
+    },
+
+    notificarTrabajo() {
+        window.dispatchEvent(new CustomEvent('hub-firma-ocupada', {
+            detail: {busy: this.pdfPreparando || this.estado === 'procesando'},
+        }));
+    },
+
+    avisarError(mensaje) {
+        this.error = mensaje;
+        window.dispatchEvent(new CustomEvent('show-toast', {detail: {message: mensaje, variant: 'warning'}}));
     },
 
     async completarFirma(mensaje) {
         this.estado = 'completado';
         this.progreso = mensaje ?? 'Solicitud firmada y validada criptográficamente.';
         this.dialogo = false;
-        window.dispatchEvent(new CustomEvent('toast', {detail: {message: this.progreso}}));
+        this.notificarTrabajo();
+        window.dispatchEvent(new CustomEvent('hub-firma-completada', {detail: {message: this.progreso}}));
+        if (!document.querySelector('[data-hub-signature-success]')) {
+            window.dispatchEvent(new CustomEvent('toast', {detail: {message: this.progreso}}));
+        }
         if (config.onSigned) {
             try {
                 await config.onSigned();

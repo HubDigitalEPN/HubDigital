@@ -57,8 +57,8 @@ test('reanuda el oficio firmado solo con valores vigentes y conserva el PDF ante
         $component->assertSet('paso', 0)
             ->assertSet('solicitudFirmada', false)
             ->assertSet('solicitudCambiosPendientes', true)
-            ->assertSee('Ver PDF firmado anterior')
-            ->assertSee('Selecciona las opciones vigentes')
+            ->assertSee('PDF Firmado, versión anterior')
+            ->assertSee('hub-request-fields--locked', false)
             ->assertHasErrors($campo)
             ->call('continuarDesdeSolicitud')
             ->assertHasErrors($campo)->assertSet('paso', 0);

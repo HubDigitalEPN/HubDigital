@@ -180,15 +180,7 @@ final class EloquentSolicitudDepositoRepository implements SolicitudDepositoRepo
             ->where('estado', EstadoSolicitudDeposito::EnBorrador->value)
             ->get();
         foreach ($borradores as $borrador) {
-            foreach (($borrador->documentos_cargados ?? []) as $ruta) {
-                if (is_string($ruta) && $ruta !== '') {
-                    app(\Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos::class)->eliminar($ruta);
-                }
-            }
-            if (is_string($borrador->solicitud_firmada_ruta) && $borrador->solicitud_firmada_ruta !== '') {
-                app(\Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos::class)->eliminar($borrador->solicitud_firmada_ruta);
-            }
-            $borrador->delete();
+            app(\Modules\GestionPrestamosRecepciones\Infrastructure\Services\EliminarBorradorConArchivos::class)($borrador);
         }
     }
 

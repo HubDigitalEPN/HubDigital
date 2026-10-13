@@ -10,24 +10,22 @@
         @php
             $numero = $index + 1;
             $esActual = $numero === $pasoActual;
-            $esCompletado = !$esActual && in_array($numero, $pasosCompletados);
-            $estado = $esActual ? 'En curso' : ($esCompletado ? 'Completado' : 'Pendiente');
+            $esCompletado = in_array($numero, $pasosCompletados);
+            $estado = $esCompletado ? 'Completado' : ($esActual ? 'En curso' : 'Pendiente');
         @endphp
 
-        <li class="hub-wizard-step {{ $esActual ? 'is-current' : ($esCompletado ? 'is-complete' : 'is-pending') }}"
+        <li class="hub-wizard-step {{ $esActual ? 'is-current' : ($esCompletado ? '' : 'is-pending') }} {{ $esCompletado ? 'is-complete' : '' }}"
             aria-label="Paso {{ $numero }}: {{ $paso['label'] }}. {{ $estado }}" @if($esActual) aria-current="step" @endif>
             <span class="hub-wizard-step__marker" aria-hidden="true">
-                @if($esActual)
-                    <flux:icon name="lock-closed" class="size-4" />
-                @elseif($esCompletado)
+                @if($esCompletado)
                     <flux:icon name="check" class="size-4" />
+                @elseif($esActual)
+                    <flux:icon name="lock-closed" class="size-4" />
                 @else
                     <span class="hub-wizard-step__dots">@for($dot = 0; $dot < 9; $dot++)<i></i>@endfor</span>
                 @endif
             </span>
-            <span class="hub-wizard-step__number">Paso {{ $numero }}</span>
-            <span class="hub-wizard-step__label" title="{{ $paso['label'] }}">{{ $paso['label'] }}</span>
-            <span class="hub-wizard-step__status">{{ $estado }}</span>
+            <span class="hub-wizard-step__label" title="{{ $paso['label'] }}">({{ $numero }}) {{ $paso['label'] }}</span>
         </li>
 
     @endforeach
