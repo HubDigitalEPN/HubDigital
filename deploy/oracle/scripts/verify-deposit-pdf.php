@@ -123,6 +123,14 @@ try {
     echo "OK solución PDF depósitos: número mágico en byte cero, estructura y contenido activo comprobados; PDF falso rechazado; PHP/Java verificó firma válida, alterada y ausente.\n";
 } catch (\Throwable $error) {
     $fallo = 'NO OK solución PDF depósitos: '.$error->getMessage();
+    // Diagnóstico de los procesos sintéticos: clases y tiempos, nunca credenciales ni PDF.
+    for ($causa = $error->getPrevious(), $nivel = 0; $causa !== null && $nivel < 4; $causa = $causa->getPrevious(), $nivel++) {
+        $fallo .= ' ['.get_class($causa);
+        if ($causa instanceof \Symfony\Component\Process\Exception\ProcessTimedOutException) {
+            $fallo .= '; limite='.$causa->getExceededTimeout().' s';
+        }
+        $fallo .= ']';
+    }
 } finally {
     @unlink($archivoValido);
     @unlink($archivoFalso);

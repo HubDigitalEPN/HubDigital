@@ -69,7 +69,7 @@ final class JavaValidacionFirmaElectronicaAdapter implements ValidacionFirmaElec
             $espera = max(1, min(5, $fuentes['timeout']));
             $comando = [
                 (string) config('firma-electronica.java_binary', 'java'),
-                '-Djava.awt.headless=true',
+                '-Djava.awt.headless=true', '-Xms24m', '-Xmx160m', '-XX:+UseSerialGC', '-XX:ActiveProcessorCount=2',
                 '-Dcom.sun.security.ocsp.timeout='.$espera,
                 '-Dcom.sun.security.crl.timeout='.$espera,
                 '-Dhubdigital.revocation.timeout='.$espera,

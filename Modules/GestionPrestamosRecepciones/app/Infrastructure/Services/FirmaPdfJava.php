@@ -68,7 +68,7 @@ final class FirmaPdfJava
             if ($resultado === null) {
                 $proceso = new Process([
                     (string) config('firma-electronica.java_binary', 'java'),
-                    '-Djava.awt.headless=true', '-Xmx384m',
+                    '-Djava.awt.headless=true', '-Xms24m', '-Xmx160m', '-XX:+UseSerialGC', '-XX:ActiveProcessorCount=2',
                     '-Dcom.sun.security.ocsp.timeout='.$espera,
                     '-Dcom.sun.security.crl.timeout='.$espera,
                     '-Dhubdigital.revocation.timeout='.$espera,

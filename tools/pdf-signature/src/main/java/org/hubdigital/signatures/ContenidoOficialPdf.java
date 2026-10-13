@@ -258,9 +258,10 @@ final class ContenidoOficialPdf {
 
     private static boolean iguales(BufferedImage a, BufferedImage b) {
         if (a.getWidth() != b.getWidth() || a.getHeight() != b.getHeight()) return false;
+        int[] filaA = new int[a.getWidth()], filaB = new int[b.getWidth()];
         for (int y = 0; y < a.getHeight(); y++) {
-            if (!Arrays.equals(a.getRGB(0, y, a.getWidth(), 1, null, 0, a.getWidth()),
-                b.getRGB(0, y, b.getWidth(), 1, null, 0, b.getWidth()))) return false;
+            if (!Arrays.equals(a.getRGB(0, y, a.getWidth(), 1, filaA, 0, a.getWidth()),
+                b.getRGB(0, y, b.getWidth(), 1, filaB, 0, b.getWidth()))) return false;
         }
         return true;
     }

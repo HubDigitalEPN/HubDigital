@@ -139,6 +139,9 @@ public final class PdfSignatureCli {
                 System.exit(2);
             }
         } catch (Exception e) {
+            if (args.length == 1 && "selftest".equals(args[0])) {
+                System.err.println("Autoprueba sintetica: " + e.getClass().getName() + ": " + e.getMessage());
+            }
             diagnosticarError(e);
             System.out.println(errorResult(e));
             System.exit(2);
