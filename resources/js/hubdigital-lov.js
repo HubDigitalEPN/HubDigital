@@ -26,6 +26,8 @@ export function crearLov(config) {
             if (!config.opciones.some(o => o.valor === valor)) return;
             this.cerrar();
             await this.$wire.$set(config.campo, valor, true);
+            await this.$nextTick();
+            requestAnimationFrame(() => document.getElementById(`lov-${config.campo}-boton`)?.focus({preventScroll: true}));
         },
     };
 }

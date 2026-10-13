@@ -203,6 +203,12 @@ final class R2S3Client
         ];
 
         $maxIntentos = max(1, min(3, (int) ($this->configuracion['max_attempts'] ?? 3)));
+        $socket = (string) ($this->configuracion['transport_socket'] ?? '');
+        $metadatosTransporte = dirname($socket).'/origin-host';
+        $transportePrivado = PHP_OS_FAMILY === 'Linux' && $socket === '/run/hubdigital/r2-transport/r2.sock'
+            && ! is_link($socket) && @filetype($socket) === 'socket' && (@fileperms($socket) & 0777) === 0600
+            && ! is_link($metadatosTransporte) && @fileowner($metadatosTransporte) === 0
+            && trim((string) @file_get_contents($metadatosTransporte)) === $host;
         for ($intento = 1; $intento <= $maxIntentos; $intento++) {
             try {
                 $peticion = Http::timeout(max(1, (int) ($this->configuracion['timeout_seconds'] ?? 45)))
@@ -210,12 +216,18 @@ final class R2S3Client
                     ->connectTimeout(max(1, (int) ($this->configuracion['connect_timeout_seconds'] ?? 10)))
                     ->withUserAgent('HubDigital-EPN/1.0 almacenamiento-privado')
                     ->withHeaders($headers);
+                if ($transportePrivado) {
+                    // Solo el salto al socket es local; nginx verifica TLS con el mismo host R2 firmado.
+                    $peticion = $peticion->withOptions(['curl' => [CURLOPT_UNIX_SOCKET_PATH => $socket],
+                        'proxy' => '', 'allow_redirects' => false]);
+                }
 
                 if ($metodo === 'PUT') {
                     $peticion = $peticion->withBody($contenido, $mime ?: 'application/octet-stream');
                 }
 
-                $respuesta = $peticion->send($metodo, $url.($consultaCanonica !== '' ? '?'.$consultaCanonica : ''));
+                $urlTransporte = $transportePrivado ? preg_replace('/\Ahttps:/', 'http:', $url) : $url;
+                $respuesta = $peticion->send($metodo, $urlTransporte.($consultaCanonica !== '' ? '?'.$consultaCanonica : ''));
                 $reintentable = $respuesta->status() === 429 || $respuesta->serverError();
                 if (! $reintentable || $intento === $maxIntentos) {
                     return $respuesta;

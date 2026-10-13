@@ -980,6 +980,7 @@ public final class PdfSignatureCli {
             page.setAnnotations(markers); pdf.save(original.toFile());
         }
         FirmadorPdfOficial.firmar(original, signed, p12, "temporal".toCharArray(), profile);
+        if (!ContenidoOficialPdf.preparar(original)) throw new IllegalStateException("No se preparó el original oficial.");
         if (!verify(signed).cryptographicallyValid) throw new IllegalStateException("La firma oficial no es criptográficamente válida.");
         String dictamen = officialResult(signed, original);
         if (!dictamen.contains("\"aceptable\":true") || !dictamen.contains("\"pdf_seguro\":true")
@@ -994,6 +995,25 @@ public final class PdfSignatureCli {
         try { PdfSignatureWorker.validatePath(temp.toRealPath(), signed.toString(), true, 0); }
         catch (IllegalArgumentException expected) { overwriteRejected = true; }
         if (!outsideRejected || !overwriteRejected) throw new IllegalStateException("El servicio permite rutas ajenas o sobreescritura.");
+        byte[] originalSinCambios = Files.readAllBytes(original);
+        Path modificado = temp.resolve("original-cambiado.pdf");
+        try (PDDocument cambiado = Loader.loadPDF(original.toFile())) {
+            try (var contenido = new org.apache.pdfbox.pdmodel.PDPageContentStream(cambiado, cambiado.getPage(0),
+                org.apache.pdfbox.pdmodel.PDPageContentStream.AppendMode.APPEND, true, true)) {
+                contenido.beginText(); contenido.setFont(new org.apache.pdfbox.pdmodel.font.PDType1Font(
+                    org.apache.pdfbox.pdmodel.font.Standard14Fonts.FontName.HELVETICA), 12);
+                contenido.newLineAtOffset(50, 700); contenido.showText("Original distinto en la misma ruta"); contenido.endText();
+            }
+            cambiado.save(modificado.toFile());
+        }
+        Files.move(modificado, original, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        if (officialResult(signed, original).contains("\"aceptable\":true")) {
+            throw new IllegalStateException("Se reutilizó una base preparada para un original distinto en la misma ruta.");
+        }
+        Files.write(original, originalSinCambios);
+        if (!officialResult(signed, original).contains("\"aceptable\":true")) {
+            throw new IllegalStateException("La base preparada no conserva la comparación completa del original.");
+        }
         try (PDDocument base = Loader.loadPDF(original.toFile()); PDDocument result = Loader.loadPDF(signed.toFile())) {
             if (!ContenidoOficialPdf.coincide(base, result)) throw new IllegalStateException("La firma oficial no coincide con su zona y contenido.");
             var image = new org.apache.pdfbox.rendering.PDFRenderer(result).renderImageWithDPI(0, 220);
@@ -1075,7 +1095,7 @@ public final class PdfSignatureCli {
                 formato = "ETSI.CAdES.detached".equals(firma.getSubFilter());
                 seguro = "seguro".equals(inspect(path).status) && "seguro".equals(inspect(original).status);
                 if (formato && seguro) {
-                    coincide = ContenidoOficialPdf.coincide(base, firmado);
+                    coincide = ContenidoOficialPdf.coincide(base, firmado, huellaOriginal);
                 }
                 if (result.cryptographicallyValid) {
                     CMSSignedData cms = new CMSSignedData(new ByteArrayInputStream(firma.getContents(Files.readAllBytes(path))));

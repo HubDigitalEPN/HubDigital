@@ -16,6 +16,44 @@ function signer(fetch, config = {}) {
     state.$nextTick = callback => callback();
     return {state, credentials, certificate, events};
 }
+
+test('preparar el original no envia credenciales y espera antes de aceptar la firma', async () => {
+    let resolveOriginal, originalRequest, postCalls = 0;
+    const ui = signer(async (url, request) => {
+        if (url === '/original') {
+            originalRequest = request;
+            return new Promise(resolve => { resolveOriginal = resolve; });
+        }
+        postCalls++;
+        return {ok: true, json: async () => ({message: 'Solicitud firmada'})};
+    }, {originalUrl: '/original'});
+    const prepared = ui.state.prepararPdf();
+    assert.equal(ui.state.pdfPreparando, true);
+    await ui.state.firmar();
+    assert.equal(postCalls, 0);
+    assert.equal(originalRequest.body, undefined);
+    assert.equal(originalRequest.headers.Accept, 'application/pdf');
+    assert.equal(ui.credentials.value, 'clave de prueba');
+    resolveOriginal({ok: true, arrayBuffer: async () => new ArrayBuffer(0)});
+    await prepared;
+    assert.equal(ui.state.pdfPreparando, false);
+    await ui.state.firmar();
+    assert.equal(postCalls, 1);
+    assert.equal(ui.state.estado, 'completado');
+});
+
+test('un fallo al preparar el original libera la interfaz y permite la firma normal', async () => {
+    const ui = signer(async url => {
+        if (url === '/original') throw new TypeError('Preparación interrumpida');
+        return {ok: true, json: async () => ({message: 'Solicitud firmada'})};
+    }, {originalUrl: '/original'});
+    await ui.state.prepararPdf();
+    assert.equal(ui.state.pdfPreparando, false);
+    assert.equal(ui.credentials.value, 'clave de prueba');
+    assert.equal(ui.state.estado, 'listo');
+    await ui.state.firmar();
+    assert.equal(ui.state.estado, 'completado');
+});
 test('un 422 muestra el detalle, sale de Firmando y limpia las credenciales', async () => {
     const ui = signer(async () => ({ok: false, json: async () => ({message: 'Datos incorrectos', errors: {clave_certificado: ['Contraseña incorrecta']}})}));
     await ui.state.firmar();

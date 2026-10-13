@@ -74,11 +74,17 @@ final class PdfSignatureWorker {
                     result = "{\"status\":\"worker_incompatible\"}";
                 } else {
                     validatePath(root, fields[3], false, 16L * 1024 * 1024);
+                    boolean prepare = "prepare-only".equals(fields[7]);
                     boolean verify = "verify-only".equals(fields[7]);
-                    validatePath(root, fields[4], !verify, 16L * 1024 * 1024);
-                    if (!verify) validatePath(root, fields[5], false, 5L * 1024 * 1024);
-                    request = String.join("\0", Arrays.copyOfRange(fields, 3, 8)).getBytes(StandardCharsets.UTF_8);
-                    try { result = verify ? PdfSignatureCli.officialResult(Path.of(fields[4]), Path.of(fields[3]))
+                    if (!prepare) {
+                        validatePath(root, fields[4], !verify, 16L * 1024 * 1024);
+                        if (!verify) validatePath(root, fields[5], false, 5L * 1024 * 1024);
+                        request = String.join("\0", Arrays.copyOfRange(fields, 3, 8)).getBytes(StandardCharsets.UTF_8);
+                    } else if (!fields[4].isEmpty() || !fields[5].isEmpty() || !fields[6].isEmpty()) {
+                        throw new IllegalArgumentException("La preparación no admite credenciales ni una salida.");
+                    }
+                    try { result = prepare ? "{\"status\":\"" + (ContenidoOficialPdf.preparar(Path.of(fields[3])) ? "prepared" : "not_prepared") + "\"}"
+                        : verify ? PdfSignatureCli.officialResult(Path.of(fields[4]), Path.of(fields[3]))
                         : PdfSignatureCli.signRequest(request, true); }
                     catch (Exception error) { result = PdfSignatureCli.errorResult(error); }
                 }

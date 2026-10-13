@@ -1379,6 +1379,15 @@ body:has(.hub-app-sidebar) { --color-accent: #174a9a; --color-accent-foreground:
     content: ''; position: absolute; left: 0; top: 1.35rem; width: 0; height: 0;
     border-top: 6px solid #c62828; border-right: 6px solid transparent; pointer-events: none;
 }
+.hub-depositos-ui [data-flux-field]:has(> [data-flux-input] [required])::after,
+.hub-depositos-ui .hub-lov-field:has([required])::after { content: none; }
+.hub-depositos-ui [data-flux-field] > [data-flux-input]:has([required]),
+.hub-depositos-ui .hub-lov-field:has([required]) > .hub-lov-trigger { position: relative; }
+.hub-depositos-ui [data-flux-field] > [data-flux-input]:has([required])::after,
+.hub-depositos-ui .hub-lov-field:has([required]) > .hub-lov-trigger::after {
+    content: ''; position: absolute; left: 0; top: 0; z-index: 1; width: 0; height: 0;
+    border-top: 6px solid #c62828; border-right: 6px solid transparent; pointer-events: none;
+}
 .hub-signature-dialog { width: min(40rem, calc(100vw - 2rem)); max-inline-size: min(40rem, calc(100vw - 2rem)) !important; max-height: calc(100dvh - 2rem); overflow-y: auto; }
 .hub-certificate-input, .hub-certificate-input::file-selector-button { cursor: pointer; }
 .hub-lov-field { display: grid; gap: .3rem; align-content: start; }

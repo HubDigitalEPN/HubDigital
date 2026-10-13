@@ -75,7 +75,7 @@
                             <p x-show="error" x-text="error" class="text-sm text-error" role="alert" aria-live="assertive"></p>
                             <div class="flex flex-wrap items-center justify-end gap-2">
                                 <flux:button variant="ghost" x-on:click="cerrarDialogo()" x-bind:disabled="estado === 'procesando'">Cancelar</flux:button>
-                                <flux:button variant="primary" icon="lock-closed" x-on:click="firmar" x-bind:disabled="estado === 'procesando'">
+                                <flux:button variant="primary" icon="lock-closed" x-on:click="firmar" x-bind:disabled="estado === 'procesando' || pdfPreparando" x-bind:aria-busy="(estado === 'procesando' || pdfPreparando).toString()">
                                     <span x-show="estado !== 'procesando'">Firmar solicitud</span>
                                     <span x-show="estado === 'procesando'" role="status">Firmando…</span>
                                 </flux:button>

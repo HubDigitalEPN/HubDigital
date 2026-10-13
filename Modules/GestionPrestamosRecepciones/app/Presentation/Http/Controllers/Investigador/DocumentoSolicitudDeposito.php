@@ -9,6 +9,7 @@ use Illuminate\Http\Response;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
 use Modules\GestionPrestamosRecepciones\Presentation\Support\GeneradorPdfSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Services\ClienteFirmadorPreparado;
 
 /** Sirve el formulario oficial generado o su copia final firmada desde almacenamiento privado. */
 final class DocumentoSolicitudDeposito
@@ -45,6 +46,7 @@ final class DocumentoSolicitudDeposito
         } else {
             abort_unless($esDueno || $usuario->esCurador(), 403);
             $contenido = $generador->generar($solicitud);
+            app(ClienteFirmadorPreparado::class)->prepararOriginal($contenido);
         }
 
         return response($contenido, 200, [

@@ -4,15 +4,33 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Infrastructure\Services;
 
+use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\DirectorioTemporalHubDigital;
+
 /** Transporte privado al JAR de esta release. null permite el respaldo CLI. */
 final class ClienteFirmadorPreparado
 {
+    /** La preparación es opcional: la firma siempre conserva su comprobación completa. */
+    public function prepararOriginal(string $contenido): void
+    {
+        if (PHP_OS_FAMILY !== 'Linux' || ! config('firma-electronica.worker_enabled', false)) return;
+        $archivo = null;
+        try {
+            $archivo = DirectorioTemporalHubDigital::crearArchivo('preparar-original-firma', 'original-', 16 * 1024 * 1024);
+            if (file_put_contents($archivo, $contenido, LOCK_EX) === false) return;
+            $this->firmar($archivo, '', '', '', 'prepare-only', 3);
+        } catch (\Throwable) {
+            // El original continúa disponible; una caché ausente nunca acredita una firma.
+        } finally {
+            if ($archivo !== null) DirectorioTemporalHubDigital::eliminar(dirname($archivo));
+        }
+    }
+
     public function validar(string $original, string $firmado): ?array
     {
         return $this->firmar($original, $firmado, '', '', 'verify-only');
     }
 
-    public function firmar(string $original, string $salida, string $p12, string $clave, string $perfil): ?array
+    public function firmar(string $original, string $salida, string $p12, string $clave, string $perfil, ?int $espera = null): ?array
     {
         if (! config('firma-electronica.worker_enabled', false) || PHP_OS_FAMILY !== 'Linux') {
             return null;
@@ -30,7 +48,7 @@ final class ClienteFirmadorPreparado
             if (strlen($entrada) > 65536) return null;
             $socket = @stream_socket_client('unix://'.config('firma-electronica.worker_socket'), $codigo, $error, 0.2);
             if ($socket === false) return null;
-            stream_set_timeout($socket, (int) config('firma-electronica.java_timeout', 60));
+            stream_set_timeout($socket, $espera ?? (int) config('firma-electronica.java_timeout', 60));
             $paquete = pack('N', strlen($entrada)).$entrada;
             for ($offset = 0; $offset < strlen($paquete); $offset += $n) {
                 $n = fwrite($socket, substr($paquete, $offset));

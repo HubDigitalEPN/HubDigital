@@ -40,5 +40,6 @@ return [
         'timeout_seconds' => (int) env('R2_TIMEOUT_SECONDS', 45),
         'connect_timeout_seconds' => (int) env('R2_CONNECT_TIMEOUT_SECONDS', 10),
         'max_attempts' => (int) env('R2_MAX_ATTEMPTS', 3),
+        'transport_socket' => PHP_OS_FAMILY === 'Linux' ? '/run/hubdigital/r2-transport/r2.sock' : '',
     ],
 ];

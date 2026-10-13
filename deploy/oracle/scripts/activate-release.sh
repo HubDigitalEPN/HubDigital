@@ -96,6 +96,7 @@ fi
 install -m 0644 "${nginx_source}" /etc/nginx/sites-available/hubdigital
 ln -sfn /etc/nginx/sites-available/hubdigital /etc/nginx/sites-enabled/hubdigital
 rm -f /etc/nginx/sites-enabled/default
+/usr/bin/php8.4 "${release_dir}/deploy/oracle/scripts/configure-r2-transport.php" "${release_dir}"
 nginx -t
 systemctl enable php8.4-fpm nginx hubdigital-worker hubdigital-ete hubdigital-signature
 if ! systemctl restart hubdigital-signature.service \
@@ -114,6 +115,10 @@ fi
 if ! systemctl restart php8.4-fpm nginx; then
     echo 'Fallo al reiniciar FPM o nginx; la release queda en mantenimiento y no se inician escritores.' >&2
     exit 1
+fi
+if [[ -S /run/hubdigital/r2-transport/r2.sock ]]; then
+    chown www-data:www-data /run/hubdigital/r2-transport/r2.sock
+    chmod 0600 /run/hubdigital/r2-transport/r2.sock
 fi
 if [[ "${nginx_source}" == *hubdigital.conf ]]; then
     local_check=(curl --fail --silent --show-error --max-time 15 --resolve dev.labinvepn.org:443:127.0.0.1 https://dev.labinvepn.org/depositos)

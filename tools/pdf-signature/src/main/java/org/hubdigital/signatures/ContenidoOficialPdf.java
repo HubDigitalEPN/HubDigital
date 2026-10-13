@@ -9,6 +9,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Collections;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
+import java.nio.file.Path;
+import java.util.concurrent.TimeUnit;
+import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.cos.COSArray;
 import org.apache.pdfbox.cos.COSBase;
 import org.apache.pdfbox.cos.COSDictionary;
@@ -26,9 +30,80 @@ import org.apache.pdfbox.text.PDFTextStripper;
 final class ContenidoOficialPdf {
     private record Anotacion(int pagina, PDAnnotation valor, double[] rect) {}
     private static final String BASE = "https://firmas.hubdigital.invalid/";
+    private record BasePreparada(String texto, List<BufferedImage> paginas, long bytes, long vence) {}
+    private static final Map<String, BasePreparada> BASES = new LinkedHashMap<>(4, .75f, true);
+    private static final long MAX_BASE_BYTES = 12L * 1024 * 1024;
+    private static long baseBytes;
     private ContenidoOficialPdf() {}
 
+    /** Prepara solo el original oficial; los resultados de firma nunca se cachean. */
+    static boolean preparar(Path ruta) throws Exception {
+        String huella = PdfSignatureCli.sha256(ruta), clave = claveBase(huella);
+        if (basePreparada(clave) != null) return true;
+        int dpi = Integer.getInteger("hubdigital.pdf.render_dpi", 110);
+        try (PDDocument pdf = Loader.loadPDF(ruta.toFile())) {
+            int total = pdf.getNumberOfPages();
+            if (pdf.isEncrypted() || !pdf.getSignatureDictionaries().isEmpty() || total < 1
+                || total > Integer.getInteger("hubdigital.pdf.max_pages", 40) || dpi < 36 || dpi > 300) return false;
+            double pixeles = 0;
+            for (PDPage pagina : pdf.getPages()) {
+                double w = pagina.getCropBox().getWidth(), h = pagina.getCropBox().getHeight();
+                int maxPoints = Integer.getInteger("hubdigital.pdf.max_page_points", 1440);
+                if (w <= 0 || h <= 0 || w > maxPoints || h > maxPoints || pagina.getRotation() != 0 || pagina.getUserUnit() != 1) return false;
+                pixeles += w * h * dpi * dpi / (72.0 * 72.0);
+            }
+            if (!Double.isFinite(pixeles) || pixeles > Long.getLong("hubdigital.pdf.max_render_pixels", 100_000_000L)
+                || pixeles * 4 > MAX_BASE_BYTES) return false;
+            if (!accionesPermitidas(pdf.getDocumentCatalog().getCOSObject(), false,
+                Collections.newSetFromMap(new IdentityHashMap<>()))) return false;
+            PDFTextStripper extractor = new PDFTextStripper(); extractor.setSortByPosition(true);
+            String texto = extractor.getText(pdf);
+            long bytes = texto.length() * 2L;
+            if (bytes > 1_048_576) return false;
+            PDFRenderer renderer = new PDFRenderer(pdf); renderer.setAnnotationsFilter(annotation -> false);
+            List<BufferedImage> paginas = new ArrayList<>();
+            for (int i = 0; i < total; i++) {
+                BufferedImage imagen = renderer.renderImageWithDPI(i, dpi);
+                bytes += (long) imagen.getWidth() * imagen.getHeight() * 4;
+                if (bytes > MAX_BASE_BYTES) return false;
+                paginas.add(imagen);
+            }
+            if (!huella.equals(PdfSignatureCli.sha256(ruta))) throw new java.io.IOException("El original cambió al prepararlo.");
+            guardarBase(clave, new BasePreparada(texto, List.copyOf(paginas), bytes,
+                System.nanoTime() + TimeUnit.MINUTES.toNanos(5)));
+            return true;
+        }
+    }
+
+    private static String claveBase(String huella) {
+        return huella + ":" + Integer.getInteger("hubdigital.pdf.render_dpi", 110) + ":"
+            + Integer.getInteger("hubdigital.pdf.max_pages", 40) + ":" + Integer.getInteger("hubdigital.pdf.max_page_points", 1440)
+            + ":" + Long.getLong("hubdigital.pdf.max_render_pixels", 100_000_000L);
+    }
+
+    private static synchronized BasePreparada basePreparada(String clave) {
+        var iterator = BASES.entrySet().iterator();
+        while (iterator.hasNext()) {
+            var entry = iterator.next();
+            if (entry.getValue().vence <= System.nanoTime()) { baseBytes -= entry.getValue().bytes; iterator.remove(); }
+        }
+        return BASES.get(clave);
+    }
+
+    private static synchronized void guardarBase(String clave, BasePreparada base) {
+        BasePreparada anterior = BASES.remove(clave);
+        if (anterior != null) baseBytes -= anterior.bytes;
+        while (!BASES.isEmpty() && (BASES.size() >= 2 || baseBytes + base.bytes > MAX_BASE_BYTES)) {
+            var iterator = BASES.entrySet().iterator(); baseBytes -= iterator.next().getValue().bytes; iterator.remove();
+        }
+        BASES.put(clave, base); baseBytes += base.bytes;
+    }
+
     static boolean coincide(PDDocument original, PDDocument firmado) throws Exception {
+        return coincide(original, firmado, null);
+    }
+
+    static boolean coincide(PDDocument original, PDDocument firmado, String huellaOriginal) throws Exception {
         int paginas = original.getNumberOfPages();
         int maxPaginas = Integer.getInteger("hubdigital.pdf.max_pages", 40);
         int maxPoints = Integer.getInteger("hubdigital.pdf.max_page_points", 1440);
@@ -74,7 +149,9 @@ final class ContenidoOficialPdf {
         if (!Double.isFinite(pixeles) || pixeles > maxPixeles) return false;
         PDFTextStripper texto = new PDFTextStripper();
         texto.setSortByPosition(true);
-        if (!texto.getText(original).equals(texto.getText(firmado))) return false;
+        BasePreparada preparada = huellaOriginal == null ? null : basePreparada(claveBase(huellaOriginal));
+        if (preparada != null && preparada.paginas.size() != paginas) return false;
+        if (!(preparada == null ? texto.getText(original) : preparada.texto).equals(texto.getText(firmado))) return false;
         PDFRenderer renderOriginal = new PDFRenderer(original);
         PDFRenderer renderBase = new PDFRenderer(firmado);
         PDFRenderer renderVisible = new PDFRenderer(firmado);
@@ -82,7 +159,7 @@ final class ContenidoOficialPdf {
         renderBase.setAnnotationsFilter(annotation -> false);
         int paginasConSello = 0;
         for (int i = 0; i < paginas; i++) {
-            BufferedImage a = renderOriginal.renderImageWithDPI(i, dpi);
+            BufferedImage a = preparada == null ? renderOriginal.renderImageWithDPI(i, dpi) : preparada.paginas.get(i);
             BufferedImage b = renderBase.renderImageWithDPI(i, dpi);
             if (!iguales(a, b)) return false;
             if (!iguales(b, renderVisible.renderImageWithDPI(i, dpi))) paginasConSello++;

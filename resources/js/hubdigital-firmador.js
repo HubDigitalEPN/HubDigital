@@ -8,12 +8,27 @@ window.hubDigitalFirmador = (config) => ({
     tokenAlias: '',
     tokenCertificados: [],
     peticionId: null,
+    pdfPreparando: false,
 
     abrirDialogo() {
         this.estado = 'listo';
         this.error = '';
         this.dialogo = true;
         this.$nextTick(() => this.$refs.certificado?.focus());
+        if (!this.pdfPreparando) void this.prepararPdf();
+    },
+
+    async prepararPdf() {
+        if (!config.originalUrl || config.documentVersion == null) return;
+        this.pdfPreparando = true;
+        const controller = new AbortController();
+        const timer = window.setTimeout(() => controller.abort(), 12000);
+        try {
+            const response = await fetch(config.originalUrl, {credentials: 'same-origin', signal: controller.signal,
+                headers: {Accept: 'application/pdf'}});
+            if (response.ok) await response.arrayBuffer();
+        } catch { /* la firma conserva la generación y comprobación completas */ }
+        finally { window.clearTimeout(timer); this.pdfPreparando = false; }
     },
 
     cerrarDialogo() {
@@ -24,7 +39,7 @@ window.hubDigitalFirmador = (config) => ({
     },
 
     async firmar() {
-        if (this.estado === 'procesando') return;
+        if (this.estado === 'procesando' || this.pdfPreparando) return;
         this.error = '';
         const archivo = this.$refs.certificado?.files?.[0];
         let clave = this.$refs.clave?.value ?? '';
