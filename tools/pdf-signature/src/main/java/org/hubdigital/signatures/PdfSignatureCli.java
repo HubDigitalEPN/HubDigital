@@ -191,6 +191,8 @@ public final class PdfSignatureCli {
             KeyStore store = KeyStore.getInstance("PKCS12"); store.load(null, null);
             store.setKeyEntry("motor", keys.getPrivate(), password, new Certificate[]{cert});
             try (var out = Files.newOutputStream(p12)) { store.store(out, password); }
+            Path legacy = temp.resolve("identidad-sintetica-legacy.p12");
+            guardarIdentidadLegacy(legacy, keys, cert, password);
             String profile = "solicitud-deposito:depositante:v1";
             try (PDDocument pdf = new PDDocument()) {
                 PDPage page = new PDPage(); pdf.addPage(page);
@@ -221,7 +223,7 @@ public final class PdfSignatureCli {
             }
             for (int pass = 0; pass < 4; pass++) {
                 Files.deleteIfExists(signed);
-                FirmadorPdfOficial.firmar(original, signed, p12, password.clone(), profile);
+                FirmadorPdfOficial.firmar(original, signed, pass % 2 == 0 ? p12 : legacy, password.clone(), profile);
                 officialResult(signed, original);
             }
         } finally {
@@ -232,6 +234,33 @@ public final class PdfSignatureCli {
                 for (Path file : files.toList()) Files.deleteIfExists(file);
             }
             Files.deleteIfExists(temp);
+        }
+    }
+
+    /** Ejercita formatos antiguos con claves sintéticas; restaura todos los parámetros del proceso. */
+    private static void guardarIdentidadLegacy(Path path, KeyPair keys, X509Certificate cert, char[] password) throws Exception {
+        java.util.Map<String, String> settings = java.util.Map.of(
+            "keystore.pkcs12.keyProtectionAlgorithm", "PBEWithSHA1AndDESede",
+            "keystore.pkcs12.certProtectionAlgorithm", "PBEWithSHA1AndRC2_40",
+            "keystore.pkcs12.macAlgorithm", "HmacPBESHA1",
+            "keystore.pkcs12.keyPbeIterationCount", "102400",
+            "keystore.pkcs12.certPbeIterationCount", "102400",
+            "keystore.pkcs12.macIterationCount", "102400");
+        java.util.Map<String, String> previous = new java.util.HashMap<>();
+        for (String key : settings.keySet()) previous.put(key, System.getProperty(key));
+        String oldLegacy = System.getProperty("keystore.pkcs12.legacy");
+        try {
+            for (String key : settings.keySet()) System.setProperty(key, settings.get(key));
+            System.clearProperty("keystore.pkcs12.legacy");
+            KeyStore store = KeyStore.getInstance("PKCS12"); store.load(null, null);
+            store.setKeyEntry("motor", keys.getPrivate(), password, new Certificate[]{cert});
+            try (var output = Files.newOutputStream(path)) { store.store(output, password); }
+        } finally {
+            for (String key : settings.keySet()) {
+                if (previous.get(key) == null) System.clearProperty(key); else System.setProperty(key, previous.get(key));
+            }
+            if (oldLegacy == null) System.clearProperty("keystore.pkcs12.legacy");
+            else System.setProperty("keystore.pkcs12.legacy", oldLegacy);
         }
     }
 
@@ -1033,6 +1062,16 @@ public final class PdfSignatureCli {
         try { FirmadorPdfOficial.firmar(original, rejected, p12, "incorrecta".toCharArray(), profile); }
         catch (java.io.IOException expected) { wrongPassword = true; }
         if (!wrongPassword || Files.exists(rejected)) throw new IllegalStateException("Se aceptó una contraseña incorrecta.");
+        Path legacy = temp.resolve("identidad-legacy-qa.p12"), legacySigned = temp.resolve("legacy-firmado.pdf");
+        guardarIdentidadLegacy(legacy, keys, cert, "temporal".toCharArray());
+        FirmadorPdfOficial.firmar(original, legacySigned, legacy, "temporal".toCharArray(), profile);
+        if (!officialResult(legacySigned, original).contains("\"aceptable\":true")) {
+            throw new IllegalStateException("El contenedor antiguo no genera una firma oficial válida.");
+        }
+        boolean legacyWrongPassword = false;
+        try { FirmadorPdfOficial.firmar(original, rejected, legacy, "incorrecta".toCharArray(), profile); }
+        catch (java.io.IOException expected) { legacyWrongPassword = true; }
+        if (!legacyWrongPassword || Files.exists(rejected)) throw new IllegalStateException("Se aceptó una clave incorrecta de un contenedor antiguo.");
         Path invalidP12 = temp.resolve("invalido.p12"); Files.writeString(invalidP12, "esto no es un certificado");
         boolean badCertificate = false;
         try { FirmadorPdfOficial.firmar(original, rejected, invalidP12, "temporal".toCharArray(), profile); }

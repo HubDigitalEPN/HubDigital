@@ -1375,12 +1375,10 @@ body:has(.hub-app-sidebar) { --color-accent: #174a9a; --color-accent-foreground:
 .hub-request-letter [data-flux-field] { gap: .3rem; }
 .hub-request-letter :is(input, select)[data-flux-control] { min-block-size: 2.3rem; }
 .hub-depositos-ui [data-flux-field]:has([required]):not(:has([data-flux-field])) { position: relative; }
-.hub-depositos-ui [data-flux-field]:has([required]):not(:has([data-flux-field]))::after {
+.hub-depositos-ui [data-flux-field]:has([required]):not(:has([data-flux-field])):not(.hub-lov-field):not(:has(> [data-flux-input]))::after {
     content: ''; position: absolute; left: 0; top: 1.35rem; width: 0; height: 0;
     border-top: 6px solid #c62828; border-right: 6px solid transparent; pointer-events: none;
 }
-.hub-depositos-ui [data-flux-field]:has(> [data-flux-input] [required])::after,
-.hub-depositos-ui .hub-lov-field:has([required])::after { content: none; }
 .hub-depositos-ui [data-flux-field] > [data-flux-input]:has([required]),
 .hub-depositos-ui .hub-lov-field:has([required]) > .hub-lov-trigger { position: relative; }
 .hub-depositos-ui [data-flux-field] > [data-flux-input]:has([required])::after,

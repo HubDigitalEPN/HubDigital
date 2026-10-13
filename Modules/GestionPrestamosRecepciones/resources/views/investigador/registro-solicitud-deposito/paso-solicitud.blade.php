@@ -65,7 +65,9 @@
                             <p x-show="metodo === 'token'" class="text-xs text-text-secondary">Conecta tu token y abre el conector HubDigital en este equipo. <a href="{{ route('depositos.firmador.token.kit') }}" class="underline text-science-blue">Descargar conector USB</a></p>
                             <flux:field x-show="metodo === 'archivo'">
                                 <flux:label for="certificado-solicitud">Archivo del certificado (.p12 o .pfx)</flux:label>
+                                <div data-flux-input class="relative">
                                 <input id="certificado-solicitud" x-ref="certificado" type="file" accept=".p12,.pfx,application/x-pkcs12" class="hub-certificate-input block w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm" x-bind:disabled="estado === 'procesando'" required />
+                                </div>
                             </flux:field>
                             <flux:field x-show="metodo === 'token' && tokenCertificados.length > 1">
                                 <flux:label for="token-certificado">Certificado del token</flux:label>

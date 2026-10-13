@@ -47,6 +47,7 @@ final class DocumentoSolicitudDeposito
             abort_unless($esDueno || $usuario->esCurador(), 403);
             $contenido = $generador->generar($solicitud);
             app(ClienteFirmadorPreparado::class)->prepararOriginal($contenido);
+            $almacenamiento->prepararConexion();
         }
 
         return response($contenido, 200, [

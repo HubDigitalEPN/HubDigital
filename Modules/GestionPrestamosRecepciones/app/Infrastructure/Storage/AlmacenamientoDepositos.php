@@ -13,6 +13,20 @@ final class AlmacenamientoDepositos
 {
     private ?R2S3Client $r2 = null;
 
+    /** Prepara la conexión privada sin subir contenido ni modificar el expediente. */
+    public function prepararConexion(): void
+    {
+        $config = (array) config('deposit-storage.r2', []);
+        if (PHP_OS_FAMILY !== 'Linux' || config('deposit-storage.driver') !== 'r2'
+            || ($config['transport_socket'] ?? '') !== '/run/hubdigital/r2-transport/r2.sock'
+            || @filetype($config['transport_socket']) !== 'socket') return;
+        try {
+            (new R2S3Client(array_merge($config, ['timeout_seconds' => 1, 'connect_timeout_seconds' => 1, 'max_attempts' => 1])))->head('');
+        } catch (\Throwable) {
+            // La escritura firmada mantiene sus reintentos y comprobación de integridad habituales.
+        }
+    }
+
     public function driver(): string
     {
         $seleccionado = strtolower(trim((string) config('deposit-storage.driver', 'auto')));

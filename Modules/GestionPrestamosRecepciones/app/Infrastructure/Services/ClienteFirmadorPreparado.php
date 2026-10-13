@@ -13,6 +13,13 @@ final class ClienteFirmadorPreparado
     public function prepararOriginal(string $contenido): void
     {
         if (PHP_OS_FAMILY !== 'Linux' || ! config('firma-electronica.worker_enabled', false)) return;
+        foreach ([FirmaPdfJava::class,
+            \Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\JavaValidacionFirmaElectronicaAdapter::class,
+            \Modules\GestionPrestamosRecepciones\Domain\ValueObjects\DetalleValidacionFirma::class,
+            \Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoValidacionFirma::class,
+            \Modules\GestionPrestamosRecepciones\Infrastructure\Storage\ArchivoLocalDeposito::class,
+            \Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\FirmarSolicitudDeposito::class,
+        ] as $clase) class_exists($clase);
         $archivo = null;
         try {
             $archivo = DirectorioTemporalHubDigital::crearArchivo('preparar-original-firma', 'original-', 16 * 1024 * 1024);
