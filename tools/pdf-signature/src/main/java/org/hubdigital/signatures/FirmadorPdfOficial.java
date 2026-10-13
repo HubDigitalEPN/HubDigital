@@ -246,9 +246,12 @@ final class FirmadorPdfOficial {
             contenido.fill();
             contenido.setNonStrokingColor(0f, 0f, 0f);
             for (int fila = 0; fila < qr.getHeight(); fila++) {
-                for (int columna = 0; columna < qr.getWidth(); columna++) {
-                    if (qr.get(columna, fila)) contenido.addRect(izquierdaQr + columna * modulo,
-                        baseQr + (qr.getHeight() - fila - 1) * modulo, modulo, modulo);
+                for (int columna = 0; columna < qr.getWidth();) {
+                    if (!qr.get(columna, fila)) { columna++; continue; }
+                    int inicio = columna;
+                    while (columna < qr.getWidth() && qr.get(columna, fila)) columna++;
+                    contenido.addRect(izquierdaQr + inicio * modulo,
+                        baseQr + (qr.getHeight() - fila - 1) * modulo, (columna - inicio) * modulo, modulo);
                 }
             }
             contenido.fill();

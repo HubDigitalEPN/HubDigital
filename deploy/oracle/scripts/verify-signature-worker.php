@@ -5,7 +5,7 @@ declare(strict_types=1);
 // La activación exige una JVM preparada que corresponda exactamente al JAR publicado.
 $jar = dirname(__DIR__, 3).'/resources/bin/hubdigital-pdf-signature.jar';
 $socketPath = '/run/hubdigital-signature/firmador.sock';
-for ($attempt = 0; $attempt < 30; $attempt++) {
+for ($attempt = 0; $attempt < 90; $attempt++) {
     $socket = @stream_socket_client('unix://'.$socketPath, $code, $error, 0.2);
     if ($socket !== false) {
         try {

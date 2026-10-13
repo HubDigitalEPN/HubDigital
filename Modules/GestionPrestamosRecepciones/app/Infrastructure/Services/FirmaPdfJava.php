@@ -24,6 +24,24 @@ final class FirmaPdfJava
     public function preparar(Request $request, string $original, string $perfil, bool $validarOriginal = false): ArchivoLocalDeposito
     {
         if (! $request->hasFile('certificado')) {
+            if ($validarOriginal && PHP_OS_FAMILY === 'Linux' && config('firma-electronica.worker_enabled', false)) {
+                $fuentes = $this->fuentes();
+                if ($fuentes['ocsp'] === [] && $fuentes['crl'] === [] && $fuentes['timeout'] === 2) {
+                    $directorio = DirectorioTemporalHubDigital::crear('firma-token-java', 16 * 1024 * 1024);
+                    $firmado = $directorio.DIRECTORY_SEPARATOR.'firmado.pdf';
+                    try {
+                        if (! copy($request->file('pdf_firmado')->getRealPath(), $firmado)) {
+                            throw new \RuntimeException('No se pudo preparar el PDF firmado desde token.');
+                        }
+                        @chmod($firmado, 0600);
+                        $dictamen = app(ClienteFirmadorPreparado::class)->validar($original, $firmado);
+                        return new ArchivoLocalDeposito($firmado, true, $directorio, $dictamen);
+                    } catch (\Throwable $error) {
+                        DirectorioTemporalHubDigital::eliminar($directorio);
+                        throw $error;
+                    }
+                }
+            }
             return new ArchivoLocalDeposito($request->file('pdf_firmado')->getRealPath(), false);
         }
         $directorio = DirectorioTemporalHubDigital::crear('firma-java', 24 * 1024 * 1024);
@@ -35,13 +53,7 @@ final class FirmaPdfJava
                 throw new \RuntimeException('No se pudo preparar el certificado para Java.');
             }
             @chmod($p12, 0600);
-            $fuentes = ['ocsp' => [], 'crl' => [], 'timeout' => 2];
-            if ($validarOriginal) {
-                try { $fuentes = app(PrepararFuentesRevocacionFirma::class)->preparar(); }
-                catch (\Throwable $error) {
-                    \Illuminate\Support\Facades\Log::warning('No se pudieron cargar las fuentes excepcionales de revocación', ['error_tipo' => $error::class]);
-                }
-            }
+            $fuentes = $validarOriginal ? $this->fuentes() : ['ocsp' => [], 'crl' => [], 'timeout' => 2];
             $espera = max(1, min(5, $fuentes['timeout']));
             $resultado = null;
             if ($validarOriginal && $fuentes['ocsp'] === [] && $fuentes['crl'] === [] && $espera === 2) {
@@ -97,6 +109,15 @@ final class FirmaPdfJava
             $temporalCredencial = $request->file('certificado')?->getRealPath();
             if (is_string($temporalCredencial)) @unlink($temporalCredencial);
             $request->files->remove('certificado');
+        }
+    }
+
+    private function fuentes(): array
+    {
+        try { return app(PrepararFuentesRevocacionFirma::class)->preparar(); }
+        catch (\Throwable $error) {
+            \Illuminate\Support\Facades\Log::warning('No se pudieron cargar las fuentes excepcionales de revocación', ['error_tipo' => $error::class]);
+            return ['ocsp' => [], 'crl' => [], 'timeout' => 2];
         }
     }
 }

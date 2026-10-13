@@ -130,8 +130,14 @@ try {
     const primera = await esperar(async () => { try { const r = await fetch(url); return r.ok && await r.text(); } catch { return false; } }, 'primera respuesta del portal');
     assert.ok(/atlas-dashboard/.test(primera) && /research-phylum-tree/.test(primera), 'La primera respuesta incluye mapa, paneles y filtros ya renderizados.');
     assert.ok(!/Cargando los registros públicos y sus filtros|wire:lazy/.test(primera), 'La apertura no depende de un placeholder ni una segunda petición de carga.');
+    // Una descarga lenta del bundle no debe adelantar Alpine a sus componentes.
+    await conexion.send('Fetch.enable', {patterns: [{urlPattern: '*build/assets/app-*.js', requestStage: 'Request'}]});
+    conexion.on('Fetch.requestPaused', ({requestId}) => {
+        setTimeout(() => conexion.send('Fetch.continueRequest', {requestId}).catch(() => {}), 300);
+    });
     await conexion.send('Page.navigate', {url});
     await visible("document.querySelector('.atlas-dashboard .atlas-map .leaflet-pane') && document.querySelector('.research-check-list input') && window.Livewire");
+    await conexion.send('Fetch.disable');
     await reposo();
     assert.match(await evaluar('window.location.search'), /vista=mapa/);
     assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /18 registros/);

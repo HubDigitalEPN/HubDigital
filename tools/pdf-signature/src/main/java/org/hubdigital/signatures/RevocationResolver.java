@@ -61,6 +61,8 @@ final class RevocationResolver {
     }
     record Evidencia(List<byte[]> ocsp, List<byte[]> crl) {}
     private record Entrada(Resultado resultado, Instant validoHasta) {}
+    private record CrlVerificada(X509CRL crl, Instant validoHasta, int bytes) {}
+    private static final ConcurrentHashMap<String, CrlVerificada> CACHE_CRL = new ConcurrentHashMap<>();
 
     private static final ConcurrentHashMap<String, CompletableFuture<Entrada>> CACHE = new ConcurrentHashMap<>();
     private static final ExecutorService CONSULTAS = Executors.newFixedThreadPool(4, task -> {
@@ -222,6 +224,15 @@ final class RevocationResolver {
             if (!fuentePublica(crl)) continue;
             intento.set(true);
             try {
+                String key = java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(issuer.getEncoded()))
+                    + "|" + crl.toASCIIString();
+                CrlVerificada previa = CACHE_CRL.get(key);
+                if (previa != null) {
+                    Resultado vigente = previa.validoHasta().isAfter(Instant.now())
+                        ? comprobarCrlVerificada(previa.crl(), signer, issuer, "CRL del certificado", fechaValidacion) : null;
+                    if (vigente != null) return vigente;
+                    CACHE_CRL.remove(key, previa);
+                }
                 HttpURLConnection connection = (HttpURLConnection) crl.toURL().openConnection();
                 connection.setInstanceFollowRedirects(false);
                 connection.setConnectTimeout(timeoutSeconds * 1000);
@@ -229,8 +240,13 @@ final class RevocationResolver {
                 try (InputStream in = connection.getInputStream()) {
                     byte[] encoded = in.readNBytes(LIMITE_CRL + 1);
                     if (encoded.length <= LIMITE_CRL) {
-                        Resultado resultado = comprobarCrl(encoded, signer, issuer, "CRL del certificado", fechaValidacion);
-                        if (resultado != null) return resultado;
+                        X509CRL verificada = leerCrlVerificada(encoded, issuer);
+                        Resultado resultado = verificada == null ? null : comprobarCrlVerificada(verificada, signer,
+                            issuer, "CRL del certificado", fechaValidacion);
+                        if (resultado != null) {
+                            guardarCrl(key, verificada, encoded.length);
+                            return resultado;
+                        }
                     }
                 } finally {
                     connection.disconnect();
@@ -282,19 +298,79 @@ final class RevocationResolver {
 
     private static Resultado comprobarCrl(byte[] encoded, X509Certificate signer, X509Certificate issuer,
         String fuente, Date fechaValidacion) {
+        X509CRL crl = leerCrlVerificada(encoded, issuer);
+        return crl == null ? null : comprobarCrlVerificada(crl, signer, issuer, fuente, fechaValidacion);
+    }
+
+    private static X509CRL leerCrlVerificada(byte[] encoded, X509Certificate issuer) {
         try (InputStream in = new ByteArrayInputStream(encoded)) {
             X509CRL crl = (X509CRL) CertificateFactory.getInstance("X.509").generateCRL(in);
+            if (!crl.getIssuerX500Principal().equals(issuer.getSubjectX500Principal())) return null;
+            crl.verify(issuer.getPublicKey());
+            return crl;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    static Resultado comprobarCrlVerificada(X509CRL crl, X509Certificate signer, X509Certificate issuer,
+        String fuente, Date fechaValidacion) {
+        try {
             Date ahora = new Date();
             if (!crl.getIssuerX500Principal().equals(issuer.getSubjectX500Principal())
                 || crl.getThisUpdate() == null || crl.getThisUpdate().after(ahora)
                 || crl.getNextUpdate() == null || !crl.getNextUpdate().after(ahora)) return null;
-            crl.verify(issuer.getPublicKey());
             var revocado = crl.getRevokedCertificate(signer);
             boolean revocadoEnFecha = revocado != null && !revocado.getRevocationDate().after(fechaValidacion);
             return new Resultado(revocadoEnFecha ? Estado.REVOCADO : Estado.NO_REVOCADO,
                 fuente, crl.getNextUpdate().toInstant());
         } catch (Exception e) {
             return null;
+        }
+    }
+
+    private static synchronized void guardarCrl(String key, X509CRL crl, int bytes) {
+        Instant ahora = Instant.now();
+        CACHE_CRL.entrySet().removeIf(entry -> !entry.getValue().validoHasta().isAfter(ahora));
+        int total = CACHE_CRL.values().stream().mapToInt(CrlVerificada::bytes).sum();
+        if (CACHE_CRL.size() >= 2 || total + bytes > 12_000_000) return;
+        Instant hasta = crl.getNextUpdate().toInstant();
+        if (hasta.isAfter(ahora.plusSeconds(300))) hasta = ahora.plusSeconds(300);
+        if (hasta.isAfter(ahora)) CACHE_CRL.put(key, new CrlVerificada(crl, hasta, bytes));
+    }
+
+    static void selftestCrl(X509Certificate cert, java.security.PrivateKey key) throws Exception {
+        Date ahora = new Date();
+        var builder = new org.bouncycastle.cert.X509v2CRLBuilder(
+            org.bouncycastle.asn1.x500.X500Name.getInstance(cert.getSubjectX500Principal().getEncoded()),
+            Date.from(ahora.toInstant().minusSeconds(90)));
+        builder.setNextUpdate(Date.from(ahora.toInstant().plusSeconds(3600)));
+        builder.addCRLEntry(cert.getSerialNumber(), Date.from(ahora.toInstant().minusSeconds(30)), 1);
+        byte[] encoded = builder.build(new org.bouncycastle.operator.jcajce.JcaContentSignerBuilder("SHA256withRSA")
+            .setProvider("BC").build(key)).getEncoded();
+        X509CRL valid = leerCrlVerificada(encoded, cert);
+        if (valid == null) throw new IllegalStateException("No se pudo verificar la CRL sintética.");
+        guardarCrl("autoprueba-crl", valid, encoded.length);
+        try {
+            X509CRL cached = CACHE_CRL.get("autoprueba-crl").crl();
+            Resultado antes = comprobarCrlVerificada(cached, cert, cert, "CRL QA", Date.from(ahora.toInstant().minusSeconds(60)));
+            Resultado despues = comprobarCrlVerificada(cached, cert, cert, "CRL QA", ahora);
+            if (antes == null || antes.estado() != Estado.NO_REVOCADO || despues == null || despues.estado() != Estado.REVOCADO) {
+                throw new IllegalStateException("Una CRL reutilizada no conserva la fecha individual de cada firma.");
+            }
+            encoded[encoded.length - 1] ^= 1;
+            if (leerCrlVerificada(encoded, cert) != null) throw new IllegalStateException("Se aceptó una CRL alterada.");
+            var expired = new org.bouncycastle.cert.X509v2CRLBuilder(
+                org.bouncycastle.asn1.x500.X500Name.getInstance(cert.getSubjectX500Principal().getEncoded()),
+                Date.from(ahora.toInstant().minusSeconds(120)));
+            expired.setNextUpdate(Date.from(ahora.toInstant().minusSeconds(60)));
+            byte[] old = expired.build(new org.bouncycastle.operator.jcajce.JcaContentSignerBuilder("SHA256withRSA")
+                .setProvider("BC").build(key)).getEncoded();
+            if (comprobarCrl(old, cert, cert, "CRL QA caducada", ahora) != null) {
+                throw new IllegalStateException("Se aceptó una CRL caducada.");
+            }
+        } finally {
+            CACHE_CRL.remove("autoprueba-crl");
         }
     }
 

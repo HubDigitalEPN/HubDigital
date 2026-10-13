@@ -89,16 +89,17 @@ final class FirmarSolicitudDeposito
                 ? JavaValidacionFirmaElectronicaAdapter::desdeDictamen($archivoJava->dictamenFirma)
                 : $validador->verificarFirmaDetallada($rutaAbsoluta, $originalTemporal);
             $validacionMs = (int) round((microtime(true) - $inicioValidacion) * 1000);
-            if ($archivoJava->dictamenFirma !== null
-                && (! hash_equals((string) ($archivoJava->dictamenFirma['original_sha256'] ?? ''), hash('sha256', $pdfOriginal))
-                    || ! hash_equals((string) ($archivoJava->dictamenFirma['pdf_sha256'] ?? ''), (string) hash_file('sha256', $rutaAbsoluta)))) {
-                throw new \InvalidArgumentException('El PDF cambió después de su validación Java.');
-            }
             if (! $validacion->esAceptable()) {
                 return response()->json([
                     'message' => $validacion->error ?: 'La firma no superó la validación criptográfica e integral.',
                     'validacion' => $validacion->toArray(),
                 ], 422);
+            }
+
+            if ($archivoJava->dictamenFirma !== null
+                && (! hash_equals((string) ($archivoJava->dictamenFirma['original_sha256'] ?? ''), hash('sha256', $pdfOriginal))
+                    || ! hash_equals((string) ($archivoJava->dictamenFirma['pdf_sha256'] ?? ''), (string) hash_file('sha256', $rutaAbsoluta)))) {
+                throw new \InvalidArgumentException('El PDF cambió después de su validación Java.');
             }
 
             $firmaMetadata = $validacion->toArray();

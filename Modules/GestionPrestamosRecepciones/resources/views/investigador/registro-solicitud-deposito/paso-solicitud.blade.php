@@ -27,25 +27,19 @@
         <flux:input wire:model.live.blur="solicitudCorreo" type="email" label="Correo electrónico" maxlength="250" required />
         <flux:input wire:model.live.blur="solicitudOficio" label="Número de oficio" maxlength="100" required />
     </div>
-    <p class="text-xs text-text-secondary">La cédula se comprueba con su dígito verificador, incluido el código 30. El RUC se consulta en el SRI; el pasaporte se comprueba por formato.
-        @if($solicitudTipoIdentificacion === 'ruc')<a href="https://srienlinea.sri.gob.ec/sri-en-linea/SriRucWeb/ConsultaRuc/Consultas/consultaRuc" target="_blank" rel="noopener" class="text-science-blue underline">Consultar RUC en el SRI ↗</a>@endif
-    </p>
     @if($solicitudIdentificacionConsultada === ($solicitudTipoIdentificacion.':'.trim($solicitudCedula)))
         <p class="text-xs text-text-secondary" role="status">
             @switch($solicitudIdentificacionConsulta['estado'] ?? '')
                 @case('verificado') RUC verificado en el SRI: {{ $solicitudIdentificacionConsulta['razon_social'] }} · {{ $solicitudIdentificacionConsulta['estado_ruc'] }}. @break
-                @case('no_disponible') Formato de RUC correcto. El SRI no está disponible; confirma su existencia en la consulta oficial. @break
-                @case('cedula_local_valida') Cédula con dígito verificador correcto. Esta comprobación no es una consulta de identidad al Registro Civil. @break
+                @case('no_disponible') No se pudo consultar el SRI en este momento. @break
+                @case('cedula_local_valida') Formato de cédula válido. @break
                 @case('pasaporte_formato_valido') Formato de pasaporte correcto. @break
             @endswitch
         </p>
     @endif
     <details class="rounded-lg border border-border bg-bg-main px-3 py-2">
-        <summary class="cursor-pointer text-sm font-semibold">Texto del oficio · revisar o editar</summary>
+        <summary class="cursor-pointer text-sm font-semibold">Texto del oficio · revisar</summary>
         <p class="mt-2 text-sm leading-5">{{ $this->textoSolicitudSugerido() }}</p>
-        <div class="mt-2">
-            <flux:textarea wire:model.live.blur="solicitudTexto" label="Redacción personalizada" rows="3" maxlength="3000" :placeholder="$this->textoSolicitudSugerido()" description="Puedes personalizar este párrafo. Déjalo vacío para usar la redacción sugerida con los datos del formulario." />
-        </div>
     </details>
     <div class="flex flex-wrap items-center gap-x-4 gap-y-2" aria-live="polite">
         @if($solicitudOficioAnteriorFirmado)

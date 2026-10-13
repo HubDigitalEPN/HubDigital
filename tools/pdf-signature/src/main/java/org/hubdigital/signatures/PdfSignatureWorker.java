@@ -31,8 +31,7 @@ final class PdfSignatureWorker {
             + Integer.getInteger("hubdigital.pdf.max_page_points", 1440) + ":"
             + Integer.getInteger("hubdigital.pdf.render_dpi", 110) + ":"
             + Long.getLong("hubdigital.pdf.max_render_pixels", 100_000_000L);
-        // Inicializa el mapa de fuentes antes de anunciar disponibilidad.
-        new org.apache.pdfbox.pdmodel.font.PDType1Font(org.apache.pdfbox.pdmodel.font.Standard14Fonts.FontName.HELVETICA);
+        PdfSignatureCli.prepareEngine();
         Files.deleteIfExists(socket);
         ThreadPoolExecutor jobs = new ThreadPoolExecutor(1, 1, 0, TimeUnit.SECONDS,
             new ArrayBlockingQueue<>(8));
@@ -74,10 +73,12 @@ final class PdfSignatureWorker {
                     result = "{\"status\":\"worker_incompatible\"}";
                 } else {
                     validatePath(root, fields[3], false, 16L * 1024 * 1024);
-                    validatePath(root, fields[4], true, 0);
-                    validatePath(root, fields[5], false, 5L * 1024 * 1024);
+                    boolean verify = "verify-only".equals(fields[7]);
+                    validatePath(root, fields[4], !verify, 16L * 1024 * 1024);
+                    if (!verify) validatePath(root, fields[5], false, 5L * 1024 * 1024);
                     request = String.join("\0", Arrays.copyOfRange(fields, 3, 8)).getBytes(StandardCharsets.UTF_8);
-                    try { result = PdfSignatureCli.signRequest(request, true); }
+                    try { result = verify ? PdfSignatureCli.officialResult(Path.of(fields[4]), Path.of(fields[3]))
+                        : PdfSignatureCli.signRequest(request, true); }
                     catch (Exception error) { result = PdfSignatureCli.errorResult(error); }
                 }
             }

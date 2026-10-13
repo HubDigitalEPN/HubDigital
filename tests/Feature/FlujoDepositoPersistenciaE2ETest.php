@@ -439,7 +439,25 @@ test('un borrador incompleto requiere preparar el oficio y el servidor rechaza s
     expect($borrador->fresh()->solicitud_firmada_ruta)->toBeNull();
 });
 
-test('el oficio autoguarda solo valores de catálogos activos y conserva el texto personalizado', function (): void {
+test('la fecha del oficio corresponde a Quito al cruzar medianoche UTC y no modifica el modelo', function (): void {
+    $solicitud = new SolicitudDepositoEloquentModel([
+        'numero' => 'MEPN-INV-DEP-90001',
+        'solicitud_nombre_permiso' => 'Titular de prueba', 'solicitud_cedula' => '1707514251',
+        'solicitud_cargo' => 'Investigador', 'solicitud_grupo' => 'Macroinvertebrados acuáticos',
+        'solicitud_proyecto' => 'Proyecto de prueba', 'solicitud_institucion' => 'Escuela Politécnica Nacional',
+        'solicitud_correo' => 'titular@example.test', 'solicitud_oficio' => 'QA-FECHA-001',
+    ]);
+    $solicitud->created_at = \Carbon\Carbon::parse('2026-10-13 00:30:00', 'UTC');
+    $antes = $solicitud->getAttributes();
+    $html = view('gestionprestamosrecepciones::pdf.solicitud-deposito', [
+        'solicitud' => $solicitud,
+        'perfilFirma' => \Modules\GestionPrestamosRecepciones\Presentation\Support\PerfilFirmaPdf::solicitudDepositante(),
+    ])->render();
+    expect($html)->toContain('Quito, 12 de octubre de 2026')
+        ->and($solicitud->getAttributes())->toBe($antes);
+});
+
+test('el oficio autoguarda solo catálogos activos y no permite editar su redacción', function (): void {
     configurarR2FalsoParaPruebas();
     foreach (['usuarios.cargos_catalogo' => 'Investigador del proyecto', 'usuarios.instituciones_catalogo' => 'Laboratorio de prueba'] as $tabla => $nombre) {
         \Illuminate\Support\Facades\DB::table($tabla)->updateOrInsert(['nombre' => $nombre], ['activo' => true, 'created_at' => now(), 'updated_at' => now()]);
@@ -459,9 +477,6 @@ test('el oficio autoguarda solo valores de catálogos activos y conserva el text
     $borrador = SolicitudDepositoEloquentModel::where('investigador_id', $depositante->id)->sole();
     expect($component->get('solicitudId'))->toBe((string) $borrador->id)
         ->and($borrador->solicitud_documento_version)->toBe(1);
-    $component->set('solicitudTexto', 'Solicito recibir el material recolectado en Limpiopungo.')
-        ->assertHasNoErrors();
-    expect($borrador->fresh()->solicitud_texto)->toBe('Solicito recibir el material recolectado en Limpiopungo.');
     $component->set('solicitudCargo', 'Cargo escrito libremente')
         ->assertHasErrors('solicitudCargo')->assertSet('solicitudCambiosPendientes', true);
     expect($borrador->fresh()->solicitud_cargo)->toBe('Investigador del proyecto');
@@ -469,6 +484,10 @@ test('el oficio autoguarda solo valores de catálogos activos y conserva el text
         ->set('solicitudGrupo', 'Grupo libre')->assertHasErrors('solicitudGrupo');
     $component->set('solicitudGrupo', 'Macroinvertebrados acuáticos')
         ->set('solicitudOficio', '')->assertHasErrors('solicitudOficio');
+    $antes = $borrador->fresh()->getAttributes();
+    expect(fn () => $component->set('solicitudTexto', 'Texto enviado fuera del formulario.'))
+        ->toThrow(\Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException::class);
+    expect($borrador->fresh()->getAttributes())->toBe($antes);
 });
 
 test('el oficio sin firma no avanza y al descartar el borrador se elimina su PDF firmado de R2', function (): void {

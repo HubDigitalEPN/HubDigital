@@ -21,7 +21,7 @@
         @if($solicitud->solicitud_oficio)
             <div>No. oficio: {{ $solicitud->solicitud_oficio }}</div>
         @endif
-        <div>Quito, {{ $solicitud->created_at?->locale('es')->translatedFormat('j \\d\\e F \\d\\e Y') }}</div>
+        <div>Quito, {{ $solicitud->created_at?->copy()->timezone('America/Guayaquil')->locale('es')->translatedFormat('j \\d\\e F \\d\\e Y') }}</div>
     </div>
 
     <div class="destinatario">

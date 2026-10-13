@@ -169,6 +169,72 @@ public final class PdfSignatureCli {
         return json(new Result("verificacion_no_disponible", mensaje, false));
     }
 
+    /** Prepara fuentes y proveedores con una identidad sintética antes de aceptar usuarios. */
+    static void prepareEngine() throws Exception {
+        Set<TrustAnchor> reales = trustAnchors();
+        Path temp = Files.createTempDirectory("motor-preparacion-");
+        char[] password = null;
+        try {
+            KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
+            generator.initialize(2048);
+            KeyPair keys = generator.generateKeyPair();
+            X500Name name = new X500Name("CN=Preparacion interna del motor PDF");
+            X509Certificate cert = new JcaX509CertificateConverter().setProvider("BC").getCertificate(
+                new JcaX509v3CertificateBuilder(name, BigInteger.valueOf(System.nanoTime()).abs(),
+                    Date.from(Instant.now().minusSeconds(60)), Date.from(Instant.now().plusSeconds(3600)), name, keys.getPublic())
+                    .build(new JcaContentSignerBuilder("SHA256withRSA").setProvider("BC").build(keys.getPrivate())));
+            cachedAnchors = Set.of(new TrustAnchor(cert, null));
+            byte[] random = new byte[24]; new java.security.SecureRandom().nextBytes(random);
+            password = Base64.getEncoder().encodeToString(random).toCharArray();
+            Arrays.fill(random, (byte) 0);
+            Path p12 = temp.resolve("identidad-sintetica.p12"), original = temp.resolve("oficio.pdf"), signed = temp.resolve("firmado.pdf");
+            KeyStore store = KeyStore.getInstance("PKCS12"); store.load(null, null);
+            store.setKeyEntry("motor", keys.getPrivate(), password, new Certificate[]{cert});
+            try (var out = Files.newOutputStream(p12)) { store.store(out, password); }
+            String profile = "solicitud-deposito:depositante:v1";
+            try (PDDocument pdf = new PDDocument()) {
+                PDPage page = new PDPage(); pdf.addPage(page);
+                org.apache.pdfbox.pdmodel.font.PDFont font;
+                Path fontPath = Path.of("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf");
+                font = Files.isRegularFile(fontPath)
+                    ? org.apache.pdfbox.pdmodel.font.PDType0Font.load(pdf, fontPath.toFile())
+                    : new org.apache.pdfbox.pdmodel.font.PDType1Font(org.apache.pdfbox.pdmodel.font.Standard14Fonts.FontName.HELVETICA);
+                try (var content = new org.apache.pdfbox.pdmodel.PDPageContentStream(pdf, page)) {
+                    content.beginText(); content.setFont(font, 10); content.newLineAtOffset(50, 730);
+                    for (int i = 0; i < 20; i++) {
+                        content.showText("Preparacion de fuentes y procesamiento del oficio institucional.");
+                        content.newLineAtOffset(0, -16);
+                    }
+                    content.endText();
+                }
+                List<org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotation> markers = new ArrayList<>();
+                for (String kind : List.of("bloques", "zonas")) {
+                    var link = new org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationLink();
+                    link.setRectangle("bloques".equals(kind)
+                        ? new org.apache.pdfbox.pdmodel.common.PDRectangle(50, 100, 480, 100)
+                        : new org.apache.pdfbox.pdmodel.common.PDRectangle(58, 108, 464, 84));
+                    var action = new org.apache.pdfbox.pdmodel.interactive.action.PDActionURI();
+                    action.setURI("https://firmas.hubdigital.invalid/" + kind + "/" + profile.replace(':', '/'));
+                    link.setAction(action); markers.add(link);
+                }
+                page.setAnnotations(markers); pdf.save(original.toFile());
+            }
+            for (int pass = 0; pass < 4; pass++) {
+                Files.deleteIfExists(signed);
+                FirmadorPdfOficial.firmar(original, signed, p12, password.clone(), profile);
+                officialResult(signed, original);
+            }
+        } finally {
+            // La identidad de preparación nunca forma parte de la confianza del servicio publicado.
+            cachedAnchors = reales;
+            if (password != null) Arrays.fill(password, '\0');
+            try (var files = Files.list(temp)) {
+                for (Path file : files.toList()) Files.deleteIfExists(file);
+            }
+            Files.deleteIfExists(temp);
+        }
+    }
+
     private static Result verify(Path path) throws Exception {
         return verify(path, true);
     }
@@ -858,6 +924,7 @@ public final class PdfSignatureCli {
     private record PdfInfo(int paginas, double ancho, double alto, double area, int firmasAutor, int sellosTiempo) {}
 
     private static void selftestOficial(Path temp, Path p12, X509Certificate cert, KeyPair keys) throws Exception {
+        RevocationResolver.selftestCrl(cert, keys.getPrivate());
         Path original = temp.resolve("oficio.pdf"), signed = temp.resolve("oficio-firmado.pdf");
         String profile = "solicitud-deposito:depositante:v1";
         try (PDDocument pdf = new PDDocument()) {

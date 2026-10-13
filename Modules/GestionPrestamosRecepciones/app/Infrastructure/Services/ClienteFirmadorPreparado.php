@@ -7,6 +7,11 @@ namespace Modules\GestionPrestamosRecepciones\Infrastructure\Services;
 /** Transporte privado al JAR de esta release. null permite el respaldo CLI. */
 final class ClienteFirmadorPreparado
 {
+    public function validar(string $original, string $firmado): ?array
+    {
+        return $this->firmar($original, $firmado, '', '', 'verify-only');
+    }
+
     public function firmar(string $original, string $salida, string $p12, string $clave, string $perfil): ?array
     {
         if (! config('firma-electronica.worker_enabled', false) || PHP_OS_FAMILY !== 'Linux') {

@@ -112,6 +112,7 @@ final class RegistroSolicitudDeposito extends Component
     public string $solicitudNombrePermiso = '';
     public string $solicitudCedula = '';
     public string $solicitudTipoIdentificacion = 'cedula';
+    #[Locked]
     public string $solicitudTexto = '';
     #[Locked]
     public bool $solicitudCambiosPendientes = false;
@@ -835,7 +836,7 @@ final class RegistroSolicitudDeposito extends Component
         if ($this->paso !== 0 || ! in_array($propiedad, [
             'solicitudNombrePermiso', 'solicitudTipoIdentificacion', 'solicitudCedula',
             'solicitudCargo', 'solicitudGrupo', 'solicitudProyecto', 'solicitudInstitucion',
-            'solicitudCorreo', 'solicitudOficio', 'solicitudTexto',
+            'solicitudCorreo', 'solicitudOficio',
         ], true)) return;
         if ($this->solicitudId !== null) {
             $modelo = SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)
@@ -886,6 +887,7 @@ final class RegistroSolicitudDeposito extends Component
         return \Modules\GestionPrestamosRecepciones\Presentation\Support\TextoSolicitudDeposito::redactar(
             new SolicitudDepositoEloquentModel([
                 'solicitud_nombre_permiso' => $this->solicitudNombrePermiso,
+                'solicitud_texto' => $this->solicitudTexto,
                 'solicitud_tipo_identificacion' => $this->solicitudTipoIdentificacion,
                 'solicitud_cedula' => $this->solicitudCedula,
                 'solicitud_cargo' => $this->solicitudCargo,

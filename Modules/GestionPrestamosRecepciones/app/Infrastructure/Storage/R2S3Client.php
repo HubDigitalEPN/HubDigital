@@ -16,6 +16,9 @@ use Throwable;
  */
 final class R2S3Client
 {
+    /** @var callable|null Conexiones TLS reutilizadas sólo dentro de este cliente privado. */
+    private mixed $transporte = null;
+
     /** @param array<string, mixed> $configuracion */
     public function __construct(
         private readonly array $configuracion,
@@ -189,6 +192,7 @@ final class R2S3Client
         for ($intento = 1; $intento <= $maxIntentos; $intento++) {
             try {
                 $peticion = Http::timeout(max(1, (int) ($this->configuracion['timeout_seconds'] ?? 45)))
+                    ->setHandler($this->transporte ??= \GuzzleHttp\Utils::chooseHandler())
                     ->connectTimeout(max(1, (int) ($this->configuracion['connect_timeout_seconds'] ?? 10)))
                     ->withUserAgent('HubDigital-EPN/1.0 almacenamiento-privado')
                     ->withHeaders($headers);
