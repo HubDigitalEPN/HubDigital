@@ -121,7 +121,9 @@ try {
         ], null, $entorno + ['HUBDIGITAL_SIGNATURE_TRUST_DIR' => $directorioFirma]);
         $motorPrueba->setTimeout(null);
         $motorPrueba->start();
-        $limitePreparacion = microtime(true) + 30;
+        // Mismo margen de preparación que verify-signature-worker.php en la
+        // VM pequeña. Este arranque precede al plazo de validación de 3 s.
+        $limitePreparacion = microtime(true) + 90;
         do {
             clearstatcache(true, $socketPrueba);
             $preparado = file_exists($socketPrueba) && ! is_link($socketPrueba)
@@ -132,7 +134,10 @@ try {
             usleep(100000);
         } while (microtime(true) < $limitePreparacion);
         if (! $preparado || ! $motorPrueba->isRunning()) {
-            throw new \RuntimeException('No se pudo preparar el motor privado de la prueba de firma.');
+            $motivo = $motorPrueba->isRunning()
+                ? 'se agotaron los 90 segundos de preparación'
+                : 'el proceso terminó con código '.($motorPrueba->getExitCode() ?? 'desconocido');
+            throw new \RuntimeException('No se pudo preparar el motor privado de la prueba de firma: '.$motivo.'.');
         }
         config()->set('firma-electronica.worker_enabled', true);
         config()->set('firma-electronica.worker_socket', $socketPrueba);

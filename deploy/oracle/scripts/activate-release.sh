@@ -88,6 +88,9 @@ assert_validation_queue_empty() {
 assert_validation_queue_empty
 bash "${release_dir}/deploy/oracle/scripts/install-ete.sh" "${release_dir}"
 "${release_dir}/deploy/oracle/scripts/update-service-units.sh" "${release_dir}"
+# La autoprueba ejecuta su propia JVM. Mantener el firmador detenido durante
+# esa fase evita sumar dos motores y consumidores en la VM de 1 GiB.
+systemctl stop hubdigital-signature.service
 ln -sfn "${release_dir}" /srv/hubdigital/current
 nginx_source="${release_dir}/deploy/oracle/nginx/hubdigital-http.conf"
 if [[ -s /etc/letsencrypt/live/dev.labinvepn.org/fullchain.pem && -s /etc/letsencrypt/live/dev.labinvepn.org/privkey.pem ]]; then
@@ -99,11 +102,6 @@ rm -f /etc/nginx/sites-enabled/default
 /usr/bin/php8.4 "${release_dir}/deploy/oracle/scripts/configure-r2-transport.php" "${release_dir}"
 nginx -t
 systemctl enable php8.4-fpm nginx hubdigital-worker hubdigital-ete hubdigital-signature
-if ! systemctl restart hubdigital-signature.service \
-    || ! runuser -u www-data -- /usr/bin/php8.4 "${release_dir}/deploy/oracle/scripts/verify-signature-worker.php"; then
-    echo 'El firmador preparado no está disponible; la release permanece en mantenimiento.' >&2
-    exit 1
-fi
 if ! systemctl restart hubdigital-ete.service; then
     echo 'Fallo al iniciar ETE; la release permanece en mantenimiento.' >&2
     exit 1
@@ -125,6 +123,61 @@ if [[ "${nginx_source}" == *hubdigital.conf ]]; then
 else
     local_check=(curl --fail --silent --show-error --max-time 15 --resolve dev.labinvepn.org:80:127.0.0.1 http://dev.labinvepn.org/depositos)
 fi
+verification_failed=0
+# Comprueba el artefacto Java de ESTA release y el camino real de admisión PDF
+# de Laravel. La autoprueba firma, altera y rechaza PDFs sintéticos; la prueba
+# PHP invoca el inspector y validador Java sin tocar R2.
+signature_jar="${release_dir}/resources/bin/hubdigital-pdf-signature.jar"
+if [[ ! -r "${signature_jar}" ]] || ! command -v java >/dev/null 2>&1; then
+    echo 'NO OK Java PDF: falta el JAR de la release o el runtime Java.' >&2
+    verification_failed=1
+elif ! java_result="$(systemd-run --quiet --wait --collect --pipe \
+    --property=User=www-data --property=Group=www-data \
+    --property=MemoryMax=320M --property=MemorySwapMax=0 --property=RuntimeMaxSec=300 \
+    --working-directory="${release_dir}" \
+    /usr/bin/java -Djava.awt.headless=true -Xms24m -Xmx160m \
+    -XX:+UseSerialGC -XX:ActiveProcessorCount=2 -jar "${signature_jar}" selftest)"; then
+    echo 'NO OK Java PDF: fallo la autoprueba criptografica.' >&2
+    verification_failed=1
+elif ! jq -e '.status == "firmado" and .cryptographically_valid == true' >/dev/null 2>&1 <<<"${java_result}"; then
+    echo "NO OK Java PDF: la autoprueba no confirmo la firma valida: ${java_result}" >&2
+    verification_failed=1
+else
+    echo 'OK Java PDF: JAR de la release ejecutado; firma valida, alteracion, PDF sin firma, PDF activo y PDF danado comprobados.'
+fi
+
+if ! systemctl restart hubdigital-signature.service \
+    || ! runuser -u www-data -- /usr/bin/php8.4 "${release_dir}/deploy/oracle/scripts/verify-signature-worker.php"; then
+    echo 'El firmador preparado no está disponible; la release permanece en mantenimiento.' >&2
+    exit 1
+fi
+
+if ! pdf_result="$(systemd-run --quiet --wait --collect --pipe \
+    --property=User=www-data --property=Group=www-data \
+    --property=MemoryMax=384M --property=MemorySwapMax=0 --property=RuntimeMaxSec=300 \
+    --property=EnvironmentFile="${env_file}" --working-directory="${release_dir}" \
+    /usr/bin/php8.4 "${release_dir}/deploy/oracle/scripts/verify-deposit-pdf.php" 2>&1)"; then
+    echo "NO OK solucion PDF depositos: ${pdf_result}" >&2
+    verification_failed=1
+else
+    echo "${pdf_result}"
+fi
+
+if ! chat_result="$(systemd-run --quiet --wait --collect --pipe \
+    --property=User=www-data --property=Group=www-data \
+    --property=EnvironmentFile="${env_file}" --working-directory="${release_dir}" \
+    /usr/bin/php8.4 "${release_dir}/deploy/oracle/scripts/verify-portal-chat.php" 2>&1)"; then
+    echo "NO OK asistente del portal: ${chat_result}" >&2
+    verification_failed=1
+else
+    echo "${chat_result}"
+fi
+
+if [[ "${verification_failed}" -ne 0 ]]; then
+    echo 'La aceptación criptográfica o del asistente falló; se conserva mantenimiento sin iniciar consumidores.' >&2
+    exit 1
+fi
+
 if ! artisan up --no-interaction || ! "${local_check[@]}" >/dev/null; then
     artisan down --retry=60 --no-interaction || true
     echo 'Fallo de comprobacion local; no se inician worker ni scheduler.' >&2
@@ -148,7 +201,6 @@ fi
 ! systemctl is-active --quiet hubdigital-schedule.service
 ! systemctl is-active --quiet hubdigital-schedule.timer
 
-verification_failed=0
 if [[ "$(read_env DEPOSIT_SIGNATURE_ASYNC)" == true ]] && ! systemctl is-active --quiet hubdigital-r2-signatures.service; then
     echo 'NO OK consumidor de la cola R2: debe estar activo.' >&2
     verification_failed=1
@@ -180,49 +232,6 @@ check_public_url() {
 
 check_public_url 'https://dev.labinvepn.org/' || verification_failed=1
 check_public_url 'https://dev.labinvepn.org/depositos' || verification_failed=1
-
-# Comprueba el artefacto Java de ESTA release y el camino real de admisión PDF
-# de Laravel. La autoprueba firma, altera y rechaza PDFs sintéticos; la prueba
-# PHP invoca el inspector y validador Java sin tocar R2.
-signature_jar="${release_dir}/resources/bin/hubdigital-pdf-signature.jar"
-if [[ ! -r "${signature_jar}" ]] || ! command -v java >/dev/null 2>&1; then
-    echo 'NO OK Java PDF: falta el JAR de la release o el runtime Java.' >&2
-    verification_failed=1
-elif ! java_result="$(systemd-run --quiet --wait --collect --pipe \
-    --property=User=www-data --property=Group=www-data \
-    --property=MemoryMax=320M --property=MemorySwapMax=0 --property=RuntimeMaxSec=300 \
-    --working-directory="${release_dir}" \
-    /usr/bin/java -Djava.awt.headless=true -Xms24m -Xmx160m \
-    -XX:+UseSerialGC -XX:ActiveProcessorCount=2 -jar "${signature_jar}" selftest)"; then
-    echo 'NO OK Java PDF: fallo la autoprueba criptografica.' >&2
-    verification_failed=1
-elif ! jq -e '.status == "firmado" and .cryptographically_valid == true' >/dev/null 2>&1 <<<"${java_result}"; then
-    echo "NO OK Java PDF: la autoprueba no confirmo la firma valida: ${java_result}" >&2
-    verification_failed=1
-else
-    echo 'OK Java PDF: JAR de la release ejecutado; firma valida, alteracion, PDF sin firma, PDF activo y PDF danado comprobados.'
-fi
-
-if ! pdf_result="$(systemd-run --quiet --wait --collect --pipe \
-    --property=User=www-data --property=Group=www-data \
-    --property=MemoryMax=384M --property=MemorySwapMax=0 --property=RuntimeMaxSec=300 \
-    --property=EnvironmentFile="${env_file}" --working-directory="${release_dir}" \
-    /usr/bin/php8.4 "${release_dir}/deploy/oracle/scripts/verify-deposit-pdf.php" 2>&1)"; then
-    echo "NO OK solucion PDF depositos: ${pdf_result}" >&2
-    verification_failed=1
-else
-    echo "${pdf_result}"
-fi
-
-if ! chat_result="$(systemd-run --quiet --wait --collect --pipe \
-    --property=User=www-data --property=Group=www-data \
-    --property=EnvironmentFile="${env_file}" --working-directory="${release_dir}" \
-    /usr/bin/php8.4 "${release_dir}/deploy/oracle/scripts/verify-portal-chat.php" 2>&1)"; then
-    echo "NO OK asistente del portal: ${chat_result}" >&2
-    verification_failed=1
-else
-    echo "${chat_result}"
-fi
 
 for unit in hubdigital-worker.service php8.4-fpm.service nginx.service hubdigital-ete.service hubdigital-signature.service; do
     if systemctl is-active --quiet "${unit}"; then
