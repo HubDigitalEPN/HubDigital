@@ -150,8 +150,9 @@ html body [data-hub-primary-button] {
 @media (prefers-reduced-motion: reduce) { [data-hub-apex-label] { transition: none; } }
 
 /* Conversación documental: cabecera compacta, burbujas y composición accesible. */
-.hub-upload-rejection { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem .6rem; margin-top: .5rem; color: #b91c1c; font-size: .75rem; line-height: 1.5; }
-.hub-upload-rejection strong { font-weight: 600; }
+.hub-upload-rejection { display: grid; grid-template-columns: max-content minmax(0, 1fr); align-items: baseline; gap: .25rem .6rem; margin-top: .5rem; color: #b91c1c; font-size: .75rem; line-height: 1.5; }
+.hub-upload-rejection strong { font-weight: 600; white-space: nowrap; }
+.hub-upload-rejection > span { min-width: 0; overflow-wrap: anywhere; }
 html body [data-hub-floating-notice] { top: var(--hub-floating-notice-top, 6rem); background-color: #fff9ed; }
 html body [data-hub-floating-notice].border-error\/50 { background-color: #fff3f3; }
 .hub-wizard-step button.hub-wizard-step__marker { cursor: pointer; }
