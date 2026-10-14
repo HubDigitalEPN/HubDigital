@@ -24,6 +24,8 @@ if ($archivoValido === false || $archivoFalso === false || ! mkdir($directorioFi
 }
 
 $fallo = null;
+$motorPrueba = null;
+$configuracionFirma = config('firma-electronica');
 try {
     $pdf = new \setasign\Fpdi\Fpdi;
     $pdf->AddPage();
@@ -100,13 +102,53 @@ try {
     }
 
     config()->set('firma-electronica.java_signature_trust_dir', $directorioFirma);
+    if (PHP_OS_FAMILY === 'Linux') {
+        // El motor de producción debe rechazar esta confianza temporal.
+        // Preparar otro motor privado conserva ese aislamiento y el plazo de
+        // tres segundos del adaptador, sin medir el arranque de una JVM fría.
+        $entorno = \Modules\GestionPrestamosRecepciones\Infrastructure\Storage\DirectorioTemporalHubDigital::entornoProcesos();
+        $socketPrueba = $directorioFirma.'/firma.sock';
+        $motorPrueba = new \Symfony\Component\Process\Process([
+            (string) config('firma-electronica.java_binary', 'java'),
+            '-Djava.awt.headless=true', '-Xms24m', '-Xmx128m', '-XX:+UseSerialGC', '-XX:ActiveProcessorCount=2',
+            '-Djava.io.tmpdir='.$entorno['TMPDIR'],
+            '-Dcom.sun.security.ocsp.timeout=2', '-Dcom.sun.security.crl.timeout=2', '-Dhubdigital.revocation.timeout=2',
+            '-Dhubdigital.pdf.max_pages='.config('firma-electronica.max_pages', 40),
+            '-Dhubdigital.pdf.max_page_points='.config('firma-electronica.max_page_points', 1440),
+            '-Dhubdigital.pdf.render_dpi='.config('firma-electronica.render_dpi', 110),
+            '-Dhubdigital.pdf.max_render_pixels='.config('firma-electronica.max_render_pixels', 100000000),
+            '-jar', $jar, 'serve', $socketPrueba,
+        ], null, $entorno + ['HUBDIGITAL_SIGNATURE_TRUST_DIR' => $directorioFirma]);
+        $motorPrueba->setTimeout(null);
+        $motorPrueba->start();
+        $limitePreparacion = microtime(true) + 30;
+        do {
+            clearstatcache(true, $socketPrueba);
+            $preparado = file_exists($socketPrueba) && ! is_link($socketPrueba)
+                && (fileperms($socketPrueba) & 0777) === 0600;
+            if ($preparado || ! $motorPrueba->isRunning()) {
+                break;
+            }
+            usleep(100000);
+        } while (microtime(true) < $limitePreparacion);
+        if (! $preparado || ! $motorPrueba->isRunning()) {
+            throw new \RuntimeException('No se pudo preparar el motor privado de la prueba de firma.');
+        }
+        config()->set('firma-electronica.worker_enabled', true);
+        config()->set('firma-electronica.worker_socket', $socketPrueba);
+    }
     $adaptador = app(\Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\JavaValidacionFirmaElectronicaAdapter::class);
+    $inicioValidacion = microtime(true);
     $resultado = $adaptador->verificarFirma($firmado);
+    $duracionFirma = microtime(true) - $inicioValidacion;
     if (! in_array($resultado, [
         \Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoValidacionFirma::Firmado,
         \Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoValidacionFirma::FirmadoSinRevocacion,
     ], true)) {
         throw new \RuntimeException('El adaptador PHP/Java rechazó una firma sintética íntegra: '.$resultado->value);
+    }
+    if ($duracionFirma > 3) {
+        throw new \RuntimeException('La validación de la firma íntegra superó tres segundos.');
     }
 
     $alterado = $directorioFirma.'/alterado.pdf';
@@ -116,11 +158,18 @@ try {
     }
     $contenido[7] = $contenido[7] === '6' ? '7' : '6';
     file_put_contents($alterado, $contenido);
-    if ($adaptador->verificarFirma($alterado) !== \Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoValidacionFirma::FirmaInvalida) {
+    $inicioValidacion = microtime(true);
+    $resultadoAlterado = $adaptador->verificarFirma($alterado);
+    $duracionAlterado = microtime(true) - $inicioValidacion;
+    if ($resultadoAlterado !== \Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoValidacionFirma::FirmaInvalida) {
         throw new \RuntimeException('El adaptador PHP/Java aceptó un PDF firmado y alterado.');
+    }
+    if ($duracionAlterado > 3) {
+        throw new \RuntimeException('La validación de la firma alterada superó tres segundos.');
     }
 
     echo "OK solución PDF depósitos: número mágico en byte cero, estructura y contenido activo comprobados; PDF falso rechazado; PHP/Java verificó firma válida, alterada y ausente.\n";
+    echo 'Tiempos de firma: íntegra='.round($duracionFirma * 1000).' ms; alterada='.round($duracionAlterado * 1000)." ms.\n";
 } catch (\Throwable $error) {
     $fallo = 'NO OK solución PDF depósitos: '.$error->getMessage();
     // Diagnóstico de los procesos sintéticos: clases y tiempos, nunca credenciales ni PDF.
@@ -132,6 +181,10 @@ try {
         $fallo .= ']';
     }
 } finally {
+    if ($motorPrueba !== null) {
+        $motorPrueba->stop(2);
+    }
+    config()->set('firma-electronica', $configuracionFirma);
     @unlink($archivoValido);
     @unlink($archivoFalso);
     foreach (glob($directorioFirma.'/*') ?: [] as $temporal) {
