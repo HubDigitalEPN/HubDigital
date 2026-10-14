@@ -41,7 +41,9 @@ final class ClasificarDocumentoCargadoJob implements ShouldQueue
         $provincia = $modelo->provincia_origen;
         $copia = $almacenamiento->copiaLocal($this->ruta);
         try {
-            $resultado = $revision->validar($copia->ruta(), $this->nombre);
+            $resultado = $revision->validar($copia->ruta(), $this->nombre, [
+                'titular' => $modelo->solicitud_nombre_permiso, 'proyecto' => $modelo->solicitud_proyecto,
+            ]);
             $estado = 'valido';
         } catch (DocumentoDepositoRechazado $error) {
             $resultado = ['mensaje' => $error->getMessage()];

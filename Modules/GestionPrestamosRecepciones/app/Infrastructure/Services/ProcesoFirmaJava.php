@@ -21,7 +21,7 @@ final class ProcesoFirmaJava
     private static bool $ocupado = false;
 
     /** @param list<string> $comando @param array<string, string> $entorno @return array<string, mixed> */
-    public static function ejecutar(array $comando, array $entorno, string $rutas, int $timeout): array
+    public static function ejecutar(array $comando, array $entorno, string $rutas, float $timeout): array
     {
         if (self::$ocupado) {
             throw new \RuntimeException('El transporte Java ya está atendiendo otra petición.');
@@ -52,7 +52,7 @@ final class ProcesoFirmaJava
             self::$entrada->write(base64_encode($rutas)."\n");
             self::$peticiones++;
             $salida = '';
-            $limite = microtime(true) + max(1, $timeout);
+            $limite = microtime(true) + max(0.01, $timeout);
             do {
                 $salida .= self::$proceso->getIncrementalOutput();
                 if (strlen($salida) > 2_000_000) {

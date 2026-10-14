@@ -45,7 +45,9 @@
     </div>
     <div class="firmante">
         <strong>{{ \App\Support\TextoOficio::nombre($solicitud->solicitud_nombre_permiso) }}</strong><br>
-        {{ \App\Support\TextoOficio::nombre($solicitud->solicitud_institucion) }}<br>
+        @if(filled($institucionFirmante ?? null))
+            {{ \App\Support\TextoOficio::nombre($institucionFirmante) }}<br>
+        @endif
         {{ mb_strtolower($solicitud->solicitud_correo) }}
     </div>
 

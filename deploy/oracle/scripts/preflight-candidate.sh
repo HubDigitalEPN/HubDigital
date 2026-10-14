@@ -37,6 +37,7 @@ validation_queue="$(read_env HUBDIGITAL_VALIDATION_QUEUE)"
 [[ -z "$(swapon --noheadings --show)" ]] || { echo 'Hay swap activo; no se acepta como alivio de memoria.' >&2; exit 65; }
 systemctl is-active --quiet postgresql@16-main
 systemctl is-active --quiet hubdigital-worker.service && { echo 'Worker activo durante preflight de candidato.' >&2; exit 65; }
+systemctl is-active --quiet hubdigital-r2-signatures.service && { echo 'Consumidor R2 activo durante preflight de candidato.' >&2; exit 65; }
 systemctl is-active --quiet hubdigital-schedule.service && { echo 'Scheduler activo durante preflight de candidato.' >&2; exit 65; }
 systemctl is-active --quiet hubdigital-schedule.timer && { echo 'Timer activo durante preflight de candidato.' >&2; exit 65; }
 systemctl is-active --quiet cloudflared-hubdigital.service && { echo 'Tunnel activo durante preflight de candidato.' >&2; exit 65; }

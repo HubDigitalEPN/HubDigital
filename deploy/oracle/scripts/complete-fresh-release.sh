@@ -23,7 +23,7 @@ require_exact DEPOSIT_STORAGE_VERIFY_AFTER_WRITE true
 require_exact HUBDIGITAL_VALIDATION_MODE true
 require_exact MAIL_MAILER smtp
 for key in R2_ACCOUNT_ID R2_BUCKET R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY DEPOSIT_STORAGE_PREFIX; do require_value "${key}"; done
-for unit in hubdigital-worker.service hubdigital-schedule.timer hubdigital-schedule.service cloudflared-hubdigital.service; do
+for unit in hubdigital-worker.service hubdigital-r2-signatures.service hubdigital-schedule.timer hubdigital-schedule.service cloudflared-hubdigital.service; do
     systemctl is-active --quiet "${unit}" && { echo "Servicio activo durante validacion R2: ${unit}" >&2; exit 65; }
 done
 artisan() {

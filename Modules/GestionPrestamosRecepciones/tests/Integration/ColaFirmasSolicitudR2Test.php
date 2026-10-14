@@ -169,6 +169,8 @@ test('eliminar el borrador retira R2, PDF pendiente, trabajo y caché sin permit
     $modelo->forceFill(['documentos_cargados' => ['Documento' => $rutas[0]],
         'documentos_adjuntos' => [['nombre' => 'Adjunto', 'ruta' => $rutas[1]]],
         'acta_transferencia_dominio' => ['nombre' => 'Acta', 'ruta' => $rutas[2]]])->save();
+    $documentoPendiente = encolarDocumentoAdmitidoParaPruebas($modelo, '%PDF-documento admitido para descarte');
+    $rutas[] = DB::table(ColaFirmasSolicitudR2::TABLA)->where('id', $documentoPendiente)->value('ruta');
     app(GeneradorPdfSolicitudDeposito::class)->generar($modelo);
     $indice = 'oficio-pdf-indice:'.$modelo->id;
     $claves = Cache::get($indice, []);
@@ -178,6 +180,7 @@ test('eliminar el borrador retira R2, PDF pendiente, trabajo y caché sin permit
         ->assertSet('solicitudId', $modelo->id)->call('descartarBorrador')->assertSet('solicitudId', null);
     expect(SolicitudDepositoEloquentModel::find($modelo->id))->toBeNull();
     expect(DB::table(ColaFirmasSolicitudR2::TABLA)->where('id', $id)->exists())->toBeFalse();
+    expect(DB::table(ColaFirmasSolicitudR2::TABLA)->where('id', $documentoPendiente)->exists())->toBeFalse();
     expect(DB::table('jobs')->where('queue', 'r2-signatures')->where('payload', 'like', '%'.$id.'%')->exists())->toBeFalse();
     expect(Cache::has($indice))->toBeFalse();
     foreach ($claves as $clave) expect(Cache::has($clave))->toBeFalse();

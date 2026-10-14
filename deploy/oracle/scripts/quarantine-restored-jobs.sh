@@ -19,7 +19,7 @@ release_dir="/srv/hubdigital/releases/${release_id}"
 env_file=/etc/hubdigital/hubdigital.env
 [[ -f "${release_dir}/artisan" && -r "${env_file}" ]] || { echo 'Falta release o entorno protegido.' >&2; exit 66; }
 "${release_dir}/deploy/oracle/scripts/verify-release-state.sh" "${release_id}" validado_en_mantenimiento
-for unit in hubdigital-worker.service hubdigital-schedule.service hubdigital-schedule.timer cloudflared-hubdigital.service; do
+for unit in hubdigital-worker.service hubdigital-r2-signatures.service hubdigital-schedule.service hubdigital-schedule.timer cloudflared-hubdigital.service; do
     systemctl is-active --quiet "${unit}" && { echo "Debe detenerse antes de cuarentena: ${unit}" >&2; exit 65; }
 done
 

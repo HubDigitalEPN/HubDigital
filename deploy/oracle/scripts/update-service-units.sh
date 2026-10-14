@@ -13,7 +13,7 @@ app_dir="${1:-}"
     echo 'Uso: sudo update-service-units.sh /srv/hubdigital/releases/<id>' >&2
     exit 64
 }
-for unit in hubdigital-worker.service hubdigital-schedule.service hubdigital-schedule.timer hubdigital-ete.service hubdigital-signature.service; do
+for unit in hubdigital-worker.service hubdigital-r2-signatures.service hubdigital-schedule.service hubdigital-schedule.timer hubdigital-ete.service hubdigital-signature.service; do
     [[ -f "${app_dir}/deploy/oracle/systemd/${unit}" ]] || { echo "Falta unidad ${unit}." >&2; exit 66; }
     install -m 0644 "${app_dir}/deploy/oracle/systemd/${unit}" "/etc/systemd/system/${unit}"
 done

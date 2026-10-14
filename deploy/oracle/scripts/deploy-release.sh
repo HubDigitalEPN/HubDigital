@@ -82,7 +82,7 @@ if [[ -n "${previous}" && -f "${previous}/artisan" ]]; then
         --property=EnvironmentFile="${env_file}" --working-directory="${previous}" \
         /usr/bin/php8.4 artisan down --retry=60 --no-interaction
 fi
-for unit in hubdigital-worker.service hubdigital-schedule.timer hubdigital-schedule.service; do
+for unit in hubdigital-worker.service hubdigital-r2-signatures.service hubdigital-schedule.timer hubdigital-schedule.service; do
     if systemctl cat "${unit}" >/dev/null 2>&1; then
         systemctl stop "${unit}"
     else

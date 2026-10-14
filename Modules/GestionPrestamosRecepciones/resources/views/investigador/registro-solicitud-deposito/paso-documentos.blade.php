@@ -88,9 +88,6 @@
 
     <div wire:key="formulario-documentos" class="space-y-4">
 
-        {{-- Error de documentos faltantes --}}
-        <flux:error name="documentos" />
-
         @if($estadoValidacionContenido === 'rechazado' || !empty($erroresDocumentales))
             @php $falloTecnico = in_array($estadoValidacionContenido, ['error_procesamiento', 'error_modelo', 'error_cola'], true); @endphp
             <flux:callout
@@ -198,8 +195,6 @@
                         role="button"
                         tabindex="0"
                         aria-label="Cargar documento: {{ $docNombre }}"
-                        x-on:keydown.enter.prevent="if (!cargado) $refs.fileInput.click()"
-                        x-on:keydown.space.prevent="if (!cargado) $refs.fileInput.click()"
                     />
                 @endforeach
             </section>

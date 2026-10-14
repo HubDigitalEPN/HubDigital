@@ -42,7 +42,9 @@ final class CargarDocumentacionOficialController
             foreach ($request->file('documentos', []) as $nombre => $archivo) {
                 abort_unless(in_array($nombre, $original->documentos_requeridos ?? [], true), 422,
                     'El documento no corresponde a una casilla requerida del expediente.');
-                $revisiones[$nombre] = $this->revision->validar($archivo->getRealPath(), $nombre);
+                $revisiones[$nombre] = $this->revision->validar($archivo->getRealPath(), $nombre, [
+                    'titular' => $original->solicitud_nombre_permiso, 'proyecto' => $original->solicitud_proyecto,
+                ]);
                 $guardado = $this->almacenamiento->guardarArchivoConHuella($archivo, 'depositos/'.$id.'/documentos-api');
                 $rutas[$nombre] = $guardado['ruta'];
                 if (! hash_equals($revisiones[$nombre]['sha256'], $guardado['sha256'])) {

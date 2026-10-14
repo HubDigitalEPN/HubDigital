@@ -11,17 +11,23 @@
         <div class="hub-request-cell hub-request-cell--institution"><x-gestionprestamosrecepciones::lov-popup campo="solicitudInstitucion" label="Empresa o institución" :valor="$solicitudInstitucion" :opciones="$institucionesCatalogo" placeholder="Selecciona una institución" :disabled="$camposBloqueados" /></div>
         <div class="hub-request-cell hub-request-cell--group"><x-gestionprestamosrecepciones::lov-popup campo="solicitudGrupo" label="Grupo de especímenes a depositar" :valor="$solicitudGrupo" :opciones="config('depositos.grupos_especimenes')" placeholder="Selecciona un grupo" :disabled="$camposBloqueados" /></div>
         <div class="hub-request-cell hub-request-cell--email"><flux:input placeholder=" " wire:model.live.blur="solicitudCorreo" type="email" label="Correo electrónico" maxlength="250" :disabled="$camposBloqueados" required /></div>
-        <div class="hub-request-cell hub-request-cell--project"><flux:input placeholder=" " wire:model.live.blur="solicitudProyecto" label="Título del proyecto" maxlength="300" :disabled="$camposBloqueados" required /></div>
+        <div class="hub-request-cell hub-request-cell--project">
+            <flux:input placeholder=" " wire:model.live.blur="solicitudProyecto" label="Título del proyecto" maxlength="300" :disabled="$camposBloqueados" required />
+            @if(! $camposBloqueados)
+                <flux:modal.trigger name="revisar-texto-oficio"><flux:button variant="ghost" size="sm" icon="document-text">Texto del oficio · revisar</flux:button></flux:modal.trigger>
+            @endif
+        </div>
         <div class="hub-request-cell hub-request-cell--letter">
             <flux:input placeholder=" " wire:model.live.blur="solicitudOficio" class:input="hub-field-number" label="Número de oficio" maxlength="100" :disabled="$camposBloqueados" required />
-            <flux:modal.trigger name="revisar-texto-oficio"><flux:button variant="ghost" size="sm" icon="document-text">Texto del oficio · revisar</flux:button></flux:modal.trigger>
         </div>
     </div>
+    @if(! $camposBloqueados)
     <flux:modal name="revisar-texto-oficio" class="max-w-2xl">
         <flux:heading size="lg">Texto del oficio · revisar</flux:heading>
         <p class="mt-3 whitespace-pre-line text-sm leading-6">{{ $this->textoSolicitudSugerido() }}</p>
         <div class="mt-4 flex justify-end"><flux:modal.close><flux:button variant="ghost" size="sm">Cerrar</flux:button></flux:modal.close></div>
     </flux:modal>
+    @endif
     <div class="hub-request-document-actions flex flex-wrap items-center justify-between gap-3"
         @if($solicitudFirmada && !$guardadoR2Confirmado) wire:poll.2s="confirmarSolicitudFirmada" @endif
         wire:key="estado-pdf-{{ $solicitudId }}-{{ $solicitudDocumentoVersion }}"

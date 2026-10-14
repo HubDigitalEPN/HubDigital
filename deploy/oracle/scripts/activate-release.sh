@@ -36,7 +36,7 @@ validation_queue="$(read_env HUBDIGITAL_VALIDATION_QUEUE)"
     echo 'La activacion exige HUBDIGITAL_VALIDATION_QUEUE dedicada y distinta de default.' >&2
     exit 65
 }
-for unit in hubdigital-worker.service hubdigital-schedule.service hubdigital-schedule.timer cloudflared-hubdigital.service; do
+for unit in hubdigital-worker.service hubdigital-r2-signatures.service hubdigital-schedule.service hubdigital-schedule.timer cloudflared-hubdigital.service; do
     systemctl is-active --quiet "${unit}" && {
         echo "Debe detenerse antes de activar: ${unit}" >&2
         exit 65
@@ -136,10 +136,23 @@ if ! systemctl restart hubdigital-worker.service; then
     exit 1
 fi
 systemctl is-active --quiet hubdigital-worker.service
+if [[ "$(read_env DEPOSIT_SIGNATURE_ASYNC)" == true ]]; then
+    systemctl enable hubdigital-r2-signatures.service
+    if ! systemctl restart hubdigital-r2-signatures.service || ! systemctl is-active --quiet hubdigital-r2-signatures.service; then
+        systemctl stop hubdigital-worker.service hubdigital-r2-signatures.service || true
+        artisan down --retry=60 --no-interaction || true
+        echo 'La cola durable R2 no está disponible; la aplicación vuelve a mantenimiento.' >&2
+        exit 1
+    fi
+fi
 ! systemctl is-active --quiet hubdigital-schedule.service
 ! systemctl is-active --quiet hubdigital-schedule.timer
 
 verification_failed=0
+if [[ "$(read_env DEPOSIT_SIGNATURE_ASYNC)" == true ]] && ! systemctl is-active --quiet hubdigital-r2-signatures.service; then
+    echo 'NO OK consumidor de la cola R2: debe estar activo.' >&2
+    verification_failed=1
+fi
 echo
 echo 'Verificacion final automatica:'
 
@@ -230,7 +243,7 @@ for unit in hubdigital-schedule.service hubdigital-schedule.timer cloudflared-hu
 done
 
 if [[ "${verification_failed}" -ne 0 ]]; then
-    systemctl stop hubdigital-worker.service || true
+    systemctl stop hubdigital-worker.service hubdigital-r2-signatures.service || true
     artisan down --retry=60 --no-interaction || true
     echo 'Verificacion final NO OK: la aplicacion volvio a mantenimiento y el worker fue detenido.' >&2
     exit 1

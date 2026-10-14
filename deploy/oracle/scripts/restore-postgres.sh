@@ -90,7 +90,7 @@ restored_tables="$(psql -v ON_ERROR_STOP=1 --host=127.0.0.1 --username="${db_use
 
 # Ningún worker, scheduler, FPM, nginx o Tunnel puede tocar la base durante el
 # cambio de nombres. Las bases quedan preservadas si el intercambio falla.
-for unit in cloudflared-hubdigital.service hubdigital-worker.service hubdigital-schedule.timer hubdigital-schedule.service nginx.service php8.4-fpm.service; do
+for unit in cloudflared-hubdigital.service hubdigital-worker.service hubdigital-r2-signatures.service hubdigital-schedule.timer hubdigital-schedule.service nginx.service php8.4-fpm.service; do
     if systemctl cat "${unit}" >/dev/null 2>&1; then
         systemctl stop "${unit}"
     else

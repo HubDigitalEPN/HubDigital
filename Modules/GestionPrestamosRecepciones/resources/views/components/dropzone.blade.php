@@ -13,6 +13,7 @@
 ])
 
 <div
+    {{ $attributes->except('class')->merge(['role' => 'button', 'tabindex' => '0', 'aria-label' => 'Cargar documento: '.$nombre]) }}
     wire:ignore.self
     x-data="{
         progreso: 0,
@@ -29,8 +30,11 @@
             if (this.cargado) return;
             const archivo = e.dataTransfer.files[0];
             if (!archivo) return;
+            this.nombreArchivo = archivo.name;
             if (archivo.type !== 'application/pdf') {
                 this.errorSubida = true;
+                this.rechazo = {estado: 'formato_invalido', mensaje: 'Solo se aceptan archivos PDF reales. Cambiar la extensión no convierte el archivo.'};
+                this.$dispatch('show-toast', {message: this.rechazo.mensaje, variant: 'warning'});
                 return;
             }
             const input = this.$refs.fileInput;
@@ -44,21 +48,29 @@
     x-on:livewire-upload-start="subiendo = true; progreso = 0; errorSubida = false"
     x-on:livewire-upload-progress="progreso = $event.detail.progress"
     x-on:livewire-upload-finish="subiendo = false; progreso = 100"
-    x-on:livewire-upload-error="subiendo = false; progreso = 0; errorSubida = true"
+    x-on:livewire-upload-error="subiendo = false; progreso = 0; errorSubida = true; $dispatch('show-toast', {message: 'No se pudo completar la carga. Revisa que el PDF no supere 20 MB e intenta de nuevo.', variant: 'warning'})"
     x-on:documento-aceptado.window="if ($event.detail.propiedad === '{{ $propiedad }}') { cargado = true; archivoEstado = 'valido'; firmaValidada = false; errorSubida = false; rechazo = null }"
     x-on:archivo-validado.window="if ($event.detail.nombre === @js($nombre)) { archivoEstado = $event.detail.estado; rechazo = ['valido', 'analizando'].includes(archivoEstado) ? null : { estado: archivoEstado, mensaje: $event.detail.mensaje }; errorSubida = !!rechazo }"
     x-on:firma-actualizada.window="if ($event.detail.nombre === @js($nombre)) firmaValidada = ['firmado', 'firmado_sin_revocacion'].includes($event.detail.estado)"
     x-on:documento-rechazado.window="if ($event.detail.propiedad === '{{ $propiedad }}') { cargado = false; progreso = 0; errorSubida = true; firmaValidada = false; archivoEstado = $event.detail.estado; rechazo = { estado: $event.detail.estado, mensaje: $event.detail.mensaje } }"
     x-on:click="if (!cargado) $refs.fileInput.click()"
+    x-on:keydown.enter.self.prevent="if (!cargado) $refs.fileInput.click()"
+    x-on:keydown.space.self.prevent="if (!cargado) $refs.fileInput.click()"
+    x-bind:role="cargado ? 'group' : 'button'"
+    x-bind:tabindex="cargado ? -1 : 0"
+    x-bind:aria-disabled="subiendo ? 'true' : null"
+    x-bind:aria-description="errorSubida ? (rechazo?.mensaje || 'La carga no se completó.') : null"
     x-on:dragover.prevent="if (!cargado) arrastrando = true"
     x-on:dragleave.prevent="arrastrando = false"
     x-on:drop.prevent="soltar($event)"
-    class="flex flex-col items-center gap-3 text-center sm:flex-row sm:items-center sm:gap-3 sm:text-left rounded-lg border-2 p-3 transition-all"
+    class="flex flex-col items-center gap-3 text-center sm:flex-row sm:items-center sm:gap-3 sm:text-left rounded-lg border-2 p-3 transition-all {{ $attributes->get('class') }}"
     x-bind:class="cargado
         ? (archivoEstado === 'valido' && firmaValidada && !rechazo ? 'border-success/40 bg-success/5 cursor-default' : 'border-error/60 bg-error/5 cursor-default')
+        : errorSubida
+            ? 'border-error/60 bg-error/5 border-dashed cursor-pointer'
         : arrastrando
             ? '!border-science-blue !bg-science-blue/10 border-dashed cursor-pointer group'
-            : 'border-dashed cursor-pointer group {{ $requerido ? 'border-error/60 bg-error/5' : 'border-border bg-bg-main' }} hover:border-science-blue hover:bg-science-blue/5'"
+            : 'border-dashed cursor-pointer group border-science-blue/60 bg-science-blue/5 hover:border-science-blue hover:bg-science-blue/10'"
 >
     {{-- Icono --}}
     <div class="shrink-0 size-11 rounded-lg border border-border bg-surface flex items-center justify-center shadow-sm">
@@ -88,14 +100,16 @@
                     x-on:mouseleave="infoAbierta = false"
                     class="shrink-0"
                 >
-                    <span
+                    <button type="button"
                         x-on:click.stop="infoAbierta ? infoAbierta = false : abrir()"
+                        x-on:focus="abrir()" x-on:blur="infoAbierta = false" x-on:keydown.escape.stop="infoAbierta = false"
+                        x-bind:aria-expanded="infoAbierta.toString()"
                         :class="infoAbierta ? 'text-science-blue' : 'text-text-secondary'"
                         class="-m-2 flex cursor-help p-2 transition-colors duration-200"
                         aria-label="Más información sobre este documento"
                     >
                         <flux:icon name="information-circle" class="size-4" />
-                    </span>
+                    </button>
 
                     <template x-teleport="body">
                         <div
@@ -222,11 +236,10 @@
         </div>
         <span x-show="!cargado && (subiendo || progreso > 0)" x-cloak x-text="progreso + '%'" class="text-xs text-text-secondary mt-0.5 block"></span>
 
-        <p x-show="rechazo" x-cloak role="alert" class="mt-2 text-sm font-semibold text-error"
-            x-text="rechazo?.estado === 'tipo_incorrecto' ? 'Documento de tipo incorrecto o no identificable' : 'Documento rechazado'"></p>
-        <p x-show="rechazo" x-cloak class="mt-1 text-xs text-error" x-text="rechazo?.mensaje"></p>
-        <p x-show="errorSubida && !rechazo" class="text-xs text-error mt-1">Error al subir. Inténtalo de nuevo.</p>
-        <flux:error :name="$propiedad" />
+        <div x-show="errorSubida" x-cloak class="hub-upload-rejection">
+            <strong>Archivo no aceptado</strong>
+            <span x-text="rechazo?.mensaje || 'La carga no se completó. Solo se admite un PDF real de hasta 20 MB; cambiar su extensión no modifica el contenido.'"></span>
+        </div>
     </div>
 
     {{-- Botón eliminar --}}

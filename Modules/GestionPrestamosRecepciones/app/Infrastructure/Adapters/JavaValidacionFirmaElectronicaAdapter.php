@@ -10,6 +10,7 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\DetalleValidacionFir
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoValidacionFirma;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Services\PrepararFuentesRevocacionFirma;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Services\ProcesoFirmaJava;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Services\ClienteFirmadorPreparado;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\DirectorioTemporalHubDigital;
 
 /** Transporta al único motor Java los PDF y devuelve su dictamen, sin validadores alternativos. */
@@ -57,6 +58,7 @@ final class JavaValidacionFirmaElectronicaAdapter implements ValidacionFirmaElec
         }
 
         $inicio = microtime(true);
+        $presupuesto = $original === null ? 2.8 : (float) config('firma-electronica.java_timeout', 60);
         try {
             // Las alternativas administradas son opcionales: el motor también usa
             // la evidencia del PDF y las fuentes publicadas en cada certificado.
@@ -86,20 +88,32 @@ final class JavaValidacionFirmaElectronicaAdapter implements ValidacionFirmaElec
                 'HUBDIGITAL_SIGNATURE_OCSP_RESPONDERS' => implode('|', $fuentes['ocsp']),
                 'HUBDIGITAL_SIGNATURE_CRL_OVERRIDES' => implode('|', $fuentes['crl']),
             ]);
-            $resultado = ProcesoFirmaJava::ejecutar($comando, $entorno,
-                $ruta.($original !== null ? "\0".$original : ''),
-                (int) config('firma-electronica.java_timeout', 60));
+            $resultado = null;
+            if ($original === null && $fuentes['ocsp'] === [] && $fuentes['crl'] === [] && $espera === 2) {
+                $restante = $presupuesto - (microtime(true) - $inicio);
+                if ($restante > 0) $resultado = app(ClienteFirmadorPreparado::class)->validarExterno($ruta, $restante);
+            }
+            $preparado = $resultado !== null;
+            if ($resultado === null) {
+                $restante = $presupuesto - (microtime(true) - $inicio);
+                if ($restante <= 0) throw new \RuntimeException('La comprobación excedió el plazo de tres segundos.');
+                $resultado = ProcesoFirmaJava::ejecutar($comando, $entorno,
+                    $ruta.($original !== null ? "\0".$original : ''), $restante);
+            }
             Log::info('Comprobación Java de firma PDF', [
                 'duracion_ms' => (int) round((microtime(true) - $inicio) * 1000),
                 'estado' => $resultado['status'],
                 'motivo' => $resultado['reason'] ?? '',
+                'motor_preparado' => $preparado,
             ]);
 
             return $resultado;
         } catch (\Throwable $error) {
             Log::warning('No se pudo ejecutar el motor Java de firmas', ['error' => $error->getMessage()]);
 
-            return $this->noDisponible('No fue posible ejecutar el motor Java de validación de firmas.');
+            return $this->noDisponible($original === null
+                ? 'La firma no pudo comprobarse dentro de tres segundos. Reintenta cuando el motor esté disponible.'
+                : 'No fue posible ejecutar el motor Java de validación de firmas.');
         }
     }
 

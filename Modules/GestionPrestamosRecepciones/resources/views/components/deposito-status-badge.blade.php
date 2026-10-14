@@ -2,7 +2,7 @@
 
 @php
 $config = [
-    'En Borrador' => ['color' => 'zinc', 'label' => 'En borrador'],
+    'En Borrador' => ['color' => 'blue', 'label' => 'En borrador'],
     'Rechazada' => ['color' => 'red', 'label' => 'Rechazada'],
     'Pausada para Asesoría' => ['color' => 'orange', 'label' => 'Pausada'],
     'Pendiente de Revisión por Curaduría' => ['color' => 'blue', 'label' => 'Pendiente revisión'],
@@ -19,4 +19,4 @@ $value = $estado instanceof \Modules\GestionPrestamosRecepciones\Domain\ValueObj
 $c = $config[$value] ?? ['color' => 'zinc', 'label' => $value];
 @endphp
 
-<flux:badge :color="$c['color']" size="sm">{{ $c['label'] }}</flux:badge>
+<flux:badge :color="$c['color']" size="sm" :class="$value === 'En Borrador' ? 'hub-draft-status' : ''">{{ $c['label'] }}</flux:badge>

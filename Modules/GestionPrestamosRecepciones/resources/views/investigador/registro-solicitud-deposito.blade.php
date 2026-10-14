@@ -9,7 +9,7 @@
     }"
     x-on:hub-firma-ocupada.window="firmaOcupada = $event.detail.busy"
 >
-    <div wire:loading.delay.long class="hub-processing-overlay" style="display: none" role="status" aria-live="polite">
+    <div wire:loading.delay.long wire:target.except="actualizarFirmas,verificarExtraccion,buscarLocalidadesOrigenLov,enviarPreguntaAsistencia,sugerirPreguntaAsistencia" class="hub-processing-overlay" style="display: none" role="status" aria-live="polite">
         <div x-show="!firmaOcupada" class="hub-processing-card"><span class="hub-processing-spinner" aria-hidden="true"></span><span>Procesando…</span></div>
     </div>
     <div x-show="firmaOcupada" x-cloak x-trap.inert.noscroll="firmaOcupada" class="hub-processing-overlay" role="status" aria-live="polite" tabindex="-1">
@@ -58,11 +58,11 @@
             <div class="min-w-0 max-w-3xl">
                 <flux:heading size="lg" level="1" class="hub-request-page-title font-display tracking-tight">{{ \App\Support\WizardCopy::text('general.titulo') }}</flux:heading>
             </div>
-            <div class="flex items-center gap-3">
+            <div class="hub-request-meta flex items-center gap-3">
                 @if($numeroSolicitud)
                     <div class="border-l-2 border-bio-green pl-3 text-right">
-                        <p class="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-secondary">Expediente</p>
-                        <p class="mt-0.5 font-mono text-xs font-semibold text-blue-navy">{{ $numeroSolicitud }}</p>
+                        <p class="hub-request-meta__label text-[10px] font-semibold uppercase tracking-[0.12em]">Expediente</p>
+                        <p class="hub-request-meta__number mt-0.5 font-mono text-xs font-semibold">{{ $numeroSolicitud }}</p>
                     </div>
                 @endif
                 <x-gestionprestamosrecepciones::deposito-status-badge :estado="$modoCorreccion ? 'Requiere Corrección' : 'En Borrador'" />
@@ -77,6 +77,7 @@
         {{-- Stepper --}}
         <div aria-label="Progreso de la solicitud" class="hub-wizard-progress overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
             <x-gestionprestamosrecepciones::wizard-stepper
+                accion-navegacion="volverAPasoCompletado"
                 :pasos="[
                     ['label' => 'Solicitud', 'sub' => 'Firma PDF'],
                     ['label' => 'Trámite',    'sub' => 'Modalidad'],
@@ -267,7 +268,7 @@
                     : 'border-warning/50 bg-warning/5 ring-1 ring-warning/20'"
             class="rounded-xl border bg-surface px-3 py-2.5 flex items-start gap-2.5"
             data-hub-floating-notice role="alert" aria-live="assertive"
-            style="display: none; position: fixed; top: 1rem; right: 1rem; z-index: 9999; width: 19rem; max-width: calc(100dvi - 2rem); box-shadow: 0 20px 60px rgba(0,0,0,0.15), 0 4px 16px rgba(0,0,0,0.1);"
+            style="display: none; position: fixed; top: var(--hub-floating-notice-top, 6rem); right: 1rem; z-index: 9999; width: 19rem; max-width: calc(100dvi - 2rem); box-shadow: 0 20px 60px rgba(0,0,0,0.15), 0 4px 16px rgba(0,0,0,0.1);"
         >
             <div x-show="variant === 'error'" class="flex-shrink-0 mt-0.5">
                 <div class="flex items-center justify-center size-6 rounded-full bg-error/10">

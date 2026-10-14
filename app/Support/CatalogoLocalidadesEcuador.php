@@ -58,6 +58,24 @@ final class CatalogoLocalidadesEcuador
             ->when($soloActivas, fn (Builder $q) => $q->where('activo', true))->first();
     }
 
+    /** @return array{opciones: list<array{valor: string, etiqueta: string}>, hayMas: bool} */
+    public static function paginaLov(string $provincia, string $busqueda, int $pagina = 0): array
+    {
+        if ($pagina > 1000) return ['opciones' => [], 'hayMas' => false];
+        $filas = self::consulta($provincia, mb_substr($busqueda, 0, 120))->where('activo', true)
+            ->selectRaw('DISTINCT ON (nombre, canton, parroquia) *')
+            ->orderBy('nombre')->orderBy('canton')->orderBy('parroquia')->orderBy('codigo')
+            ->offset(max(0, $pagina) * 20)->limit(21)->get();
+
+        return [
+            'opciones' => $filas->take(20)->map(fn (object $fila): array => [
+                'valor' => (string) $fila->codigo,
+                'etiqueta' => self::etiqueta($fila),
+            ])->values()->all(),
+            'hayMas' => $filas->count() > 20,
+        ];
+    }
+
     public static function etiqueta(object $fila): string
     {
         return implode(' · ', array_filter([$fila->nombre, $fila->parroquia, $fila->canton]));

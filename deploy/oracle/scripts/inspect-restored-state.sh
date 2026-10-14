@@ -35,7 +35,7 @@ escaped_password="$(printf '%s' "${db_password}" | sed -e 's/\\/\\\\/g' -e 's/:/
 printf '127.0.0.1:5432:%s:%s:%s\n' "${db_name}" "${db_user}" "${escaped_password}" > "${pgpass}"
 export PGPASSFILE="${pgpass}"
 
-for unit in hubdigital-worker.service hubdigital-schedule.service hubdigital-schedule.timer cloudflared-hubdigital.service; do
+for unit in hubdigital-worker.service hubdigital-r2-signatures.service hubdigital-schedule.service hubdigital-schedule.timer cloudflared-hubdigital.service; do
     systemctl is-active --quiet "${unit}" && {
         echo "El servicio debe permanecer detenido durante esta inspeccion: ${unit}" >&2
         exit 65

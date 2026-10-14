@@ -37,11 +37,29 @@ final class ClienteFirmadorPreparado
         return $this->firmar($original, $firmado, '', '', 'verify-only');
     }
 
-    public function firmar(string $original, string $salida, string $p12, string $clave, string $perfil, ?int $espera = null): ?array
+    public function validarExterno(string $ruta, float $espera): ?array
+    {
+        if (! $this->habilitado()) return null;
+        $copia = null;
+        $limite = microtime(true) + $espera;
+        try {
+            $tamano = filesize($ruta);
+            if ($tamano === false || $tamano > 20 * 1024 * 1024) return null;
+            $copia = DirectorioTemporalHubDigital::crearArchivo('validar-pdf-externo', 'pdf-', $tamano);
+            if (! copy($ruta, $copia)) return null;
+            $restante = $limite - microtime(true);
+            return $restante > 0 ? $this->firmar($copia, '', '', '', 'verify-external', $restante) : null;
+        } finally {
+            if ($copia !== null) DirectorioTemporalHubDigital::eliminar(dirname($copia));
+        }
+    }
+
+    public function firmar(string $original, string $salida, string $p12, string $clave, string $perfil, ?float $espera = null): ?array
     {
         if (! $this->habilitado()) {
             return null;
         }
+        $limite = microtime(true) + ($espera ?? (int) config('firma-electronica.java_timeout', 60));
         $jar = (string) config('firma-electronica.java_signature_jar');
         $trust = realpath((string) config('firma-electronica.java_signature_trust_dir'));
         $hash = is_file($jar) ? hash_file('sha256', $jar) : false;
@@ -64,24 +82,34 @@ final class ClienteFirmadorPreparado
             $socket = @stream_socket_client($local ? 'tcp://127.0.0.1:17655'
                 : 'unix://'.config('firma-electronica.worker_socket'), $codigo, $error, 0.2);
             if ($socket === false) return null;
-            stream_set_timeout($socket, $espera ?? (int) config('firma-electronica.java_timeout', 60));
+            if (! $this->plazo($socket, $limite)) return null;
+            $prueba = null;
             if ($local) {
                 $nonce = bin2hex(random_bytes(32));
                 $this->escribir($socket, 'hello:'.$nonce.':'.hash_hmac('sha256', $nonce, $claveLocal));
-                $prueba = $this->respuesta($socket);
+                $prueba = $this->respuesta($socket, $limite);
                 if (($prueba['status'] ?? '') !== 'ready' || ! hash_equals($hash, (string) ($prueba['jar_sha256'] ?? ''))
                     || ! hash_equals(hash_hmac('sha256', $nonce."\0".$hash, $claveLocal), (string) ($prueba['proof'] ?? ''))) return null;
             }
+            if ($perfil === 'verify-external') {
+                if (! $local) {
+                    $this->escribir($socket, 'health');
+                    $prueba = $this->respuesta($socket, $limite);
+                }
+                if (($prueba['jar_sha256'] ?? '') !== $hash
+                    || ! in_array('verify-external', $prueba['operations'] ?? [], true)) return null;
+            }
             $paquete = pack('N', strlen($entrada)).$entrada;
             for ($offset = 0; $offset < strlen($paquete); $offset += $n) {
+                if (! $this->plazo($socket, $limite)) return null;
                 $n = fwrite($socket, substr($paquete, $offset));
                 if ($n === false || $n === 0) return null;
             }
-            $cabecera = $this->leer($socket, 4);
+            $cabecera = $this->leer($socket, 4, $limite);
             if ($cabecera === null) return null;
             $tamano = unpack('N', $cabecera)[1];
             if ($tamano < 1 || $tamano > 65536) return null;
-            $respuesta = $this->leer($socket, $tamano);
+            $respuesta = $this->leer($socket, $tamano, $limite);
             $resultado = $respuesta === null ? null : json_decode($respuesta, true);
             if (! is_array($resultado) || ($resultado['status'] ?? null) === 'worker_incompatible') return null;
 
@@ -109,27 +137,37 @@ final class ClienteFirmadorPreparado
     }
 
     /** @param resource $socket */
-    private function respuesta($socket): ?array
+    private function respuesta($socket, ?float $limite = null): ?array
     {
-        $cabecera = $this->leer($socket, 4);
+        $cabecera = $this->leer($socket, 4, $limite);
         if ($cabecera === null) return null;
         $tamano = unpack('N', $cabecera)[1];
         if ($tamano < 1 || $tamano > 65536) return null;
-        $bytes = $this->leer($socket, $tamano);
+        $bytes = $this->leer($socket, $tamano, $limite);
         $resultado = $bytes === null ? null : json_decode($bytes, true);
         return is_array($resultado) ? $resultado : null;
     }
 
     /** @param resource $socket */
-    private function leer($socket, int $tamano): ?string
+    private function leer($socket, int $tamano, ?float $limite = null): ?string
     {
         $valor = '';
         while (strlen($valor) < $tamano) {
+            if ($limite !== null && ! $this->plazo($socket, $limite)) return null;
             $parte = fread($socket, $tamano - strlen($valor));
             if ($parte === false || $parte === '') return null;
             $valor .= $parte;
         }
 
         return $valor;
+    }
+
+    /** Un único plazo para cabecera, cuerpo y autenticación, sin reiniciarlo por fragmento. */
+    private function plazo($socket, float $limite): bool
+    {
+        $restante = $limite - microtime(true);
+        if ($restante <= 0) return false;
+        $segundos = (int) $restante;
+        return stream_set_timeout($socket, $segundos, (int) (($restante - $segundos) * 1_000_000));
     }
 }

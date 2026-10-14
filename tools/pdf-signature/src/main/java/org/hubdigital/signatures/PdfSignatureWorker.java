@@ -98,21 +98,25 @@ final class PdfSignatureWorker {
                     || !proof[2].matches("[0-9a-f]{64}") || !java.security.MessageDigest.isEqual(
                         mac(key, proof[1]).getBytes(StandardCharsets.US_ASCII), proof[2].getBytes(StandardCharsets.US_ASCII))) return;
                 writeFrame(peer, selector, "{\"status\":\"ready\",\"jar_sha256\":\"" + identity
-                    + "\",\"proof\":\"" + mac(key, proof[1] + "\0" + identity) + "\"}");
+                    + "\",\"operations\":[\"verify-external\"],\"proof\":\"" + mac(key, proof[1] + "\0" + identity) + "\"}");
             }
             input = readFrame(peer, selector);
-            String result;
             if (Arrays.equals(input, "health".getBytes(StandardCharsets.US_ASCII))) {
-                result = "{\"status\":\"ready\",\"jar_sha256\":\"" + identity + "\"}";
-            } else {
+                writeFrame(peer, selector, "{\"status\":\"ready\",\"jar_sha256\":\"" + identity + "\",\"operations\":[\"verify-external\"]}");
+                Arrays.fill(input, (byte) 0);
+                input = readFrame(peer, selector);
+            }
+            String result;
+            {
                 fields = new String(input, StandardCharsets.UTF_8).split("\\x00", -1);
                 if (fields.length != 8 || !identity.equals(fields[0]) || !trust.equals(fields[1]) || !limits.equals(fields[2])) {
                     result = "{\"status\":\"worker_incompatible\"}";
                 } else {
-                    validatePath(root, fields[3], false, 16L * 1024 * 1024);
+                    boolean external = "verify-external".equals(fields[7]);
+                    validatePath(root, fields[3], false, (external ? 20L : 16L) * 1024 * 1024);
                     boolean prepare = "prepare-only".equals(fields[7]);
                     boolean verify = "verify-only".equals(fields[7]);
-                    if (!prepare) {
+                    if (!prepare && !external) {
                         validatePath(root, fields[4], !verify, 16L * 1024 * 1024);
                         if (!verify) validatePath(root, fields[5], false, 5L * 1024 * 1024);
                         request = String.join("\0", Arrays.copyOfRange(fields, 3, 8)).getBytes(StandardCharsets.UTF_8);
@@ -120,6 +124,7 @@ final class PdfSignatureWorker {
                         throw new IllegalArgumentException("La preparación no admite credenciales ni una salida.");
                     }
                     try { result = prepare ? "{\"status\":\"" + (ContenidoOficialPdf.preparar(Path.of(fields[3])) ? "prepared" : "not_prepared") + "\"}"
+                        : external ? PdfSignatureCli.externalResult(Path.of(fields[3]))
                         : verify ? PdfSignatureCli.officialResult(Path.of(fields[4]), Path.of(fields[3]))
                         : PdfSignatureCli.signRequest(request, true); }
                     catch (Exception error) { result = PdfSignatureCli.errorResult(error); }
@@ -188,6 +193,17 @@ final class PdfSignatureWorker {
                             if (!new String(readFrame(client, selector), StandardCharsets.UTF_8).contains(identity)) {
                                 throw new IllegalStateException("El motor local perdió el encuadre después de autenticar.");
                             }
+                            Path sample = Files.createTempFile("verificacion-externa-", ".pdf");
+                            try {
+                                try (org.apache.pdfbox.pdmodel.PDDocument pdf = new org.apache.pdfbox.pdmodel.PDDocument()) {
+                                    pdf.addPage(new org.apache.pdfbox.pdmodel.PDPage()); pdf.save(sample.toFile());
+                                }
+                                writeFrame(client, selector, String.join("\0", identity, "", "", sample.toString(), "", "", "", "verify-external"));
+                                String result = new String(readFrame(client, selector), StandardCharsets.UTF_8);
+                                if (!result.contains("\"status\":\"sin_firma\"")) {
+                                    throw new IllegalStateException("La verificación externa preparada no conservó el dictamen sin firma.");
+                                }
+                            } finally { Files.deleteIfExists(sample); }
                         }
                     } finally { client.close(); handler.join(6000); }
                     if (handler.isAlive()) throw new IllegalStateException("El transporte local no cerró la petición.");

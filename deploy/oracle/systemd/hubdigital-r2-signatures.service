@@ -1,0 +1,24 @@
+[Unit]
+Description=HubDigital durable R2 outbox (one serialized consumer)
+After=network-online.target postgresql@16-main.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/srv/hubdigital/current
+EnvironmentFile=/etc/hubdigital/hubdigital.env
+ExecStart=/usr/bin/php8.4 artisan queue:work r2_signatures --queue=r2-signatures --tries=0 --sleep=1 --timeout=300 --memory=128 --max-time=900 --no-interaction
+Restart=always
+RestartSec=2s
+TimeoutStopSec=330s
+MemoryAccounting=true
+MemoryMax=192M
+NoNewPrivileges=true
+PrivateTmp=true
+LimitCORE=0
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

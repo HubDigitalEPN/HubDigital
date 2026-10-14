@@ -51,6 +51,7 @@ fi
 
 install -m 0644 "${oracle_dir}/tmpfiles/hubdigital.conf" /etc/tmpfiles.d/hubdigital.conf
 install -m 0644 "${oracle_dir}/systemd/hubdigital-worker.service" /etc/systemd/system/hubdigital-worker.service
+install -m 0644 "${oracle_dir}/systemd/hubdigital-r2-signatures.service" /etc/systemd/system/hubdigital-r2-signatures.service
 install -m 0644 "${oracle_dir}/systemd/hubdigital-schedule.service" /etc/systemd/system/hubdigital-schedule.service
 install -m 0644 "${oracle_dir}/systemd/hubdigital-schedule.timer" /etc/systemd/system/hubdigital-schedule.timer
 install -m 0644 "${oracle_dir}/systemd/hubdigital-temp-cleanup.service" /etc/systemd/system/hubdigital-temp-cleanup.service

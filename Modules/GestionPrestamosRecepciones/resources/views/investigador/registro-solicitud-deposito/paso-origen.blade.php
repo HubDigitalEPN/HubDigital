@@ -6,31 +6,15 @@
 
     <p class="text-sm font-semibold text-blue-navy">Zona de recolección</p>
 
-        <div class="flex flex-wrap gap-3">
-            <div class="w-full sm:w-80">
-                <label for="provincia-recoleccion" class="mb-1 block text-sm font-medium text-blue-navy">Provincia <span class="text-error">*</span></label>
-                <select id="provincia-recoleccion" wire:change="seleccionarProvincia($event.target.value)" class="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-blue-navy">
-                    <option value="">Selecciona una provincia</option>
-                    @foreach($provinciasCatalogo as $provinciaOpcion)
-                        <option value="{{ $provinciaOpcion['nombre'] }}" @selected($provincia === $provinciaOpcion['nombre'])>{{ $provinciaOpcion['nombre'] }}</option>
-                    @endforeach
-                </select>
-                <flux:error name="provincia" />
-            </div>
-            <div class="w-full sm:w-80">
-                <label for="localidad-recoleccion" class="mb-1 block text-sm font-medium text-blue-navy">Localidad <span class="text-error">*</span></label>
-                <input type="search" wire:model.live.debounce.350ms="busquedaLocalidadOrigen" @disabled(!$provincia) maxlength="120"
-                    aria-label="Buscar localidad en la provincia seleccionada" placeholder="Buscar localidad…"
-                    class="mb-2 w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-blue-navy disabled:opacity-50" />
-                <select id="localidad-recoleccion" wire:key="localidades-{{ $provincia }}" wire:change="seleccionarLocalidadOrigen($event.target.value)" @disabled(!$provincia) class="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-blue-navy disabled:opacity-50">
-                    <option value="">Selecciona una localidad</option>
-                    @foreach($localidadesOrigenCatalogo as $opcion)
-                        <option value="{{ $opcion->codigo }}" @selected($localidadOrigenCodigo === $opcion->codigo)>{{ \App\Support\CatalogoLocalidadesEcuador::etiqueta($opcion) }}</option>
-                    @endforeach
-                </select>
-                <p class="mt-1 text-xs text-text-secondary">Escribe el nombre para buscar más localidades de esta provincia.</p>
-                <flux:error name="localidadOrigenCodigo" />
-            </div>
+        <div class="hub-origin-fields">
+            <x-gestionprestamosrecepciones::lov-popup campo="provincia" label="Provincia"
+                :opciones="array_column($provinciasCatalogo, 'nombre')" :valor="$provincia"
+                placeholder="Selecciona una provincia" accion="seleccionarProvincia" input-id="provincia-recoleccion" />
+            <x-gestionprestamosrecepciones::lov-popup campo="localidadOrigenCodigo" label="Localidad"
+                :opciones="collect($localidadesOrigenCatalogo)->mapWithKeys(fn ($fila) => [(string) $fila->codigo => \App\Support\CatalogoLocalidadesEcuador::etiqueta($fila)])->all()"
+                :valor="$localidadOrigenCodigo" :disabled="!$provincia" :contexto="$provincia"
+                placeholder="Selecciona una localidad" accion="seleccionarLocalidadOrigen"
+                busqueda-remota="buscarLocalidadesOrigenLov" input-id="localidad-recoleccion" />
         </div>
 
         <div class="space-y-2">

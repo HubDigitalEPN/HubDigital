@@ -505,6 +505,9 @@ $requeridos = @(
     'composer.json', 'composer.lock', 'modules_statuses.json',
     'resources/bin/hubdigital-pdf-signature.jar',
     'deploy/oracle/systemd/hubdigital-signature.service', 'deploy/oracle/scripts/verify-signature-worker.php',
+    'deploy/oracle/systemd/hubdigital-r2-signatures.service',
+    'Modules/GestionPrestamosRecepciones/app/Infrastructure/Storage/ColaFirmasSolicitudR2.php',
+    'Modules/GestionPrestamosRecepciones/database/migrations/2026_10_13_000002_extend_r2_outbox_to_uploaded_documents.php',
     'Modules/GestionPrestamosRecepciones/app/Infrastructure/Services/ClienteFirmadorPreparado.php',
     'resources/token-usb/Iniciar-Conector.ps1', 'resources/token-usb/LEEME.txt',
     'resources/python/portal_ete/server.py', 'resources/python/portal_ete/requirements.txt',
@@ -756,6 +759,13 @@ try {
     $endpointEsperado = "https://$($valoresEntorno['R2_ACCOUNT_ID']).r2.cloudflarestorage.com"
     if ($valoresEntorno['R2_ENDPOINT'].TrimEnd('/') -ne $endpointEsperado) {
         throw "R2_ENDPOINT no corresponde a R2_ACCOUNT_ID: se esperaba $endpointEsperado"
+    }
+    # Construir el entorno remoto no debe alterar el CAPTCHA del servidor localhost.
+    # La plantilla OCI tiene un destino fijo; se adapta sólo la copia exportada.
+    if ($valoresEntorno['TURNSTILE_EXPECTED_HOSTNAME'] -eq 'localhost' -and
+        $valoresEntorno['APP_ENV'] -eq 'local' -and
+        $valoresEntorno['APP_URL'] -match '^http://localhost:8000/?$') {
+        $valoresEntorno['TURNSTILE_EXPECTED_HOSTNAME'] = 'dev.labinvepn.org'
     }
     if ($valoresEntorno['TURNSTILE_EXPECTED_HOSTNAME'] -ne 'dev.labinvepn.org') {
         throw 'TURNSTILE_EXPECTED_HOSTNAME debe ser dev.labinvepn.org para OCI.'

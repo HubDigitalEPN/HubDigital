@@ -291,6 +291,11 @@ final class AlmacenamientoDepositos
 
     public function sha256(string $ruta): string
     {
+        $ruta = $this->normalizarRuta($ruta);
+        if ($this->driver() === 'r2') {
+            $pendiente = app(ColaFirmasSolicitudR2::class)->contenidoDocumentoPorRuta($ruta);
+            if ($pendiente !== null) return hash('sha256', $pendiente);
+        }
         $stream = $this->readStream($ruta);
         try {
             $contexto = hash_init('sha256');
@@ -366,9 +371,10 @@ final class AlmacenamientoDepositos
             return new ArchivoLocalDeposito(Storage::disk($this->discoPublicoLegado())->path($ruta), false);
         }
 
-        // En R2 siempre se materializa primero el objeto remoto autoritativo. Una
-        // copia publica heredada nunca debe prevalecer sobre el expediente remoto.
-        $contenido = $this->obtener($ruta);
+        // La outbox transaccional es el ejemplar durable mientras R2 confirma la
+        // transferencia. Comprueba versión y huella; no consulta discos residuales.
+        $contenido = $driver === 'r2' ? app(ColaFirmasSolicitudR2::class)->contenidoDocumentoPorRuta($ruta) : null;
+        $contenido ??= $this->obtener($ruta);
         $directorio = DirectorioTemporalHubDigital::crear('r2-copia', strlen($contenido));
         $temporal = $directorio.DIRECTORY_SEPARATOR.basename($ruta);
         if (file_put_contents($temporal, $contenido, LOCK_EX) === false) {

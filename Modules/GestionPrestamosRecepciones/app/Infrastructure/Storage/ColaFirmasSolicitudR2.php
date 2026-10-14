@@ -19,17 +19,7 @@ final class ColaFirmasSolicitudR2
     public function encolar(ArchivoLocalDeposito $archivo, SolicitudDepositoEloquentModel $solicitud,
         string $ruta, ?string $rutaAnterior): string
     {
-        if (DB::transactionLevel() < 1
-            || config('queue.connections.r2_signatures.driver') !== 'database'
-            || config('queue.connections.r2_signatures.connection') !== config('database.default')) {
-            throw new \RuntimeException('La firma y su trabajo requieren la misma transacción de PostgreSQL.');
-        }
-        if (!config('deposit-storage.verify_after_write', true)) {
-            throw new \RuntimeException('La cola de firmas requiere la verificación de integridad de R2.');
-        }
-        if (app(AlmacenamientoDepositos::class)->driver() !== 'r2') {
-            throw new \RuntimeException('La cola de firmas requiere almacenamiento R2.');
-        }
+        $this->exigirTransaccionDurable();
         $contenido = file_get_contents($archivo->ruta());
         if ($contenido === false || strlen($contenido) > (int) config('deposit-storage.max_object_bytes', 26214400)) {
             throw new \RuntimeException('No se pudo conservar íntegramente el PDF firmado.');
@@ -45,6 +35,47 @@ final class ColaFirmasSolicitudR2
         if (!hash_equals((string) $solicitud->solicitud_firmada_sha256, $huella)) {
             throw new \InvalidArgumentException('La copia pendiente no corresponde a la firma persistida.');
         }
+        return $this->insertar($solicitud, $ruta, $rutaAnterior, $contenido, $huella);
+    }
+
+    private function exigirTransaccionDurable(): void
+    {
+        if (DB::transactionLevel() < 1
+            || config('queue.connections.r2_signatures.driver') !== 'database'
+            || config('queue.connections.r2_signatures.connection') !== config('database.default')) {
+            throw new \RuntimeException('La firma y su trabajo requieren la misma transacción de PostgreSQL.');
+        }
+        if (!config('deposit-storage.verify_after_write', true)) {
+            throw new \RuntimeException('La cola de firmas requiere la verificación de integridad de R2.');
+        }
+        if (app(AlmacenamientoDepositos::class)->driver() !== 'r2') {
+            throw new \RuntimeException('La cola de firmas requiere almacenamiento R2.');
+        }
+    }
+
+    /** La admisión del servidor y la firma se vinculan a los mismos bytes, nunca a datos del navegador. */
+    public function encolarDocumento(string $archivo, SolicitudDepositoEloquentModel $solicitud,
+        string $nombre, ?string $rutaAnterior): string
+    {
+        $this->exigirTransaccionDurable();
+        $previa = $solicitud->validacion_previa_documentos[$nombre] ?? [];
+        $ruta = $solicitud->documentos_cargados[$nombre] ?? null;
+        $contenido = file_get_contents($archivo);
+        if ($contenido === false || $contenido === '' || strlen($contenido) > 20 * 1024 * 1024
+            || strlen($contenido) > (int) config('deposit-storage.max_object_bytes', 26214400)
+            || ($previa['estructura']['status'] ?? null) !== 'seguro'
+            || !is_string($ruta) || ($previa['ruta'] ?? null) !== $ruta
+            || !Str::isUuid($previa['verificacion_id'] ?? '')
+            || !in_array($nombre, $solicitud->documentos_requeridos ?? [], true)
+            || !hash_equals((string) ($previa['sha256'] ?? ''), hash('sha256', $contenido))) {
+            throw new \InvalidArgumentException('La copia pendiente no corresponde al documento inspeccionado.');
+        }
+        return $this->insertar($solicitud, $ruta, $rutaAnterior, $contenido, $previa['sha256'], $nombre, $previa['verificacion_id']);
+    }
+
+    private function insertar(SolicitudDepositoEloquentModel $solicitud, string $ruta, ?string $rutaAnterior,
+        string $contenido, string $huella, ?string $nombre = null, ?string $verificacionId = null): string
+    {
         $id = (string) Str::uuid();
         DB::table(self::TABLA)->insert([
             'id' => $id, 'solicitud_id' => $solicitud->id,
@@ -52,6 +83,7 @@ final class ColaFirmasSolicitudR2
             'ruta' => $ruta, 'ruta_anterior' => $rutaAnterior, 'sha256' => $huella,
             'bytes' => strlen($contenido), 'contenido_cifrado' => Crypt::encryptString($contenido),
             'estado' => 'pendiente', 'intentos' => 0, 'created_at' => now(), 'updated_at' => now(),
+            'nombre_documento' => $nombre, 'verificacion_id' => $verificacionId,
         ]);
         PersistirFirmaSolicitudR2::dispatch($id)->onConnection('r2_signatures')->onQueue('r2-signatures')->beforeCommit();
         return $id;
@@ -94,10 +126,42 @@ final class ColaFirmasSolicitudR2
 
     private function vigente(object $registro, ?SolicitudDepositoEloquentModel $solicitud): bool
     {
+        if ($registro->nombre_documento !== null) {
+            $previa = $solicitud?->validacion_previa_documentos[$registro->nombre_documento] ?? [];
+            return $solicitud !== null
+                && (int) $solicitud->solicitud_documento_version === (int) $registro->documento_version
+                && ($solicitud->documentos_cargados[$registro->nombre_documento] ?? null) === $registro->ruta
+                && ($previa['ruta'] ?? null) === $registro->ruta
+                && ($previa['r2_verificacion_id'] ?? null) === $registro->verificacion_id
+                && ($previa['r2_pendiente_id'] ?? null) === $registro->id
+                && hash_equals((string) ($previa['sha256'] ?? ''), $registro->sha256);
+        }
         return $solicitud !== null && $solicitud->solicitud_firmada_en !== null
             && (int) $solicitud->solicitud_documento_version === (int) $registro->documento_version
             && $solicitud->solicitud_firmada_ruta === $registro->ruta
             && hash_equals((string) $solicitud->solicitud_firmada_sha256, $registro->sha256);
+    }
+
+    /** Únicamente una copia cifrada vigente de un documento admitido; nunca un archivo local residual. */
+    public function documentoPendienteVigente(string $ruta): bool
+    {
+        if (!Schema::hasTable(self::TABLA)) return false;
+        $registro = DB::table(self::TABLA)->where('ruta', $ruta)->where('estado', 'pendiente')
+            ->whereNotNull('nombre_documento')
+            ->first(['id', 'solicitud_id', 'documento_version', 'ruta', 'sha256', 'nombre_documento', 'verificacion_id']);
+        return $registro !== null && $this->vigente($registro, SolicitudDepositoEloquentModel::find($registro->solicitud_id));
+    }
+
+    public function contenidoDocumentoPorRuta(string $ruta): ?string
+    {
+        if (!Schema::hasTable(self::TABLA)) return null;
+        $registro = DB::table(self::TABLA)->where('ruta', $ruta)->where('estado', 'pendiente')
+            ->whereNotNull('nombre_documento')->first();
+        if ($registro === null) return null;
+        if (!$this->vigente($registro, SolicitudDepositoEloquentModel::find($registro->solicitud_id))) {
+            throw new \RuntimeException('El documento pendiente ya no está vigente.');
+        }
+        return $this->descifrar($registro);
     }
 
     /** Reintentos idempotentes. Ningún fallo descarta los bytes pendientes. */
@@ -109,7 +173,14 @@ final class ColaFirmasSolicitudR2
                 // Sólo esta fila permanece bloqueada durante la transferencia.
                 // El wizard puede avanzar; descartar espera este bloqueo y retira todo después.
                 $registro = DB::table(self::TABLA)->where('id', $id)->lockForUpdate()->first();
-                if ($registro === null || $registro->estado === 'cancelado') return;
+                if ($registro === null) return;
+                if ($registro->estado === 'cancelado') {
+                    if ($registro->nombre_documento !== null) {
+                        $almacenamiento->eliminar($registro->ruta);
+                        if ($registro->ruta_anterior !== null) $almacenamiento->eliminar($registro->ruta_anterior);
+                    }
+                    return;
+                }
                 if ($registro->estado === 'confirmado') {
                     if ($registro->ruta_anterior !== null) {
                         $almacenamiento->eliminar($registro->ruta_anterior);
@@ -124,15 +195,26 @@ final class ColaFirmasSolicitudR2
                     return;
                 }
                 $contenido = $this->descifrar($registro);
+                // La copia cifrada sigue durable en PostgreSQL; liberar su representación
+                // en RAM antes de mantener simultáneamente el PDF y la lectura de R2.
+                unset($registro->contenido_cifrado);
                 $huella = $almacenamiento->guardarContenido($registro->ruta, $contenido, 'application/pdf', true);
                 if (!hash_equals($registro->sha256, $huella)) throw new \RuntimeException('R2 no confirmó el PDF íntegro.');
                 $confirmado = DB::table(self::TABLA)->where('id', $id)->whereExists(function ($consulta) use ($registro): void {
                     $consulta->selectRaw('1')->from('recepciones.solicitudes_deposito as vigente')
                         ->where('vigente.id', $registro->solicitud_id)
-                        ->where('vigente.solicitud_documento_version', $registro->documento_version)
-                        ->where('vigente.solicitud_firmada_ruta', $registro->ruta)
-                        ->where('vigente.solicitud_firmada_sha256', $registro->sha256)
-                        ->whereNotNull('vigente.solicitud_firmada_en');
+                        ->where('vigente.solicitud_documento_version', $registro->documento_version);
+                    if ($registro->nombre_documento === null) {
+                        $consulta->where('vigente.solicitud_firmada_ruta', $registro->ruta)
+                            ->where('vigente.solicitud_firmada_sha256', $registro->sha256)
+                            ->whereNotNull('vigente.solicitud_firmada_en');
+                    } else {
+                        $consulta->whereRaw('vigente.documentos_cargados ->> ? = ?', [$registro->nombre_documento, $registro->ruta]);
+                        foreach (['ruta' => $registro->ruta, 'sha256' => $registro->sha256,
+                            'r2_verificacion_id' => $registro->verificacion_id, 'r2_pendiente_id' => $registro->id] as $campo => $valor) {
+                            $consulta->whereRaw('vigente.validacion_previa_documentos -> ? ->> ? = ?', [$registro->nombre_documento, $campo, $valor]);
+                        }
+                    }
                 })->update(['estado' => 'confirmado', 'contenido_cifrado' => null,
                     'confirmado_en' => now(), 'ultimo_error_tipo' => null, 'updated_at' => now()]) === 1;
                 if (!$confirmado) {
@@ -150,10 +232,23 @@ final class ColaFirmasSolicitudR2
     }
 
     /** El descarte toma este bloqueo después del de la solicitud y antes de borrar R2. */
+    public function cancelarDocumento(string $solicitudId, string $nombre): array
+    {
+        if (!Schema::hasTable(self::TABLA)) return [];
+        $consulta = DB::table(self::TABLA)->where('solicitud_id', $solicitudId)->where('nombre_documento', $nombre);
+        $registros = (clone $consulta)->lockForUpdate()->get(['id', 'ruta', 'ruta_anterior']);
+        $consulta->update(['estado' => 'cancelado', 'contenido_cifrado' => null, 'updated_at' => now()]);
+        foreach ($registros as $registro) {
+            // También se reintenta la retirada de una copia que ya estaba confirmada.
+            PersistirFirmaSolicitudR2::dispatch($registro->id)->onConnection('r2_signatures')->onQueue('r2-signatures')->beforeCommit();
+        }
+        return $registros->flatMap(fn ($fila): array => [$fila->ruta, $fila->ruta_anterior])->filter()->unique()->values()->all();
+    }
+
     public function cancelarSolicitud(string $solicitudId): array
     {
         if (!Schema::hasTable(self::TABLA)) return [];
-        $registros = DB::table(self::TABLA)->where('solicitud_id', $solicitudId)->lockForUpdate()->get();
+        $registros = DB::table(self::TABLA)->where('solicitud_id', $solicitudId)->lockForUpdate()->get(['ruta', 'ruta_anterior']);
         DB::table(self::TABLA)->where('solicitud_id', $solicitudId)->update([
             'estado' => 'cancelado', 'contenido_cifrado' => null, 'updated_at' => now(),
         ]);

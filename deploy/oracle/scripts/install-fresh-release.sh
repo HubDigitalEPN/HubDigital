@@ -65,7 +65,7 @@ artisan() {
         /usr/bin/php8.4 artisan "$@"
 }
 PHP_BIN=/usr/bin/php8.4 COMPOSER_BIN=/usr/bin/composer bash "${release_dir}/deploy/oracle/scripts/verify-platform.sh" "${release_dir}"
-for unit in hubdigital-worker.service hubdigital-schedule.timer hubdigital-schedule.service cloudflared-hubdigital.service; do
+for unit in hubdigital-worker.service hubdigital-r2-signatures.service hubdigital-schedule.timer hubdigital-schedule.service cloudflared-hubdigital.service; do
     systemctl is-active --quiet "${unit}" && { echo "Servicio activo durante instalacion nueva: ${unit}" >&2; exit 65; }
 done
 

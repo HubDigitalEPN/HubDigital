@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\GestionPrestamosRecepciones\Infrastructure\Storage;
 
 use Modules\GestionPrestamosRecepciones\Domain\Services\AnalizadorDocumentoAmbiental;
+use Modules\GestionPrestamosRecepciones\Domain\Services\AnalizadorCartaDeposito;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\LocalExtraccionDatosDocumentoAdapter;
 
 /** Inspección y lectura de la copia temporal antes de crear un objeto del expediente. */
@@ -17,7 +18,7 @@ final class ValidacionPreviaDocumentoDeposito
     ) {}
 
     /** @return array<string,mixed> */
-    public function validar(string $archivo, string $nombre): array
+    public function validar(string $archivo, string $nombre, array $expediente = []): array
     {
         $huella = hash_file('sha256', $archivo);
         if ($huella === false) {
@@ -29,8 +30,10 @@ final class ValidacionPreviaDocumentoDeposito
             throw new DocumentoDepositoRechazado('pdf_inseguro', $error->getMessage());
         }
         $esperado = $this->analizador->tipoEsperadoParaNombre($nombre);
+        $analizadorCarta = new AnalizadorCartaDeposito;
+        $cartaEsperada = $analizadorCarta->tipoEsperado($nombre);
         $metadatos = ['sha256' => $huella, 'estructura' => $estructura, 'nombre_documento' => $nombre];
-        if ($esperado !== null) {
+        if ($esperado !== null || $cartaEsperada !== null) {
             try {
                 $lectura = $this->lector->leerArchivoLocal($archivo);
             } catch (\Throwable $error) {
@@ -40,7 +43,14 @@ final class ValidacionPreviaDocumentoDeposito
                 throw new DocumentoDepositoRechazado('contenido_no_legible', 'No se pudo leer el contenido completo del PDF. No es posible confirmar su tipo de documento.');
             }
             $analisis = $this->analizador->analizar($lectura['texto']);
-            if (($analisis['tipo_detectado'] ?? null) !== $esperado) {
+            if ($cartaEsperada !== null) {
+                $carta = $analizadorCarta->analizar($lectura['texto'], $cartaEsperada, $expediente);
+                if (! $carta['tipo_compatible'] || ($analisis['tipo_detectado'] ?? AnalizadorDocumentoAmbiental::DESCONOCIDO) !== AnalizadorDocumentoAmbiental::DESCONOCIDO) {
+                    throw new DocumentoDepositoRechazado('tipo_incorrecto', 'El contenido no corresponde claramente a la carta solicitada. Incluye su propósito, la procedencia del material y la explicación o declaración correspondiente.');
+                }
+                if ($carta['discrepancias'] !== []) throw new DocumentoDepositoRechazado('tipo_incorrecto', $carta['discrepancias'][0]);
+                $metadatos += ['tipo_detectado' => $cartaEsperada, 'analisis_carta' => $carta];
+            } elseif (($analisis['tipo_detectado'] ?? null) !== $esperado) {
                 $tipo = $esperado === AnalizadorDocumentoAmbiental::AUTORIZACION_RECOLECCION
                     ? 'una autorización de recolección del MAE' : 'un permiso o guía de movilización';
                 throw new DocumentoDepositoRechazado('tipo_incorrecto', 'Documento de tipo incorrecto o no identificable. El contenido debe corresponder claramente a '.$tipo.'.');

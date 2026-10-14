@@ -1446,17 +1446,7 @@ body:has(.hub-app-sidebar) { --color-accent: #174a9a; --color-accent-foreground:
 .hub-lov-footer button:disabled { opacity: .55; cursor: default; }
 .hub-lov-dialog button:focus-visible { outline: 2px solid #056ac8; outline-offset: 1px; }
 .hub-pdf-check { display: inline-block; color: #138b18; font-size: 1.2rem; font-weight: 800; line-height: 1; }
-/* Campos con etiqueta interior y popup: medidas observadas en la referencia Oracle APEX. */
-.hub-request-fields [data-flux-field] { position: relative; display: block; }
-.hub-request-fields :is([data-flux-label], .hub-lov-label) { position: absolute; z-index: 2; top: .25rem; left: .5rem; max-width: calc(100% - 1rem); margin: 0 !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #262626; opacity: 1; font-family: system-ui, sans-serif; font-size: .6875rem; font-weight: 600; line-height: 1.25rem; pointer-events: none; transition: top .12s ease, font-size .12s ease; }
-.hub-request-fields input[data-flux-control], .hub-request-fields .hub-lov-trigger { width: 100%; height: 3rem; min-block-size: 3rem; padding: 1.5rem .5rem .25rem; border: 1px solid #dfdfdf; border-radius: 2px; background: #f9f9f9; color: #202020; box-shadow: none; font-family: system-ui, sans-serif; font-size: .875rem; line-height: 1rem; }
-.hub-request-fields input[data-flux-control]:focus, .hub-request-fields .hub-lov-trigger:focus-visible { border-color: #056ac8; background: #fff; outline: 1px solid #056ac8; outline-offset: 0; }
-.hub-request-fields input[data-flux-control]:disabled, .hub-request-fields .hub-lov-trigger:disabled { background: #f6f6f6; color: #505050; opacity: 1; cursor: not-allowed; }
-.hub-request-fields .hub-lov-trigger { position: relative; padding-inline-end: 2rem; }
-.hub-request-fields .hub-lov-trigger > svg { position: absolute; top: 0; right: 0; width: 2rem; height: 100%; padding: 1rem .5rem; border-left: 1px solid #dfdfdf; border-radius: 0 2px 2px 0; background: #f8f8f8; }
-.hub-request-fields .hub-lov-label { max-width: calc(100% - 2rem); }
-.hub-request-fields [data-flux-field]:has(input:placeholder-shown):not(:focus-within) > [data-flux-label], .hub-request-fields .hub-lov-field--empty:not(:focus-within) > .hub-lov-label { top: .85rem; font-size: .875rem; }
-.hub-request-fields .hub-lov-value--empty { visibility: hidden; }
+/* Los controles y etiquetas APEX se comparten desde public/css/formularios-apex.css. */
 .hub-identification-fields { grid-template-columns: 9.5rem minmax(0, 1fr); }
 .hub-request-cell--cargo, .hub-request-cell--email { max-width: 18rem; }
 .hub-request-cell--letter { align-items: center; }

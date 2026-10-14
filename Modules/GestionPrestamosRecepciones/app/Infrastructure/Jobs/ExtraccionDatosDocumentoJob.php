@@ -298,6 +298,9 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
                 $solicitud->integrarDatosDeDocumentos($datosIntegrados, array_keys($this->documentos));
                 $repo->guardar($solicitud);
                 $metadatosVigentes = $modelo->extraccion_metadatos ?? [];
+                if (isset($metadatosVigentes['wizard_pasos_completados'])) {
+                    $metadatosExtraccion['wizard_pasos_completados'] = $metadatosVigentes['wizard_pasos_completados'];
+                }
                 $revisionHumana = $metadatosVigentes['revision_documental'] ?? null;
                 $historialRevision = $metadatosVigentes['revision_documental_historial'] ?? [];
 

@@ -2,6 +2,7 @@ package org.hubdigital.signatures;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.awt.image.BufferedImage;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyStore;
@@ -27,6 +28,7 @@ import org.apache.pdfbox.pdmodel.PDResources;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
+import org.apache.pdfbox.pdmodel.graphics.image.LosslessFactory;
 import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotation;
 import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationWidget;
 import org.apache.pdfbox.pdmodel.interactive.annotation.PDAppearanceDictionary;
@@ -250,29 +252,47 @@ final class FirmadorPdfOficial {
             var qr = new QRCodeWriter().encode(datosQr, BarcodeFormat.QR_CODE, 0, 0,
                 java.util.Map.of(EncodeHintType.CHARACTER_SET, "UTF-8", EncodeHintType.MARGIN, 4,
                     EncodeHintType.ERROR_CORRECTION, com.google.zxing.qrcode.decoder.ErrorCorrectionLevel.M));
-            float ladoQr = Math.min(alto - 8, 82), modulo = ladoQr / qr.getWidth();
-            float izquierdaQr = ancho - ladoQr - 4, baseQr = (alto - ladoQr) / 2;
-            contenido.setNonStrokingColor(1f, 1f, 1f);
-            contenido.addRect(izquierdaQr, baseQr, ladoQr, ladoQr);
-            contenido.fill();
-            contenido.setNonStrokingColor(0f, 0f, 0f);
-            for (int fila = 0; fila < qr.getHeight(); fila++) {
-                for (int columna = 0; columna < qr.getWidth();) {
-                    if (!qr.get(columna, fila)) { columna++; continue; }
-                    int inicio = columna;
-                    while (columna < qr.getWidth() && qr.get(columna, fila)) columna++;
-                    contenido.addRect(izquierdaQr + inicio * modulo,
-                        baseQr + (qr.getHeight() - fila - 1) * modulo, (columna - inicio) * modulo, modulo);
-                }
-            }
-            contenido.fill();
-            float y = alto - 12;
+            float ladoQr = Math.min(alto - 8, 82);
+            float anchoTextoDisponible = ancho - ladoQr - 24, anchoTexto = 0;
+            String[] textos = new String[lineas.size()];
+            float[] tamanos = new float[lineas.size()];
             for (int i = 0; i < lineas.size(); i++) {
                 PDType1Font fuente = i < 2 ? negrita : normal;
                 float tamano = i < 2 ? 8 : 6.3f;
                 String texto = lineas.get(i).replaceAll("[^\\x20-\\x7E\\u00A0-\\u00FF]", "?");
-                while (tamano > 4.5f && fuente.getStringWidth(texto) * tamano / 1000 > izquierdaQr - 16) tamano -= .25f;
-                if (fuente.getStringWidth(texto) * tamano / 1000 > izquierdaQr - 16) throw new IOException("El nombre del firmante excede el espacio visible.");
+                while (tamano > 4.5f && fuente.getStringWidth(texto) * tamano / 1000 > anchoTextoDisponible) tamano -= .25f;
+                float anchoLinea = fuente.getStringWidth(texto) * tamano / 1000;
+                if (anchoLinea > anchoTextoDisponible) throw new IOException("El nombre del firmante excede el espacio visible.");
+                textos[i] = texto;
+                tamanos[i] = tamano;
+                anchoTexto = Math.max(anchoTexto, anchoLinea);
+            }
+            float izquierdaQr = 8 + anchoTexto + 12, baseQr = (alto - ladoQr) / 2;
+            contenido.setNonStrokingColor(1f, 1f, 1f);
+            contenido.addRect(izquierdaQr, baseQr, ladoQr, ladoQr);
+            contenido.fill();
+            // Una matriz binaria sin interpolación conserva módulos y blancos completos.
+            // Evita costuras de rasterización de rectángulos vectoriales fraccionarios,
+            // especialmente cuando el QR queda junto al texto en una posición fraccionaria.
+            int escala = 8;
+            BufferedImage imagenQr = new BufferedImage(qr.getWidth() * escala, qr.getHeight() * escala,
+                BufferedImage.TYPE_BYTE_BINARY);
+            for (int fila = 0; fila < qr.getHeight(); fila++) {
+                for (int columna = 0; columna < qr.getWidth(); columna++) {
+                    int color = qr.get(columna, fila) ? 0xff000000 : 0xffffffff;
+                    for (int dy = 0; dy < escala; dy++) {
+                        for (int dx = 0; dx < escala; dx++) imagenQr.setRGB(columna * escala + dx, fila * escala + dy, color);
+                    }
+                }
+            }
+            var imagen = LosslessFactory.createFromImage(pdf, imagenQr);
+            imagen.setInterpolate(false);
+            contenido.drawImage(imagen, izquierdaQr, baseQr, ladoQr, ladoQr);
+            float y = alto - 12;
+            for (int i = 0; i < lineas.size(); i++) {
+                PDType1Font fuente = i < 2 ? negrita : normal;
+                float tamano = tamanos[i];
+                String texto = textos[i];
                 contenido.beginText();
                 contenido.setNonStrokingColor(0.07f, 0.22f, 0.35f);
                 contenido.setFont(fuente, tamano);

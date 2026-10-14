@@ -38,7 +38,7 @@ install -d -m 0750 -o www-data -g www-data \
     "${release_dir}/storage/logs" "${release_dir}/bootstrap/cache"
 chown -R www-data:www-data "${release_dir}/storage" "${release_dir}/bootstrap/cache"
 
-for unit in hubdigital-worker.service hubdigital-schedule.timer hubdigital-schedule.service cloudflared-hubdigital.service; do
+for unit in hubdigital-worker.service hubdigital-r2-signatures.service hubdigital-schedule.timer hubdigital-schedule.service cloudflared-hubdigital.service; do
     systemctl is-active --quiet "${unit}" && { echo "Servicio activo durante migracion: ${unit}" >&2; exit 65; }
 done
 artisan() {

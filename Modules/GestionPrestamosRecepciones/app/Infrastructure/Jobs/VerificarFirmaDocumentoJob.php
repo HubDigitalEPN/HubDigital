@@ -46,12 +46,14 @@ final class VerificarFirmaDocumentoJob implements ShouldQueue
                 || ! hash_equals($esperada, (string) hash_file('sha256', $copia->ruta()))) {
                 throw new \RuntimeException('El objeto PDF no coincide con el contenido previamente inspeccionado.');
             }
+            $inicio = microtime(true);
             $estado = $validador->verificarFirma($copia->ruta())->value;
+            $duracion = (int) round((microtime(true) - $inicio) * 1000);
         } finally {
             $copia->limpiar();
         }
 
-        $this->guardarEstado($estado);
+        $this->guardarEstado($estado, $duracion);
     }
 
     public function failed(\Throwable $error): void
@@ -64,9 +66,9 @@ final class VerificarFirmaDocumentoJob implements ShouldQueue
         $this->guardarEstado('verificacion_no_disponible');
     }
 
-    private function guardarEstado(string $estado): void
+    private function guardarEstado(string $estado, ?int $duracion = null): void
     {
-        DB::transaction(function () use ($estado): void {
+        DB::transaction(function () use ($estado, $duracion): void {
             $modelo = SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)->lockForUpdate()->first();
             if ($modelo === null || ! $this->corresponde($modelo)) {
                 return;
@@ -75,6 +77,8 @@ final class VerificarFirmaDocumentoJob implements ShouldQueue
             $firmas = $modelo->firmas_electronicas ?? [];
             $firmas[$this->nombre] = $estado;
             $previas = $modelo->validacion_previa_documentos ?? [];
+            $previas[$this->nombre]['firma_estado'] = $estado;
+            if ($duracion !== null) $previas[$this->nombre]['firma_duracion_ms'] = $duracion;
             $previas[$this->nombre]['firma_verificada'] = $estado !== 'verificacion_no_disponible';
             $previas[$this->nombre]['firma_verificada_en'] = now()->toIso8601String();
             $modelo->forceFill(['firmas_electronicas' => $firmas, 'validacion_previa_documentos' => $previas])->save();

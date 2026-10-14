@@ -26,7 +26,11 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@600;700&family=Inter:wght@400;500;600&display=swap" />
 
 @livewireScriptConfig
+<script src="{{ asset('js/lov-origen.js') }}?v={{ filemtime(public_path('js/lov-origen.js')) }}"></script>
 @vite(['resources/css/app.css', 'resources/css/portal.css', 'resources/js/app.js'])
 @unless($portalClaro ?? false)
     @fluxAppearance
 @endunless
+
+<link rel="stylesheet" href="{{ asset('css/formularios-apex.css') }}?v={{ filemtime(public_path('css/formularios-apex.css')) }}" />
+<script src="{{ asset('js/formularios-apex.js') }}?v={{ filemtime(public_path('js/formularios-apex.js')) }}" defer></script>

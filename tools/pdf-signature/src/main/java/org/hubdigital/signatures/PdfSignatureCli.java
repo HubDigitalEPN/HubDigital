@@ -324,6 +324,11 @@ public final class PdfSignatureCli {
         return verify(path, true);
     }
 
+    /** Mismo dictamen de los PDF externos, sin comparar con un oficio generado. */
+    static String externalResult(Path path) throws Exception {
+        return json(verify(path));
+    }
+
     /** Una JVM por trabajador PHP; cada línea conserva el mismo dictamen Java. */
     private static void verifyStream() throws Exception {
         BufferedReader input = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
@@ -1017,7 +1022,12 @@ public final class PdfSignatureCli {
         int[] pixels = image.getRGB(0, 0, image.getWidth(), image.getHeight(), null, 0, image.getWidth());
         var bitmap = new com.google.zxing.BinaryBitmap(new com.google.zxing.common.HybridBinarizer(
             new com.google.zxing.RGBLuminanceSource(image.getWidth(), image.getHeight(), pixels)));
-        return new com.google.zxing.MultiFormatReader().decode(bitmap).getText();
+        try { return new com.google.zxing.MultiFormatReader().decode(bitmap).getText(); }
+        catch (com.google.zxing.NotFoundException error) {
+            Path diagnostico = Files.createTempFile("hubdigital-qr-autoprueba-", ".png");
+            javax.imageio.ImageIO.write(image, "png", diagnostico.toFile());
+            throw new IllegalStateException("No se lee el QR de la autoprueba a " + dpi + " dpi. Imagen: " + diagnostico, error);
+        }
     }
 
     private static void selftestOficial(Path temp, Path p12, X509Certificate cert, KeyPair keys) throws Exception {
@@ -1096,6 +1106,22 @@ public final class PdfSignatureCli {
         try (PDDocument conQr = Loader.loadPDF(signedQrUrl.toFile())) {
             if (!verificationUrl.equals(leerQrPrueba(conQr, 144))) {
                 throw new IllegalStateException("El QR no abre exactamente el enlace HTTPS de verificación.");
+            }
+        }
+        for (String muestra : List.of("qr-variacion-1", "qr-variacion-2")) {
+            String urlVariada = verificationUrl.substring(0, verificationUrl.length() - 64)
+                + java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest(muestra.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+            try (PDDocument conUrl = Loader.loadPDF(original.toFile())) {
+                conUrl.getDocumentInformation().setCustomMetadataValue("HubDigitalVerificationUrl", urlVariada);
+                conUrl.save(originalQrUrl.toFile());
+            }
+            FirmadorPdfOficial.firmar(originalQrUrl, signedQrUrl, p12, "temporal".toCharArray(), profile);
+            if (!officialResult(signedQrUrl, originalQrUrl).contains("\"aceptable\":true")) {
+                throw new IllegalStateException("Una variante del QR cambia el documento o su firma.");
+            }
+            try (PDDocument conQr = Loader.loadPDF(signedQrUrl.toFile())) {
+                if (!urlVariada.equals(leerQrPrueba(conQr, 144))) throw new IllegalStateException("No se lee exactamente una variante del enlace de verificación.");
             }
         }
         Path rejected = temp.resolve("no-debe-existir.pdf");

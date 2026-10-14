@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Presentation\Support;
 
+use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\ValidationException;
@@ -29,13 +30,15 @@ final class GeneradorPdfSolicitudDeposito
             }
         }
 
-        $clave = $this->clave($solicitud);
+        $institucionFirmante = $this->institucionFirmante($solicitud);
+        $clave = $this->clave($solicitud, $institucionFirmante);
         $indice = 'oficio-pdf-indice:'.$solicitud->id;
         Cache::put($indice, array_values(array_unique([...Cache::get($indice, []), $clave])), now()->addMinutes(20));
         // Revisar y firmar utilizan los mismos bytes mientras siga vigente el oficio.
         return Cache::remember($clave, now()->addMinutes(20), static fn (): string =>
             Pdf::loadView('gestionprestamosrecepciones::pdf.solicitud-deposito', [
                 'solicitud' => $solicitud,
+                'institucionFirmante' => $institucionFirmante,
                 'perfilFirma' => PerfilFirmaPdf::solicitudDepositante(),
             ])->addInfo(['HubDigitalVerificationUrl' => self::urlVerificacion($solicitud)])->setPaper('a4')->output()
         );
@@ -59,7 +62,12 @@ final class GeneradorPdfSolicitudDeposito
         Cache::forget($indice);
     }
 
-    private function clave(SolicitudDepositoEloquentModel $solicitud): string
+    private function institucionFirmante(SolicitudDepositoEloquentModel $solicitud): string
+    {
+        return trim((string) User::query()->whereKey($solicitud->investigador_id)->value('institucion'));
+    }
+
+    private function clave(SolicitudDepositoEloquentModel $solicitud, ?string $institucionFirmante = null): string
     {
         $datos = $solicitud->only([
             'id', 'numero', 'created_at', 'solicitud_documento_version',
@@ -68,7 +76,8 @@ final class GeneradorPdfSolicitudDeposito
             'solicitud_correo', 'solicitud_oficio', 'solicitud_texto',
         ]);
         $plantilla = module_path('GestionPrestamosRecepciones', 'resources/views/pdf/solicitud-deposito.blade.php');
-        $identidad = hash('sha256', serialize([$datos, hash_file('sha256', $plantilla), 'oficio-texto-qr-v3', config('app.url')]));
+        $identidad = hash('sha256', serialize([$datos, $institucionFirmante ?? $this->institucionFirmante($solicitud),
+            hash_file('sha256', $plantilla), 'oficio-perfil-firmante-qr-v4', config('app.url')]));
         return 'oficio-pdf:'.$solicitud->id.':'.$identidad;
     }
 }

@@ -2,6 +2,7 @@
     'pasos' => [],
     'pasoActual' => 1,
     'pasosCompletados' => [],
+    'accionNavegacion' => null,
 ])
 
 <div class="hub-wizard-stepper-scroll">
@@ -11,11 +12,17 @@
             $numero = $index + 1;
             $esActual = $numero === $pasoActual;
             $esCompletado = in_array($numero, $pasosCompletados);
-            $estado = $esCompletado ? 'Completado' : ($esActual ? 'En curso' : 'Pendiente');
+            $estado = $esActual ? ($esCompletado ? 'Paso actual, completado' : 'Paso actual') : ($esCompletado ? 'Completado' : 'Pendiente');
         @endphp
 
         <li class="hub-wizard-step {{ $esActual ? 'is-current' : ($esCompletado ? '' : 'is-pending') }} {{ $esCompletado ? 'is-complete' : '' }}"
             aria-label="Paso {{ $numero }}: {{ $paso['label'] }}. {{ $estado }}" @if($esActual) aria-current="step" @endif>
+            @if($esActual)<span class="hub-wizard-step__current-frame" aria-hidden="true"></span>@endif
+            @if($esCompletado && $accionNavegacion)
+            <button type="button" class="hub-wizard-step__marker" wire:click="{{ $accionNavegacion }}({{ $numero }})" wire:loading.attr="disabled" wire:target="{{ $accionNavegacion }}" aria-label="Volver al paso {{ $numero }}: {{ $paso['label'] }}">
+                <flux:icon name="check" class="size-4" aria-hidden="true" />
+            </button>
+            @else
             <span class="hub-wizard-step__marker" aria-hidden="true">
                 @if($esCompletado)
                     <flux:icon name="check" class="size-4" />
@@ -25,6 +32,7 @@
                     <span class="hub-wizard-step__dots">@for($dot = 0; $dot < 9; $dot++)<i></i>@endfor</span>
                 @endif
             </span>
+            @endif
             <span class="hub-wizard-step__label" title="{{ $paso['label'] }}">({{ $numero }}) {{ $paso['label'] }}</span>
         </li>
 

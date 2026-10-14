@@ -26,6 +26,7 @@ use Livewire\Component;
 use Livewire\WithFileUploads;
 use Modules\GestionPrestamosRecepciones\Application\Ports\CatalogoCuraduriaPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ValidacionTaxonomicaPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\ValidacionFirmaElectronicaPort;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AceptarSugerenciaTaxonomica\AceptarSugerenciaTaxonomicaHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AceptarSugerenciaTaxonomica\AceptarSugerenciaTaxonomicaInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ActualizarOrigenSolicitudDeposito\ActualizarOrigenSolicitudDepositoHandler;
@@ -89,6 +90,7 @@ final class RegistroSolicitudDeposito extends Component
     public int $paso = 0;
 
     /** @var int[] */
+    #[Locked]
     public array $pasosCompletados = [];
 
     public bool $borradorRestaurado = false;
@@ -496,14 +498,40 @@ final class RegistroSolicitudDeposito extends Component
     public function seleccionarProvincia(string $provincia): void
     {
         $permitidas = array_column(CatalogoTerritorialEcuador::provincias(), 'nombre');
-        $this->provincia = in_array($provincia, $permitidas, true) ? $provincia : '';
+        $seleccion = in_array($provincia, $permitidas, true) ? $provincia : '';
+        if ($seleccion === $this->provincia) return;
+        $this->provincia = $seleccion;
         $this->localidadOrigenCodigo = '';
         $this->busquedaLocalidadOrigen = '';
+        $this->invalidarProgresoOrigen();
     }
 
     public function seleccionarLocalidadOrigen(string $codigo): void
     {
-        $this->localidadOrigenCodigo = CatalogoLocalidadesEcuador::buscar($this->provincia, $codigo) !== null ? $codigo : '';
+        $seleccion = CatalogoLocalidadesEcuador::buscar($this->provincia, $codigo) !== null ? $codigo : '';
+        if ($seleccion === $this->localidadOrigenCodigo) return;
+        $this->localidadOrigenCodigo = $seleccion;
+        $this->invalidarProgresoOrigen();
+    }
+
+    public function updatedSituacionRegulatoria(): void
+    {
+        $this->invalidarProgresoOrigen();
+    }
+
+    private function invalidarProgresoOrigen(): void
+    {
+        $this->pasosCompletados = array_values(array_filter($this->pasosCompletados, fn ($p) => $p < 2));
+        $this->analisisDocumentalCompletado = false;
+    }
+
+    /** @return array{opciones: list<array{valor: string, etiqueta: string}>, hayMas: bool} */
+    public function buscarLocalidadesOrigenLov(string $busqueda = '', int $pagina = 0): array
+    {
+        // El popup consulta sólo el catálogo de esta provincia, sin guardar ni revalidar el formulario.
+        $this->skipRender();
+
+        return CatalogoLocalidadesEcuador::paginaLov($this->provincia, $busqueda, $pagina);
     }
 
     public function guardarOrigenDesdeFormulario(string $provincia, string $localidadCodigo, string $situacion): void
@@ -578,7 +606,8 @@ final class RegistroSolicitudDeposito extends Component
         // Si hay archivos cargados, verificar que aún existen en storage
         $this->documentosCargados = array_filter(
             $this->documentosCargados,
-            fn (string $ruta) => app(AlmacenamientoDepositos::class)->existe($ruta)
+            fn (string $ruta) => app(\Modules\GestionPrestamosRecepciones\Infrastructure\Storage\ColaFirmasSolicitudR2::class)->documentoPendienteVigente($ruta)
+                || app(AlmacenamientoDepositos::class)->existe($ruta)
         );
 
         // Limpiar originales de documentos cuyo archivo ya no existe
@@ -682,7 +711,10 @@ final class RegistroSolicitudDeposito extends Component
 
         // Restaurar paso y pasos completados
         $this->paso = ! $this->solicitudFirmada ? 0 : ($pasoGuardado === 5 ? 3 : $pasoGuardado);
-        $this->pasosCompletados = ! $this->solicitudFirmada ? [] : $this->calcularPasosCompletados($pasoGuardado);
+        $completadosGuardados = $model->extraccion_metadatos['wizard_pasos_completados'] ?? null;
+        $this->pasosCompletados = ! $this->solicitudFirmada ? [] : (is_array($completadosGuardados)
+            ? array_values(array_filter($completadosGuardados, fn ($numero): bool => is_int($numero) && $numero >= 1 && $numero <= 8))
+            : $this->calcularPasosCompletados($pasoGuardado));
         if ($this->paso === 3) {
             $this->actualizarFirmas();
         }
@@ -751,13 +783,36 @@ final class RegistroSolicitudDeposito extends Component
             $this->addError('solicitudFirmada', 'Firma la solicitud antes de continuar.');
         }
 
-        SolicitudDepositoEloquentModel::where('id', $this->solicitudId)
-            ->where('investigador_id', (string) auth()->id())
-            ->update([
-                'paso_actual' => $this->paso,
-                'documentos_requeridos' => $this->documentosRequeridos,
-                'matriz_id' => $this->matrizId,
-            ]);
+        DB::transaction(function (): void {
+            $modelo = SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)
+                ->where('investigador_id', (string) auth()->id())->lockForUpdate()->firstOrFail();
+            $metadatos = $modelo->extraccion_metadatos ?? [];
+            $metadatos['wizard_pasos_completados'] = $this->pasosCompletados;
+            $modelo->forceFill(['paso_actual' => $this->paso, 'documentos_requeridos' => $this->documentosRequeridos,
+                'matriz_id' => $this->matrizId, 'extraccion_metadatos' => $metadatos])->save();
+        });
+    }
+
+    public function volverAPasoCompletado(int $numeroVisible): void
+    {
+        $destinos = [1 => 0, 2 => 1, 3 => 2, 4 => 3, 5 => 4, 6 => 6, 7 => 7, 8 => 8];
+        $destino = $destinos[$numeroVisible] ?? null;
+        if ($destino === null || $this->solicitudId === null || $this->paso >= 9) return;
+        $modelo = SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)
+            ->where('investigador_id', (string) auth()->id())->firstOrFail();
+        if (! in_array($modelo->estado, [EstadoSolicitudDeposito::EnBorrador->value, EstadoSolicitudDeposito::RequiereCorreccion->value], true)) return;
+        if (! $this->solicitudInicialFirmada() || ($destino !== 0 && ! in_array($destino, $this->pasosCompletados, true))) {
+            $this->mostrarToast('Ese paso todavía no está completado.', 'warning');
+            return;
+        }
+        if ($this->extraccionProcesando) {
+            $this->mostrarToast('Espera a que termine el análisis de los documentos.', 'warning');
+            return;
+        }
+        $this->paso = $destino;
+        $this->resetErrorBag();
+        $this->dispatch('close-toast');
+        $this->persistirEstadoWizard();
     }
 
     private function solicitudInicialFirmada(): bool
@@ -1068,17 +1123,19 @@ final class RegistroSolicitudDeposito extends Component
                 $this->numeroSolicitud = $output->numero;
         } else {
             // El usuario regresó al paso 1 y puede haber cambiado el tipo: sincronizar en BD.
+            $tipoAnterior = SolicitudDepositoEloquentModel::whereKey($this->solicitudId)
+                ->where('investigador_id', (string) auth()->id())->value('tipo_tramite');
             SolicitudDepositoEloquentModel::where('id', $this->solicitudId)
                 ->where('investigador_id', (string) auth()->id())
                 ->update(['tipo_tramite' => $this->tipoTramite]);
 
-            // Al cambiar a Depósito, deshacer el salto automático de Donación:
-            // el paso 2 ya no puede darse por completado y los docs deben redeterminarse.
-            if ($this->tipoTramite === TipoTramite::Deposito->value) {
+            // Un cambio real de trámite invalida su documentación posterior.
+            if ($tipoAnterior !== $this->tipoTramite) {
                 $this->pasosCompletados = array_values(
-                    array_filter($this->pasosCompletados, fn ($p) => $p !== 2)
+                    array_filter($this->pasosCompletados, fn ($p) => $p < 2)
                 );
                 $this->documentosRequeridos = [];
+                $this->analisisDocumentalCompletado = false;
             }
         }
 
@@ -1144,6 +1201,15 @@ final class RegistroSolicitudDeposito extends Component
         ));
 
         $this->documentosRequeridos = $output->documentosRequeridos;
+
+        $anterior = SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)
+            ->where('investigador_id', (string) auth()->id())->firstOrFail();
+        if ($anterior->provincia_origen !== ($this->provincia ?: null)
+            || $anterior->localidad_origen_codigo !== ($this->localidadOrigenCodigo ?: null)
+            || $anterior->situacion_regulatoria !== $this->situacionRegulatoria) {
+            $this->pasosCompletados = array_values(array_filter($this->pasosCompletados, fn ($p) => $p < 3));
+            $this->analisisDocumentalCompletado = false;
+        }
 
         // Persistir datos de origen en BD
         ($actualizar)(new ActualizarOrigenSolicitudDepositoInput(
@@ -1226,30 +1292,45 @@ final class RegistroSolicitudDeposito extends Component
             return;
         }
 
-        $this->validate(
-            [$propiedad => 'file|mimes:pdf|extensions:pdf|max:20480'],
-            [
-                "{$propiedad}.mimes" => "Solo se aceptan archivos PDF para \"{$nombre}\".",
-                "{$propiedad}.extensions" => 'El archivo debe tener extensión .pdf.',
-                "{$propiedad}.max" => 'El archivo no debe superar los 20 MB.',
-            ]
-        );
-
         try {
+            $this->validate(
+                [$propiedad => 'file|mimes:pdf|extensions:pdf|max:20480'],
+                [
+                    "{$propiedad}.mimes" => "Solo se aceptan archivos PDF para \"{$nombre}\".",
+                    "{$propiedad}.extensions" => 'El archivo debe tener extensión .pdf.',
+                    "{$propiedad}.max" => 'El archivo no debe superar los 20 MB.',
+                ]
+            );
+
             $previo = SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)
                 ->where('investigador_id', (string) auth()->id())->firstOrFail();
             abort_unless(in_array($previo->estado, [EstadoSolicitudDeposito::EnBorrador->value, EstadoSolicitudDeposito::RequiereCorreccion->value], true), 409, 'La solicitud ya no admite cambios de documentos.');
             abort_unless(in_array($nombre, $previo->documentos_requeridos ?? [], true), 422);
             $provinciaAlIniciar = $previo->provincia_origen;
             $comprobacion = app(ValidacionPreviaDocumentoDeposito::class)->validar(
-                $archivo->getRealPath(), $nombre,
+                $archivo->getRealPath(), $nombre, ['titular' => $previo->solicitud_nombre_permiso, 'proyecto' => $previo->solicitud_proyecto],
             );
-            $guardado = app(AlmacenamientoDepositos::class)->guardarArchivoConHuella($archivo, 'depositos/'.$this->solicitudId);
+            // Comprueba los bytes locales ya inspeccionados, antes de R2.
+            $inicioFirma = microtime(true);
+            $comprobacion['firma_estado'] = app(ValidacionFirmaElectronicaPort::class)->verificarFirma($archivo->getRealPath())->value;
+            $comprobacion['firma_duracion_ms'] = (int) round((microtime(true) - $inicioFirma) * 1000);
+            $encolarR2 = (bool) config('deposit-storage.signature_async', false);
+            $guardado = $encolarR2
+                ? ['ruta' => 'depositos/'.$this->solicitudId.'/'.Str::uuid().'.pdf', 'sha256' => hash_file('sha256', $archivo->getRealPath())]
+                : app(AlmacenamientoDepositos::class)->guardarArchivoConHuella($archivo, 'depositos/'.$this->solicitudId);
             $ruta = $guardado['ruta'];
             if (! hash_equals($comprobacion['sha256'], $guardado['sha256'])) {
-                app(AlmacenamientoDepositos::class)->eliminar($ruta);
+                if (!$encolarR2) app(AlmacenamientoDepositos::class)->eliminar($ruta);
                 throw new DocumentoDepositoRechazado('pdf_inseguro', 'El archivo cambió después de comprobarlo.');
             }
+        } catch (ValidationException $error) {
+            $mensaje = (string) collect($error->errors())->flatten()->first();
+            $this->reset($propiedad);
+            $this->rechazosDocumentos[$nombre] = ['estado' => 'formato_invalido', 'mensaje' => $mensaje];
+            $this->addError($propiedad, $mensaje);
+            $this->dispatch('documento-rechazado', propiedad: $propiedad, estado: 'formato_invalido', mensaje: $mensaje);
+            $this->mostrarToast($mensaje, 'warning');
+            return;
         } catch (\InvalidArgumentException $error) {
             $this->reset($propiedad);
             $this->rechazosDocumentos[$nombre] = [
@@ -1259,17 +1340,19 @@ final class RegistroSolicitudDeposito extends Component
             $this->addError($propiedad, $error->getMessage());
             $this->dispatch('documento-rechazado', propiedad: $propiedad,
                 estado: $this->rechazosDocumentos[$nombre]['estado'], mensaje: $error->getMessage());
+            $this->mostrarToast($error->getMessage(), 'warning');
 
             return;
         }
         $this->extraccionProcesando = false;
         $this->documentosProcesados = [];
         $this->analisisDocumentalCompletado = false;
+        $this->pasosCompletados = array_values(array_filter($this->pasosCompletados, fn ($p) => $p < 3));
         $this->estadoValidacionContenido = '';
         $this->erroresDocumentales = [];
         $this->advertenciasDocumentales = [];
         try {
-            [$documentosActualizados, $nombresActualizados, $rutaAnterior, $firmas, $validaciones, $verificacionId] = DB::transaction(function () use ($nombre, $ruta, $archivo, $comprobacion, $provinciaAlIniciar): array {
+            [$documentosActualizados, $nombresActualizados, $rutaAnterior, $firmas, $validaciones, $verificacionId] = DB::transaction(function () use ($nombre, $ruta, $archivo, $comprobacion, $provinciaAlIniciar, $previo, $encolarR2): array {
                 $modelo = SolicitudDepositoEloquentModel::query()
                     ->whereKey($this->solicitudId)
                     ->where('investigador_id', (string) auth()->id())
@@ -1277,7 +1360,12 @@ final class RegistroSolicitudDeposito extends Component
                     ->firstOrFail();
                 abort_unless(in_array($modelo->estado, [EstadoSolicitudDeposito::EnBorrador->value, EstadoSolicitudDeposito::RequiereCorreccion->value], true), 409, 'La solicitud cambió de estado mientras se revisaba el PDF.');
                 abort_unless($modelo->provincia_origen === $provinciaAlIniciar, 409, 'La provincia cambió mientras se revisaba el PDF. Vuelve a seleccionarlo.');
+                abort_unless($modelo->solicitud_nombre_permiso === $previo->solicitud_nombre_permiso
+                    && $modelo->solicitud_proyecto === $previo->solicitud_proyecto, 409, 'El expediente cambió mientras se revisaba el PDF. Vuelve a seleccionarlo.');
                 abort_unless(in_array($nombre, $modelo->documentos_requeridos ?? [], true), 409);
+                if ($encolarR2) {
+                    app(\Modules\GestionPrestamosRecepciones\Infrastructure\Storage\ColaFirmasSolicitudR2::class)->cancelarDocumento($modelo->id, $nombre);
+                }
                 $documentosActualizados = $modelo->documentos_cargados ?? [];
                 $nombresActualizados = $modelo->nombres_archivos_originales ?? [];
                 $rutaAnterior = $documentosActualizados[$nombre] ?? null;
@@ -1285,12 +1373,14 @@ final class RegistroSolicitudDeposito extends Component
                 $nombresActualizados[$nombre] = $archivo->getClientOriginalName();
                 $firmas = $modelo->firmas_electronicas ?? [];
                 $validaciones = $modelo->validacion_archivos ?? [];
-                $firmas[$nombre] = 'validando';
+                $firmas[$nombre] = $comprobacion['firma_estado'];
                 $validaciones[$nombre] = 'valido';
                 $verificacionId = (string) Str::uuid();
                 $previas = $modelo->validacion_previa_documentos ?? [];
                 $previas[$nombre] = [...$comprobacion, 'ruta' => $ruta,
-                    'verificacion_id' => $verificacionId, 'firma_verificada' => false,
+                    'verificacion_id' => $verificacionId,
+                    'firma_verificada' => $comprobacion['firma_estado'] !== 'verificacion_no_disponible',
+                    'firma_verificada_en' => now()->toIso8601String(),
                     'comprobado_en' => now()->toIso8601String()];
                 $metadatos = $modelo->extraccion_metadatos ?? [];
                 $revision = $metadatos['revision_documental'] ?? null;
@@ -1303,6 +1393,7 @@ final class RegistroSolicitudDeposito extends Component
                     'nombres_archivos_originales' => $nombresActualizados,
                     'extraccion_estado' => null,
                     'extraccion_metadatos' => [...$metadatos,
+                        'wizard_pasos_completados' => $this->pasosCompletados,
                         'revision_documental' => is_array($revision) ? [...$revision, 'estado' => 'invalidada'] : null,
                         'revision_documental_historial' => $historial],
                     'documentos_procesados' => [],
@@ -1310,11 +1401,24 @@ final class RegistroSolicitudDeposito extends Component
                     'validacion_archivos' => $validaciones,
                     'validacion_previa_documentos' => $previas,
                 ])->save();
+                if ($encolarR2) {
+                    $idR2 = app(\Modules\GestionPrestamosRecepciones\Infrastructure\Storage\ColaFirmasSolicitudR2::class)
+                        ->encolarDocumento($archivo->getRealPath(), $modelo, $nombre, $rutaAnterior);
+                    $previas[$nombre]['r2_pendiente_id'] = $idR2;
+                    $previas[$nombre]['r2_verificacion_id'] = $verificacionId;
+                    $modelo->forceFill(['validacion_previa_documentos' => $previas])->save();
+                }
                 return [$documentosActualizados, $nombresActualizados, $rutaAnterior, $firmas, $validaciones, $verificacionId];
             });
         } catch (\Throwable $error) {
-            app(AlmacenamientoDepositos::class)->eliminar($ruta);
-            throw $error;
+            if (!$encolarR2) app(AlmacenamientoDepositos::class)->eliminar($ruta);
+            report($error);
+            $this->reset($propiedad);
+            $mensaje = 'No se pudo conservar el documento. Vuelve a seleccionarlo; no se ha aceptado la carga.';
+            $this->rechazosDocumentos[$nombre] = ['estado' => 'guardado_no_disponible', 'mensaje' => $mensaje];
+            $this->dispatch('documento-rechazado', propiedad: $propiedad, estado: 'guardado_no_disponible', mensaje: $mensaje);
+            $this->mostrarToast($mensaje, 'error');
+            return;
         }
         $this->documentosCargados = $documentosActualizados;
         $this->nombresArchivosOriginales = $nombresActualizados;
@@ -1322,17 +1426,14 @@ final class RegistroSolicitudDeposito extends Component
         $this->validacionArchivos = $validaciones;
         unset($this->rechazosDocumentos[$nombre]);
         $this->resetErrorBag($propiedad);
-        if (is_string($rutaAnterior) && $rutaAnterior !== '') {
+        if (!$encolarR2 && is_string($rutaAnterior) && $rutaAnterior !== '') {
             try { app(AlmacenamientoDepositos::class)->eliminar($rutaAnterior); }
             catch (\Throwable $error) { report($error); }
         }
         $this->dispatch('documento-aceptado', propiedad: $propiedad);
-        try {
-            VerificarFirmaDocumentoJob::dispatch($this->solicitudId, $nombre, $ruta, $verificacionId);
-        } catch (\Throwable $error) {
-            report($error);
-            (new VerificarFirmaDocumentoJob($this->solicitudId, $nombre, $ruta, $verificacionId))->failed($error);
-            $this->actualizarFirmas();
+        $this->dispatch('firma-actualizada', nombre: $nombre, estado: $firmas[$nombre]);
+        if ($firmas[$nombre] === 'verificacion_no_disponible') {
+            $this->mostrarToast('No se pudo comprobar la firma dentro de tres segundos. Puedes volver a comprobarla.', 'warning');
         }
 
     }
@@ -1342,15 +1443,24 @@ final class RegistroSolicitudDeposito extends Component
      */
     public function eliminarDocumento(string $nombre): void
     {
+        $this->pasosCompletados = array_values(array_filter($this->pasosCompletados, fn ($p) => $p < 3));
         if (isset($this->documentosCargados[$nombre])) {
-            $ruta = $this->persistirRetiroDocumento($nombre);
+            $rutas = $this->persistirRetiroDocumento($nombre);
 
             // Primero se hace durable la nueva versión del expediente y se invalida
             // cualquier decisión humana asociada. Solo después se retira el objeto;
             // así una caída de almacenamiento nunca deja a la base apuntando a una
             // revisión de archivos que ya no representa el expediente.
-            if (is_string($ruta) && $ruta !== '') {
-                app(AlmacenamientoDepositos::class)->eliminar($ruta);
+            foreach ($rutas as $ruta) {
+                try { app(AlmacenamientoDepositos::class)->eliminar($ruta); }
+                catch (\Throwable $error) {
+                    if (!DB::table(\Modules\GestionPrestamosRecepciones\Infrastructure\Storage\ColaFirmasSolicitudR2::TABLA)
+                        ->where('solicitud_id', $this->solicitudId)->where('ruta', $ruta)->where('estado', 'cancelado')->exists()) {
+                        throw $error;
+                    }
+                    report($error);
+                    $this->mostrarToast('El documento se retiró del expediente. Su eliminación del almacenamiento se volverá a intentar.', 'warning');
+                }
             }
         }
 
@@ -1369,6 +1479,10 @@ final class RegistroSolicitudDeposito extends Component
     public function sugerirPreguntaAsistencia(string $tema): void
     {
         $preguntas = [
+            'requeridos' => '¿Qué documentos debo adjuntar en este paso?',
+            'justificacion' => '¿Qué debe incluir la carta de justificación?',
+            'firmas' => 'Ya firmé mi solicitud, ¿qué pasa con las firmas de los otros PDF?',
+            'formato' => '¿Qué formato y tamaño de archivo se acepta?',
             'autorizacion' => '¿Qué autorización debo subir?',
             'movilizacion' => '¿Qué guía de movilización debo subir?',
             'expediente' => '¿Cómo deben coincidir los documentos del mismo expediente?',
@@ -1392,6 +1506,7 @@ final class RegistroSolicitudDeposito extends Component
         $pregunta = trim($this->preguntaAsistencia);
         if ($pregunta === '' || mb_strlen($pregunta) > 240) {
             $this->addError('preguntaAsistencia', 'Escribe una pregunta de hasta 240 caracteres.');
+            $this->dispatch('show-toast', message: 'Escribe una pregunta de hasta 240 caracteres.', variant: 'warning');
 
             return;
         }
@@ -1406,7 +1521,11 @@ final class RegistroSolicitudDeposito extends Component
             $respuesta = 'Has enviado varias preguntas seguidas. Espera un minuto para continuar.';
         } else {
             RateLimiter::hit($limite, 60);
-            $respuesta = app(AsistenteDocumentalDepositos::class)->responder($pregunta, $this->documentosRequeridos, $historial);
+            $respuesta = app(AsistenteDocumentalDepositos::class)->responder($pregunta, $this->documentosRequeridos, $historial, [
+                'cargados' => array_keys($this->documentosCargados),
+                'rechazos' => $this->rechazosDocumentos,
+                'solicitud_firmada' => $this->solicitudFirmada,
+            ]);
         }
 
         $this->mensajesAsistencia[] = ['rol' => 'bot', 'texto' => $respuesta];
@@ -1436,6 +1555,7 @@ final class RegistroSolicitudDeposito extends Component
         $this->actualizarFirmas();
         if ($this->rechazosDocumentos !== []) {
             $this->addError('documentos', 'Reemplaza los documentos rechazados antes de continuar.');
+            $this->mostrarToast('Reemplaza los documentos rechazados antes de continuar.', 'warning');
             return;
         }
         $actual = SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)
@@ -1443,6 +1563,7 @@ final class RegistroSolicitudDeposito extends Component
         foreach ($this->documentosRequeridos as $doc) {
             if (! isset($this->documentosCargados[$doc])) {
                 $this->addError('documentos', "El documento \"{$doc}\" es requerido.");
+                $this->mostrarToast("El documento \"{$doc}\" es requerido.", 'warning');
 
                 return;
             }
@@ -1450,6 +1571,7 @@ final class RegistroSolicitudDeposito extends Component
             if (($previa['ruta'] ?? null) !== ($actual->documentos_cargados[$doc] ?? null)
                 || ($previa['firma_verificada'] ?? false) !== true) {
                 $this->addError('documentos', 'Cada PDF debe completar su propia comprobación de contenido y firma.');
+                $this->mostrarToast('Cada PDF debe completar su propia comprobación de contenido y firma.', 'warning');
                 return;
             }
         }
@@ -1583,12 +1705,13 @@ final class RegistroSolicitudDeposito extends Component
         foreach ($pendientes as $nombre => $pendiente) {
             $this->dispatch('firma-actualizada', nombre: $nombre, estado: 'validando');
             try {
-                VerificarFirmaDocumentoJob::dispatch($this->solicitudId, $nombre, $pendiente['ruta'], $pendiente['token']);
+                VerificarFirmaDocumentoJob::dispatchSync($this->solicitudId, $nombre, $pendiente['ruta'], $pendiente['token']);
             } catch (\Throwable $error) {
                 report($error);
                 (new VerificarFirmaDocumentoJob($this->solicitudId, $nombre, $pendiente['ruta'], $pendiente['token']))->failed($error);
             }
         }
+        $this->actualizarFirmas();
     }
 
     public function actualizarFirmas(): void
@@ -3104,17 +3227,19 @@ final class RegistroSolicitudDeposito extends Component
             ]);
     }
 
-    private function persistirRetiroDocumento(string $nombre): ?string
+    private function persistirRetiroDocumento(string $nombre): array
     {
         if ($this->solicitudId === null) {
-            return null;
+            return [];
         }
 
-        return DB::transaction(function () use ($nombre): ?string {
+        return DB::transaction(function () use ($nombre): array {
             $modelo = SolicitudDepositoEloquentModel::query()
                 ->whereKey($this->solicitudId)
                 ->where('investigador_id', (string) auth()->id())
                 ->lockForUpdate()->firstOrFail();
+            abort_unless(in_array($modelo->estado, [EstadoSolicitudDeposito::EnBorrador->value, EstadoSolicitudDeposito::RequiereCorreccion->value], true), 409);
+            $rutas = app(\Modules\GestionPrestamosRecepciones\Infrastructure\Storage\ColaFirmasSolicitudR2::class)->cancelarDocumento($modelo->id, $nombre);
             $documentos = $modelo->documentos_cargados ?? [];
             $nombres = $modelo->nombres_archivos_originales ?? [];
             $ruta = $documentos[$nombre] ?? null;
@@ -3146,7 +3271,7 @@ final class RegistroSolicitudDeposito extends Component
             $this->nombresArchivosOriginales = $nombres;
             $this->firmasElectronicas = $firmas;
             $this->validacionArchivos = $validaciones;
-            return is_string($ruta) ? $ruta : null;
+            return array_values(array_unique([...$rutas, ...(is_string($ruta) && $ruta !== '' ? [$ruta] : [])]));
         });
     }
 
