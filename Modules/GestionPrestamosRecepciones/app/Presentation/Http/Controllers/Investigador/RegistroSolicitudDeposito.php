@@ -53,8 +53,6 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\SolicitarRevisionDo
 use Modules\GestionPrestamosRecepciones\Application\UseCases\SolicitarRevisionDocumental\SolicitarRevisionDocumentalInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarDocumentacionInicial\ValidarDocumentacionInicialHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarDocumentacionInicial\ValidarDocumentacionInicialInput;
-use Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarIdentidadSolicitud\ValidarIdentidadSolicitudHandler;
-use Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarIdentidadSolicitud\ValidarIdentidadSolicitudInput;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\MatrizEspecies;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\CamposDwCFaltantesException;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\CamposObligatoriosVaciosException;
@@ -65,7 +63,6 @@ use Modules\GestionPrestamosRecepciones\Domain\Services\ReglaCantidadesMaterial;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoRegistroEspecimen;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\MatrizEspeciesId;
-use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoValidacionIdentidad;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoTramite;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Jobs\ExtraccionDatosDocumentoJob;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Jobs\ClasificarDocumentoCargadoJob;
@@ -88,6 +85,10 @@ final class RegistroSolicitudDeposito extends Component
     use WithFileUploads;
 
     // ── Wizard ────────────────────────────────────────────────────────────────────
+
+    // Conservar los identificadores persistidos evita reinterpretar borradores
+    // antiguos de Detalle (7) y Envío (8). El stepper muestra siete pasos consecutivos.
+    private const PASOS_VISIBLES = [1 => 0, 2 => 1, 3 => 2, 4 => 3, 5 => 4, 6 => 7, 7 => 8];
 
     public int $paso = 0;
 
@@ -169,8 +170,6 @@ final class RegistroSolicitudDeposito extends Component
 
     public $archivoCartaCesion = null;
 
-    public $archivoCartaDelegacion = null;
-
     /** @var string[] */
     public array $documentosRequeridos = [];
 
@@ -232,10 +231,6 @@ final class RegistroSolicitudDeposito extends Component
     /** @var array<string, string> */
     public array $datosEnEdicion = [];
 
-    public string $resultadoIdentidad = '';
-
-    public string $nombreEnDocumento = '';
-
     public string $cargoConsultor = '';
 
     public string $institucionConsultor = '';
@@ -245,8 +240,6 @@ final class RegistroSolicitudDeposito extends Component
     public string $valorEditorManual = '';
 
     public string $localidadEspecifica = '';
-
-    public bool $cartaDelegacionRequerida = false;
 
     public string $estadoDocumental = '';
 
@@ -655,23 +648,10 @@ final class RegistroSolicitudDeposito extends Component
             }
 
             $this->analisisDocumentalCompletado = $model->extraccion_estado === 'completada';
-            $this->nombreEnDocumento = $model->nombre_investigador_documento ?? '';
             $this->documentosProcesados = $model->documentos_procesados ?? [];
 
-            if ($pasoGuardado >= 7) {
+            if ($pasoGuardado >= 6) {
                 $this->prepararRegistroNativoDesdeExpediente();
-            }
-
-            // Re-derivar validación de identidad si ya fue realizada
-            if (! empty($this->nombreEnDocumento)) {
-                $handler = app(ValidarIdentidadSolicitudHandler::class);
-                $output = ($handler)(new ValidarIdentidadSolicitudInput(
-                    solicitudId: $this->solicitudId,
-                    nombrePerfil: auth()->user()->name,
-                    nombreEnDocumento: $this->nombreEnDocumento,
-                ));
-                $this->resultadoIdentidad = $output->resultado->value;
-                $this->cartaDelegacionRequerida = $output->resultado === ResultadoValidacionIdentidad::DiscrepanciaTercero;
             }
 
             // Re-derivar estado documental
@@ -712,11 +692,20 @@ final class RegistroSolicitudDeposito extends Component
         }
 
         // Restaurar paso y pasos completados
-        $this->paso = ! $this->solicitudFirmada ? 0 : ($pasoGuardado === 5 ? 3 : $pasoGuardado);
+        $this->paso = ! $this->solicitudFirmada ? 0 : match ($pasoGuardado) {
+            5 => 3,
+            // El antiguo paso de identidad ya no tiene pantalla ni requisito.
+            // Si un borrador heredado conserva datos pendientes, primero completarlos.
+            6 => $this->datosFaltantes === [] ? 7 : 4,
+            default => $pasoGuardado,
+        };
         $completadosGuardados = $model->extraccion_metadatos['wizard_pasos_completados'] ?? null;
         $this->pasosCompletados = ! $this->solicitudFirmada ? [] : (is_array($completadosGuardados)
-            ? array_values(array_filter($completadosGuardados, fn ($numero): bool => is_int($numero) && $numero >= 1 && $numero <= 8))
-            : $this->calcularPasosCompletados($pasoGuardado));
+            ? array_values(array_filter($completadosGuardados, fn ($numero): bool => is_int($numero) && $numero > 0 && in_array($numero, self::PASOS_VISIBLES, true)))
+            : $this->calcularPasosCompletados($this->paso));
+        if ($pasoGuardado === 6 && $this->paso === 4) {
+            $this->pasosCompletados = array_values(array_filter($this->pasosCompletados, fn (int $numero): bool => $numero < 4));
+        }
         if ($this->paso === 3) {
             $this->actualizarFirmas();
         }
@@ -726,8 +715,10 @@ final class RegistroSolicitudDeposito extends Component
     private function calcularPasosCompletados(int $pasoActual): array
     {
         $completados = [];
-        for ($i = 1; $i < $pasoActual; $i++) {
-            $completados[] = $i;
+        foreach (self::PASOS_VISIBLES as $paso) {
+            if ($paso > 0 && $paso < $pasoActual) {
+                $completados[] = $paso;
+            }
         }
 
         // Donación siempre tiene paso 2 como completado (se salta)
@@ -792,6 +783,11 @@ final class RegistroSolicitudDeposito extends Component
             $this->addError('solicitudFirmada', 'Firma la solicitud antes de continuar.');
         }
 
+        $this->pasosCompletados = array_values(array_unique(array_filter(
+            $this->pasosCompletados,
+            fn ($numero): bool => is_int($numero) && $numero > 0 && in_array($numero, self::PASOS_VISIBLES, true),
+        )));
+
         DB::transaction(function (): void {
             $modelo = SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)
                 ->where('investigador_id', (string) auth()->id())->lockForUpdate()->firstOrFail();
@@ -804,8 +800,7 @@ final class RegistroSolicitudDeposito extends Component
 
     public function volverAPasoCompletado(int $numeroVisible): void
     {
-        $destinos = [1 => 0, 2 => 1, 3 => 2, 4 => 3, 5 => 4, 6 => 6, 7 => 7, 8 => 8];
-        $destino = $destinos[$numeroVisible] ?? null;
+        $destino = self::PASOS_VISIBLES[$numeroVisible] ?? null;
         if ($destino === null || $this->solicitudId === null || $this->paso >= 9) return;
         $modelo = SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)
             ->where('investigador_id', (string) auth()->id())->firstOrFail();
@@ -1285,14 +1280,6 @@ final class RegistroSolicitudDeposito extends Component
     public function updatedArchivoCartaCesion(): void
     {
         $this->registrarDocumentoCargado('archivoCartaCesion', 'Carta de cesión de derechos / origen lícito', $this->archivoCartaCesion);
-    }
-
-    /**
-     * Hook que se ejecuta al cargar la carta de delegación.
-     */
-    public function updatedArchivoCartaDelegacion(): void
-    {
-        $this->registrarDocumentoCargado('archivoCartaDelegacion', 'Carta de delegación / justificación de tercero', $this->archivoCartaDelegacion);
     }
 
     private function registrarDocumentoCargado(string $propiedad, string $nombre, mixed $archivo): void
@@ -1800,7 +1787,6 @@ final class RegistroSolicitudDeposito extends Component
      */
     public function verificarExtraccion(
         ValidarDocumentacionInicialHandler $validar,
-        ValidarIdentidadSolicitudHandler $validarIdentidad,
     ): void {
         if (! $this->extraccionProcesando || $this->solicitudId === null) {
             return;
@@ -1889,18 +1875,6 @@ final class RegistroSolicitudDeposito extends Component
                 documentosAdjuntos: $this->documentosCargados,
             ));
             $this->estadoDocumental = $outputValidar->estadoDocumental->value;
-
-            $nombreEnDoc = $model->nombre_investigador_documento;
-            if ($nombreEnDoc !== null) {
-                $this->nombreEnDocumento = $nombreEnDoc;
-                $outputId = ($validarIdentidad)(new ValidarIdentidadSolicitudInput(
-                    solicitudId: $this->solicitudId,
-                    nombrePerfil: auth()->user()->name,
-                    nombreEnDocumento: $nombreEnDoc,
-                ));
-                $this->resultadoIdentidad = $outputId->resultado->value;
-                $this->cartaDelegacionRequerida = $outputId->resultado === ResultadoValidacionIdentidad::DiscrepanciaTercero;
-            }
 
             $this->datosExtraidos = $this->construirDatosExtraidos($model);
             $this->datosFaltantes = $model->datos_faltantes ?? [];
@@ -2000,32 +1974,7 @@ final class RegistroSolicitudDeposito extends Component
             : $predeterminado;
     }
 
-    // ── Paso 4 ────────────────────────────────────────────────────────────────────
-
-    public function validarIdentidad(ValidarIdentidadSolicitudHandler $handler): void
-    {
-        $this->validate(
-            ['nombreEnDocumento' => 'required|string|max:255'],
-            ['nombreEnDocumento.required' => 'Ingresa el nombre tal como aparece en el documento.']
-        );
-
-        $output = ($handler)(new ValidarIdentidadSolicitudInput(
-            solicitudId: $this->solicitudId,
-            nombrePerfil: auth()->user()->name,
-            nombreEnDocumento: $this->nombreEnDocumento,
-        ));
-
-        $this->resultadoIdentidad = $output->resultado->value;
-        $this->cartaDelegacionRequerida = $output->resultado === ResultadoValidacionIdentidad::DiscrepanciaTercero;
-    }
-
-    public function resetearValidacionIdentidad(): void
-    {
-        $this->resultadoIdentidad = '';
-        $this->nombreEnDocumento = '';
-        $this->cartaDelegacionRequerida = false;
-        $this->resetValidation(['nombreEnDocumento', 'identidad']);
-    }
+    // ── Paso 5 – Datos ─────────────────────────────────────────────────────────────
 
     public function iniciarEdicionDato(string $campo): void
     {
@@ -2276,24 +2225,12 @@ final class RegistroSolicitudDeposito extends Component
             }
         }
 
-        $this->pasosCompletados = array_values(array_unique([...$this->pasosCompletados, 4, 5]));
-        $this->paso = 6;
+        $this->prepararRegistroNativoDesdeExpediente();
+        $this->registrarConfirmacionExtraccion();
+        $this->pasosCompletados = array_values(array_unique([...$this->pasosCompletados, 4]));
+        $this->paso = 7;
         $this->persistirEstadoWizard();
         $this->dispatch('close-toast');
-    }
-
-    public function guardarPasoFirmas(): void
-    {
-        $sinVerificar = array_filter(array_intersect_key($this->firmasElectronicas, array_flip($this->documentosRequeridos)), fn ($estado) => ! in_array($estado, ['firmado', 'firmado_sin_revocacion'], true));
-        if (! empty($sinVerificar)) {
-            $this->mostrarToast('Revisa el motivo de validación de cada firma antes de continuar.', 'error');
-
-            return;
-        }
-
-        $this->pasosCompletados = array_values(array_unique([...$this->pasosCompletados, 5]));
-        $this->paso = 6;
-        $this->persistirEstadoWizard();
     }
 
     public function volverADocumentos(): void
@@ -2301,28 +2238,6 @@ final class RegistroSolicitudDeposito extends Component
         $this->paso = 3;
         $this->analisisDocumentalCompletado = false;
         $this->firmasElectronicas = [];
-        $this->persistirEstadoWizard();
-    }
-
-    public function guardarPasoIdentidad(): void
-    {
-        if (empty($this->resultadoIdentidad)) {
-            $this->mostrarToast('Valida la identidad del solicitante.', 'warning');
-
-            return;
-        }
-
-        if ($this->cartaDelegacionRequerida && ! isset($this->documentosCargados['Carta de delegación / justificación de tercero'])) {
-            $this->mostrarToast('Adjunta la Carta de Delegación.', 'warning');
-
-            return;
-        }
-
-        $this->prepararRegistroNativoDesdeExpediente();
-
-        $this->registrarConfirmacionExtraccion();
-        $this->pasosCompletados = array_values(array_unique([...$this->pasosCompletados, 6]));
-        $this->paso = 7;
         $this->persistirEstadoWizard();
     }
 
@@ -2340,7 +2255,7 @@ final class RegistroSolicitudDeposito extends Component
         ]);
     }
 
-    // ── Paso 5 – Matriz de especies ─────────────────────────────────────────────
+    // ── Paso 6 – Detalle y matriz de especies ──────────────────────────────────────
 
     public function updatedArchivoMatriz(): void
     {
@@ -3061,7 +2976,7 @@ final class RegistroSolicitudDeposito extends Component
         $this->persistirEstadoWizard();
     }
 
-    // ── Paso 6 – Envío ───────────────────────────────────────────────────────────
+    // ── Paso 7 – Envío ───────────────────────────────────────────────────────────
 
     public function enviarSolicitud(EnviarSolicitudDepositoHandler $handler): void
     {
@@ -3123,7 +3038,7 @@ final class RegistroSolicitudDeposito extends Component
         $this->modoCorreccion = false;
         $this->comentarioCurador = '';
         $this->borradorRestaurado = false;
-        $this->pasosCompletados = [1, 2, 3, 4, 5, 6, 7, 8];
+        $this->pasosCompletados = [1, 2, 3, 4, 7, 8];
         $this->paso = 9;
         $this->mensajeEstadoSincronizado = match ($model->estado) {
             EstadoSolicitudDeposito::PendienteDeRevisionPorCuraduria->value => 'Esta solicitud ya fue enviada y está pendiente de revisión.',
@@ -3158,7 +3073,7 @@ final class RegistroSolicitudDeposito extends Component
                 $this->declaracionAceptada = false;
             }
 
-            $this->paso = $this->paso === 6 ? 4 : $this->paso - 1;
+            $this->paso = $this->paso === 7 ? 4 : $this->paso - 1;
             $this->dispatch('close-toast');
 
             if ($this->paso === 2 && $this->tipoTramite === TipoTramite::Donacion->value) {
@@ -3550,6 +3465,27 @@ final class RegistroSolicitudDeposito extends Component
 
     // ── Helper público para vistas ────────────────────────────────────────────────
 
+    public function pasoVisible(): int
+    {
+        $numero = array_search($this->paso, self::PASOS_VISIBLES, true);
+
+        return $numero === false ? 1 : $numero;
+    }
+
+    /** @return list<int> */
+    public function pasosCompletadosVisibles(): array
+    {
+        $completados = [];
+        foreach (self::PASOS_VISIBLES as $numero => $paso) {
+            if (($paso === 0 && $this->solicitudFirmada)
+                || in_array($paso, $this->pasosCompletados, true)) {
+                $completados[] = $numero;
+            }
+        }
+
+        return $completados;
+    }
+
     /**
      * Convierte el nombre de un campo en una clave segura para usar en arrays
      * de Livewire (wire:model). Los puntos y caracteres especiales en el nombre
@@ -3578,7 +3514,6 @@ final class RegistroSolicitudDeposito extends Component
             'Documento de procedencia de los especimenes',
             'Carta de procedencia firmada por el responsable de la colección de origen' => 'archivoCartaProcedencia',
             'Carta de cesión de derechos / origen lícito' => 'archivoCartaCesion',
-            'Carta de delegación / justificación de tercero' => 'archivoCartaDelegacion',
             default => throw new \InvalidArgumentException("Documento desconocido: {$nombre}"),
         };
     }

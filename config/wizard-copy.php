@@ -68,10 +68,6 @@ return [
         'manual_explicacion' => 'Completa manualmente los campos marcados abajo para continuar.',
         'sin_firma_explicacion' => 'Puedes continuar, pero el funcionario responsable revisará los documentos antes de aprobar la solicitud.',
         'firma_no_verificada' => 'El sistema no pudo comprobar la firma electrónica. Vuelve al paso anterior y carga nuevamente los documentos.',
-        'discrepancia_menor' => 'Hay una diferencia menor entre tu nombre de perfil y el nombre del documento. Puedes continuar, pero se recomienda corregir el nombre en tu perfil de usuario.',
-        'discrepancia_mayor' => 'El nombre del documento y el del perfil difieren considerablemente. Elige una opción:',
-        'carta_delegacion' => 'O adjunta la carta de delegación si gestionas el trámite a nombre de otra persona.',
-        'nombres_coinciden' => 'Los nombres coinciden correctamente. Puedes continuar con el trámite.',
     ],
     'detalle' => [
         'titulo' => 'Detalle biológico asistido',

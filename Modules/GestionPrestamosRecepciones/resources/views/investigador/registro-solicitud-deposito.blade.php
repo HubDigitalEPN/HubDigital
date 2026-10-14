@@ -84,12 +84,11 @@
                     ['label' => 'Origen',     'sub' => 'Procedencia'],
                     ['label' => 'Archivos y firmas', 'sub' => 'Validación'],
                     ['label' => 'Datos', 'sub' => 'Formulario'],
-                    ['label' => 'Identidad',  'sub' => 'Solicitante'],
                     ['label' => 'Detalle',    'sub' => 'Taxonomía'],
                     ['label' => 'Envío',      'sub' => 'Revisión'],
                 ]"
-                :pasoActual="$paso <= 4 ? $paso + 1 : $paso"
-                :pasosCompletados="array_values(array_unique(array_merge($paso > 0 || $solicitudFirmada ? [1] : [], array_map(fn ($numero) => $numero <= 4 ? $numero + 1 : $numero, array_filter($pasosCompletados, fn ($numero) => $numero !== 5)))))"
+                :pasoActual="$this->pasoVisible()"
+                :pasosCompletados="$this->pasosCompletadosVisibles()"
             />
         </div>
     @endif
@@ -110,8 +109,6 @@
                     @include('gestionprestamosrecepciones::investigador.registro-solicitud-deposito.paso-documentos')
                 @elseif($paso === 4)
                     @include('gestionprestamosrecepciones::investigador.registro-solicitud-deposito.paso-datos')
-                @elseif($paso === 6)
-                    @include('gestionprestamosrecepciones::investigador.registro-solicitud-deposito.paso-identidad')
                 @elseif($paso === 7)
                     @include('gestionprestamosrecepciones::investigador.registro-solicitud-deposito.paso-matriz')
                 @elseif($paso === 8 || $paso === 9)
@@ -183,10 +180,6 @@
                         >
                             <flux:icon wire:loading wire:target="guardarPasoCuatro" name="arrow-path" class="animate-spin size-4 mr-1" />
                             {{ \App\Support\WizardCopy::text('datos.accion') }}
-                        </flux:button>
-                    @elseif($paso === 6)
-                        <flux:button variant="primary" icon-trailing="arrow-right" wire:click="guardarPasoIdentidad" wire:loading.attr="disabled" wire:target="guardarPasoIdentidad">
-                            Continuar al detalle
                         </flux:button>
                     @elseif($paso === 7)
                         <flux:button
