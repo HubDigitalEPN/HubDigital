@@ -7,6 +7,36 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\DatosIntegradosDocum
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\NumeroSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
 
+test('rechaza cantidades vacías de material aunque se complete directamente el dominio', function (string $campo): void {
+    $solicitud = SolicitudDeposito::crear(
+        SolicitudDepositoId::generate(), NumeroSolicitudDeposito::fromSecuencia(3), 'depositante-qa', 'Depósito',
+    );
+    $solicitud->declararOrigenRecoleccion('Nacional (Ecuador)');
+    $solicitud->declararSituacionRegulatoria('Sin permisos del MAE');
+    $solicitud->integrarDatosDeDocumentos(new DatosIntegradosDocumento(null, null, null, null, null, null), []);
+    foreach (['0', '-1', '1.5', '2147483648'] as $valor) {
+        expect(fn () => $solicitud->completarDatoFaltante($campo, $valor))->toThrow(\DomainException::class);
+        expect($solicitud->datosFaltantesParaPersistir())->toContain($campo);
+    }
+    $solicitud->completarDatoFaltante($campo, '1');
+    expect($solicitud->datosFaltantesParaPersistir())->not->toContain($campo);
+})->with(['N.º Individuos', 'N.º Morfoespecies', 'N.º Lotes']);
+
+test('mantiene pendientes las cantidades cero extraídas del documento', function (): void {
+    $solicitud = SolicitudDeposito::crear(
+        SolicitudDepositoId::generate(), NumeroSolicitudDeposito::fromSecuencia(4), 'depositante-qa', 'Depósito',
+    );
+    $solicitud->declararOrigenRecoleccion('Nacional (Ecuador)');
+    $solicitud->declararSituacionRegulatoria('Sin permisos del MAE');
+    $solicitud->integrarDatosDeDocumentos(new DatosIntegradosDocumento(
+        null, null, null, null, null, null, nroIndividuos: '0', nroMorfoespecies: '0', nroLotes: '0',
+    ), []);
+    expect($solicitud->nroIndividuos())->toBeNull()
+        ->and($solicitud->nroMorfoespecies())->toBeNull()
+        ->and($solicitud->nroLotes())->toBeNull()
+        ->and($solicitud->datosFaltantesParaPersistir())->toContain('N.º Individuos', 'N.º Morfoespecies', 'N.º Lotes');
+});
+
 test('permite registrar manualmente el origen de una donación', function (): void {
     $solicitud = SolicitudDeposito::crear(
         id: SolicitudDepositoId::generate(),

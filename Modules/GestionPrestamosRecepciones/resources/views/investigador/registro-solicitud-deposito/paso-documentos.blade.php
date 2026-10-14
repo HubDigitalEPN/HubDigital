@@ -198,7 +198,7 @@
                     />
                 @endforeach
             </section>
-            @if(!$analisisDocumentalCompletado && array_intersect($firmasElectronicas, ['revocacion_no_comprobable', 'verificacion_no_disponible', 'almacen_incompleto', 'no_verificado', 'validando']) !== [])
+            @if(array_intersect($firmasElectronicas, ['revocacion_no_comprobable', 'verificacion_no_disponible', 'almacen_incompleto', 'no_verificado', 'validando']) !== [])
                 <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-error/30 bg-error/5 px-3 py-2 text-xs text-text-primary" role="alert">
                     <p>Cada PDF conserva su resultado de firma. Puedes reintentar las comprobaciones pendientes o interrumpidas; espera a que termine un intento que acaba de iniciar.</p>
                     <flux:button size="xs" variant="outline" icon="arrow-path" wire:click="repetirVerificacionFirmas" wire:loading.attr="disabled" wire:target="repetirVerificacionFirmas">Volver a comprobar</flux:button>
@@ -242,9 +242,5 @@
     @endif
 
     @endif {{-- fin @if(!$extraccionProcesando) --}}
-
-    @if(!$extraccionProcesando && $analisisDocumentalCompletado)
-        @include('gestionprestamosrecepciones::investigador.registro-solicitud-deposito.paso-firmas')
-    @endif
 
 </div>

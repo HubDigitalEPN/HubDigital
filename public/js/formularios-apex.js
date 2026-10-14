@@ -38,12 +38,15 @@
         if (root.nodeType !== Node.ELEMENT_NODE && root !== document) return;
         positionNotices();
         revealCurrentStep();
-        const modals = [...root.querySelectorAll('ui-modal[aria-labelledby]')];
-        if (root.matches?.('ui-modal[aria-labelledby]')) modals.push(root);
+        const modals = [...root.querySelectorAll('ui-modal')];
+        if (root.matches?.('ui-modal')) modals.push(root);
+        const containingModal = root.closest?.('ui-modal');
+        if (containingModal && !modals.includes(containingModal)) modals.push(containingModal);
         modals.forEach(modal => {
             const dialog = modal.querySelector('dialog');
             const label = modal.getAttribute('aria-labelledby');
-            if (dialog && dialog.getAttribute('aria-labelledby') !== label) dialog.setAttribute('aria-labelledby', label);
+            if (dialog && label && dialog.getAttribute('aria-labelledby') !== label) dialog.setAttribute('aria-labelledby', label);
+            dialog?.querySelector('button[aria-label="Close modal"]')?.setAttribute('aria-label', 'Cerrar ventana');
         });
         if (root.matches?.(selector)) decorate(root);
         root.querySelectorAll(selector).forEach(decorate);
@@ -105,7 +108,7 @@
     });
     const options = {
         childList: true, subtree: true, attributes: true,
-        attributeFilter: ['data-hub-apex-field', 'data-hub-apex-control', 'data-hub-apex-label', 'data-hub-primary-button'],
+        attributeFilter: ['data-hub-apex-field', 'data-hub-apex-control', 'data-hub-apex-label', 'data-hub-primary-button', 'aria-label'],
     };
     observer.observe(document.body, options);
     document.addEventListener('livewire:navigated', () => {

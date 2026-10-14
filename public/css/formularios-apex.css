@@ -41,6 +41,8 @@ html body [data-hub-apex-field] {
 }
 html body [data-hub-apex-field] > * { order: 1; }
 html body [data-hub-apex-field] > :is([data-flux-description], [data-flux-error]) { order: 2; margin-block: .2rem 0; }
+/* Los errores del wizard se presentan en la notificación flotante. */
+.hub-depositos-ui [data-flux-error] { display: none; }
 html body [data-hub-apex-field] [data-hub-apex-label] {
     position: absolute;
     z-index: 2;

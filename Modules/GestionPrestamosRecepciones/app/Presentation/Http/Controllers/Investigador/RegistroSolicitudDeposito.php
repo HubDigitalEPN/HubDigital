@@ -61,6 +61,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Exceptions\CamposObligatoriosVaci
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\SolicitudDepositoYaProcesada;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Services\ReglaDocumentacionRequerida;
+use Modules\GestionPrestamosRecepciones\Domain\Services\ReglaCantidadesMaterial;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoRegistroEspecimen;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\MatrizEspeciesId;
@@ -647,7 +648,7 @@ final class RegistroSolicitudDeposito extends Component
             // al flujo actual y tienen valor null en BD.
             foreach (['N.º Individuos', 'N.º Morfoespecies', 'N.º Lotes'] as $campo) {
                 if (array_key_exists($campo, $this->datosExtraidos)
-                    && ($this->datosExtraidos[$campo] ?? null) === null
+                    && ! ReglaCantidadesMaterial::esValida(isset($this->datosExtraidos[$campo]) ? (string) $this->datosExtraidos[$campo] : null)
                     && ! in_array($campo, $this->datosFaltantes, true)) {
                     $this->datosFaltantes[] = $campo;
                 }
@@ -2037,7 +2038,9 @@ final class RegistroSolicitudDeposito extends Component
             return;
         }
 
-        $this->resetValidation(['valorEditorManual']);
+        $erroresEditor = ['valorEditorManual', 'localidadEspecifica', 'datosEnEdicion.'.$this->claveSegura($campo)];
+        if ($this->campoEditorManual !== '') $erroresEditor[] = 'datosEnEdicion.'.$this->claveSegura($this->campoEditorManual);
+        $this->resetValidation($erroresEditor);
         $this->campoEditorManual = $campo;
         $this->localidadEspecifica = '';
         $this->valorEditorManual = match ($campo) {
@@ -2045,6 +2048,21 @@ final class RegistroSolicitudDeposito extends Component
             'Institución' => $this->institucionConsultor,
             default => (string) ($this->datosExtraidos[$campo] ?? ''),
         };
+        if ($campo === 'Cargo') {
+            $cargoActual = mb_strtolower($this->valorEditorManual);
+            $this->valorEditorManual = (string) (DB::table('usuarios.cargos_catalogo')->where('activo', true)
+                ->pluck('nombre')->first(fn ($nombre) => mb_strtolower($nombre) === $cargoActual)
+                ?? $this->valorEditorManual);
+        }
+        if ($campo === 'Localidad' && $this->valorEditorManual !== '') {
+            $sufijo = ', provincia '.$this->provincia.', Ecuador';
+            $nombreActual = str_ends_with($this->valorEditorManual, $sufijo)
+                ? substr($this->valorEditorManual, 0, -strlen($sufijo)) : $this->valorEditorManual;
+            $opcionActual = collect($this->localidadesDisponibles())->first(fn ($nombre) =>
+                mb_strtolower($nombre) === mb_strtolower($nombreActual.$sufijo));
+            $this->valorEditorManual = $opcionActual ?? '__OTRA__';
+            if ($opcionActual === null) $this->localidadEspecifica = $nombreActual;
+        }
         $this->modal('editar-dato-deposito')->show();
     }
 
@@ -2056,6 +2074,7 @@ final class RegistroSolicitudDeposito extends Component
         }
 
         $valor = trim($this->valorEditorManual);
+        $this->resetValidation(['valorEditorManual', 'localidadEspecifica']);
         if ($campo === 'Localidad' && $valor === '__OTRA__') {
             $nombreLugar = trim($this->localidadEspecifica);
             if ($nombreLugar === '' || mb_strlen($nombreLugar) > 140) {
@@ -2140,8 +2159,9 @@ final class RegistroSolicitudDeposito extends Component
     {
         $clave = $this->claveSegura($campo);
         $valor = $this->datosEnEdicion[$clave] ?? '';
+        $this->resetValidation(['datosEnEdicion.'.$clave]);
 
-        if (empty($valor)) {
+        if (trim((string) $valor) === '') {
             $this->addError("datosEnEdicion.{$clave}", 'El valor no puede estar vacío.');
 
             return;
@@ -2155,10 +2175,8 @@ final class RegistroSolicitudDeposito extends Component
 
         $camposCuantitativos = ['N.º Individuos', 'N.º Morfoespecies', 'N.º Lotes'];
         if (in_array($campo, $camposCuantitativos, true)
-            && (! ctype_digit((string) $valor) || (int) $valor < (in_array($campo, ['N.º Individuos', 'N.º Lotes'], true) ? 1 : 0))) {
-            $this->addError("datosEnEdicion.{$clave}", in_array($campo, ['N.º Individuos', 'N.º Lotes'], true)
-                ? 'Ingresa un número entero mayor que cero.'
-                : 'Ingresa un número entero mayor o igual a cero.');
+            && ! ReglaCantidadesMaterial::esValida((string) $valor)) {
+            $this->addError("datosEnEdicion.{$clave}", 'Ingresa un número entero entre 1 y 2.147.483.647.');
 
             return;
         }
@@ -2212,6 +2230,20 @@ final class RegistroSolicitudDeposito extends Component
             $this->avisarDatosPendientes();
 
             return;
+        }
+
+        $modeloCantidades = SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)
+            ->where('investigador_id', (string) auth()->id())->firstOrFail();
+        $cantidadesRequeridas = ['N.º Individuos' => 'nro_individuos'];
+        if ($modeloCantidades->origen_recoleccion !== 'Exterior (Extranjero)') {
+            $cantidadesRequeridas += ['N.º Morfoespecies' => 'nro_morfoespecies', 'N.º Lotes' => 'nro_lotes'];
+        }
+        foreach ($cantidadesRequeridas as $campoCantidad => $columnaCantidad) {
+            if (! ReglaCantidadesMaterial::esValida($modeloCantidades->{$columnaCantidad} === null ? null : (string) $modeloCantidades->{$columnaCantidad})) {
+                $this->datosFaltantes = array_values(array_unique([...$this->datosFaltantes, $campoCantidad]));
+                $this->mostrarToast("{$campoCantidad} debe ser un número entero mayor que cero.", 'warning');
+                return;
+            }
         }
 
         if ($this->origenRecoleccion === 'Nacional (Ecuador)') {

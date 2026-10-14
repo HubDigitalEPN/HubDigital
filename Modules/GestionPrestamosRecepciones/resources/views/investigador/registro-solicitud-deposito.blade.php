@@ -33,10 +33,10 @@
     @if($paso < 9)
         {{-- Borrador restaurado --}}
         @if($borradorRestaurado && ! $modoCorreccion && $paso < 8)
-            <flux:modal name="confirmar-descartar-borrador" class="max-w-sm">
+            <flux:modal name="confirmar-descartar-borrador" class="max-w-sm" aria-labelledby="titulo-descartar-borrador">
                 <div class="space-y-4">
                     <div>
-                        <flux:heading size="lg">Descartar borrador</flux:heading>
+                        <flux:heading size="lg" level="2" id="titulo-descartar-borrador">Descartar borrador</flux:heading>
                         <flux:text class="text-text-secondary mt-1">
                             Se eliminará el borrador y todos los documentos cargados. Esta acción no se puede deshacer.
                         </flux:text>
@@ -68,7 +68,7 @@
                 <x-gestionprestamosrecepciones::deposito-status-badge :estado="$modoCorreccion ? 'Requiere Corrección' : 'En Borrador'" />
                 @if($borradorRestaurado && ! $modoCorreccion && $paso < 8)
                     <flux:modal.trigger name="confirmar-descartar-borrador">
-                        <flux:button variant="ghost" size="sm" icon="document-minus">Eliminar borrador</flux:button>
+                        <flux:button variant="ghost" size="sm" icon="trash" aria-label="Eliminar borrador" title="Eliminar borrador" class="cursor-pointer" />
                     </flux:modal.trigger>
                 @endif
             </div>

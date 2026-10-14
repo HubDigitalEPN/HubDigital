@@ -1,14 +1,4 @@
 <div class="space-y-3">
-    @php
-        $faltantesAviso = $datosFaltantes;
-        if (trim($cargoConsultor) === '') $faltantesAviso[] = 'Cargo';
-        if (trim($institucionConsultor) === '') $faltantesAviso[] = 'Institución';
-    @endphp
-    @if($faltantesAviso !== [])
-        @php $avisoDatos = 'Completa los datos pendientes: '.implode(', ', $faltantesAviso).'.'; @endphp
-        <div x-data x-init="$nextTick(() => $dispatch('show-toast', { message: @js($avisoDatos), variant: 'error' }))" class="hidden"></div>
-    @endif
-
     <h2 class="text-sm font-semibold text-blue-navy">Datos de la solicitud</h2>
 
     <div class="overflow-hidden rounded-xl border border-science-blue/25 bg-surface shadow-sm">
@@ -29,7 +19,7 @@
                     <flux:tooltip content="Función o puesto que desempeñas en la institución que presenta la solicitud."><flux:icon name="information-circle" class="size-3 cursor-help" /></flux:tooltip>
                 </dt>
                 <dd @class(['text-sm', 'italic text-error' => trim($cargoConsultor) === '', 'text-text-primary' => trim($cargoConsultor) !== ''])>{{ trim($cargoConsultor) === '' ? 'Falta ingresar' : $cargoConsultor }}</dd>
-                <button type="button" wire:click="abrirEditorManual('Cargo')" class="mt-1 flex items-center gap-1 text-xs text-science-blue"><flux:icon name="pencil-square" class="size-3" />{{ trim($cargoConsultor) === '' ? 'Ingresar manualmente' : 'Editar' }}</button>
+                <button type="button" wire:click="abrirEditorManual('Cargo')" class="mt-1 flex cursor-pointer items-center gap-1 text-xs text-science-blue"><flux:icon name="pencil-square" class="size-3" />{{ trim($cargoConsultor) === '' ? 'Ingresar manualmente' : 'Editar' }}</button>
             </div>
             <div @class(['relative bg-white p-2.5', 'border border-error' => trim($institucionConsultor) === ''])>
                 @if(trim($institucionConsultor) === '')<span class="absolute right-2.5 top-2.5 size-2 rounded-full bg-error" aria-label="Institución faltante"></span>@endif
@@ -37,7 +27,7 @@
                     <flux:tooltip content="Entidad a la que perteneces y en cuyo nombre gestionas el depósito."><flux:icon name="information-circle" class="size-3 cursor-help" /></flux:tooltip>
                 </dt>
                 <dd @class(['text-sm', 'italic text-error' => trim($institucionConsultor) === '', 'text-text-primary' => trim($institucionConsultor) !== ''])>{{ trim($institucionConsultor) === '' ? 'Falta ingresar' : $institucionConsultor }}</dd>
-                <button type="button" wire:click="abrirEditorManual('Institución')" class="mt-1 flex items-center gap-1 text-xs text-science-blue"><flux:icon name="pencil-square" class="size-3" />{{ trim($institucionConsultor) === '' ? 'Ingresar manualmente' : 'Editar' }}</button>
+                <button type="button" wire:click="abrirEditorManual('Institución')" class="mt-1 flex cursor-pointer items-center gap-1 text-xs text-science-blue"><flux:icon name="pencil-square" class="size-3" />{{ trim($institucionConsultor) === '' ? 'Ingresar manualmente' : 'Editar' }}</button>
             </div>
         </dl>
     </div>
@@ -151,11 +141,11 @@
         </div>
     </div>
 
-    <flux:modal name="editar-dato-deposito" class="w-full max-w-md">
+    <flux:modal name="editar-dato-deposito" class="w-full max-w-md" aria-labelledby="titulo-editor-dato-deposito">
         @if($campoEditorManual !== '')
             <div class="space-y-4">
                 <div>
-                    <flux:heading size="lg">{{ $campoEditorManual }}</flux:heading>
+                    <flux:heading size="lg" level="2" id="titulo-editor-dato-deposito">{{ $campoEditorManual }}</flux:heading>
                     <p class="mt-1 text-xs leading-relaxed text-text-secondary">
                         {{ match($campoEditorManual) {
                             'Cargo' => 'Selecciona tu cargo de la lista administrada por el administrador.',
@@ -168,36 +158,20 @@
                 </div>
                 <div>
                     @if($campoEditorManual === 'Cargo')
-                        <flux:select wire:model="valorEditorManual" label="Cargo" required>
-                            <option value="">Selecciona un cargo</option>
-                            @foreach($cargosCatalogo as $cargoOpcion)<option value="{{ $cargoOpcion }}">{{ $cargoOpcion }}</option>@endforeach
-                        </flux:select>
+                        <x-gestionprestamosrecepciones::lov-popup campo="valorEditorManual" label="Cargo" :valor="$valorEditorManual" :opciones="$cargosCatalogo" :contexto="$campoEditorManual" placeholder="Selecciona un cargo" />
                     @elseif($campoEditorManual === 'Institución')
-                        <select wire:model="valorEditorManual" aria-label="Institución" class="min-h-9 w-full rounded-lg border border-border bg-white px-3 text-sm">
-                            <option value="">Selecciona una institución</option>
-                            @foreach($institucionesCatalogo as $institucionOpcion)<option value="{{ $institucionOpcion }}">{{ $institucionOpcion }}</option>@endforeach
-                        </select>
+                        <x-gestionprestamosrecepciones::lov-popup campo="valorEditorManual" label="Institución" :valor="$valorEditorManual" :opciones="$institucionesCatalogo" :contexto="$campoEditorManual" placeholder="Selecciona una institución" />
                     @elseif($campoEditorManual === 'Grupo Animal')
-                        <select wire:model="valorEditorManual" aria-label="Grupo Animal" class="min-h-9 w-full rounded-lg border border-border bg-white px-3 text-sm">
-                            <option value="">Selecciona un grupo</option>
-                            @foreach($catalogoGrupos as $grupo)<option value="{{ $grupo['nombre'] }}">{{ $grupo['nombre'] }}</option>@endforeach
-                        </select>
+                        <x-gestionprestamosrecepciones::lov-popup campo="valorEditorManual" label="Grupo Animal" :valor="$valorEditorManual" :opciones="array_column($catalogoGrupos, 'nombre')" :contexto="$campoEditorManual" placeholder="Selecciona un grupo" />
                     @elseif($campoEditorManual === 'Provincia')
-                        <select wire:model="valorEditorManual" aria-label="Provincia" class="min-h-9 w-full rounded-lg border border-border bg-white px-3 text-sm">
-                            <option value="">Selecciona una provincia</option>
-                            @foreach($provinciasCatalogo as $provinciaOpcion)<option value="{{ $provinciaOpcion['nombre'] }}">{{ $provinciaOpcion['nombre'] }}</option>@endforeach
-                        </select>
+                        <x-gestionprestamosrecepciones::lov-popup campo="valorEditorManual" label="Provincia" :valor="$valorEditorManual" :opciones="array_column($provinciasCatalogo, 'nombre')" :contexto="$campoEditorManual" placeholder="Selecciona una provincia" />
                     @elseif($campoEditorManual === 'Localidad')
-                        <select wire:model.live="valorEditorManual" aria-label="Localidad" class="min-h-9 w-full rounded-lg border border-border bg-white px-3 text-sm">
-                            <option value="">Selecciona una localidad de {{ $canton }}, {{ $provincia }}</option>
-                            @foreach($localidadesCatalogo as $localidadOpcion)<option value="{{ $localidadOpcion }}">{{ $localidadOpcion }}</option>@endforeach
-                            <option value="__OTRA__">Otra localidad de esta provincia…</option>
-                        </select>
+                        <x-gestionprestamosrecepciones::lov-popup campo="valorEditorManual" label="Localidad" :valor="$valorEditorManual" :opciones="collect($localidadesCatalogo)->mapWithKeys(fn ($nombre) => [$nombre => $nombre])->all() + ['__OTRA__' => 'Otra localidad de esta provincia…']" :contexto="$campoEditorManual" placeholder="Selecciona una localidad" />
                         @if($valorEditorManual === '__OTRA__')
                             <div class="mt-2"><flux:input wire:model="localidadEspecifica" label="Nombre de la localidad" maxlength="140" placeholder="Área natural, parroquia o sitio de recolección" /><flux:error name="localidadEspecifica" /></div>
                         @endif
                     @else
-                        <flux:input wire:model="valorEditorManual" :type="in_array($campoEditorManual, ['N.º Individuos', 'N.º Morfoespecies', 'N.º Lotes']) ? 'number' : 'text'" :min="in_array($campoEditorManual, ['N.º Individuos', 'N.º Lotes']) ? 1 : 0" :step="in_array($campoEditorManual, ['N.º Individuos', 'N.º Morfoespecies', 'N.º Lotes']) ? 1 : null" placeholder="Ingresa el dato" autofocus />
+                        <flux:input wire:model="valorEditorManual" :label="$campoEditorManual" :type="in_array($campoEditorManual, ['N.º Individuos', 'N.º Morfoespecies', 'N.º Lotes']) ? 'number' : 'text'" :min="in_array($campoEditorManual, ['N.º Individuos', 'N.º Morfoespecies', 'N.º Lotes']) ? 1 : null" :max="in_array($campoEditorManual, ['N.º Individuos', 'N.º Morfoespecies', 'N.º Lotes']) ? \Modules\GestionPrestamosRecepciones\Domain\Services\ReglaCantidadesMaterial::MAXIMO : null" :step="in_array($campoEditorManual, ['N.º Individuos', 'N.º Morfoespecies', 'N.º Lotes']) ? 1 : null" placeholder="Ingresa el dato" autofocus />
                     @endif
                     <flux:error name="valorEditorManual" />
                 </div>
@@ -208,15 +182,5 @@
             </div>
         @endif
     </flux:modal>
-
-    <div class="rounded-lg border border-bio-green/25 bg-bio-green/5 p-2">
-        <div class="flex items-start gap-3">
-            <flux:icon name="building-library" class="mt-0.5 size-5 shrink-0 text-bio-green" />
-            <div>
-                <p class="text-sm font-semibold text-text-primary">Datos que completa el museo</p>
-                <p class="text-xs text-text-secondary">{{ \App\Support\WizardCopy::text('datos.uso_interno_explicacion') }}</p>
-            </div>
-        </div>
-    </div>
 
 </div>

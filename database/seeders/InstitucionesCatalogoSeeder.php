@@ -7,7 +7,7 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
-/** Primeras 50 IES del registro público del CES; insertOrIgnore respeta ediciones y bajas. */
+/** IES del CES e institución del perfil bootstrap; respeta ediciones y bajas. */
 final class InstitucionesCatalogoSeeder extends Seeder
 {
     public function run(): void
@@ -77,5 +77,11 @@ final class InstitucionesCatalogoSeeder extends Seeder
                 'updated_at' => now(),
             ]);
         }
+
+        // La empresa del depositante bootstrap no es una IES y no tiene código CES.
+        // Debe poder seleccionarse sin atribuirle la institución del proyecto.
+        DB::table('usuarios.instituciones_catalogo')->insertOrIgnore([
+            'nombre' => 'Kintiflow', 'activo' => true, 'created_at' => now(), 'updated_at' => now(),
+        ]);
     }
 }

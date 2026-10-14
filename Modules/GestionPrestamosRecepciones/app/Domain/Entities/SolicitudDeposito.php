@@ -21,6 +21,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudRequiereCorreccio
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\DocumentacionInsuficiente;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\TransicionEstadoInvalida;
 use Modules\GestionPrestamosRecepciones\Domain\Services\ReglaDocumentacionRequerida;
+use Modules\GestionPrestamosRecepciones\Domain\Services\ReglaCantidadesMaterial;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\AlertaSolicitudId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\CodigoQRLote;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\DatosIntegradosDocumento;
@@ -300,25 +301,25 @@ final class SolicitudDeposito
         }
 
         if ($datos->nroIndividuos !== null) {
-            $this->nroIndividuos = $datos->nroIndividuos;
+            $this->nroIndividuos = ReglaCantidadesMaterial::esValida($datos->nroIndividuos) ? $datos->nroIndividuos : null;
         }
         if ($datos->nroMorfoespecies !== null) {
-            $this->nroMorfoespecies = $datos->nroMorfoespecies;
+            $this->nroMorfoespecies = ReglaCantidadesMaterial::esValida($datos->nroMorfoespecies) ? $datos->nroMorfoespecies : null;
         }
         if ($datos->nroLotes !== null) {
-            $this->nroLotes = $datos->nroLotes;
+            $this->nroLotes = ReglaCantidadesMaterial::esValida($datos->nroLotes) ? $datos->nroLotes : null;
         }
 
-        if ($this->nroIndividuos === null) {
+        if (! ReglaCantidadesMaterial::esValida($this->nroIndividuos)) {
             $this->marcarDatoComoFaltante('N.º Individuos');
         }
 
         if (! $esExtranjero) {
-            if ($this->nroMorfoespecies === null) {
+            if (! ReglaCantidadesMaterial::esValida($this->nroMorfoespecies)) {
                 $this->marcarDatoComoFaltante('N.º Morfoespecies');
             }
 
-            if ($this->nroLotes === null) {
+            if (! ReglaCantidadesMaterial::esValida($this->nroLotes)) {
                 $this->marcarDatoComoFaltante('N.º Lotes');
             }
         }
@@ -337,6 +338,10 @@ final class SolicitudDeposito
             );
         }
 
+        if (in_array($campo, ['N.º Individuos', 'N.º Morfoespecies', 'N.º Lotes'], true)
+            && ! ReglaCantidadesMaterial::esValida(trim($valor))) {
+            throw new \DomainException('Ingresa una cantidad entera entre 1 y 2.147.483.647.');
+        }
         $this->asignarCampoPorNombre($campo, $valor);
 
         $this->datosFaltantes = array_values(
@@ -1001,6 +1006,17 @@ final class SolicitudDeposito
         $solicitud->nroIndividuos = $nroIndividuos;
         $solicitud->nroMorfoespecies = $nroMorfoespecies;
         $solicitud->nroLotes = $nroLotes;
+        if (in_array($estado, [EstadoSolicitudDeposito::EnBorrador, EstadoSolicitudDeposito::RequiereCorreccion], true)) {
+            $cantidades = ['N.º Individuos' => $nroIndividuos];
+            if ($origenRecoleccion !== 'Exterior (Extranjero)') {
+                $cantidades += ['N.º Morfoespecies' => $nroMorfoespecies, 'N.º Lotes' => $nroLotes];
+            }
+            foreach ($cantidades as $campoCantidad => $cantidad) {
+                if ($cantidad !== null && ! ReglaCantidadesMaterial::esValida($cantidad)) {
+                    $solicitud->marcarDatoComoFaltante($campoCantidad);
+                }
+            }
+        }
         $solicitud->curadorResponsable = $curadorResponsable;
         $solicitud->aprobadaEn = $aprobadaEn;
         $solicitud->rechazadaEn = $rechazadaEn;

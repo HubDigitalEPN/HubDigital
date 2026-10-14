@@ -686,12 +686,38 @@ $metadataFuente = [ordered]@{
 $argumentosTar += @('SOURCE-METADATA.json', 'SOURCE-MANIFEST.sha256')
 $requeridos += @('SOURCE-METADATA.json', 'SOURCE-MANIFEST.sha256')
 
-$dependenciasDesarrolloRetiradas = $false
+$raizRuntimeTemporal = [IO.Path]::GetFullPath((Join-Path $Proyecto '.local\deployment'))
+New-Item -ItemType Directory -Path $raizRuntimeTemporal -Force | Out-Null
+$idRuntimeTemporal = [Guid]::NewGuid().ToString('N').Substring(0, 16)
+$directorioRuntime = Join-Path $raizRuntimeTemporal ("runtime-oci-$idRuntimeTemporal")
+$archivoRuntime = Join-Path $raizRuntimeTemporal ("source-oci-$idRuntimeTemporal.tar")
+$archivosAutoloadLocal = @('vendor/autoload.php', 'vendor/composer/autoload_real.php', 'vendor/composer/autoload_files.php', 'vendor/composer/installed.json')
+$huellasAutoloadLocal = @{}
+foreach ($archivoAutoload in $archivosAutoloadLocal) {
+    $huellasAutoloadLocal[$archivoAutoload] = (Get-FileHash -LiteralPath (Join-Path $Proyecto $archivoAutoload) -Algorithm SHA256).Hash
+}
 try {
+    # Filtrar la copia con las mismas exclusiones del bundle. Nunca retirar
+    # dependencias del servidor localhost para preparar el vendor de OCI.
+    New-Item -ItemType Directory -Path $directorioRuntime | Out-Null
+    [string[]]$argumentosCopia = @($argumentosTar)
+    $argumentosCopia[0] = '-cf'
+    $argumentosCopia[1] = $archivoRuntime
+    Invoke-TarConProgreso -Argumentos $argumentosCopia -ArchivoSalida $archivoRuntime
+    Invoke-Comando -Programa 'tar.exe' -Argumentos @('-xf', $archivoRuntime, '-C', $directorioRuntime) -Descripcion 'Preparando copia aislada para produccion'
     Invoke-Comando -Programa $composerPrograma -Argumentos @(
-        'install', '--no-dev', '--optimize-autoloader', '--no-interaction', '--prefer-dist', '--no-progress'
-    ) -Descripcion 'Preparando dependencias PHP exclusivas de produccion' -DirectorioTrabajo $Proyecto
-    $dependenciasDesarrolloRetiradas = $true
+        'install', '--no-dev', '--optimize-autoloader', '--no-scripts', '--no-interaction', '--prefer-dist', '--no-progress'
+    ) -Descripcion 'Preparando dependencias PHP exclusivas de produccion en copia aislada' -DirectorioTrabajo $directorioRuntime
+    # Composer genera el autoload de producción. Los hooks de Laravel y sus
+    # caches se preparan en la release con su entorno protegido durante despliegue.
+    foreach ($archivoAutoload in $archivosAutoloadLocal) {
+        if ((Get-FileHash -LiteralPath (Join-Path $Proyecto $archivoAutoload) -Algorithm SHA256).Hash -ne $huellasAutoloadLocal[$archivoAutoload]) {
+            throw "El autoload local cambio al preparar produccion: $archivoAutoload"
+        }
+    }
+    $indiceOrigenTar = [Array]::IndexOf($argumentosTar, '-C')
+    if ($indiceOrigenTar -lt 0) { throw 'El bundle no declara un directorio de origen.' }
+    $argumentosTar[$indiceOrigenTar + 1] = $directorioRuntime
 
     $commitActual = (Get-SalidaGit -Argumentos @('rev-parse', 'HEAD') | Select-Object -First 1).Trim()
     if ($commitActual -ne $commit -or @(Get-SalidaGit -Argumentos @('status', '--porcelain=v1', '--untracked-files=all')).Count -gt 0) {
@@ -701,6 +727,9 @@ try {
         $rutaFuente = $linea.Substring(66)
         if ((Get-FileHash -LiteralPath (Join-Path $Proyecto $rutaFuente) -Algorithm SHA256).Hash.ToLowerInvariant() -ne $linea.Substring(0, 64)) {
             throw "El archivo cambio durante el empaquetado: $rutaFuente. No se crea el bundle."
+        }
+        if ((Get-FileHash -LiteralPath (Join-Path $directorioRuntime $rutaFuente) -Algorithm SHA256).Hash.ToLowerInvariant() -ne $linea.Substring(0, 64)) {
+            throw "La copia de produccion difiere del commit publicado: $rutaFuente"
         }
     }
     Invoke-TarConProgreso -Argumentos $argumentosTar -ArchivoSalida $paquete
@@ -1219,10 +1248,19 @@ REGLAS IMPORTANTES
     $tamanoMiB = [Math]::Round((Get-Item -LiteralPath $paquete).Length / 1MB, 2)
 }
 finally {
-    if ($dependenciasDesarrolloRetiradas) {
-        Invoke-Comando -Programa $composerPrograma -Argumentos @(
-            'install', '--no-interaction', '--prefer-dist', '--no-progress'
-        ) -Descripcion 'Restaurando dependencias PHP de desarrollo locales' -DirectorioTrabajo $Proyecto
+    foreach ($temporalRuntime in @($directorioRuntime, $archivoRuntime)) {
+        if (Test-Path -LiteralPath $temporalRuntime) {
+            $rutaRuntimeResuelta = [IO.Path]::GetFullPath((Get-Item -LiteralPath $temporalRuntime).FullName)
+            if (-not $rutaRuntimeResuelta.StartsWith($raizRuntimeTemporal.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase)) {
+                throw 'El temporal de produccion esta fuera del directorio autorizado; no se elimina.'
+            }
+            $itemRuntime = Get-Item -LiteralPath $rutaRuntimeResuelta
+            if (($itemRuntime.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or
+                ($itemRuntime.PSIsContainer -and @(Get-ChildItem -LiteralPath $rutaRuntimeResuelta -Recurse -Force -Attributes ReparsePoint).Count -gt 0)) {
+                throw 'El temporal de produccion contiene enlaces; no se elimina recursivamente.'
+            }
+            Remove-Item -LiteralPath $rutaRuntimeResuelta -Recurse -Force
+        }
     }
 }
 

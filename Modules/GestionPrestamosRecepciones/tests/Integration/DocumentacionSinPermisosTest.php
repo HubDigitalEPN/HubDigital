@@ -59,6 +59,25 @@ test('reanuda datos y retrocede sin pedir permisos inexistentes ni quitar cantid
     $componente->assertSet('datosFaltantes', $conPermisos
         ? ['N.º Permiso Recolección', 'N.º Permiso Movilización', 'N.º Individuos', 'N.º Morfoespecies', 'N.º Lotes']
         : ['N.º Individuos', 'N.º Morfoespecies', 'N.º Lotes']);
+    $componente->call('abrirEditorManual', 'N.º Morfoespecies')->set('valorEditorManual', '-1')
+        ->call('guardarEditorManual')->assertHasErrors('valorEditorManual')
+        ->assertSet('campoEditorManual', 'N.º Morfoespecies');
+    expect($modelo->fresh()->nro_morfoespecies)->toBeNull();
+    $componente->set('valorEditorManual', '0')->call('guardarEditorManual')->assertHasErrors('valorEditorManual');
+    expect($modelo->fresh()->nro_morfoespecies)->toBeNull();
+    $componente->set('valorEditorManual', '1')->call('guardarEditorManual')
+        ->assertHasNoErrors()->assertSet('campoEditorManual', '');
+    // «N.º» contiene un punto literal, no una ruta anidada de Livewire.
+    expect($componente->get('datosExtraidos')['N.º Morfoespecies'])->toBe('1')
+        ->and((string) $modelo->fresh()->nro_morfoespecies)->toBe('1');
+    // Los borradores guardados antes de exigir cantidades positivas también deben corregirse.
+    $modelo->forceFill(['nro_morfoespecies' => '0'])->save();
+    $reanudada = app(SolicitudDepositoRepositoryInterface::class)->buscarPorId(SolicitudDepositoId::from($modelo->id));
+    expect($reanudada->datosFaltantesParaPersistir())->toContain('N.º Morfoespecies');
+    Livewire::actingAs(User::findOrFail($modelo->investigador_id))
+        ->test(RegistroSolicitudDeposito::class, ['id' => $modelo->id])
+        ->assertSet('datosFaltantes', fn (array $campos) => in_array('N.º Morfoespecies', $campos, true));
+    $modelo->forceFill(['nro_morfoespecies' => '1'])->save();
     $componente->call('retroceder')->assertSet('paso', 3);
     expect(in_array('Copia del permiso de movilización', $componente->get('documentosRequeridos'), true))->toBe($conPermisos);
     expect($modelo->fresh()->paso_actual)->toBe(3);
