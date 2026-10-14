@@ -60,6 +60,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Exceptions\CamposDwCFaltantesExce
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\CamposObligatoriosVaciosException;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\SolicitudDepositoYaProcesada;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\Services\ReglaDocumentacionRequerida;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoRegistroEspecimen;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\MatrizEspeciesId;
@@ -751,7 +752,7 @@ final class RegistroSolicitudDeposito extends Component
                 ];
             }
 
-            return [
+            $datos = [
                 'N.º Permiso Recolección' => $model->nro_permiso_recoleccion,
                 'N.º Permiso Movilización' => $model->nro_permiso_movilizacion,
                 'Grupo Animal' => $model->grupo_animal,
@@ -761,6 +762,13 @@ final class RegistroSolicitudDeposito extends Component
                 'N.º Morfoespecies' => $model->nro_morfoespecies !== null ? (string) $model->nro_morfoespecies : null,
                 'N.º Lotes' => $model->nro_lotes !== null ? (string) $model->nro_lotes : null,
             ];
+            if (ReglaDocumentacionRequerida::sinPermisosNacionales(
+                $model->tipo_tramite, $model->origen_recoleccion, $model->situacion_regulatoria,
+            )) {
+                unset($datos['N.º Permiso Recolección'], $datos['N.º Permiso Movilización']);
+            }
+
+            return $datos;
         }
 
         return [
@@ -1951,6 +1959,11 @@ final class RegistroSolicitudDeposito extends Component
                     'N.º Lotes' => null,
                 ];
             }
+            if (ReglaDocumentacionRequerida::sinPermisosNacionales(
+                $this->tipoTramite, $this->origenRecoleccion, $this->situacionRegulatoria,
+            )) {
+                unset($this->datosExtraidos['N.º Permiso Recolección'], $this->datosExtraidos['N.º Permiso Movilización']);
+            }
             $this->datosFaltantes = array_keys($this->datosExtraidos);
         } else {
             $this->datosExtraidos = [
@@ -3100,6 +3113,9 @@ final class RegistroSolicitudDeposito extends Component
                 $this->analisisDocumentalCompletado = true;
 
                 if (in_array('N.º Permiso Movilización', $this->datosFaltantes, true)
+                    && ! ReglaDocumentacionRequerida::sinPermisosNacionales(
+                        $this->tipoTramite, $this->origenRecoleccion, $this->situacionRegulatoria,
+                    )
                     && ! in_array('Copia del permiso de movilización', $this->documentosRequeridos, true)
                 ) {
                     $this->documentosRequeridos[] = 'Copia del permiso de movilización';

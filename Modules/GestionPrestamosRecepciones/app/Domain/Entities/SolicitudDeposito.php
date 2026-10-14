@@ -20,6 +20,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudRechazadaDocument
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudRequiereCorreccion;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\DocumentacionInsuficiente;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\TransicionEstadoInvalida;
+use Modules\GestionPrestamosRecepciones\Domain\Services\ReglaDocumentacionRequerida;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\AlertaSolicitudId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\CodigoQRLote;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\DatosIntegradosDocumento;
@@ -250,10 +251,13 @@ final class SolicitudDeposito
         $this->datosFaltantes = [];
 
         $esExtranjero = $this->origenRecoleccion === 'Exterior (Extranjero)';
+        $sinPermisos = ReglaDocumentacionRequerida::sinPermisosNacionales(
+            $this->tipoTramite->value, $this->origenRecoleccion, $this->situacionRegulatoria,
+        );
 
         if ($datos->nroPermisoRecoleccion !== null) {
             $this->nroPermisoRecoleccion = $datos->nroPermisoRecoleccion;
-        } elseif ($this->tipoTramite->equals(TipoTramite::Deposito)) {
+        } elseif ($this->tipoTramite->equals(TipoTramite::Deposito) && ! $sinPermisos) {
             $this->marcarDatoComoFaltante($esExtranjero ? 'N.º Investigación' : 'N.º Permiso Recolección');
         }
 
@@ -267,6 +271,7 @@ final class SolicitudDeposito
         }
 
         if (! $esExtranjero
+            && ! $sinPermisos
             && $this->nroPermisoMovilizacion === null
             && $this->tipoTramite->equals(TipoTramite::Deposito)
             && ($this->provinciaOrigen === null || strtolower(trim($this->provinciaOrigen)) !== 'pichincha')
@@ -343,6 +348,9 @@ final class SolicitudDeposito
         }
 
         if ($campo === 'Provincia'
+            && ! ReglaDocumentacionRequerida::sinPermisosNacionales(
+                $this->tipoTramite->value, $this->origenRecoleccion, $this->situacionRegulatoria,
+            )
             && strtolower(trim($valor)) !== 'pichincha'
             && $this->nroPermisoMovilizacion === null
             && ! in_array('N.º Permiso Movilización', $this->datosFaltantes, true)
@@ -982,6 +990,12 @@ final class SolicitudDeposito
         $solicitud->origenDonacion = $origenDonacion;
         $solicitud->documentosAdjuntos = $documentosAdjuntos;
         $solicitud->datosFaltantes = $datosFaltantes;
+        if (ReglaDocumentacionRequerida::sinPermisosNacionales($tipoTramite->value, $origenRecoleccion, $situacionRegulatoria)) {
+            // Compatibilidad con borradores que antes exigían permisos en el flujo de carta.
+            $solicitud->datosFaltantes = array_values(array_diff(
+                $solicitud->datosFaltantes, ['N.º Permiso Recolección', 'N.º Permiso Movilización'],
+            ));
+        }
         $solicitud->nombreInvestigadorDocumento = $nombreInvestigadorDocumento;
         $solicitud->datosIngresadosManualmente = $datosIngresadosManualmente;
         $solicitud->nroIndividuos = $nroIndividuos;

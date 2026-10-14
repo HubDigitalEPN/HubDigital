@@ -15,6 +15,7 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDep
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\ArchivoLocalDeposito;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\ColaFirmasSolicitudR2;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\DirectorioTemporalHubDigital;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\NumeroSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\RegistroSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Presentation\Support\GeneradorPdfSolicitudDeposito;
 use Tests\DatabaseFeatureTestCase;
@@ -25,7 +26,7 @@ function solicitudColaR2ParaPruebas(): SolicitudDepositoEloquentModel
 {
     $usuario = User::factory()->create(['rol' => RolUsuario::DEPOSITANTE]);
     return SolicitudDepositoEloquentModel::query()->create([
-        'id' => (string) Str::uuid(), 'numero' => 'HUB-DEP-'.random_int(100000, 999999),
+        'id' => (string) Str::uuid(), 'numero' => (string) NumeroSolicitudDeposito::fromSecuencia(random_int(10000, 99999), 'HUB-DEP'),
         'investigador_id' => $usuario->id, 'tipo_tramite' => 'Depósito', 'estado' => 'En Borrador',
         'paso_actual' => 0, 'solicitud_documento_version' => 1,
         'solicitud_nombre_permiso' => 'Depositante Cola R2', 'solicitud_tipo_identificacion' => 'cedula', 'solicitud_cedula' => '1707514251',

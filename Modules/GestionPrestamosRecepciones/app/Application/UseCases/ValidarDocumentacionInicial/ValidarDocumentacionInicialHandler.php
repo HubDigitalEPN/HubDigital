@@ -7,6 +7,8 @@ namespace Modules\GestionPrestamosRecepciones\Application\UseCases\ValidarDocume
 use Modules\GestionPrestamosRecepciones\Application\Exceptions\SolicitudNoEncontradaException;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Services\ReglaPermisoMovilizacion;
+use Modules\GestionPrestamosRecepciones\Domain\Services\ReglaDocumentacionRequerida;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoDocumental;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
 
 /**
@@ -34,6 +36,20 @@ final class ValidarDocumentacionInicialHandler
 
         if ($solicitud === null) {
             throw SolicitudNoEncontradaException::conId($input->solicitudId);
+        }
+
+        // El mismo contexto persistido que determina los archivos del paso 4:
+        // una carta de justificación no puede exigir después un PDF que ese paso no admite.
+        if (ReglaDocumentacionRequerida::sinPermisosNacionales(
+            $solicitud->tipoTramite(), $solicitud->origenRecoleccion(), $solicitud->situacionRegulatoria(),
+        )) {
+            $requeridos = (new ReglaDocumentacionRequerida)->determinar(
+                $solicitud->tipoTramite(), $solicitud->origenRecoleccion(), $solicitud->situacionRegulatoria(), $input->provinciaOrigen,
+            );
+            return new ValidarDocumentacionInicialOutput(
+                estadoDocumental: array_diff($requeridos, array_keys($input->documentosAdjuntos)) === []
+                    ? EstadoDocumental::Valido : EstadoDocumental::RequiereCorreccion,
+            );
         }
 
         $estadoDocumental = $this->regla->validar(

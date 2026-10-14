@@ -15,6 +15,13 @@ namespace Modules\GestionPrestamosRecepciones\Domain\Services;
  */
 final class ReglaDocumentacionRequerida
 {
+    public static function sinPermisosNacionales(string $tipoTramite, ?string $origen, ?string $situacion): bool
+    {
+        return $tipoTramite === 'Depósito'
+            && $origen === 'Nacional (Ecuador)'
+            && $situacion === 'Sin permisos del MAE';
+    }
+
     /** Documento base obligatorio según el tipo de trámite */
     private const FORMATO_BASE = [
         // Los formularios institucionales ya no se cargan como archivos preparados
