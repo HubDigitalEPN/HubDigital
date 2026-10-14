@@ -6,6 +6,7 @@ namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Inve
 
 use App\Concerns\HandlesDomainExceptions;
 use Modules\GestionPrestamosRecepciones\Presentation\Support\ReglasSolicitudDeposito;
+use Modules\GestionPrestamosRecepciones\Presentation\Support\PasosWizardDeposito;
 use Illuminate\Support\Facades\Validator;
 use App\Support\CatalogoTerritorialEcuador;
 use App\Support\CatalogoLocalidadesEcuador;
@@ -88,7 +89,7 @@ final class RegistroSolicitudDeposito extends Component
 
     // Conservar los identificadores persistidos evita reinterpretar borradores
     // antiguos de Detalle (7) y Envío (8). El stepper muestra siete pasos consecutivos.
-    private const PASOS_VISIBLES = [1 => 0, 2 => 1, 3 => 2, 4 => 3, 5 => 4, 6 => 7, 7 => 8];
+    private const PASOS_VISIBLES = PasosWizardDeposito::DESTINOS;
 
     public int $paso = 0;
 
@@ -3467,9 +3468,7 @@ final class RegistroSolicitudDeposito extends Component
 
     public function pasoVisible(): int
     {
-        $numero = array_search($this->paso, self::PASOS_VISIBLES, true);
-
-        return $numero === false ? 1 : $numero;
+        return PasosWizardDeposito::numeroVisible($this->paso);
     }
 
     /** @return list<int> */

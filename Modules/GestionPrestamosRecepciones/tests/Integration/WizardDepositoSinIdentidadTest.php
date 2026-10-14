@@ -7,6 +7,7 @@ use Livewire\Livewire;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\RegistroSolicitudDeposito;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\MisDepositos;
 use Tests\DatabaseFeatureTestCase;
 
 uses(DatabaseFeatureTestCase::class);
@@ -125,3 +126,9 @@ test('retirar identidad no permite avanzar desde datos con una firma documental 
     expect($modelo->fresh()->paso_actual)->toBe(4)
         ->and($modelo->fresh()->extraccion_metadatos)->not->toHaveKey('confirmacion_humana');
 });
+
+test('mis depósitos comparte los siete números del wizard al retomar un borrador', function (int $pasoPersistido, int $numeroVisible): void {
+    [$modelo, $usuario] = borradorWizardSinIdentidadParaPruebas($pasoPersistido);
+    Livewire::actingAs($usuario)->test(MisDepositos::class)
+        ->assertSee('Paso '.$numeroVisible.' de 7')->assertDontSee('de 8');
+})->with([[4, 5], [6, 6], [7, 6], [8, 7]]);

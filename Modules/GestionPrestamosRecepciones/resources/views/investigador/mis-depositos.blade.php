@@ -1,6 +1,7 @@
 @php
     use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito;
     use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoTramite;
+    use Modules\GestionPrestamosRecepciones\Presentation\Support\PasosWizardDeposito;
 
     $badgeVariant = fn(string $estado) => match($estado) {
         EstadoSolicitudDeposito::PendienteDeRevisionPorCuraduria->value => 'info',
@@ -38,7 +39,7 @@
     @if($borrador)
         <section class="hub-table-shell p-4" aria-label="Borrador pendiente">
             <h2 class="font-semibold text-blue-navy">Tienes un borrador guardado</h2>
-            <p class="mt-1 text-sm text-text-secondary">{{ $borrador->numero }} · Paso {{ $borrador->paso_actual <= 4 ? $borrador->paso_actual + 1 : $borrador->paso_actual }} de 8. Puedes continuar desde el último paso guardado.</p>
+            <p class="mt-1 text-sm text-text-secondary">{{ $borrador->numero }} · Paso {{ PasosWizardDeposito::numeroVisible((int) $borrador->paso_actual) }} de {{ PasosWizardDeposito::total() }}. Puedes continuar desde el último paso guardado.</p>
             <a href="{{ route('prestamos.investigador.deposito.crear') }}" wire:navigate class="mt-2 inline-block font-semibold text-science-blue underline">Retomar borrador</a>
         </section>
     @endif
