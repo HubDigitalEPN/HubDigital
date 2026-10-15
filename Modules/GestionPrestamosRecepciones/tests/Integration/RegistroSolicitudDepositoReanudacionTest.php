@@ -15,6 +15,33 @@ use Tests\DatabaseFeatureTestCase;
 
 uses(DatabaseFeatureTestCase::class);
 
+test('una solicitud nueva no conserva errores del formulario anterior al descartar', function (): void {
+    foreach (['usuarios.cargos_catalogo' => 'Investigadora de inicio', 'usuarios.instituciones_catalogo' => 'Institución de inicio'] as $tabla => $nombre) {
+        DB::table($tabla)->updateOrInsert(['nombre' => $nombre], ['activo' => true, 'created_at' => now(), 'updated_at' => now()]);
+    }
+    $depositante = User::factory()->depositante()->create([
+        'first_name' => 'Solicitante', 'last_name' => 'de inicio', 'cargo' => 'Investigadora de inicio', 'institucion' => 'Institución de inicio',
+    ]);
+
+    Livewire::actingAs($depositante)->test(RegistroSolicitudDeposito::class)
+        ->assertHasNoErrors()
+        ->set('solicitudGrupo', 'Grupo fuera del catálogo')->assertHasErrors('solicitudGrupo')
+        ->call('descartarBorrador')
+        ->assertHasNoErrors()->assertSet('paso', 0)->assertSet('solicitudId', null)
+        ->assertSet('solicitudGrupo', '')->assertSet('borradorRestaurado', false)
+        ->assertSet('solicitudNombrePermiso', $depositante->name)
+        ->assertSet('solicitudCorreo', $depositante->email)
+        ->assertSet('solicitudCargo', 'Investigadora de inicio')
+        ->assertSet('solicitudInstitucion', 'Institución de inicio')
+        ->assertDispatched('close-toast')->assertNotDispatched('solicitud-validation-errors')
+        ->assertSee('Visualizar PDF')
+        ->call('visualizarPdfSolicitud')->assertHasNoErrors()
+        ->assertSet('mostrarVistaPdfSolicitud', true)->assertSet('solicitudId', null)
+        ->set('mostrarVistaPdfSolicitud', false)
+        ->call('guardarSolicitudInicial')->assertHasErrors('solicitudGrupo');
+    expect(SolicitudDepositoEloquentModel::where('investigador_id', (string) $depositante->id)->exists())->toBeFalse();
+});
+
 test('reanuda el oficio firmado solo con valores vigentes y conserva el PDF anterior sin editarlo', function (?string $campo, ?string $valor): void {
     configurarR2FalsoParaPruebas();
     foreach (['usuarios.cargos_catalogo' => 'Investigador de reanudación', 'usuarios.instituciones_catalogo' => 'Institución de reanudación'] as $tabla => $nombre) {

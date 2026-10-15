@@ -14,6 +14,21 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\Solici
 /** Oficio de solicitud basado en la plantilla institucional adjunta. */
 final class GeneradorPdfSolicitudDeposito
 {
+    public function previsualizar(SolicitudDepositoEloquentModel $solicitud): string
+    {
+        return Pdf::loadView('gestionprestamosrecepciones::pdf.solicitud-deposito', [
+            'solicitud' => $solicitud,
+            'institucionFirmante' => $this->institucionFirmante($solicitud),
+            'perfilFirma' => PerfilFirmaPdf::solicitudDepositante(),
+            'esVistaPrevia' => true,
+        ])->setPaper('a4')->output();
+    }
+
+    public function estaGenerado(SolicitudDepositoEloquentModel $solicitud): bool
+    {
+        return Cache::has($this->clave($solicitud));
+    }
+
     public function generar(SolicitudDepositoEloquentModel $solicitud): string
     {
         $solicitud->refresh();

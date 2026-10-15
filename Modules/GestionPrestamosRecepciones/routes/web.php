@@ -60,6 +60,8 @@ Route::middleware(['auth', 'verified', 'role:depositante'])
     ->group(function () {
         Route::get('/solicitud', RegistroSolicitudDeposito::class)->name('solicitud.crear');
         Route::get('/mis-solicitudes', MisDepositos::class)->name('mis-solicitudes');
+        Route::post('/solicitud/vista-previa.pdf', \Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\VistaPreviaSolicitudDeposito::class)
+            ->middleware('throttle:30,1')->name('solicitud.vista-previa');
         Route::get('/firmador/token-usb.zip', \Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\DescargarConectorTokenUsb::class)->name('firmador.token.kit');
         Route::get('/solicitud/{id}/documento.pdf', DocumentoSolicitudDeposito::class)->name('solicitud.documento');
         Route::get('/solicitud/{id}/estado-firma', \Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\EstadoFirmaSolicitudDeposito::class)->name('solicitud.estado-firma');

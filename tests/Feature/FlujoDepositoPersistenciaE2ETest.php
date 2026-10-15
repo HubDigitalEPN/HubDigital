@@ -413,7 +413,19 @@ test('un borrador incompleto requiere preparar el oficio y el servidor rechaza s
     ]);
     Livewire::actingAs($depositante)->test(RegistroSolicitudDeposito::class)
         ->assertSet('solicitudCambiosPendientes', true)
-        ->assertSee('Preparar PDF')->assertDontSee('Firmar PDF');
+        ->assertSee('Visualizar PDF')->assertDontSee('Firmar PDF')
+        ->assertSee('wire:click.prevent="visualizarPdfSolicitud"', false)
+        ->call('visualizarPdfSolicitud')->assertHasNoErrors()
+        ->assertSet('mostrarVistaPdfSolicitud', true)
+        ->assertSee('Vista previa completa de la solicitud de depósito');
+    $antesDeLaVistaPrevia = $borrador->fresh()->getAttributes();
+    $vistaPrevia = $this->actingAs($depositante)->post(route('depositos.solicitud.vista-previa'), [
+        'solicitud_nombre_permiso' => 'Titular de vista previa',
+    ])->assertOk()->assertHeader('Content-Type', 'application/pdf');
+    expect($vistaPrevia->getContent())->toStartWith('%PDF-');
+    expect($borrador->fresh()->getAttributes())->toBe($antesDeLaVistaPrevia);
+    $this->postJson(route('depositos.solicitud.vista-previa'), ['solicitud_nombre_permiso' => ['valor no textual']])
+        ->assertUnprocessable()->assertJsonValidationErrors('solicitud_nombre_permiso');
     $this->actingAs($depositante)->postJson(route('depositos.solicitud.firmar', (string) $borrador->id), [
         'certificado' => UploadedFile::fake()->create('prueba.p12', 1, 'application/x-pkcs12'),
         'clave_certificado' => 'clave de prueba',
@@ -457,10 +469,19 @@ test('el oficio autoguarda solo catálogos activos y no permite editar su redacc
         ->set('solicitudCorreo', $depositante->email)
         ->set('solicitudOficio', 'QA-AUTO-001')
         ->assertHasNoErrors()
-        ->assertSet('solicitudCambiosPendientes', false);
+        ->assertSet('solicitudCambiosPendientes', false)
+        ->assertSee('Generar PDF')->assertDontSee('Firmar PDF');
     $borrador = SolicitudDepositoEloquentModel::where('investigador_id', $depositante->id)->sole();
     expect($component->get('solicitudId'))->toBe((string) $borrador->id)
         ->and($borrador->solicitud_documento_version)->toBe(1);
+    $component->call('visualizarPdfSolicitud')
+        ->assertHasNoErrors()
+        ->assertSet('mostrarVistaPdfSolicitud', true)
+        ->assertSee('PDF Generado')->assertSee('Firmar PDF')
+        ->assertSee('PDF completo de la solicitud de depósito')
+        ->assertDontSee('Texto del oficio · revisar');
+    expect($borrador->fresh()->solicitud_documento_version)->toBe(1);
+    $component->set('mostrarVistaPdfSolicitud', false);
     $component->set('solicitudCargo', 'Cargo escrito libremente')
         ->assertHasErrors('solicitudCargo')->assertSet('solicitudCambiosPendientes', true);
     expect($borrador->fresh()->solicitud_cargo)->toBe('Investigador del proyecto');
@@ -539,6 +560,9 @@ test('el oficio sin firma no avanza y al descartar el borrador se elimina su PDF
     expect($almacenamiento->existe($ruta))->toBeTrue();
 
     Livewire::actingAs($depositante)->test(RegistroSolicitudDeposito::class)
+        ->assertSee('PDF Generado')->assertDontSee('Visualizar PDF')
+        ->assertSee('data-pdf-generated-check', false)
+        ->assertDontSee('wire:click.prevent="visualizarPdfSolicitud"', false)
         ->call('continuarDesdeSolicitud')
         ->assertHasNoErrors()
         ->assertSet('paso', 1)

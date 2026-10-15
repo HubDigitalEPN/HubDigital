@@ -41,7 +41,10 @@ test('confirma la firma real y permite descargarla antes de enviar bytes a R2', 
     Http::assertNothingSent();
     $modelo->refresh();
     Livewire::actingAs($usuario)->test(RegistroSolicitudDeposito::class)
-        ->assertSee('data-pdf-generated-link', false)->assertDontSee('data-pdf-generated-label', false);
+        ->assertSee('data-pdf-generated-label', false)->assertDontSee('data-pdf-generated-link', false)
+        ->assertSee('data-pdf-generated-check', false)
+        ->assertDontSee('wire:click.prevent="visualizarPdfSolicitud"', false)
+        ->assertSee('data-oficio-signed-link', false);
     $registro = app(ColaFirmasSolicitudR2::class)->registro($modelo);
     expect($registro->estado)->toBe('pendiente');
     $pdf = app(ColaFirmasSolicitudR2::class)->contenidoPendiente($modelo);

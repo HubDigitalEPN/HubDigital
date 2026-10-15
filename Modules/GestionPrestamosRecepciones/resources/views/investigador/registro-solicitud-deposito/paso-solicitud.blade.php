@@ -1,6 +1,12 @@
-<div class="hub-request-letter space-y-3">
+<div class="hub-request-letter space-y-3"
+    x-data="{erroresVisibles: true, temporizadorErrores: null, mostrarErrores() { clearTimeout(this.temporizadorErrores); this.erroresVisibles = true; this.temporizadorErrores = setTimeout(() => { this.erroresVisibles = false }, 3000) }, destroy() { clearTimeout(this.temporizadorErrores) }}"
+    x-init="if (@js($errors->any())) mostrarErrores()"
+    x-on:solicitud-validation-errors.window="mostrarErrores()"
+    x-bind:class="{'hub-request-letter--errors-hidden': !erroresVisibles}">
     @php($camposBloqueados = $this->camposSolicitudBloqueados())
     @php($guardadoR2Confirmado = $this->solicitudR2Confirmada())
+    @php($oficioCompleto = $solicitudId && ! $solicitudCambiosPendientes)
+    @php($pdfGenerado = $this->pdfSolicitudGenerado())
     <div class="hub-request-fields {{ $camposBloqueados ? 'hub-request-fields--locked' : '' }}">
         <div class="hub-request-cell hub-request-cell--name"><flux:input placeholder=" " wire:model.live.blur="solicitudNombrePermiso" label="Nombre de la persona titular del permiso de colección" maxlength="200" :disabled="$camposBloqueados" required /></div>
         <div class="hub-request-cell hub-request-cell--identification hub-identification-fields">
@@ -13,42 +19,52 @@
         <div class="hub-request-cell hub-request-cell--email"><flux:input placeholder=" " wire:model.live.blur="solicitudCorreo" type="email" label="Correo electrónico" maxlength="250" :disabled="$camposBloqueados" required /></div>
         <div class="hub-request-cell hub-request-cell--project">
             <flux:input placeholder=" " wire:model.live.blur="solicitudProyecto" label="Título del proyecto" maxlength="300" :disabled="$camposBloqueados" required />
-            @if(! $camposBloqueados)
-                <flux:modal.trigger name="revisar-texto-oficio"><flux:button variant="ghost" size="sm" icon="document-text">Texto del oficio · revisar</flux:button></flux:modal.trigger>
-            @endif
         </div>
         <div class="hub-request-cell hub-request-cell--letter">
             <flux:input placeholder=" " wire:model.live.blur="solicitudOficio" class:input="hub-field-number" label="Número de oficio" maxlength="100" :disabled="$camposBloqueados" required />
         </div>
     </div>
-    @if(! $camposBloqueados)
-    <flux:modal name="revisar-texto-oficio" class="max-w-2xl">
-        <flux:heading size="lg">Texto del oficio · revisar</flux:heading>
-        <p class="mt-3 whitespace-pre-line text-sm leading-6">{{ $this->textoSolicitudSugerido() }}</p>
-        <div class="mt-4 flex justify-end"><flux:modal.close><flux:button variant="ghost" size="sm">Cerrar</flux:button></flux:modal.close></div>
+    <flux:modal name="visualizar-pdf-solicitud" wire:model.self="mostrarVistaPdfSolicitud" class="hub-request-pdf-preview">
+        <div class="hub-request-pdf-preview-content">
+            <flux:heading size="lg">Solicitud de depósito · PDF completo</flux:heading>
+            @if($mostrarVistaPdfSolicitud && $oficioCompleto && $pdfGenerado)
+                <iframe class="hub-request-pdf-frame" title="PDF completo de la solicitud de depósito"
+                    src="{{ route('depositos.solicitud.documento', ['id' => $solicitudId, 'original' => $solicitudFirmada ? null : 1, 'v' => $solicitudDocumentoVersion]) }}"></iframe>
+            @elseif($mostrarVistaPdfSolicitud)
+                <iframe class="hub-request-pdf-frame" name="vista-previa-solicitud" title="Vista previa completa de la solicitud de depósito"></iframe>
+                <form hidden method="POST" action="{{ route('depositos.solicitud.vista-previa') }}" target="vista-previa-solicitud"
+                    x-init="$nextTick(() => $el.submit())">
+                    @csrf
+                    @foreach([
+                        'solicitud_nombre_permiso' => $solicitudNombrePermiso, 'solicitud_tipo_identificacion' => $solicitudTipoIdentificacion,
+                        'solicitud_cedula' => $solicitudCedula, 'solicitud_cargo' => $solicitudCargo, 'solicitud_grupo' => $solicitudGrupo,
+                        'solicitud_proyecto' => $solicitudProyecto, 'solicitud_institucion' => $solicitudInstitucion,
+                        'solicitud_correo' => $solicitudCorreo, 'solicitud_oficio' => $solicitudOficio,
+                    ] as $campo => $valor)
+                        <input type="hidden" name="{{ $campo }}" value="{{ $valor }}">
+                    @endforeach
+                </form>
+            @endif
+        </div>
     </flux:modal>
-    @endif
     <div class="hub-request-document-actions flex flex-wrap items-center justify-between gap-3"
         @if($solicitudFirmada && !$guardadoR2Confirmado) wire:poll.2s="confirmarSolicitudFirmada" @endif
-        wire:key="estado-pdf-{{ $solicitudId }}-{{ $solicitudDocumentoVersion }}"
-        x-data="{pdfGenerado: @js($solicitudFirmada)}"
-        x-on:hub-original-preparado.window="if ($event.detail.documentId === @js($solicitudId) && $event.detail.documentVersion === {{ $solicitudDocumentoVersion }}) pdfGenerado = true">
+        wire:key="estado-pdf-{{ $solicitudId }}-{{ $solicitudDocumentoVersion }}">
         <div class="flex flex-wrap items-center gap-x-4 gap-y-2" aria-live="polite">
+        <span class="inline-flex items-center gap-1.5">
+            @if($solicitudFirmada)
+                <span data-pdf-generated-label class="text-sm font-semibold text-science-blue">PDF Generado</span>
+                <span data-pdf-generated-check class="hub-pdf-check" role="img" aria-label="PDF generado correctamente">✓</span>
+            @else
+                <a href="{{ $oficioCompleto ? route('depositos.solicitud.documento', ['id' => $solicitudId, 'original' => 1]) : '#visualizar-pdf-solicitud' }}" wire:click.prevent="visualizarPdfSolicitud" wire:loading.class="pointer-events-none" class="text-sm font-semibold text-science-blue hover:underline">{{ $pdfGenerado ? 'PDF Generado' : ($oficioCompleto ? 'Generar PDF' : 'Visualizar PDF') }}</a>
+                @if($pdfGenerado)<span data-pdf-generated-check class="hub-pdf-check" role="img" aria-label="PDF generado correctamente">✓</span>@endif
+            @endif
+        </span>
         @if($solicitudOficioAnteriorFirmado)
             <a href="{{ route('depositos.solicitud.documento', ['id' => $solicitudId]) }}" target="_blank" rel="noopener" class="text-sm font-semibold text-science-blue hover:underline" aria-label="PDF Firmado, versión anterior">PDF Firmado</a>
         @endif
         <span wire:loading class="sr-only">Guardando…</span>
-        @if(! $solicitudId || $solicitudCambiosPendientes)
-            <flux:button size="sm" wire:click="guardarSolicitudInicial" wire:loading.attr="disabled" icon="document-text">Preparar PDF</flux:button>
-        @else
-            <span class="inline-flex items-center gap-1.5">
-                @if($guardadoR2Confirmado)
-                    <span data-pdf-generated-label class="text-sm font-semibold text-text-primary">PDF Generado</span>
-                @else
-                    <a data-pdf-generated-link href="{{ route('depositos.solicitud.documento', ['id' => $solicitudId, 'original' => 1]) }}" target="_blank" rel="noopener" class="text-sm font-semibold text-science-blue hover:underline">PDF Generado</a>
-                @endif
-                <template x-if="pdfGenerado"><span data-pdf-generated-check class="hub-pdf-check" role="img" aria-label="PDF generado correctamente">✓</span></template>
-            </span>
+        @if($oficioCompleto && $pdfGenerado)
             @if($solicitudFirmada)
                 <span class="inline-flex items-center gap-1.5">
                     <a data-oficio-signed-link href="{{ route('depositos.solicitud.documento', ['id' => $solicitudId]) }}" target="_blank" rel="noopener" class="text-sm font-semibold text-science-blue hover:underline">PDF Firmado</a>

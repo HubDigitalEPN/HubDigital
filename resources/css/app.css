@@ -1368,14 +1368,14 @@ body:has(.hub-app-sidebar) { --color-accent: #174a9a; --color-accent-foreground:
 .portal-publico :is(button:disabled, [aria-disabled="true"]) { cursor:not-allowed; }
 
 .hub-identification-fields { display: grid; grid-template-columns: 6.25rem minmax(0, 1fr); gap: .6rem; align-items: end; }
-.hub-request-fields { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; align-items: end; }
+.hub-request-fields { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; align-items: end; max-inline-size: 100rem; margin-inline: auto; }
 .hub-request-cell { min-width: 0; }
 .hub-request-cell--identification .hub-lov-trigger { padding-inline: .5rem; gap: .25rem; font-size: .8rem; }
 .hub-request-fields--locked .hub-lov-trigger:disabled { cursor: not-allowed; opacity: .85; }
 .hub-request-cell--letter { display: grid; grid-template-columns: minmax(0, 18rem) minmax(0, 1fr); align-items: end; gap: .75rem; }
 .hub-request-cell--letter > [data-flux-modal-trigger] button { padding-inline: 0; font-size: .75rem; }
 .hub-request-cell--letter > [data-flux-modal-trigger] { padding-block-end: .2rem; }
-.hub-request-document-actions { margin-block-start: 1.25rem; padding-block-start: 1rem; border-top: 1px solid var(--color-border); }
+.hub-request-document-actions { margin-block-start: 1.25rem; padding-block-start: 1rem; border-top: 1px solid var(--color-border); max-inline-size: 100rem; margin-inline: auto; }
 .hub-depositos-ui [data-flux-error], .hub-depositos-ui p[role="alert"] { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 .hub-processing-overlay { position: fixed; inset: 0; z-index: 10000; background: #ffffff66; backdrop-filter: blur(1px); cursor: wait; }
 .hub-processing-card { position: absolute; inset: 50% auto auto 50%; transform: translate(-50%, -50%); display: flex; align-items: center; gap: .7rem; padding: .8rem 1.1rem; border: 1px solid var(--color-border); border-radius: .7rem; background: var(--color-surface); color: var(--color-text-primary); box-shadow: 0 8px 30px #122b4f1a; font-size: .8rem; }
@@ -1406,6 +1406,11 @@ body:has(.hub-app-sidebar) { --color-accent: #174a9a; --color-accent-foreground:
 .hub-depositos-ui input:not([type="number"]):not([inputmode="numeric"]), .hub-depositos-ui textarea { text-align: left; }
 .hub-depositos-ui input[type="number"], .hub-depositos-ui input[inputmode="numeric"] { text-align: right; }
 .hub-request-letter [data-flux-field] { gap: .3rem; }
+.hub-depositos-ui .hub-request-letter [data-flux-error] { position: static; width: auto; height: auto; margin: 0; overflow: visible; clip-path: none; white-space: normal; }
+.hub-depositos-ui .hub-request-letter--errors-hidden [data-flux-error] { display: none; }
+.hub-request-pdf-preview { width: min(70rem, calc(100vw - 2rem)); max-width: min(70rem, calc(100vw - 2rem)) !important; max-height: calc(100dvh - 2rem); }
+.hub-request-pdf-preview-content { display: flex; flex-direction: column; gap: .75rem; height: min(48rem, calc(100dvh - 6rem)); }
+.hub-request-pdf-frame { flex: 1; min-height: 0; width: 100%; border: 1px solid var(--color-border); }
 .hub-request-letter :is(input, select)[data-flux-control] { min-block-size: 2.3rem; }
 .hub-depositos-ui [data-flux-field]:has([required]):not(:has([data-flux-field])) { position: relative; }
 .hub-depositos-ui [data-flux-field]:has([required]):not(:has([data-flux-field])):not(.hub-lov-field):not(:has(> [data-flux-input]))::after {
@@ -1478,9 +1483,9 @@ body:has(.hub-app-sidebar) { --color-accent: #174a9a; --color-accent-foreground:
     .hub-request-fields { grid-template-columns: repeat(12, minmax(0, 1fr)); }
     .hub-request-cell--name, .hub-request-cell--institution, .hub-request-cell--group, .hub-request-cell--email { grid-column: span 4; }
     .hub-request-cell--identification { grid-column: span 4; }
-    .hub-request-cell--cargo { grid-column: span 4; max-width: 18rem; }
+    .hub-request-cell--cargo { grid-column: span 4; --hub-cargo-expansion: clamp(0rem, calc((100% - 20rem) / 2), 6rem); width: calc(100% + var(--hub-cargo-expansion)); max-width: none; margin-inline-start: calc(-1 * var(--hub-cargo-expansion)); }
     .hub-request-cell--project { grid-column: span 8; }
-    .hub-request-cell--letter { grid-column: span 4; }
-    .hub-request-cell--email { max-width: 18rem; }
+    .hub-request-cell--letter { grid-column: span 4; grid-template-columns: minmax(0, 1fr); }
+    .hub-request-cell--email { max-width: none; }
 }
 @media (max-width: 639px) { .hub-wizard-steps { overflow-x: auto; } }

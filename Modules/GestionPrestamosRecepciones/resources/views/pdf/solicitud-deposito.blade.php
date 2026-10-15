@@ -17,6 +17,9 @@
     </style>
 </head>
 <body>
+    @if($esVistaPrevia ?? false)
+        <div style="color: #64748b; font-size: 10px; margin-bottom: 18px;">VISTA PREVIA · BORRADOR SIN FIRMA</div>
+    @endif
     <div class="oficio">
         @if($solicitud->solicitud_oficio)
             <div>No. oficio: {{ $solicitud->solicitud_oficio }}</div>
@@ -40,17 +43,19 @@
     <p>Atentamente,</p>
 
     <div class="firma">
+        @unless($esVistaPrevia ?? false)
         <a class="bloque" href="{{ $perfilFirma['bloque'] }}">HUBDIGITAL BLOQUE NOMINAL {{ $perfilFirma['rol'] }}</a>
         <a class="zona" href="{{ $perfilFirma['zona'] }}">HUBDIGITAL ZONA FIRMA {{ $perfilFirma['rol'] }}</a>
+        @endunless
     </div>
     <div class="firmante">
-        <strong>{{ \App\Support\TextoOficio::nombre($solicitud->solicitud_nombre_permiso) }}</strong><br>
+        <strong>{{ \App\Support\TextoOficio::nombre((string) $solicitud->solicitud_nombre_permiso) }}</strong><br>
         @if(filled($institucionFirmante ?? null))
             {{ \App\Support\TextoOficio::nombre($institucionFirmante) }}<br>
         @endif
-        {{ mb_strtolower($solicitud->solicitud_correo) }}
+        {{ mb_strtolower((string) $solicitud->solicitud_correo) }}
     </div>
 
-    <div class="meta">Solicitud {{ $solicitud->numero }} · versión {{ $solicitud->solicitud_documento_version ?? 1 }}. El ejemplar oficial es el PDF con firma electrónica validada.</div>
+    <div class="meta">@if($esVistaPrevia ?? false)Vista previa de la solicitud. Completa los campos para generar el oficio.@else Solicitud {{ $solicitud->numero }} · versión {{ $solicitud->solicitud_documento_version ?? 1 }}. El ejemplar oficial es el PDF con firma electrónica validada.@endif</div>
 </body>
 </html>

@@ -137,6 +137,7 @@ final class RegistroSolicitudDeposito extends Component
     public string $solicitudInstitucion = '';
     public string $solicitudCorreo = '';
     public string $solicitudOficio = '';
+    public bool $mostrarVistaPdfSolicitud = false;
 
 
     // ── Paso 2 – Origen ───────────────────────────────────────────────────────────
@@ -398,20 +399,7 @@ final class RegistroSolicitudDeposito extends Component
     public function mount(?string $id = null): void
     {
         $this->cargarCatalogosControlados();
-        $this->cargoConsultor = (string) (auth()->user()->cargo ?? '');
-        $this->institucionConsultor = (string) (auth()->user()->institucion ?? '');
-        $this->solicitudNombrePermiso = (string) auth()->user()->name;
-        $this->solicitudInstitucion = (string) (auth()->user()->institucion ?? '');
-        $this->solicitudCargo = (string) (auth()->user()->cargo ?? '');
-        $this->solicitudCorreo = (string) auth()->user()->email;
-        foreach (['solicitudCargo' => 'usuarios.cargos_catalogo', 'solicitudInstitucion' => 'usuarios.instituciones_catalogo'] as $campo => $tabla) {
-            $this->{$campo} = (string) (DB::table($tabla)->where('activo', true)
-                ->whereRaw('lower(nombre) = lower(?)', [trim($this->{$campo})])->value('nombre') ?? '');
-        }
-        if ($this->institucionConsultor !== '' && ! DB::table('usuarios.instituciones_catalogo')
-            ->where('nombre', $this->institucionConsultor)->where('activo', true)->exists()) {
-            $this->institucionConsultor = '';
-        }
+        $this->cargarDatosSolicitante();
 
         // Flujo de corrección: se abrió /deposito/{id}/corregir para subsanar un rechazo.
         if ($id !== null) {
@@ -440,6 +428,24 @@ final class RegistroSolicitudDeposito extends Component
             }
 
             return;
+        }
+    }
+
+    private function cargarDatosSolicitante(): void
+    {
+        $this->cargoConsultor = (string) (auth()->user()->cargo ?? '');
+        $this->institucionConsultor = (string) (auth()->user()->institucion ?? '');
+        $this->solicitudNombrePermiso = (string) auth()->user()->name;
+        $this->solicitudInstitucion = (string) (auth()->user()->institucion ?? '');
+        $this->solicitudCargo = (string) (auth()->user()->cargo ?? '');
+        $this->solicitudCorreo = (string) auth()->user()->email;
+        foreach (['solicitudCargo' => 'usuarios.cargos_catalogo', 'solicitudInstitucion' => 'usuarios.instituciones_catalogo'] as $campo => $tabla) {
+            $this->{$campo} = (string) (DB::table($tabla)->where('activo', true)
+                ->whereRaw('lower(nombre) = lower(?)', [trim($this->{$campo})])->value('nombre') ?? '');
+        }
+        if ($this->institucionConsultor !== '' && ! DB::table('usuarios.instituciones_catalogo')
+            ->where('nombre', $this->institucionConsultor)->where('activo', true)->exists()) {
+            $this->institucionConsultor = '';
         }
     }
 
@@ -898,7 +904,11 @@ final class RegistroSolicitudDeposito extends Component
         }
 
         $this->reset();
+        $this->resetErrorBag();
         $this->borradorRestaurado = false;
+        $this->cargarCatalogosControlados();
+        $this->cargarDatosSolicitante();
+        $this->dispatch('close-toast');
     }
 
     // ── Paso 1 ────────────────────────────────────────────────────────────────────
@@ -1005,6 +1015,26 @@ final class RegistroSolicitudDeposito extends Component
         }
 
         $this->persistirDatosSolicitudInicial($registrar, $datos);
+    }
+
+    public function pdfSolicitudGenerado(): bool
+    {
+        if ($this->solicitudFirmada) return true;
+        if ($this->solicitudId === null || $this->solicitudCambiosPendientes) return false;
+        $modelo = SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)
+            ->where('investigador_id', (string) auth()->id())->firstOrFail();
+        return app(\Modules\GestionPrestamosRecepciones\Presentation\Support\GeneradorPdfSolicitudDeposito::class)->estaGenerado($modelo);
+    }
+
+    public function visualizarPdfSolicitud(\Modules\GestionPrestamosRecepciones\Presentation\Support\GeneradorPdfSolicitudDeposito $generador): void
+    {
+        if ($this->solicitudFirmada) return;
+        if ($this->solicitudId !== null && ! $this->solicitudCambiosPendientes) {
+            $modelo = SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)
+                ->where('investigador_id', (string) auth()->id())->firstOrFail();
+            $generador->generar($modelo);
+        }
+        $this->mostrarVistaPdfSolicitud = true;
     }
 
     private function persistirDatosSolicitudInicial(RegistrarSolicitudDepositoHandler $registrar, array $datos): void
@@ -3670,6 +3700,7 @@ final class RegistroSolicitudDeposito extends Component
     public function render(): View
     {
         if ($this->getErrorBag()->any()) {
+            if ($this->paso === 0) $this->dispatch('solicitud-validation-errors');
             $this->mostrarToast(implode(' ', array_unique($this->getErrorBag()->all())), 'warning');
         }
         if ($this->solicitudId !== null && $this->paso > 0 && $this->paso < 9
