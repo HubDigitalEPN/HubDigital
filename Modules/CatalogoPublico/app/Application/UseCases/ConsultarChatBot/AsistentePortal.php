@@ -17,7 +17,7 @@ final class AsistentePortal
     ) {}
 
     /** @return array{texto:string, opciones:array, node_id?:int, variant_id?:int|null} */
-    public function responder(string $pregunta, ConsultarChatBotHandler $catalogo, ?int $nodoAnterior = null, array $variantesRecientes = [], array $contextoCatalogo = [], ?array $seleccionPortal = null, ?string $solicitudPendiente = null): array
+    public function responder(string $pregunta, ConsultarChatBotHandler $catalogo, ?int $nodoAnterior = null, array $variantesRecientes = [], array $contextoCatalogo = [], ?array $seleccionPortal = null, ?string $solicitudPendiente = null, bool $interpretarConModelo = true): array
     {
         $normal = preg_replace('/^[\s\x{00bf}?]+/u', '', Str::lower(Str::ascii(trim($pregunta)))) ?? '';
         $opciones = $this->opcionesBase();
@@ -248,6 +248,29 @@ final class AsistentePortal
         }
 
         if (preg_match('/portal|catalogo|coleccion|ejemplares|coordenadas|catalgo|espesimenes/', $normal)) return $this->ayudaFiltros($pregunta, $contextoCatalogo, $seleccionPortal);
+        if ($interpretarConModelo) {
+            $preguntas = [
+                'deposito' => '¿Cómo hago un depósito?',
+                'documentos' => '¿Qué documentos debo adjuntar para el depósito?',
+                'cuenta' => '¿Cómo creo una cuenta de depositante?',
+                'filtros' => '¿Cómo aplico los filtros del mapa?',
+                'seguimiento' => '¿Cómo consulto el estado de mi solicitud?',
+                'acceso' => '¿Necesito una cuenta para consultar el catálogo público?',
+            ];
+            $opcion = $this->modeloLocal->seleccionar($pregunta, [
+                'deposito' => 'entregar especímenes al museo', 'documentos' => 'requisitos documentales',
+                'cuenta' => 'crear usuario', 'filtros' => 'mapa y filtros',
+                'seguimiento' => 'estado del trámite', 'acceso' => 'catálogo sin cuenta',
+            ]);
+            if ($opcion !== null) return [
+                'texto' => '¿Esta es la orientación que buscas? Selecciona la pregunta para continuar.',
+                'fuente' => 'aclaracion', 'intent' => 'portal.orientacion_modelo',
+                'opciones' => [
+                    ['label' => $preguntas[$opcion], 'pregunta' => $preguntas[$opcion]],
+                    ['label' => 'Ver otras opciones', 'pregunta' => 'Menú'],
+                ],
+            ];
+        }
         return app(FuentesPublicasChat::class)->responder($pregunta);
     }
 

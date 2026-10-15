@@ -30,6 +30,12 @@ final class ContextoChat
             'expires_at' => time() + 1800,
             'node_id' => isset($result['node_id']) ? (int) $result['node_id'] : ($previous['node_id'] ?? null),
             'variants' => array_slice($previous['variants'] ?? [], -3),
+            // Una consulta global puede no tener filtros, pero conserva qué se contó.
+            'ultima_unidad' => match ($result['intent'] ?? '') {
+                'catalogo.count' => 'registros', 'catalogo.species' => 'especies',
+                'catalogo.genera' => 'géneros', 'catalogo.families' => 'familias',
+                default => ($result['fuente'] ?? '') === 'conversacion' ? ($previous['ultima_unidad'] ?? null) : null,
+            },
             'solicitud_pendiente' => array_key_exists('solicitud_pendiente', $result)
                 ? (is_string($result['solicitud_pendiente']) && mb_strlen($result['solicitud_pendiente']) <= 500 ? $result['solicitud_pendiente'] : null)
                 : ((in_array($result['intent'] ?? '', ['portal.limpiar', 'portal.acceso_publico'], true)
@@ -47,5 +53,14 @@ final class ContextoChat
             $context['variants'] = array_slice([...$context['variants'], (int) $result['variant_id']], -3);
         }
         session()->put(self::SESSION_KEY, $context);
+    }
+
+    public function continuarConsulta(string $pregunta): string
+    {
+        $unidad = $this->obtener()['ultima_unidad'] ?? null;
+        if (! in_array($unidad, ['registros', 'especies', 'géneros', 'familias'], true)
+            || ! preg_match('/\A[\s¿?]*y\s+en\s+(.+?)[?.!]*\z/iu', trim($pregunta), $lugar)) return $pregunta;
+        $cuantos = in_array($unidad, ['especies', 'familias'], true) ? 'Cuántas' : 'Cuántos';
+        return '¿'.$cuantos.' '.$unidad.' hay en '.trim($lugar[1]).'?';
     }
 }

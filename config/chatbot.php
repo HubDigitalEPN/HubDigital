@@ -9,6 +9,9 @@ return [
     'high_confidence_enabled' => false, // TEST_FINAL no confirmó precisión suficiente para usar HIGH.
     // El nombre del modelo es fijo para impedir usar accidentalmente uno mayor.
     'use_local_model' => env('CHATBOT_USE_LOCAL_MODEL', false),
+    // Aunque se copie una variable por error, localhost y dev no cargan Qwen.
+    'local_model_production_url' => 'https://labinvepn.org',
+    'local_model_timeout_seconds' => 3,
     // Las respuestas habituales se resuelven con reglas y datos locales.
     'use_external_biology' => env('CHATBOT_USE_EXTERNAL_BIOLOGY', false),
     'public_sources' => env('CHAT_PUBLIC_SOURCES', true),

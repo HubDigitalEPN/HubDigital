@@ -10,7 +10,7 @@ use Illuminate\Support\Str;
 final class AsistenteDocumentalDepositos
 {
     /** @param list<string> $requeridos @param list<array{rol:string,texto:string}> $historial */
-    public function responder(string $pregunta, array $requeridos, array $historial = [], array $contexto = []): string
+    public function responder(string $pregunta, array $requeridos, array $historial = [], array $contexto = [], bool $interpretarConModelo = true): string
     {
         $normal = $this->normalizar($pregunta);
         $requeridos = array_values(array_filter($requeridos, 'is_string'));
@@ -49,7 +49,7 @@ final class AsistenteDocumentalDepositos
         if (preg_match('/mismo expediente|coincid|correspond|relacion|otro proyecto|otra persona|otro titular|nombre.*difer|proyecto.*difer/', $normal)) {
             return 'Cada archivo se revisa por separado según su casilla: la autorización debe autorizar la recolección y el permiso o guía debe respaldar la movilización. No se comparan estos dos documentos entre sí. El nombre del archivo no determina su tipo; primero se comprueba su contenido y, si corresponde, después su firma digital.';
         }
-        if (preg_match('/firma|certificado|\.p12|\.pfx|token|clave|contrasen/', $normal)) {
+        if (preg_match('/firma|rubrica|certificado|\.p12|\.pfx|token|clave|contrasen/', $normal)) {
             $prefijo = ($contexto['solicitud_firmada'] ?? false) ? 'Tu solicitud inicial ya figura firmada. ' : '';
             return $prefijo.'Cada archivo externo se comprueba por separado. Una carta sin firma digital puede cargarse para mostrar su resultado, pero no permite superar el control de firmas. Solicita el PDF firmado a su emisor o firma tu propia carta mediante un mecanismo autorizado. Adjunta el archivo completo; editarlo o imprimirlo de nuevo puede invalidar su firma electrónica. El chat no recibe certificados, claves ni PIN.';
         }
@@ -82,6 +82,27 @@ final class AsistenteDocumentalDepositos
         if (preg_match('/procedencia|origen/', $tema)) return 'El documento de procedencia explica de dónde proviene el material y quién lo entrega, con referencia al proyecto y antecedentes disponibles. Adjunta el PDF completo en la casilla que pide procedencia; una guía o autorización es un documento distinto.';
         if (preg_match('/delegaci|tercero|representante/', $tema)) return 'La carta de delegación identifica a quien delega y a la persona autorizada, explica para qué trámite se delega e incluye fecha y firma. Se adjunta únicamente cuando el expediente la requiera.';
         if (preg_match('/^gracias[!. ]*$/', $normal)) return 'Con gusto. Puedes seguir preguntándome por los documentos de este expediente.';
+
+        if ($interpretarConModelo) {
+            $preguntas = [
+                'carta' => '¿Cómo redacto mi carta de justificación?',
+                'recoleccion' => '¿Qué autorización de recolección debo subir?',
+                'traslado' => '¿Qué guía de movilización debo subir?',
+                'firma' => '¿Cómo deben estar firmados los PDF?',
+                'pdf' => '¿Qué formato y tamaño de archivo se acepta?',
+                'casilla' => '¿Cómo sé si corresponde a su casilla?',
+            ];
+            $previas = array_column(array_filter($historial, static fn ($m): bool => is_array($m) && ($m['rol'] ?? '') === 'usuario'), 'texto');
+            $opcion = app(\Modules\CatalogoPublico\Application\UseCases\ConsultarChatBot\ModeloLocalPequeno::class)
+                ->seleccionar($pregunta, [
+                    'carta' => 'redactar carta',
+                    'recoleccion' => 'recolección', 'traslado' => 'traslado del material',
+                    'firma' => 'firma digital', 'pdf' => 'formato y tamaño',
+                    'casilla' => 'casilla correcta',
+                ], $previas);
+            if ($opcion !== null) return 'Si te refieres a «'.$preguntas[$opcion].'»: '
+                .$this->responder($preguntas[$opcion], $requeridos, $historial, $contexto, interpretarConModelo: false);
+        }
 
         return $requeridos !== []
             ? "En este paso debes adjuntar:\n{$lista}\nPuedo explicarte qué debe contener, cómo preparar el PDF, las firmas o un aviso de rechazo. ¿Cuál es tu duda?"

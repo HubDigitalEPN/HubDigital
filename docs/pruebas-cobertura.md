@@ -20,3 +20,12 @@ Los recorridos manuales complementarios utilizan Opera Neon QA en localhost.
 Los PDF privados de docs se revisan directamente en ese navegador por
 solicitud del usuario y no se incorporan al paquete. No se conservan capturas,
 informes ni resultados de esos recorridos.
+
+La interpretación opcional Qwen se cubre en Pest mediante HTTP simulado: exclusión
+de localhost y dev aunque se copie la variable, lista de intenciones autorizadas,
+caché, concurrencia, indisponibilidad y conservación de los controles documentales.
+Una intención inferida en el portal se ofrece como pregunta para confirmar;
+en la ayuda documental la orientación se expresa de forma condicional.
+Las menciones de rúbrica electrónica se atienden directamente con las reglas de firma.
+No duplica estos casos en Gherkin. La medición manual del backend ARM64 sólo
+comprueba latencia y recursos del servicio instalado; no repite esas suites.

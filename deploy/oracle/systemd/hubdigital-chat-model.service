@@ -1,0 +1,47 @@
+[Unit]
+Description=HubDigital Qwen3-0.6B local interpretation
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/opt/hubdigital/ollama/current/bin/ollama
+
+[Service]
+Type=simple
+User=hubdigital-ai
+Group=hubdigital-ai
+StateDirectory=hubdigital-chat-model
+StateDirectoryMode=0700
+Environment=HOME=/var/lib/hubdigital-chat-model
+Environment=OLLAMA_MODELS=/var/lib/hubdigital-chat-model/models
+Environment=OLLAMA_HOST=127.0.0.1:11434
+Environment=OLLAMA_NO_CLOUD=1
+Environment=OLLAMA_MAX_LOADED_MODELS=1
+Environment=OLLAMA_NUM_PARALLEL=1
+Environment=OLLAMA_MAX_QUEUE=1
+Environment=OLLAMA_CONTEXT_LENGTH=1024
+Environment=OLLAMA_KEEP_ALIVE=-1
+ExecStart=/opt/hubdigital/ollama/current/bin/ollama serve
+ExecStartPost=/usr/bin/python3 /opt/hubdigital/ollama/warm-chat-model.py
+TimeoutStartSec=90s
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=15s
+MemoryAccounting=true
+MemoryHigh=1536M
+MemoryMax=2G
+CPUAccounting=true
+CPUQuota=70%
+CPUWeight=10
+Nice=15
+TasksMax=96
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+LimitCORE=0
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

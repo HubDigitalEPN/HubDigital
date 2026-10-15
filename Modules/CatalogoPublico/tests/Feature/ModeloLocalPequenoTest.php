@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
 use Modules\CatalogoPublico\Application\UseCases\ConsultarChatBot\ModeloLocalPequeno;
 
 uses(\Tests\InfrastructureTestCase::class);
@@ -30,4 +31,106 @@ test('el modelo pequeno responde solo con una fuente si esta habilitado y bajo e
     expect((new ModeloLocalPequeno)->resumir('¿Cuántas patas tienen los insectos?', 'Los insectos tienen seis patas.'))
         ->toContain('tres pares');
     Http::assertSentCount(2);
+});
+
+function habilitarQwenAislado(): void
+{
+    config()->set('cache.default', 'array');
+    config()->set('app.env', 'production');
+    config()->set('app.url', 'https://labinvepn.org');
+    config()->set('chatbot.use_local_model', true);
+    Cache::forget('chat:qwen:inventario:v1');
+}
+
+test('la interpretación Qwen queda excluida de localhost y desarrollo aunque se copie la variable', function (string $entorno, string $url): void {
+    habilitarQwenAislado();
+    config()->set('app.env', $entorno);
+    config()->set('app.url', $url);
+    Http::fake();
+    expect((new ModeloLocalPequeno)->seleccionar('No entiendo este trámite', ['deposito' => 'entrega']))->toBeNull();
+    Http::assertNothingSent();
+})->with([['local', 'http://localhost:8000'], ['production', 'https://dev.labinvepn.org']]);
+
+test('Qwen sólo devuelve una opción aprobada y reutiliza su interpretación sin otra inferencia', function (): void {
+    habilitarQwenAislado();
+    Http::fake([
+        '*/api/tags' => Http::response(['models' => [['name' => 'qwen3:0.6b', 'size' => 523_000_000]]]),
+        '*/api/chat' => Http::response(['message' => ['content' => '"deposito"']]),
+    ]);
+    $model = new ModeloLocalPequeno;
+    $options = ['deposito' => 'entregar especímenes', 'documentos' => 'requisitos'];
+    expect($model->seleccionar('Quiero entregar material al museo', $options))->toBe('deposito')
+        ->and($model->seleccionar('Quiero entregar material al museo', $options))->toBe('deposito');
+    Http::assertSentCount(2);
+    Http::assertSent(fn ($request): bool => str_ends_with($request->url(), '/api/chat')
+        && $request['think'] === false && $request['stream'] === false
+        && $request['options']['num_thread'] === 1
+        && $request['format']['enum'] === ['deposito', 'documentos', 'ninguna']);
+});
+
+test('un fallo o una salida de Qwen fuera de la lista conserva la ayuda habitual', function (string $salida): void {
+    habilitarQwenAislado();
+    Http::fake([
+        '*/api/tags' => Http::response(['models' => [['name' => 'qwen3:0.6b', 'size' => 523_000_000]]]),
+        '*/api/chat' => Http::response(['message' => ['content' => $salida]]),
+    ]);
+    expect((new ModeloLocalPequeno)->seleccionar('Pregunta desconocida', ['firmas' => 'firma digital']))->toBeNull();
+})->with(['"aprobar_archivo"', '"ninguna"', 'Archivo aprobado', '{"opcion":"firmas"}']);
+
+test('un modelo ocupado no encola otra inferencia ni libera el lock ajeno', function (): void {
+    habilitarQwenAislado();
+    Http::fake();
+    $occupied = Cache::lock('chat:qwen:inferencia', 10);
+    expect($occupied->get())->toBeTrue();
+    try {
+        expect((new ModeloLocalPequeno)->seleccionar('Otra duda', ['firmas' => 'firma digital']))->toBeNull()
+            ->and($occupied->isOwnedByCurrentProcess())->toBeTrue();
+        Http::assertNothingSent();
+    } finally {
+        $occupied->release();
+    }
+});
+
+test('una caída del servicio libera la inferencia y permite continuar sin modelo', function (): void {
+    habilitarQwenAislado();
+    Http::fake(['*' => Http::failedConnection()]);
+    expect((new ModeloLocalPequeno)->seleccionar('No entiendo el trámite', ['deposito' => 'entrega']))->toBeNull();
+    $available = Cache::lock('chat:qwen:inferencia', 10);
+    expect($available->get())->toBeTrue();
+    $available->release();
+});
+
+test('el asistente documental usa la orientación aprobada sin aceptar ni firmar documentos', function (): void {
+    habilitarQwenAislado();
+    Http::fake([
+        '*/api/tags' => Http::response(['models' => [['name' => 'qwen3:0.6b', 'size' => 523_000_000]]]),
+        '*/api/chat' => Http::response(['message' => ['content' => '"firma"']]),
+    ]);
+    $assistant = new \Modules\GestionPrestamosRecepciones\Infrastructure\Services\AsistenteDocumentalDepositos;
+    $answer = $assistant->responder('Quiero que el emisor lo avale electrónicamente', [], [], ['solicitud_firmada' => true]);
+    expect($answer)->toBe('Si te refieres a «¿Cómo deben estar firmados los PDF?»: '.$assistant->responder('¿Cómo deben estar firmados los PDF?', [], [], ['solicitud_firmada' => true], interpretarConModelo: false))
+        ->toContain('no permite superar el control de firmas', 'no recibe certificados');
+    Http::assertSentCount(2);
+});
+
+test('rúbrica electrónica usa la orientación de firmas sin depender de Qwen', function (): void {
+    habilitarQwenAislado();
+    Http::fake();
+    $assistant = new \Modules\GestionPrestamosRecepciones\Infrastructure\Services\AsistenteDocumentalDepositos;
+    expect($assistant->responder('Me piden una rúbrica electrónica, no sé cómo resolverlo', []))
+        ->toBe($assistant->responder('¿Cómo deben estar firmados los PDF?', [], interpretarConModelo: false));
+    Http::assertNothingSent();
+});
+
+test('una consulta global conserva su unidad para y en provincia sin inventar filtros ni usar Qwen', function (): void {
+    $context = app(\Modules\CatalogoPublico\Application\UseCases\ConsultarChatBot\ContextoChat::class);
+    $context->guardar([], ['fuente' => 'catalogo', 'intent' => 'catalogo.count', 'entidades' => []]);
+    Http::fake();
+    expect($context->obtener()['entities'])->toBe([])
+        ->and($context->continuarConsulta('¿Y en Pichincha?'))->toBe('¿Cuántos registros hay en Pichincha?');
+    $context->guardar($context->obtener(), ['fuente' => 'catalogo', 'intent' => 'catalogo.species', 'entidades' => []]);
+    expect($context->continuarConsulta('¿Y en Orellana?'))->toBe('¿Cuántas especies hay en Orellana?');
+    $context->reiniciar();
+    expect($context->continuarConsulta('¿Y en Pichincha?'))->toBe('¿Y en Pichincha?');
+    Http::assertNothingSent();
 });
