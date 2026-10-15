@@ -63,7 +63,9 @@ fi
 # repetir el recorrido lento de NTFS y mantiene el autoload de producción.
 (
     cd "${stage}"
-    "${PHP_BIN:-php}" "${COMPOSER_BIN:-$(command -v composer)}" dump-autoload --no-dev --optimize --no-scripts --no-interaction
+    # El staging se ejecuta como root y necesita el merge-plugin permitido
+    # por composer.json para conservar los espacios de nombres de los módulos.
+    COMPOSER_ALLOW_SUPERUSER=1 "${PHP_BIN:-php}" "${COMPOSER_BIN:-$(command -v composer)}" dump-autoload --no-dev --optimize --no-scripts --no-interaction
 )
 
 remaining_link="$(find "${stage}" -type l -print -quit)"
