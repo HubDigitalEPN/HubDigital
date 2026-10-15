@@ -8,41 +8,14 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\Solici
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\RegistroSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\MisDepositos;
+use Modules\GestionPrestamosRecepciones\Application\Ports\ValidacionTaxonomicaPort;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\MatrizEspeciesEloquentModel;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\RegistroEspecimenEloquentModel;
 use Tests\DatabaseFeatureTestCase;
 
 uses(DatabaseFeatureTestCase::class);
 
-/** @return array{SolicitudDepositoEloquentModel, User} */
-function borradorWizardSinIdentidadParaPruebas(int $paso = 4): array
-{
-    configurarR2FalsoParaPruebas();
-    $modelo = solicitudColaR2ParaPruebas();
-    $usuario = User::findOrFail($modelo->investigador_id);
-    $usuario->update(['cargo' => $modelo->solicitud_cargo, 'institucion' => $modelo->solicitud_institucion]);
-    $almacenamiento = app(AlmacenamientoDepositos::class);
-    $ruta = 'depositos/qa/'.$modelo->id.'/oficio.pdf';
-    // Sólo se prepara el estado durable de navegación. La firma real conserva
-    // sus pruebas criptográficas y no se sustituye por estos bytes de fixture.
-    $huella = $almacenamiento->guardarContenido($ruta, '%PDF-fixture navegación sin identidad', 'application/pdf');
-    $carta = 'Documento de explicación de motivos y/o carta de justificación (institucional o personal)';
-    $rutaCarta = 'depositos/qa/'.$modelo->id.'/carta.pdf';
-    $almacenamiento->guardarContenido($rutaCarta, '%PDF-fixture documental para navegación', 'application/pdf');
-    $modelo->forceFill([
-        'paso_actual' => $paso,
-        'solicitud_firmada_en' => now(), 'solicitud_firmada_ruta' => $ruta,
-        'solicitud_firmada_sha256' => $huella, 'solicitud_firma_metadata' => ['pdf_sha256' => $huella],
-        'origen_recoleccion' => 'Nacional (Ecuador)', 'situacion_regulatoria' => 'Sin permisos del MAE',
-        'provincia_origen' => 'Pichincha', 'localidad' => 'Quito', 'grupo_animal' => 'Crustáceos',
-        'nro_individuos' => 12, 'nro_morfoespecies' => 1, 'nro_lotes' => 2,
-        'nombre_investigador_documento' => 'Persona del documento',
-        'extraccion_estado' => 'completada', 'datos_faltantes' => [],
-        'documentos_requeridos' => [$carta], 'documentos_cargados' => [$carta => $rutaCarta],
-        'validacion_archivos' => [$carta => 'valido'], 'firmas_electronicas' => [$carta => 'firmado'],
-        'extraccion_metadatos' => ['wizard_pasos_completados' => range(1, $paso - 1), 'evidencia_previa' => 'conservar'],
-    ])->save();
 
-    return [$modelo, $usuario->refresh()];
-}
 
 test('datos avanza directamente a detalle sin comparar nombres y confirma la extracción', function (string $nombrePerfil): void {
     [$modelo, $usuario] = borradorWizardSinIdentidadParaPruebas();
@@ -52,7 +25,7 @@ test('datos avanza directamente a detalle sin comparar nombres y confirma la ext
     $componente->assertSet('paso', 4)->assertSee('(6) Detalle')->assertSee('(7) Envío')
         ->assertDontSee('(8) Envío')->assertDontSee('Validación de identidad')
         ->call('guardarPasoCuatro')->assertSet('paso', 7)
-        ->assertSee('Detalle biológico asistido')->assertDontSee('Discrepancia')
+        ->assertSee('Especímenes y lotes')->assertDontSee('Discrepancia')
         ->assertDontSee('Carta de delegación / justificación de tercero');
     expect($componente->instance()->pasoVisible())->toBe(6)
         ->and($componente->instance()->pasosCompletadosVisibles())->toBe([1, 2, 3, 4, 5]);
@@ -109,7 +82,7 @@ test('recupera el progreso antiguo sin historial de círculos y conserva los byt
     $ruta = $modelo->solicitud_firmada_ruta;
     $huella = $modelo->solicitud_firmada_sha256;
     $componente = Livewire::actingAs($usuario)->test(RegistroSolicitudDeposito::class, ['id' => $modelo->id]);
-    $componente->assertSet('paso', 7)->assertSee('Detalle biológico asistido');
+    $componente->assertSet('paso', 7)->assertSee('Especímenes y lotes');
     expect($componente->instance()->pasosCompletadosVisibles())->toBe([1, 2, 3, 4, 5]);
     $componente->call('volverAPasoCompletado', 5)->assertSet('paso', 4);
     expect($modelo->fresh()->extraccion_metadatos)->toMatchArray(['wizard_pasos_completados' => [1, 2, 3, 4], 'evidencia_previa' => 'conservar'])
@@ -132,3 +105,76 @@ test('mis depósitos comparte los siete números del wizard al retomar un borrad
     Livewire::actingAs($usuario)->test(MisDepositos::class)
         ->assertSee('Paso '.$numeroVisible.' de 7')->assertDontSee('de 8');
 })->with([[4, 5], [6, 6], [7, 6], [8, 7]]);
+
+test('datos continúa sin localidad y retira el requisito antiguo sin retirar otros campos', function (): void {
+    [$modelo, $usuario] = borradorWizardSinIdentidadParaPruebas();
+    $modelo->forceFill(['localidad' => null, 'localidad_origen_codigo' => null, 'datos_faltantes' => ['Localidad']])->save();
+    $componente = Livewire::actingAs($usuario)->test(RegistroSolicitudDeposito::class, ['id' => $modelo->id]);
+    $componente->assertSee('Localidad (opcional)')->call('guardarPasoCuatro')->assertSet('paso', 7);
+    expect($componente->get('datosFaltantes'))->not->toContain('Localidad')
+        ->and($componente->get('registroNativo')['verbatimLocality'])->toBe('');
+});
+
+test('el avance siempre identifica el siguiente paso y no ofrece agregar registros', function (): void {
+    [$modelo, $usuario] = borradorWizardSinIdentidadParaPruebas();
+    $componente = Livewire::actingAs($usuario)->test(RegistroSolicitudDeposito::class, ['id' => $modelo->id]);
+    $componente->assertSee('Ir al Paso 6 Detalle')->call('guardarPasoCuatro')->assertSet('paso', 7)
+        ->assertSee('Ir al Paso 7 Envío')->assertDontSee('Agregar registro')
+        ->assertSee('Identificación del material')->assertSee('Lugar de recolección')
+        ->assertSee('Datos de colecta')->assertSee('Conservación y observaciones');
+});
+
+test('el editor permite borrar la localidad sin borrar los otros datos ni bloquear el avance', function (): void {
+    [$modelo, $usuario] = borradorWizardSinIdentidadParaPruebas();
+    $componente = Livewire::actingAs($usuario)->test(RegistroSolicitudDeposito::class, ['id' => $modelo->id]);
+    $componente->call('abrirEditorManual', 'Localidad')->set('valorEditorManual', '')
+        ->call('guardarEditorManual')->assertHasNoErrors()->assertSet('localidad', '')
+        ->assertSee('No indicada')->call('guardarPasoCuatro')->assertSet('paso', 7);
+    expect($modelo->fresh()->localidad)->toBeNull()->and($modelo->fresh()->localidad_origen_codigo)->toBeNull()
+        ->and($modelo->fresh()->nro_individuos)->toBe(12)->and($modelo->fresh()->provincia_origen)->toBe('Pichincha');
+});
+
+
+
+test('el avance guarda un detalle sin localidad y permite revisar editar y reanudar el mismo registro', function (): void {
+    [$modelo, $usuario] = borradorWizardSinIdentidadParaPruebas();
+    $modelo->forceFill(['localidad' => null, 'localidad_origen_codigo' => null])->save();
+    $componente = detalleNativoWizardParaPruebas($modelo, $usuario);
+    $componente->call('guardarPasoCinco')->assertHasNoErrors()->assertSet('paso', 8)
+        ->assertSee('Paso 7 Revisar y Enviar')->assertSet('registroNativo.scientificName', 'Atta cephalotes');
+    $matrizId = $componente->get('matrizId');
+    $registros = RegistroEspecimenEloquentModel::where('matriz_id', $matrizId)->get();
+    expect($registros)->toHaveCount(1)->and($registros[0]->datos_dwc['individualCount'])->toBe(12)
+        ->and($registros[0]->datos_dwc['verbatimLocality'] ?? null)->toBeNull()
+        ->and($modelo->fresh()->matriz_id)->toBe($matrizId);
+    $componente->call('retroceder')->assertSet('paso', 7)
+        ->set('registroNativo.individualCount', 13)->call('guardarPasoCinco')->assertHasNoErrors()->assertSet('paso', 8);
+    $matrizId = $componente->get('matrizId');
+    expect(MatrizEspeciesEloquentModel::where('solicitud_id', $modelo->id)->count())->toBe(1)
+        ->and($componente->get('estadosRegistros'))->toHaveCount(1)
+        ->and(RegistroEspecimenEloquentModel::where('matriz_id', $matrizId)->firstOrFail()->datos_dwc['individualCount'])->toBe(13);
+    Livewire::actingAs($usuario)->test(RegistroSolicitudDeposito::class, ['id' => $modelo->id])
+        ->assertSet('paso', 8)->call('retroceder')->assertSet('paso', 7)
+        ->assertSet('registroNativo.scientificName', 'Atta cephalotes')
+        ->assertSet('registroNativo.individualCount', 13)->assertSet('registroNativo.verbatimLocality', '');
+});
+
+test('un detalle inválido conserva la matriz anterior y puede corregirse sin otro botón', function (): void {
+    [$modelo, $usuario] = borradorWizardSinIdentidadParaPruebas();
+    $componente = detalleNativoWizardParaPruebas($modelo, $usuario);
+    $componente->call('guardarPasoCinco')->assertHasNoErrors()->assertSet('paso', 8)->call('retroceder');
+    $matrizId = $componente->get('matrizId');
+    $componente->set('registroNativo.individualCount', 0)->call('guardarPasoCinco')
+        ->assertHasErrors('registroNativo.individualCount')->assertSet('paso', 7);
+    expect(RegistroEspecimenEloquentModel::where('matriz_id', $matrizId)->firstOrFail()->datos_dwc['individualCount'])->toBe(12);
+    $componente->set('registroNativo.individualCount', 12);
+    $fila = $componente->get('registrosNativos')[0];
+    unset($fila['decimalLatitude']);
+    $componente->set('registrosNativos', [$fila])->call('guardarMatrizNativa')->assertSet('paso', 7);
+    expect($componente->get('errorMatriz'))->not->toBe('')
+        ->and($modelo->fresh()->matriz_id)->toBe($matrizId)
+        ->and(MatrizEspeciesEloquentModel::whereKey($matrizId)->exists())->toBeTrue()
+        ->and(RegistroEspecimenEloquentModel::where('matriz_id', $matrizId)->count())->toBe(1);
+    $componente->call('guardarPasoCinco')->assertHasNoErrors()->assertSet('errorMatriz', '')->assertSet('paso', 8);
+    expect(MatrizEspeciesEloquentModel::where('solicitud_id', $modelo->id)->count())->toBe(1);
+});

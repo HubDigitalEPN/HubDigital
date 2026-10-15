@@ -10,6 +10,7 @@
     'archivoNombre' => null,
     'plantilla' => null,
     'ayuda' => null,
+    'contenidoPorRevisar' => false,
 ])
 
 <div
@@ -23,6 +24,7 @@
         arrastrando: false,
         cargado: {{ $cargado ? 'true' : 'false' }},
         firmaValidada: {{ in_array($estadoFirma, ['firmado', 'firmado_sin_revocacion'], true) ? 'true' : 'false' }},
+        contenidoPorRevisar: @js($contenidoPorRevisar),
         archivoEstado: @js($estadoArchivo),
         nombreArchivo: @js($archivoNombre),
         soltar(e) {
@@ -49,10 +51,11 @@
     x-on:livewire-upload-progress="progreso = $event.detail.progress"
     x-on:livewire-upload-finish="subiendo = false; progreso = 100"
     x-on:livewire-upload-error="subiendo = false; progreso = 0; errorSubida = true; $dispatch('show-toast', {message: 'No se pudo completar la carga. Revisa que el PDF no supere 20 MB e intenta de nuevo.', variant: 'warning'})"
-    x-on:documento-aceptado.window="if ($event.detail.propiedad === '{{ $propiedad }}') { cargado = true; archivoEstado = 'valido'; firmaValidada = false; errorSubida = false; rechazo = null }"
+    x-on:documento-aceptado.window="if ($event.detail.propiedad === '{{ $propiedad }}') { cargado = true; archivoEstado = 'valido'; contenidoPorRevisar = !!$event.detail.contenidoIncierto; firmaValidada = false; errorSubida = false; rechazo = null }"
     x-on:archivo-validado.window="if ($event.detail.nombre === @js($nombre)) { archivoEstado = $event.detail.estado; rechazo = ['valido', 'analizando'].includes(archivoEstado) ? null : { estado: archivoEstado, mensaje: $event.detail.mensaje }; errorSubida = !!rechazo }"
     x-on:firma-actualizada.window="if ($event.detail.nombre === @js($nombre)) firmaValidada = ['firmado', 'firmado_sin_revocacion'].includes($event.detail.estado)"
     x-on:documento-rechazado.window="if ($event.detail.propiedad === '{{ $propiedad }}') { cargado = false; progreso = 0; errorSubida = true; firmaValidada = false; archivoEstado = $event.detail.estado; rechazo = { estado: $event.detail.estado, mensaje: $event.detail.mensaje } }"
+    x-on:documento-eliminado.window="if ($event.detail.nombre === @js($nombre)) { cargado = false; nombreArchivo = null; progreso = 0; rechazo = null; errorSubida = false; contenidoPorRevisar = false }"
     x-on:click="if (!cargado) $refs.fileInput.click()"
     x-on:keydown.enter.self.prevent="if (!cargado) $refs.fileInput.click()"
     x-on:keydown.space.self.prevent="if (!cargado) $refs.fileInput.click()"
@@ -65,7 +68,7 @@
     x-on:drop.prevent="soltar($event)"
     class="flex flex-col items-center gap-3 text-center sm:flex-row sm:items-center sm:gap-3 sm:text-left rounded-lg border-2 p-3 transition-all {{ $attributes->get('class') }}"
     x-bind:class="cargado
-        ? (archivoEstado === 'valido' && firmaValidada && !rechazo ? 'border-success/40 bg-success/5 cursor-default' : 'border-error/60 bg-error/5 cursor-default')
+        ? (archivoEstado === 'valido' && firmaValidada && !rechazo ? (contenidoPorRevisar ? 'border-warning/40 bg-warning/5 cursor-default' : 'border-success/40 bg-success/5 cursor-default') : 'border-error/60 bg-error/5 cursor-default')
         : errorSubida
             ? 'border-error/60 bg-error/5 border-dashed cursor-pointer'
         : arrastrando
@@ -148,6 +151,7 @@
                 </span>
             </template>
             @if($cargado)
+                <span x-show="contenidoPorRevisar" class="inline-flex items-center rounded bg-warning/15 px-1.5 py-0.5 text-[10px] font-semibold text-warning">Contenido por revisar</span>
                 @php
                     $etiquetaFirma = match($estadoFirma) {
                         'validando' => 'Validando firma',
@@ -156,12 +160,14 @@
                         'almacen_incompleto' => 'Almacén pendiente',
                         'sin_firma' => 'Sin firma',
                         'firma_invalida' => 'Firma inválida',
+                        'documento_modificado' => 'Documento modificado tras la firma',
                         'certificado_caducado' => 'Certificado caducado',
                         'certificado_aun_no_vigente' => 'Certificado aún no vigente',
                         'certificado_revocado' => 'Certificado revocado',
                         'certificado_no_confiable' => 'Certificado no confiable',
                         'revocacion_no_comprobable' => 'Revocación no comprobada',
                         'verificacion_no_disponible' => 'Error de verificación',
+                        'no_verificado' => 'Firma no comprobada',
                         default => $validandoFirma ? 'Validando firma' : 'Firma por validar',
                     };
                     $firmaCorrecta = in_array($estadoFirma, ['firmado', 'firmado_sin_revocacion'], true);
@@ -178,6 +184,11 @@
                 </span>
                 @if($estadoFirma === 'firmado_sin_revocacion')
                     <span x-show="cargado" class="text-[10px] text-text-secondary">Revocación no comprobada</span>
+                @endif
+                @if($estadoFirma === 'documento_modificado')
+                    <span x-show="cargado && !rechazo" class="text-xs text-error">La firma es válida, pero no cubre los cambios posteriores del PDF. Solicita la versión final firmada.</span>
+                @elseif($estadoFirma === 'sin_firma')
+                    <span x-show="cargado && !rechazo" class="text-xs text-error">El PDF no contiene una firma digital. Una imagen de la firma no la sustituye.</span>
                 @endif
             @endif
             <span x-show="cargado" x-cloak class="text-xs text-text-secondary">
@@ -234,7 +245,9 @@
                 :style="'width: ' + progreso + '%'"
             ></div>
         </div>
-        <span x-show="!cargado && (subiendo || progreso > 0)" x-cloak x-text="progreso + '%'" class="text-xs text-text-secondary mt-0.5 block"></span>
+        <span x-show="!cargado && !errorSubida && (subiendo || progreso > 0)" x-cloak
+            x-text="progreso === 100 ? 'Revisando PDF y firma…' : progreso + '%'"
+            class="text-xs text-text-secondary mt-0.5 block" role="status" aria-live="polite"></span>
 
         <div x-show="errorSubida" x-cloak class="hub-upload-rejection">
             <strong>Archivo no aceptado</strong>
@@ -251,7 +264,7 @@
         wire:loading.attr="disabled"
         wire:target="eliminarDocumento('{{ $nombre }}')"
         class="shrink-0 self-end flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-error border border-error/30 bg-error/5 hover:bg-error/15 transition-colors"
-        x-on:click.stop="cargado = false; nombreArchivo = null; progreso = 0; rechazo = null; errorSubida = false"
+        x-on:click.stop
     >
         <flux:icon wire:loading wire:target="eliminarDocumento('{{ $nombre }}')" name="arrow-path" class="size-3.5 animate-spin" />
         <flux:icon wire:loading.remove wire:target="eliminarDocumento('{{ $nombre }}')" name="trash" class="size-3.5" />

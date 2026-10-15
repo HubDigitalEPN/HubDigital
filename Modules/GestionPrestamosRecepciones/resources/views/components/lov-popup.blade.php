@@ -22,9 +22,11 @@
     </button>
     <flux:error :name="$campo" />
     <template x-if="abierto">
-    <div class="hub-lov-overlay" x-on:click.self="cerrar()">
-        <section id="{{ $idLov }}-dialogo" class="hub-lov-dialog" role="dialog" aria-modal="true"
-            aria-labelledby="{{ $idLov }}-titulo" x-trap.inert.noscroll="abierto">
+    <dialog id="{{ $idLov }}-dialogo" class="hub-lov-overlay" role="dialog" aria-modal="true" aria-labelledby="{{ $idLov }}-titulo"
+        x-init="$nextTick(() => { if ($el.isConnected && !$el.open) { $el.showModal(); $el.querySelector('.hub-lov-search')?.focus({preventScroll: true}) } })"
+        x-on:cancel.prevent.stop="cerrar()" x-on:keydown.escape.stop.prevent="cerrar()"
+        x-on:click.self="cerrar()">
+        <section class="hub-lov-dialog {{ str_starts_with($label, 'Localidad') ? 'hub-lov-dialog--localidad' : '' }}">
             <div class="hub-lov-heading"><h3 id="{{ $idLov }}-titulo">Buscar</h3>
                 <button type="button" x-on:click="cerrar()" aria-label="Cerrar lista de {{ mb_strtolower($label) }}">×</button>
             </div>
@@ -52,6 +54,6 @@
             </div>
             <div class="hub-lov-footer"><button type="button" x-on:click="mostrarMas()" x-bind:disabled="{{ $busquedaRemota ? 'cargando || !hayMas' : 'visibles.length >= filtradas.length' }}">Mostrar más</button></div>
         </section>
-    </div>
+    </dialog>
     </template>
 </div>

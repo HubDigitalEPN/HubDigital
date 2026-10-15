@@ -11,6 +11,7 @@ fi
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 oracle_dir="$(cd -- "${script_dir}/.." && pwd)"
+source "${script_dir}/deployment-host.sh"
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
@@ -40,7 +41,7 @@ install -m 0644 "${oracle_dir}/php/99-hubdigital.ini" /etc/php/8.4/cli/conf.d/99
 install -m 0644 "${oracle_dir}/php/hubdigital.conf" /etc/php/8.4/fpm/pool.d/hubdigital.conf
 # El certificado todavia no existe: se instala primero HTTP para que nginx -t
 # sea valido y Certbot pueda resolver HTTP-01. HTTPS se instala despues.
-install -m 0644 "${oracle_dir}/nginx/hubdigital-http.conf" /etc/nginx/sites-available/hubdigital
+install_nginx_for_host "${oracle_dir}/nginx/hubdigital-http.conf" /etc/nginx/sites-available/hubdigital
 ln -sfn /etc/nginx/sites-available/hubdigital /etc/nginx/sites-enabled/hubdigital
 rm -f /etc/nginx/sites-enabled/default
 

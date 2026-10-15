@@ -11,6 +11,7 @@ fi
 
 env_file=/etc/hubdigital/hubdigital.env
 app_dir=/srv/hubdigital/current
+source "$(dirname -- "${BASH_SOURCE[0]}")/deployment-host.sh"
 [[ -r "${env_file}" && -f "${app_dir}/artisan" ]] || { echo 'Falta entorno o release activa.' >&2; exit 66; }
 artisan() {
     systemd-run --quiet --wait --collect --pipe \
@@ -46,11 +47,11 @@ for extension in curl gd intl mbstring openssl pdo_pgsql xml zip bcmath; do
     grep -Fxq "${extension}" <<<"${php_modules}" || { echo "Falta la extensión PHP ${extension}." >&2; exit 65; }
 done
 pg_isready --host=127.0.0.1 --port=5432 --username="$(read_env DB_USERNAME)" --dbname="$(read_env DB_DATABASE)"
-[[ -s /etc/letsencrypt/live/dev.labinvepn.org/fullchain.pem && -s /etc/letsencrypt/live/dev.labinvepn.org/privkey.pem ]] || {
+[[ -s /etc/letsencrypt/live/${deployment_hostname}/fullchain.pem && -s /etc/letsencrypt/live/${deployment_hostname}/privkey.pem ]] || {
     echo 'Falta el certificado HTTPS del origen.' >&2
     exit 65
 }
-curl --fail --silent --show-error --max-time 15 --resolve dev.labinvepn.org:443:127.0.0.1 https://dev.labinvepn.org/depositos >/dev/null
+curl --fail --silent --show-error --max-time 15 --resolve "${deployment_hostname}:443:127.0.0.1" "https://${deployment_hostname}/depositos" >/dev/null
 artisan migrate:status --no-interaction
 artisan depositos:verificar-almacenamiento --exigir-r2
 PHP_BIN=/usr/bin/php8.4 COMPOSER_BIN=/usr/bin/composer \

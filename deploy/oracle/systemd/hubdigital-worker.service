@@ -9,7 +9,7 @@ User=www-data
 Group=www-data
 WorkingDirectory=/srv/hubdigital/current
 EnvironmentFile=/etc/hubdigital/hubdigital.env
-ExecStart=/usr/bin/php8.4 artisan queue:work --queue=${HUBDIGITAL_VALIDATION_QUEUE} --sleep=3 --tries=3 --backoff=30,120,300 --timeout=300 --memory=192 --max-time=900 --no-interaction
+ExecStart=/usr/bin/bash /srv/hubdigital/current/deploy/oracle/scripts/run-queue-worker.sh
 Restart=always
 RestartSec=10s
 TimeoutStopSec=330s

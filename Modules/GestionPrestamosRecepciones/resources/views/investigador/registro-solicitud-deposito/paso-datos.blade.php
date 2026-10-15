@@ -151,7 +151,7 @@
                             'Cargo' => 'Selecciona tu cargo de la lista administrada por el administrador.',
                             'Institución' => 'Selecciona la entidad a la que perteneces. El administrador mantiene esta lista.',
                             'Provincia' => 'Selecciona la provincia donde se recolectó el material. Debe coincidir con la zona de recolección.',
-                            'Localidad' => 'Indica el lugar de recolección dentro de la provincia seleccionada.',
+                            'Localidad' => 'Este dato es opcional. Selecciona un lugar del catálogo público o déjalo vacío.',
                             default => $tooltipsPorCampo[$campoEditorManual] ?? 'Completa este dato de la solicitud de depósito.',
                         } }}
                     </p>
@@ -166,14 +166,12 @@
                     @elseif($campoEditorManual === 'Provincia')
                         <x-gestionprestamosrecepciones::lov-popup campo="valorEditorManual" label="Provincia" :valor="$valorEditorManual" :opciones="array_column($provinciasCatalogo, 'nombre')" :contexto="$campoEditorManual" placeholder="Selecciona una provincia" />
                     @elseif($campoEditorManual === 'Localidad')
-                        <x-gestionprestamosrecepciones::lov-popup campo="valorEditorManual" label="Localidad" :valor="$valorEditorManual" :opciones="collect($localidadesCatalogo)->mapWithKeys(fn ($nombre) => [$nombre => $nombre])->all() + ['__OTRA__' => 'Otra localidad de esta provincia…']" :contexto="$campoEditorManual" placeholder="Selecciona una localidad" />
-                        @if($valorEditorManual === '__OTRA__')
-                            <div class="mt-2"><flux:input wire:model="localidadEspecifica" label="Nombre de la localidad" maxlength="140" placeholder="Área natural, parroquia o sitio de recolección" /><flux:error name="localidadEspecifica" /></div>
-                        @endif
+                        <x-gestionprestamosrecepciones::lov-popup campo="valorEditorManual" label="Localidad (opcional)" :valor="$valorEditorManual"
+                            :opciones="['' => 'Sin localidad (opcional)'] + $localidadesCatalogo" :required="false"
+                            :contexto="$provincia" busqueda-remota="buscarLocalidadesDatoLov" placeholder="Selecciona una localidad" />
                     @else
                         <flux:input wire:model="valorEditorManual" :label="$campoEditorManual" :type="in_array($campoEditorManual, ['N.º Individuos', 'N.º Morfoespecies', 'N.º Lotes']) ? 'number' : 'text'" :min="in_array($campoEditorManual, ['N.º Individuos', 'N.º Morfoespecies', 'N.º Lotes']) ? 1 : null" :max="in_array($campoEditorManual, ['N.º Individuos', 'N.º Morfoespecies', 'N.º Lotes']) ? \Modules\GestionPrestamosRecepciones\Domain\Services\ReglaCantidadesMaterial::MAXIMO : null" :step="in_array($campoEditorManual, ['N.º Individuos', 'N.º Morfoespecies', 'N.º Lotes']) ? 1 : null" placeholder="Ingresa el dato" autofocus />
                     @endif
-                    <flux:error name="valorEditorManual" />
                 </div>
                 <div class="flex justify-end gap-2">
                     <flux:modal.close><flux:button variant="ghost">Cancelar</flux:button></flux:modal.close>

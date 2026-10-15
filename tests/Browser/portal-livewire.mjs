@@ -1,7 +1,7 @@
 /** Puerta obligatoria de crear-paquete-oci: navegador real, assets compilados y Livewire real. */
 import assert from 'node:assert/strict';
 import {spawn, execFileSync} from 'node:child_process';
-import {existsSync, mkdtempSync, rmSync, writeFileSync} from 'node:fs';
+import {existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import net from 'node:net';
@@ -23,6 +23,7 @@ const fixture = path.join(temporal, 'fixture.json');
 const token = randomBytes(8).toString('hex');
 const procesos = [];
 let conexion;
+let entorno;
 const excepciones = [], erroresLivewire = [], peticiones = new Set();
 const demora = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function puertoLibre() {
@@ -79,7 +80,15 @@ async function cdp(url) {
 try {
     const puertoPhp = await puertoLibre(), puertoChrome = await puertoLibre(), puertoETE = await puertoLibre();
     const origen = `http://127.0.0.1:${puertoPhp}`;
-    const entorno = {...process.env, PORTAL_ETE_URL: 'http://127.0.0.1:' + puertoETE, APP_URL: origen, APP_DEBUG: 'false', SESSION_DRIVER: 'file', SESSION_DOMAIN: '', SESSION_SECURE_COOKIE: 'false', CACHE_STORE: 'file',
+    // La caché de archivos conserva agregados del catálogo. Compartir storage
+    // con localhost o con otra ejecución mezcla taxones de bases distintas.
+    const almacenamiento = path.join(temporal, 'storage');
+    for (const directorio of ['app/private', 'framework/cache/data', 'framework/sessions', 'framework/views', 'logs', 'document-processing']) {
+        mkdirSync(path.join(almacenamiento, directorio), {recursive: true});
+    }
+    entorno = {...process.env, PORTAL_ETE_URL: 'http://127.0.0.1:' + puertoETE, APP_URL: origen, APP_DEBUG: 'false', SESSION_DRIVER: 'file', SESSION_DOMAIN: '', SESSION_SECURE_COOKIE: 'false', CACHE_STORE: 'file',
+        LARAVEL_STORAGE_PATH: almacenamiento, VIEW_COMPILED_PATH: path.join(almacenamiento, 'framework/views'),
+        HUBDIGITAL_TEMPORARY_DIRECTORY: path.join(almacenamiento, 'document-processing'),
         APP_CONFIG_CACHE: path.join(temporal, 'config.php'), APP_ROUTES_CACHE: path.join(temporal, 'routes.php')};
     const respuestaFixture = execFileSync(php, ['tests/Browser/portal-fixture.php', 'crear', token, fixture], {cwd: proyecto, env: entorno, encoding: 'utf8'});
     let datos;
@@ -216,6 +225,9 @@ try {
     assert.equal(await evaluar("document.querySelector('.portal-ete-controls,.taxonomy-navigator-sidebar > h3,.taxonomy-navigator-caption,.taxonomy-navigator-breadcrumb,.taxonomy-navigator-heading,.taxonomy-expand-all,.taxonomy-branch-select')"), null);
     assert.ok(await evaluar("document.querySelector('.taxonomy-phylotree-search #busqueda-explorador-taxonomico').checkVisibility() && document.querySelector('.portal-ete-host').checkVisibility()"));
     async function buscarEnArbol(texto) {
+        // La apertura del modal y el dibujo ETE terminan después del morph de
+        // Livewire. Esperar el estado real evita interactuar durante la carga.
+        await visible("(() => {const d=Alpine.$data(document.querySelector('#explorador-taxonomico'));return d.abierto && d.listo && !d.buscando && !d.visorCargando && !d.aplicando;})()");
         await evaluar("(() => {const b=document.querySelector('#busqueda-explorador-taxonomico');b.focus();b.value=" + JSON.stringify(texto) + ";b.dispatchEvent(new Event('input',{bubbles:true}));})()");
         await visible("document.querySelector('#sugerencias-explorador [role=option]')"); await reposo();
     }
@@ -672,7 +684,7 @@ try {
     console.error('Diagnóstico del navegador:', JSON.stringify({excepciones, erroresLivewire, peticionesPendientes: peticiones.size}));
     if (conexion) {
         try {
-            const estado = await conexion.send('Runtime.evaluate', {expression: `JSON.stringify({url: location.href, titulo: document.title, foco: {id: document.activeElement?.id, elemento: document.activeElement?.tagName}, busqueda: document.querySelector('#busqueda-explorador-taxonomico')?.value, texto: document.body.innerText.slice(-1800), tooltip: document.querySelector('.atlas-floating-tooltip')?.outerHTML, marcadores: [...document.querySelectorAll('.atlas-map [aria-label^="Ubicación original"]')].map(p=>({etiqueta:p.getAttribute('aria-label'), rect:p.getBoundingClientRect().toJSON()}))})`, returnByValue: true});
+            const estado = await conexion.send('Runtime.evaluate', {expression: `JSON.stringify({url: location.href, titulo: document.title, foco: {id: document.activeElement?.id, elemento: document.activeElement?.tagName}, busqueda: document.querySelector('#busqueda-explorador-taxonomico')?.value, explorador: (()=>{const el=document.querySelector('#explorador-taxonomico');if(!el||!window.Alpine)return null;const d=Alpine.$data(el);return {abierto:d.abierto,listo:d.listo,buscando:d.buscando,visorCargando:d.visorCargando,error:d.error,sugerencias:d.sugerencias?.length,busqueda:d.busqueda};})(), texto: document.body.innerText.slice(-1800), tooltip: document.querySelector('.atlas-floating-tooltip')?.outerHTML, marcadores: [...document.querySelectorAll('.atlas-map [aria-label^="Ubicación original"]')].map(p=>({etiqueta:p.getAttribute('aria-label'), rect:p.getBoundingClientRect().toJSON()}))})`, returnByValue: true});
             console.error('Estado de la página:', estado.result.value);
         } catch { /* Se conserva la causa original si el navegador ya terminó. */ }
     }
@@ -681,7 +693,7 @@ try {
     conexion?.close();
     for (const proceso of procesos.reverse()) { if (proceso.exitCode === null) { proceso.kill(); await Promise.race([new Promise(resolve => proceso.once('exit', resolve)), demora(3000)]); } }
     try {
-        if (existsSync(fixture)) execFileSync(php, ['tests/Browser/portal-fixture.php', 'limpiar', token, fixture], {cwd: proyecto, env: {...process.env, APP_CONFIG_CACHE: path.join(temporal, 'config.php')}, stdio: 'pipe'});
+        if (existsSync(fixture)) execFileSync(php, ['tests/Browser/portal-fixture.php', 'limpiar', token, fixture], {cwd: proyecto, env: entorno, stdio: 'pipe'});
     } finally {
         const absoluto = path.resolve(temporal), raizTemporal = path.resolve(tmpdir()) + path.sep;
         assert.ok(absoluto.startsWith(raizTemporal) && path.basename(absoluto).startsWith('hubdigital-browser-'), 'Ruta temporal de limpieza inválida.');

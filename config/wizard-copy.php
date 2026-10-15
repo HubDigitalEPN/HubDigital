@@ -40,7 +40,7 @@ return [
     ],
     'documentos' => [
         'titulo' => 'Documentos oficiales',
-        'intro_con_archivos' => 'Adjunta los PDF indicados. HubDigital verificará su contenido y que pertenezcan al mismo expediente.',
+        'intro_con_archivos' => 'Adjunta los PDF indicados. HubDigital comprobará que cada archivo corresponda a su casilla y verificará su firma digital.',
         'intro_sin_archivos' => 'Esta modalidad genera internamente la solicitud y sus declaraciones; no necesitas adjuntar archivos en este paso.',
         'ayuda_archivos' => 'Puedes cargarlos con cualquier nombre; validaremos el tipo mediante su contenido.',
         'accion_con_archivos' => 'Validar documentos',

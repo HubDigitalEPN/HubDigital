@@ -16,6 +16,12 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\DirectorioTempora
 /** Transporta al único motor Java los PDF y devuelve su dictamen, sin validadores alternativos. */
 final class JavaValidacionFirmaElectronicaAdapter implements ValidacionFirmaElectronicaPort
 {
+    /** Dictamen completo del mismo motor, para diagnósticos y pruebas del corpus local. */
+    public function verificarDocumentoExterno(string $rutaAbsoluta): array
+    {
+        return $this->ejecutarJava($rutaAbsoluta);
+    }
+
     public function verificarFirma(string $rutaAbsoluta): ResultadoValidacionFirma
     {
         $resultado = $this->ejecutarJava($rutaAbsoluta);

@@ -329,6 +329,15 @@ public final class PdfSignatureCli {
         return json(verify(path));
     }
 
+    static String inspectResult(Path path) {
+        return json(inspect(path));
+    }
+
+    static String textResult(Path path) throws Exception {
+        if (!originalSeguro(path)) throw new java.io.IOException("El PDF no superó la inspección de seguridad.");
+        return textJson(path);
+    }
+
     /** Una JVM por trabajador PHP; cada línea conserva el mismo dictamen Java. */
     private static void verifyStream() throws Exception {
         BufferedReader input = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
@@ -580,6 +589,10 @@ public final class PdfSignatureCli {
     }
 
     private static void emitText(Path path) throws Exception {
+        System.out.println(textJson(path));
+    }
+
+    private static String textJson(Path path) throws Exception {
         try (PDDocument pdf = Loader.loadPDF(path.toFile())) {
             if (pdf.isEncrypted()) throw new java.io.IOException("PDF cifrado.");
             PDFTextStripper extractor = new PDFTextStripper();
@@ -592,7 +605,7 @@ public final class PdfSignatureCli {
                 salida.append("{\"numero\":").append(pagina).append(",\"texto\":\"")
                     .append(escape(extractor.getText(pdf))).append("\"}");
             }
-            System.out.println(salida.append("]}"));
+            return salida.append("]}").toString();
         }
     }
 
@@ -1024,9 +1037,7 @@ public final class PdfSignatureCli {
             new com.google.zxing.RGBLuminanceSource(image.getWidth(), image.getHeight(), pixels)));
         try { return new com.google.zxing.MultiFormatReader().decode(bitmap).getText(); }
         catch (com.google.zxing.NotFoundException error) {
-            Path diagnostico = Files.createTempFile("hubdigital-qr-autoprueba-", ".png");
-            javax.imageio.ImageIO.write(image, "png", diagnostico.toFile());
-            throw new IllegalStateException("No se lee el QR de la autoprueba a " + dpi + " dpi. Imagen: " + diagnostico, error);
+            throw new IllegalStateException("No se lee el QR de la autoprueba a " + dpi + " dpi.", error);
         }
     }
 

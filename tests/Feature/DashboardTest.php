@@ -40,7 +40,7 @@ test('el depositante retoma su borrador y los accesos del dashboard filtran los 
     $this->actingAs($usuario);
     Livewire::test(Dashboard::class)->assertViewHas('totalEnviadas', 6)
         ->assertViewHas('pendientesRevision', 2)->assertViewHas('rechazadas', 2)
-        ->assertViewHas('requierenCorreccion', 1)->assertSee('Retomar borrador')->assertSee('Paso 1 de 8')
+        ->assertViewHas('requierenCorreccion', 1)->assertSee('Retomar borrador')->assertSee('Paso 1 de 7')->assertDontSee('de 8')
         ->assertDontSee('QA-DASH-1-');
     $lista = Livewire::withQueryParams(['estado' => 'por_revisar'])->test(MisDepositos::class)
         ->assertSet('filtroEstado', 'por_revisar')->assertViewHas('activas', fn ($r) => $r->count() === 2)

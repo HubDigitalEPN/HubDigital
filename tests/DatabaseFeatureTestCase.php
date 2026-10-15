@@ -7,8 +7,7 @@ use Illuminate\Foundation\Testing\DatabaseTransactions;
 /**
  * Base para pruebas funcionales que usan el esquema PostgreSQL completo.
  *
- * El validador prepara desde cero la única base local de desarrollo,
- * hubdigital, una sola vez.
+ * El validador prepara copias locales aisladas de PostgreSQL por proceso.
  * Cada prueba usa una transacción y la revierte al terminar, evitando que
  * RefreshDatabase deje tablas parciales en los esquemas PostgreSQL no públicos.
  */

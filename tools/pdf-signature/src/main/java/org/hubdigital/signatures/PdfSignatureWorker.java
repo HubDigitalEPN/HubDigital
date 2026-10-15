@@ -21,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 /** JVM preparada, accesible sólo por socket Unix privado, sin claves persistentes. */
 final class PdfSignatureWorker {
     private static final int MAX_FRAME = 65_536;
+    private static final int MAX_RESPONSE = 1_048_576;
     private record Engine(String identity, Path root, String trust, String limits) {}
     private PdfSignatureWorker() {}
 
@@ -73,6 +74,7 @@ final class PdfSignatureWorker {
             while (true) {
                 SocketChannel peer = server.accept();
                 try {
+                    if (peer.getLocalAddress() instanceof InetSocketAddress) peer.setOption(java.net.StandardSocketOptions.TCP_NODELAY, true);
                     jobs.execute(() -> handle(peer, engine.identity, engine.root, engine.trust, engine.limits, key));
                 } catch (java.util.concurrent.RejectedExecutionException full) {
                     peer.close();
@@ -98,11 +100,11 @@ final class PdfSignatureWorker {
                     || !proof[2].matches("[0-9a-f]{64}") || !java.security.MessageDigest.isEqual(
                         mac(key, proof[1]).getBytes(StandardCharsets.US_ASCII), proof[2].getBytes(StandardCharsets.US_ASCII))) return;
                 writeFrame(peer, selector, "{\"status\":\"ready\",\"jar_sha256\":\"" + identity
-                    + "\",\"operations\":[\"verify-external\"],\"proof\":\"" + mac(key, proof[1] + "\0" + identity) + "\"}");
+                    + "\",\"operations\":[\"verify-external\",\"inspect-external\",\"read-text\"],\"proof\":\"" + mac(key, proof[1] + "\0" + identity) + "\"}");
             }
             input = readFrame(peer, selector);
             if (Arrays.equals(input, "health".getBytes(StandardCharsets.US_ASCII))) {
-                writeFrame(peer, selector, "{\"status\":\"ready\",\"jar_sha256\":\"" + identity + "\",\"operations\":[\"verify-external\"]}");
+                writeFrame(peer, selector, "{\"status\":\"ready\",\"jar_sha256\":\"" + identity + "\",\"operations\":[\"verify-external\",\"inspect-external\",\"read-text\"]}");
                 Arrays.fill(input, (byte) 0);
                 input = readFrame(peer, selector);
             }
@@ -113,10 +115,13 @@ final class PdfSignatureWorker {
                     result = "{\"status\":\"worker_incompatible\"}";
                 } else {
                     boolean external = "verify-external".equals(fields[7]);
-                    validatePath(root, fields[3], false, (external ? 20L : 16L) * 1024 * 1024);
+                    boolean inspect = "inspect-external".equals(fields[7]);
+                    boolean text = "read-text".equals(fields[7]);
+                    boolean inputOnly = external || inspect || text;
+                    validatePath(root, fields[3], false, (inputOnly ? 20L : 16L) * 1024 * 1024);
                     boolean prepare = "prepare-only".equals(fields[7]);
                     boolean verify = "verify-only".equals(fields[7]);
-                    if (!prepare && !external) {
+                    if (!prepare && !inputOnly) {
                         validatePath(root, fields[4], !verify, 16L * 1024 * 1024);
                         if (!verify) validatePath(root, fields[5], false, 5L * 1024 * 1024);
                         request = String.join("\0", Arrays.copyOfRange(fields, 3, 8)).getBytes(StandardCharsets.UTF_8);
@@ -125,6 +130,8 @@ final class PdfSignatureWorker {
                     }
                     try { result = prepare ? "{\"status\":\"" + (ContenidoOficialPdf.preparar(Path.of(fields[3])) ? "prepared" : "not_prepared") + "\"}"
                         : external ? PdfSignatureCli.externalResult(Path.of(fields[3]))
+                        : inspect ? PdfSignatureCli.inspectResult(Path.of(fields[3]))
+                        : text ? PdfSignatureCli.textResult(Path.of(fields[3]))
                         : verify ? PdfSignatureCli.officialResult(Path.of(fields[4]), Path.of(fields[3]))
                         : PdfSignatureCli.signRequest(request, true); }
                     catch (Exception error) { result = PdfSignatureCli.errorResult(error); }
@@ -153,7 +160,7 @@ final class PdfSignatureWorker {
 
     private static void writeFrame(SocketChannel peer, Selector selector, String value) throws Exception {
         byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
-        if (bytes.length > MAX_FRAME) throw new IllegalStateException("Dictamen demasiado largo.");
+        if (bytes.length > MAX_RESPONSE) throw new IllegalStateException("Dictamen demasiado largo.");
         ByteBuffer output = ByteBuffer.allocate(4 + bytes.length).putInt(bytes.length).put(bytes);
         output.flip();
         peer.keyFor(selector).interestOps(SelectionKey.OP_WRITE);
@@ -172,7 +179,8 @@ final class PdfSignatureWorker {
         String identity = "a".repeat(64), nonce = "b".repeat(64);
         try (ServerSocketChannel server = ServerSocketChannel.open(StandardProtocolFamily.INET)) {
             server.bind(new InetSocketAddress("127.0.0.1", 0));
-            for (boolean valid : new boolean[]{false, true}) {
+            for (String operation : new String[]{"rejected", "verify-external", "inspect-external", "read-text"}) {
+                boolean valid = !"rejected".equals(operation);
                 try (SocketChannel client = SocketChannel.open(server.getLocalAddress())) {
                     SocketChannel peer = server.accept();
                     Thread handler = new Thread(() -> handle(peer, identity, Path.of(System.getProperty("java.io.tmpdir")), "", "", key));
@@ -198,10 +206,16 @@ final class PdfSignatureWorker {
                                 try (org.apache.pdfbox.pdmodel.PDDocument pdf = new org.apache.pdfbox.pdmodel.PDDocument()) {
                                     pdf.addPage(new org.apache.pdfbox.pdmodel.PDPage()); pdf.save(sample.toFile());
                                 }
-                                writeFrame(client, selector, String.join("\0", identity, "", "", sample.toString(), "", "", "", "verify-external"));
+                                writeFrame(client, selector, String.join("\0", identity, "", "", sample.toString(), "", "", "", operation));
                                 String result = new String(readFrame(client, selector), StandardCharsets.UTF_8);
-                                if (!result.contains("\"status\":\"sin_firma\"")) {
+                                if ("verify-external".equals(operation) && !result.contains("\"status\":\"sin_firma\"")) {
                                     throw new IllegalStateException("La verificación externa preparada no conservó el dictamen sin firma.");
+                                }
+                                if ("inspect-external".equals(operation) && (!result.contains("\"status\":\"seguro\"") || !result.contains("\"paginas\":1"))) {
+                                    throw new IllegalStateException("El inspector preparado no conservó la estructura comprobada.");
+                                }
+                                if ("read-text".equals(operation) && (!result.contains("\"numero\":1") || !result.contains("\"texto\":\"\""))) {
+                                    throw new IllegalStateException("El lector preparado no conservó las páginas del PDF.");
                                 }
                             } finally { Files.deleteIfExists(sample); }
                         }

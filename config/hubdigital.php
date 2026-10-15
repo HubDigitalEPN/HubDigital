@@ -1,6 +1,10 @@
 <?php
 
 return [
+    // Sólo para un envío de QA en localhost; nunca redirige correo en OCI.
+    'qa_deposit_id' => env('HUBDIGITAL_QA_DEPOSIT_ID', ''),
+    'qa_mail_to' => env('HUBDIGITAL_QA_MAIL_TO', ''),
+
     // Durante restauracion, pruebas internas y mediciones no se permite enviar
     // notificaciones fuera de HubDigital. El canal `database` se conserva para
     // no ocultar eventos ni alterar la cola; correo, web push y otros canales

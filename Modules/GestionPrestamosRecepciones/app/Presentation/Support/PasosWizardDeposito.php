@@ -9,6 +9,17 @@ final class PasosWizardDeposito
 {
     public const DESTINOS = [1 => 0, 2 => 1, 3 => 2, 4 => 3, 5 => 4, 6 => 7, 7 => 8];
 
+    public const NOMBRES = [1 => 'Solicitud', 2 => 'Trámite', 3 => 'Origen',
+        4 => 'Archivos y firmas', 5 => 'Datos', 6 => 'Detalle', 7 => 'Envío'];
+
+    public static function accionSiguiente(int $pasoPersistido): string
+    {
+        $siguiente = min(self::numeroVisible($pasoPersistido) + 1, self::total());
+
+        return $pasoPersistido === 8 ? 'Paso 7 Revisar y Enviar'
+            : 'Ir al Paso '.$siguiente.' '.self::NOMBRES[$siguiente];
+    }
+
     public static function numeroVisible(int $pasoPersistido): int
     {
         // Compatibilidad con los dos pasos retirados y con el estado final.

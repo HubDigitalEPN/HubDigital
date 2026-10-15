@@ -19,7 +19,7 @@ final class AnalizadorDocumentoAmbiental
 
     public const DESCONOCIDO = 'desconocido';
 
-    public const VERSION_REGLAS = 'ec-autoridad-ambiental-2026.09.1';
+    public const VERSION_REGLAS = 'ec-autoridad-ambiental-2026.10.1';
 
     private const UMBRAL_CLASIFICACION = 0.58;
 
@@ -36,11 +36,15 @@ final class AnalizadorDocumentoAmbiental
             self::AUTORIZACION_RECOLECCION => $this->puntaje($texto, [
                 ['aut-v3-titulo-diversidad', '/(?:autorizaci[oó0]n|permiso)\s+(?:para\s+|de\s+)?recolecci[oó0]n\s+de\s+espec[ií1]menes\s+de\s+especies\s+de\s+la\s+diversidad\s+biol[oó0]gica/iu', 0.38, 'titulo'],
                 ['aut-v2-titulo-silvestre', '/autorizaci[oó0]n\s+de\s+recolecci[oó0]n\s+de\s+(?:espec[ií1]menes\s+de\s+)?vida\s+silvestre/iu', 0.38, 'titulo'],
+                ['aut-v4-titulo-arvs-abreviado', '/^\s*autorizaci[oó0]n\s+(?:de\s+)?vida\s+silvestre\s*\R\s*n(?:0|o|ro|[º°])\.?[^\r\n]{0,80}\bARVS\b/imu', 0.38, 'titulo'],
+                ['aut-v4-permiso-flora-fauna', '/^\s*autoriza\s+el\s+permiso\s+de\s+recolecci[oó0]n\s+de\s+flora\s+y\s+fauna\s+silvestre/imu', 0.38, 'titulo'],
                 ['aut-v1-permiso-conjunto', '/autorizaci[oó0]n\s+de\s+(?:permisos?\s+de\s+)?recolecci[oó0]n(?:\s+y\s+movilizaci[oó0]n)?\s+de\s+espec[ií1]menes/iu', 0.34, 'titulo'],
                 ['aut-v1-recolecta', '/autorizaci[oó0]n\s+de\s+recolecta\s+de\s+espec[ií1]menes/iu', 0.34, 'titulo'],
                 ['aut-acto-autoriza', '/(?:autoriza|otorga|concede)(?:\s+la)?\s+(?:presente\s+)?autorizaci[oó0]n(?:\s+de\s+recolecci[oó0]n(?:\s+de\s+vida\s+silvestre)?)?(?:\s+a|\s+n[º°]|\s+nro)/iu', 0.20, 'acto'],
+                ['aut-acto-directo', '/ministerial\s+autoriza\s+a\s*:|^\s*autoriza\s+el\s+permiso\s+de\s+recolecci[oó0]n/imu', 0.20, 'acto'],
                 ['aut-vigencia', '/vigencia\s+de\s+la\s+autorizaci[oó0]n\s+de\s+recolecci[oó0]n/iu', 0.15, 'vigencia'],
                 ['aut-duracion-suia', '/duraci[oó0]n\s+del\s+proyecto[\s\S]{0,80}?fecha\s+inicio[\s\S]{0,40}?fecha\s+fin/iu', 0.15, 'vigencia'],
+                ['aut-v4-vigencia-concedida', '/tendr[aá]\s+una\s+vigencia\s+hasta/iu', 0.15, 'vigencia'],
                 ['aut-area', '/(?:[aá]rea|rea)\s+geogr[aá]fica\s+que\s+cubre\s+la\s+recolecci[oó0]n/iu', 0.12, 'alcance'],
                 ['aut-metodo', '/metodolog[ií1]a\s+para\s+recolectar|m[eé]todos?\s+de\s+preservaci[oó0]n\s+y\s+movilizaci[oó0]n/iu', 0.10, 'alcance'],
                 ['aut-grupo', '/grupo\s+biol[oó0]gico\s+a\s+estudiar/iu', 0.10, 'alcance'],
@@ -51,14 +55,21 @@ final class AnalizadorDocumentoAmbiental
             ]),
             self::GUIA_MOVILIZACION => $this->puntaje($texto, [
                 ['mov-v3-titulo', '/gu[ií1]a\s+de\s+movilizaci[oó0]n(?:\s+de|\s+para)?\s+(?:muestras?|espec[ií1]menes|vida\s+silvestre|flora|fauna)/iu', 0.44, 'titulo'],
+                ['mov-v4-titulo-tabular', '/^\s*gu[ií1]a\s+de\s+movilizaci[oó0]n\s+(?:n(?:ro|o)\.?|n\.?\s*[º°])/imu', 0.38, 'titulo'],
+                ['mov-v4-titulo-columnas', '/^\s*gu[ií1]a\s+de[^\r\n]{0,110}\R(?:[^\r\n]{0,140}\R){0,2}\s*movilizaci[oó0]n\s+de\s*(?:[^\r\n]{0,140}\R){0,2}\s*(?:espec[ií1]menes|vida\s+silvestre|flora|fauna)/imu', 0.38, 'titulo'],
                 ['mov-v2-permiso', '/permiso\s+de\s+movilizaci[oó0]n\s+(?:de|para)\s+(?:muestras?|espec[ií1]menes|vida\s+silvestre)/iu', 0.40, 'titulo'],
                 ['mov-v1-traslado', '/autorizaci[oó0]n\s+para\s+(?:la\s+)?movilizaci[oó0]n\s+de\s+(?:muestras?|espec[ií1]menes)/iu', 0.36, 'titulo'],
-                ['mov-suia-autorizacion', '/autorizaci[oó0]n\s+de\s+movilizaci[oó0]n\s+de\s+espec[ií1]menes(?:\s+de\s+especies\s+de\s+la\s+diversidad\s+biol[oó0]gica)?/iu', 0.42, 'titulo'],
+                ['mov-suia-autorizacion', '/autorizaci[oó0]n\s+de\s+movilizaci[oó0]n\s+de\s+(?:espec[ií1]menes(?:\s+de\s+especies\s+de\s+la\s+diversidad\s+biol[oó0]gica)?|vida\s+silvestre)/iu', 0.42, 'titulo'],
+                ['mov-acto-otorga', '/(?:otorga|concede|emite)\s+(?:la\s+)?(?:presente\s+)?gu[ií1]a\s+de\s+movilizaci[oó0]n/iu', 0.20, 'acto'],
                 ['mov-fecha', '/fecha\s+(?:prevista\s+)?de\s+(?:movilizaci[oó0]n|traslado|salida)/iu', 0.14, 'vigencia'],
                 ['mov-vigencia', '/v[aá]lido\s+hasta|fecha\s+(?:de\s+)?(?:fin|vencimiento)/iu', 0.10, 'vigencia'],
                 ['mov-ruta', '/(?:lugar|punto)\s+de\s+(?:origen|partida)|(?:lugar|punto)\s+de\s+destino|\bdesde\s+(?!(?:el\s+)?(?:d[ií1]a\s+)?[0-3]?\d(?:\s+de|[.\/-]))[\s\S]{4,180}\bhasta\s+(?!(?:el\s+)?(?:d[ií1]a\s+)?[0-3]?\d(?:\s+de|[.\/-]))/iu', 0.12, 'ruta'],
+                ['mov-ruta-formulario', '/ciudad\s+de\s+(?:origen|destino)|\b1\s*[.:-]\s*-?\s*origen\s+2\s*[.:-]\s*-?\s*destino/iu', 0.12, 'ruta'],
+                ['mov-ruta-hacia', '/\bdesde\s+(?!(?:el\s+)?(?:d[ií1]a\s+)?[0-3]?\d(?:\s+de|[.\/-]))[\s\S]{4,180}\bhacia\s+(?:la\s+)?(?:ciudad|provincia|cant[oó]n|museo|universidad)\b/iu', 0.12, 'ruta'],
+                ['mov-vigencia-tabla', '/\bemisi[oó0]n\s+movilizaci[oó0]n\s+v[aá]lido\b/iu', 0.14, 'vigencia'],
                 ['mov-transporte', '/responsable\s+de\s+la\s+movilizaci[oó0]n|medio\s+de\s+transporte|tipo\s+de\s+transporte|placa\s*[:#-]/iu', 0.12, 'transporte'],
                 ['mov-muestras', '/datos\s+de\s+las\s+muestras|detalle\s+de\s+(?:muestras|espec[ií1]menes)|(?:material\s+biol[oó0]gico|espec[ií1]menes)\s+a\s+movilizar|c[oó0]digo\s+campo\s+nombre\s+com[uú]n/iu', 0.12, 'muestras'],
+                ['mov-especies-formulario', '/datos\s+de\s+(?:las\s+)?especies(?:\s+de\s+(?:entomofauna|macroinvertebrados))?/iu', 0.12, 'muestras'],
                 ['mov-autorizacion-base', '/(?:autorizaci[oó0]n|permiso)\s+(?:para\s+|de\s+)?recolecci[oó0]n/iu', 0.08, 'relacion'],
                 ['mov-autoridad', $this->patronAutoridad(), 0.06, 'autoridad'],
             ]),
@@ -85,6 +96,7 @@ final class AnalizadorDocumentoAmbiental
             ['oficio-generico-v1', '/oficio\s+(?:nro|no|n[úu]mero)?\.?\s*[:#-]?\s*([A-Z]{2,12}(?:\s*[-\/]\s*[A-Z0-9]{1,18}){3,10})\b/iu', 0.88],
         ]);
         $autorizacion = $this->resolverCodigo($texto, [
+            ['aut-v4-codigo-arvs-abreviado', '/^\s*autorizaci[oó0]n\s+(?:de\s+)?vida\s+silvestre\s*\R\s*n(?:0|o|ro|[º°])\.?\s*[:#-]?\s*(\d{1,4}\s*-\s*(?:19|20)\d{2}\s*-\s*ARVS(?:\s*[-\/]+\s*[A-Z0-9]{1,18}){1,8})/imu', 0.96],
             ['aut-codigo-anio-inicial-v3', '/(?:autorizaci[oó0]n|permiso)\s+(?:para\s+|de\s+)?recolecci[oó0]n(?:\s+de\s+(?:espec[ií1]menes\s+de\s+especies\s+de\s+la\s+diversidad\s+biol[oó0]gica|espec[ií1]menes|vida\s+silvestre))?[\s\S]{0,100}?(?:n(?:ro|o|[úu]mero)\.?|n[º°])?\s*[:#-]?\s*((?:[0-9]\s*){1,4}-\s*(?:19|20)\d{2}(?:\s+|\s*[-\/]\s*)[A-Z]{1,12}(?:\s*[-\/]+\s*[A-Z0-9]{1,16}){1,10})/iu', 0.98],
             ['aut-codigo-anio-final-v2', '/(?:autorizaci[oó0]n|permiso)\s+(?:para\s+|de\s+)?recolecci[oó0]n[\s\S]{0,100}?(?:n(?:ro|o|[úu]mero)\.?|n[º°])?\s*[:#-]?\s*([0-9]{1,4}(?:\s*[-\/]+\s*[A-Z0-9]{2,16}){2,10}\s*[-\/]+\s*(?:19|20)\d{2})/iu', 0.96],
             ['aut-codigo-suia-v1', '/(?:autorizaci[oó0]n|permiso)\s+(?:para\s+|de\s+)?recolecci[oó0]n[\s\S]{0,80}?(?:n(?:ro|o|[úu]mero)\.?|n[º°])?\s*[:#-]?\s*((?:MAATE|MAAE|MAE)-SUIA(?:\s*[-\/]+\s*[A-Z0-9]{1,18}){1,8})/iu', 0.94],
@@ -303,7 +315,7 @@ final class AnalizadorDocumentoAmbiental
      * @param array<string, array<string, mixed>> $documentos Clave = tipo esperado.
      * @return array{estado: string, decision_automatica: string, autocompletado_habilitado: bool, errores: list<string>, advertencias: list<string>}
      */
-    public function validarExpediente(array $documentos, ?array $tiposRequeridos = null): array
+    public function validarExpediente(array $documentos, ?array $tiposRequeridos = null, bool $compararEntreDocumentos = true): array
     {
         $errores = [];
         $advertencias = [];
@@ -335,7 +347,7 @@ final class AnalizadorDocumentoAmbiental
 
         $autorizacion = $documentos[self::AUTORIZACION_RECOLECCION] ?? null;
         $guia = $documentos[self::GUIA_MOVILIZACION] ?? null;
-        if (is_array($autorizacion) && is_array($guia)) {
+        if ($compararEntreDocumentos && is_array($autorizacion) && is_array($guia)) {
             $codigoAutorizacion = $this->normalizarCodigo($autorizacion['numero_autorizacion'] ?? null);
             $codigoGuia = $this->normalizarCodigo($guia['numero_autorizacion'] ?? null);
             if ($codigoAutorizacion === null || $codigoGuia === null) {
@@ -455,7 +467,7 @@ final class AnalizadorDocumentoAmbiental
 
         return match ($tipo) {
             self::AUTORIZACION_RECOLECCION => count(array_intersect($categorias, ['acto', 'vigencia', 'alcance', 'obligaciones'])) >= 1,
-            self::GUIA_MOVILIZACION => count(array_intersect($categorias, ['vigencia', 'ruta', 'transporte', 'muestras'])) >= 2,
+            self::GUIA_MOVILIZACION => count(array_intersect($categorias, ['acto', 'vigencia', 'ruta', 'transporte', 'muestras'])) >= 2,
             default => false,
         };
     }
@@ -740,6 +752,10 @@ final class AnalizadorDocumentoAmbiental
 
     private function normalizarOcr(string $texto): string
     {
+        if (class_exists(\Normalizer::class)) {
+            $texto = \Normalizer::normalize($texto, \Normalizer::FORM_C) ?: $texto;
+        }
+        $texto = preg_replace('/\bmovlizaci[oó0]n\b/iu', 'movilización', $texto) ?? $texto;
         $texto = str_replace(["\0", "\u{00A0}", '–', '—', '−', '‐', '‑', '／'], ['', ' ', '-', '-', '-', '-', '-', '/'], $texto);
         $texto = preg_replace('/(?<=[A-Z0-9\/])-\s*\R\s*(?=[A-Z0-9])/u', '-', $texto) ?? $texto;
         $texto = preg_replace('/(?<=[A-Z0-9])\/\s*\R\s*(?=[A-Z0-9])/u', '/', $texto) ?? $texto;

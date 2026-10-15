@@ -10,9 +10,9 @@
             <x-gestionprestamosrecepciones::lov-popup campo="provincia" label="Provincia"
                 :opciones="array_column($provinciasCatalogo, 'nombre')" :valor="$provincia"
                 placeholder="Selecciona una provincia" accion="seleccionarProvincia" input-id="provincia-recoleccion" />
-            <x-gestionprestamosrecepciones::lov-popup campo="localidadOrigenCodigo" label="Localidad"
-                :opciones="collect($localidadesOrigenCatalogo)->mapWithKeys(fn ($fila) => [(string) $fila->codigo => \App\Support\CatalogoLocalidadesEcuador::etiqueta($fila)])->all()"
-                :valor="$localidadOrigenCodigo" :disabled="!$provincia" :contexto="$provincia"
+            <x-gestionprestamosrecepciones::lov-popup campo="localidad" label="Localidad (opcional)"
+                :opciones="['' => 'Sin localidad (opcional)'] + $localidadesOrigenCatalogo"
+                :valor="$localidad" :required="false" :disabled="!$provincia" :contexto="$provincia"
                 placeholder="Selecciona una localidad" accion="seleccionarLocalidadOrigen"
                 busqueda-remota="buscarLocalidadesOrigenLov" input-id="localidad-recoleccion" />
         </div>

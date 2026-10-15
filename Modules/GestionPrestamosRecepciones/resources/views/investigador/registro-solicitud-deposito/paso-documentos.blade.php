@@ -10,6 +10,7 @@
 
     {{-- Procesando documentos (polling activo) --}}
     @if($extraccionProcesando)
+        @php $documentosEnRevision = array_intersect_key($documentosCargados, array_fill_keys($documentosRequeridos, true)); @endphp
         <div wire:poll.500ms="verificarExtraccion" class="space-y-4 rounded-xl border border-science-blue/30 bg-science-blue/5 p-6" role="status" aria-live="polite">
             <div class="flex items-center gap-3">
                 <div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-science-blue/15">
@@ -18,12 +19,12 @@
                 <div>
                     <p class="text-sm font-semibold text-text-primary">Analizando documentos…</p>
                     <p class="text-xs text-text-secondary">
-                        {{ count($documentosProcesados) }} de {{ count($documentosCargados) }} documentos procesados.
+                        {{ count(array_intersect($documentosProcesados, $documentosRequeridos)) }} de {{ count($documentosEnRevision) }} documentos procesados.
                     </p>
                 </div>
             </div>
             <div class="space-y-2">
-                @foreach($documentosCargados as $nombre => $ruta)
+                @foreach($documentosEnRevision as $nombre => $ruta)
                     @php $procesado = in_array($nombre, $documentosProcesados, true); @endphp
                     <div class="flex items-center gap-2 text-sm {{ $procesado ? 'text-text-primary' : 'text-text-secondary' }}">
                         @if($procesado)
@@ -98,7 +99,7 @@
                 <p class="mb-2 text-sm">
                     {{ $falloTecnico
                         ? 'El expediente y los archivos cargados permanecen guardados para que puedas volver a ejecutar el análisis.'
-                        : 'HubDigital revisó la estructura, códigos, titulares, proyecto y fechas; no se basa en el nombre del archivo.' }}
+                        : 'HubDigital revisa el contenido de cada documento por separado; no se basa en el nombre del archivo.' }}
                 </p>
                 <ul class="list-disc space-y-1 pl-5 text-sm">
                     @foreach($erroresDocumentales as $error)
@@ -110,28 +111,6 @@
                         ? 'Vuelve a pulsar «Validar documentos». Reemplaza un archivo únicamente si el mensaje indica que el PDF no puede leerse.'
                         : 'Reemplaza el archivo incorrecto y vuelve a ejecutar el análisis.' }}
                 </p>
-            </flux:callout>
-        @endif
-
-        @if(!empty($advertenciasDocumentales))
-            <flux:callout variant="warning" icon="exclamation-triangle" heading="Aspectos que requieren confirmación humana">
-                <ul class="list-disc space-y-1 pl-5 text-sm">
-                    @foreach($advertenciasDocumentales as $advertencia)
-                        <li>{{ $advertencia }}</li>
-                @endforeach
-                </ul>
-                <div class="mt-4">
-                    <flux:button
-                        variant="outline"
-                        size="sm"
-                        wire:click="solicitarRevisionDocumental"
-                        wire:loading.attr="disabled"
-                        wire:target="solicitarRevisionDocumental"
-                        icon="user-group"
-                    >
-                        Solicitar revisión documental
-                    </flux:button>
-                </div>
             </flux:callout>
         @endif
 
@@ -174,9 +153,8 @@
                 <div class="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
                     <div>
                         <h3 id="documentos-requeridos-titulo" class="text-sm font-semibold text-blue-navy">Archivos requeridos</h3>
-                        <p class="mt-1 text-xs leading-5 text-text-secondary">{{ \App\Support\WizardCopy::text('documentos.ayuda_archivos') }}</p>
                     </div>
-                    <p class="font-mono text-xs text-text-secondary">{{ count($documentosCargados) }}/{{ count($documentosRequeridos) }} cargados</p>
+                    <p class="font-mono text-xs text-text-secondary">{{ count(array_intersect_key($documentosCargados, array_fill_keys($documentosRequeridos, true))) }}/{{ count($documentosRequeridos) }} cargados</p>
                 </div>
                 @foreach($documentosRequeridos as $docNombre)
                     @php $prop = $this->propiedadParaDocumento($docNombre); @endphp
@@ -188,6 +166,7 @@
                         :rechazo="$rechazosDocumentos[$docNombre] ?? null"
                         :estado-firma="$firmasElectronicas[$docNombre] ?? null"
                         :estado-archivo="$validacionArchivos[$docNombre] ?? null"
+                        :contenido-por-revisar="in_array($docNombre, $documentosContenidoIncierto, true)"
                         :validando-firma="($firmasElectronicas[$docNombre] ?? null) === 'validando'"
                         :archivo-nombre="$nombresArchivosOriginales[$docNombre] ?? null"
                         :plantilla="$plantillasDisponibles[$docNombre] ?? null"
@@ -218,7 +197,7 @@
 
         {{-- Sección de intervención curatorial --}}
         @if(!empty($documentosRequeridos))
-        <div class="flex flex-col gap-3 border-t border-blue-navy/10 pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex flex-col items-end gap-3 border-t border-blue-navy/10 pt-4 sm:flex-row sm:items-center sm:justify-end">
             <div class="flex items-start gap-3">
                 <flux:icon name="question-mark-circle" class="size-5 text-text-secondary shrink-0 mt-0.5" />
                 <div class="flex-1">

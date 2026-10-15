@@ -10,6 +10,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\NotificacionCuratoriaAdapter;
@@ -200,6 +201,51 @@ test('el acta distingue depósito y donación e incorpora estado versión y obse
     expect($pdf)->toStartWith('%PDF-')
         ->and(strlen($pdf))->toBeGreaterThan(10_000);
 });
+
+test('la notificación del portal queda disponible y SMTP se entrega por la cola existente', function (): void {
+    Queue::fake();
+    config()->set('hubdigital.qa_deposit_id', '');
+    $depositante = User::factory()->depositante()->create();
+    $curador = User::factory()->curador()->create();
+    $solicitud = solicitudDashboardCincoPuntos($depositante, 'QA-COLA-CORREO', EstadoSolicitudDeposito::PendienteDeRevisionPorCuraduria->value, '2026-10-14 12:00:00');
+
+    app(NotificacionCuratoriaAdapter::class)->notificarNuevaSolicitudPorRevisar((string) $solicitud->id);
+
+    expect($curador->notifications()->where('type', NuevaSolicitudPorRevisarNotification::class)->count())->toBe(1);
+    Queue::assertPushed(\Illuminate\Notifications\SendQueuedNotifications::class,
+        fn ($trabajo) => $trabajo->channels === ['mail'] && $trabajo->queue === 'default'
+            && $trabajo->notification->solicitudId === (string) $solicitud->id
+            && $trabajo->notifiables->contains(fn ($destinatario) => $destinatario->id === $curador->id));
+});
+
+test('el destino de correo QA se limita al expediente local expresamente configurado', function (string $ambiente, bool $mismoExpediente, bool $redirige): void {
+    Notification::fake();
+    app()->instance('env', $ambiente);
+    $depositante = User::factory()->depositante()->create();
+    $curador = User::factory()->curador()->create();
+    $solicitud = solicitudDashboardCincoPuntos($depositante, 'QA-CORREO-001', EstadoSolicitudDeposito::PendienteDeRevisionPorCuraduria->value, '2026-10-14 12:00:00');
+    config()->set('hubdigital.qa_deposit_id', $mismoExpediente ? (string) $solicitud->id : (string) Str::uuid());
+    config()->set('hubdigital.qa_mail_to', 'qa@example.test');
+
+    app(NotificacionCuratoriaAdapter::class)->notificarNuevaSolicitudPorRevisar((string) $solicitud->id);
+
+    Notification::assertSentTo($curador, NuevaSolicitudPorRevisarNotification::class,
+        fn ($notificacion, array $canales) => $canales === ['database']);
+    if ($redirige) {
+        Notification::assertSentOnDemand(NuevaSolicitudPorRevisarNotification::class,
+            fn ($notificacion, array $canales, $destino) => ($destino->routes['mail'] ?? null) === 'qa@example.test'
+                && $notificacion->solicitudId === (string) $solicitud->id && $canales === ['mail']);
+    } else {
+        Notification::assertNothingSentTo(new \Illuminate\Notifications\AnonymousNotifiable);
+        Notification::assertSentTo($curador, NuevaSolicitudPorRevisarNotification::class,
+            fn ($notificacion, array $canales) => $canales === ['mail']);
+    }
+})->with([
+    'solo expediente local' => ['local', true, true],
+    'otro expediente local' => ['local', false, false],
+    'desarrollo' => ['staging', true, false],
+    'producción' => ['production', true, false],
+]);
 
 test('la matriz de notificaciones delimita destinatarios canales y enlaces de depósitos', function (): void {
     Notification::fake();

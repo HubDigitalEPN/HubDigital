@@ -10,11 +10,18 @@ bash "${release_dir}/deploy/oracle/scripts/verify-source-identity.sh" "${release
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get install -y --no-install-recommends python3-venv libgl1 libegl1 libxrender1 libxext6 fonts-dejavu-core
+venv_options=()
+if [[ "$(dpkg --print-architecture)" == arm64 ]]; then
+    # PyPI no distribuye ruedas Linux ARM de estas versiones de PyQt5/Qt5.
+    # Ubuntu provee los enlaces nativos para su Python; el resto queda aislado.
+    apt-get install -y --no-install-recommends python3-pyqt5 python3-pyqt5.qtsvg
+    venv_options=(--system-site-packages)
+fi
 requirements_sha="$(sha256sum "${requirements}" | awk '{print $1}')"
 runtime="/opt/hubdigital/ete/${requirements_sha}"
 install -d -m 0755 /opt/hubdigital/ete
 if [[ ! -f "${runtime}/INSTALLED" ]]; then
-    python3 -m venv "${runtime}"
+    python3 -m venv "${venv_options[@]}" "${runtime}"
     "${runtime}/bin/python" -m pip install --disable-pip-version-check -r "${requirements}"
     printf '%s\n' "${requirements_sha}" > "${runtime}/INSTALLED"
 fi

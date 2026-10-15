@@ -28,7 +28,7 @@ final class CompletarDatosManualesController
             new CompletarDatosManualesInput(
                 solicitudId: $id,
                 campo: $request->validated('campo'),
-                valor: $request->validated('valor'),
+                valor: (string) ($request->validated('valor') ?? ''),
             )
         );
 

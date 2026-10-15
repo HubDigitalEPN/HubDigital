@@ -4,6 +4,12 @@ use Tests\DatabaseFeatureTestCase;
 use Tests\InfrastructureTestCase;
 use Tests\PostgresIntegrationTestCase;
 
+// Cada proceso de Pest carga las mismas fábricas compartidas, independientemente
+// del orden o archivo asignado por ParaTest. No se ejecutan casos al incluirlas.
+foreach (glob(__DIR__.'/Support/Fixtures/*.php') ?: [] as $fixtureCompartida) {
+    require_once $fixtureCompartida;
+}
+
 /*
 |--------------------------------------------------------------------------
 | Test Case
@@ -15,7 +21,7 @@ use Tests\PostgresIntegrationTestCase;
 |
 */
 
-// Los flujos funcionales que persisten datos usan la base local hubdigital. Se
+// Los flujos funcionales que persisten datos usan copias PostgreSQL aisladas. Se
 // enumeran expresamente para que una prueba nueva no ejecute DDL sin declarar
 // su dependencia de PostgreSQL.
 pest()->extend(DatabaseFeatureTestCase::class)

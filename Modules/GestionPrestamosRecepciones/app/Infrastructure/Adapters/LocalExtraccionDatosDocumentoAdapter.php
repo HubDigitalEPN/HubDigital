@@ -14,6 +14,7 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDep
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\ValidadorPdfDeposito;
 use Smalot\PdfParser\Parser;
 use Symfony\Component\Process\Process;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Services\ClienteFirmadorPreparado;
 
 /**
  * Extractor privado y gratuito: texto embebido + OCR Tesseract 5 (spa/eng).
@@ -202,16 +203,19 @@ final class LocalExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocum
         if (PHP_OS_FAMILY === 'Windows') {
             $paginas = [];
             $fragmentos = [];
-            $proceso = new Process([
-                (string) config('firma-electronica.java_binary', 'java'),
-                '-Djava.awt.headless=true', '-Xmx384m', '-jar',
-                (string) config('firma-electronica.java_signature_jar'), 'text', '--paths-stdin',
-            ]);
-            $proceso->setInput($archivo);
-            $proceso->setEnv(DirectorioTemporalHubDigital::entornoProcesos());
-            $proceso->setTimeout(30);
-            $proceso->mustRun();
-            $lectura = json_decode($proceso->getOutput(), true, 512, JSON_THROW_ON_ERROR);
+            $lectura = app(ClienteFirmadorPreparado::class)->leerTexto($archivo);
+            if (! is_array($lectura['paginas'] ?? null)) {
+                $proceso = new Process([
+                    (string) config('firma-electronica.java_binary', 'java'),
+                    '-Djava.awt.headless=true', '-Xmx384m', '-jar',
+                    (string) config('firma-electronica.java_signature_jar'), 'text', '--paths-stdin',
+                ]);
+                $proceso->setInput($archivo);
+                $proceso->setEnv(DirectorioTemporalHubDigital::entornoProcesos());
+                $proceso->setTimeout(30);
+                $proceso->mustRun();
+                $lectura = json_decode($proceso->getOutput(), true, 512, JSON_THROW_ON_ERROR);
+            }
             if (! is_array($lectura['paginas'] ?? null)) {
                 throw new \RuntimeException('Java no pudo leer las páginas del PDF.');
             }

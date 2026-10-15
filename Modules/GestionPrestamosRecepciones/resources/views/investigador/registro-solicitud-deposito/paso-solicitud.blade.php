@@ -97,7 +97,7 @@
             @endif
         @endif
         </div>
-        <flux:button class="ml-auto" variant="primary" icon-trailing="arrow-right" wire:click="continuarDesdeSolicitud" wire:loading.attr="disabled" :disabled="!$solicitudFirmada || $solicitudCambiosPendientes">Paso 2 Trámite</flux:button>
+        <flux:button class="ml-auto" variant="primary" icon-trailing="arrow-right" wire:click="continuarDesdeSolicitud" wire:loading.attr="disabled" :disabled="!$solicitudFirmada || $solicitudCambiosPendientes">{{ \Modules\GestionPrestamosRecepciones\Presentation\Support\PasosWizardDeposito::accionSiguiente(0) }}</flux:button>
     </div>
     <flux:error name="solicitudFirmada" />
 </div>

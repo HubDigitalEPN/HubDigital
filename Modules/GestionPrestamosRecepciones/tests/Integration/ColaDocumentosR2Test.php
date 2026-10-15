@@ -10,33 +10,41 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\Solici
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\ColaFirmasSolicitudR2;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\DirectorioTemporalHubDigital;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Jobs\RetirarDocumentoSolicitudR2;
 use Tests\DatabaseFeatureTestCase;
+use App\Models\User;
+use Livewire\Livewire;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\RegistroSolicitudDeposito;
 
 uses(DatabaseFeatureTestCase::class);
 
-/** Simula únicamente el dictamen de admisión ya emitido por el servidor; no prueba seguridad PDF. */
-function encolarDocumentoAdmitidoParaPruebas(SolicitudDepositoEloquentModel $modelo, string $contenido): string
-{
+test('retirar un PDF desde el wizard no espera R2 y conserva una retirada durable sin trabajos duplicados', function (): void {
+    configurarR2FalsoParaPruebas();
+    config()->set('deposit-storage.signature_async', true);
+    $modelo = solicitudColaR2ParaPruebas();
     $nombre = 'Documento de procedencia de los especimenes';
-    $temporal = DirectorioTemporalHubDigital::crearArchivo('prueba-cola-documento', 'pdf-');
-    file_put_contents($temporal, $contenido);
-    try {
-        return DB::transaction(function () use ($modelo, $nombre, $contenido, $temporal): string {
-            $ruta = 'depositos/'.$modelo->id.'/'.Str::uuid().'.pdf';
-            $anteriores = $modelo->documentos_cargados ?? [];
-            $previas = $modelo->validacion_previa_documentos ?? [];
-            $token = (string) Str::uuid();
-            $previas[$nombre] = ['ruta' => $ruta, 'sha256' => hash('sha256', $contenido),
-                'estructura' => ['status' => 'seguro'], 'verificacion_id' => $token];
-            $modelo->forceFill(['documentos_requeridos' => [$nombre],
-                'documentos_cargados' => [...$anteriores, $nombre => $ruta], 'validacion_previa_documentos' => $previas])->save();
-            $id = app(ColaFirmasSolicitudR2::class)->encolarDocumento($temporal, $modelo, $nombre, $anteriores[$nombre] ?? null);
-            $previas[$nombre] += ['r2_pendiente_id' => $id, 'r2_verificacion_id' => $token];
-            $modelo->forceFill(['validacion_previa_documentos' => $previas])->save();
-            return $id;
-        });
-    } finally { DirectorioTemporalHubDigital::eliminar(dirname($temporal)); }
-}
+    $id = encolarDocumentoAdmitidoParaPruebas($modelo, '%PDF-documento retirado desde la interfaz');
+    $usuario = User::findOrFail($modelo->investigador_id);
+    Livewire::actingAs($usuario)->test(RegistroSolicitudDeposito::class, ['id' => $modelo->id])
+        ->call('eliminarDocumento', $nombre);
+    expect($modelo->fresh()->documentos_cargados)->not->toHaveKey($nombre);
+    expect(DB::table(ColaFirmasSolicitudR2::TABLA)->where('id', $id)->value('estado'))->toBe('pendiente');
+    expect(DB::table('jobs')->where('queue', 'r2-signatures')->where('payload', 'like', '%RetirarDocumentoSolicitudR2%')->exists())->toBeTrue();
+    Http::assertNothingSent();
+    $rutaRetirada = DB::table(ColaFirmasSolicitudR2::TABLA)->where('id', $id)->value('ruta');
+    $nuevoId = encolarDocumentoAdmitidoParaPruebas($modelo->fresh(), '%PDF-reemplazo posterior a la retirada');
+    $retirada = new RetirarDocumentoSolicitudR2($modelo->id, $nombre, [$rutaRetirada]);
+    $retirada->handle(app(ColaFirmasSolicitudR2::class), app(AlmacenamientoDepositos::class));
+    expect(DB::table(ColaFirmasSolicitudR2::TABLA)->where('id', $id)->value('estado'))->toBe('cancelado');
+    expect(DB::table(ColaFirmasSolicitudR2::TABLA)->where('id', $nuevoId)->value('estado'))->toBe('pendiente');
+    expect($modelo->fresh()->documentos_cargados[$nombre])->not->toBe($rutaRetirada);
+    $trabajos = DB::table('jobs')->where('queue', 'r2-signatures')->count();
+    DB::transaction(fn () => app(ColaFirmasSolicitudR2::class)->cancelarDocumento($modelo->id, $nombre, [$rutaRetirada]));
+    expect(DB::table('jobs')->where('queue', 'r2-signatures')->count())->toBe($trabajos);
+    expect(DB::table('jobs')->where('queue', 'r2-signatures')->where('payload', 'like', '%'.$id.'%')->exists())->toBeTrue();
+});
+
+
 
 test('una caída de R2 retiene el documento admitido cifrado y el reintento confirma su huella', function (): void {
     configurarR2FalsoParaPruebas();

@@ -19,7 +19,8 @@ final class CompletarDatosManualesRequest extends FormRequest
     {
         return [
             'campo' => ['required', 'string', 'max:100'],
-            'valor' => ['required', 'string', 'max:500'],
+            'valor' => $this->input('campo') === 'Localidad'
+                ? ['nullable', 'string', 'max:2000'] : ['required', 'string', 'max:500'],
         ];
     }
 }

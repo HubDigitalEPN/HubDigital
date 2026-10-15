@@ -9,7 +9,7 @@
     }"
     x-on:hub-firma-ocupada.window="firmaOcupada = $event.detail.busy"
 >
-    <div wire:loading.delay.long wire:target.except="actualizarFirmas,verificarExtraccion,buscarLocalidadesOrigenLov,enviarPreguntaAsistencia,sugerirPreguntaAsistencia" class="hub-processing-overlay" style="display: none" role="status" aria-live="polite">
+    <div wire:loading.delay.long wire:target.except="actualizarFirmas,verificarExtraccion,buscarLocalidadesOrigenLov,buscarLocalidadesDatoLov,enviarPreguntaAsistencia,sugerirPreguntaAsistencia,eliminarDocumento,_startUpload,_finishUpload,confirmarCargaContenidoIncierto,cancelarCargaContenidoIncierto" class="hub-processing-overlay" style="display: none" role="status" aria-live="polite">
         <div x-show="!firmaOcupada" class="hub-processing-card"><span class="hub-processing-spinner" aria-hidden="true"></span><span>Procesando…</span></div>
     </div>
     <div x-show="firmaOcupada" x-cloak x-trap.inert.noscroll="firmaOcupada" class="hub-processing-overlay" role="status" aria-live="polite" tabindex="-1">
@@ -17,6 +17,19 @@
     </div>
 
     {{-- Corrección de un rechazo subsanable: recordatorio de las observaciones --}}
+    <flux:modal name="confirmar-contenido-incierto" class="w-full max-w-lg" :dismissible="false" :closable="false" aria-labelledby="titulo-contenido-incierto">
+        <div class="space-y-5">
+            <flux:heading size="lg" level="2" id="titulo-contenido-incierto">No se pudo identificar el contenido</flux:heading>
+            <flux:text>{{ $confirmacionContenidoPendiente['motivo'] ?? '' }}</flux:text>
+            <p class="text-sm text-text-primary">¿Deseas subirlo de todas formas?</p>
+            <p class="text-sm text-text-secondary">Se comprobará su firma digital. Si es válida, podrás continuar y el curador revisará el contenido al recibir la solicitud.</p>
+            <div class="flex flex-wrap justify-end gap-3">
+                <flux:button wire:click="cancelarCargaContenidoIncierto" wire:loading.attr="disabled">Elegir otro archivo</flux:button>
+                <flux:button variant="primary" wire:click="confirmarCargaContenidoIncierto" wire:loading.attr="disabled">Subir de todas formas</flux:button>
+            </div>
+        </div>
+    </flux:modal>
+
     @if($modoCorreccion && $paso < 9)
         <div class="rounded-lg border border-warning/40 bg-warning/5 p-3 flex items-start gap-3">
             <flux:icon name="exclamation-triangle" class="size-5 text-warning shrink-0 mt-0.5" />
@@ -140,7 +153,7 @@
                             x-bind:disabled="!tipoTramite"
                         >
                             <flux:icon wire:loading wire:target="avanzarPaso1" name="arrow-path" class="animate-spin size-4 mr-1" />
-                            {{ \App\Support\WizardCopy::text('tramite.accion') }}
+                            {{ \Modules\GestionPrestamosRecepciones\Presentation\Support\PasosWizardDeposito::accionSiguiente($tipoTramite === \Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoTramite::Donacion->value ? 2 : $paso) }}
                         </flux:button>
                     @elseif($paso === 2)
                         <flux:button
@@ -151,7 +164,7 @@
                             wire:target="guardarOrigenDesdeFormulario"
                         >
                             <flux:icon wire:loading wire:target="guardarOrigenDesdeFormulario" name="arrow-path" class="animate-spin size-4 mr-1" />
-                            {{ \App\Support\WizardCopy::text('origen.accion') }}
+                            {{ \Modules\GestionPrestamosRecepciones\Presentation\Support\PasosWizardDeposito::accionSiguiente($paso) }}
                         </flux:button>
                     @elseif($paso === 3)
                         @if(!$intervencionCuratoriaActiva && !$extraccionProcesando)
@@ -167,7 +180,7 @@
                                 wire:click="guardarPasoTres"
                                 :disabled="!$firmasListas"
                             >
-                                {{ $analisisDocumentalCompletado ? 'Continuar a datos' : (empty($documentosRequeridos) ? \App\Support\WizardCopy::text('documentos.accion_sin_archivos') : \App\Support\WizardCopy::text('documentos.accion_con_archivos')) }}
+                                {{ \Modules\GestionPrestamosRecepciones\Presentation\Support\PasosWizardDeposito::accionSiguiente($paso) }}
                             </flux:button>
                         @endif
                     @elseif($paso === 4)
@@ -179,7 +192,7 @@
                             wire:target="guardarPasoCuatro"
                         >
                             <flux:icon wire:loading wire:target="guardarPasoCuatro" name="arrow-path" class="animate-spin size-4 mr-1" />
-                            {{ \App\Support\WizardCopy::text('datos.accion') }}
+                            {{ \Modules\GestionPrestamosRecepciones\Presentation\Support\PasosWizardDeposito::accionSiguiente($paso) }}
                         </flux:button>
                     @elseif($paso === 7)
                         <flux:button
@@ -190,19 +203,19 @@
                             wire:target="guardarPasoCinco"
                         >
                             <flux:icon wire:loading wire:target="guardarPasoCinco" name="arrow-path" class="animate-spin size-4 mr-1" />
-                            {{ \App\Support\WizardCopy::text('detalle.accion') }}
+                            {{ \Modules\GestionPrestamosRecepciones\Presentation\Support\PasosWizardDeposito::accionSiguiente($paso) }}
                         </flux:button>
                     @elseif($paso === 8)
                         <flux:button
                             variant="primary"
-                            icon-trailing="paper-airplane"
+                            icon-trailing="arrow-right"
                             wire:click="enviarSolicitud"
                             wire:loading.attr="disabled"
                             wire:target="enviarSolicitud"
                             x-bind:disabled="!declaracionAceptada || !solicitudFirmada"
                         >
                             <flux:icon wire:loading wire:target="enviarSolicitud" name="arrow-path" class="animate-spin size-4 mr-1" />
-                            {{ \App\Support\WizardCopy::text('envio.accion') }}
+                            {{ \Modules\GestionPrestamosRecepciones\Presentation\Support\PasosWizardDeposito::accionSiguiente($paso) }}
                         </flux:button>
                     @endif
                 </div>

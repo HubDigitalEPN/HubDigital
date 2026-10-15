@@ -110,10 +110,14 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
                 'campos' => [],
             ];
             $documentosAnalizados = [];
+            $tiposConfirmadosSinLectura = [];
             $modelSolicitud = SolicitudDepositoEloquentModel::find($this->solicitudId);
             $nombresOriginales = $modelSolicitud?->nombres_archivos_originales ?? [];
+            $requeridos = $modelSolicitud?->documentos_requeridos ?? [];
+            $documentosAProcesar = $requeridos === [] ? $this->documentos
+                : array_intersect_key($this->documentos, array_fill_keys($requeridos, true));
 
-            foreach ($this->documentos as $nombre => $ruta) {
+            foreach ($documentosAProcesar as $nombre => $ruta) {
                 $documentoEnProceso = $nombre;
                 $previa = $modelSolicitud?->validacion_previa_documentos[$nombre] ?? [];
                 if (($previa['ruta'] ?? null) !== $ruta
@@ -125,11 +129,26 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
                 if (! hash_equals((string) ($previa['sha256'] ?? ''), $almacenamiento->sha256($ruta))) {
                     throw new \RuntimeException('El PDF cambió después de su comprobación de firma.');
                 }
+                if (($previa['tipo_detectado'] ?? null) === AnalizadorDocumentoAmbiental::DESCONOCIDO
+                    && ($previa['estructura']['status'] ?? null) === 'seguro'
+                    && ($previa['revision_contenido']['confirmada_por_usuario'] ?? false) === true
+                    && ($previa['revision_contenido']['confirmada_por'] ?? null) === (string) $modelSolicitud->investigador_id) {
+                    // Consentimiento sobre los mismos bytes; la firma ya fue comprobada.
+                    // La curaduría revisará el contenido sin inventar datos extraídos.
+                    $tipoEsperado = $analizadorDocumento->tipoEsperadoParaNombre($nombre);
+                    if ($tipoEsperado !== null) $tiposConfirmadosSinLectura[] = $tipoEsperado;
+                    $metadatosExtraccion['documentos'][$nombre] = ['revision_contenido' => $previa['revision_contenido'],
+                        'tipo_detectado' => AnalizadorDocumentoAmbiental::DESCONOCIDO, 'sha256' => $previa['sha256']];
+                    $procesados[] = $nombre;
+                    $this->actualizarEstadoSiVersionVigente('procesando', $procesados);
+                    continue;
+                }
                 $parcial = $extraccion->extraerDatos([$nombre => $ruta]);
+                $tipoEsperado = $analizadorDocumento->tipoEsperadoParaNombre($nombre);
 
                 foreach ([
-                    'nroPermisoRecoleccion' => $parcial->nroPermisoRecoleccion,
-                    'nroPermisoMovilizacion' => $parcial->nroPermisoMovilizacion,
+                    'nroPermisoRecoleccion' => $tipoEsperado === AnalizadorDocumentoAmbiental::GUIA_MOVILIZACION ? null : $parcial->nroPermisoRecoleccion,
+                    'nroPermisoMovilizacion' => $tipoEsperado === AnalizadorDocumentoAmbiental::AUTORIZACION_RECOLECCION ? null : $parcial->nroPermisoMovilizacion,
                     'grupoAnimal' => $parcial->grupoAnimal,
                     'provinciaOrigen' => null,
                     'localidad' => $parcial->localidad,
@@ -163,6 +182,10 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
                     );
                 }
                 foreach (($parcial->metadatosExtraccion['campos'] ?? []) as $campo => $detalle) {
+                    if (($campo === 'nroPermisoRecoleccion' && $tipoEsperado === AnalizadorDocumentoAmbiental::GUIA_MOVILIZACION)
+                        || ($campo === 'nroPermisoMovilizacion' && $tipoEsperado === AnalizadorDocumentoAmbiental::AUTORIZACION_RECOLECCION)) {
+                        continue;
+                    }
                     if (! isset($metadatosExtraccion['campos'][$campo])) {
                         $metadatosExtraccion['campos'][$campo] = $detalle;
                     }
@@ -183,7 +206,9 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
                 fn (string $nombre): ?string => $analizadorDocumento->tipoEsperadoParaNombre($nombre),
                 $modelSolicitud?->documentos_requeridos ?? [],
             )));
-            $validacionContenido = $analizadorDocumento->validarExpediente($documentosAnalizados, $tiposRequeridos);
+            $tiposRequeridos = array_values(array_diff($tiposRequeridos, $tiposConfirmadosSinLectura));
+            // El wizard exige documentos de tipos distintos y los valida individualmente.
+            $validacionContenido = $analizadorDocumento->validarExpediente($documentosAnalizados, $tiposRequeridos, compararEntreDocumentos: false);
             $metadatosExtraccion['validacion_contenido'] = $validacionContenido;
             if (($validacionContenido['autocompletado_habilitado'] ?? false) !== true) {
                 foreach ($metadatosExtraccion['campos'] as $campo => &$detalleCampo) {
@@ -220,7 +245,7 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
             $firmas = [];
             $tokensFirmas = [];
             $firmasPersistidas = SolicitudDepositoEloquentModel::query()->find($this->solicitudId);
-            foreach ($this->documentos as $nombre => $ruta) {
+            foreach ($documentosAProcesar as $nombre => $ruta) {
                 $previa = $firmasPersistidas?->validacion_previa_documentos[$nombre] ?? [];
                 $estadoFirma = $firmasPersistidas?->firmas_electronicas[$nombre] ?? '';
                 if (($previa['ruta'] ?? null) !== $ruta
@@ -281,7 +306,7 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
 
             // Persistir firmas después de la integración de dominio para evitar
             // inconsistencia si la transacción anterior falla.
-            $transactionManager->executeTransactional(function () use ($repo, $datosIntegrados, $firmas, $tokensFirmas, &$metadatosExtraccion, &$eventos, &$aplicada): void {
+            $transactionManager->executeTransactional(function () use ($repo, $datosIntegrados, $firmas, $tokensFirmas, $documentosAProcesar, &$metadatosExtraccion, &$eventos, &$aplicada): void {
                 $modelo = SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)->lockForUpdate()->firstOrFail();
                 if (! $this->coincideVersionYEjecucion($modelo)) {
                     return;
@@ -295,7 +320,7 @@ final class ExtraccionDatosDocumentoJob implements ShouldQueue
                 if ($solicitud === null) {
                     throw SolicitudNoEncontradaException::conId($this->solicitudId);
                 }
-                $solicitud->integrarDatosDeDocumentos($datosIntegrados, array_keys($this->documentos));
+                $solicitud->integrarDatosDeDocumentos($datosIntegrados, array_keys($documentosAProcesar));
                 $repo->guardar($solicitud);
                 $metadatosVigentes = $modelo->extraccion_metadatos ?? [];
                 if (isset($metadatosVigentes['wizard_pasos_completados'])) {

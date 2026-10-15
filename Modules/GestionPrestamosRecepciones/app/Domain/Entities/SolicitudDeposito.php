@@ -207,9 +207,8 @@ final class SolicitudDeposito
     public function declararLocalidadOrigen(?string $codigo, ?string $nombre = null): void
     {
         $this->localidadOrigenCodigo = $codigo;
-        if ($nombre !== null) {
-            $this->localidad = $nombre;
-        }
+        $this->localidad = $nombre;
+        $this->datosFaltantes = array_values(array_diff($this->datosFaltantes, ['Localidad']));
     }
 
     public function localidadOrigenCodigo(): ?string
@@ -286,11 +285,10 @@ final class SolicitudDeposito
             $this->marcarDatoComoFaltante('Grupo Animal');
         }
 
-        if ($this->localidadOrigenCodigo === null && $datos->localidad !== null) {
+        if ($this->localidad === null && $datos->localidad !== null && ! in_array('Localidad', $this->datosIngresadosManualmente, true)) {
             $this->localidad = $datos->localidad;
-        } elseif ($this->localidad === null && $this->tipoTramite->equals(TipoTramite::Deposito)) {
-            $this->marcarDatoComoFaltante('Localidad');
         }
+        $this->datosFaltantes = array_values(array_diff($this->datosFaltantes, ['Localidad']));
 
         if ($datos->origenDonacion !== null) {
             $this->origenDonacion = $datos->origenDonacion;
@@ -332,7 +330,7 @@ final class SolicitudDeposito
 
     public function completarDatoFaltante(string $campo, string $valor): void
     {
-        if (trim($valor) === '') {
+        if (trim($valor) === '' && $campo !== 'Localidad') {
             throw new \DomainException(
                 sprintf('El valor para el campo "%s" no puede estar vacío', $campo)
             );
@@ -343,6 +341,7 @@ final class SolicitudDeposito
             throw new \DomainException('Ingresa una cantidad entera entre 1 y 2.147.483.647.');
         }
         $this->asignarCampoPorNombre($campo, $valor);
+        if ($campo === 'Localidad') $this->localidadOrigenCodigo = null;
 
         $this->datosFaltantes = array_values(
             array_filter($this->datosFaltantes, fn ($c) => $c !== $campo)
@@ -994,7 +993,7 @@ final class SolicitudDeposito
         $solicitud->localidad = $localidad;
         $solicitud->origenDonacion = $origenDonacion;
         $solicitud->documentosAdjuntos = $documentosAdjuntos;
-        $solicitud->datosFaltantes = $datosFaltantes;
+        $solicitud->datosFaltantes = array_values(array_diff($datosFaltantes, ['Localidad']));
         if (ReglaDocumentacionRequerida::sinPermisosNacionales($tipoTramite->value, $origenRecoleccion, $situacionRegulatoria)) {
             // Compatibilidad con borradores que antes exigían permisos en el flujo de carta.
             $solicitud->datosFaltantes = array_values(array_diff(
@@ -1058,7 +1057,7 @@ final class SolicitudDeposito
             'N.º Permiso Recolección', 'N.º Investigación' => $this->nroPermisoRecoleccion = $valor,
             'N.º Permiso Movilización' => $this->nroPermisoMovilizacion = $valor,
             'Provincia', 'Administración Política' => $this->provinciaOrigen = $valor,
-            'Localidad' => $this->localidad = $valor,
+            'Localidad' => $this->localidad = trim($valor) === '' ? null : $valor,
             'Origen Donación' => $this->origenDonacion = $valor,
             'N.º Individuos' => $this->nroIndividuos = $valor,
             'N.º Morfoespecies' => $this->nroMorfoespecies = $valor,

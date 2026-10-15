@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Infrastructure\Notifications;
 
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -12,8 +14,16 @@ use Illuminate\Notifications\Notification;
  * revisión documental (envío inicial o reenvío tras corrección). Se envía por correo
  * y por el portal (campana).
  */
-final class NuevaSolicitudPorRevisarNotification extends Notification
+final class NuevaSolicitudPorRevisarNotification extends Notification implements ShouldQueue
 {
+    use Queueable;
+
+    public int $tries = 5;
+
+    public int $timeout = 90;
+
+    private array $canales = ['mail', 'database'];
+
     public function __construct(
         public readonly string $solicitudId,
         public readonly ?string $numero,
@@ -21,14 +31,29 @@ final class NuevaSolicitudPorRevisarNotification extends Notification
         public readonly ?string $nombreInvestigador = null,
         public readonly ?string $fechaEnvio = null,
         public readonly bool $esReenvio = false,
-    ) {}
+    ) {
+        $this->onQueue('default')->afterCommit();
+    }
+
+    public function soloCorreo(): self
+    {
+        $correo = clone $this;
+        $correo->canales = ['mail'];
+
+        return $correo;
+    }
+
+    public function backoff(): array
+    {
+        return [10, 60, 300, 900];
+    }
 
     /**
      * @return array<int, string>
      */
     public function via(object $notifiable): array
     {
-        return ['mail', 'database'];
+        return $this->canales;
     }
 
     public function toMail(object $notifiable): MailMessage

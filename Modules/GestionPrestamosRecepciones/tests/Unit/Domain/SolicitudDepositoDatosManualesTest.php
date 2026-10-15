@@ -7,6 +7,14 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\DatosIntegradosDocum
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\NumeroSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
 
+test('una localidad que se dejó vacía explícitamente no vuelve a completarse desde el PDF', function (): void {
+    $solicitud = SolicitudDeposito::crear(SolicitudDepositoId::generate(), NumeroSolicitudDeposito::fromSecuencia(8), 'depositante-qa', 'Depósito');
+    $solicitud->declararOrigenRecoleccion('Nacional (Ecuador)');
+    $solicitud->completarDatoFaltante('Localidad', '');
+    $solicitud->integrarDatosDeDocumentos(new DatosIntegradosDocumento(null, null, null, null, 'Localidad del PDF', null), []);
+    expect($solicitud->localidad())->toBeNull()->and($solicitud->datosFaltantesParaPersistir())->not->toContain('Localidad');
+});
+
 test('rechaza cantidades vacías de material aunque se complete directamente el dominio', function (string $campo): void {
     $solicitud = SolicitudDeposito::crear(
         SolicitudDepositoId::generate(), NumeroSolicitudDeposito::fromSecuencia(3), 'depositante-qa', 'Depósito',
@@ -62,7 +70,8 @@ test('exige números regulatorios solo cuando corresponden al origen y situació
     expect(array_values(array_intersect($solicitud->datosFaltantesParaPersistir(), [
         'N.º Permiso Recolección', 'N.º Permiso Movilización', 'N.º Investigación',
     ])))->toBe($permisos)
-        ->and($solicitud->datosFaltantesParaPersistir())->toContain('N.º Individuos', 'Grupo Animal', 'Localidad');
+        ->and($solicitud->datosFaltantesParaPersistir())->toContain('N.º Individuos', 'Grupo Animal')
+        ->and($solicitud->datosFaltantesParaPersistir())->not->toContain('Localidad');
     if ($origen === 'Nacional (Ecuador)') {
         expect($solicitud->datosFaltantesParaPersistir())->toContain('N.º Morfoespecies', 'N.º Lotes');
     }

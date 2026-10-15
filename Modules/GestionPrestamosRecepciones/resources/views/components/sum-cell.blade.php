@@ -13,7 +13,7 @@
     {{-- Header --}}
     <div class="mb-1.5 flex min-h-4 items-center justify-between gap-1">
         <div class="flex items-start gap-1">
-            <span class="text-[10px] font-semibold uppercase tracking-wider text-text-secondary">{{ $campo }}</span>
+            <span class="text-[10px] font-semibold uppercase tracking-wider text-text-secondary">{{ $campo }}{{ $campo === 'Localidad' ? ' (opcional)' : '' }}</span>
             @if($ayuda)
                 <div
                     x-data="{
@@ -67,7 +67,9 @@
                 </div>
             @endif
         </div>
-        @if($faltante)
+        @if($campo === 'Localidad' && !filled($valor))
+            <span class="text-[10px] text-text-secondary">Opcional</span>
+        @elseif($faltante)
             <span class="absolute right-2 top-2 inline-flex items-center gap-1 rounded bg-error/15 px-1.5 py-0.5 text-[10px] font-semibold text-error">
                 <span class="size-1.5 rounded-full bg-error" aria-hidden="true"></span>
                 Faltante
@@ -88,7 +90,7 @@
     {{-- Valor siempre visible --}}
     <p class="text-sm font-medium
         {{ $faltante ? 'text-error italic' : 'text-text-primary' }}">
-        {{ $faltante ? 'Falta ingresar' : ($valor ?? '—') }}
+        {{ $campo === 'Localidad' && !filled($valor) ? 'No indicada' : ($faltante ? 'Falta ingresar' : ($valor ?? '—')) }}
     </p>
 
     {{-- Slot para formulario de edición o botón de captura manual --}}

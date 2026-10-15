@@ -29,7 +29,7 @@
             <div class="hub-curator-activity">
                 <h3>Últimos movimientos</h3>
                 @if($borradorPendiente)
-                    <a href="{{ route('prestamos.investigador.deposito.crear') }}" wire:navigate><span class="hub-curator-activity__dot"></span><span><strong>Retomar borrador</strong><small>{{ $borradorPendiente->numero }} · Paso {{ $borradorPendiente->paso_actual <= 4 ? $borradorPendiente->paso_actual + 1 : $borradorPendiente->paso_actual }} de 8</small></span><flux:icon name="arrow-right" class="size-4" /></a>
+                    <a href="{{ route('prestamos.investigador.deposito.crear') }}" wire:navigate><span class="hub-curator-activity__dot"></span><span><strong>Retomar borrador</strong><small>{{ $borradorPendiente->numero }} · Paso {{ \Modules\GestionPrestamosRecepciones\Presentation\Support\PasosWizardDeposito::numeroVisible($borradorPendiente->paso_actual) }} de {{ \Modules\GestionPrestamosRecepciones\Presentation\Support\PasosWizardDeposito::total() }}</small></span><flux:icon name="arrow-right" class="size-4" /></a>
                 @endif
                 @if($requierenCorreccion > 0)
                     <a href="{{ route('prestamos.investigador.mis-depositos', ['estado' => \Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito::RequiereCorreccion->value]) }}" wire:navigate><span><strong>{{ $requierenCorreccion }} {{ $requierenCorreccion === 1 ? 'solicitud requiere' : 'solicitudes requieren' }} corrección</strong><small>Revisa las observaciones y completa tu expediente.</small></span><flux:icon name="arrow-right" class="size-4" /></a>

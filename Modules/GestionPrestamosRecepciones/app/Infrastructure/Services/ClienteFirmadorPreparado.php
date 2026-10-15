@@ -39,6 +39,21 @@ final class ClienteFirmadorPreparado
 
     public function validarExterno(string $ruta, float $espera): ?array
     {
+        return $this->operacionExterna($ruta, 'verify-external', $espera);
+    }
+
+    public function inspeccionarExterno(string $ruta): ?array
+    {
+        return $this->operacionExterna($ruta, 'inspect-external', 5);
+    }
+
+    public function leerTexto(string $ruta): ?array
+    {
+        return $this->operacionExterna($ruta, 'read-text', 6);
+    }
+
+    private function operacionExterna(string $ruta, string $operacion, float $espera): ?array
+    {
         if (! $this->habilitado()) return null;
         $copia = null;
         $limite = microtime(true) + $espera;
@@ -48,7 +63,7 @@ final class ClienteFirmadorPreparado
             $copia = DirectorioTemporalHubDigital::crearArchivo('validar-pdf-externo', 'pdf-', $tamano);
             if (! copy($ruta, $copia)) return null;
             $restante = $limite - microtime(true);
-            return $restante > 0 ? $this->firmar($copia, '', '', '', 'verify-external', $restante) : null;
+            return $restante > 0 ? $this->firmar($copia, '', '', '', $operacion, $restante) : null;
         } finally {
             if ($copia !== null) DirectorioTemporalHubDigital::eliminar(dirname($copia));
         }
@@ -91,13 +106,13 @@ final class ClienteFirmadorPreparado
                 if (($prueba['status'] ?? '') !== 'ready' || ! hash_equals($hash, (string) ($prueba['jar_sha256'] ?? ''))
                     || ! hash_equals(hash_hmac('sha256', $nonce."\0".$hash, $claveLocal), (string) ($prueba['proof'] ?? ''))) return null;
             }
-            if ($perfil === 'verify-external') {
+            if (in_array($perfil, ['verify-external', 'inspect-external', 'read-text'], true)) {
                 if (! $local) {
                     $this->escribir($socket, 'health');
                     $prueba = $this->respuesta($socket, $limite);
                 }
                 if (($prueba['jar_sha256'] ?? '') !== $hash
-                    || ! in_array('verify-external', $prueba['operations'] ?? [], true)) return null;
+                    || ! in_array($perfil, $prueba['operations'] ?? [], true)) return null;
             }
             $paquete = pack('N', strlen($entrada)).$entrada;
             for ($offset = 0; $offset < strlen($paquete); $offset += $n) {
@@ -108,7 +123,7 @@ final class ClienteFirmadorPreparado
             $cabecera = $this->leer($socket, 4, $limite);
             if ($cabecera === null) return null;
             $tamano = unpack('N', $cabecera)[1];
-            if ($tamano < 1 || $tamano > 65536) return null;
+            if ($tamano < 1 || $tamano > ($perfil === 'read-text' ? 1048576 : 65536)) return null;
             $respuesta = $this->leer($socket, $tamano, $limite);
             $resultado = $respuesta === null ? null : json_decode($respuesta, true);
             if (! is_array($resultado) || ($resultado['status'] ?? null) === 'worker_incompatible') return null;

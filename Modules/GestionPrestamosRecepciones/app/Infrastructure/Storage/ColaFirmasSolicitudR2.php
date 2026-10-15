@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Jobs\PersistirFirmaSolicitudR2;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Jobs\RetirarDocumentoSolicitudR2;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
 
 /** Outbox cifrada: el PDF y su trabajo quedan comprometidos en la misma transacción. */
@@ -171,7 +172,7 @@ final class ColaFirmasSolicitudR2
         try {
             DB::transaction(function () use ($id, $almacenamiento): void {
                 // Sólo esta fila permanece bloqueada durante la transferencia.
-                // El wizard puede avanzar; descartar espera este bloqueo y retira todo después.
+                // La retirada espera este bloqueo en la cola, nunca en el wizard.
                 $registro = DB::table(self::TABLA)->where('id', $id)->lockForUpdate()->first();
                 if ($registro === null) return;
                 if ($registro->estado === 'cancelado') {
@@ -232,10 +233,12 @@ final class ColaFirmasSolicitudR2
     }
 
     /** El descarte toma este bloqueo después del de la solicitud y antes de borrar R2. */
-    public function cancelarDocumento(string $solicitudId, string $nombre): array
+    public function cancelarDocumento(string $solicitudId, string $nombre, ?array $rutas = null): array
     {
         if (!Schema::hasTable(self::TABLA)) return [];
-        $consulta = DB::table(self::TABLA)->where('solicitud_id', $solicitudId)->where('nombre_documento', $nombre);
+        $consulta = DB::table(self::TABLA)->where('solicitud_id', $solicitudId)->where('nombre_documento', $nombre)
+            ->where('estado', '!=', 'cancelado');
+        if ($rutas !== null) $consulta->whereIn('ruta', $rutas);
         $registros = (clone $consulta)->lockForUpdate()->get(['id', 'ruta', 'ruta_anterior']);
         $consulta->update(['estado' => 'cancelado', 'contenido_cifrado' => null, 'updated_at' => now()]);
         foreach ($registros as $registro) {
@@ -243,6 +246,21 @@ final class ColaFirmasSolicitudR2
             PersistirFirmaSolicitudR2::dispatch($registro->id)->onConnection('r2_signatures')->onQueue('r2-signatures')->beforeCommit();
         }
         return $registros->flatMap(fn ($fila): array => [$fila->ruta, $fila->ruta_anterior])->filter()->unique()->values()->all();
+    }
+
+    /** Se captura la versión sin esperar el bloqueo de una transferencia R2 en curso. */
+    public function encolarRetiroDocumento(SolicitudDepositoEloquentModel $solicitud, string $nombre): void
+    {
+        $this->exigirTransaccionDurable();
+        $rutas = DB::table(self::TABLA)->where('solicitud_id', $solicitud->id)
+            ->where('nombre_documento', $nombre)->where('estado', '!=', 'cancelado')
+            ->get(['ruta', 'ruta_anterior'])->flatMap(fn ($fila): array => [$fila->ruta, $fila->ruta_anterior]);
+        $rutas = $rutas->push($solicitud->documentos_cargados[$nombre] ?? null)
+            ->filter(fn ($ruta): bool => is_string($ruta) && $ruta !== '')->unique()->values()->all();
+        if ($rutas !== []) {
+            RetirarDocumentoSolicitudR2::dispatch($solicitud->id, $nombre, $rutas)
+                ->onConnection('r2_signatures')->onQueue('r2-signatures')->beforeCommit();
+        }
     }
 
     public function cancelarSolicitud(string $solicitudId): array

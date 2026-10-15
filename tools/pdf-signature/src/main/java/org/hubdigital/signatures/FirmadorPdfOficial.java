@@ -246,9 +246,11 @@ final class FirmadorPdfOficial {
                     throw new IOException("La dirección de verificación del QR no es válida.");
                 }
             }
-            String datosQr = destinoVerificacion != null ? destinoVerificacion : "HubDigital\nFirmante: " + nombre(cert)
-                + "\nCertificado SHA-256: " + huella + "\nOriginal SHA-256: " + originalSha256
-                + "\nFecha: " + fecha.toInstant();
+            // El nombre y la fecha ya están en el sello visible y en el CMS.
+            // El respaldo sin URL conserva las dos huellas completas, con menos
+            // módulos para que el QR sea legible también en una copia impresa.
+            String datosQr = destinoVerificacion != null ? destinoVerificacion
+                : "Original SHA-256: " + originalSha256 + "\nCertificado SHA-256: " + huella;
             var qr = new QRCodeWriter().encode(datosQr, BarcodeFormat.QR_CODE, 0, 0,
                 java.util.Map.of(EncodeHintType.CHARACTER_SET, "UTF-8", EncodeHintType.MARGIN, 4,
                     EncodeHintType.ERROR_CORRECTION, com.google.zxing.qrcode.decoder.ErrorCorrectionLevel.M));

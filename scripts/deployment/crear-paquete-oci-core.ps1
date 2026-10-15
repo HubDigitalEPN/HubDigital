@@ -180,16 +180,9 @@ function Get-SalidaGit {
 }
 
 function Get-HuellasCodigo {
-    $rutasCodigo = @(Get-SalidaGit -Argumentos @('-c', 'core.quotepath=false', 'ls-files', '--cached', '--others', '--exclude-standard') | Sort-Object -Unique)
-    foreach ($rutaCodigo in $rutasCodigo) {
-        $archivoCodigo = Join-Path $Proyecto $rutaCodigo
-        if (Test-Path -LiteralPath $archivoCodigo -PathType Leaf) {
-            $huellaCodigo = (Get-FileHash -LiteralPath $archivoCodigo -Algorithm SHA256).Hash.ToLowerInvariant()
-            "$huellaCodigo  $rutaCodigo"
-        } else {
-            "eliminado  $rutaCodigo"
-        }
-    }
+    $huellas = @(& node.exe (Join-Path $directorioScript 'huellas-codigo.cjs') $Proyecto)
+    if ($LASTEXITCODE -ne 0) { throw 'No se pudo verificar la identidad completa del código.' }
+    return $huellas
 }
 
 $Proyecto = [IO.Path]::GetFullPath($Proyecto)
@@ -403,6 +396,17 @@ if (-not $php) {
 }
 $phpPrograma = if ($php -and $php.PSObject.Properties['Source'] -and $php.Source) { $php.Source } elseif ($php) { $php.FullName } else { $null }
 $archivosPhp = @($archivosCambiados | Where-Object { $_ -match '\.php$' -and $_ -notmatch '\.blade\.php$' })
+$archivosShell = @($archivosCambiados | Where-Object { $_ -match '\.sh$' })
+if ($archivosShell) {
+    $bashGit = Join-Path (Split-Path -Parent (Split-Path -Parent (Get-Command git.exe).Source)) 'bin\bash.exe'
+    if (-not (Test-Path -LiteralPath $bashGit -PathType Leaf)) { throw 'Falta Bash de Git para comprobar los scripts de despliegue modificados.' }
+    foreach ($archivoShell in $archivosShell) {
+        $rutaShell = Join-Path $Proyecto $archivoShell
+        if (Test-Path -LiteralPath $rutaShell -PathType Leaf) {
+            Invoke-Comando -Programa $bashGit -Argumentos @('-n', $rutaShell.Replace('\', '/')) -Descripcion "Validando sintaxis Bash: $archivoShell" -DirectorioTrabajo $Proyecto
+        }
+    }
+}
 if ($php) {
     Invoke-Comando -Programa $phpPrograma -Argumentos @('deploy/oracle/scripts/verify-migration-classes.php') -Descripcion 'Comprobando clases de migraciones sin ejecutar cambios en la base' -DirectorioTrabajo $Proyecto
     if ($archivosPhp) {

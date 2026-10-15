@@ -12,28 +12,9 @@ use Modules\CatalogoPublico\Presentation\Http\Controllers\PortalEstadisticas;
 
 uses(Tests\PostgresIntegrationTestCase::class);
 
-function qa4TaxonPublico(string $nombre, string $rango, ?string $padre = null): string
-{
-    $id = DB::table('taxonomia.taxones')->where('nombre_cientifico', $nombre)->where('rango', $rango)->value('id');
-    if ($id !== null) return $id;
-    $id = (string) Str::uuid();
-    DB::table('taxonomia.taxones')->insert(['id' => $id, 'nombre_cientifico' => $nombre, 'rango' => $rango, 'padre_id' => $padre]);
-    return $id;
-}
 
-function qa4RegistroPublico(string $taxon, string $colector, string $provincia, array $permisos = []): string
-{
-    $id = (string) Str::uuid(); $codigo = 'QA4-'.Str::uuid();
-    DB::table('taxonomia.especimenes')->insert([
-        'id' => $id, 'codigo_catalogo' => $codigo, 'occurrence_id' => $codigo, 'taxon_id' => $taxon,
-        'colector' => $colector, 'state_province' => $provincia, 'localidad' => 'Sitio '.$colector,
-        'fecha_colecta' => '2025-06-15', 'decimal_latitude' => -0.4, 'decimal_longitude' => -90.3,
-    ]);
-    DB::table('divulgacion.especimenes_divulgables')->insert(array_replace([
-        'id' => (string) Str::uuid(), 'especimen_id' => $id, 'publicado' => true,
-    ], $permisos));
-    return $id;
-}
+
+
 
 test('QA4-005 el mosaico geográfico y el filo explícito usan los mismos ocho moluscos sin añadir artrópodos', function (): void {
     $seleccion = 'QaCuatro'.Str::lower(Str::random(20));

@@ -14,6 +14,34 @@ $archivoClave = Join-Path $raizRepositorio '.local\secrets\postgres-test-passwor
 $basePruebas = 'hubdigital'
 $postgresYaActivo = (Get-Service -Name $servicio -ErrorAction Stop).Status -eq 'Running'
 $postgresIniciadoPorPaquete = $false
+$basesAisladas = [Collections.Generic.List[string]]::new()
+$prefijoPruebas = 'hd_pkg_' + [Guid]::NewGuid().ToString('N').Substring(0, 12)
+$raizProyecto = (Resolve-Path -LiteralPath $Proyecto).Path
+$raizPruebas = Join-Path $raizProyecto ('.local\validation\' + $prefijoPruebas)
+$procesosPruebas = 2
+try {
+    $memoriaLibre = (Get-CimInstance Win32_OperatingSystem -ErrorAction Stop).FreePhysicalMemory * 1KB
+    if ([Environment]::ProcessorCount -ge 8 -and $memoriaLibre -ge 4GB) { $procesosPruebas = 4 }
+} catch { # Sin inventario fiable se conservan dos procesos acotados.
+}
+
+function Assert-DirectorioPruebas {
+    $esperado = [IO.Path]::GetFullPath((Join-Path $raizProyecto ('.local\validation\' + $prefijoPruebas)))
+    $resuelto = [IO.Path]::GetFullPath($raizPruebas)
+    if ($resuelto -ne $esperado -or $prefijoPruebas -notmatch '^hd_pkg_[a-f0-9]{12}$') {
+        throw 'El directorio temporal de pruebas no pertenece al proyecto.'
+    }
+    $actual = $resuelto
+    while ($actual -and $actual.Length -ge $raizProyecto.Length) {
+        if (Test-Path -LiteralPath $actual) {
+            if ((Get-Item -LiteralPath $actual).Attributes -band [IO.FileAttributes]::ReparsePoint) {
+                throw 'El directorio de pruebas no admite enlaces ni junctions.'
+            }
+        }
+        if ($actual -eq $raizProyecto) { break }
+        $actual = Split-Path -Parent $actual
+    }
+}
 
 function Invoke-ServicioElevado {
     param([Parameter(Mandatory)] [ValidateSet('start', 'stop')] [string]$Accion)
@@ -35,7 +63,7 @@ function Assert-PuertoCerrado {
 }
 
 if (-not (Test-Path -LiteralPath $archivoClave -PathType Leaf)) { throw "No existe la credencial cifrada: $archivoClave" }
-foreach ($programa in @('pg_isready.exe', 'psql.exe', 'createdb.exe')) {
+foreach ($programa in @('pg_isready.exe', 'psql.exe', 'createdb.exe', 'dropdb.exe', 'pg_dump.exe', 'pg_restore.exe')) {
     if (-not (Test-Path -LiteralPath (Join-Path $pgBin $programa) -PathType Leaf)) { throw "No se encontro $programa en PostgreSQL 16." }
 }
 
@@ -95,9 +123,28 @@ try {
 
     Push-Location $Proyecto
     try {
-        Write-Host "Aplicando migraciones pendientes en la base local unica $basePruebas..." -ForegroundColor Cyan
-        & $Php artisan migrate --database=pgsql --force --no-interaction
-        if ($LASTEXITCODE -ne 0) { throw 'No se pudieron aplicar las migraciones locales.' }
+        Assert-DirectorioPruebas
+        New-Item -ItemType Directory -Path $raizPruebas -Force | Out-Null
+        $copia = Join-Path $raizPruebas 'base.dump'
+        Write-Host "Preparando $procesosPruebas bases temporales aisladas; los casos no modifican la base de localhost..." -ForegroundColor Cyan
+        & (Join-Path $pgBin 'pg_dump.exe') -h 127.0.0.1 -p 5432 -U postgres -d $basePruebas -Fc -f $copia
+        if ($LASTEXITCODE -ne 0) { throw 'No se pudo preparar la copia consistente de PostgreSQL.' }
+        for ($tokenPruebas = 1; $tokenPruebas -le $procesosPruebas; $tokenPruebas++) {
+            $baseAislada = $prefijoPruebas + '_' + $tokenPruebas
+            & (Join-Path $pgBin 'createdb.exe') -h 127.0.0.1 -p 5432 -U postgres $baseAislada
+            if ($LASTEXITCODE -ne 0) { throw 'No se pudo crear una base temporal nueva de pruebas.' }
+            $basesAisladas.Add($baseAislada)
+            & (Join-Path $pgBin 'pg_restore.exe') -h 127.0.0.1 -p 5432 -U postgres -d $baseAislada --exit-on-error --no-owner --no-privileges $copia
+            if ($LASTEXITCODE -ne 0) { throw 'No se pudo restaurar la base temporal de pruebas.' }
+            $env:DB_DATABASE = $env:TEST_DB_DATABASE = $baseAislada
+            & $Php artisan migrate --database=pgsql --force --no-interaction
+            if ($LASTEXITCODE -ne 0) { throw 'No se pudieron aplicar las migraciones en la base temporal.' }
+            foreach ($carpeta in @('app\private','framework\cache\data','framework\sessions','framework\views','logs','document-processing')) {
+                New-Item -ItemType Directory -Path (Join-Path $raizPruebas ("worker-$tokenPruebas\" + $carpeta)) -Force | Out-Null
+            }
+        }
+        Remove-Item -LiteralPath $copia -Force
+        $env:DB_DATABASE = $env:TEST_DB_DATABASE = $basesAisladas[0]
 
         # Node necesita el ejecutable nativo: php en PATH puede ser un shim .cmd.
         # Se resuelve dentro del comando central, sin invocar un shell desde Node.
@@ -115,13 +162,41 @@ try {
         & node.exe tests/Browser/portal-livewire.mjs $phpNativo
         if ($LASTEXITCODE -ne 0) { throw 'Fallo la validacion real de tooltip/Livewire o del portal. No se publica main ni se crea el paquete OCI.' }
 
-        Write-Host 'Ejecutando la suite PHP con PostgreSQL local (sin bootstrap inicial)...' -ForegroundColor Cyan
-        & $Php artisan test --exclude-group=bootstrap-inicial
+        $env:HUBDIGITAL_TEST_DATABASE_PREFIX = $prefijoPruebas
+        $env:HUBDIGITAL_TEST_RUNTIME_DIR = $raizPruebas
+        Write-Host "Ejecutando la suite PHP completa en $procesosPruebas procesos con bases y almacenamiento independientes..." -ForegroundColor Cyan
+        & $Php artisan test --parallel --processes=$procesosPruebas --without-databases --exclude-group=bootstrap-inicial
         $codigoPruebas = $LASTEXITCODE
     }
     finally { Pop-Location }
 }
 finally {
+    $falloLimpieza = $false
+    # También recoge bases derivadas que una versión del runner pueda crear.
+    # La identidad aleatoria pertenece exclusivamente a esta ejecución.
+    $derivadas = & (Join-Path $pgBin 'psql.exe') -h 127.0.0.1 -p 5432 -U postgres -d postgres -tAc "SELECT datname FROM pg_database WHERE datname LIKE '${prefijoPruebas}\_%' ESCAPE '\';"
+    if ($LASTEXITCODE -ne 0) { $falloLimpieza = $true }
+    foreach ($derivada in $derivadas) {
+        if ($derivada -match ('^' + [regex]::Escape($prefijoPruebas) + '_[1-4](?:_test_[1-4])?$') -and -not $basesAisladas.Contains($derivada)) {
+            $basesAisladas.Add($derivada)
+        }
+    }
+    foreach ($baseAislada in $basesAisladas) {
+        if ($baseAislada -notmatch ('^' + [regex]::Escape($prefijoPruebas) + '_[1-4](?:_test_[1-4])?$') -or $baseAislada -eq $basePruebas) {
+            $falloLimpieza = $true
+            Write-Warning 'Se impidió retirar una base que no fue creada por este comando.'
+            continue
+        }
+        & (Join-Path $pgBin 'dropdb.exe') -h 127.0.0.1 -p 5432 -U postgres $baseAislada
+        if ($LASTEXITCODE -ne 0) { $falloLimpieza = $true; Write-Warning "No se pudo retirar la base temporal $baseAislada." }
+    }
+    if (Test-Path -LiteralPath $raizPruebas) {
+        Assert-DirectorioPruebas
+        $enlaces = Get-ChildItem -LiteralPath $raizPruebas -Force -Recurse | Where-Object { $_.Attributes -band [IO.FileAttributes]::ReparsePoint }
+        if ($enlaces) { throw 'No se retira un directorio temporal que contiene enlaces inesperados.' }
+        Remove-Item -LiteralPath $raizPruebas -Recurse -Force
+    }
+    foreach ($nombre in @('HUBDIGITAL_TEST_DATABASE_PREFIX','HUBDIGITAL_TEST_RUNTIME_DIR')) { Remove-Item "Env:$nombre" -ErrorAction SilentlyContinue }
     foreach ($nombre in @('PGPASSWORD','DB_PASSWORD','TEST_DB_PASSWORD','APP_KEY')) { Remove-Item "Env:$nombre" -ErrorAction SilentlyContinue }
     $clave = $null
     if ($postgresIniciadoPorPaquete) {
@@ -131,6 +206,7 @@ finally {
     } elseif ($postgresYaActivo) {
         Write-Host 'PostgreSQL ya estaba encendido y permanece encendido.' -ForegroundColor Green
     }
+    if ($falloLimpieza) { throw 'La limpieza de las bases temporales de pruebas no terminó correctamente.' }
 }
 
 if ($codigoPruebas -ne 0) { throw "Las pruebas PostgreSQL fallaron (codigo $codigoPruebas)." }

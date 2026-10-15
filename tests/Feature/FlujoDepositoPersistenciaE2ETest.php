@@ -44,28 +44,7 @@ use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\Ge
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\RegistroSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Tests\Infrastructure\Adapters\FakeEventPublisherAdapter;
 
-/** @return array{archivo: UploadedFile, clave: string} */
-function certificadoRealDepositoParaPruebas(): array
-{
-    $directorio = base_path('.local/secrets');
-    $nombre = 'HERNAN AUGUSTO TROYA PROANO 1707514251-241025084137.p12';
-    $contenido = @file_get_contents($directorio.DIRECTORY_SEPARATOR.$nombre);
-    $textoCredenciales = @file_get_contents($directorio.DIRECTORY_SEPARATOR.'credencialesp12 .txt');
-    if (! is_string($contenido) || $contenido === '' || ! is_string($textoCredenciales)) {
-        throw new RuntimeException('Faltan el P12 autorizado o sus credenciales locales para la prueba de firma real.');
-    }
 
-    foreach (preg_split('/\R/u', $textoCredenciales) ?: [] as $linea) {
-        if (preg_match('/^\s*clave\s+(\S+)\s*$/iu', $linea, $coincidencia) === 1) {
-            return [
-                'archivo' => UploadedFile::fake()->createWithContent($nombre, $contenido),
-                'clave' => $coincidencia[1],
-            ];
-        }
-    }
-
-    throw new RuntimeException('No se encontró la clave del P12 autorizado en el archivo local.');
-}
 
 test('el depósito completo persiste actores, documentos, taxonomía, recepción, alerta y acta firmada', function (): void {
     $this->skipUnlessFortifyFeature(Features::registration());

@@ -125,8 +125,11 @@ final class NotificacionCuratoriaAdapter implements NotificacionCuratoriaPort
 
         $deposito = SolicitudDepositoEloquentModel::find($solicitudId);
         $curadores = $this->equipoCuratorial()->get();
+        $destinoQa = app()->environment('local') && config('hubdigital.qa_deposit_id') === $solicitudId
+            ? (string) config('hubdigital.qa_mail_to', '') : '';
+        if (! filter_var($destinoQa, FILTER_VALIDATE_EMAIL)) $destinoQa = '';
 
-        if ($curadores->isEmpty()) {
+        if ($curadores->isEmpty() && $destinoQa === '') {
             Log::info('Notificación a curaduría omitida: no hay curadores', [
                 'referencia' => $referencia, 'contexto' => $contexto, 'solicitud_id' => $solicitudId,
             ]);
@@ -141,14 +144,21 @@ final class NotificacionCuratoriaAdapter implements NotificacionCuratoriaPort
         // Es un reenvío tras corrección si la solicitud ya había sido devuelta antes.
         $esReenvio = $deposito?->rechazada_en !== null;
 
-        Notification::send($curadores, new NuevaSolicitudPorRevisarNotification(
+        $notificacion = new NuevaSolicitudPorRevisarNotification(
             solicitudId: $solicitudId,
             numero: $deposito?->numero,
             tipoTramite: $deposito?->tipo_tramite,
             nombreInvestigador: $nombreInvestigador,
-            fechaEnvio: $deposito?->updated_at?->format('d/m/Y H:i'),
+            fechaEnvio: $deposito?->updated_at !== null
+                ? \Modules\GestionPrestamosRecepciones\Presentation\Support\FechaEcuador::formatear($deposito->updated_at) : null,
             esReenvio: $esReenvio,
-        ));
+        );
+        Notification::sendNow($curadores, $notificacion, ['database']);
+        if ($destinoQa !== '') {
+            Notification::route('mail', $destinoQa)->notify($notificacion->soloCorreo());
+        } else {
+            Notification::send($curadores, $notificacion->soloCorreo());
+        }
 
         return $referencia;
     }

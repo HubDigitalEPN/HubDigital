@@ -16,6 +16,7 @@ release_id="${1:-}"
 release_dir="/srv/hubdigital/releases/${release_id}"
 state_file="/var/lib/hubdigital/migration/release-${release_id}.json"
 env_file=/etc/hubdigital/hubdigital.env
+source "$(dirname -- "${BASH_SOURCE[0]}")/deployment-host.sh"
 [[ -f "${release_dir}/artisan" && -r "${state_file}" && -r "${env_file}" ]] || {
     echo 'No existe una release preparada con su estado y entorno protegido.' >&2
     exit 66
@@ -93,10 +94,10 @@ bash "${release_dir}/deploy/oracle/scripts/install-ete.sh" "${release_dir}"
 systemctl stop hubdigital-signature.service
 ln -sfn "${release_dir}" /srv/hubdigital/current
 nginx_source="${release_dir}/deploy/oracle/nginx/hubdigital-http.conf"
-if [[ -s /etc/letsencrypt/live/dev.labinvepn.org/fullchain.pem && -s /etc/letsencrypt/live/dev.labinvepn.org/privkey.pem ]]; then
+if [[ -s /etc/letsencrypt/live/${deployment_hostname}/fullchain.pem && -s /etc/letsencrypt/live/${deployment_hostname}/privkey.pem ]]; then
     nginx_source="${release_dir}/deploy/oracle/nginx/hubdigital.conf"
 fi
-install -m 0644 "${nginx_source}" /etc/nginx/sites-available/hubdigital
+install_nginx_for_host "${nginx_source}" /etc/nginx/sites-available/hubdigital
 ln -sfn /etc/nginx/sites-available/hubdigital /etc/nginx/sites-enabled/hubdigital
 rm -f /etc/nginx/sites-enabled/default
 /usr/bin/php8.4 "${release_dir}/deploy/oracle/scripts/configure-r2-transport.php" "${release_dir}"
@@ -119,9 +120,9 @@ if [[ -S /run/hubdigital/r2-transport/r2.sock ]]; then
     chmod 0600 /run/hubdigital/r2-transport/r2.sock
 fi
 if [[ "${nginx_source}" == *hubdigital.conf ]]; then
-    local_check=(curl --fail --silent --show-error --max-time 15 --resolve dev.labinvepn.org:443:127.0.0.1 https://dev.labinvepn.org/depositos)
+    local_check=(curl --fail --silent --show-error --max-time 15 --resolve "${deployment_hostname}:443:127.0.0.1" "https://${deployment_hostname}/depositos")
 else
-    local_check=(curl --fail --silent --show-error --max-time 15 --resolve dev.labinvepn.org:80:127.0.0.1 http://dev.labinvepn.org/depositos)
+    local_check=(curl --fail --silent --show-error --max-time 15 --resolve "${deployment_hostname}:80:127.0.0.1" "http://${deployment_hostname}/depositos")
 fi
 verification_failed=0
 # Comprueba el artefacto Java de ESTA release y el camino real de admisión PDF
@@ -230,8 +231,8 @@ check_public_url() {
     echo "OK ${url}: HTTP ${status}"
 }
 
-check_public_url 'https://dev.labinvepn.org/' || verification_failed=1
-check_public_url 'https://dev.labinvepn.org/depositos' || verification_failed=1
+check_public_url "https://${deployment_hostname}/" || verification_failed=1
+check_public_url "https://${deployment_hostname}/depositos" || verification_failed=1
 
 for unit in hubdigital-worker.service php8.4-fpm.service nginx.service hubdigital-ete.service hubdigital-signature.service; do
     if systemctl is-active --quiet "${unit}"; then

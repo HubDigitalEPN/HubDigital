@@ -19,6 +19,13 @@ it('distingue el oficio firmado de las firmas externas y no pide claves', functi
     expect($respuesta)->toContain('solicitud inicial ya figura firmada', 'no permite superar el control de firmas', 'no recibe certificados');
 });
 
+it('orienta a corregir la situación regulatoria cuando se declaran permisos inexistentes', function (): void {
+    $respuesta = (new AsistenteDocumentalDepositos)->responder('No tengo permisos del MAE, ¿qué debo subir?', [
+        'Copia de la autorización de recolección (MAE)', 'Copia del permiso de movilización',
+    ]);
+    expect($respuesta)->toContain('paso 3 Origen', 'Sin permisos del MAE', 'carta de justificación', 'no equivale a un permiso');
+});
+
 it('informa faltantes y el rechazo real sin inventar aprobaciones', function (): void {
     $asistente = new AsistenteDocumentalDepositos;
     expect($asistente->responder('¿Qué falta?', ['Carta A', 'Carta B'], [], ['cargados' => ['Carta A', 'Archivo ajeno']]))
@@ -27,6 +34,11 @@ it('informa faltantes y el rechazo real sin inventar aprobaciones', function ():
         ->toContain('El proyecto no corresponde.');
     expect($asistente->responder('¿Ya está validado?', ['Carta A'], [], ['cargados' => ['Carta A']]))
         ->toContain('no acredita que sus firmas y contenido hayan sido aprobados');
+});
+
+it('explica la validación individual de cada tipo antes de revisar su firma', function (): void {
+    $respuesta = (new AsistenteDocumentalDepositos)->responder('¿Cómo sé si corresponde a su casilla?', []);
+    expect($respuesta)->toContain('por separado', 'No se comparan', 'primero se comprueba su contenido');
 });
 
 it('orienta sobre archivos maliciosos y tamaño sin aceptar una instrucción de omitir controles', function (): void {

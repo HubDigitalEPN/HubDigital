@@ -41,10 +41,13 @@ final class AsistenteDocumentalDepositos
             if ($cartaRequerida) {
                 return 'En la opción que elegiste se solicita una carta de justificación, institucional o personal. Explica de dónde provienen los especímenes y por qué no dispones de los permisos, identifica al titular y el proyecto e incluye fecha y firma. Adjunta esa carta en su casilla; la revisión documental decidirá si la explicación es suficiente.';
             }
+            if (preg_match('/no (?:tengo|cuento|dispongo|poseo).*permis|sin permisos|carezco.*permis/', $normal)) {
+                return 'Si no tienes permisos del MAE, vuelve al paso 3 Origen y revisa la situación regulatoria. Si corresponde a tu caso, selecciona «Sin permisos del MAE»; el paso 4 solicitará una carta de justificación, institucional o personal, con titular, proyecto, procedencia, explicación, fecha y firma digital. La carta explica tu situación y queda sujeta a revisión; no equivale a un permiso. La selección actual todavía exige autorización y movilización.';
+            }
             return "Para este expediente se requieren:\n{$lista}\nSi no dispones de un documento, este chat puede explicar su función, pero no eliminar el requisito ni aprobar su ausencia.";
         }
         if (preg_match('/mismo expediente|coincid|correspond|relacion|otro proyecto|otra persona|otro titular|nombre.*difer|proyecto.*difer/', $normal)) {
-            return 'El archivo debe ser del tipo indicado en su casilla y corresponder al titular y proyecto de esta solicitud. En autorizaciones y guías se comparan códigos relacionados y fechas; también se comprueban las evidencias disponibles del expediente. Un documento ajeno o un nombre de archivo parecido no acredita esa correspondencia. La carga y «Validar documentos» muestran las discrepancias.';
+            return 'Cada archivo se revisa por separado según su casilla: la autorización debe autorizar la recolección y el permiso o guía debe respaldar la movilización. No se comparan estos dos documentos entre sí. El nombre del archivo no determina su tipo; primero se comprueba su contenido y, si corresponde, después su firma digital.';
         }
         if (preg_match('/firma|certificado|\.p12|\.pfx|token|clave|contrasen/', $normal)) {
             $prefijo = ($contexto['solicitud_firmada'] ?? false) ? 'Tu solicitud inicial ya figura firmada. ' : '';
@@ -70,10 +73,10 @@ final class AsistenteDocumentalDepositos
             return "La carta de justificación explica el origen del material y la ausencia de permisos. Puedes organizarla así:\n• Fecha y destinatario.\n• Titular e identificación, institución si corresponde y proyecto.\n• Procedencia de los especímenes y explicación concreta.\n• Documentos o antecedentes que respaldan lo indicado.\n• Nombre y firma de quien justifica.\nExporta el documento completo a PDF y súbelo en la casilla de justificación. No inventes permisos ni hechos.";
         }
         if (preg_match('/autoriz|recolecci|mae|maate/', $tema)) {
-            return 'La autorización de recolección identifica al titular, proyecto, número y vigencia. Debe subirse completa en la casilla de autorización cuando sea requerida. '.($cartaRequerida ? 'En tu selección actual se requiere una carta de justificación; la autorización no sustituye esa carta.' : 'Comprueba que coincida con los demás documentos del expediente.');
+            return 'La autorización de recolección identifica al titular, proyecto, número y vigencia. Debe subirse completa en la casilla de autorización cuando sea requerida. '.($cartaRequerida ? 'En tu selección actual se requiere una carta de justificación; la autorización no sustituye esa carta.' : 'Su contenido y firma se verifican individualmente.');
         }
         if (preg_match('/moviliz|guia|traslado/', $tema)) {
-            return 'La guía o permiso de movilización respalda el traslado e identifica origen, destino, fechas y autorización relacionada. Súbelo completo en su casilla si figura entre los archivos requeridos. '.($cartaRequerida ? 'Tu selección actual pide una carta de justificación.' : 'El sistema comprueba su contenido y relación con el expediente.');
+            return 'La guía o permiso de movilización respalda el traslado e identifica origen, destino, fechas y autorización relacionada. Súbelo completo en su casilla si figura entre los archivos requeridos. '.($cartaRequerida ? 'Tu selección actual pide una carta de justificación.' : 'Su contenido y firma se verifican individualmente.');
         }
         if (preg_match('/cesion|donacion/', $tema)) return 'La carta de cesión identifica a quien dona, el material, su origen y la voluntad de cederlo a la colección; incluye fecha y firma. Se adjunta cuando esa casilla figure en los documentos requeridos de una donación.';
         if (preg_match('/procedencia|origen/', $tema)) return 'El documento de procedencia explica de dónde proviene el material y quién lo entrega, con referencia al proyecto y antecedentes disponibles. Adjunta el PDF completo en la casilla que pide procedencia; una guía o autorización es un documento distinto.';

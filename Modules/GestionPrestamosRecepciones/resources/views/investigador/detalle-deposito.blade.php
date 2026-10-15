@@ -21,10 +21,10 @@
             };
         @endphp
 
-        <div class="grid gap-6 lg:grid-cols-3">
+        <div class="hub-deposit-detail-grid">
 
             {{-- Columna principal --}}
-            <div class="lg:col-span-2 space-y-6">
+            <div class="hub-deposit-detail-content">
 
                 {{-- Devolución para corrección (rechazo subsanable) --}}
                 @if($deposito->estado === 'Requiere Corrección')
@@ -347,7 +347,7 @@
                 @endif
 
                 {{-- Encabezado --}}
-                <div class="rounded-lg border border-border bg-surface shadow-sm p-5 space-y-4">
+                <div class="hub-deposit-panel hub-deposit-panel--summary rounded-lg border border-border bg-surface shadow-sm p-5 space-y-4">
                     <div class="flex flex-wrap items-start justify-between gap-4">
                         <div>
                             <flux:heading size="xl" level="1" class="font-display">
@@ -408,7 +408,7 @@
                 @endphp
 
                 @if($tieneDatos)
-                    <div class="rounded-lg border border-border bg-surface shadow-sm p-5 space-y-4">
+                    <div class="hub-deposit-panel hub-deposit-panel--documents rounded-lg border border-border bg-surface shadow-sm p-5 space-y-4">
                         <flux:heading size="lg" level="2" class="font-display">Datos de documentación oficial</flux:heading>
                         <flux:separator />
                         <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-x-6 sm:gap-y-4 text-sm">
@@ -485,7 +485,7 @@
                         };
                     @endphp
 
-                    <div class="rounded-lg border border-border bg-surface shadow-sm p-5 space-y-4">
+                    <div class="hub-deposit-panel hub-deposit-panel--matrix rounded-lg border border-border bg-surface shadow-sm p-5 space-y-4">
                         {{-- Encabezado --}}
                         <div class="flex items-center justify-between gap-3">
                             <flux:heading size="lg" level="2" class="font-display">Matriz de especímenes</flux:heading>
@@ -636,7 +636,7 @@
             </div>
 
             {{-- Timeline lateral --}}
-            <div class="rounded-lg border border-border bg-surface shadow-sm p-5 space-y-3 h-fit">
+            <div class="hub-deposit-panel hub-deposit-panel--history rounded-lg border border-border bg-surface shadow-sm p-5 space-y-3 h-fit">
                 <flux:heading size="lg" level="2" class="font-display">Historial</flux:heading>
                 <flux:separator />
 

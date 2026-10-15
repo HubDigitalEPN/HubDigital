@@ -53,7 +53,8 @@
         </div>
 
         {{-- Mini ficha de resumen --}}
-        <div class="w-full max-w-md text-left rounded-lg border {{ $colorBorde }} bg-bg-main divide-y divide-border">
+        <div class="hub-confirm-columns w-full max-w-6xl">
+        <div class="w-full text-left rounded-lg border {{ $colorBorde }} bg-bg-main divide-y divide-border">
             <div class="flex items-center justify-between px-4 py-3">
                 <span class="text-xs text-text-secondary">ID de solicitud</span>
                 <span class="font-mono text-xs font-medium text-text-primary">{{ $numeroSolicitud }}</span>
@@ -87,39 +88,40 @@
 
         {{-- Línea de tiempo --}}
         @if($esExito)
-            <div class="w-full max-w-md text-left space-y-3">
+            <div class="w-full text-left space-y-3">
                 <flux:heading size="sm" level="3">Historial de la solicitud</flux:heading>
                 <ol class="relative border-l border-border ml-3 space-y-4">
                     <li class="pl-5">
                         <div class="absolute -left-1.5 mt-1 size-3 rounded-full bg-success"></div>
-                        <p class="text-xs text-text-secondary">{{ now()->format('d M Y · H:i') }}</p>
+                        <p class="text-xs text-text-secondary">{{ $fechaRegistroExpediente }}</p>
                         <p class="text-sm font-medium text-text-primary">Solicitud creada</p>
                     </li>
                     <li class="pl-5">
                         <div class="absolute -left-1.5 mt-1 size-3 rounded-full bg-success"></div>
-                        <p class="text-xs text-text-secondary">{{ now()->format('d M Y · H:i') }}</p>
                         <p class="text-sm font-medium text-text-primary">Documentos cargados y validados</p>
                     </li>
                     @if($matrizCargada)
                         <li class="pl-5">
                             <div class="absolute -left-1.5 mt-1 size-3 rounded-full bg-success"></div>
-                            <p class="text-xs text-text-secondary">{{ now()->format('d M Y · H:i') }}</p>
                             <p class="text-sm font-medium text-text-primary">Matriz Darwin Core validada</p>
                         </li>
                     @endif
                     <li class="pl-5">
                         <div class="absolute -left-1.5 mt-1 size-3 rounded-full bg-success"></div>
-                        <p class="text-xs text-text-secondary">{{ now()->format('d M Y · H:i') }}</p>
+                        @if($estadoFinal === 'Pendiente de Revisión por Curaduría')
+                            <p class="text-xs text-text-secondary">{{ $fechaActualizacionExpediente }}</p>
+                        @endif
                         <p class="text-sm font-medium text-text-primary">Solicitud enviada al equipo curatorial</p>
                     </li>
                     <li class="pl-5">
                         <div class="absolute -left-1.5 mt-1 size-3 rounded-full bg-border border-2 border-border"></div>
                         <p class="text-xs text-text-secondary">Pendiente</p>
-                        <p class="text-sm text-text-secondary">Revisión por curaduría · ETA 3 días hábiles</p>
+                        <p class="text-sm text-text-secondary">Revisión por curaduría</p>
                     </li>
                 </ol>
             </div>
         @endif
+        </div>
 
         {{-- Acciones --}}
         <div class="flex gap-3 flex-wrap justify-center">
@@ -163,11 +165,6 @@
             <flux:text class="mt-0.5 text-xs text-text-secondary">Revisa y firma la solicitud antes de enviarla.</flux:text>
         </div>
 
-        <p class="flex items-start gap-2 border-l-2 border-science-blue bg-science-blue/5 px-2.5 py-1.5 text-xs text-text-secondary">
-            <flux:icon name="information-circle" class="mt-0.5 size-3.5 shrink-0 text-science-blue" />
-            <span>Curaduría evaluará tu solicitud en un máximo de <strong>3 días hábiles</strong> y te avisará cuando cambie su estado.</span>
-        </p>
-
         {{-- Resumen de la solicitud --}}
         <div class="space-y-2">
             <flux:heading size="sm" level="3">Resumen de la solicitud</flux:heading>
@@ -203,7 +200,7 @@
                 </div>
 
                 @if(!empty($documentosCargados))
-                    <div class="col-span-2 xl:col-span-4 rounded-lg border border-border bg-bg-main p-2 space-y-1">
+                    <div class="hub-send-panel col-span-2 rounded-lg border border-border bg-bg-main p-2 space-y-1">
                         <p class="text-xs text-text-secondary">Documentos adjuntados</p>
                         <ul class="space-y-1">
                             @foreach($documentosCargados as $nombre => $ruta)
@@ -217,7 +214,7 @@
                 @endif
 
                 @if($matrizCargada && $estadoMatriz)
-                    <div class="col-span-2 xl:col-span-4 rounded-lg border border-border bg-bg-main p-2 space-y-1">
+                    <div class="hub-send-panel col-span-2 rounded-lg border border-border bg-bg-main p-2 space-y-1">
                         <p class="text-xs text-text-secondary">Matriz de especies</p>
                         <div class="flex items-center gap-3 flex-wrap">
                             <p class="text-sm font-semibold text-text-primary">{{ $archivoMatrizNombre ?: 'Cargada' }}</p>
@@ -231,6 +228,7 @@
         </div>
 
         {{-- Declaración jurada --}}
+        <div class="hub-send-columns">
         <div class="space-y-2 border-l-2 border-blue-navy/20 bg-[#F8FAFC] px-3 py-2">
             <flux:heading size="sm" level="3">Declaración del solicitante</flux:heading>
             <flux:checkbox
@@ -244,6 +242,7 @@
             <p class="text-sm font-semibold text-text-primary">Solicitud firmada en el paso 1</p>
             <a href="{{ route('depositos.solicitud.documento', ['id' => $solicitudId]) }}" target="_blank" class="mt-2 inline-block text-sm text-science-blue hover:underline">Ver oficio firmado</a>
             <flux:error name="solicitudFirmada" />
+        </div>
         </div>
 
     </div>

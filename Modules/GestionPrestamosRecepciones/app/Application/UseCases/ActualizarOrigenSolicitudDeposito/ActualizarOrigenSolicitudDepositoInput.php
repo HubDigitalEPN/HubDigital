@@ -22,5 +22,6 @@ final readonly class ActualizarOrigenSolicitudDepositoInput
         public string $situacionRegulatoria,
         public ?string $provinciaOrigen = null,
         public ?string $localidadOrigenCodigo = null,
+        public ?string $localidad = null,
     ) {}
 }
