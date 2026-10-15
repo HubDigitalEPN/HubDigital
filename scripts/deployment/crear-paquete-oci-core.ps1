@@ -710,10 +710,12 @@ try {
     Invoke-TarConProgreso -Argumentos $argumentosCopia -ArchivoSalida $archivoRuntime
     Invoke-Comando -Programa 'tar.exe' -Argumentos @('-xf', $archivoRuntime, '-C', $directorioRuntime) -Descripcion 'Preparando copia aislada para produccion'
     Invoke-Comando -Programa $composerPrograma -Argumentos @(
-        'install', '--no-dev', '--optimize-autoloader', '--no-scripts', '--no-interaction', '--prefer-dist', '--no-progress'
+        'install', '--no-dev', '--no-scripts', '--no-interaction', '--prefer-dist', '--no-progress'
     ) -Descripcion 'Preparando dependencias PHP exclusivas de produccion en copia aislada' -DirectorioTrabajo $directorioRuntime
-    # Composer genera el autoload de producción. Los hooks de Laravel y sus
-    # caches se preparan en la release con su entorno protegido durante despliegue.
+    # El autoload se optimiza en Linux al construir la release, evitando el
+    # recorrido lento de todas las clases en la copia NTFS de Windows.
+    # Los hooks y caches de Laravel se preparan con el entorno protegido
+    # durante el despliegue.
     foreach ($archivoAutoload in $archivosAutoloadLocal) {
         if ((Get-FileHash -LiteralPath (Join-Path $Proyecto $archivoAutoload) -Algorithm SHA256).Hash -ne $huellasAutoloadLocal[$archivoAutoload]) {
             throw "El autoload local cambio al preparar produccion: $archivoAutoload"

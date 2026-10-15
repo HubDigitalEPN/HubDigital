@@ -59,6 +59,12 @@ if [[ -n "${source_head}" ]]; then
     install -m 0644 "${source_manifest}" "${stage}/SOURCE-MANIFEST.sha256"
 fi
 
+# Generar el índice de clases en el sistema que ejecutará la release evita
+# repetir el recorrido lento de NTFS y mantiene el autoload de producción.
+(
+    cd "${stage}"
+    "${PHP_BIN:-php}" "${COMPOSER_BIN:-$(command -v composer)}" dump-autoload --no-dev --optimize --no-scripts --no-interaction
+)
 
 remaining_link="$(find "${stage}" -type l -print -quit)"
 [[ -z "${remaining_link}" ]] || { echo "El staging conserva un enlace: ${remaining_link}" >&2; exit 65; }

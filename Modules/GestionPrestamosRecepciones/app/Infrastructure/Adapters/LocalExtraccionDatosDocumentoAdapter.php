@@ -200,48 +200,70 @@ final class LocalExtraccionDatosDocumentoAdapter implements ExtraccionDatosDocum
         }
 
         $totalPaginas = $this->validarPdfSeguro($archivo);
-        if (PHP_OS_FAMILY === 'Windows') {
-            $paginas = [];
-            $fragmentos = [];
-            $lectura = app(ClienteFirmadorPreparado::class)->leerTexto($archivo);
-            if (! is_array($lectura['paginas'] ?? null)) {
-                $proceso = new Process([
-                    (string) config('firma-electronica.java_binary', 'java'),
-                    '-Djava.awt.headless=true', '-Xmx384m', '-jar',
-                    (string) config('firma-electronica.java_signature_jar'), 'text', '--paths-stdin',
-                ]);
-                $proceso->setInput($archivo);
-                $proceso->setEnv(DirectorioTemporalHubDigital::entornoProcesos());
-                $proceso->setTimeout(30);
-                $proceso->mustRun();
-                $lectura = json_decode($proceso->getOutput(), true, 512, JSON_THROW_ON_ERROR);
-            }
-            if (! is_array($lectura['paginas'] ?? null)) {
-                throw new \RuntimeException('Java no pudo leer las páginas del PDF.');
-            }
-            foreach ($lectura['paginas'] as $pagina) {
-                $numero = (int) $pagina['numero'];
-                $texto = trim((string) $pagina['texto']);
-                $paginas[] = [
-                    'numero' => $numero,
-                    'metodo' => 'java-pdfbox',
-                    'caracteres' => mb_strlen($texto),
-                    'estado' => $texto === '' ? 'sin_texto' : 'texto_nativo',
-                ];
-                if ($texto !== '') {
-                    $fragmentos[] = sprintf('[Página %d · java-pdfbox]%s%s', $numero, PHP_EOL, $texto);
-                }
-            }
-
-            return [
-                'texto' => implode(PHP_EOL.PHP_EOL, $fragmentos),
-                'motor' => 'java-pdfbox',
-                'uso_ocr' => false,
-                'procesamiento_parcial' => count($paginas) !== $totalPaginas,
-                'paginas' => $paginas,
-            ];
-        }
         $minimo = max(1, (int) config('document-extraction.minimum_text_length', 80));
+        // Usar el mismo lector en localhost y OCI evita que la distribución
+        // de palabras de Poppler cambie la clasificación de un PDF firmado.
+        try {
+            $java = $this->leerTextoConJava($archivo, $totalPaginas);
+            if (PHP_OS_FAMILY === 'Windows'
+                || (! $java['procesamiento_parcial'] && ! $this->textoInsuficiente($java['texto'], $minimo))) {
+                return $java;
+            }
+        } catch (\Throwable $error) {
+            if (PHP_OS_FAMILY === 'Windows') throw $error;
+            Log::warning('Lectura Java no disponible; se intenta el lector nativo y OCR.', [
+                'exception_type' => $error::class,
+            ]);
+        }
+        return $this->leerTextoNativo($archivo, $totalPaginas, $minimo);
+    }
+
+    private function leerTextoConJava(string $archivo, int $totalPaginas): array
+    {
+        $paginas = [];
+        $fragmentos = [];
+        $lectura = app(ClienteFirmadorPreparado::class)->leerTexto($archivo);
+        if (! is_array($lectura['paginas'] ?? null)) {
+            $proceso = new Process([
+                (string) config('firma-electronica.java_binary', 'java'),
+                '-Djava.awt.headless=true', '-Xmx384m', '-jar',
+                (string) config('firma-electronica.java_signature_jar'), 'text', '--paths-stdin',
+            ]);
+            $proceso->setInput($archivo);
+            $proceso->setEnv(DirectorioTemporalHubDigital::entornoProcesos());
+            $proceso->setTimeout(30);
+            $proceso->mustRun();
+            $lectura = json_decode($proceso->getOutput(), true, 512, JSON_THROW_ON_ERROR);
+        }
+        if (! is_array($lectura['paginas'] ?? null)) {
+            throw new \RuntimeException('Java no pudo leer las páginas del PDF.');
+        }
+        foreach ($lectura['paginas'] as $pagina) {
+            $numero = (int) $pagina['numero'];
+            $texto = trim((string) $pagina['texto']);
+            $paginas[] = [
+                'numero' => $numero,
+                'metodo' => 'java-pdfbox',
+                'caracteres' => mb_strlen($texto),
+                'estado' => $texto === '' ? 'sin_texto' : 'texto_nativo',
+            ];
+            if ($texto !== '') {
+                $fragmentos[] = sprintf('[Página %d · java-pdfbox]%s%s', $numero, PHP_EOL, $texto);
+            }
+        }
+
+        return [
+            'texto' => implode(PHP_EOL.PHP_EOL, $fragmentos),
+            'motor' => 'java-pdfbox',
+            'uso_ocr' => false,
+            'procesamiento_parcial' => count($paginas) !== $totalPaginas,
+            'paginas' => $paginas,
+        ];
+    }
+
+    /** Conserva Poppler y OCR para escaneos o cuando no hay texto Java legible. */
+    private function leerTextoNativo(string $archivo, int $totalPaginas, int $minimo): array
+    {
         $paginas = [];
         $fragmentos = [];
         $usoOcr = false;
