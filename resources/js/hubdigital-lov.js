@@ -22,6 +22,7 @@ export function crearLov(config) {
             });
         },
         cerrar() {
+            this.$root?.querySelector('dialog[open]')?.close();
             this.abierto = false; this.$nextTick(() => this.$refs.invocador?.focus({preventScroll: true}));
         },
         mover(delta) {
