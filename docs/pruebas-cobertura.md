@@ -18,6 +18,15 @@ crear-paquete-oci centraliza Pest con PostgreSQL, Behat, Java, Python, Node,
 compilaciones y la integridad de las fuentes del paquete. No se ejecutan esas
 suites por separado durante una tarea ordinaria.
 
+Las auditorías de dependencias también se ejecutan dentro de crear-paquete-oci:
+Composer revisa composer.lock antes de instalar PHP y npm revisa los cuatro
+proyectos frontend. Una vulnerabilidad comunicada por estos registros bloquea
+la publicación. Dependabot complementa estas comprobaciones en GitHub; necesita
+el grafo de dependencias habilitado y no reemplaza las suites de regresión.
+La actualización de Bouncy Castle del motor Java conserva el selftest
+criptográfico y la validación integrada PHP/Java del paquete. No se agregan
+escenarios Pest o Gherkin que dupliquen estas auditorías.
+
 Pest cubre persistencia, permisos, aislamiento entre usuarios, integridad de
 documentos, navegación del depósito, cantidades positivas, localidad opcional
 y recuperación de errores. Java comprueba criptografía y estructura PDF. Behat

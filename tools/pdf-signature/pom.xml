@@ -11,7 +11,7 @@
     <dependencies>
         <dependency><groupId>com.google.zxing</groupId><artifactId>core</artifactId><version>3.5.4</version></dependency>
         <dependency><groupId>org.apache.pdfbox</groupId><artifactId>pdfbox</artifactId><version>3.0.5</version></dependency>
-        <dependency><groupId>org.bouncycastle</groupId><artifactId>bcpkix-jdk18on</artifactId><version>1.81</version></dependency>
+        <dependency><groupId>org.bouncycastle</groupId><artifactId>bcpkix-jdk18on</artifactId><version>1.84</version></dependency>
         <dependency><groupId>org.apache.pdfbox</groupId><artifactId>jbig2-imageio</artifactId><version>3.0.4</version></dependency>
         <dependency><groupId>com.github.jai-imageio</groupId><artifactId>jai-imageio-core</artifactId><version>1.4.0</version></dependency>
         <dependency><groupId>com.github.jai-imageio</groupId><artifactId>jai-imageio-jpeg2000</artifactId><version>1.4.0</version></dependency>

@@ -330,6 +330,7 @@ if (-not $composer) {
 if (-not $composer) { throw 'No se encontro Composer. Ejecute composer --version para revisar su instalacion.' }
 $composerPrograma = if ($composer.PSObject.Properties['Source'] -and $composer.Source) { $composer.Source } else { $composer.FullName }
 Invoke-Comando -Programa $composerPrograma -Argumentos @('validate', '--no-check-publish') -Descripcion 'Validando composer.json y composer.lock' -DirectorioTrabajo $Proyecto
+Invoke-Comando -Programa $composerPrograma -Argumentos @('audit', '--locked', '--format=plain', '--no-interaction') -Descripcion 'Comprobando vulnerabilidades de dependencias PHP desde composer.lock' -DirectorioTrabajo $Proyecto
 Invoke-Comando -Programa $composerPrograma -Argumentos @('install', '--no-interaction', '--prefer-dist', '--no-progress') -Descripcion 'Sincronizando dependencias PHP desde composer.lock' -DirectorioTrabajo $Proyecto
 
 # Las pruebas de carga PDF usan el inspector Java: debe estar compilado antes de la suite PHP.
