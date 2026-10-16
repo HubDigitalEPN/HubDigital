@@ -1,7 +1,7 @@
 <div class="mx-auto w-full max-w-6xl space-y-4 px-4 py-5 sm:px-6">
     <div class="flex flex-wrap items-end justify-between gap-3">
         <div>
-            <flux:heading size="xl">Revocación de firmas</flux:heading>
+            <flux:heading size="xl" level="1">Revocación de firmas</flux:heading>
             <p class="text-sm text-text-secondary">Java consulta primero la evidencia del PDF y las direcciones del certificado. Configura excepciones solo si esas direcciones faltan o fallan.</p>
         </div>
         <flux:button variant="primary" icon="plus" wire:click="nuevo">Nueva entidad</flux:button>

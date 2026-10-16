@@ -1,7 +1,7 @@
 <div class="mx-auto w-full max-w-6xl space-y-4 px-4 py-5 sm:px-6">
     <div class="flex flex-wrap items-end justify-between gap-3">
         <div>
-            <flux:heading size="xl">Grupos animales</flux:heading>
+            <flux:heading size="xl" level="1">Grupos animales</flux:heading>
             <p class="text-sm text-text-secondary">Opciones del paso 4. El código científico y su rango siguen la <a class="text-science-blue underline" href="https://www.gbif.org/dataset/d7dddbf4-2cf0-4f39-9b2a-bb099caae36c" target="_blank" rel="noopener">taxonomía de GBIF</a>.</p>
         </div>
         <flux:button variant="primary" icon="plus" wire:click="nuevo">Nuevo grupo</flux:button>

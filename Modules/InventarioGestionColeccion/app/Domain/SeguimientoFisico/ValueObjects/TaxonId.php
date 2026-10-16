@@ -8,7 +8,8 @@ final readonly class TaxonId
 {
     private function __construct(private string $value)
     {
-        if (! preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i', $value)) {
+        // El catálogo importado conserva UUID v5; los registros nuevos usan v4.
+        if (! preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[45][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i', $value)) {
             throw new \InvalidArgumentException("TaxonId inválido: '{$value}'");
         }
     }

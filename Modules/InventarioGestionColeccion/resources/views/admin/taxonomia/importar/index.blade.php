@@ -47,33 +47,35 @@
     </div>
 
     {{-- Zona de carga --}}
-    <div class="rounded-lg border border-border bg-surface shadow-sm p-4 sm:p-6 space-y-4">
+    <div
+        class="rounded-lg border border-border bg-surface shadow-sm p-4 sm:p-6 space-y-4"
+        x-data="{
+            progreso: 0,
+            subiendo: false,
+            errorSubida: false,
+            arrastrando: false,
+            nombre: @js($archivoNombre),
+            extensionesValidas: ['xlsx', 'xls', 'csv', 'txt'],
+            esValido(archivo) {
+                const ext = archivo.name.split('.').pop().toLowerCase();
+                return this.extensionesValidas.includes(ext);
+            },
+            soltar(e) {
+                this.arrastrando = false;
+                const archivo = e.dataTransfer.files[0];
+                if (!archivo) return;
+                if (!this.esValido(archivo)) { this.errorSubida = true; return; }
+                const input = this.$refs.fileInput;
+                const dt = new DataTransfer();
+                dt.items.add(archivo);
+                input.files = dt.files;
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+                this.nombre = archivo.name;
+            }
+        }"
+    >
         <div
             wire:ignore.self
-            x-data="{
-                progreso: 0,
-                subiendo: false,
-                errorSubida: false,
-                arrastrando: false,
-                nombre: @js($archivoNombre),
-                extensionesValidas: ['xlsx', 'xls', 'csv', 'txt'],
-                esValido(archivo) {
-                    const ext = archivo.name.split('.').pop().toLowerCase();
-                    return this.extensionesValidas.includes(ext);
-                },
-                soltar(e) {
-                    this.arrastrando = false;
-                    const archivo = e.dataTransfer.files[0];
-                    if (!archivo) return;
-                    if (!this.esValido(archivo)) { this.errorSubida = true; return; }
-                    const input = this.$refs.fileInput;
-                    const dt = new DataTransfer();
-                    dt.items.add(archivo);
-                    input.files = dt.files;
-                    input.dispatchEvent(new Event('change', { bubbles: true }));
-                    this.nombre = archivo.name;
-                }
-            }"
             x-on:livewire-upload-start="subiendo = true; progreso = 0; errorSubida = false"
             x-on:livewire-upload-progress="progreso = $event.detail.progress"
             x-on:livewire-upload-finish="subiendo = false; progreso = 100"

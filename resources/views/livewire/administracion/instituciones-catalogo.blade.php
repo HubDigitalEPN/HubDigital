@@ -1,7 +1,7 @@
 <div class="mx-auto w-full max-w-6xl space-y-4 px-4 py-5 sm:px-6">
     <div class="flex flex-wrap items-end justify-between gap-3">
         <div>
-            <flux:heading size="xl">Instituciones</flux:heading>
+            <flux:heading size="xl" level="1">Instituciones</flux:heading>
             <p class="text-sm text-text-secondary">{{ $activas }} disponibles para el depositante en el paso 4.</p>
         </div>
         <flux:button variant="primary" icon="plus" wire:click="nueva">Nueva institución</flux:button>
