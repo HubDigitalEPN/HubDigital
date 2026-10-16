@@ -18,6 +18,11 @@ crear-paquete-oci centraliza Pest con PostgreSQL, Behat, Java, Python, Node,
 compilaciones y la integridad de las fuentes del paquete. No se ejecutan esas
 suites por separado durante una tarea ordinaria.
 
+El inicio del flujo es manual. GitHub Actions está deshabilitado en el
+repositorio oficial y no se conservan workflows que ejecuten suites al publicar
+commits o abrir pull requests. Las pruebas automáticas permanecen en el proyecto
+y se ejecutan mediante crear-paquete-oci, incluida su opción SoloValidacionLocal.
+
 Las auditorías de dependencias también se ejecutan dentro de crear-paquete-oci:
 Composer revisa composer.lock antes de instalar PHP y npm revisa los cuatro
 proyectos frontend. Una vulnerabilidad comunicada por estos registros bloquea
