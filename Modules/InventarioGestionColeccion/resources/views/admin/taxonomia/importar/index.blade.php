@@ -3,11 +3,6 @@
     <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
             <flux:heading size="xl" level="1" class="text-blue-navy font-bold">Importar catálogo</flux:heading>
-            <p class="text-sm text-text-secondary mt-1 max-w-2xl">
-                Sube el archivo <strong>Excel</strong> (.xlsx / .xls) o <strong>CSV</strong> del catálogo de
-                invertebrados. El sistema lee cada fila, arma la jerarquía taxonómica y guarda los especímenes.
-                Ninguna fila se pierde: las que tengan datos dudosos quedan marcadas para revisión.
-            </p>
         </div>
         <a href="{{ route('inventario.taxonomia.importar.plantilla') }}"
            class="inline-flex items-center gap-2 rounded-lg bg-science-blue px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition-opacity shrink-0 whitespace-nowrap">

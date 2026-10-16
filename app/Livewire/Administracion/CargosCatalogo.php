@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Livewire\Administracion;
 
+use App\Livewire\Concerns\WithInteractiveGrid;
+
 use App\Support\NormalizadorNombreCatalogo;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
@@ -16,6 +18,7 @@ use Livewire\WithPagination;
 #[Title('Cargos de depositantes')]
 final class CargosCatalogo extends Component
 {
+    use WithInteractiveGrid;
     use WithPagination;
 
     public string $busqueda = '';
@@ -96,8 +99,13 @@ final class CargosCatalogo extends Component
         }
 
         return view('livewire.administracion.cargos-catalogo', [
-            'cargos' => $query->orderByDesc('activo')->orderBy('nombre')->paginate(20),
+            'cargos' => $this->ordenarConsultaGrilla($query, 'nombre')->orderBy('id')->paginate($this->filasGrilla()),
             'activos' => DB::table('usuarios.cargos_catalogo')->where('activo', true)->count(),
         ]);
+    }
+
+    protected function gridColumns(): array
+    {
+        return ['nombre' => 'nombre', 'estado' => 'activo'];
     }
 }

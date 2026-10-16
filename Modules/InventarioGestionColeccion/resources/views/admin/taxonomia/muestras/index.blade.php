@@ -54,9 +54,6 @@
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <flux:heading size="xl" level="1" class="font-display text-blue-navy font-bold">Muestras de colecta</flux:heading>
-            <p class="text-sm text-text-secondary mt-1">
-                Muestras que el importador agrupó por su código de colecta original del Excel, pendientes de que el curador las revise.
-            </p>
         </div>
         <div class="flex flex-wrap gap-2">
             <flux:button icon="adjustments-horizontal" variant="ghost" @click="panelColumnasAbierto = !panelColumnasAbierto">

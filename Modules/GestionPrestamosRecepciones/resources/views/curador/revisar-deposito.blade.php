@@ -548,7 +548,7 @@
                     {{-- Tabla Darwin Core completa (columnas por prioridad + advertencias) — escritorio --}}
                     <div class="hidden md:block p-5">
                         <div class="overflow-x-auto rounded-lg border border-border">
-                            <table class="w-full text-sm">
+                            <x-grid-frame><table class="w-full text-sm">
                                 <thead class="bg-blue-navy">
                                     <tr>
                                         <th class="sticky left-0 top-0 z-30 bg-blue-navy px-4 py-3 text-left font-medium text-white whitespace-nowrap">Estado</th>
@@ -675,7 +675,7 @@
                                         </tr>
                                     @endforelse
                                 </tbody>
-                            </table>
+                            </table></x-grid-frame>
                         </div>
                         <p class="text-xs text-text-secondary mt-2 flex items-center gap-1.5">
                             <flux:icon name="exclamation-triangle" class="size-3.5 text-warning shrink-0" />

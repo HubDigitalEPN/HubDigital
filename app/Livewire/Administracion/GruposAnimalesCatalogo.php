@@ -4,22 +4,33 @@ declare(strict_types=1);
 
 namespace App\Livewire\Administracion;
 
+use App\Livewire\Concerns\WithInteractiveGrid;
+
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 #[Layout('layouts.app')]
 #[Title('Grupos animales de depósitos')]
 final class GruposAnimalesCatalogo extends Component
 {
+    use WithInteractiveGrid;
+    use WithPagination;
+
     public string $busqueda = '';
     public ?string $editandoCodigo = null;
     public string $codigo = '';
     public string $nombre = '';
     public string $rango = 'phylum';
+
+    public function updatedBusqueda(): void
+    {
+        $this->resetPage();
+    }
 
     public function boot(): void
     {
@@ -104,7 +115,12 @@ final class GruposAnimalesCatalogo extends Component
         }
 
         return view('livewire.administracion.grupos-animales-catalogo', [
-            'grupos' => $consulta->orderByDesc('activo')->orderBy('orden_visual')->get(),
+            'grupos' => $this->ordenarConsultaGrilla($consulta, 'nombre')->orderBy('codigo')->paginate($this->filasGrilla()),
         ]);
+    }
+
+    protected function gridColumns(): array
+    {
+        return ['nombre' => 'nombre', 'codigo' => 'codigo', 'rango' => 'rango_referencia', 'estado' => 'activo'];
     }
 }

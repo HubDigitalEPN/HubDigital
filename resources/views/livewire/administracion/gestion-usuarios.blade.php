@@ -1,11 +1,7 @@
 <div data-testid="admin-users-page" class="hub-workspace flex h-full w-full flex-1 flex-col gap-6 p-4 sm:p-6">
     <header class="hub-page-header">
         <div>
-            <p class="hub-page-kicker">Gobierno de acceso</p>
             <h1 class="mt-1 hub-page-title">Usuarios y perfiles</h1>
-            <p class="mt-1 max-w-2xl text-sm text-text-secondary">
-                Consulta las cuentas ciudadanas e internas y administra sus perfiles y roles autorizados.
-            </p>
         </div>
         <flux:button
             wire:click="alternarFormulario"
@@ -145,35 +141,16 @@
         </section>
     @endif
 
-    <section class="hub-table-shell">
-        <div class="grid gap-3 border-b border-border p-4 md:grid-cols-[minmax(0,1fr)_16rem]">
-            <flux:input
-                wire:model.live.debounce.350ms="busqueda"
-                icon="magnifying-glass"
-                placeholder="Buscar por nombre, correo o institución"
-                aria-label="Buscar usuarios"
-                data-testid="admin-user-search"
-            />
-            <flux:select wire:model.live="filtroRol" aria-label="Filtrar por rol" data-testid="admin-user-role-filter">
+    <x-interactive-grid :rows="$usuarios" label="Usuarios y perfiles" :columns="['Persona', 'Perfil', 'Rol', 'Estado', 'Alta', 'Acciones']">
+        <x-slot:filters>
+            <flux:select x-model="filterValues.filtroRol" data-grid-filter="filtroRol" label="Rol" aria-label="Filtrar por rol" data-testid="admin-user-role-filter">
                 <flux:select.option value="">Todos los roles</flux:select.option>
                 @foreach ($roles as $opcionRol)
                     <flux:select.option value="{{ $opcionRol->value }}">{{ $opcionRol->etiqueta() }}</flux:select.option>
                 @endforeach
             </flux:select>
-        </div>
-
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-border text-sm">
-                <thead class="bg-bg-main/70 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary">
-                    <tr>
-                        <th class="px-4 py-3">Persona</th>
-                        <th class="px-4 py-3">Perfil</th>
-                        <th class="px-4 py-3">Rol</th>
-                        <th class="px-4 py-3">Estado</th>
-                        <th class="px-4 py-3">Alta</th>
-                        <th class="px-4 py-3"><span class="sr-only">Acciones</span></th>
-                    </tr>
-                </thead>
+        </x-slot:filters>
+        <thead><tr><x-grid-heading field="persona">Persona</x-grid-heading><x-grid-heading field="perfil">Perfil</x-grid-heading><x-grid-heading>Rol</x-grid-heading><x-grid-heading field="estado">Estado</x-grid-heading><x-grid-heading field="alta">Alta</x-grid-heading><x-grid-heading>Acciones</x-grid-heading></tr></thead>
                 <tbody class="divide-y divide-border">
                     @forelse ($usuarios as $usuario)
                         <tr data-testid="admin-user-row" class="hover:bg-bg-main/50">
@@ -223,11 +200,5 @@
                         </tr>
                     @endforelse
                 </tbody>
-            </table>
-        </div>
-
-        @if ($usuarios->hasPages())
-            <div class="border-t border-border p-4">{{ $usuarios->links() }}</div>
-        @endif
-    </section>
+    </x-interactive-grid>
 </div>

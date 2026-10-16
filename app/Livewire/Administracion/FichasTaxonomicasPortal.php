@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Livewire\Administracion;
 
+use App\Livewire\Concerns\WithInteractiveGrid;
+
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
@@ -19,6 +21,9 @@ use Modules\CatalogoPublico\Infrastructure\FichasTaxonomicas;
 #[Title('Fichas del explorador taxonómico')]
 final class FichasTaxonomicasPortal extends Component
 {
+    use WithInteractiveGrid;
+    use WithPagination;
+
     use WithFileUploads, WithPagination;
 
     public string $busqueda = '';
@@ -79,12 +84,17 @@ final class FichasTaxonomicasPortal extends Component
     public function render(): View
     {
         $lista = DB::table('taxonomia.taxones')->select('id', 'nombre_cientifico', 'rango')
-            ->when(trim($this->busqueda) !== '', fn ($q) => $q->where('nombre_cientifico', 'ILIKE', '%'.addcslashes(mb_substr(trim($this->busqueda), 0, 120), '\\%_').'%'))
-            ->orderBy('nombre_cientifico')->orderBy('id')->paginate(15);
+            ->when(trim($this->busqueda) !== '', fn ($q) => $q->where('nombre_cientifico', 'ILIKE', '%'.addcslashes(mb_substr(trim($this->busqueda), 0, 120), '\\%_').'%'));
+        $lista = $this->ordenarConsultaGrilla($lista, 'nombre_cientifico')->orderBy('id')->paginate($this->filasGrilla());
         return view('livewire.administracion.fichas-taxonomicas-portal', [
             'taxones' => $lista, 'disponible' => Schema::hasTable(FichasTaxonomicas::TABLA),
             'taxon' => $this->taxonId ? DB::table('taxonomia.taxones')->where('id', $this->taxonId)->first(['nombre_cientifico', 'rango']) : null,
             'ficha' => $this->taxonId ? app(FichasTaxonomicas::class)->buscar($this->taxonId) : null,
         ]);
+    }
+
+    protected function gridColumns(): array
+    {
+        return ['nombre' => 'nombre_cientifico', 'rango' => 'rango'];
     }
 }

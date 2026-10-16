@@ -19,6 +19,7 @@
         class="flex flex-col gap-4"
         novalidate
         x-data="{ turnstileVerified: {{ config('services.turnstile.enabled') ? 'false' : 'true' }} }"
+        x-init="turnstileVerified = !$el.querySelector('[name=cf-turnstile-response]') || !!$el.querySelector('[name=cf-turnstile-response]').value"
         x-on:hub-turnstile-passed.window="turnstileVerified = true"
         x-on:hub-turnstile-reset.window="turnstileVerified = false"
     >
@@ -66,33 +67,7 @@
             </p>
         </div>
 
-        @if (config('services.turnstile.enabled'))
-            <div class="hub-turnstile flex flex-col gap-2" aria-label="Verificación de seguridad">
-                @if (filled(config('services.turnstile.site_key')))
-                    <div
-                        class="cf-turnstile min-h-[4.0625rem]"
-                        data-sitekey="{{ config('services.turnstile.site_key') }}"
-                        data-action="turnstile-spin-v2"
-                        data-theme="auto"
-                        data-response-field="false"
-                        data-callback="hubLoginTurnstilePassed"
-                        data-expired-callback="hubLoginTurnstileReset"
-                        data-error-callback="hubLoginTurnstileReset"
-                    ></div>
-                @else
-                    <p class="rounded-md border border-error/30 bg-error/5 px-3 py-2 text-sm text-error">
-                        La verificación de seguridad no está configurada. Solicita asistencia.
-                    </p>
-                @endif
-
-                @error('cf-turnstile-response')
-                    <p class="flex items-start gap-1.5 text-sm text-error" role="alert">
-                        <flux:icon name="exclamation-triangle" class="mt-0.5 size-4 shrink-0" />
-                        <span>{{ $message }}</span>
-                    </p>
-                @enderror
-            </div>
-        @endif
+        <x-turnstile />
 
         <flux:button
             type="submit"
@@ -125,21 +100,6 @@
         </p>
     @endif
 
-    @if (config('services.turnstile.enabled') && filled(config('services.turnstile.site_key')))
-        <script>
-            window.hubLoginTurnstilePassed = (token) => {
-                const field = document.querySelector('#hub-login-form input[name="cf-turnstile-response"]');
-                if (!field || !token) return;
-                field.value = token;
-                window.dispatchEvent(new CustomEvent('hub-turnstile-passed'));
-            };
-            window.hubLoginTurnstileReset = () => {
-                const field = document.querySelector('#hub-login-form input[name="cf-turnstile-response"]');
-                if (field) field.value = '';
-                window.dispatchEvent(new CustomEvent('hub-turnstile-reset'));
-            };
-        </script>
-        <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-    @endif
+
 
 </div>

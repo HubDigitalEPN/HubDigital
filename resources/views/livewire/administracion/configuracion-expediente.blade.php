@@ -1,9 +1,7 @@
 <div class="hub-workspace mx-auto max-w-3xl space-y-5 p-4 sm:p-6">
     <header class="hub-page-header">
         <div>
-            <p class="hub-page-kicker">Configuración de depósitos</p>
             <h1 class="hub-page-title">Siglas del expediente</h1>
-            <p class="mt-2 text-sm text-text-secondary">Define el prefijo de los próximos códigos. Los expedientes existentes conservan su número.</p>
         </div>
     </header>
 

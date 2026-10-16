@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Livewire\Administracion;
 
+use App\Livewire\Concerns\WithInteractiveGrid;
+
 use App\Support\NormalizadorNombreCatalogo;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -17,6 +19,7 @@ use Livewire\WithPagination;
 #[Title('Instituciones de depositantes')]
 final class InstitucionesCatalogo extends Component
 {
+    use WithInteractiveGrid;
     use WithPagination;
 
     public string $busqueda = '';
@@ -98,7 +101,7 @@ final class InstitucionesCatalogo extends Component
         }
 
         return view('livewire.administracion.instituciones-catalogo', [
-            'instituciones' => $query->orderByDesc('activo')->orderBy('nombre')->paginate(20),
+            'instituciones' => $this->ordenarConsultaGrilla($query, 'nombre')->orderBy('id')->paginate($this->filasGrilla()),
             'activas' => DB::table('usuarios.instituciones_catalogo')->where('activo', true)->count(),
             'pendientes' => Schema::hasTable('usuarios.catalogos_nombres_pendientes')
                 ? DB::table('usuarios.catalogos_nombres_pendientes')->where('tipo', 'institucion')->where('resuelto', false)
@@ -106,5 +109,10 @@ final class InstitucionesCatalogo extends Component
                     ->orderBy('valor_original')->get()
                 : collect(),
         ]);
+    }
+
+    protected function gridColumns(): array
+    {
+        return ['nombre' => 'nombre', 'estado' => 'activo'];
     }
 }

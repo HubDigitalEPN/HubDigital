@@ -3,7 +3,6 @@
     <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <h1 class="font-display text-2xl font-bold text-blue-navy">Catálogo divulgado</h1>
-            <p class="text-sm text-text-secondary">Registros públicos y registros reservados para revisión curatorial.</p>
         </div>
         <flux:button
             :href="route('divulgacion.sincronizar')"
@@ -86,7 +85,7 @@
 
     {{-- Table --}}
     <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
-        <table class="w-full text-sm">
+        <x-grid-frame><table class="w-full text-sm">
             <thead class="bg-blue-navy border-b border-border">
                 <tr>
                     <th class="px-4 py-3 text-left font-medium text-white">N.º de catálogo</th>
@@ -170,13 +169,13 @@
                     </tr>
                 @endforelse
             </tbody>
-        </table>
+        </table></x-grid-frame>
     </div>
 
     {{-- Pagination --}}
     @if($especimenes->hasPages())
         <div class="flex justify-center">
-            {{ $especimenes->links() }}
+            {{ $especimenes->links('pagination.apex') }}
         </div>
     @endif
 

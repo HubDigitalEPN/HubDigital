@@ -1,11 +1,7 @@
 <div data-testid="system-settings-page" class="hub-workspace flex h-full w-full flex-1 flex-col gap-6 p-4 sm:p-6">
     <header class="hub-page-header">
         <div>
-            <p class="hub-page-kicker">Infraestructura operativa</p>
             <h1 class="mt-1 hub-page-title">Configuración del sistema</h1>
-            <p class="mt-1 max-w-3xl text-sm leading-6 text-text-secondary">
-                Administra parámetros que pueden cambiar durante la operación. Las claves de base de datos, APP_KEY, R2 y OCI permanecen protegidas fuera de la interfaz.
-            </p>
         </div>
     </header>
 

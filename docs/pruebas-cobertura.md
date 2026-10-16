@@ -1,5 +1,19 @@
 # Distribución de cobertura
 
+Las grillas administrativas se comprueban en Pest en `Auth/AdminInteractiveGridTest.php`:
+orden global entre páginas, búsqueda con paginación, límites de filas, lista
+autorizada de columnas y restablecimiento sin modificar cuentas. Los permisos
+siguen cubiertos por `Auth/AdminUserManagementTest.php`. Turnstile conserva los
+contratos de autenticación y registro con Siteverify simulado; los estados de
+espera, renovación y reintento del cliente se cubren en Node. No se duplican en
+Gherkin. La comparación con Vita, el contraste del menú, la fila de accesos y el
+foco de las herramientas se revisan manualmente en Opera Neon QA al 75 %.
+
+La comprobación integrada PHP/Java prepara una JVM privada tanto en Linux como
+en Windows antes de medir el límite de tres segundos. En Windows usa un puerto
+efímero en loopback y autenticación mutua, sin reemplazar el motor de localhost
+ni incorporar el certificado sintético a la confianza del servicio existente.
+
 crear-paquete-oci centraliza Pest con PostgreSQL, Behat, Java, Python, Node,
 compilaciones y la integridad de las fuentes del paquete. No se ejecutan esas
 suites por separado durante una tarea ordinaria.

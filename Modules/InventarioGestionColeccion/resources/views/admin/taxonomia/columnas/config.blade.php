@@ -23,10 +23,6 @@
 <div class="space-y-6 p-4 sm:p-6 max-w-5xl">
     <div>
         <flux:heading size="xl" level="1" class="font-display text-blue-navy font-bold">Columnas de la tabla</flux:heading>
-        <p class="text-sm text-text-secondary mt-1">
-            Cambia la importancia (color) de cada columna por pantalla. Los cambios son globales: cualquier
-            curador autorizado puede modificarlos y todos verán la nueva clasificación.
-        </p>
     </div>
 
     @if($successMessage)<flux:callout variant="success" dismissible>{{ $successMessage }}</flux:callout>@endif
@@ -85,7 +81,7 @@
 
             {{-- Escritorio --}}
             <div class="hidden md:block overflow-x-auto">
-                <table class="w-full text-sm">
+                <x-grid-frame><table class="w-full text-sm">
                     <thead class="bg-blue-navy text-white">
                         <tr>
                             <th class="px-4 py-3 text-left font-medium">Columna</th>
@@ -125,7 +121,7 @@
                             </tr>
                         @endforeach
                     </tbody>
-                </table>
+                </table></x-grid-frame>
             </div>
 
             {{-- Móvil --}}

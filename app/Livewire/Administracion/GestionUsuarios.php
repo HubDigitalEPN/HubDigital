@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Livewire\Administracion;
 
+use App\Livewire\Concerns\WithInteractiveGrid;
+
 use App\Enums\RolUsuario;
 use App\Models\User;
 use App\Support\Administracion\CreadorUsuario;
@@ -23,6 +25,7 @@ use Livewire\WithPagination;
 #[Title('Administración de usuarios')]
 final class GestionUsuarios extends Component
 {
+    use WithInteractiveGrid;
     use WithPagination;
 
     public string $busqueda = '';
@@ -366,7 +369,7 @@ final class GestionUsuarios extends Component
     {
         $termino = mb_strtolower(trim($this->busqueda));
 
-        return User::query()
+        $consulta = User::query()
             ->with('roles')
             ->when($termino !== '', function ($consulta) use ($termino): void {
                 $patron = '%'.$termino.'%';
@@ -383,9 +386,13 @@ final class GestionUsuarios extends Component
                 if ($rol !== null) {
                     $consulta->whereHas('roles', fn ($roles) => $roles->where('rol', $rol->value));
                 }
-            })
-            ->orderBy('first_name')
-            ->orderBy('last_name')
-            ->paginate(15);
+            });
+
+        return $this->ordenarConsultaGrilla($consulta, 'first_name')->orderBy('last_name')->orderBy('id')->paginate($this->filasGrilla());
+    }
+
+    protected function gridColumns(): array
+    {
+        return ['persona' => 'first_name', 'perfil' => 'cargo', 'estado' => 'email_verified_at', 'alta' => 'created_at'];
     }
 }

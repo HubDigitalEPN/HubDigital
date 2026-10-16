@@ -2,7 +2,6 @@
     <header class="hub-curator-heading">
         <div>
             <h1>Panel del curador</h1>
-            <p>Colecciones, investigación y patrimonio natural en un mismo lugar.</p>
         </div>
         <div class="hub-curator-heading__actions">
             <a href="{{ route('inventario.taxonomia.especimenes') }}" wire:navigate class="hub-curator-button hub-curator-button--outline"><flux:icon name="rectangle-stack" class="size-4" /> Control de especímenes</a>

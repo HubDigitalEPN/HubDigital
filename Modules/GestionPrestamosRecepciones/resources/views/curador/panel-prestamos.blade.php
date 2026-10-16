@@ -2,7 +2,6 @@
 
     <div>
         <flux:heading size="xl" level="1" class="font-display">Gestión de préstamos</flux:heading>
-        <flux:text class="text-text-secondary text-sm mt-1">Selecciona una sección para gestionar.</flux:text>
     </div>
 
     <div class="grid gap-4 sm:grid-cols-3">

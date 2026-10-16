@@ -88,13 +88,15 @@ final class ClienteFirmadorPreparado
         try {
             if (strlen($entrada) > 65536) return null;
             $local = PHP_OS_FAMILY === 'Windows';
+            $puertoLocal = (int) config('firma-electronica.worker_local_port', 17655);
             if ($local) {
+                if ($puertoLocal < 1 || $puertoLocal > 65535) return null;
                 $rutaClave = (string) config('firma-electronica.worker_local_key');
                 if (! is_file($rutaClave) || is_link($rutaClave) || filesize($rutaClave) !== 32) return null;
                 $claveLocal = (string) @file_get_contents($rutaClave);
                 if (strlen($claveLocal) !== 32) return null;
             }
-            $socket = @stream_socket_client($local ? 'tcp://127.0.0.1:17655'
+            $socket = @stream_socket_client($local ? 'tcp://127.0.0.1:'.$puertoLocal
                 : 'unix://'.config('firma-electronica.worker_socket'), $codigo, $error, 0.2);
             if ($socket === false) return null;
             if (! $this->plazo($socket, $limite)) return null;

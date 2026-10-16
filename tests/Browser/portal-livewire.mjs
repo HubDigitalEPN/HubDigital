@@ -23,6 +23,7 @@ const fixture = path.join(temporal, 'fixture.json');
 const token = randomBytes(8).toString('hex');
 const procesos = [];
 let conexion;
+let procesoNavegador;
 let entorno;
 const excepciones = [], erroresLivewire = [], peticiones = new Set();
 const demora = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -100,6 +101,7 @@ try {
     await esperar(async () => { motorETE.comprobar(); try { return (await fetch(`http://127.0.0.1:${puertoETE}/health`)).ok; } catch {return false;} }, 'Arranque de ETE');
     const servidor = abrirProceso(php, ['-S', `127.0.0.1:${puertoPhp}`, path.join(proyecto, 'vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php')], {cwd: path.join(proyecto, 'public'), env: entorno});
     const chrome = abrirProceso(navegador, ['--headless=new', `--remote-debugging-port=${puertoChrome}`, '--remote-debugging-address=127.0.0.1', `--user-data-dir=${path.join(temporal, 'perfil')}`, '--no-first-run', '--no-default-browser-check', '--disable-gpu', 'about:blank']);
+    procesoNavegador = chrome.proceso;
     const objetivos = await esperar(async () => {
         chrome.comprobar(); servidor.comprobar();
         try {
@@ -690,13 +692,25 @@ try {
     }
     throw error;
 } finally {
+    // Cerrar Neon por su protocolo permite que renderers y servicios liberen
+    // el perfil temporal. Terminar sólo el proceso lanzador dejaba handles de
+    // Windows abiertos aunque todas las aserciones hubieran terminado.
+    try { await conexion?.send('Browser.close'); } catch { /* El navegador puede haber terminado durante el diagnóstico. */ }
     conexion?.close();
-    for (const proceso of procesos.reverse()) { if (proceso.exitCode === null) { proceso.kill(); await Promise.race([new Promise(resolve => proceso.once('exit', resolve)), demora(3000)]); } }
+    if (procesoNavegador && procesoNavegador.exitCode === null && procesoNavegador.signalCode === null) {
+        await Promise.race([new Promise(resolve => procesoNavegador.once('close', resolve)), demora(5000)]);
+    }
+    for (const proceso of procesos.reverse()) {
+        if (proceso.exitCode === null && proceso.signalCode === null) {
+            proceso.kill();
+            await Promise.race([new Promise(resolve => proceso.once('close', resolve)), demora(5000)]);
+        }
+    }
     try {
         if (existsSync(fixture)) execFileSync(php, ['tests/Browser/portal-fixture.php', 'limpiar', token, fixture], {cwd: proyecto, env: entorno, stdio: 'pipe'});
     } finally {
         const absoluto = path.resolve(temporal), raizTemporal = path.resolve(tmpdir()) + path.sep;
         assert.ok(absoluto.startsWith(raizTemporal) && path.basename(absoluto).startsWith('hubdigital-browser-'), 'Ruta temporal de limpieza inválida.');
-        rmSync(absoluto, {recursive: true, force: true, maxRetries: 5, retryDelay: 200});
+        rmSync(absoluto, {recursive: true, force: true, maxRetries: 8, retryDelay: 300});
     }
 }

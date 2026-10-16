@@ -3,7 +3,6 @@
     <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
         <div>
             <h1 class="font-display text-2xl font-bold text-blue-navy">Divulgar especímenes</h1>
-            <p class="text-sm text-text-secondary">Seleccione especímenes y configure su visibilidad en el catálogo público</p>
         </div>
         <flux:button
             :href="route('divulgacion.index')"
@@ -95,7 +94,7 @@
             </div>
 
             <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
-                <table class="w-full text-sm">
+                <x-grid-frame><table class="w-full text-sm">
                     <thead class="bg-blue-navy border-b border-border">
                         <tr>
                             <th class="px-4 py-3 text-left font-medium text-white" style="width: 2.5rem;"></th>
@@ -164,7 +163,7 @@
                             </tr>
                         @endforelse
                     </tbody>
-                </table>
+                </table></x-grid-frame>
             </div>
 
             {{-- Paginación --}}

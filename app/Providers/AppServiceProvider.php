@@ -43,8 +43,16 @@ class AppServiceProvider extends ServiceProvider
 
         try {
             $service = app(SystemMailConfigurationService::class);
-            $service->importEnvironmentIfMissing();
-            $service->applyStored();
+            // La configuración existente necesita una sola lectura. Repetir la
+            // importación y la aplicación duplicaba consultas en cada arranque HTTP.
+            $configuration = $service->stored();
+            if ($configuration === null) {
+                $service->importEnvironmentIfMissing();
+                $configuration = $service->stored();
+            }
+            if ($configuration !== null) {
+                $service->apply($configuration);
+            }
         } catch (\Throwable $exception) {
             // Migraciones, instalación inicial o una caída de PostgreSQL deben
             // conservar el fallback de entorno sin revelar secretos en logs.

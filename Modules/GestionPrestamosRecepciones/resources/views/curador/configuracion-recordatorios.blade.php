@@ -2,9 +2,6 @@
 
     <div>
         <flux:heading size="xl" level="1" class="font-display">Configuración de recordatorios</flux:heading>
-        <flux:text class="text-text-secondary text-sm mt-1">
-            Define cuántos días antes del vencimiento se envían recordatorios automáticos a los investigadores.
-        </flux:text>
     </div>
 
     @if($mensajeExito)

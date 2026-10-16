@@ -11,7 +11,7 @@
             } catch (_) {}
         </script>
     </head>
-    <body class="min-h-screen bg-bg-main">
+    <body @class(['min-h-screen bg-bg-main', 'hub-curator-ui' => auth()->user()?->esCurador()])>
         <x-estado-conectividad />
         <flux:sidebar sticky :collapsible="true" class="hub-app-sidebar border-e border-border bg-blue-navy">
 

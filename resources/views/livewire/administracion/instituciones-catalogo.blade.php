@@ -2,7 +2,6 @@
     <div class="flex flex-wrap items-end justify-between gap-3">
         <div>
             <flux:heading size="xl" level="1">Instituciones</flux:heading>
-            <p class="text-sm text-text-secondary">{{ $activas }} disponibles para el depositante en el paso 4.</p>
         </div>
         <flux:button variant="primary" icon="plus" wire:click="nueva">Nueva institución</flux:button>
     </div>
@@ -11,28 +10,19 @@
         <div class="rounded-lg border border-science-blue/30 bg-science-blue/5 px-3 py-2 text-sm text-text-primary">{{ session('institucion-guardada') }}</div>
     @endif
 
-    <div class="rounded-xl border border-border bg-white p-3 shadow-sm">
-        <div class="mb-3 max-w-sm">
-            <flux:input wire:model.live.debounce.300ms="busqueda" icon="magnifying-glass" placeholder="Buscar institución" aria-label="Buscar institución" />
-        </div>
-        <div class="grid gap-2 sm:grid-cols-2">
+    <x-interactive-grid :rows="$instituciones" label="Instituciones" :columns="['Nombre', 'Estado', 'Acciones']">
+        <thead><tr><x-grid-heading field="nombre">Nombre</x-grid-heading><x-grid-heading field="estado">Estado</x-grid-heading><x-grid-heading>Acciones</x-grid-heading></tr></thead>
+        <tbody>
             @forelse($instituciones as $institucion)
-                <div wire:key="institucion-{{ $institucion->id }}" class="flex min-w-0 items-center justify-between gap-2 rounded-lg border border-border px-3 py-2">
-                    <div class="min-w-0">
-                        <p class="truncate text-sm font-medium text-text-primary" title="{{ $institucion->nombre }}">{{ $institucion->nombre }}</p>
-                        <p class="text-xs {{ $institucion->activo ? 'text-science-blue' : 'text-text-secondary' }}">{{ $institucion->activo ? 'Disponible' : 'Desactivada' }}</p>
-                    </div>
-                    <div class="flex shrink-0 items-center gap-1">
+                <tr wire:key="institucion-{{ $institucion->id }}"><td>{{ $institucion->nombre }}</td><td>{{ $institucion->activo ? 'Disponible' : 'Desactivado' }}</td><td>                    <div class="flex shrink-0 items-center gap-1">
                         <flux:button size="xs" variant="ghost" icon="pencil-square" aria-label="Editar {{ $institucion->nombre }}" wire:click="editar({{ $institucion->id }})" />
                         <flux:button size="xs" variant="ghost" :icon="$institucion->activo ? 'pause' : 'arrow-path'" :aria-label="$institucion->activo ? 'Desactivar '.$institucion->nombre : 'Activar '.$institucion->nombre" wire:click="cambiarEstado({{ $institucion->id }})" />
-                    </div>
-                </div>
+                    </div></td></tr>
             @empty
-                <p class="py-5 text-sm text-text-secondary">No se encontraron instituciones.</p>
+                <tr><td colspan="3">No se encontraron resultados.</td></tr>
             @endforelse
-        </div>
-        <div class="mt-3">{{ $instituciones->links() }}</div>
-    </div>
+        </tbody>
+    </x-interactive-grid>
 
     <section class="rounded-xl border border-border bg-white p-4" aria-labelledby="instituciones-pendientes">
         <flux:heading id="instituciones-pendientes" size="lg">Nombres por identificar</flux:heading>

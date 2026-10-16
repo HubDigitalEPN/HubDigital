@@ -2,7 +2,6 @@
     <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
             <flux:heading size="xl" level="1" class="font-display text-blue-navy font-bold">Localidades</flux:heading>
-            <p class="text-sm text-text-secondary mt-1">Cada lugar se muestra una sola vez por nombre y rango.</p>
         </div>
         <flux:button icon="plus" variant="primary" wire:click="abrirModal" class="w-full sm:w-auto">
             Nueva Localidad
@@ -15,7 +14,7 @@
     <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
         {{-- Escritorio --}}
         <div class="hidden md:block overflow-x-auto">
-            <table class="w-full text-sm">
+            <x-grid-frame><table class="w-full text-sm">
                 <thead class="bg-blue-navy border-b border-border">
                     <tr>
                         <th class="px-4 py-3 text-left font-medium text-white">Nombre canónico</th>
@@ -37,7 +36,7 @@
                         <tr><td colspan="3" class="px-4 py-8 text-center text-text-secondary">No hay localidades registradas.</td></tr>
                     @endforelse
                 </tbody>
-            </table>
+            </table></x-grid-frame>
         </div>
 
         {{-- Móvil --}}

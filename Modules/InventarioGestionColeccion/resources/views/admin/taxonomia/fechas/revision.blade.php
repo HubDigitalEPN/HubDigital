@@ -2,11 +2,6 @@
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <flux:heading size="xl" level="1" class="font-display text-blue-navy font-bold">Fechas por normalizar</flux:heading>
-            <p class="text-sm text-text-secondary mt-1">
-                Textos de fecha que el importador no pudo interpretar. Asigna la fecha real
-                (<code class="text-xs">AAAA-MM-DD</code>) o un rango. Puedes aplicarla a todo el grupo,
-                o abrir el detalle y elegir a cuáles especímenes.
-            </p>
         </div>
     </div>
 

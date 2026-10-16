@@ -1,18 +1,14 @@
 <div class="mx-auto w-full max-w-6xl space-y-5">
-    <header><h1 class="hub-page-title">Fichas del explorador taxonómico</h1><p class="mt-2 text-sm text-text-secondary">Fotografía y explicación breve de cualquier rango. La ficha aparece al seleccionar su esfera en el explorador.</p></header>
+    <header><h1 class="hub-page-title">Fichas del explorador taxonómico</h1></header>
     @if (!$disponible)<p role="alert" class="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm">La tabla de fichas está pendiente de actualizar. Puedes consultar los taxones; el guardado se habilitará al actualizar la base.</p>@endif
     @if (session('ficha-guardada'))<p role="status" class="rounded-lg border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-900">{{ session('ficha-guardada') }}</p>@endif
-    <div class="grid gap-5 lg:grid-cols-[300px_1fr]">
-        <section class="hub-panel space-y-3 p-4" aria-label="Seleccionar taxón">
-            <label for="ficha-busqueda" class="block text-sm font-semibold">Buscar taxón</label>
-            <input id="ficha-busqueda" type="search" maxlength="120" wire:model.live.debounce.350ms="busqueda" class="w-full rounded-lg border border-slate-300 p-2 text-sm" placeholder="Nombre científico">
-            <ul class="space-y-1">
-                @forelse ($taxones as $item)
-                    <li wire:key="ficha-taxon-{{ $item->id }}"><button type="button" wire:click="seleccionar('{{ $item->id }}')" aria-pressed="{{ $taxonId === $item->id ? 'true' : 'false' }}" @class(['w-full rounded-lg border p-2 text-left text-sm focus-visible:outline-2 focus-visible:outline-blue-600', 'border-blue-300 bg-blue-50 text-blue-900' => $taxonId === $item->id, 'border-transparent hover:bg-slate-50' => $taxonId !== $item->id])><strong class="block break-words">{{ $item->nombre_cientifico }}</strong><span class="text-xs text-text-secondary">{{ $item->rango }}</span></button></li>
-                @empty<li class="py-4 text-sm text-text-secondary">No hay taxones con ese nombre.</li>@endforelse
-            </ul>
-            {{ $taxones->links() }}
-        </section>
+    <div class="grid gap-5 xl:grid-cols-2">
+        <x-interactive-grid :rows="$taxones" label="Taxones para fichas" :columns="['Nombre científico', 'Rango', 'Acciones']">
+            <thead><tr><x-grid-heading field="nombre">Nombre científico</x-grid-heading><x-grid-heading field="rango">Rango</x-grid-heading><x-grid-heading>Acciones</x-grid-heading></tr></thead>
+            <tbody>@forelse($taxones as $item)
+                <tr wire:key="ficha-taxon-{{ $item->id }}"><td>{{ $item->nombre_cientifico }}</td><td>{{ $item->rango }}</td><td><button type="button" class="hub-ig-button" wire:click="seleccionar('{{ $item->id }}')" aria-pressed="{{ $taxonId === $item->id ? 'true' : 'false' }}">Editar ficha</button></td></tr>
+            @empty<tr><td colspan="3">No hay taxones con ese nombre.</td></tr>@endforelse</tbody>
+        </x-interactive-grid>
         <section class="hub-panel p-5" aria-label="Editar ficha">
             @if ($taxon)
                 <form wire:submit="guardar" class="space-y-4" wire:key="ficha-form-{{ $taxonId }}">

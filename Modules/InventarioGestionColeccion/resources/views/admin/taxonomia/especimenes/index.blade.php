@@ -172,9 +172,6 @@
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <flux:heading size="xl" level="1" class="font-display text-blue-navy font-bold">Especímenes</flux:heading>
-            <p class="text-xs text-text-secondary mt-1">
-                Hoja de inventario completa, incluidos los especímenes no publicados. Ordena y edita cualquier ficha autorizada.
-            </p>
         </div>
         <div class="flex flex-wrap gap-2">
             <flux:button icon="eye" variant="ghost" :href="route('divulgacion.index')" wire:navigate>
@@ -592,7 +589,7 @@
                    @blur="cerrarCelda()"
                    class="absolute z-40 rounded border-2 border-science-blue bg-surface px-2 font-mono text-xs text-text-primary shadow-sm focus:outline-none" />
 
-            <table class="w-full border-separate border-spacing-0 font-mono text-xs">
+            <x-grid-frame><table class="w-full border-separate border-spacing-0 font-mono text-xs">
                 <thead>
                     <tr>
                         <th scope="col"
@@ -755,7 +752,7 @@
                         </tr>
                     @endforelse
                 </tbody>
-            </table>
+            </table></x-grid-frame>
         </div>
 
         {{-- Móvil: tarjetas apiladas con el mismo juego de columnas. --}}
@@ -1024,7 +1021,7 @@
                         <p class="text-sm font-medium text-text-primary">{{ $masivaResumen }}</p>
                         @if(count($masivaPreview) > 0)
                             <div class="max-h-56 overflow-auto rounded border border-border bg-surface">
-                                <table class="w-full border-separate border-spacing-0 font-mono text-xs">
+                                <x-grid-frame><table class="w-full border-separate border-spacing-0 font-mono text-xs">
                                     <thead>
                                         <tr>
                                             <th class="sticky top-0 border-b border-border bg-bg-main px-2 py-1 text-left font-sans">Espécimen</th>
@@ -1045,7 +1042,7 @@
                                             </tr>
                                         @endforeach
                                     </tbody>
-                                </table>
+                                </table></x-grid-frame>
                             </div>
                             <p class="text-xs text-text-secondary">Se muestran las primeras {{ count($masivaPreview) }} filas.</p>
                         @endif

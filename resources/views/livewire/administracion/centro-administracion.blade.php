@@ -1,9 +1,7 @@
 <div class="hub-workspace flex h-full w-full flex-1 flex-col gap-7 p-4 sm:p-6">
     <header class="flex flex-col gap-4 border-b border-border pb-6 lg:flex-row lg:items-end lg:justify-between">
         <div>
-            <p class="hub-page-kicker">Gobierno institucional</p>
             <h1 class="mt-1 hub-page-title">Centro de administración</h1>
-            <p class="mt-2 max-w-3xl text-sm leading-6 text-text-secondary">Coordina cuentas, ingresos a colección y módulos operativos del Laboratorio de Invertebrados.</p>
         </div>
         <a href="{{ route('dashboard') }}" wire:navigate class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-blue-navy/25 bg-surface px-4 py-2 text-sm font-semibold text-blue-navy transition hover:bg-blue-navy/[0.04]">
             <flux:icon name="chart-bar" class="size-4" /> Ver dashboard analítico

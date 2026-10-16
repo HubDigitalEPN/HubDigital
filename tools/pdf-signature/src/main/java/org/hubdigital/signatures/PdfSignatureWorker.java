@@ -51,7 +51,7 @@ final class PdfSignatureWorker {
         }
     }
 
-    /** Desarrollo Windows: loopback fijo y autenticación mutua antes de recibir credenciales. */
+    /** Desarrollo Windows: loopback y autenticación mutua antes de recibir credenciales. */
     static void serveLocal(Path keyFile) throws Exception {
         if (!System.getProperty("os.name", "").startsWith("Windows")) {
             throw new IllegalArgumentException("El transporte local está reservado a Windows.");
@@ -59,8 +59,12 @@ final class PdfSignatureWorker {
         if (Files.isSymbolicLink(keyFile) || Files.size(keyFile) != 32) throw new IllegalArgumentException("Clave local inválida.");
         byte[] key = Files.readAllBytes(keyFile);
         try (ServerSocketChannel server = ServerSocketChannel.open(StandardProtocolFamily.INET)) {
-            server.bind(new InetSocketAddress("127.0.0.1", 17655), 8);
+            // Cero reserva un puerto efímero para una instancia de QA aislada.
+            int port = Integer.getInteger("hubdigital.signature.local_port", 17655);
+            if (port < 0 || port > 65535) throw new IllegalArgumentException("Puerto local inválido.");
+            server.bind(new InetSocketAddress("127.0.0.1", port), 8);
             Engine engine = prepare();
+            System.out.println("LOCAL_SIGNATURE_PORT=" + ((InetSocketAddress) server.getLocalAddress()).getPort());
             System.out.println("LOCAL_SIGNATURE_READY"); System.out.flush();
             serveConnections(server, engine, key);
         } finally {

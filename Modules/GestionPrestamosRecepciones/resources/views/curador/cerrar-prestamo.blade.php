@@ -12,9 +12,6 @@
 
     <div>
         <flux:heading size="xl" level="1" class="font-display">Cierre de préstamo</flux:heading>
-        <flux:text class="text-text-secondary text-sm mt-1">
-            Registra el resultado de la inspección para cerrar formalmente el préstamo.
-        </flux:text>
     </div>
 
     {{-- Sección 1: Información del préstamo --}}

@@ -1,7 +1,6 @@
 <div class="hub-workspace mx-auto max-w-7xl space-y-5 p-3 sm:p-5">
     <header class="hub-page-header">
-        <div><p class="hub-page-kicker">Administración de contenido</p><h1 class="hub-page-title">Textos del portal</h1>
-            <p class="mt-2 text-sm text-text-secondary">Edita títulos, descripciones, etiquetas, ayudas y pies de figura. Los cambios se publican al guardar.</p></div>
+        <div><h1 class="hub-page-title">Textos del portal</h1></div>
         <a href="{{ route('home') }}" target="_blank" rel="noopener" class="text-sm font-semibold text-science-blue underline">Abrir portal ↗</a>
     </header>
     @if(session('portal-textos'))<p role="status" class="rounded-lg border border-success/30 bg-success/5 p-3 text-success">{{ session('portal-textos') }}</p>@endif

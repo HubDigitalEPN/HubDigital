@@ -4,16 +4,24 @@ declare(strict_types=1);
 
 namespace App\Livewire\Administracion;
 
+use App\Livewire\Concerns\WithInteractiveGrid;
+
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 #[Layout('layouts.app')]
 #[Title('Fuentes de revocación de firmas')]
 final class FuentesRevocacionFirma extends Component
 {
+    use WithInteractiveGrid;
+    use WithPagination;
+
+    public string $busqueda = '';
+
     public ?string $editandoCodigo = null;
     public string $codigo = '';
     public string $entidad = '';
@@ -22,6 +30,11 @@ final class FuentesRevocacionFirma extends Component
     public string $ocspUrl = '';
     public bool $activo = true;
     public int $tiempoEsperaSegundos = 3;
+
+    public function updatedBusqueda(): void
+    {
+        $this->resetPage();
+    }
 
     public function boot(): void
     {
@@ -110,8 +123,15 @@ final class FuentesRevocacionFirma extends Component
     public function render(): View
     {
         return view('livewire.administracion.fuentes-revocacion-firma', [
-            'fuentes' => DB::table('recepciones.fuentes_revocacion_firma')
-                ->orderByDesc('activo')->orderBy('entidad')->get(),
+            'fuentes' => $this->ordenarConsultaGrilla(DB::table('recepciones.fuentes_revocacion_firma')
+                ->when(trim($this->busqueda) !== '', fn ($query) => $query->where(function ($subquery): void {
+                    $subquery->where('entidad', 'ilike', '%'.trim($this->busqueda).'%')->orWhere('patron_emisor', 'ilike', '%'.trim($this->busqueda).'%');
+                })), 'entidad')->orderBy('codigo')->paginate($this->filasGrilla()),
         ]);
+    }
+
+    protected function gridColumns(): array
+    {
+        return ['entidad' => 'entidad', 'emisor' => 'patron_emisor', 'estado' => 'activo'];
     }
 }

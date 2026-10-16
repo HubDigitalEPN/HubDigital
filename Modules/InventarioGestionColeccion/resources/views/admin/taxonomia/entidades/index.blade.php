@@ -12,7 +12,7 @@
     <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
         {{-- Escritorio --}}
         <div class="hidden md:block overflow-x-auto">
-            <table class="w-full text-sm">
+            <x-grid-frame><table class="w-full text-sm">
                 <thead class="bg-blue-navy border-b border-border">
                     <tr>
                         <th class="px-4 py-3 text-left font-medium text-white">Nombre</th>
@@ -54,7 +54,7 @@
                         <tr><td colspan="4" class="px-4 py-8 text-center text-text-secondary">No hay entidades depositantes registradas.</td></tr>
                     @endforelse
                 </tbody>
-            </table>
+            </table></x-grid-frame>
         </div>
 
         {{-- Móvil --}}

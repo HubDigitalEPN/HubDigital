@@ -14,9 +14,6 @@
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <flux:heading size="xl" level="1" class="font-display">Gestionar prórroga</flux:heading>
-            <flux:text class="text-text-secondary text-sm mt-1">
-                Revisa la solicitud del investigador y resuélvela.
-            </flux:text>
         </div>
         <x-gestionprestamosrecepciones::prestamo-status-badge :estado="$prestamo->estado" />
     </div>

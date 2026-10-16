@@ -2,9 +2,7 @@
 <div class="mx-auto w-full max-w-7xl space-y-6 p-4 pb-12 sm:p-6">
     <header class="flex flex-wrap items-end justify-between gap-4">
         <div>
-            <p class="text-xs font-bold uppercase tracking-[0.14em] text-science-blue">Investigación · colección biológica</p>
             <h1 class="mt-2 font-display text-3xl font-bold text-blue-navy">Análisis de diversidad</h1>
-            <p class="mt-2 max-w-3xl text-sm leading-6 text-text-secondary">Calcula uno, varios o todos los indicadores sobre ejemplares identificados a nivel de especie y con un conteo individual positivo. Los registros sin identificación o sin conteo quedan fuera de estas fórmulas.</p>
         </div>
         <a href="{{ route('dashboard') }}" class="text-sm font-semibold text-science-blue hover:underline">Volver al panel</a>
     </header>
@@ -71,7 +69,7 @@
             @if(in_array('abundancia', $metricas, true))
                 <div class="mt-5 overflow-hidden rounded-xl border border-border bg-white shadow-sm">
                     <div class="border-b border-border p-5"><h3 class="font-display text-lg font-bold text-blue-navy">Abundancia por especie</h3><p class="text-xs text-text-secondary">Treinta especies con mayor conteo conocido. El porcentaje usa {{ number_format($resultado['individuos'], 0, ',', '.') }} individuos como denominador.</p></div>
-                    <div class="max-h-96 overflow-auto"><table class="w-full min-w-[30rem] text-left text-sm"><thead class="sticky top-0 bg-[#f3f7fb]"><tr><th class="px-4 py-2">Especie</th><th class="px-4 py-2 text-right">Individuos</th><th class="px-4 py-2 text-right">Relativa</th></tr></thead><tbody class="divide-y divide-border">@forelse(($resultado['valores']['abundancia'] ?? []) as $fila)<tr><td class="px-4 py-2 italic">{{ $fila['especie'] }}</td><td class="px-4 py-2 text-right tabular-nums">{{ number_format($fila['individuos'], 0, ',', '.') }}</td><td class="px-4 py-2 text-right tabular-nums">{{ number_format($fila['porcentaje'], 2, ',', '.') }} %</td></tr>@empty<tr><td colspan="3" class="px-4 py-4 text-text-secondary">Sin datos suficientes</td></tr>@endforelse</tbody></table></div>
+                    <div class="max-h-96 overflow-auto"><x-grid-frame><table class="w-full min-w-[30rem] text-left text-sm"><thead class="sticky top-0 bg-[#f3f7fb]"><tr><th class="px-4 py-2">Especie</th><th class="px-4 py-2 text-right">Individuos</th><th class="px-4 py-2 text-right">Relativa</th></tr></thead><tbody class="divide-y divide-border">@forelse(($resultado['valores']['abundancia'] ?? []) as $fila)<tr><td class="px-4 py-2 italic">{{ $fila['especie'] }}</td><td class="px-4 py-2 text-right tabular-nums">{{ number_format($fila['individuos'], 0, ',', '.') }}</td><td class="px-4 py-2 text-right tabular-nums">{{ number_format($fila['porcentaje'], 2, ',', '.') }} %</td></tr>@empty<tr><td colspan="3" class="px-4 py-4 text-text-secondary">Sin datos suficientes</td></tr>@endforelse</tbody></table></x-grid-frame></div>
                 </div>
             @endif
             @if(in_array('acumulacion', $metricas, true))

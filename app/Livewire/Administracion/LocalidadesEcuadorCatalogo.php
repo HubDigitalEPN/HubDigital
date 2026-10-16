@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Livewire\Administracion;
 
+use App\Livewire\Concerns\WithInteractiveGrid;
+
 use App\Support\CatalogoLocalidadesEcuador;
 use App\Support\CatalogoTerritorialEcuador;
 use Illuminate\Support\Facades\DB;
@@ -19,6 +21,7 @@ use Livewire\WithPagination;
 #[Title('Localidades de Ecuador')]
 final class LocalidadesEcuadorCatalogo extends Component
 {
+    use WithInteractiveGrid;
     use WithPagination;
 
     public string $provinciaFiltro = '';
@@ -124,9 +127,14 @@ final class LocalidadesEcuadorCatalogo extends Component
         }
 
         return view('livewire.administracion.localidades-ecuador-catalogo', [
-            'localidades' => $query->orderBy('nombre')->orderBy('codigo')->paginate(25),
+            'localidades' => $this->ordenarConsultaGrilla($query, 'nombre')->orderBy('codigo')->paginate($this->filasGrilla()),
             'provincias' => CatalogoTerritorialEcuador::provincias(),
             'nombresProvincias' => array_column(CatalogoTerritorialEcuador::provincias(), 'nombre', 'codigo'),
         ]);
+    }
+
+    protected function gridColumns(): array
+    {
+        return ['nombre' => 'nombre', 'provincia' => 'provincia_codigo', 'parroquia' => 'parroquia', 'estado' => 'activo'];
     }
 }

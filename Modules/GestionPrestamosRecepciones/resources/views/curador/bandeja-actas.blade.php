@@ -2,7 +2,6 @@
 
     <div>
         <flux:heading size="xl" level="1" class="font-display">Actas</flux:heading>
-        <flux:text class="text-text-secondary text-sm mt-1">Actas de préstamo pendientes de envío, firma y validación.</flux:text>
     </div>
 
     @if($successMessage)
@@ -85,7 +84,7 @@
     @else
         <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
             <div class="overflow-x-auto">
-            <table class="w-full text-sm min-w-[750px]">
+            <x-grid-frame><table class="w-full text-sm min-w-[750px]">
                 <thead class="bg-blue-navy border-b border-border">
                     <tr>
                         <th class="px-4 py-3 text-left font-medium text-white">Código</th>
@@ -142,7 +141,7 @@
                         </tr>
                     @endforeach
                 </tbody>
-            </table>
+            </table></x-grid-frame>
             </div>
         </div>
     @endif

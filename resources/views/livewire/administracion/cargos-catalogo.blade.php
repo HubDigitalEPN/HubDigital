@@ -2,7 +2,6 @@
     <div class="flex flex-wrap items-end justify-between gap-3">
         <div>
             <flux:heading size="xl" level="1">Cargos</flux:heading>
-            <p class="text-sm text-text-secondary">{{ $activos }} disponibles para el depositante en el paso 4.</p>
         </div>
         <flux:button variant="primary" icon="plus" wire:click="nueva">Nuevo cargo</flux:button>
     </div>
@@ -11,28 +10,19 @@
         <div class="rounded-lg border border-science-blue/30 bg-science-blue/5 px-3 py-2 text-sm text-text-primary">{{ session('cargo-guardado') }}</div>
     @endif
 
-    <div class="rounded-xl border border-border bg-white p-3 shadow-sm">
-        <div class="mb-3 max-w-sm">
-            <flux:input wire:model.live.debounce.300ms="busqueda" icon="magnifying-glass" placeholder="Buscar cargo" aria-label="Buscar cargo" />
-        </div>
-        <div class="grid gap-2 sm:grid-cols-2">
+    <x-interactive-grid :rows="$cargos" label="Cargos" :columns="['Nombre', 'Estado', 'Acciones']">
+        <thead><tr><x-grid-heading field="nombre">Nombre</x-grid-heading><x-grid-heading field="estado">Estado</x-grid-heading><x-grid-heading>Acciones</x-grid-heading></tr></thead>
+        <tbody>
             @forelse($cargos as $cargo)
-                <div wire:key="cargo-{{ $cargo->id }}" class="flex min-w-0 items-center justify-between gap-2 rounded-lg border border-border px-3 py-2">
-                    <div class="min-w-0">
-                        <p class="truncate text-sm font-medium text-text-primary" title="{{ $cargo->nombre }}">{{ $cargo->nombre }}</p>
-                        <p class="text-xs {{ $cargo->activo ? 'text-science-blue' : 'text-text-secondary' }}">{{ $cargo->activo ? 'Disponible' : 'Desactivado' }}</p>
-                    </div>
-                    <div class="flex shrink-0 items-center gap-1">
+                <tr wire:key="cargo-{{ $cargo->id }}"><td>{{ $cargo->nombre }}</td><td>{{ $cargo->activo ? 'Disponible' : 'Desactivado' }}</td><td>                    <div class="flex shrink-0 items-center gap-1">
                         <flux:button size="xs" variant="ghost" icon="pencil-square" aria-label="Editar {{ $cargo->nombre }}" wire:click="editar({{ $cargo->id }})" />
                         <flux:button size="xs" variant="ghost" :icon="$cargo->activo ? 'pause' : 'arrow-path'" :aria-label="$cargo->activo ? 'Desactivar '.$cargo->nombre : 'Activar '.$cargo->nombre" wire:click="cambiarEstado({{ $cargo->id }})" />
-                    </div>
-                </div>
+                    </div></td></tr>
             @empty
-                <p class="py-5 text-sm text-text-secondary">No se encontraron cargos.</p>
+                <tr><td colspan="3">No se encontraron resultados.</td></tr>
             @endforelse
-        </div>
-        <div class="mt-3">{{ $cargos->links() }}</div>
-    </div>
+        </tbody>
+    </x-interactive-grid>
 
     <flux:modal name="cargo-editor" class="w-full max-w-md">
         <div class="space-y-4">

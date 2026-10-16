@@ -2,11 +2,6 @@
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <flux:heading size="xl" level="1" class="font-display text-blue-navy font-bold">Localidades por confirmar</flux:heading>
-            <p class="text-sm text-text-secondary mt-1">
-                Localidades tal como venían en el Excel, sin enlazar a una localidad del catálogo.
-                Elige la correcta (te sugerimos candidatos, o búscala tú) y aplícala a todo el grupo o
-                solo a los especímenes que elijas.
-            </p>
         </div>
         <flux:button icon="map-pin" variant="ghost" :href="route('inventario.taxonomia.localidades')" wire:navigate>
             Gestionar localidades

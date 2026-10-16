@@ -5,9 +5,6 @@
         <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
                 <h1 class="font-serif text-2xl font-bold text-blue-navy">Imágenes por nivel taxonómico</h1>
-                <p class="mt-1 text-sm text-text-secondary">
-                    Sube imágenes a un espécimen y elige la portada de género y especie.
-                </p>
             </div>
         </div>
 

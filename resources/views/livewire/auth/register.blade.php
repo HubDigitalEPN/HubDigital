@@ -12,6 +12,7 @@
             role: @js($rolInicial),
             turnstileVerified: {{ config('services.turnstile.enabled') ? 'false' : 'true' }}
         }"
+        x-init="turnstileVerified = !$el.querySelector('[name=cf-turnstile-response]') || !!$el.querySelector('[name=cf-turnstile-response]').value"
         x-on:hub-register-turnstile-passed.window="turnstileVerified = true"
         x-on:hub-register-turnstile-reset.window="turnstileVerified = false">
         @csrf
@@ -191,34 +192,7 @@
         @enderror
 
         <div class="grid items-end gap-3 sm:grid-cols-[minmax(18rem,1fr)_minmax(12rem,.7fr)]">
-            @if (config('services.turnstile.enabled'))
-                <div class="hub-turnstile flex min-w-0 flex-col gap-2" aria-label="Verificación de seguridad">
-                    @if (filled(config('services.turnstile.site_key')))
-                        <div
-                            class="cf-turnstile min-h-[4.0625rem]"
-                            data-sitekey="{{ config('services.turnstile.site_key') }}"
-                            data-action="turnstile-spin-v2"
-                            data-size="flexible"
-                            data-theme="auto"
-                            data-response-field="false"
-                            data-callback="hubRegisterTurnstilePassed"
-                            data-expired-callback="hubRegisterTurnstileReset"
-                            data-error-callback="hubRegisterTurnstileReset"
-                        ></div>
-                    @else
-                        <p class="rounded-md border border-error/30 bg-error/5 px-3 py-2 text-sm text-error">
-                            La verificación de seguridad no está configurada. Solicita asistencia.
-                        </p>
-                    @endif
-
-                    @error('cf-turnstile-response')
-                        <p class="flex items-start gap-1.5 text-sm text-error" role="alert">
-                            <flux:icon name="exclamation-triangle" class="mt-0.5 size-4 shrink-0" />
-                            <span>{{ $message }}</span>
-                        </p>
-                    @enderror
-                </div>
-            @endif
+            <x-turnstile />
 
             <flux:button
                 type="submit"
@@ -244,21 +218,6 @@
         </a>
     </p>
 
-    @if (config('services.turnstile.enabled') && filled(config('services.turnstile.site_key')))
-        <script>
-            window.hubRegisterTurnstilePassed = (token) => {
-                const field = document.querySelector('#hub-register-form input[name="cf-turnstile-response"]');
-                if (!field || !token) return;
-                field.value = token;
-                window.dispatchEvent(new CustomEvent('hub-register-turnstile-passed'));
-            };
-            window.hubRegisterTurnstileReset = () => {
-                const field = document.querySelector('#hub-register-form input[name="cf-turnstile-response"]');
-                if (field) field.value = '';
-                window.dispatchEvent(new CustomEvent('hub-register-turnstile-reset'));
-            };
-        </script>
-        <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-    @endif
+
 
 </div>

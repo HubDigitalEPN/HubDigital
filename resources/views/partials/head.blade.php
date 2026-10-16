@@ -23,8 +23,15 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@600;700&family=Inter:wght@400;500;600&display=swap" />
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@600;700&family=Inter:wght@400;500;600&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@600;700&family=Inter:wght@400;500;600&display=swap" /></noscript>
+@if(config('services.turnstile.enabled') && request()->routeIs('login', 'register'))
+    <link rel="preconnect" href="https://challenges.cloudflare.com">
+    <script src="{{ asset('js/hub-turnstile.js') }}?v={{ filemtime(public_path('js/hub-turnstile.js')) }}"></script>
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=hubTurnstileReady" async defer></script>
+@endif
 
+<script src="{{ asset('js/interactive-grid.js') }}?v={{ filemtime(public_path('js/interactive-grid.js')) }}"></script>
 @livewireScriptConfig
 <script src="{{ asset('js/lov-origen.js') }}?v={{ filemtime(public_path('js/lov-origen.js')) }}"></script>
 @vite(['resources/css/app.css', 'resources/css/portal.css', 'resources/js/app.js'])
@@ -34,3 +41,4 @@
 
 <link rel="stylesheet" href="{{ asset('css/formularios-apex.css') }}?v={{ filemtime(public_path('css/formularios-apex.css')) }}" />
 <script src="{{ asset('js/formularios-apex.js') }}?v={{ filemtime(public_path('js/formularios-apex.js')) }}" defer></script>
+<link rel="stylesheet" href="{{ asset('css/interactive-grid.css') }}?v={{ filemtime(public_path('css/interactive-grid.css')) }}" />

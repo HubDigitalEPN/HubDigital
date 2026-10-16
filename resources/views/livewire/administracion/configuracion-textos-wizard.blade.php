@@ -1,9 +1,7 @@
 <div class="hub-workspace mx-auto max-w-7xl space-y-4 p-3 sm:p-5">
     <header class="hub-page-header">
         <div>
-            <p class="hub-page-kicker">Administración de contenido</p>
             <h1 class="hub-page-title">Textos del asistente de depósitos</h1>
-            <p class="mt-2 text-sm text-text-secondary">Edita las instrucciones y acciones que ve el solicitante en cada etapa.</p>
         </div>
     </header>
 

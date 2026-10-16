@@ -6,15 +6,7 @@
     {{-- Encabezado --}}
     <header class="hub-page-header">
         <div>
-            <p class="hub-page-kicker">Ingreso de colecciones</p>
             <h1 class="mt-1 hub-page-title">Bandeja de recepciones</h1>
-            <flux:text class="text-text-secondary mt-1 text-sm">
-                {{ $esActas
-                    ? 'Lotes recibidos y constatados que requieren generar y firmar el acta final.'
-                    : ($esResueltas
-                        ? 'Solicitudes de depósito y donación ya revisadas (aprobadas o rechazadas).'
-                        : 'Solicitudes de depósito y donación pendientes de revisión documental.') }}
-            </flux:text>
         </div>
     </header>
 
@@ -127,7 +119,7 @@
             wire:loading.class.delay="opacity-50 pointer-events-none"
             wire:target="busqueda, tipoTramite, ordenDireccion, toggleOrden, cambiarVista, limpiarFiltros">
             <div class="overflow-x-auto">
-                <table class="w-full text-sm min-w-[820px]">
+                <x-grid-frame><table class="w-full text-sm min-w-[820px]">
                     <thead class="bg-blue-navy border-b border-border">
                         <tr>
                             <th class="px-4 py-3 text-left font-medium text-white">N.º solicitud</th>
@@ -205,7 +197,7 @@
                             </tr>
                         @endforeach
                     </tbody>
-                </table>
+                </table></x-grid-frame>
             </div>
         </div>
 

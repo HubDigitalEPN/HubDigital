@@ -102,12 +102,24 @@ try {
     }
 
     config()->set('firma-electronica.java_signature_trust_dir', $directorioFirma);
-    if (PHP_OS_FAMILY === 'Linux') {
+    if (in_array(PHP_OS_FAMILY, ['Linux', 'Windows'], true)) {
         // El motor de producción debe rechazar esta confianza temporal.
         // Preparar otro motor privado conserva ese aislamiento y el plazo de
         // tres segundos del adaptador, sin medir el arranque de una JVM fría.
         $entorno = \Modules\GestionPrestamosRecepciones\Infrastructure\Storage\DirectorioTemporalHubDigital::entornoProcesos();
         $socketPrueba = $directorioFirma.'/firma.sock';
+        $windows = PHP_OS_FAMILY === 'Windows';
+        $opcionesTransporte = [];
+        $transporte = ['serve', $socketPrueba];
+        if ($windows) {
+            if (! app()->environment('local')) {
+                throw new \RuntimeException('La prueba del transporte Windows requiere el entorno local.');
+            }
+            $claveMotor = $directorioFirma.'/motor.key';
+            file_put_contents($claveMotor, random_bytes(32));
+            $opcionesTransporte = ['-Dhubdigital.signature.local_port=0'];
+            $transporte = ['serve-local', $claveMotor];
+        }
         $motorPrueba = new \Symfony\Component\Process\Process([
             (string) config('firma-electronica.java_binary', 'java'),
             '-Djava.awt.headless=true', '-Xms24m', '-Xmx128m', '-XX:+UseSerialGC', '-XX:ActiveProcessorCount=2',
@@ -117,7 +129,8 @@ try {
             '-Dhubdigital.pdf.max_page_points='.config('firma-electronica.max_page_points', 1440),
             '-Dhubdigital.pdf.render_dpi='.config('firma-electronica.render_dpi', 110),
             '-Dhubdigital.pdf.max_render_pixels='.config('firma-electronica.max_render_pixels', 100000000),
-            '-jar', $jar, 'serve', $socketPrueba,
+            ...$opcionesTransporte,
+            '-jar', $jar, ...$transporte,
         ], null, $entorno + ['HUBDIGITAL_SIGNATURE_TRUST_DIR' => $directorioFirma]);
         $motorPrueba->setTimeout(null);
         $motorPrueba->start();
@@ -125,9 +138,14 @@ try {
         // VM pequeña. Este arranque precede al plazo de validación de 3 s.
         $limitePreparacion = microtime(true) + 90;
         do {
-            clearstatcache(true, $socketPrueba);
-            $preparado = file_exists($socketPrueba) && ! is_link($socketPrueba)
-                && (fileperms($socketPrueba) & 0777) === 0600;
+            if ($windows) {
+                $salidaMotor = $motorPrueba->getOutput();
+                $preparado = preg_match('/LOCAL_SIGNATURE_PORT=(\d+)\RLOCAL_SIGNATURE_READY/', $salidaMotor, $puertoMotor) === 1;
+            } else {
+                clearstatcache(true, $socketPrueba);
+                $preparado = file_exists($socketPrueba) && ! is_link($socketPrueba)
+                    && (fileperms($socketPrueba) & 0777) === 0600;
+            }
             if ($preparado || ! $motorPrueba->isRunning()) {
                 break;
             }
@@ -140,7 +158,12 @@ try {
             throw new \RuntimeException('No se pudo preparar el motor privado de la prueba de firma: '.$motivo.'.');
         }
         config()->set('firma-electronica.worker_enabled', true);
-        config()->set('firma-electronica.worker_socket', $socketPrueba);
+        if ($windows) {
+            config()->set('firma-electronica.worker_local_key', $claveMotor);
+            config()->set('firma-electronica.worker_local_port', (int) $puertoMotor[1]);
+        } else {
+            config()->set('firma-electronica.worker_socket', $socketPrueba);
+        }
     }
     $adaptador = app(\Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\JavaValidacionFirmaElectronicaAdapter::class);
     $inicioValidacion = microtime(true);

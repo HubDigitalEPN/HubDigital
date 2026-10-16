@@ -2,29 +2,23 @@
     <div class="flex flex-wrap items-end justify-between gap-3">
         <div>
             <flux:heading size="xl" level="1">Grupos animales</flux:heading>
-            <p class="text-sm text-text-secondary">Opciones del paso 4. El código científico y su rango siguen la <a class="text-science-blue underline" href="https://www.gbif.org/dataset/d7dddbf4-2cf0-4f39-9b2a-bb099caae36c" target="_blank" rel="noopener">taxonomía de GBIF</a>.</p>
         </div>
         <flux:button variant="primary" icon="plus" wire:click="nuevo">Nuevo grupo</flux:button>
     </div>
-    <div class="rounded-xl border border-border bg-white p-3 shadow-sm">
-        <div class="mb-3 max-w-xs"><flux:input wire:model.live.debounce.300ms="busqueda" icon="magnifying-glass" placeholder="Buscar grupo" aria-label="Buscar grupo" /></div>
-        <div class="grid gap-2 sm:grid-cols-2">
+    <x-interactive-grid :rows="$grupos" label="Grupos animales" :columns="['Nombre', 'Código', 'Rango', 'Estado', 'Acciones']">
+        <thead><tr><x-grid-heading field="nombre">Nombre</x-grid-heading><x-grid-heading field="codigo">Código</x-grid-heading><x-grid-heading field="rango">Rango</x-grid-heading><x-grid-heading field="estado">Estado</x-grid-heading><x-grid-heading>Acciones</x-grid-heading></tr></thead>
+        <tbody>
             @forelse($grupos as $grupo)
-                <div wire:key="grupo-{{ $grupo->codigo }}" class="flex min-w-0 items-center justify-between gap-2 rounded-lg border border-border px-3 py-2">
-                    <div class="min-w-0">
-                        <p class="truncate text-sm font-medium text-text-primary">{{ $grupo->nombre }}</p>
-                        <p class="text-xs text-text-secondary">{{ $grupo->codigo }} · {{ $grupo->rango_referencia }} · {{ $grupo->activo ? 'Disponible' : 'Desactivado' }}</p>
-                    </div>
-                    <div class="flex shrink-0 gap-1">
+                <tr wire:key="grupo-{{ $grupo->codigo }}"><td>{{ $grupo->nombre }}</td><td>{{ $grupo->codigo }}</td><td>{{ $grupo->rango_referencia }}</td><td>{{ $grupo->activo ? 'Disponible' : 'Desactivado' }}</td><td>                    <div class="flex shrink-0 gap-1">
                         <flux:button size="xs" variant="ghost" icon="pencil-square" :aria-label="'Editar '.$grupo->nombre" wire:click="editar('{{ $grupo->codigo }}')" />
                         <flux:button size="xs" variant="ghost" :icon="$grupo->activo ? 'trash' : 'arrow-path'" :aria-label="($grupo->activo ? 'Desactivar ' : 'Restaurar ').$grupo->nombre" wire:click="cambiarEstado('{{ $grupo->codigo }}')" />
-                    </div>
-                </div>
+                    </div></td></tr>
             @empty
-                <p class="py-5 text-sm text-text-secondary">No se encontraron grupos.</p>
+                <tr><td colspan="5">No se encontraron resultados.</td></tr>
             @endforelse
-        </div>
-    </div>
+        </tbody>
+    </x-interactive-grid>
+
     <flux:modal name="grupo-animal-editor" class="w-full max-w-md">
         <div class="space-y-3">
             <flux:heading size="lg">{{ $editandoCodigo ? 'Editar grupo' : 'Nuevo grupo' }}</flux:heading>

@@ -2,22 +2,10 @@
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <flux:heading size="xl" level="1" class="font-display text-blue-navy font-bold">Publicación GBIF</flux:heading>
-            <p class="text-sm text-text-secondary mt-1">
-                Datos de tu museo/colección que se necesitan una sola vez para poder publicar en GBIF.
-                @if($existeConfig)
-                    <span class="inline-flex items-center gap-1 text-success">
-                        <flux:icon name="check-circle" class="size-3.5" />
-                        Configurado
-                    </span>
-                @else
-                    <span class="inline-flex items-center gap-1 text-warning">
-                        <flux:icon name="exclamation-triangle" class="size-3.5" />
-                        Sin configurar — requerido antes de poder exportar a GBIF
-                    </span>
-                @endif
-            </p>
         </div>
     </div>
+
+    <p role="status" class="text-sm {{ $existeConfig ? 'text-success' : 'text-warning' }}">{{ $existeConfig ? 'Configurado' : 'Sin configurar — requerido antes de poder exportar a GBIF' }}</p>
 
     @if($successMessage)<flux:callout variant="success" dismissible>{{ $successMessage }}</flux:callout>@endif
     @if($errorMessage)<flux:callout variant="danger" dismissible>{{ $errorMessage }}</flux:callout>@endif

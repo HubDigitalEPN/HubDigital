@@ -12,9 +12,6 @@
 
     <div>
         <flux:heading size="xl" level="1" class="font-display">Verificación de entrega</flux:heading>
-        <flux:text class="text-text-secondary text-sm mt-1">
-            Revisa el informe del investigador y aprueba la verificación para activar el préstamo.
-        </flux:text>
     </div>
 
     @if($verificacion->existe)

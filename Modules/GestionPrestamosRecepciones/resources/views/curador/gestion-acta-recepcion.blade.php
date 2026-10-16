@@ -12,9 +12,6 @@
 
     <div>
         <flux:heading size="xl" level="1" class="font-display">Acta final de recepción</flux:heading>
-        <flux:text class="mt-1 text-text-secondary">
-            {{ $recepcion->numeroSolicitud }} · {{ $depositante ?? 'Depositante' }}
-        </flux:text>
     </div>
 
     @unless($recibida)

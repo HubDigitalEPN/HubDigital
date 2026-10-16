@@ -22,7 +22,6 @@
     {{-- Encabezado --}}
     <header class="hub-page-header">
         <div>
-            <p class="hub-page-kicker">Cadena de custodia</p>
             <h1 class="mt-1 hub-page-title">Recepción física del lote</h1>
             <div class="flex items-center gap-3 mt-1.5 flex-wrap">
                 <p class="font-mono text-xs text-text-secondary">{{ $recepcion->numeroSolicitud }}</p>
@@ -146,7 +145,7 @@
 
             {{-- Desktop: tabla --}}
             <div class="hidden md:block overflow-x-auto">
-                <table class="w-full text-sm">
+                <x-grid-frame><table class="w-full text-sm">
                     <thead class="bg-blue-navy">
                         <tr>
                             <th class="px-4 py-3 text-left font-medium text-white">Ítem de verificación</th>
@@ -177,7 +176,7 @@
                             </tr>
                         @endforeach
                     </tbody>
-                </table>
+                </table></x-grid-frame>
             </div>
 
             {{-- Móvil: tarjetas --}}
