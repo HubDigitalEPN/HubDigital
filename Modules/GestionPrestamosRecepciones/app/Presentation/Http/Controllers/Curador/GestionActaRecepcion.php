@@ -66,10 +66,12 @@ final class GestionActaRecepcion extends Component
         abort_if($recepcion === null, 404);
 
         $original = null;
-        try {
-            $original = $originales->obtenerVerificado($this->id);
-        } catch (\DomainException) {
-            // La vista muestra una reemisión explícita únicamente si el error es documental.
+        if ($recepcion->actaEmitida) {
+            try {
+                $original = $originales->obtenerVerificado($this->id);
+            } catch (\DomainException) {
+                // La vista muestra una reemisión explícita únicamente si el error es documental.
+            }
         }
 
         return view('gestionprestamosrecepciones::curador.gestion-acta-recepcion', [

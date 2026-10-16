@@ -60,7 +60,7 @@ final class FirmarActaRecepcion
             // Un nombre no predecible evita que dos intentos concurrentes o un archivo
             // rechazado sobrescriban un acta previamente validada.
             $rutaRelativa = 'actas/recepcion-firmada/'.$id.'-'.Str::uuid().'.pdf';
-            $archivoJava = app(FirmaPdfJava::class)->preparar($request, $originalTemporal, PerfilFirmaPdf::ACTA_RECEPCION_CURADOR);
+            $archivoJava = app(FirmaPdfJava::class)->preparar($request, $originalTemporal, PerfilFirmaPdf::ACTA_RECEPCION_CURADOR, validarOriginal: true);
             $archivo = new UploadedFile($archivoJava->ruta(), 'acta-firmada.pdf', 'application/pdf', null, true);
             $rutaGuardada = $almacenamiento->guardarSubidoComo($archivo, $rutaRelativa);
             abort_unless($rutaGuardada === $rutaRelativa, 500, 'No se pudo guardar el acta firmada.');

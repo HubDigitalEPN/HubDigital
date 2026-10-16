@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Modules\GestionPrestamosRecepciones\Infrastructure\Documentos;
 
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\CarbonImmutable;
 use Modules\GestionPrestamosRecepciones\Application\Ports\GeneradorActaRecepcionPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\UsuarioNombrePort;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDetalleRecepcion\ConsultarDetalleRecepcionOutput;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\RecepcionLoteEloquentModel;
+use Modules\GestionPrestamosRecepciones\Presentation\Support\FechaEcuador;
 
 final class DomPdfGeneradorActaRecepcionAdapter implements GeneradorActaRecepcionPort
 {
@@ -19,7 +21,8 @@ final class DomPdfGeneradorActaRecepcionAdapter implements GeneradorActaRecepcio
         $depositante = $this->usuarios->obtenerDatosDepositante($recepcion->investigadorId);
         $curador = $recepcion->actaGeneradaPor !== null ? $this->usuarios->obtenerNombre($recepcion->actaGeneradaPor) : null;
         $receptor = $recepcion->recibidoPor !== null ? $this->usuarios->obtenerNombre($recepcion->recibidoPor) : null;
-        $fechaBase = $recepcion->actaGeneradaEn ?? $recepcion->verificadoEn ?? now()->toDateTimeImmutable();
+        $fechaBase = CarbonImmutable::instance($recepcion->actaGeneradaEn ?? $recepcion->verificadoEn ?? now())
+            ->setTimezone(FechaEcuador::ZONA);
         $meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
         $fecha = sprintf('%d de %s de %d', (int) $fechaBase->format('j'), $meses[(int) $fechaBase->format('n') - 1], (int) $fechaBase->format('Y'));
         $perfil = 'acta-recepcion:curador:v1';

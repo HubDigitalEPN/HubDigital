@@ -6,6 +6,7 @@ namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Inve
 
 use App\Enums\RolUsuario;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Attributes\Layout;
@@ -16,6 +17,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesReposi
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\EntregaFisicaAnunciadaNotification;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
+use Modules\GestionPrestamosRecepciones\Presentation\Support\FechaEcuador;
 
 /**
  * Componente Livewire para el detalle de un depósito.
@@ -45,7 +47,7 @@ final class DetalleDeposito extends Component
         }
 
         if ($deposito?->entrega_programada_para !== null) {
-            $this->entregaProgramadaPara = $deposito->entrega_programada_para->format('Y-m-d\\TH:i');
+            $this->entregaProgramadaPara = FechaEcuador::formatear($deposito->entrega_programada_para, 'Y-m-d\\TH:i');
             $this->entregaNota = $deposito->entrega_nota ?? '';
         }
     }
@@ -59,12 +61,12 @@ final class DetalleDeposito extends Component
             ->firstOrFail();
 
         $datos = $this->validate([
-            'entregaProgramadaPara' => ['required', 'date', 'after_or_equal:today'],
+            'entregaProgramadaPara' => ['required', 'date_format:Y-m-d\\TH:i', 'after_or_equal:'.now(FechaEcuador::ZONA)->format('Y-m-d\\TH:i')],
             'entregaNota' => ['nullable', 'string', 'max:500'],
         ]);
 
         $deposito->update([
-            'entrega_programada_para' => $datos['entregaProgramadaPara'],
+            'entrega_programada_para' => CarbonImmutable::createFromFormat('!Y-m-d\\TH:i', $datos['entregaProgramadaPara'], FechaEcuador::ZONA)->utc(),
             'entrega_notificada_en' => now(),
             'entrega_nota' => trim($datos['entregaNota']) !== '' ? trim($datos['entregaNota']) : null,
         ]);

@@ -37,10 +37,12 @@ final class AsistentePortal
             return ['texto' => 'Estás en el catálogo público de la Colección Biológica del Laboratorio de Invertebrados. Aquí puedes explorar los grupos de animales, consultar los registros y ver sus ubicaciones en el mapa. Los filtros permiten elegir la parte de la colección que quieres estudiar. Si te refieres a un animal, una cifra o un gráfico concreto, dime su nombre y te lo explico.',
                 'fuente' => 'portal', 'intent' => 'portal.presentacion', 'entidades' => [], 'opciones' => []];
         }
-        // Las definiciones preceden a la interpretación de nombres como filtros o navegación.
-        if (preg_match('/^(?:que (?:es|son|hacen)|para que sirven|por que|como viven|cual es la funcion)\b/', $definicion)
-            && !preg_match('/\b(?:cuantas?|cuantos?|registros|ejemplares|localidad|provincia|catalogo|coleccion|depositos?|prestamos?)\b/', $definicion)
-            && ($biologia = $this->biologiaLocal($definicion)) !== null) return $biologia;
+        // Las explicaciones biológicas conocidas preceden a la interpretación de
+        // nombres como filtros. El glosario y los trámites aún tienen prioridad
+        // sobre una fuente general o el clasificador opcional de orientación.
+        $explicacionGeneral = preg_match('/^(?:que (?:es|son|significa|hacen)|para que sirven|por que|como viven|cual es la funcion|explica(?:me)?|cuentame|hablame)\b/', $definicion)
+            && !preg_match('/\b(?:cuantas?|cuantos?|registros|ejemplares|especimenes|localidad|provincia|catalogo|coleccion|depositos?|prestamos?|portal|sistema|mapa|filtros?|solicitud|tramites?|documentos?|permisos?|firmas?|certificados?|cuenta|usuario|contrasena|qr|epn|museo|gbif|darwin|csv)\b/', $definicion);
+        if ($explicacionGeneral && ($biologia = $this->biologiaLocal($definicion)) !== null) return $biologia;
         if (preg_match('/^cuantas espesies (?:ai|hay) (?:aki|aqui)[?.!]*$/', $normal)) {
             $pregunta = '¿Cuántas especies hay en esta selección?';
             $normal = 'cuantas especies hay en esta seleccion?';
@@ -209,6 +211,10 @@ final class AsistentePortal
         if (! $operacionContexto && preg_match('/filtro|filtrar|leyenda|mapa|dashboard|indice|indicador|exportar|geojson/i', $normal)
             && ! preg_match('/cuant|registros de|especies de/', $normal)) {
             return $this->ayudaFiltros($pregunta, $contextoCatalogo, $seleccionPortal);
+        }
+        if ($explicacionGeneral) {
+            return $this->conocimiento->responder($pregunta, $nodoAnterior, $variantesRecientes)
+                ?? app(FuentesPublicasChat::class)->responder($pregunta);
         }
         $consultaCientifica = (bool) preg_match('/\b(tienen|cuant[oa]s?|busca|buscar|existe|registros|especies|familias|generos|ejemplares|especimenes|catalogo)\b/', $normal)
             || (bool) preg_match('/^[\p{L}][\p{L}\d_.:-]*(?:\s+[\p{L}][\p{L}.-]*)?$/u', trim($pregunta))

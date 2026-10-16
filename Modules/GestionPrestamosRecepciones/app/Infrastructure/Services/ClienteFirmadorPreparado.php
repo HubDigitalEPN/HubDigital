@@ -32,9 +32,9 @@ final class ClienteFirmadorPreparado
         }
     }
 
-    public function validar(string $original, string $firmado): ?array
+    public function validar(string $original, string $firmado, ?float $espera = null): ?array
     {
-        return $this->firmar($original, $firmado, '', '', 'verify-only');
+        return $this->firmar($original, $firmado, '', '', 'verify-only', $espera);
     }
 
     public function validarExterno(string $ruta, float $espera): ?array

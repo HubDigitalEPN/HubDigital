@@ -130,7 +130,7 @@
                         </div>
                         @if($mostrarEntrega)
                             <form wire:submit="anunciarEntrega" class="mt-5 grid gap-4 border-t border-science-blue/20 pt-5 md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_auto] md:items-end">
-                                <flux:field><flux:label>Fecha y hora prevista</flux:label><input type="datetime-local" wire:model="entregaProgramadaPara" min="{{ now()->format('Y-m-d\\TH:i') }}" class="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm" required /><flux:error name="entregaProgramadaPara" /></flux:field>
+                                <flux:field><flux:label>Fecha y hora prevista</flux:label><input type="datetime-local" wire:model="entregaProgramadaPara" min="{{ now(\Modules\GestionPrestamosRecepciones\Presentation\Support\FechaEcuador::ZONA)->format('Y-m-d\\TH:i') }}" class="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm" required /><flux:error name="entregaProgramadaPara" /></flux:field>
                                 <flux:textarea wire:model="entregaNota" rows="2" label="Nota para Recepción EPN (opcional)" placeholder="Número de cajas, material delicado o particularidades de traslado." />
                                 <flux:button type="submit" variant="primary" icon="paper-airplane" wire:loading.attr="disabled">Enviar aviso</flux:button>
                             </form>

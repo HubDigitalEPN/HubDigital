@@ -2351,7 +2351,7 @@ final class RegistroSolicitudDeposito extends Component
         $this->registroNativo = array_replace($this->registroNativo, [
             'identifiedBy' => auth()->user()->name,
             'recordedBy' => auth()->user()->name,
-            'dateIdentified' => now()->toDateString(),
+            'dateIdentified' => now(\Modules\GestionPrestamosRecepciones\Presentation\Support\FechaEcuador::ZONA)->toDateString(),
             'individualCount' => (int) ($this->datosExtraidos['N.º Individuos'] ?? 1),
             'verbatimLocality' => (string) ($this->datosExtraidos['Localidad'] ?? $this->localidad),
             'researchPermit' => (string) ($this->datosExtraidos['N.º Permiso Recolección'] ?? 'No aplica — expediente justificado'),

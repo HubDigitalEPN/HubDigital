@@ -95,9 +95,14 @@ final class JavaValidacionFirmaElectronicaAdapter implements ValidacionFirmaElec
                 'HUBDIGITAL_SIGNATURE_CRL_OVERRIDES' => implode('|', $fuentes['crl']),
             ]);
             $resultado = null;
-            if ($original === null && $fuentes['ocsp'] === [] && $fuentes['crl'] === [] && $espera === 2) {
+            if ($fuentes['ocsp'] === [] && $fuentes['crl'] === [] && $espera === 2) {
                 $restante = $presupuesto - (microtime(true) - $inicio);
-                if ($restante > 0) $resultado = app(ClienteFirmadorPreparado::class)->validarExterno($ruta, $restante);
+                if ($restante > 0) {
+                    $cliente = app(ClienteFirmadorPreparado::class);
+                    $resultado = $original === null
+                        ? $cliente->validarExterno($ruta, $restante)
+                        : $cliente->validar($original, $ruta, $restante);
+                }
             }
             $preparado = $resultado !== null;
             if ($resultado === null) {
