@@ -232,6 +232,8 @@ try {
     assert.equal(await evaluar("document.querySelector('.portal-taxonomy-split').dataset.visualizacion"),'diversidad');
     assert.equal(await evaluar("document.querySelector('.portal-taxonomy-visualization').getAttribute('aria-pressed')"),'false');
     const raizDiversidad = await evaluar("document.querySelector('.portal-diversity-scene').dataset.raiz");
+    await evaluar(`(() => {const etiqueta=document.querySelector('.portal-diversity-label.is-selected'),r=etiqueta.getBoundingClientRect();document.querySelector('.portal-diversity-canvas').dispatchEvent(new PointerEvent('pointermove',{clientX:r.left+r.width/2,clientY:r.top-11,bubbles:true}));})()`);
+    assert.ok(await evaluar("document.querySelector('.portal-diversity-tooltip').checkVisibility() && document.querySelector('.portal-diversity-tooltip strong').textContent===document.querySelector('.portal-three-title').textContent"),'Se puede identificar un nodo al señalarlo sin cambiar de raíz ni solicitar su ficha.');
     for (let i=0;i<9;i++) {await evaluar("document.querySelector('[aria-label=\"Acercar árbol\"]').click()");await reposo();}
     assert.ok(Number(await evaluar("document.querySelector('.portal-diversity-scene').dataset.zoom"))>3,'El árbol permite varios acercamientos consecutivos más allá del límite de las esferas.');
     assert.ok(await evaluar("!document.querySelector('[aria-label=\"Acercar árbol\"]').disabled"));

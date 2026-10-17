@@ -22,10 +22,13 @@ export function crearEscenaDiversidad(elemento, acciones) {
     const vista = crear('div', 'portal-diversity-viewport');
     const etiquetas = crear('div', 'portal-diversity-labels');
     const ayuda = crear('div', 'portal-diversity-guide');
+    ayuda.id = 'portal-diversity-guide';
     ayuda.append(crear('strong', '', 'Árbol de diversidad'), crear('span', '', 'Rueda o pellizco: zoom · Arrastra: desplazar · Clic: explorar rama'));
     const escalaTexto = crear('output', 'portal-diversity-scale'); escalaTexto.setAttribute('aria-label', 'Nivel de zoom');
     const leyenda = crear('div', 'portal-diversity-legend'); leyenda.setAttribute('role', 'group'); leyenda.setAttribute('aria-label', 'Resaltar un rango conservando todas las relaciones publicadas');
     const instrucciones = crear('p', 'portal-three-instructions'); instrucciones.tabIndex = 0;
+    instrucciones.setAttribute('role', 'status');
+    const detalle = crear('div', 'portal-diversity-tooltip'); detalle.id = 'portal-diversity-tooltip'; detalle.setAttribute('role', 'tooltip'); detalle.hidden = true;
     const estado = crear('p', 'portal-diversity-status'); estado.setAttribute('role', 'alert'); estado.hidden = true;
     marco.append(vista, leyenda, instrucciones); elemento.replaceChildren(marco);
     const salir = boton('Salir de pantalla completa', '⛶', () => document.exitFullscreen()); salir.className = 'portal-diversity-fullscreen-exit'; marco.append(salir);
@@ -35,7 +38,8 @@ export function crearEscenaDiversidad(elemento, acciones) {
     renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, 1.5));
     const canvas = renderer.domElement; canvas.className = 'portal-diversity-canvas'; canvas.tabIndex = 0;
     canvas.setAttribute('role', 'img'); canvas.setAttribute('aria-keyshortcuts', 'ArrowLeft ArrowRight ArrowUp ArrowDown PageDown PageUp Enter Home + -');
-    vista.append(canvas, etiquetas, ayuda, escalaTexto, estado);
+    canvas.setAttribute('aria-describedby', ayuda.id);
+    vista.append(canvas, etiquetas, ayuda, escalaTexto, detalle, estado);
     const escena = new Scene(), camara = new OrthographicCamera(-1, 1, 1, -1, 0, 20); camara.position.z = 10;
     const materialRamas = new MeshBasicMaterial({vertexColors: true, side: DoubleSide, transparent: true, opacity: .85, depthTest: false});
     const materialHojas = new ShaderMaterial({transparent: true, depthTest: false, depthWrite: false,
@@ -73,6 +77,7 @@ export function crearEscenaDiversidad(elemento, acciones) {
         objeto.geometry = nueva; anterior.dispose();
     }
     function dibujar() {
+        ocultarDetalle();
         const inicio = performance.now(), lineas = [], tintas = [], posiciones = [], rgb = [], tamanos = [], terminal = [], candidatos = [];
         puntos = [];
         const pila = [0], verde = color('#619078'), tenue = color('#b4c2b9');
@@ -158,6 +163,15 @@ export function crearEscenaDiversidad(elemento, acciones) {
         for (const n of puntos) {const d = Math.hypot(p.x-n.x,p.y-n.y); if (d <= Math.max(13,n.tamano/2+5) && d < distancia) {distancia=d; mejor=n.i;}}
         return mejor;
     }
+    function ocultarDetalle() {detalle.hidden = true; canvas.setAttribute('aria-describedby', ayuda.id);}
+    function mostrarDetalle(i) {
+        if (i < 0) return ocultarDetalle();
+        const nodo = indice.porClave.get(arbol.claves[i]), p = proyectarDiversidad(arbol,i,cam,ancho,alto);
+        detalle.replaceChildren(crear('strong','',nodo.nombre),crear('span','',`${nodo.etiqueta} · ${numero(nodo.total)} registros`));
+        detalle.style.left = `${Math.max(8,Math.min(ancho-228,p.x+14))}px`;
+        detalle.style.top = `${Math.max(72,Math.min(alto-80,p.y-15))}px`;
+        detalle.hidden = false; canvas.setAttribute('aria-describedby', `${ayuda.id} ${detalle.id}`);
+    }
     function abrirMenu(i, evento) {
         if (i < 0) return;
         const r = canvas.getBoundingClientRect(), p = proyectarDiversidad(arbol,i,cam,ancho,alto);
@@ -172,11 +186,12 @@ export function crearEscenaDiversidad(elemento, acciones) {
     }
     escuchar(canvas,'pointerdown',e=>{
         if (e.button!==0) return;
+        ocultarDetalle();
         canvas.focus({preventScroll:true}); canvas.setPointerCapture(e.pointerId); punteros.set(e.pointerId,coordenada(e));
         arrastre={inicio:coordenada(e),movido:punteros.size>1,revision};
     });
     escuchar(canvas,'pointermove',e=>{
-        if (!punteros.has(e.pointerId)) {canvas.style.cursor=buscar(e)>=0?'pointer':'grab'; return;}
+        if (!punteros.has(e.pointerId)) {const i=buscar(e);canvas.style.cursor=i>=0?'pointer':'grab';mostrarDetalle(i);return;}
         const antes=gesto(); punteros.set(e.pointerId,coordenada(e)); const despues=gesto();
         if (Math.hypot(despues.x-arrastre.inicio.x,despues.y-arrastre.inicio.y)>4) arrastre.movido=true;
         cam={...cam,x:cam.x-(despues.x-antes.x)/cam.escala,y:cam.y+(despues.y-antes.y)/cam.escala};
@@ -191,6 +206,7 @@ export function crearEscenaDiversidad(elemento, acciones) {
     });
     escuchar(canvas,'lostpointercapture',e=>{punteros.delete(e.pointerId); if(!punteros.size) arrastre=null;});
     escuchar(canvas,'pointercancel',()=>{punteros.clear();arrastre=null;});
+    escuchar(canvas,'pointerleave',ocultarDetalle);
     escuchar(canvas,'contextmenu',e=>{e.preventDefault();e.stopPropagation();abrirMenu(buscar(e),e);});
     escuchar(canvas,'keydown',e=>{
         if(!arbol) return;

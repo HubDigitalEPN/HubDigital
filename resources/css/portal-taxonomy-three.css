@@ -46,6 +46,9 @@ button.portal-three-fullscreen-exit { display: none; }
 .taxonomy-explorer .portal-diversity-legend button:hover, .taxonomy-explorer .portal-diversity-legend button[aria-pressed="true"] { border-color: #acc2a8; background: #e4eddf; }
 .portal-diversity-scene .portal-three-instructions { height: 46px; border-color: #d9e3d5; color: #4e6656; background: #f4f7f1; }
 .portal-diversity-status { position: absolute; inset: auto 20px 20px; margin: 0; padding: 15px; border: 1px solid #a3b99e; border-radius: 5px; color: #294b34; background: #fff; font-size: 13px; }
+.portal-diversity-tooltip { position: absolute; z-index: 3; display: flex; flex-direction: column; gap: 4px; width: 220px; max-width: calc(100% - 16px); box-sizing: border-box; padding: 9px 11px; border: 1px solid #9eb89c; border-radius: 5px; background: #fff; color: #254c40; box-shadow: 0 3px 10px rgb(40 73 45 / 12%); font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; pointer-events: none; }
+.portal-diversity-tooltip[hidden] { display: none; }
+.portal-diversity-tooltip span { font-size: 11px; color: #547163; }
 .portal-diversity-scene :is(button, canvas):focus-visible { outline: 3px solid #276c4e; outline-offset: -2px; }
 .portal-diversity-scene:fullscreen { width: 100vw; height: 100vh; }
 button.portal-diversity-fullscreen-exit { display: none; }

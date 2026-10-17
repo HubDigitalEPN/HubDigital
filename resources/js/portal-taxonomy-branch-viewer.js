@@ -105,7 +105,7 @@ export function crearExploradorRama(elemento, acciones, panelFicha) {
         delete panelFicha.dataset.nombre; delete panelFicha.dataset.raiz;
         imagen.onload = imagen.onerror = null; imagen.removeAttribute('src');
         foto.hidden = descripcion.hidden = reintentar.hidden = true;
-        estadoPerfil.hidden = false; estadoPerfil.textContent = 'Selecciona una esfera del visualizador.'; perfil.setAttribute('aria-busy', 'false');
+        estadoPerfil.hidden = false; estadoPerfil.textContent = 'Selecciona un taxón del visualizador.'; perfil.setAttribute('aria-busy', 'false');
     }
     function limpiar() {
         limpiarFicha();
