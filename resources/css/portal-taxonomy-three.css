@@ -24,6 +24,41 @@ button.portal-three-fullscreen-exit { display: none; }
 .portal-three-viewport::before { content: ''; position: absolute; inset: 0; background: var(--taxonomy-starfield) center / cover no-repeat; pointer-events: none; }
 .portal-three-canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; cursor: grab; }
 .portal-three-canvas:active { cursor: grabbing; }
+.taxonomy-explorer .taxonomy-navigator-zoom button.portal-taxonomy-visualization { display: inline-flex; justify-content: center; align-items: center; gap: 7px; flex: 0 0 142px; width: 142px; max-width: 142px; padding: 0 10px; font-size: 13px; font-weight: 600; }
+.portal-taxonomy-visualization::before { content: '⇄'; font-size: 21px; font-weight: 400; }
+.taxonomy-explorer .taxonomy-navigator-zoom button.portal-taxonomy-visualization[aria-pressed="true"] { border-color: #548bb0; background: #e9f3f9; }
+.portal-diversity-scene { position: relative; display: flex; flex-direction: column; height: 100%; min-height: 0; color: #173d36; background: #f4f7f1; color-scheme: light; }
+.portal-diversity-viewport { position: relative; flex: 1; min-height: 190px; overflow: hidden; background: radial-gradient(ellipse at 50% 30%, #fff 0, #f7faf4 50%, #edf3e9 100%); }
+.portal-diversity-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+.portal-diversity-canvas:active { cursor: grabbing; }
+.portal-diversity-labels { position: absolute; inset: 0; pointer-events: none; }
+.taxonomy-explorer button.portal-diversity-label { position: absolute; left: 0; top: 0; height: 42px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 3px 7px; border: 1px solid transparent; border-radius: 5px; color: #254c40; background: rgb(247 250 244 / 93%); font-size: 12px; line-height: 16px; text-align: center; pointer-events: auto; }
+.portal-diversity-label strong { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 650; }
+.portal-diversity-label small { color: #547163; font-size: 10px; white-space: nowrap; }
+.taxonomy-explorer button.portal-diversity-label:hover, .taxonomy-explorer button.portal-diversity-label.is-selected { border-color: #a4c6ae; background: #e5f0e2; }
+.portal-diversity-guide { position: absolute; top: 12px; left: 15px; right: 15px; display: flex; flex-direction: column; gap: 4px; width: fit-content; max-width: calc(100% - 30px); padding: 6px 9px; border-left: 2px solid #5c866a; color: #375d49; background: rgb(247 250 244 / 92%); pointer-events: none; }
+.portal-diversity-guide strong { font-size: 13px; font-weight: 650; }
+.portal-diversity-guide span { font-size: 11px; line-height: 1.5; }
+.portal-diversity-scale { position: absolute; right: 12px; bottom: 10px; padding: 4px 8px; border: 1px solid #cddcc9; border-radius: 4px; background: #fff; color: #48614d; font-size: 11px; font-variant-numeric: tabular-nums; pointer-events: none; }
+.portal-diversity-legend { display: flex; flex: none; align-items: center; justify-content: safe center; gap: 3px; padding: 5px; border-top: 1px solid #d9e3d5; overflow-x: auto; scrollbar-width: thin; }
+.taxonomy-explorer .portal-diversity-legend button { display: inline-flex; flex: none; align-items: center; gap: 5px; padding: 4px 5px; border: 1px solid transparent; border-radius: 4px; color: #405848; background: transparent; font-size: 11px; white-space: nowrap; }
+.portal-diversity-legend button::before { content: ''; width: 7px; height: 7px; border: 1px solid rgb(37 76 64 / 25%); border-radius: 50%; background: var(--rank-color); }
+.taxonomy-explorer .portal-diversity-legend button:hover, .taxonomy-explorer .portal-diversity-legend button[aria-pressed="true"] { border-color: #acc2a8; background: #e4eddf; }
+.portal-diversity-scene .portal-three-instructions { height: 46px; border-color: #d9e3d5; color: #4e6656; background: #f4f7f1; }
+.portal-diversity-status { position: absolute; inset: auto 20px 20px; margin: 0; padding: 15px; border: 1px solid #a3b99e; border-radius: 5px; color: #294b34; background: #fff; font-size: 13px; }
+.portal-diversity-scene :is(button, canvas):focus-visible { outline: 3px solid #276c4e; outline-offset: -2px; }
+.portal-diversity-scene:fullscreen { width: 100vw; height: 100vh; }
+button.portal-diversity-fullscreen-exit { display: none; }
+.portal-diversity-scene:fullscreen button.portal-diversity-fullscreen-exit { display: grid; position: absolute; place-items: center; right: 15px; top: 15px; width: 40px; height: 40px; z-index: 4; border: 1px solid #9fb69b; border-radius: 5px; color: #31563e; background: #fff; font-size: 24px; }
+.taxonomy-navigator.has-expanded-tree button.portal-taxonomy-visualization { display: none; }
+@container taxonomy-explorer (max-width: 600px) {
+    .portal-diversity-viewport { min-height: 230px; }
+    .portal-diversity-guide { left: 8px; right: 8px; max-width: calc(100% - 16px); top: 8px; padding: 3px 6px; }
+    .portal-diversity-guide span { font-size: 10px; }
+    .portal-diversity-scene .portal-three-instructions { height: 64px; font-size: 11px; }
+    .taxonomy-explorer .taxonomy-navigator-zoom { flex-wrap: wrap; row-gap: 7px; }
+    .taxonomy-explorer .taxonomy-navigator-zoom .portal-three-context { flex: 1 1 100%; }
+}
 .portal-three-legend { display: flex; flex: none; align-items: center; justify-content: safe center; flex-wrap: nowrap; gap: 2px; margin: 0; padding: 5px 6px; overflow-x: auto; scrollbar-width: thin; border-top: 1px solid rgb(168 190 207 / 12%); background: #0d1b27; }
 .taxonomy-explorer button.portal-three-legend-item { display: inline-flex; flex: none; align-items: center; gap: 4px; padding: 3px; border: 0; border-radius: 4px; background: transparent; color: #c8dce9; font-size: 11px; line-height: 18px; white-space: nowrap; }
 .taxonomy-explorer button.portal-three-legend-item:hover { background: #203a4d; color: #fff; }

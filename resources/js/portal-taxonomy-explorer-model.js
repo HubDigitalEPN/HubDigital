@@ -149,7 +149,7 @@ export function crearExploradorTaxonomico(reloj = {
         ajustado: false, escala: 1, raizActiva: '', filtrosArbol: [], filtrosVisor: [],
         modo: 'ramas', ramaActiva: '', ramaBusqueda: '', ramaPagina: 1, anchoModal: 1000, jerarquiaAbierta: false,
         panel: panelTaxonomico([]), visorDisponible: false, visorCargando: false, visorError: '', taxonesDibujados: 0,
-        tipoDibujo: '', permiteVistaCompleta: false, arbolCompleto: true, zoomActual: .78125,
+        tipoDibujo: '', permiteVistaCompleta: false, arbolCompleto: true, zoomActual: .78125, zoomMinimo: .5, zoomMaximo: 256,
         desplazamientoX: 0, desplazamientoY: 0, arrastrando: false,
         anchoVentana: 0, altoVentana: 0, redimensionando: false, lateralPlegado: false,
         vistaETE: 'auto', escalaETE: 120, revisionETE: 0,
@@ -311,6 +311,7 @@ export function crearExploradorTaxonomico(reloj = {
                         error: mensaje => {this.visorError = mensaje;},
                         ajustado: valor => {this.ajustado = valor;},
                         zoom: valor => {this.zoomActual = valor;},
+                        limitesZoom: (min, max) => {this.zoomMinimo = min; this.zoomMaximo = max;},
                         completo: (permite, completo) => {this.permiteVistaCompleta = permite; this.arbolCompleto = completo;},
                         dibujado: (total, vista) => {this.taxonesDibujados = total; this.tipoDibujo = vista;},
                     }));

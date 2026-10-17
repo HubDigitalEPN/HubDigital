@@ -1,5 +1,7 @@
 # Distribución de cobertura
 
+El árbol de diversidad inicial tiene contratos exclusivos en `tests/Frontend/portal-taxonomy-diversity.test.mjs`: multifurcaciones y padres publicados, sectores contiguos, cadenas profundas, ramas extensas, terminales, encuadre y precisión de zoom hacia el cursor con límites. No se duplican en Gherkin ni Pest porque comprueban geometría e interacción del cliente. `tests/Browser/portal-livewire.mjs` comprueba la presentación inicial, acercamientos superiores a 3×, Ajustar y alternancia en ambos sentidos conservando la raíz y retirando el motor previo; después mantiene la regresión completa de esferas en la vista alternativa. Ambas suites se ejecutan exclusivamente dentro de `crear-paquete-oci`. La inspección manual complementaria con Opera Neon se reserva para legibilidad, aspecto del árbol, gesto de zoom, foco, adaptación del control nuevo y fluidez con el catálogo real en localhost, DEV y producción.
+
 Las grillas administrativas se comprueban en Pest en `Auth/AdminInteractiveGridTest.php`:
 orden global entre páginas, búsqueda con paginación, límites de filas, lista
 autorizada de columnas y restablecimiento sin modificar cuentas. Los permisos

@@ -9,11 +9,32 @@ export function crearVisorTaxonomico(elemento, acciones) {
     const izquierda = document.createElement('div'); izquierda.className = 'portal-taxonomy-tree-pane';
     izquierda.setAttribute('aria-label', 'Explorador de la raíz seleccionada y todos sus descendientes');
     const derecha = document.createElement('section'); derecha.className = 'portal-taxonomy-three-pane';
-    derecha.setAttribute('aria-label', 'Árbol tridimensional de la rama seleccionada');
+    derecha.setAttribute('aria-label', 'Visualización de la diversidad de la rama seleccionada');
     const explorador = document.createElement('section'); explorador.className = 'portal-taxonomy-branch-pane';
     explorador.setAttribute('aria-label', 'Fotografía y descripción del taxón seleccionado');
     marco.append(izquierda, derecha, explorador); elemento.replaceChildren(marco);
     let indice, fuente, datos, raiz, seleccionado, escena, cargando, origenMenu = '', destruido = false, arbolAmpliado = false, revision = 0, revisionBusqueda = 0;
+    let modo = 'diversidad', revisionModo = 0;
+    const barra = elemento.closest('.taxonomy-navigator').querySelector('.taxonomy-navigator-zoom');
+    const visualizacion = document.createElement('button'); visualizacion.type = 'button';
+    visualizacion.className = 'portal-taxonomy-visualization'; visualizacion.textContent = 'Visualización';
+    function informarModo() {
+        const alterna = modo === 'esferas';
+        visualizacion.setAttribute('aria-pressed', String(alterna));
+        visualizacion.setAttribute('aria-label', `Visualización: ${alterna ? 'esferas 3D' : 'árbol de diversidad'}. Cambiar a ${alterna ? 'árbol de diversidad' : 'esferas 3D'}`);
+        visualizacion.title = visualizacion.getAttribute('aria-label');
+        marco.dataset.visualizacion = modo;
+        acciones.limitesZoom?.(.5, alterna ? 3 : 256);
+    }
+    informarModo(); barra.append(visualizacion);
+    visualizacion.addEventListener('click', async () => {
+        if (destruido || !seleccionado) return;
+        revisionModo++; revision++; revisionBusqueda++;
+        escena?.destruir(); escena = null; cargando = null;
+        modo = modo === 'diversidad' ? 'esferas' : 'diversidad'; informarModo();
+        await abrirRama(indice?.porClave.get(seleccionado), false, Boolean(explorador.dataset.ficha));
+        if (!destruido) visualizacion.focus({preventScroll: true});
+    });
     const rama = crearExploradorRama(izquierda, {
         elegir: clave => inspeccionar(clave),
         menu: (nodo, evento) => {origenMenu = 'arbol'; acciones.menu(nodo, evento);},
@@ -51,23 +72,32 @@ export function crearVisorTaxonomico(elemento, acciones) {
         const solicitud = ++revision;
         if (arbolAmpliado) {escena?.mostrar(false); derecha.setAttribute('aria-busy', 'false'); return;}
         derecha.setAttribute('aria-busy', 'true');
+        visualizacion.disabled = true;
         if (!escena) {
+            const turnoModo = revisionModo;
             if (!cargando) {
                 const estado = document.createElement('p'); estado.className = 'portal-three-initial';
-                estado.setAttribute('role', 'status'); estado.textContent = 'Preparando la vista 3D…'; derecha.replaceChildren(estado);
-                cargando = import('./portal-taxonomy-three-scene').then(modulo => destruido ? null : modulo.crearEscenaTaxonomica(derecha, {
+                estado.setAttribute('role', 'status'); estado.textContent = 'Preparando la visualización…'; derecha.replaceChildren(estado);
+                const modulo = modo === 'diversidad' ? import('./portal-taxonomy-diversity-scene') : import('./portal-taxonomy-three-scene');
+                cargando = modulo.then(modulo => destruido || turnoModo !== revisionModo ? null : (modulo.crearEscenaDiversidad || modulo.crearEscenaTaxonomica)(derecha, {
                     seleccionar: inspeccionar,
                     navegar: clave => abrirRama(indice?.porClave.get(clave), false, true),
                     menu: (clave, evento, ancla) => {origenMenu = 'escena'; acciones.menu(indice?.porClave.get(clave), evento, ancla);},
                     zoom: factor => acciones.zoom?.(factor), ajustado: valor => acciones.ajustado?.(valor),
+                    limitesZoom: (min, max) => acciones.limitesZoom?.(min, max),
                 }));
             }
-            try {escena = await cargando;}
+            try {
+                const preparada = await cargando;
+                if (turnoModo !== revisionModo || destruido) return;
+                escena = preparada; barra.append(visualizacion);
+            }
             catch {
+                if (turnoModo !== revisionModo || destruido) return;
                 cargando = null;
                 const mensaje = document.createElement('p'); mensaje.className = 'portal-three-initial'; mensaje.setAttribute('role', 'alert');
-                mensaje.textContent = 'No se pudo activar la vista 3D. Puedes seguir explorando la jerarquía de la izquierda.';
-                derecha.replaceChildren(mensaje); derecha.setAttribute('aria-busy', 'false'); return;
+                mensaje.textContent = 'No se pudo activar esta visualización. Puedes cambiar de vista o seguir explorando la jerarquía de la izquierda.';
+                derecha.replaceChildren(mensaje); derecha.setAttribute('aria-busy', 'false'); visualizacion.disabled = false; return;
             }
         }
         if (!escena || destruido || solicitud !== revision) return;
@@ -75,7 +105,7 @@ export function crearVisorTaxonomico(elemento, acciones) {
         escena.mostrar(true);
         try {await escena.actualizar(fuente, nodo.clave, indice);}
         catch (error) {escena.error('No se pudo dibujar esta rama. Selecciónala de nuevo para reintentar.'); console.error('Árbol 3D:', error);}
-        finally {if (solicitud === revision) derecha.setAttribute('aria-busy', 'false');}
+        finally {if (solicitud === revision) {derecha.setAttribute('aria-busy', 'false'); visualizacion.disabled = false;}}
     }
     return {
         async actualizar(nuevos) {
@@ -116,6 +146,6 @@ export function crearVisorTaxonomico(elemento, acciones) {
             if (desdeEscena && escena?.enfocar(clave)) return true;
             return rama.enfocar(clave) || (!arbolAmpliado && escena?.enfocar(clave));
         },
-        destruir() {destruido = true; revision++; revisionBusqueda++; rama.destruir(); escena?.destruir(); elemento.closest('.taxonomy-navigator')?.classList.remove('has-expanded-tree'); elemento.classList.remove('portal-taxonomy-split-host'); elemento.replaceChildren();},
+        destruir() {destruido = true; revisionModo++; revision++; revisionBusqueda++; rama.destruir(); escena?.destruir(); visualizacion.remove(); elemento.closest('.taxonomy-navigator')?.classList.remove('has-expanded-tree'); elemento.classList.remove('portal-taxonomy-split-host'); elemento.replaceChildren();},
     };
 }

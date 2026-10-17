@@ -226,6 +226,25 @@ try {
     assert.ok(await evaluar("(() => {const d=document.querySelector('#explorador-taxonomico'),r=d.getBoundingClientRect();return d.matches(':modal') && Math.abs(r.width-innerWidth*.9)<=2 && Math.abs(r.height-innerHeight*.9)<=2 && d.querySelector('#filo-explorador-taxonomico').checkVisibility() && !d.querySelector('footer,.taxonomy-explorer-map,.taxonomy-explorer-representation,.taxonomy-navigator-sidebar,.taxonomy-navigator-fold');})()"), 'El modal conserva sus márgenes, selector y buscador y libera el ancho del lateral retirado.');
     assert.equal(await evaluar("document.querySelector('.portal-ete-controls,.taxonomy-navigator-sidebar > h3,.taxonomy-navigator-caption,.taxonomy-navigator-breadcrumb,.taxonomy-navigator-heading,.taxonomy-expand-all,.taxonomy-branch-select')"), null);
     assert.ok(await evaluar("document.querySelector('.taxonomy-phylotree-search #busqueda-explorador-taxonomico').checkVisibility() && document.querySelector('.portal-ete-host').checkVisibility()"));
+    // La nueva presentación es la inicial. La extensa regresión de esferas que
+    // sigue se ejecuta sobre la alternativa explícita, con sus aserciones intactas.
+    await visible("document.querySelector('.portal-diversity-scene')?.dataset.frames > 0");
+    assert.equal(await evaluar("document.querySelector('.portal-taxonomy-split').dataset.visualizacion"),'diversidad');
+    assert.equal(await evaluar("document.querySelector('.portal-taxonomy-visualization').getAttribute('aria-pressed')"),'false');
+    const raizDiversidad = await evaluar("document.querySelector('.portal-diversity-scene').dataset.raiz");
+    for (let i=0;i<9;i++) {await evaluar("document.querySelector('[aria-label=\"Acercar árbol\"]').click()");await reposo();}
+    assert.ok(Number(await evaluar("document.querySelector('.portal-diversity-scene').dataset.zoom"))>3,'El árbol permite varios acercamientos consecutivos más allá del límite de las esferas.');
+    assert.ok(await evaluar("!document.querySelector('[aria-label=\"Acercar árbol\"]').disabled"));
+    await evaluar("document.querySelector('.portal-three-fit').click()");await reposo();
+    assert.equal(await evaluar("document.querySelector('.portal-diversity-scene').dataset.zoom"),'1.000');
+    await evaluar("document.querySelector('.portal-taxonomy-visualization').click()");
+    await visible("document.querySelector('.portal-three-scene')?.dataset.raiz==="+JSON.stringify(raizDiversidad));
+    assert.equal(await evaluar("document.querySelector('.portal-diversity-scene')"),null,'Cambiar de presentación libera el renderizador anterior.');
+    await evaluar("document.querySelector('.portal-taxonomy-visualization').click()");
+    await visible("document.querySelector('.portal-diversity-scene')?.dataset.raiz==="+JSON.stringify(raizDiversidad));
+    assert.equal(await evaluar("document.querySelector('.portal-three-scene')"),null);
+    await evaluar("document.querySelector('.portal-taxonomy-visualization').click()");
+    await visible("document.querySelector('.portal-three-scene')?.dataset.raiz==="+JSON.stringify(raizDiversidad));
     async function buscarEnArbol(texto) {
         // La apertura del modal y el dibujo ETE terminan después del morph de
         // Livewire. Esperar el estado real evita interactuar durante la carga.
@@ -422,9 +441,10 @@ try {
     await conexion.send('Input.dispatchMouseEvent',{type:'mouseReleased',button:'left',clickCount:1,...fondoExplorador});
     assert.equal(await evaluar("document.querySelector('#explorador-taxonomico').open"), true);
     assert.ok(await evaluar(`(() => {
-        const barra=document.querySelector('.taxonomy-navigator-zoom'),botones=[...barra.querySelectorAll('button')],rects=botones.map(b=>b.getBoundingClientRect());
+        const barra=document.querySelector('.taxonomy-navigator-zoom'),botones=[...barra.querySelectorAll('button:not(.portal-taxonomy-visualization)')],rects=botones.map(b=>b.getBoundingClientRect()),visualizacion=barra.querySelector('.portal-taxonomy-visualization');
         return botones.length===5 && botones.at(-2).classList.contains('portal-three-fit') && botones.at(-1).classList.contains('portal-three-maximize')
             && rects.every(r=>r.width===40 && r.height===40 && Math.abs(r.top-rects[0].top)<1)
+            && visualizacion.getBoundingClientRect().height===40 && visualizacion.textContent.includes('Visualización') && visualizacion.hasAttribute('aria-pressed')
             && !document.querySelector('.taxonomy-explorer-header .portal-three-maximize');
     })()`), 'Pantalla completa queda después del ajuste y los cinco controles tienen medidas y alineación iguales.');
     assert.ok(await evaluar("new Set([...document.querySelector('.portal-three-legend').children].map(n=>Math.round(n.getBoundingClientRect().top))).size===1"), 'La leyenda utiliza una sola fila para reservar altura al grafo.');

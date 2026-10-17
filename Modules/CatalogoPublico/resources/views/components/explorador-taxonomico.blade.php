@@ -73,13 +73,13 @@
                     <p class="taxonomy-explorer-status" x-show="hayMas">Se muestran las primeras 50 coincidencias. Escribe un nombre más específico para acotar la búsqueda.</p>
                 </div>
                 <div class="taxonomy-navigator-zoom" role="group" aria-label="Zoom del árbol">
-                    <button type="button" :disabled="!visorDisponible || visorCargando || buscando || zoomActual <= .5" x-on:click="zoomETE(1 / 1.25)" aria-label="Alejar árbol" title="Alejar árbol"><span aria-hidden="true">−</span></button>
-                    <button type="button" :disabled="!visorDisponible || visorCargando || buscando || zoomActual >= 3" x-on:click="zoomETE(1.25)" aria-label="Acercar árbol" title="Acercar árbol"><span aria-hidden="true">+</span></button>
+                    <button type="button" :disabled="!visorDisponible || visorCargando || buscando || zoomActual <= zoomMinimo" x-on:click="zoomETE(1 / 1.25)" aria-label="Alejar árbol" title="Alejar árbol"><span aria-hidden="true">−</span></button>
+                    <button type="button" :disabled="!visorDisponible || visorCargando || buscando || zoomActual >= zoomMaximo" x-on:click="zoomETE(1.25)" aria-label="Acercar árbol" title="Acercar árbol"><span aria-hidden="true">+</span></button>
                 </div>
             </div>
             <section class="taxonomy-navigator-main" x-ref="ramas" aria-label="Taxones de la rama seleccionada">
                 <div class="portal-ete-host" x-ref="ete" wire:ignore x-show="nodos.length && visorDisponible"
-                    aria-label="Jerarquía taxonómica y grafo 3D de todos los descendientes de la rama seleccionada" :aria-busy="(buscando || visorCargando) ? 'true' : 'false'"></div>
+                    aria-label="Jerarquía taxonómica con árbol de diversidad y visualización alternativa de esferas 3D" :aria-busy="(buscando || visorCargando) ? 'true' : 'false'"></div>
                 <p class="taxonomy-navigator-start" x-show="listo && nodos.length && !visorDisponible">Escoge un filo para explorar sus ramas.</p>
                 <p class="portal-ete-loading" x-cloak x-show="visorDisponible && visorCargando" role="status">Abriendo visor…</p>
                 <p class="taxonomy-navigator-empty" x-show="listo && !buscando && !nodos.length" role="status">No hay taxones publicados para esta selección.</p>
