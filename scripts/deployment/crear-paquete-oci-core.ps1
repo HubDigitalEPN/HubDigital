@@ -506,6 +506,8 @@ $requeridos = @(
     'resources/js/portal-photos.js',
     'deploy/oracle/scripts/verify-source-identity.sh',
     'deploy/oracle/scripts/verify-deposit-pdf.php',
+    'scripts/content/importar-fichas-avif.php',
+    'scripts/content/convertir-fichas-webp-avif.php',
     'bootstrap/app.php', 'bootstrap/providers.php', 'bootstrap/cache/.gitignore',
     'composer.json', 'composer.lock', 'modules_statuses.json',
     'resources/bin/hubdigital-pdf-signature.jar',
@@ -643,6 +645,7 @@ foreach ($salida in @($paquete, $suma, $scriptTransferencia, $kitCloudShell, $in
 $incluir = @(
     'app', 'config', 'database', 'lang', 'Modules', 'public', 'resources', 'routes', 'vendor', 'deploy',
     'scripts/depositos',
+    'scripts/content/importar-fichas-avif.php', 'scripts/content/convertir-fichas-webp-avif.php',
     'bootstrap/app.php', 'bootstrap/providers.php', 'bootstrap/cache/.gitignore',
     'artisan', 'composer.json', 'composer.lock', 'modules_statuses.json'
 )

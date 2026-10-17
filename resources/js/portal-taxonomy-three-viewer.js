@@ -17,7 +17,7 @@ export function crearVisorTaxonomico(elemento, acciones) {
     let modo = 'diversidad', revisionModo = 0;
     const barra = elemento.closest('.taxonomy-navigator').querySelector('.taxonomy-navigator-zoom');
     const visualizacion = document.createElement('button'); visualizacion.type = 'button';
-    visualizacion.className = 'portal-taxonomy-visualization'; visualizacion.textContent = 'Visualización';
+    visualizacion.className = 'portal-taxonomy-visualization';
     function informarModo() {
         const alterna = modo === 'esferas';
         visualizacion.setAttribute('aria-pressed', String(alterna));

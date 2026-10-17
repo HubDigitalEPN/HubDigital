@@ -1,5 +1,5 @@
-import {BufferAttribute, BufferGeometry, Color, DoubleSide, Mesh, MeshBasicMaterial, OrthographicCamera, Points, Scene, ShaderMaterial, WebGLRenderer} from 'three';
-import {crearArbolDiversidad, encuadreDiversidad, proyectarDiversidad, zoomDiversidad} from './portal-taxonomy-diversity-model';
+import {BufferAttribute, BufferGeometry, Color, DoubleSide, Euler, Matrix4, Mesh, MeshBasicMaterial, OrthographicCamera, Points, Quaternion, Scene, ShaderMaterial, WebGLRenderer} from 'three';
+import {crearArbolDiversidad, encuadreDiversidad, orientarDiversidad, proyectarDiversidad, zoomDiversidad} from './portal-taxonomy-diversity-model';
 import {rangoVisual3D} from './portal-taxonomy-three-ranks';
 import {textoLinajeTaxonomico} from './portal-taxonomy-lineage';
 
@@ -7,7 +7,7 @@ const numero = n => Number(n).toLocaleString('es-EC');
 const crear = (tag, clase, texto) => {const el = document.createElement(tag); el.className = clase; if (texto) el.textContent = texto; return el;};
 const boton = (nombre, texto, accion) => {const el = crear('button', '', texto); el.type = 'button'; el.setAttribute('aria-label', nombre); el.title = nombre; el.addEventListener('click', accion); return el;};
 
-/** Árbol plano en Three.js: zoom semántico, geometría agrupada y dibujo por demanda. */
+/** Árbol espacial en Three.js: vista frontal inicial, giro explícito y dibujo por demanda. */
 export function crearEscenaDiversidad(elemento, acciones) {
     const marco = crear('div', 'portal-diversity-scene'); marco.dataset.motor = 'Three.js';
     const cabecera = crear('div', 'portal-three-context'), identidad = crear('div', 'portal-three-identity');
@@ -15,15 +15,13 @@ export function crearEscenaDiversidad(elemento, acciones) {
     const controles = crear('div', 'portal-three-controls');
     const volver = boton('Volver al padre de la rama', '↶', () => {const padre = indice?.porClave.get(raiz)?.padre; if (padre) acciones.navegar(padre);});
     controles.append(volver); cabecera.append(identidad, controles);
-    const ajuste = boton('Ajustar árbol de diversidad', '⤢', () => ajustar()); ajuste.className = 'portal-three-fit';
     const maximizar = boton('Ver visualizador en pantalla completa', '⛶', () => pantallaCompleta().catch(() => error('No se pudo activar la pantalla completa.'))); maximizar.className = 'portal-three-maximize';
     const barra = elemento.closest('.taxonomy-navigator').querySelector('.taxonomy-navigator-zoom');
-    barra.prepend(cabecera); barra.append(ajuste, maximizar);
+    barra.prepend(cabecera); barra.append(maximizar);
     const vista = crear('div', 'portal-diversity-viewport');
     const etiquetas = crear('div', 'portal-diversity-labels');
-    const ayuda = crear('div', 'portal-diversity-guide');
-    ayuda.id = 'portal-diversity-guide';
-    ayuda.append(crear('strong', '', 'Árbol de diversidad'), crear('span', '', 'Rueda o pellizco: zoom · Arrastra: desplazar · Clic: explorar rama'));
+    const ayuda = crear('p', 'sr-only', 'Rueda o pellizco: zoom. Arrastrar: desplazar. Ctrl y arrastrar: girar en 3D. Ctrl y flechas: girar con teclado. Inicio: restaurar vista frontal. Clic: explorar rama.');
+    ayuda.id = 'portal-diversity-help';
     const escalaTexto = crear('output', 'portal-diversity-scale'); escalaTexto.setAttribute('aria-label', 'Nivel de zoom');
     const leyenda = crear('div', 'portal-diversity-legend'); leyenda.setAttribute('role', 'group'); leyenda.setAttribute('aria-label', 'Resaltar un rango conservando todas las relaciones publicadas');
     const instrucciones = crear('p', 'portal-three-instructions'); instrucciones.tabIndex = 0;
@@ -34,21 +32,23 @@ export function crearEscenaDiversidad(elemento, acciones) {
     const salir = boton('Salir de pantalla completa', '⛶', () => document.exitFullscreen()); salir.className = 'portal-diversity-fullscreen-exit'; marco.append(salir);
     let renderer;
     try {renderer = new WebGLRenderer({antialias: true, alpha: true, powerPreference: 'low-power'});}
-    catch (fallo) {cabecera.remove(); ajuste.remove(); maximizar.remove(); elemento.replaceChildren(); throw fallo;}
+    catch (fallo) {cabecera.remove(); maximizar.remove(); elemento.replaceChildren(); throw fallo;}
     renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, 1.5));
     const canvas = renderer.domElement; canvas.className = 'portal-diversity-canvas'; canvas.tabIndex = 0;
-    canvas.setAttribute('role', 'img'); canvas.setAttribute('aria-keyshortcuts', 'ArrowLeft ArrowRight ArrowUp ArrowDown PageDown PageUp Enter Home + -');
+    canvas.setAttribute('role', 'img'); canvas.setAttribute('aria-keyshortcuts', 'ArrowLeft ArrowRight ArrowUp ArrowDown Control+ArrowLeft Control+ArrowRight Control+ArrowUp Control+ArrowDown PageDown PageUp Enter Home + -');
     canvas.setAttribute('aria-describedby', ayuda.id);
     vista.append(canvas, etiquetas, ayuda, escalaTexto, detalle, estado);
     const escena = new Scene(), camara = new OrthographicCamera(-1, 1, 1, -1, 0, 20); camara.position.z = 10;
-    const materialRamas = new MeshBasicMaterial({vertexColors: true, side: DoubleSide, transparent: true, opacity: .85, depthTest: false});
-    const materialHojas = new ShaderMaterial({transparent: true, depthTest: false, depthWrite: false,
+    const materialRamas = new MeshBasicMaterial({vertexColors: true, side: DoubleSide, transparent: true, opacity: .85, depthWrite: false});
+    const materialHojas = new ShaderMaterial({transparent: true,
         uniforms: {pixelRatio: {value: renderer.getPixelRatio()}},
         vertexShader: 'attribute float size; attribute float leaf; attribute vec3 color; varying vec3 shade; varying float tip; uniform float pixelRatio; void main(){shade=color;tip=leaf;gl_PointSize=size*pixelRatio;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
         fragmentShader: 'varying vec3 shade; varying float tip; void main(){vec2 p=gl_PointCoord*2.0-1.0;float d=tip>0.5?abs(p.x+p.y)*0.5+pow(abs(p.x-p.y)*0.6,2.0):length(p);if(d>0.94)discard;gl_FragColor=vec4(mix(shade,vec3(0.12,0.28,0.23),smoothstep(0.67,0.94,d)*0.55),1.0);\n#include <colorspace_fragment>\n}'});
     const ramas = new Mesh(new BufferGeometry(), materialRamas), hojas = new Points(new BufferGeometry(), materialHojas);
     ramas.frustumCulled = hojas.frustumCulled = false; hojas.renderOrder = 2; escena.add(ramas, hojas);
-    let indice, arbol, fuente, raiz, ancho = 1, alto = 1, cam = {x: 0, y: 0, escala: 1}, base = 1;
+    let indice, arbol, original, fuente, raiz, ancho = 1, alto = 1, cam = {x: 0, y: 0, escala: 1}, base = 1;
+    const orientacion = new Quaternion(), giro = new Quaternion(), matriz = new Matrix4(), ejes = new Euler(0,0,0,'YXZ');
+    let profundidadMaxima = 1;
     let frame = null, destruido = false, activo = true, elegido = -1, resaltado = '', hijosTeclado = -1, puntos = [], arrastre = null;
     let limitesZoom = {min: .1, max: 10000}, revision = 0;
     const punteros = new Map(), colores = new Map(), etiquetasDOM = new Map(), abort = new AbortController();
@@ -66,9 +66,19 @@ export function crearEscenaDiversidad(elemento, acciones) {
     function error(texto) {estado.textContent = texto; estado.hidden = false;}
     function ajustar() {
         if (!arbol) return;
+        orientacion.identity(); arbol = original; actualizarProfundidad();
         cam = encuadreDiversidad(arbol, ancho, alto); base = cam.escala;
         limitesZoom = {min: base * .5, max: Math.max(base * 256, 70 / arbol.separacion)};
         programar();
+    }
+    function actualizarProfundidad() {
+        profundidadMaxima=1;for(const z of arbol.profundidad) profundidadMaxima=Math.max(profundidadMaxima,Math.abs(z));
+        marco.dataset.orientacion=orientacion.toArray().map(n=>n.toFixed(5)).join(',');
+    }
+    function girar(dx,dy) {
+        if(!original)return;
+        giro.setFromEuler(ejes.set(dy*.008,dx*.008,0,'YXZ'));orientacion.premultiply(giro).normalize();
+        arbol=orientarDiversidad(original,matriz.makeRotationFromQuaternion(orientacion).elements);actualizarProfundidad();programar();
     }
     function zoom(factor, punto = {x: 0, y: 0}) {if (!arbol) return; cam = zoomDiversidad(cam, factor, punto, limitesZoom); programar();}
     function liberarGeometria(objeto, atributos) {
@@ -81,12 +91,13 @@ export function crearEscenaDiversidad(elemento, acciones) {
         const inicio = performance.now(), lineas = [], tintas = [], posiciones = [], rgb = [], tamanos = [], terminal = [], candidatos = [];
         puntos = [];
         const pila = [0], verde = color('#619078'), tenue = color('#b4c2b9');
-        const proyectar = i => proyectarDiversidad(arbol, i, cam, ancho, alto);
+        const proyectar = i => ({...proyectarDiversidad(arbol, i, cam, ancho, alto),z:arbol.profundidad[i]/profundidadMaxima*5});
+        const control = o => ({x:ancho/2+(arbol.curvas[o]-cam.x)*cam.escala,y:alto/2-(arbol.curvas[o+1]-cam.y)*cam.escala,z:arbol.curvas[o+2]/profundidadMaxima*5});
         function linea(a, b, grosor, tinta) {
             const distancia = Math.hypot(b.x - a.x, b.y - a.y); if (!distancia) return;
             const dx = -(b.y - a.y) / distancia * grosor / 2, dy = (b.x - a.x) / distancia * grosor / 2;
-            for (const [x, y] of [[a.x+dx,a.y+dy],[a.x-dx,a.y-dy],[b.x+dx,b.y+dy],[b.x+dx,b.y+dy],[a.x-dx,a.y-dy],[b.x-dx,b.y-dy]]) {
-                lineas.push(x - ancho / 2, alto / 2 - y, 0); tintas.push(tinta.r, tinta.g, tinta.b);
+            for (const [x, y, z] of [[a.x+dx,a.y+dy,a.z],[a.x-dx,a.y-dy,a.z],[b.x+dx,b.y+dy,b.z],[b.x+dx,b.y+dy,b.z],[a.x-dx,a.y-dy,a.z],[b.x-dx,b.y-dy,b.z]]) {
+                lineas.push(x - ancho / 2, alto / 2 - y, z); tintas.push(tinta.r, tinta.g, tinta.b);
             }
         }
         while (pila.length) {
@@ -94,15 +105,15 @@ export function crearEscenaDiversidad(elemento, acciones) {
             const nodo = indice.porClave.get(arbol.claves[i]), rango = rangoVisual3D(nodo), lista = arbol.hijos[i];
             const coincide = !resaltado || rango.id === resaltado || i === 0 || i === elegido;
             if (padre >= 0) {
-                const a = proyectar(padre);
-                if (Math.max(a.x, p.x) >= -15 && Math.min(a.x, p.x) <= ancho + 15 && Math.max(a.y, p.y) >= -15 && Math.min(a.y, p.y) <= alto + 15) {
+                const a = proyectar(padre), c1=control(i*6), c2=control(i*6+3);
+                if (Math.max(a.x,p.x,c1.x,c2.x) >= -15 && Math.min(a.x,p.x,c1.x,c2.x) <= ancho + 15 && Math.max(a.y,p.y,c1.y,c2.y) >= -15 && Math.min(a.y,p.y,c1.y,c2.y) <= alto + 15) {
                     const grosor = Math.min(10, Math.max(1, Math.sqrt(arbol.terminales[i]) * .55 * Math.pow(cam.escala / base, .15)));
                     let anterior = a;
-                    // Bézier vertical: ramas suaves que conservan el padre exacto.
+                    // Los controles giran junto con sus extremos en los tres ejes.
                     for (let paso = 1; paso <= 10; paso++) {
-                        const t = paso / 10, s = 1 - t, y = (a.y + p.y) / 2;
-                        const siguiente = {x: s*s*s*a.x + 3*s*s*t*a.x + 3*s*t*t*p.x + t*t*t*p.x,
-                            y: s*s*s*a.y + 3*s*s*t*y + 3*s*t*t*y + t*t*t*p.y};
+                        const t = paso / 10, s = 1 - t;
+                        const siguiente = {x: s*s*s*a.x + 3*s*s*t*c1.x + 3*s*t*t*c2.x + t*t*t*p.x,
+                            y:s*s*s*a.y+3*s*s*t*c1.y+3*s*t*t*c2.y+t*t*t*p.y,z:s*s*s*a.z+3*s*s*t*c1.z+3*s*t*t*c2.z+t*t*t*p.z};
                         linea(anterior, siguiente, grosor * (1 - t * .35), coincide ? verde : tenue); anterior = siguiente;
                     }
                 }
@@ -111,11 +122,11 @@ export function crearEscenaDiversidad(elemento, acciones) {
             if ((b[2]-cam.x)*cam.escala < -ancho/2-140 || (b[0]-cam.x)*cam.escala > ancho/2+140 ||
                 (b[3]-cam.y)*cam.escala < -alto/2-80 || (b[1]-cam.y)*cam.escala > alto/2+80) continue;
             const espacio = (arbol.sectores[i*2+1] - arbol.sectores[i*2]) * cam.escala;
-            const brote = lista.length > 0 && espacio < 2;
+            const brote = lista.length > 0 && espacio < 2 && Math.max(b[2]-b[0],b[3]-b[1])*cam.escala<2;
             if (p.x >= -20 && p.x <= ancho+20 && p.y >= -20 && p.y <= alto+20) {
                 const tamano = i === elegido ? 16 : i === 0 ? 15 : !lista.length ? 8 : brote ? 7 : 8;
                 const tinta = color(coincide ? rango.color : '#c6cec8');
-                posiciones.push(p.x-ancho/2, alto/2-p.y, 1); rgb.push(tinta.r,tinta.g,tinta.b); tamanos.push(tamano); terminal.push(!lista.length || brote ? 1 : 0);
+                posiciones.push(p.x-ancho/2, alto/2-p.y, p.z+.02); rgb.push(tinta.r,tinta.g,tinta.b); tamanos.push(tamano); terminal.push(!lista.length || brote ? 1 : 0);
                 puntos.push({i, ...p, tamano});
                 if (i === 0 || i === elegido || espacio >= 80 && coincide) candidatos.push({i, ...p, espacio});
             }
@@ -140,9 +151,10 @@ export function crearEscenaDiversidad(elemento, acciones) {
         for (const p of candidatos) {
             if (usados.size >= 42) break;
             const nodo = indice.porClave.get(arbol.claves[p.i]);
+            if (!nodo.nombre?.trim()) continue;
             const w = Math.min(210, Math.max(95, nodo.nombre.length*7.1+20)), h = 42;
             const x = Math.max(4, Math.min(ancho-w-4, p.x-w/2)), y = p.y+11;
-            if (y < 65 || y+h > alto-4 || cajas.some(b => x < b.x+b.w+6 && x+w+6 > b.x && y < b.y+b.h+5 && y+h+5 > b.y)) continue;
+            if (y < 4 || y+h > alto-4 || cajas.some(b => x < b.x+b.w+6 && x+w+6 > b.x && y < b.y+b.h+5 && y+h+5 > b.y)) continue;
             cajas.push({x,y,w,h}); usados.add(p.i);
             let el = etiquetasDOM.get(p.i);
             if (!el) {
@@ -160,16 +172,17 @@ export function crearEscenaDiversidad(elemento, acciones) {
     function coordenada(evento) {const r = canvas.getBoundingClientRect(); return {x:(evento.clientX-r.left)*ancho/r.width, y:(evento.clientY-r.top)*alto/r.height};}
     function buscar(evento) {
         const p = coordenada(evento); let mejor = -1, distancia = Infinity;
-        for (const n of puntos) {const d = Math.hypot(p.x-n.x,p.y-n.y); if (d <= Math.max(13,n.tamano/2+5) && d < distancia) {distancia=d; mejor=n.i;}}
+        let profundidad=-Infinity;
+        for (const n of puntos) {const d = Math.hypot(p.x-n.x,p.y-n.y); if (d <= Math.max(13,n.tamano/2+5) && (d < distancia-1 || Math.abs(d-distancia)<=1 && n.z>profundidad)) {distancia=d; mejor=n.i;profundidad=n.z;}}
         return mejor;
     }
     function ocultarDetalle() {detalle.hidden = true; canvas.setAttribute('aria-describedby', ayuda.id);}
     function mostrarDetalle(i) {
-        if (i < 0) return ocultarDetalle();
+        if (i < 0 || !indice.porClave.get(arbol.claves[i])?.nombre?.trim()) return ocultarDetalle();
         const nodo = indice.porClave.get(arbol.claves[i]), p = proyectarDiversidad(arbol,i,cam,ancho,alto);
         detalle.replaceChildren(crear('strong','',nodo.nombre),crear('span','',`${nodo.etiqueta} · ${numero(nodo.total)} registros`));
         detalle.style.left = `${Math.max(8,Math.min(ancho-228,p.x+14))}px`;
-        detalle.style.top = `${Math.max(72,Math.min(alto-80,p.y-15))}px`;
+        detalle.style.top = `${Math.max(8,Math.min(alto-80,p.y-15))}px`;
         detalle.hidden = false; canvas.setAttribute('aria-describedby', `${ayuda.id} ${detalle.id}`);
     }
     function abrirMenu(i, evento) {
@@ -188,12 +201,14 @@ export function crearEscenaDiversidad(elemento, acciones) {
         if (e.button!==0) return;
         ocultarDetalle();
         canvas.focus({preventScroll:true}); canvas.setPointerCapture(e.pointerId); punteros.set(e.pointerId,coordenada(e));
-        arrastre={inicio:coordenada(e),movido:punteros.size>1,revision};
+        arrastre={inicio:coordenada(e),movido:punteros.size>1,girar:e.ctrlKey&&e.pointerType!=='touch',revision};
+        marco.dataset.rotando=String(arrastre.girar);canvas.style.cursor=arrastre.girar?'move':'grabbing';
     });
     escuchar(canvas,'pointermove',e=>{
         if (!punteros.has(e.pointerId)) {const i=buscar(e);canvas.style.cursor=i>=0?'pointer':'grab';mostrarDetalle(i);return;}
         const antes=gesto(); punteros.set(e.pointerId,coordenada(e)); const despues=gesto();
         if (Math.hypot(despues.x-arrastre.inicio.x,despues.y-arrastre.inicio.y)>4) arrastre.movido=true;
+        if(arrastre.girar&&punteros.size===1){girar(despues.x-antes.x,despues.y-antes.y);return;}
         cam={...cam,x:cam.x-(despues.x-antes.x)/cam.escala,y:cam.y+(despues.y-antes.y)/cam.escala};
         if (antes.distancia>0 && despues.distancia>0) zoom(despues.distancia/antes.distancia,{x:despues.x-ancho/2,y:alto/2-despues.y});
         programar();
@@ -201,11 +216,11 @@ export function crearEscenaDiversidad(elemento, acciones) {
     escuchar(canvas,'pointerup',e=>{
         const pulsacion=arrastre; punteros.delete(e.pointerId);
         if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
-        if (!punteros.size) arrastre=null;
-        if (pulsacion && !pulsacion.movido && pulsacion.revision===revision) {const i=buscar(e); if(i>=0) acciones.seleccionar(arbol.claves[i]);}
+        if (!punteros.size) {arrastre=null;marco.dataset.rotando='false';canvas.style.cursor='grab';}
+        if (pulsacion && !pulsacion.girar && !pulsacion.movido && pulsacion.revision===revision) {const i=buscar(e); if(i>=0) acciones.seleccionar(arbol.claves[i]);}
     });
-    escuchar(canvas,'lostpointercapture',e=>{punteros.delete(e.pointerId); if(!punteros.size) arrastre=null;});
-    escuchar(canvas,'pointercancel',()=>{punteros.clear();arrastre=null;});
+    escuchar(canvas,'lostpointercapture',e=>{punteros.delete(e.pointerId); if(!punteros.size){arrastre=null;marco.dataset.rotando='false';}});
+    escuchar(canvas,'pointercancel',()=>{punteros.clear();arrastre=null;marco.dataset.rotando='false';});
     escuchar(canvas,'pointerleave',ocultarDetalle);
     escuchar(canvas,'contextmenu',e=>{e.preventDefault();e.stopPropagation();abrirMenu(buscar(e),e);});
     escuchar(canvas,'keydown',e=>{
@@ -216,6 +231,7 @@ export function crearEscenaDiversidad(elemento, acciones) {
         if(e.key==='Home') return ajustar();
         if(['+','='].includes(e.key)) return zoom(1.5);
         if(e.key==='-') return zoom(1/1.5);
+        if(e.ctrlKey&&e.key.startsWith('Arrow'))return girar(({'ArrowLeft':-12,'ArrowRight':12}[e.key]||0),({'ArrowUp':-12,'ArrowDown':12}[e.key]||0));
         if(e.key==='Enter') {if(elegido>=0) acciones.seleccionar(arbol.claves[elegido]);return;}
         if(['PageDown','PageUp'].includes(e.key)) {
             const lista=arbol.hijos[0];if(!lista.length)return;
@@ -229,7 +245,7 @@ export function crearEscenaDiversidad(elemento, acciones) {
     const resize=new ResizeObserver(()=>{
         if(destruido||!vista.clientWidth||!vista.clientHeight)return;
         const w=vista.clientWidth,h=vista.clientHeight;if(w===ancho&&h===alto)return;
-        const anterior=cam.escala/base, ajustada=Math.abs(anterior-1)<.001;
+        const anterior=cam.escala/base, ajustada=Math.abs(anterior-1)<.001&&Math.abs(orientacion.w)>1-1e-10;
         ancho=w;alto=h;camara.left=-w/2;camara.right=w/2;camara.top=h/2;camara.bottom=-h/2;camara.updateProjectionMatrix();renderer.setSize(w,h,false);
         if(arbol){if(ajustada)ajustar();else{base=encuadreDiversidad(arbol,w,h).escala;limitesZoom={min:base*.5,max:Math.max(base*256,70/arbol.separacion)};}}
         programar();
@@ -241,7 +257,7 @@ export function crearEscenaDiversidad(elemento, acciones) {
             indice=nuevoIndice;
             if(fuente===nuevos&&raiz===clave&&arbol)return;
             revision++;punteros.clear();arrastre=null;fuente=nuevos;raiz=clave;resaltado='';hijosTeclado=-1;
-            arbol=crearArbolDiversidad(indice,clave);elegido=0;
+            original=arbol=crearArbolDiversidad(indice,clave);elegido=0;
             for(const el of etiquetasDOM.values())el.remove();etiquetasDOM.clear();
             const nodo=indice.porClave.get(clave);titulo.textContent=nodo.nombre;meta.textContent=`${nodo.etiqueta} · ${numero(nodo.total)} registros`;
             volver.disabled=!indice.porClave.has(nodo.padre);
@@ -251,7 +267,7 @@ export function crearEscenaDiversidad(elemento, acciones) {
                 const b=boton(`Resaltar ${r.nombre}`,r.nombre,()=>{resaltado=resaltado===r.id?'':r.id;for(const el of leyenda.children)el.setAttribute('aria-pressed',String(el.dataset.rango===resaltado));marco.dataset.rangoResaltado=resaltado;programar();});
                 b.dataset.rango=r.id;b.setAttribute('aria-pressed','false');b.style.setProperty('--rank-color',r.color);leyenda.append(b);
             }
-            canvas.setAttribute('aria-label',`${nodo.nombre}: árbol de diversidad con ${numero(arbol.claves.length)} taxones. Flechas para desplazar; + y − para zoom; Inicio para ajustar; AvPág y RePág recorren los hijos; Intro explora la rama. La jerarquía accesible está a la izquierda.`);
+            canvas.setAttribute('aria-label',`${nodo.nombre}: árbol de diversidad con ${numero(arbol.claves.length)} taxones. Ctrl y arrastrar o Ctrl y flechas para girar en 3D; arrastrar o flechas para desplazar; + y − para zoom; Inicio restaura la vista frontal; AvPág y RePág recorren los hijos; Intro explora la rama. La jerarquía accesible está a la izquierda.`);
             marco.dataset.raiz=clave;marco.dataset.nombre=nodo.nombre;marco.dataset.nodos=String(arbol.claves.length);marco.dataset.terminales=String(arbol.terminales[0]);
             marco.dataset.relaciones=String(arbol.claves.length-1);marco.dataset.rotando='false';marco.dataset.rangoResaltado='';
             estado.hidden=true;mensaje();ajustar();
@@ -263,12 +279,12 @@ export function crearEscenaDiversidad(elemento, acciones) {
         limpiarSeleccion(){elegido=0;mensaje();ajustar();},
         rangoActivo:()=>resaltado,
         enfocar(clave){const i=arbol?.claves.indexOf(clave)??-1;if(i<0)return false;elegido=i;canvas.focus({preventScroll:true});mensaje();programar();return true;},
-        mostrar(valor){activo=valor;cabecera.hidden=ajuste.hidden=maximizar.hidden=!valor;if(valor)programar();else if(frame!==null){cancelAnimationFrame(frame);frame=null;}},
+        mostrar(valor){activo=valor;cabecera.hidden=maximizar.hidden=!valor;if(valor)programar();else if(frame!==null){cancelAnimationFrame(frame);frame=null;}},
         destruir(){
             destruido=true;revision++;if(document.fullscreenElement===marco)document.exitFullscreen().catch(()=>{});
             abort.abort();resize.disconnect();if(frame!==null)cancelAnimationFrame(frame);punteros.clear();etiquetasDOM.clear();colores.clear();
             ramas.geometry.dispose();hojas.geometry.dispose();materialRamas.dispose();materialHojas.dispose();renderer.dispose();renderer.forceContextLoss();
-            cabecera.remove();ajuste.remove();maximizar.remove();elemento.replaceChildren();arbol=indice=fuente=null;puntos=[];
+            cabecera.remove();maximizar.remove();elemento.replaceChildren();original=arbol=indice=fuente=null;puntos=[];
         },
     };
 }

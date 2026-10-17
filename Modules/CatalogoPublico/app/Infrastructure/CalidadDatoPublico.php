@@ -12,12 +12,15 @@ final class CalidadDatoPublico
     public static function textoValido(string $columna): string
     {
         // Los nombres de columna son constantes internas, nunca entrada del visitante.
-        return "({$columna} IS NOT NULL AND btrim({$columna}) <> '' AND lower({$columna}) !~ '".self::MARCADORES."')";
+        // PostgreSQL btrim y PHP trim no retiran NBSP ni otros separadores Unicode.
+        $espacios = " \t\r\n\v\f\u{0085}\u{00A0}\u{1680}\u{2000}\u{2001}\u{2002}\u{2003}\u{2004}\u{2005}\u{2006}\u{2007}\u{2008}\u{2009}\u{200A}\u{2028}\u{2029}\u{202F}\u{205F}\u{3000}\u{200B}\u{FEFF}";
+        return "({$columna} IS NOT NULL AND btrim({$columna}, '{$espacios}') <> '' AND lower({$columna}) !~ '".self::MARCADORES."')";
     }
 
     public static function esTextoValido(?string $texto): bool
     {
-        return $texto !== null && trim($texto) !== '' && preg_match('/'.self::MARCADORES.'/iu', $texto) === 0;
+        return $texto !== null && preg_match('/[^\s\p{Z}\x{200B}\x{FEFF}]/u', $texto) === 1
+            && preg_match('/'.self::MARCADORES.'/iu', $texto) === 0;
     }
 
     /** Prefijo confirmado: una nota original no se convierte en padre científico. */

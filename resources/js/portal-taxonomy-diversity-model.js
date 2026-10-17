@@ -41,8 +41,53 @@ export function crearArbolDiversidad(indice, raiz) {
         }
         limites.set([x0, y0, x1, y1], i * 4);
     }
+    // Distribución espacial esquemática: cada multifurcación abre un abanico
+    // de profundidad. De frente conserva el árbol legible; al girar tiene volumen.
+    const profundidad = new Float64Array(n);
+    for (let i = 0; i < n; i++) {
+        const lista = hijos[i], amplitud = Math.min(180, (sectores[i*2+1]-sectores[i*2])*.5);
+        lista.forEach((h,j) => {profundidad[h] = profundidad[i] + (lista.length > 1 ? Math.sin((j+.5)*Math.PI*2/lista.length)*amplitud : 0);});
+    }
+    const curvas = new Float64Array(n*6);
+    for(let i=1;i<n;i++) {
+        const p=padres[i],y=(posiciones[p*2+1]+posiciones[i*2+1])/2,z=(profundidad[p]+profundidad[i])/2;
+        curvas.set([posiciones[p*2],y,z,posiciones[i*2],y,z],i*6);
+    }
     return {claves, padres: Int32Array.from(padres), niveles: Uint32Array.from(niveles), hijos, terminales,
-        posiciones, sectores, limites, separacion: Math.max(Number.EPSILON, separacion)};
+        posiciones, profundidad, curvas, sectores, limites, separacion: Math.max(Number.EPSILON, separacion)};
+}
+
+/** Gira posiciones y cajas con la misma matriz 3D; etiquetas y selección usan
+ * estas coordenadas, nunca un desplazamiento CSS independiente de la geometría.
+ * El pivote es el centro del árbol, no el origen de la página ni el de la cámara.
+ */
+export function orientarDiversidad(arbol, matriz) {
+    const posiciones = new Float64Array(arbol.posiciones.length), profundidad = new Float64Array(arbol.claves.length);
+    const limites = new Float64Array(arbol.limites.length), curvas = new Float64Array(arbol.curvas.length), [x0,y0,x1,y1] = arbol.limites.subarray(0,4);
+    const cx=(x0+x1)/2, cy=(y0+y1)/2;
+    for(let i=0;i<arbol.claves.length;i++) {
+        const x=arbol.posiciones[i*2]-cx,y=arbol.posiciones[i*2+1]-cy,z=arbol.profundidad[i];
+        posiciones[i*2]=cx+matriz[0]*x+matriz[4]*y+matriz[8]*z;
+        posiciones[i*2+1]=cy+matriz[1]*x+matriz[5]*y+matriz[9]*z;
+        profundidad[i]=matriz[2]*x+matriz[6]*y+matriz[10]*z;
+        for(let j=0;j<2;j++) {
+            const offset=i*6+j*3,x=arbol.curvas[offset]-cx,y=arbol.curvas[offset+1]-cy,z=arbol.curvas[offset+2];
+            curvas[offset]=cx+matriz[0]*x+matriz[4]*y+matriz[8]*z;
+            curvas[offset+1]=cy+matriz[1]*x+matriz[5]*y+matriz[9]*z;
+            curvas[offset+2]=matriz[2]*x+matriz[6]*y+matriz[10]*z;
+        }
+    }
+    for(let i=arbol.claves.length-1;i>=0;i--) {
+        let x0=posiciones[i*2],x1=x0,y0=posiciones[i*2+1],y1=y0;
+        for(const h of arbol.hijos[i]) {x0=Math.min(x0,limites[h*4]);y0=Math.min(y0,limites[h*4+1]);x1=Math.max(x1,limites[h*4+2]);y1=Math.max(y1,limites[h*4+3]);}
+        // Incluye los controles Bézier: una rama arqueada también puede entrar
+        // en el encuadre cuando sus dos extremos quedan fuera.
+        for(const h of arbol.hijos[i]) for(let j=0;j<2;j++) {
+            const o=h*6+j*3;x0=Math.min(x0,curvas[o]);x1=Math.max(x1,curvas[o]);y0=Math.min(y0,curvas[o+1]);y1=Math.max(y1,curvas[o+1]);
+        }
+        limites.set([x0,y0,x1,y1],i*4);
+    }
+    return {...arbol,posiciones,profundidad,curvas,limites};
 }
 
 export function encuadreDiversidad(arbol, ancho, alto, nodo = 0) {

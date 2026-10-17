@@ -237,8 +237,22 @@ try {
     for (let i=0;i<9;i++) {await evaluar("document.querySelector('[aria-label=\"Acercar árbol\"]').click()");await reposo();}
     assert.ok(Number(await evaluar("document.querySelector('.portal-diversity-scene').dataset.zoom"))>3,'El árbol permite varios acercamientos consecutivos más allá del límite de las esferas.');
     assert.ok(await evaluar("!document.querySelector('[aria-label=\"Acercar árbol\"]').disabled"));
-    await evaluar("document.querySelector('.portal-three-fit').click()");await reposo();
+    await evaluar("document.querySelector('.portal-diversity-canvas,.portal-three-canvas').dispatchEvent(new KeyboardEvent('keydown',{key:'Home',bubbles:true}))");await reposo();
     assert.equal(await evaluar("document.querySelector('.portal-diversity-scene').dataset.zoom"),'1.000');
+    assert.equal(await evaluar("document.querySelector('.portal-three-fit,.portal-branch-retry,.portal-diversity-guide')"),null,'Los controles y la ayuda visual retirados no ocupan espacio.');
+    const estadoAntesDeGirar=await evaluar("({raiz:document.querySelector('.portal-diversity-scene').dataset.raiz,centro:document.querySelector('.portal-diversity-scene').dataset.centro,orientacion:document.querySelector('.portal-diversity-scene').dataset.orientacion})");
+    const centroGiro=await evaluar("(() => {const r=document.querySelector('.portal-diversity-canvas').getBoundingClientRect();return {x:r.left+r.width*.5,y:r.top+r.height*.5};})()");
+    await conexion.send('Input.dispatchMouseEvent',{type:'mousePressed',button:'left',buttons:1,clickCount:1,modifiers:2,...centroGiro});
+    await conexion.send('Input.dispatchMouseEvent',{type:'mouseMoved',button:'left',buttons:1,modifiers:2,x:centroGiro.x+55,y:centroGiro.y+30});
+    await conexion.send('Input.dispatchMouseEvent',{type:'mouseReleased',button:'left',buttons:0,clickCount:1,modifiers:2,x:centroGiro.x+55,y:centroGiro.y+30});await reposo();
+    const girado=await evaluar("({raiz:document.querySelector('.portal-diversity-scene').dataset.raiz,centro:document.querySelector('.portal-diversity-scene').dataset.centro,orientacion:document.querySelector('.portal-diversity-scene').dataset.orientacion,rotando:document.querySelector('.portal-diversity-scene').dataset.rotando})");
+    assert.notEqual(girado.orientacion,estadoAntesDeGirar.orientacion,'Ctrl y arrastrar modifica los ejes espaciales.');
+    assert.equal(girado.raiz,estadoAntesDeGirar.raiz,'El gesto de giro no selecciona otra rama.');
+    assert.equal(girado.centro,estadoAntesDeGirar.centro,'El giro no se interpreta como desplazamiento.');assert.equal(girado.rotando,'false');
+    await evaluar("document.querySelector('.portal-diversity-canvas').dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',ctrlKey:true,bubbles:true}))");await reposo();
+    assert.notEqual(await evaluar("document.querySelector('.portal-diversity-scene').dataset.orientacion"),girado.orientacion,'El giro también es accesible con Ctrl y flechas.');
+    await evaluar("document.querySelector('.portal-diversity-canvas').dispatchEvent(new KeyboardEvent('keydown',{key:'Home',bubbles:true}))");await reposo();
+    assert.equal(await evaluar("document.querySelector('.portal-diversity-scene').dataset.orientacion"),estadoAntesDeGirar.orientacion,'Inicio restaura la vista frontal y el zoom.');
     await evaluar("document.querySelector('.portal-taxonomy-visualization').click()");
     await visible("document.querySelector('.portal-three-scene')?.dataset.raiz==="+JSON.stringify(raizDiversidad));
     assert.equal(await evaluar("document.querySelector('.portal-diversity-scene')"),null,'Cambiar de presentación libera el renderizador anterior.');
@@ -324,7 +338,7 @@ try {
         await evaluar("document.querySelector('[aria-label=\"Alejar árbol\"]').click()"); await reposo();
         assert.ok(Math.abs(Number(await evaluar("document.querySelector('.portal-three-scene').dataset.zoom")) - factor) < .001, 'Alejar funciona desde la vista inicial de la esfera.');
     }
-    await evaluar("document.querySelector('.portal-three-fit').click()"); await reposo();
+    await evaluar("document.querySelector('.portal-diversity-canvas,.portal-three-canvas').dispatchEvent(new KeyboardEvent('keydown',{key:'Home',bubbles:true}))"); await reposo();
     for (let repeticion = 0; repeticion < 2; repeticion++) {
         await navegarInicial('Browsergenus' + token + '0'); await reposo();
         await evaluar("document.querySelector('.taxonomy-navigator-zoom [aria-label=\"Acercar árbol\"]').click()");
@@ -426,7 +440,7 @@ try {
     assert.equal(await evaluar("document.querySelector('.taxonomy-explorer-header p').textContent"), catalogoExplorador.texto, 'Reabrir el explorador conserva su catálogo independiente del filtro del mapa.');
     await conexion.send('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false}); await reposo();
     const antesDeAjustar = totalPeticiones;
-    await evaluar("document.querySelector('.portal-three-fit').click()");
+    await evaluar("document.querySelector('.portal-diversity-canvas,.portal-three-canvas').dispatchEvent(new KeyboardEvent('keydown',{key:'Home',bubbles:true}))");
     await visible("Alpine.$data(document.querySelector('#explorador-taxonomico')).ajustado && document.querySelector('.portal-three-scene').dataset.zoom==='1.000'");
     assert.ok(await evaluar("(() => {const l=document.querySelector('.portal-ete-host');return l.scrollHeight<=l.clientHeight+1 && l.scrollWidth<=l.clientWidth+1;})()"));
     assert.equal(totalPeticiones, antesDeAjustar);
@@ -443,12 +457,12 @@ try {
     await conexion.send('Input.dispatchMouseEvent',{type:'mouseReleased',button:'left',clickCount:1,...fondoExplorador});
     assert.equal(await evaluar("document.querySelector('#explorador-taxonomico').open"), true);
     assert.ok(await evaluar(`(() => {
-        const barra=document.querySelector('.taxonomy-navigator-zoom'),botones=[...barra.querySelectorAll('button:not(.portal-taxonomy-visualization)')],rects=botones.map(b=>b.getBoundingClientRect()),visualizacion=barra.querySelector('.portal-taxonomy-visualization');
-        return botones.length===5 && botones.at(-2).classList.contains('portal-three-fit') && botones.at(-1).classList.contains('portal-three-maximize')
+        const barra=document.querySelector('.taxonomy-navigator-zoom'),botones=[...barra.querySelectorAll('button')],rects=botones.map(b=>b.getBoundingClientRect()),visualizacion=barra.querySelector('.portal-taxonomy-visualization');
+        return botones.length===5 && botones.at(-2).classList.contains('portal-three-maximize') && botones.at(-1).classList.contains('portal-taxonomy-visualization') && !barra.querySelector('.portal-three-fit')
             && rects.every(r=>r.width===40 && r.height===40 && Math.abs(r.top-rects[0].top)<1)
-            && visualizacion.getBoundingClientRect().height===40 && visualizacion.textContent.includes('Visualización') && visualizacion.hasAttribute('aria-pressed')
+            && visualizacion.getBoundingClientRect().height===40 && visualizacion.textContent.trim()==='' && visualizacion.getAttribute('aria-label').includes('Visualización') && visualizacion.hasAttribute('aria-pressed')
             && !document.querySelector('.taxonomy-explorer-header .portal-three-maximize');
-    })()`), 'Pantalla completa queda después del ajuste y los cinco controles tienen medidas y alineación iguales.');
+    })()`), 'Pantalla completa y cambio de visualización usan sólo iconos; los cinco controles tienen medidas y alineación iguales.');
     assert.ok(await evaluar("new Set([...document.querySelector('.portal-three-legend').children].map(n=>Math.round(n.getBoundingClientRect().top))).size===1"), 'La leyenda utiliza una sola fila para reservar altura al grafo.');
     const antesDePantallaYCerrar = totalPeticiones;
     await navegarInicial('FiloBrowser' + token);
@@ -535,7 +549,7 @@ try {
         await evaluar("document.querySelector('[aria-label=\"Alejar árbol\"]').click()"); await reposo();
         assert.ok(Math.abs(Number(await evaluar("document.querySelector('.portal-three-scene').dataset.zoom")) - factor) < .001);
     }
-    await evaluar("document.querySelector('.portal-three-fit').click()"); await reposo();
+    await evaluar("document.querySelector('.portal-diversity-canvas,.portal-three-canvas').dispatchEvent(new KeyboardEvent('keydown',{key:'Home',bubbles:true}))"); await reposo();
     await asegurarETEEstable();
     await navegarInicial('Familia A');
     await visible("document.querySelector('.portal-three-scene').dataset.raiz==='familia-a' && document.querySelector('.portal-three-scene').dataset.nodos==='123'");

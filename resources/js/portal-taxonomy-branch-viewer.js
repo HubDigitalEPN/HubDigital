@@ -27,8 +27,7 @@ export function crearExploradorRama(elemento, acciones, panelFicha) {
     imagen.decoding = 'async'; ampliarFoto.append(imagen); foto.append(ampliarFoto);
     const herramientas = crear('div', 'portal-branch-tools'); herramientas.append(credito);
     const estadoPerfil = crear('p', 'portal-branch-profile-status'); estadoPerfil.setAttribute('role', 'status');
-    const reintentar = crear('button', 'portal-branch-retry', 'Reintentar ficha'); reintentar.type = 'button'; reintentar.hidden = true;
-    perfil.append(foto, herramientas, descripcion, estadoPerfil, reintentar);
+    perfil.append(foto, herramientas, descripcion, estadoPerfil);
     cabecera.append(perfil);
     const vista = crear('div', 'portal-branch-tree'); vista.setAttribute('role', 'tree');
     const contenido = crear('div', 'portal-branch-rows'); contenido.setAttribute('role', 'none'); vista.append(contenido);
@@ -68,7 +67,7 @@ export function crearExploradorRama(elemento, acciones, panelFicha) {
         ampliarFoto.disabled = true; credito.hidden = true; cerrarAmpliacion();
         raizFicha = nodo; panelFicha.dataset.ficha = panelFicha.dataset.nombre = nodo.nombre; panelFicha.dataset.raiz = nodo.clave;
         foto.hidden = descripcion.hidden = true; imagen.removeAttribute('src'); imagen.style.visibility = 'hidden'; creditosTexto.replaceChildren(); creditosDetalle.open = false;
-        reintentar.hidden = true; estadoPerfil.hidden = false; estadoPerfil.textContent = 'Cargando ficha…'; perfil.setAttribute('aria-busy', 'true');
+        estadoPerfil.hidden = false; estadoPerfil.textContent = 'Cargando ficha…'; perfil.setAttribute('aria-busy', 'true');
         try {
             if (!endpoint || !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(nodo.id || '')) throw new Error('Ficha no disponible');
             const respuesta = await fetch(endpoint.replace('__TAXON__', encodeURIComponent(nodo.id)), {signal: solicitudFicha.signal, cache: 'no-store', credentials: 'same-origin', headers: {Accept: 'application/json'}});
@@ -82,7 +81,7 @@ export function crearExploradorRama(elemento, acciones, panelFicha) {
                 imagen.alt = ficha.alt || `Fotografía representativa de ${nodo.nombre}`;
                 ampliarFoto.setAttribute('aria-label', `Ampliar fotografía de ${nodo.nombre}`);
                 imagen.onload = () => {if (revision === revisionFicha) {ampliarFoto.disabled = false; imagen.style.visibility = 'visible'; foto.hidden = false; estadoPerfil.hidden = true;}};
-                imagen.onerror = () => {if (revision === revisionFicha) {foto.hidden = true; estadoPerfil.hidden = false; estadoPerfil.textContent = 'La fotografía no está disponible.'; reintentar.hidden = false;}};
+                imagen.onerror = () => {if (revision === revisionFicha) {foto.hidden = true; estadoPerfil.hidden = false; estadoPerfil.textContent = 'La fotografía no está disponible.';}};
                 credito.hidden = !ficha.credito && !ficha.fuente; creditosTexto.textContent = ficha.credito || '';
                 if (ficha.fuente) {
                     const fuente = new URL(ficha.fuente);
@@ -94,17 +93,16 @@ export function crearExploradorRama(elemento, acciones, panelFicha) {
             if (!ficha.foto && !ficha.descripcion) estadoPerfil.textContent = 'Todavía no hay una ficha publicada para este taxón.';
         } catch (error) {
             if (error.name === 'AbortError' || destruido || revision !== revisionFicha) return;
-            estadoPerfil.hidden = false; estadoPerfil.textContent = 'No se pudo cargar la ficha. La rama sigue disponible.'; reintentar.hidden = false;
+            estadoPerfil.hidden = false; estadoPerfil.textContent = 'No se pudo cargar la ficha. La rama sigue disponible.';
         } finally {if (!destruido && revision === revisionFicha) perfil.setAttribute('aria-busy', 'false');}
     }
-    reintentar.addEventListener('click', () => {if (raizFicha) cargarFicha(raizFicha);});
 
     function limpiarFicha() {
         revisionFicha++; solicitudFicha?.abort(); raizFicha = null;
         ampliarFoto.disabled = true; credito.hidden = true; cerrarAmpliacion(); delete panelFicha.dataset.ficha;
         delete panelFicha.dataset.nombre; delete panelFicha.dataset.raiz;
         imagen.onload = imagen.onerror = null; imagen.removeAttribute('src');
-        foto.hidden = descripcion.hidden = reintentar.hidden = true;
+        foto.hidden = descripcion.hidden = true;
         estadoPerfil.hidden = false; estadoPerfil.textContent = 'Selecciona un taxón del visualizador.'; perfil.setAttribute('aria-busy', 'false');
     }
     function limpiar() {

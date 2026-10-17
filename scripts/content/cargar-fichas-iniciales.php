@@ -32,7 +32,7 @@ foreach ($datos as $entrada) {
         $previo = config('deposit-storage.prefix');
         try {
             config(['deposit-storage.prefix' => $prefijo]);
-            (new \Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos)->guardarContenido($ficha->foto_ruta, $contenido, 'image/webp');
+            (new \Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos)->guardarContenido($ficha->foto_ruta, $contenido, $fichas->tipoFoto($ficha));
         } finally { config(['deposit-storage.prefix' => $previo]); }
         $resultado[] = ['nombre' => $taxon->nombre_cientifico, 'rango' => $taxon->rango, 'descripcion' => $ficha->descripcion,
             'foto_ruta' => $ficha->foto_ruta, 'foto_sha256' => $ficha->foto_sha256, 'foto_alt' => $ficha->foto_alt,
@@ -40,7 +40,7 @@ foreach ($datos as $entrada) {
         continue;
     }
     if ($fichas->buscar($taxon->id)) { $resultado[] = ['nombre' => $entrada['nombre'], 'estado' => 'conservada']; continue; }
-    if (!preg_match('/^[a-z0-9-]+\.webp$/D', $entrada['archivo'])) throw new \InvalidArgumentException('Nombre de foto no válido.');
+    if (!preg_match('/^[a-z0-9-]+\.(?:avif|webp)$/D', $entrada['archivo'])) throw new \InvalidArgumentException('Nombre de foto no válido.');
     $binario = file_get_contents(dirname($manifest).'/'.$entrada['archivo']);
     if (!hash_equals($entrada['sha256'], hash('sha256', $binario))) throw new \RuntimeException('La foto no corresponde al manifiesto.');
     $foto = $fichas->prepararFoto($binario);

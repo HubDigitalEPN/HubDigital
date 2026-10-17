@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {crearArbolDiversidad, encuadreDiversidad, proyectarDiversidad, zoomDiversidad} from '../../resources/js/portal-taxonomy-diversity-model.js';
+import {crearArbolDiversidad, encuadreDiversidad, orientarDiversidad, proyectarDiversidad, zoomDiversidad} from '../../resources/js/portal-taxonomy-diversity-model.js';
+import {Euler, Matrix4, Quaternion} from 'three';
 
 function indice(nodos) {
     const porClave = new Map(), porPadre = new Map();
@@ -63,4 +64,25 @@ test('recentrar una rama y proyectar coordenadas rebajadas mantiene precisión d
     const i=a.claves.indexOf('d'), vista={x:a.posiciones[i*2],y:a.posiciones[i*2+1],escala:1e8};
     assert.deepEqual(proyectarDiversidad(a,i,vista,800,500),{x:400,y:250});
     assert.ok(Object.values(encuadreDiversidad(a,800,500,a.claves.indexOf('b'))).every(Number.isFinite));
+});
+
+test('el giro espacial conserva relaciones y distancias y permite restaurar el modelo frontal', () => {
+    const a=crearArbolDiversidad(indice([nodo('r'),nodo('a','r'),nodo('b','r'),nodo('c','r'),nodo('d','a')]),'r');
+    assert.ok(a.profundidad.some(z=>Math.abs(z)>1),'Las multifurcaciones ocupan también el eje de profundidad.');
+    const q=new Quaternion().setFromEuler(new Euler(.47,1.1,.23)),m=new Matrix4().makeRotationFromQuaternion(q);
+    const b=orientarDiversidad(a,m.elements);
+    assert.equal(b.padres,a.padres);assert.equal(b.claves,a.claves);
+    const distancia=(arbol,i,j)=>Math.hypot(arbol.posiciones[i*2]-arbol.posiciones[j*2],arbol.posiciones[i*2+1]-arbol.posiciones[j*2+1],arbol.profundidad[i]-arbol.profundidad[j]);
+    for(let i=1;i<a.claves.length;i++) {
+        assert.ok(Math.abs(distancia(a,0,i)-distancia(b,0,i))<1e-9);
+        const p=b.padres[i],bounds=b.limites.subarray(p*4,p*4+4);
+        assert.ok(b.posiciones[i*2]>=bounds[0]&&b.posiciones[i*2]<=bounds[2]&&b.posiciones[i*2+1]>=bounds[1]&&b.posiciones[i*2+1]<=bounds[3]);
+    }
+    // La restauración siempre parte del modelo base, sin acumular redondeos
+    // ni modificar las coordenadas que alimentan los siguientes gestos.
+    const vuelta=orientarDiversidad(a,new Matrix4().makeRotationFromQuaternion(new Quaternion()).elements);
+    for(let i=0;i<a.posiciones.length;i++) assert.ok(Math.abs(vuelta.posiciones[i]-a.posiciones[i])<1e-10);
+    assert.notDeepEqual(b.posiciones,a.posiciones);
+    const foco=2,vista={x:b.posiciones[foco*2],y:b.posiciones[foco*2+1],escala:1e7};
+    assert.deepEqual(proyectarDiversidad(b,foco,vista,800,500),{x:400,y:250});
 });

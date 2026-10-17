@@ -124,7 +124,7 @@ final class ExploradorTaxonomicoPublico
         // Los triggers existentes cambian la revisión por taxonomía, registros
         // y permisos de divulgación. La lectura nunca reutiliza otra revisión.
         $revision = (int) DB::table('divulgacion.portal_cache_revision')->where('id', 1)->value('version');
-        $clave = 'portal:indice-taxonomico:v2:'.$revision.':'.sha1(json_encode($filtros));
+        $clave = 'portal:indice-taxonomico:v3:'.$revision.':'.sha1(json_encode($filtros));
         if (isset($this->indices[$clave])) return $this->indices[$clave];
         try {
             $guardado = Cache::get($clave);

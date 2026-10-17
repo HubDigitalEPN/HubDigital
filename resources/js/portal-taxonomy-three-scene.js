@@ -24,12 +24,11 @@ export function crearEscenaTaxonomica(elemento, acciones) {
     const controles = crear('div', 'portal-three-controls'); controles.setAttribute('role', 'group'); controles.setAttribute('aria-label', 'Controles del árbol 3D');
     const volver = boton('Volver al padre de la rama 3D', '↶', () => {const padre = indice?.porClave.get(clave)?.padre; if (padre) acciones.navegar(padre);});
     controles.append(volver);
-    const ajuste = boton('Ajustar grafo 3D', '⤢', () => ajustar()); ajuste.className = 'portal-three-fit';
     const maximizar = boton('Ver visualizador en pantalla completa', '⛶', () => pantallaCompleta().catch(() => mostrarError('No se pudo activar la pantalla completa. Vuelve a intentarlo.')));
     maximizar.className = 'portal-three-maximize';
     cabecera.append(identidad, controles);
     const barra = elemento.closest('.taxonomy-navigator').querySelector('.taxonomy-navigator-zoom');
-    barra.prepend(cabecera); barra.append(ajuste, maximizar);
+    barra.prepend(cabecera); barra.append(maximizar);
     const vista = crear('div', 'portal-three-viewport'), leyenda = crear('div', 'portal-three-legend');
     vista.style.setProperty('--taxonomy-starfield', fondoEstelar3D());
     leyenda.setAttribute('aria-label', 'Filtrar mundos por rango taxonómico; pulsa otra vez para ver toda la rama'); leyenda.setAttribute('role', 'group');
@@ -41,7 +40,7 @@ export function crearEscenaTaxonomica(elemento, acciones) {
     salirPantalla.className = 'portal-three-fullscreen-exit'; marco.append(salirPantalla);
     let renderer;
     try {renderer = new WebGLRenderer({antialias: true, alpha: true, powerPreference: 'high-performance'});}
-    catch (error) {elemento.replaceChildren(); cabecera.remove(); ajuste.remove(); maximizar.remove(); throw error;}
+    catch (error) {elemento.replaceChildren(); cabecera.remove(); maximizar.remove(); throw error;}
     renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, 1.5));
     const canvas = renderer.domElement; canvas.className = 'portal-three-canvas'; canvas.tabIndex = 0;
     canvas.setAttribute('role', 'img'); canvas.setAttribute('aria-label', 'Árbol 3D: flechas para girar, + y − para zoom, Inicio para ajustar');
@@ -628,7 +627,7 @@ export function crearEscenaTaxonomica(elemento, acciones) {
         },
         contiene: claveSeleccion => Boolean(dibujoCompleto?.claves.includes(claveSeleccion)), error: mostrarError,
         mostrar(valor) {
-            activo = valor; cabecera.hidden = !valor; ajuste.hidden = maximizar.hidden = !valor;
+            activo = valor; cabecera.hidden = !valor; maximizar.hidden = !valor;
             if (valor) {ultimoFrame = 0; programar();}
             else {
                 orbit.autoRotate = false; marco.dataset.rotando = 'false';
@@ -648,7 +647,7 @@ export function crearEscenaTaxonomica(elemento, acciones) {
             if (bootstrapWorker) URL.revokeObjectURL(bootstrapWorker);
             for (const promesa of pendientes.values()) promesa.reject(new Error('Visor cerrado.')); pendientes.clear(); cache.limpiar();
             if (frame !== null) cancelAnimationFrame(frame); consultaPuntero.destruir();
-            liberar(puntos); liberar(conexiones); liberar(resaltado); atlasBiologico.dispose(); gruposBiologicos.clear(); renderer.dispose(); renderer.forceContextLoss(); elemento.replaceChildren(); cabecera.remove(); ajuste.remove(); maximizar.remove();
+            liberar(puntos); liberar(conexiones); liberar(resaltado); atlasBiologico.dispose(); gruposBiologicos.clear(); renderer.dispose(); renderer.forceContextLoss(); elemento.replaceChildren(); cabecera.remove(); maximizar.remove();
         },
     };
 }

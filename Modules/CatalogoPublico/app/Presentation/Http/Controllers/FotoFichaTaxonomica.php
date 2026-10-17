@@ -21,6 +21,6 @@ final class FotoFichaTaxonomica
         abort_unless($ficha?->foto_ruta, 404);
         try { $contenido = $fichas->contenidoFoto($ficha); }
         catch (\Throwable $error) { report($error); abort(404); }
-        return response($contenido, 200, ['Content-Type' => 'image/webp', 'Cache-Control' => 'no-store, private', 'X-Content-Type-Options' => 'nosniff']);
+        return response($contenido, 200, ['Content-Type' => $fichas->tipoFoto($ficha), 'Cache-Control' => 'no-store, private', 'X-Content-Type-Options' => 'nosniff']);
     }
 }

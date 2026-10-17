@@ -23,8 +23,10 @@ fi
 bash "${repo_dir}/deploy/oracle/scripts/verify-platform.sh" "${repo_dir}"
 
 install -d -m 0755 "${stage}"
-for directory in app config database lang Modules public resources routes vendor deploy scripts/depositos; do
-    if [[ "${directory}" == scripts/depositos && ! -d "${repo_dir}/${directory}" ]]; then continue; fi
+for directory in app config database lang Modules public resources routes vendor deploy scripts/depositos scripts/content; do
+    if [[ "${directory}" == scripts/depositos || "${directory}" == scripts/content ]]; then
+        [[ -d "${repo_dir}/${directory}" ]] || continue
+    fi
     [[ -d "${repo_dir}/${directory}" ]] || { echo "Falta ${directory}/ en el árbol fuente." >&2; exit 65; }
     while IFS= read -r -d '' link; do
         target="$(realpath -e -- "${link}")" || { echo "Enlace roto: ${link}" >&2; exit 65; }

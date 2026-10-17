@@ -45,7 +45,7 @@ if ($modo === '--aplicar') {
     foreach ($plan['fotos'] as $grupo => $referencia) {
         $existente = $actuales->first(fn (object $f): bool => $f->foto_ruta && $f->fuente_url === $referencia['fuente']);
         if ($existente) {$fotos[$grupo] = ['foto_ruta' => $existente->foto_ruta, 'foto_sha256' => $existente->foto_sha256]; continue;}
-        if (!preg_match('/^[a-z0-9-]+\.webp$/D', $referencia['archivo'])) throw new InvalidArgumentException('Nombre de miniatura inválido.');
+        if (!preg_match('/^[a-z0-9-]+\.(?:avif|webp)$/D', $referencia['archivo'])) throw new InvalidArgumentException('Nombre de miniatura inválido.');
         $contenido = file_get_contents($carpeta.'/'.$referencia['archivo']);
         if (!hash_equals($referencia['sha256'], hash('sha256', $contenido))) throw new RuntimeException('La miniatura no corresponde a su referencia.');
         $fotos[$grupo] = $fichas->prepararFoto($contenido);
@@ -77,7 +77,7 @@ foreach ($entradas as $id => $entrada) {
     if (!$ficha || !$ficha->publicada || !$ficha->foto_ruta) continue;
     if (!isset($copiadas[$ficha->foto_sha256])) {
         $contenido = $fichas->contenidoFoto($ficha); $previo = config('deposit-storage.prefix');
-        try {config(['deposit-storage.prefix' => $prefijo]); (new AlmacenamientoDepositos)->guardarContenido($ficha->foto_ruta, $contenido, 'image/webp');}
+        try {config(['deposit-storage.prefix' => $prefijo]); (new AlmacenamientoDepositos)->guardarContenido($ficha->foto_ruta, $contenido, $fichas->tipoFoto($ficha));}
         finally {config(['deposit-storage.prefix' => $previo]);}
         $copiadas[$ficha->foto_sha256] = true;
         if (count($copiadas) % 10 === 0) {echo json_encode(['fotos_copiadas' => count($copiadas)]).PHP_EOL; flush();}

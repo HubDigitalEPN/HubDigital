@@ -16,6 +16,16 @@ use Modules\CatalogoPublico\Presentation\Http\Controllers\RegistrosTaxonExplorad
 uses(Tests\DatabaseFeatureTestCase::class);
 uses(Tests\Concerns\ColeccionPortalAislada::class);
 
+test('un nombre hecho de NBSP detiene el linaje público antes de dibujar nodos vacíos', function (): void {
+    $f = exploradorTaxonomicoFixture(1); $rama = $f['ramas'][0];
+    DB::table('taxonomia.taxones')->where('id', $rama['genero']['id'])->update(['nombre_cientifico' => "\u{00A0}"]);
+    $respuesta = $this->getJson(route('portal.explorador', ['completo' => 1]))->assertOk()->json();
+    expect(array_column($respuesta['nodos'], 'id'))->toContain($rama['familia']['id'])
+        ->not->toContain($rama['genero']['id'], $rama['especie']['id']);
+    expect(array_filter($respuesta['nodos'], fn ($n) => trim($n['nombre']) === '' || $n['nombre'] === "\u{00A0}"))->toBeEmpty();
+    expect(DB::table('taxonomia.taxones')->where('id', $rama['genero']['id'])->value('nombre_cientifico'))->toBe("\u{00A0}");
+});
+
 test('las sugerencias traducen fragmentos españoles con tildes sin salir de la rama ni revelar taxones ocultos', function (): void {
     $f = exploradorTaxonomicoFixture(2); $rama = $f['ramas'][1];
     DB::table('taxonomia.taxones')->where('id', $rama['orden']['id'])->update(['nombre_cientifico' => 'Hymenoptera']);

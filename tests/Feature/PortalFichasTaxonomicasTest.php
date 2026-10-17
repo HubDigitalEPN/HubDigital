@@ -49,9 +49,10 @@ test('la fotografía se comprime y su publicación respeta permisos vigentes del
         ->set('descripcion', 'Una familia de invertebrados.')->set('publicada', true)->call('guardar')->assertHasNoErrors();
     $ficha = app(FichasTaxonomicas::class)->buscar($rama['familia']);
     $binario = Storage::disk('local')->get($ficha->foto_ruta); $tamano = getimagesizefromstring($binario);
-    expect($tamano['mime'])->toBe('image/webp')->and($tamano[0])->toBeLessThanOrEqual(360)->and($tamano[1])->toBeLessThanOrEqual(270)
+    expect($tamano['mime'])->toBe('image/avif')->and(strlen($binario))->toBeLessThanOrEqual(FichasTaxonomicas::FOTO_MAX_BYTES)
+        ->and($tamano[0])->toBeLessThanOrEqual(360)->and($tamano[1])->toBeLessThanOrEqual(270)
         ->and(hash('sha256', $binario))->toBe($ficha->foto_sha256);
-    $this->get(route('portal.ficha-foto', ['taxon' => $rama['familia']]))->assertOk()->assertHeader('Content-Type', 'image/webp');
+    $this->get(route('portal.ficha-foto', ['taxon' => $rama['familia']]))->assertOk()->assertHeader('Content-Type', 'image/avif');
     $panel->set('publicada', false)->call('guardar')->assertHasNoErrors();
     $this->getJson(route('portal.ficha', ['taxon' => $rama['familia']]))->assertOk()->assertJsonPath('descripcion', '')->assertJsonPath('foto', null);
     $this->get(route('portal.ficha-foto', ['taxon' => $rama['familia']]))->assertNotFound();
@@ -60,6 +61,31 @@ test('la fotografía se comprime y su publicación respeta permisos vigentes del
     DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $especimen)->update(['family_visible' => false]);
     $this->getJson(route('portal.ficha', ['taxon' => $rama['familia']]))->assertNotFound();
     $this->get(route('portal.ficha-foto', ['taxon' => $rama['familia']]))->assertNotFound();
+});
+
+test('una foto AVIF se puede reemplazar desde el editor sin modificar la leyenda ni perder compatibilidad WebP', function (): void {
+    [$rama] = fichaPortalFixture();
+    config(['deposit-storage.driver' => 'local', 'deposit-storage.require_remote' => false]); Storage::fake('local');
+    $servicio = app(FichasTaxonomicas::class);
+    $imagenOriginal = UploadedFile::fake()->image('original.png', 800, 500);
+    $original = (string) file_get_contents($imagenOriginal->getRealPath());
+    $avif = $servicio->prepararFoto($original);
+    $archivo = UploadedFile::fake()->createWithContent('nueva.avif', Storage::disk('local')->get($avif['foto_ruta']));
+    $panel = Livewire::actingAs(User::factory()->administrador()->create())->test(FichasTaxonomicasPortal::class)
+        ->call('seleccionar', $rama['clase'])->set('descripcion', 'Leyenda editable de la clase.')
+        ->set('fotoAlt', 'Ejemplo de la clase')->set('foto', $archivo)->set('publicada', true)->call('guardar')->assertHasNoErrors();
+    $this->get(route('portal.ficha-foto', ['taxon' => $rama['clase']]))->assertOk()->assertHeader('Content-Type', 'image/avif');
+    $panel->set('descripcion', 'Leyenda reemplazada.')->call('guardar')->assertHasNoErrors();
+    expect($servicio->buscar($rama['clase'])->descripcion)->toBe('Leyenda reemplazada.');
+    $webp = (string) \Intervention\Image\ImageManager::usingDriver(new \Intervention\Image\Drivers\Gd\Driver)
+        ->decodeBinary($original)->encode(new \Intervention\Image\Encoders\WebpEncoder(quality: 64));
+    $sha = hash('sha256', $webp); $ruta = 'divulgacion/fichas/'.$sha.'.webp'; Storage::disk('local')->put($ruta, $webp);
+    DB::table(FichasTaxonomicas::TABLA)->where('taxon_id', $rama['clase'])->update(['foto_ruta' => $ruta, 'foto_sha256' => $sha]);
+    $this->get(route('portal.ficha-foto', ['taxon' => $rama['clase']]))->assertOk()->assertHeader('Content-Type', 'image/webp');
+    // El hash no permite servir otro formato con una extensión falsificada.
+    $rutaFalsa = 'divulgacion/fichas/'.$sha.'.avif'; Storage::disk('local')->put($rutaFalsa, $webp);
+    DB::table(FichasTaxonomicas::TABLA)->where('taxon_id', $rama['clase'])->update(['foto_ruta' => $rutaFalsa]);
+    $this->get(route('portal.ficha-foto', ['taxon' => $rama['clase']]))->assertNotFound();
 });
 
 test('validación, conflicto editorial y despublicación conservan el contenido previo', function (): void {

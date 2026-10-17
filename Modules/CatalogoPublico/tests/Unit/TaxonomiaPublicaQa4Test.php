@@ -52,3 +52,14 @@ it('QA4 conserva el prefijo real y excluye marcadores, sus hijos y ciclos con l�
     $validos = CalidadDatoPublico::taxonesConLinajeValido($taxones);
     expect($validos)->toContain('raiz', 'parcial', 'profundo29')->not->toContain('nota', 'hijo', 'ciclo', 'profundo30');
 });
+
+it('excluye nombres hechos de separadores Unicode sin inventar nombres científicos', function (): void {
+    foreach (["\u{00A0}", "\u{202F}", "\u{2003}", "\u{200B}\u{FEFF}", " \t\u{00A0}"] as $vacio) {
+        expect(CalidadDatoPublico::esTextoValido($vacio))->toBeFalse();
+        expect(CalidadDatoPublico::rutaConfirmada([
+            ['nombre' => 'Thomisidae'], ['nombre' => $vacio], ['nombre' => 'Taxón posterior'],
+        ]))->toBe([['nombre' => 'Thomisidae']]);
+    }
+    expect(CalidadDatoPublico::esTextoValido('Hypognatha'))->toBeTrue()
+        ->and(CalidadDatoPublico::esTextoValido("Alpaida\u{00A0}sp.1"))->toBeTrue();
+});

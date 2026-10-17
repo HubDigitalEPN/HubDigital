@@ -22,8 +22,6 @@ use Modules\CatalogoPublico\Infrastructure\FichasTaxonomicas;
 final class FichasTaxonomicasPortal extends Component
 {
     use WithInteractiveGrid;
-    use WithPagination;
-
     use WithFileUploads, WithPagination;
 
     public string $busqueda = '';
@@ -59,7 +57,7 @@ final class FichasTaxonomicasPortal extends Component
             'descripcion' => ['nullable', 'string', 'max:800'], 'fotoAlt' => ['nullable', 'string', 'max:180'],
             'credito' => ['nullable', 'string', 'max:500'], 'fuenteUrl' => ['nullable', 'url:https', 'max:1000'],
             'publicada' => ['boolean'], 'quitarFoto' => ['boolean'],
-            'foto' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:8192', 'dimensions:max_width=4096,max_height=4096'],
+            'foto' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,avif', 'max:8192', 'dimensions:max_width=4096,max_height=4096'],
         ]);
         $fichas = app(FichasTaxonomicas::class);
         $actual = $fichas->buscar($this->taxonId);
@@ -83,11 +81,14 @@ final class FichasTaxonomicasPortal extends Component
 
     public function render(): View
     {
-        $lista = DB::table('taxonomia.taxones')->select('id', 'nombre_cientifico', 'rango')
+        $disponible = Schema::hasTable(FichasTaxonomicas::TABLA);
+        $lista = DB::table('taxonomia.taxones')->select('taxonomia.taxones.id', 'nombre_cientifico', 'rango')
             ->when(trim($this->busqueda) !== '', fn ($q) => $q->where('nombre_cientifico', 'ILIKE', '%'.addcslashes(mb_substr(trim($this->busqueda), 0, 120), '\\%_').'%'));
+        if ($disponible) $lista->leftJoin(FichasTaxonomicas::TABLA.' as ficha', 'ficha.taxon_id', '=', 'taxonomia.taxones.id')
+            ->addSelect('ficha.foto_ruta', 'ficha.publicada');
         $lista = $this->ordenarConsultaGrilla($lista, 'nombre_cientifico')->orderBy('id')->paginate($this->filasGrilla());
         return view('livewire.administracion.fichas-taxonomicas-portal', [
-            'taxones' => $lista, 'disponible' => Schema::hasTable(FichasTaxonomicas::TABLA),
+            'taxones' => $lista, 'disponible' => $disponible,
             'taxon' => $this->taxonId ? DB::table('taxonomia.taxones')->where('id', $this->taxonId)->first(['nombre_cientifico', 'rango']) : null,
             'ficha' => $this->taxonId ? app(FichasTaxonomicas::class)->buscar($this->taxonId) : null,
         ]);
