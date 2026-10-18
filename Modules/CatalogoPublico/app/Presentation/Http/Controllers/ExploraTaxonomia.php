@@ -34,6 +34,10 @@ trait ExploraTaxonomia
         $explorador = app(ExploradorTaxonomicoPublico::class);
         $filtros = FiltrosBusqueda::desde(['filtroTaxon' => $this->filtroTaxon]);
         $seleccion = $this->filtroTaxonId !== '' ? $explorador->taxon($filtros, $this->filtroTaxonId) : null;
+        if ($seleccion === null && $this->filtroTaxon !== '') {
+            $exactos = $explorador->exacto($filtros, $this->filtroTaxon);
+            if (count($exactos) === 1) $seleccion = $exactos[0];
+        }
         if ($this->filtroTaxon !== '') {
             // Un texto confirmado muestra todos los descendientes públicos
             // del resultado; no sólo Filo/Clase ni una precarga de 300 nodos.
@@ -46,12 +50,18 @@ trait ExploraTaxonomia
         $datos['busquedaTaxon'] = $this->filtroTaxon;
         $datos['filos'] = $this->filtrosActuales()->filosSeleccionados();
         $datos['seleccionado'] = $this->filtroTaxonId;
+        $datos['linaje'] = [];
         if ($seleccion) {
-            $porClave = array_column($datos['nodos'], null, 'clave'); $padre = $seleccion['padre'];
-            while ($padre !== null && isset($porClave[$padre])) {
-                $datos['expandidos'][] = $padre; $padre = $porClave[$padre]['padre'];
+            $porClave = array_column($datos['nodos'], null, 'clave'); $cursor = $seleccion['clave'];
+            $vistos = [];
+            while ($cursor !== null && isset($porClave[$cursor]) && !isset($vistos[$cursor])) {
+                $vistos[$cursor] = true; $datos['linaje'][] = $porClave[$cursor]['id'];
+                $padre = $porClave[$cursor]['padre'];
+                if ($padre !== null) $datos['expandidos'][] = $padre;
+                $cursor = $padre;
             }
         }
+        $datos['expandidos'] = array_values(array_unique($datos['expandidos']));
         return $datos;
     }
 

@@ -280,17 +280,17 @@ test('el modal abre directamente todos los registros de la ubicación con campos
     }
     $publicos = $celdasFila($dom, $f['ids'][1]);
     expect($publicos)->toMatchArray([
-        'Código de catálogo' => $f['codigos'][1], 'Identificación científica' => $f['prefijo'].' alfa',
-        'Fecha original' => '2025-01-10', 'Colector' => 'QA', 'País' => 'Ecuador', 'Provincia' => 'Pichincha',
-        'Localidad' => 'Localidad registrada Ñambí', 'Localidad original' => 'Localidad original Ñambí',
-        'Latitud' => (string) $latitud, 'Longitud' => (string) $longitud,
-        'Referencia de coordenadas' => 'Referencia GPS original', 'Elevación mín. (m)' => '0', 'Elevación máx. (m)' => '120',
-        'Método de colecta' => 'Red '.$f['prefijo'], 'Individuos' => '0', 'Condición de tipo' => 'Paratipo', 'Disposición' => 'En la colección',
-        'Notas del espécimen' => $notaPublica, 'Estado original' => 'Presente', 'Casta' => 'obrera', 'Estadio' => 'Adulto',
-    ])->toHaveKeys(['Localidad INEC', 'Referencia INEC', 'Notas de tipo', 'Fotografías publicadas']);
+        'catalogNumber' => $f['codigos'][1], 'scientificName' => $f['prefijo'].' alfa',
+        'eventDate' => '2025-01-10', 'recordedBy' => 'QA', 'country' => 'Ecuador', 'stateProvince' => 'Pichincha',
+        'locality' => 'Localidad registrada Ñambí', 'verbatimLocality' => 'Localidad original Ñambí',
+        'decimalLatitude' => (string) $latitud, 'decimalLongitude' => (string) $longitud,
+        'Coordinate reference' => 'Referencia GPS original', 'minimumElevationInMeters' => '0', 'maximumElevationInMeters' => '120',
+        'samplingProtocol' => 'Red '.$f['prefijo'], 'individualCount' => '0', 'typeStatus' => 'Paratipo', 'disposition' => 'En la colección',
+        'occurrenceRemarks' => $notaPublica, 'occurrenceStatus' => 'Presente', 'caste' => 'obrera', 'lifeStage' => 'Adulto',
+    ])->toHaveKeys(['Locality (INEC)', 'INEC reference', 'Type remarks', 'Photographs']);
     $privados = $celdasFila($dom, $f['ids'][0]);
-    expect($privados['Colector'])->toBe('—')->and($privados['Localidad'])->toBe('—')
-        ->and($privados['Notas del espécimen'])->toBe('—')->and($privados['Elevación mín. (m)'])->toBe('—')
+    expect($privados['recordedBy'])->toBe('—')->and($privados['locality'])->toBe('—')
+        ->and($privados['occurrenceRemarks'])->toBe('—')->and($privados['minimumElevationInMeters'])->toBe('—')
         ->and($dom->query('//table[@class="atlas-record-table"]//script')->length)->toBe(0)
         ->and($dom->query('//table[@class="atlas-record-table"]//a[@title="foto-publica-tabla.jpg"]')->length)->toBe(1)
         ->and($dom->query('//table[@class="atlas-record-table"]//a[@title="foto-codigo-reservado.jpg"]')->length)->toBe(0);

@@ -134,12 +134,14 @@
         </div>
         <div class="border-t border-white/10">
             <div class="portal-container mx-auto flex flex-col gap-2 py-5 text-xs text-white/55 md:flex-row md:items-center md:justify-between">
-                <p>© {{ now()->year }} {{ $navegacion('derechos') }}</p>
+                <p>Escuela Politécnica Nacional · Laboratorio de Invertebrados</p>
                 <p>{{ $navegacion('divulgacion') }}</p>
             </div>
         </div>
     </footer>
     @endunless
+
+    <x-platform-footer />
 
     @if(config('chatbot.enabled', true))
         @livewire(\Modules\CatalogoPublico\Presentation\Http\Controllers\ChatBotWidget::class)

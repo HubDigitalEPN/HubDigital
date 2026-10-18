@@ -601,6 +601,8 @@
 .research-phylum-tree.research-check-list { min-height: 12rem; max-height: clamp(12rem, 46dvh, 32rem); padding: .2rem 0; overflow: auto; }
 .research-phylum-row { display: flex; align-items: center; height: 32px; min-height: 32px; box-sizing: border-box; gap: 3px; padding: 2px 5px 2px calc(3px + var(--nivel-filo) * 10px); border-left: 1px solid #dce7ef; }
 .research-phylum-row.is-selected { background: #c9e5ff; border-left-color: #17699b; color: #125b8d; }
+.research-phylum-row.is-lineage { background: #e4f1fb; border-left: 3px solid #17699b; color: #125b8d; }
+.research-phylum-row.is-lineage label > span { font-weight: 650; }
 .research-phylum-row .research-phylum-toggle { display: grid; place-items: center; flex: none; width: 22px; height: 24px; padding: 3px; color: #245d82; }
 .research-phylum-toggle svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.8; }
 .research-phylum-toggle svg.is-expanded { transform: rotate(90deg); }

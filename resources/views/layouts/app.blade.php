@@ -2,5 +2,6 @@
     <flux:main>
         <x-app-breadcrumbs />
         {{ $slot }}
+        <div class="mt-8"><x-platform-footer /></div>
     </flux:main>
 </x-layouts::app.sidebar>

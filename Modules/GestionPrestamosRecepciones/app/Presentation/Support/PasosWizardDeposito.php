@@ -10,7 +10,7 @@ final class PasosWizardDeposito
     public const DESTINOS = [1 => 0, 2 => 1, 3 => 2, 4 => 3, 5 => 4, 6 => 7, 7 => 8];
 
     public const NOMBRES = [1 => 'Solicitud', 2 => 'Trámite', 3 => 'Origen',
-        4 => 'Archivos y firmas', 5 => 'Datos', 6 => 'Detalle', 7 => 'Envío'];
+        4 => 'Archivos y firmas', 5 => 'Datos', 6 => 'Subir datos', 7 => 'Envío'];
 
     public static function accionSiguiente(int $pasoPersistido): string
     {

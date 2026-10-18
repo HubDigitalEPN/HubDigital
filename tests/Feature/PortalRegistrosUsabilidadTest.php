@@ -39,14 +39,14 @@ test('la tabla pública ofrece todas las columnas permitidas y aplica la selecci
     $catalogo = Livewire::withQueryParams(['vista' => 'registros', 'fc' => 'QA3-CHAT-1'])->test(PortalCatalogo::class);
     $dom = domRegistrosPublicos($catalogo->html());
     expect($dom->query('//table[@class="atlas-record-table"]/thead/tr/th')->length)->toBe(26)
-        ->and($dom->query('//table[@class="atlas-record-table"]/thead/tr/th[normalize-space(.)="Disposición"]')->length)->toBe(1)
+        ->and($dom->query('//table[@class="atlas-record-table"]/thead/tr/th[normalize-space(.)="disposition"]')->length)->toBe(1)
         ->and($dom->query('//dialog[contains(@class,"portal-record-dialog")]')->length)->toBe(1);
 
     $servicio->actualizar(['occurrence_id', 'scientific_name', 'recorded_by']);
     $catalogo->call('$refresh')->assertDontSee('COLECTOR-RESERVADO-FICHA');
     $dom = domRegistrosPublicos($catalogo->html());
     $titulos = array_map(fn (DOMNode $n): string => trim($n->textContent), iterator_to_array($dom->query('//table[@class="atlas-record-table"]/thead/tr/th')));
-    expect($titulos)->toBe(['Código de catálogo', 'Identificación científica', 'Colector'])
+    expect($titulos)->toBe(['catalogNumber', 'scientificName', 'recordedBy'])
         ->and($dom->query('//table[@class="atlas-record-table"]//tr[@tabindex="0"]')->length)->toBe(1)
         ->and($dom->query('//table[@class="atlas-record-table"]//th[@scope="row"]')->item(0)->textContent)->toBe('QA3-CHAT-1');
 

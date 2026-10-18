@@ -16,7 +16,7 @@
     <div class="atlas-stage">
         <section x-ref="panelMapa" class="atlas-panel atlas-map-panel" :class="{'atlas-map-maximized': maximizado}" x-on:keydown.escape.window="if (maximizado && !$event.defaultPrevented && !document.querySelector('dialog[open]') && document.querySelector('#chat-bot-trigger')?.getAttribute('aria-expanded') !== 'true' && !$event.target.closest('#chat-bot-panel')) minimizar()" aria-label="Mapa de registros públicos">
             <header class="atlas-panel-header atlas-map-tools">
-                <h1 class="atlas-map-title">{{ $dashboardTexto('coleccion') }} <small class="atlas-collection-count">({{ number_format((int) $resumen['registros'], 0, ',', '.') }} {{ (int) $resumen['registros'] === 1 ? 'registro' : 'registros' }})</small></h1>
+                <h1 class="atlas-map-title">Distribución de Registros <small class="atlas-collection-count">({{ number_format((int) $resumen['registros'], 0, ',', '.') }})</small></h1>
                 <div class="atlas-map-actions">
                     <button type="button" class="atlas-icon-button" x-ref="maximizar" x-on:click="alternarTamano()" :aria-label="maximizado ? @js($dashboardTexto('minimizar_mapa')) : @js($dashboardTexto('maximizar_mapa'))" :title="maximizado ? @js($dashboardTexto('minimizar_mapa')) : @js($dashboardTexto('maximizar_mapa'))" :aria-pressed="maximizado.toString()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path x-show="!maximizado" d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/><path x-show="maximizado" d="M3 8h5V3m8 0v5h5M8 21v-5H3m18 0h-5v5"/></svg></button>
                     <x-catalogopublico::menu-analisis tipo="mapa" :datos="$datosMapa['mapa']" />

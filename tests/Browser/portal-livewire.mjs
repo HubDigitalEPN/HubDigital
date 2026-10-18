@@ -151,7 +151,7 @@ try {
     await conexion.send('Fetch.disable');
     await reposo();
     assert.match(await evaluar('window.location.search'), /vista=mapa/);
-    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /18 registros/);
+    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /^\(18\)$/);
     assert.ok(await evaluar(`!document.querySelector('.portal-curator-access') && ![...document.querySelectorAll('button')].some(b=>b.getAttribute('wire:click')?.startsWith('descargar') || ['pdf()','verRegistros(menuNodo)'].includes(b.getAttribute('x-on:click')))`),'El visitante conserva la exploración sin controles operativos.');
     await conexion.send('Page.navigate',{url:origen+'/login'});
     await visible("document.querySelector('#hub-login-form') && window.Alpine");
@@ -167,7 +167,7 @@ try {
     await evaluar("[...document.querySelectorAll('[aria-labelledby=\"titulo-riqueza\"] .atlas-ranked-row')].find(b=>b.textContent.includes('Orellana')).click()");
     await visible("document.querySelector('#titulo-riqueza')?.textContent === 'Registros por localidad'"); await reposo();
     assert.equal(await evaluar("document.activeElement?.classList.contains('atlas-territory-back')"), true);
-    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /12 registros/);
+    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /^\(12\)$/);
     const peticionesAntesLocalidad = totalPeticiones;
     await evaluar("(() => {const input=document.querySelector('#buscar-localidad-panel'); input.value='browser uno'; input.dispatchEvent(new Event('input',{bubbles:true}));})()");
     await reposo(); assert.equal(totalPeticiones, peticionesAntesLocalidad);
@@ -177,7 +177,7 @@ try {
     await evaluar("document.querySelector('.atlas-territory-back').click()");
     await visible("document.querySelector('#titulo-riqueza')?.textContent === 'Registros por provincia'"); await reposo();
     assert.equal(await evaluar("document.activeElement?.id"), 'titulo-riqueza');
-    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /18 registros/);
+    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /^\(18\)$/);
     await evaluar("document.querySelector('[aria-labelledby=\"titulo-riqueza\"] .atlas-panel-tools > button').click(); [...document.querySelectorAll('#menu-riqueza button')].find(b => b.getAttribute('x-on:click') === 'alternarGrafico()').click()");
     await visible("window.HubDigitalChart.getChart(document.querySelector('[aria-labelledby=\"titulo-riqueza\"] canvas'))?.scales.y.ticks.some(t => t.label === 'Orellana')");
     assert.deepEqual(await evaluar("window.HubDigitalChart.getChart(document.querySelector('[aria-labelledby=\"titulo-riqueza\"] canvas')).scales.y.ticks.map(t=>t.label).sort()"), ['Orellana', 'Pichincha']);
@@ -190,12 +190,12 @@ try {
     await visible("document.querySelector('.research-search [role=listbox] [role=option]')?.textContent.length > 0");
     await evaluar("[...document.querySelectorAll('.research-search [role=option]')][0].dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,cancelable:true}))");
     await reposo(); assert.equal(totalPeticiones, peticionesAntesTexto);
-    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /18 registros/);
+    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /^\(18\)$/);
     await conexion.send('Input.dispatchKeyEvent', {type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13});
     await conexion.send('Input.dispatchKeyEvent', {type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13});
-    await visible("document.querySelector('.atlas-collection-count')?.textContent.includes('1 registro)')"); await reposo();
+    await visible("document.querySelector('.atlas-collection-count')?.textContent.trim()==='(1)'"); await reposo();
     await evaluar("[...document.querySelectorAll('.collection-active-filters button')].find(b=>b.getAttribute('wire:click')?.includes('filtroCatalogo')).click()");
-    await visible("document.querySelector('.atlas-collection-count')?.textContent.includes('18 registros')"); await reposo();
+    await visible("document.querySelector('.atlas-collection-count')?.textContent.trim()==='(18)'"); await reposo();
     await evaluar("document.querySelector('.atlas-map-actions .atlas-panel-tools > button').click()");
     await evaluar("[...document.querySelectorAll('.atlas-map-actions [role=menuitem]')].find(b => b.textContent.includes('Alternar agrupaciones')).click()");
     await visible("document.querySelectorAll('.atlas-map [aria-label^=\"Ubicación original\"]').length === 3");
@@ -218,11 +218,11 @@ try {
     await evaluar(`document.querySelector('.research-check-list input[value=${JSON.stringify(datos.filos[0])}]').click()`);
     await visible("document.querySelector('.research-sidebar').inert && document.querySelector('.research-filter-lock').disabled");
     await reposo();
-    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /17 registros/);
+    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /^\(17\)$/);
     await mostrarTooltip();
     await evaluar(`document.querySelector('.research-check-list input[value=${JSON.stringify(datos.filos[0])}]').click()`);
     await reposo();
-    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /18 registros/);
+    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /^\(18\)$/);
     await mostrarTooltip();
     await conexion.send('Network.emulateNetworkConditions', {offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1});
 
@@ -242,7 +242,7 @@ try {
     assert.equal(await evaluar("document.querySelector('.portal-taxonomy-visualization').getAttribute('aria-pressed')"),'false');
     const raizDiversidad = await evaluar("document.querySelector('.portal-diversity-scene').dataset.raiz");
     assert.equal(await evaluar("document.querySelector('.portal-diversity-scene').dataset.camara"),'perspectiva','La vista inicial tiene perspectiva y geometría con volumen.');
-    assert.equal(await evaluar("document.querySelector('.portal-diversity-scene').dataset.rangoDetalle"),'Clase');
+    assert.equal(await evaluar("document.querySelector('.portal-diversity-scene').dataset.rangoDetalle"),'Orden');
     assert.ok(await evaluar("Number(document.querySelector('.portal-diversity-scene').dataset.ramasDibujadas)<160"),'La vista inicial no dibuja ramas de niveles cerrados.');
     await evaluar(`(() => {const etiqueta=document.querySelector('.portal-diversity-label.is-selected'),canvas=document.querySelector('.portal-diversity-canvas'),r=canvas.getBoundingClientRect();canvas.dispatchEvent(new PointerEvent('pointermove',{clientX:r.left+Number(etiqueta.dataset.puntoX)*r.width/canvas.clientWidth,clientY:r.top+Number(etiqueta.dataset.puntoY)*r.height/canvas.clientHeight,bubbles:true}));})()`);
     assert.ok(await evaluar("document.querySelector('.portal-diversity-tooltip').checkVisibility() && document.querySelector('.portal-diversity-tooltip strong').textContent===document.querySelector('.portal-three-title').textContent"),'Se puede identificar un nodo al señalarlo sin cambiar la raíz ni la ficha seleccionada.');
@@ -250,8 +250,11 @@ try {
     await visible("document.querySelector('.portal-diversity-scene')?.dataset.nombre==="+JSON.stringify(claseAbierta));await reposo();
     assert.equal(await evaluar("document.querySelector('.portal-diversity-label.is-selected strong').textContent"),claseAbierta,'Cambiar de raíz renueva el nombre científico del marcador y no conserva la etiqueta anterior.');
     await evaluar("document.querySelector('[aria-label=\"Acercar árbol\"]').click()");
-    await visible("document.querySelector('.portal-diversity-scene').dataset.rangoDetalle==='Orden' && document.querySelector('.portal-diversity-scene').dataset.animando==='false'");
-    assert.ok(await evaluar("[...document.querySelectorAll('.portal-diversity-label small')].some(e=>e.textContent.startsWith('Orden'))"),'El siguiente acercamiento muestra órdenes de la clase, además de habilitar su rango.');
+    await visible("document.querySelector('.portal-diversity-scene').dataset.rangoDetalle==='Suborden' && document.querySelector('.portal-diversity-scene').dataset.animando==='false'");
+    assert.ok(await evaluar("[...document.querySelectorAll('.portal-diversity-label small')].some(e=>e.textContent.startsWith('Suborden'))"),'El siguiente acercamiento muestra subórdenes de la clase, además de habilitar su rango.');
+    assert.ok(await evaluar("document.querySelector('.portal-diversity-scene').classList.contains('is-expanded')"),'El primer zoom amplía el árbol automáticamente.');
+    await evaluar("document.querySelector('.portal-diversity-fullscreen-exit').click()");
+    await visible("!document.querySelector('.portal-diversity-scene').classList.contains('is-expanded') && !document.fullscreenElement");
     await evaluar("document.querySelector('.portal-three-controls button').click()");
     await visible("document.querySelector('.portal-diversity-scene')?.dataset.raiz==="+JSON.stringify(raizDiversidad));await reposo();
     for (let i=0;i<9;i++) {await evaluar("document.querySelector('[aria-label=\"Acercar árbol\"]').click()");await reposo();await visible("document.querySelector('.portal-diversity-scene').dataset.animando==='false'");assert.ok(Number(await evaluar("document.querySelector('.portal-diversity-scene').dataset.enEncuadre"))>0,'El acercamiento conserva taxones en pantalla, también al llegar a especies.');}
@@ -259,7 +262,12 @@ try {
     assert.ok(await evaluar("!document.querySelector('[aria-label=\"Acercar árbol\"]').disabled"));
     await evaluar("document.querySelector('.portal-diversity-canvas,.portal-three-canvas').dispatchEvent(new KeyboardEvent('keydown',{key:'Home',bubbles:true}))");await reposo();
     assert.equal(await evaluar("document.querySelector('.portal-diversity-scene').dataset.zoom"),'1.000');
-    assert.equal(await evaluar("document.querySelector('.portal-diversity-scene').dataset.rangoDetalle"),'Clase','Alejar vuelve a ocultar los rangos posteriores.');
+    assert.equal(await evaluar("document.querySelector('.portal-diversity-scene').dataset.rangoDetalle"),'Orden','Alejar vuelve a ocultar los rangos posteriores.');
+    const yemaSenalada=await evaluar(`(() => {const el=[...document.querySelectorAll('.portal-diversity-label')].find(e=>!e.classList.contains('is-selected')),canvas=document.querySelector('.portal-diversity-canvas'),r=canvas.getBoundingClientRect();canvas.dispatchEvent(new WheelEvent('wheel',{deltaY:-120,clientX:r.left+Number(el.dataset.puntoX)*r.width/canvas.clientWidth,clientY:r.top+Number(el.dataset.puntoY)*r.height/canvas.clientHeight,bubbles:true,cancelable:true}));return el.dataset.clave;})()`);
+    await visible("document.querySelector('.portal-diversity-scene').dataset.animando==='false'");
+    assert.equal(await evaluar("document.querySelector('.portal-diversity-scene').dataset.yemaZoom"),yemaSenalada,'La rueda centra la yema más cercana al gesto.');
+    assert.ok(await evaluar(`(() => {const s=document.querySelector('.portal-diversity-scene'),e=[...s.querySelectorAll('.portal-diversity-label')].find(e=>e.dataset.clave===s.dataset.yemaZoom),c=s.querySelector('canvas');return e&&Math.abs(Number(e.dataset.puntoX)-c.clientWidth/2)<1&&Math.abs(Number(e.dataset.puntoY)-c.clientHeight/2)<1;})()`),'La yema queda centrada horizontal y verticalmente.');
+    await evaluar("document.querySelector('.portal-diversity-canvas').dispatchEvent(new KeyboardEvent('keydown',{key:'Home',bubbles:true}))");await reposo();
     assert.equal(await evaluar("document.querySelector('.portal-three-fit,.portal-branch-retry,.portal-diversity-guide')"),null,'Los controles y la ayuda visual retirados no ocupan espacio.');
     const estadoAntesDeGirar=await evaluar("({raiz:document.querySelector('.portal-diversity-scene').dataset.raiz,centro:document.querySelector('.portal-diversity-scene').dataset.centro,orientacion:document.querySelector('.portal-diversity-scene').dataset.orientacion})");
     const centroGiro=await evaluar("(() => {const r=document.querySelector('.portal-diversity-canvas').getBoundingClientRect();return {x:r.left+r.width*.5,y:r.top+r.height*.5};})()");
@@ -305,7 +313,7 @@ try {
     }
     const raizETE = ".portal-branch-row[aria-label^=" + JSON.stringify('Browsersuborder' + token + '0,') + "]";
     await buscarEnArbol('FiloBrowser' + token);
-    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /18 registros/);
+    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /^\(18\)$/);
     await evaluar("document.querySelector('#sugerencias-explorador button').click()");
     await visible("document.querySelector('.portal-taxonomy-branch-pane')?.dataset.nombre===" + JSON.stringify('FiloBrowser' + token));
     await visible("document.querySelector('.portal-three-scene')?.dataset.nombre===" + JSON.stringify('FiloBrowser' + token));
@@ -381,7 +389,7 @@ try {
     await visible("document.querySelector('.portal-taxonomy-branch-pane')?.dataset.nombre===" + JSON.stringify(datos.taxonBusqueda + ' alfa') + " && !document.querySelector('#sugerencias-explorador').checkVisibility()"); await reposo();
     assert.equal(await evaluar("document.querySelectorAll('.taxonomy-explorer-pill').length"), 0);
     assert.equal(totalPeticiones, antesEnterArbol, 'Localizar un taxón no modifica el mapa ni Livewire.');
-    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /18 registros/);
+    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /^\(18\)$/);
     const cabeceraETE = await evaluar("(() => {const r=document.querySelector('.taxonomy-explorer-header').getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+15};})()");
     await conexion.send('Input.dispatchMouseEvent', {type:'mousePressed',button:'left',clickCount:1,...cabeceraETE});
     await conexion.send('Input.dispatchMouseEvent', {type:'mouseMoved',button:'left',buttons:1,x:cabeceraETE.x+35,y:cabeceraETE.y-20});
@@ -451,10 +459,10 @@ try {
     await evaluar("[...document.querySelectorAll('.taxonomy-explorer-context-menu button')].find(b=>b.textContent==='Ver en el mapa').click()");
     await visible("!document.querySelector('#explorador-taxonomico').open && document.activeElement.classList.contains('atlas-map')"); await reposo();
     assert.equal(await evaluar("new URL(location.href).searchParams.get('fti')"), datos.especies[0]);
-    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /17 registros/);
+    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /^\(17\)$/);
     await evaluar("[...document.querySelectorAll('.collection-active-filters button')].find(b=>b.getAttribute('wire:click')?.includes('filtroTaxonId')).click()"); await reposo();
     await evaluar("(() => {const b=document.querySelector('input[placeholder=\"Nombre científico en cualquier rango\"]');b.focus();b.value=" + JSON.stringify(datos.taxonBusqueda) + ";b.dispatchEvent(new Event('input',{bubbles:true}));b.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));})()"); await reposo();
-    await visible("document.querySelector('.atlas-collection-count').textContent.includes('18 registros')");
+    await visible("document.querySelector('.atlas-collection-count').textContent.trim()==='(18)'");
     await evaluar("document.querySelector('button[aria-label=\"Árbol taxonómico\"]').click()");
     await visible("document.querySelector('#explorador-taxonomico[open] .portal-taxonomy-tree-pane')"); await reposo();
     assert.equal(await evaluar("document.querySelectorAll('.taxonomy-explorer-pill').length"), 0);

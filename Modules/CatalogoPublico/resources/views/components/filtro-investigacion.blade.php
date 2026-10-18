@@ -27,7 +27,7 @@
             <div class="research-phylum-tree research-check-list" role="tree" aria-label="{{ $filtroTexto('filo') }}" wire:ignore x-ref="arbolFilo" x-on:scroll.passive="actualizarVentana()" x-on:resize.window.debounce.100ms="actualizarVentana()">
                 <div aria-hidden="true" :style="{height: espacioSuperior + 'px'}"></div>
                 <template x-for="nodo in filasVisibles" :key="nodo.clave">
-                    <div class="research-phylum-row" role="treeitem" :data-filo-clave="nodo.clave" :aria-level="nodo.profundidad + 1" :aria-expanded="nodo.tieneHijos ? expandidos.includes(nodo.clave) : null" :aria-selected="marcado(nodo)" :style="{'--nivel-filo': Math.min(nodo.profundidad, 5)}" :class="{'is-selected': marcado(nodo)}">
+                    <div class="research-phylum-row" role="treeitem" :data-filo-clave="nodo.clave" :aria-level="nodo.profundidad + 1" :aria-expanded="nodo.tieneHijos ? expandidos.includes(nodo.clave) : null" :aria-selected="marcado(nodo)" :style="{'--nivel-filo': Math.min(nodo.profundidad, 5)}" :class="{'is-selected': marcado(nodo), 'is-lineage': enLinaje(nodo)}">
                         <button type="button" class="research-phylum-toggle" :class="{'is-leaf': !nodo.tieneHijos}" :disabled="!nodo.tieneHijos || cargando.includes(nodo.clave)" :aria-label="(expandidos.includes(nodo.clave) ? 'Contraer ' : 'Expandir ') + nodo.nombre" x-on:click="alternar(nodo)">
                             <svg viewBox="0 0 16 16" aria-hidden="true" :class="{'is-expanded': expandidos.includes(nodo.clave)}"><path d="m6 3 5 5-5 5"/></svg>
                         </button>

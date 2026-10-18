@@ -1,75 +1,42 @@
-<div class="space-y-3" wire:loading.class="opacity-40 pointer-events-none" wire:target="archivoMatriz,guardarMatrizNativa">
-
-    {{-- Banner: rechazo por campo DwC faltante / obligatorio vacío --}}
-    @if($matrizCargada && !empty($errorMatriz))
-        <flux:callout variant="danger" icon="x-circle">
-            <flux:heading>Carga rechazada</flux:heading>
-            @if(!empty($camposObligatoriosVacios))
-                <flux:text class="text-sm">
-                    Algunos campos obligatorios están vacíos. Complétalos en los registros de HubDigital y vuelve a validar:
-                </flux:text>
-                <div class="mt-2 flex flex-wrap gap-1.5">
-                    @foreach($camposObligatoriosVacios as $vacio)
-                        <span class="inline-flex items-center gap-1.5 rounded border border-error/40 bg-error/5 px-2 py-1 text-xs text-error">
-                            <flux:icon name="exclamation-triangle" variant="outline" class="size-3 shrink-0" />
-                            <span class="font-serif italic">{{ $vacio['fila'] }}</span>
-                            <span class="text-error/70">·</span>
-                            <span class="font-medium">{{ $vacio['campo'] }}</span>
-                        </span>
-                    @endforeach
-                </div>
-            @else
-                <flux:text class="text-sm">
-                    {{ $errorMatriz }}. Corrige los registros indicados y vuelve a validarlos.
-                </flux:text>
-            @endif
-        </flux:callout>
+<section class="space-y-4" aria-labelledby="registro-biologico-nativo">
+    <div>
+        <flux:heading id="registro-biologico-nativo" size="lg" level="2">Subir datos · Especímenes y lotes</flux:heading>
+        <p class="mt-2 text-sm text-text-secondary">Carga la tabla Excel con los campos Darwin Core del material que vas a depositar. Una fila corresponde a un registro; conserva los nombres de las columnas.</p>
+    </div>
+    <flux:button wire:click="descargarPlantillaMatriz" wire:loading.attr="disabled" icon="arrow-down-tray">Descargar plantilla Excel</flux:button>
+    <flux:field>
+        <flux:label for="matriz-dwc">Tabla Darwin Core (.xlsx)</flux:label>
+        <input id="matriz-dwc" type="file" wire:model="archivoMatriz" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="block w-full rounded border border-border bg-surface p-3 text-sm" aria-describedby="matriz-dwc-ayuda" />
+        <p id="matriz-dwc-ayuda" class="text-xs text-text-secondary">Máximo 10 MB. Puedes reemplazar el archivo; una carga rechazada conserva los datos guardados anteriormente.</p>
+        <flux:error name="archivoMatriz" />
+    </flux:field>
+    <p wire:loading wire:target="archivoMatriz" role="status" class="text-sm text-science-blue">Cargando y validando el Excel…</p>
+    @if($errorMatriz !== '')
+        <div role="alert" class="rounded border border-error/40 bg-error/5 p-3 text-sm text-error">
+            <strong>Carga rechazada</strong><p>{{ $errorMatriz }}</p>
+            @foreach($camposObligatoriosVacios as $vacio)<p>{{ $vacio['fila'] }} · {{ $vacio['campo'] }}</p>@endforeach
+            <p>Corrige el archivo y vuelve a subirlo.</p>
+        </div>
     @endif
-
-    {{-- Formulario nativo: vía principal para consultores y depositantes --}}
-    <section class="space-y-3 rounded border border-border bg-white p-3 sm:p-4" aria-labelledby="registro-biologico-nativo">
-        <div class="flex items-center gap-2">
-            <div class="flex size-8 shrink-0 items-center justify-center rounded-full bg-science-blue/10">
-                <flux:icon name="bug-ant" class="size-4 text-science-blue" />
-            </div>
-            <flux:heading id="registro-biologico-nativo" size="sm" level="3">Especímenes y lotes</flux:heading>
-        </div>
-
-        @if(!empty($muestrasDetectadas))
-            <div class="flex flex-wrap items-center gap-2 rounded-lg border border-science-blue/25 bg-white px-2.5 py-2">
-                <p class="mr-1 text-xs font-semibold text-blue-navy">Códigos de la guía</p>
-                <div class="flex flex-wrap gap-1.5">
-                    @foreach($muestrasDetectadas as $muestra)
-                        <button type="button" wire:click="usarMuestraDetectada(@js($muestra['recordNumber']))" class="rounded-full border border-science-blue/30 bg-science-blue/5 px-3 py-1 font-mono text-xs font-semibold text-science-blue hover:bg-science-blue/10">
-                            {{ $muestra['recordNumber'] }}
-                        </button>
+    @if($matrizId)
+        <div class="rounded border border-border bg-surface p-4">
+            <p class="font-semibold text-blue-navy">{{ $archivoMatrizNombre ?: 'Matriz guardada' }} · {{ number_format($totalRegistros, 0, ',', '.') }} registros</p>
+            @if($camposDwCRecomendadosFaltantes !== [])<p class="mt-2 text-sm text-text-secondary">Campos recomendados ausentes: {{ implode(', ', $camposDwCRecomendadosFaltantes) }}.</p>@endif
+            <details class="mt-3">
+                <summary class="cursor-pointer font-semibold text-science-blue">Ver resultado de la validación</summary>
+                <div class="mt-3 max-h-96 space-y-2 overflow-y-auto">
+                    @foreach($estadosRegistros as $idRegistro => $registro)
+                        <div class="rounded border border-border p-3 text-sm" wire:key="matriz-estado-{{ $idRegistro }}">
+                            <p><em>{{ $registro['especieCorregida'] ?: $registro['especieIngresada'] }}</em> · {{ $registro['estado'] }}</p>
+                            @foreach($registro['advertencias'] ?? [] as $advertencia)<p class="text-error">{{ $advertencia['campo'] ?? '' }}: {{ $advertencia['mensaje'] ?? $advertencia['original'] ?? 'Revisa este valor en el Excel.' }}</p>@endforeach
+                            @if(in_array($registro['estado'], ['Pendiente', 'No Verificado'], true))
+                                @foreach($registro['especiesSugeridas'] ?? [] as $sugerencia)<flux:button size="sm" wire:click="aceptarSugerencia(@js($idRegistro), @js($sugerencia))">Usar {{ $sugerencia }}</flux:button>@endforeach
+                                <flux:button size="sm" wire:click="mantenerNombreOriginal(@js($idRegistro))">Conservar nombre original para revisión curatorial</flux:button>
+                            @endif
+                        </div>
                     @endforeach
                 </div>
-            </div>
-        @endif
-
-        <fieldset class="hub-detail-section">
-        <legend>Taxonomía</legend>
-        <div class="relative">
-            <flux:field>
-                <flux:label>Taxón científico</flux:label>
-                <flux:input wire:model.live.debounce.400ms="busquedaTaxon" placeholder="Escribe al menos 3 caracteres, por ejemplo Atta…" autocomplete="off" required />
-                <flux:error name="registroNativo.scientificName" />
-            </flux:field>
-            @if(!empty($opcionesTaxones))
-                <div class="absolute z-30 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-border bg-white p-1 shadow-xl">
-                    @foreach($opcionesTaxones as $opcion)
-                        <button type="button" wire:click="seleccionarTaxon(@js($opcion['nombre']))" class="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-left hover:bg-bg-main">
-                            <span><em class="font-serif text-sm text-text-primary">{{ $opcion['nombre'] }}</em><span class="ml-2 text-xs text-text-secondary">{{ $opcion['rango'] }}</span></span>
-                            <span class="rounded-full bg-science-blue/10 px-2 py-0.5 text-[10px] font-semibold text-science-blue">{{ $opcion['fuente'] }}</span>
-                        </button>
-                    @endforeach
-                </div>
-            @endif
+            </details>
         </div>
-
-        </fieldset>
-        @include('gestionprestamosrecepciones::investigador.registro-solicitud-deposito.detalle-formulario')
-
-    </section>
-</div>
+    @endif
+</section>

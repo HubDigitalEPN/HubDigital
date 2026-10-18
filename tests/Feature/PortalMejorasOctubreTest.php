@@ -125,7 +125,7 @@ test('una ubicación de un ejemplar muestra su tabla sin selector ni encabezados
         ->assertDontSee('El código permanece visible al desplazarte.')->assertDontSee('Mostrar todos los campos')
         ->assertDontSee('atlas-cell-toolbar', false)->assertDontSee('atlas-tree-section', false)
         ->assertDontSee('atlas-taxon-information', false)->assertSee('QA-OCT-11');
-    expect(substr_count($portal->html(), '>Registros de la ubicación</h2>'))->toBe(1)
+    expect(substr_count($portal->html(), '>Registros de la localidad</h2>'))->toBe(1)
         ->and(substr_count($portal->html(), '>Registros de esta ubicación</h3>'))->toBe(0);
     $portal->call('abrirFichaRegistro', $portal->instance()->detalleCelda['registros'][0]->especimen_id)
         ->assertSee('Verificación del nombre científico');

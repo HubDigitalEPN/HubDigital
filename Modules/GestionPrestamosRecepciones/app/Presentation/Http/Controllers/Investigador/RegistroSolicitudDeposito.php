@@ -319,6 +319,9 @@ final class RegistroSolicitudDeposito extends Component
 
     public bool $matrizCargada = false;
 
+    #[Locked]
+    public string $fuenteMatriz = 'manual';
+
     /** Matriz nativa: elimina la dependencia obligatoria de una hoja de cálculo. */
     public string $busquedaTaxon = '';
 
@@ -702,6 +705,7 @@ final class RegistroSolicitudDeposito extends Component
         // Matriz de especies. Puede existir aunque el usuario haya retrocedido y
         // persistido un paso anterior; al reanudar debemos conservarla disponible.
         if ($model->matriz_id !== null) {
+            $this->fuenteMatriz = ($model->extraccion_metadatos['matriz_fuente'] ?? '') === 'excel' ? 'excel' : 'manual';
             $this->matrizId = $model->matriz_id;
             $this->matrizCargada = true;
 
@@ -842,6 +846,7 @@ final class RegistroSolicitudDeposito extends Component
                 ->where('investigador_id', (string) auth()->id())->lockForUpdate()->firstOrFail();
             $metadatos = $modelo->extraccion_metadatos ?? [];
             $metadatos['wizard_pasos_completados'] = $this->pasosCompletados;
+            $metadatos['matriz_fuente'] = $this->fuenteMatriz;
             $modelo->forceFill(['paso_actual' => $this->paso, 'documentos_requeridos' => $this->documentosRequeridos,
                 'matriz_id' => $this->matrizId, 'extraccion_metadatos' => $metadatos])->save();
         });
@@ -2344,6 +2349,7 @@ final class RegistroSolicitudDeposito extends Component
 
     private function prepararRegistroNativoDesdeExpediente(): void
     {
+        if ($this->fuenteMatriz === 'excel') return;
         // Un detalle ya guardado se revisa con sus valores, incluso al retroceder.
         if ($this->matrizCargada && count($this->registrosNativos) === 1
             && $this->registroNativo['scientificName'] !== '') return;
@@ -2363,11 +2369,37 @@ final class RegistroSolicitudDeposito extends Component
 
     // ── Paso 6 – Detalle y matriz de especies ──────────────────────────────────────
 
+    public function descargarPlantillaMatriz(): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        abort_unless(SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)
+            ->where('investigador_id', (string) auth()->id())->exists(), 403);
+        $catalogo = app(CatalogoCuraduriaPort::class);
+        $campos = array_values(array_unique(['scientificName',
+            ...$catalogo->camposCriticos($this->solicitudId),
+            ...$catalogo->camposRecomendados($this->solicitudId)]));
+
+        return response()->streamDownload(static function () use ($campos): void {
+            $libro = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+            try {
+                $hoja = $libro->getActiveSheet();
+                $hoja->setTitle('Darwin Core');
+                $hoja->fromArray([$campos]);
+                $hoja->freezePane('A2');
+                $hoja->getStyle('1:1')->getFont()->setBold(true);
+                (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($libro))->save('php://output');
+            } finally {
+                $libro->disconnectWorksheets();
+            }
+        }, 'matriz-darwin-core.xlsx', ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
+    }
+
     public function updatedArchivoMatriz(): void
     {
         if ($this->archivoMatriz === null) {
             return;
         }
+        abort_unless(SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)
+            ->where('investigador_id', (string) auth()->id())->exists(), 403);
 
         $this->validate(
             ['archivoMatriz' => 'file|mimes:xlsx|max:10240'],
@@ -2379,19 +2411,28 @@ final class RegistroSolicitudDeposito extends Component
 
         $this->errorMatriz = '';
         $this->camposObligatoriosVacios = [];
-        $this->archivoMatrizNombre = $this->archivoMatriz->getClientOriginalName();
 
-        // Si ya existe una matriz para esta solicitud, eliminarla antes de crear la nueva
-        if ($this->matrizId) {
-            MatrizEspeciesEloquentModel::where('id', $this->matrizId)
-                ->where('solicitud_id', $this->solicitudId)
-                ->delete();
-            $this->matrizId = null;
+        // El caso de uso valida antes de sustituir el agregado en transacción.
+        // Nunca borrar la matriz anterior por seleccionar otro archivo.
+        try {
+            $parseado = $this->parsearXlsx($this->archivoMatriz);
+        } catch (\Throwable $error) {
+            report($error);
+            $this->errorMatriz = 'No se pudo leer el Excel. Comprueba que sea un archivo .xlsx válido.';
+            return;
         }
-
-        $parseado = $this->parsearXlsx($this->archivoMatriz);
         $campos = $parseado['campos'];
         $registros = $parseado['registros'];
+        if ($registros === []) {
+            $this->errorMatriz = 'El Excel debe incluir la cabecera scientificName y al menos una fila de datos.';
+            return;
+        }
+        foreach ($registros as $numeroRegistro => $registro) {
+            if (trim((string) ($registro['scientificName'] ?? '')) === '') {
+                $this->errorMatriz = 'El registro '.($numeroRegistro + 1).' no contiene scientificName. Completa el nombre científico y vuelve a subir el Excel.';
+                return;
+            }
+        }
 
         $this->camposDwCPresentes = $campos;
 
@@ -2435,6 +2476,13 @@ final class RegistroSolicitudDeposito extends Component
         $this->camposDwCRecomendadosFaltantes = $output->camposRecomendadosFaltantes;
         $this->matrizCargada = true;
         $this->registrosMatriz = $registros;
+        $this->archivoMatrizNombre = $this->archivoMatriz->getClientOriginalName();
+        $this->fuenteMatriz = 'excel';
+        // Un Excel confirmado es la fuente del paso. Evita que el formulario
+        // histórico de una sola fila lo sobrescriba al avanzar o reanudar.
+        $this->registrosNativos = $registros;
+        $this->registroNativo['scientificName'] = '';
+        $this->taxonSeleccionado = [];
 
         $repo = app(MatrizEspeciesRepositoryInterface::class);
         $matriz = $repo->buscarPorId(MatrizEspeciesId::from($this->matrizId));
@@ -2848,9 +2896,6 @@ final class RegistroSolicitudDeposito extends Component
                 }
                 $registro[$campo] = $valores[$j] ?? '';
             }
-            if (trim($registro['scientificName'] ?? '') === '') {
-                continue;
-            }
             $registros[] = $registro;
         }
 
@@ -2875,6 +2920,7 @@ final class RegistroSolicitudDeposito extends Component
         $this->archivoMatrizNombre = '';
         $this->matrizCargada = false;
         $this->matrizId = null;
+        $this->fuenteMatriz = 'manual';
         $this->estadoMatriz = '';
         $this->errorMatriz = '';
         $this->totalRegistros = 0;
@@ -3056,13 +3102,21 @@ final class RegistroSolicitudDeposito extends Component
 
     public function guardarPasoCinco(): void
     {
+        if (! $this->matrizCargada && $this->registroNativo['scientificName'] === '') {
+            $this->mostrarToast('Sube la tabla Excel Darwin Core del material para continuar.', 'error');
+            return;
+        }
+        if ($this->archivoMatriz !== null && $this->errorMatriz !== '') {
+            $this->mostrarToast('Corrige el archivo Excel y vuelve a subirlo antes de continuar.', 'error');
+            return;
+        }
         // Un registro se guarda con la acción de avance, sin un segundo botón "Agregar".
         // Los expedientes anteriores con varios registros conservan su matriz completa.
         $filaGuardada = count($this->registrosNativos) === 1 ? $this->registrosNativos[0] : [];
         $detalleCambio = $filaGuardada !== [] && collect($this->registroNativo)->contains(
             fn ($valor, $clave): bool => trim((string) $valor) !== trim((string) ($filaGuardada[$clave] ?? '')),
         );
-        if (count($this->registrosNativos) <= 1
+        if ($this->fuenteMatriz !== 'excel' && count($this->registrosNativos) <= 1
             && (! $this->matrizCargada || $this->errorMatriz !== '' || ($this->registroNativo['scientificName'] !== '' && $detalleCambio))) {
             $formulario = $this->registroNativo;
             $taxon = $this->taxonSeleccionado;
@@ -3085,7 +3139,7 @@ final class RegistroSolicitudDeposito extends Component
             }
             $this->guardarMatrizNativa();
         }
-        if (! $this->matrizCargada) {
+        if (! $this->matrizCargada && $this->fuenteMatriz !== 'excel') {
             $this->guardarMatrizNativa();
         }
         if (! $this->matrizCargada) {
@@ -3123,7 +3177,7 @@ final class RegistroSolicitudDeposito extends Component
 
         if ($coordenadasInvalidas > 0) {
             $this->mostrarToast(
-                $coordenadasInvalidas.' coordenada(s) inválida(s). Corrige la latitud y la longitud en Lugar de recolección y vuelve a continuar.',
+                $coordenadasInvalidas.' coordenada(s) inválida(s). Corrige decimalLatitude y decimalLongitude en el Excel y vuelve a subirlo.',
                 'error',
             );
 

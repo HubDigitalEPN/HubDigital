@@ -422,13 +422,12 @@
             <flux:sidebar.toggle class="text-white/80 hover:text-white lg:hidden" icon="bars-2" inset="left" />
 
             <a href="{{ route('dashboard') }}" wire:navigate class="hub-mobile-brand hub-topbar-brand">
-                <span class="flex h-7 w-7 items-center justify-center rounded bg-white/15">
-                    <x-app-logo-icon class="size-5 fill-current text-white" />
-                </span>
-                <span><strong>Hub Digital</strong><small>Museo de Historia Natural</small></span>
+                <img src="{{ asset('images/hub-logo.png') }}" alt="Laboratorio de Invertebrados" class="h-10 w-auto max-w-20 rounded bg-white p-1 object-contain" />
+                <span><strong>Plataforma de Gestión de Información</strong><small>Laboratorio de Invertebrados</small><small>Escuela Politécnica Nacional</small></span>
             </a>
 
             <div class="hub-mobile-actions flex items-center justify-end gap-1 text-white">
+                <a href="https://www.epn.edu.ec/" aria-label="Escuela Politécnica Nacional" class="mr-3 hidden sm:block"><img src="{{ asset('images/logo-epn.png') }}" alt="EPN" class="h-11 w-auto object-contain" /></a>
                 <span class="hub-topbar-identity"><strong>{{ auth()->user()->name }}</strong><small>{{ auth()->user()->rolActivo()->etiqueta() }}</small></span>
                 <flux:dropdown position="top" align="end">
                     <flux:profile

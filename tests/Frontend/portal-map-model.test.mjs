@@ -91,7 +91,7 @@ test('la vista general agrupa ubicaciones cercanas y el detalle recupera únicam
     assert.deepEqual(grupo.limites, [[-.658, -76.452], [-.413, -76.013]]);
     assert.ok(grupo.puntos.some(({lat, lon}) => lat === grupo.ancla.lat && lon === grupo.ancla.lon));
     assert.equal(coordenadasPublicas(grupo), null);
-    assert.match(etiquetaAgrupacionMapa(grupo), /3 ubicaciones originales/);
+    assert.match(etiquetaAgrupacionMapa(grupo), /3 localidades/);
     assert.match(etiquetaAgrupacionMapa(grupo), /18 registros/);
     assert.match(etiquetaAgrupacionMapa(grupo), /no representa una nueva coordenada/);
     const detalle = modelo.paraZoom(ZOOM_UBICACIONES_ORIGINALES);

@@ -74,8 +74,8 @@
             <div class="hub-request-meta flex items-center gap-3">
                 @if($numeroSolicitud)
                     <div class="border-l-2 border-bio-green pl-3 text-right">
-                        <p class="hub-request-meta__label text-[10px] font-semibold uppercase tracking-[0.12em]">Expediente</p>
-                        <p class="hub-request-meta__number mt-0.5 font-mono text-xs font-semibold">{{ $numeroSolicitud }}</p>
+                        <p class="hub-request-meta__label text-[10px] font-semibold uppercase tracking-[0.12em]">Solicitud N.º</p>
+                        <p class="hub-request-meta__number mt-0.5 font-mono text-xs font-semibold" title="{{ $numeroSolicitud }}">{{ preg_match('/-(\d+)$/', $numeroSolicitud, $partesNumero) ? $partesNumero[1] : $numeroSolicitud }}</p>
                     </div>
                 @endif
                 <x-gestionprestamosrecepciones::deposito-status-badge :estado="$modoCorreccion ? 'Requiere Corrección' : 'En Borrador'" />
@@ -97,7 +97,7 @@
                     ['label' => 'Origen',     'sub' => 'Procedencia'],
                     ['label' => 'Archivos y firmas', 'sub' => 'Validación'],
                     ['label' => 'Datos', 'sub' => 'Formulario'],
-                    ['label' => 'Detalle',    'sub' => 'Taxonomía'],
+                    ['label' => 'Subir datos', 'sub' => 'Excel · Darwin Core'],
                     ['label' => 'Envío',      'sub' => 'Revisión'],
                 ]"
                 :pasoActual="$this->pasoVisible()"

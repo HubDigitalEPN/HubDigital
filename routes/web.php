@@ -21,6 +21,8 @@ Route::get('/archivo/imagen/{id}', \App\Http\Controllers\ServirImagenArchivo::cl
 
 Route::view('/', 'portal-inicio')->name('home');
 Route::get('/version', VersionPortalController::class)->name('portal.version');
+Route::view('/informacion/privacidad', 'portal-informacion-legal', ['tipo' => 'privacidad'])->name('portal.privacidad');
+Route::view('/informacion/terminos', 'portal-informacion-legal', ['tipo' => 'terminos'])->name('portal.terminos');
 
 Route::middleware(['guest', 'throttle:10,1'])->group(function (): void {
     Route::get('/instalacion/administrador', [AdminBootstrapController::class, 'create'])

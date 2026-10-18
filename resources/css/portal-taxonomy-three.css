@@ -54,8 +54,10 @@ button.portal-three-fullscreen-exit { display: none; }
 .portal-taxonomy-tooltip p { margin: 3px 0 0; color: #244438; font-size: 12px; line-height: 1.5; }
 .portal-diversity-scene :is(button, canvas):focus-visible { outline: 3px solid #276c4e; outline-offset: -2px; }
 .portal-diversity-scene:fullscreen { width: 100vw; height: 100vh; }
+.taxonomy-explorer.has-diversity-expanded { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0; padding: 0; border: 0; border-radius: 0; }
+.portal-diversity-scene.is-expanded { position: fixed; inset: 0; z-index: 50; width: 100vw; height: 100dvh; }
 button.portal-diversity-fullscreen-exit { display: none; }
-.portal-diversity-scene:fullscreen button.portal-diversity-fullscreen-exit { display: grid; position: absolute; place-items: center; right: 15px; top: 15px; width: 40px; height: 40px; z-index: 4; border: 1px solid #9fb69b; border-radius: 5px; color: #31563e; background: #fff; font-size: 24px; }
+.portal-diversity-scene:is(:fullscreen,.is-expanded) button.portal-diversity-fullscreen-exit { display: grid; position: absolute; place-items: center; right: 15px; top: 15px; width: 40px; height: 40px; z-index: 4; border: 1px solid #9fb69b; border-radius: 5px; color: #31563e; background: #fff; font-size: 24px; }
 .taxonomy-navigator.has-expanded-tree button.portal-taxonomy-visualization { display: none; }
 @container taxonomy-explorer (max-width: 600px) {
     .portal-diversity-viewport { min-height: 230px; }

@@ -22,7 +22,7 @@ test('datos avanza directamente a detalle sin comparar nombres y confirma la ext
     [$nombres, $apellidos] = array_pad(explode(' ', $nombrePerfil, 2), 2, '');
     $usuario->update(['first_name' => $nombres, 'last_name' => $apellidos]);
     $componente = Livewire::actingAs($usuario)->test(RegistroSolicitudDeposito::class, ['id' => $modelo->id]);
-    $componente->assertSet('paso', 4)->assertSee('(6) Detalle')->assertSee('(7) Envío')
+    $componente->assertSet('paso', 4)->assertSee('(6) Subir datos')->assertSee('(7) Envío')
         ->assertDontSee('(8) Envío')->assertDontSee('Validación de identidad')
         ->call('guardarPasoCuatro')->assertSet('paso', 7)
         ->assertSee('Especímenes y lotes')->assertDontSee('Discrepancia')
@@ -47,7 +47,7 @@ test('datos avanza directamente a detalle sin comparar nombres y confirma la ext
 test('reanuda los pasos antiguos con siete números visibles y sin pantalla de identidad', function (int $pasoAntiguo, int $pasoActual, int $numeroVisible): void {
     [$modelo, $usuario] = borradorWizardSinIdentidadParaPruebas($pasoAntiguo);
     $componente = Livewire::actingAs($usuario)->test(RegistroSolicitudDeposito::class, ['id' => $modelo->id]);
-    $componente->assertSet('paso', $pasoActual)->assertSee('(6) Detalle')->assertSee('(7) Envío')
+    $componente->assertSet('paso', $pasoActual)->assertSee('(6) Subir datos')->assertSee('(7) Envío')
         ->assertSee('--wizard-step-count: 7', false)->assertDontSee('(6) Identidad')
         ->assertDontSee('Validación de identidad')->assertDontSee('Discrepancia');
     expect($componente->instance()->pasoVisible())->toBe($numeroVisible)
@@ -118,10 +118,10 @@ test('datos continúa sin localidad y retira el requisito antiguo sin retirar ot
 test('el avance siempre identifica el siguiente paso y no ofrece agregar registros', function (): void {
     [$modelo, $usuario] = borradorWizardSinIdentidadParaPruebas();
     $componente = Livewire::actingAs($usuario)->test(RegistroSolicitudDeposito::class, ['id' => $modelo->id]);
-    $componente->assertSee('Ir al Paso 6 Detalle')->call('guardarPasoCuatro')->assertSet('paso', 7)
+    $componente->assertSee('Ir al Paso 6 Subir datos')->call('guardarPasoCuatro')->assertSet('paso', 7)
         ->assertSee('Ir al Paso 7 Envío')->assertDontSee('Agregar registro')
-        ->assertSee('Identificación del material')->assertSee('Lugar de recolección')
-        ->assertSee('Datos de colecta')->assertSee('Conservación y observaciones');
+        ->assertSee('Tabla Darwin Core (.xlsx)')->assertSee('Descargar plantilla Excel')
+        ->assertDontSee('Taxón científico')->assertDontSee('Conservación y observaciones');
 });
 
 test('el editor permite borrar la localidad sin borrar los otros datos ni bloquear el avance', function (): void {
@@ -157,6 +157,42 @@ test('el avance guarda un detalle sin localidad y permite revisar editar y reanu
         ->assertSet('paso', 8)->call('retroceder')->assertSet('paso', 7)
         ->assertSet('registroNativo.scientificName', 'Atta cephalotes')
         ->assertSet('registroNativo.individualCount', 13)->assertSet('registroNativo.verbatimLocality', '');
+});
+
+test('el paso de carga sustituye el formulario por Excel y conserva la matriz ante un archivo rechazado y al reanudar', function (): void {
+    [$modelo, $usuario] = borradorWizardSinIdentidadParaPruebas();
+    $componente = detalleNativoWizardParaPruebas($modelo, $usuario);
+    $fila = $componente->get('registroNativo');
+    $subida = static function (array $filas): \Illuminate\Http\UploadedFile {
+        $libro = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $ruta = tempnam(sys_get_temp_dir(), 'dwc-');
+        try {
+            $libro->getActiveSheet()->fromArray([array_keys($filas[0]), ...array_map('array_values', $filas)]);
+            (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($libro))->save($ruta);
+            return \Illuminate\Http\UploadedFile::fake()->createWithContent('datos.xlsx', file_get_contents($ruta));
+        } finally {
+            $libro->disconnectWorksheets();
+            unlink($ruta);
+        }
+    };
+    $componente->assertSee('Descargar plantilla Excel')->assertDontSee('Taxón científico')
+        ->call('descargarPlantillaMatriz')->assertFileDownloaded('matriz-darwin-core.xlsx')
+        ->set('archivoMatriz', $subida([$fila]))->assertHasNoErrors()
+        ->assertSet('errorMatriz', '')->assertSet('fuenteMatriz', 'excel')->assertSet('totalRegistros', 1);
+    $matriz = $componente->get('matrizId');
+    expect($modelo->fresh()->extraccion_metadatos['matriz_fuente'])->toBe('excel');
+    $componente->set('archivoMatriz', $subida([['scientificName' => 'Atta cephalotes']]))
+        ->call('guardarPasoCinco')->assertSet('paso', 7)->assertSet('matrizId', $matriz);
+    expect($componente->get('errorMatriz'))->not->toBe('');
+    expect(RegistroEspecimenEloquentModel::where('matriz_id', $matriz)->count())->toBe(1);
+    $segunda = array_replace($fila, ['recordNumber' => 'QA-EXCEL-002', 'individualCount' => 3]);
+    $componente->set('archivoMatriz', $subida([$fila, $segunda]))->assertSet('errorMatriz', '')
+        ->assertSet('matrizId', $matriz)->assertSet('totalRegistros', 2)
+        ->call('guardarPasoCinco')->assertHasNoErrors()->assertSet('paso', 8);
+    expect(RegistroEspecimenEloquentModel::where('matriz_id', $matriz)->count())->toBe(2);
+    Livewire::actingAs($usuario)->test(RegistroSolicitudDeposito::class, ['id' => $modelo->id])
+        ->assertSet('fuenteMatriz', 'excel')->call('retroceder')->assertSet('paso', 7)
+        ->call('guardarPasoCinco')->assertHasNoErrors()->assertSet('paso', 8)->assertSet('totalRegistros', 2);
 });
 
 test('un detalle inválido conserva la matriz anterior y puede corregirse sin otro botón', function (): void {

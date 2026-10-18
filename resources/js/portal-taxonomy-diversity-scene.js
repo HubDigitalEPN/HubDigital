@@ -1,7 +1,7 @@
 import {Box3, BufferAttribute, BufferGeometry, Color, DirectionalLight, Frustum, HemisphereLight, InstancedMesh,
     Matrix4, Mesh, MeshStandardMaterial, MOUSE, Object3D, PerspectiveCamera, Plane, Raycaster, Scene, SphereGeometry, TOUCH, Vector2, Vector3, WebGLRenderer} from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
-import {crearArbolDiversidad,detalleTaxonomicoDiversidad,seleccionarDetalleDiversidad} from './portal-taxonomy-diversity-model';
+import {crearArbolDiversidad,detalleTaxonomicoDiversidad,radioYemaDiversidad,seleccionarDetalleDiversidad} from './portal-taxonomy-diversity-model';
 import {rangoVisual3D} from './portal-taxonomy-three-ranks';
 import {textoLinajeTaxonomico} from './portal-taxonomy-lineage';
 import {crearLeyendaTaxonomica} from './portal-taxonomy-tooltip';
@@ -27,7 +27,7 @@ export function crearEscenaDiversidad(elemento,acciones) {
     const instrucciones=crear('p','portal-three-instructions');instrucciones.tabIndex=0;instrucciones.setAttribute('role','status');
     const estado=crear('p','portal-diversity-status');estado.setAttribute('role','alert');estado.hidden=true;
     marco.append(vista,leyenda,instrucciones);elemento.replaceChildren(marco);
-    const salir=boton('Salir de pantalla completa','⛶',()=>document.exitFullscreen());salir.className='portal-diversity-fullscreen-exit';marco.append(salir);
+    const salir=boton('Salir de pantalla completa','⛶',()=>salirDeAmpliacion());salir.className='portal-diversity-fullscreen-exit';marco.append(salir);
     let renderer;
     try{renderer=new WebGLRenderer({antialias:true,alpha:true,powerPreference:'low-power',logarithmicDepthBuffer:true});}
     catch(fallo){cabecera.remove();maximizar.remove();elemento.replaceChildren();throw fallo;}
@@ -44,13 +44,15 @@ export function crearEscenaDiversidad(elemento,acciones) {
     const materialHojas=new MeshStandardMaterial({roughness:.56,metalness:.02});
     const geometriaHoja=new SphereGeometry(1,12,8),ramas=new Mesh(new BufferGeometry(),materialRamas);ramas.frustumCulled=false;escena.add(ramas);
     let hojas;
-    const orbit=new OrbitControls(camara,canvas);orbit.enableDamping=false;orbit.zoomToCursor=true;
+    const orbit=new OrbitControls(camara,canvas);orbit.enableDamping=false;orbit.enableZoom=false;
     orbit.mouseButtons.LEFT=MOUSE.PAN;orbit.touches.ONE=TOUCH.PAN;orbit.touches.TWO=TOUCH.DOLLY_PAN;orbit.rotateSpeed=.7;orbit.panSpeed=.8;
     const frustum=new Frustum(),matriz=new Matrix4(),caja=new Box3(),punto=new Vector3(),objeto=new Object3D(),arriba=new Vector3(0,1,0);
     const rayo=new Raycaster(),plano=new Plane(),normal=new Vector3(),colores=new Map(),etiquetasDOM=new Map(),troncosCache=new Map(),abort=new AbortController();
     const reducido=matchMedia('(prefers-reduced-motion: reduce)');
     let indice,arbol,fuente,raiz,ancho=1,alto=1,base=1,maxZoom=4096,radioArbol=1,rangosPresentes=[],rangosNodos=[];
     let frame=null,destruido=false,activo=true,elegido=0,resaltado='',hijoTeclado=-1,puntos=[],pulsacion=null,destino=null,firma='',revision=0,limiteRango=3;
+    let dimensionado=false,ampliado=false,ampliacionAutomatica=true,fullscreenPendiente=false;
+    const dialogo=elemento.closest('dialog'),toques=new Map();
     const escuchar=(el,tipo,fn,opciones={})=>el.addEventListener(tipo,fn,{...opciones,signal:abort.signal});
     const color=valor=>{if(!colores.has(valor))colores.set(valor,new Color(valor));return colores.get(valor);};
     const posicion=(i,v=new Vector3())=>v.set(arbol.posiciones[i*2],arbol.posiciones[i*2+1],arbol.profundidad[i]);
@@ -71,7 +73,7 @@ export function crearEscenaDiversidad(elemento,acciones) {
             if(expuestos===1&&arbol.hijos[0].length)bounds.copy(cajaClado(0));
         }
         bounds.expandByScalar(Math.max(2,arbol.radios[i]*2.8));const centro=bounds.getCenter(new Vector3()),tamano=bounds.getSize(new Vector3());
-        const distancia=Math.max(tamano.y,tamano.x/Math.max(.2,camara.aspect),tamano.z*.8,40)/(2*Math.tan(camara.fov*Math.PI/360)) * 1.06;
+        const distancia=Math.max(tamano.y,tamano.x/Math.max(.2,camara.aspect),tamano.z*.8,40)/(2*Math.tan(camara.fov*Math.PI/360)) * 1.28;
         const direccion=animado?camara.position.clone().sub(orbit.target).normalize():new Vector3(.22,.16,1).normalize();
         const objetivo={posicion:centro.clone().addScaledVector(direccion,distancia),centro};
         if(!i){base=distancia;radioArbol=Math.max(50,tamano.length());maxZoom=Math.max(4096,Math.min(1e7,80/arbol.separacion));orbit.minDistance=base/maxZoom;orbit.maxDistance=base*2;}
@@ -81,6 +83,7 @@ export function crearEscenaDiversidad(elemento,acciones) {
     function ajustar(){encuadrar();}
     function zoom(factor,p){
         if(!arbol||!Number.isFinite(factor)||factor<=0)return;
+        if(factor>1&&ampliacionAutomatica&&!ampliado)ampliarAutomaticamente();
         const automatico=!p;p??={x:ancho/2,y:alto/2};
         camara.updateMatrixWorld();rayo.setFromCamera(new Vector2(p.x/ancho*2-1,1-p.y/alto*2),camara);camara.getWorldDirection(normal);
         const centro=destino?.centro||orbit.target;
@@ -88,20 +91,25 @@ export function crearEscenaDiversidad(elemento,acciones) {
         // en sus descendientes en vez de atravesar un plano vacío delante del árbol.
         let cercano=null,distanciaPuntero=Infinity;
         for(const n of puntos){const d=Math.hypot(n.x-p.x,n.y-p.y);if(d<distanciaPuntero){cercano=n;distanciaPuntero=d;}}
-        plano.setFromNormalAndCoplanarPoint(normal,cercano&&distanciaPuntero<120?posicion(cercano.i):centro);
+        plano.setFromNormalAndCoplanarPoint(normal,cercano?posicion(cercano.i):centro);
         const ancla=rayo.ray.intersectPlane(plano,new Vector3())||centro.clone();
         const origen=destino?.posicion||camara.position,distancia=origen.distanceTo(centro);
         const nueva=Math.max(orbit.minDistance,Math.min(orbit.maxDistance,distancia/factor)),ratio=nueva/distancia;
         destino={posicion:origen.clone().sub(ancla).multiplyScalar(ratio).add(ancla),centro:centro.clone().sub(ancla).multiplyScalar(ratio).add(ancla)};
-        if(factor>1&&puntos.length){
+        if(!automatico&&cercano){
+            const objetivo=posicion(cercano.i);
+            destino={centro:objetivo,posicion:origen.clone().sub(centro).normalize().multiplyScalar(nueva).add(objetivo)};
+            marco.dataset.yemaZoom=arbol.claves[cercano.i];
+        }
+        if(automatico&&factor>1&&puntos.length){
             const siguiente=detalleTaxonomicoDiversidad(rangosNodos[0],base/nueva,rangosPresentes).orden;
             const candidatos=puntos.map(n=>({...n,hijos:arbol.hijos[n.i].filter(h=>rangosNodos[h]<=siguiente)})).filter(n=>n.hijos.length);
             const nuevos=candidatos.filter(n=>n.hijos.some(h=>rangosNodos[h]>limiteRango));
             const especies=automatico&&limiteRango>=17?puntos.filter(n=>rangosNodos[n.i]>=17&&rangosNodos[n.i]<=18):[];
             const opciones=especies.length?especies:nuevos.length?nuevos:candidatos;
             opciones.sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y));
-            const foco=opciones[0]||(automatico?cercano:null);
-            if(foco&&(automatico||siguiente>limiteRango&&Math.hypot(foco.x-p.x,foco.y-p.y)<100)){
+            const foco=opciones[0]||cercano;
+            if(foco){
                 const corona=new Box3();for(const h of foco.hijos||[foco.i])corona.expandByPoint(posicion(h));
                 const objetivo=corona.getCenter(new Vector3());
                 if(siguiente===limiteRango&&foco.hijos?.length){
@@ -109,6 +117,7 @@ export function crearEscenaDiversidad(elemento,acciones) {
                     posicion(hijos[0],objetivo);
                 }
                 destino={centro:objetivo,posicion:origen.clone().sub(centro).normalize().multiplyScalar(nueva).add(objetivo)};
+                marco.dataset.yemaZoom=arbol.claves[foco.i];
             }
         }
         if(reducido.matches){camara.position.copy(destino.posicion);orbit.target.copy(destino.centro);destino=null;orbit.update();}
@@ -143,7 +152,7 @@ export function crearEscenaDiversidad(elemento,acciones) {
     }
     function unirTronco(plantilla,i,vertices,normales,tintas,indices){
         const offset=vertices.length/3,rango=rangoVisual3D(indice.porClave.get(arbol.claves[i]));
-        const tinta=color(resaltado&&rango.id!==resaltado?'#9ba99a':'#466c44');
+        const tinta=color(resaltado&&rango.id!==resaltado?'#b4bfb2':'#78947c');
         for(let j=0;j<plantilla.posiciones.length;j+=3){vertices.push(plantilla.posiciones[j]-origenGPU.x,plantilla.posiciones[j+1]-origenGPU.y,plantilla.posiciones[j+2]-origenGPU.z);normales.push(plantilla.normales[j],plantilla.normales[j+1],plantilla.normales[j+2]);tintas.push(tinta.r,tinta.g,tinta.b);}
         for(const j of plantilla.indices)indices.push(offset+j);
     }
@@ -179,10 +188,8 @@ export function crearEscenaDiversidad(elemento,acciones) {
             const nodo=indice.porClave.get(arbol.claves[i]),rango=rangoVisual3D(nodo),hoja=!arbol.hijos[i].length,brote=colapsados.has(i);
             if(i!==0&&rango.orden>limiteRango)continue;
             const prof=-posicion(i,punto).applyMatrix4(camara.matrixWorldInverse).z;
-            const radio=Math.min(prof/focal*28,Math.max(arbol.radios[i]*(hoja?2.6:brote?2:1.1),prof/focal*(brote?5:3.2)));
-            posicion(i,objeto.position).sub(origenGPU);const padre=arbol.padres[i];
-            const direccion=padre>=0?posicion(i).sub(posicion(padre)).normalize():arriba;
-            objeto.quaternion.setFromUnitVectors(arriba,direccion);objeto.scale.set(radio*((hoja||brote)? .8:1),radio*((hoja||brote)?1.45:1),radio*((hoja||brote)? .38:1));objeto.updateMatrix();
+            const radio=prof/focal*Math.min(28,radioYemaDiversidad(arbol.especies[i]));
+            posicion(i,objeto.position).sub(origenGPU);objeto.quaternion.identity();objeto.scale.setScalar(radio);objeto.updateMatrix();
             hojas.setMatrixAt(cantidad,objeto.matrix);hojas.setColorAt(cantidad,color(resaltado&&rango.id!==resaltado&&i!==elegido?'#acb8a8':rango.color));cantidad++;
             const tamano=radio*focal/prof;puntos.push({i,...p,tamano});
             if(i===0||i===elegido||brote||rango.orden===limiteRango||tamano>15||p.extension>150)candidatos.push({i,...p,espacio:tamano*2,hoja,brote});
@@ -203,7 +210,7 @@ export function crearEscenaDiversidad(elemento,acciones) {
             if(!sitio)continue;const{x,y}=sitio;
             cajas.push({x,y,w,h});usados.add(p.i);let el=etiquetasDOM.get(p.i);
             if(!el){el=boton(`${nodo.nombre}. Explorar esta rama`,'',()=>elegirNodo(p.i));el.className='portal-diversity-label';el.tabIndex=-1;el.append(crear('strong','',nodo.nombre),crear('small','',`${nodo.etiqueta} · ${numero(nodo.total)} reg.`));etiquetasDOM.set(p.i,el);etiquetas.append(el);el.addEventListener('contextmenu',e=>{e.preventDefault();e.stopPropagation();abrirMenu(p.i,e);});}
-            el.style.transform=`translate(${x}px,${y}px)`;el.style.width=`${w}px`;el.dataset.puntoX=String(p.x);el.dataset.puntoY=String(p.y);el.classList.toggle('is-selected',p.i===elegido);el.classList.toggle('is-leaf',p.hoja);
+            el.style.transform=`translate(${x}px,${y}px)`;el.style.width=`${w}px`;el.dataset.puntoX=String(p.x);el.dataset.puntoY=String(p.y);el.dataset.especies=String(arbol.especies[p.i]);el.dataset.radioYema=String(Math.min(28,radioYemaDiversidad(arbol.especies[p.i])));el.dataset.clave=arbol.claves[p.i];el.classList.toggle('is-selected',p.i===elegido);el.classList.toggle('is-leaf',p.hoja);
             el.querySelector('small').textContent=`${nodo.etiqueta} · ${numero(nodo.total)} reg.${p.brote?' · ampliar rama':''}`;
         }
         for(const [i,el]of etiquetasDOM)if(!usados.has(i)){el.remove();etiquetasDOM.delete(i);}
@@ -215,6 +222,13 @@ export function crearEscenaDiversidad(elemento,acciones) {
     function abrirMenu(i,e){if(i<0)return;const p=proyectar(i),r=canvas.getBoundingClientRect(),x=r.left+p.x*r.width/ancho,y=r.top+p.y*r.height/alto;acciones.menu(arbol.claves[i],e,{left:x-9,right:x+9,top:y-9,bottom:y+9,limite:r});}
     orbit.addEventListener('change',programar);orbit.addEventListener('start',()=>{destino=null;marco.dataset.animando='false';tooltip.ocultar();marco.dataset.rotando='true';});orbit.addEventListener('end',()=>{marco.dataset.rotando='false';});
     escuchar(vista,'wheel',e=>{e.preventDefault();e.stopPropagation();zoom(Math.exp(-Math.max(-120,Math.min(120,e.deltaY))*Math.log(1.6)/120),coordenada(e));},{passive:false,capture:true});
+    // El pellizco comparte exactamente el zoom semántico y el autocentrado de
+    // la rueda. OrbitControls sólo recibe el ratón; no aplica otro dolly paralelo.
+    const gesto=()=>{const a=[...toques.values()];return a.length===2?{distancia:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y),clientX:(a[0].x+a[1].x)/2,clientY:(a[0].y+a[1].y)/2}:null;};
+    escuchar(canvas,'pointerdown',e=>{if(e.pointerType!=='touch')return;e.stopImmediatePropagation();canvas.setPointerCapture(e.pointerId);tooltip.ocultar();destino=null;const t={x:e.clientX,y:e.clientY,inicioX:e.clientX,inicioY:e.clientY,movido:false};toques.set(e.pointerId,t);if(toques.size>1)for(const t of toques.values())t.movido=true;},{capture:true});
+    escuchar(canvas,'pointermove',e=>{const t=toques.get(e.pointerId);if(!t)return;e.preventDefault();e.stopImmediatePropagation();const antes=gesto(),dx=e.clientX-t.x,dy=e.clientY-t.y;t.x=e.clientX;t.y=e.clientY;t.movido ||=Math.hypot(t.x-t.inicioX,t.y-t.inicioY)>5;const despues=gesto();if(antes&&despues&&antes.distancia>0)zoom(despues.distancia/antes.distancia,coordenada(despues));else if(toques.size===1&&t.movido){destino=null;orbit.pan(-dx,-dy);orbit.update();programar();}},{capture:true,passive:false});
+    const terminarToque=e=>{const t=toques.get(e.pointerId);if(!t)return;e.stopImmediatePropagation();toques.delete(e.pointerId);if(e.type==='pointerup'&&!t.movido){const i=buscar(e);if(i>=0)elegirNodo(i);}if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);};
+    escuchar(canvas,'pointerup',terminarToque,{capture:true});escuchar(canvas,'pointercancel',terminarToque,{capture:true});
     // OrbitControls mantiene Ctrl+arrastre como giro cuando LEFT es PAN.
     escuchar(canvas,'pointerdown',e=>{tooltip.ocultar();canvas.focus({preventScroll:true});pulsacion={x:e.clientX,y:e.clientY,id:e.pointerId,boton:e.button,ctrl:e.ctrlKey,revision};});
     escuchar(canvas,'pointerup',e=>{const p=pulsacion;pulsacion=null;if(p&&p.boton===0&&!p.ctrl&&p.id===e.pointerId&&p.revision===revision&&Math.hypot(e.clientX-p.x,e.clientY-p.y)<5){const i=buscar(e);if(i>=0)elegirNodo(i);}});
@@ -233,8 +247,14 @@ export function crearEscenaDiversidad(elemento,acciones) {
     escuchar(canvas,'webglcontextlost',e=>{e.preventDefault();error('Se perdió el contexto gráfico. Cambia de visualización para recuperarlo; la jerarquía de la izquierda sigue disponible.');});
     escuchar(canvas,'webglcontextrestored',()=>{estado.hidden=true;firma='';programar();});
     escuchar(document,'visibilitychange',()=>{if(document.hidden){if(frame!==null)cancelAnimationFrame(frame);frame=null;destino=null;marco.dataset.animando='false';tooltip.ocultar();}else programar();});
-    const resize=new ResizeObserver(()=>{if(destruido||!vista.clientWidth||!vista.clientHeight)return;const w=vista.clientWidth,h=vista.clientHeight;if(w===ancho&&h===alto)return;ancho=w;alto=h;camara.aspect=w/h;camara.updateProjectionMatrix();renderer.setSize(w,h,false);if(arbol)ajustar();programar();});resize.observe(vista);
-    async function pantallaCompleta(){if(document.fullscreenElement===marco)return document.exitFullscreen();await marco.requestFullscreen();canvas.focus({preventScroll:true});}
+    const resize=new ResizeObserver(()=>{if(destruido||!vista.clientWidth||!vista.clientHeight)return;const w=vista.clientWidth,h=vista.clientHeight;if(w===ancho&&h===alto)return;ancho=w;alto=h;camara.aspect=w/h;camara.updateProjectionMatrix();renderer.setSize(w,h,false);if(arbol&&!dimensionado)ajustar();dimensionado=true;programar();});resize.observe(vista);
+    function expandir(){ampliado=true;marco.classList.add('is-expanded');dialogo?.classList.add('has-diversity-expanded');marco.dataset.ampliado='true';canvas.focus({preventScroll:true});}
+    function restaurar(){ampliado=false;marco.classList.remove('is-expanded');dialogo?.classList.remove('has-diversity-expanded');marco.dataset.ampliado='false';ampliacionAutomatica=false;canvas.focus({preventScroll:true});}
+    function ampliarAutomaticamente(){expandir();if(document.fullscreenEnabled&&navigator.userActivation?.isActive&&!fullscreenPendiente){fullscreenPendiente=true;marco.requestFullscreen().catch(()=>{}).finally(()=>{fullscreenPendiente=false;});}}
+    async function salirDeAmpliacion(){restaurar();if(document.fullscreenElement===marco)await document.exitFullscreen();}
+    async function pantallaCompleta(){if(ampliado)return salirDeAmpliacion();expandir();if(document.fullscreenEnabled&&navigator.userActivation?.isActive)await marco.requestFullscreen().catch(()=>{});}
+    escuchar(document,'fullscreenchange',()=>{if(!document.fullscreenElement&&ampliado)restaurar();});
+    escuchar(document,'keydown',e=>{if(!ampliado)return;if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();salirDeAmpliacion();}else if(e.key==='Tab'){const controles=[...marco.querySelectorAll('button:not([tabindex="-1"]),canvas')].filter(el=>el.checkVisibility()&&!el.disabled);if(!controles.length)return;e.preventDefault();const i=controles.indexOf(document.activeElement);controles[(i+(e.shiftKey?-1:1)+controles.length)%controles.length].focus({preventScroll:true});}},{capture:true});
     return {
         async actualizar(nuevos,clave,nuevoIndice){
             if(destruido)return;if(fuente===nuevos&&raiz===clave&&indice===nuevoIndice)return;
@@ -253,6 +273,6 @@ export function crearEscenaDiversidad(elemento,acciones) {
         contiene:clave=>Boolean(arbol?.claves.includes(clave)),limpiarSeleccion(){elegido=0;mensaje();ajustar();},rangoActivo:()=>resaltado,
         enfocar(clave){const i=arbol?.claves.indexOf(clave)??-1;if(i<0)return false;elegido=i;canvas.focus({preventScroll:true});mensaje();mostrarDetalle(i);programar();return true;},
         mostrar(valor){activo=valor;cabecera.hidden=maximizar.hidden=!valor;orbit.enabled=valor;if(valor)programar();else{if(frame!==null)cancelAnimationFrame(frame);frame=null;destino=null;marco.dataset.animando='false';tooltip.ocultar();}},
-        destruir(){destruido=true;revision++;if(document.fullscreenElement===marco)document.exitFullscreen().catch(()=>{});abort.abort();resize.disconnect();orbit.dispose();tooltip.destruir();if(frame!==null)cancelAnimationFrame(frame);etiquetasDOM.clear();colores.clear();troncosCache.clear();ramas.geometry.dispose();hojas?.dispose();geometriaHoja.dispose();materialRamas.dispose();materialHojas.dispose();renderer.dispose();renderer.forceContextLoss();cabecera.remove();maximizar.remove();elemento.replaceChildren();arbol=indice=fuente=null;puntos=[];},
+        destruir(){destruido=true;revision++;if(document.fullscreenElement===marco)document.exitFullscreen().catch(()=>{});dialogo?.classList.remove('has-diversity-expanded');abort.abort();toques.clear();resize.disconnect();orbit.dispose();tooltip.destruir();if(frame!==null)cancelAnimationFrame(frame);etiquetasDOM.clear();colores.clear();troncosCache.clear();ramas.geometry.dispose();hojas?.dispose();geometriaHoja.dispose();materialRamas.dispose();materialHojas.dispose();renderer.dispose();renderer.forceContextLoss();cabecera.remove();maximizar.remove();elemento.replaceChildren();arbol=indice=fuente=null;puntos=[];},
     };
 }

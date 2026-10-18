@@ -37,6 +37,12 @@ test('la confirmación sincroniza el hijo marcado y retira visualmente el filo i
     assert.equal(entrada.checked, true); assert.deepEqual(ui.filas.map(n => n.clave), ['Annelida', 'Arthropoda', 'Insecta', 'Hymenoptera']);
 });
 
+test('el linaje de una especie resalta sus ancestros sin seleccionarlos como filtros y se limpia al cambiar de contexto',()=>{
+    const ui=componente(datos({nodos:[raiz,hijo,nieto],seleccionado:'Hymenoptera',linaje:['Arthropoda','Insecta','Hymenoptera']}));
+    assert.equal(ui.enLinaje(hijo),true);assert.equal(ui.marcado(hijo),false);assert.equal(ui.marcado(nieto),true);
+    ui.actualizar(datos({contexto:'otra:2'}));assert.equal(ui.enLinaje(hijo),false);
+});
+
 test('una respuesta tardía de otro Taxón no repone sus ramas ni cambia el contexto confirmado', async () => {
     const originalFetch = globalThis.fetch, originalWindow = globalThis.window;
     let resolver; globalThis.window = {location: {origin: 'https://portal.test'}};

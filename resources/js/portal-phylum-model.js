@@ -18,7 +18,7 @@ export function filasFilo(nodos, expandidos) {
 export function crearFiltroFilo(inicial, endpoint) {
     let version = 0, contexto = null;
     return {
-        nodos: [], expandidos: [], cargados: [], cargando: [], filos: [], seleccionado: '', filas: [], busquedaTaxon: '', error: '',
+        nodos: [], expandidos: [], cargados: [], cargando: [], filos: [], seleccionado: '', linaje: [], filas: [], busquedaTaxon: '', error: '',
         filasVisibles: [], espacioSuperior: 0, espacioInferior: 0,
         init() { this.actualizar(inicial); },
         actualizar(datos) {
@@ -28,6 +28,7 @@ export function crearFiltroFilo(inicial, endpoint) {
             }
             this.error = ''; this.busquedaTaxon = datos.busquedaTaxon;
             this.filos = datos.filos; this.seleccionado = datos.seleccionado;
+            this.linaje = datos.linaje || [];
             this.integrar(datos);
             this.expandidos = [...new Set([...this.expandidos, ...datos.expandidos])];
             for (const raiz of this.nodos.filter(nodo => nodo.padre === null && this.filos.includes(nodo.id))) {
@@ -58,6 +59,7 @@ export function crearFiltroFilo(inicial, endpoint) {
             this.espacioSuperior = inicio * 32; this.espacioInferior = (this.filas.length - fin) * 32;
         },
         marcado(nodo) { return nodo.padre === null ? this.filos.includes(nodo.id) : this.seleccionado === nodo.id; },
+        enLinaje(nodo) { return this.linaje.includes(nodo.id); },
         async alternar(nodo) {
             if (!nodo.tieneHijos || this.cargando.includes(nodo.clave)) return;
             if (this.expandidos.includes(nodo.clave)) {

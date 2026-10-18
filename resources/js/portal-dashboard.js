@@ -47,7 +47,7 @@ function agregarAgrupacionMapa(capa, mapa, grupo) {
     numero.textContent = grupo.ubicaciones.toLocaleString('es-EC');
     numero.setAttribute('aria-hidden', 'true');
     const unidad = L.DomUtil.create('span', 'atlas-map-cluster-unit', boton);
-    unidad.textContent = 'ubic.';
+    unidad.textContent = 'loc.';
     unidad.setAttribute('aria-hidden', 'true');
     L.DomEvent.disableClickPropagation(boton);
     boton.addEventListener('click', evento => {
@@ -445,7 +445,7 @@ const registrarDashboard = () => {
                     if (!this.$refs.mapaContainer || mapa) return;
                     const ubicaciones = prepararPuntosMapa(puntos);
                     if (ubicaciones.length === 0) return;
-                    mapa = L.map(this.$refs.mapaContainer, {scrollWheelZoom: false, zoomControl: false});
+                    mapa = L.map(this.$refs.mapaContainer, {scrollWheelZoom: true, zoomControl: false});
                     L.control.zoom({zoomInTitle: 'Acercar', zoomOutTitle: 'Alejar'}).addTo(mapa);
                     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
                         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
@@ -547,7 +547,7 @@ const registrarDashboard = () => {
         init() {
             this.$nextTick(() => {
                 if (!this.$refs.mapa || mapa) return;
-                mapa = L.map(this.$refs.mapa, {scrollWheelZoom: false, boxZoom: true, zoomControl: false});
+                mapa = L.map(this.$refs.mapa, {scrollWheelZoom: true, boxZoom: true, zoomControl: false});
                 L.control.zoom({zoomInTitle: 'Acercar', zoomOutTitle: 'Alejar'}).addTo(mapa);
                 teselas = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',

@@ -1,3 +1,5 @@
+import {rangoVisual3D} from './portal-taxonomy-three-ranks.js';
+
 /** Proyección taxonómica, sin distancias evolutivas ni bifurcaciones inventadas.
  * Coordenadas dobles: el visor las proyecta y rebasa antes de enviarlas a la GPU.
  */
@@ -10,10 +12,19 @@ const ETAPAS_DIVERSIDAD=[
 /** El zoom habilita rangos formales, independientemente de los huecos del linaje. */
 export function detalleTaxonomicoDiversidad(ordenRaiz,zoom,disponibles){
     const encontrado=ETAPAS_DIVERSIDAD.findIndex(n=>n.orden>=ordenRaiz);
-    const inicial=encontrado<0?ETAPAS_DIVERSIDAD.length-1:encontrado;
+    // La vista general abre Clase y Orden juntos. Una selección más específica
+    // comienza en su propio rango y nunca fabrica categorías intermedias.
+    const inicial=encontrado<0?ETAPAS_DIVERSIDAD.length-1:Math.max(1,encontrado);
     const pasos=Math.max(0,Math.floor(Math.log(Math.max(1,Number.isFinite(zoom)?zoom:1))/Math.log(1.6)+1e-6));
     const etapas=ETAPAS_DIVERSIDAD.filter((etapa,i)=>i>=inicial&&(i===inicial||!disponibles||disponibles.some(orden=>orden>(ETAPAS_DIVERSIDAD[i-1]?.orden??-1)&&orden<=etapa.orden)));
     return etapas[Math.min(etapas.length-1,pasos)];
+}
+
+/** Radio en píxeles CSS: contar especies identificadas, nunca ejemplares ni
+ * terminales sin identificar. El logaritmo mantiene legibles clados muy grandes.
+ */
+export function radioYemaDiversidad(especies){
+    return 4+2.5*Math.log1p(Math.max(0,Number.isFinite(especies)?especies:0));
 }
 
 /** Presupuesto visual: nunca recorre rangos aún cerrados ni borra taxones del modelo.
@@ -61,9 +72,12 @@ export function crearArbolDiversidad(indice, raiz) {
         const lista = indice.porPadre.get(entrada.clave) || [];
         for (let j = lista.length - 1; j >= 0; j--) pila.push({clave: lista[j].clave, padre: i, nivel: entrada.nivel + 1});
     }
-    const n = claves.length, terminales = new Float64Array(n), posiciones = new Float64Array(n * 2);
+    const n = claves.length, terminales = new Float64Array(n), especies = new Float64Array(n), posiciones = new Float64Array(n * 2);
     const sectores = new Float64Array(n * 2), limites = new Float64Array(n * 4);
     for (let i = n - 1; i >= 0; i--) terminales[i] = hijos[i].length ? hijos[i].reduce((s, h) => s + terminales[h], 0) : 1;
+    // Una especie con subespecies cuenta una vez. Las claves públicas ya
+    // distinguen identidades y linajes, incluidos los nombres homónimos.
+    for (let i=n-1;i>=0;i--) especies[i]=rangoVisual3D(indice.porClave.get(claves[i])).orden===17?1:hijos[i].reduce((s,h)=>s+especies[h],0);
     sectores[0] = -700; sectores[1] = 700;
     let separacion = 140;
     for (let i = 0; i < n; i++) {
@@ -82,7 +96,7 @@ export function crearArbolDiversidad(indice, raiz) {
     // Ramas orgánicas de escala decreciente, en lugar de pisos horizontales.
     // Cada bifurcación sigue siendo exactamente la publicada en el catálogo.
     const profundidad = new Float64Array(n), longitudes = new Float64Array(n), radios = new Float64Array(n), angulos = new Float64Array(n);
-    longitudes[0] = 230; radios[0] = 15;
+    longitudes[0] = 230; radios[0] = 1.25;
     posiciones.fill(0);
     for (let i = 0; i < n; i++) {
         const lista = hijos[i], pesos = lista.map(h => Math.pow(terminales[h], .65));
@@ -125,7 +139,7 @@ export function crearArbolDiversidad(indice, raiz) {
         for(const h of hijos[i]) {z0=Math.min(z0,limites3D[h*6+2]);z1=Math.max(z1,limites3D[h*6+5]);}
         limites3D.set([x0,y0,z0,x1,y1,z1],i*6);
     }
-    return {claves, padres: Int32Array.from(padres), niveles: Uint32Array.from(niveles), hijos, terminales,
+    return {claves, padres: Int32Array.from(padres), niveles: Uint32Array.from(niveles), hijos, terminales, especies,
         posiciones, profundidad, curvas, sectores, limites, limites3D, radios, angulos, longitudes, separacion: Math.max(Number.EPSILON, separacion)};
 }
 

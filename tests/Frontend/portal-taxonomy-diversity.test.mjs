@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {crearArbolDiversidad, detalleTaxonomicoDiversidad, encuadreDiversidad, orientarDiversidad, proyectarDiversidad, seleccionarDetalleDiversidad, zoomDiversidad} from '../../resources/js/portal-taxonomy-diversity-model.js';
+import {crearArbolDiversidad, detalleTaxonomicoDiversidad, encuadreDiversidad, orientarDiversidad, proyectarDiversidad, radioYemaDiversidad, seleccionarDetalleDiversidad, zoomDiversidad} from '../../resources/js/portal-taxonomy-diversity-model.js';
 import {Euler, Matrix4, Quaternion} from 'three';
 
 function indice(nodos) {
@@ -32,16 +32,28 @@ test('en especies masivas se acota el dibujo, se agrupa la densidad y el zoom re
     assert.deepEqual(detalle.visibles,[0,9999]);assert.equal(a.claves[9999],'e9998');
 });
 
-test('la vista general muestra clases y cada acercamiento habilita el siguiente rango, sin adelantar especies',()=>{
-    const esperados=['Clase','Orden','Suborden','Familia','Subfamilia','Tribu','Género','Especie'];
+test('la vista general abre clase y orden y cada acercamiento habilita el siguiente rango, sin adelantar especies',()=>{
+    const esperados=['Orden','Suborden','Familia','Subfamilia','Tribu','Género','Especie'];
     for(let i=0;i<esperados.length;i++)assert.equal(detalleTaxonomicoDiversidad(0,1.6**i).nombre,esperados[i]);
-    assert.equal(detalleTaxonomicoDiversidad(0,.5).nombre,'Clase');
+    assert.equal(detalleTaxonomicoDiversidad(0,.5).nombre,'Orden');
+    assert.equal(detalleTaxonomicoDiversidad(3,1).nombre,'Orden');
     assert.equal(detalleTaxonomicoDiversidad(0,1e10).nombre,'Especie');
     assert.equal(detalleTaxonomicoDiversidad(11,1).nombre,'Familia');
     assert.equal(detalleTaxonomicoDiversidad(11,1.6).nombre,'Subfamilia');
     assert.equal(detalleTaxonomicoDiversidad(17,1).nombre,'Especie');
     const sinIntermedios=[3,7,11,15,17];
-    assert.deepEqual([0,1,2,3,4].map(i=>detalleTaxonomicoDiversidad(0,1.6**i,sinIntermedios).nombre),['Clase','Orden','Familia','Género','Especie']);
+    assert.deepEqual([0,1,2,3].map(i=>detalleTaxonomicoDiversidad(0,1.6**i,sinIntermedios).nombre),['Orden','Familia','Género','Especie']);
+});
+
+test('las yemas cuentan especies reales una sola vez, excluyen terminales sin identificar y crecen logarítmicamente',()=>{
+    const taxon=(clave,padre,etiqueta)=>({...nodo(clave,padre),etiqueta,total:99999});
+    const a=crearArbolDiversidad(indice([taxon('r',null,'Clase'),taxon('g','r','Género'),taxon('e1','g','Especie'),taxon('s1','e1','Subespecie'),taxon('s2','e1','Subespecie'),taxon('e2','g','Especie'),taxon('sin-identificar','r','Género')]),'r');
+    const cantidad=k=>a.especies[a.claves.indexOf(k)];
+    assert.equal(cantidad('r'),2);assert.equal(cantidad('g'),2);assert.equal(cantidad('e1'),1);assert.equal(cantidad('sin-identificar'),0);
+    assert.ok(radioYemaDiversidad(10)>radioYemaDiversidad(1));
+    assert.ok(radioYemaDiversidad(100)-radioYemaDiversidad(10)<radioYemaDiversidad(10)-radioYemaDiversidad(0));
+    assert.ok(radioYemaDiversidad(1000000)<40);assert.equal(radioYemaDiversidad(NaN),radioYemaDiversidad(0));
+    assert.ok(a.radios[0]<2,'El tallo general es fino e independiente del diámetro de la yema.');
 });
 
 test('el árbol conserva multifurcaciones, homónimos y huecos de rango sin inventar ancestros', () => {

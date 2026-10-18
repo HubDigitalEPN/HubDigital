@@ -1206,12 +1206,15 @@ select:focus[data-flux-control] {
 .hub-topbar-brand {
     grid-column: auto;
     justify-self: auto;
-    flex: 0 0 auto;
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: min(58vw, 40rem);
     gap: .65rem;
     color: #fff;
     text-decoration: none;
 }
 .hub-topbar-brand span:last-child { display: grid; line-height: 1.2; }
+.hub-topbar-brand > img { flex: none; }
 .hub-topbar-brand strong { font-size: .9rem; font-weight: 700; }
 .hub-topbar-brand small { color: #c4d2e1; font-size: .64rem; }
 .hub-app-topbar .hub-mobile-actions { grid-column: auto; margin-left: auto; }
@@ -1224,6 +1227,7 @@ select:focus[data-flux-control] {
 }
 @media(max-width: 640px) {
     .hub-app-topbar { flex-wrap: wrap; gap: .4rem .6rem; padding-block: .45rem; }
+    .hub-topbar-brand { max-width: calc(100% - 3rem); }
     .hub-app-topbar .hub-mobile-actions { flex: 1 1 100%; width: 100%; justify-content: flex-end; }
     .hub-topbar-brand strong { font-size: .78rem; }
     .hub-topbar-brand small { font-size: .58rem; }

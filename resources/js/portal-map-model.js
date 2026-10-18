@@ -149,7 +149,7 @@ export function crearAgrupadorMapa(puntos, filoActivo = '') {
 }
 
 export function etiquetaAgrupacionMapa(grupo) {
-    return `Agrupación de ${grupo.ubicaciones.toLocaleString('es-EC')} ubicaciones originales · ${grupo.cantidad.toLocaleString('es-EC')} registros. Acercar para separarlas; el símbolo no representa una nueva coordenada de colecta.`;
+    return `Agrupación de ${grupo.ubicaciones.toLocaleString('es-EC')} localidades · ${grupo.cantidad.toLocaleString('es-EC')} registros. Acercar para separarlas; el símbolo no representa una nueva coordenada de colecta.`;
 }
 
 export function crearGeojsonMapa(puntos, metadatos = {}) {
