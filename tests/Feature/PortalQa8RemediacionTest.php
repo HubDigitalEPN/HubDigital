@@ -188,7 +188,11 @@ test('QA8 cada descarga compuesta conserva su formato aunque otra parte mencione
     $seleccion = ['ft' => 'Naesiotus eschariferus', 'fprov' => 'Galápagos'];
     $respuesta = app(AsistentePortal::class)->responder('Primero descarga los registros CSV. Después descarga XLSX. Explica la precisión de la coordenada recuperada del Excel.', app(ConsultarChatBotHandler::class), seleccionPortal: $seleccion);
     expect(array_column($respuesta['partes'], 'accion'))->toBe(['descarga', 'descarga', 'precision'])
-        ->and($respuesta['texto'])->toContain('1. Cambia a Registros', '2. Para descargar XLSX', 'nunca cero')
+        ->and($respuesta['texto'])->toContain(
+            '1. Los registros individuales y las descargas requieren iniciar sesión con una cuenta verificada de administración o curaduría. Cambia a Registros',
+            '2. Los registros individuales y las descargas requieren iniciar sesión con una cuenta verificada de administración o curaduría. Para descargar XLSX',
+            'nunca cero',
+        )
         ->and(qa8Enlace($respuesta, 'registros'))->toEqual($seleccion + ['vista' => 'registros'])
         ->and(qa8Enlace($respuesta, 'tarjetas'))->toMatchArray(['nivel' => 'species', 'taxon' => 'Naesiotus eschariferus']);
 });

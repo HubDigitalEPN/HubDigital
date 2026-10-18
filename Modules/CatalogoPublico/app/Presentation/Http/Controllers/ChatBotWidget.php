@@ -126,6 +126,40 @@ final class ChatBotWidget extends Component
 
     public function render(): View
     {
-        return view('catalogopublico::livewire.chat-bot-widget');
+        // La orientación y el contexto conservan sus criterios; sólo se adaptan
+        // las acciones visibles al mismo permiso que aplica el catálogo.
+        $mensajesVisibles = $this->mensajes;
+        if (! \App\Support\AccesoCatalogo::completo()) {
+            foreach ($mensajesVisibles as &$mensaje) {
+                if ($mensaje['rol'] !== 'chatbot') continue;
+                $mensaje['opciones'] = array_values(array_filter(array_map(
+                    fn (array $opcion): ?array => $this->opcionPublica($opcion),
+                    $mensaje['opciones'] ?? [],
+                )));
+            }
+            unset($mensaje);
+        }
+
+        return view('catalogopublico::livewire.chat-bot-widget', compact('mensajesVisibles'));
+    }
+
+    private function opcionPublica(array $opcion): ?array
+    {
+        if (isset($opcion['url'])) {
+            $base = strtok($opcion['url'], '?#');
+            if ($base === route('portal.lista-especies')) return null;
+            if ($base === route('portal.catalogo')) {
+                parse_str((string) parse_url($opcion['url'], PHP_URL_QUERY), $parametros);
+                if (($parametros['vista'] ?? null) === 'registros') {
+                    $parametros['vista'] = 'mapa';
+                    $opcion['url'] = route('portal.catalogo', $parametros);
+                    $opcion['label'] = 'Explorar selección en el mapa';
+                }
+            }
+        }
+        $etiqueta = Str::lower(Str::ascii($opcion['label'] ?? ''));
+        if (preg_match('/descarg|export|^(?:ver|abrir|consultar|mostrar|muestrame)\s+(?:los\s+)?registros/u', $etiqueta)) return null;
+
+        return $opcion;
     }
 }

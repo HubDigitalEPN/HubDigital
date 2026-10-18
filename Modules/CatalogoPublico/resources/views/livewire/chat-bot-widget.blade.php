@@ -33,7 +33,7 @@
             </header>
 
             <div x-ref="messages" class="min-h-0 flex-1 space-y-3 overflow-y-auto bg-[#F5F8FC] px-3 py-4" aria-live="polite" aria-relevant="additions text">
-                @forelse($mensajes as $indice => $mensaje)
+                @forelse($mensajesVisibles as $indice => $mensaje)
                     @if($mensaje['rol'] === 'visitante')
                         <div class="flex justify-end" wire:key="chat-user-{{ $indice }}">
                             <div class="max-w-[86%] whitespace-pre-wrap break-words rounded-2xl rounded-br-sm bg-blue-navy px-3.5 py-2.5 text-sm leading-5 text-white shadow-sm">{{ $mensaje['texto'] }}</div>

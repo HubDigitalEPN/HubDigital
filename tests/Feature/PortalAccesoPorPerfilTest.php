@@ -48,3 +48,34 @@ test('login dirige al mapa sólo a curaduría y administración aunque existiera
             : route('dashboard', absolute: false));
     $this->assertAuthenticatedAs($usuario);
 })->with(array_map(fn (RolUsuario $rol): string => $rol->value, RolUsuario::cases()));
+
+test('el chat adapta los enlaces de registros al permiso y conserva los filtros de la selección', function (?string $rol): void {
+    if ($rol !== null) $this->actingAs(User::factory()->create(['rol' => $rol]));
+    $autorizado = in_array($rol, ['ADMIN', 'CURADOR'], true);
+    $chat = Livewire::test(\Modules\CatalogoPublico\Presentation\Http\Controllers\ChatBotWidget::class)
+        ->set('pregunta', '¿Cómo descargo los resultados filtrados en CSV?')
+        ->call('enviar', ['fprov' => 'Pichincha']);
+    $chat->assertViewHas('mensajesVisibles', function (array $mensajes) use ($autorizado): bool {
+        $opcion = $mensajes[1]['opciones'][0];
+        parse_str((string) parse_url($opcion['url'], PHP_URL_QUERY), $parametros);
+        return ($parametros['fprov'] ?? null) === 'Pichincha'
+            && ($parametros['vista'] ?? null) === ($autorizado ? 'registros' : 'mapa')
+            && $opcion['label'] === ($autorizado ? 'Abrir registros filtrados' : 'Explorar selección en el mapa');
+    })->assertSee('cuenta verificada de administración o curaduría');
+    $documento = new DOMDocument;
+    @$documento->loadHTML('<?xml encoding="UTF-8">'.$chat->html());
+    $dom = new DOMXPath($documento);
+    expect($dom->query('//a[normalize-space(.)="Abrir registros filtrados"]')->length)->toBe($autorizado ? 1 : 0)
+        ->and($dom->query('//a[normalize-space(.)="Explorar selección en el mapa"]')->length)->toBe($autorizado ? 0 : 1);
+})->with([null, 'ADMIN', 'CURADOR', 'RECEPTOR', 'DEPOSITANTE', 'PRESTAMISTA']);
+
+test('las sugerencias del chat sólo ofrecen ver registros a curaduría', function (bool $autorizado): void {
+    if ($autorizado) $this->actingAs(User::factory()->curador()->create());
+    Livewire::test(\Modules\CatalogoPublico\Presentation\Http\Controllers\ChatBotWidget::class)
+        ->set('pregunta', 'ke bichos ai aki')->call('enviar')
+        ->assertViewHas('mensajesVisibles', function (array $mensajes) use ($autorizado): bool {
+            $etiquetas = array_column($mensajes[1]['opciones'], 'label');
+            return in_array('Ver registros', $etiquetas, true) === $autorizado
+                && in_array('Contar especies', $etiquetas, true);
+        });
+})->with([false, true]);
