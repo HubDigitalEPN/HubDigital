@@ -1213,7 +1213,8 @@ select:focus[data-flux-control] {
     color: #fff;
     text-decoration: none;
 }
-.hub-topbar-brand span:last-child { display: grid; line-height: 1.2; }
+.hub-topbar-brand span:last-child { display: grid; min-width: 0; line-height: 1.2; white-space: normal; }
+.hub-topbar-brand :is(strong, small) { white-space: normal; overflow-wrap: anywhere; }
 .hub-topbar-brand > img { flex: none; }
 .hub-topbar-brand strong { font-size: .9rem; font-weight: 700; }
 .hub-topbar-brand small { color: #c4d2e1; font-size: .64rem; }
