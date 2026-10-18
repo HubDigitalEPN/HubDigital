@@ -25,6 +25,7 @@ function domRegistrosPublicos(string $html): DOMXPath
 }
 
 test('la tabla pública ofrece todas las columnas permitidas y aplica la selección del curador sin saltar flags', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     registrosParaContratoChat();
     DB::table('taxonomia.columnas_portal_publico')->delete();
     $servicio = app(ColumnasRegistroPublico::class);
@@ -57,6 +58,7 @@ test('la tabla pública ofrece todas las columnas permitidas y aplica la selecci
 });
 
 test('la ficha usa la selección aplicada y comprueba de nuevo coordenadas y publicación sin revelar otro registro', function (string $caso): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     registrosParaContratoChat();
     $id = DB::table('taxonomia.especimenes')->where('codigo_catalogo', 'QA3-CHAT-1')->value('id');
     $idFuera = DB::table('taxonomia.especimenes')->where('codigo_catalogo', 'QA3-CHAT-4')->value('id');
@@ -79,6 +81,7 @@ test('la ficha usa la selección aplicada y comprueba de nuevo coordenadas y pub
 })->with(['fuera de selección', 'latitud ausente', 'longitud reservada', 'no publicado', 'identificador inválido']);
 
 test('una ficha abierta retira datos cuyo permiso cambia y se cierra al restaurar la navegación', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     registrosParaContratoChat();
     $id = DB::table('taxonomia.especimenes')->where('codigo_catalogo', 'QA3-CHAT-1')->value('id');
     $catalogo = Livewire::withQueryParams(['vista' => 'registros', 'fc' => 'QA3-CHAT-1'])->test(PortalCatalogo::class)
@@ -91,6 +94,7 @@ test('una ficha abierta retira datos cuyo permiso cambia y se cierra al restaura
 });
 
 test('latitud y longitud simples se aplican al cambiar conservando cero, validación e historial', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     registrosParaContratoChat();
     DB::table('taxonomia.especimenes')->where('codigo_catalogo', 'QA3-CHAT-1')->update(['decimal_latitude' => 0]);
     DB::table('taxonomia.especimenes')->where('codigo_catalogo', 'QA3-CHAT-4')->update(['decimal_longitude' => -79.2]);
@@ -118,6 +122,7 @@ test('latitud y longitud simples se aplican al cambiar conservando cero, validac
 });
 
 test('quitar solo el filo conserva provincia y demás filtros sin mantener la ficha abierta', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     registrosParaContratoChat();
     $filo = DB::table('taxonomia.taxones')->where('nombre_cientifico', 'Chatobius')->value('padre_id');
     $id = DB::table('taxonomia.especimenes')->where('codigo_catalogo', 'QA3-CHAT-1')->value('id');

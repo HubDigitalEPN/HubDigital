@@ -186,6 +186,7 @@ test('una aclaración conserva la selección válida y una pregunta de acceso li
 });
 
 test('una conversación nueva exporta la selección aplicada de la página y conserva el taxón navegado entre vistas', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     registrosParaContratoChat();
     $seleccion = ['nivel' => 'genus', 'taxon' => 'Chatobius', 'fprov' => 'Pichincha',
         'ffd' => '2000-05-01', 'ffh' => '2000-05-04', 'fed' => '1000', 'feh' => '2000'];
@@ -204,6 +205,7 @@ test('una conversación nueva exporta la selección aplicada de la página y con
 });
 
 test('el enlace de ayuda usa filtros aplicados y no borradores inválidos ni una consulta anterior del chat', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     registrosParaContratoChat();
     $catalogo = Livewire::withQueryParams(['ft' => 'Chatobius', 'fprov' => 'Pichincha', 'vista' => 'registros'])->test(PortalCatalogo::class);
     $aplicada = ['ft' => 'Chatobius', 'fprov' => 'Pichincha'];
@@ -229,6 +231,7 @@ test('el enlace de ayuda usa filtros aplicados y no borradores inválidos ni una
 });
 
 test('la ayuda del mapa de esta selección conserva exactamente la consulta de la ficha manual', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $jerarquia = jerarquiaGenerosChat();
     DB::table('taxonomia.taxones')->where('id', $jerarquia['familia'])->update(['nombre_cientifico' => 'Formicidae']);
     $genero = (string) Str::uuid(); $especie = (string) Str::uuid();
@@ -260,6 +263,7 @@ test('la ayuda del mapa de esta selección conserva exactamente la consulta de l
 });
 
 test('las instrucciones para una consulta explícita nueva no heredan la selección aplicada ni el contexto anterior', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     registrosParaContratoChat();
     $respuesta = app(AsistentePortal::class)->responder('¿Cómo filtro Chatobius en Esmeraldas en el mapa?', app(ConsultarChatBotHandler::class),
         contextoCatalogo: ['codigo' => 'QA3-CHAT-1', 'provincia' => 'Pichincha'],
@@ -316,6 +320,7 @@ test('repetir la ayuda del mapa fuera del catálogo conserva la consulta públic
 });
 
 test('los enlaces de selección admiten solo parámetros públicos y conservan los filtros que el chat no interpreta', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $entrada = ['fp' => ['Alcohol'], 'fm' => ['Trampa de caída'], 'fb' => ['Bosque'], 'fg' => ['Quito', 'Yasuní'],
         'fco' => 'Colectora', 'fh' => 'Hojarasca', 'fsti' => 'Holotype', 'fd' => 'En préstamo', 'fca' => 'Worker', 'fes' => 'Adult',
         'flat' => '-1', 'flax' => '0', 'flon' => '-79', 'flox' => '-78', 'fgeo' => '1', 'fap' => '1'];
@@ -380,6 +385,7 @@ test('el total de géneros incluye identificaciones al género y no se limita a 
 });
 
 test('una consulta global explícita deja el código o taxón anterior y conserva el historial de mensajes', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     registrosParaContratoChat();
     $asistente = app(AsistentePortal::class); $handler = app(ConsultarChatBotHandler::class);
     foreach ([['codigo' => 'QA3-CHAT-1'], ['taxon' => 'Chatobius alpha', 'provincia' => 'Pichincha', 'mes' => '5']] as $contexto) {

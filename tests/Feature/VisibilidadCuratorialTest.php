@@ -48,13 +48,13 @@ test('un ejemplar sin filo queda en curaduría y entra al CSV público al confir
         ->assertOk()->assertSee($ocurrencia);
     auth()->logout();
 
-    $csvAntes = $this->get(route('portal.lista-especies'))->assertOk()->streamedContent();
+    $csvAntes = $this->actingAs(User::factory()->curador()->create())->get(route('portal.lista-especies'))->assertOk()->streamedContent();
     expect($csvAntes)->not->toContain($nombre);
 
     DB::table('taxonomia.taxones')->where('id', $taxon)->update(['padre_id' => $filo]);
     expect(DB::table('divulgacion.especimenes_divulgables')
         ->where('especimen_id', $especimen)->value('publicado'))->toBeTrue();
-    $csvDespues = $this->get(route('portal.lista-especies'))->assertOk()->streamedContent();
+    $csvDespues = $this->actingAs(User::factory()->curador()->create())->get(route('portal.lista-especies'))->assertOk()->streamedContent();
     expect($csvDespues)->toContain($nombre);
 });
 
@@ -67,11 +67,15 @@ test('Colección Biológica responde como primera pantalla pública', function (
         ->assertSee('Colección Biológica')
         ->assertSee('Filtros de investigación')
         ->assertSee('Registros por provincia')
-        ->assertSee('Vista de registros');
+        ->assertDontSee('Vista de registros');
+    $this->actingAs(User::factory()->curador()->create())
+        ->get(route('portal.catalogo', ['vista' => 'mapa']))
+        ->assertOk()->assertSee('Vista de registros');
     $this->get('/portal/comparar-especies')->assertNotFound();
 });
 
 test('las tres vistas se alternan en el mismo componente y conservan la selección', function (): void {
+    $this->actingAs(User::factory()->curador()->create());
     $taxonSinCoincidencias = 'QA-SIN-RESULTADOS-'.Str::uuid();
 
     Livewire::test(PortalCatalogo::class)
@@ -164,7 +168,7 @@ test('los filtros públicos se aplican también a la lista CSV y respetan la ubi
     // los resultados del mapa y CSV deben conservar la selección y sus permisos.
     expect($contenidoResultados($mapa->getContent(), 'atlas-dashboard')->textContent)
         ->not->toContain($sinUbicacion)->not->toContain($metodoRestringido);
-    $csv = $this->get(route('portal.lista-especies', $filtros))->assertOk()->streamedContent();
+    $csv = $this->actingAs(User::factory()->curador()->create())->get(route('portal.lista-especies', $filtros))->assertOk()->streamedContent();
     expect($csv)->toContain($conUbicacion)->not->toContain($sinUbicacion)->not->toContain($metodoRestringido);
     $taxonRedireccion = $this->get(route('portal.estadisticas', ['taxon' => $conUbicacion, 'mes' => 6]))->assertRedirect();
     $this->get($taxonRedireccion->baseResponse->headers->get('Location'))

@@ -657,6 +657,7 @@ const registrarDashboard = () => {
         },
 
         async abrirUbicacion(lat, lon, total, invocador) {
+            if(this.$el.querySelector('[data-acceso-registros]')?.dataset.accesoRegistros!=='true')return;
             this.ocultarAyudaMapa();
             window.dispatchEvent(new CustomEvent('iniciar-detalle-celda', {detail: {lat, lon, total, invocador}}));
             try {
@@ -719,9 +720,10 @@ const registrarDashboard = () => {
                     color: colorFilo(partes[0]?.filo), weight: 1, fillColor: colorFilo(partes[0]?.filo), fillOpacity: .85,
                 }).addTo(capa);
                 const elemento = marcador.getElement();
-                const abrir = () => this.abrirUbicacion(lat, lon, cantidad, elemento);
+                const acceso = this.$el.querySelector('[data-acceso-registros]')?.dataset.accesoRegistros==='true';
+                const abrir = () => acceso?this.abrirUbicacion(lat, lon, cantidad, elemento):this.mostrarAyudaMapa(descripcion, elemento);
                 const composicion = partes.map(({filo, cantidad}) => `${filo}: ${cantidad.toLocaleString('es-EC')}`).join(', ');
-                const descripcion = `Ubicación original: ${cantidad.toLocaleString('es-EC')} ${cantidad === 1 ? 'registro' : 'registros'} con coordenadas ${lat}, ${lon}.${compartida ? ' Comparten esta coordenada.' : ''}${composicion ? ' ' + composicion + '.' : ''} Abrir detalle.`;
+                const descripcion = `Ubicación original: ${cantidad.toLocaleString('es-EC')} ${cantidad === 1 ? 'registro' : 'registros'} con coordenadas ${lat}, ${lon}.${compartida ? ' Comparten esta coordenada.' : ''}${composicion ? ' ' + composicion + '.' : ''}${acceso?' Abrir detalle.':''}`;
                 marcador.on('click', abrir);
                 // Leaflet normaliza el hover tanto para los círculos SVG como
                 // para los iconos de ubicaciones con varios filos.

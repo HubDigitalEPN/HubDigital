@@ -37,6 +37,7 @@ function mapaFiltrosAutomaticosFixture(): array
 }
 
 test('el borrador textual espera confirmación y los fragmentos mantienen la selección en mapa y registros', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = mapaFiltrosAutomaticosFixture();
     $pagina = Livewire::withQueryParams(['vista' => 'mapa'])->test(PortalCatalogo::class)
         ->set('borradorFiltros.filtroCatalogo', 'auto-1')->assertSet('filtroCatalogo', '')
@@ -93,6 +94,7 @@ test('las sugerencias públicas respetan publicación y permisos de código y ra
 });
 
 test('el panel territorial desciende a localidades y conserva otras facetas al volver o cambiar provincia', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = mapaFiltrosAutomaticosFixture();
     $pagina = Livewire::withQueryParams(['vista' => 'mapa', 'fph' => $f['annelida']])->test(PortalCatalogo::class);
     expect(array_column($pagina->instance()->territorioPanel, 'provincia'))->toEqualCanonicalizing(['Loja', 'Pastaza']);
@@ -108,6 +110,7 @@ test('el panel territorial desciende a localidades y conserva otras facetas al v
 });
 
 test('cambiar filo provincia y localidad aplica de inmediato y ofrece solo geografía pública de esa selección', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = mapaFiltrosAutomaticosFixture();
     $pagina = Livewire::withQueryParams(['vista' => 'mapa'])->test(PortalCatalogo::class)
         ->set('borradorFiltros.filtroFiloId', $f['annelida'])->assertSet('filtroFiloId', $f['annelida'])
@@ -131,6 +134,7 @@ test('cambiar filo provincia y localidad aplica de inmediato y ofrece solo geogr
 });
 
 test('registros identificados hasta familia aparecen en provincia década y en la hoja propia de cada punto', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = mapaFiltrosAutomaticosFixture();
     $pagina = Livewire::withQueryParams(['vista' => 'mapa', 'fph' => $f['annelida']])->test(PortalCatalogo::class);
     $datos = $pagina->viewData('datosMapa');
@@ -159,6 +163,7 @@ test('registros identificados hasta familia aparecen en provincia década y en l
 });
 
 test('una hoja conserva su UUID y relee el linaje público antes de cargar su ficha cuando cambia la identificación', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = mapaFiltrosAutomaticosFixture();
     DB::table('taxonomia.especimenes')->where('id', $f['ids'][1])->update(['decimal_latitude' => -1.5, 'decimal_longitude' => -77.5]);
     $pagina = Livewire::withQueryParams(['vista' => 'mapa', 'fph' => $f['annelida']])->test(PortalCatalogo::class)
@@ -187,6 +192,7 @@ test('la referencia de Nematomorpha explica el grupo para visitantes y usa una i
 });
 
 test('un enlace antiguo de exclusión avisa y el chat rechaza esa selección retirada', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     mapaFiltrosAutomaticosFixture();
     Livewire::withQueryParams(['vista' => 'registros', 'fxprov' => 'Pastaza', 'fprov' => 'Loja'])->test(PortalCatalogo::class)
         ->assertSee('El filtro Excluir provincia fue retirado')->assertSet('filtroProvincia', 'Loja')->assertViewHas('totalRegistrosVista', 1);

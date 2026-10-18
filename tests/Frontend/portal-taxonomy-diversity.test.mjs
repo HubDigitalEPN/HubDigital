@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {crearArbolDiversidad, encuadreDiversidad, orientarDiversidad, proyectarDiversidad, zoomDiversidad} from '../../resources/js/portal-taxonomy-diversity-model.js';
+import {crearArbolDiversidad, detalleTaxonomicoDiversidad, encuadreDiversidad, orientarDiversidad, proyectarDiversidad, seleccionarDetalleDiversidad, zoomDiversidad} from '../../resources/js/portal-taxonomy-diversity-model.js';
 import {Euler, Matrix4, Quaternion} from 'three';
 
 function indice(nodos) {
@@ -12,6 +12,37 @@ function indice(nodos) {
     return {porClave,porPadre};
 }
 const nodo = (clave, padre = null) => Object.freeze({clave,padre,nombre:clave});
+
+test('los rangos cerrados no generan ramas ni recorridos anticipados',()=>{
+    const a=crearArbolDiversidad(indice([nodo('filo'),nodo('clase','filo'),nodo('orden','clase'),nodo('familia','orden'),nodo('especie','familia')]),'filo');
+    const medidos=[],medir=i=>(medidos.push(i),{x:50+i*40,y:50,extension:400});
+    const inicial=seleccionarDetalleDiversidad(a,[0,3,7,11,17],3,medir);
+    assert.deepEqual(inicial.visibles,[0,1]);assert.deepEqual(medidos,[0,1]);assert.ok(inicial.brotes.has(1));
+    const siguiente=seleccionarDetalleDiversidad(a,[0,3,7,11,17],7,medir);
+    assert.deepEqual(siguiente.visibles,[0,1,2]);assert.equal(a.claves.length,5);
+});
+
+test('en especies masivas se acota el dibujo, se agrupa la densidad y el zoom recupera nodos sin eliminar datos',()=>{
+    const a=crearArbolDiversidad(indice([nodo('r'),...Array.from({length:10000},(_,i)=>nodo('e'+i,'r'))]),'r'),rangos=[15,...Array(10000).fill(17)];
+    const denso=seleccionarDetalleDiversidad(a,rangos,18,i=>({x:i?200:100,y:100,extension:500}));
+    assert.equal(denso.visibles.length,2);assert.ok(denso.brotes.has(0));assert.equal(a.claves.length,10001);
+    const abierto=seleccionarDetalleDiversidad(a,rangos,18,i=>({x:i%40*24,y:Math.floor(i/40)%20*24,extension:1000}),{presupuesto:80});
+    assert.equal(abierto.visibles.length,80);assert.ok(abierto.brotes.has(0));
+    const detalle=seleccionarDetalleDiversidad(a,rangos,18,i=>i===0||i===9999?{x:i?240:100,y:100,extension:1000}:null);
+    assert.deepEqual(detalle.visibles,[0,9999]);assert.equal(a.claves[9999],'e9998');
+});
+
+test('la vista general muestra clases y cada acercamiento habilita el siguiente rango, sin adelantar especies',()=>{
+    const esperados=['Clase','Orden','Suborden','Familia','Subfamilia','Tribu','Género','Especie'];
+    for(let i=0;i<esperados.length;i++)assert.equal(detalleTaxonomicoDiversidad(0,1.6**i).nombre,esperados[i]);
+    assert.equal(detalleTaxonomicoDiversidad(0,.5).nombre,'Clase');
+    assert.equal(detalleTaxonomicoDiversidad(0,1e10).nombre,'Especie');
+    assert.equal(detalleTaxonomicoDiversidad(11,1).nombre,'Familia');
+    assert.equal(detalleTaxonomicoDiversidad(11,1.6).nombre,'Subfamilia');
+    assert.equal(detalleTaxonomicoDiversidad(17,1).nombre,'Especie');
+    const sinIntermedios=[3,7,11,15,17];
+    assert.deepEqual([0,1,2,3,4].map(i=>detalleTaxonomicoDiversidad(0,1.6**i,sinIntermedios).nombre),['Clase','Orden','Familia','Género','Especie']);
+});
 
 test('el árbol conserva multifurcaciones, homónimos y huecos de rango sin inventar ancestros', () => {
     const fuente = indice([nodo('filo'),nodo('clase','filo'),nodo('familia-a','clase'),nodo('familia-b','clase'),nodo('genero','clase'),nodo('especie','genero'),nodo('ajeno','filo')]);
@@ -85,4 +116,18 @@ test('el giro espacial conserva relaciones y distancias y permite restaurar el m
     assert.notDeepEqual(b.posiciones,a.posiciones);
     const foco=2,vista={x:b.posiciones[foco*2],y:b.posiciones[foco*2+1],escala:1e7};
     assert.deepEqual(proyectarDiversidad(b,foco,vista,800,500),{x:400,y:250});
+});
+
+test('la composición orgánica conserva volumen y abre ramas a alturas distintas sin pisos artificiales',()=>{
+    const a=crearArbolDiversidad(indice([nodo('r'),nodo('a','r'),nodo('b','r'),nodo('c','r'),nodo('d','a'),nodo('e','a'),nodo('f','b')]),'r');
+    assert.ok(new Set(a.hijos[0].map(i=>a.posiciones[i*2+1].toFixed(5))).size>1);
+    for(let i=1;i<a.claves.length;i++){
+        const p=a.padres[i];assert.ok(a.radios[i]>0&&a.radios[i]<a.radios[p]);
+        assert.ok(a.longitudes[i]>0);assert.ok(a.curvas.subarray(i*6,i*6+6).every(Number.isFinite));
+    }
+    const b=a.limites3D.subarray(0,6);
+    for(let i=0;i<a.claves.length;i++){
+        assert.ok(a.posiciones[i*2]>=b[0]&&a.posiciones[i*2]<=b[3]);assert.ok(a.posiciones[i*2+1]>=b[1]&&a.posiciones[i*2+1]<=b[4]);assert.ok(a.profundidad[i]>=b[2]&&a.profundidad[i]<=b[5]);
+    }
+    assert.ok(b[5]-b[2]>10,'La vista oblicua tiene profundidad geométrica real.');
 });

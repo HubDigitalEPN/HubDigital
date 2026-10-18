@@ -61,17 +61,17 @@ test('Cache First reutiliza los recursos y expira las entradas antiguas', async 
     assert.equal(await (await prime(w, request)).response.text(), 'original');
     w.state({body: 'nuevo'});
     assert.equal(await (await w.serve(request)).response.text(), 'original'); assert.equal(w.requests.length, 1);
-    const store = w.stores.get('hubdigital-public-v5-assets'), headers = new Headers(store.get(request.url).headers);
+    const store = w.stores.get('hubdigital-public-v6-assets'), headers = new Headers(store.get(request.url).headers);
     headers.set('X-Portal-Cached-At', String(Date.now() - 8 * 86400000));
     store.set(request.url, new Response('caducado', {headers}));
     assert.equal(await (await w.serve(request)).response.text(), 'nuevo'); assert.equal(w.requests.length, 2);
 });
 
-test('SWR entrega la apertura guardada y actualiza el documento en segundo plano', async () => {
+test('el documento consulta la sesión vigente y conserva sólo el respaldo público para desconexión', async () => {
     const w = worker(), request = w.req('/portal/catalogo?vista=mapa'); w.state({permission: 'document'});
     await prime(w, request); w.state({body: 'actualizado'});
     const stale = await w.serve(request);
-    assert.equal(await stale.response.text(), 'original'); await stale.background;
+    assert.equal(await stale.response.text(), 'actualizado'); await stale.background;
     w.state({offline: true}); assert.equal(await (await w.serve(request)).response.text(), 'actualizado');
 });
 
@@ -96,14 +96,14 @@ test('una respuesta sin autorización pública elimina el documento previo y nun
     const w = worker(), request = w.req('/'); w.state({permission: 'document'});
     await prime(w, request); w.state({permission: '', body: 'cuenta privada'});
     const stale = await w.serve(request); await stale.background;
-    assert.equal(w.stores.get('hubdigital-public-v5-pages').size, 0);
+    assert.equal(w.stores.get('hubdigital-public-v6-pages').size, 0);
     w.state({offline: true}); assert.equal(await (await w.serve(request)).response.text(), 'offline');
 });
 
 test('el caché acota recursos y borra sólo sus versiones anteriores durante la activación', async () => {
     const w = worker();
     for (let i = 0; i < 162; i++) await prime(w, w.req('/images/foto-' + i + '.webp'));
-    assert.equal(w.stores.get('hubdigital-public-v5-assets').size, 160);
+    assert.equal(w.stores.get('hubdigital-public-v6-assets').size, 160);
     w.stores.set('hubdigital-public-v1-assets', new Map()); w.stores.set('otra-aplicacion', new Map()); w.stores.set('hubdigital-public-offline-v1', new Map());
     await w.pwa.activate();
     assert.equal(w.stores.has('hubdigital-public-v1-assets'), false); assert.equal(w.stores.has('otra-aplicacion'), true); assert.equal(w.stores.has('hubdigital-public-offline-v1'), true);
@@ -114,7 +114,7 @@ test('guardar un recurso lento no bloquea entregar ni consumir la respuesta orig
     const w = worker({deferWrites: true}), request = w.req('/build/assets/app-a.js');
     const result = await w.serve(request);
     assert.equal(await result.response.text(), 'original');
-    assert.equal(w.stores.get('hubdigital-public-v5-assets').size, 0);
+    assert.equal(w.stores.get('hubdigital-public-v6-assets').size, 0);
     w.releaseWrites(); await result.background;
     assert.equal(await (await w.serve(request)).response.text(), 'original');
     assert.equal(w.requests.length, 1, 'La copia guardada sigue siendo consumible después de entregar el body.');

@@ -13,6 +13,9 @@ final class CachePublicPortal
     public function handle(Request $request, Closure $next): Response
     {
         $response = $next($request);
+        if ($request->user() && $request->routeIs('portal.*')) {
+            $response->headers->set('Cache-Control', 'private, no-store');
+        }
         $initial = $request->routeIs('home') && $request->query() === [];
         $initial = $initial || ($request->routeIs('portal.catalogo')
             && in_array($request->query(), [[], ['vista' => 'mapa']], true));

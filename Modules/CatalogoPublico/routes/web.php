@@ -51,7 +51,8 @@ Route::prefix('portal')
         Route::get('/sugerencias', \Modules\CatalogoPublico\Presentation\Http\Controllers\SugerenciasBusquedaPublica::class)
             ->middleware('throttle:120,1')->name('sugerencias');
         Route::view('/diccionario-exportacion', 'catalogopublico::diccionario-exportacion')->name('diccionario-exportacion');
-        Route::get('/lista-especies.csv', [PortalEstadisticas::class, 'descargarLista'])->name('lista-especies');
+        Route::get('/lista-especies.csv', [PortalEstadisticas::class, 'descargarLista'])
+            ->middleware(['auth', 'verified', 'role:curador'])->name('lista-especies');
         Route::get('/imagenes/{objeto}', ServirImagenCatalogo::class)
             ->where('objeto', '[A-Za-z0-9_-]+')
             ->name('imagen');

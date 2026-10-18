@@ -52,6 +52,7 @@ function contratoExportacionFixtureQa6(): array
 }
 
 test('QA6 tipo y disposición conservan la población entre filtros públicos ficha y CSV XLSX', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = contratoExportacionFixtureQa6();
     $repo = app(EloquentProveedorEspecimenesParaArbol::class);
     $base = ['filtroFiloId' => $f['filo']];

@@ -105,6 +105,7 @@ test('cada filtro conserva la misma selección en tabla, tarjetas y todos los ag
 });
 
 test('la selección desde un panel actualiza el mapa y limpiar restaura los controles', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = seleccionPortalFixture();
     Livewire::withQueryParams(['vista' => 'mapa'])->test(PortalCatalogo::class)
         ->call('seleccionarFilo', $f['prefijo'])->assertSet('filtroFiloId', $f['filo'])
@@ -118,6 +119,7 @@ test('la selección desde un panel actualiza el mapa y limpiar restaura los cont
 });
 
 test('QA6 provincia canónica conserva URL, borrador y selección de riqueza sin duplicar especies entre grafías', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = seleccionPortalFixture();
     foreach (['Narino', 'Nariño', 'NARIÑO'] as $i => $grafia) {
         DB::table('taxonomia.especimenes')->where('id', $f['ids'][$i])->update(['state_province' => $grafia]);
@@ -160,6 +162,7 @@ test('coordenadas reservadas o inválidas excluyen el registro de todo el portal
 });
 
 test('el par de coordenadas públicas define la misma población del portal y conserva los excluidos en curaduría', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = seleccionPortalFixture();
     $original = (array) DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->first();
     unset($original['coordenadas_otras_regiones'], $original['busqueda_global']);
@@ -303,6 +306,7 @@ test('otras regiones se ocultan de toda selección pública y la marca se recalc
 });
 
 test('los marcadores curatoriales y fechas implausibles conservan el registro sin inflar métricas', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = seleccionPortalFixture();
     DB::table('taxonomia.taxones')->where('id', $f['taxones'][0])->update(['nombre_cientifico' => 'dañada dañada']);
     DB::table('taxonomia.especimenes')->whereIn('id', [$f['ids'][0], $f['ids'][1]])->update(['state_province' => 'dañada', 'fecha_colecta' => '0190-01-08']);
@@ -319,6 +323,7 @@ test('los marcadores curatoriales y fechas implausibles conservan el registro si
 });
 
 test('la jerarquía es visible y removible en mapa y su CSV conserva exactamente los mismos registros', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = seleccionPortalFixture();
     $componente = Livewire::withQueryParams(['vista' => 'mapa', 'nivel' => 'species', 'taxon' => $f['prefijo'].' alfa'])
         ->test(PortalCatalogo::class)->assertSee($f['prefijo'].' alfa')
@@ -356,6 +361,7 @@ test('cada indicador filtra conservando la vista del mapa', function (): void {
 });
 
 test('el detalle de cuadrícula conserva todas las hojas y la tabla pagina seis registros respetando sus campos reservados', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = seleccionPortalFixture();
     $original = (array) DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->first();
     unset($original['coordenadas_otras_regiones'], $original['busqueda_global']);
@@ -400,6 +406,7 @@ test('el detalle de cuadrícula conserva todas las hojas y la tabla pagina seis 
 });
 
 test('el chatbot aplica códigos en frases y listas y conserva la consulta en el enlace', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     Livewire::withoutLazyLoading();
     $f = seleccionPortalFixture();
     $chat = app(ConsultaCatalogoPublico::class);
@@ -414,6 +421,7 @@ test('el chatbot aplica códigos en frases y listas y conserva la consulta en el
 });
 
 test('el chat comparte mes localidad fechas e identificación con el portal y conserva seguimiento selectivo', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     Livewire::withoutLazyLoading();
     $f = seleccionPortalFixture();
     DB::table('taxonomia.especimenes')->whereIn('id', $f['ids'])->update(['locality_name' => 'Playa de Oro']);
@@ -446,6 +454,7 @@ test('la ayuda explica los filtros solicitados y mantiene las preguntas del port
 });
 
 test('el modal asocia las fotos a su registro y curaduría permite filtrar los registros ocultos por región', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = seleccionPortalFixture();
     DB::table('divulgacion.imagenes_taxonomicas')->insert([
         'id' => (string) Str::uuid(), 'occurrence_id' => $f['codigos'][0],

@@ -75,6 +75,7 @@ test('la estructura completa de ETE agrega sólo taxones públicos y conserva pe
 });
 
 test('ver en el mapa desde el árbol reemplaza filtros anteriores y usa los puntos del nodo público', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = exploradorTaxonomicoFixture(2); $id = $f['ramas'][1]['especie']['id'];
     Livewire::withQueryParams(['vista' => 'registros', 'fprov' => 'Pichincha', 'fco' => 'No existe'])
         ->test(PortalCatalogo::class)->call('verTaxonExploradorEnMapa', $id)
@@ -135,6 +136,7 @@ test('ETE recibe la vista automática y la raíz de segundo nivel sin compartir 
 });
 
 test('el modal de registros pagina sólo el taxón elegido y oculta los campos reservados de su ficha', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = exploradorTaxonomicoFixture(2); $rama = $f['ramas'][0];
     foreach (range(1, 25) as $i) exploradorInsertarRegistro($rama['especie']['id'], $f['prefijo']);
     $reservado = exploradorInsertarRegistro($rama['especie']['id'], $f['prefijo'], permisos: ['recorded_by_visible' => false, 'locality_name_visible' => false]);
@@ -346,6 +348,7 @@ test('Enter acepta un nombre exacto público y rechaza coincidencias ambiguas o 
 });
 
 test('el explorador conserva otros filtros y su identidad en el enlace sin aceptar un UUID desde el borrador', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = exploradorTaxonomicoFixture(2); $rama = $f['ramas'][0];
     $pagina = Livewire::withQueryParams(['vista' => 'registros', 'fprov' => 'Pichincha', 'fco' => 'QA explorador'])->test(PortalCatalogo::class)
         ->call('seleccionarTaxonExplorador', $rama['orden']['id'])

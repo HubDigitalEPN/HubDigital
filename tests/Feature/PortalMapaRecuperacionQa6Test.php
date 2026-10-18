@@ -66,6 +66,7 @@ function servicioMapaNoDisponibleQa6(): object
 }
 
 test('QA6 el error de mapa admite reintento explícito y volver a registros conserva la selección', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = seleccionMapaRecuperacionQa6();
     $servicio = servicioMapaNoDisponibleQa6();
     $portal = Livewire::withQueryParams($f['parametros'])->test(PortalCatalogo::class)
@@ -89,6 +90,7 @@ test('QA6 el error de mapa admite reintento explícito y volver a registros cons
 });
 
 test('QA6 la URL directa de mapa muestra un error recuperable con la selección intacta', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     Livewire::withoutLazyLoading();
     $f = seleccionMapaRecuperacionQa6();
     servicioMapaNoDisponibleQa6();

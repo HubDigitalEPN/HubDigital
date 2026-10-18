@@ -150,6 +150,7 @@ test('QA8 una petición afirmativa de limpiar filtros sigue abriendo la consulta
 })->with(['Limpiar todos los filtros', 'Quiero quitar los filtros y volver al mapa']);
 
 test('QA8 003 Q20 mantiene el orden, cuenta especies y enlaza XLSX directamente a la especie', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     qa8CaracolesFixture(); Http::preventStrayRequests();
     $seleccion = ['ft' => 'Naesiotus eschariferus', 'fprov' => 'Galápagos', 'fmes' => '1', 'flat' => '-2', 'flax' => '-1', 'flon' => '-78', 'flox' => '-77'];
     $pregunta = 'Estoy mirando estos dos caracoles de Galápagos. Primero dime cuántas especies hay. Después quiero descargar los dos registros en XLSX sin perder las advertencias de precisión. Por último vuelve al mapa sin quitar ningún filtro. Dame los pasos en ese orden.';
@@ -163,6 +164,7 @@ test('QA8 003 Q20 mantiene el orden, cuenta especies y enlaza XLSX directamente 
 });
 
 test('QA8 RQ27 una consulta compuesta nueva sustituye la selección ajena y explica precisión', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     qa8CaracolesFixture(); Http::preventStrayRequests();
     $pregunta = 'Primero quiero ver Naesiotus eschariferus en Galápagos. Después quiero descargar los dos registros en Excel. Dame los pasos y explica la precisión de las coordenadas.';
     $respuesta = app(AsistentePortal::class)->responder($pregunta, app(ConsultarChatBotHandler::class), seleccionPortal: ['fc' => 'AJENO']);
@@ -181,6 +183,7 @@ test('QA8 una selección ambigua deja pendientes descarga y mapa sin enlaces par
 });
 
 test('QA8 cada descarga compuesta conserva su formato aunque otra parte mencione Excel', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     qa8CaracolesFixture();
     $seleccion = ['ft' => 'Naesiotus eschariferus', 'fprov' => 'Galápagos'];
     $respuesta = app(AsistentePortal::class)->responder('Primero descarga los registros CSV. Después descarga XLSX. Explica la precisión de la coordenada recuperada del Excel.', app(ConsultarChatBotHandler::class), seleccionPortal: $seleccion);
@@ -191,6 +194,7 @@ test('QA8 cada descarga compuesta conserva su formato aunque otra parte mencione
 });
 
 test('QA8 Q04 el enlace de Excel llega a la especie cuando toda la selección comparte su identidad', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     qa8CaracolesFixture();
     $respuesta = app(AsistentePortal::class)->responder('dame pasos para descargar estos dos registros en Excel', app(ConsultarChatBotHandler::class),
         seleccionPortal: ['ft' => 'Naesiotus eschariferus', 'fprov' => 'Galápagos']);
@@ -210,6 +214,7 @@ test('QA8 XLSX no elige una especie arbitraria ni revela una identificación res
 });
 
 test('QA8 004 los nombres anteriores y actuales conservan referencia y revisión pendiente en las fichas', function (string $anterior, string $actual, string $id): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $fixture = qa7ColeccionFixture();
     DB::table('taxonomia.taxones')->where('id', $fixture['taxon'])->update(['nombre_cientifico' => $actual]);
     $referencia = app(ReferenciaTaxonomicaPublica::class);

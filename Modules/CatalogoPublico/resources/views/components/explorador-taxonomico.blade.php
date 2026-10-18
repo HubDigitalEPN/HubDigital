@@ -137,6 +137,6 @@
     <div class="taxonomy-explorer-context-menu" role="menu" aria-label="Acciones del taxón" x-ref="menu" x-cloak x-show="menuNodo"
         x-on:click.outside="cerrarMenu()" x-on:keydown="tecladoMenu($event)">
         <button type="button" role="menuitem" :disabled="aplicando" x-on:click="verEnMapa(menuNodo)">Ver en el mapa</button>
-        <button type="button" role="menuitem" :disabled="aplicando" x-on:click="verRegistros(menuNodo)">Ver registros</button>
+        @if(\App\Support\AccesoCatalogo::completo())<button type="button" role="menuitem" :disabled="aplicando" x-on:click="verRegistros(menuNodo)">Ver registros</button>@endif
     </div>
 </dialog>

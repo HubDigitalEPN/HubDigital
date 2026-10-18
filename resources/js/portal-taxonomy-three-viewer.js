@@ -117,8 +117,7 @@ export function crearVisorTaxonomico(elemento, acciones) {
             const cambioRaiz = datos?.rama !== nuevos.rama || datos?.navegacion !== nuevos.navegacion;
             datos = nuevos; raiz = origenDelFilo(nuevos.rama);
             if (cambioRaiz || !indice.porClave.has(seleccionado)) {
-                seleccionado = (nuevos.rama !== raiz ? indice.porClave.get(nuevos.rama)
-                    : indice.porPadre.get(raiz)?.[0] || indice.porClave.get(raiz))?.clave;
+                seleccionado = indice.porClave.get(nuevos.rama)?.clave;
                 revision++;
             }
             if (seleccionado && (cambioRaiz || cambioFuente || !escena))
@@ -138,7 +137,7 @@ export function crearVisorTaxonomico(elemento, acciones) {
         limpiarBusqueda() {revisionBusqueda++; escena?.limpiarSeleccion();},
         ajustar() {escena?.ajustar();},
         pantallaCompleta() {return escena?.pantallaCompleta();},
-        zoom(paso) {escena?.zoom(paso);},
+        zoom(paso) {escena?.zoom(modo==='diversidad'?(paso>1?1.6:1/1.6):paso);},
         rangoActivo() {return escena?.rangoActivo() || '';},
         enfocar(clave) {
             const desdeEscena = origenMenu === 'escena' && !arbolAmpliado;

@@ -23,6 +23,7 @@ uses(Tests\Concerns\ColeccionPortalAislada::class);
 
 
 test('QA7 001 inclusión conserva conteo enlace y UUID y la exclusión retirada no produce consultas parciales', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $fixture = qa7ColeccionFixture();
     $consulta = app(ConsultaCatalogoPublico::class);
     $positiva = $consulta->responder('¿Cuántos registros de Qaheptus alpha hay en Orellana?');
@@ -82,6 +83,7 @@ test('QA7 001 una provincia desconocida o reservada no acredita una exclusión',
 });
 
 test('QA7 002 003 las acciones conservan filtros y los formatos nunca se convierten en taxones', function (string $pregunta, string $intent, string $vista): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     qa7ColeccionFixture(); Http::preventStrayRequests();
     $seleccion = ['nivel' => 'species', 'taxon' => 'Qaheptus alpha', 'ft' => 'Qaheptus alpha', 'fprov' => 'Orellana', 'fsti' => 'paratype',
         'flat' => '-2', 'flax' => '-1', 'flon' => '-78', 'flox' => '-77', 'fmes' => '1'];
@@ -205,6 +207,7 @@ test('QA7 007 los alias de estadio conservan el conjunto y los permisos de divul
 })->with([['adult', 'Adulto'], ['juvenile', 'Juvenil'], ['larval', 'Larva'], ['pupal', 'Pupa'], ['egg', 'Huevo'], ['nymph', 'Ninfa']]);
 
 test('QA7 008 el LOV conserva cada UUID en ubicaciones numerosas y la tabla pagina los registros públicos', function (string $rango): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $fixture = qa7ColeccionFixture($rango, 7);
     $componente = Livewire::withQueryParams(['vista' => 'mapa', 'ft' => 'Qaheptus alpha'])->test(PortalCatalogo::class)
         ->call('abrirCelda', -1.8910422, -77.765439)->assertSet('vistaCelda', 'registros')
@@ -232,6 +235,7 @@ test('QA7 008 el LOV conserva cada UUID en ubicaciones numerosas y la tabla pagi
 })->with(['familia', 'genero', 'especie']);
 
 test('QA7 retirar mes, altitud o caja conserva el resto de filtros y el historial', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     qa7ColeccionFixture();
     $componente = Livewire::withQueryParams(['vista' => 'registros', 'ft' => 'Qaheptus alpha', 'fprov' => 'Orellana', 'fmes' => '1',
         'fed' => '0', 'feh' => '499', 'flat' => '-2', 'flax' => '-1', 'flon' => '-78', 'flox' => '-77'])->test(PortalCatalogo::class);
@@ -247,6 +251,7 @@ test('QA7 el diccionario público distingue perfiles, INEC y vacíos', function 
 });
 
 test('QA7 la autoridad externa no reemplaza la familia original ni divulga una familia reservada', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $fixture = qa7ColeccionFixture();
     DB::table('taxonomia.taxones')->where('id', $fixture['taxon'])->update(['nombre_cientifico' => 'Naesiotus eschariferus']);
     DB::table('taxonomia.taxones')->where('id', $fixture['familia'])->update(['nombre_cientifico' => 'Orthalicidae']);

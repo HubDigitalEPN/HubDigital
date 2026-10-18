@@ -23,6 +23,7 @@ if ($accion === 'limpiar') {
         DB::table('taxonomia.especimenes')->whereIn('id', $ids)->delete();
         foreach (array_reverse($datos['taxones']) as $id) DB::table('taxonomia.taxones')->where('id', $id)->delete();
         DB::table('taxonomia.muestras_colecta')->whereIn('id', $datos['muestras'])->delete();
+        if (isset($datos['usuario'])) \App\Models\User::query()->where('id', $datos['usuario'])->delete();
     });
     exit(0);
 }
@@ -87,7 +88,10 @@ $datos = DB::transaction(static function () use ($token, $prefijo, $archivo): ar
     }
     $taxonBusqueda = 'Browserobius '.$token;
     $taxonScroll = 'Scrollobius '.$token;
-    $datos = compact('token', 'prefijo', 'taxones', 'filos', 'familias', 'especies', 'muestras', 'codigos', 'ids', 'taxonBusqueda', 'taxonScroll');
+    $email = 'qa.browser.'.$token.'@labinvepn.test';
+    $password = \Illuminate\Support\Str::random(40);
+    $usuario = (string) \App\Models\User::factory()->curador()->create(['email' => $email, 'password' => $password, 'must_change_password' => false])->id;
+    $datos = compact('token', 'prefijo', 'taxones', 'filos', 'familias', 'especies', 'muestras', 'codigos', 'ids', 'taxonBusqueda', 'taxonScroll', 'usuario', 'email', 'password');
     if (file_put_contents($archivo, json_encode($datos, JSON_THROW_ON_ERROR)) === false) throw new RuntimeException('No se pudo registrar el fixture para limpiarlo.');
     return $datos;
 });

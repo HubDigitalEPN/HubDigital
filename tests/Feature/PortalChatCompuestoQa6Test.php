@@ -8,6 +8,7 @@ use Modules\CatalogoPublico\Application\UseCases\ConsultarChatBot\ConsultarChatB
 uses(Tests\DatabaseFeatureTestCase::class);
 
 test('QA6 el chat responde cantidad y uso del mapa preservando todos los filtros de la selección aplicada', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     registrosParaContratoChat();
     $seleccion = ['nivel' => 'species', 'taxon' => 'Chatobius alpha', 'fpais' => 'Ecuador', 'fprov' => 'Esmeraldas', 'fg' => ['Playa de oro'], 'ffd' => '2000-05-01', 'ffh' => '2000-05-05'];
     $respuesta = app(AsistentePortal::class)->responder('¿Cuántos registros hay en esta selección y cómo uso el mapa?', app(ConsultarChatBotHandler::class),

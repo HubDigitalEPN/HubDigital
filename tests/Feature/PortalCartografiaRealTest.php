@@ -20,6 +20,7 @@ uses(Tests\Concerns\ColeccionPortalAislada::class);
 
 
 test('QA3-001 las tarjetas usan UUID y excluyen otro taxón con el mismo código público', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = cartografiaRealFixture();
     DB::table('taxonomia.especimenes')->where('id', $f['ids'][2])->update(['occurrence_id' => $f['codigos'][0]]);
     $componente = Livewire::withQueryParams(['vista' => 'tarjetas', 'fph' => $f['filo'], 'nivel' => 'species', 'taxon' => $f['prefijo'].' alfa'])
@@ -31,6 +32,7 @@ test('QA3-001 las tarjetas usan UUID y excluyen otro taxón con el mismo código
 });
 
 test('tarjetas y tabla paginan UUID sin duplicarlos ni perder el resto', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = cartografiaRealFixture();
     $original = (array) DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->first();
     unset($original['coordenadas_otras_regiones'], $original['busqueda_global']);
@@ -56,6 +58,7 @@ test('tarjetas y tabla paginan UUID sin duplicarlos ni perder el resto', functio
 });
 
 test('el scroll acumula lotes públicos ordenados, ignora duplicados y reinicia la selección', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = cartografiaRealFixture();
     $original = (array) DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->first();
     unset($original['coordenadas_otras_regiones'], $original['busqueda_global']);
@@ -86,6 +89,7 @@ test('el scroll acumula lotes públicos ordenados, ignora duplicados y reinicia 
 });
 
 test('el rail pagina hermanos y sus conteos en el padre público sin ampliar los registros de la ficha', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = cartografiaRealFixture();
     $familia = (string) Str::uuid(); $generoId = (string) Str::uuid(); $otroGeneroId = (string) Str::uuid();
     $genero = $f['prefijo'].'Genus'; $familiaNombre = $f['prefijo'].'Familia';
@@ -165,6 +169,7 @@ test('el rail pagina hermanos y sus conteos en el padre público sin ampliar los
 });
 
 test('el mapa conserva coordenadas exactas y un punto vecino no entra en el modal', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = cartografiaRealFixture();
     DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->update(['decimal_latitude' => -0.2561234, 'decimal_longitude' => -78.5134567]);
     DB::table('taxonomia.especimenes')->where('id', $f['ids'][1])->update(['decimal_latitude' => -0.2641234, 'decimal_longitude' => -78.5194567]);
@@ -177,6 +182,7 @@ test('el mapa conserva coordenadas exactas y un punto vecino no entra en el moda
 });
 
 test('el modal abre directamente todos los registros de la ubicación con campos y permisos completos', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = cartografiaRealFixture();
     $latitud = -0.2561234; $longitud = -78.5134567;
     DB::table('taxonomia.especimenes')->whereIn('id', [$f['ids'][0], $f['ids'][1]])->update([
@@ -325,6 +331,7 @@ test('el modal abre directamente todos los registros de la ubicación con campos
 });
 
 test('la identidad del mapa de especie cambia al navegar y al modificar su selección', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = cartografiaRealFixture();
     $componente = Livewire::withQueryParams(['vista' => 'tarjetas', 'fph' => $f['filo'], 'nivel' => 'species', 'taxon' => $f['prefijo'].' alfa'])
         ->test(PortalCatalogo::class)->assertViewHas('idTaxonActual', $f['taxones'][0]);
@@ -339,6 +346,7 @@ test('la identidad del mapa de especie cambia al navegar y al modificar su selec
 });
 
 test('el árbol conserva ancestros y ramas hermanas y selecciona su información pública', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = cartografiaRealFixture();
     DB::table('taxonomia.especimenes')->where('id', $f['ids'][1])->update(['taxon_id' => $f['taxones'][1]]);
     $componente = Livewire::withQueryParams(['vista' => 'mapa', 'fph' => $f['filo']])->test(PortalCatalogo::class)
@@ -356,6 +364,7 @@ test('el árbol conserva ancestros y ramas hermanas y selecciona su información
 });
 
 test('un punto de una sola especie conserva su cadena real y muestra cada ejemplar como hoja', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = cartografiaRealFixture();
     $componente = Livewire::withQueryParams(['vista' => 'mapa', 'fph' => $f['filo']])->test(PortalCatalogo::class)
         ->call('abrirCelda', -0.25, -78.5);
@@ -371,6 +380,7 @@ test('un punto de una sola especie conserva su cadena real y muestra cada ejempl
 });
 
 test('abrir un punto ofrece todos los linajes y registros sin paginar el árbol y conserva cada permiso', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = cartografiaRealFixture();
     $reino = (string) Str::uuid(); $familia = (string) Str::uuid(); $genero = (string) Str::uuid();
     $suborden = (string) Str::uuid(); $subfamilia = (string) Str::uuid(); $tribu = (string) Str::uuid();
@@ -487,6 +497,7 @@ test('abrir un punto ofrece todos los linajes y registros sin paginar el árbol 
 });
 
 test('las ramas del mismo taxón con permisos distintos conservan sus conteos y UUID propios', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = cartografiaRealFixture();
     $familia = (string) Str::uuid(); $genero = (string) Str::uuid();
     DB::table('taxonomia.taxones')->insert([
@@ -623,6 +634,7 @@ test('el mosaico conserva la identidad del género sin fotografía propia y reti
 });
 
 test('galería y portadas limitan imágenes y conservan originales sin atribuir códigos ambiguos', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = cartografiaRealFixture(); $imagenes = [];
     for ($i = 1; $i <= 15; $i++) {
         $imagenes[] = ['id' => (string) Str::uuid(), 'occurrence_id' => $f['codigos'][0], 'nombre_original' => sprintf('vista-%02d.jpg', $i),
@@ -644,6 +656,7 @@ test('galería y portadas limitan imágenes y conservan originales sin atribuir 
 });
 
 test('XLSX conserva la selección UUID y permisos sin convertir textos de colecta en fórmulas', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = cartografiaRealFixture();
     DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->update(['colector' => '=1+1', 'country' => 'PAIS-RESERVADO']);
     DB::table('taxonomia.especimenes')->where('id', $f['ids'][2])->update(['occurrence_id' => $f['codigos'][0], 'colector' => '=1+1']);
@@ -678,6 +691,7 @@ test('XLSX conserva la selección UUID y permisos sin convertir textos de colect
 });
 
 test('QA4 exporta la selección completa desde la segunda página conservando Unicode y coordenadas originales', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = cartografiaRealFixture();
     $original = (array) DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->first();
     unset($original['coordenadas_otras_regiones'], $original['busqueda_global']);
@@ -746,6 +760,7 @@ test('QA4 exporta la selección completa desde la segunda página conservando Un
 });
 
 test('QA5 CSV comparte localidad INEC y estado con pantalla sin publicar datos reservados', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = cartografiaRealFixture();
     $codigoInec = '01'.random_int(1000000000, 9999999999);
     $localidadConfirmada = (string) Str::uuid();
@@ -787,6 +802,7 @@ test('QA5 CSV comparte localidad INEC y estado con pantalla sin publicar datos r
 });
 
 test('QA5 CSV conserva ceros y precisión y excluye pares incompletos o reservados', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = cartografiaRealFixture();
     DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->update(['decimal_latitude' => 0, 'decimal_longitude' => -78.1234567]);
     DB::table('taxonomia.especimenes')->where('id', $f['ids'][1])->update(['decimal_latitude' => null, 'decimal_longitude' => null]);
@@ -805,6 +821,7 @@ test('QA5 CSV conserva ceros y precisión y excluye pares incompletos o reservad
 });
 
 test('QA3-002 las notas de reubicación se conservan sin contar como especie o provincia', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = cartografiaRealFixture(); $nota = 'muestra reubicada dentro de 1269 muestrareubicadadentrode1269';
     DB::table('taxonomia.taxones')->where('id', $f['taxones'][0])->update(['nombre_cientifico' => $nota]);
     DB::table('taxonomia.especimenes')->whereIn('id', [$f['ids'][0], $f['ids'][1]])->update(['state_province' => 'muestra reubicada dentro de 1269']);
@@ -816,6 +833,7 @@ test('QA3-002 las notas de reubicación se conservan sin contar como especie o p
 });
 
 test('el panel usa el protocolo original sin muestra y respeta su marca de visibilidad', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = cartografiaRealFixture();
     DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->update(['muestra_id' => null, 'sampling_protocol' => 'Winkler QA']);
     DB::table('taxonomia.especimenes')->where('id', $f['ids'][1])->update(['sampling_protocol' => 'pitfall QA']);

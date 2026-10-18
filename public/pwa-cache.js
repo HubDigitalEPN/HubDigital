@@ -1,6 +1,6 @@
 /* Cache Storage contiene únicamente recursos y respuestas públicas autorizadas. */
 const portalPwa = (() => {
-    const VERSION = 'hubdigital-public-v5';
+    const VERSION = 'hubdigital-public-v6';
     const names = {assets: VERSION + '-assets', pages: VERSION + '-pages', data: VERSION + '-data'};
     const limits = {assets: 160, pages: 8, data: 48};
     const ages = {assets: 7 * 86400000, pages: 300000, data: 120000};
@@ -67,6 +67,12 @@ const portalPwa = (() => {
         const request = event.request;
         const type = policy(request);
         if (type === 'assets') return await read(request, 'assets').catch(() => null) || network(request, 'assets', event);
+        if (type === 'pages') {
+            // El documento cambia según la sesión. Tras login/logout nunca
+            // entregar primero una versión con los permisos de otra sesión.
+            try { return await network(request, 'pages', event); }
+            catch { return await read(request, 'pages').catch(() => null) || caches.match('/offline.html'); }
+        }
         if (type === 'pages' || type === 'initial-tree') {
             const group = type === 'pages' ? 'pages' : 'data';
             const cached = await read(request, group).catch(() => null);

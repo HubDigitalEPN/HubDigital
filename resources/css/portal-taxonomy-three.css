@@ -31,20 +31,27 @@ button.portal-three-fullscreen-exit { display: none; }
 .portal-diversity-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
 .portal-diversity-canvas:active { cursor: grabbing; }
 .portal-diversity-labels { position: absolute; inset: 0; pointer-events: none; }
-.taxonomy-explorer button.portal-diversity-label { position: absolute; left: 0; top: 0; height: 42px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 3px 7px; border: 1px solid transparent; border-radius: 5px; color: #254c40; background: rgb(247 250 244 / 93%); font-size: 12px; line-height: 16px; text-align: center; pointer-events: auto; }
+.taxonomy-explorer button.portal-diversity-label { position: absolute; left: 0; top: 0; height: 42px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 3px 7px; border: 1px solid transparent; border-radius: 5px; color: #254c40; background: transparent; text-shadow: 0 1px 3px #fff, 0 -1px 3px #fff; font-size: 12px; line-height: 16px; text-align: center; pointer-events: auto; }
 .portal-diversity-label strong { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 650; }
 .portal-diversity-label small { color: #547163; font-size: 10px; white-space: nowrap; }
+.portal-diversity-label.is-leaf strong { font-family: Georgia, serif; font-style: italic; font-size: 13px; }
 .taxonomy-explorer button.portal-diversity-label:hover, .taxonomy-explorer button.portal-diversity-label.is-selected { border-color: #a4c6ae; background: #e5f0e2; }
 .portal-diversity-scale { position: absolute; right: 12px; bottom: 10px; padding: 4px 8px; border: 1px solid #cddcc9; border-radius: 4px; background: #fff; color: #48614d; font-size: 11px; font-variant-numeric: tabular-nums; pointer-events: none; }
 .portal-diversity-legend { display: flex; flex: none; align-items: center; justify-content: safe center; gap: 3px; padding: 5px; border-top: 1px solid #d9e3d5; overflow-x: auto; scrollbar-width: thin; }
 .taxonomy-explorer .portal-diversity-legend button { display: inline-flex; flex: none; align-items: center; gap: 5px; padding: 4px 5px; border: 1px solid transparent; border-radius: 4px; color: #405848; background: transparent; font-size: 11px; white-space: nowrap; }
 .portal-diversity-legend button::before { content: ''; width: 7px; height: 7px; border: 1px solid rgb(37 76 64 / 25%); border-radius: 50%; background: var(--rank-color); }
+.portal-diversity-legend button[hidden] { display: none; }
 .taxonomy-explorer .portal-diversity-legend button:hover, .taxonomy-explorer .portal-diversity-legend button[aria-pressed="true"] { border-color: #acc2a8; background: #e4eddf; }
 .portal-diversity-scene .portal-three-instructions { height: 46px; border-color: #d9e3d5; color: #4e6656; background: #f4f7f1; }
 .portal-diversity-status { position: absolute; inset: auto 20px 20px; margin: 0; padding: 15px; border: 1px solid #a3b99e; border-radius: 5px; color: #294b34; background: #fff; font-size: 13px; }
 .portal-diversity-tooltip { position: absolute; z-index: 3; display: flex; flex-direction: column; gap: 4px; width: 220px; max-width: calc(100% - 16px); box-sizing: border-box; padding: 9px 11px; border: 1px solid #9eb89c; border-radius: 5px; background: #fff; color: #254c40; box-shadow: 0 3px 10px rgb(40 73 45 / 12%); font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; pointer-events: none; }
 .portal-diversity-tooltip[hidden] { display: none; }
 .portal-diversity-tooltip span { font-size: 11px; color: #547163; }
+.portal-taxonomy-tooltip { position: absolute; z-index: 5; display: flex; flex-direction: column; gap: 5px; width: 300px; max-width: calc(100% - 16px); max-height: calc(100% - 16px); box-sizing: border-box; overflow: hidden; padding: 12px 14px; border: 1px solid #92af9b; border-radius: 6px; background: #fff; color: #244438; box-shadow: 0 5px 20px rgb(0 20 10 / 18%); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; pointer-events: none; }
+.portal-taxonomy-tooltip[hidden], .portal-taxonomy-tooltip [hidden] { display: none; }
+.portal-taxonomy-tooltip strong { font-size: 13px; }
+.portal-taxonomy-tooltip span { color: #4b6657; font-size: 11px; }
+.portal-taxonomy-tooltip p { margin: 3px 0 0; color: #244438; font-size: 12px; line-height: 1.5; }
 .portal-diversity-scene :is(button, canvas):focus-visible { outline: 3px solid #276c4e; outline-offset: -2px; }
 .portal-diversity-scene:fullscreen { width: 100vw; height: 100vh; }
 button.portal-diversity-fullscreen-exit { display: none; }

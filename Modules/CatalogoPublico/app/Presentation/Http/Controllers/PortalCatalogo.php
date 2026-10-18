@@ -157,6 +157,7 @@ final class PortalCatalogo extends Component
 
     public function abrirFichaRegistro(string $id): void
     {
+        \App\Support\AccesoCatalogo::autorizar();
         if (! \Illuminate\Support\Str::isUuid($id)) abort(404);
         $consulta = app(EloquentProveedorEspecimenesParaArbol::class)->consultaPublica($this->filtrosActuales(), $this->nivel, $this->taxon);
         if (! $consulta->where('te.id', $id)->exists()) abort(404);
@@ -174,6 +175,7 @@ final class PortalCatalogo extends Component
     #[Computed]
     public function fichaRegistro(): ?array
     {
+        if (! \App\Support\AccesoCatalogo::completo()) return null;
         if ($this->registroFichaId === null) return null;
         $consulta = app(EloquentProveedorEspecimenesParaArbol::class)->consultaPublica($this->filtrosActuales(), $this->nivel, $this->taxon);
         if (! $consulta->where('te.id', $this->registroFichaId)->exists()) return null;
@@ -663,6 +665,7 @@ final class PortalCatalogo extends Component
 
     public function cargarMasRegistros(string $seleccion, int $paginas): void
     {
+        \App\Support\AccesoCatalogo::autorizar();
         // Una petición repetida o de una selección anterior no puede ampliar la nueva tabla.
         if ($this->vista !== 'registros' || $seleccion !== $this->claveSeleccionRegistros()
             || $seleccion !== $this->claveRegistrosCargados || $paginas !== $this->paginasRegistrosCargadas) return;
@@ -748,6 +751,7 @@ final class PortalCatalogo extends Component
 
     public function cambiarVista(string $vista): void
     {
+        if ($vista === 'registros') \App\Support\AccesoCatalogo::autorizar();
         if (in_array($vista, ['tarjetas', 'registros', 'mapa'], true)) {
             $this->vista = $vista;
             $this->pagina = 1;
@@ -1084,6 +1088,7 @@ final class PortalCatalogo extends Component
 
     public function descargarDatos(): StreamedResponse
     {
+        \App\Support\AccesoCatalogo::autorizar();
         if ($this->nivel !== 'species' || $this->taxon === '') abort(404);
         $ids = app(EloquentProveedorEspecimenesParaArbol::class)->consultaPublica($this->filtrosActuales(), $this->nivel, $this->taxon)
             ->orderBy('te.fila_origen_excel')->orderBy('te.id')->pluck('te.id')->all();
@@ -1100,6 +1105,7 @@ final class PortalCatalogo extends Component
 
     public function descargarResultados(EloquentProveedorEspecimenesParaArbol $repositorio): StreamedResponse
     {
+        \App\Support\AccesoCatalogo::autorizar();
         $filtros = $this->filtrosActuales();
 
         $nivel = $this->nivel;
@@ -1149,6 +1155,7 @@ final class PortalCatalogo extends Component
 
     public function descargarAnalisis(string $tipo): StreamedResponse
     {
+        \App\Support\AccesoCatalogo::autorizar();
         if (! in_array($tipo, ['mapa', 'filos', 'riqueza', 'decadas', 'calidad', 'raras', 'estacionalidad', 'altitud', 'metodos'], true)) {
             abort(404);
         }
@@ -1200,6 +1207,7 @@ final class PortalCatalogo extends Component
 
     public function descargarListaEspecies(): StreamedResponse
     {
+        \App\Support\AccesoCatalogo::autorizar();
         return app(PortalEstadisticas::class)->descargarListaConFiltros(
             $this->filtrosAnalisis($this->filtrosActuales()),
         );
@@ -1255,6 +1263,12 @@ final class PortalCatalogo extends Component
         EspecimenDivulgableRepositoryInterface $repoDivulgable,
         ConsultarGaleriaTaxonHandler $galeriaHandler,
     ): View {
+        // Ni una URL compartida ni un snapshot Livewire antiguo habilitan registros.
+        if (! \App\Support\AccesoCatalogo::completo()) {
+            if ($this->vista === 'registros') $this->vista = 'mapa';
+            $this->registroFichaId = null;
+            $this->celdaMapa = null;
+        }
         $filtros = $this->filtrosActuales();
         $datosMapa = null;
         $errorMapa = false;
@@ -1345,7 +1359,7 @@ final class PortalCatalogo extends Component
         $totalTarjetas = $this->nivel === 'species' ? $totalEspecimenes : ($this->explorar !== '' ? count($taxonesExplorados) : count($hijos) + count($especiesActuales));
         $ultimaPagina = max(1, (int) ceil($totalTarjetas / EloquentProveedorEspecimenesParaArbol::TAMANO_PAGINA));
         $paginaActual = min(max(1, $this->pagina), $ultimaPagina);
-        if ($this->nivel === 'species' && $this->vista === 'tarjetas') {
+        if ($this->nivel === 'species' && $this->vista === 'tarjetas' && \App\Support\AccesoCatalogo::completo()) {
             $paginaEspecie = $repositorio->paginaPublica($filtros, $this->pagina, $this->nivel, $this->taxon);
             $especimenes = $this->cargarDetallesPorEspecimenIds($paginaEspecie['ids'], $proveedor, $repoDivulgable);
             $totalRegistrosVista = $totalEspecimenes = $totalTarjetas = $paginaEspecie['total'];

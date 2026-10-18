@@ -28,6 +28,12 @@
                 <a href="{{ route('depositos.portal') }}" class="inline-flex h-full items-center border-b-2 px-2 text-[clamp(.78rem,1vw,.9rem)] font-semibold transition {{ request()->routeIs('depositos.*') ? 'border-science-blue !text-blue-navy' : 'border-transparent !text-text-secondary hover:!text-blue-navy' }}">{{ $navegacion('depositos') }}</a>
             </nav>
 
+            @if(\App\Support\AccesoCatalogo::completo())
+                <a href="{{ route('dashboard') }}" class="portal-curator-access" aria-label="Ir al panel del curador">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v7H3zm11 0h7v7h-7zM3 14h7v7H3zm11 0h7v7h-7z"/></svg>
+                    <span>Panel del curador</span>
+                </a>
+            @else
             <div class="hidden shrink-0 lg:block">
                 @auth
                     <a href="{{ route('dashboard') }}" wire:navigate class="inline-flex min-h-11 items-center gap-2 rounded-md border border-blue-navy px-4 py-2 text-sm font-semibold !text-blue-navy transition hover:bg-blue-navy/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-science-blue">
@@ -46,6 +52,7 @@
                     </div>
                 @endauth
             </div>
+            @endif
 
             <button
                 x-ref="menuButton"

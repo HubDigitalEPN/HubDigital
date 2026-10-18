@@ -54,6 +54,7 @@ function qa4NavegacionFixture(): array
 }
 
 test('rango taxón vista y filtros se restauran juntos entre especie y orden', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = qa4NavegacionFixture();
     $estado = ['vista' => 'tarjetas', 'nivel' => 'species', 'taxon' => $f['especies']['atra']['nombre'], 'fph' => $f['filo'], 'fprov' => $f['provincia'], 'fpais' => 'Ecuador', 'ffd' => '2000-05-01', 'ffh' => '2000-05-31'];
     $portal = Livewire::withQueryParams($estado)->test(PortalCatalogo::class)
@@ -74,6 +75,7 @@ test('rango taxón vista y filtros se restauran juntos entre especie y orden', f
 });
 
 test('el rango incoherente de un enlace copiado se recupera sólo desde taxonomía publicada', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = qa4NavegacionFixture();
     Livewire::withQueryParams(['nivel' => 'order', 'taxon' => $f['especies']['atra']['nombre'], 'fprov' => $f['provincia'], 'vista' => 'registros'])
         ->test(PortalCatalogo::class)->assertSet('nivel', 'species')->assertSet('taxon', $f['especies']['atra']['nombre'])
@@ -85,6 +87,7 @@ test('el rango incoherente de un enlace copiado se recupera sólo desde taxonom�
 });
 
 test('un ancestro reservado no se recupera ni se expone al validar la navegación', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = qa4NavegacionFixture();
     DB::table('divulgacion.especimenes_divulgables')->whereIn('especimen_id', DB::table('taxonomia.especimenes')->where('state_province', $f['provincia'])->select('id'))
         ->update(['genus_visible' => false]);
@@ -94,6 +97,7 @@ test('un ancestro reservado no se recupera ni se expone al validar la navegació
 });
 
 test('composición por UUID y por nombre coincide con el desplegable de filo y mantiene ocho registros', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = qa4NavegacionFixture();
     $entrada = ['vista' => 'mapa', 'fprov' => $f['provincia']];
     $portal = Livewire::withQueryParams($entrada)->test(PortalCatalogo::class)
@@ -154,6 +158,7 @@ test('composición conserva ubicación URL y coordenadas al alternar dos filos y
 });
 
 test('restaurar una selección elimina filtros abandonados y rechaza los tipos inválidos sin perder los demás', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = qa4NavegacionFixture();
     Livewire::withQueryParams(['vista' => 'registros', 'fprov' => $f['provincia'], 'fc' => $f['codigos'][0], 'fpais' => 'Ecuador'])->test(PortalCatalogo::class)
         ->assertViewHas('totalRegistrosVista', 1)
@@ -167,6 +172,7 @@ test('restaurar una selección elimina filtros abandonados y rechaza los tipos i
 });
 
 test('un error de fecha o elevación no borra rangos espaciales válidos de la URL', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = qa4NavegacionFixture();
     $espacio = ['flat' => '-1', 'flax' => '0', 'flon' => '-77', 'flox' => '-75'];
     $entrada = ['vista' => 'registros', 'fprov' => $f['provincia'], 'ffd' => 'fecha-imposible'] + $espacio;

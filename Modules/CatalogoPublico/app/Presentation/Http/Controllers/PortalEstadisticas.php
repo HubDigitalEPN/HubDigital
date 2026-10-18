@@ -171,6 +171,7 @@ final class PortalEstadisticas
 
     public function descargarListaConFiltros(array $filtros): StreamedResponse
     {
+        \App\Support\AccesoCatalogo::autorizar();
         $idsValidos = CalidadDatoPublico::taxonesConLinajeValido(DB::table('taxonomia.taxones')->get(['id', 'padre_id', 'nombre_cientifico']));
         $consulta = $this->consulta($filtros)
             ->join('taxonomia.taxones as t', 't.id', '=', 'te.taxon_id')

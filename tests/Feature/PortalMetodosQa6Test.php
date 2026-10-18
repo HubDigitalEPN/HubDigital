@@ -13,6 +13,7 @@ use Modules\CatalogoPublico\Presentation\Http\Controllers\PortalEstadisticas;
 uses(Tests\DatabaseFeatureTestCase::class);
 
 test('QA6-006 cada categoría canónica selecciona su conteo con barra checkbox recarga y geografía previa', function (string $mayusculas, string $minusculas): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = cartografiaRealFixture();
     DB::table('taxonomia.muestras_colecta')->where('id', $f['muestra'])->update(['sampling_protocol' => $minusculas]);
     DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->update(['sampling_protocol' => $mayusculas, 'muestra_id' => null]);
@@ -46,6 +47,7 @@ test('QA6-006 cada categoría canónica selecciona su conteo con barra checkbox 
 ]);
 
 test('QA6-006 las categorías no publican fuentes reservadas ni aportan sus registros al filtro', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = cartografiaRealFixture();
     DB::table('taxonomia.especimenes')->whereIn('id', $f['ids'])->update(['sampling_protocol' => 'Método QA6']);
     DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $f['ids'][1])->update(['sampling_protocol_visible' => false]);

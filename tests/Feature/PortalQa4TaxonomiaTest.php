@@ -90,6 +90,7 @@ test('QA4-005 cuatro hormigas requieren un linaje Formicidae público de la sele
 });
 
 test('la navegación de especie conserva sus registros y solo admite fotografías identificadas de esa misma especie', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $colector = 'QaFotografias'.Str::lower(Str::random(20));
     $reino = qa4TaxonPublico('Animalia', 'reino');
     $filo = qa4TaxonPublico('Arthropoda', 'phylum');
@@ -139,6 +140,7 @@ test('la navegación de especie conserva sus registros y solo admite fotografía
 });
 
 test('el mosaico resuelve el rango y UUID de la selección sin usar homónimos ajenos ni ampliar permisos', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $seleccion = 'QaIdentidadFoto'.Str::lower(Str::random(20));
     $nombre = $seleccion.' alpha';
     $filo = qa4TaxonPublico($seleccion, 'phylum');
@@ -188,6 +190,7 @@ test('el mosaico resuelve el rango y UUID de la selección sin usar homónimos a
 });
 
 test('QA4-007 la nota fuente conserva su material sin convertirse en rango, especie, hermano ni ayuda científica', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $seleccion = 'QaNotas'.Str::lower(Str::random(20));
     $filo = qa4TaxonPublico($seleccion, 'phylum');
     $clase = qa4TaxonPublico($seleccion.' Clase', 'clase', $filo);
@@ -271,6 +274,7 @@ test('QA4-007 el aviso curatorial está acotado y respeta publicación, privacid
 });
 
 test('QA4-007 el aviso de ancestro reservado no publica su nombre y se oculta con la identificación', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $seleccion = 'QaReserva'.Str::lower(Str::random(20));
     $filo = qa4TaxonPublico($seleccion, 'phylum');
     $nombreReservado = 'muestra reubicada reservada '.$seleccion;
@@ -295,6 +299,7 @@ test('QA4-007 el aviso de ancestro reservado no publica su nombre y se oculta co
 });
 
 test('QA4-007 una nota solo en la hoja conserva sus padres confirmados y no ocupa el rail de especies hermanas', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $seleccion = 'QaHermanos'.Str::lower(Str::random(20));
     $filo = qa4TaxonPublico($seleccion, 'phylum');
     $familia = qa4TaxonPublico($seleccion.' Familia', 'familia', $filo);
@@ -325,6 +330,7 @@ test('QA4-007 una nota solo en la hoja conserva sus padres confirmados y no ocup
 });
 
 test('QA4-007 los ciclos y cadenas superiores a treinta nodos conservan material sin publicar rutas truncadas', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $seleccion = 'QaLimite'.Str::lower(Str::random(20));
     // Cadena fuente anómala de 31 nodos: filo a 16 saltos de la hoja para conservar
     // publicación automática (máximo 20 saltos), pero exceder el límite público de 30.
@@ -380,6 +386,7 @@ test('QA4-007 los ciclos y cadenas superiores a treinta nodos conservan material
 });
 
 test('las opciones de filtros excluyen vacíos Unicode conservando material, nombres, permisos y alias', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $seleccion = 'QaProvincias'.Str::lower(Str::random(20));
     $filo = qa4TaxonPublico($seleccion, 'phylum');
     $filoInvisible = qa4TaxonPublico("\u{00A0}", 'phylum');

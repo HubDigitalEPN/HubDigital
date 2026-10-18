@@ -28,6 +28,8 @@ class FortifyServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->singleton(\Laravel\Fortify\Contracts\LoginResponse::class, \App\Http\Responses\LoginPorPerfilResponse::class);
+        $this->app->singleton(\Laravel\Fortify\Contracts\TwoFactorLoginResponse::class, \App\Http\Responses\LoginPorPerfilResponse::class);
         // Una solicitud de recuperación siempre responde igual, exista o no la
         // cuenta. El enlace real solo se envía cuando el broker encuentra al usuario.
         $this->app->singleton(GenericPasswordResetLinkResponse::class);

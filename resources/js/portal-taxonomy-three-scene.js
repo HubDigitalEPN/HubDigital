@@ -12,6 +12,7 @@ import {rangoVisual3D} from './portal-taxonomy-three-ranks';
 import {textoLinajeTaxonomico} from './portal-taxonomy-lineage';
 import {factorAbundancia3D, fondoEstelar3D} from './portal-taxonomy-three-style';
 import {crearConsultaPuntero} from './portal-taxonomy-pointer';
+import {crearLeyendaTaxonomica} from './portal-taxonomy-tooltip';
 
 const numero = valor => Number(valor).toLocaleString('es-EC');
 const crear = (tag, clase, texto) => {const el = document.createElement(tag); el.className = clase; if (texto) el.textContent = texto; return el;};
@@ -45,6 +46,7 @@ export function crearEscenaTaxonomica(elemento, acciones) {
     const canvas = renderer.domElement; canvas.className = 'portal-three-canvas'; canvas.tabIndex = 0;
     canvas.setAttribute('role', 'img'); canvas.setAttribute('aria-label', 'Árbol 3D: flechas para girar, + y − para zoom, Inicio para ajustar');
     vista.append(canvas, estado);
+    const leyendaFlotante=crearLeyendaTaxonomica(vista,canvas);
     const escena = new Scene(), camara = new PerspectiveCamera(44, 1, .1, 15000);
     camara.position.set(0, 90, 900);
     const orbit = new OrbitControls(camara, canvas); orbit.enableDamping = false; orbit.minDistance = 8; orbit.maxDistance = 9000;
@@ -140,6 +142,7 @@ export function crearEscenaTaxonomica(elemento, acciones) {
         esperaFrame = setTimeout(() => {esperaFrame = null; programar();}, Math.max(4, 1000 / 30 - (performance.now() - ultimoFrame) - 8));
     }
     orbit.addEventListener('change', programar);
+    orbit.addEventListener('start',()=>leyendaFlotante.ocultar());
     function pausarActividad() {pausaHasta = performance.now() + 6000; orbit.autoRotate = false; programar();}
     function iniciarGiro() {
         pausaHasta = 0; ultimoFrame = 0;
@@ -385,7 +388,7 @@ export function crearEscenaTaxonomica(elemento, acciones) {
         if (!dibujoCompleto || destruido) return;
         const siguiente = rango?.id === filtroRango ? '' : rango?.id || '';
         const solicitud = ++revision, solicitudFiltro = ++revisionFiltro, inicio = performance.now();
-        consultaPuntero.cancelar();
+        consultaPuntero.cancelar();leyendaFlotante.ocultar();
         marco.setAttribute('aria-busy', 'true');
         try {
             const resultado = await preparar(clave, siguiente);
@@ -395,9 +398,15 @@ export function crearEscenaTaxonomica(elemento, acciones) {
         } catch (error) {if (solicitud === revision) mostrarError('No se pudo cambiar el rango. Selecciónalo de nuevo para reintentar.'); console.error('Filtro 3D:', error);}
         finally {if (solicitud === revision) marco.setAttribute('aria-busy', 'false');}
     }
+    function mostrarLeyenda(i) {
+        const nodo=i>=0&&(!dibujo.visibles||dibujo.visibles[i])?indice.porClave.get(dibujo.claves[i]):null;
+        if(!nodo)return leyendaFlotante.ocultar();
+        camara.updateMatrixWorld();punto.fromArray(dibujo.posiciones,i*3).project(camara);
+        leyendaFlotante.mostrar(nodo,{x:(punto.x+1)*ancho/2,y:(1-punto.y)*alto/2});
+    }
     const consultaPuntero = crearConsultaPuntero({consultar: buscarPunto,
-        mostrar: i => {if (!destruido && dibujo) {canvas.style.cursor = i >= 0 ? 'pointer' : 'grab'; resaltar(i);}}});
-    canvas.addEventListener('pointerdown', evento => {consultaPuntero.cancelar(); if (evento.button === 0) pulsacion = {x: evento.clientX, y: evento.clientY, id: evento.pointerId};});
+        mostrar: i => {if (!destruido && dibujo) {canvas.style.cursor = i >= 0 ? 'pointer' : 'grab'; resaltar(i);mostrarLeyenda(i);}}});
+    canvas.addEventListener('pointerdown', evento => {consultaPuntero.cancelar();leyendaFlotante.ocultar(); if (evento.button === 0) pulsacion = {x: evento.clientX, y: evento.clientY, id: evento.pointerId};});
     canvas.addEventListener('pointerup', async evento => {
         const inicio = pulsacion; pulsacion = null;
         if (!inicio || inicio.id !== evento.pointerId || Math.hypot(evento.clientX - inicio.x, evento.clientY - inicio.y) > 5) return;
@@ -405,7 +414,7 @@ export function crearEscenaTaxonomica(elemento, acciones) {
     });
     canvas.addEventListener('pointercancel', () => {pulsacion = null;});
     canvas.addEventListener('pointermove', evento => {if (!pulsacion) consultaPuntero.mover(evento);});
-    canvas.addEventListener('pointerleave', () => {consultaPuntero.cancelar(); canvas.style.cursor = 'grab'; if (dibujo) resaltar(rangoActivo.value ? -1 : indiceElegido);});
+    canvas.addEventListener('pointerleave', () => {consultaPuntero.cancelar();leyendaFlotante.ocultar(); canvas.style.cursor = 'grab'; if (dibujo) resaltar(rangoActivo.value ? -1 : indiceElegido);});
     canvas.addEventListener('contextmenu', async evento => {
         evento.preventDefault(); evento.stopPropagation(); pausarActividad();
         // currentTarget deja de existir al terminar el despacho del evento, antes
@@ -437,7 +446,7 @@ export function crearEscenaTaxonomica(elemento, acciones) {
         if (['PageDown', 'PageUp'].includes(evento.key)) {
             if (!hijosDirectos.length) return;
             hijoTeclado = (hijoTeclado + (evento.key === 'PageDown' ? 1 : -1) + hijosDirectos.length) % hijosDirectos.length;
-            resaltar(hijosDirectos[hijoTeclado]); return;
+            resaltar(hijosDirectos[hijoTeclado]);mostrarLeyenda(hijosDirectos[hijoTeclado]); return;
         }
         const vector = camara.position.clone().sub(orbit.target);
         const eje = ['ArrowLeft', 'ArrowRight'].includes(evento.key) ? new Vector3(0, 1, 0) : new Vector3(1, 0, 0);
@@ -504,7 +513,7 @@ export function crearEscenaTaxonomica(elemento, acciones) {
     function mostrarError(mensaje) {estado.textContent = mensaje; estado.hidden = false; estado.setAttribute('role', 'alert');}
     function dibujar() {
             cancelarIndice(); nodoResaltado = -1; indiceElegido = -1; rangoActivo.value = 0; instrucciones.textContent = ayudaActual(); marco.dataset.resaltado = '';
-            consultaPuntero.cancelar(); firmaEncuadre = false; recortado = false;
+            consultaPuntero.cancelar();leyendaFlotante.ocultar(); firmaEncuadre = false; recortado = false;
             liberar(puntos); liberar(conexiones); resaltado.visible = false;
             const cantidad = dibujo.claves.length, rgb = new Float32Array(cantidad * 3);
             const TipoRango = rangosActuales.size <= 255 ? Uint8Array : rangosActuales.size <= 65535 ? Uint16Array : Float32Array;
@@ -579,6 +588,7 @@ export function crearEscenaTaxonomica(elemento, acciones) {
     return {
         async actualizar(nuevos, raiz, nuevoIndice) {
             if (destruido) return;
+            leyendaFlotante.ocultar();
             const cambioFuente = fuente !== nuevos;
             indice = nuevoIndice;
             const nodo = indice.porClave.get(raiz); if (!nodo) throw new Error('Raíz pública no disponible.');
@@ -633,7 +643,7 @@ export function crearEscenaTaxonomica(elemento, acciones) {
                 orbit.autoRotate = false; marco.dataset.rotando = 'false';
                 if (frame !== null) {cancelAnimationFrame(frame); frame = null;}
                 for (const timer of [esperaFrame, reanudar, esperaEncuadre]) if (timer !== null) clearTimeout(timer);
-                esperaFrame = reanudar = esperaEncuadre = null; consultaPuntero.cancelar();
+                esperaFrame = reanudar = esperaEncuadre = null; consultaPuntero.cancelar();leyendaFlotante.ocultar();
             }
         },
         destruir() {
@@ -646,7 +656,7 @@ export function crearEscenaTaxonomica(elemento, acciones) {
             if (esperaEncuadre !== null) clearTimeout(esperaEncuadre);
             if (bootstrapWorker) URL.revokeObjectURL(bootstrapWorker);
             for (const promesa of pendientes.values()) promesa.reject(new Error('Visor cerrado.')); pendientes.clear(); cache.limpiar();
-            if (frame !== null) cancelAnimationFrame(frame); consultaPuntero.destruir();
+            if (frame !== null) cancelAnimationFrame(frame); consultaPuntero.destruir();leyendaFlotante.destruir();
             liberar(puntos); liberar(conexiones); liberar(resaltado); atlasBiologico.dispose(); gruposBiologicos.clear(); renderer.dispose(); renderer.forceContextLoss(); elemento.replaceChildren(); cabecera.remove(); maximizar.remove();
         },
     };

@@ -5,3 +5,9 @@
 @import './portal-taxonomy-three.css';
 @import './portal-record-dialog.css';
 @import 'leaflet/dist/leaflet.css';
+/* Acceso operativo destacado, sin animación si el visitante reduce movimiento. */
+.portal-curator-access{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;min-height:44px;padding:.65rem 1rem;flex-shrink:0;border-radius:5px;background:#184a96;color:#fff!important;font-size:.875rem;font-weight:650;text-decoration:none;animation:portal-curator-pulse 2.6s ease-in-out infinite;}
+.portal-curator-access:hover{background:#102f62;}.portal-curator-access:focus-visible{outline:3px solid #008cd2;outline-offset:3px;}.portal-curator-access svg{width:18px;height:18px;fill:currentColor;}
+@keyframes portal-curator-pulse{0%,100%{box-shadow:0 0 0 0 rgb(24 74 150 / 0%);}50%{box-shadow:0 0 0 5px rgb(24 74 150 / 18%);}}
+@media(prefers-reduced-motion:reduce){.portal-curator-access{animation:none;}}
+@media(max-width:600px){.portal-curator-access{font-size:.75rem;padding:.5rem;max-width:140px;}.portal-curator-access span{line-height:1.25;}}

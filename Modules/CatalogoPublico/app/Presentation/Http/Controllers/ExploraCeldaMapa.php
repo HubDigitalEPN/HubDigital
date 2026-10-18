@@ -38,6 +38,7 @@ trait ExploraCeldaMapa
 
     public function seleccionarRegistroCelda(string $id): void
     {
+        \App\Support\AccesoCatalogo::autorizar();
         if (!\Illuminate\Support\Str::isUuid($id) || !$this->consultaCelda()->where('te.id', $id)->exists()) abort(404);
         $this->registroCeldaId = $id;
         $this->rutaCelda = [];
@@ -48,6 +49,7 @@ trait ExploraCeldaMapa
 
     public function abrirCelda(float $latitud, float $longitud): void
     {
+        \App\Support\AccesoCatalogo::autorizar();
         if (! is_finite($latitud) || ! is_finite($longitud) || abs($latitud) > 90 || abs($longitud) > 180) return;
         $this->celdaMapa = ['lat' => $latitud, 'lon' => $longitud];
         $this->rutaCelda = [];
@@ -125,6 +127,7 @@ trait ExploraCeldaMapa
     #[Computed]
     public function detalleCelda(): array
     {
+        \App\Support\AccesoCatalogo::autorizar();
         $base = $this->consultaCelda();
         $totalUbicacion = (clone $base)->count('te.id');
         $arbolResumido = $totalUbicacion > 5;

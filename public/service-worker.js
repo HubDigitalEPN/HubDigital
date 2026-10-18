@@ -1,6 +1,6 @@
 const OFFLINE_CACHE = 'hubdigital-public-offline-v1';
 const OFFLINE_URL = '/offline.html';
-importScripts('/pwa-cache.js?v=5');
+importScripts('/pwa-cache.js?v=6');
 
 function readPushPayload(data) {
     if (!data) return {};

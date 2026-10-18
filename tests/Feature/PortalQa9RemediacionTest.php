@@ -35,6 +35,7 @@ test('QA9 H01 la exclusión coloquial retirada se aclara antes de contar o enlaz
 ]);
 
 test('QA9 H02 H03 referencias y criterios coincidentes usan todos los filtros de la página', function (string $pregunta): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     qa8CaracolesFixture(); Http::preventStrayRequests();
     $seleccion = ['ft' => 'Naesiotus eschariferus', 'fprov' => 'Galápagos', 'fmes' => '1',
         'flat' => '-2', 'flax' => '-1', 'flon' => '-78', 'flox' => '-77'];
@@ -120,6 +121,7 @@ test('QA9 H06 el CTA de Depósitos comunica el propósito público al registro',
 });
 
 test('QA9 H05 el estado físico permanece original en ficha y XLSX sin convertirse en detección', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = qa7ColeccionFixture('especie', 1);
     DB::table('taxonomia.taxones')->where('id', $f['taxon'])->update(['nombre_cientifico' => 'Ectatomma ruidum']);
     DB::table('taxonomia.especimenes')->whereIn('id', $f['ids'])->update([
@@ -152,6 +154,7 @@ test('QA9 H05 el estado físico permanece original en ficha y XLSX sin convertir
 });
 
 test('QA9 H07 un taxón terminal permite abrir sus registros conservando filtros y ficha', function (string $nivel, string $nombre): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = qa7ColeccionFixture('genero', 1);
     $id = $nivel === 'phylum' ? $f['filo'] : $f['taxon'];
     DB::table('taxonomia.taxones')->where('id', $id)->update(['nombre_cientifico' => $nombre]);

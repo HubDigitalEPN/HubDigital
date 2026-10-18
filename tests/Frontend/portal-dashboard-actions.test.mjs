@@ -9,7 +9,7 @@ const fuenteDashboard = readFileSync(new URL('../../resources/js/portal-dashboar
 const plantillaDashboard = readFileSync(new URL('../../Modules/CatalogoPublico/resources/views/dashboard-coleccion.blade.php', import.meta.url), 'utf8');
 const fuenteLivewire = readFileSync(new URL('../../vendor/livewire/livewire/dist/livewire.js', import.meta.url), 'utf8');
 
-function dashboardConMapa(celdas) {
+function dashboardConMapa(celdas,{acceso=true}={}) {
     const registros = new Map();
     const marcadores = [];
     const cuadros = new Map();
@@ -71,6 +71,7 @@ function dashboardConMapa(celdas) {
     // Ejecuta el componente real; sólo sustituye imports y el adaptador de Leaflet/DOM.
     runInNewContext(fuenteDashboard.replace(/^import .*;\r?$/gm, ''), contexto);
     const dashboard = registros.get('portalDashboard')(celdas, {Mollusca: 8, Annelida: 2});
+    dashboard.$el = {querySelector: selector => selector==='[data-acceso-registros]'?{dataset:{accesoRegistros:String(acceso)}}:null};
     dashboard.$refs = {mapa: {focus() {focos.push('mapa');}, querySelectorAll: () => marcadores.map(marcador => marcador.elemento)}, panelMapa: {scrollIntoView() {}}};
     dashboard.$id = () => 'ayuda-mapa-prueba';
     dashboard.$nextTick = tarea => tarea();
@@ -97,6 +98,16 @@ function activarComposicion(dashboard, identificador) {
     const el = {_x_dataStack: [dashboard], hasAttribute: () => true};
     return runInNewContext(`${funciones}\n${'contextualizeExpression(expresion, el)'}`, {expresion, el});
 }
+
+test('un visitante consulta la ayuda agregada de una ubicación sin abrir registros ni anunciar una acción privada',()=>{
+    const {dashboard,marcadores,ayudas,pintar}=dashboardConMapa([{lat:-.25,lon:-78.5,total:2,filos:{Arthropoda:2}}],{acceso:false});
+    let consultas=0;dashboard.$wire={abrirCelda(){consultas++;}};
+    pintar();
+    marcadores[0].eventos.click();pintar();
+    assert.equal(consultas,0);assert.equal(ayudas.length,1);assert.match(ayudas[0].textContent,/2 registros/);
+    assert.doesNotMatch(marcadores[0].elemento.getAttribute('aria-label'),/Abrir detalle/);
+    marcadores[0].elemento.eventos.keydown({key:'Enter',preventDefault(){}});pintar();assert.equal(consultas,0);
+});
 
 test('trece registros en tres coordenadas muestran sus cantidades y seis registros coincidentes abren la misma ubicación', () => {
     const celdas = [{lat: -.666, lon: -77.91, total: 6, filos: {Arthropoda: 6}},

@@ -87,7 +87,7 @@ try {
     for (const directorio of ['app/private', 'framework/cache/data', 'framework/sessions', 'framework/views', 'logs', 'document-processing']) {
         mkdirSync(path.join(almacenamiento, directorio), {recursive: true});
     }
-    entorno = {...process.env, PORTAL_ETE_URL: 'http://127.0.0.1:' + puertoETE, APP_URL: origen, APP_DEBUG: 'false', SESSION_DRIVER: 'file', SESSION_DOMAIN: '', SESSION_SECURE_COOKIE: 'false', CACHE_STORE: 'file',
+    entorno = {...process.env, TURNSTILE_ENABLED: 'false', PORTAL_ETE_URL: 'http://127.0.0.1:' + puertoETE, APP_URL: origen, APP_DEBUG: 'false', SESSION_DRIVER: 'file', SESSION_DOMAIN: '', SESSION_SECURE_COOKIE: 'false', CACHE_STORE: 'file',
         LARAVEL_STORAGE_PATH: almacenamiento, VIEW_COMPILED_PATH: path.join(almacenamiento, 'framework/views'),
         HUBDIGITAL_TEMPORARY_DIRECTORY: path.join(almacenamiento, 'document-processing'),
         APP_CONFIG_CACHE: path.join(temporal, 'config.php'), APP_ROUTES_CACHE: path.join(temporal, 'routes.php')};
@@ -152,6 +152,15 @@ try {
     await reposo();
     assert.match(await evaluar('window.location.search'), /vista=mapa/);
     assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /18 registros/);
+    assert.ok(await evaluar(`!document.querySelector('.portal-curator-access') && ![...document.querySelectorAll('button')].some(b=>b.getAttribute('wire:click')?.startsWith('descargar') || ['pdf()','verRegistros(menuNodo)'].includes(b.getAttribute('x-on:click')))`),'El visitante conserva la exploración sin controles operativos.');
+    await conexion.send('Page.navigate',{url:origen+'/login'});
+    await visible("document.querySelector('#hub-login-form') && window.Alpine");
+    await evaluar(`(() => {const f=document.querySelector('#hub-login-form');f.elements.email.value=${JSON.stringify(datos.email)};f.elements.password.value=${JSON.stringify(datos.password)};f.requestSubmit();})()`);
+    await visible("location.pathname==='/portal/catalogo' && document.querySelector('.portal-curator-access') && window.Livewire");
+    assert.equal(await evaluar('location.search'),'?vista=mapa','El login curatorial vuelve al mapa.');
+    await conexion.send('Page.navigate',{url});
+    await visible("document.querySelector('.atlas-dashboard .atlas-map .leaflet-pane') && window.Livewire");await reposo();
+    assert.ok(await evaluar(`document.querySelector('.portal-curator-access') && [...document.querySelectorAll('button')].some(b=>b.getAttribute('wire:click')?.startsWith('descargarAnalisis'))`),'La sesión autorizada habilita exportaciones y el acceso al panel.');
     // La provincia se selecciona directamente en el dashboard, sin buscador.
     assert.equal(await evaluar("document.querySelectorAll('.research-locality-dialog').length + [...document.querySelectorAll('.research-sidebar button')].filter(b => b.getAttribute('x-on:click') === 'abrirProvincias()').length"), 0);
     assert.equal(await evaluar("document.querySelectorAll('#buscar-provincia-panel,.atlas-chart-data-toggle').length"), 0);
@@ -232,13 +241,25 @@ try {
     assert.equal(await evaluar("document.querySelector('.portal-taxonomy-split').dataset.visualizacion"),'diversidad');
     assert.equal(await evaluar("document.querySelector('.portal-taxonomy-visualization').getAttribute('aria-pressed')"),'false');
     const raizDiversidad = await evaluar("document.querySelector('.portal-diversity-scene').dataset.raiz");
-    await evaluar(`(() => {const etiqueta=document.querySelector('.portal-diversity-label.is-selected'),r=etiqueta.getBoundingClientRect();document.querySelector('.portal-diversity-canvas').dispatchEvent(new PointerEvent('pointermove',{clientX:r.left+r.width/2,clientY:r.top-11,bubbles:true}));})()`);
-    assert.ok(await evaluar("document.querySelector('.portal-diversity-tooltip').checkVisibility() && document.querySelector('.portal-diversity-tooltip strong').textContent===document.querySelector('.portal-three-title').textContent"),'Se puede identificar un nodo al señalarlo sin cambiar de raíz ni solicitar su ficha.');
-    for (let i=0;i<9;i++) {await evaluar("document.querySelector('[aria-label=\"Acercar árbol\"]').click()");await reposo();}
+    assert.equal(await evaluar("document.querySelector('.portal-diversity-scene').dataset.camara"),'perspectiva','La vista inicial tiene perspectiva y geometría con volumen.');
+    assert.equal(await evaluar("document.querySelector('.portal-diversity-scene').dataset.rangoDetalle"),'Clase');
+    assert.ok(await evaluar("Number(document.querySelector('.portal-diversity-scene').dataset.ramasDibujadas)<160"),'La vista inicial no dibuja ramas de niveles cerrados.');
+    await evaluar(`(() => {const etiqueta=document.querySelector('.portal-diversity-label.is-selected'),canvas=document.querySelector('.portal-diversity-canvas'),r=canvas.getBoundingClientRect();canvas.dispatchEvent(new PointerEvent('pointermove',{clientX:r.left+Number(etiqueta.dataset.puntoX)*r.width/canvas.clientWidth,clientY:r.top+Number(etiqueta.dataset.puntoY)*r.height/canvas.clientHeight,bubbles:true}));})()`);
+    assert.ok(await evaluar("document.querySelector('.portal-diversity-tooltip').checkVisibility() && document.querySelector('.portal-diversity-tooltip strong').textContent===document.querySelector('.portal-three-title').textContent"),'Se puede identificar un nodo al señalarlo sin cambiar la raíz ni la ficha seleccionada.');
+    const claseAbierta=await evaluar("(() => {const b=[...document.querySelectorAll('.portal-diversity-label')].find(e=>e.querySelector('small').textContent.startsWith('Clase'));const nombre=b.querySelector('strong').textContent;b.click();return nombre;})()");
+    await visible("document.querySelector('.portal-diversity-scene')?.dataset.nombre==="+JSON.stringify(claseAbierta));await reposo();
+    assert.equal(await evaluar("document.querySelector('.portal-diversity-label.is-selected strong').textContent"),claseAbierta,'Cambiar de raíz renueva el nombre científico del marcador y no conserva la etiqueta anterior.');
+    await evaluar("document.querySelector('[aria-label=\"Acercar árbol\"]').click()");
+    await visible("document.querySelector('.portal-diversity-scene').dataset.rangoDetalle==='Orden' && document.querySelector('.portal-diversity-scene').dataset.animando==='false'");
+    assert.ok(await evaluar("[...document.querySelectorAll('.portal-diversity-label small')].some(e=>e.textContent.startsWith('Orden'))"),'El siguiente acercamiento muestra órdenes de la clase, además de habilitar su rango.');
+    await evaluar("document.querySelector('.portal-three-controls button').click()");
+    await visible("document.querySelector('.portal-diversity-scene')?.dataset.raiz==="+JSON.stringify(raizDiversidad));await reposo();
+    for (let i=0;i<9;i++) {await evaluar("document.querySelector('[aria-label=\"Acercar árbol\"]').click()");await reposo();await visible("document.querySelector('.portal-diversity-scene').dataset.animando==='false'");assert.ok(Number(await evaluar("document.querySelector('.portal-diversity-scene').dataset.enEncuadre"))>0,'El acercamiento conserva taxones en pantalla, también al llegar a especies.');}
     assert.ok(Number(await evaluar("document.querySelector('.portal-diversity-scene').dataset.zoom"))>3,'El árbol permite varios acercamientos consecutivos más allá del límite de las esferas.');
     assert.ok(await evaluar("!document.querySelector('[aria-label=\"Acercar árbol\"]').disabled"));
     await evaluar("document.querySelector('.portal-diversity-canvas,.portal-three-canvas').dispatchEvent(new KeyboardEvent('keydown',{key:'Home',bubbles:true}))");await reposo();
     assert.equal(await evaluar("document.querySelector('.portal-diversity-scene').dataset.zoom"),'1.000');
+    assert.equal(await evaluar("document.querySelector('.portal-diversity-scene').dataset.rangoDetalle"),'Clase','Alejar vuelve a ocultar los rangos posteriores.');
     assert.equal(await evaluar("document.querySelector('.portal-three-fit,.portal-branch-retry,.portal-diversity-guide')"),null,'Los controles y la ayuda visual retirados no ocupan espacio.');
     const estadoAntesDeGirar=await evaluar("({raiz:document.querySelector('.portal-diversity-scene').dataset.raiz,centro:document.querySelector('.portal-diversity-scene').dataset.centro,orientacion:document.querySelector('.portal-diversity-scene').dataset.orientacion})");
     const centroGiro=await evaluar("(() => {const r=document.querySelector('.portal-diversity-canvas').getBoundingClientRect();return {x:r.left+r.width*.5,y:r.top+r.height*.5};})()");
@@ -252,7 +273,7 @@ try {
     await evaluar("document.querySelector('.portal-diversity-canvas').dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',ctrlKey:true,bubbles:true}))");await reposo();
     assert.notEqual(await evaluar("document.querySelector('.portal-diversity-scene').dataset.orientacion"),girado.orientacion,'El giro también es accesible con Ctrl y flechas.');
     await evaluar("document.querySelector('.portal-diversity-canvas').dispatchEvent(new KeyboardEvent('keydown',{key:'Home',bubbles:true}))");await reposo();
-    assert.equal(await evaluar("document.querySelector('.portal-diversity-scene').dataset.orientacion"),estadoAntesDeGirar.orientacion,'Inicio restaura la vista frontal y el zoom.');
+    assert.equal(await evaluar("document.querySelector('.portal-diversity-scene').dataset.orientacion"),estadoAntesDeGirar.orientacion,'Inicio restaura la perspectiva inicial y el zoom.');
     await evaluar("document.querySelector('.portal-taxonomy-visualization').click()");
     await visible("document.querySelector('.portal-three-scene')?.dataset.raiz==="+JSON.stringify(raizDiversidad));
     assert.equal(await evaluar("document.querySelector('.portal-diversity-scene')"),null,'Cambiar de presentación libera el renderizador anterior.');
@@ -500,6 +521,8 @@ try {
         d.cargados=['masivo','familia-a','familia-b']; d.expandidos=[];
         await d.irARama(d.nodos[0]);
     })()`);
+    await visible("document.querySelector('.portal-three-scene')?.dataset.raiz==='masivo' && document.querySelector('.portal-three-scene').dataset.nodos==='252'");
+    await navegarInicial('Familia A');
     await visible("document.querySelector('.portal-three-scene')?.dataset.raiz==='familia-a' && document.querySelector('.portal-three-scene').dataset.nodos==='123'");
     for (const familia of ['Familia A', 'Familia B']) {
         await navegarInicial(familia); await reposo();

@@ -41,6 +41,7 @@ function seleccionCompletaChatQa4(): array
 }
 
 test('el conteo contextual usa la página aplicada completa aunque el chat y el borrador tengan otras consultas', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $seleccion = seleccionCompletaChatQa4();
     $entradaHistorica = array_replace($seleccion, ['fm' => ['Red QA4']]);
     $catalogo = Livewire::withQueryParams($entradaHistorica + ['vista' => 'mapa', 'pagina' => 2])->test(PortalCatalogo::class);
@@ -67,6 +68,7 @@ test('el conteo contextual usa la página aplicada completa aunque el chat y el 
 });
 
 test('cada dimensión pública aplicada participa en el conteo y en su enlace aunque no exista en el parser', function (array $filtros, int $total, array $datosNoAptos = []): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     seleccionCompletaChatQa4();
     // Aptitud debe distinguir una fecha pública disponible de tres fechas ausentes;
     // este estado pertenece sólo a ese dataset y no modifica los casos de mes/fecha.
@@ -108,6 +110,7 @@ test('cada dimensión pública aplicada participa en el conteo y en su enlace au
 ]);
 
 test('la selección vacía es autoritativa y una consulta global o explícita nueva no hereda la página', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $seleccion = seleccionCompletaChatQa4();
     $asistente = app(AsistentePortal::class); $handler = app(ConsultarChatBotHandler::class);
     $vacia = $asistente->responder('¿Cuántos registros hay en esta selección?', $handler,
@@ -126,6 +129,7 @@ test('la selección vacía es autoritativa y una consulta global o explícita nu
 });
 
 test('las unidades de la selección cuentan diversidad científica y no sustituyen familias o géneros por registros', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     jerarquiaGenerosChat();
     $consulta = app(ConsultaCatalogoPublico::class);
     foreach (['especies' => ['catalogo.species', 2], 'géneros' => ['catalogo.genera', 1], 'familias' => ['catalogo.families', 1]] as $unidad => [$intent, $total]) {
@@ -138,6 +142,7 @@ test('las unidades de la selección cuentan diversidad científica y no sustituy
 });
 
 test('la referencia sin selección pide aclaración y los parámetros inválidos no se convierten en un conteo global', function (array $seleccion): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     registrosParaContratoChat();
     $consulta = app(ConsultaCatalogoPublico::class);
     $respuesta = $consulta->responder('¿Cuántos registros hay en esta selección?', seleccionPortal: $seleccion);
@@ -157,6 +162,7 @@ test('la referencia sin selección pide aclaración y los parámetros inválidos
 ]);
 
 test('el conteo ignora datos privados borradores y paginado de la carga del cliente', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $seleccion = seleccionCompletaChatQa4();
     $respuesta = app(ConsultaCatalogoPublico::class)->responder('¿Cuántos registros hay en esta selección?', seleccionPortal: $seleccion + [
         'pagina' => 9, 'vista' => 'mapa', 'borradorFiltros' => ['filtroTaxon' => 'Reservado'],
@@ -168,6 +174,7 @@ test('el conteo ignora datos privados borradores y paginado de la carga del clie
 });
 
 test('los géneros y familias globales cuentan todas las identificaciones válidas aunque solo presenten diez nombres', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $jerarquia = jerarquiaGenerosChat();
     $orden = DB::table('taxonomia.taxones')->where('id', $jerarquia['familia'])->value('padre_id');
     foreach (range('a', 'k') as $sufijo) {
@@ -257,6 +264,7 @@ test('los agregados taxonómicos respetan permisos por registro y no confirman h
 });
 
 test('una nota solo en la hoja conserva sus padres confirmados en diversidad y ranking sin convertirla en especie', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $jerarquia = jerarquiaGenerosChat();
     $orden = DB::table('taxonomia.taxones')->where('id', $jerarquia['familia'])->value('padre_id');
     $familia = (string) Str::uuid(); $genero = (string) Str::uuid(); $hoja = (string) Str::uuid();

@@ -50,7 +50,7 @@ test('login validates turnstile before authenticating', function () {
         'email' => $user->email,
         'password' => 'password',
         'cf-turnstile-response' => 'valid-token',
-    ])->assertRedirect(route('dashboard', absolute: false));
+    ])->assertRedirect(route('portal.catalogo', ['vista' => 'mapa'], absolute: false));
 
     Http::assertSent(fn (\Illuminate\Http\Client\Request $request): bool =>
         $request->url() === 'https://challenges.cloudflare.com/turnstile/v0/siteverify'
@@ -69,7 +69,7 @@ test('users can authenticate using the login screen', function () {
 
     $response
         ->assertSessionHasNoErrors()
-        ->assertRedirect(route('dashboard', absolute: false));
+        ->assertRedirect(route('portal.catalogo', ['vista' => 'mapa'], absolute: false));
 
     $this->assertAuthenticated();
 });
@@ -80,7 +80,7 @@ test('email is canonicalized before authentication', function () {
     $this->post(route('login.store'), [
         'email' => '  PERSONA@EXAMPLE.COM  ',
         'password' => 'password',
-    ])->assertRedirect(route('dashboard', absolute: false));
+    ])->assertRedirect(route('portal.catalogo', ['vista' => 'mapa'], absolute: false));
 
     $this->assertAuthenticatedAs($user);
 });

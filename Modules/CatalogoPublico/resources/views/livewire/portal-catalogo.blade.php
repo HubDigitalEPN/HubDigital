@@ -46,7 +46,6 @@
     {{-- =====================================================================
          MODO ÁRBOL — navegación jerárquica taxon a taxon
          ===================================================================== --}}
-    <x-catalogopublico::avisos-curatoriales :total="$curatoriales_total ?? 0" :notas="$curatoriales ?? []" />
     @if($nivelExplorar === '')
 
     {{-- BREADCRUMB — aparece en todos los niveles excepto raíz --}}
@@ -122,23 +121,25 @@
         <div class="collection-view-switch">
             <button type="button" wire:loading.attr="disabled" x-on:click="$dispatch('abrir-explorador-taxonomico', {invocador: $event.currentTarget})" aria-haspopup="dialog" aria-controls="explorador-taxonomico" aria-label="{{ $catalogoTexto('arbol_taxonomico') }}" title="{{ $catalogoTexto('arbol_taxonomico') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6v5H9zM3 16h6v5H3zM15 16h6v5h-6zM12 8v4M6 16v-4h12v4"/></svg><span class="sr-only">{{ $catalogoTexto('arbol_taxonomico') }}</span></button>
             <button type="button" wire:loading.attr="disabled" wire:click="cambiarVista('tarjetas')" aria-label="{{ $catalogoTexto('vista_tarjetas') }}" title="{{ $catalogoTexto('tarjetas') }}" aria-pressed="{{ $vista === 'tarjetas' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg><span class="sr-only">{{ $catalogoTexto('tarjetas') }}</span></button>
+            @if(\App\Support\AccesoCatalogo::completo())
             <button type="button" wire:loading.attr="disabled" wire:click="cambiarVista('registros')" aria-label="{{ $catalogoTexto('vista_registros') }}" title="{{ $catalogoTexto('registros') }}" aria-pressed="{{ $vista === 'registros' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h3m4 0h9M4 12h3m4 0h9M4 18h3m4 0h9"/></svg><span class="sr-only">{{ $catalogoTexto('registros') }}</span></button>
+            @endif
             <button type="button" wire:loading.attr="disabled" wire:click="cambiarVista('mapa')" aria-label="{{ $catalogoTexto('vista_mapa_analisis') }}" title="{{ $catalogoTexto('mapa_analisis') }}" aria-pressed="{{ $vista === 'mapa' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2zM9 3v16m6-14v16"/></svg><span class="sr-only">{{ $catalogoTexto('mapa_analisis') }}</span></button>
         </div>
     </nav>
 
-    @include('catalogopublico::components.ficha-registro-publico')
+    @if(\App\Support\AccesoCatalogo::completo()) @include('catalogopublico::components.ficha-registro-publico') @endif
     @if($vista === 'mapa')
         @if($errorMapa ?? false)
             <section class="mx-auto max-w-7xl px-4 py-8" aria-labelledby="mapa-error-titulo">
                 <h1 id="mapa-error-titulo" class="font-display text-2xl font-bold text-blue-navy">{{ $catalogoTexto('mapa_error_titulo') }}</h1>
                 <p class="mt-3" role="alert">{{ $catalogoTexto('mapa_error_descripcion') }}</p>
                 <button type="button" wire:click="$refresh" class="mt-4 underline text-science-blue">{{ $catalogoTexto('reintentar_mapa') }}</button>
-                <button type="button" wire:click="cambiarVista('registros')" class="mt-4 ml-4 underline text-science-blue">{{ $catalogoTexto('ver_registros_seleccion') }}</button>
+                @if(\App\Support\AccesoCatalogo::completo())<button type="button" wire:click="cambiarVista('registros')" class="mt-4 ml-4 underline text-science-blue">{{ $catalogoTexto('ver_registros_seleccion') }}</button>@endif
             </section>
         @else
         @include('catalogopublico::dashboard-coleccion')
-        @include('catalogopublico::components.detalle-celda-mapa')
+        @if(\App\Support\AccesoCatalogo::completo()) @include('catalogopublico::components.detalle-celda-mapa') @endif
         @endif
     @elseif($vista === 'registros')
         <div class="portal-records-viewport portal-records-catalogue mx-auto max-w-7xl px-4 pt-4 sm:px-6 lg:px-8"
@@ -176,7 +177,7 @@
     @if($nivelActual !== '' && $nivelActual !== 'species' && $taxonActual !== '' && ($conteos[$nivelActual.':'.$taxonActual] ?? 0) > 0)
         <section class="collection-taxon-records" aria-label="Registros del taxón seleccionado">
             <p>{{ number_format($conteos[$nivelActual.':'.$taxonActual], 0, ',', '.') }} {{ $conteos[$nivelActual.':'.$taxonActual] === 1 ? 'registro público' : 'registros públicos' }} de <em>{{ $taxonActual }}</em>, incluidos los identificados hasta este rango.</p>
-            <button type="button" wire:click="cambiarVista('registros')" wire:loading.attr="disabled">{{ $catalogoTexto('ver_registros_taxon') }}</button>
+            @if(\App\Support\AccesoCatalogo::completo())<button type="button" wire:click="cambiarVista('registros')" wire:loading.attr="disabled">{{ $catalogoTexto('ver_registros_taxon') }}</button>@endif
         </section>
     @endif
     @if($nivelExplorar === '')
@@ -587,7 +588,7 @@
                         @endif
                     </section>
 
-                    @if(count($especimenes) === 0)
+                    @if(count($especimenes) === 0 && \App\Support\AccesoCatalogo::completo())
                         <div class="flex items-center justify-center rounded-lg border border-dashed border-border bg-surface py-12 text-sm text-text-secondary">
                             No hay registros públicos para esta especie en la selección actual.
                         </div>
@@ -929,7 +930,7 @@
 
     @endif {{-- fin modo árbol / explorar --}}
     @php $totalPaginado = $nivelActual === 'species' && $nivelExplorar === '' ? $totalEspecimenes : $totalTarjetas; @endphp
-    @if($totalPaginado > 6)
+    @if($totalPaginado > 6 && ($nivelActual !== 'species' || \App\Support\AccesoCatalogo::completo()))
         <nav class="collection-card-pagination" aria-label="Páginas de tarjetas">
             <button type="button" wire:click="cambiarPagina({{ $paginaActual - 1 }})" wire:loading.attr="disabled" @disabled($paginaActual <= 1)>Anterior</button>
             <span>Página {{ $paginaActual }} de {{ $ultimaPagina }} · 6 por página · {{ number_format($totalPaginado, 0, ',', '.') }} en total</span>
@@ -941,7 +942,7 @@
     </div>
 
     @include('catalogopublico::components.explorador-taxonomico')
-    <livewire:catalogopublico.registros-taxon-explorador />
+    @if(\App\Support\AccesoCatalogo::completo()) <livewire:catalogopublico.registros-taxon-explorador /> @endif
 
     {{-- Indicador de carga --}}
     <div

@@ -59,6 +59,7 @@ function coleccionOctubre(): array
 }
 
 test('combina cuatro filos y provincias y localidades con unión dentro de cada filtro y conserva mapa registros e historial', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = coleccionOctubre();
     $portal = Livewire::withQueryParams(['vista' => 'mapa'])->test(PortalCatalogo::class)
         ->set('borradorFiltros.filtroFilos', $f['filos'])
@@ -79,6 +80,7 @@ test('combina cuatro filos y provincias y localidades con unión dentro de cada 
 });
 
 test('1127 ejemplares se buscan por LOV sin generar hojas de registro en el árbol ni revelar códigos reservados', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = coleccionOctubre();
     $registros = $visibilidad = [];
     foreach (range(11, 1126) as $i) {
@@ -111,6 +113,7 @@ test('1127 ejemplares se buscan por LOV sin generar hojas de registro en el árb
 });
 
 test('una ubicación de un ejemplar muestra su tabla sin selector ni encabezados duplicados y conserva la referencia en la ficha', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = coleccionOctubre();
     // Nombre con evidencia congelada: el botón solo se publica cuando existe una referencia.
     DB::table('taxonomia.taxones')->where('id', $f['especies'][2])->update(['nombre_cientifico' => 'Ectatomma ruidum']);
@@ -170,6 +173,7 @@ test('los siete pies de figura tienen ochenta palabras y numeración consecutiva
 });
 
 test('las explicaciones se reservan al indicador y al PDF y la búsqueda territorial está en el dashboard sin coordenadas en filtros', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     coleccionOctubre();
     $portal = Livewire::withQueryParams(['vista' => 'mapa'])->test(PortalCatalogo::class);
     $documento = new DOMDocument;
@@ -263,6 +267,7 @@ test('la conversación real pasa de saludo a métricas y definiciones sin repeti
 });
 
 test('la tabla de la ubicación publica una sola foto de R2 o indica su ausencia y excluye otros discos', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = coleccionOctubre();
     foreach (['local', 'r2'] as $disco) DB::table('divulgacion.imagenes_taxonomicas')->insert([
         'id' => (string) Str::uuid(), 'occurrence_id' => 'QA-OCT-11', 'ruta' => 'divulgacion/imagenes/'.$disco.'-'.Str::uuid().'.jpg',
