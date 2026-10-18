@@ -4,6 +4,7 @@
     x-on:abrir-explorador-taxonomico.window="abrir($event.detail?.invocador)"
     x-on:portal-taxonomy-updated.window="if (abierto && !buscando) consultar(true, true)"
     x-on:registros-taxon-cerrados.window="enfocarNodo(seleccionado)"
+    x-on:fullscreenchange.document="cerrarMenu()"
     x-on:cancel.stop.prevent="escapar()" x-on:keydown.escape.stop.prevent="escapar()"
     x-on:close="alCerrar()" :style="{transform: `translate(${desplazamientoX}px, ${desplazamientoY}px)`, width: anchoVentana ? anchoVentana + 'px' : null, height: altoVentana ? altoVentana + 'px' : null}">
     <header class="taxonomy-explorer-header" tabindex="0" aria-label="Mover explorador: arrastra la cabecera o usa las flechas; Inicio lo centra"

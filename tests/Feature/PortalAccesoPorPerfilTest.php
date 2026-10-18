@@ -20,6 +20,7 @@ test('sólo administración y curaduría ven las funciones operativas del catál
         else $pagina->assertDontSee($control, false);
     }
     $pagina->assertDontSee('Datos originales por revisar')->assertDontSee('Consultar datos originales de la selección');
+    $pagina->assertSee('x-on:click="verEnMapa(menuNodo)"', false)->assertSee('Ver en el mapa');
     if ($autorizado) $pagina->assertHeader('Cache-Control', 'max-age=0, must-revalidate, no-cache, no-store, private');
 })->with([null, 'ADMIN', 'CURADOR', 'RECEPTOR', 'DEPOSITANTE', 'PRESTAMISTA']);
 

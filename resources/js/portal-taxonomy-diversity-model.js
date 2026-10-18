@@ -10,8 +10,8 @@ const ETAPAS_DIVERSIDAD=[
 ];
 
 /** El zoom habilita rangos formales, independientemente de los huecos del linaje. */
-export function detalleTaxonomicoDiversidad(ordenRaiz,zoom,disponibles){
-    const encontrado=ETAPAS_DIVERSIDAD.findIndex(n=>n.orden>=ordenRaiz);
+export function detalleTaxonomicoDiversidad(ordenRaiz,zoom,disponibles,ordenInicial=ordenRaiz){
+    const encontrado=ETAPAS_DIVERSIDAD.findIndex(n=>n.orden>=Math.max(ordenRaiz,ordenInicial));
     // La vista general abre Clase y Orden juntos. Una selección más específica
     // comienza en su propio rango y nunca fabrica categorías intermedias.
     const inicial=encontrado<0?ETAPAS_DIVERSIDAD.length-1:Math.max(1,encontrado);
@@ -25,6 +25,47 @@ export function detalleTaxonomicoDiversidad(ordenRaiz,zoom,disponibles){
  */
 export function radioYemaDiversidad(especies){
     return 4+2.5*Math.log1p(Math.max(0,Number.isFinite(especies)?especies:0));
+}
+
+/** Dos rangos descendientes realmente disponibles; no fabrica niveles ausentes. */
+export function aperturaRamaDiversidad(arbol){
+    const presentes=[...arbol.yemasPorRango.keys()];
+    const descendientes=ETAPAS_DIVERSIDAD.filter((e,i)=>e.orden>arbol.rangos[0]&&presentes.some(r=>r>arbol.rangos[0]&&r<=e.orden&&r>(ETAPAS_DIVERSIDAD[i-1]?.orden??-1)));
+    return descendientes[Math.min(1,descendientes.length-1)]?.orden??arbol.rangos[0];
+}
+
+/** Mayor cantidad de registros del rango abierto, sin confundirla con el
+ * número de especies usado para dimensionar esferas. Sólo consulta metadatos:
+ * no crea geometría ni mide ramas todavía cerradas.
+ */
+export function siguienteYemaDiversidad(arbol,actual,limite){
+    const expuestos=[...arbol.yemasPorRango.keys()].filter(r=>r<=limite);
+    const rango=limite===18&&expuestos.includes(17)?17:Math.max(...expuestos);
+    const foco=arbol.yemasPorRango.get(rango)??0;
+    return actual>=0&&arbol.rangos[actual]===rango&&arbol.registros[actual]===arbol.registros[foco]?actual:foco;
+}
+
+/** Encuadre de apertura: raíz abajo y centrada horizontalmente, con todos los
+ * rangos abiertos dentro del área útil. Resuelve los límites en perspectiva;
+ * no usa las cajas de descendientes que todavía deben permanecer cerrados.
+ */
+export function encuadreRaizDiversidad(arbol,limite,ancho,alto,{inferior=70,direccion=[.22,.16,1]}={}){
+    const longitud=Math.hypot(...direccion),d=direccion.map(v=>v/longitud),lateral=Math.hypot(d[0],d[2]);
+    const derecha=[d[2]/lateral,0,-d[0]/lateral],arriba=[-d[1]*d[0]/lateral,lateral,-d[1]*d[2]/lateral];
+    const t=Math.tan(38*Math.PI/360),aspecto=ancho/alto,raiz=[arbol.posiciones[0],arbol.posiciones[1],arbol.profundidad[0]];
+    const margen=Math.min(inferior,alto*.4),y=alto-margen,k=(2*y/alto-1)*t;
+    const bordeX=Math.max(.05,1-70/ancho),bordeSuperior=1-70/alto,bordeInferior=1-2*(alto-Math.max(12,margen-58))/alto;
+    let distancia=40;
+    for(let i=0;i<arbol.claves.length;i++){
+        if(i!==0&&arbol.rangos[i]>limite)continue;
+        const p=[arbol.posiciones[i*2]-raiz[0],arbol.posiciones[i*2+1]-raiz[1],arbol.profundidad[i]-raiz[2]];
+        const producto=v=>p.reduce((s,n,j)=>s+n*v[j],0),x=producto(derecha),y=producto(arriba),z=producto(d);
+        distancia=Math.max(distancia,z+1,z+Math.abs(x)/(t*aspecto*bordeX),
+            (y+bordeSuperior*t*z)/(k+bordeSuperior*t),(y+bordeInferior*t*z)/(k+bordeInferior*t));
+    }
+    distancia*=1.05;
+    const centro=raiz.map((v,j)=>v+arriba[j]*k*distancia),posicion=centro.map((v,j)=>v+d[j]*distancia);
+    return {centro,posicion,distancia};
 }
 
 /** Presupuesto visual: nunca recorre rangos aún cerrados ni borra taxones del modelo.
@@ -73,11 +114,18 @@ export function crearArbolDiversidad(indice, raiz) {
         for (let j = lista.length - 1; j >= 0; j--) pila.push({clave: lista[j].clave, padre: i, nivel: entrada.nivel + 1});
     }
     const n = claves.length, terminales = new Float64Array(n), especies = new Float64Array(n), posiciones = new Float64Array(n * 2);
+    const rangos=new Uint8Array(n),registros=new Float64Array(n),yemasPorRango=new Map();
     const sectores = new Float64Array(n * 2), limites = new Float64Array(n * 4);
     for (let i = n - 1; i >= 0; i--) terminales[i] = hijos[i].length ? hijos[i].reduce((s, h) => s + terminales[h], 0) : 1;
     // Una especie con subespecies cuenta una vez. Las claves públicas ya
     // distinguen identidades y linajes, incluidos los nombres homónimos.
-    for (let i=n-1;i>=0;i--) especies[i]=rangoVisual3D(indice.porClave.get(claves[i])).orden===17?1:hijos[i].reduce((s,h)=>s+especies[h],0);
+    for (let i=n-1;i>=0;i--){
+        const nodo=indice.porClave.get(claves[i]);rangos[i]=rangoVisual3D(nodo).orden;
+        registros[i]=Math.max(0,Number(nodo.total)||0);
+        const anterior=yemasPorRango.get(rangos[i]);
+        if(anterior===undefined||registros[i]>=registros[anterior])yemasPorRango.set(rangos[i],i);
+        especies[i]=rangos[i]===17?1:hijos[i].reduce((s,h)=>s+especies[h],0);
+    }
     sectores[0] = -700; sectores[1] = 700;
     let separacion = 140;
     for (let i = 0; i < n; i++) {
@@ -139,7 +187,7 @@ export function crearArbolDiversidad(indice, raiz) {
         for(const h of hijos[i]) {z0=Math.min(z0,limites3D[h*6+2]);z1=Math.max(z1,limites3D[h*6+5]);}
         limites3D.set([x0,y0,z0,x1,y1,z1],i*6);
     }
-    return {claves, padres: Int32Array.from(padres), niveles: Uint32Array.from(niveles), hijos, terminales, especies,
+    return {claves, padres: Int32Array.from(padres), niveles: Uint32Array.from(niveles), hijos, terminales, especies, rangos, registros, yemasPorRango,
         posiciones, profundidad, curvas, sectores, limites, limites3D, radios, angulos, longitudes, separacion: Math.max(Number.EPSILON, separacion)};
 }
 

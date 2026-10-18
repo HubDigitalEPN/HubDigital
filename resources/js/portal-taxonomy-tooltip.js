@@ -1,3 +1,5 @@
+import {resumenTaxon3D} from './portal-taxonomy-three-ranks.js';
+
 /** Una leyenda a la vez: salir, girar o cambiar de rama invalida la respuesta. */
 export function crearConsultaLeyenda({solicitar, mostrar, programar = setTimeout, cancelar = clearTimeout}) {
     let version=0, timer=null, peticion=null, clave='', destruido=false;
@@ -52,7 +54,7 @@ export function crearLeyendaTaxonomica(vista,canvas) {
             posicion=p;
             if(actual!==nodo.clave){
                 actual=nodo.clave;nombre.textContent=nodo.nombre;
-                meta.textContent=`${nodo.etiqueta} · ${Number(nodo.total).toLocaleString('es-EC')} registros`;
+                meta.textContent=resumenTaxon3D(nodo);
                 leyenda.textContent='';leyenda.hidden=true;detalle.dataset.taxon=nodo.id;
                 consulta.consultar(nodo);
             }

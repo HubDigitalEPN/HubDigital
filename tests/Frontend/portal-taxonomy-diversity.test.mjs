@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {crearArbolDiversidad, detalleTaxonomicoDiversidad, encuadreDiversidad, orientarDiversidad, proyectarDiversidad, radioYemaDiversidad, seleccionarDetalleDiversidad, zoomDiversidad} from '../../resources/js/portal-taxonomy-diversity-model.js';
-import {Euler, Matrix4, Quaternion} from 'three';
+import {aperturaRamaDiversidad, crearArbolDiversidad, detalleTaxonomicoDiversidad, encuadreDiversidad, encuadreRaizDiversidad, orientarDiversidad, proyectarDiversidad, radioYemaDiversidad, seleccionarDetalleDiversidad, siguienteYemaDiversidad, zoomDiversidad} from '../../resources/js/portal-taxonomy-diversity-model.js';
+import {resumenTaxon3D} from '../../resources/js/portal-taxonomy-three-ranks.js';
+import {Euler, Matrix4, PerspectiveCamera, Quaternion, Vector3} from 'three';
 
 function indice(nodos) {
     const porClave = new Map(), porPadre = new Map();
@@ -54,6 +55,45 @@ test('las yemas cuentan especies reales una sola vez, excluyen terminales sin id
     assert.ok(radioYemaDiversidad(100)-radioYemaDiversidad(10)<radioYemaDiversidad(10)-radioYemaDiversidad(0));
     assert.ok(radioYemaDiversidad(1000000)<40);assert.equal(radioYemaDiversidad(NaN),radioYemaDiversidad(0));
     assert.ok(a.radios[0]<2,'El tallo general es fino e independiente del diámetro de la yema.');
+});
+
+test('cada zoom centra la mayor cantidad de registros del rango abierto, también al retroceder o llegar rápidamente a especies',()=>{
+    const taxon=(clave,padre,etiqueta,total)=>({...nodo(clave,padre),etiqueta,total});
+    const fuente=indice([taxon('r',null,'Filo',1000),taxon('c','r','Clase',1000),taxon('o','c','Orden',1000),taxon('so','o','Suborden',1000),taxon('f','so','Familia',1000),taxon('sf','f','Subfamilia',1000),taxon('t','sf','Tribu',1000),taxon('sin-identificar','t','Género',1),taxon('g','t','Género',999),taxon('e','g','Especie',990),taxon('e-menor','g','Especie',9)]);
+    const a=crearArbolDiversidad(fuente,'r');
+    const suborden=siguienteYemaDiversidad(a,0,8);assert.equal(a.claves[suborden],'so');
+    const genero=siguienteYemaDiversidad(a,suborden,15);assert.equal(a.claves[genero],'g');
+    const especie=siguienteYemaDiversidad(a,genero,18);assert.equal(a.claves[especie],'e');
+    assert.equal(a.claves[siguienteYemaDiversidad(a,a.claves.indexOf('e-menor'),18)],'e','La abundancia tiene prioridad sobre el foco anterior y el puntero.');
+    for(let i=0;i<30;i++)assert.equal(siguienteYemaDiversidad(a,especie,18),especie,'Más zoom mantiene la especie y no retrocede al ancestro.');
+    assert.equal(a.claves[siguienteYemaDiversidad(a,especie,7)],'o','Alejar vuelve al rango expuesto con más registros.');
+    assert.equal(a.claves[siguienteYemaDiversidad(a,0,18)],'e','Un salto completo de zoom centra la especie más abundante.');
+    assert.equal(a.registros[especie],990);assert.equal(a.especies[especie],1,'El conteo de especies no se sustituye por ejemplares.');
+    assert.equal(resumenTaxon3D(fuente.porClave.get('o')),'Orden (1.000)');
+});
+
+test('pulsar una yema abre dos rangos descendientes disponibles y conserva el zoom progresivo posterior',()=>{
+    const taxon=(clave,padre,etiqueta)=>({...nodo(clave,padre),etiqueta});
+    const fuente=indice([taxon('c',null,'Clase'),taxon('o','c','Orden'),taxon('so','o','Suborden'),taxon('f','so','Familia'),taxon('g','f','Género'),taxon('e','g','Especie')]);
+    const a=crearArbolDiversidad(fuente,'c'),inicial=aperturaRamaDiversidad(a);
+    assert.equal(inicial,8);assert.equal(detalleTaxonomicoDiversidad(3,1,[...a.rangos],inicial).nombre,'Suborden');
+    assert.equal(detalleTaxonomicoDiversidad(3,1.6,[...a.rangos],inicial).nombre,'Familia');
+    assert.equal(aperturaRamaDiversidad(crearArbolDiversidad(fuente,'f')),18,'Los rangos ausentes se omiten sin fabricar taxones.');
+    assert.equal(aperturaRamaDiversidad(crearArbolDiversidad(fuente,'e')),17,'Una especie terminal no inventa hijos.');
+});
+
+test('el encuadre de clic centra la raíz horizontalmente abajo y contiene los dos niveles abiertos en perspectiva',()=>{
+    const taxon=(clave,padre,etiqueta)=>({...nodo(clave,padre),etiqueta});
+    const a=crearArbolDiversidad(indice([taxon('c',null,'Clase'),taxon('o1','c','Orden'),taxon('so','o1','Suborden'),taxon('cerrado','so','Familia'),taxon('o2','c','Orden')]),'c');
+    const cerrado=a.claves.indexOf('cerrado');a.posiciones[cerrado*2]=1e8;a.posiciones[cerrado*2+1]=1e8;
+    for(const [ancho,alto,inferior]of[[1000,600,90],[390,500,150]]){
+        const e=encuadreRaizDiversidad(a,8,ancho,alto,{inferior}),camara=new PerspectiveCamera(38,ancho/alto,.01,1e9);
+        camara.position.fromArray(e.posicion);camara.lookAt(new Vector3(...e.centro));camara.updateMatrixWorld();
+        const proyectar=i=>{const p=new Vector3(a.posiciones[i*2],a.posiciones[i*2+1],a.profundidad[i]).project(camara);return{x:(p.x+1)*ancho/2,y:(1-p.y)*alto/2};};
+        const raiz=proyectar(0);assert.ok(Math.abs(raiz.x-ancho/2)<1e-8);assert.ok(Math.abs(raiz.y-(alto-inferior))<1e-8);
+        assert.ok(raiz.y>alto*.65);assert.ok(e.distancia<10000,'No se encuadra la geometría de Familia todavía cerrada.');
+        for(let i=0;i<a.claves.length;i++)if(a.rangos[i]<=8){const p=proyectar(i);assert.ok(p.x>=35&&p.x<=ancho-35&&p.y>=35&&p.y<=alto-12,'Todos los nodos abiertos caben en la vista.');}
+    }
 });
 
 test('el árbol conserva multifurcaciones, homónimos y huecos de rango sin inventar ancestros', () => {

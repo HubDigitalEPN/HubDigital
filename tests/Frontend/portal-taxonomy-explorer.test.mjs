@@ -40,6 +40,28 @@ test('la respuesta asíncrona del octree abre el menú sin currentTarget y respe
     }
 });
 
+test('el menú se sitúa dentro de la escena en pantalla completa y regresa al diálogo al cerrarlo',()=>{
+    const anteriores={document:globalThis.document,requestAnimationFrame:globalThis.requestAnimationFrame},cuadros=[];
+    globalThis.requestAnimationFrame=fn=>cuadros.push(fn);
+    try{
+        const {ui}=componente(),dialogo=ui.$refs.dialogo;
+        dialogo.append=el=>{el.parentElement=dialogo;};
+        const escena={clientLeft:0,clientTop:0,getBoundingClientRect:()=>({left:0,top:0,right:1200,bottom:800}),append(el){el.parentElement=this;}};
+        dialogo.contains=el=>el===escena;globalThis.document={fullscreenElement:escena};
+        const menu={parentElement:dialogo,style:{},getBoundingClientRect:()=>({width:180,height:44}),querySelector:()=>({focus(){}})};ui.$refs.menu=menu;
+        const ancla={left:590,right:610,top:390,bottom:410,limite:{left:0,top:0,right:1200,bottom:800}};
+        ui.abrirMenu(nodo('publico'),{type:'contextmenu',clientX:600,clientY:400},ancla);cuadros.shift()();
+        assert.equal(menu.parentElement,escena,'El top layer nativo contiene el menú público.');assert.equal(menu.style.left,'618px');
+        ui.cerrarMenu();assert.equal(menu.parentElement,dialogo);assert.equal(ui.menuNodo,null);
+    }finally{for(const[k,v]of Object.entries(anteriores)){if(v===undefined)delete globalThis[k];else globalThis[k]=v;}}
+});
+
+test('el autocentrado del modal no desplaza una escena expandida ni pierde la posición que debe restaurar',()=>{
+    const {ui}=componente();ui.desplazamientoX=24;ui.desplazamientoY=-18;
+    ui.$refs.dialogo.classList={contains:clase=>clase==='has-diversity-expanded'};
+    ui.moverModal(8,8);assert.equal(ui.desplazamientoX,24);assert.equal(ui.desplazamientoY,-18);
+});
+
 test('el selector prioriza Arthropoda y ofrece únicamente las raíces disponibles', () => {
     assert.deepEqual(filosPublicos([nodo('m', null, 'Mollusca'), nodo('a', null, 'Annelida'), nodo('h', 'a'), nodo('r', null, 'Arthropoda')]).map(n => n.clave), ['r', 'a', 'm']);
     assert.deepEqual(filosPublicos([]), []);
@@ -226,7 +248,7 @@ function componente(wire = {}, cargarModuloVisor) {
         dialogo: {tagName: 'DIALOG', open: true, showModal() {this.open = true; aperturas++;},
             close() {this.open = false; cierres++; ui.alCerrar();},
             getBoundingClientRect() {return {left: 100, top: 80, right: 800, bottom: 600};},
-            querySelector() {return {focus() {focos++;}};}},
+            querySelector(selector) {return selector==='.portal-diversity-scene.is-expanded'?null:{focus() {focos++;}};}},
         lienzo: {clientWidth: 720}, cuerpo: {scrollTop: 0}, busqueda: {focus() {focos++;}},
     };
     ui.$nextTick = tarea => tarea();

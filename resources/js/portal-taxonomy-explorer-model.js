@@ -142,6 +142,7 @@ export function crearExploradorTaxonomico(reloj = {
     const tamanosObservados = new WeakMap();
     let posicionGuardada = {x: 0, y: 0, cuerpo: 0};
     let visor = null, cargandoVisor = null, revisionVisor = 0, revisionNavegacion = 0, destruido = false, arrastre = null, redimension = null;
+    let origenMenu = null;
     return {
         abierto: false, busqueda: '', nodos: [], expandidos: [], cargados: [], cargandoRamas: [],
         seleccionado: '', destacado: '', total: 0, listo: false, buscando: false, aplicando: false, mostrandoMapa: false, hayMas: false, error: '',
@@ -195,9 +196,10 @@ export function crearExploradorTaxonomico(reloj = {
                 }
             }
         },
-        destroy() { destruido = true; this.cancelarBusqueda(); version++; sesion++; observador?.disconnect(); visor?.destruir(); if (ajustePendiente !== null) cancelAnimationFrame(ajustePendiente); },
+        destroy() { destruido = true; this.cerrarMenu(); this.cancelarBusqueda(); version++; sesion++; observador?.disconnect(); visor?.destruir(); if (ajustePendiente !== null) cancelAnimationFrame(ajustePendiente); },
         numero(valor) { return Number(valor).toLocaleString('es-EC'); },
         moverModal(x, y) {
+            if(this.$refs.dialogo.classList?.contains('has-diversity-expanded'))return;
             const rect = this.$refs.dialogo.getBoundingClientRect();
             const baseX = rect.left - this.desplazamientoX, baseY = rect.top - this.desplazamientoY;
             this.desplazamientoX = Math.max(8 - baseX, Math.min(innerWidth - rect.width - baseX - 8, x));
@@ -606,10 +608,10 @@ export function crearExploradorTaxonomico(reloj = {
             });
         },
         escapar() {
+            if (this.menuNodo) { const id = this.menuNodo.id; this.cerrarMenu(); this.enfocarNodo(id); return; }
             const completo = globalThis.document?.fullscreenElement;
             if (completo && this.$refs.dialogo.contains?.(completo)) {document.exitFullscreen().catch(() => {}); return;}
-            if (this.menuNodo) { const id = this.menuNodo.id; this.cerrarMenu(); this.enfocarNodo(id); }
-            else if (this.sugerenciasAbiertas) this.sugerenciasAbiertas = false;
+            if (this.sugerenciasAbiertas) this.sugerenciasAbiertas = false;
             else this.cerrar();
         },
         tecladoMenu(evento) {
@@ -812,24 +814,30 @@ export function crearExploradorTaxonomico(reloj = {
             const desdeMouse = evento.type === 'contextmenu' && Number.isFinite(evento.clientX) && Number.isFinite(evento.clientY);
             const x = desdeMouse ? evento.clientX : origen.left;
             const y = desdeMouse ? evento.clientY : origen.bottom;
+            // Un hermano del canvas queda detrás de la expansión y fuera del
+            // top layer nativo. Mover el mismo menú conserva permisos y eventos.
+            const dialogo=this.$refs.dialogo,menu=this.$refs.menu,completo=globalThis.document?.fullscreenElement;
+            const contenedor=completo&&dialogo.contains?.(completo)?completo:dialogo.querySelector?.('.portal-diversity-scene.is-expanded');
+            if(contenedor&&menu?.parentElement!==contenedor){origenMenu??=menu.parentElement;contenedor.append(menu);}
             this.menuNodo = nodo;
             const actual = sesion;
             // x-show revela el menú en el siguiente frame. Medir antes devuelve
             // ancho/alto cero y evita tanto el cambio de lado como el enfoque.
             this.$nextTick(() => requestAnimationFrame(() => {
                 if (!this.abierto || actual !== sesion || this.menuNodo?.id !== nodo.id) return;
-                const dialogo = this.$refs.dialogo, caja = dialogo.getBoundingClientRect(), menu = this.$refs.menu;
+                const dialogo = this.$refs.dialogo, menu = this.$refs.menu;
                 if (!menu) return;
+                const marco=menu.parentElement||dialogo,caja=marco.getBoundingClientRect();
                 const vista = ancla?.limite || caja, tamano = menu.getBoundingClientRect();
                 const limite = {left: Math.max(vista.left, caja.left), top: Math.max(vista.top, caja.top),
                     right: Math.min(vista.right, caja.right), bottom: Math.min(vista.bottom, caja.bottom)};
                 const posicion = posicionMenuTaxonomico(ancla || {left: x, right: x, top: y, bottom: y + tamano.height}, tamano, limite);
-                menu.style.left = (posicion.x - caja.left - dialogo.clientLeft) + 'px';
-                menu.style.top = (posicion.y - caja.top - dialogo.clientTop) + 'px';
+                menu.style.left = (posicion.x - caja.left - (marco.clientLeft||0)) + 'px';
+                menu.style.top = (posicion.y - caja.top - (marco.clientTop||0)) + 'px';
                 menu.querySelector('button')?.focus();
             }));
         },
-        cerrarMenu() { this.menuNodo = null; },
+        cerrarMenu() { this.menuNodo = null; if(origenMenu){origenMenu.append(this.$refs.menu);origenMenu=null;} },
         verRegistros(nodo) {
             if (!nodo) return;
             this.seleccionado = nodo.id;

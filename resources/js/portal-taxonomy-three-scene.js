@@ -8,7 +8,7 @@ import {buscarNodoEspacial, nodosEnEncuadre, prepararRadiosEspaciales} from './p
 import {materialMundos3D} from './portal-taxonomy-three-worlds';
 import {crearAtlasBiologico3D, GRUPOS_BIOLOGICOS_3D, grupoBiologico3D} from './portal-taxonomy-three-organisms';
 import urlWorker from './portal-taxonomy-three-worker.js?worker&url';
-import {rangoVisual3D} from './portal-taxonomy-three-ranks';
+import {rangoVisual3D,resumenTaxon3D} from './portal-taxonomy-three-ranks';
 import {textoLinajeTaxonomico} from './portal-taxonomy-lineage';
 import {factorAbundancia3D, fondoEstelar3D} from './portal-taxonomy-three-style';
 import {crearConsultaPuntero} from './portal-taxonomy-pointer';
@@ -306,7 +306,7 @@ export function crearEscenaTaxonomica(elemento, acciones) {
         const nodo = i >= 0 && (!dibujo.visibles || dibujo.visibles[i]) ? indice.porClave.get(dibujo.claves[i]) : null;
         const seleccionado = indice.porClave.get(seleccionElegida);
         const actual = nodo || seleccionado;
-        const texto = actual ? `${textoLinajeTaxonomico(indice, actual.clave)} · ${numero(actual.total)} ${actual.total === 1 ? 'registro' : 'registros'}` : ayudaActual();
+        const texto = actual ? `${textoLinajeTaxonomico(indice, actual.clave)} · ${resumenTaxon3D(actual)}` : ayudaActual();
         instrucciones.textContent = texto; instrucciones.title = texto;
         if (nodo) resaltado.material.color.set(rangoVisual3D(nodo).color);
         marco.dataset.resaltado = nodo?.nombre || '';
@@ -345,7 +345,7 @@ export function crearEscenaTaxonomica(elemento, acciones) {
     function ayudaActual() {
         const rango = rangosActuales.get(filtroRango);
         const nodo = indice?.porClave.get(clave);
-        const linaje = nodo ? `${textoLinajeTaxonomico(indice, clave)} · ${numero(nodo.total)} registros` : '';
+        const linaje = nodo ? `${textoLinajeTaxonomico(indice, clave)} · ${resumenTaxon3D(nodo)}` : '';
         return rango ? `${linaje} · ${rango.nombre}: ${numero(rango.nodos.length)} taxones` : linaje;
     }
     function marcarSeleccion() {
@@ -379,7 +379,7 @@ export function crearEscenaTaxonomica(elemento, acciones) {
         pausarActividad(); orbit.update();
         pulsoHasta = performance.now() + 8000;
         const nodo = indice.porClave.get(claveSeleccion);
-        instrucciones.textContent = `${textoLinajeTaxonomico(indice, claveSeleccion)} · ${numero(nodo.total)} registros`;
+        instrucciones.textContent = `${textoLinajeTaxonomico(indice, claveSeleccion)} · ${resumenTaxon3D(nodo)}`;
         instrucciones.title = instrucciones.textContent;
         canvas.setAttribute('aria-label', `${indice.porClave.get(clave).nombre}: taxón localizado ${indice.porClave.get(claveSeleccion).nombre}. Flechas para girar, + y − para zoom, Inicio para ajustar; Intro convierte la selección en raíz.`);
         programar(); return true;
@@ -592,7 +592,7 @@ export function crearEscenaTaxonomica(elemento, acciones) {
             const cambioFuente = fuente !== nuevos;
             indice = nuevoIndice;
             const nodo = indice.porClave.get(raiz); if (!nodo) throw new Error('Raíz pública no disponible.');
-            titulo.textContent = nodo.nombre; meta.textContent = `${nodo.etiqueta} · ${numero(nodo.total)} ${nodo.total === 1 ? 'registro' : 'registros'}`;
+            titulo.textContent = nodo.nombre; meta.textContent = resumenTaxon3D(nodo);
             volver.disabled = !indice.porClave.has(nodo.padre);
             if (!cambioFuente && clave === raiz && dibujo) {
                 // Volver al dibujo actual cancela una raíz distinta que siga preparándose.

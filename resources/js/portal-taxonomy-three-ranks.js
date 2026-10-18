@@ -13,3 +13,8 @@ export function rangoVisual3D(nodo) {
     let hash = 0; for (const letra of id) hash = (hash * 31 + letra.charCodeAt(0)) >>> 0;
     return {id, nombre, color: `hsl(${hash % 360}, 34%, 70%)`, orden: RANGOS.length};
 }
+
+/** Conteo breve compartido por raíces, yemas y leyendas de ambas vistas. */
+export function resumenTaxon3D(nodo) {
+    return `${nodo.etiqueta || nodo.rango || 'Taxón'} (${Number(nodo.total || 0).toLocaleString('es-EC')})`;
+}
