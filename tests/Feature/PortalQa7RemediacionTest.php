@@ -220,7 +220,7 @@ test('QA7 008 el LOV conserva cada UUID en ubicaciones numerosas y la tabla pagi
         ->and(array_unique(array_column($detalle['registros_arbol'], 'padre_id')))->toBe([$fixture['taxon']]);
     $componente->assertSee('QA7-INV-1')->assertDontSee('Buscar entre 7 ejemplares')->assertDontSee('Ejemplar de la selección')
         ->assertDontSee('atlas-tree-section', false)->assertDontSee('atlas-record-lov', false)
-        ->assertDontSee('Páginas de ejemplares de la ubicación')->call('paginarCelda', 2)->assertSet('paginaCelda', 1);
+        ->assertDontSee('Paginación de Registros de la localidad')->call('paginarCelda', 2)->assertSet('paginaCelda', 1);
     foreach ($fixture['ids'] as $i => $id) {
         $componente->call('seleccionarRegistroCelda', $id)->assertSee('QA7-INV-'.($i + 1));
         $seleccionado = $componente->get('detalleCelda');
@@ -228,7 +228,7 @@ test('QA7 008 el LOV conserva cada UUID en ubicaciones numerosas y la tabla pagi
             ->and($seleccionado['seleccionado']['taxon_id'])->toBe($fixture['taxon'])
             ->and(array_column($seleccionado['registros'], 'especimen_id'))->toBe([$id]);
     }
-    $componente->call('cambiarVistaCelda', 'registros')->assertSet('paginaCelda', 1)->assertSee('Páginas de ejemplares de la ubicación');
+    $componente->call('cambiarVistaCelda', 'registros')->assertSet('paginaCelda', 1)->assertSee('Paginación de Registros de la localidad');
     expect(array_column($componente->get('detalleCelda')['registros'], 'especimen_id'))->toBe(array_slice($fixture['ids'], 0, 6));
     $componente->call('paginarCelda', 2)->assertSet('paginaCelda', 2)->assertSee('QA7-INV-7');
     expect(array_column($componente->get('detalleCelda')['registros'], 'especimen_id'))->toBe([$fixture['ids'][6]]);

@@ -34,15 +34,17 @@ export function aperturaRamaDiversidad(arbol){
     return descendientes[Math.min(1,descendientes.length-1)]?.orden??arbol.rangos[0];
 }
 
-/** Mayor cantidad de registros del rango abierto, sin confundirla con el
- * número de especies usado para dimensionar esferas. Sólo consulta metadatos:
- * no crea geometría ni mide ramas todavía cerradas.
+/** Escalar cámara y objetivo respecto a la raíz conserva su proyección exacta,
+ * incluso tras desplazar o girar. No cambia de taxón al habilitar otro rango.
+ * La cámara pendiente sirve también como entrada para acumular gestos rápidos.
  */
-export function siguienteYemaDiversidad(arbol,actual,limite){
-    const expuestos=[...arbol.yemasPorRango.keys()].filter(r=>r<=limite);
-    const rango=limite===18&&expuestos.includes(17)?17:Math.max(...expuestos);
-    const foco=arbol.yemasPorRango.get(rango)??0;
-    return actual>=0&&arbol.rangos[actual]===rango&&arbol.registros[actual]===arbol.registros[foco]?actual:foco;
+export function zoomRaizDiversidad(camara,raiz,factor,{min=0,max=Infinity}={}){
+    if(!Number.isFinite(factor)||factor<=0)return camara;
+    const distancia=Math.hypot(...camara.posicion.map((v,i)=>v-camara.centro[i]));
+    if(!distancia)return camara;
+    const nueva=Math.max(min,Math.min(max,distancia/factor)),escala=nueva/distancia;
+    const transformar=p=>p.map((v,i)=>raiz[i]+(v-raiz[i])*escala);
+    return {posicion:transformar(camara.posicion),centro:transformar(camara.centro)};
 }
 
 /** Encuadre de apertura: raíz abajo y centrada horizontalmente, con todos los

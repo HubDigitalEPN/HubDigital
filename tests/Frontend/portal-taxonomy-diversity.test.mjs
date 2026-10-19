@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {aperturaRamaDiversidad, crearArbolDiversidad, detalleTaxonomicoDiversidad, encuadreDiversidad, encuadreRaizDiversidad, orientarDiversidad, proyectarDiversidad, radioYemaDiversidad, seleccionarDetalleDiversidad, siguienteYemaDiversidad, zoomDiversidad} from '../../resources/js/portal-taxonomy-diversity-model.js';
+import {aperturaRamaDiversidad, crearArbolDiversidad, detalleTaxonomicoDiversidad, encuadreDiversidad, encuadreRaizDiversidad, orientarDiversidad, proyectarDiversidad, radioYemaDiversidad, seleccionarDetalleDiversidad, zoomRaizDiversidad, zoomDiversidad} from '../../resources/js/portal-taxonomy-diversity-model.js';
 import {resumenTaxon3D} from '../../resources/js/portal-taxonomy-three-ranks.js';
 import {Euler, Matrix4, PerspectiveCamera, Quaternion, Vector3} from 'three';
 
@@ -57,19 +57,40 @@ test('las yemas cuentan especies reales una sola vez, excluyen terminales sin id
     assert.ok(a.radios[0]<2,'El tallo general es fino e independiente del diámetro de la yema.');
 });
 
-test('cada zoom centra la mayor cantidad de registros del rango abierto, también al retroceder o llegar rápidamente a especies',()=>{
+test('los registros y el resumen breve no sustituyen el conteo de especies de las yemas',()=>{
     const taxon=(clave,padre,etiqueta,total)=>({...nodo(clave,padre),etiqueta,total});
     const fuente=indice([taxon('r',null,'Filo',1000),taxon('c','r','Clase',1000),taxon('o','c','Orden',1000),taxon('so','o','Suborden',1000),taxon('f','so','Familia',1000),taxon('sf','f','Subfamilia',1000),taxon('t','sf','Tribu',1000),taxon('sin-identificar','t','Género',1),taxon('g','t','Género',999),taxon('e','g','Especie',990),taxon('e-menor','g','Especie',9)]);
     const a=crearArbolDiversidad(fuente,'r');
-    const suborden=siguienteYemaDiversidad(a,0,8);assert.equal(a.claves[suborden],'so');
-    const genero=siguienteYemaDiversidad(a,suborden,15);assert.equal(a.claves[genero],'g');
-    const especie=siguienteYemaDiversidad(a,genero,18);assert.equal(a.claves[especie],'e');
-    assert.equal(a.claves[siguienteYemaDiversidad(a,a.claves.indexOf('e-menor'),18)],'e','La abundancia tiene prioridad sobre el foco anterior y el puntero.');
-    for(let i=0;i<30;i++)assert.equal(siguienteYemaDiversidad(a,especie,18),especie,'Más zoom mantiene la especie y no retrocede al ancestro.');
-    assert.equal(a.claves[siguienteYemaDiversidad(a,especie,7)],'o','Alejar vuelve al rango expuesto con más registros.');
-    assert.equal(a.claves[siguienteYemaDiversidad(a,0,18)],'e','Un salto completo de zoom centra la especie más abundante.');
+    const especie=a.claves.indexOf('e');
     assert.equal(a.registros[especie],990);assert.equal(a.especies[especie],1,'El conteo de especies no se sustituye por ejemplares.');
     assert.equal(resumenTaxon3D(fuente.porClave.get('o')),'Orden (1.000)');
+});
+
+test('el zoom conserva la proyección de la raíz y hace crecer la corona, incluso tras giro y desplazamiento',()=>{
+    const raiz=[117,-93,21],corona=new Vector3(137,7,26);
+    for(const [ancho,alto,centro,posicion]of[[1000,600,[117,27,21],[217,107,621]],[390,700,[80,-3,30],[-190,147,830]]]){
+        let estado={centro,posicion};
+        const camara=new PerspectiveCamera(38,ancho/alto,1e-9,1e9);
+        const proyectar=p=>{camara.position.fromArray(estado.posicion);camara.lookAt(new Vector3(...estado.centro));camara.updateMatrixWorld();const q=p.clone().project(camara);return new Vector3((q.x+1)*ancho/2,(1-q.y)*alto/2,0);};
+        const ancla=proyectar(new Vector3(...raiz)),apertura=proyectar(corona).distanceTo(ancla);
+        const inicial=Math.hypot(...posicion.map((v,i)=>v-centro[i]));
+        let anterior=apertura;
+        // 0,5× -> 0,6× ... 1× y más: la raíz no sigue al cursor ni a otro rango.
+        estado=zoomRaizDiversidad(estado,raiz,.5);
+        for(const factor of[1.2,7/6,8/7,9/8,10/9,1.6,1.6]){
+            const antes=proyectar(corona).distanceTo(ancla);
+            estado=zoomRaizDiversidad(estado,raiz,factor);
+            assert.ok(proyectar(new Vector3(...raiz)).distanceTo(ancla)<1e-8);
+            anterior=proyectar(corona).distanceTo(ancla);assert.ok(anterior>antes,'La corona se amplía alrededor de la raíz fija.');
+        }
+        for(let i=0;i<30;i++)estado=zoomRaizDiversidad(estado,raiz,1.6,{min:inicial/4096,max:inicial*2});
+        assert.ok(proyectar(new Vector3(...raiz)).distanceTo(ancla)<1e-6,'Los gestos acumulados conservan el anclaje a zoom extremo.');
+        assert.ok(Math.abs(Math.hypot(...estado.posicion.map((v,i)=>v-estado.centro[i]))-inicial/4096)<1e-8);
+        estado=zoomRaizDiversidad(estado,raiz,1e-20,{min:inicial/4096,max:inicial*2});
+        assert.ok(proyectar(new Vector3(...raiz)).distanceTo(ancla)<1e-6,'El alejamiento limitado tampoco traslada la raíz.');
+        assert.ok(Math.abs(Math.hypot(...estado.posicion.map((v,i)=>v-estado.centro[i]))-inicial*2)<1e-6);
+        assert.equal(zoomRaizDiversidad(estado,raiz,NaN),estado);assert.equal(zoomRaizDiversidad(estado,raiz,0),estado);
+    }
 });
 
 test('pulsar una yema abre dos rangos descendientes disponibles y conserva el zoom progresivo posterior',()=>{

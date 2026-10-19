@@ -151,6 +151,9 @@ test('el modal de registros pagina sólo el taxón elegido y oculta los campos r
         ->assertDontSee('Colector secreto exclusivo')->assertDontSee('Localidad secreta exclusiva')
         ->assertViewHas('paginacion', fn ($p) => $p['pagina'] === 2);
     $modal->call('cerrarFichaRegistro')->assertSet('registroFichaId', null)->assertSet('pagina', 2);
+    $modal->call('ajustarRegistrosPorPagina', 15)->assertSet('pagina', 1)
+        ->assertViewHas('registros', fn ($r) => count($r) === 15)
+        ->assertSee('Acciones')->assertSee('Paginación de Registros del taxón');
     Livewire::test(RegistrosTaxonExplorador::class)->call('abrir', $rama['especie']['id'])
         ->call('abrirFichaRegistro', $f['registros'][1][0])->assertNotFound();
 });

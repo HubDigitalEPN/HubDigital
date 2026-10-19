@@ -157,6 +157,7 @@ final class FirmadorPdfOficial {
 
     private static KeyStore abrir(Path p12, char[] clave) throws Exception {
         Exception ultimo = null;
+        boolean claveIncorrecta = false;
         // Algunos P12 antiguos requieren Bouncy Castle; la contraseña siempre es exacta.
         for (String proveedor : List.of("defecto", "BC")) {
             try {
@@ -164,9 +165,21 @@ final class FirmadorPdfOficial {
                     ? KeyStore.getInstance("PKCS12") : KeyStore.getInstance("PKCS12", proveedor);
                 try (InputStream entrada = Files.newInputStream(p12)) { almacen.load(entrada, clave); }
                 return almacen;
-            } catch (Exception error) { ultimo = error; }
+            } catch (Exception error) {
+                ultimo = error;
+                for (Throwable causa = error; causa != null; causa = causa.getCause()) {
+                    if (causa instanceof java.security.UnrecoverableKeyException) claveIncorrecta = true;
+                }
+            }
         }
+        if (claveIncorrecta) throw new ContrasenaCertificadoIncorrecta(ultimo);
         throw new IOException("No se pudo abrir el certificado con la credencial indicada.", ultimo);
+    }
+
+    static final class ContrasenaCertificadoIncorrecta extends IOException {
+        ContrasenaCertificadoIncorrecta(Throwable causa) {
+            super("La contraseña del certificado es incorrecta. Escríbela nuevamente para firmar.", causa);
+        }
     }
 
     private static Zona localizar(PDDocument pdf, String perfil) throws Exception {

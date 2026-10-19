@@ -650,6 +650,12 @@ final class PortalCatalogo extends Component
     public int $registrosPorPagina = 50;
 
     #[Locked]
+    public string $ordenRegistros = '';
+
+    #[Locked]
+    public string $direccionRegistros = 'asc';
+
+    #[Locked]
     public int $paginasRegistrosCargadas = 1;
 
     #[Locked]
@@ -660,7 +666,7 @@ final class PortalCatalogo extends Component
 
     private function claveSeleccionRegistros(): string
     {
-        return sha1(json_encode([$this->filtrosActuales(), $this->nivel, $this->taxon, $this->pagina, $this->registrosPorPagina]));
+        return sha1(json_encode([$this->filtrosActuales(), $this->nivel, $this->taxon, $this->pagina, $this->registrosPorPagina, $this->ordenRegistros, $this->direccionRegistros]));
     }
 
     public function cargarMasRegistros(string $seleccion, int $paginas): void
@@ -676,6 +682,7 @@ final class PortalCatalogo extends Component
 
     public function ajustarRegistrosPorPagina(int $cantidad, bool $ubicacion = false): void
     {
+        \App\Support\AccesoCatalogo::autorizar();
         $cantidad = max(1, min(100, $cantidad));
         if ($ubicacion) {
             if ($this->registrosPorPaginaCelda === $cantidad) return;
@@ -683,7 +690,37 @@ final class PortalCatalogo extends Component
             $this->registrosPorPaginaCelda = $cantidad;
             $this->paginaCelda = intdiv($inicio, $cantidad) + 1;
             unset($this->detalleCelda);
+        } else {
+            $this->registrosPorPagina = $cantidad;
+            $this->pagina = 1;
+            $this->paginasRegistrosCargadas = 1;
         }
+    }
+
+    public function ajustarRegistrosCelda(int $cantidad): void
+    {
+        $this->ajustarRegistrosPorPagina($cantidad, true);
+    }
+
+    public function ordenarRegistros(string $campo, string $direccion = ''): void
+    {
+        \App\Support\AccesoCatalogo::autorizar();
+        abort_unless(in_array($campo, ['occurrence_id', 'scientific_name', 'event_date'], true), 422);
+        abort_unless(in_array($direccion, ['', 'asc', 'desc'], true), 422);
+        $this->direccionRegistros = $direccion ?: ($this->ordenRegistros === $campo && $this->direccionRegistros === 'asc' ? 'desc' : 'asc');
+        $this->ordenRegistros = $campo;
+        $this->pagina = 1;
+        $this->paginasRegistrosCargadas = 1;
+    }
+
+    public function restablecerVistaRegistros(): void
+    {
+        \App\Support\AccesoCatalogo::autorizar();
+        $this->ordenRegistros = '';
+        $this->direccionRegistros = 'asc';
+        $this->registrosPorPagina = 50;
+        $this->pagina = 1;
+        $this->paginasRegistrosCargadas = 1;
     }
 
     public string $filtroMes = '';
@@ -980,6 +1017,7 @@ final class PortalCatalogo extends Component
     public function cambiarPagina(int $pagina): void
     {
         $this->pagina = max(1, $pagina);
+        $this->paginasRegistrosCargadas = 1;
     }
 
     public function cambiarPaginaHermanos(int $pagina): void
@@ -1298,7 +1336,7 @@ final class PortalCatalogo extends Component
         if ($this->vista === 'registros') {
             $clave = $this->claveSeleccionRegistros();
             if ($clave !== $this->claveRegistrosCargados) $this->paginasRegistrosCargadas = 1;
-            $pagina = app(EloquentProveedorEspecimenesParaArbol::class)->paginaPublica($filtros, $this->pagina, $this->nivel, $this->taxon, $this->registrosPorPagina, $this->paginasRegistrosCargadas);
+            $pagina = app(EloquentProveedorEspecimenesParaArbol::class)->paginaPublica($filtros, $this->pagina, $this->nivel, $this->taxon, $this->registrosPorPagina, $this->paginasRegistrosCargadas, $this->ordenRegistros, $this->direccionRegistros);
             $this->pagina = $pagina['pagina'];
             $this->claveRegistrosCargados = $this->claveSeleccionRegistros();
             $this->paginasRegistrosCargadas = $pagina['hasta'] - $pagina['pagina'] + 1;

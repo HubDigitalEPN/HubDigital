@@ -34,7 +34,7 @@ test('una solicitud nueva no conserva errores del formulario anterior al descart
         ->assertSet('solicitudCargo', 'Investigadora de inicio')
         ->assertSet('solicitudInstitucion', 'Institución de inicio')
         ->assertDispatched('close-toast')->assertNotDispatched('solicitud-validation-errors')
-        ->assertSee('Visualizar PDF')
+        ->assertSee('Generar PDF')
         ->call('visualizarPdfSolicitud')->assertHasNoErrors()
         ->assertSet('mostrarVistaPdfSolicitud', true)->assertSet('solicitudId', null)
         ->set('mostrarVistaPdfSolicitud', false)

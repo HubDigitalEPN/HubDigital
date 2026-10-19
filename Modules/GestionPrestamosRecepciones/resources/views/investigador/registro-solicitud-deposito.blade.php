@@ -9,10 +9,10 @@
     }"
     x-on:hub-firma-ocupada.window="firmaOcupada = $event.detail.busy"
 >
-    <div wire:loading.delay.long wire:target.except="actualizarFirmas,verificarExtraccion,buscarLocalidadesOrigenLov,buscarLocalidadesDatoLov,enviarPreguntaAsistencia,sugerirPreguntaAsistencia,eliminarDocumento,_startUpload,_finishUpload,confirmarCargaContenidoIncierto,cancelarCargaContenidoIncierto" class="hub-processing-overlay" style="display: none" role="status" aria-live="polite">
+    <div wire:loading.delay.long wire:target="generarPdfSolicitud,continuarDesdeSolicitud,avanzarPaso1,guardarOrigenDesdeFormulario,guardarPasoDos,guardarPasoTres,guardarPasoCuatro,guardarPasoCinco,enviarSolicitud" class="hub-processing-overlay" style="display: none" role="status" aria-live="polite">
         <div x-show="!firmaOcupada" class="hub-processing-card"><span class="hub-processing-spinner" aria-hidden="true"></span><span>Procesando…</span></div>
     </div>
-    <div x-show="firmaOcupada" x-cloak x-trap.inert.noscroll="firmaOcupada" class="hub-processing-overlay" role="status" aria-live="polite" tabindex="-1">
+    <div x-show="firmaOcupada" x-cloak class="hub-processing-overlay" role="status" aria-live="polite" tabindex="-1">
         <div class="hub-processing-card"><span class="hub-processing-spinner" aria-hidden="true"></span><span>Procesando…</span></div>
     </div>
 

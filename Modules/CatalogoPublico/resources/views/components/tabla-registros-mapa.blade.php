@@ -1,11 +1,11 @@
-@props(['registros' => [], 'imagenes' => [], 'total' => 0, 'seleccion' => null, 'contexto' => 'mapa', 'mostrarTitulo' => true])
+@props(['registros' => [], 'imagenes' => [], 'total' => 0, 'seleccion' => null, 'contexto' => 'mapa', 'mostrarTitulo' => true, 'ordenable' => false])
 
 @php
     // El componente recibe exclusivamente los DTO que ya pasaron aplicarVisibilidad.
     $columnas = array_column($this->columnasPublicas, 'etiqueta', 'campo');
     $camposNumericos = ['decimal_latitude', 'decimal_longitude', 'elevation_min_m', 'elevation_max_m', 'individual_count'];
     $camposExtensos = ['locality_inec_reference', 'coordinate_reference', 'type_notes', 'specimen_notes'];
-    $etiquetaRegion = $contexto === 'catalogo' ? 'Registros de la colección con desplazamiento horizontal y vertical; carga automática al llegar al final' : 'Tabla de registros de la ubicación con desplazamiento horizontal y vertical';
+    $etiquetaRegion = $contexto === 'catalogo' ? 'Registros de la colección con desplazamiento horizontal y vertical' : 'Tabla de registros de la ubicación con desplazamiento horizontal y vertical';
 @endphp
 
 <section class="atlas-record-table-section" aria-label="Registros públicos">
@@ -15,7 +15,11 @@
             <caption class="sr-only">Registros públicos de esta selección, con las columnas configuradas por la administración.</caption>
             <thead>
                 <tr>
-                    @foreach($columnas as $campo => $etiqueta)<th scope="col">{{ $etiqueta }}</th>@endforeach
+                    @foreach($columnas as $campo => $etiqueta)
+                        @if($ordenable && in_array($campo, ['occurrence_id', 'scientific_name', 'event_date'], true))
+                            <th scope="col" data-grid-label="{{ $etiqueta }}" aria-sort="{{ $this->ordenRegistros === $campo ? ($this->direccionRegistros === 'asc' ? 'ascending' : 'descending') : 'none' }}"><button type="button" class="inline-flex items-center gap-1" wire:click="ordenarRegistros('{{ $campo }}')">{{ $etiqueta }} <span aria-hidden="true"><flux:icon name="arrows-up-down" class="size-3" /></span></button></th>
+                        @else<th scope="col">{{ $etiqueta }}</th>@endif
+                    @endforeach
                 </tr>
             </thead>
             <tbody>

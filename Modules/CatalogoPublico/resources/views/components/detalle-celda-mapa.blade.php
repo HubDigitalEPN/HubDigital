@@ -17,15 +17,13 @@
         @php($detalle = $this->detalleCelda)
         <div class="atlas-cell-body" x-show="!cargando && !error">
             <p class="atlas-cell-status" wire:loading wire:target="paginarCelda,ajustarRegistrosPorPagina" role="status">Actualizando registros…</p>
-            <div class="atlas-cell-content portal-records-viewport" x-data="portalRegistros({{ $this->registrosPorPaginaCelda }}, true)">
-                <x-catalogopublico::tabla-registros-mapa :registros="$detalle['registros']" :imagenes="$detalle['imagenes']" :total="$detalle['total']" :seleccion="null" :mostrar-titulo="false" />
-                @if($vistaCelda === 'registros' && $detalle['mostrarRegistros'] && $detalle['registros'] !== [])
-                    <nav class="atlas-cell-pagination portal-records-pagination" aria-label="Páginas de ejemplares de la ubicación">
-                        <span>Página {{ $detalle['pagina'] }} de {{ $detalle['ultima'] }}</span>
-                        <button type="button" wire:click="paginarCelda({{ $detalle['pagina'] - 1 }})" wire:loading.attr="disabled" @disabled($detalle['pagina'] <= 1)>Anterior</button>
-                        <button type="button" wire:click="paginarCelda({{ $detalle['pagina'] + 1 }})" wire:loading.attr="disabled" @disabled($detalle['pagina'] >= $detalle['ultima'])>Siguiente</button>
-                    </nav>
-                @endif
+            <div class="atlas-cell-content portal-records-paged">
+                <x-grid-frame label="Registros de la localidad" :page-size="$this->registrosPorPaginaCelda" page-size-action="ajustarRegistrosCelda">
+                    <x-catalogopublico::tabla-registros-mapa :registros="$detalle['registros']" :imagenes="$detalle['imagenes']" :total="$detalle['total']" :seleccion="null" :mostrar-titulo="false" />
+                    <x-slot:pagination>
+                        @if($detalle['ultima'] > 1 && $vistaCelda === 'registros')<x-grid-pages :page="$detalle['pagina']" :last="$detalle['ultima']" :total="$detalle['total']" :per-page="$this->registrosPorPaginaCelda" action="paginarCelda" label="Registros de la localidad" />@endif
+                    </x-slot:pagination>
+                </x-grid-frame>
             </div>
         </div>
     @endif

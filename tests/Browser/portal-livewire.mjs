@@ -5,6 +5,7 @@ import {existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync} from 'node:fs
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import net from 'node:net';
+import {get} from 'node:http';
 import {randomBytes} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 
@@ -27,6 +28,21 @@ let procesoNavegador;
 let entorno;
 const excepciones = [], erroresLivewire = [], peticiones = new Set();
 const demora = ms => new Promise(resolve => setTimeout(resolve, ms));
+function obtenerLocal(url) {
+    // Consumir toda la respuesta sin el parser fetch/Undici de Node 24:
+    // https://github.com/nodejs/undici/issues/5360 aborta el proceso fuera de try/catch.
+    return new Promise((resolve, reject) => {
+        const peticion = get(url, {agent: false}, respuesta => {
+            let texto = '';
+            respuesta.setEncoding('utf8');
+            respuesta.on('data', parte => { texto += parte; });
+            respuesta.on('error', reject);
+            respuesta.on('end', () => resolve({ok: respuesta.statusCode >= 200 && respuesta.statusCode < 300, texto}));
+        });
+        peticion.setTimeout(60000, () => peticion.destroy(new Error('Tiempo agotado al consultar el servidor local.')));
+        peticion.on('error', reject);
+    });
+}
 async function puertoLibre() {
     const servidor = net.createServer();
     await new Promise(resolve => servidor.listen(0, '127.0.0.1', resolve));
@@ -98,14 +114,16 @@ try {
     const pythonETE = path.join(proyecto, '.local/ete-venv/Scripts/python.exe');
     assert.ok(existsSync(pythonETE), 'Falta el runtime ETE preparado por crear-paquete-oci.');
     const motorETE = abrirProceso(pythonETE, [path.join(proyecto, 'resources/python/portal_ete/server.py'), '--port', String(puertoETE)], {cwd: proyecto, env: {...entorno, QT_QPA_PLATFORM: 'offscreen'}});
-    await esperar(async () => { motorETE.comprobar(); try { return (await fetch(`http://127.0.0.1:${puertoETE}/health`)).ok; } catch {return false;} }, 'Arranque de ETE');
+    await esperar(async () => { motorETE.comprobar(); try { return (await obtenerLocal(`http://127.0.0.1:${puertoETE}/health`)).ok; } catch {return false;} }, 'Arranque de ETE');
     const servidor = abrirProceso(php, ['-S', `127.0.0.1:${puertoPhp}`, path.join(proyecto, 'vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php')], {cwd: path.join(proyecto, 'public'), env: entorno});
     const chrome = abrirProceso(navegador, ['--headless=new', `--remote-debugging-port=${puertoChrome}`, '--remote-debugging-address=127.0.0.1', `--user-data-dir=${path.join(temporal, 'perfil')}`, '--no-first-run', '--no-default-browser-check', '--disable-gpu', 'about:blank']);
     procesoNavegador = chrome.proceso;
     const objetivos = await esperar(async () => {
         chrome.comprobar(); servidor.comprobar();
         try {
-            const objetivos = await (await fetch(`http://127.0.0.1:${puertoChrome}/json/list`)).json();
+            const respuesta = await obtenerLocal(`http://127.0.0.1:${puertoChrome}/json/list`);
+            if (!respuesta.ok) return null;
+            const objetivos = JSON.parse(respuesta.texto);
             return objetivos.find(objetivo => objetivo.type === 'page') || null;
         } catch { return null; }
     }, 'arranque del navegador');
@@ -138,7 +156,7 @@ try {
     const url = `${origen}/portal/catalogo?vista=mapa&ft=${encodeURIComponent(datos.taxonBusqueda)}`;
     // El GET entrega el catálogo completo para que la PWA conserve contenido,
     // sin repetir una petición Livewire para resolver un placeholder.
-    const primera = await esperar(async () => { try { const r = await fetch(url); return r.ok && await r.text(); } catch { return false; } }, 'primera respuesta del portal');
+    const primera = await esperar(async () => { try { const r = await obtenerLocal(url); return r.ok && r.texto; } catch { return false; } }, 'primera respuesta del portal');
     assert.ok(/atlas-dashboard/.test(primera) && /research-phylum-tree/.test(primera), 'La primera respuesta incluye mapa, paneles y filtros ya renderizados.');
     assert.ok(!/Cargando los registros públicos y sus filtros|wire:lazy/.test(primera), 'La apertura no depende de un placeholder ni una segunda petición de carga.');
     // Una descarga lenta del bundle no debe adelantar Alpine a sus componentes.
@@ -257,36 +275,50 @@ try {
     await evaluar("document.querySelector('[aria-label=\"Acercar árbol\"]').click()");
     await visible("document.querySelector('.portal-diversity-scene').dataset.rangoDetalle==='Familia' && document.querySelector('.portal-diversity-scene').dataset.animando==='false'");
     await reposo();
-    assert.ok(await evaluar("[...document.querySelectorAll('.portal-diversity-label small')].some(e=>e.textContent.startsWith('Familia'))"),'El siguiente acercamiento sigue abriendo el rango posterior a los dos descendientes iniciales.');
+    assert.equal(await evaluar("document.querySelector('.portal-diversity-scene').dataset.rangoDetalle"),'Familia','El siguiente acercamiento habilita el rango posterior a los dos descendientes iniciales; el recorte conserva sólo la corona visible.');
     assert.ok(await evaluar("document.querySelector('.portal-diversity-scene').classList.contains('is-expanded')"),'El primer zoom amplía el árbol automáticamente.');
-    assert.ok(await evaluar(`(() => {const bs=[...document.querySelectorAll('.portal-diversity-fullscreen-controls button')],rs=bs.map(b=>b.getBoundingClientRect());return bs.length===3&&bs.every(b=>b.checkVisibility())&&bs[0].getAttribute('aria-label').startsWith('Alejar')&&bs[1].getAttribute('aria-label').startsWith('Acercar')&&bs[2].getAttribute('aria-label').startsWith('Salir')&&rs[0].right<=rs[1].left&&rs[1].right<=rs[2].left&&rs.every(r=>r.top===rs[0].top);})()`),'Menos y más se muestran inmediatamente a la izquierda de salir de pantalla completa.');
-    const centradoPantalla=await evaluar(`(() => {const s=document.querySelector('.portal-diversity-scene'),e=[...s.querySelectorAll('.portal-diversity-label')].find(e=>e.dataset.clave===s.dataset.yemaZoom),c=s.querySelector('canvas'),r=c.getBoundingClientRect();return {yema:s.dataset.yemaZoom,etiqueta:e?.textContent,punto:e?[r.left+Number(e.dataset.puntoX)*r.width/c.clientWidth,r.top+Number(e.dataset.puntoY)*r.height/c.clientHeight]:null,centro:[innerWidth/2,innerHeight/2],lienzo:r.toJSON(),estado:{...s.dataset}};})()`);
-    assert.ok(centradoPantalla.punto&&Math.abs(centradoPantalla.punto[0]-centradoPantalla.centro[0])<1&&Math.abs(centradoPantalla.punto[1]-centradoPantalla.centro[1])<1,'La yema ocupa el centro exacto de la pantalla completa, sin desplazarse por la leyenda inferior. '+JSON.stringify(centradoPantalla));
+    assert.ok(await evaluar(`(() => {const bs=[...document.querySelectorAll('.portal-diversity-fullscreen-controls button')],rs=bs.map(b=>b.getBoundingClientRect());return bs.length===4&&bs.every(b=>b.checkVisibility())&&!bs[0].disabled&&bs[0].getAttribute('aria-label').startsWith('Volver al padre')&&bs[1].getAttribute('aria-label').startsWith('Alejar')&&bs[2].getAttribute('aria-label').startsWith('Acercar')&&bs[3].getAttribute('aria-label').startsWith('Salir')&&rs.slice(1).every((r,i)=>rs[i].right<=r.left)&&rs.every(r=>r.top===rs[0].top);})()`),'Padre, menos, más y salir están accesibles y alineados en pantalla completa.');
+    const posicionRaiz=()=>evaluar("(() => {const s=document.querySelector('.portal-diversity-scene');return {x:Number(s.dataset.raizX),y:Number(s.dataset.raizY),clave:s.dataset.raiz};})()");
+    const raizAmpliada=await posicionRaiz();
+    const comprobarAncla=async(antes)=>{const despues=await posicionRaiz();assert.equal(despues.clave,antes.clave);assert.ok(Math.hypot(despues.x-antes.x,despues.y-antes.y)<1,'La raíz conserva exactamente su posición mientras crecen las ramas. '+JSON.stringify({antes,despues}));};
     await evaluar("document.querySelector('[aria-label=\"Acercar árbol en pantalla completa\"]').click()");await visible("document.querySelector('.portal-diversity-scene').dataset.animando==='false'");
     assert.ok(Number(await evaluar("document.querySelector('.portal-diversity-scene').dataset.zoom"))>2);
+    await comprobarAncla(raizAmpliada);
     await evaluar("document.querySelector('[aria-label=\"Alejar árbol en pantalla completa\"]').click()");await visible("document.querySelector('.portal-diversity-scene').dataset.animando==='false'");
     assert.ok(Math.abs(Number(await evaluar("document.querySelector('.portal-diversity-scene').dataset.zoom"))-1.6)<.001,'Los dos controles de pantalla completa modifican el mismo zoom.');
-    await evaluar("document.querySelector('.portal-diversity-fullscreen-exit').click()");
-    await visible("!document.querySelector('.portal-diversity-scene').classList.contains('is-expanded') && !document.fullscreenElement");
-    await evaluar("document.querySelector('.portal-three-controls button').click()");
+    await comprobarAncla(raizAmpliada);
+    await evaluar("document.querySelector('[aria-label=\"Volver al padre de la rama en pantalla completa\"]').click()");
     await visible("document.querySelector('.portal-diversity-scene')?.dataset.raiz==="+JSON.stringify(raizDiversidad));await reposo();
+    assert.ok(await evaluar("document.querySelector('.portal-diversity-scene.is-expanded') && document.querySelector('[aria-label=\"Volver al padre de la rama en pantalla completa\"]').disabled"),'Volver al padre publicado conserva pantalla completa y se deshabilita al llegar al filo sin padre.');
+    await evaluar("document.querySelector('.portal-diversity-canvas').dispatchEvent(new KeyboardEvent('keydown',{key:'-',bubbles:true}))");await visible("document.querySelector('.portal-diversity-scene').dataset.animando==='false'");
+    await evaluar("document.querySelector('.portal-diversity-canvas').dispatchEvent(new KeyboardEvent('keydown',{key:'-',bubbles:true}))");await visible("document.querySelector('.portal-diversity-scene').dataset.animando==='false'");
+    assert.equal(await evaluar("document.querySelector('.portal-diversity-scene').dataset.zoom"),'0.500');
+    const raizGeneral=await posicionRaiz();
+    for(const [desde,hasta]of[[.5,.6],[.6,.7],[.7,.8],[.8,.9],[.9,1]]){
+        await evaluar(`document.querySelector('.portal-diversity-canvas').dispatchEvent(new WheelEvent('wheel',{deltaY:${-120*Math.log(hasta/desde)/Math.log(1.6)},bubbles:true,cancelable:true}))`);
+        await visible("document.querySelector('.portal-diversity-scene').dataset.animando==='false'");await comprobarAncla(raizGeneral);
+        assert.ok(Math.abs(Number(await evaluar("document.querySelector('.portal-diversity-scene').dataset.zoom"))-hasta)<.001);
+    }
+    await evaluar("document.querySelector('.portal-diversity-fullscreen-exit').click()");
+    await visible("!document.querySelector('.portal-diversity-scene').classList.contains('is-expanded') && !document.fullscreenElement");await reposo();
+    const raizNormal=await posicionRaiz();
     for (let i=0;i<9;i++) {await evaluar("document.querySelector('[aria-label=\"Acercar árbol\"]').click()");await reposo();await visible("document.querySelector('.portal-diversity-scene').dataset.animando==='false'");assert.ok(Number(await evaluar("document.querySelector('.portal-diversity-scene').dataset.enEncuadre"))>0,'El acercamiento conserva taxones en pantalla, también al llegar a especies.');}
-    assert.ok(await evaluar("[...document.querySelectorAll('.portal-diversity-label small')].some(e=>e.textContent.startsWith('Especie'))"),'El avance termina en una especie identificada con su nombre visible.');
+    assert.equal(await evaluar("document.querySelector('.portal-diversity-scene').dataset.rangoDetalle"),'Especie','El zoom abre el último rango; los nodos fuera de pantalla siguen recortados.');
+    await comprobarAncla(raizNormal);
     assert.ok(Number(await evaluar("document.querySelector('.portal-diversity-scene').dataset.zoom"))>3,'El árbol permite varios acercamientos consecutivos más allá del límite de las esferas.');
     assert.ok(await evaluar("!document.querySelector('[aria-label=\"Acercar árbol\"]').disabled"));
-    const focoEspecie=await evaluar("document.querySelector('.portal-diversity-scene').dataset.yemaZoom");
     await evaluar("(() => {const c=document.querySelector('.portal-diversity-canvas');for(let i=0;i<9;i++)c.dispatchEvent(new KeyboardEvent('keydown',{key:'+',bubbles:true}));})()");await reposo();
     await visible("document.querySelector('.portal-diversity-scene').dataset.animando==='false'");
-    assert.equal(await evaluar("document.querySelector('.portal-diversity-scene').dataset.yemaZoom"),focoEspecie,'Los acercamientos rápidos y extremos conservan la especie enfocada.');
-    assert.ok(await evaluar("Number(document.querySelector('.portal-diversity-scene').dataset.zoom)>1000 && [...document.querySelectorAll('.portal-diversity-label small')].some(e=>e.textContent.startsWith('Especie'))"),'El zoom extremo conserva una especie legible sin volver a una clase.');
+    await comprobarAncla(raizNormal);
+    assert.ok(await evaluar("(() => {const d=document.querySelector('.portal-diversity-scene').dataset;return Number(d.zoom)>1000&&d.rangoDetalle==='Especie'&&Number(d.ramasDibujadas)<160&&Number(d.cacheTroncos)<=256&&Number(d.drawCalls)<=2;})()"),'El zoom extremo mantiene el anclaje, los rangos abiertos y el presupuesto gráfico.');
     await evaluar("document.querySelector('.portal-diversity-canvas,.portal-three-canvas').dispatchEvent(new KeyboardEvent('keydown',{key:'Home',bubbles:true}))");await reposo();
     assert.equal(await evaluar("document.querySelector('.portal-diversity-scene').dataset.zoom"),'1.000');
     assert.equal(await evaluar("document.querySelector('.portal-diversity-scene').dataset.rangoDetalle"),'Orden','Alejar vuelve a ocultar los rangos posteriores.');
-    const maximoSuborden=await evaluar(`(() => {const s=document.querySelector('.portal-diversity-scene'),nodos=Alpine.$data(document.querySelector('#explorador-taxonomico')).nodos,mapa=new Map(nodos.map(n=>[n.clave,n]));return Math.max(...nodos.filter(n=>{if(n.etiqueta!=='Suborden')return false;for(let p=n;p;p=mapa.get(p.padre))if(p.clave===s.dataset.raiz)return true;return false;}).map(n=>n.total));})()`);
+    const raizAntesRueda=await posicionRaiz();
     await evaluar(`(() => {const el=[...document.querySelectorAll('.portal-diversity-label')].find(e=>!e.classList.contains('is-selected')),canvas=document.querySelector('.portal-diversity-canvas'),r=canvas.getBoundingClientRect();canvas.dispatchEvent(new WheelEvent('wheel',{deltaY:-120,clientX:r.left+Number(el.dataset.puntoX)*r.width/canvas.clientWidth,clientY:r.top+Number(el.dataset.puntoY)*r.height/canvas.clientHeight,bubbles:true,cancelable:true}));})()`);
     await visible("document.querySelector('.portal-diversity-scene').dataset.animando==='false'");
-    assert.equal(Number(await evaluar("document.querySelector('.portal-diversity-scene').dataset.registrosYema")),maximoSuborden,'La rueda centra el suborden con más registros aunque el puntero señale otra yema.');
-    assert.ok(await evaluar(`(() => {const s=document.querySelector('.portal-diversity-scene'),e=[...s.querySelectorAll('.portal-diversity-label')].find(e=>e.dataset.clave===s.dataset.yemaZoom),c=s.querySelector('canvas');return e&&Math.abs(Number(e.dataset.puntoX)-c.clientWidth/2)<1&&Math.abs(Number(e.dataset.puntoY)-c.clientHeight/2)<1;})()`),'La yema queda centrada horizontal y verticalmente.');
+    await comprobarAncla(raizAntesRueda);
+    assert.equal(await evaluar("document.querySelector('.portal-diversity-scene').dataset.rangoDetalle"),'Suborden','La rueda conserva su progresión semántica sin trasladar la raíz hacia el puntero.');
     await evaluar("document.querySelector('.portal-diversity-canvas').dispatchEvent(new KeyboardEvent('keydown',{key:'Home',bubbles:true}))");await reposo();
     assert.equal(await evaluar("document.querySelector('.portal-three-fit,.portal-branch-retry,.portal-diversity-guide')"),null,'Los controles y la ayuda visual retirados no ocupan espacio.');
     const estadoAntesDeGirar=await evaluar("({raiz:document.querySelector('.portal-diversity-scene').dataset.raiz,centro:document.querySelector('.portal-diversity-scene').dataset.centro,orientacion:document.querySelector('.portal-diversity-scene').dataset.orientacion})");
@@ -452,7 +484,7 @@ try {
     await evaluar("document.querySelector(" + JSON.stringify(seleccionadoETE) + ").scrollIntoView({block:'center',inline:'center'})");
     async function menuTaxon(selector = seleccionadoETE) {
         await evaluar("document.querySelector(" + JSON.stringify(selector) + ").scrollIntoView({block:'center',inline:'nearest'})");
-        const posicion = await evaluar("(() => {const r=document.querySelector(" + JSON.stringify(selector) + ").getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};})()");
+        const posicion = await evaluar("(() => {const n=document.querySelector(" + JSON.stringify(selector) + "),r=n.getBoundingClientRect(),d=n.closest('.portal-diversity-scene')?.dataset;return d?{x:r.left+Number(d.raizX)*r.width/n.clientWidth,y:r.top+Number(d.raizY)*r.height/n.clientHeight}:{x:r.left+r.width/2,y:r.top+r.height/2};})()");
         assert.ok(await evaluar("(() => {const n=document.querySelector(" + JSON.stringify(selector) + "),p=document.elementFromPoint(" + posicion.x + "," + posicion.y + ");return n===p || n.contains(p);})()"), 'El menú se abre mediante un clic real sobre el nodo visible.');
         await conexion.send('Input.dispatchMouseEvent',{type:'mousePressed',button:'right',clickCount:1,...posicion});
         await conexion.send('Input.dispatchMouseEvent',{type:'mouseReleased',button:'right',clickCount:1,...posicion});
@@ -630,11 +662,11 @@ try {
         for (let pagina = 0; pagina < 12; pagina++) {
             await reposo();
             codigos.push(...await evaluar("[...document.querySelectorAll('.atlas-cell-dialog .portal-record-row th[scope=row]')].map(n => n.textContent.trim())"));
-            const haySiguiente = await evaluar("[...document.querySelectorAll('.atlas-cell-dialog .atlas-cell-pagination button')].some(b => b.textContent.trim() === 'Siguiente' && !b.disabled)");
+            const haySiguiente = await evaluar("(() => {const b=document.querySelector('.atlas-cell-dialog .hub-ig-footer [aria-label=\"Página siguiente\"]'); return Boolean(b && !b.disabled);})()");
             if (!haySiguiente) return codigos;
-            const etiqueta = await evaluar("document.querySelector('.atlas-cell-pagination span').textContent");
-            await evaluar("[...document.querySelectorAll('.atlas-cell-dialog .atlas-cell-pagination button')].find(b => b.textContent.trim() === 'Siguiente').click()");
-            await visible(`document.querySelector('.atlas-cell-pagination span').textContent !== ${JSON.stringify(etiqueta)}`);
+            const etiqueta = await evaluar("document.querySelector('.atlas-cell-dialog .hub-ig-range').textContent");
+            await evaluar("document.querySelector('.atlas-cell-dialog .hub-ig-footer [aria-label=\"Página siguiente\"]').click()");
+            await visible(`document.querySelector('.atlas-cell-dialog .hub-ig-range').textContent !== ${JSON.stringify(etiqueta)}`);
         }
         throw new Error('La paginación de la ubicación no terminó.');
     }
@@ -697,21 +729,22 @@ try {
     await conexion.send('Page.captureScreenshot').then(r => writeFileSync(path.join(temporal, 'portal.png'), Buffer.from(r.data, 'base64')));
     await evaluar("window.__observadorPdf.disconnect(); document.querySelector('.atlas-pdf-frame').remove()");
 
-    // El scroll conserva las filas cargadas y el botón accesible en distintos tamaños.
+    // La grilla paginada conserva sus filas y controles accesibles al cambiar de ventana.
     await evaluar(`(() => {const b=document.querySelector('input[placeholder="Nombre científico en cualquier rango"]');b.focus();b.value=${JSON.stringify(datos.taxonScroll)};b.dispatchEvent(new Event('input',{bubbles:true}));b.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));})()`); await reposo();
     await evaluar("document.querySelector('button[aria-label=\"Vista de registros\"]').click()");
-    await visible("document.querySelector('.portal-records-viewport .portal-record-row')"); await reposo();
+    await visible("document.querySelector('.portal-records-paged .portal-record-row')"); await reposo();
     const cantidades = [];
     for (const [altura, escala] of [[900, 1], [620, 1], [900, .8], [900, 1.25], [620, 2]]) {
         await conexion.send('Emulation.setDeviceMetricsOverride', {width: 1440, height: altura, deviceScaleFactor: 1, mobile: false});
         await evaluar(`document.documentElement.style.zoom='${escala}'; window.dispatchEvent(new Event('resize'))`); await reposo();
+        await evaluar("document.querySelector('.portal-records-paged .hub-ig-footer').scrollIntoView({block:'center'})");await reposo();
         // Leer geometría y hit testing juntos impide que una nueva consulta del
         // ResizeObserver deje el contenido inert entre ambas comprobaciones.
         const {ajuste, acceso} = await esperar(async () => peticiones.size === 0 && await evaluar(`(() => {
-            const raiz=document.querySelector('.portal-records-viewport');
-            if (!raiz || raiz.closest('.collection-main')?.inert || raiz.closest('.collection-workspace')?.classList.contains('is-updating') || window.Alpine.$data(raiz).solicitando) return false;
-            const nav=raiz.querySelector('.portal-records-pagination');
-            const boton=nav && [...nav.querySelectorAll('button')].find(b=>b.textContent.includes('Cargar más'));
+            const raiz=document.querySelector('.portal-records-paged');
+            if (!raiz || raiz.closest('.collection-main')?.inert || raiz.closest('.collection-workspace')?.classList.contains('is-updating')) return false;
+            const nav=raiz.querySelector('.hub-ig-footer');
+            const boton=nav?.querySelector('[aria-label="Página siguiente"]');
             if (!boton) return false;
             const navegacion=nav.getBoundingClientRect(), r=boton.getBoundingClientRect();
             const tabla=raiz.querySelector('.atlas-record-table-scroll'), ventana=tabla.getBoundingClientRect();
@@ -722,19 +755,23 @@ try {
         assert.ok(ajuste.inferior <= ajuste.altura + 2, 'La navegación quedó fuera de la pantalla.');
         assert.ok(['static', 'relative'].includes(ajuste.posicion), 'La navegación quedó flotante.'); cantidades.push(ajuste.visibles);
         assert.equal(ajuste.filas, 50, 'Cambiar el tamaño reemplazó los registros cargados.');
-        assert.ok(acceso.puntos.every(p=>p.libre), `Otro control cubrió Cargar más a ${escala}: ${JSON.stringify(acceso)}`);
+        assert.ok(acceso.puntos.every(p=>p.libre), `Otro control cubrió el paginado a ${escala}: ${JSON.stringify(acceso)}`);
     }
     assert.ok(new Set(cantidades).size > 1, 'La ventana de registros no se adaptó a la pantalla.');
     await evaluar("document.documentElement.style.zoom='1'");
     await conexion.send('Emulation.setDeviceMetricsOverride', {width: 1440, height: 900, deviceScaleFactor: 1, mobile: false});
     await reposo();
-    const posicionScroll = await evaluar(`(() => {const t=document.querySelector('.atlas-record-table-scroll'); t.scrollLeft=100; t.scrollTop=t.scrollHeight; return {top:t.scrollTop,left:t.scrollLeft,ids:[...document.querySelectorAll('.portal-record-row')].map(f=>f.getAttribute('wire:key'))};})()`);
-    await visible("document.querySelectorAll('.portal-record-row').length === 100"); await reposo();
-    const despuesScroll = await evaluar(`(() => {const t=document.querySelector('.atlas-record-table-scroll'); return {top:t.scrollTop,left:t.scrollLeft,ids:[...document.querySelectorAll('.portal-record-row')].map(f=>f.getAttribute('wire:key'))};})()`);
-    assert.deepEqual(despuesScroll.ids.slice(0, 50), posicionScroll.ids, 'El scroll reemplazó filas anteriores.');
-    assert.equal(new Set(despuesScroll.ids).size, 100, 'El scroll duplicó registros.');
-    assert.ok(Math.abs(despuesScroll.top - posicionScroll.top) < 2, 'El scroll perdió la posición vertical.');
-    assert.ok(Math.abs(despuesScroll.left - posicionScroll.left) < 2, 'El scroll perdió la posición horizontal.');
+    const posicionScroll = await evaluar(`(() => {const t=document.querySelector('.portal-records-paged[aria-label] .atlas-record-table-scroll'); t.scrollLeft=100; t.scrollTop=t.scrollHeight; return {top:t.scrollTop,left:t.scrollLeft,ids:[...document.querySelectorAll('.portal-records-paged[aria-label] .portal-record-row')].map(f=>f.getAttribute('wire:key'))};})()`);
+    await reposo();
+    const despuesScroll = await evaluar(`(() => {const t=document.querySelector('.portal-records-paged[aria-label] .atlas-record-table-scroll'); return {top:t.scrollTop,left:t.scrollLeft,ids:[...document.querySelectorAll('.portal-records-paged[aria-label] .portal-record-row')].map(f=>f.getAttribute('wire:key'))};})()`);
+    assert.deepEqual(despuesScroll.ids, posicionScroll.ids, 'El scroll no acumula ni sustituye filas de otra pagina.');
+    assert.ok(Math.abs(despuesScroll.top-posicionScroll.top)<2 && Math.abs(despuesScroll.left-posicionScroll.left)<2, 'El scroll conserva ambas posiciones.');
+    await evaluar("document.querySelector('.portal-records-paged [aria-label=\"Página siguiente\"]').click()");await reposo();
+    const segundaPagina=await evaluar("[...document.querySelectorAll('.portal-records-paged[aria-label] .portal-record-row')].map(f=>f.getAttribute('wire:key'))");
+    assert.equal(segundaPagina.length,50);assert.equal(new Set(segundaPagina).size,50);
+    assert.ok(segundaPagina.every(id=>!posicionScroll.ids.includes(id)), 'La siguiente pagina reemplaza las filas sin repetir ejemplares.');
+    await evaluar("document.querySelector('.portal-records-paged [aria-label=\"Página anterior\"]').click()");await reposo();
+    assert.deepEqual(await evaluar("[...document.querySelectorAll('.portal-records-paged[aria-label] .portal-record-row')].map(f=>f.getAttribute('wire:key'))"),posicionScroll.ids);
     await evaluar(`(() => {const b=document.querySelector('input[placeholder="Nombre científico en cualquier rango"]');b.focus();b.value=${JSON.stringify(datos.taxonBusqueda)};b.dispatchEvent(new Event('input',{bubbles:true}));b.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));})()`); await reposo();
     await evaluar("document.querySelector('button[aria-label=\"Vista de tarjetas\"]').click()");
     await visible("document.querySelector('.collection-taxon-help[aria-label=\"Resumen de Nematomorpha\"]')"); await reposo();
@@ -780,7 +817,11 @@ try {
     await visible("document.querySelector('.portal-diversity-scene')?.checkVisibility()");await reposo();
     await evaluar("document.querySelector('.portal-taxonomy-visualization').click()");
     await visible("(() => {const s=document.querySelector('.portal-three-scene');return s&&Number(s.dataset.indexados)>0&&s.dataset.indexados===s.dataset.nodos;})()");await reposo();
-    await navegarInicial(datos.taxonBusqueda+' alfa');await reposo();
+    // Esta sesión recién abierta aún no ha descubierto las ramas del fixture.
+    // Cargar la especie con el mismo buscador público que utiliza el visitante.
+    await buscarEnArbol(datos.taxonBusqueda+' alfa');
+    await evaluar("[...document.querySelectorAll('#sugerencias-explorador button')].find(b=>b.querySelector('strong')?.textContent==="+JSON.stringify(datos.taxonBusqueda+' alfa')+").click()");
+    await visible("document.querySelector('.portal-three-scene')?.dataset.nombre==="+JSON.stringify(datos.taxonBusqueda+' alfa'));await reposo();
     const pantallaPublica=await evaluar("(() => {const r=document.querySelector('[aria-label=\"Ver visualizador en pantalla completa\"]').getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};})()");
     await conexion.send('Input.dispatchMouseEvent',{type:'mousePressed',button:'left',clickCount:1,...pantallaPublica});
     await conexion.send('Input.dispatchMouseEvent',{type:'mouseReleased',button:'left',clickCount:1,...pantallaPublica});

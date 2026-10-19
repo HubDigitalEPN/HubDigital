@@ -121,6 +121,9 @@ final class RegistroSolicitudDeposito extends Component
     public string $solicitudTexto = '';
     #[Locked]
     public bool $solicitudCambiosPendientes = false;
+
+    #[Locked]
+    public array $solicitudCamposPendientes = [];
     #[Locked]
     public bool $solicitudOficioAnteriorFirmado = false;
     #[Locked]
@@ -957,17 +960,20 @@ final class RegistroSolicitudDeposito extends Component
         }
         $this->solicitudFirmada = false;
         $this->solicitudOficioAnteriorFirmado = false;
+        // Una edición sólo informa del campo que acaba de cambiar. Los errores
+        // del formulario completo se calculan al generar o continuar.
+        $this->solicitudCamposPendientes[$propiedad] = true;
+        if ($propiedad === 'solicitudTipoIdentificacion') $this->solicitudCamposPendientes['solicitudCedula'] = true;
+        $this->resetValidation();
         $this->validateOnly($propiedad, $reglas);
-        if ($propiedad === 'solicitudTipoIdentificacion' && $this->solicitudCedula !== '') {
-            $this->validateOnly('solicitudCedula', $reglas);
-        }
+        unset($this->solicitudCamposPendientes[$propiedad]);
         if ($this->solicitudTipoIdentificacion === 'ruc'
             && ($this->solicitudIdentificacionConsulta['estado'] ?? null) === 'no_encontrado'
             && $this->solicitudIdentificacionConsultada === ('ruc:'.trim($this->solicitudCedula))) return;
         $valores = [];
         foreach (array_keys($reglas) as $campo) $valores[$campo] = $this->{$campo};
         $camposObligatorios = array_diff(array_keys($reglas), ['solicitudTexto']);
-        if (!$this->getErrorBag()->any() && collect($camposObligatorios)->every(fn ($campo): bool => filled($valores[$campo]))) {
+        if ($this->solicitudCamposPendientes === [] && !$this->getErrorBag()->any() && collect($camposObligatorios)->every(fn ($campo): bool => filled($valores[$campo]))) {
             $this->persistirDatosSolicitudInicial(app(RegistrarSolicitudDepositoHandler::class), $valores);
         }
     }
@@ -1019,6 +1025,7 @@ final class RegistroSolicitudDeposito extends Component
             throw ValidationException::withMessages(['solicitudCedula' => 'El RUC no consta en la consulta oficial del SRI. Revisa el número.']);
         }
 
+        $this->solicitudCamposPendientes = [];
         $this->persistirDatosSolicitudInicial($registrar, $datos);
     }
 
@@ -1040,6 +1047,13 @@ final class RegistroSolicitudDeposito extends Component
             $generador->generar($modelo);
         }
         $this->mostrarVistaPdfSolicitud = true;
+    }
+
+    public function generarPdfSolicitud(RegistrarSolicitudDepositoHandler $registrar, \Modules\GestionPrestamosRecepciones\Presentation\Support\GeneradorPdfSolicitudDeposito $generador): void
+    {
+        if ($this->solicitudFirmada) return;
+        $this->guardarSolicitudInicial($registrar);
+        $this->visualizarPdfSolicitud($generador);
     }
 
     private function persistirDatosSolicitudInicial(RegistrarSolicitudDepositoHandler $registrar, array $datos): void

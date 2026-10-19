@@ -65,6 +65,15 @@ html body .hub-ig.hub-ig-compact :is(th, td) { padding-block: .35rem; }
 .hub-curator-ui [data-flux-main] .hidden.md\:block:has(.hub-ig) { display: block; }
 .hub-curator-ui [data-flux-main] .hidden.md\:block:has(.hub-ig) ~ .md\:hidden { display: none; }
 .hub-ig [hidden], .hub-ig [x-cloak] { display: none !important; }
+.hub-ig-menu:popover-open { position: fixed; inset: auto; margin: 0; max-height: calc(100dvh - 16px); overflow-y: auto; }
+body [data-flux-main] .hidden.md\:block:has(.hub-ig) { display: block; }
+body [data-flux-main] .hidden.md\:block:has(.hub-ig) ~ .md\:hidden { display: none; }
+.portal-records-paged .atlas-record-table-scroll { max-height: 65dvh; border: 0; border-radius: 0; }
+.portal-records-paged .hub-ig-scroll { min-height: 0; }
+.portal-records-paged .atlas-record-table-value { display: -webkit-box; min-width: 8rem; max-width: 24rem; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.portal-records-paged .atlas-record-table-photos { flex-wrap: nowrap; }
+.portal-records-paged .atlas-record-table-photos img { width: 64px; height: 48px; }
+.portal-records-paged .hub-ig-footer { padding-inline-end: 5rem; }
 .hub-ig-toolbar { gap: .7rem; padding: .65rem; background: var(--ig-bg); }
 .hub-ig-search { flex-basis: 28rem; }
 .hub-ig-search > svg { border-radius: 2px 0 0 2px; }

@@ -9,10 +9,10 @@ window.hubDigitalFirmador = (config) => ({
     tokenCertificados: [],
     peticionId: null,
     pdfPreparando: false,
-    pdfPreparado: false,
+    pdfPreparado: Boolean(config.originalPrepared),
 
     init() {
-        if (config.originalUrl && config.documentVersion != null) void this.prepararPdf();
+        if (!this.pdfPreparado && config.originalUrl && config.documentVersion != null) void this.prepararPdf();
     },
 
     abrirDialogo() {
@@ -57,12 +57,12 @@ window.hubDigitalFirmador = (config) => ({
         let clave = this.$refs.clave?.value ?? '';
         if (this.metodo === 'archivo' && (!archivo || !/\.(p12|pfx)$/i.test(archivo.name))) {
             this.avisarError('Selecciona un certificado .p12 o .pfx.');
-            this.limpiarCamposCredenciales();
+            this.limpiarClave();
             return;
         }
         if (clave.length === 0) {
             this.avisarError(this.metodo === 'token' ? 'Ingresa el PIN del token.' : 'Ingresa la contraseña del certificado.');
-            this.limpiarCamposCredenciales();
+            this.limpiarClave();
             return;
         }
 
@@ -86,7 +86,7 @@ window.hubDigitalFirmador = (config) => ({
             formulario.append('original_referencia', config.originalReference ?? '');
             formulario.append('original_sha256', config.originalSha256 ?? '');
             clave = '';
-            this.limpiarCamposCredenciales();
+            this.limpiarClave();
 
             const respuesta = await fetch(config.uploadUrl, {
                 method: 'POST',
@@ -117,7 +117,7 @@ window.hubDigitalFirmador = (config) => ({
             formulario.delete('clave_certificado');
             formulario.delete('certificado');
             clave = '';
-            this.limpiarCamposCredenciales();
+            this.limpiarClave();
             this.notificarTrabajo();
         }
     },
@@ -130,10 +130,15 @@ window.hubDigitalFirmador = (config) => ({
 
     avisarError(mensaje) {
         this.error = mensaje;
+        this.$nextTick(() => {
+            const campo = this.metodo === 'archivo' && !this.$refs.certificado?.files?.length ? this.$refs.certificado : this.$refs.clave;
+            campo?.focus?.();
+        });
         window.dispatchEvent(new CustomEvent('show-toast', {detail: {message: mensaje, variant: 'warning'}}));
     },
 
     async completarFirma(mensaje) {
+        this.limpiarCamposCredenciales();
         this.estado = 'completado';
         this.progreso = mensaje ?? 'Solicitud firmada y validada criptográficamente.';
         this.dialogo = false;
@@ -192,13 +197,20 @@ window.hubDigitalFirmador = (config) => ({
         return respuesta.blob();
     },
 
-    limpiarCamposCredenciales() {
+    limpiarClave() {
         if (this.$refs.clave) this.$refs.clave.value = '';
+    },
+
+    limpiarCamposCredenciales() {
+        this.limpiarClave();
         if (this.$refs.certificado) this.$refs.certificado.value = '';
     },
 
     mensajeSeguro(error) {
         const mensaje = String(error?.message ?? 'No se pudo firmar el documento.');
+        if (/password.*incorrect|incorrect.*password|wrong password|contraseña.*incorrecta/i.test(mensaje)) {
+            return 'La contraseña del certificado es incorrecta. Escríbela nuevamente para firmar.';
+        }
         if (/password|passphrase|PKCS#12|ASN\.1|BER|DER|MAC could not|too few bytes/i.test(mensaje)) {
             return 'No se pudo abrir el certificado. Verifica el archivo y su contraseña.';
         }

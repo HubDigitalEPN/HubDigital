@@ -16,7 +16,7 @@
     </div>
 
     {{-- Panel de filtros --}}
-    <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
+    <div class="rounded-lg border border-border bg-surface shadow-sm overflow-visible">
         <div class="flex items-center gap-2 px-4 py-2.5 bg-bg-main border-b border-border">
             <flux:icon name="funnel" class="size-3.5 text-text-secondary" />
             <span class="text-xs font-semibold uppercase tracking-wide text-text-secondary">Filtros</span>
@@ -85,9 +85,9 @@
         </div>
 
     @else
-        <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
-            <div class="overflow-x-auto">
-            <table class="w-full text-sm min-w-[640px]">
+        <div class="rounded-lg border border-border bg-surface shadow-sm overflow-visible">
+            <x-grid-frame label="Mis solicitudes" :client="true">
+<table class="w-full text-sm min-w-[640px]">
                 <thead class="bg-blue-navy border-b border-border">
                     <tr>
                         <th class="px-4 py-3 text-left font-medium text-white">N.º solicitud</th>
@@ -165,7 +165,7 @@
                     @endforeach
                 </tbody>
             </table>
-            </div>
+</x-grid-frame>
         </div>
     @endif
 

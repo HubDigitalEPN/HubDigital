@@ -61,10 +61,10 @@
                 No hay especímenes que coincidan con el filtro.
             </div>
         @else
-            <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
+            <div class="rounded-lg border border-border bg-surface shadow-sm overflow-visible">
                 {{-- Escritorio --}}
-                <div class="hidden md:block overflow-x-auto">
-                    <table class="w-full text-sm">
+                <x-grid-frame label="Especimenes seleccionables">
+<table class="w-full text-sm">
                         <thead class="bg-blue-navy">
                             <tr>
                                 <th class="px-3 py-2.5 w-10"></th>
@@ -88,7 +88,7 @@
                             @endforeach
                         </tbody>
                     </table>
-                </div>
+</x-grid-frame>
 
                 {{-- Móvil --}}
                 <div class="md:hidden divide-y divide-border">
@@ -104,14 +104,7 @@
                     @endforeach
                 </div>
 
-                {{-- Paginación --}}
-                <div class="flex items-center justify-between gap-3 border-t border-border p-3">
-                    <span class="text-xs text-text-secondary">Página {{ $page }} de {{ $totalPaginas }} · {{ number_format($total) }} resultados</span>
-                    <div class="flex gap-2">
-                        <flux:button size="sm" variant="ghost" icon="chevron-left" wire:click="prevPage" :disabled="$page <= 1">Anterior</flux:button>
-                        <flux:button size="sm" variant="ghost" icon="chevron-right" wire:click="nextPage" :disabled="$page >= $totalPaginas">Siguiente</flux:button>
-                    </div>
-                </div>
+                <x-grid-pages :page="$page" :last="$totalPaginas" :total="$total" :per-page="$perPage" action="irAPagina" label="Especimenes seleccionables" />
             </div>
         @endif
     @else

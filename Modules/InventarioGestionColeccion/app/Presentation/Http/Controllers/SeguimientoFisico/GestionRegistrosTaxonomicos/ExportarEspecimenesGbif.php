@@ -74,6 +74,12 @@ final class ExportarEspecimenesGbif extends Component
         }
     }
 
+    public function irAPagina(int $pagina, BuscarEspecimenesHandler $handler): void
+    {
+        $this->page = max(1, min($this->totalPaginas, $pagina));
+        $this->ejecutarBusqueda($handler);
+    }
+
     public function prevPage(BuscarEspecimenesHandler $handler): void
     {
         if ($this->page > 1) {

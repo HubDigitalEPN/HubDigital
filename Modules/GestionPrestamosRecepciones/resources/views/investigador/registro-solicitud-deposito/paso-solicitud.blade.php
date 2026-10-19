@@ -47,38 +47,12 @@
             @endif
         </div>
     </flux:modal>
-    <div class="hub-request-document-actions flex flex-wrap items-center justify-between gap-3"
+    <div class="hub-request-document-actions flex justify-end gap-3"
         @if($solicitudFirmada && !$guardadoR2Confirmado) wire:poll.2s="confirmarSolicitudFirmada" @endif
         wire:key="estado-pdf-{{ $solicitudId }}-{{ $solicitudDocumentoVersion }}">
-        <div class="flex flex-wrap items-center gap-x-4 gap-y-2" aria-live="polite">
-        <span class="inline-flex items-center gap-1.5">
-            @if($solicitudFirmada)
-                <span data-pdf-generated-label class="text-sm font-semibold text-science-blue">PDF Generado</span>
-                <span data-pdf-generated-check class="hub-pdf-check" role="img" aria-label="PDF generado correctamente">✓</span>
-            @else
-                <a href="{{ $oficioCompleto ? route('depositos.solicitud.documento', ['id' => $solicitudId, 'original' => 1]) : '#visualizar-pdf-solicitud' }}" wire:click.prevent="visualizarPdfSolicitud" wire:loading.class="pointer-events-none" class="text-sm font-semibold text-science-blue hover:underline">{{ $pdfGenerado ? 'PDF Generado' : ($oficioCompleto ? 'Generar PDF' : 'Visualizar PDF') }}</a>
-                @if($pdfGenerado)<span data-pdf-generated-check class="hub-pdf-check" role="img" aria-label="PDF generado correctamente">✓</span>@endif
-            @endif
-        </span>
-        @if($solicitudOficioAnteriorFirmado)
-            <a href="{{ route('depositos.solicitud.documento', ['id' => $solicitudId]) }}" target="_blank" rel="noopener" class="text-sm font-semibold text-science-blue hover:underline" aria-label="PDF Firmado, versión anterior">PDF Firmado</a>
-        @endif
-        <span wire:loading class="sr-only">Guardando…</span>
-        @if($oficioCompleto && $pdfGenerado)
-            @if($solicitudFirmada)
-                <span class="inline-flex items-center gap-1.5">
-                    <a data-oficio-signed-link href="{{ route('depositos.solicitud.documento', ['id' => $solicitudId]) }}" target="_blank" rel="noopener" class="text-sm font-semibold text-science-blue hover:underline">PDF Firmado</a>
-                    <span data-pdf-signed-check class="hub-pdf-check" role="img" aria-label="PDF firmado correctamente">✓</span>
-                </span>
-            @else
-                <div wire:key="firma-solicitud-{{ $solicitudId }}-{{ $solicitudDocumentoVersion }}" x-data="hubDigitalFirmador({uploadUrl: @js(route('depositos.solicitud.firmar', ['id' => $solicitudId])), originalUrl: @js(route('depositos.solicitud.documento', ['id' => $solicitudId, 'original' => 1])), statusUrl: @js(route('depositos.solicitud.estado-firma', ['id' => $solicitudId])), documentId: @js($solicitudId), documentVersion: {{ $solicitudDocumentoVersion }}, onSigned: () => $wire.confirmarSolicitudFirmada()})" x-on:keydown.escape.window="if (dialogo) cerrarDialogo()">
-                    <button type="button" class="cursor-pointer text-sm font-semibold text-science-blue hover:underline disabled:cursor-wait disabled:opacity-50" x-ref="abrirFirma" x-on:click="abrirDialogo()" x-show="estado !== 'completado'" wire:loading.attr="disabled">Firmar PDF</button>
-                    <template x-if="estado === 'completado'">
-                        <span class="inline-flex flex-wrap items-center gap-x-4 gap-y-2">
-                            <a data-oficio-signed-link href="{{ route('depositos.solicitud.documento', ['id' => $solicitudId]) }}" target="_blank" rel="noopener" class="text-sm font-semibold text-science-blue hover:underline">PDF Firmado</a>
-                            <span data-pdf-signed-check class="hub-pdf-check" role="img" aria-label="PDF firmado correctamente">✓</span>
-                        </span>
-                    </template>
+        @if($oficioCompleto && $pdfGenerado && !$solicitudFirmada)
+                <div wire:key="firma-solicitud-{{ $solicitudId }}-{{ $solicitudDocumentoVersion }}" x-data="hubDigitalFirmador({uploadUrl: @js(route('depositos.solicitud.firmar', ['id' => $solicitudId])), originalUrl: @js(route('depositos.solicitud.documento', ['id' => $solicitudId, 'original' => 1])), statusUrl: @js(route('depositos.solicitud.estado-firma', ['id' => $solicitudId])), documentId: @js($solicitudId), documentVersion: {{ $solicitudDocumentoVersion }}, originalPrepared: true, onSigned: () => $wire.confirmarSolicitudFirmada()})" x-on:keydown.escape.window="if (dialogo) cerrarDialogo()">
+                    <button type="button" class="hub-request-primary cursor-pointer rounded border border-science-blue bg-science-blue px-4 py-3 text-sm font-semibold text-white disabled:cursor-wait disabled:opacity-50" x-ref="abrirFirma" x-on:click="abrirDialogo()" x-show="estado !== 'completado'" wire:loading.attr="disabled">Firmar PDF</button>
                     <div x-show="dialogo" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-blue-navy/75 p-4" role="presentation">
                         <section role="dialog" aria-modal="true" aria-labelledby="titulo-firma-solicitud" x-trap.inert.noscroll="dialogo" x-on:click.outside="cerrarDialogo()" class="hub-signature-dialog space-y-3 rounded-xl border border-border bg-surface p-4 text-text-primary shadow-2xl">
                             <div class="flex items-start justify-between gap-3">
@@ -99,7 +73,8 @@
                                 <flux:label for="token-certificado">Certificado del token</flux:label>
                                 <select id="token-certificado" x-model="tokenAlias" class="w-full rounded border border-border p-2" x-bind:disabled="estado === 'procesando'"><option value="">Selecciona un certificado</option><template x-for="cert in tokenCertificados" :key="cert.alias"><option :value="cert.alias" x-text="cert.nombre"></option></template></select>
                             </flux:field>
-                            <flux:input x-ref="clave" type="password" autocomplete="off" label="Clave del certificado o PIN del token" x-bind:disabled="estado === 'procesando'" required />
+                            <flux:input x-ref="clave" type="password" autocomplete="off" label="Clave del certificado o PIN del token" x-bind:disabled="estado === 'procesando'" x-bind:aria-invalid="Boolean(error).toString()" aria-describedby="error-firma-solicitud" required />
+                            <p id="error-firma-solicitud" x-show="error" x-text="error" x-cloak role="alert" class="hub-signature-error"></p>
                             <div class="flex flex-wrap items-center justify-end gap-2">
                                 <flux:button variant="ghost" x-on:click="cerrarDialogo()" x-bind:disabled="estado === 'procesando'">Cancelar</flux:button>
                                 <flux:button variant="primary" icon="lock-closed" x-on:click="firmar" x-bind:disabled="estado === 'procesando' || pdfPreparando" x-bind:aria-busy="(estado === 'procesando' || pdfPreparando).toString()">
@@ -110,10 +85,18 @@
                         </section>
                     </div>
                 </div>
-            @endif
+        @else
+            <flux:button class="ml-auto hub-request-primary" variant="primary" icon-trailing="arrow-right"
+                wire:click="{{ $solicitudFirmada ? 'continuarDesdeSolicitud' : 'generarPdfSolicitud' }}"
+                wire:loading.attr="disabled" wire:target="generarPdfSolicitud,continuarDesdeSolicitud">
+                {{ $solicitudFirmada ? 'Ir al paso 2 Trámite' : 'Generar PDF' }}
+            </flux:button>
         @endif
-        </div>
-        <flux:button class="ml-auto" variant="primary" icon-trailing="arrow-right" wire:click="continuarDesdeSolicitud" wire:loading.attr="disabled" :disabled="!$solicitudFirmada || $solicitudCambiosPendientes">{{ \Modules\GestionPrestamosRecepciones\Presentation\Support\PasosWizardDeposito::accionSiguiente(0) }}</flux:button>
     </div>
+    @if($solicitudOficioAnteriorFirmado)
+        <p class="text-right text-xs text-text-secondary">Existe una versión firmada anterior.
+            <a href="{{ route('depositos.solicitud.documento', ['id' => $solicitudId]) }}" target="_blank" rel="noopener" class="text-science-blue underline" aria-label="PDF Firmado, versión anterior">Consultar PDF anterior</a>
+        </p>
+    @endif
     <flux:error name="solicitudFirmada" />
 </div>

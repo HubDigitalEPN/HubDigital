@@ -48,7 +48,12 @@ trait CargaRegistrosPublicos
         ProveedorEspecimenesPort $proveedor,
         EspecimenDivulgableRepositoryInterface $repoDivulgable,
     ): array {
-        return $this->aplicarVisibilidad($proveedor->buscarPorEspecimenIds($especimenIds), $repoDivulgable);
+        $registros = $this->aplicarVisibilidad($proveedor->buscarPorEspecimenIds($especimenIds), $repoDivulgable);
+        // El proveedor hidrata en orden de origen; la página ya trae los UUID
+        // ordenados por la columna pública elegida por el usuario.
+        $posiciones = array_flip($especimenIds);
+        usort($registros, static fn (object $a, object $b): int => $posiciones[$a->especimen_id] <=> $posiciones[$b->especimen_id]);
+        return $registros;
     }
 
     /** @param list<DatosEspecimenProveedor> $datos @return list<object> */

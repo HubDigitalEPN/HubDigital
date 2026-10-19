@@ -1,17 +1,20 @@
-@props(['server' => false])
+@props(['server' => false, 'client' => false, 'pageSize' => null, 'pageSizeAction' => null])
 <div class="hub-ig-actions" x-on:click.outside="closeMenu(false)">
     <button type="button" class="hub-ig-button" x-ref="actionsButton" aria-haspopup="menu" :aria-expanded="menuOpen.toString()"
         x-on:click="openMenu()" x-on:keydown.arrow-down.prevent="if (!menuOpen) openMenu()">Acciones <flux:icon name="chevron-down" /></button>
     <div class="hub-ig-menu" x-ref="actionMenu" x-show="menuOpen" x-cloak role="menu" aria-label="Acciones de la grilla" x-on:keydown="menuKey($event)">
         <div data-menu-view="main" x-show="menuView === 'main'">
             <button type="button" role="menuitem" tabindex="-1" x-on:click="openColumns()"><flux:icon name="table-cells" /><span>Columnas</span><span class="hub-ig-menu-trailing">…</span></button>
-            @if($server)
+            @if($server || $client)
                 <button type="button" role="menuitem" tabindex="-1" x-on:click="openFilters()"><flux:icon name="funnel" /><span>Filtrar</span><span class="hub-ig-menu-trailing">…</span></button>
                 <button type="button" role="menuitem" tabindex="-1" x-on:click="openSort()"><flux:icon name="arrows-up-down" /><span>Ordenar</span><span class="hub-ig-menu-trailing">…</span></button>
+            @endif
+            @if($server || $client || $pageSizeAction)
                 <div class="hub-ig-menu-separator" role="separator"></div>
-                <button type="button" role="menuitem" tabindex="-1" aria-haspopup="menu" x-on:click="changeMenu('rows')"><flux:icon name="bars-3" /><span>Filas por página</span><span class="hub-ig-menu-trailing">{{ $this->gridPerPage }} <flux:icon name="chevron-right" /></span></button>
+                <button type="button" role="menuitem" tabindex="-1" aria-haspopup="menu" x-on:click="changeMenu('rows')"><flux:icon name="bars-3" /><span>Filas por página</span><span class="hub-ig-menu-trailing">@if($server){{ $this->gridPerPage }}@elseif($client)<span x-text="clientPerPage"></span>@else{{ $pageSize }}@endif <flux:icon name="chevron-right" /></span></button>
             @endif
             <button type="button" role="menuitem" tabindex="-1" aria-haspopup="menu" x-on:click="changeMenu('format')"><flux:icon name="adjustments-horizontal" /><span>Formato</span><flux:icon name="chevron-right" class="hub-ig-menu-trailing" /></button>
+            {{ $slot }}
             <div class="hub-ig-menu-separator" role="separator"></div>
             <button type="button" role="menuitem" tabindex="-1" x-on:click="downloadPage()"><flux:icon name="arrow-down-tray" /><span>Descargar página</span><span class="hub-ig-menu-hint">CSV</span></button>
             @if($server)
@@ -20,11 +23,16 @@
                 <button type="button" role="menuitem" tabindex="-1" x-on:click="reset()"><flux:icon name="arrow-uturn-left" /><span>Restablecer vista</span></button>
             @endif
         </div>
-        @if($server)
+        @if($server || $client || $pageSizeAction)
             <div data-menu-view="rows" x-show="menuView === 'rows'" x-cloak>
                 <button type="button" role="menuitem" tabindex="-1" class="hub-ig-menu-back" x-on:click="changeMenu('main')"><flux:icon name="chevron-left" /> Filas por página</button>
                 @foreach([15, 25, 50, 100] as $amount)
-                    <button type="button" role="menuitemradio" tabindex="-1" aria-checked="{{ $this->gridPerPage === $amount ? 'true' : 'false' }}" wire:click="$set('gridPerPage', {{ $amount }})" x-on:click="closeMenu()"><span class="hub-ig-menu-check">@if($this->gridPerPage === $amount)<flux:icon name="check" />@endif</span>{{ $amount }} filas</button>
+                    @if($client)
+                        <button type="button" role="menuitemradio" tabindex="-1" :aria-checked="(clientPerPage === {{ $amount }}).toString()" x-on:click="clientPerPage = {{ $amount }}; closeMenu()"><span class="hub-ig-menu-check"><flux:icon name="check" x-show="clientPerPage === {{ $amount }}" /></span>{{ $amount }} filas</button>
+                    @else
+                        @php($currentSize = $server ? $this->gridPerPage : $pageSize)
+                        <button type="button" role="menuitemradio" tabindex="-1" aria-checked="{{ $currentSize === $amount ? 'true' : 'false' }}" wire:click="{{ $server ? '$set(\'gridPerPage\', '.$amount.')' : $pageSizeAction.'('.$amount.')' }}" x-on:click="closeMenu()"><span class="hub-ig-menu-check">@if($currentSize === $amount)<flux:icon name="check" />@endif</span>{{ $amount }} filas</button>
+                    @endif
                 @endforeach
             </div>
         @endif
@@ -49,7 +57,7 @@
     </div>
     <div class="hub-ig-dialog-footer"><button type="button" class="hub-ig-button" x-on:click="$refs.columnsDialog.close()">Cancelar</button><button type="button" class="hub-ig-button hub-ig-button-primary" x-on:click="applyColumnSelection()">Aplicar</button></div>
 </dialog>
-@if($server)
+@if($server || $client)
     <dialog wire:ignore.self class="hub-ig-dialog" x-ref="filterDialog" :aria-labelledby="$id('grid-filter-title')" x-on:close="$refs.actionsButton.focus()">
         <form x-on:submit.prevent="await applyFilters()">
             <div class="hub-ig-dialog-heading"><h2 :id="$id('grid-filter-title')">Filtrar</h2><button type="button" class="hub-ig-icon-button" x-on:click="$refs.filterDialog.close()" aria-label="Cerrar filtros"><flux:icon name="x-mark" /></button></div>

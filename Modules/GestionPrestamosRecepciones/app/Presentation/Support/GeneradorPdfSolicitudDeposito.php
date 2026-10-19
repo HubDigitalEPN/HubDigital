@@ -47,16 +47,22 @@ final class GeneradorPdfSolicitudDeposito
 
         $institucionFirmante = $this->institucionFirmante($solicitud);
         $clave = $this->clave($solicitud, $institucionFirmante);
-        $indice = 'oficio-pdf-indice:'.$solicitud->id;
-        Cache::put($indice, array_values(array_unique([...Cache::get($indice, []), $clave])), now()->addMinutes(20));
-        // Revisar y firmar utilizan los mismos bytes mientras siga vigente el oficio.
-        return Cache::remember($clave, now()->addMinutes(20), static fn (): string =>
-            Pdf::loadView('gestionprestamosrecepciones::pdf.solicitud-deposito', [
-                'solicitud' => $solicitud,
-                'institucionFirmante' => $institucionFirmante,
-                'perfilFirma' => PerfilFirmaPdf::solicitudDepositante(),
-            ])->addInfo(['HubDigitalVerificationUrl' => self::urlVerificacion($solicitud)])->setPaper('a4')->output()
-        );
+        $existente = Cache::get($clave);
+        if (is_string($existente)) return $existente;
+        // Revisar y abrir la firma pueden coincidir. Una sola petición compila
+        // la plantilla; las demás reutilizan exactamente los mismos bytes.
+        return Cache::lock($clave.':generando', 30)->block(20, function () use ($solicitud, $institucionFirmante, $clave): string {
+            $indice = 'oficio-pdf-indice:'.$solicitud->id;
+            Cache::put($indice, array_values(array_unique([...Cache::get($indice, []), $clave])), now()->addMinutes(20));
+            // Revisar y firmar utilizan los mismos bytes mientras siga vigente el oficio.
+            return Cache::remember($clave, now()->addMinutes(20), static fn (): string =>
+                Pdf::loadView('gestionprestamosrecepciones::pdf.solicitud-deposito', [
+                    'solicitud' => $solicitud,
+                    'institucionFirmante' => $institucionFirmante,
+                    'perfilFirma' => PerfilFirmaPdf::solicitudDepositante(),
+                ])->addInfo(['HubDigitalVerificationUrl' => self::urlVerificacion($solicitud)])->setPaper('a4')->output()
+            );
+        });
     }
 
     public static function urlVerificacion(SolicitudDepositoEloquentModel $solicitud): string

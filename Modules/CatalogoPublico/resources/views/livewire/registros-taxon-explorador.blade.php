@@ -21,14 +21,12 @@
                 <p role="status">Este registro ya no está disponible para consulta pública.</p>
             @endif
         @elseif($taxonId !== '')
-            <x-catalogopublico::tabla-registros-mapa :registros="$registros" :imagenes="$imagenes" :total="$paginacion['total']" contexto="catalogo" :mostrar-titulo="false" />
-            @if($paginacion['ultima'] > 1)
-                <nav class="collection-card-pagination" aria-label="Páginas de registros del taxón">
-                    <button type="button" wire:click="cambiarPagina({{ $paginacion['pagina'] - 1 }})" wire:loading.attr="disabled" @disabled($paginacion['pagina'] <= 1)>Anterior</button>
-                    <span>Página {{ $paginacion['pagina'] }} de {{ $paginacion['ultima'] }} · 24 por página</span>
-                    <button type="button" wire:click="cambiarPagina({{ $paginacion['pagina'] + 1 }})" wire:loading.attr="disabled" @disabled($paginacion['pagina'] >= $paginacion['ultima'])>Siguiente</button>
-                </nav>
-            @endif
+            <div class="portal-records-paged">
+                <x-grid-frame label="Registros del taxón" :page-size="$this->registrosPorPagina" page-size-action="ajustarRegistrosPorPagina">
+                    <x-catalogopublico::tabla-registros-mapa :registros="$registros" :imagenes="$imagenes" :total="$paginacion['total']" contexto="catalogo" :mostrar-titulo="false" />
+                    <x-slot:pagination><x-grid-pages :page="$paginacion['pagina']" :last="$paginacion['ultima']" :total="$paginacion['total']" :per-page="$this->registrosPorPagina" label="Registros del taxón" /></x-slot:pagination>
+                </x-grid-frame>
+            </div>
         @endif
         <p wire:loading.delay role="status">Consultando registros…</p>
     </div>

@@ -70,7 +70,7 @@
 
                 {{-- Código QR del lote (solicitud aprobada) --}}
                 @if($deposito->estado === 'Aprobada Documentalmente' && $deposito->codigo_qr)
-                    <div class="rounded-lg border border-success/40 bg-success/5 shadow-sm overflow-hidden">
+                    <div class="rounded-lg border border-success/40 bg-success/5 shadow-sm overflow-visible">
                         <div class="px-5 py-4 border-b border-success/30 flex items-center gap-3">
                             <div class="flex h-8 w-8 items-center justify-center rounded-full bg-success text-white shrink-0">
                                 <flux:icon name="qr-code" class="size-4" />
@@ -138,7 +138,7 @@
                     </section>
                 @endif
                 @if($deposito->estado === 'Aprobada Documentalmente' && !$recepcionFinalizada)
-                    <div class="rounded-lg border-2 border-warning/40 bg-surface shadow-sm overflow-hidden">
+                    <div class="rounded-lg border-2 border-warning/40 bg-surface shadow-sm overflow-visible">
                         <div class="px-5 py-4 border-b border-warning/20 bg-warning/5 flex items-start gap-3">
                             <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-warning/15 text-warning">
                                 <flux:icon name="exclamation-triangle" variant="outline" class="size-5" />
@@ -168,8 +168,8 @@
                                     aumenta proporcionalmente al número de lotes:
                                 </p>
 
-                                <div class="overflow-x-auto">
-                                    <table class="w-full text-sm border border-border rounded-lg overflow-hidden">
+                                <x-grid-frame label="Referencia de cajas">
+<table class="w-full text-sm border border-border rounded-lg overflow-hidden">
                                         <thead class="bg-bg-main">
                                             <tr>
                                                 <th class="text-left font-medium text-text-secondary px-4 py-2">Lotes en alcohol</th>
@@ -182,7 +182,7 @@
                                             <tr class="border-t border-border"><td class="px-4 py-2 text-text-primary">15 lotes</td><td class="px-4 py-2 text-text-primary">3 cajas</td></tr>
                                         </tbody>
                                     </table>
-                                </div>
+</x-grid-frame>
 
                                 <p class="text-sm text-text-secondary leading-relaxed">
                                     Las cajas alojan especímenes extraídos de los tubos con alcohol, que el staff del Laboratorio montará en alfileres
@@ -325,7 +325,7 @@
 
                 {{-- Acta de Recepción firmada electrónicamente (disponible tras la firma del curador) --}}
                 @if(isset($recepcion) && $recepcion?->actaFirmada)
-                    <div class="rounded-lg border border-success/30 bg-success/5 shadow-sm overflow-hidden">
+                    <div class="rounded-lg border border-success/30 bg-success/5 shadow-sm overflow-visible">
                         <div class="p-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                             <div class="flex items-start gap-3">
                                 <flux:icon name="shield-check" variant="outline" class="size-6 shrink-0 text-success" />

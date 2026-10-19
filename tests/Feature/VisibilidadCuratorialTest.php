@@ -178,7 +178,7 @@ test('los filtros públicos se aplican también a la lista CSV y respetan la ubi
         'ffd' => '2025-01-01', 'ffh' => '2025-12-31', 'fmes' => '6',
         'fid' => 'especie', 'fgeo' => '1', 'fap' => '1', 'fco' => $colector, 'fm' => [$metodo],
     ]))->assertOk()->assertSee($conUbicacion);
-    $resultados = $contenidoResultados($registros->getContent(), 'portal-records-catalogue');
+    $resultados = $contenidoResultados($registros->getContent(), 'portal-records-paged');
     expect($resultados->textContent)->toContain($conUbicacion)
         ->not->toContain($sinUbicacion)->not->toContain($metodoRestringido);
     $filas = (new DOMXPath($resultados->ownerDocument))->query('.//table[@class="atlas-record-table"]/tbody/tr', $resultados);

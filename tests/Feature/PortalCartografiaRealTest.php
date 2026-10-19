@@ -55,6 +55,14 @@ test('tarjetas y tabla paginan UUID sin duplicarlos ni perder el resto', functio
         }
         expect(count(array_unique($vistos)))->toBe(25);
     }
+    DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->update(['occurrence_id' => 'ZZZ-ULTIMO']);
+    Livewire::withQueryParams(['vista' => 'registros', 'fph' => $f['filo'], 'nivel' => 'species', 'taxon' => $f['prefijo'].' alfa'])->test(PortalCatalogo::class)
+        ->call('ajustarRegistrosPorPagina', 15)->assertViewHas('registrosVista', fn ($filas) => count($filas) === 15)
+        ->call('cambiarPagina', 2)->assertViewHas('registrosVista', fn ($filas) => count($filas) === 10)
+        ->call('ordenarRegistros', 'occurrence_id', 'desc')->assertSet('pagina', 1)
+        ->assertViewHas('registrosVista', fn ($filas) => $filas[0]->especimen_id === $f['ids'][0] && $filas[0]->occurrence_id === 'ZZZ-ULTIMO')
+        ->call('restablecerVistaRegistros')->assertSet('ordenRegistros', '')->assertSet('registrosPorPagina', 50)
+        ->call('ordenarRegistros', 'password')->assertStatus(422);
 });
 
 test('el scroll acumula lotes públicos ordenados, ignora duplicados y reinicia la selección', function (): void {

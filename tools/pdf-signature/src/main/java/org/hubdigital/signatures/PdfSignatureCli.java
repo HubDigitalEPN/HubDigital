@@ -166,6 +166,9 @@ public final class PdfSignatureCli {
 
     static String errorResult(Exception e) {
         String mensaje = "No fue posible completar la operación PDF. Revisa el archivo y la configuración del validador.";
+        if (e instanceof FirmadorPdfOficial.ContrasenaCertificadoIncorrecta || e instanceof java.security.UnrecoverableKeyException) {
+            return json(new Result("contrasena_certificado_incorrecta", "La contraseña del certificado es incorrecta. Escríbela nuevamente para firmar.", false));
+        }
         if (e instanceof java.security.cert.CertificateExpiredException) mensaje = "El certificado está caducado.";
         else if (e instanceof java.security.cert.CertificateNotYetValidException) mensaje = "El certificado aún no está vigente.";
         else if (e instanceof java.io.IOException && "No se pudo abrir el certificado con la credencial indicada.".equals(e.getMessage())) {

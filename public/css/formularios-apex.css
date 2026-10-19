@@ -216,3 +216,10 @@ html body .hub-doc-chat-heading .hub-doc-chat-title { margin: 0; color: #fff; fo
 .hub-doc-chat-hint { margin-top: .45rem; color: #526375; font-size: .6875rem; }
 .hub-doc-chat :is(button, input):focus-visible { outline: 2px solid #056ac8; outline-offset: 2px; }
 @media (max-width: 639px) { .hub-doc-chat-message { max-width: 94%; } .hub-doc-chat-heading, .hub-doc-chat-footer { padding: .75rem; } }
+
+/* El certificado seleccionado muestra su nombre, sin repetir el selector. */
+.hub-certificate-input[required]:valid::file-selector-button { display: none; }
+.hub-depositos-ui .hub-signature-dialog .hub-signature-error { position: static; width: auto; height: auto; padding: .65rem .8rem; margin: .5rem 0; overflow: visible; clip-path: none; white-space: normal; border: 1px solid #e3a3a3; border-radius: 3px; background: #fff4f4; color: #9f1b1b; font-size: .875rem; }
+/* Todos los pasos comparten el scroll del documento; sólo los diálogos lo bloquean. */
+html:has(.hub-depositos-ui) { overflow-y: auto; scrollbar-gutter: stable; }
+body:has(.hub-depositos-ui) [data-flux-main] { min-height: 0; overflow: visible; padding-bottom: 1.5rem; }

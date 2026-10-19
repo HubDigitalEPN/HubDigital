@@ -427,7 +427,6 @@
             </a>
 
             <div class="hub-mobile-actions flex items-center justify-end gap-1 text-white">
-                <a href="https://www.epn.edu.ec/" aria-label="Escuela Politécnica Nacional" class="mr-3 hidden sm:block"><img src="{{ asset('images/logo-epn.png') }}" alt="EPN" class="h-11 w-auto object-contain" /></a>
                 <span class="hub-topbar-identity"><strong>{{ auth()->user()->name }}</strong><small>{{ auth()->user()->rolActivo()->etiqueta() }}</small></span>
                 <flux:dropdown position="top" align="end">
                     <flux:profile

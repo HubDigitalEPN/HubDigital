@@ -60,16 +60,24 @@ test('un fallo al preparar el original libera la interfaz y permite la firma nor
     await ui.state.firmar();
     assert.equal(ui.state.estado, 'completado');
 });
-test('un 422 muestra el detalle, sale de Firmando y limpia las credenciales', async () => {
+test('un 422 muestra la contraseña incorrecta, limpia la clave y conserva el certificado para reintentar', async () => {
     const ui = signer(async () => ({ok: false, json: async () => ({message: 'Datos incorrectos', errors: {clave_certificado: ['Contraseña incorrecta']}})}));
     await ui.state.firmar();
     assert.equal(ui.state.estado, 'error');
-    assert.equal(ui.state.error, 'Contraseña incorrecta');
+    assert.equal(ui.state.error, 'La contraseña del certificado es incorrecta. Escríbela nuevamente para firmar.');
     assert.equal(ui.events.find(event => event.type === 'show-toast').detail.variant, 'warning');
     assert.equal(ui.events.findLast(event => event.type === 'hub-firma-ocupada').detail.busy, false);
     assert.equal(ui.state.progreso, '');
     assert.equal(ui.credentials.value, '');
+    assert.equal(ui.certificate.value, 'prueba.p12');
+    ui.state.cerrarDialogo();
     assert.equal(ui.certificate.value, '');
+});
+test('un PDF ya generado evita preparaciones repetidas al montar y abrir el firmador', () => {
+    const ui = signer(() => { throw new Error('No debe volver a descargar ni generar el original'); }, {originalUrl: '/original', originalPrepared: true});
+    ui.state.init(); ui.state.abrirDialogo();
+    assert.equal(ui.state.pdfPreparado, true); assert.equal(ui.state.pdfPreparando, false);
+    assert.equal(ui.state.dialogo, true); assert.equal(ui.events.length, 0);
 });
 test('el éxito actualiza la solicitud inmediatamente y envía su versión', async () => {
     let notified = 0, submitted;

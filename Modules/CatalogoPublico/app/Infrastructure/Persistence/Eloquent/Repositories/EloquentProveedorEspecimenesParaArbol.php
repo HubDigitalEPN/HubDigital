@@ -92,7 +92,7 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
         return $query;
     }
 
-    public function paginaPublica(FiltrosBusqueda $filtros, int $pagina, string $nivel = '', string $taxon = '', int $tamano = self::TAMANO_PAGINA, int $paginas = 1): array
+    public function paginaPublica(FiltrosBusqueda $filtros, int $pagina, string $nivel = '', string $taxon = '', int $tamano = self::TAMANO_PAGINA, int $paginas = 1, string $orden = '', string $direccion = 'asc'): array
     {
         $tamano = max(1, min(100, $tamano));
         $query = $this->consultaPublica($filtros, $nivel, $taxon);
@@ -100,6 +100,15 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
         $ultima = max(1, (int) ceil($total / $tamano));
         $actual = min(max(1, $pagina), $ultima);
         $hasta = min($ultima, $actual + max(1, min($paginas, $ultima)) - 1);
+        $ordenes = [
+            'occurrence_id' => 'CASE WHEN ed.occurrence_id_visible THEN te.occurrence_id END',
+            'scientific_name' => 'CASE WHEN ed.scientific_name_visible THEN tg.nombre_cientifico END',
+            'event_date' => 'CASE WHEN ed.event_date_visible THEN te.fecha_colecta END',
+        ];
+        if (isset($ordenes[$orden])) {
+            if ($orden === 'scientific_name') $query->leftJoin('taxonomia.taxones as tg', 'tg.id', '=', 'te.taxon_id');
+            $query->orderByRaw($ordenes[$orden].($direccion === 'desc' ? ' DESC' : ' ASC').' NULLS LAST');
+        }
         $ids = $query->orderBy('te.fila_origen_excel')->orderBy('te.id')
             ->offset(($actual - 1) * $tamano)->limit(($hasta - $actual + 1) * $tamano)->pluck('te.id')->all();
 

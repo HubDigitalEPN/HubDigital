@@ -413,8 +413,8 @@ test('un borrador incompleto requiere preparar el oficio y el servidor rechaza s
     ]);
     Livewire::actingAs($depositante)->test(RegistroSolicitudDeposito::class)
         ->assertSet('solicitudCambiosPendientes', true)
-        ->assertSee('Visualizar PDF')->assertDontSee('Firmar PDF')
-        ->assertSee('wire:click.prevent="visualizarPdfSolicitud"', false)
+        ->assertSee('Generar PDF')->assertDontSee('Firmar PDF')
+        ->assertSee('generarPdfSolicitud', false)
         ->call('visualizarPdfSolicitud')->assertHasNoErrors()
         ->assertSet('mostrarVistaPdfSolicitud', true)
         ->assertSee('Vista previa completa de la solicitud de depósito');
@@ -477,13 +477,14 @@ test('el oficio autoguarda solo catálogos activos y no permite editar su redacc
     $component->call('visualizarPdfSolicitud')
         ->assertHasNoErrors()
         ->assertSet('mostrarVistaPdfSolicitud', true)
-        ->assertSee('PDF Generado')->assertSee('Firmar PDF')
+        ->assertSee('Firmar PDF')->assertDontSee('PDF Generado')
         ->assertSee('PDF completo de la solicitud de depósito')
         ->assertDontSee('Texto del oficio · revisar');
     expect($borrador->fresh()->solicitud_documento_version)->toBe(1);
     $component->set('mostrarVistaPdfSolicitud', false);
     $component->set('solicitudCargo', 'Cargo escrito libremente')
         ->assertHasErrors('solicitudCargo')->assertSet('solicitudCambiosPendientes', true);
+    $component->set('solicitudNombrePermiso', 'Titular actualizado')->assertHasNoErrors();
     expect($borrador->fresh()->solicitud_cargo)->toBe('Investigador del proyecto');
     $component->set('solicitudCargo', 'Investigador del proyecto')
         ->set('solicitudGrupo', 'Grupo libre')->assertHasErrors('solicitudGrupo');
@@ -493,6 +494,18 @@ test('el oficio autoguarda solo catálogos activos y no permite editar su redacc
     expect(fn () => $component->set('solicitudTexto', 'Texto enviado fuera del formulario.'))
         ->toThrow(\Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException::class);
     expect($borrador->fresh()->getAttributes())->toBe($antes);
+});
+
+test('editar un campo sólo muestra sus errores y generar PDF valida la solicitud completa', function (): void {
+    configurarR2FalsoParaPruebas();
+    $depositante = User::factory()->depositante()->create();
+    $component = Livewire::actingAs($depositante)->test(RegistroSolicitudDeposito::class)
+        ->set('solicitudCorreo', 'correo incorrecto')->assertHasErrors('solicitudCorreo')
+        ->assertHasNoErrors(['solicitudGrupo', 'solicitudProyecto', 'solicitudOficio'])
+        ->set('solicitudNombrePermiso', 'Titular de prueba')->assertHasNoErrors()
+        ->assertSet('solicitudId', null)
+        ->call('generarPdfSolicitud')->assertHasErrors(['solicitudCorreo', 'solicitudGrupo', 'solicitudProyecto', 'solicitudOficio']);
+    expect(SolicitudDepositoEloquentModel::where('investigador_id', (string) $depositante->id)->exists())->toBeFalse();
 });
 
 test('el oficio sin firma no avanza y al descartar el borrador se elimina su PDF firmado de R2', function (): void {
@@ -560,8 +573,8 @@ test('el oficio sin firma no avanza y al descartar el borrador se elimina su PDF
     expect($almacenamiento->existe($ruta))->toBeTrue();
 
     Livewire::actingAs($depositante)->test(RegistroSolicitudDeposito::class)
-        ->assertSee('PDF Generado')->assertDontSee('Visualizar PDF')
-        ->assertSee('data-pdf-generated-check', false)
+        ->assertSee('Ir al paso 2 Trámite')->assertDontSee('Visualizar PDF')
+        ->assertDontSee('data-pdf-generated-check', false)
         ->assertDontSee('wire:click.prevent="visualizarPdfSolicitud"', false)
         ->call('continuarDesdeSolicitud')
         ->assertHasNoErrors()

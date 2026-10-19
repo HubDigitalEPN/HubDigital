@@ -142,36 +142,35 @@
         @if(\App\Support\AccesoCatalogo::completo()) @include('catalogopublico::components.detalle-celda-mapa') @endif
         @endif
     @elseif($vista === 'registros')
-        <div class="portal-records-viewport portal-records-catalogue mx-auto max-w-7xl px-4 pt-4 sm:px-6 lg:px-8"
-            wire:key="registros-infinitos-{{ $this->claveRegistrosCargados }}" x-data="portalRegistrosInfinitos"
-            data-seleccion="{{ $this->claveRegistrosCargados }}" data-paginas="{{ $this->paginasRegistrosCargadas }}" data-hay-mas="{{ $hayMasRegistros ? 'true' : 'false' }}">
-            <div class="portal-records-header mb-4 flex flex-wrap items-end justify-between gap-3">
-                <div>
-                    <h1 class="font-display text-2xl font-bold text-blue-navy">
-                        {{ $taxonActual !== '' ? 'Registros de '.$taxonActual : \App\Support\PortalCopy::text('catalogo.registros_titulo') }}
-                    </h1>
-                    <p class="mt-1 text-sm text-text-secondary">{{ number_format($totalRegistrosVista, 0, ',', '.') }} {{ $totalRegistrosVista === 1 ? 'registro' : 'registros' }} · {{ $hayMasRegistros ? 'Desplázate en la tabla para cargar más.' : 'Fin de los resultados.' }}</p>
-                </div>
-                @if($totalRegistrosVista > 0)
-                    <button type="button" wire:click="descargarResultados" wire:loading.attr="disabled" wire:target="descargarResultados" aria-label="{{ $catalogoTexto('descargar_resultados') }}" class="rounded-md border border-science-blue px-4 py-2 text-sm font-semibold text-science-blue hover:bg-sky-50 disabled:opacity-50"><span class="portal-records-download-label">{{ $catalogoTexto('descargar_resultados') }}</span><span class="portal-records-download-compact-label" aria-hidden="true">CSV</span></button>
-                @endif
-            </div>
-            @if($totalRegistrosVista === 0)
-                <p class="rounded-lg border border-border bg-surface p-8 text-center text-text-secondary">{{ \App\Support\PortalCopy::text('catalogo.registros_vacios') }}</p>
-            @else
-                <x-catalogopublico::tabla-registros-mapa :registros="$registrosVista" :imagenes="$imagenesRegistrosVista" :total="$totalRegistrosVista" contexto="catalogo" :mostrar-titulo="false" />
-                <div class="portal-records-pagination portal-records-progress" aria-label="Carga de registros">
-                    <span role="status" class="text-sm text-text-secondary">Mostrando {{ number_format(($paginaActual - 1) * $this->registrosPorPagina + 1, 0, ',', '.') }}–{{ number_format(($paginaActual - 1) * $this->registrosPorPagina + count($registrosVista), 0, ',', '.') }} de {{ number_format($totalRegistrosVista, 0, ',', '.') }}{{ $hayMasRegistros ? '' : ' · Fin de los resultados' }}</span>
-                    @if($hayMasRegistros)
-                        <button type="button" x-on:click="cargarMas()" x-bind:disabled="solicitando" wire:loading.attr="disabled"
-                            class="rounded-lg border border-border px-4 py-2 text-sm text-science-blue disabled:cursor-not-allowed disabled:opacity-40">
-                            <span x-text="solicitando ? 'Cargando…' : 'Cargar más registros'">Cargar más registros</span>
-                        </button>
-                    @endif
-                    <p x-cloak x-show="errorCarga" x-text="errorCarga" role="alert" class="text-sm text-red-700"></p>
-                </div>
-            @endif
-        </div>
+        <section class="portal-records-paged mx-auto max-w-7xl px-4 pt-4 sm:px-6 lg:px-8" aria-label="Registros del catálogo">
+            <header class="mb-4"><h1 class="font-display text-2xl font-bold text-blue-navy">{{ $taxonActual !== '' ? 'Registros de '.$taxonActual : \App\Support\PortalCopy::text('catalogo.registros_titulo') }}</h1>
+                <p class="mt-1 text-sm text-text-secondary">{{ number_format($totalRegistrosVista, 0, ',', '.') }} registros</p></header>
+            <x-grid-frame label="Registros del catálogo" :page-size="$this->registrosPorPagina" page-size-action="ajustarRegistrosPorPagina">
+                <x-slot:search>
+                    <form class="hub-ig-search" x-data="{campo: 'filtroCatalogo', texto: ''}" x-on:submit.prevent="$wire.aplicarBusquedaTexto(campo, texto)">
+                        <select x-model="campo" aria-label="Columna de búsqueda"><option value="filtroCatalogo">N.º catálogo</option><option value="filtroTaxon">Taxón</option></select>
+                        <input type="search" x-model="texto" placeholder="Buscar en todos los registros" aria-label="Buscar en todos los registros" maxlength="240">
+                        <button type="submit" class="hub-ig-button">Ir</button>
+                    </form>
+                </x-slot:search>
+                <x-slot:actions>
+                    <button type="button" role="menuitem" tabindex="-1" x-on:click="closeMenu(false); $refs.recordSort.dispatchEvent(new Event('abrir-orden'))"><flux:icon name="arrows-up-down" /> Ordenar</button>
+                    @if($totalRegistrosVista > 0)<button type="button" role="menuitem" tabindex="-1" wire:click="descargarResultados" x-on:click="closeMenu()"><flux:icon name="arrow-down-tray" /> Descargar resultados CSV</button>@endif
+                </x-slot:actions>
+                <x-slot:reset><button type="button" class="hub-ig-button hub-ig-reset" wire:click="restablecerVistaRegistros" x-on:click="reset()"><flux:icon name="arrow-uturn-left" /> Restablecer vista</button></x-slot:reset>
+                <x-catalogopublico::tabla-registros-mapa :registros="$registrosVista" :imagenes="$imagenesRegistrosVista" :total="$totalRegistrosVista" contexto="catalogo" :mostrar-titulo="false" :ordenable="true" />
+                <x-slot:pagination>
+                    <x-grid-pages :page="$paginaActual" :last="$ultimaPagina" :total="$totalRegistrosVista" :per-page="$this->registrosPorPagina" label="Registros del catálogo" />
+                    <dialog class="hub-ig-dialog" x-ref="recordSort" aria-label="Ordenar registros" x-on:abrir-orden="columna = $wire.ordenRegistros || 'occurrence_id'; direccion = $wire.direccionRegistros; $el.showModal()" x-data="{columna: @js($this->ordenRegistros ?: 'occurrence_id'), direccion: @js($this->direccionRegistros)}">
+                        <form x-on:submit.prevent="await $wire.ordenarRegistros(columna, direccion); $refs.recordSort.close()">
+                            <div class="hub-ig-dialog-heading"><h2>Ordenar</h2><button type="button" class="hub-ig-icon-button" x-on:click="$refs.recordSort.close()" aria-label="Cerrar ordenación">×</button></div>
+                            <div class="hub-ig-dialog-body hub-ig-sort-fields"><label>Columna<select x-model="columna"><option value="occurrence_id">catalogNumber</option><option value="scientific_name">scientificName</option><option value="event_date">eventDate</option></select></label><label>Dirección<select x-model="direccion"><option value="asc">Ascendente</option><option value="desc">Descendente</option></select></label></div>
+                            <div class="hub-ig-dialog-footer"><button type="button" class="hub-ig-button" x-on:click="$refs.recordSort.close()">Cancelar</button><button type="submit" class="hub-ig-button hub-ig-button-primary">Aplicar</button></div>
+                        </form>
+                    </dialog>
+                </x-slot:pagination>
+            </x-grid-frame>
+        </section>
 
     @else
     @if($nivelActual !== '' && $nivelActual !== 'species' && $taxonActual !== '' && ($conteos[$nivelActual.':'.$taxonActual] ?? 0) > 0)

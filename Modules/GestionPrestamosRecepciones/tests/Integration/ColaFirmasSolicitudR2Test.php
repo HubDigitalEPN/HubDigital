@@ -22,6 +22,19 @@ use Tests\DatabaseFeatureTestCase;
 
 uses(DatabaseFeatureTestCase::class);
 
+test('la clave incorrecta de p12 se informa claramente sin guardar una firma', function (): void {
+    configurarR2FalsoParaPruebas();
+    $modelo = solicitudColaR2ParaPruebas();
+    $certificado = certificadoRealDepositoParaPruebas();
+    $respuesta = $this->actingAs(User::findOrFail($modelo->investigador_id))->post(
+        route('depositos.solicitud.firmar', $modelo->id),
+        ['certificado' => $certificado['archivo'], 'clave_certificado' => 'clave-deliberadamente-incorrecta-'.Str::uuid(), 'documento_version' => 1],
+        ['Accept' => 'application/json'],
+    )->assertStatus(422);
+    expect(json_encode($respuesta->json(), JSON_UNESCAPED_UNICODE))->toContain('La contraseña del certificado es incorrecta.');
+    expect($modelo->fresh()->solicitud_firmada_en)->toBeNull();
+});
+
 
 
 
@@ -41,10 +54,10 @@ test('confirma la firma real y permite descargarla antes de enviar bytes a R2', 
     Http::assertNothingSent();
     $modelo->refresh();
     Livewire::actingAs($usuario)->test(RegistroSolicitudDeposito::class)
-        ->assertSee('data-pdf-generated-label', false)->assertDontSee('data-pdf-generated-link', false)
-        ->assertSee('data-pdf-generated-check', false)
+        ->assertSee('Ir al paso 2 Trámite')->assertDontSee('data-pdf-generated-link', false)
+        ->assertDontSee('data-pdf-generated-check', false)
         ->assertDontSee('wire:click.prevent="visualizarPdfSolicitud"', false)
-        ->assertSee('data-oficio-signed-link', false);
+        ->assertSee('continuarDesdeSolicitud', false);
     $registro = app(ColaFirmasSolicitudR2::class)->registro($modelo);
     expect($registro->estado)->toBe('pendiente');
     $pdf = app(ColaFirmasSolicitudR2::class)->contenidoPendiente($modelo);
@@ -64,7 +77,7 @@ test('confirma la firma real y permite descargarla antes de enviar bytes a R2', 
     expect($confirmado->contenido_cifrado)->toBeNull();
     expect(app(AlmacenamientoDepositos::class)->sha256($modelo->solicitud_firmada_ruta))->toBe($modelo->solicitud_firmada_sha256);
     Livewire::actingAs($usuario)->test(RegistroSolicitudDeposito::class)
-        ->assertSee('data-pdf-generated-label', false)->assertDontSee('data-pdf-generated-link', false);
+        ->assertSee('Ir al paso 2 Trámite')->assertDontSee('data-pdf-generated-link', false);
 });
 
 test('un fallo remoto conserva el PDF cifrado y el reintento confirma exactamente los mismos bytes', function (): void {

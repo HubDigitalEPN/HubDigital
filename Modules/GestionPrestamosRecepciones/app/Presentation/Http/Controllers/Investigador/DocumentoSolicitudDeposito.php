@@ -6,6 +6,7 @@ namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Inve
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Cache;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
 use Modules\GestionPrestamosRecepciones\Presentation\Support\GeneradorPdfSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
@@ -21,6 +22,7 @@ final class DocumentoSolicitudDeposito
         GeneradorPdfSolicitudDeposito $generador,
         AlmacenamientoDepositos $almacenamiento,
     ): Response {
+        $inicio = hrtime(true);
         $solicitud = SolicitudDepositoEloquentModel::findOrFail($id);
         $usuario = $request->user();
         $esDueno = (string) $solicitud->investigador_id === (string) $usuario->id;
@@ -50,12 +52,21 @@ final class DocumentoSolicitudDeposito
         } else {
             abort_unless($esDueno || $usuario->esCurador(), 403);
             $contenido = $generador->generar($solicitud);
-            app(ClienteFirmadorPreparado::class)->prepararOriginal($contenido);
-            $almacenamiento->prepararConexion();
+            app()->terminating(static function () use ($contenido, $almacenamiento): void {
+                try {
+                    if (!Cache::add('oficio-preparado:'.hash('sha256', $contenido), true, now()->addMinutes(5))) return;
+                    app(ClienteFirmadorPreparado::class)->prepararOriginal($contenido);
+                    $almacenamiento->prepararConexion();
+                } catch (\Throwable) {
+                    // La firma mantiene su validación completa aunque no haya preparación previa.
+                }
+            });
         }
 
         return response($contenido, 200, [
             'Content-Type' => 'application/pdf',
+            'Content-Length' => (string) strlen($contenido),
+            'Server-Timing' => 'pdf;dur='.number_format((hrtime(true)-$inicio)/1_000_000, 2, '.', ''),
             'Content-Disposition' => 'inline; filename="Solicitud-'.$solicitud->numero.'.pdf"',
             'Cache-Control' => 'private, no-store',
             'X-Content-Type-Options' => 'nosniff',

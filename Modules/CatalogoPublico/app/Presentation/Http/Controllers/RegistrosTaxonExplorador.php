@@ -31,6 +31,9 @@ final class RegistrosTaxonExplorador extends Component
     public int $pagina = 1;
 
     #[Locked]
+    public int $registrosPorPagina = 24;
+
+    #[Locked]
     public ?string $registroFichaId = null;
 
     #[On('abrir-registros-taxon')]
@@ -51,6 +54,14 @@ final class RegistrosTaxonExplorador extends Component
         $this->pagina = max(1, $pagina);
         $this->registroFichaId = null;
         $this->dispatch('pagina-registros-taxon');
+    }
+
+    public function ajustarRegistrosPorPagina(int $cantidad): void
+    {
+        \App\Support\AccesoCatalogo::autorizar();
+        abort_unless(in_array($cantidad, [15, 24, 25, 50, 100], true), 422);
+        $this->registrosPorPagina = $cantidad;
+        $this->cambiarPagina(1);
     }
 
     public function abrirFichaRegistro(string $id): void
@@ -100,7 +111,7 @@ final class RegistrosTaxonExplorador extends Component
     {
         \App\Support\AccesoCatalogo::autorizar();
         $paginacion = ['ids' => [], 'total' => 0, 'pagina' => 1, 'ultima' => 1];
-        if ($this->taxonId !== '') $paginacion = app(EloquentProveedorEspecimenesParaArbol::class)->paginaPublica($this->filtros(), $this->pagina, tamano: 24);
+        if ($this->taxonId !== '') $paginacion = app(EloquentProveedorEspecimenesParaArbol::class)->paginaPublica($this->filtros(), $this->pagina, tamano: $this->registrosPorPagina);
         $registros = $this->cargarDetallesPorEspecimenIds($paginacion['ids'], app(ProveedorEspecimenesPort::class), app(EspecimenDivulgableRepositoryInterface::class));
         $imagenes = $this->cargarImagenesPorEspecimen(array_values(array_filter(array_column($registros, 'occurrence_id'))));
         return view('catalogopublico::livewire.registros-taxon-explorador', compact('paginacion', 'registros', 'imagenes'));
