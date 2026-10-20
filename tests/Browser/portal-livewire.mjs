@@ -882,6 +882,21 @@ try {
     await evaluar("[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Validar matriz').click()");
     await visible("[...document.querySelectorAll('[role=alert]')].some(e=>e.textContent.includes('Fila 2') && e.textContent.includes('catalogNumber'))");await reposo();
     assert.ok(await evaluar("[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Importar al catálogo').disabled"),'El conflicto visible impide guardar y conserva la pantalla de carga.');
+    // Alternar cargas con celdas opcionales distintas y paginar debe renovar
+    // todas las filas del modal, incluso tras abrir una de la carga anterior.
+    for (const carga of [datos.cargas[1], datos.cargas[0], datos.cargas[1]]) {
+        await evaluar(`[...document.querySelectorAll('button')].find(b=>b.getAttribute('wire:click')===${JSON.stringify(`verDetalle('${carga.id}')`)}).click()`);
+        await visible(`document.querySelector('dialog[open] h2')?.textContent===${JSON.stringify(carga.archivo)}`);await reposo();
+        const resumenes = carga.codigos.slice(0,20).map((codigo,i)=>`Fila ${i+2} · ${codigo} · actualizado`);
+        assert.deepEqual(await evaluar("[...document.querySelectorAll('dialog[open] summary')].map(e=>e.textContent.trim())"),resumenes,'El detalle no debe mezclar filas de la carga anterior.');
+        await evaluar("document.querySelector('dialog[open] summary').click()");
+        assert.ok((await evaluar("document.querySelector('dialog[open] details[open]').textContent")).includes(carga.codigos[0]));
+        await evaluar("[...document.querySelectorAll('dialog[open] button')].find(b=>b.textContent.trim()==='Siguiente').click()");
+        await visible("document.querySelector('dialog[open]').textContent.includes('Página 2')");await reposo();
+        assert.deepEqual(await evaluar("[...document.querySelectorAll('dialog[open] summary')].map(e=>e.textContent.trim())"),carga.codigos.slice(20).map((codigo,i)=>`Fila ${i+22} · ${codigo} · actualizado`));
+        await evaluar("document.querySelector('button[aria-label=\"Cerrar detalle de importación\"]').click()");
+        await visible("!document.querySelector('dialog[open]')");await reposo();
+    }
     await conexion.send('Network.clearBrowserCookies');
     await conexion.send('Page.navigate',{url});
     await visible("document.querySelector('a[href$=\"/login\"]') && document.querySelector('.atlas-map .leaflet-pane')");await reposo();

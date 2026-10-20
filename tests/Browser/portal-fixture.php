@@ -18,6 +18,10 @@ if ($accion === 'limpiar') {
     $datos = json_decode(file_get_contents($archivo), true, flags: JSON_THROW_ON_ERROR);
     if (($datos['token'] ?? null) !== $token) throw new RuntimeException('El fixture no pertenece a esta ejecución.');
     DB::transaction(static function () use ($prefijo, $datos): void {
+        foreach ($datos['cargas'] ?? [] as $carga) {
+            DB::table('taxonomia.importacion_filas_catalogo')->where('importacion_id', $carga['id'])->delete();
+            DB::table('taxonomia.importaciones_catalogo')->where('id', $carga['id'])->delete();
+        }
         $ids = DB::table('taxonomia.especimenes')->where('occurrence_id', 'LIKE', $prefijo.'%')->pluck('id');
         DB::table('divulgacion.especimenes_divulgables')->whereIn('especimen_id', $ids)->delete();
         DB::table('taxonomia.especimenes')->whereIn('id', $ids)->delete();
@@ -91,7 +95,37 @@ $datos = DB::transaction(static function () use ($token, $prefijo, $archivo): ar
     $email = 'qa.browser.'.$token.'@labinvepn.test';
     $password = \Illuminate\Support\Str::random(40);
     $usuario = (string) \App\Models\User::factory()->curador()->create(['email' => $email, 'password' => $password, 'must_change_password' => false])->id;
-    $datos = compact('token', 'prefijo', 'taxones', 'filos', 'familias', 'especies', 'muestras', 'codigos', 'ids', 'taxonBusqueda', 'taxonScroll', 'usuario', 'email', 'password');
+    // Historial de lectura con estructuras distintas para reproducir el morph
+    // entre cargas y páginas, sin repetir la importación transaccional de Pest.
+    $cargas = [];
+    foreach (['A', 'B'] as $letra) {
+        $idCarga = (string) Str::uuid();
+        $nombre = $prefijo.$letra.'.csv';
+        DB::table('taxonomia.importaciones_catalogo')->insert([
+            'id' => $idCarga, 'archivo_nombre' => $nombre, 'fuente_sha256' => hash('sha256', $nombre),
+            'archivo_ruta' => 'testing/'.$nombre, 'extension' => 'csv', 'creado_por_id' => $usuario,
+            'estado' => 'completada', 'plan_sha256' => hash('sha256', $nombre.'plan'),
+            'resumen' => json_encode(['filas' => 22, 'actualizados' => 22]), 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $codigosCarga = [];
+        foreach (range(1, 22) as $numero) {
+            $codigo = $prefijo.$letra.'-'.$numero;
+            $codigosCarga[] = $codigo;
+            DB::table('taxonomia.importacion_filas_catalogo')->insert([
+                'id' => (string) Str::uuid(), 'importacion_id' => $idCarga, 'fila' => $numero + 1,
+                'codigo' => $codigo, 'accion' => 'actualizado',
+                'original' => json_encode([
+                    ['cabecera' => 'occurrenceID', 'columna' => 1, 'valor' => $codigo],
+                    ['cabecera' => 'comment', 'columna' => 2, 'valor' => $letra === 'A' ? '' : 'ORIGINAL-B'],
+                    ['cabecera' => 'notesGeneral', 'columna' => 3, 'valor' => 'ORIGINAL-'.$letra.'-'.$numero],
+                ]),
+                'anterior' => json_encode(['notes_general' => null]),
+                'posterior' => json_encode(['notes_general' => 'NOTA-'.$letra.'-'.$numero] + ($letra === 'A' ? [] : ['caste' => 'worker'])),
+            ]);
+        }
+        $cargas[] = ['id' => $idCarga, 'archivo' => $nombre, 'codigos' => $codigosCarga];
+    }
+    $datos = compact('token', 'prefijo', 'taxones', 'filos', 'familias', 'especies', 'muestras', 'codigos', 'ids', 'taxonBusqueda', 'taxonScroll', 'usuario', 'email', 'password', 'cargas');
     if (file_put_contents($archivo, json_encode($datos, JSON_THROW_ON_ERROR)) === false) throw new RuntimeException('No se pudo registrar el fixture para limpiarlo.');
     return $datos;
 });

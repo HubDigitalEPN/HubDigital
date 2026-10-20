@@ -8,8 +8,8 @@
   "devDependencies": {
     "axios": "^1.18.0",
     "laravel-vite-plugin": "^3.0.0",
-    "sass": "^1.105.1",
     "postcss": "^8.5.28",
-    "vite": "^8.2.2"
+    "sass": "^1.105.1",
+    "vite": "^8.2.4"
   }
 }
