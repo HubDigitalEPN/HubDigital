@@ -83,6 +83,7 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
                 'disposition' => $especimen->disposition(),
                 'occurrence_status' => $especimen->occurrenceStatus(),
                 'specimen_notes' => $especimen->specimenNotes(),
+                'notes_general' => $especimen->notesGeneral(),
                 'country' => $especimen->country(),
                 'state_province' => $especimen->stateProvince(),
                 'municipality' => $especimen->municipality(),
@@ -1274,6 +1275,7 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
                 'disposition' => $especimen->disposition(),
                 'occurrence_status' => $especimen->occurrenceStatus(),
                 'specimen_notes' => $especimen->specimenNotes(),
+                'notes_general' => $especimen->notesGeneral(),
                 'country' => $especimen->country(),
                 'state_province' => $especimen->stateProvince(),
                 'municipality' => $especimen->municipality(),
@@ -1497,6 +1499,7 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
             responsibleResearcherExport: $model->responsible_researcher_export,
             endemicVerbatim: $model->endemic_verbatim,
             samplingProtocol: $model->sampling_protocol,
+            notesGeneral: $model->notes_general,
         );
     }
 }

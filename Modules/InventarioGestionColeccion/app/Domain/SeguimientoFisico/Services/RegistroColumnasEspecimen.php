@@ -72,6 +72,7 @@ final class RegistroColumnasEspecimen
             self::col('fuenteNombreCientifico', 'Fuente del contraste científico', self::GRUPO_REVISION, self::PRIORIDAD_OPCIONAL, false, null),
             self::col('fechaRevisionNombreCientifico', 'Fecha del contraste científico', self::GRUPO_REVISION, self::PRIORIDAD_OPCIONAL, false, null),
             self::col('taxonVerbatim', 'Taxón verbatim', self::GRUPO_TAXONOMIA, self::PRIORIDAD_RECOMENDADA, false, 'verbatimIdentification'),
+            self::col('notesGeneral', 'Notas generales (notesGeneral)', self::GRUPO_REGISTRO, self::PRIORIDAD_OPCIONAL, false, null),
 
             // Localidad
             self::col('localidad', 'Localidad · reserva / parque / área', self::GRUPO_LOCALIDAD, self::PRIORIDAD_RECOMENDADA, true, null),

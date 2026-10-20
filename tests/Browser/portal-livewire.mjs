@@ -134,7 +134,21 @@ try {
     conexion.on('Network.requestWillBeSent', ({requestId, request}) => {
         if (request.method === 'POST' && request.url.startsWith(origen) && request.url.includes('livewire')) { peticiones.add(requestId); totalPeticiones++; }
     });
-    conexion.on('Network.responseReceived', ({requestId, response}) => { if (peticiones.has(requestId) && response.status >= 400) erroresLivewire.push(response.status); });
+    const respuestasFallidas = new Map();
+    conexion.on('Network.responseReceived', ({requestId, response}) => {
+        if (peticiones.has(requestId) && response.status >= 400) {
+            erroresLivewire.push(response.status);
+            respuestasFallidas.set(requestId, new URL(response.url).pathname);
+        }
+    });
+    conexion.on('Network.loadingFinished', async ({requestId}) => {
+        if (!respuestasFallidas.has(requestId)) return;
+        try {
+            const {body} = await conexion.send('Network.getResponseBody', {requestId});
+            const datos = JSON.parse(body);
+            console.error('Error de validación Livewire:', respuestasFallidas.get(requestId), JSON.stringify({message:datos.message, errors:datos.errors}));
+        } catch { console.error('Respuesta Livewire fallida:', respuestasFallidas.get(requestId)); }
+    });
     conexion.on('Network.loadingFinished', ({requestId}) => peticiones.delete(requestId));
     conexion.on('Network.loadingFailed', ({requestId, errorText}) => { if (peticiones.delete(requestId)) erroresLivewire.push(errorText); });
     await conexion.send('Page.enable'); await conexion.send('Runtime.enable'); await conexion.send('Network.enable');
@@ -853,6 +867,21 @@ try {
     await conexion.send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
     await visible("!document.querySelector('[data-matriz-config] dialog[open]')");
     await reposo();
+    // La pantalla real de carga muestra el conflicto de columnas sin una
+    // navegación de error y conserva el botón de guardar deshabilitado.
+    await conexion.send('Page.navigate',{url:origen+'/inventario/taxonomia/importar'});
+    await visible("document.querySelector('input[aria-label=\"Matriz del catálogo\"]') && window.Livewire");await reposo();
+    assert.ok(await evaluar("[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Importar al catálogo').disabled"));
+    assert.ok(await evaluar("Boolean(document.querySelector('[aria-label=\"Historial de matrices\"].hub-ig'))"));
+    const matrizConflicto = path.join(temporal, 'matriz-columnas-conflicto.csv');
+    writeFileSync(matrizConflicto,'occurrenceID,catalogNumber,catalogNumber\nQA-BROWSER-MATRIZ,CAT-UNO,CAT-DOS\n','utf8');
+    const docMatriz = await conexion.send('DOM.getDocument');
+    const inputMatriz = await conexion.send('DOM.querySelector',{nodeId:docMatriz.root.nodeId,selector:'input[type=file]'});
+    await conexion.send('DOM.setFileInputFiles',{nodeId:inputMatriz.nodeId,files:[matrizConflicto]});await reposo();
+    await visible("!([...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Validar matriz').disabled)");
+    await evaluar("[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Validar matriz').click()");
+    await visible("[...document.querySelectorAll('[role=alert]')].some(e=>e.textContent.includes('Fila 2') && e.textContent.includes('catalogNumber'))");await reposo();
+    assert.ok(await evaluar("[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Importar al catálogo').disabled"),'El conflicto visible impide guardar y conserva la pantalla de carga.');
     await conexion.send('Network.clearBrowserCookies');
     await conexion.send('Page.navigate',{url});
     await visible("document.querySelector('a[href$=\"/login\"]') && document.querySelector('.atlas-map .leaflet-pane')");await reposo();

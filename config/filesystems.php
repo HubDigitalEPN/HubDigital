@@ -30,6 +30,15 @@ return [
 
     'disks' => [
 
+        // Livewire usa este nombre en testing, también para cargas HTTP reales.
+        // El paquete asigna storage_path aislado a cada ejecución y proceso.
+        ...(env('APP_ENV') === 'testing' ? ['tmp-for-tests' => [
+            'driver' => 'local',
+            'root' => storage_path('framework/testing/disks/tmp-for-tests'),
+            'throw' => true,
+            'report' => false,
+        ]] : []),
+
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),

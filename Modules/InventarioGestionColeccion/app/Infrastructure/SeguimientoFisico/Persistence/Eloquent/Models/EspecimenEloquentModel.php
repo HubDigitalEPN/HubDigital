@@ -51,6 +51,7 @@ class EspecimenEloquentModel extends Model
         'disposition',
         'occurrence_status',
         'specimen_notes',
+        'notes_general',
         'country',
         'state_province',
         'municipality',

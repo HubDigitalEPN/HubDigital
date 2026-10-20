@@ -120,6 +120,7 @@ class Especimen
         private ?string $samplingProtocol = null,
         private ?string $localidad2 = null,
         private ?string $localidad3 = null,
+        private ?string $notesGeneral = null,
     ) {}
 
     /**
@@ -211,6 +212,7 @@ class Especimen
         ?string $samplingProtocol = null,
         ?string $localidad2 = null,
         ?string $localidad3 = null,
+        ?string $notesGeneral = null,
     ): self {
         $localidad = trim($localidad);
         $localityName = self::limpiarTexto($localityName) ?? $localidad;
@@ -312,6 +314,7 @@ class Especimen
             responsibleResearcherExport: self::limpiarTexto($responsibleResearcherExport),
             endemicVerbatim: self::limpiarTexto($endemicVerbatim),
             samplingProtocol: self::limpiarTexto($samplingProtocol),
+            notesGeneral: self::limpiarTexto($notesGeneral),
         );
     }
 
@@ -407,6 +410,7 @@ class Especimen
         ?string $samplingProtocol = null,
         ?string $localidad2 = null,
         ?string $localidad3 = null,
+        ?string $notesGeneral = null,
     ): self {
         return new self(
             id: $id,
@@ -497,6 +501,7 @@ class Especimen
             responsibleResearcherExport: $responsibleResearcherExport,
             endemicVerbatim: $endemicVerbatim,
             samplingProtocol: $samplingProtocol,
+            notesGeneral: $notesGeneral,
         );
     }
 
@@ -1094,6 +1099,11 @@ class Especimen
     public function endemicVerbatim(): ?string
     {
         return $this->endemicVerbatim;
+    }
+
+    public function notesGeneral(): ?string
+    {
+        return $this->notesGeneral;
     }
 
     /**

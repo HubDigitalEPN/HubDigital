@@ -58,6 +58,7 @@ final class MapeadorFilaEspecimen
             'disposition' => $e->disposition(),
             'occurrenceStatus' => $e->occurrenceStatus(),
             'specimenNotes' => $e->specimenNotes(),
+            'notesGeneral' => $e->notesGeneral(),
             'country' => $e->country(),
             'stateProvince' => $e->stateProvince(),
             'municipality' => $e->municipality(),
