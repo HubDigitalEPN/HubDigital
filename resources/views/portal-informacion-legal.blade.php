@@ -1,5 +1,5 @@
 @component('layouts.portal', ['title' => $tipo === 'privacidad' ? 'Política de privacidad' : 'Términos de uso'])
-<article class="portal-container mx-auto max-w-4xl space-y-5 px-5 py-10 leading-relaxed text-text-primary">
+<article data-platform-information-content class="portal-container mx-auto max-w-4xl space-y-5 px-5 py-10 leading-relaxed text-text-primary">
     <h1 class="font-display text-3xl font-bold text-blue-navy">{{ $tipo === 'privacidad' ? 'Política de privacidad' : 'Términos de uso' }}</h1>
     @if($tipo === 'privacidad')
         <p>Esta plataforma del Laboratorio de Invertebrados de la Escuela Politécnica Nacional utiliza los datos de registro para administrar cuentas y perfiles, tramitar solicitudes de depósito y mantener la trazabilidad de documentos y actuaciones. El catálogo público presenta únicamente los campos autorizados para divulgación; la autenticación no hace públicos los documentos privados de una solicitud.</p>
@@ -11,6 +11,6 @@
         <p>Los datos científicos pueden actualizarse con la revisión curatorial. La clasificación publicada no representa por sí misma una filogenia ni una escala temporal.</p>
         <p>Como referencia institucional, consulte las <a class="underline text-science-blue" href="https://www.epn.edu.ec/administrativo/politicas-y-lineamientos-ti/">Políticas y lineamientos TI de la EPN</a>, que incluyen la Política de Uso de la Información, Activos de Información Institucional y Seguridad Informática.</p>
     @endif
-    <a class="inline-block underline text-science-blue" href="{{ route('portal.catalogo', ['vista' => 'mapa']) }}">Volver a la distribución de registros</a>
+    <a data-platform-information-return class="inline-block underline text-science-blue" href="{{ route('portal.catalogo', ['vista' => 'mapa']) }}">Volver a la distribución de registros</a>
 </article>
 @endcomponent

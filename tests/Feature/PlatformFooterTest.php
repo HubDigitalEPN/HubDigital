@@ -2,7 +2,7 @@
 
 uses(Tests\DatabaseFeatureTestCase::class);
 
-test('el pie es compacto y sus tres enlaces abren la información completa', function (): void {
+test('el pie conserva los enlaces y la información completa que consultan los modales', function (): void {
     $this->get(route('portal.privacidad'))->assertOk()
         ->assertSee(route('portal.licencia'), false)->assertSee(route('portal.citar'), false)->assertSee(route('portal.creditos'), false)
         ->assertDontSee('Cómo citar la plataforma y sus fotografías')->assertDontSee('Créditos y financiamiento');

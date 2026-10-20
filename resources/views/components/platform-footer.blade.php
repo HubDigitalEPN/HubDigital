@@ -1,13 +1,16 @@
-@php($fechaPie = now('America/Guayaquil')->locale('es'))
-<footer class="platform-footer border-t border-border bg-surface px-4 py-3 text-xs text-text-secondary" aria-label="Información de la plataforma">
-    <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-6 gap-y-2">
-        <nav class="flex flex-wrap gap-x-4 gap-y-2" aria-label="Información legal, citación y créditos">
-            <a class="underline" href="{{ route('portal.privacidad') }}">Política de privacidad</a>
-            <a class="underline" href="{{ route('portal.terminos') }}">Términos de uso</a>
-            <a class="underline" href="{{ route('portal.licencia') }}">Licencia</a>
-            <a class="underline" href="{{ route('portal.citar') }}">Cómo citar</a>
-            <a class="underline" href="{{ route('portal.creditos') }}">Créditos</a>
-        </nav>
-        <time datetime="{{ $fechaPie->toIso8601String() }}">{{ $fechaPie->translatedFormat('l j \\d\\e F \\d\\e Y, H:i') }} · Ecuador</time>
-    </div>
+<footer class="platform-footer border-t border-border bg-surface text-xs text-text-secondary" aria-label="Información de la plataforma">
+    <nav class="platform-footer-links" aria-label="Información legal, citación y créditos">
+        <a href="{{ route('portal.privacidad') }}" data-platform-information aria-haspopup="dialog" aria-controls="platform-information-dialog">Política de privacidad</a>
+        <a href="{{ route('portal.terminos') }}" data-platform-information aria-haspopup="dialog" aria-controls="platform-information-dialog">Términos de uso</a>
+        <a href="{{ route('portal.licencia') }}" data-platform-information aria-haspopup="dialog" aria-controls="platform-information-dialog">Licencia</a>
+        <a href="{{ route('portal.citar') }}" data-platform-information aria-haspopup="dialog" aria-controls="platform-information-dialog">Cómo citar</a>
+        <a href="{{ route('portal.creditos') }}" data-platform-information aria-haspopup="dialog" aria-controls="platform-information-dialog">Créditos</a>
+    </nav>
+    <dialog id="platform-information-dialog" class="platform-information-dialog" aria-labelledby="platform-information-title">
+        <header class="platform-information-heading">
+            <h2 id="platform-information-title">Información de la plataforma</h2>
+            <button type="button" data-platform-information-close aria-label="Cerrar información" autofocus>×</button>
+        </header>
+        <div class="platform-information-content" role="region" tabindex="0" aria-label="Contenido de la información"></div>
+    </dialog>
 </footer>

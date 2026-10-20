@@ -170,6 +170,44 @@ try {
     await reposo();
     assert.match(await evaluar('window.location.search'), /vista=mapa/);
     assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /^\(18\)$/);
+    // El pie se alcanza completo y sus enlaces abren información sin perder el mapa.
+    await evaluar('window.scrollTo(0, document.scrollingElement.scrollHeight)'); await reposo();
+    assert.ok(await evaluar(`(() => {
+        const footer=document.querySelector('.platform-footer'), r=footer.getBoundingClientRect();
+        const actions=document.querySelector('.research-filter-actions').getBoundingClientRect();
+        return r.bottom<=innerHeight+1 && actions.bottom<=r.top+1 && !footer.querySelector('time') &&
+            [...footer.querySelectorAll('[data-platform-information]')].every(a=>{const b=a.getBoundingClientRect();return document.elementFromPoint(b.x+b.width/2,b.y+b.height/2)===a;});
+    })()`), 'Limpiar filtros no tapa ninguno de los cinco enlaces al llegar al final.');
+    const informacionPie = [
+        ['privacidad', 'Política de privacidad', 'datos personales'],
+        ['terminos', 'Términos de uso', 'CC BY 4.0'],
+        ['licencia', 'Licencia', 'materiales de terceros'],
+        ['citar', 'Cómo citar', 'MEPNINV00001'],
+        ['creditos', 'Créditos', 'Hernán Troya'],
+    ];
+    // Livewire normaliza la URL inicial (%20 a +) antes de abrir el pie.
+    const urlAntesInformacionPie = await evaluar('location.href');
+    for (const [seccion,titulo,contenido] of informacionPie) {
+        await evaluar(`document.querySelector('.platform-footer a[href$="/informacion/${seccion}"]').click()`);
+        await visible(`document.querySelector('#platform-information-dialog:modal .platform-information-content').textContent.includes(${JSON.stringify(contenido)})`);
+        assert.equal(await evaluar('location.href'),urlAntesInformacionPie,'Consultar información no abandona el catálogo ni sus filtros.');
+        assert.equal(await evaluar("document.querySelector('#platform-information-title').textContent"),titulo);
+        assert.ok(await evaluar(`(() => {const r=document.querySelector('#platform-information-dialog').getBoundingClientRect();return r.width>=500&&r.width<=641&&r.height<=innerHeight*.76+1;})()`),'El modal tiene un tamaño medio y cabe en la pantalla.');
+        await conexion.send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+        await conexion.send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+        await visible("!document.querySelector('#platform-information-dialog').open");
+        assert.equal(await evaluar('document.activeElement?.textContent.trim()'),titulo,'Cerrar devuelve el foco al enlace invocador.');
+    }
+    await conexion.send('Emulation.setDeviceMetricsOverride', {width:390,height:844,deviceScaleFactor:1,mobile:true});
+    await evaluar('window.scrollTo(0, document.scrollingElement.scrollHeight)'); await reposo();
+    assert.ok(await evaluar(`document.documentElement.scrollWidth<=innerWidth+1 && [...document.querySelectorAll('.platform-footer-links a')].every(a=>{const r=a.getBoundingClientRect();return document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)===a;})`),'En móvil tampoco tapa los enlaces el botón flotante del asistente.');
+    await evaluar(`document.querySelector('.platform-footer a[href$="/informacion/terminos"]').click()`);
+    await visible("document.querySelector('#platform-information-dialog:modal .platform-information-content').textContent.includes('CC BY 4.0')");
+    assert.ok(await evaluar(`(() => {const d=document.querySelector('#platform-information-dialog'),r=d.getBoundingClientRect(),b=d.querySelector('.platform-information-content');b.scrollTop=b.scrollHeight;return r.width<=innerWidth-31&&r.height<=innerHeight*.76+1&&b.scrollTop>0;})()`),'El modal móvil mantiene márgenes y permite leer el texto hasta el final.');
+    await evaluar("document.querySelector('[data-platform-information-close]').click()");
+    await visible("!document.querySelector('#platform-information-dialog').open");
+    await conexion.send('Emulation.setDeviceMetricsOverride', {width:1440,height:900,deviceScaleFactor:1,mobile:false});
+    await evaluar('window.scrollTo(0, 0)'); await reposo();
     assert.ok(await evaluar(`!document.querySelector('.portal-curator-access') && ![...document.querySelectorAll('button')].some(b=>b.getAttribute('wire:click')?.startsWith('descargar') || ['pdf()','verRegistros(menuNodo)'].includes(b.getAttribute('x-on:click')))`),'El visitante conserva la exploración sin controles operativos.');
     await conexion.send('Page.navigate',{url:origen+'/login'});
     await visible("document.querySelector('#hub-login-form') && window.Alpine");

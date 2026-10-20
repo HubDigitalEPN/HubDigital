@@ -4,7 +4,7 @@
     $fechaCita = now('America/Guayaquil')->locale('es');
     $sitioCita = 'https://labinvepn.org';
 @endphp
-<article class="portal-container mx-auto max-w-4xl space-y-5 px-5 py-10 leading-relaxed text-text-primary">
+<article data-platform-information-content class="portal-container mx-auto max-w-4xl space-y-5 px-5 py-10 leading-relaxed text-text-primary">
     <h1 class="font-display text-3xl font-bold text-blue-navy">{{ $titulo }}</h1>
     @if($seccion === 'licencia')
         <p>© {{ $fechaCita->year }} Escuela Politécnica Nacional. El contenido propio del laboratorio se publica bajo <a class="underline text-science-blue" href="https://creativecommons.org/licenses/by/4.0/deed.es" rel="license">Creative Commons Atribución 4.0 Internacional (CC BY 4.0)</a>.</p>
@@ -19,6 +19,6 @@
         <p>La plataforma es una creación del Arq. de Software Hernán Troya y del Laboratorio de ADN, Facultad de Ingeniería en Sistemas, Escuela Politécnica Nacional, Quito, Ecuador.</p>
         <p>Créditos: Hernán Troya, Alejandro Alemán, Jimmy Valladares, Michael Trocellier, Miguel Mendoza y Paul Cajas. Comentarios y observaciones: Carlos Anchundia, PhD., y Pamela Flores, PhD. Comentarios de forma y diseño: Adrian Troya, PhD. Financiamiento: fondos del Laboratorio de Invertebrados.</p>
     @endif
-    <a class="inline-block underline text-science-blue" href="{{ route('portal.catalogo', ['vista' => 'mapa']) }}">Volver a la distribución de registros</a>
+    <a data-platform-information-return class="inline-block underline text-science-blue" href="{{ route('portal.catalogo', ['vista' => 'mapa']) }}">Volver a la distribución de registros</a>
 </article>
 @endcomponent

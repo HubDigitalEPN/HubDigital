@@ -42,3 +42,5 @@
 <link rel="stylesheet" href="{{ asset('css/formularios-apex.css') }}?v={{ filemtime(public_path('css/formularios-apex.css')) }}" />
 <script src="{{ asset('js/formularios-apex.js') }}?v={{ filemtime(public_path('js/formularios-apex.js')) }}" defer></script>
 <link rel="stylesheet" href="{{ asset('css/interactive-grid.css') }}?v={{ filemtime(public_path('css/interactive-grid.css')) }}" />
+<link rel="stylesheet" href="{{ asset('css/platform-information.css') }}?v={{ filemtime(public_path('css/platform-information.css')) }}" />
+<script src="{{ asset('js/platform-information.js') }}?v={{ filemtime(public_path('js/platform-information.js')) }}" defer></script>
